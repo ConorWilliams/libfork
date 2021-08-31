@@ -13,22 +13,18 @@ namespace riften {
 namespace detail {
 
 // Here we can guarantee task will not dangle as sync_wait will not return until task is complete
-template <awaitable T> task<await_result_t<T>, true> wrap(T&& task) {
+template <awaitable T> task<await_result_t<T>, inline_scheduler, true> wrap(T&& task) {
     co_return co_await std::forward<T>(task);
 }
 
 }  // namespace detail
 
+template <typename T, Scheduler S> T sync_wait(task<T, S, true> const& task) { return task.get(); }
+
+template <typename T, Scheduler S> T sync_wait(task<T, S, true>&& task) { return std::move(task).get(); }
+
 template <awaitable A> await_result_t<A> sync_wait(A&& task) {
-    //
-
-    auto wrapper_task = detail::wrap(std::forward<A>(task));
-
-    std::coroutine_handle h = wrapper_task.make_promise();
-
-    h.resume();
-
-    return wrapper_task.get();
+    return detail::wrap(std::forward<A>(task)).get();
 }
 
 }  // namespace riften

@@ -10,12 +10,9 @@
 
 class static_thread_pool {
   public:
-    template <typename T> static riften::task<T> fork(riften::task<T> &&task) {
+    static void schedule(std::coroutine_handle<> handle) {
         static static_thread_pool pool;
-
-        pool._queue.enqueue(task.make_promise());
-
-        return task;
+        pool._queue.enqueue(handle);
     }
 
   private:
@@ -35,8 +32,8 @@ class static_thread_pool {
     std::jthread _thread;
 };
 
-riften::task<int> coro1() {
-    std::cout << "coro1\n";
+riften::task<int, static_thread_pool> coro1() {
+    std::cout << std::this_thread::get_id() << std::endl;
     co_return 1;
 }
 
@@ -53,9 +50,11 @@ int main() {
 
     // auto task = coro3(thread_pool::executor());
 
-    auto a = static_thread_pool::fork(coro1());
+    // auto a = static_thread_pool::fork(coro1());
 
-    riften::sync_wait(std::move(a));
+    auto a = coro1();
+
+    // riften::sync_wait(std::move(a));
 
     // std::cout << "Found: " << riften::sync_wait(std::move(a)) << std::endl;
 

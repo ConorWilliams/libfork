@@ -11,80 +11,96 @@
 #include <type_traits>
 #include <utility>
 
-#include "coop/broken_promise.hpp"
+#include "coop/exception.hpp"
+#include "coop/meta.hpp"
 
 namespace riften {
 
-template <typename T = void, bool Blocking = false> class [[nodiscard]] task;
+template <typename T>
+concept Scheduler = requires(std::coroutine_handle<> handle) {
+    T::schedule(handle);
+};
+
+struct inline_scheduler {
+    static constexpr bool await_ready() noexcept { return true; }
+
+    static void schedule(std::coroutine_handle<>) {}
+};
+
+template <typename T, Scheduler Scheduler = inline_scheduler, bool Blocking = false> class [[nodiscard]] task;
 
 namespace detail {
 
 // General case, specialisations for void/T& to follow, provides the return_value(...) coroutine
 // method and a way to access that value through .result() method
-template <typename T> class promise_base {
+template <typename T> class promise_result {
   public:
-    promise_base() noexcept {}  // Initialise empty
+    promise_result() noexcept {}  // Initialise empty
 
     void unhandled_exception() noexcept {
-        assert(state == empty);
+        assert(payload == State::empty);
         _exception = std::current_exception();
-        state = exception;
+        payload = State::exception;
     }
 
     template <typename U> void return_value(U&& expr) noexcept(std::is_nothrow_constructible_v<T, U&&>) {
-        assert(state == empty);
+        assert(payload == State::empty);
         std::construct_at(std::addressof(_result), std::forward<U>(expr));
-        state = result;
+        payload = State::result;
     }
 
     T const& get() const& {
-        switch (state) {
-            case empty:
+        switch (payload) {
+            case State::empty:
                 throw empty_promise{};
-            case result:
+            case State::result:
                 return _result;
-            case exception:
+            case State::exception:
                 std::rethrow_exception(_exception);
         }
+
+        __builtin_unreachable();  // Silence g++ warnings
     }
 
     T get() && {
-        switch (state) {
-            case empty:
+        switch (payload) {
+            case State::empty:
                 throw empty_promise{};
-            case result:
+            case State::result:
                 return std::move(_result);
-            case exception:
+            case State::exception:
                 std::rethrow_exception(_exception);
         }
+
+        __builtin_unreachable();  // Silence g++ warnings
     }
 
-    ~promise_base() {
-        switch (state) {
-            case empty:
+    ~promise_result() {
+        switch (payload) {
+            case State::empty:
                 return;
-            case exception:
+            case State::exception:
                 std::destroy_at(std::addressof(_exception));
                 return;
-            case result:
+            case State::result:
                 std::destroy_at(std::addressof(_result));
                 return;
         }
     }
 
   private:
-    enum State { empty, exception, result };
+    enum class State { empty, exception, result };
 
     union {
         std::exception_ptr _exception = nullptr;  // Possible exception
         T _result;                                // Result space
     };
 
-    State state = empty;
+    State payload = State::empty;
 };
 
 // // Specialisations for T&
-// template <typename T> class promise_base<T&> : public exception_base {
+// template <typename T> class promise_result<T&> : public exception_base {
 //   public:
 //     void return_value(T& result) noexcept { _result = std::addressof(result); }
 
@@ -103,41 +119,65 @@ template <typename T> class promise_base {
 // };
 
 // // Specialisations for void
-// template <> class promise_base<void> : public exception_base {
+// template <> class promise_result<void> : public exception_base {
 //   public:
 //     void return_void() const noexcept {};
 
 //     void result() const { rethrow_if_unhandled_exception(); };
 // };
 
-template <bool Blocking> struct latch;
+// Maybe introduce wait/release methods
+template <bool Blocking> struct binary_latch;
 
-template <> struct latch<true> { std::atomic_flag ready = false; };
+// EBO specialisation
+template <> struct binary_latch<false> {};
 
-template <> struct latch<false> {};
+// Latch is initialised 'held', wait() will block until a thread calls release().
+template <> struct binary_latch<true> {
+  public:
+    void wait() const noexcept { ready.wait(false, std::memory_order_acquire); }
+
+    void release() noexcept {
+        ready.test_and_set(std::memory_order_release);
+        ready.notify_one();
+    }
+
+  private:
+    std::atomic_flag ready = false;
+};
 
 }  // namespace detail
 
-// A task packages a promise and and some work to execute
-template <typename T, bool Blocking> class task {
+template <typename T, Scheduler Scheduler, bool Blocking> class task {
   public:
-    struct promise_type : detail::promise_base<T>, private detail::latch<Blocking> {
+    struct promise_type : public detail::promise_result<T>, private detail::binary_latch<Blocking> {
       private:
-        struct final_awaitable;
+        struct initial_awaitable {
+            constexpr bool await_ready() const noexcept {
+                if constexpr (requires { Scheduler::await_ready(); }) {
+                    static_assert(noexcept(Scheduler::await_ready()), "Warn if throwing");
+                    return Scheduler::await_ready();
+                } else {
+                    return false;
+                }
+            }
 
-      public:
-        task get_return_object() noexcept {
-            return task{std::coroutine_handle<promise_type>::from_promise(*this)};
-        }
+            constexpr void await_suspend(std::coroutine_handle<promise_type> handle) const noexcept {
+                try {
+                    Scheduler::schedule(handle);
+                } catch (...) {
+                    // Scheduling failed therefore, coroutine's final_suspend will never run.
+                    handle.promise().unhandled_exception();
+                    handle.promise().exchange_continuation(nullptr);
 
-        // Tasks are lazily started,
-        std::suspend_always initial_suspend() const noexcept { return {}; }
+                    if constexpr (Blocking) {
+                        handle.promise().release();
+                    }
+                }
+            }
 
-        // and run their continuation at exit (either by co_return or exception)
-        final_awaitable final_suspend() const noexcept { return {}; }
-
-      private:
-        friend class task;
+            constexpr void await_resume() const noexcept {}
+        };
 
         struct final_awaitable : std::suspend_always {
             std::coroutine_handle<> await_suspend(std::coroutine_handle<promise_type> handle) noexcept {
@@ -145,18 +185,31 @@ template <typename T, bool Blocking> class task {
                 if (std::coroutine_handle<> tmp = handle.promise().exchange_continuation(nullptr)) {
                     // Notify anyone waiting on completion of this coroutine
                     if constexpr (Blocking) {
-                        handle.promise().ready.test_and_set(std::memory_order_release);
-                        handle.promise().ready.notify_one();
+                        handle.promise().release();
                     }
                     return tmp;
                 } else {
-                    // Task must have been destructed, therefore we are responsible for cleanup
+                    // Task must have been destructed, therefore we are responsible for cleanup.
+                    // Cannot wait on destructed task therefore, no release required.
                     handle.destroy();
+                    return std::noop_coroutine();
                 }
-
-                return std::noop_coroutine();
             }
         };
+
+      public:
+        task get_return_object() noexcept {
+            return task{std::coroutine_handle<promise_type>::from_promise(*this)};
+        }
+
+        // Tasks are lazily started,
+        initial_awaitable initial_suspend() const noexcept { return {}; }
+
+        // and run their continuation at exit (either by co_return or exception)
+        final_awaitable final_suspend() const noexcept { return {}; }
+
+      private:
+        friend class task;
 
         std::coroutine_handle<> exchange_continuation(std::coroutine_handle<> handle) noexcept {
             return _continuation.exchange(handle, std::memory_order_acq_rel);
@@ -164,8 +217,6 @@ template <typename T, bool Blocking> class task {
 
         // Indicates this coroutine has either: run to final suspend or never started
         bool done() const noexcept { return !_continuation.load(std::memory_order_acquire); }
-
-        void wait() requires Blocking { this->ready.wait(false, std::memory_order_acquire); }
 
         std::atomic<std::coroutine_handle<>> _continuation{std::noop_coroutine()};
     };
@@ -191,43 +242,7 @@ template <typename T, bool Blocking> class task {
 
     ~task() noexcept { destroy(std::exchange(_coroutine, nullptr)); }
 
-    // The caller promises to eventually call .resume() exactly once on the returned coroutine handle if this
-    // function returns without exception.
-    std::pair<future<T, Blocking>, std::coroutine_handle<promise_type>> start() {
-        if (_coroutine) {
-            return _coroutine;
-        } else {
-            throw broken_promise{};
-        }
-    }
-
-  private:
-    friend struct promise_type;
-    // Only promise can construct a filled task
-    explicit task(std::coroutine_handle<promise_type> coro) noexcept : _coroutine(coro) {}
-
-    std::coroutine_handle<promise_type> _coroutine;
-};
-
-// A future packages a promise and and some work to execute
-template <typename T, bool Blocking> class future {
-  public:
-    // No assignment/copy constructor, tasks are 'unique'
-    future(const future&) = delete;
-    future& operator=(future const&) = delete;
-
-    // but, they can be moved.
-    future(future&& other) noexcept : _coroutine(std::exchange(other._coroutine, nullptr)) {}
-
-    future& operator=(future&& other) noexcept {
-        if (this != &other) {
-            destroy(std::exchange(_coroutine, std::exchange(other._coroutine, nullptr)));
-        }
-    }
-
-    friend void swap(future& lhs, future& rhs) noexcept { std::swap(lhs._coroutine, rhs._coroutine); }
-
-    // Blocking equivilent of co_awaiting on future
+    // Blocking equivilent of co_awaiting on task
     decltype(auto) get() const& requires Blocking {
         if (_coroutine) {
             _coroutine.promise().wait();
@@ -272,23 +287,23 @@ template <typename T, bool Blocking> class future {
         }
     }
 
-    ~future() noexcept { destroy(std::exchange(_coroutine, nullptr)); }
-
   private:
-    using promise_type = task<T, Blocking>::promise_type;
+    friend struct promise_type;
+    // Only promise can construct a filled task
+    explicit task(std::coroutine_handle<promise_type> coro) noexcept : _coroutine(coro) {}
 
     struct awaitable_base {
         // Shortcut
         bool await_ready() const noexcept { return _coroutine.promise().done(); }
 
         std::coroutine_handle<> await_suspend(std::coroutine_handle<> handle) noexcept {
-            // Try to schedule handle as the continuation of this future
+            // Try to schedule handle as the continuation of this task
             if (std::coroutine_handle<> old = _coroutine.promise().exchange_continuation(handle)) {
                 // Managed to set continuation in time (got old == std::noop_coroutine()).
                 return std::noop_coroutine();
             } else {
-                // While setting the continuation the future completed, hence we can resume
-                // the coroutine of handle.  Must re_exchange so that future is in "done" state
+                // While setting the continuation the task completed, hence we can resume
+                // the coroutine of handle.  Must re_exchange so that task is in "done" payload
                 return _coroutine.promise().exchange_continuation(nullptr);
             }
         }
@@ -296,19 +311,12 @@ template <typename T, bool Blocking> class future {
         std::coroutine_handle<promise_type> _coroutine;
     };
 
-    friend class task<T, Blocking>;
-    // Only promise can construct a filled future
-    explicit future(std::coroutine_handle<promise_type> coro) noexcept : _coroutine(coro) {}
-
     // Release coroutine owned by handle
     static void destroy(std::coroutine_handle<promise_type> handle) noexcept {
         if (handle) {
             if (!handle.promise().exchange_continuation(nullptr)) {
-                // Thread has completed future, therefore we are responsible for cleanup.
-                std::cout << "destroy\n";
+                // Thread has completed task, therefore we are responsible for cleanup.
                 handle.destroy();
-            } else {
-                std::cout << "no destroy\n";
             }
             // Otherwise thread will be responsible for cleanup due to nullptr we just exchanged into the
             // continuation.
