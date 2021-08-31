@@ -6,23 +6,13 @@
 #include <cstddef>
 #include <exception>
 #include <memory>
-#include <stdexcept>
 #include <type_traits>
 #include <utility>
 
-#include "macrologger.h"
+#include "coop/broken_promise.hpp"
+#include "coop/detail/macrologger.h"
 
-namespace riften {
-
-struct broken_promise : std::runtime_error {
-    broken_promise() : std::runtime_error("Task has no assosicated coroutine") {}
-};
-
-struct empty_promise : std::runtime_error {
-    empty_promise() : std::runtime_error("Task has not been executed") {}
-};
-
-namespace detail {
+namespace riften::detail {
 
 // General case, specialisations for void/T& to follow, provides the return_value(...) coroutine
 // method and a way to access that value through .result() method
@@ -46,7 +36,7 @@ template <typename T> class promise_result {
     T const& get() const& {
         switch (payload) {
             case State::empty:
-                throw empty_promise{};
+                assert(false);
             case State::result:
                 return _result;
             case State::exception:
@@ -59,7 +49,7 @@ template <typename T> class promise_result {
     T get() && {
         switch (payload) {
             case State::empty:
-                throw empty_promise{};
+                assert(false);
             case State::result:
                 return std::move(_result);
             case State::exception:
@@ -138,6 +128,4 @@ template <> struct binary_latch<true> {
     std::atomic_flag ready = false;
 };
 
-}  // namespace detail
-
-}  // namespace riften
+}  // namespace riften::detail

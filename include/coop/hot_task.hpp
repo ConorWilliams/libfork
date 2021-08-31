@@ -6,12 +6,11 @@
 #include <cstddef>
 #include <exception>
 #include <memory>
-#include <semaphore>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
 
-#include "promise.hpp"
+#include "coop/detail/promise.hpp"
 
 namespace riften {
 
@@ -58,7 +57,9 @@ template <typename T, Scheduler Scheduler, bool Blocking = false> class [[nodisc
                 }
             }
 
-            constexpr void await_resume() const noexcept {}
+            constexpr void await_resume() const noexcept {
+                // TODO : Could cancel early if _continuation == nullptr
+            }
         };
 
         struct final_awaitable : std::suspend_always {
