@@ -11,9 +11,7 @@
 #include <type_traits>
 #include <utility>
 
-#include "coop/exception.hpp"
-#include "coop/meta.hpp"
-#include "macrologger.h"
+#include "promise.hpp"
 
 namespace riften {
 
@@ -28,135 +26,11 @@ struct inline_scheduler {
     static void schedule(std::coroutine_handle<>) {}
 };
 
-template <typename T, Scheduler Scheduler = inline_scheduler, bool Blocking = false>
-class [[nodiscard]] hot_task;
-
-namespace detail {
-
-// General case, specialisations for void/T& to follow, provides the return_value(...) coroutine
-// method and a way to access that value through .result() method
-template <typename T> class promise_result {
+// A hot_task manages a coroutine frame that is scheduled at initial suspend by the customisation point
+// Scheduler.
+template <typename T, Scheduler Scheduler, bool Blocking = false> class [[nodiscard]] hot_task {
   public:
-    promise_result() noexcept {}  // Initialise empty
-
-    void unhandled_exception() noexcept {
-        assert(payload == State::empty);
-        LOG_DEBUG("Stash exception");
-        _exception = std::current_exception();
-        payload = State::exception;
-    }
-
-    template <typename U> void return_value(U&& expr) noexcept(std::is_nothrow_constructible_v<T, U&&>) {
-        assert(payload == State::empty);
-        std::construct_at(std::addressof(_result), std::forward<U>(expr));
-        payload = State::result;
-    }
-
-    T const& get() const& {
-        switch (payload) {
-            case State::empty:
-                throw empty_promise{};
-            case State::result:
-                return _result;
-            case State::exception:
-                std::rethrow_exception(_exception);
-        }
-
-        __builtin_unreachable();  // Silence g++ warnings
-    }
-
-    T get() && {
-        switch (payload) {
-            case State::empty:
-                throw empty_promise{};
-            case State::result:
-                return std::move(_result);
-            case State::exception:
-                std::rethrow_exception(_exception);
-        }
-
-        __builtin_unreachable();  // Silence g++ warnings
-    }
-
-    ~promise_result() {
-        //
-        LOG_DEBUG("Destruct promise.");
-
-        switch (payload) {
-            case State::empty:
-                return;
-            case State::exception:
-                std::destroy_at(std::addressof(_exception));
-                return;
-            case State::result:
-                std::destroy_at(std::addressof(_result));
-                return;
-        }
-    }
-
-  private:
-    enum class State { empty, exception, result };
-
-    union {
-        std::exception_ptr _exception = nullptr;  // Possible exception
-        T _result;                                // Result space
-    };
-
-    State payload = State::empty;
-};
-
-// // Specialisations for T&
-// template <typename T> class promise_result<T&> : public exception_base {
-//   public:
-//     void return_value(T& result) noexcept { _result = std::addressof(result); }
-
-//     T const& result() const& {
-//         exception_base::rethrow_if_unhandled_exception();
-//         return *_result;
-//     }
-
-//     T&& result() && {
-//         exception_base::rethrow_if_unhandled_exception();
-//         return std::move(*_result);
-//     }
-
-//   private:
-//     T* _result;
-// };
-
-// // Specialisations for void
-// template <> class promise_result<void> : public exception_base {
-//   public:
-//     void return_void() const noexcept {};
-
-//     void result() const { rethrow_if_unhandled_exception(); };
-// };
-
-// Maybe introduce wait/release methods
-template <bool Blocking> struct binary_latch;
-
-// EBO specialisation
-template <> struct binary_latch<false> {};
-
-// Latch is initialised 'held', wait() will block until a thread calls release().
-template <> struct binary_latch<true> {
-  public:
-    void wait() const noexcept { ready.wait(false, std::memory_order_acquire); }
-
-    void release() noexcept {
-        ready.test_and_set(std::memory_order_release);
-        ready.notify_one();
-    }
-
-  private:
-    std::atomic_flag ready = false;
-};
-
-}  // namespace detail
-
-template <typename T, Scheduler Scheduler, bool Blocking> class hot_task {
-  public:
-    struct promise_type : public detail::promise_result<T>, private detail::binary_latch<Blocking> {
+    class promise_type : public detail::promise_result<T>, private detail::binary_latch<Blocking> {
       private:
         struct initial_awaitable {
             constexpr bool await_ready() const noexcept {
@@ -297,7 +171,7 @@ template <typename T, Scheduler Scheduler, bool Blocking> class hot_task {
     }
 
   private:
-    friend struct promise_type;
+    friend class promise_type;
     // Only promise can construct a filled hot_task
     explicit hot_task(std::coroutine_handle<promise_type> coro) noexcept : _coroutine(coro) {}
 
