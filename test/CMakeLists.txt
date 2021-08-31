@@ -26,9 +26,9 @@ include(../cmake/CPM.cmake)
 CPMAddPackage("gh:onqtam/doctest#2.4.5")
 
 if(TEST_INSTALLED_VERSION)
-  find_package(RiftenCoop REQUIRED)
+  find_package(RiftenForkpool REQUIRED)
 else()
-  CPMAddPackage(NAME RiftenCoop SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/..)
+  CPMAddPackage(NAME RiftenForkpool SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/..)
 endif()
 
 # ---- Tests ----
@@ -38,7 +38,7 @@ add_executable(${PROJECT_NAME} "${sources}")
 
 # Link dependencies
 target_link_libraries(
-  ${PROJECT_NAME} PUBLIC doctest::doctest RiftenCoop::RiftenCoop ${CMAKE_THREAD_LIBS_INIT}
+  ${PROJECT_NAME} PUBLIC doctest::doctest RiftenForkpool::RiftenForkpool ${CMAKE_THREAD_LIBS_INIT}
 )
 
 # enable_testing()

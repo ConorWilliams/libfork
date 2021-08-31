@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 # ---- Project ----
 
 project(
-  RiftenCoop
+  RiftenForkpool
   VERSION 0.1.0
   LANGUAGES CXX
 )
@@ -53,5 +53,5 @@ packageProject(
   INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include
   INCLUDE_DESTINATION include/${PROJECT_NAME}-${PROJECT_VERSION}
   COMPATIBILITY SameMajorVersion
-  DEPENDENCIES "function2;RiftenDeque"
+  DEPENDENCIES ""
 )

@@ -21,8 +21,7 @@ concept Scheduler = requires(std::coroutine_handle<> handle) {
 
 struct inline_scheduler {
     static constexpr bool await_ready() noexcept { return true; }
-
-    static void schedule(std::coroutine_handle<>) {}
+    static constexpr void schedule(std::coroutine_handle<>) {}
 };
 
 // A hot_task manages a coroutine frame that is scheduled at initial suspend by the customisation point
