@@ -1,12 +1,13 @@
+#include <chrono>
 #include <iostream>
 #include <stdexcept>
 #include <stop_token>
 #include <thread>
 
 #include "concurrentqueue.h"
+#include "coop/hot_task.hpp"
 #include "coop/meta.hpp"
 #include "coop/sync_wait.hpp"
-#include "coop/task.hpp"
 
 class static_thread_pool {
   public:
@@ -17,11 +18,20 @@ class static_thread_pool {
 
   private:
     static_thread_pool()
-        : _thread([&](std::stop_token tok) {
+        : _thread1([&](std::stop_token tok) {
               while (!tok.stop_requested()) {
                   std::coroutine_handle<> h;
                   if (_queue.try_dequeue(h)) {
-                      std::cout << "Got one!\n";
+                      //   std::cout << "Got one!\n";
+                      h.resume();
+                  }
+              }
+          }),
+          _thread2([&](std::stop_token tok) {
+              while (!tok.stop_requested()) {
+                  std::coroutine_handle<> h;
+                  if (_queue.try_dequeue(h)) {
+                      //   std::cout << "Got one!\n";
                       h.resume();
                   }
               }
@@ -29,34 +39,45 @@ class static_thread_pool {
 
     moodycamel::ConcurrentQueue<std::coroutine_handle<>> _queue;
 
-    std::jthread _thread;
+    std::jthread _thread1;
+    std::jthread _thread2;
 };
 
-riften::task<int, static_thread_pool> coro1() {
+riften::hot_task<int, static_thread_pool> coro1() {
     std::cout << std::this_thread::get_id() << std::endl;
     co_return 1;
 }
 
-// riften::task<int, static_thread_pool> coro2() {
-//     std::cout << "coro2\n";
+riften::hot_task<int, static_thread_pool> coro2() {
+    std::cout << std::this_thread::get_id() << std::endl;
 
-//     auto a = coro1();
+    throw 3;
 
-//     co_return 2;
-// }
+    auto a = coro1();
+
+    co_await a;
+
+    co_return 2;
+}
 
 int main() {
     // static_thread_pool::schedule(nullptr);
 
-    // auto task = coro3(thread_pool::executor());
+    // auto hot_task = coro3(thread_pool::executor());
 
     // auto a = static_thread_pool::fork(coro1());
 
-    auto a = coro1();
+    auto a = coro2();
 
-    // riften::sync_wait(std::move(a));
+    try {
+        riften::sync_wait(std::move(a));
+    } catch (...) {
+        // throw;
+    }
 
     // std::cout << "Found: " << riften::sync_wait(std::move(a)) << std::endl;
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 
     std::cout << "done\n";
 

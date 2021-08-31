@@ -13,6 +13,7 @@
 
 #include "coop/exception.hpp"
 #include "coop/meta.hpp"
+#include "macrologger.h"
 
 namespace riften {
 
@@ -27,7 +28,8 @@ struct inline_scheduler {
     static void schedule(std::coroutine_handle<>) {}
 };
 
-template <typename T, Scheduler Scheduler = inline_scheduler, bool Blocking = false> class [[nodiscard]] task;
+template <typename T, Scheduler Scheduler = inline_scheduler, bool Blocking = false>
+class [[nodiscard]] hot_task;
 
 namespace detail {
 
@@ -39,6 +41,7 @@ template <typename T> class promise_result {
 
     void unhandled_exception() noexcept {
         assert(payload == State::empty);
+        LOG_DEBUG("Stash exception");
         _exception = std::current_exception();
         payload = State::exception;
     }
@@ -76,6 +79,9 @@ template <typename T> class promise_result {
     }
 
     ~promise_result() {
+        //
+        LOG_DEBUG("Destruct promise.");
+
         switch (payload) {
             case State::empty:
                 return;
@@ -148,7 +154,7 @@ template <> struct binary_latch<true> {
 
 }  // namespace detail
 
-template <typename T, Scheduler Scheduler, bool Blocking> class task {
+template <typename T, Scheduler Scheduler, bool Blocking> class hot_task {
   public:
     struct promise_type : public detail::promise_result<T>, private detail::binary_latch<Blocking> {
       private:
@@ -173,6 +179,8 @@ template <typename T, Scheduler Scheduler, bool Blocking> class task {
                     if constexpr (Blocking) {
                         handle.promise().release();
                     }
+
+                    // Clean-up will be handled by get_return_object()'s hot_task
                 }
             }
 
@@ -190,7 +198,8 @@ template <typename T, Scheduler Scheduler, bool Blocking> class task {
                     return tmp;
                 } else {
                     // Task must have been destructed, therefore we are responsible for cleanup.
-                    // Cannot wait on destructed task therefore, no release required.
+                    // Cannot wait on destructed hot_task therefore, no release required.
+                    LOG_DEBUG("final_suspend calls destroy");
                     handle.destroy();
                     return std::noop_coroutine();
                 }
@@ -198,8 +207,8 @@ template <typename T, Scheduler Scheduler, bool Blocking> class task {
         };
 
       public:
-        task get_return_object() noexcept {
-            return task{std::coroutine_handle<promise_type>::from_promise(*this)};
+        hot_task get_return_object() noexcept {
+            return hot_task{std::coroutine_handle<promise_type>::from_promise(*this)};
         }
 
         // Tasks are lazily started,
@@ -209,7 +218,7 @@ template <typename T, Scheduler Scheduler, bool Blocking> class task {
         final_awaitable final_suspend() const noexcept { return {}; }
 
       private:
-        friend class task;
+        friend class hot_task;
 
         std::coroutine_handle<> exchange_continuation(std::coroutine_handle<> handle) noexcept {
             return _continuation.exchange(handle, std::memory_order_acq_rel);
@@ -223,26 +232,26 @@ template <typename T, Scheduler Scheduler, bool Blocking> class task {
 
     //////////////////////////////////////////////////////////////////////////////////////
 
-    constexpr task() : _coroutine{nullptr} {}
+    constexpr hot_task() : _coroutine{nullptr} {}
 
-    // No assignment/copy constructor, tasks are 'unique'
-    task(const task&) = delete;
-    task& operator=(task const&) = delete;
+    // No assignment/copy constructor, hot_tasks are 'unique'
+    hot_task(const hot_task&) = delete;
+    hot_task& operator=(hot_task const&) = delete;
 
     // but, they can be moved.
-    task(task&& other) noexcept : _coroutine(std::exchange(other._coroutine, nullptr)) {}
+    hot_task(hot_task&& other) noexcept : _coroutine(std::exchange(other._coroutine, nullptr)) {}
 
-    task& operator=(task&& other) noexcept {
+    hot_task& operator=(hot_task&& other) noexcept {
         if (this != &other) {
             destroy(std::exchange(_coroutine, std::exchange(other._coroutine, nullptr)));
         }
     }
 
-    friend void swap(task& lhs, task& rhs) noexcept { std::swap(lhs._coroutine, rhs._coroutine); }
+    friend void swap(hot_task& lhs, hot_task& rhs) noexcept { std::swap(lhs._coroutine, rhs._coroutine); }
 
-    ~task() noexcept { destroy(std::exchange(_coroutine, nullptr)); }
+    ~hot_task() noexcept { destroy(std::exchange(_coroutine, nullptr)); }
 
-    // Blocking equivilent of co_awaiting on task
+    // Blocking equivilent of co_awaiting on hot_task
     decltype(auto) get() const& requires Blocking {
         if (_coroutine) {
             _coroutine.promise().wait();
@@ -289,22 +298,25 @@ template <typename T, Scheduler Scheduler, bool Blocking> class task {
 
   private:
     friend struct promise_type;
-    // Only promise can construct a filled task
-    explicit task(std::coroutine_handle<promise_type> coro) noexcept : _coroutine(coro) {}
+    // Only promise can construct a filled hot_task
+    explicit hot_task(std::coroutine_handle<promise_type> coro) noexcept : _coroutine(coro) {}
 
     struct awaitable_base {
         // Shortcut
         bool await_ready() const noexcept { return _coroutine.promise().done(); }
 
         std::coroutine_handle<> await_suspend(std::coroutine_handle<> handle) noexcept {
-            // Try to schedule handle as the continuation of this task
+            // Try to schedule handle as the continuation of this hot_task
             if (std::coroutine_handle<> old = _coroutine.promise().exchange_continuation(handle)) {
                 // Managed to set continuation in time (got old == std::noop_coroutine()).
+                LOG_DEBUG("Set continuation in-time");
                 return std::noop_coroutine();
             } else {
-                // While setting the continuation the task completed, hence we can resume
-                // the coroutine of handle.  Must re_exchange so that task is in "done" payload
-                return _coroutine.promise().exchange_continuation(nullptr);
+                // While setting the continuation the hot_task completed, hence we can resume
+                // the coroutine of handle.  Must re_exchange so that hot_task is in "done" state
+                LOG_DEBUG("Task completed while suspending");
+                _coroutine.promise().exchange_continuation(nullptr);
+                return handle;
             }
         }
 
@@ -315,8 +327,10 @@ template <typename T, Scheduler Scheduler, bool Blocking> class task {
     static void destroy(std::coroutine_handle<promise_type> handle) noexcept {
         if (handle) {
             if (!handle.promise().exchange_continuation(nullptr)) {
-                // Thread has completed task, therefore we are responsible for cleanup.
+                // Thread has completed hot_task, therefore we are responsible for cleanup.
+                LOG_DEBUG("Task destructor calls destroy");
                 handle.destroy();
+                return;
             }
             // Otherwise thread will be responsible for cleanup due to nullptr we just exchanged into the
             // continuation.
