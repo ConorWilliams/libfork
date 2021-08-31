@@ -10,7 +10,7 @@
 #include <type_traits>
 #include <utility>
 
-#include "coop/detail/promise.hpp"
+#include "forkpool/detail/promise.hpp"
 
 namespace riften {
 

@@ -9,8 +9,8 @@
 #include <type_traits>
 #include <utility>
 
-#include "coop/broken_promise.hpp"
-#include "coop/detail/macrologger.h"
+#include "forkpool/broken_promise.hpp"
+#include "forkpool/detail/macrologger.h"
 
 namespace riften::detail {
 

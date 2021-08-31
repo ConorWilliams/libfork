@@ -5,9 +5,9 @@
 #include <thread>
 
 #include "concurrentqueue.h"
-#include "coop/hot_task.hpp"
-#include "coop/meta.hpp"
-#include "coop/sync_wait.hpp"
+#include "forkpool/hot_task.hpp"
+#include "forkpool/meta.hpp"
+#include "forkpool/sync_wait.hpp"
 
 class static_thread_pool {
   public:

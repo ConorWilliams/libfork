@@ -5,8 +5,8 @@
 #include <iostream>
 #include <utility>
 
-#include "coop/hot_task.hpp"
-#include "coop/meta.hpp"
+#include "forkpool/hot_task.hpp"
+#include "forkpool/meta.hpp"
 
 namespace riften {
 
