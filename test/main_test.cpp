@@ -24,17 +24,22 @@ hot_task<int, riften::Forkpool> test(int in) {
 }
 
 hot_task<void, riften::Forkpool> test() {
-    std::cout << "Thread: " << std::this_thread::get_id() << std::endl;
+    // std::cout << "Thread: " << std::this_thread::get_id() << std::endl;
 
-    std::cout << "then: " << co_await test(3) << " from " << std::this_thread::get_id() << std::endl;
+    // std::cout << "then: " << co_await test(3) << " from " << std::this_thread::get_id() << std::endl;
+
+    co_await test(0);
 
     co_return;
 }
 
 int main() {
     auto a = test();
+    auto b = test();
 
     riften::sync_wait(a);
+
+    riften::sync_wait(b);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 

@@ -48,7 +48,7 @@ static inline char *timenow();
 #    define LOG_DEBUG(message) \
         fprintf(stderr, "%s | %-15s | %s:%d | " message "\n", timenow(), _FILE, __FUNCTION__, __LINE__)
 #else
-#    define LOG_DEBUG(message, args...)
+#    define LOG_DEBUG(message)
 #endif
 
 static inline char *timenow() {

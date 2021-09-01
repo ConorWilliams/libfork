@@ -5,6 +5,7 @@
 #include <coroutine>
 #include <cstddef>
 #include <limits>
+#include <optional>
 #include <semaphore>
 #include <thread>
 
@@ -19,88 +20,102 @@ class Forkpool {
   public:
     static void schedule(std::coroutine_handle<> handle) {
         static Forkpool pool{2};
-        std::cout << static_id << " posts job\n";
-        pool._todo.fetch_add(1, std::memory_order_release);
         pool._deque[static_id].emplace(handle);
-        pool._sem.release();
     }
 
   private:
-    explicit Forkpool(std::size_t n = std::thread::hardware_concurrency()) : _deque(n + 1) {
-        //
-        static_id = n;  // Set master thread's id
+    using task_t = std::optional<std::coroutine_handle<>>;
 
-        for (std::size_t i = 0; i < n; ++i) {
-            _thread.emplace_back([&, i, n](std::stop_token tok) {
+    explicit Forkpool(std::size_t n = std::thread::hardware_concurrency()) : _deque(n + 1) {
+        // Master thread uses nth deque
+        static_id = n;
+
+        for (std::size_t id = 0; id < n; ++id) {
+            _thread.emplace_back([&, id] {
                 // Set id for calls to fork
-                static_id = i;
+                static_id = id;
 
                 // Initialise PRNG stream
-                for (size_t j = 0; j < i; j++) {
+                for (size_t j = 0; j < id; j++) {
                     detail::long_jump();
                 }
 
-            sleep:
-                // Wait on semaphore
-                _sem.acquire();
-                std::cout << i << ": awakens\n";
+                task_t task = std::nullopt;
 
-            steal:
-                // While there are jobs try and steal one
-                while (_todo.load(std::memory_order_acquire) > 0) {
-                    auto k = detail::xrand() % n;
-
-                    if (k == i) {
-                        k = n;
-                    }
-
-                    if (std::optional coro = _deque[k].steal()) {
-                        _todo.fetch_sub(1, std::memory_order_release);
-                        std::cout << i << ": thieves a job.\n";
-                        coro->resume();
-                        goto work;
+                while (true) {
+                    exploit_task(id, task);
+                    if (wait_for_task(id, task) == false) {
+                        break;
                     }
                 }
-
-            work:
-                // Work doing only our jobs
-                while (std::optional coro = _deque[i].pop()) {
-                    _todo.fetch_sub(1, std::memory_order_release);
-                    std::cout << i << ": does their work.\n";
-                    coro->resume();
-                }
-
-                if (_todo.load(std::memory_order_acquire) > 0) {
-                    goto steal;
-                } else if (!tok.stop_requested()) {
-                    std::cout << i << ": sleeps\n";
-                    goto sleep;
-                }
-
-                std::cout << i << ": dies\n";
             });
         }
     }
 
-    ~Forkpool() {
-        std::cout << "REQUEST KILL\n";
+    ~Forkpool() { _stop.store(true); }
 
-        for (auto& thread : _thread) {
-            thread.request_stop();
-        }
+    void exploit_task(std::size_t id, task_t& task) {
+        if (task) {
+            if (_actives.fetch_add(1) == 1 && _thieves.load() == 0) {
+                // I am the only active thread and there are no thieves
+                // notify.one()
+            }
 
-        _sem.release(_thread.size());
+            do {
+                std::cout << id << " resumes\n";
+                task->resume();
+                task = _deque[id].pop();
+            } while (task);
 
-        for (auto& thread : _thread) {
-            thread.join();
+            _actives.fetch_sub(1);
         }
     }
 
-  private:
-    std::counting_semaphore<> _sem{0};
+    void steal_task(std::size_t id, task_t& task) {
+        for (std::size_t i = 0; i < 10 * _thread.size(); ++i) {
+            if (auto v = detail::xrand() % _thread.size(); v == id) {
+                task = _deque.back().steal();
+            } else {
+                task = _deque[v].steal();
+            }
+            if (task) {
+                return;
+            }
+        }
+    }
 
-    alignas(hardware_destructive_interference_size) std::atomic<std::int64_t> _hint = 0;
-    alignas(hardware_destructive_interference_size) std::atomic<std::int64_t> _todo = 0;
+    bool wait_for_task(std::size_t id, task_t& task) {
+    wait_for_task:
+        _thieves.fetch_add(1);
+
+        if (steal_task(id, task); task) {
+            if (_thieves.fetch_sub(1) == 0) {
+                // notify_one
+            }
+            return true;
+        }
+        // prepare_wait
+        if (_stop.load()) {
+            // notify all
+            _thieves.fetch_sub(1);
+            return false;
+        }
+
+        if (_thieves.fetch_sub(1) == 0 && _actives.load() > 0) {
+            // Keep one thief awake if someone may post job
+            goto wait_for_task;
+        }
+
+        // wait
+
+        return true;
+    }
+
+  private:
+    alignas(hardware_destructive_interference_size) std::atomic<std::int64_t> _actives = 0;
+    alignas(hardware_destructive_interference_size) std::atomic<std::int64_t> _thieves = 0;
+
+    alignas(hardware_destructive_interference_size) std::atomic<bool> _stop = false;
 
     std::vector<Deque2<std::coroutine_handle<>>> _deque;
 
