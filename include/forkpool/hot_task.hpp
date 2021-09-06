@@ -67,6 +67,7 @@ template <typename T, Scheduler Scheduler, bool Blocking = false> class [[nodisc
                 if (std::coroutine_handle<> tmp = handle.promise().exchange_continuation(nullptr)) {
                     // Notify anyone waiting on completion of this coroutine
                     if constexpr (Blocking) {
+                        LOG_DEBUG("Release blocking get()");
                         handle.promise().release();
                     }
                     return tmp;
@@ -128,7 +129,9 @@ template <typename T, Scheduler Scheduler, bool Blocking = false> class [[nodisc
     // Blocking equivilent of co_awaiting on hot_task
     decltype(auto) get() const& requires Blocking {
         if (_coroutine) {
+            LOG_DEBUG("get() blocks");
             _coroutine.promise().wait();
+            LOG_DEBUG("get() block is released");
             return _coroutine.promise().get();
         } else {
             throw broken_promise{};
@@ -137,7 +140,9 @@ template <typename T, Scheduler Scheduler, bool Blocking = false> class [[nodisc
 
     decltype(auto) get() && requires Blocking {
         if (_coroutine) {
+            LOG_DEBUG("get() blocks");
             _coroutine.promise().wait();
+            LOG_DEBUG("get() block is released");
             return std::move(_coroutine.promise()).get();
         } else {
             throw broken_promise{};
@@ -208,6 +213,7 @@ template <typename T, Scheduler Scheduler, bool Blocking = false> class [[nodisc
             }
             // Otherwise thread will be responsible for cleanup due to nullptr we just exchanged into the
             // continuation.
+            LOG_DEBUG("Task destructor does nothing");
         }
     }
 

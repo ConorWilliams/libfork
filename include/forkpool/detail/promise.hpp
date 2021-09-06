@@ -117,15 +117,15 @@ template <> struct binary_latch<false> {};
 // Latch is initialised 'held', wait() will block until a thread calls release().
 template <> struct binary_latch<true> {
   public:
-    void wait() const noexcept { ready.wait(false, std::memory_order_acquire); }
+    void wait() const noexcept { _ready.wait(false, std::memory_order_acquire); }
 
     void release() noexcept {
-        ready.test_and_set(std::memory_order_release);
-        ready.notify_one();
+        _ready.test_and_set(std::memory_order_release);
+        _ready.notify_one();
     }
 
   private:
-    std::atomic_flag ready = false;
+    std::atomic_flag _ready = false;
 };
 
 }  // namespace riften::detail
