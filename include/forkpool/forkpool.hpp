@@ -20,7 +20,7 @@ static thread_local std::size_t static_id;
 class Forkpool {
   public:
     static void schedule(std::coroutine_handle<> handle) {
-        static Forkpool pool{12};
+        static Forkpool pool{std::thread::hardware_concurrency()};
         pool._deque[static_id].emplace(handle);
 
         if (static_id == pool._thread.size()) {
@@ -58,32 +58,28 @@ class Forkpool {
     }
 
     ~Forkpool() {
-        std::cout << "POWER DOWN\n";
         _stop.store(true);
         _notifyer.notify_all();
     }
 
     void exploit_task(std::size_t id, task_t& task) {
         if (task) {
-            if (_actives.fetch_add(1) == 0 && _thieves.load() == 0) {
+            if (_actives.fetch_add(1, std::memory_order_acq_rel) == 0
+                && _thieves.load(std::memory_order_acquire) == 0) {
                 _notifyer.notify_one();
             }
 
             do {
-                std::cerr << static_id << " starts\n";
                 task->resume();
-                std::cerr << static_id << " completes\n";
                 task = _deque[id].pop();
             } while (task);
 
-            _actives.fetch_sub(1);
-
-            std::cerr << static_id << " becomes inactive\n";
+            _actives.fetch_sub(1, std::memory_order_release);
         }
     }
 
     void steal_task(std::size_t id, task_t& task) {
-        for (std::size_t i = 0; i < 10 * _thread.size(); ++i) {
+        for (std::size_t i = 0; i < _thread.size(); ++i) {
             if (auto v = detail::xrand() % _thread.size(); v == id) {
                 task = _deque.back().steal();
             } else {
@@ -97,11 +93,10 @@ class Forkpool {
 
     bool wait_for_task(std::size_t id, task_t& task) {
     wait_for_task:
-        _thieves.fetch_add(1);
+        _thieves.fetch_add(1, std::memory_order_release);
     steal_task:
         if (steal_task(id, task); task) {
-            std::cerr << static_id << " steals task\n";
-            if (_thieves.fetch_sub(1) == 1) {
+            if (_thieves.fetch_sub(1, std::memory_order_acq_rel) == 1) {
                 _notifyer.notify_one();
             }
             return true;
@@ -110,11 +105,10 @@ class Forkpool {
         auto key = _notifyer.prepare_wait();
 
         if (!_deque.back().empty()) {
-            std::cerr << static_id << " tries to steal from the master\n";
             _notifyer.cancel_wait();
             task = _deque.back().steal();
             if (task) {
-                if (_thieves.fetch_sub(1) == 1) {
+                if (_thieves.fetch_sub(1, std::memory_order_acq_rel) == 1) {
                     _notifyer.notify_one();
                 }
                 return true;
@@ -124,21 +118,21 @@ class Forkpool {
         }
 
         if (_stop.load()) {
-            std::cerr << static_id << " powers down\n";
             _notifyer.cancel_wait();
             _notifyer.notify_all();
-            _thieves.fetch_sub(1);
+            _thieves.fetch_sub(1, std::memory_order_release);
             return false;
         }
 
-        if (_thieves.fetch_sub(1) == 1 && _actives.load() > 0) {
+        if (_thieves.fetch_sub(1, std::memory_order_acq_rel) == 1
+            && _actives.load(std::memory_order_acquire) > 0) {
             _notifyer.cancel_wait();
             goto wait_for_task;
         }
 
-        _notifyer.wait(key);
+        // std::osyncstream(std::cout) << static_id << " sleeps\n";
 
-        std::cerr << static_id << " wakes up\n";
+        _notifyer.wait(key);
 
         return true;
     }

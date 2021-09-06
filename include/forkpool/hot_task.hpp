@@ -25,7 +25,8 @@ struct inline_scheduler {
 };
 
 // A hot_task manages a coroutine frame that is scheduled at initial suspend by the customisation point
-// Scheduler.
+// Scheduler. A hot task begins executing on the scheduler immidiatly upon creation and is scheduled via child
+// stealing, hot tasks do NOT assume strict fork/join
 template <typename T, Scheduler Scheduler, bool Blocking = false> class [[nodiscard]] hot_task {
   public:
     class promise_type : public detail::promise_result<T>, private detail::binary_latch<Blocking> {
