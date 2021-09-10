@@ -23,6 +23,7 @@ find_package(Threads)
 
 include(cmake/CPM.cmake)
 
+CPMAddPackage("gh:ConorWilliams/ConcurrentDeque@2.0.0")
 CPMAddPackage("gh:TheLartians/PackageProject.cmake@1.7.0")
 
 # ---- Create library ----
@@ -35,7 +36,7 @@ target_compile_options(${PROJECT_NAME} INTERFACE -Wall -Wextra -Wpedantic)
 
 # Link dependencies
 target_link_libraries(
-  ${PROJECT_NAME} INTERFACE ${CMAKE_THREAD_LIBS_INIT}
+  ${PROJECT_NAME} INTERFACE ${CMAKE_THREAD_LIBS_INIT} RiftenDeque::RiftenDeque
 )
 
 target_include_directories(

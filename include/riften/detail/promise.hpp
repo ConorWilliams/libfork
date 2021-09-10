@@ -10,8 +10,8 @@
 #include <type_traits>
 #include <utility>
 
-#include "forkpool/broken_promise.hpp"
-#include "forkpool/detail/macrologger.h"
+#include "riften/broken_promise.hpp"
+#include "riften/detail/macrologger.h"
 
 namespace riften::detail {
 

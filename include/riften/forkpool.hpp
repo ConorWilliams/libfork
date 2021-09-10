@@ -9,10 +9,9 @@
 #include <semaphore>
 #include <thread>
 
-#include "forkpool/deque.hpp"
-#include "forkpool/detail/eventcount.hpp"
-#include "forkpool/detail/xoshiro.hpp"
-#include "forkpool/hot_task.hpp"
+#include "riften/deque.hpp"
+#include "riften/detail/eventcount.hpp"
+#include "riften/detail/xoshiro.hpp"
 
 namespace riften {
 
@@ -149,10 +148,8 @@ class Forkpool {
     alignas(hardware_destructive_interference_size) std::atomic<bool> _stop = false;
 
     event_count _notifyer;
-    std::vector<Deque2<std::coroutine_handle<>>> _deque;
+    std::vector<Deque<std::coroutine_handle<>>> _deque;
     std::vector<std::jthread> _thread;
 };
-
-template <typename T> using fork_task = hot_task<T, riften::Forkpool, false>;
 
 }  // namespace riften

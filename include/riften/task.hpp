@@ -13,8 +13,8 @@
 #include <type_traits>
 #include <utility>
 
-#include "forkpool/detail/promise.hpp"
-#include "forkpool/forkpool2.hpp"
+#include "riften/detail/promise.hpp"
+#include "riften/forkpool.hpp"
 
 namespace riften {
 
@@ -27,13 +27,13 @@ inline constexpr std::uint64_t hi_mask = (std::uint64_t(0b10) << 62);
 inline constexpr std::uint64_t lo_mask = (std::uint64_t(0b01) << 62) - 1;
 inline constexpr std::uint64_t sub_bit = (std::uint64_t(0b10) << 62);
 
-template <typename T> class [[nodiscard]] task2;
-template <typename T> class [[nodiscard]] future2;
+template <typename T> class [[nodiscard]] task;
+template <typename T> class [[nodiscard]] fut;
 
-// A task2 manages a coroutine frame that is scheduled at initial suspend by the customisation point
-// Scheduler. A hot task2 begins executing on the scheduler immidiatly upon creation and is scheduled via
-// child stealing, hot task2s do NOT assume strict fork/join
-template <typename T> class [[nodiscard]] task2 {
+// A task manages a coroutine frame that is scheduled at initial suspend by the customisation point
+// Scheduler. A hot task begins executing on the scheduler immidiatly upon creation and is scheduled via
+// child stealing, hot tasks do NOT assume strict fork/join
+template <typename T> class [[nodiscard]] task {
   public:
     class promise_type : public detail::promise_result<T> {
       private:
@@ -58,11 +58,11 @@ template <typename T> class [[nodiscard]] task2 {
         };
 
       public:
-        task2 get_return_object() noexcept {
-            return task2{std::coroutine_handle<promise_type>::from_promise(*this)};
+        task get_return_object() noexcept {
+            return task{std::coroutine_handle<promise_type>::from_promise(*this)};
         }
 
-        // task2s are lazily started,
+        // tasks are lazily started,
         std::suspend_always initial_suspend() const noexcept { return {}; }
 
         // and run their continuation at exit (either by co_return or exception)
@@ -94,7 +94,7 @@ template <typename T> class [[nodiscard]] task2 {
         template <typename A> decltype(auto) await_transform(A&& a) { return std::forward<A>(a); }
 
         template <typename U>
-        void set_parent(std::coroutine_handle<typename task2<U>::promise_type> handle) noexcept {
+        void set_parent(std::coroutine_handle<typename task<U>::promise_type> handle) noexcept {
             _parent = handle;
             _parent_steals = &handle.promise()._steals;
         }
@@ -113,25 +113,25 @@ template <typename T> class [[nodiscard]] task2 {
 
     //////////////////////////////////////////////////////////////////////////////////////
 
-    // Initialise empty task2
-    constexpr task2() : _coroutine{nullptr} {}
+    // Initialise empty task
+    constexpr task() : _coroutine{nullptr} {}
 
-    // No assignment/copy constructor, task2s are 'unique'
-    task2(const task2&) = delete;
-    task2& operator=(task2 const&) = delete;
+    // No assignment/copy constructor, tasks are 'unique'
+    task(const task&) = delete;
+    task& operator=(task const&) = delete;
 
     // but, they can be moved.
-    task2(task2&& other) noexcept : _coroutine(std::exchange(other._coroutine, nullptr)) {}
+    task(task&& other) noexcept : _coroutine(std::exchange(other._coroutine, nullptr)) {}
 
-    task2& operator=(task2&& other) noexcept {
+    task& operator=(task&& other) noexcept {
         if (this != &other) {
             destroy(std::exchange(_coroutine, std::exchange(other._coroutine, nullptr)));
         }
     }
 
-    friend void swap(task2& lhs, task2& rhs) noexcept { std::swap(lhs._coroutine, rhs._coroutine); }
+    friend void swap(task& lhs, task& rhs) noexcept { std::swap(lhs._coroutine, rhs._coroutine); }
 
-    ~task2() noexcept { destroy(std::exchange(_coroutine, nullptr)); }
+    ~task() noexcept { destroy(std::exchange(_coroutine, nullptr)); }
 
     decltype(auto) launch() && {
         //
@@ -162,7 +162,7 @@ template <typename T> class [[nodiscard]] task2 {
                 }
             }
 
-            auto await_resume() { return future2<T>(_coroutine_of_task); }
+            auto await_resume() { return fut<T>(_coroutine_of_task); }
 
             std::coroutine_handle<promise_type> _coroutine_of_task;
         };
@@ -176,13 +176,13 @@ template <typename T> class [[nodiscard]] task2 {
 
   private:
     friend class promise_type;
-    // Only promise can construct a filled task2
-    explicit task2(std::coroutine_handle<promise_type> coro) noexcept : _coroutine(coro) {}
+    // Only promise can construct a filled task
+    explicit task(std::coroutine_handle<promise_type> coro) noexcept : _coroutine(coro) {}
 
     // Release coroutine owned by handle
     static void destroy(std::coroutine_handle<promise_type> handle) noexcept {
         if (handle) {
-            LOG_DEBUG("task2 .destroy() calls destroy");
+            LOG_DEBUG("task .destroy() calls destroy");
             handle.destroy();
         }
     }
@@ -190,30 +190,30 @@ template <typename T> class [[nodiscard]] task2 {
     std::coroutine_handle<promise_type> _coroutine;
 };
 
-template <typename T> class [[nodiscard]] future2 {
+template <typename T> class [[nodiscard]] fut {
   private:
-    using promise_type = task2<T>::promise_type;
+    using promise_type = task<T>::promise_type;
 
   public:
-    // Initialise empty future2
-    constexpr future2() : _coroutine{nullptr} {}
+    // Initialise empty fut
+    constexpr fut() : _coroutine{nullptr} {}
 
-    // No assignment/copy constructor, future2s are 'unique'
-    future2(const future2&) = delete;
-    future2& operator=(future2 const&) = delete;
+    // No assignment/copy constructor, futs are 'unique'
+    fut(const fut&) = delete;
+    fut& operator=(fut const&) = delete;
 
     // but, they can be moved.
-    future2(future2&& other) noexcept : _coroutine(std::exchange(other._coroutine, nullptr)) {}
+    fut(fut&& other) noexcept : _coroutine(std::exchange(other._coroutine, nullptr)) {}
 
-    future2& operator=(future2&& other) noexcept {
+    fut& operator=(fut&& other) noexcept {
         if (this != &other) {
             destroy(std::exchange(_coroutine, std::exchange(other._coroutine, nullptr)));
         }
     }
 
-    friend void swap(future2& lhs, future2& rhs) noexcept { std::swap(lhs._coroutine, rhs._coroutine); }
+    friend void swap(fut& lhs, fut& rhs) noexcept { std::swap(lhs._coroutine, rhs._coroutine); }
 
-    ~future2() noexcept { destroy(std::exchange(_coroutine, nullptr)); }
+    ~fut() noexcept { destroy(std::exchange(_coroutine, nullptr)); }
 
     decltype(auto) operator*() const& {
         if (_coroutine) {
@@ -234,14 +234,14 @@ template <typename T> class [[nodiscard]] future2 {
     }
 
   private:
-    friend class task2<T>;
-    // Only task2 can construct a filled future2
-    explicit future2(std::coroutine_handle<promise_type> coro) noexcept : _coroutine(coro) {}
+    friend class task<T>;
+    // Only task can construct a filled fut
+    explicit fut(std::coroutine_handle<promise_type> coro) noexcept : _coroutine(coro) {}
 
     // Release coroutine owned by handle
     static void destroy(std::coroutine_handle<promise_type> handle) noexcept {
         if (handle) {
-            LOG_DEBUG("future2 destructor calls destroy");
+            LOG_DEBUG("fut destructor calls destroy");
             handle.destroy();
             return;
         }
