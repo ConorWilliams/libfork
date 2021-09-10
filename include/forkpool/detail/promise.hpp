@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <cassert>
 #include <concepts>
 #include <coroutine>
 #include <cstddef>

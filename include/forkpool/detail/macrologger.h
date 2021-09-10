@@ -36,12 +36,10 @@ static inline char *timenow();
 #define _FILE strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__
 
 #define NO_LOG 0x00
-#define DEBUG_LEVEL 0x03
+#define DEBUG_LEVEL 0x01
 
-#ifdef NDEBUG
+#ifndef LOG_LEVEL
 #    define LOG_LEVEL NO_LOG
-#else
-#    define LOG_LEVEL DEBUG_LEVEL
 #endif
 
 #if LOG_LEVEL >= DEBUG_LEVEL

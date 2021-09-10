@@ -12,23 +12,25 @@
 #include "forkpool/deque.hpp"
 #include "forkpool/detail/eventcount.hpp"
 #include "forkpool/detail/xoshiro.hpp"
-#include "forkpool/hot_task.hpp"
+#include "forkpool/task2.hpp"
 
 namespace riften {
 
-static thread_local std::size_t static_id;
+static thread_local std::size_t xtatic_id;
 
-class Forkpool {
+class forkpool2 {
   public:
-    static Forkpool& get() {
-        static Forkpool pool{std::thread::hardware_concurrency()};
+    static forkpool2& get() {
+        static forkpool2 pool{std::thread::hardware_concurrency()};
         return pool;
     }
 
-    static void schedule(std::coroutine_handle<> handle) {
-        get()._deque[static_id].emplace(handle);
+    static pop() {}
 
-        if (static_id == get()._thread.size()) {
+    static void schedule(std::coroutine_handle<> handle) {
+        get()._deque[xtatic_id].emplace(handle);
+
+        if (xtatic_id == get()._thread.size()) {
             get()._notifyer.notify_one();
         }
     }
@@ -36,14 +38,14 @@ class Forkpool {
   private:
     using task_t = std::optional<std::coroutine_handle<>>;
 
-    explicit Forkpool(std::size_t n = std::thread::hardware_concurrency()) : _deque(n + 1) {
+    explicit forkpool2(std::size_t n = std::thread::hardware_concurrency()) : _deque(n + 1) {
         // Master thread uses nth deque
-        static_id = n;
+        xtatic_id = n;
 
         for (std::size_t id = 0; id < n; ++id) {
             _thread.emplace_back([&, id] {
                 // Set id for calls to fork
-                static_id = id;
+                xtatic_id = id;
 
                 // Initialise PRNG stream
                 for (size_t j = 0; j < id; j++) {
@@ -62,7 +64,7 @@ class Forkpool {
         }
     }
 
-    ~Forkpool() {
+    ~forkpool2() {
         _stop.store(true);
         _notifyer.notify_all();
     }
@@ -77,6 +79,7 @@ class Forkpool {
             do {
                 task->resume();
                 task = _deque[id].pop();
+                assert(!task);  //
             } while (task);
 
             _actives.fetch_sub(1, std::memory_order_release);
@@ -135,7 +138,7 @@ class Forkpool {
             goto wait_for_task;
         }
 
-        // std::osyncstream(std::cout) << static_id << " sleeps\n";
+        // std::osyncstream(std::cout) << xtatic_id << " sleeps\n";
 
         _notifyer.wait(key);
 
@@ -145,14 +148,11 @@ class Forkpool {
   private:
     alignas(hardware_destructive_interference_size) std::atomic<std::int64_t> _actives = 0;
     alignas(hardware_destructive_interference_size) std::atomic<std::int64_t> _thieves = 0;
-
     alignas(hardware_destructive_interference_size) std::atomic<bool> _stop = false;
 
     event_count _notifyer;
     std::vector<Deque2<std::coroutine_handle<>>> _deque;
     std::vector<std::jthread> _thread;
 };
-
-template <typename T> using fork_task = hot_task<T, riften::Forkpool, false>;
 
 }  // namespace riften

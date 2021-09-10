@@ -1,3 +1,4 @@
+#include <atomic>
 #include <chrono>
 #include <iostream>
 #include <stdexcept>
@@ -11,6 +12,8 @@
 #include "forkpool/hot_task.hpp"
 #include "forkpool/meta.hpp"
 #include "forkpool/sync_wait.hpp"
+#include "forkpool/task.hpp"
+#include "forkpool/task2.hpp"
 
 struct clock_tick {
     std::string name;
@@ -60,66 +63,145 @@ struct threadX {
     }
 };
 
+using namespace riften;
+
 int volatile f;
 int volatile k;
 
-hot_task<int, riften::Forkpool> fib(int n) {
-    if (n <= 0) {
+std::atomic_int count = 0;
+
+void do_work() { count.fetch_add(1, std::memory_order_release); }
+
+fork_task<int> fib(int n) {
+    if (n < 0) {
         throw std::invalid_argument("fib supports possitive numbers only");
     }
 
     switch (n) {
+        case 0:
+            do_work();
+            co_return 0;
         case 1:
+            do_work();
             co_return 1;
         case 2:
+            do_work();
             co_return 1;
         default:
-            auto a = fib(n - 1);
-            auto b = fib(n - 2);
+            fork_task<int> a = fib(n - 1);
+            fork_task<int> b = fib(n - 2);
+            fork_task<int> c = fib(n - 3);
 
-            co_return co_await a + co_await b;
+            co_return co_await a + co_await b + co_await c;
     }
 }
 
-riften::hot_task<int, riften::Forkpool> random(int n) {
-    if (n <= 0) {
-        for (size_t i = 0; i < 1000000; i++) {
-            f = k;
-        }
-        co_return 1;
-    } else {
-        std::vector<riften::hot_task<int, riften::Forkpool>> jobs;
-
-        int count = rand() % 10;
-
-        assert(count < 10 && count > 0);
-
-        for (int i = 0; i < count; i++) {
-            jobs.emplace_back(random(n - 1));
-        }
-
-        int sum = 0;
-
-        for (auto &&elem : jobs) {
-            sum += co_await elem;
-        }
-
-        co_return sum;
+int linear(int n) {
+    if (n < 0) {
+        throw std::invalid_argument("fib supports possitive numbers only");
     }
+
+    switch (n) {
+        case 0:
+            do_work();
+            return 0;
+        case 1:
+            do_work();
+            return 1;
+        case 2:
+            do_work();
+            return 1;
+        default:
+            auto a = linear(n - 1);
+            auto b = linear(n - 2);
+            auto c = linear(n - 3);
+
+            return a + b + c;
+    }
+}
+
+task<int> fib2(int n) {
+    if (n < 0) {
+        throw std::invalid_argument("fib supports possitive numbers only");
+    }
+
+    switch (n) {
+        case 0:
+            do_work();
+            co_return 0;
+        case 1:
+            do_work();
+            co_return 1;
+        case 2:
+            do_work();
+            co_return 1;
+        default:
+            auto a = co_await fib2(n - 1).fork();
+            auto b = co_await fib2(n - 2).fork();
+            auto c = co_await fib2(n - 3).fork();
+
+            // co_await riften::sync();
+
+            co_return co_await a + co_await b + co_await c;
+    }
+}
+
+task2<int> fib3(int n) {
+    if (n < 0) {
+        throw std::invalid_argument("fib supports possitive numbers only");
+    }
+
+    switch (n) {
+        case 0:
+            do_work();
+            co_return 0;
+        case 1:
+            do_work();
+            co_return 1;
+        case 2:
+            do_work();
+            co_return 1;
+        default:
+            auto a = co_await fib3(n - 1).fork();
+            auto b = co_await fib3(n - 2).fork();
+            auto c = co_await fib3(n - 3).fork();
+
+            co_await riften::sync();
+
+            co_return *a + *b + *c;
+    }
+}
+
+task<int> hello_world() {
+    std::cout << "hello world\n";
+    co_return 3;
 }
 
 int main() {
-    auto a = tick("fib");
+    /////
 
-    std::cout << "Got: " << riften::sync_wait(fib(38)) << std::endl;
+    int count = 20;
 
+    auto d = tick("super   ");
+    auto w = fib3(count).launch();
+    tock(d);
+
+    auto b = tick("linear  ");
+    auto y = linear(count);
+    tock(b);
+
+    auto a = tick("child   ");
+    auto x = riften::sync_wait(fib(count));
     tock(a);
 
-    auto b = tick("strict");
+    auto c = tick("continue");
+    auto z = launch(fib2(count));
+    tock(c);
 
-    // std::cout << "Got: " << riften::sync_wait(fib_strict(38)) << std::endl;
-
-    tock(b);
+    std::cout << "Got: " << y << std::endl;
+    std::cout << "Got: " << x << std::endl;
+    std::cout << "Got: " << z << std::endl;
+    std::cout << "Got: " << w << std::endl;
 
     std::cout << "done\n";
 
