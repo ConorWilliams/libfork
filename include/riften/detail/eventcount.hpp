@@ -21,7 +21,7 @@
 #include <cstdint>
 #include <thread>
 
-namespace riften {
+namespace riften::detail {
 
 // Endianness
 
@@ -166,4 +166,4 @@ inline void event_count::wait(Key key) noexcept {
     _val.fetch_add(kSubWaiter, std::memory_order_seq_cst);
 }
 
-}  // namespace riften
+}  // namespace riften::detail

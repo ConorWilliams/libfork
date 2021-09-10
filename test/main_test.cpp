@@ -163,10 +163,10 @@ using namespace riften;
 //     }
 // }
 
-// task<int> hello_world() {
-//     std::cout << "hello world\n";
-//     co_return 3;
-// }
+task<int> hello_world() {
+    std::cout << "hello world\n";
+    co_return 3;
+}
 
 int main() {
     /////

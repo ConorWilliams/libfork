@@ -2,9 +2,9 @@
 #pragma once
 
 #include <atomic>
+#include <cassert>
 #include <coroutine>
 #include <cstddef>
-#include <limits>
 #include <optional>
 #include <semaphore>
 #include <thread>
@@ -18,13 +18,15 @@ namespace riften {
 static thread_local std::size_t static_id;
 
 class Forkpool {
-  public:
-    static Forkpool& get() {
-        static Forkpool pool{std::thread::hardware_concurrency()};
-        return pool;
-    }
+  private:
+    struct task_handle : std::coroutine_handle<> {
+        std::uint64_t* alpha;
+    };
 
-    static void schedule(std::coroutine_handle<> handle) {
+    using task_t = std::optional<task_handle>;
+
+  public:
+    static void schedule(task_handle handle) {
         get()._deque[static_id].emplace(handle);
 
         if (static_id == get()._thread.size()) {
@@ -32,8 +34,13 @@ class Forkpool {
         }
     }
 
+    static task_t pop() noexcept { return get()._deque[static_id].pop(); }
+
   private:
-    using task_t = std::optional<std::coroutine_handle<>>;
+    static Forkpool& get() {
+        static Forkpool pool{std::thread::hardware_concurrency()};
+        return pool;
+    }
 
     explicit Forkpool(std::size_t n = std::thread::hardware_concurrency()) : _deque(n + 1) {
         // Master thread uses nth deque
@@ -73,10 +80,9 @@ class Forkpool {
                 _notifyer.notify_one();
             }
 
-            do {
-                task->resume();
-                task = _deque[id].pop();
-            } while (task);
+            task->resume();
+
+            assert(!_deque[id].pop());
 
             _actives.fetch_sub(1, std::memory_order_release);
         }
@@ -90,6 +96,8 @@ class Forkpool {
                 task = _deque[v].steal();
             }
             if (task) {
+                assert(task->alpha);
+                *(task->alpha) += 1;
                 return;
             }
         }
@@ -144,11 +152,11 @@ class Forkpool {
   private:
     alignas(hardware_destructive_interference_size) std::atomic<std::int64_t> _actives = 0;
     alignas(hardware_destructive_interference_size) std::atomic<std::int64_t> _thieves = 0;
-
     alignas(hardware_destructive_interference_size) std::atomic<bool> _stop = false;
 
-    event_count _notifyer;
-    std::vector<Deque<std::coroutine_handle<>>> _deque;
+    detail::event_count _notifyer;
+
+    std::vector<Deque<task_handle>> _deque;
     std::vector<std::jthread> _thread;
 };
 

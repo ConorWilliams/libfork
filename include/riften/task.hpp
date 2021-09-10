@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <exception>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <thread>
@@ -18,17 +19,16 @@
 
 namespace riften {
 
-struct sync_tag {};
-
-inline constexpr sync_tag sync() { return {}; }
-
-inline constexpr std::uint64_t initial = (std::uint64_t(0b11) << 62);
-inline constexpr std::uint64_t hi_mask = (std::uint64_t(0b10) << 62);
-inline constexpr std::uint64_t lo_mask = (std::uint64_t(0b01) << 62) - 1;
-inline constexpr std::uint64_t sub_bit = (std::uint64_t(0b10) << 62);
-
 template <typename T> class [[nodiscard]] task;
 template <typename T> class [[nodiscard]] fut;
+
+// An awaitable type (in the context of task<T>) that signifies a task should wait for its children
+struct sync_tag {};
+inline constexpr sync_tag sync() { return {}; }
+
+// An awaitable type (in the context of task<T>) that signifies a task should post its continuation,
+// garanteed to be non-null.
+template <typename T> struct fork_tag : std::coroutine_handle<typename task<T>::promise_type> {};
 
 // A task manages a coroutine frame that is scheduled at initial suspend by the customisation point
 // Scheduler. A hot task begins executing on the scheduler immidiatly upon creation and is scheduled via
@@ -38,20 +38,27 @@ template <typename T> class [[nodiscard]] task {
     class promise_type : public detail::promise_result<T> {
       private:
         struct final_awaitable : std::suspend_always {
-            std::coroutine_handle<> await_suspend(std::coroutine_handle<promise_type> handle) noexcept {
-                if (!handle.promise()._continuation) {
-                    // This is a root task, so we must notify its completion
-                    handle.promise()._done.clear();
-                    handle.promise()._done.notify_one();
+            std::coroutine_handle<> await_suspend(std::coroutine_handle<promise_type> task) noexcept {
+                //
+                if (std::optional task_handle = Forkpool::pop()) {
+                    // No-one stole continuation, just keep rippin!
+                    return *task_handle;
+                }
+
+                if (!task.promise()._parent_n) {
+                    // This must be a root task and we must be out of tasks
                     return std::noop_coroutine();
                 }
 
-                std::uint64_t forks
-                    = handle.promise()._continuation.promise()._forks.fetch_sub(1, std::memory_order_release);
+                // Else: register with parent we have completed this child task
+                std::uint64_t n = (task.promise()._parent_n)->fetch_sub(1, std::memory_order_acq_rel);
 
-                if (forks == 1) {
-                    return handle.promise()._continuation;
+                if (n == 1) {
+                    // Parent has called sync and we are the last child task to complete, hence we continue
+                    // parent.
+                    return task.promise()._parent;
                 } else {
+                    // Parent has not called sync, so we are out of jobs, return to stealing
                     return std::noop_coroutine();
                 }
             }
@@ -62,53 +69,82 @@ template <typename T> class [[nodiscard]] task {
             return task{std::coroutine_handle<promise_type>::from_promise(*this)};
         }
 
-        // tasks are lazily started,
         std::suspend_always initial_suspend() const noexcept { return {}; }
 
-        // and run their continuation at exit (either by co_return or exception)
         final_awaitable final_suspend() const noexcept { return {}; }
+
+        template <typename U> auto await_transform(fork_tag<U> child) {
+            //
+            struct awaitable : std::suspend_always {
+                //
+                std::coroutine_handle<> await_suspend(std::coroutine_handle<promise_type> parent) {
+                    //
+                    _child.promise().set_parent(parent);
+
+                    // In-case *this (awaitable) is destructed by stealer after schedule
+                    std::coroutine_handle<> on_stack_handle = _child;
+
+                    Forkpool::schedule({parent, std::addressof(parent.promise()._alpha)});
+
+                    return on_stack_handle;
+                }
+
+                fut<U> await_resume() const noexcept { return fut<U>{_child}; }
+
+                std::coroutine_handle<typename task<U>::promise_type> _child;
+            };
+
+            return awaitable{std::move(child)};
+        }
 
         auto await_transform(sync_tag) {
             struct awaitable {
-                constexpr bool await_ready() const noexcept {
-                    return _coroutine.promise()._forks.load(std::memory_order_acquire) == high;
-                }
+                constexpr bool await_ready() const noexcept { return _ready; }
 
-                std::coroutine_handle<> await_suspend(std::coroutine_handle<promise_type>) {
-                    if (_coroutine.promise()._forks.fetch_sub(high, std::memory_order_acq_rel) == high) {
-                        if (_coroutine.promise()._continuation) {
-                            return _coroutine.promise()._continuation;
-                        }
+                std::coroutine_handle<> await_suspend(std::coroutine_handle<promise_type> task) {
+                    // Currently        n = i_max - num_joined
+                    // If we perform    n <- n - (imax - num_stolen)
+                    // then             n = num_stolen - num_joined
+                    // and a
+
+                    std::uint64_t tmp = i_max - task.promise()._alpha;
+
+                    std::uint64_t n = task.promise._n.fetch_sub(tmp, std::memory_order_acq_rel);
+
+                    if (i_max - n == _alpha) {
+                        // We set n after all children had completed therefore we can resume task
+                        return task;
+                    } else {
+                        // Someone else is responsible for running this task and we have run out of work
+                        return std::noop_coroutine();
                     }
-                    return std::noop_coroutine();
                 }
 
                 constexpr void await_resume() const noexcept {}
 
-                std::coroutine_handle<promise_type> _coroutine;
+                bool _ready;
             };
 
-            return awaitable{std::coroutine_handle<promise_type>::from_promise(*this)};
+            // Check if num-joined == num-stolen
+            return awaitable{!_alpha || _alpha == i_max - _n.load(std::memory_order_acquire)};
         }
 
-        template <typename A> decltype(auto) await_transform(A&& a) { return std::forward<A>(a); }
+        std::atomic_uint64_t* n() noexcept { return std::addressof(_n); }
 
         template <typename U>
-        void set_parent(std::coroutine_handle<typename task<U>::promise_type> handle) noexcept {
-            _parent = handle;
-            _parent_steals = &handle.promise()._steals;
+        void set_parent(std::coroutine_handle<typename task<U>::promise_type> parent) noexcept {
+            _parent = parent;
+            _parent_n = parent.promise().n();
         }
 
-        // Indicates this coroutine has either: run to final suspend or never started
-        [[nodiscard]] bool done() const noexcept { return !_continuation.load(std::memory_order_acquire); }
-
-        alignas(hardware_destructive_interference_size) std::atomic_uint64_t _steals = initial;
-
-        std::atomic_flag _done = true;
-
       private:
-        std::coroutine_handle<> _parent{nullptr};
-        std::atomic_uint64_t* _parent_steals{nullptr};
+        std::coroutine_handle<> _parent = nullptr;
+        std::atomic_uint64_t* _parent_n = nullptr;
+
+        alignas(hardware_destructive_interference_size) std::atomic_uint64_t _alpha = 0;
+        alignas(hardware_destructive_interference_size) std::atomic_uint64_t _n = i_max;
+
+        static constexpr std::uint64_t i_max = std::numeric_limits<std::uint64_t>::max();
     };
 
     //////////////////////////////////////////////////////////////////////////////////////
@@ -198,6 +234,8 @@ template <typename T> class [[nodiscard]] fut {
     // Initialise empty fut
     constexpr fut() : _coroutine{nullptr} {}
 
+    explicit fut(std::coroutine_handle<promise_type> coro) noexcept : _coroutine(coro) {}
+
     // No assignment/copy constructor, futs are 'unique'
     fut(const fut&) = delete;
     fut& operator=(fut const&) = delete;
@@ -234,10 +272,6 @@ template <typename T> class [[nodiscard]] fut {
     }
 
   private:
-    friend class task<T>;
-    // Only task can construct a filled fut
-    explicit fut(std::coroutine_handle<promise_type> coro) noexcept : _coroutine(coro) {}
-
     // Release coroutine owned by handle
     static void destroy(std::coroutine_handle<promise_type> handle) noexcept {
         if (handle) {
