@@ -10,9 +10,9 @@
 #include <thread>
 
 #include "riften/deque.hpp"
-#include "riften/detail/eventcount.hpp"
 #include "riften/detail/macrologger.h"
 #include "riften/detail/xoshiro.hpp"
+#include "riften/eventcount.hpp"
 
 namespace riften {
 
@@ -162,7 +162,7 @@ class Forkpool {
     alignas(hardware_destructive_interference_size) std::atomic<std::int64_t> _thieves = 0;
     alignas(hardware_destructive_interference_size) std::atomic<bool> _stop = false;
 
-    detail::event_count _notifyer;
+    EventCount _notifyer;
 
     std::vector<Deque<task_handle>> _deque;
     std::vector<std::jthread> _thread;

@@ -22,10 +22,11 @@
 #include <cstdint>
 #include <thread>
 
-namespace riften::detail {
+namespace riften {
+
+namespace detail {
 
 // Endianness
-
 #ifdef _MSC_VER
 // It's MSVC, so we just have to guess ... and allow an override
 #    ifdef RIFTEN_ENDIAN_BE
@@ -36,6 +37,8 @@ constexpr auto kIsLittleEndian = true;
 #else
 constexpr auto kIsLittleEndian = __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__;
 #endif
+
+}  // namespace detail
 
 /**
  * Event count: a condition variable for lock free algorithms.
@@ -60,7 +63,7 @@ constexpr auto kIsLittleEndian = __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__;
  * If E1 < E3, then E2's wait will complete (and T1 will either wake up,
  * or not block at all)
  *
- * This means that you can use an event_count in the following manner:
+ * This means that you can use an EventCount in the following manner:
  *
  * Waiter:
  *   if (!condition()) {  // handle fast path first
@@ -87,12 +90,12 @@ constexpr auto kIsLittleEndian = __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__;
  * data structure (push into a lock-free queue, etc) and returning true on
  * success and false on failure.
  */
-class event_count {
+class EventCount {
   public:
-    event_count() noexcept : _val(0) {}
+    EventCount() noexcept : _val(0) {}
 
     class Key {
-        friend class event_count;
+        friend class EventCount;
         explicit Key(uint32_t e) noexcept : epoch_(e) {}
         uint32_t epoch_;
     };
@@ -110,10 +113,10 @@ class event_count {
         return reinterpret_cast<std::atomic<uint32_t>*>(&_val) + kEpochOffset;
     }
 
-    event_count(const event_count&) = delete;
-    event_count(event_count&&) = delete;
-    event_count& operator=(const event_count&) = delete;
-    event_count& operator=(event_count&&) = delete;
+    EventCount(const EventCount&) = delete;
+    EventCount(EventCount&&) = delete;
+    EventCount& operator=(const EventCount&) = delete;
+    EventCount& operator=(EventCount&&) = delete;
 
     // This requires 64-bit
     static_assert(sizeof(int) == 4, "bad platform");
@@ -122,7 +125,7 @@ class event_count {
     static_assert(sizeof(std::atomic<uint32_t>) == 4, "bad platform");
     static_assert(sizeof(std::atomic<uint64_t>) == 8, "bad platform");
 
-    static constexpr size_t kEpochOffset = kIsLittleEndian ? 1 : 0;
+    static constexpr size_t kEpochOffset = detail::kIsLittleEndian ? 1 : 0;
 
     // _val stores the epoch in the most significant 32 bits and the
     // waiter count in the least significant 32 bits.
@@ -135,31 +138,31 @@ class event_count {
     static constexpr uint64_t kWaiterMask = kAddEpoch - 1;
 };
 
-inline void event_count::notify_one() noexcept {
+inline void EventCount::notify_one() noexcept {
     if (_val.fetch_add(kAddEpoch, std::memory_order_acq_rel) & kWaiterMask) {
         epoch()->notify_one();
     }
 }
 
-inline void event_count::notify_all() noexcept {
+inline void EventCount::notify_all() noexcept {
     if (_val.fetch_add(kAddEpoch, std::memory_order_acq_rel) & kWaiterMask) {
         epoch()->notify_all();
     }
 }
 
-[[nodiscard]] inline event_count::Key event_count::prepare_wait() noexcept {
+[[nodiscard]] inline EventCount::Key EventCount::prepare_wait() noexcept {
     uint64_t prev = _val.fetch_add(kAddWaiter, std::memory_order_acq_rel);
     return Key(prev >> kEpochShift);
 }
 
-inline void event_count::cancel_wait() noexcept {
+inline void EventCount::cancel_wait() noexcept {
     // memory_order_relaxed would suffice for correctness, but the faster
     // #waiters gets to 0, the less likely it is that we'll do spurious wakeups
     // (and thus system calls).
     _val.fetch_add(kSubWaiter, std::memory_order_seq_cst);
 }
 
-inline void event_count::wait(Key key) noexcept {
+inline void EventCount::wait(Key key) noexcept {
     // Use C++20 atomic wait garantees
     epoch()->wait(key.epoch_, std::memory_order_acquire);
 
@@ -169,4 +172,4 @@ inline void event_count::wait(Key key) noexcept {
     _val.fetch_add(kSubWaiter, std::memory_order_seq_cst);
 }
 
-}  // namespace riften::detail
+}  // namespace riften

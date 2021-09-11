@@ -10,7 +10,6 @@
 
 #include "riften/forkpool.hpp"
 #include "riften/meta.hpp"
-#include "riften/sync_wait.hpp"
 #include "riften/task.hpp"
 
 struct clock_tick {
