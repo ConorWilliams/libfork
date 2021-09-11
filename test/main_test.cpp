@@ -162,17 +162,41 @@ using namespace riften;
 //     }
 // }
 
+#define FORK(...) co_await riften::fork(__VA_ARGS__);
+
 Task<int> fib(int i) {
     if (i < 2) {
         co_return i;
     } else {
-        Future a = co_await fib(i - 1).fork();
-        Future b = co_await fib(i - 2).fork();
+        Future a = co_await fork(fib, i - 1);
+        Future b = co_await fork(fib, i - 2);
 
         co_await riften::sync();
 
         co_return *a + *b;
     }
+}
+
+Task<int> recur(int j) {
+    if (j == 1) {
+        co_return 1;
+    }
+
+    std::vector<Future<int>> fut;
+
+    for (int i = 0; i < 1 + rand() % j; i++) {
+        fut.emplace_back(co_await fork(recur, j - 1));
+    }
+
+    co_await riften::sync();
+
+    int sum = 0;
+
+    for (auto &&elem : fut) {
+        sum += *elem;
+    }
+
+    co_return sum;
 }
 
 Task<> tmp2(int i) {
@@ -207,28 +231,15 @@ Task<int> hello_world() {
 int main() {
     /////
 
-    auto d = tick("super   ");
-    for (size_t i = 0; i < 1000; i++) {
-        launch(fib(23));
-    }
-    auto tot = tock(d);
+    // auto d = tick("super   ");
+    // for (size_t i = 0; i < 1000; i++) {
+    //     launch(fib(23));
+    // }
+    // auto tot = tock(d);
 
-    // auto b = tick("linear  ");
-    // auto y = linear(count);
-    // tock(b);
+    // std::cout << "Got: " << tot / 1000 << std::endl;
 
-    // auto a = tick("child   ");
-    // auto x = riften::sync_wait(fib(count));
-    // tock(a);
-
-    // auto c = tick("continue");
-    // auto z = launch(fib2(count));
-    // tock(c);
-
-    // std::cout << "Got: " << y << std::endl;
-    // std::cout << "Got: " << x << std::endl;
-    // std::cout << "Got: " << z << std::endl;
-    std::cout << "Got: " << tot / 1000 << std::endl;
+    std::cout << launch(recur(3)) << " <- recur()\n";
 
     std::cout << "done\n";
 

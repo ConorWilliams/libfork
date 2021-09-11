@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <exception>
+#include <functional>
 #include <limits>
 #include <memory>
 #include <stdexcept>
@@ -238,6 +239,10 @@ template <typename T> class [[nodiscard]] Task {
         }
     }
 };
+
+template <typename F, typename... Args> auto fork(F&& f, Args&&... args) {
+    return std::invoke(std::forward<F>(f), std::forward<Args>(args)...).fork();
+}
 
 template <typename T> class [[nodiscard]] Future {
   private:

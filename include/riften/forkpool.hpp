@@ -17,7 +17,7 @@
 namespace riften {
 
 class Forkpool {
-  public:
+  private:
     struct task_handle : std::coroutine_handle<> {
         std::uint64_t* alpha;
     };
