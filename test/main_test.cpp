@@ -43,7 +43,7 @@ template <typename... Args> int tock(clock_tick &x, Args &&...args) {
 
 using namespace riften;
 
-// hot_task<int, riften::Forkpool> test(int in) {
+// hot_Task<int, riften::Forkpool> test(int in) {
 //     std::cout << "in a: " << std::this_thread::get_id() << std::endl;
 //     co_return in;
 // }
@@ -63,7 +63,7 @@ using namespace riften;
 
 // void do_work() { count.fetch_add(1, std::memory_order_release); }
 
-// fork_task<int> fib(int n) {
+// fork_Task<int> fib(int n) {
 //     if (n < 0) {
 //         throw std::invalid_argument("fib supports possitive numbers only");
 //     }
@@ -79,9 +79,9 @@ using namespace riften;
 //             do_work();
 //             co_return 1;
 //         default:
-//             fork_task<int> a = fib(n - 1);
-//             fork_task<int> b = fib(n - 2);
-//             fork_task<int> c = fib(n - 3);
+//             fork_Task<int> a = fib(n - 1);
+//             fork_Task<int> b = fib(n - 2);
+//             fork_Task<int> c = fib(n - 3);
 
 //             co_return co_await a + co_await b + co_await c;
 //     }
@@ -111,7 +111,7 @@ using namespace riften;
 //     }
 // }
 
-// task<int> fib2(int n) {
+// Task<int> fib2(int n) {
 //     if (n < 0) {
 //         throw std::invalid_argument("fib supports possitive numbers only");
 //     }
@@ -137,7 +137,7 @@ using namespace riften;
 //     }
 // }
 
-// task2<int> fib3(int n) {
+// Task2<int> fib3(int n) {
 //     if (n < 0) {
 //         throw std::invalid_argument("fib supports possitive numbers only");
 //     }
@@ -163,26 +163,27 @@ using namespace riften;
 //     }
 // }
 
-task<void> tmp2() {
+Task<int &> tmp2() {
     std::cout << "nest nest\n";
-    co_return;
+    static int tmp = 2;
+    co_return tmp;
 }
 
-task<void> tmp() {
-    fut f1 = co_await tmp2().fork();
+// Task<void> tmp() {
+//     Fut f1 = co_await tmp2().fork();
+
+//     co_await riften::sync();
+
+//     std::cout << "nest\n";
+//     co_return;
+// }
+
+Task<int> hello_world() {
+    Fut f1 = co_await tmp2().fork();
 
     co_await riften::sync();
 
-    std::cout << "nest\n";
-    co_return;
-}
-
-task<int> hello_world() {
-    fut f1 = co_await tmp().fork();
-
-    co_await riften::sync();
-
-    std::cout << "hello world\n";
+    std::cout << *f1 << " <- hello world\n";
 
     co_return 3;
 }

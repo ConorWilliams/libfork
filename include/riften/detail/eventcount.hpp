@@ -106,7 +106,9 @@ class event_count {
     void wait(Key key) noexcept;
 
   private:
-    std::atomic<uint32_t>* epoch() { return reinterpret_cast<std::atomic<uint32_t>*>(&_val) + kEpochOffset; }
+    std::atomic<uint32_t>* epoch() noexcept {
+        return reinterpret_cast<std::atomic<uint32_t>*>(&_val) + kEpochOffset;
+    }
 
     event_count(const event_count&) = delete;
     event_count(event_count&&) = delete;
@@ -128,7 +130,7 @@ class event_count {
 
     static constexpr uint64_t kAddWaiter = uint64_t(1);
     static constexpr uint64_t kSubWaiter = uint64_t(-1);
-    static constexpr size_t kEpochShift = 32;
+    static constexpr uint64_t kEpochShift = 32;
     static constexpr uint64_t kAddEpoch = uint64_t(1) << kEpochShift;
     static constexpr uint64_t kWaiterMask = kAddEpoch - 1;
 };

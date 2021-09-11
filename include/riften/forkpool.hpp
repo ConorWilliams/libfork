@@ -42,6 +42,7 @@ class Forkpool {
     }
 
   private:
+    // Can only throw on first call hence tag above as noexcept as only main thread can throw
     static Forkpool& get() {
         static Forkpool pool{std::thread::hardware_concurrency()};
         return pool;
@@ -63,6 +64,7 @@ class Forkpool {
 
                 task_t task = std::nullopt;
 
+                // Enter work loop
                 while (true) {
                     exploit_task(id, task);
                     if (wait_for_task(id, task) == false) {
@@ -73,16 +75,17 @@ class Forkpool {
         }
     }
 
-    ~Forkpool() {
+    ~Forkpool() noexcept {
         _stop.store(true);
         _notifyer.notify_all();
     }
 
-    void exploit_task(std::size_t id, task_t& task) {
+    void exploit_task(std::size_t id, task_t& task) noexcept {
         if (task) {
-            if (_actives.fetch_add(1, std::memory_order_acq_rel) == 0
-                && _thieves.load(std::memory_order_acquire) == 0) {
-                _notifyer.notify_one();
+            if (_actives.fetch_add(1, std::memory_order_acq_rel) == 0) {
+                if (_thieves.load(std::memory_order_acquire) == 0) {
+                    _notifyer.notify_one();
+                }
             }
 
             task->resume();
@@ -92,7 +95,7 @@ class Forkpool {
         }
     }
 
-    void steal_task(std::size_t id, task_t& task) {
+    void steal_task(std::size_t id, task_t& task) noexcept {
         for (std::size_t i = 0; i < _thread.size(); ++i) {
             if (auto v = detail::xrand() % _thread.size(); v == id) {
                 if ((task = _deque.back().steal())) {
@@ -142,10 +145,11 @@ class Forkpool {
             return false;
         }
 
-        if (_thieves.fetch_sub(1, std::memory_order_acq_rel) == 1
-            && _actives.load(std::memory_order_acquire) > 0) {
-            _notifyer.cancel_wait();
-            goto wait_for_task;
+        if (_thieves.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+            if (_actives.load(std::memory_order_acquire) > 0) {
+                _notifyer.cancel_wait();
+                goto wait_for_task;
+            }
         }
 
         _notifyer.wait(key);

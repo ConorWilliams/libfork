@@ -88,6 +88,64 @@ template <typename T> class promise_result {
     State payload = State::empty;
 };
 
+// // Specialisations for T&
+template <typename T> class promise_result<T&> {
+  public:
+    promise_result() noexcept {}  // Initialise empty
+
+    void unhandled_exception() noexcept {
+        assert(payload == State::empty);
+        LOG_DEBUG("Stash exception");
+        _exception = std::current_exception();
+        payload = State::exception;
+    }
+
+    void return_value(T& expr) noexcept {
+        assert(payload == State::empty);
+        LOG_DEBUG("Stash result");
+        _result = std::addressof(expr);
+        payload = State::result;
+    }
+
+    T& get() const& {
+        switch (payload) {
+            case State::empty:
+                assert(false);
+            case State::result:
+                return *_result;
+            case State::exception:
+                std::rethrow_exception(_exception);
+        }
+
+        __builtin_unreachable();  // Silence g++ warnings
+    }
+
+    ~promise_result() {
+        //
+        LOG_DEBUG("Destruct promise.");
+
+        switch (payload) {
+            case State::empty:
+                return;
+            case State::exception:
+                std::destroy_at(std::addressof(_exception));
+                return;
+            case State::result:
+                return;
+        }
+    }
+
+  private:
+    enum class State { empty, exception, result };
+
+    union {
+        T* _result;                               // Result space
+        std::exception_ptr _exception = nullptr;  // Possible exception
+    };
+
+    State payload = State::empty;
+};
+
 // Specialisations for void
 template <> class promise_result<void> {
   public:
