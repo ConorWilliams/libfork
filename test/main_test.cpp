@@ -163,14 +163,14 @@ using namespace riften;
 //     }
 // }
 
-Task<int &> tmp2() {
-    std::cout << "nest nest\n";
-    static int tmp = 2;
-    co_return tmp;
+Task<> tmp2(int i) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(10 - i));
+    std::cout << i << " nest\n";
+    co_return;
 }
 
 // Task<void> tmp() {
-//     Fut f1 = co_await tmp2().fork();
+//     Future f1 = co_await tmp2().fork();
 
 //     co_await riften::sync();
 
@@ -179,11 +179,11 @@ Task<int &> tmp2() {
 // }
 
 Task<int> hello_world() {
-    Fut f1 = co_await tmp2().fork();
-
-    co_await riften::sync();
-
-    Fut f2 = co_await tmp2().fork();
+    Future f1 = co_await tmp2(1).fork();
+    Future f2 = co_await tmp2(2).fork();
+    Future f3 = co_await tmp2(3).fork();
+    Future f4 = co_await tmp2(4).fork();
+    Future f5 = co_await tmp2(5).fork();
 
     co_await riften::sync();
 

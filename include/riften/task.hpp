@@ -21,7 +21,7 @@
 namespace riften {
 
 template <typename T = void> class [[nodiscard]] Task;
-template <typename T = void> class [[nodiscard]] Fut;
+template <typename T = void> class [[nodiscard]] Future;
 
 // An awaitable type (in the context of Task<T>) that signifies a Task should wait for its children
 struct [[nodiscard]] sync_tag {};
@@ -33,9 +33,9 @@ template <typename T> struct [[nodiscard]] fork_tag : std::coroutine_handle<type
 };
 
 // Release coroutine owned by handle
-void destroy(std::coroutine_handle<> handle) noexcept {
+template <typename T> void destroy(std::coroutine_handle<T> handle) noexcept {
     if (handle) {
-        LOG_DEBUG("Destroy coroutine frams");
+        LOG_DEBUG("Destroy coroutine frame");
         handle.destroy();
     }
 }
@@ -46,30 +46,32 @@ template <typename T> class [[nodiscard]] Task {
     class promise_type : public detail::promise_result<T> {
       private:
         struct final_awaitable : std::suspend_always {
-            std::coroutine_handle<> await_suspend(std::coroutine_handle<promise_type> Task) const noexcept {
+            std::coroutine_handle<> await_suspend(std::coroutine_handle<promise_type> task) const noexcept {
                 //
-                if (std::optional Task_handle = Forkpool::pop()) {
+                if (std::optional task_handle = Forkpool::pop()) {
                     // No-one stole continuation, just keep rippin!
                     LOG_DEBUG("Keeps rippin");
-                    return *Task_handle;
+                    return *task_handle;
                 }
 
-                if (!Task.promise()._parent_n) {
-                    // This must be a root Task and we must be out of Tasks
-                    LOG_DEBUG("Root Task completes");
+                if (!task.promise()._parent) {
+                    // This must be a root task and we must be out of tasks
+                    LOG_DEBUG("Root task completes");
+                    task.promise()._parent_n->store(1, std::memory_order_release);
+                    task.promise()._parent_n->notify_one();
                     return std::noop_coroutine();
                 }
 
                 LOG_DEBUG("Some-one stole parent");
 
-                // Else: register with parent we have completed this child Task
-                std::uint64_t n = (Task.promise()._parent_n)->fetch_sub(1, std::memory_order_acq_rel);
+                // Else: register with parent we have completed this child task
+                std::uint64_t n = (task.promise()._parent_n)->fetch_sub(1, std::memory_order_acq_rel);
 
                 if (n == 1) {
-                    // Parent has called sync and we are the last child Task to complete, hence we continue
+                    // Parent has called sync and we are the last child task to complete, hence we continue
                     // parent.
                     LOG_DEBUG("Win join race");
-                    return Task.promise()._parent;
+                    return task.promise()._parent;
                 } else {
                     // Parent has not called sync or we are not the last child to complete, so we are out of
                     // jobs, return to stealing.
@@ -109,7 +111,7 @@ template <typename T> class [[nodiscard]] Task {
                     return on_stack_handle;
                 }
 
-                Fut<U> await_resume() const noexcept { return Fut<U>{_child}; }
+                Future<U> await_resume() const noexcept { return Future<U>{_child}; }
 
                 std::coroutine_handle<typename Task<U>::promise_type> _child;
             };
@@ -120,8 +122,8 @@ template <typename T> class [[nodiscard]] Task {
         auto await_transform(sync_tag) noexcept {
             struct awaitable {
                 constexpr bool await_ready() const noexcept {
-                    if (std::uint64_t alpha = _task.promise()._alpha) {
-                        if (alpha == i_max - _task.promise()._n.load(std::memory_order_acquire)) {
+                    if (std::uint64_t a = _task.promise()._alpha) {
+                        if (a == IMAX - _task.promise()._n.load(std::memory_order_acquire)) {
                             LOG_DEBUG("sync() is ready");
                             return true;
                         } else {
@@ -135,15 +137,14 @@ template <typename T> class [[nodiscard]] Task {
                 }
 
                 std::coroutine_handle<> await_suspend(std::coroutine_handle<promise_type> task) noexcept {
-                    // Currently        n = i_max - num_joined
+                    // Currently        n = IMAX - num_joined
                     // If we perform    n <- n - (imax - num_stolen)
                     // then             n = num_stolen - num_joined
 
-                    std::uint64_t alpha = task.promise()._alpha;
+                    std::uint64_t a = task.promise()._alpha;
+                    std::uint64_t n = task.promise()._n.fetch_sub(IMAX - a, std::memory_order_acq_rel);
 
-                    std::uint64_t n = task.promise()._n.fetch_sub(i_max - alpha, std::memory_order_acq_rel);
-
-                    if (n - (i_max - alpha) == 0) {
+                    if (n - (IMAX - a) == 0) {
                         // We set n after all children had completed therefore we can resume task
                         LOG_DEBUG("sync() wins");
                         return task;
@@ -155,9 +156,9 @@ template <typename T> class [[nodiscard]] Task {
                 }
 
                 constexpr void await_resume() const noexcept {
-                    // After a sync we reset alpha/n
+                    // After a sync we reset a/n
                     _task.promise()._alpha = 0;
-                    _task.promise()._n.store(i_max);
+                    _task.promise()._n.store(IMAX, std::memory_order_release);
                 }
 
                 std::coroutine_handle<promise_type> _task;
@@ -181,9 +182,9 @@ template <typename T> class [[nodiscard]] Task {
 
         std::uint64_t _alpha = 0;
 
-        alignas(hardware_destructive_interference_size) std::atomic_uint64_t _n = i_max;
+        alignas(hardware_destructive_interference_size) std::atomic_uint64_t _n = IMAX;
 
-        static constexpr std::uint64_t i_max = std::numeric_limits<std::uint64_t>::max();
+        static constexpr std::uint64_t IMAX = std::numeric_limits<std::uint64_t>::max();
 
         friend class Task<T>;
     };
@@ -207,8 +208,10 @@ template <typename T> class [[nodiscard]] Task {
     }
 
     decltype(auto) launch() && {
+        std::atomic_uint64_t ready = 0;
+        _coroutine.promise()._parent_n = std::addressof(ready);
         Forkpool::schedule_root({_coroutine, std::addressof(_coroutine.promise()._alpha)});
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        ready.wait(0, std::memory_order::acquire);
         return;
     }
 
@@ -230,24 +233,24 @@ template <typename T> class [[nodiscard]] Task {
     std::coroutine_handle<promise_type> _coroutine;
 };
 
-template <typename T> class [[nodiscard]] Fut {
+template <typename T> class [[nodiscard]] Future {
   private:
     using promise_type = Task<T>::promise_type;
 
   public:
-    // Initialise empty Fut
-    constexpr Fut() : _coroutine{nullptr} {}
+    // Initialise empty Future
+    constexpr Future() : _coroutine{nullptr} {}
 
-    explicit Fut(std::coroutine_handle<promise_type> coro) noexcept : _coroutine(coro) {}
+    explicit Future(std::coroutine_handle<promise_type> coro) noexcept : _coroutine(coro) {}
 
-    // No assignment/copy constructor, Futs are 'unique'
-    Fut(const Fut&) = delete;
-    Fut& operator=(Fut const&) = delete;
+    // No assignment/copy constructor, Futures are 'unique'
+    Future(const Future&) = delete;
+    Future& operator=(Future const&) = delete;
 
     // but, they can be moved.
-    Fut(Fut&& other) noexcept : _coroutine(std::exchange(other._coroutine, nullptr)) {}
+    Future(Future&& other) noexcept : _coroutine(std::exchange(other._coroutine, nullptr)) {}
 
-    Fut& operator=(Fut&& other) noexcept {
+    Future& operator=(Future&& other) noexcept {
         if (this != &other) {
             destroy(std::exchange(_coroutine, std::exchange(other._coroutine, nullptr)));
         }
@@ -270,7 +273,7 @@ template <typename T> class [[nodiscard]] Fut {
         }
     }
 
-    ~Fut() noexcept { destroy(std::exchange(_coroutine, nullptr)); }
+    ~Future() noexcept { destroy(std::exchange(_coroutine, nullptr)); }
 
   private:
     std::coroutine_handle<promise_type> _coroutine;
