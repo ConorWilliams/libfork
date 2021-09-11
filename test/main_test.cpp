@@ -163,6 +163,19 @@ using namespace riften;
 //     }
 // }
 
+Task<int> fib(int i) {
+    if (i < 2) {
+        co_return i;
+    } else {
+        Future a = co_await fib(i - 1).fork();
+        Future b = co_await fib(i - 2).fork();
+
+        co_await riften::sync();
+
+        co_return *a + *b;
+    }
+}
+
 Task<> tmp2(int i) {
     std::this_thread::sleep_for(std::chrono::milliseconds(10 - i));
     std::cout << i << " nest\n";
@@ -195,11 +208,11 @@ Task<int> hello_world() {
 int main() {
     /////
 
-    hello_world().launch();
-
-    // auto d = tick("super   ");
-    // auto w = fib3(count).launch();
-    // tock(d);
+    auto d = tick("super   ");
+    for (size_t i = 0; i < 1000; i++) {
+        launch(fib(23));
+    }
+    auto tot = tock(d);
 
     // auto b = tick("linear  ");
     // auto y = linear(count);
@@ -216,7 +229,7 @@ int main() {
     // std::cout << "Got: " << y << std::endl;
     // std::cout << "Got: " << x << std::endl;
     // std::cout << "Got: " << z << std::endl;
-    // std::cout << "Got: " << w << std::endl;
+    std::cout << "Got: " << tot / 1000 << std::endl;
 
     std::cout << "done\n";
 

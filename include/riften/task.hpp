@@ -207,14 +207,6 @@ template <typename T> class [[nodiscard]] Task {
         }
     }
 
-    decltype(auto) launch() && {
-        std::atomic_uint64_t ready = 0;
-        _coroutine.promise()._parent_n = std::addressof(ready);
-        Forkpool::schedule_root({_coroutine, std::addressof(_coroutine.promise()._alpha)});
-        ready.wait(0, std::memory_order::acquire);
-        return;
-    }
-
     auto fork() && {
         if (_coroutine) {
             return fork_tag<T>{std::exchange(_coroutine, nullptr)};
@@ -222,6 +214,8 @@ template <typename T> class [[nodiscard]] Task {
             throw broken_promise{};
         }
     }
+
+    friend decltype(auto) launch(Task t) { return std::move(t).launch(); }
 
     ~Task() noexcept { destroy(std::exchange(_coroutine, nullptr)); }
 
@@ -231,6 +225,18 @@ template <typename T> class [[nodiscard]] Task {
     explicit Task(std::coroutine_handle<promise_type> coro) noexcept : _coroutine(coro) {}
 
     std::coroutine_handle<promise_type> _coroutine;
+
+    decltype(auto) launch() && {
+        if (_coroutine) {
+            std::atomic_uint64_t ready = 0;
+            _coroutine.promise()._parent_n = std::addressof(ready);
+            Forkpool::schedule_root({_coroutine, std::addressof(_coroutine.promise()._alpha)});
+            ready.wait(0, std::memory_order::acquire);
+            return std::move(_coroutine.promise()).get();
+        } else {
+            throw broken_promise{};
+        }
+    }
 };
 
 template <typename T> class [[nodiscard]] Future {
