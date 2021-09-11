@@ -42,13 +42,17 @@ template <typename T> class [[nodiscard]] task {
                 //
                 if (std::optional task_handle = Forkpool::pop()) {
                     // No-one stole continuation, just keep rippin!
+                    LOG_DEBUG("Keeps rippin");
                     return *task_handle;
                 }
 
                 if (!task.promise()._parent_n) {
                     // This must be a root task and we must be out of tasks
+                    LOG_DEBUG("Root task completes");
                     return std::noop_coroutine();
                 }
+
+                LOG_DEBUG("Some-one stole parent");
 
                 // Else: register with parent we have completed this child task
                 std::uint64_t n = (task.promise()._parent_n)->fetch_sub(1, std::memory_order_acq_rel);
@@ -56,9 +60,12 @@ template <typename T> class [[nodiscard]] task {
                 if (n == 1) {
                     // Parent has called sync and we are the last child task to complete, hence we continue
                     // parent.
+                    LOG_DEBUG("Win join race");
                     return task.promise()._parent;
                 } else {
-                    // Parent has not called sync, so we are out of jobs, return to stealing
+                    // Parent has not called sync or we are not the last child to complete, so we are out of
+                    // jobs, return to stealing.
+                    LOG_DEBUG("Loose join race");
                     return std::noop_coroutine();
                 }
             }
@@ -79,10 +86,12 @@ template <typename T> class [[nodiscard]] task {
                 //
                 std::coroutine_handle<> await_suspend(std::coroutine_handle<promise_type> parent) {
                     //
-                    _child.promise().set_parent(parent);
+                    _child.promise().template set_parent<T>(parent);
 
                     // In-case *this (awaitable) is destructed by stealer after schedule
                     std::coroutine_handle<> on_stack_handle = _child;
+
+                    LOG_DEBUG("Forking");
 
                     Forkpool::schedule({parent, std::addressof(parent.promise()._alpha)});
 
@@ -94,12 +103,20 @@ template <typename T> class [[nodiscard]] task {
                 std::coroutine_handle<typename task<U>::promise_type> _child;
             };
 
-            return awaitable{std::move(child)};
+            return awaitable{{}, std::move(child)};
         }
 
         auto await_transform(sync_tag) {
             struct awaitable {
-                constexpr bool await_ready() const noexcept { return _ready; }
+                constexpr bool await_ready() const noexcept {
+                    if (_ready) {
+                        LOG_DEBUG("Sync ready");
+                    } else {
+                        LOG_DEBUG("Sync not ready");
+                    };
+
+                    return _ready;
+                }
 
                 std::coroutine_handle<> await_suspend(std::coroutine_handle<promise_type> task) {
                     // Currently        n = i_max - num_joined
@@ -109,13 +126,15 @@ template <typename T> class [[nodiscard]] task {
 
                     std::uint64_t tmp = i_max - task.promise()._alpha;
 
-                    std::uint64_t n = task.promise._n.fetch_sub(tmp, std::memory_order_acq_rel);
+                    std::uint64_t n = task.promise()._n.fetch_sub(tmp, std::memory_order_acq_rel);
 
-                    if (i_max - n == _alpha) {
+                    if (i_max - n == task.promise()._alpha) {
                         // We set n after all children had completed therefore we can resume task
+                        LOG_DEBUG("Sync wins");
                         return task;
                     } else {
                         // Someone else is responsible for running this task and we have run out of work
+                        LOG_DEBUG("Sync looses");
                         return std::noop_coroutine();
                     }
                 }
@@ -141,10 +160,13 @@ template <typename T> class [[nodiscard]] task {
         std::coroutine_handle<> _parent = nullptr;
         std::atomic_uint64_t* _parent_n = nullptr;
 
-        alignas(hardware_destructive_interference_size) std::atomic_uint64_t _alpha = 0;
+        std::uint64_t _alpha = 0;
+
         alignas(hardware_destructive_interference_size) std::atomic_uint64_t _n = i_max;
 
         static constexpr std::uint64_t i_max = std::numeric_limits<std::uint64_t>::max();
+
+        friend class task<T>;
     };
 
     //////////////////////////////////////////////////////////////////////////////////////
@@ -170,41 +192,14 @@ template <typename T> class [[nodiscard]] task {
     ~task() noexcept { destroy(std::exchange(_coroutine, nullptr)); }
 
     decltype(auto) launch() && {
-        //
-
-        Forkpool::schedule(_coroutine);
-        _coroutine.promise()._done.wait(true);
-        return std::move(_coroutine.promise()).get();
+        Forkpool::schedule_root({_coroutine, std::addressof(_coroutine.promise()._alpha)});
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        return;
     }
 
     auto fork() && {
-        //
-        struct awaitable : std::suspend_always {
-            std::coroutine_handle<> await_suspend(std::coroutine_handle<promise_type> handle) {
-                //
-                std::coroutine_handle<promise_type> on_stack_coro = _coroutine_of_task;
-
-                on_stack_coro.promise().set_continuation(handle);
-
-                try {
-                    handle.promise()._forks.fetch_add(1, std::memory_order_release);
-                    Forkpool::schedule(handle);
-                    return on_stack_coro;
-                } catch (...) {
-                    // Scheduling failed therefore, we are responsible for cleaning up coroutine as we have
-                    // only valid handle to _coroutine
-                    destroy(on_stack_coro);
-                    throw;
-                }
-            }
-
-            auto await_resume() { return fut<T>(_coroutine_of_task); }
-
-            std::coroutine_handle<promise_type> _coroutine_of_task;
-        };
-
         if (_coroutine) {
-            return awaitable{{}, std::exchange(_coroutine, nullptr)};
+            return fork_tag<T>{std::exchange(_coroutine, nullptr)};
         } else {
             throw broken_promise{};
         }

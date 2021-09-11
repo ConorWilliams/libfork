@@ -163,15 +163,34 @@ using namespace riften;
 //     }
 // }
 
+task<void> tmp2() {
+    std::cout << "nest nest\n";
+    co_return;
+}
+
+task<void> tmp() {
+    fut f1 = co_await tmp2().fork();
+
+    co_await riften::sync();
+
+    std::cout << "nest\n";
+    co_return;
+}
+
 task<int> hello_world() {
+    fut f1 = co_await tmp().fork();
+
+    co_await riften::sync();
+
     std::cout << "hello world\n";
+
     co_return 3;
 }
 
 int main() {
     /////
 
-    // int count = 20;
+    std::move(hello_world()).launch();
 
     // auto d = tick("super   ");
     // auto w = fib3(count).launch();

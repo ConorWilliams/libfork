@@ -23,15 +23,16 @@
 #ifndef __MACROLOGGER_H__
 #define __MACROLOGGER_H__
 
+namespace riften {
+
+static thread_local std::size_t static_id;
+
 #ifdef __OBJC__
 #    import <Foundation/Foundation.h>
 #else
 #    include <string.h>
 #    include <time.h>
 #endif
-
-// === auxiliar functions
-static inline char *timenow();
 
 #define _FILE strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__
 
@@ -43,23 +44,17 @@ static inline char *timenow();
 #endif
 
 #if LOG_LEVEL >= DEBUG_LEVEL
-#    define LOG_DEBUG(message) \
-        fprintf(stderr, "%s | %-15s | %s:%d | " message "\n", timenow(), _FILE, __FUNCTION__, __LINE__)
+#    define LOG_DEBUG(message)                            \
+        fprintf(stderr,                                   \
+                "%-12s%5d | %-15s | %2ld |" message "\n", \
+                _FILE,                                    \
+                __LINE__,                                 \
+                __FUNCTION__,                             \
+                riften::static_id)
 #else
 #    define LOG_DEBUG(message)
 #endif
 
-static inline char *timenow() {
-    static char buffer[64];
-    time_t rawtime;
-    struct tm *timeinfo;
-
-    time(&rawtime);
-    timeinfo = localtime(&rawtime);
-
-    strftime(buffer, 64, "%Y-%m-%d %H:%M:%S", timeinfo);
-
-    return buffer;
-}
+}  // namespace riften
 
 #endif

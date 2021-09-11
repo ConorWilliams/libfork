@@ -11,14 +11,13 @@
 
 #include "riften/deque.hpp"
 #include "riften/detail/eventcount.hpp"
+#include "riften/detail/macrologger.h"
 #include "riften/detail/xoshiro.hpp"
 
 namespace riften {
 
-static thread_local std::size_t static_id;
-
 class Forkpool {
-  private:
+  public:
     struct task_handle : std::coroutine_handle<> {
         std::uint64_t* alpha;
     };
@@ -27,14 +26,20 @@ class Forkpool {
 
   public:
     static void schedule(task_handle handle) {
+        assert(static_id != get()._thread.size());
         get()._deque[static_id].emplace(handle);
-
-        if (static_id == get()._thread.size()) {
-            get()._notifyer.notify_one();
-        }
     }
 
-    static task_t pop() noexcept { return get()._deque[static_id].pop(); }
+    static void schedule_root(task_handle handle) {
+        assert(static_id == get()._thread.size());
+        get()._deque.back().emplace(handle);
+        get()._notifyer.notify_one();
+    }
+
+    static task_t pop() noexcept {
+        assert(static_id != get()._thread.size());
+        return get()._deque[static_id].pop();
+    }
 
   private:
     static Forkpool& get() {
@@ -81,7 +86,6 @@ class Forkpool {
             }
 
             task->resume();
-
             assert(!_deque[id].pop());
 
             _actives.fetch_sub(1, std::memory_order_release);
@@ -91,14 +95,16 @@ class Forkpool {
     void steal_task(std::size_t id, task_t& task) {
         for (std::size_t i = 0; i < _thread.size(); ++i) {
             if (auto v = detail::xrand() % _thread.size(); v == id) {
-                task = _deque.back().steal();
+                if ((task = _deque.back().steal())) {
+                    LOG_DEBUG("Steal from master");
+                    return;
+                }
             } else {
-                task = _deque[v].steal();
-            }
-            if (task) {
-                assert(task->alpha);
-                *(task->alpha) += 1;
-                return;
+                if ((task = _deque[v].steal())) {
+                    LOG_DEBUG("Steal from worker");
+                    *(task->alpha) += 1;
+                    return;
+                }
             }
         }
     }
@@ -141,8 +147,6 @@ class Forkpool {
             _notifyer.cancel_wait();
             goto wait_for_task;
         }
-
-        // std::osyncstream(std::cout) << static_id << " sleeps\n";
 
         _notifyer.wait(key);
 

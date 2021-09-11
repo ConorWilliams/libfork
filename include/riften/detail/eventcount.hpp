@@ -1,4 +1,5 @@
-/* This file has been modified by C.J.Williams
+/* This file has been modified by C.J.Williams to act as a standalone
+ * version of folly::EventCount utilising c++20's futex wait facilities.
  *
  * Copyright (c) Facebook, Inc. and its affiliates.
  *

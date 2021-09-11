@@ -24,7 +24,7 @@ find_package(Threads)
 include(cmake/CPM.cmake)
 
 CPMAddPackage("gh:ConorWilliams/ConcurrentDeque@2.0.0")
-CPMAddPackage("gh:TheLartians/PackageProject.cmake@1.7.0")
+CPMAddPackage("gh:TheLartians/PackageProject.cmake@1.6.0")
 
 # ---- Create library ----
 

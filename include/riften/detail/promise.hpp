@@ -30,6 +30,7 @@ template <typename T> class promise_result {
 
     template <typename U> void return_value(U&& expr) noexcept(std::is_nothrow_constructible_v<T, U&&>) {
         assert(payload == State::empty);
+        LOG_DEBUG("Stash result");
         std::construct_at(std::addressof(_result), std::forward<U>(expr));
         payload = State::result;
     }
@@ -93,11 +94,12 @@ template <> class promise_result<void> {
     promise_result() noexcept {}  // Initialise empty
 
     void unhandled_exception() noexcept {
+        LOG_DEBUG("Stash exception");
         assert(!_exception);
         _exception = std::current_exception();
     }
 
-    void return_void() const noexcept {};
+    void return_void() const noexcept { LOG_DEBUG("Returning void"); };
 
     void get() const {
         if (_exception) {
