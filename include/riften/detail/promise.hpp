@@ -63,7 +63,7 @@ template <typename T> class promise_result {
 
     ~promise_result() {
         //
-        LOG_DEBUG("Destruct promise.");
+        LOG_DEBUG("Destruct promise");
 
         switch (payload) {
             case State::empty:
@@ -122,7 +122,7 @@ template <typename T> class promise_result<T&> {
 
     ~promise_result() {
         //
-        LOG_DEBUG("Destruct promise.");
+        LOG_DEBUG("Destruct promise");
 
         switch (payload) {
             case State::empty:

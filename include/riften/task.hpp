@@ -117,46 +117,54 @@ template <typename T> class [[nodiscard]] Task {
             return awaitable{{}, std::move(child)};
         }
 
-        auto await_transform(sync_tag) const noexcept {
+        auto await_transform(sync_tag) noexcept {
             struct awaitable {
                 constexpr bool await_ready() const noexcept {
-                    if (_ready) {
-                        LOG_DEBUG("Sync ready");
+                    if (std::uint64_t alpha = _task.promise()._alpha) {
+                        if (alpha == i_max - _task.promise()._n.load(std::memory_order_acquire)) {
+                            LOG_DEBUG("sync() is ready");
+                            return true;
+                        } else {
+                            LOG_DEBUG("sync() not ready");
+                            return false;
+                        }
                     } else {
-                        LOG_DEBUG("Sync not ready");
+                        LOG_DEBUG("sync() ready (no steals)");
+                        return true;
                     };
-
-                    return _ready;
                 }
 
-                std::coroutine_handle<> await_suspend(std::coroutine_handle<promise_type> Task) noexcept {
+                std::coroutine_handle<> await_suspend(std::coroutine_handle<promise_type> task) noexcept {
                     // Currently        n = i_max - num_joined
                     // If we perform    n <- n - (imax - num_stolen)
                     // then             n = num_stolen - num_joined
-                    // and a
 
-                    std::uint64_t tmp = i_max - Task.promise()._alpha;
+                    std::uint64_t alpha = task.promise()._alpha;
 
-                    std::uint64_t n = Task.promise()._n.fetch_sub(tmp, std::memory_order_acq_rel);
+                    std::uint64_t n = task.promise()._n.fetch_sub(i_max - alpha, std::memory_order_acq_rel);
 
-                    if (i_max - n == Task.promise()._alpha) {
-                        // We set n after all children had completed therefore we can resume Task
-                        LOG_DEBUG("Sync wins");
-                        return Task;
+                    if (n - (i_max - alpha) == 0) {
+                        // We set n after all children had completed therefore we can resume task
+                        LOG_DEBUG("sync() wins");
+                        return task;
                     } else {
-                        // Someone else is responsible for running this Task and we have run out of work
-                        LOG_DEBUG("Sync looses");
+                        // Someone else is responsible for running this task and we have run out of work
+                        LOG_DEBUG("sync() looses");
                         return std::noop_coroutine();
                     }
                 }
 
-                constexpr void await_resume() const noexcept {}
+                constexpr void await_resume() const noexcept {
+                    // After a sync we reset alpha/n
+                    _task.promise()._alpha = 0;
+                    _task.promise()._n.store(i_max);
+                }
 
-                bool _ready;
+                std::coroutine_handle<promise_type> _task;
             };
 
             // Check if num-joined == num-stolen
-            return awaitable{!_alpha || _alpha == i_max - _n.load(std::memory_order_acquire)};
+            return awaitable{std::coroutine_handle<promise_type>::from_promise(*this)};
         }
 
         std::atomic_uint64_t* get_n() noexcept { return std::addressof(_n); }
@@ -245,10 +253,6 @@ template <typename T> class [[nodiscard]] Fut {
         }
     }
 
-    friend void swap(Fut& lhs, Fut& rhs) noexcept { std::swap(lhs._coroutine, rhs._coroutine); }
-
-    ~Fut() noexcept { destroy(std::exchange(_coroutine, nullptr)); }
-
     decltype(auto) operator*() const& {
         if (_coroutine) {
             return _coroutine.promise().get();
@@ -265,6 +269,8 @@ template <typename T> class [[nodiscard]] Fut {
             throw broken_promise{};
         }
     }
+
+    ~Fut() noexcept { destroy(std::exchange(_coroutine, nullptr)); }
 
   private:
     std::coroutine_handle<promise_type> _coroutine;

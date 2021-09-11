@@ -183,7 +183,11 @@ Task<int> hello_world() {
 
     co_await riften::sync();
 
-    std::cout << *f1 << " <- hello world\n";
+    Fut f2 = co_await tmp2().fork();
+
+    co_await riften::sync();
+
+    // std::cout << *f1 << " <- hello world\n";
 
     co_return 3;
 }
@@ -191,7 +195,7 @@ Task<int> hello_world() {
 int main() {
     /////
 
-    std::move(hello_world()).launch();
+    hello_world().launch();
 
     // auto d = tick("super   ");
     // auto w = fib3(count).launch();
