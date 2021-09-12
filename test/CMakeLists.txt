@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 
 # ---- Project ----
 
-project(RiftenCoopTest)
+project(RiftenForkPoolTest)
 
 # ---- Options ----
 
@@ -33,7 +33,7 @@ endif()
 
 # ---- Tests ----
 
-file(GLOB sources CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/*_test.cpp)
+file(GLOB sources CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 add_executable(${PROJECT_NAME} "${sources}")
 
 # Link dependencies
@@ -41,8 +41,8 @@ target_link_libraries(
   ${PROJECT_NAME} PUBLIC doctest::doctest RiftenForkpool::RiftenForkpool ${CMAKE_THREAD_LIBS_INIT}
 )
 
-# enable_testing()
+enable_testing()
 
-# include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
+include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
 
-# doctest_discover_tests(${PROJECT_NAME})
+doctest_discover_tests(${PROJECT_NAME})

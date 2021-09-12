@@ -15,8 +15,8 @@
 #include <type_traits>
 #include <utility>
 
+#include "riften/detail/forkpool.hpp"
 #include "riften/detail/promise.hpp"
-#include "riften/forkpool.hpp"
 #include "riften/meta.hpp"
 
 namespace riften {
@@ -29,7 +29,7 @@ template <typename F, typename... Args> auto fork(F&& f, Args&&... args) {
 }
 
 template <typename F, typename... Args> auto root(F&& f, Args&&... args) {
-    Forkpool::get();  // Make sure static-variables are initialised before constructing task
+    detail::Forkpool::get();  // Make sure static-variables are initialised before constructing task
     return std::invoke(std::forward<F>(f), std::forward<Args>(args)...).root();
 }
 
@@ -61,7 +61,7 @@ template <typename T> class [[nodiscard]] Task {
         struct final_awaitable : std::suspend_always {
             std::coroutine_handle<> await_suspend(std::coroutine_handle<promise_type> task) const noexcept {
                 //
-                if (std::optional task_handle = Forkpool::pop()) {
+                if (std::optional task_handle = detail::Forkpool::pop()) {
                     // No-one stole continuation, just keep rippin!
                     LOG_DEBUG("Keeps rippin");
                     return *task_handle;
@@ -116,12 +116,12 @@ template <typename T> class [[nodiscard]] Task {
                     //
                     _child.promise().template set_parent<T>(parent);
 
-                    // In-case *this (awaitable) is destructed by stealer after schedule
+                    // In-case *this (awaitable) is destructed by stealer after push
                     std::coroutine_handle<> on_stack_handle = _child;
 
                     LOG_DEBUG("Forking");
 
-                    Forkpool::schedule({parent, std::addressof(parent.promise()._alpha)});
+                    detail::Forkpool::push({parent, std::addressof(parent.promise()._alpha)});
 
                     return on_stack_handle;
                 }
@@ -184,8 +184,8 @@ template <typename T> class [[nodiscard]] Task {
         }
 
       private:
-        std::coroutine_handle<> _parent = nullptr;
-        std::atomic_uint64_t* _parent_n = nullptr;
+        std::coroutine_handle<> _parent;
+        std::atomic_uint64_t* _parent_n;
 
         std::uint64_t _alpha = 0;
 
@@ -218,6 +218,7 @@ template <typename T> class [[nodiscard]] Task {
         if (this != &other) {
             destroy(std::exchange(_coroutine, std::exchange(other._coroutine, nullptr)));
         }
+        return *this;
     }
 
     ~Task() noexcept { destroy(std::exchange(_coroutine, nullptr)); }
@@ -240,8 +241,9 @@ template <typename T> class [[nodiscard]] Task {
     decltype(auto) root() && {
         if (_coroutine) {
             std::atomic_uint64_t ready = 0;
+            _coroutine.promise()._parent = nullptr;
             _coroutine.promise()._parent_n = std::addressof(ready);
-            Forkpool::schedule_root({_coroutine, std::addressof(_coroutine.promise()._alpha)});
+            detail::Forkpool::push_root({_coroutine, std::addressof(_coroutine.promise()._alpha)});
             ready.wait(0, std::memory_order::acquire);
             return std::move(_coroutine.promise()).get();
         } else {
@@ -258,8 +260,6 @@ template <typename T> class [[nodiscard]] Future {
     // Initialise empty Future
     constexpr Future() : _coroutine{nullptr} {}
 
-    explicit Future(std::coroutine_handle<promise_type> coro) noexcept : _coroutine(coro) {}
-
     // No assignment/copy constructor, Futures are 'unique'
     Future(const Future&) = delete;
     Future& operator=(Future const&) = delete;
@@ -271,9 +271,12 @@ template <typename T> class [[nodiscard]] Future {
         if (this != &other) {
             destroy(std::exchange(_coroutine, std::exchange(other._coroutine, nullptr)));
         }
+
+        return *this;
     }
 
     decltype(auto) operator*() const& {
+        LOG_DEBUG("in get");
         if (_coroutine) {
             return _coroutine.promise().get();
         } else {
@@ -282,7 +285,6 @@ template <typename T> class [[nodiscard]] Future {
     }
 
     decltype(auto) operator*() && {
-        //
         if (_coroutine) {
             std::move(_coroutine.promise()).get();
         } else {
@@ -294,6 +296,10 @@ template <typename T> class [[nodiscard]] Future {
 
   private:
     std::coroutine_handle<promise_type> _coroutine;
+
+    explicit Future(std::coroutine_handle<promise_type> coro) noexcept : _coroutine(coro) { assert(coro); }
+
+    friend promise_type;
 };
 
 }  // namespace riften

@@ -20,14 +20,14 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef __MACROLOGGER_H__
-#define __MACROLOGGER_H__
+#pragma once
 
 #include <string.h>
 
-namespace riften::detail {
+#include <cstddef>
+#include <limits>
 
-static thread_local std::size_t static_id;
+namespace riften::detail {
 
 #define RIFTEN_FILE strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__
 
@@ -51,5 +51,3 @@ static thread_local std::size_t static_id;
 #endif
 
 }  // namespace riften::detail
-
-#endif

@@ -14,7 +14,10 @@
 #include "riften/detail/xoshiro.hpp"
 #include "riften/eventcount.hpp"
 
-namespace riften {
+namespace riften::detail {
+
+inline thread_local std::size_t root_id = std::numeric_limits<std::size_t>::max();
+inline thread_local std::size_t static_id = root_id;
 
 class Forkpool {
   private:
@@ -25,20 +28,21 @@ class Forkpool {
     using task_t = std::optional<task_handle>;
 
   public:
-    static void schedule(task_handle handle) {
-        assert(detail::static_id != get()._thread.size());
-        get()._deque[detail::static_id].emplace(handle);
+    static void push(task_handle handle) {
+        assert(static_id < get()._thread.size());
+        get()._deque[static_id].emplace(handle);
     }
 
-    static void schedule_root(task_handle handle) {
-        assert(detail::static_id == get()._thread.size());
+    static void push_root(task_handle handle) {
+        LOG_DEBUG("Root node pushed");
+        assert(static_id == root_id);
         get()._deque.back().emplace(handle);
         get()._notifyer.notify_one();
     }
 
     static task_t pop() noexcept {
-        assert(detail::static_id != get()._thread.size());
-        return get()._deque[detail::static_id].pop();
+        assert(static_id < get()._thread.size());
+        return get()._deque[static_id].pop();
     }
 
     // Can only throw on first call hence tag above as noexcept as only main thread can throw
@@ -50,16 +54,15 @@ class Forkpool {
   private:
     explicit Forkpool(std::size_t n = std::thread::hardware_concurrency()) : _deque(n + 1) {
         // Master thread uses nth deque
-        detail::static_id = n;
 
         for (std::size_t id = 0; id < n; ++id) {
             _thread.emplace_back([&, id] {
                 // Set id for calls to fork
-                detail::static_id = id;
+                static_id = id;
 
                 // Initialise PRNG stream
                 for (size_t j = 0; j < id; j++) {
-                    detail::long_jump();
+                    long_jump();
                 }
 
                 task_t task = std::nullopt;
@@ -97,7 +100,7 @@ class Forkpool {
 
     void steal_task(std::size_t id, task_t& task) noexcept {
         for (std::size_t i = 0; i < _thread.size(); ++i) {
-            if (auto v = detail::xrand() % _thread.size(); v == id) {
+            if (auto v = xrand() % _thread.size(); v == id) {
                 if ((task = _deque.back().steal())) {
                     LOG_DEBUG("Steal from master");
                     return;
@@ -168,4 +171,4 @@ class Forkpool {
     std::vector<std::jthread> _thread;
 };
 
-}  // namespace riften
+}  // namespace riften::detail
