@@ -83,7 +83,7 @@ class Forkpool {
         _notifyer.notify_all();
     }
 
-    void exploit_task(std::size_t id, task_t& task) noexcept {
+    void exploit_task([[maybe_unused]] std::size_t id, task_t& task) noexcept {
         if (task) {
             if (_actives.fetch_add(1, std::memory_order_acq_rel) == 0) {
                 if (_thieves.load(std::memory_order_acquire) == 0) {
