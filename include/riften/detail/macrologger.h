@@ -23,18 +23,13 @@
 #ifndef __MACROLOGGER_H__
 #define __MACROLOGGER_H__
 
-namespace riften {
+#include <string.h>
+
+namespace riften::detail {
 
 static thread_local std::size_t static_id;
 
-#ifdef __OBJC__
-#    import <Foundation/Foundation.h>
-#else
-#    include <string.h>
-#    include <time.h>
-#endif
-
-#define _FILE strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__
+#define RIFTEN_FILE strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__
 
 #define NO_LOG 0x00
 #define DEBUG_LEVEL 0x01
@@ -47,14 +42,14 @@ static thread_local std::size_t static_id;
 #    define LOG_DEBUG(message)                            \
         fprintf(stderr,                                   \
                 "%-12s%5d | %-15s | %2ld |" message "\n", \
-                _FILE,                                    \
+                RIFTEN_FILE,                              \
                 __LINE__,                                 \
                 __FUNCTION__,                             \
-                riften::static_id)
+                riften::detail::static_id)
 #else
 #    define LOG_DEBUG(message)
 #endif
 
-}  // namespace riften
+}  // namespace riften::detail
 
 #endif

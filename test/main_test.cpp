@@ -171,7 +171,7 @@ Task<int> fib(int i) {
         Future a = co_await fork(fib, i - 1);
         Future b = co_await fork(fib, i - 2);
 
-        co_await riften::sync();
+        co_await tag_sync();
 
         co_return *a + *b;
     }
@@ -184,11 +184,11 @@ Task<int> recur(int j) {
 
     std::vector<Future<int>> fut;
 
-    for (int i = 0; i < 1 + rand() % j; i++) {
+    for (int i = 0; i < 1 + 1 % j; i++) {
         fut.emplace_back(co_await fork(recur, j - 1));
     }
 
-    co_await riften::sync();
+    co_await tag_sync();
 
     int sum = 0;
 
@@ -205,41 +205,24 @@ Task<> tmp2(int i) {
     co_return;
 }
 
-// Task<void> tmp() {
-//     Future f1 = co_await tmp2().fork();
-
-//     co_await riften::sync();
-
-//     std::cout << "nest\n";
-//     co_return;
-// }
-
-Task<int> hello_world() {
-    Future f1 = co_await tmp2(1).fork();
-    Future f2 = co_await tmp2(2).fork();
-    Future f3 = co_await tmp2(3).fork();
-    Future f4 = co_await tmp2(4).fork();
-    Future f5 = co_await tmp2(5).fork();
-
-    co_await riften::sync();
-
-    // std::cout << *f1 << " <- hello world\n";
-
-    co_return 3;
-}
-
 int main() {
     /////
 
-    // auto d = tick("super   ");
-    // for (size_t i = 0; i < 1000; i++) {
-    //     launch(fib(23));
-    // }
-    // auto tot = tock(d);
+    int f;
 
-    // std::cout << "Got: " << tot / 1000 << std::endl;
+    // fib(1);
 
-    std::cout << launch(recur(3)) << " <- recur()\n";
+    auto d = tick("super   ");
+
+    for (size_t i = 0; i < 1000; i++) {
+        f = root(fib, 23);
+    }
+
+    auto tot = tock(d);
+
+    std::cout << "Got: " << tot / 1000 << std::endl;
+
+    std::cout << f << " <- recur()\n";
 
     std::cout << "done\n";
 

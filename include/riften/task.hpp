@@ -24,13 +24,23 @@ namespace riften {
 template <typename T = void> class [[nodiscard]] Task;
 template <typename T = void> class [[nodiscard]] Future;
 
+template <typename F, typename... Args> auto fork(F&& f, Args&&... args) {
+    return std::invoke(std::forward<F>(f), std::forward<Args>(args)...).fork();
+}
+
+template <typename F, typename... Args> auto root(F&& f, Args&&... args) {
+    Forkpool::get();  // Make sure static-variables are initialised before constructing task
+    return std::invoke(std::forward<F>(f), std::forward<Args>(args)...).root();
+}
+
 // An awaitable type (in the context of Task<T>) that signifies a Task should wait for its children
-struct [[nodiscard]] sync_tag {};
-inline constexpr sync_tag sync() { return {}; }
+struct [[nodiscard]] tag_sync {};
+
+namespace detail {
 
 // An awaitable type (in the context of Task<T>) that signifies a Task should post its continuation,
 // garanteed to be non-null.
-template <typename T> struct [[nodiscard]] fork_tag : std::coroutine_handle<typename Task<T>::promise_type> {
+template <typename T> struct [[nodiscard]] tag_fork : std::coroutine_handle<typename Task<T>::promise_type> {
 };
 
 // Release coroutine owned by handle
@@ -40,6 +50,8 @@ template <typename T> void destroy(std::coroutine_handle<T> handle) noexcept {
         handle.destroy();
     }
 }
+
+}  // namespace detail
 
 // A Task manages a coroutine frame that is ...
 template <typename T> class [[nodiscard]] Task {
@@ -69,12 +81,12 @@ template <typename T> class [[nodiscard]] Task {
                 std::uint64_t n = (task.promise()._parent_n)->fetch_sub(1, std::memory_order_acq_rel);
 
                 if (n == 1) {
-                    // Parent has called sync and we are the last child task to complete, hence we continue
+                    // Parent has rooted sync and we are the last child task to complete, hence we continue
                     // parent.
                     LOG_DEBUG("Win join race");
                     return task.promise()._parent;
                 } else {
-                    // Parent has not called sync or we are not the last child to complete, so we are out of
+                    // Parent has not rooted sync or we are not the last child to complete, so we are out of
                     // jobs, return to stealing.
                     LOG_DEBUG("Loose join race");
                     return std::noop_coroutine();
@@ -83,6 +95,8 @@ template <typename T> class [[nodiscard]] Task {
         };
 
       public:
+        // void* operator new(std::size_t);
+
         Task get_return_object() noexcept {
             return Task{std::coroutine_handle<promise_type>::from_promise(*this)};
         }
@@ -94,7 +108,7 @@ template <typename T> class [[nodiscard]] Task {
         // Pass regular awaitables straight through
         template <awaitable A> decltype(auto) await_transform(A&& a) { return std::forward<A>(a); }
 
-        template <typename U> auto await_transform(fork_tag<U> child) const noexcept {
+        template <typename U> auto await_transform(detail::tag_fork<U> child) const noexcept {
             //
             struct awaitable : std::suspend_always {
                 //
@@ -120,7 +134,7 @@ template <typename T> class [[nodiscard]] Task {
             return awaitable{{}, std::move(child)};
         }
 
-        auto await_transform(sync_tag) noexcept {
+        auto await_transform(tag_sync) noexcept {
             struct awaitable {
                 constexpr bool await_ready() const noexcept {
                     if (std::uint64_t a = _task.promise()._alpha) {
@@ -169,14 +183,6 @@ template <typename T> class [[nodiscard]] Task {
             return awaitable{std::coroutine_handle<promise_type>::from_promise(*this)};
         }
 
-        std::atomic_uint64_t* get_n() noexcept { return std::addressof(_n); }
-
-        template <typename U>
-        void set_parent(std::coroutine_handle<typename Task<U>::promise_type> parent) noexcept {
-            _parent = parent;
-            _parent_n = parent.promise().get_n();
-        }
-
       private:
         std::coroutine_handle<> _parent = nullptr;
         std::atomic_uint64_t* _parent_n = nullptr;
@@ -187,7 +193,13 @@ template <typename T> class [[nodiscard]] Task {
 
         static constexpr std::uint64_t IMAX = std::numeric_limits<std::uint64_t>::max();
 
-        friend class Task<T>;
+        template <typename> friend class Task;  // Friend all tasks
+
+        template <typename U>
+        void set_parent(std::coroutine_handle<typename Task<U>::promise_type> parent) noexcept {
+            _parent = parent;
+            _parent_n = std::addressof(parent.promise()._n);
+        }
     };
 
     //////////////////////////////////////////////////////////////////////////////////////
@@ -208,26 +220,24 @@ template <typename T> class [[nodiscard]] Task {
         }
     }
 
-    auto fork() && {
-        if (_coroutine) {
-            return fork_tag<T>{std::exchange(_coroutine, nullptr)};
-        } else {
-            throw broken_promise{};
-        }
-    }
-
-    friend decltype(auto) launch(Task t) { return std::move(t).launch(); }
-
     ~Task() noexcept { destroy(std::exchange(_coroutine, nullptr)); }
 
   private:
+    std::coroutine_handle<promise_type> _coroutine;
+
     friend class promise_type;
+
+    template <typename F, typename... Args> friend auto fork(F&&, Args&&...);
+    template <typename F, typename... Args> friend auto root(F&&, Args&&...);
+
     // Only promise can construct a filled Task
     explicit Task(std::coroutine_handle<promise_type> coro) noexcept : _coroutine(coro) {}
 
-    std::coroutine_handle<promise_type> _coroutine;
+    // Helpers
 
-    decltype(auto) launch() && {
+    auto fork() && { return detail::tag_fork<T>{std::exchange(_coroutine, nullptr)}; }
+
+    decltype(auto) root() && {
         if (_coroutine) {
             std::atomic_uint64_t ready = 0;
             _coroutine.promise()._parent_n = std::addressof(ready);
@@ -239,10 +249,6 @@ template <typename T> class [[nodiscard]] Task {
         }
     }
 };
-
-template <typename F, typename... Args> auto fork(F&& f, Args&&... args) {
-    return std::invoke(std::forward<F>(f), std::forward<Args>(args)...).fork();
-}
 
 template <typename T> class [[nodiscard]] Future {
   private:

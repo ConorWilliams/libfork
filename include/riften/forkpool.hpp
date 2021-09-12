@@ -26,36 +26,36 @@ class Forkpool {
 
   public:
     static void schedule(task_handle handle) {
-        assert(static_id != get()._thread.size());
-        get()._deque[static_id].emplace(handle);
+        assert(detail::static_id != get()._thread.size());
+        get()._deque[detail::static_id].emplace(handle);
     }
 
     static void schedule_root(task_handle handle) {
-        assert(static_id == get()._thread.size());
+        assert(detail::static_id == get()._thread.size());
         get()._deque.back().emplace(handle);
         get()._notifyer.notify_one();
     }
 
     static task_t pop() noexcept {
-        assert(static_id != get()._thread.size());
-        return get()._deque[static_id].pop();
+        assert(detail::static_id != get()._thread.size());
+        return get()._deque[detail::static_id].pop();
     }
 
-  private:
     // Can only throw on first call hence tag above as noexcept as only main thread can throw
     static Forkpool& get() {
         static Forkpool pool{std::thread::hardware_concurrency()};
         return pool;
     }
 
+  private:
     explicit Forkpool(std::size_t n = std::thread::hardware_concurrency()) : _deque(n + 1) {
         // Master thread uses nth deque
-        static_id = n;
+        detail::static_id = n;
 
         for (std::size_t id = 0; id < n; ++id) {
             _thread.emplace_back([&, id] {
                 // Set id for calls to fork
-                static_id = id;
+                detail::static_id = id;
 
                 // Initialise PRNG stream
                 for (size_t j = 0; j < id; j++) {
