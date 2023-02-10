@@ -28,7 +28,7 @@
       "hidden": true,
       "inherits": "cmake-pedantic",
       "cacheVariables": {
-        "forkpool_DEVELOPER_MODE": "ON"
+        "Forkpool_DEVELOPER_MODE": "ON"
       }
     },
     {

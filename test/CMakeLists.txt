@@ -15,12 +15,26 @@ endif()
 
 # ---- Tests ----
 
-add_executable(forkpool_test source/forkpool_test.cpp)
-target_link_libraries(forkpool_test PRIVATE forkpool::forkpool)
-target_compile_features(forkpool_test PRIVATE cxx_std_20)
+file(GLOB sources CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp)
 
-add_test(NAME forkpool_test COMMAND forkpool_test)
+foreach(source IN LISTS sources)
+  get_filename_component(name ${source} NAME_WE)
+  add_executable(${name} ${source})
+  target_link_libraries(${name} PRIVATE forkpool::forkpool)
+  target_compile_features(${name} PRIVATE cxx_std_20)
+  add_test(NAME ${name} COMMAND ${name})
+endforeach()
+
+
+# add_executable(forkpool_test ${sources})
+# target_link_libraries(forkpool_test PRIVATE forkpool::forkpool)
+# target_compile_features(forkpool_test PRIVATE cxx_std_20)
+
+# add_test(NAME forkpool_test COMMAND forkpool_test)
+
 
 # ---- End-of-file commands ----
 
 add_folders(Test)
+
+
