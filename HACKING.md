@@ -100,7 +100,7 @@ additional `-t <target>` flag:
 
 #### `docs`
 
-Available if `BUILD_MCSS_DOCS` is enabled. Builds to documentation using
+Available if `BUILD_DOCS` is enabled. Builds to documentation using
 Doxygen and m.css. The output will go to `<binary-dir>/docs` by default
 (customizable using `DOXYGEN_OUTPUT_DIRECTORY`).
 

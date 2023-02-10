@@ -33,32 +33,55 @@
 
 namespace fp {
 
+/**
+ * @brief A concept for std::is_trivial_v<T>.
+ */
 template <typename T>
 concept Trivial = std::is_trivial_v<T>;
 
-// Basic wrapper around a c-style array of atomic objects that provides modulo
-// load/stores. Capacity must be a power of 2.
+/**
+ * @brief A basic wrapper around a c-style array that provides modulo load/stores.
+ *
+ * This class is designed for internal use only. It provides a c-style API that is used efficiantly
+ * by Queue for low level atomic operations.
+ *
+ * @tparam T The type of the elements in the array.
+ */
 template <Trivial T>
 struct ring_buf {
   /**
    * @brief Construct a new ring buff object
    *
-   * @param cap
+   * @param cap The capacity of the buffer, MUST be a power of 2.
    */
   explicit ring_buf(std::int64_t cap) : m_cap{cap}, m_mask{cap - 1} {
     ASSERT(cap && (!(cap & (cap - 1))), "Capacity must be a power of 2!");
   }
 
+  /**
+   * @brief Get the capacity of the buffer.
+   */
   auto capacity() const noexcept -> std::int64_t { return m_cap; }
 
-  // Store (copy) at modulo index
+  /**
+   * @brief Store ``val`` at ``index % this->capacity()``.
+   */
   auto store(std::int64_t index, T val) noexcept -> void { m_buf[index & m_mask] = val; }
 
-  // Load (copy) at modulo index
+  /**
+   * @brief Load value at ``index % this->capacity()``.
+   */
   auto load(std::int64_t index) const noexcept -> T { return m_buf[index & m_mask]; }
 
-  // Allocates and returns a new ring buffer, copies elements in range [b, t)
-  // into the new buffer.
+  /**
+   * @brief Copies elements in range ``[b, t)`` into a new ring buffer.
+   *
+   * This function allocates a new buffer and returns a pointer to it. The caller is responsible for
+   * deallocating the memory.
+   *
+   * @param bottom The bottom of the range to copy from (inclusive).
+   * @param top The top of the range to copy from (exclusive).
+   */
   auto resize(std::int64_t bottom, std::int64_t top) const -> ring_buf<T>* {
     auto* ptr = new ring_buf{2 * m_cap};
     for (std::int64_t i = top; i != bottom; ++i) {

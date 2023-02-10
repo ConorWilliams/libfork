@@ -1,0 +1,52 @@
+/* -- breathe specific styles ----------------------------------------------- */
+
+/* So enum value descriptions are displayed inline to the item */
+.breatheenumvalues li tt+p {
+    display: inline;
+}
+
+/* So parameter descriptions are displayed inline to the item */
+.breatheparameterlist li tt+p {
+    display: inline;
+}
+
+/* C++ specific styling */
+
+.highlight {
+    /* desaturate that ugly yellow color used by most other theme's code snippets */
+    background-color: var(--color-api-background);
+    /* for light theme only */
+}
+
+
+.sig.c .k,
+.sig.c .kt,
+.sig.cpp .k,
+.sig.cpp .kt {
+    color: var(--breathe-keyword-type-color);
+}
+
+.sig.c .m,
+.sig.cpp .m {
+    color: var(--breathe-number-color);
+}
+
+.sig.c .s,
+.sig.c .sc,
+.sig.cpp .s,
+.sig.cpp .sc {
+    color: var(--breathe-str-char-color);
+}
+
+.sig>.n {
+    color: var(--breathe-name-color);
+}
+
+/*
+  bugfix for multi-lined signatures
+  (see https://github.com/pradyunsg/furo/discussions/427 )
+  */
+.sig {
+    padding-left: 0.5em;
+    text-indent: revert;
+}
