@@ -1,1 +1,1 @@
-include("${CMAKE_CURRENT_LIST_DIR}/ForkpoolTargets.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/forkpoolTargets.cmake")

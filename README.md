@@ -1,6 +1,6 @@
 # Forkpool
 
-This is the Forkpool project.
+This is the forkpool project.
 
 # Building and installing
 

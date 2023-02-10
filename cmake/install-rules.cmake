@@ -1,6 +1,6 @@
 if(PROJECT_IS_TOP_LEVEL)
   set(
-      CMAKE_INSTALL_INCLUDEDIR "include/Forkpool-${PROJECT_VERSION}"
+      CMAKE_INSTALL_INCLUDEDIR "include/forkpool-${PROJECT_VERSION}"
       CACHE PATH ""
   )
 endif()
@@ -12,17 +12,17 @@ include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
 
 # find_package(<package>) call for consumers to find this project
-set(package Forkpool)
+set(package forkpool)
 
 install(
     DIRECTORY include/
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
-    COMPONENT Forkpool_Development
+    COMPONENT forkpool_Development
 )
 
 install(
-    TARGETS Forkpool_Forkpool
-    EXPORT ForkpoolTargets
+    TARGETS forkpool_forkpool
+    EXPORT forkpoolTargets
     INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
 )
 
@@ -34,29 +34,29 @@ write_basic_package_version_file(
 
 # Allow package maintainers to freely override the path for the configs
 set(
-    Forkpool_INSTALL_CMAKEDIR "${CMAKE_INSTALL_DATADIR}/${package}"
+    forkpool_INSTALL_CMAKEDIR "${CMAKE_INSTALL_DATADIR}/${package}"
     CACHE PATH "CMake package config location relative to the install prefix"
 )
-mark_as_advanced(Forkpool_INSTALL_CMAKEDIR)
+mark_as_advanced(forkpool_INSTALL_CMAKEDIR)
 
 install(
     FILES cmake/install-config.cmake
-    DESTINATION "${Forkpool_INSTALL_CMAKEDIR}"
+    DESTINATION "${forkpool_INSTALL_CMAKEDIR}"
     RENAME "${package}Config.cmake"
-    COMPONENT Forkpool_Development
+    COMPONENT forkpool_Development
 )
 
 install(
     FILES "${PROJECT_BINARY_DIR}/${package}ConfigVersion.cmake"
-    DESTINATION "${Forkpool_INSTALL_CMAKEDIR}"
-    COMPONENT Forkpool_Development
+    DESTINATION "${forkpool_INSTALL_CMAKEDIR}"
+    COMPONENT forkpool_Development
 )
 
 install(
-    EXPORT ForkpoolTargets
-    NAMESPACE Forkpool::
-    DESTINATION "${Forkpool_INSTALL_CMAKEDIR}"
-    COMPONENT Forkpool_Development
+    EXPORT forkpoolTargets
+    NAMESPACE forkpool::
+    DESTINATION "${forkpool_INSTALL_CMAKEDIR}"
+    COMPONENT forkpool_Development
 )
 
 if(PROJECT_IS_TOP_LEVEL)

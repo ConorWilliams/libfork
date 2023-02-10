@@ -7,5 +7,5 @@
  */
 inline auto name() -> std::string
 {
-  return "Forkpool";
+  return "forkpool";
 }
