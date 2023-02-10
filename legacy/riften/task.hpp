@@ -29,7 +29,7 @@ template <typename F, typename... Args> auto fork(F&& f, Args&&... args) {
 }
 
 template <typename F, typename... Args> auto root(F&& f, Args&&... args) {
-    detail::Forkpool::get();  // Make sure static-variables are initialised before constructing task
+    detail::Forkpool::get();  // Make sure static-variables are initialized before constructing task
     return std::invoke(std::forward<F>(f), std::forward<Args>(args)...).root();
 }
 
@@ -39,7 +39,7 @@ struct [[nodiscard]] tag_sync {};
 namespace detail {
 
 // An awaitable type (in the context of Task<T>) that signifies a Task should post its continuation,
-// garanteed to be non-null.
+// guaranteed to be non-null.
 template <typename T> struct [[nodiscard]] tag_fork : std::coroutine_handle<typename Task<T>::promise_type> {
 };
 
@@ -204,7 +204,7 @@ template <typename T> class [[nodiscard]] Task {
 
     //////////////////////////////////////////////////////////////////////////////////////
 
-    // Initialise empty Task
+    // Initialize empty Task
     constexpr Task() : _coroutine{nullptr} {}
 
     // No assignment/copy constructor, Tasks are 'unique'
@@ -257,7 +257,7 @@ template <typename T> class [[nodiscard]] Future {
     using promise_type = Task<T>::promise_type;
 
   public:
-    // Initialise empty Future
+    // Initialize empty Future
     constexpr Future() : _coroutine{nullptr} {}
 
     // No assignment/copy constructor, Futures are 'unique'

@@ -9,7 +9,7 @@
 #include <semaphore>
 #include <thread>
 
-#include "riften/deque.hpp"
+#include "riften/dequeue.hpp"
 #include "riften/detail/macrologger.h"
 #include "riften/detail/xoshiro.hpp"
 #include "riften/eventcount.hpp"
@@ -53,14 +53,14 @@ class Forkpool {
 
   private:
     explicit Forkpool(std::size_t n = std::thread::hardware_concurrency()) : _deque(n + 1) {
-        // Master thread uses nth deque
+        // Master thread uses nth dequeue
 
         for (std::size_t id = 0; id < n; ++id) {
             _thread.emplace_back([&, id] {
                 // Set id for calls to fork
                 static_id = id;
 
-                // Initialise PRNG stream
+                // Initialize PRNG stream
                 for (size_t j = 0; j < id; j++) {
                     long_jump();
                 }
@@ -167,7 +167,7 @@ class Forkpool {
 
     EventCount _notifyer;
 
-    std::vector<Deque<task_handle>> _deque;
+    std::vector<Dequeue<task_handle>> _deque;
     std::vector<std::jthread> _thread;
 };
 

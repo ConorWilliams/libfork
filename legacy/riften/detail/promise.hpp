@@ -19,7 +19,7 @@ namespace riften::detail {
 // method and a way to access that value through .result() method
 template <typename T> class promise_result {
   public:
-    promise_result() noexcept {}  // Initialise empty
+    promise_result() noexcept {}  // Initialize empty
 
     void unhandled_exception() noexcept {
         assert(payload == State::empty);
@@ -91,7 +91,7 @@ template <typename T> class promise_result {
 // // Specialisations for T&
 template <typename T> class promise_result<T&> {
   public:
-    promise_result() noexcept {}  // Initialise empty
+    promise_result() noexcept {}  // Initialize empty
 
     void unhandled_exception() noexcept {
         assert(payload == State::empty);
@@ -149,7 +149,7 @@ template <typename T> class promise_result<T&> {
 // Specialisations for void
 template <> class promise_result<void> {
   public:
-    promise_result() noexcept {}  // Initialise empty
+    promise_result() noexcept {}  // Initialize empty
 
     void unhandled_exception() noexcept {
         LOG_DEBUG("Stash exception");
@@ -172,10 +172,10 @@ template <> class promise_result<void> {
 // Maybe introduce wait/release methods
 template <bool Blocking> struct binary_latch;
 
-// EBO specialisation
+// EBO specialization
 template <> struct binary_latch<false> {};
 
-// Latch is initialised 'held', wait() will block until a thread calls release().
+// Latch is initialized 'held', wait() will block until a thread calls release().
 template <> struct binary_latch<true> {
   public:
     void wait() const noexcept { _ready.wait(false, std::memory_order_acquire); }

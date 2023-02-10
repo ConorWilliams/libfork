@@ -1,5 +1,5 @@
 /* This file has been modified by C.J.Williams to act as a standalone
- * version of folly::EventCount utilising c++20's futex wait facilities.
+ * version of folly::EventCount utilizing c++20's futex wait facilities.
  *
  * Copyright (c) Facebook, Inc. and its affiliates.
  *
@@ -163,7 +163,7 @@ inline void EventCount::cancel_wait() noexcept {
 }
 
 inline void EventCount::wait(Key key) noexcept {
-    // Use C++20 atomic wait garantees
+    // Use C++20 atomic wait guarantees
     epoch()->wait(key.epoch_, std::memory_order_acquire);
 
     // memory_order_relaxed would suffice for correctness, but the faster
