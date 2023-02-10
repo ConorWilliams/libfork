@@ -1,58 +1,51 @@
-cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.14)
 
-# ---- Project ----
+include(cmake/prelude.cmake)
 
 project(
-  RiftenForkpool
-  VERSION 0.1.0
-  LANGUAGES CXX
+    Forkpool
+    VERSION 0.1.0
+    DESCRIPTION "Short description"
+    HOMEPAGE_URL "https://example.com/"
+    LANGUAGES NONE
 )
 
-# ---- Include guards ----
+include(cmake/project-is-top-level.cmake)
+include(cmake/variables.cmake)
 
-if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
-  message(
-    FATAL_ERROR
-      "In-source builds not allowed. Please make a new directory (called a build directory) and run CMake from there."
-  )
-endif()
+# ---- Declare library ----
 
-# ---- Add dependencies ----
+add_library(Forkpool_Forkpool INTERFACE)
+add_library(Forkpool::Forkpool ALIAS Forkpool_Forkpool)
 
-find_package(Threads)
-
-include(cmake/CPM.cmake)
-
-CPMAddPackage("gh:ConorWilliams/ConcurrentDeque@2.0.0")
-CPMAddPackage("gh:TheLartians/PackageProject.cmake@1.6.0")
-
-# ---- Create library ----
-
-add_library(${PROJECT_NAME} INTERFACE)
-
-target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_20)
-
-target_compile_options(${PROJECT_NAME} INTERFACE -Wall -Wextra -Wpedantic)
-
-# Link dependencies
-target_link_libraries(
-  ${PROJECT_NAME} INTERFACE ${CMAKE_THREAD_LIBS_INIT} RiftenDeque::RiftenDeque
+set_property(
+    TARGET Forkpool_Forkpool PROPERTY
+    EXPORT_NAME Forkpool
 )
 
 target_include_directories(
-  ${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-                            $<INSTALL_INTERFACE:include/${PROJECT_NAME}-${PROJECT_VERSION}>
+    Forkpool_Forkpool ${warning_guard}
+    INTERFACE
+    "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
 )
 
-# ---- Create an installable target ----
+target_compile_features(Forkpool_Forkpool INTERFACE cxx_std_20)
 
-packageProject(
-  NAME ${PROJECT_NAME}
-  VERSION ${PROJECT_VERSION}
-  NAMESPACE ${PROJECT_NAME}
-  BINARY_DIR ${PROJECT_BINARY_DIR}
-  INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include
-  INCLUDE_DESTINATION include/${PROJECT_NAME}-${PROJECT_VERSION}
-  COMPATIBILITY SameMajorVersion
-  DEPENDENCIES ""
-)
+# ---- Install rules ----
+
+if(NOT CMAKE_SKIP_INSTALL_RULES)
+  include(cmake/install-rules.cmake)
+endif()
+
+# ---- Developer mode ----
+
+if(NOT Forkpool_DEVELOPER_MODE)
+  return()
+elseif(NOT PROJECT_IS_TOP_LEVEL)
+  message(
+      AUTHOR_WARNING
+      "Developer mode is intended for developers of Forkpool"
+  )
+endif()
+
+include(cmake/dev-mode.cmake)

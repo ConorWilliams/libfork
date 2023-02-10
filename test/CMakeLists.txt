@@ -1,48 +1,26 @@
-cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.14)
 
-# ---- Project ----
+project(ForkpoolTests LANGUAGES CXX)
 
-project(RiftenForkPoolTest)
+include(../cmake/project-is-top-level.cmake)
+include(../cmake/folders.cmake)
+include(../cmake/windows-set-path.cmake)
 
-# ---- Options ----
+# ---- Dependencies ----
 
-option(TEST_INSTALLED_VERSION "Test the version found by find_package" OFF)
-
-# ---- Include guards ----
-
-if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
-  message(
-    FATAL_ERROR
-      "In-source builds not allowed. Please make a new directory (called a build directory) and run CMake from there."
-  )
-endif()
-
-# ---- Add dependencies ----
-
-find_package(Threads)
-
-include(../cmake/CPM.cmake)
-
-CPMAddPackage("gh:onqtam/doctest#2.4.5")
-
-if(TEST_INSTALLED_VERSION)
-  find_package(RiftenForkpool REQUIRED)
-else()
-  CPMAddPackage(NAME RiftenForkpool SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/..)
+if(PROJECT_IS_TOP_LEVEL)
+  find_package(Forkpool REQUIRED)
+  enable_testing()
 endif()
 
 # ---- Tests ----
 
-file(GLOB sources CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
-add_executable(${PROJECT_NAME} "${sources}")
+add_executable(Forkpool_test source/Forkpool_test.cpp)
+target_link_libraries(Forkpool_test PRIVATE Forkpool::Forkpool)
+target_compile_features(Forkpool_test PRIVATE cxx_std_20)
 
-# Link dependencies
-target_link_libraries(
-  ${PROJECT_NAME} PUBLIC doctest::doctest RiftenForkpool::RiftenForkpool ${CMAKE_THREAD_LIBS_INIT}
-)
+add_test(NAME Forkpool_test COMMAND Forkpool_test)
 
-enable_testing()
+# ---- End-of-file commands ----
 
-include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
-
-doctest_discover_tests(${PROJECT_NAME})
+add_folders(Test)
