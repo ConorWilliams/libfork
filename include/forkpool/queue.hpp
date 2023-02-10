@@ -134,11 +134,11 @@ class queue {
   explicit queue(std::int64_t cap);
 
   /**
-   * @brief Queue's are not copyable or movable.
+   * @brief Queue's are not copiable or movable.
    */
   queue(queue const& other) = delete;
   /**
-   * @brief Queue's are not copyable or movable.
+   * @brief Queue's are not copiable or movable.
    */
   queue(queue&& other) = delete;
   /**
