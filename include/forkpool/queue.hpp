@@ -184,6 +184,30 @@ class queue {
   auto pop() noexcept -> std::optional<T>;
 
   /**
+   * @brief The error codes for the steal operation.
+   */
+  enum class err : int {
+    won = 0,  ///< The steal operation succeeded.
+    lost,     ///< Lost the steal race hence, the steal operation failed.
+    empty,    ///< The queue is empty and hence, the steal operation failed.
+  };
+
+  /**
+   * @brief The return type of the steal operation.
+   *
+   * Suitable for structured bindings.
+   */
+  struct steal_t {
+    /**
+     * @brief Check if the steal operation succeeded.
+     */
+    constexpr explicit operator bool() const noexcept { return code == err::won; }
+
+    err code;  ///< The error code of the steal operation.
+    T val;     ///< The value stolen from the queue, Only valid if ``code == err::stolen``.
+  };
+
+  /**
    * @brief Steal an item from the queue.
    *
    * Any threads can try to steal an item from the queue. The return can be a std::nullopt if this
@@ -191,7 +215,7 @@ class queue {
    *
    * @return std::optional<T>
    */
-  auto steal() noexcept -> std::optional<T>;
+  auto steal() noexcept -> steal_t;
 
   /**
    * @brief Destroy the queue object.
@@ -289,7 +313,7 @@ auto queue<T>::pop() noexcept -> std::optional<T> {
 }
 
 template <Trivial T>
-auto queue<T>::steal() noexcept -> std::optional<T> {
+auto queue<T>::steal() noexcept -> steal_t {
   std::int64_t top = m_top.load(acquire);
   std::atomic_thread_fence(seq_cst);
   std::int64_t bottom = m_bottom.load(acquire);
@@ -303,14 +327,11 @@ auto queue<T>::steal() noexcept -> std::optional<T> {
     T tmp = m_buf.load(consume)->load(top);
 
     if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
-      // Failed race.
-      return std::nullopt;
+      return {.code = err::lost};
     }
-
-    return tmp;
+    return {.code = err::won, .val = tmp};  // Won the CAS
   }
-  // Empty queue.
-  return std::nullopt;
+  return {.code = err::empty};
 }
 
 template <Trivial T>
