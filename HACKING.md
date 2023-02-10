@@ -3,9 +3,6 @@
 Here is some wisdom to help you build and test this project as a developer and
 potential contributor.
 
-If you plan to contribute, please read the [CONTRIBUTING](CONTRIBUTING.md)
-guide.
-
 ## Developer mode
 
 Build system targets that are only useful for developers of this project are
@@ -100,16 +97,6 @@ threads your CPU has. You may also want to add that to your preset using the
 
 These are targets you may invoke using the build command from above, with an
 additional `-t <target>` flag:
-
-#### `coverage`
-
-Available if `ENABLE_COVERAGE` is enabled. This target processes the output of
-the previously run tests when built with coverage configuration. The commands
-this target runs can be found in the `COVERAGE_TRACE_COMMAND` and
-`COVERAGE_HTML_COMMAND` cache variables. The trace command produces an info
-file by default, which can be submitted to services with CI integration. The
-HTML command uses the trace command's output to generate a HTML document to
-`<binary-dir>/coverage_html` by default.
 
 #### `docs`
 

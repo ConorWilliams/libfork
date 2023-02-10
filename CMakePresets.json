@@ -8,6 +8,7 @@
   "configurePresets": [
     {
       "name": "cmake-pedantic",
+      "description": "Enable cmake warnings for developers",
       "hidden": true,
       "warnings": {
         "dev": true,
@@ -23,6 +24,7 @@
     },
     {
       "name": "dev-mode",
+      "description": "Base class, enables developer mode",
       "hidden": true,
       "inherits": "cmake-pedantic",
       "cacheVariables": {
@@ -31,6 +33,7 @@
     },
     {
       "name": "cppcheck",
+      "description": "Base class, enables cppcheck",
       "hidden": true,
       "cacheVariables": {
         "CMAKE_CXX_CPPCHECK": "cppcheck;--inline-suppr"
@@ -38,6 +41,7 @@
     },
     {
       "name": "clang-tidy",
+      "description": "Base class, enables clang-tidy",
       "hidden": true,
       "cacheVariables": {
         "CMAKE_CXX_CLANG_TIDY": "clang-tidy;--header-filter=^${sourceDir}/"
@@ -45,7 +49,7 @@
     },
     {
       "name": "ci-std",
-      "description": "This preset makes sure the project actually builds with at least the specified standard",
+      "description": "Make sure the project actually builds with at least the specified standard",
       "hidden": true,
       "cacheVariables": {
         "CMAKE_CXX_EXTENSIONS": "OFF",
@@ -62,7 +66,7 @@
     },
     {
       "name": "flags-windows",
-      "description": "Note that all the flags after /W4 are required for MSVC to conform to the language standard",
+      "description": "All the flags after /W4 are required for MSVC to conform to the language standard",
       "hidden": true,
       "cacheVariables": {
         "CMAKE_CXX_FLAGS": "/utf-8 /w14165 /w44242 /w44254 /w44263 /w34265 /w34287 /w44296 /w44365 /w44388 /w44464 /w14545 /w14546 /w14547 /w14549 /w14555 /w34619 /w34640 /w24826 /w14905 /w14906 /w14928 /w45038 /W4 /permissive- /volatile:iso /Zc:preprocessor /Zc:__cplusplus /Zc:externConstexpr /Zc:throwingNew /EHsc"
@@ -72,42 +76,31 @@
       "name": "ci-unix",
       "generator": "Unix Makefiles",
       "hidden": true,
-      "inherits": ["flags-unix", "ci-std"],
+      "inherits": [
+        "flags-unix",
+        "ci-std"
+      ],
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
     },
     {
       "name": "ci-win64",
-      "inherits": ["flags-windows", "ci-std"],
+      "inherits": [
+        "flags-windows",
+        "ci-std"
+      ],
       "generator": "Visual Studio 17 2022",
       "architecture": "x64",
       "hidden": true
     },
     {
-      "name": "coverage-unix",
-      "binaryDir": "${sourceDir}/build/coverage",
-      "inherits": "ci-unix",
-      "hidden": true,
-      "cacheVariables": {
-        "ENABLE_COVERAGE": "ON",
-        "CMAKE_BUILD_TYPE": "Coverage",
-        "CMAKE_CXX_FLAGS_COVERAGE": "-Og -g --coverage -fkeep-inline-functions -fkeep-static-functions",
-        "CMAKE_EXE_LINKER_FLAGS_COVERAGE": "--coverage",
-        "CMAKE_SHARED_LINKER_FLAGS_COVERAGE": "--coverage"
-      }
-    },
-    {
-      "name": "ci-coverage",
-      "inherits": ["coverage-unix", "dev-mode"],
-      "cacheVariables": {
-        "COVERAGE_HTML_COMMAND": ""
-      }
-    },
-    {
       "name": "ci-sanitize",
       "binaryDir": "${sourceDir}/build/sanitize",
-      "inherits": ["ci-unix", "dev-mode"],
+      "inherits": [
+        "ci-unix",
+        "dev-mode"
+      ],
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Sanitize",
         "CMAKE_CXX_FLAGS_SANITIZE": "-O2 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-common"
@@ -120,15 +113,29 @@
     },
     {
       "name": "ci-macos",
-      "inherits": ["ci-build", "ci-unix", "dev-mode"]
+      "inherits": [
+        "ci-build",
+        "ci-unix",
+        "dev-mode"
+      ]
     },
     {
       "name": "ci-ubuntu",
-      "inherits": ["ci-build", "ci-unix", "clang-tidy", "cppcheck", "dev-mode"]
+      "inherits": [
+        "ci-build",
+        "ci-unix",
+        "clang-tidy",
+        "cppcheck",
+        "dev-mode"
+      ]
     },
     {
       "name": "ci-windows",
-      "inherits": ["ci-build", "ci-win64", "dev-mode"]
+      "inherits": [
+        "ci-build",
+        "ci-win64",
+        "dev-mode"
+      ]
     }
   ]
 }
