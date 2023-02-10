@@ -52,7 +52,7 @@ file(GLOB_RECURSE FORK_RSTS CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/docs/*.rst")
 # config has been updated
 add_custom_command(
     OUTPUT ${SPHINX_INDEX_FILE}
-    COMMAND ${SPHINX_EXECUTABLE} -b html -Dbreathe_projects.openFLY=${DOXYGEN_OUTPUT_DIR}/xml
+    COMMAND ${SPHINX_EXECUTABLE} -b html -Dbreathe_projects.Forkpool=${DOXYGEN_OUTPUT_DIR}/xml
     ${SPHINX_SOURCE} ${SPHINX_BUILD}
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     DEPENDS ${FORK_RSTS} ${DOXYGEN_INDEX_FILE}

@@ -24,11 +24,11 @@
 /**
  * @file queue.hpp
  *
- * @brief A stand-alone implementation of lock-free single-producer multiple-consumer dequeue.
+ * @brief A stand-alone implementation of the Chase-Lev lock-free single-producer multiple-consumer
+ * queue.
  *
- * Implements the dequeue described in the papers, "Correct and Efficient Work-Stealing for Weak
- * Memory Models," and "Dynamic Circular Work-Stealing Dequeue". Both are available in
- 'reference/'.
+ * Implements the queue described in the papers, "Correct and Efficient Work-Stealing for Weak
+ * Memory Models," and "Dynamic Circular Work-Stealing Queue". Both are available in 'reference/'.
  */
 
 namespace fp {
@@ -43,7 +43,7 @@ concept Trivial = std::is_trivial_v<T>;
  * @brief A basic wrapper around a c-style array that provides modulo load/stores.
  *
  * This class is designed for internal use only. It provides a c-style API that is used efficiantly
- * by Queue for low level atomic operations.
+ * by queue for low level atomic operations.
  *
  * @tparam T The type of the elements in the array.
  */
@@ -74,7 +74,7 @@ struct ring_buf {
   auto load(std::int64_t index) const noexcept -> T { return m_buf[index & m_mask]; }
 
   /**
-   * @brief Copies elements in range ``[b, t)`` into a new ring buffer.
+   * @brief Copies elements in range ``[bottom, top)`` into a new ring buffer.
    *
    * This function allocates a new buffer and returns a pointer to it. The caller is responsible for
    * deallocating the memory.
@@ -91,192 +91,231 @@ struct ring_buf {
   }
 
  private:
-  std::int64_t m_cap;   // Capacity of the buffer
-  std::int64_t m_mask;  // Bit mask to perform modulo capacity operations
+  std::int64_t m_cap;   ///< Capacity of the buffer
+  std::int64_t m_mask;  ///< Bit mask to perform modulo capacity operations
 
   std::unique_ptr<T[]> m_buf = std::make_unique_for_overwrite<T[]>(m_cap);
 };
 
-// #ifdef __cpp_lib_hardware_interference_size
-// using std::hardware_destructive_interference_size;
-// #else
-// // 64 bytes on x86-64 │ L1_CACHE_BYTES │ L1_CACHE_SHIFT │ __cacheline_aligned │
-// // ...
-// inline constexpr std::size_t hardware_destructive_interference_size = 2 *
-// sizeof(std::max_align_t); #endif
+/**
+ * @brief The cache line size of the current architecture.
+ */
+#ifdef __cpp_lib_hardware_interference_size
+inline constexpr std::size_t k_cache_line = std::hardware_destructive_interference_size;
+#else
+inline constexpr std::size_t k_cache_line = 64;
+#endif
 
-// // Lock-free single-producer multiple-consumer dequeue. Only the dequeue owner can
-// // perform pop and push operations where the dequeue behaves like a stack. Others
-// // can (only) steal data from the dequeue, they see a FIFO queue. All threads must
-// // have finished using the dequeue before it is destructed. T must be default
-// // initializable, trivially destructible and have nothrow move
-// // constructor/assignment operators.
-// template <Trivial T>
-// class Dequeue {
-//  public:
-//   // Constructs the dequeue with a given capacity the capacity of the dequeue (must
-//   // be power of 2)
-//   explicit Dequeue(std::int64_t cap = 1024);
+/**
+ * @brief A lock-free single-producer multiple-consumer queue.
+ *
+ * Only the queue owner can perform ``pop()`` and ``push()`` operations where the queue behaves like
+ * a LIFO stack. Others can (only) ``steal()`` data from the queue, they see a FIFO queue. All
+ * threads must have finished using the queue before it is destructed.
+ *
+ * @tparam T The type of the elements in the queue - must be a trivial type.
+ */
+template <Trivial T>
+class queue {
+  static constexpr std::int64_t k_default_capacity = 1024;
+  static constexpr std::size_t k_garbage_reserve = 32;
 
-//   // Move/Copy is not supported
-//   Dequeue(Dequeue const& other) = delete;
-//   Dequeue& operator=(Dequeue const& other) = delete;
+ public:
+  /**
+   * @brief Construct a new empty queue object.
+   */
+  queue() : queue(k_default_capacity) {}
 
-//   //  Query the size at instance of call
-//   std::size_t size() const noexcept;
+  /**
+   * @brief Construct a new empty queue object.
+   *
+   * @param cap The capacity of the queue (must be a power of 2).
+   */
+  explicit queue(std::int64_t cap);
 
-//   // Query the capacity at instance of call
-//   int64_t capacity() const noexcept;
+  /**
+   * @brief Queue's are not copyable or movable.
+   */
+  queue(queue const& other) = delete;
+  /**
+   * @brief Queue's are not copyable or movable.
+   */
+  queue(queue&& other) = delete;
+  /**
+   * @brief Queue's are not assignable.
+   */
+  auto operator=(queue const& other) -> queue& = delete;
+  /**
+   * @brief Queue's are not assignable.
+   */
+  auto operator=(queue&& other) -> queue& = delete;
 
-//   // Test if empty at instance of call
-//   bool empty() const noexcept;
+  /**
+   * @brief Get the number of elements in the queue.
+   */
+  auto size() const noexcept -> std::size_t;
 
-//   // Emplace an item to the dequeue. Only the owner thread can insert an item to
-//   // the dequeue. The operation can trigger the dequeue to resize its cap if more
-//   // space is required. Provides the strong exception guarantee.
-//   template <typename... Args>
-//   void emplace(Args&&... args);
+  /**
+   * @brief Get the capacity of the queue.
+   */
+  auto capacity() const noexcept -> int64_t;
 
-//   // Pops out an item from the dequeue. Only the owner thread can pop out an item
-//   // from the dequeue. The return can be a std::nullopt if this operation fails
-//   // (empty dequeue).
-//   std::optional<T> pop() noexcept;
+  /**
+   * @brief Check if the queue is empty.
+   */
+  auto empty() const noexcept -> bool;
 
-//   // Steals an item from the dequeue Any threads can try to steal an item from the
-//   // dequeue. The return can be a std::nullopt if this operation failed (not
-//   // necessarily empty).
-//   std::optional<T> steal() noexcept;
+  /**
+   * @brief Push an item into the queue.
+   *
+   * Only the owner thread can insert an item into the queue. The operation can trigger the queue to
+   * resize if more space is required. Provides the strong exception guarantee.
+   *
+   * @param val Value to add to the queue.
+   */
+  auto push(T const& val) noexcept -> void;
 
-//   // Destruct the dequeue, all threads must have finished using the dequeue.
-//   ~Dequeue() noexcept;
+  /**
+   * @brief Pop an item from the queue.
+   *
+   * Only the owner thread can pop out an item from the queue. Returns ``std::nullopt`` if
+   * this operation fails (i.e. the queue is empty).
+   */
+  auto pop() noexcept -> std::optional<T>;
 
-//  private:
-//   alignas(hardware_destructive_interference_size) std::atomic<std::int64_t> _top;
-//   alignas(hardware_destructive_interference_size) std::atomic<std::int64_t> _bottom;
-//   alignas(hardware_destructive_interference_size) std::atomic<detail::ring_buf<T>*> _buffer;
+  /**
+   * @brief Steal an item from the queue.
+   *
+   * Any threads can try to steal an item from the queue. The return can be a std::nullopt if this
+   * operation failed (not necessarily empty).
+   *
+   * @return std::optional<T>
+   */
+  auto steal() noexcept -> std::optional<T>;
 
-//   std::vector<std::unique_ptr<detail::ring_buf<T>>> _garbage;  // Store old buffers here.
+  /**
+   * @brief Destroy the queue object.
+   *
+   * All threads must have finished using the queue before it is destructed.
+   */
+  ~queue() noexcept;
 
-//   // Convenience aliases.
-//   static constexpr std::memory_order relaxed = std::memory_order_relaxed;
-//   static constexpr std::memory_order consume = std::memory_order_consume;
-//   static constexpr std::memory_order acquire = std::memory_order_acquire;
-//   static constexpr std::memory_order release = std::memory_order_release;
-//   static constexpr std::memory_order seq_cst = std::memory_order_seq_cst;
-// };
+ private:
+  alignas(k_cache_line) std::atomic<std::int64_t> m_top;
+  alignas(k_cache_line) std::atomic<std::int64_t> m_bottom;
+  alignas(k_cache_line) std::atomic<ring_buf<T>*> m_buf;
 
-// template <Trivial T>
-// Dequeue<T>::Dequeue(std::int64_t cap) : _top(0), _bottom(0), _buffer(new
-// detail::ring_buf<T>{cap}) {
-//   _garbage.reserve(32);
-// }
+  std::vector<std::unique_ptr<ring_buf<T>>> m_garbage;  // Store old buffers here.
 
-// template <Trivial T>
-// std::size_t Dequeue<T>::size() const noexcept {
-//   int64_t b = _bottom.load(relaxed);
-//   int64_t t = _top.load(relaxed);
-//   return static_cast<std::size_t>(b >= t ? b - t : 0);
-// }
+  // Convenience aliases.
+  static constexpr std::memory_order relaxed = std::memory_order_relaxed;
+  static constexpr std::memory_order consume = std::memory_order_consume;
+  static constexpr std::memory_order acquire = std::memory_order_acquire;
+  static constexpr std::memory_order release = std::memory_order_release;
+  static constexpr std::memory_order seq_cst = std::memory_order_seq_cst;
+};
 
-// template <Trivial T>
-// int64_t Dequeue<T>::capacity() const noexcept {
-//   return _buffer.load(relaxed)->capacity();
-// }
+template <Trivial T>
+queue<T>::queue(std::int64_t cap) : m_top(0), m_bottom(0), m_buf(new ring_buf<T>{cap}) {
+  m_garbage.reserve(k_garbage_reserve);
+}
 
-// template <Trivial T>
-// bool Dequeue<T>::empty() const noexcept {
-//   return !size();
-// }
+template <Trivial T>
+auto queue<T>::size() const noexcept -> std::size_t {
+  int64_t bottom = m_bottom.load(relaxed);
+  int64_t top = m_top.load(relaxed);
+  return static_cast<std::size_t>(bottom >= top ? bottom - top : 0);
+}
 
-// template <Trivial T>
-// template <typename... Args>
-// void Dequeue<T>::emplace(Args&&... args) {
-//   // Construct before acquiring slot in-case constructor throws
-//   T object(std::forward<Args>(args)...);
+template <Trivial T>
+auto queue<T>::capacity() const noexcept -> int64_t {
+  return m_buf.load(relaxed)->capacity();
+}
 
-//   std::int64_t b = _bottom.load(relaxed);
-//   std::int64_t t = _top.load(acquire);
-//   detail::ring_buf<T>* buf = _buffer.load(relaxed);
+template <Trivial T>
+auto queue<T>::empty() const noexcept -> bool {
+  return !size();
+}
 
-//   if (buf->capacity() < (b - t) + 1) {
-//     // Queue is full, build a new one
-//     _garbage.emplace_back(std::exchange(buf, buf->resize(b, t)));
-//     _buffer.store(buf, relaxed);
-//   }
+template <Trivial T>
+auto queue<T>::push(T const& val) noexcept -> void {
+  std::int64_t bottom = m_bottom.load(relaxed);
+  std::int64_t top = m_top.load(acquire);
+  ring_buf<T>* buf = m_buf.load(relaxed);
 
-//   // Construct new object, this does not have to be atomic as no one can steal
-//   // this item until after we store the new value of bottom, ordering is
-//   // maintained by surrounding atomics.
-//   buf->store(b, std::move(object));
+  if (buf->capacity() < (bottom - top) + 1) {
+    // Queue is full, build a new one.
+    m_garbage.push_back(std::exchange(buf, buf->resize(bottom, top)));
+    m_buf.store(buf, relaxed);
+  }
 
-//   std::atomic_thread_fence(release);
-//   _bottom.store(b + 1, relaxed);
-// }
+  // Construct new object, this does not have to be atomic as no one can steal this item until after
+  // we store the new value of bottom, ordering is maintained by surrounding atomics.
+  buf->store(bottom, val);
 
-// template <Trivial T>
-// std::optional<T> Dequeue<T>::pop() noexcept {
-//   std::int64_t b = _bottom.load(relaxed) - 1;
-//   detail::ring_buf<T>* buf = _buffer.load(relaxed);
+  std::atomic_thread_fence(release);
+  m_bottom.store(bottom + 1, relaxed);
+}
 
-//   _bottom.store(b, relaxed);  // Stealers can no longer steal
+template <Trivial T>
+auto queue<T>::pop() noexcept -> std::optional<T> {
+  std::int64_t bottom = m_bottom.load(relaxed) - 1;
+  ring_buf<T>* buf = m_buf.load(relaxed);
 
-//   std::atomic_thread_fence(seq_cst);
-//   std::int64_t t = _top.load(relaxed);
+  m_bottom.store(bottom, relaxed);  // Stealers can no longer steal.
 
-//   if (t <= b) {
-//     // Non-empty dequeue
-//     if (t == b) {
-//       // The last item could get stolen, by a stealer that loaded bottom before
-//       // our write above
-//       if (!_top.compare_exchange_strong(t, t + 1, seq_cst, relaxed)) {
-//         // Failed race, thief got the last item.
-//         _bottom.store(b + 1, relaxed);
-//         return std::nullopt;
-//       }
-//       _bottom.store(b + 1, relaxed);
-//     }
+  std::atomic_thread_fence(seq_cst);
+  std::int64_t top = m_top.load(relaxed);
 
-//     // Can delay load until after acquiring slot as only this thread can push(),
-//     // this load is not required to be atomic as we are the exclusive writer.
-//     return buf->load(b);
+  if (top <= bottom) {
+    // Non-empty queue
+    if (top == bottom) {
+      // The last item could get stolen, by a stealer that loaded bottom before our write above.
+      if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
+        // Failed race, thief got the last item.
+        m_bottom.store(bottom + 1, relaxed);
+        return std::nullopt;
+      }
+      m_bottom.store(bottom + 1, relaxed);
+    }
 
-//   } else {
-//     _bottom.store(b + 1, relaxed);
-//     return std::nullopt;
-//   }
-// }
+    // Can delay load until after acquiring slot as only this thread can push(), this load is not
+    // required to be atomic as we are the exclusive writer.
+    return buf->load(bottom);
+  }
 
-// template <Trivial T>
-// std::optional<T> Dequeue<T>::steal() noexcept {
-//   std::int64_t t = _top.load(acquire);
-//   std::atomic_thread_fence(seq_cst);
-//   std::int64_t b = _bottom.load(acquire);
+  m_bottom.store(bottom + 1, relaxed);
+  return std::nullopt;
+}
 
-//   if (t < b) {
-//     // Must load *before* acquiring the slot as slot may be overwritten
-//     // immediately after acquiring. This load is NOT required to be atomic
-//     // even-though it may race with an overwrite as we only return the value if
-//     // we win the race below garanteeing we had no race during our read. If we
-//     // loose the race then 'x' could be corrupt due to read-during-write race
-//     // but as T is trivially destructible this does not matter.
-//     T x = _buffer.load(consume)->load(t);
+template <Trivial T>
+auto queue<T>::steal() noexcept -> std::optional<T> {
+  std::int64_t top = m_top.load(acquire);
+  std::atomic_thread_fence(seq_cst);
+  std::int64_t bottom = m_bottom.load(acquire);
 
-//     if (!_top.compare_exchange_strong(t, t + 1, seq_cst, relaxed)) {
-//       // Failed race.
-//       return std::nullopt;
-//     }
+  if (top < bottom) {
+    // Must load *before* acquiring the slot as slot may be overwritten immediately after acquiring.
+    // This load is NOT required to be atomic even-though it may race with an overwrite as we only
+    // return the value if we win the race below garanteeing we had no race during our read. If we
+    // loose the race then 'x' could be corrupt due to read-during-write race but as T is trivially
+    // destructible this does not matter.
+    T tmp = m_buf.load(consume)->load(top);
 
-//     return x;
+    if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
+      // Failed race.
+      return std::nullopt;
+    }
 
-//   } else {
-//     // Empty dequeue.
-//     return std::nullopt;
-//   }
-// }
+    return tmp;
+  }
+  // Empty queue.
+  return std::nullopt;
+}
 
-// template <Trivial T>
-// Dequeue<T>::~Dequeue() noexcept {
-//   delete _buffer.load();
-// }
+template <Trivial T>
+queue<T>::~queue() noexcept {
+  delete m_buf.load();
+}
 
 }  // namespace fp

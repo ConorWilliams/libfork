@@ -8,7 +8,7 @@ Welcome to the libFLY API reference this serves as information for developers to
    :maxdepth: 2
 
 
-   api/stub.rst
+   api/queue.rst
 
    
 
