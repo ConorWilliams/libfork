@@ -25,10 +25,10 @@
 // /**
 //  * @file queue.hpp
 //  *
-//  * @brief A stand-alone implementation of lock-free single-producer multiple-consumer deque.
+//  * @brief A stand-alone implementation of lock-free single-producer multiple-consumer dequeue.
 //  *
-//  * Implements the deque described in the papers, "Correct and Efficient Work-Stealing for Weak
-//  * Memory Models," and "Dynamic Circular Work-Stealing Deque". Both are available in
+//  * Implements the dequeue described in the papers, "Correct and Efficient Work-Stealing for Weak
+//  * Memory Models," and "Dynamic Circular Work-Stealing Dequeue". Both are available in
 //  'reference/'.
 //  */
 
@@ -95,22 +95,22 @@
 // inline constexpr std::size_t hardware_destructive_interference_size = 2 *
 // sizeof(std::max_align_t); #endif
 
-// // Lock-free single-producer multiple-consumer deque. Only the deque owner can
-// // perform pop and push operations where the deque behaves like a stack. Others
-// // can (only) steal data from the deque, they see a FIFO queue. All threads must
-// // have finished using the deque before it is destructed. T must be default
+// // Lock-free single-producer multiple-consumer dequeue. Only the dequeue owner can
+// // perform pop and push operations where the dequeue behaves like a stack. Others
+// // can (only) steal data from the dequeue, they see a FIFO queue. All threads must
+// // have finished using the dequeue before it is destructed. T must be default
 // // initializable, trivially destructible and have nothrow move
 // // constructor/assignment operators.
 // template <Trivial T>
-// class Deque {
+// class Dequeue {
 //  public:
-//   // Constructs the deque with a given capacity the capacity of the deque (must
+//   // Constructs the dequeue with a given capacity the capacity of the dequeue (must
 //   // be power of 2)
-//   explicit Deque(std::int64_t cap = 1024);
+//   explicit Dequeue(std::int64_t cap = 1024);
 
 //   // Move/Copy is not supported
-//   Deque(Deque const& other) = delete;
-//   Deque& operator=(Deque const& other) = delete;
+//   Dequeue(Dequeue const& other) = delete;
+//   Dequeue& operator=(Dequeue const& other) = delete;
 
 //   //  Query the size at instance of call
 //   std::size_t size() const noexcept;
@@ -121,24 +121,24 @@
 //   // Test if empty at instance of call
 //   bool empty() const noexcept;
 
-//   // Emplace an item to the deque. Only the owner thread can insert an item to
-//   // the deque. The operation can trigger the deque to resize its cap if more
+//   // Emplace an item to the dequeue. Only the owner thread can insert an item to
+//   // the dequeue. The operation can trigger the dequeue to resize its cap if more
 //   // space is required. Provides the strong exception guarantee.
 //   template <typename... Args>
 //   void emplace(Args&&... args);
 
-//   // Pops out an item from the deque. Only the owner thread can pop out an item
-//   // from the deque. The return can be a std::nullopt if this operation fails
-//   // (empty deque).
+//   // Pops out an item from the dequeue. Only the owner thread can pop out an item
+//   // from the dequeue. The return can be a std::nullopt if this operation fails
+//   // (empty dequeue).
 //   std::optional<T> pop() noexcept;
 
-//   // Steals an item from the deque Any threads can try to steal an item from the
-//   // deque. The return can be a std::nullopt if this operation failed (not
+//   // Steals an item from the dequeue Any threads can try to steal an item from the
+//   // dequeue. The return can be a std::nullopt if this operation failed (not
 //   // necessarily empty).
 //   std::optional<T> steal() noexcept;
 
-//   // Destruct the deque, all threads must have finished using the deque.
-//   ~Deque() noexcept;
+//   // Destruct the dequeue, all threads must have finished using the dequeue.
+//   ~Dequeue() noexcept;
 
 //  private:
 //   alignas(hardware_destructive_interference_size) std::atomic<std::int64_t> _top;
@@ -156,30 +156,31 @@
 // };
 
 // template <Trivial T>
-// Deque<T>::Deque(std::int64_t cap) : _top(0), _bottom(0), _buffer(new detail::ring_buf<T>{cap}) {
+// Dequeue<T>::Dequeue(std::int64_t cap) : _top(0), _bottom(0), _buffer(new
+// detail::ring_buf<T>{cap}) {
 //   _garbage.reserve(32);
 // }
 
 // template <Trivial T>
-// std::size_t Deque<T>::size() const noexcept {
+// std::size_t Dequeue<T>::size() const noexcept {
 //   int64_t b = _bottom.load(relaxed);
 //   int64_t t = _top.load(relaxed);
 //   return static_cast<std::size_t>(b >= t ? b - t : 0);
 // }
 
 // template <Trivial T>
-// int64_t Deque<T>::capacity() const noexcept {
+// int64_t Dequeue<T>::capacity() const noexcept {
 //   return _buffer.load(relaxed)->capacity();
 // }
 
 // template <Trivial T>
-// bool Deque<T>::empty() const noexcept {
+// bool Dequeue<T>::empty() const noexcept {
 //   return !size();
 // }
 
 // template <Trivial T>
 // template <typename... Args>
-// void Deque<T>::emplace(Args&&... args) {
+// void Dequeue<T>::emplace(Args&&... args) {
 //   // Construct before acquiring slot in-case constructor throws
 //   T object(std::forward<Args>(args)...);
 
@@ -203,7 +204,7 @@
 // }
 
 // template <Trivial T>
-// std::optional<T> Deque<T>::pop() noexcept {
+// std::optional<T> Dequeue<T>::pop() noexcept {
 //   std::int64_t b = _bottom.load(relaxed) - 1;
 //   detail::ring_buf<T>* buf = _buffer.load(relaxed);
 
@@ -213,7 +214,7 @@
 //   std::int64_t t = _top.load(relaxed);
 
 //   if (t <= b) {
-//     // Non-empty deque
+//     // Non-empty dequeue
 //     if (t == b) {
 //       // The last item could get stolen, by a stealer that loaded bottom before
 //       // our write above
@@ -236,7 +237,7 @@
 // }
 
 // template <Trivial T>
-// std::optional<T> Deque<T>::steal() noexcept {
+// std::optional<T> Dequeue<T>::steal() noexcept {
 //   std::int64_t t = _top.load(acquire);
 //   std::atomic_thread_fence(seq_cst);
 //   std::int64_t b = _bottom.load(acquire);
@@ -244,7 +245,7 @@
 //   if (t < b) {
 //     // Must load *before* acquiring the slot as slot may be overwritten
 //     // immediately after acquiring. This load is NOT required to be atomic
-//     // even-though it may race with an overrite as we only return the value if
+//     // even-though it may race with an overwrite as we only return the value if
 //     // we win the race below garanteeing we had no race during our read. If we
 //     // loose the race then 'x' could be corrupt due to read-during-write race
 //     // but as T is trivially destructible this does not matter.
@@ -258,13 +259,13 @@
 //     return x;
 
 //   } else {
-//     // Empty deque.
+//     // Empty dequeue.
 //     return std::nullopt;
 //   }
 // }
 
 // template <Trivial T>
-// Deque<T>::~Deque() noexcept {
+// Dequeue<T>::~Dequeue() noexcept {
 //   delete _buffer.load();
 // }
 
