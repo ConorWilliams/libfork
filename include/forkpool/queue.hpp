@@ -1,91 +1,78 @@
-// #pragma once
+#pragma once
 
-// // Copyright © Conor Williams <conorwilliams@outlook.com>
+// Copyright © Conor Williams <conorwilliams@outlook.com>
 
-// // SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MPL-2.0
 
-// // This Source Code Form is subject to the terms of the Mozilla Public
-// // License, v. 2.0. If a copy of the MPL was not distributed with this
-// // file, You can obtain one at https://mozilla.org/MPL/2.0/.
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-// #include <atomic>
-// #include <cassert>
-// #include <concepts>
-// #include <cstddef>
-// #include <cstdint>
-// #include <memory>
-// #include <new>
-// #include <optional>
-// #include <type_traits>
-// #include <utility>
-// #include <vector>
+#include <atomic>
+#include <concepts>
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <new>
+#include <optional>
+#include <type_traits>
+#include <utility>
+#include <vector>
 
 #include "forkpool/utility.hpp"
 
-// /**
-//  * @file queue.hpp
-//  *
-//  * @brief A stand-alone implementation of lock-free single-producer multiple-consumer dequeue.
-//  *
-//  * Implements the dequeue described in the papers, "Correct and Efficient Work-Stealing for Weak
-//  * Memory Models," and "Dynamic Circular Work-Stealing Dequeue". Both are available in
-//  'reference/'.
-//  */
+/**
+ * @file queue.hpp
+ *
+ * @brief A stand-alone implementation of lock-free single-producer multiple-consumer dequeue.
+ *
+ * Implements the dequeue described in the papers, "Correct and Efficient Work-Stealing for Weak
+ * Memory Models," and "Dynamic Circular Work-Stealing Dequeue". Both are available in
+ 'reference/'.
+ */
 
-// namespace fp {
+namespace fp {
 
-// template <typename T>
-// concept Trivial = std::is_trivial_v<T>;
+template <typename T>
+concept Trivial = std::is_trivial_v<T>;
 
-// namespace detail {
+// Basic wrapper around a c-style array of atomic objects that provides modulo
+// load/stores. Capacity must be a power of 2.
+template <Trivial T>
+struct ring_buf {
+  /**
+   * @brief Construct a new ring buff object
+   *
+   * @param cap
+   */
+  explicit ring_buf(std::int64_t cap) : m_cap{cap}, m_mask{cap - 1} {
+    ASSERT(cap && (!(cap & (cap - 1))), "Capacity must be a power of 2!");
+  }
 
-// // Basic wrapper around a c-style array of atomic objects that provides modulo
-// // load/stores. Capacity must be a power of 2.
-// template <Trivial T>
-// struct ring_buf {
-//   /**
-//    * @brief Construct a new ring buff object
-//    *
-//    * @param cap
-//    */
-//   explicit ring_buf(std::int64_t cap) : _cap{cap}, _mask{cap - 1} {
-//     assert(cap && (!(cap & (cap - 1))) && "Capacity must be buf power of 2!");
-//   }
+  auto capacity() const noexcept -> std::int64_t { return m_cap; }
 
-//   auto capacity() const noexcept -> std::int64_t { return _cap; }
+  // Store (copy) at modulo index
+  auto store(std::int64_t index, T val) noexcept -> void { m_buf[index & m_mask] = val; }
 
-//   // Store (copy) at modulo index
-//   auto store(std::int64_t i, T&& x) noexcept -> void
-//     requires std::is_nothrow_move_assignable_v<T>
-//   {
-//     _buff[i & _mask] = std::move(x);
-//   }
+  // Load (copy) at modulo index
+  auto load(std::int64_t index) const noexcept -> T { return m_buf[index & m_mask]; }
 
-//   // Load (copy) at modulo index
-//   auto load(std::int64_t i) const noexcept -> T
-//     requires std::is_nothrow_move_constructible_v<T>
-//   {
-//     return _buff[i & _mask];
-//   }
+  // Allocates and returns a new ring buffer, copies elements in range [b, t)
+  // into the new buffer.
+  auto resize(std::int64_t bottom, std::int64_t top) const -> ring_buf<T>* {
+    auto* ptr = new ring_buf{2 * m_cap};
+    for (std::int64_t i = top; i != bottom; ++i) {
+      ptr->store(i, load(i));
+    }
+    return ptr;
+  }
 
-//   // Allocates and returns a new ring buffer, copies elements in range [b, t)
-//   // into the new buffer.
-//   ring_buf<T>* resize(std::int64_t b, std::int64_t t) const {
-//     ring_buf<T>* ptr = new ring_buf{2 * _cap};
-//     for (std::int64_t i = t; i != b; ++i) {
-//       ptr->store(i, load(i));
-//     }
-//     return ptr;
-//   }
+ private:
+  std::int64_t m_cap;   // Capacity of the buffer
+  std::int64_t m_mask;  // Bit mask to perform modulo capacity operations
 
-//  private:
-//   std::int64_t _cap;   // Capacity of the buffer
-//   std::int64_t _mask;  // Bit mask to perform modulo capacity operations
-
-//   std::unique_ptr<T[]> _buff = std::make_unique_for_overwrite<T[]>(_cap);
-// };
-
-// }  // namespace detail
+  std::unique_ptr<T[]> m_buf = std::make_unique_for_overwrite<T[]>(m_cap);
+};
 
 // #ifdef __cpp_lib_hardware_interference_size
 // using std::hardware_destructive_interference_size;
@@ -269,4 +256,4 @@
 //   delete _buffer.load();
 // }
 
-// }  // namespace fp
+}  // namespace fp

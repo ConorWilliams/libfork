@@ -8,6 +8,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include <exception>
 #include <iostream>
 #include <string_view>
 
@@ -20,7 +21,9 @@
 
 namespace fp {
 
-inline constexpr int dummy = 0;
+struct error : std::runtime_error {
+  using std::runtime_error::runtime_error;
+};
 
 #ifndef NDEBUG
 
@@ -38,14 +41,15 @@ constexpr auto file_name(std::string_view path) -> std::string_view {
 /**
  * @brief Use like fly::verify() but disabled if ``NDEBUG`` defined.
  */
-#define ASSERT(expr, string_literal)                                                           \
-  do {                                                                                         \
-    constexpr std::string_view fname = fly::detail::file_name(__FILE__);                       \
-                                                                                               \
-    if (!(expr)) {                                                                             \
-      std::err << "ASSERT \"" << #expr << "\" failed in " << fname << ":" << __LINE__ << " | " \
-               << (string_literal) << std::endl;                                               \
-    }                                                                                          \
+#define ASSERT(expr, msg)                                                                       \
+  do {                                                                                          \
+    constexpr std::string_view fname = ::fp::detail::file_name(__FILE__);                       \
+                                                                                                \
+    if (!(expr)) {                                                                              \
+      std::cerr << "ASSERT \"" << #expr << "\" failed in " << fname << ":" << __LINE__ << " | " \
+                << (msg) << std::endl;                                                          \
+      std::terminate();                                                                         \
+    }                                                                                           \
   } while (false)
 
 #else
