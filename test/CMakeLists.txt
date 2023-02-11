@@ -14,6 +14,10 @@ if(PROJECT_IS_TOP_LEVEL)
   enable_testing()
 endif()
 
+# Stop cmake warnings about undefined shared libs in Catch2
+if(NOT DEFINED BUILD_SHARED_LIBS)
+  set(BUILD_SHARED_LIBS OFF)
+endif()
 
 Include(FetchContent)
 
