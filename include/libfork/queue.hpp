@@ -9,7 +9,6 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <atomic>
-#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -19,7 +18,7 @@
 #include <utility>
 #include <vector>
 
-#include "forkpool/utility.hpp"
+#include "libfork/utility.hpp"
 
 /**
  * @file queue.hpp
@@ -27,14 +26,20 @@
  * @brief A stand-alone implementation of the Chase-Lev lock-free single-producer multiple-consumer
  * queue.
  *
- * Implements the queue described in the papers, "Correct and Efficient Work-Stealing for Weak
- * Memory Models," and "Dynamic Circular Work-Stealing Queue". Both are available in 'reference/'.
+ * \rst
+ *
+ * Implements the queue described in the papers, `"Dynamic Circular Work-Stealing Queue"
+ * <https://doi.org/10.1145/1073970.1073974>`_ and `"Correct and Efficient Work-Stealing for Weak
+ * Memory Models" <https://doi.org/10.1145/2442516.2442524>`_. Both are available in `reference/
+ * <https://github.com/ConorWilliams/Forkpool/tree/main/reference>`_.
+ *
+ * \endrst
  */
 
-namespace fp {
+namespace lf {
 
 /**
- * @brief A concept for std::is_trivial_v<T>.
+ * @brief A concept for ``std::is_trivial_v<T>``.
  */
 template <typename T>
 concept Trivial = std::is_trivial_v<T>;
@@ -107,7 +112,7 @@ inline constexpr std::size_t k_cache_line = 64;
 #endif
 
 /**
- * @brief A lock-free single-producer multiple-consumer queue.
+ * @brief An unbounded lock-free single-producer multiple-consumer queue.
  *
  * Only the queue owner can perform ``pop()`` and ``push()`` operations where the queue behaves like
  * a LIFO stack. Others can (only) ``steal()`` data from the queue, they see a FIFO queue. All
@@ -169,7 +174,7 @@ class queue {
    * @brief Push an item into the queue.
    *
    * Only the owner thread can insert an item into the queue. The operation can trigger the queue to
-   * resize if more space is required. Provides the strong exception guarantee.
+   * resize if more space is required.
    *
    * @param val Value to add to the queue.
    */
@@ -184,36 +189,34 @@ class queue {
   auto pop() noexcept -> std::optional<T>;
 
   /**
-   * @brief The error codes for the steal operation.
+   * @brief Error codes for the ``steal()`` operation.
    */
   enum class err : int {
-    won = 0,  ///< The steal operation succeeded.
-    lost,     ///< Lost the steal race hence, the steal operation failed.
-    empty,    ///< The queue is empty and hence, the steal operation failed.
+    won = 0,  ///< The ``steal()`` operation succeeded.
+    lost,     ///< Lost the ``steal()`` race hence, the ``steal()`` operation failed.
+    empty,    ///< The queue is empty and hence, the ``steal()`` operation failed.
   };
 
   /**
-   * @brief The return type of the steal operation.
+   * @brief The return type of the ``steal()`` operation.
    *
    * Suitable for structured bindings.
    */
   struct steal_t {
     /**
-     * @brief Check if the steal operation succeeded.
+     * @brief Check if the operation succeeded.
      */
     constexpr explicit operator bool() const noexcept { return code == err::won; }
 
-    err code;  ///< The error code of the steal operation.
+    err code;  ///< The error code of the ``steal()`` operation.
     T val;     ///< The value stolen from the queue, Only valid if ``code == err::stolen``.
   };
 
   /**
    * @brief Steal an item from the queue.
    *
-   * Any threads can try to steal an item from the queue. The return can be a std::nullopt if this
-   * operation failed (not necessarily empty).
-   *
-   * @return std::optional<T>
+   * Any threads can try to steal an item from the queue. This operation can fail if the queue is
+   * empty or if another thread simulatniously stole an item from the queue.
    */
   auto steal() noexcept -> steal_t;
 
@@ -269,7 +272,7 @@ auto queue<T>::push(T const& val) noexcept -> void {
 
   if (buf->capacity() < (bottom - top) + 1) {
     // Queue is full, build a new one.
-    m_garbage.push_back(std::exchange(buf, buf->resize(bottom, top)));
+    m_garbage.emplace_back(std::exchange(buf, buf->resize(bottom, top)));
     m_buf.store(buf, relaxed);
   }
 
@@ -302,12 +305,10 @@ auto queue<T>::pop() noexcept -> std::optional<T> {
       }
       m_bottom.store(bottom + 1, relaxed);
     }
-
     // Can delay load until after acquiring slot as only this thread can push(), this load is not
     // required to be atomic as we are the exclusive writer.
     return buf->load(bottom);
   }
-
   m_bottom.store(bottom + 1, relaxed);
   return std::nullopt;
 }
@@ -329,7 +330,7 @@ auto queue<T>::steal() noexcept -> steal_t {
     if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
       return {.code = err::lost};
     }
-    return {.code = err::won, .val = tmp};  // Won the CAS
+    return {.code = err::won, .val = tmp};
   }
   return {.code = err::empty};
 }
@@ -339,4 +340,4 @@ queue<T>::~queue() noexcept {
   delete m_buf.load();
 }
 
-}  // namespace fp
+}  // namespace lf

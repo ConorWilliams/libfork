@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.14)
 include(cmake/prelude.cmake)
 
 project(
-    forkpool
+    libfork
     VERSION 0.1.0
     DESCRIPTION "Short description"
     HOMEPAGE_URL "https://example.com/"
@@ -15,21 +15,21 @@ include(cmake/variables.cmake)
 
 # ---- Declare library ----
 
-add_library(forkpool_forkpool INTERFACE)
-add_library(forkpool::forkpool ALIAS forkpool_forkpool)
+add_library(libfork_libfork INTERFACE)
+add_library(libfork::libfork ALIAS libfork_libfork)
 
 set_property(
-    TARGET forkpool_forkpool PROPERTY
-    EXPORT_NAME forkpool
+    TARGET libfork_libfork PROPERTY
+    EXPORT_NAME libfork
 )
 
 target_include_directories(
-    forkpool_forkpool ${warning_guard}
+    libfork_libfork ${warning_guard}
     INTERFACE
     "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
 )
 
-target_compile_features(forkpool_forkpool INTERFACE cxx_std_20)
+target_compile_features(libfork_libfork INTERFACE cxx_std_20)
 
 # ---- Install rules ----
 
@@ -39,12 +39,12 @@ endif()
 
 # ---- Developer mode ----
 
-if(NOT forkpool_DEVELOPER_MODE)
+if(NOT libfork_DEVELOPER_MODE)
   return()
 elseif(NOT PROJECT_IS_TOP_LEVEL)
   message(
       AUTHOR_WARNING
-      "Developer mode is intended for developers of forkpool"
+      "Developer mode is intended for developers of libfork"
   )
 endif()
 

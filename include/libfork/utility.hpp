@@ -19,8 +19,7 @@
  *
  */
 
-namespace fp {
-
+namespace lf {
 struct error : std::runtime_error {
   using std::runtime_error::runtime_error;
 };
@@ -39,11 +38,11 @@ constexpr auto file_name(std::string_view path) -> std::string_view {
 }  // namespace detail
 
 /**
- * @brief Use like fly::verify() but disabled if ``NDEBUG`` defined.
+ * @brief Assert an expression is true and ``std::terminate()`` if not.
  */
 #define ASSERT(expr, msg)                                                                       \
   do {                                                                                          \
-    constexpr std::string_view fname = ::fp::detail::file_name(__FILE__);                       \
+    constexpr std::string_view fname = ::lf::detail::file_name(__FILE__);                       \
                                                                                                 \
     if (!(expr)) {                                                                              \
       std::cerr << "ASSERT \"" << #expr << "\" failed in " << fname << ":" << __LINE__ << " | " \
@@ -55,7 +54,7 @@ constexpr auto file_name(std::string_view path) -> std::string_view {
 #else
 
 /**
- * @brief Use like fly::verify() but disabled if ``NDEBUG`` defined.
+ * @brief Assert an expression is true and ``std::terminate()`` if not.
  */
 #define ASSERT(...) \
   do {              \
@@ -63,4 +62,4 @@ constexpr auto file_name(std::string_view path) -> std::string_view {
 
 #endif  // !NDEBUG
 
-}  // namespace fp
+}  // namespace lf

@@ -1,8 +1,13 @@
 Queue
 ==========
 
-File: ``forkpool/queue.hpp``
+File: ``libfork/queue.hpp``
 
-.. doxygenclass:: fp::queue
+.. doxygenfile:: queue.hpp
+    :sections: briefdescription detaileddescription
+
+.. doxygenconcept:: lf::Trivial
+
+.. doxygenclass:: lf::queue
     :members:
     :undoc-members:

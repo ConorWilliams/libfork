@@ -20,7 +20,7 @@
 # -- Project information -----------------------------------------------------
 
 from textwrap import dedent
-project = 'Forkpool'
+project = 'libfork'
 copyright = '2022, ConorWilliams'
 author = 'ConorWilliams'
 

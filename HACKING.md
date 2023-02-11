@@ -6,7 +6,7 @@ potential contributor.
 ## Developer mode
 
 Build system targets that are only useful for developers of this project are
-hidden if the `forkpool_DEVELOPER_MODE` option is disabled. Enabling this
+hidden if the `libfork_DEVELOPER_MODE` option is disabled. Enabling this
 option makes tests and other developer targets and options available. Not
 enabling this option means that you are a consumer of this project and thus you
 have no need for these targets and options.
@@ -20,7 +20,7 @@ the project. As a developer, you are recommended to always have the [latest
 CMake version][2] installed to make use of the latest Quality-of-Life
 additions.
 
-You have a few options to pass `forkpool_DEVELOPER_MODE` to the configure
+You have a few options to pass `libfork_DEVELOPER_MODE` to the configure
 command, but this project prefers to use presets.
 
 As a developer, you should create a `CMakeUserPresets.json` file at the root of

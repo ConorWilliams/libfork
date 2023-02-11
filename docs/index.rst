@@ -8,7 +8,7 @@ OpenFLY 0.9.x-dev
 
 
 
-Welcome to forkpools's documentation!
+Welcome to libforks's documentation!
 
 
 

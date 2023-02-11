@@ -1,6 +1,6 @@
-# Forkpool
+# libfork
 
-This is the forkpool project.
+This is the libfork project.
 
 # Building and installing
 
