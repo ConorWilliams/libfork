@@ -22,7 +22,7 @@ find_package(Threads REQUIRED)
 add_library(libfork_libfork INTERFACE)
 add_library(libfork::libfork ALIAS libfork_libfork)
 
-target_link_libraries(libfork_libfork INTERFACE ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(libfork_libfork INTERFACE Threads::Threads)
 
 set_property(
     TARGET libfork_libfork PROPERTY
