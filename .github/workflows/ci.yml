@@ -104,30 +104,16 @@ jobs:
 
     runs-on: ubuntu-22.04
 
-    # To enable, first you have to create an orphaned gh-pages branch:
-    #
-    #    git switch --orphan gh-pages
-    #    git commit --allow-empty -m "Initial commit"
-    #    git push -u origin gh-pages
-    #
-    # Edit the <name> placeholder below to your GitHub name, so this action
-    # runs only in your repository and no one else's fork. After these, delete
-    # this comment and the last line in the conditional below.
-    # If you do not wish to use GitHub Pages for deploying documentation, then
-    # simply delete this job.
-    if: github.ref == 'refs/heads/master'
-      && github.event_name == 'push'
-      && github.repository_owner == '<name>'
-      && false
-
     steps:
     - uses: actions/checkout@v3
 
     - uses: actions/setup-python@v4
       with: { python-version: "3.8" }
 
-    - name: Install m.css dependencies
-      run: pip3 install jinja2 Pygments
+
+
+    - name: Install python dependancies
+      run: pip3 install -r docs/requirements.txt
 
     - name: Install Doxygen
       run: sudo apt-get update -q
@@ -135,10 +121,11 @@ jobs:
 
     - name: Build docs
       run: cmake "-DPROJECT_SOURCE_DIR=$PWD" "-DPROJECT_BINARY_DIR=$PWD/build"
-        -P cmake/docs-ci.cmake
+        -P cmake/docs.cmake
 
     - name: Deploy docs
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: build/docs/html
+      if: false
