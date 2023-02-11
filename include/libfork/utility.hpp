@@ -15,11 +15,14 @@
 /**
  * @file utility.hpp
  *
- * @brief A small collection of utilities.
- *
+ * @brief A small collection of utility functions and macros.
  */
 
 namespace lf {
+
+/**
+ * @brief libfork's error type, derived from ``std::runtime_error``.
+ */
 struct error : std::runtime_error {
   using std::runtime_error::runtime_error;
 };
