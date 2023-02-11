@@ -62,4 +62,28 @@ constexpr auto file_name(std::string_view path) -> std::string_view {
 
 #endif  // !NDEBUG
 
+/**
+ * @brief A wrapper for C++23's ``[[assume(expr )]]`` attribute.
+ *
+ * Reverts to compiler specific implementations if the attribute is not available.
+ */
+#if __has_cpp_attribute(assume)
+#define ASSUME(expr) [[assume((expr))]]
+#elif defined(__clang__)
+#define ASSUME(expr) __builtin_assume((expr))
+#elif defined(__GNUC__) && !defined(__ICC)
+#define ASSUME(expr)         \
+  if ((expr)) {              \
+  } else {                   \
+    __builtin_unreachable(); \
+  }
+#elif defined(_MSC_VER) || defined(__ICC)
+#define ASSUME(expr) __assume((expr))
+#else
+#warning "No ASSUME() implementation for this compiler."
+#define ASSUME(expr) \
+  do {               \
+  } while (false)
+#endif
+
 }  // namespace lf
