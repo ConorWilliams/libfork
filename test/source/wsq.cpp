@@ -11,6 +11,8 @@
 
 #include "libfork/queue.hpp"
 
+// NOLINTBEGIN No linting in tests
+
 using namespace lf;
 
 // Procedure: wsq_test_owner
@@ -182,3 +184,5 @@ TEST_CASE("WSQ.nThieves", "[wsq]") {
     wsq_test_n_thieves(i);
   }
 }
+
+// NOLINTEND

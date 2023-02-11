@@ -40,6 +40,8 @@ constexpr auto file_name(std::string_view path) -> std::string_view {
 
 }  // namespace detail
 
+// NOLINTBEGIN Sometime macros are the only way to do things.
+
 /**
  * @brief Assert an expression is true and ``std::terminate()`` if not.
  */
@@ -117,5 +119,7 @@ constexpr auto file_name(std::string_view path) -> std::string_view {
 #else
 #define ASSERT_ASSUME(expr, message) ASSUME(expr)
 #endif
+
+// NOLINTEND
 
 }  // namespace lf

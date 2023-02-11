@@ -60,28 +60,28 @@ struct ring_buf {
    * @param cap The capacity of the buffer, MUST be a power of 2.
    */
   explicit ring_buf(std::int64_t cap) : m_cap{cap}, m_mask{cap - 1} {
-    ASSERT_ASSUME(cap && (!(cap & (cap - 1))), "Capacity must be a power of 2!");
+    ASSERT_ASSUME(cap > 0 && (!(cap & (cap - 1))), "Capacity must be a power of 2!");  // NOLINT
   }
 
   /**
    * @brief Get the capacity of the buffer.
    */
-  auto capacity() const noexcept -> std::int64_t { return m_cap; }
+  [[nodiscard]] auto capacity() const noexcept -> std::int64_t { return m_cap; }
 
   /**
    * @brief Store ``val`` at ``index % this->capacity()``.
    */
   auto store(std::int64_t index, T val) noexcept -> void {
     CHECK_ASSUME(index >= 0);
-    *(m_buf.get() + (index & m_mask)) = val;  // Bypass operator[] to avoid cast to std::size_t.
+    *(m_buf.get() + (index & m_mask)) = val;  // NOLINT Avoid cast to std::size_t.
   }
 
   /**
    * @brief Load value at ``index % this->capacity()``.
    */
-  auto load(std::int64_t index) const noexcept -> T {
+  [[nodiscard]] auto load(std::int64_t index) const noexcept -> T {
     CHECK_ASSUME(index >= 0);
-    return *(m_buf.get() + (index & m_mask));  // Bypass operator[] to avoid cast to std::size_t.
+    return *(m_buf.get() + (index & m_mask));  // NOLINT Avoid cast to std::size_t.
   }
 
   /**
@@ -93,8 +93,8 @@ struct ring_buf {
    * @param bottom The bottom of the range to copy from (inclusive).
    * @param top The top of the range to copy from (exclusive).
    */
-  auto resize(std::int64_t bottom, std::int64_t top) const -> ring_buf<T>* {
-    auto* ptr = new ring_buf{2 * m_cap};
+  auto resize(std::int64_t bottom, std::int64_t top) const -> ring_buf<T>* {  // NOLINT
+    auto* ptr = new ring_buf{2 * m_cap};                                      // NOLINT
     for (std::int64_t i = top; i != bottom; ++i) {
       ptr->store(i, load(i));
     }
@@ -106,6 +106,7 @@ struct ring_buf {
   std::int64_t m_mask;  ///< Bit mask to perform modulo capacity operations
 
 #ifdef __cpp_lib_smart_ptr_for_overwrite
+  // NOLINTNEXTLINE
   std::unique_ptr<T[]> m_buf = std::make_unique_for_overwrite<T[]>(static_cast<std::size_t>(m_cap));
 #else
   std::unique_ptr<T[]> m_buf = std::make_unique<T[]>(static_cast<std::size_t>(m_cap));
@@ -188,21 +189,21 @@ class queue {
   /**
    * @brief Get the number of elements in the queue.
    */
-  auto size() const noexcept -> std::size_t;
+  [[nodiscard]] auto size() const noexcept -> std::size_t;
   /**
    * @brief Get the number of elements in the queue as a signed integer.
    */
-  auto ssize() const noexcept -> int64_t;
+  [[nodiscard]] auto ssize() const noexcept -> int64_t;
 
   /**
    * @brief Get the capacity of the queue.
    */
-  auto capacity() const noexcept -> int64_t;
+  [[nodiscard]] auto capacity() const noexcept -> int64_t;
 
   /**
    * @brief Check if the queue is empty.
    */
-  auto empty() const noexcept -> bool;
+  [[nodiscard]] auto empty() const noexcept -> bool;
 
   /**
    * @brief Push an item into the queue.
@@ -381,7 +382,7 @@ auto queue<T>::steal() noexcept -> steal_t {
 
 template <Trivial T>
 queue<T>::~queue() noexcept {
-  delete m_buf.load();
+  delete m_buf.load();  // NOLINT
 }
 
 }  // namespace lf

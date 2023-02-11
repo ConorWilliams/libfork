@@ -14,13 +14,15 @@
 
 #include "libfork/queue.hpp"
 
-int example() {
+auto example() -> int {
   // Work-stealing queue of ints
   lf::queue<int> queue;
 
+  constexpr int num_items = 10000;
+
   // One thread can push and pop items from one end (like a stack)
   std::jthread owner([&]() {
-    for (int i = 0; i < 10000; ++i) {
+    for (int i = 0; i < num_items; ++i) {
       queue.push(i);
     }
     while (std::optional item = queue.pop()) {
@@ -44,6 +46,8 @@ int example() {
 }
 
 // !END-EXAMPLE
+
+// NOLINTBEGIN No linting in tests
 
 TEST_CASE("Example", "[queue]") {
   REQUIRE(!example());
@@ -168,3 +172,5 @@ TEST_CASE("Single producer + pop(), multiple consumer", "[queue]") {
 
   REQUIRE(remaining == 0);
 }
+
+// NOLINTEND
