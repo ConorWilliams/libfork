@@ -2,5 +2,6 @@
 builtin = clear,rare,en-GB_to_en-US,names,informal,code
 check-filenames =
 check-hidden =
+ignore-words-list = deque
 skip = */.git,*/build,*/prefix
 quiet-level = 2
