@@ -220,6 +220,44 @@ Memory Models”</a>. Both are available in <a class="reference external" href="
 <span id="_CPPv3I_7TrivialEN2lf5queueE"></span><span id="_CPPv2I_7TrivialEN2lf5queueE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">Trivial</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classlf_1_1queue"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">queue</span></span></span><a class="headerlink" href="#_CPPv4I_7TrivialEN2lf5queueE" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>An unbounded lock-free single-producer multiple-consumer queue. </p>
 <p>Only the queue owner can perform <code class="docutils literal notranslate"><a class="reference internal" href="#classlf_1_1queue_1a09cc8230ed6cd3d05c1dd6fc0301ac08"><span class="std std-ref"><span class="pre">pop()</span></span></a></code> and <code class="docutils literal notranslate"><a class="reference internal" href="#classlf_1_1queue_1a2d8d63a44fe6c820281056c859185215"><span class="std std-ref"><span class="pre">push()</span></span></a></code> operations where the queue behaves like a LIFO stack. Others can (only) <code class="docutils literal notranslate"><a class="reference internal" href="#classlf_1_1queue_1a6655e7ca5b5d0970364a44a44fcf25ef"><span class="std std-ref"><span class="pre">steal()</span></span></a></code> data from the queue, they see a FIFO queue. All threads must have finished using the queue before it is destructed.</p>
+<p><p>Example:</p>
+<div class="code highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;thread&gt;</span>
+
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;libfork/queue.hpp&quot;</span>
+
+<span class="k">auto</span><span class="w"> </span><span class="n">example</span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="c1">// Work-stealing queue of ints</span>
+<span class="w">  </span><span class="n">lf</span><span class="o">::</span><span class="n">queue</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">queue</span><span class="p">;</span>
+
+<span class="w">  </span><span class="k">constexpr</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">num_items</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10000</span><span class="p">;</span>
+
+<span class="w">  </span><span class="c1">// One thread can push and pop items from one end (like a stack)</span>
+<span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">jthread</span><span class="w"> </span><span class="nf">owner</span><span class="p">([</span><span class="o">&amp;</span><span class="p">]()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">num_items</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="n">queue</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">optional</span><span class="w"> </span><span class="n">item</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">queue</span><span class="p">.</span><span class="n">pop</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="c1">// Do something with items...</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">});</span>
+
+<span class="w">  </span><span class="c1">// While multiple (any) threads can steal items from the other end</span>
+<span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">jthread</span><span class="w"> </span><span class="nf">thief</span><span class="p">([</span><span class="o">&amp;</span><span class="p">]()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">queue</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="w"> </span><span class="n">item</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">queue</span><span class="p">.</span><span class="n">steal</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Do something with item...</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">});</span>
+
+<span class="w">  </span><span class="n">owner</span><span class="p">.</span><span class="n">join</span><span class="p">();</span>
+<span class="w">  </span><span class="n">thief</span><span class="p">.</span><span class="n">join</span><span class="p">();</span>
+
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</p>
 <dl class="field-list simple">
 <dt class="field-odd">Template Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>T</strong> – The type of the elements in the queue - must be a trivial type. </p>
@@ -227,29 +265,10 @@ Memory Models”</a>. Both are available in <a class="reference external" href="
 </dl>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-types">Public Types</p>
-<dl class="cpp enum-class">
-<dt class="sig sig-object cpp" id="_CPPv4N2lf5queue3errE">
-<span id="_CPPv3N2lf5queue3errE"></span><span id="_CPPv2N2lf5queue3errE"></span><span class="target" id="classlf_1_1queue_1a968ca5497fe043d0235e5d6c9f1df80f"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">err</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><a class="headerlink" href="#_CPPv4N2lf5queue3errE" title="Permalink to this definition">#</a><br /></dt>
-<dd><p>Error codes for the <code class="docutils literal notranslate"><a class="reference internal" href="#classlf_1_1queue_1a6655e7ca5b5d0970364a44a44fcf25ef"><span class="std std-ref"><span class="pre">steal()</span></span></a></code> operation. </p>
-<p><em>Values:</em></p>
-<dl class="cpp enumerator">
-<dt class="sig sig-object cpp" id="_CPPv4N2lf5queue3err3wonE">
-<span id="_CPPv3N2lf5queue3err3wonE"></span><span id="_CPPv2N2lf5queue3err3wonE"></span><span class="target" id="classlf_1_1queue_1a968ca5497fe043d0235e5d6c9f1df80fa7b63d1cafe15e5edab88a8e81de794b5"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">won</span></span></span><a class="headerlink" href="#_CPPv4N2lf5queue3err3wonE" title="Permalink to this definition">#</a><br /></dt>
-<dd><p>The <code class="docutils literal notranslate"><a class="reference internal" href="#classlf_1_1queue_1a6655e7ca5b5d0970364a44a44fcf25ef"><span class="std std-ref"><span class="pre">steal()</span></span></a></code> operation succeeded. </p>
-</dd></dl>
-
-<dl class="cpp enumerator">
-<dt class="sig sig-object cpp" id="_CPPv4N2lf5queue3err4lostE">
-<span id="_CPPv3N2lf5queue3err4lostE"></span><span id="_CPPv2N2lf5queue3err4lostE"></span><span class="target" id="classlf_1_1queue_1a968ca5497fe043d0235e5d6c9f1df80fa1c9a44eb2e8eaf3da1eb551da310cce7"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">lost</span></span></span><a class="headerlink" href="#_CPPv4N2lf5queue3err4lostE" title="Permalink to this definition">#</a><br /></dt>
-<dd><p>Lost the <code class="docutils literal notranslate"><a class="reference internal" href="#classlf_1_1queue_1a6655e7ca5b5d0970364a44a44fcf25ef"><span class="std std-ref"><span class="pre">steal()</span></span></a></code> race hence, the <code class="docutils literal notranslate"><a class="reference internal" href="#classlf_1_1queue_1a6655e7ca5b5d0970364a44a44fcf25ef"><span class="std std-ref"><span class="pre">steal()</span></span></a></code> operation failed. </p>
-</dd></dl>
-
-<dl class="cpp enumerator">
-<dt class="sig sig-object cpp" id="_CPPv4N2lf5queue3err5emptyE">
-<span id="_CPPv3N2lf5queue3err5emptyE"></span><span id="_CPPv2N2lf5queue3err5emptyE"></span><span class="target" id="classlf_1_1queue_1a968ca5497fe043d0235e5d6c9f1df80faa2e4822a98337283e39f7b60acf85ec9"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">empty</span></span></span><a class="headerlink" href="#_CPPv4N2lf5queue3err5emptyE" title="Permalink to this definition">#</a><br /></dt>
-<dd><p>The queue is empty and hence, the <code class="docutils literal notranslate"><a class="reference internal" href="#classlf_1_1queue_1a6655e7ca5b5d0970364a44a44fcf25ef"><span class="std std-ref"><span class="pre">steal()</span></span></a></code> operation failed. </p>
-</dd></dl>
-
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf5queue10value_typeE">
+<span id="_CPPv3N2lf5queue10value_typeE"></span><span id="_CPPv2N2lf5queue10value_typeE"></span><span class="target" id="classlf_1_1queue_1ae343bd1afeacd1083243b33dedbaa812"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">value_type</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_7TrivialEN2lf5queueE" title="lf::queue::T"><span class="n"><span class="pre">T</span></span></a><a class="headerlink" href="#_CPPv4N2lf5queue10value_typeE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>The type of the elements in the queue. </p>
 </dd></dl>
 
 </div>
@@ -274,8 +293,8 @@ Memory Models”</a>. Both are available in <a class="reference external" href="
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4N2lf5queue5queueENSt7int64_tE">
-<span id="_CPPv3N2lf5queue5queueENSt7int64_tE"></span><span id="_CPPv2N2lf5queue5queueENSt7int64_tE"></span><span id="lf::queue::queue__std::int64_t"></span><span class="target" id="classlf_1_1queue_1abefb2436322798c2ef843c1e0fec70b9"></span><span class="k"><span class="pre">explicit</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">queue</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">int64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">cap</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2lf5queue5queueENSt7int64_tE" title="Permalink to this definition">#</a><br /></dt>
+<dt class="sig sig-object cpp" id="_CPPv4N2lf5queue5queueENSt9ptrdiff_tE">
+<span id="_CPPv3N2lf5queue5queueENSt9ptrdiff_tE"></span><span id="_CPPv2N2lf5queue5queueENSt9ptrdiff_tE"></span><span id="lf::queue::queue__std::ptrdiff_t"></span><span class="target" id="classlf_1_1queue_1a31623cf30ff0ab4eec29722c35865c8a"></span><span class="k"><span class="pre">explicit</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">queue</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ptrdiff_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">cap</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2lf5queue5queueENSt9ptrdiff_tE" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>Construct a new empty queue object. </p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -293,7 +312,7 @@ Memory Models”</a>. Both are available in <a class="reference external" href="
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4NK2lf5queue8capacityEv">
-<span id="_CPPv3NK2lf5queue8capacityEv"></span><span id="_CPPv2NK2lf5queue8capacityEv"></span><span id="lf::queue::capacityC"></span><span class="target" id="classlf_1_1queue_1a366b83a3860cbffab9e3a0cdd6c29465"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">capacity</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="n"><span class="pre">int64_t</span></span><a class="headerlink" href="#_CPPv4NK2lf5queue8capacityEv" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3NK2lf5queue8capacityEv"></span><span id="_CPPv2NK2lf5queue8capacityEv"></span><span id="lf::queue::capacityC"></span><span class="target" id="classlf_1_1queue_1a4ecd58929953d49f79a96bd5bbd9a36a"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">capacity</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="n"><span class="pre">ptrdiff_t</span></span><a class="headerlink" href="#_CPPv4NK2lf5queue8capacityEv" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>Get the capacity of the queue. </p>
 </dd></dl>
 
@@ -342,7 +361,7 @@ Memory Models”</a>. Both are available in <a class="reference external" href="
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4NK2lf5queue5ssizeEv">
-<span id="_CPPv3NK2lf5queue5ssizeEv"></span><span id="_CPPv2NK2lf5queue5ssizeEv"></span><span id="lf::queue::ssizeC"></span><span class="target" id="classlf_1_1queue_1a73e891282ed6e5845aaa2ae85301cac4"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ssize</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="n"><span class="pre">int64_t</span></span><a class="headerlink" href="#_CPPv4NK2lf5queue5ssizeEv" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3NK2lf5queue5ssizeEv"></span><span id="_CPPv2NK2lf5queue5ssizeEv"></span><span id="lf::queue::ssizeC"></span><span class="target" id="classlf_1_1queue_1a6757f2f1b3a81aef9c24af33e7b54f0f"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ssize</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="n"><span class="pre">ptrdiff_t</span></span><a class="headerlink" href="#_CPPv4NK2lf5queue5ssizeEv" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>Get the number of elements in the queue as a signed integer. </p>
 </dd></dl>
 
@@ -371,14 +390,14 @@ Memory Models”</a>. Both are available in <a class="reference external" href="
 <dt class="sig sig-object cpp" id="_CPPv4NK2lf5queue7steal_tmlEv">
 <span id="_CPPv3NK2lf5queue7steal_tmlEv"></span><span id="_CPPv2NK2lf5queue7steal_tmlEv"></span><span id="lf::queue::steal_t::mul-operatorCCE"></span><span class="target" id="structlf_1_1queue_1_1steal__t_1a1e4c00d641dcdfbb778f66498508cacf"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">*</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_7TrivialEN2lf5queueE" title="lf::queue::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">&amp;</span></span><a class="headerlink" href="#_CPPv4NK2lf5queue7steal_tmlEv" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>Get the value <code class="docutils literal notranslate"><span class="pre">like</span> <span class="pre">std::optional</span></code>. </p>
-<p>Requires <code class="docutils literal notranslate"><span class="pre">code</span> <span class="pre">==</span> <a class="reference internal" href="#classlf_1_1queue_1a968ca5497fe043d0235e5d6c9f1df80fa7b63d1cafe15e5edab88a8e81de794b5"><span class="std std-ref"><span class="pre">err::won</span></span></a></code> . </p>
+<p>Requires <code class="docutils literal notranslate"><span class="pre">code</span> <span class="pre">==</span> <span class="pre">err::none</span></code> . </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N2lf5queue7steal_tmlEv">
 <span id="_CPPv3N2lf5queue7steal_tmlEv"></span><span id="_CPPv2N2lf5queue7steal_tmlEv"></span><span id="lf::queue::steal_t::mul-operatorCE"></span><span class="target" id="structlf_1_1queue_1_1steal__t_1a4ac3358303b02dfcd9b8eb451ff2ad18"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">*</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_7TrivialEN2lf5queueE" title="lf::queue::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">&amp;</span></span><a class="headerlink" href="#_CPPv4N2lf5queue7steal_tmlEv" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>Get the value <code class="docutils literal notranslate"><span class="pre">like</span> <span class="pre">std::optional</span></code>. </p>
-<p>Requires <code class="docutils literal notranslate"><span class="pre">code</span> <span class="pre">==</span> <a class="reference internal" href="#classlf_1_1queue_1a968ca5497fe043d0235e5d6c9f1df80fa7b63d1cafe15e5edab88a8e81de794b5"><span class="std std-ref"><span class="pre">err::won</span></span></a></code> . </p>
+<p>Requires <code class="docutils literal notranslate"><span class="pre">code</span> <span class="pre">==</span> <span class="pre">err::none</span></code> . </p>
 </dd></dl>
 
 </div>
@@ -386,7 +405,7 @@ Memory Models”</a>. Both are available in <a class="reference external" href="
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
 <dl class="cpp var">
 <dt class="sig sig-object cpp" id="_CPPv4N2lf5queue7steal_t4codeE">
-<span id="_CPPv3N2lf5queue7steal_t4codeE"></span><span id="_CPPv2N2lf5queue7steal_t4codeE"></span><span id="lf::queue::steal_t::code__err"></span><span class="target" id="structlf_1_1queue_1_1steal__t_1a423144023d0af03d4b4c15bd2092f1b9"></span><a class="reference internal" href="#_CPPv4N2lf5queue3errE" title="lf::queue::err"><span class="n"><span class="pre">err</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">code</span></span></span><a class="headerlink" href="#_CPPv4N2lf5queue7steal_t4codeE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N2lf5queue7steal_t4codeE"></span><span id="_CPPv2N2lf5queue7steal_t4codeE"></span><span id="lf::queue::steal_t::code__err"></span><span class="target" id="structlf_1_1queue_1_1steal__t_1a423144023d0af03d4b4c15bd2092f1b9"></span><span class="n"><span class="pre">err</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">code</span></span></span><a class="headerlink" href="#_CPPv4N2lf5queue7steal_t4codeE" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>The error code of the <code class="docutils literal notranslate"><a class="reference internal" href="#classlf_1_1queue_1a6655e7ca5b5d0970364a44a44fcf25ef"><span class="std std-ref"><span class="pre">steal()</span></span></a></code> operation. </p>
 </dd></dl>
 
