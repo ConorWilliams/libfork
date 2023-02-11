@@ -31,7 +31,7 @@
  * Implements the queue described in the papers, `"Dynamic Circular Work-Stealing Queue"
  * <https://doi.org/10.1145/1073970.1073974>`_ and `"Correct and Efficient Work-Stealing for Weak
  * Memory Models" <https://doi.org/10.1145/2442516.2442524>`_. Both are available in `reference/
- * <https://github.com/ConorWilliams/Forkpool/tree/main/reference>`_.
+ * <https://github.com/ConorWilliams/libfork/tree/main/reference>`_.
  *
  * \endrst
  */
@@ -99,7 +99,11 @@ struct ring_buf {
   std::int64_t m_cap;   ///< Capacity of the buffer
   std::int64_t m_mask;  ///< Bit mask to perform modulo capacity operations
 
+#ifdef __cpp_lib_smart_ptr_for_overwrite
   std::unique_ptr<T[]> m_buf = std::make_unique_for_overwrite<T[]>(m_cap);
+#else
+  std::unique_ptr<T[]> m_buf = std::make_unique<T[]>(m_cap);
+#endif
 };
 
 /**
