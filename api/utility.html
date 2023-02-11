@@ -3,15 +3,15 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Queue" href="api/queue.html" /><link rel="prev" title="OpenFLY 0.9.x-dev" href="index.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="libfork/queue.hpp" href="queue.html" /><link rel="prev" title="Welcome to libfork v2.0.0" href="../index.html" />
 
-    <link rel="shortcut icon" href="_static/favicon.ico"/><!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 -->
-        <title>Library API reference - libfork documentation</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
-    <link rel="stylesheet" type="text/css" href="_static/copybutton.css" />
-    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css" />
+    <link rel="shortcut icon" href="../_static/favicon.ico"/><!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 -->
+        <title>libfork/utility.hpp - libfork documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css" />
     
     
 
@@ -125,7 +125,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">libfork  documentation</div></a>
+      <a href="../index.html"><div class="brand">libfork  documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -136,7 +136,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
         <div class="visually-hidden">Toggle table of contents sidebar</div>
         <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
       </label>
@@ -145,25 +145,24 @@
   <aside class="sidebar-drawer">
     <div class="sidebar-container">
       
-      <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
   
   <div class="sidebar-logo-container">
-    <img class="sidebar-logo only-light" src="_static/fly_light.svg" alt="Light Logo"/>
-    <img class="sidebar-logo only-dark" src="_static/fly_dark.svg" alt="Dark Logo"/>
+    <img class="sidebar-logo only-light" src="../_static/fly_light.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../_static/fly_dark.svg" alt="Dark Logo"/>
   </div>
   
   
-</a><form class="sidebar-search-container" method="get" action="search.html" role="search">
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <ul class="current">
-<li class="toctree-l1 current has-children current-page"><a class="current reference internal" href="#">Library API reference</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="api/queue.html">Queue</a></li>
-</ul>
-</li>
+  <p class="caption" role="heading"><span class="caption-text">Files</span></p>
+<ul class="current">
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">libfork/utility.hpp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="queue.html">libfork/queue.hpp</a></li>
 </ul>
 
 </div>
@@ -184,7 +183,7 @@
         </a>
         <div class="content-icon-container">
           <div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/ConorWilliams/libfork/edit/main/docs/api.rst" title="Edit this page">
+  <a class="muted-link" href="https://github.com/ConorWilliams/libfork/edit/main/docs/api/utility.rst" title="Edit this page">
     <svg aria-hidden="true" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
       <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
       <path d="M4 20h4l10.5 -10.5a1.5 1.5 0 0 0 -4 -4l-10.5 10.5v4" />
@@ -200,21 +199,40 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
             <div class="visually-hidden">Toggle table of contents sidebar</div>
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
         <article role="main">
-          <section id="library-api-reference">
-<h1>Library API reference<a class="headerlink" href="#library-api-reference" title="Permalink to this heading">#</a></h1>
-<p>Welcome to the libFLY API reference this serves as information for developers to learn more about openFLY’s internals and as reference for programmers using libFLY.</p>
-<div class="toctree-wrapper compound">
-<p class="caption" role="heading"><span class="caption-text">Modules</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="api/queue.html">Queue</a></li>
-</ul>
-</div>
+          <section id="libfork-utility-hpp">
+<h1>libfork/utility.hpp<a class="headerlink" href="#libfork-utility-hpp" title="Permalink to this heading">#</a></h1>
+<p>A small collection of utility functions and macros. </p>
+<section id="macros">
+<h2>Macros<a class="headerlink" href="#macros" title="Permalink to this heading">#</a></h2>
+<dl class="cpp macro">
+<dt class="sig sig-object cpp" id="c.ASSERT">
+<span class="target" id="utility_8hpp_1a73d4f21ad937dbc50a0c0538c78fd4f9"></span><span class="sig-name descname"><span class="n"><span class="pre">ASSERT</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">expr</span></span>, <span class="n"><span class="pre">msg</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.ASSERT" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Assert an expression is true and <code class="docutils literal notranslate"><span class="pre">std::terminate()</span></code> if not. </p>
+</dd></dl>
+
+<dl class="cpp macro">
+<dt class="sig sig-object cpp" id="c.ASSUME">
+<span class="target" id="utility_8hpp_1a742f604ff3e4bce13794414eeaaaee50"></span><span class="sig-name descname"><span class="n"><span class="pre">ASSUME</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">expr</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.ASSUME" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>A wrapper for C++23’s <code class="docutils literal notranslate"><span class="pre">[[assume(expr</span> <span class="pre">)]]</span></code> attribute. </p>
+<p>Reverts to compiler specific implementations if the attribute is not available. </p>
+</dd></dl>
+
+</section>
+<section id="other">
+<h2>Other<a class="headerlink" href="#other" title="Permalink to this heading">#</a></h2>
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf5errorE">
+<span id="_CPPv3N2lf5errorE"></span><span id="_CPPv2N2lf5errorE"></span><span id="lf::error"></span><span class="target" id="structlf_1_1error"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">error</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">runtime_error</span></span><a class="headerlink" href="#_CPPv4N2lf5errorE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>libfork’s error type, derived from <code class="docutils literal notranslate"><span class="pre">std::runtime_error</span></code>. </p>
+</dd></dl>
+
+</section>
 </section>
 
         </article>
@@ -222,16 +240,16 @@
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="api/queue.html">
+          <a class="next-page" href="queue.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Queue</div>
+                <div class="title">libfork/queue.hpp</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="index.html">
+          <a class="prev-page" href="../index.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
@@ -267,20 +285,40 @@
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">libfork/utility.hpp</a><ul>
+<li><a class="reference internal" href="#macros">Macros</a></li>
+<li><a class="reference internal" href="#other">Other</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>
   </div>
-</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-    <script src="_static/jquery.js"></script>
-    <script src="_static/underscore.js"></script>
-    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
-    <script src="_static/doctools.js"></script>
-    <script src="_static/sphinx_highlight.js"></script>
-    <script src="_static/scripts/furo.js"></script>
-    <script src="_static/clipboard.min.js"></script>
-    <script src="_static/copybutton.js"></script>
+</div><script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/sphinx_highlight.js"></script>
+    <script src="../_static/scripts/furo.js"></script>
+    <script src="../_static/clipboard.min.js"></script>
+    <script src="../_static/copybutton.js"></script>
     </body>
 </html>
