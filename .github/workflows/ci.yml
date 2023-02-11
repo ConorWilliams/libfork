@@ -127,7 +127,7 @@ jobs:
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: build/docs/html
-      if: false && github.repository_owner == 'conorwilliams' && github.event_name == 'push'
+        publish_dir: ./build/docs/sphinx
+      if: github.ref == 'refs/heads/v2' && github.repository_owner == 'conorwilliams' && github.event_name == 'push'
 
 

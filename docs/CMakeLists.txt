@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.14)
 
 project(libforkDocs)
 
+include(../cmake/folders.cmake)
+
 get_filename_component(ABSOLUTE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../include ABSOLUTE)
 
 if(NOT DEFINED CMAKE_MODULE_PATH)
@@ -66,4 +68,8 @@ add_custom_command(
 
 # Nice named target so we can run the job easily
 add_custom_target(docs ALL DEPENDS ${SPHINX_INDEX_FILE})
+
+# ---- End-of-file commands ----
+
+add_folders(Docs)
 
