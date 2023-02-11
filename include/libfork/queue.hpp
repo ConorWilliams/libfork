@@ -23,8 +23,8 @@
 /**
  * @file queue.hpp
  *
- * @brief A stand-alone implementation of the Chase-Lev lock-free single-producer multiple-consumer
- * queue.
+ * @brief A stand-alone, production-quality implementation of the Chase-Lev lock-free
+ * single-producer multiple-consumer queue.
  *
  * \rst
  *
@@ -60,7 +60,7 @@ struct ring_buf {
    * @param cap The capacity of the buffer, MUST be a power of 2.
    */
   explicit ring_buf(std::int64_t cap) : m_cap{cap}, m_mask{cap - 1} {
-    ASSERT(cap && (!(cap & (cap - 1))), "Capacity must be a power of 2!");
+    ASSERT_ASSUME(cap && (!(cap & (cap - 1))), "Capacity must be a power of 2!");
   }
 
   /**
@@ -71,18 +71,24 @@ struct ring_buf {
   /**
    * @brief Store ``val`` at ``index % this->capacity()``.
    */
-  auto store(std::int64_t index, T val) noexcept -> void { m_buf[index & m_mask] = val; }
+  auto store(std::int64_t index, T val) noexcept -> void {
+    CHECK_ASSUME(index >= 0);
+    *(m_buf.get() + (index & m_mask)) = val;  // Bypass operator[] to avoid cast to std::size_t.
+  }
 
   /**
    * @brief Load value at ``index % this->capacity()``.
    */
-  auto load(std::int64_t index) const noexcept -> T { return m_buf[index & m_mask]; }
+  auto load(std::int64_t index) const noexcept -> T {
+    CHECK_ASSUME(index >= 0);
+    return *(m_buf.get() + (index & m_mask));  // Bypass operator[] to avoid cast to std::size_t.
+  }
 
   /**
    * @brief Copies elements in range ``[bottom, top)`` into a new ring buffer.
    *
-   * This function allocates a new buffer and returns a pointer to it. The caller is responsible for
-   * deallocating the memory.
+   * This function allocates a new buffer and returns a pointer to it. The caller is responsible
+   * for deallocating the memory.
    *
    * @param bottom The bottom of the range to copy from (inclusive).
    * @param top The top of the range to copy from (exclusive).
@@ -100,9 +106,9 @@ struct ring_buf {
   std::int64_t m_mask;  ///< Bit mask to perform modulo capacity operations
 
 #ifdef __cpp_lib_smart_ptr_for_overwrite
-  std::unique_ptr<T[]> m_buf = std::make_unique_for_overwrite<T[]>(m_cap);
+  std::unique_ptr<T[]> m_buf = std::make_unique_for_overwrite<T[]>(static_cast<std::size_t>(m_cap));
 #else
-  std::unique_ptr<T[]> m_buf = std::make_unique<T[]>(m_cap);
+  std::unique_ptr<T[]> m_buf = std::make_unique<T[]>(static_cast<std::size_t>(m_cap));
 #endif
 };
 
@@ -118,9 +124,9 @@ inline constexpr std::size_t k_cache_line = 64;
 /**
  * @brief An unbounded lock-free single-producer multiple-consumer queue.
  *
- * Only the queue owner can perform ``pop()`` and ``push()`` operations where the queue behaves like
- * a LIFO stack. Others can (only) ``steal()`` data from the queue, they see a FIFO queue. All
- * threads must have finished using the queue before it is destructed.
+ * Only the queue owner can perform ``pop()`` and ``push()`` operations where the queue behaves
+ * like a LIFO stack. Others can (only) ``steal()`` data from the queue, they see a FIFO queue.
+ * All threads must have finished using the queue before it is destructed.
  *
  * @tparam T The type of the elements in the queue - must be a trivial type.
  */
@@ -163,6 +169,10 @@ class queue {
    * @brief Get the number of elements in the queue.
    */
   auto size() const noexcept -> std::size_t;
+  /**
+   * @brief Get the number of elements in the queue as a signed integer.
+   */
+  auto ssize() const noexcept -> int64_t;
 
   /**
    * @brief Get the capacity of the queue.
@@ -177,8 +187,8 @@ class queue {
   /**
    * @brief Push an item into the queue.
    *
-   * Only the owner thread can insert an item into the queue. The operation can trigger the queue to
-   * resize if more space is required.
+   * Only the owner thread can insert an item into the queue. The operation can trigger the queue
+   * to resize if more space is required.
    *
    * @param val Value to add to the queue.
    */
@@ -211,6 +221,18 @@ class queue {
      * @brief Check if the operation succeeded.
      */
     constexpr explicit operator bool() const noexcept { return code == err::won; }
+    /**
+     * @brief Get the value ``like std::optional``.
+     *
+     * Requires ``code == err::won`` .
+     */
+    constexpr auto operator*() const noexcept -> T const& { return val; }
+    /**
+     * @brief Get the value ``like std::optional``.
+     *
+     * Requires ``code == err::won`` .
+     */
+    constexpr auto operator*() noexcept -> T& { return val; }
 
     err code;  ///< The error code of the ``steal()`` operation.
     T val;     ///< The value stolen from the queue, Only valid if ``code == err::stolen``.
@@ -253,9 +275,14 @@ queue<T>::queue(std::int64_t cap) : m_top(0), m_bottom(0), m_buf(new ring_buf<T>
 
 template <Trivial T>
 auto queue<T>::size() const noexcept -> std::size_t {
+  return static_cast<std::size_t>(size());
+}
+
+template <Trivial T>
+auto queue<T>::ssize() const noexcept -> std::int64_t {
   int64_t bottom = m_bottom.load(relaxed);
   int64_t top = m_top.load(relaxed);
-  return static_cast<std::size_t>(bottom >= top ? bottom - top : 0);
+  return std::max(bottom - top, int64_t{0});
 }
 
 template <Trivial T>
@@ -265,7 +292,9 @@ auto queue<T>::capacity() const noexcept -> int64_t {
 
 template <Trivial T>
 auto queue<T>::empty() const noexcept -> bool {
-  return !size();
+  int64_t bottom = m_bottom.load(relaxed);
+  int64_t top = m_top.load(relaxed);
+  return top >= bottom;
 }
 
 template <Trivial T>
@@ -280,8 +309,8 @@ auto queue<T>::push(T const& val) noexcept -> void {
     m_buf.store(buf, relaxed);
   }
 
-  // Construct new object, this does not have to be atomic as no one can steal this item until after
-  // we store the new value of bottom, ordering is maintained by surrounding atomics.
+  // Construct new object, this does not have to be atomic as no one can steal this item until
+  // after we store the new value of bottom, ordering is maintained by surrounding atomics.
   buf->store(bottom, val);
 
   std::atomic_thread_fence(release);
@@ -324,11 +353,11 @@ auto queue<T>::steal() noexcept -> steal_t {
   std::int64_t bottom = m_bottom.load(acquire);
 
   if (top < bottom) {
-    // Must load *before* acquiring the slot as slot may be overwritten immediately after acquiring.
-    // This load is NOT required to be atomic even-though it may race with an overwrite as we only
-    // return the value if we win the race below garanteeing we had no race during our read. If we
-    // loose the race then 'x' could be corrupt due to read-during-write race but as T is trivially
-    // destructible this does not matter.
+    // Must load *before* acquiring the slot as slot may be overwritten immediately after
+    // acquiring. This load is NOT required to be atomic even-though it may race with an overwrite
+    // as we only return the value if we win the race below garanteeing we had no race during our
+    // read. If we loose the race then 'x' could be corrupt due to read-during-write race but as T
+    // is trivially destructible this does not matter.
     T tmp = m_buf.load(consume)->load(top);
 
     if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {

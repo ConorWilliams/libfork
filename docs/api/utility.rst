@@ -11,6 +11,10 @@ Macros
 
 .. doxygendefine:: ASSUME
 
+.. doxygendefine:: CHECK_ASSUME
+
+.. doxygendefine:: ASSERT_ASSUME
+
 Other
 -----------
 

@@ -66,9 +66,18 @@ constexpr auto file_name(std::string_view path) -> std::string_view {
 #endif  // !NDEBUG
 
 /**
- * @brief A wrapper for C++23's ``[[assume(expr )]]`` attribute.
+ * @brief A wrapper for C++23's ``[[assume(expr)]]`` attribute.
  *
  * Reverts to compiler specific implementations if the attribute is not available.
+ *
+ * \rst
+ *
+ *  .. warning::
+ *
+ *    Using some intrinsics (i.e. GCC's ``__builtin_unreachable()``) this has different semantics
+ *    than ``[[assume(expr)]]`` as it WILL evaluate the exprssion at runtime.
+ *
+ * \endrst
  */
 #if __has_cpp_attribute(assume)
 #define ASSUME(expr) [[assume((expr))]]
@@ -87,6 +96,26 @@ constexpr auto file_name(std::string_view path) -> std::string_view {
 #define ASSUME(expr) \
   do {               \
   } while (false)
+#endif
+
+/**
+ * @brief ``ASSERT()`` in debug builds, ``ASSUME()`` in release builds.
+ */
+#ifndef NDEBUG
+#define CHECK_ASSUME(expr) ASSERT(expr, "Assumption failed.")
+#else
+#define CHECK_ASSUME(expr) ASSUME(expr)
+#endif
+
+/**
+ * @brief ``ASSERT()`` in debug builds, ``ASSUME()`` in release builds.
+ *
+ * Only use if ``expr`` is cheap to evaluate as it MAY be evaluated at runtime.
+ */
+#ifndef NDEBUG
+#define ASSERT_ASSUME(expr, message) ASSERT(expr, message)
+#else
+#define ASSERT_ASSUME(expr, message) ASSUME(expr)
 #endif
 
 }  // namespace lf
