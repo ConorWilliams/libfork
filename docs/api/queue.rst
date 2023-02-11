@@ -1,7 +1,5 @@
-Queue
-==========
-
-File: ``libfork/queue.hpp``
+libfork/queue.hpp
+=====================
 
 .. doxygenfile:: queue.hpp
     :sections: briefdescription detaileddescription

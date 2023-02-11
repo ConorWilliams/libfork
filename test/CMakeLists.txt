@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.14)
+# 3.25 is the minimum version that supports FetchContent with SYSTEM
+cmake_minimum_required(VERSION 3.25) 
 
 project(libforkTests LANGUAGES CXX)
 
@@ -13,25 +14,31 @@ if(PROJECT_IS_TOP_LEVEL)
   enable_testing()
 endif()
 
+
+Include(FetchContent)
+
+FetchContent_Declare(
+  Catch2
+  GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+  GIT_TAG        v3.3.1 
+  SYSTEM
+)
+
+FetchContent_MakeAvailable(Catch2)
+
 # ---- Tests ----
 
-file(GLOB sources CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp)
+file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 
-foreach(source IN LISTS sources)
-  get_filename_component(name ${source} NAME_WE)
-  add_executable(${name} ${source})
-  target_link_libraries(${name} PRIVATE libfork::libfork)
-  target_compile_features(${name} PRIVATE cxx_std_20)
-  add_test(NAME ${name} COMMAND ${name})
-endforeach()
+add_executable(libfork_test ${TEST_SOURCES})
+target_link_libraries(libfork_test PRIVATE libfork::libfork Catch2::Catch2WithMain)
+target_compile_features(libfork_test PRIVATE cxx_std_20)
 
+list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
 
-# add_executable(libfork_test ${sources})
-# target_link_libraries(libfork_test PRIVATE libfork::libfork)
-# target_compile_features(libfork_test PRIVATE cxx_std_20)
+include(Catch)
 
-# add_test(NAME libfork_test COMMAND libfork_test)
-
+catch_discover_tests(libfork_test)
 
 # ---- End-of-file commands ----
 
