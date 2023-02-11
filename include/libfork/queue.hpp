@@ -59,19 +59,19 @@ struct ring_buf {
    *
    * @param cap The capacity of the buffer, MUST be a power of 2.
    */
-  explicit ring_buf(std::int64_t cap) : m_cap{cap}, m_mask{cap - 1} {
+  explicit ring_buf(std::ptrdiff_t cap) : m_cap{cap}, m_mask{cap - 1} {
     ASSERT_ASSUME(cap > 0 && (!(cap & (cap - 1))), "Capacity must be a power of 2!");  // NOLINT
   }
 
   /**
    * @brief Get the capacity of the buffer.
    */
-  [[nodiscard]] auto capacity() const noexcept -> std::int64_t { return m_cap; }
+  [[nodiscard]] auto capacity() const noexcept -> std::ptrdiff_t { return m_cap; }
 
   /**
    * @brief Store ``val`` at ``index % this->capacity()``.
    */
-  auto store(std::int64_t index, T val) noexcept -> void {
+  auto store(std::ptrdiff_t index, T val) noexcept -> void {
     CHECK_ASSUME(index >= 0);
     *(m_buf.get() + (index & m_mask)) = val;  // NOLINT Avoid cast to std::size_t.
   }
@@ -79,7 +79,7 @@ struct ring_buf {
   /**
    * @brief Load value at ``index % this->capacity()``.
    */
-  [[nodiscard]] auto load(std::int64_t index) const noexcept -> T {
+  [[nodiscard]] auto load(std::ptrdiff_t index) const noexcept -> T {
     CHECK_ASSUME(index >= 0);
     return *(m_buf.get() + (index & m_mask));  // NOLINT Avoid cast to std::size_t.
   }
@@ -93,17 +93,17 @@ struct ring_buf {
    * @param bottom The bottom of the range to copy from (inclusive).
    * @param top The top of the range to copy from (exclusive).
    */
-  auto resize(std::int64_t bottom, std::int64_t top) const -> ring_buf<T>* {  // NOLINT
-    auto* ptr = new ring_buf{2 * m_cap};                                      // NOLINT
-    for (std::int64_t i = top; i != bottom; ++i) {
+  auto resize(std::ptrdiff_t bottom, std::ptrdiff_t top) const -> ring_buf<T>* {  // NOLINT
+    auto* ptr = new ring_buf{2 * m_cap};                                          // NOLINT
+    for (std::ptrdiff_t i = top; i != bottom; ++i) {
       ptr->store(i, load(i));
     }
     return ptr;
   }
 
  private:
-  std::int64_t m_cap;   ///< Capacity of the buffer
-  std::int64_t m_mask;  ///< Bit mask to perform modulo capacity operations
+  std::ptrdiff_t m_cap;   ///< Capacity of the buffer
+  std::ptrdiff_t m_mask;  ///< Bit mask to perform modulo capacity operations
 
 #ifdef __cpp_lib_smart_ptr_for_overwrite
   // NOLINTNEXTLINE
@@ -153,10 +153,14 @@ enum class err : int {
  */
 template <Trivial T>
 class queue {
-  static constexpr std::int64_t k_default_capacity = 1024;
+  static constexpr std::ptrdiff_t k_default_capacity = 1024;
   static constexpr std::size_t k_garbage_reserve = 32;
 
  public:
+  /**
+   * @brief The type of the elements in the queue.
+   */
+  using value_type = T;
   /**
    * @brief Construct a new empty queue object.
    */
@@ -167,7 +171,7 @@ class queue {
    *
    * @param cap The capacity of the queue (must be a power of 2).
    */
-  explicit queue(std::int64_t cap);
+  explicit queue(std::ptrdiff_t cap);
 
   /**
    * @brief Queue's are not copiable or movable.
@@ -193,12 +197,12 @@ class queue {
   /**
    * @brief Get the number of elements in the queue as a signed integer.
    */
-  [[nodiscard]] auto ssize() const noexcept -> int64_t;
+  [[nodiscard]] auto ssize() const noexcept -> ptrdiff_t;
 
   /**
    * @brief Get the capacity of the queue.
    */
-  [[nodiscard]] auto capacity() const noexcept -> int64_t;
+  [[nodiscard]] auto capacity() const noexcept -> ptrdiff_t;
 
   /**
    * @brief Check if the queue is empty.
@@ -266,8 +270,8 @@ class queue {
   ~queue() noexcept;
 
  private:
-  alignas(k_cache_line) std::atomic<std::int64_t> m_top;
-  alignas(k_cache_line) std::atomic<std::int64_t> m_bottom;
+  alignas(k_cache_line) std::atomic<std::ptrdiff_t> m_top;
+  alignas(k_cache_line) std::atomic<std::ptrdiff_t> m_bottom;
   alignas(k_cache_line) std::atomic<ring_buf<T>*> m_buf;
 
   std::vector<std::unique_ptr<ring_buf<T>>> m_garbage;  // Store old buffers here.
@@ -281,7 +285,7 @@ class queue {
 };
 
 template <Trivial T>
-queue<T>::queue(std::int64_t cap) : m_top(0), m_bottom(0), m_buf(new ring_buf<T>{cap}) {
+queue<T>::queue(std::ptrdiff_t cap) : m_top(0), m_bottom(0), m_buf(new ring_buf<T>{cap}) {
   m_garbage.reserve(k_garbage_reserve);
 }
 
@@ -291,28 +295,28 @@ auto queue<T>::size() const noexcept -> std::size_t {
 }
 
 template <Trivial T>
-auto queue<T>::ssize() const noexcept -> std::int64_t {
-  int64_t bottom = m_bottom.load(relaxed);
-  int64_t top = m_top.load(relaxed);
-  return std::max(bottom - top, int64_t{0});
+auto queue<T>::ssize() const noexcept -> std::ptrdiff_t {
+  ptrdiff_t bottom = m_bottom.load(relaxed);
+  ptrdiff_t top = m_top.load(relaxed);
+  return std::max(bottom - top, ptrdiff_t{0});
 }
 
 template <Trivial T>
-auto queue<T>::capacity() const noexcept -> int64_t {
+auto queue<T>::capacity() const noexcept -> ptrdiff_t {
   return m_buf.load(relaxed)->capacity();
 }
 
 template <Trivial T>
 auto queue<T>::empty() const noexcept -> bool {
-  int64_t bottom = m_bottom.load(relaxed);
-  int64_t top = m_top.load(relaxed);
+  ptrdiff_t bottom = m_bottom.load(relaxed);
+  ptrdiff_t top = m_top.load(relaxed);
   return top >= bottom;
 }
 
 template <Trivial T>
 auto queue<T>::push(T const& val) noexcept -> void {
-  std::int64_t bottom = m_bottom.load(relaxed);
-  std::int64_t top = m_top.load(acquire);
+  std::ptrdiff_t bottom = m_bottom.load(relaxed);
+  std::ptrdiff_t top = m_top.load(acquire);
   ring_buf<T>* buf = m_buf.load(relaxed);
 
   if (buf->capacity() < (bottom - top) + 1) {
@@ -331,13 +335,13 @@ auto queue<T>::push(T const& val) noexcept -> void {
 
 template <Trivial T>
 auto queue<T>::pop() noexcept -> std::optional<T> {
-  std::int64_t bottom = m_bottom.load(relaxed) - 1;
+  std::ptrdiff_t bottom = m_bottom.load(relaxed) - 1;
   ring_buf<T>* buf = m_buf.load(relaxed);
 
   m_bottom.store(bottom, relaxed);  // Stealers can no longer steal.
 
   std::atomic_thread_fence(seq_cst);
-  std::int64_t top = m_top.load(relaxed);
+  std::ptrdiff_t top = m_top.load(relaxed);
 
   if (top <= bottom) {
     // Non-empty queue
@@ -360,9 +364,9 @@ auto queue<T>::pop() noexcept -> std::optional<T> {
 
 template <Trivial T>
 auto queue<T>::steal() noexcept -> steal_t {
-  std::int64_t top = m_top.load(acquire);
+  std::ptrdiff_t top = m_top.load(acquire);
   std::atomic_thread_fence(seq_cst);
-  std::int64_t bottom = m_bottom.load(acquire);
+  std::ptrdiff_t bottom = m_bottom.load(acquire);
 
   if (top < bottom) {
     // Must load *before* acquiring the slot as slot may be overwritten immediately after
