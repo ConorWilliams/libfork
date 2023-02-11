@@ -4,9 +4,9 @@ include(cmake/prelude.cmake)
 
 project(
     libfork
-    VERSION 0.1.0
-    DESCRIPTION "Short description"
-    HOMEPAGE_URL "https://example.com/"
+    VERSION 2.0.0
+    DESCRIPTION "A C++ library for fork-join parallelism using coroutines"
+    HOMEPAGE_URL "https://github.com/ConorWilliams/libfork"
     LANGUAGES NONE
 )
 

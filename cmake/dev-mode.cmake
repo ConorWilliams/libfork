@@ -7,7 +7,7 @@ endif()
 
 option(BUILD_DOCS "Build documentation using Doxygen and m.css" OFF)
 if(BUILD_DOCS)
-  include(cmake/docs.cmake)
+  add_subdirectory(docs)
 endif()
 
 
