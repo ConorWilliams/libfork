@@ -6,11 +6,48 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <array>  // ssize?
-
 #include <catch2/catch_test_macros.hpp>
 
+// !BEGIN-EXAMPLE
+
+#include <thread>
+
 #include "libfork/queue.hpp"
+
+int example() {
+  // Work-stealing queue of ints
+  lf::queue<int> queue;
+
+  // One thread can push and pop items from one end (like a stack)
+  std::jthread owner([&]() {
+    for (int i = 0; i < 10000; ++i) {
+      queue.push(i);
+    }
+    while (std::optional item = queue.pop()) {
+      // Do something with items...
+    }
+  });
+
+  // While multiple (any) threads can steal items from the other end
+  std::jthread thief([&]() {
+    while (!queue.empty()) {
+      if (auto item = queue.steal()) {
+        // Do something with item...
+      }
+    }
+  });
+
+  owner.join();
+  thief.join();
+
+  return 0;
+}
+
+// !END-EXAMPLE
+
+TEST_CASE("Example", "[queue]") {
+  REQUIRE(!example());
+}
 
 TEST_CASE("Single thread as stack", "[queue]") {
   lf::queue<int> queue;
@@ -29,4 +66,105 @@ TEST_CASE("Single thread as stack", "[queue]") {
   }
 
   REQUIRE(queue.empty());
+}
+
+TEST_CASE("Single producer, single consumer", "[queue]") {
+  lf::queue<int> queue;
+
+  constexpr int tot = 100;
+
+  std::jthread thief([&] {
+    //
+    int count = 0;
+
+    while (count < tot) {
+      if (auto [err, item] = queue.steal(); err == lf::err::none) {
+        REQUIRE(item == count++);
+      } else {
+        REQUIRE(err == lf::err::empty);
+      }
+    }
+  });
+
+  for (int i = 0; i < tot; ++i) {
+    queue.push(i);
+  }
+
+  thief.join();
+
+  REQUIRE(queue.empty());
+}
+
+TEST_CASE("Single producer, multiple consumer", "[queue]") {
+  lf::queue<int> queue;
+
+  auto& worker = queue;
+  auto& stealer = queue;
+
+  constexpr auto max = 100000;
+  unsigned int nthreads = std::thread::hardware_concurrency();
+
+  std::vector<std::jthread> threads;
+  std::atomic<int> remaining(max);
+
+  for (unsigned int i = 0; i < nthreads; ++i) {
+    threads.emplace_back([&stealer, &remaining]() {
+      auto& clone = stealer;
+      while (remaining.load() > 0) {
+        if (clone.steal()) {
+          remaining.fetch_sub(1);
+        }
+      }
+    });
+  }
+
+  for (auto i = 0; i < max; ++i) {
+    worker.push(i);
+  }
+
+  for (auto& thr : threads) {
+    thr.join();
+  }
+
+  REQUIRE(remaining == 0);
+}
+
+TEST_CASE("Single producer + pop(), multiple consumer", "[queue]") {
+  lf::queue<int> queue;
+
+  auto& worker = queue;
+  auto& stealer = queue;
+
+  constexpr auto max = 100000;
+  unsigned int nthreads = std::thread::hardware_concurrency();
+
+  std::vector<std::jthread> threads;
+  std::atomic<int> remaining(max);
+
+  for (unsigned int i = 0; i < nthreads; ++i) {
+    threads.emplace_back([&stealer, &remaining]() {
+      auto& clone = stealer;
+      while (remaining.load() > 0) {
+        if (clone.steal()) {
+          remaining.fetch_sub(1);
+        }
+      }
+    });
+  }
+
+  for (auto i = 0; i < max; ++i) {
+    worker.push(i);
+  }
+
+  while (remaining.load() > 0) {
+    if (worker.pop()) {
+      remaining.fetch_sub(1);
+    }
+  }
+
+  for (auto& thr : threads) {
+    thr.join();
+  }
+
+  REQUIRE(remaining == 0);
 }

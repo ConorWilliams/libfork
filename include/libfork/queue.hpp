@@ -122,11 +122,31 @@ inline constexpr std::size_t k_cache_line = 64;
 #endif
 
 /**
+ * @brief Error codes for ``queue`` 's ``steal()`` operation.
+ */
+enum class err : int {
+  none = 0,  ///< The ``steal()`` operation succeeded.
+  lost,      ///< Lost the ``steal()`` race hence, the ``steal()`` operation failed.
+  empty,     ///< The queue is empty and hence, the ``steal()`` operation failed.
+};
+
+/**
  * @brief An unbounded lock-free single-producer multiple-consumer queue.
  *
  * Only the queue owner can perform ``pop()`` and ``push()`` operations where the queue behaves
  * like a LIFO stack. Others can (only) ``steal()`` data from the queue, they see a FIFO queue.
  * All threads must have finished using the queue before it is destructed.
+ *
+ * \rst
+ *
+ * Example:
+ *
+ * .. include:: ../../test/source/queue.cpp
+ *    :code:
+ *    :start-after: // !BEGIN-EXAMPLE
+ *    :end-before: // !END-EXAMPLE
+ *
+ * \endrst
  *
  * @tparam T The type of the elements in the queue - must be a trivial type.
  */
@@ -203,15 +223,6 @@ class queue {
   auto pop() noexcept -> std::optional<T>;
 
   /**
-   * @brief Error codes for the ``steal()`` operation.
-   */
-  enum class err : int {
-    won = 0,  ///< The ``steal()`` operation succeeded.
-    lost,     ///< Lost the ``steal()`` race hence, the ``steal()`` operation failed.
-    empty,    ///< The queue is empty and hence, the ``steal()`` operation failed.
-  };
-
-  /**
    * @brief The return type of the ``steal()`` operation.
    *
    * Suitable for structured bindings.
@@ -220,17 +231,17 @@ class queue {
     /**
      * @brief Check if the operation succeeded.
      */
-    constexpr explicit operator bool() const noexcept { return code == err::won; }
+    constexpr explicit operator bool() const noexcept { return code == err::none; }
     /**
      * @brief Get the value ``like std::optional``.
      *
-     * Requires ``code == err::won`` .
+     * Requires ``code == err::none`` .
      */
     constexpr auto operator*() const noexcept -> T const& { return val; }
     /**
      * @brief Get the value ``like std::optional``.
      *
-     * Requires ``code == err::won`` .
+     * Requires ``code == err::none`` .
      */
     constexpr auto operator*() noexcept -> T& { return val; }
 
@@ -275,7 +286,7 @@ queue<T>::queue(std::int64_t cap) : m_top(0), m_bottom(0), m_buf(new ring_buf<T>
 
 template <Trivial T>
 auto queue<T>::size() const noexcept -> std::size_t {
-  return static_cast<std::size_t>(size());
+  return static_cast<std::size_t>(ssize());
 }
 
 template <Trivial T>
@@ -363,7 +374,7 @@ auto queue<T>::steal() noexcept -> steal_t {
     if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
       return {.code = err::lost};
     }
-    return {.code = err::won, .val = tmp};
+    return {.code = err::none, .val = tmp};
   }
   return {.code = err::empty};
 }
