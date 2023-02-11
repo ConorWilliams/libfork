@@ -207,7 +207,7 @@
         <article role="main">
           <section id="libfork-queue-hpp">
 <h1>libfork/queue.hpp<a class="headerlink" href="#libfork-queue-hpp" title="Permalink to this heading">#</a></h1>
-<p>A stand-alone implementation of the Chase-Lev lock-free single-producer multiple-consumer queue. </p>
+<p>A stand-alone, production-quality implementation of the Chase-Lev lock-free single-producer multiple-consumer queue. </p>
 <p><p>Implements the queue described in the papers, <a class="reference external" href="https://doi.org/10.1145/1073970.1073974">“Dynamic Circular Work-Stealing Queue”</a> and <a class="reference external" href="https://doi.org/10.1145/2442516.2442524">“Correct and Efficient Work-Stealing for Weak
 Memory Models”</a>. Both are available in <a class="reference external" href="https://github.com/ConorWilliams/libfork/tree/main/reference">reference/</a>.</p>
  </p>
@@ -341,6 +341,12 @@ Memory Models”</a>. Both are available in <a class="reference external" href="
 </dd></dl>
 
 <dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK2lf5queue5ssizeEv">
+<span id="_CPPv3NK2lf5queue5ssizeEv"></span><span id="_CPPv2NK2lf5queue5ssizeEv"></span><span id="lf::queue::ssizeC"></span><span class="target" id="classlf_1_1queue_1a73e891282ed6e5845aaa2ae85301cac4"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ssize</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="n"><span class="pre">int64_t</span></span><a class="headerlink" href="#_CPPv4NK2lf5queue5ssizeEv" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Get the number of elements in the queue as a signed integer. </p>
+</dd></dl>
+
+<dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N2lf5queue5stealEv">
 <span id="_CPPv3N2lf5queue5stealEv"></span><span id="_CPPv2N2lf5queue5stealEv"></span><span id="lf::queue::steal"></span><span class="target" id="classlf_1_1queue_1a6655e7ca5b5d0970364a44a44fcf25ef"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">steal</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N2lf5queue7steal_tE" title="lf::queue::steal_t"><span class="n"><span class="pre">steal_t</span></span></a><a class="headerlink" href="#_CPPv4N2lf5queue5stealEv" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>Steal an item from the queue. </p>
@@ -359,6 +365,20 @@ Memory Models”</a>. Both are available in <a class="reference external" href="
 <dt class="sig sig-object cpp" id="_CPPv4NK2lf5queue7steal_tcvbEv">
 <span id="_CPPv3NK2lf5queue7steal_tcvbEv"></span><span id="_CPPv2NK2lf5queue7steal_tcvbEv"></span><span id="lf::queue::steal_t::castto-b-operatorCCE"></span><span class="target" id="structlf_1_1queue_1_1steal__t_1a3f004630f89a42de38b6ccf1929f73a5"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">explicit</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4NK2lf5queue7steal_tcvbEv" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>Check if the operation succeeded. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK2lf5queue7steal_tmlEv">
+<span id="_CPPv3NK2lf5queue7steal_tmlEv"></span><span id="_CPPv2NK2lf5queue7steal_tmlEv"></span><span id="lf::queue::steal_t::mul-operatorCCE"></span><span class="target" id="structlf_1_1queue_1_1steal__t_1a1e4c00d641dcdfbb778f66498508cacf"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">*</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_7TrivialEN2lf5queueE" title="lf::queue::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">&amp;</span></span><a class="headerlink" href="#_CPPv4NK2lf5queue7steal_tmlEv" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Get the value <code class="docutils literal notranslate"><span class="pre">like</span> <span class="pre">std::optional</span></code>. </p>
+<p>Requires <code class="docutils literal notranslate"><span class="pre">code</span> <span class="pre">==</span> <a class="reference internal" href="#classlf_1_1queue_1a968ca5497fe043d0235e5d6c9f1df80fa7b63d1cafe15e5edab88a8e81de794b5"><span class="std std-ref"><span class="pre">err::won</span></span></a></code> . </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf5queue7steal_tmlEv">
+<span id="_CPPv3N2lf5queue7steal_tmlEv"></span><span id="_CPPv2N2lf5queue7steal_tmlEv"></span><span id="lf::queue::steal_t::mul-operatorCE"></span><span class="target" id="structlf_1_1queue_1_1steal__t_1a4ac3358303b02dfcd9b8eb451ff2ad18"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">*</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_7TrivialEN2lf5queueE" title="lf::queue::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">&amp;</span></span><a class="headerlink" href="#_CPPv4N2lf5queue7steal_tmlEv" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Get the value <code class="docutils literal notranslate"><span class="pre">like</span> <span class="pre">std::optional</span></code>. </p>
+<p>Requires <code class="docutils literal notranslate"><span class="pre">code</span> <span class="pre">==</span> <a class="reference internal" href="#classlf_1_1queue_1a968ca5497fe043d0235e5d6c9f1df80fa7b63d1cafe15e5edab88a8e81de794b5"><span class="std std-ref"><span class="pre">err::won</span></span></a></code> . </p>
 </dd></dl>
 
 </div>

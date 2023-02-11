@@ -219,8 +219,28 @@
 <dl class="cpp macro">
 <dt class="sig sig-object cpp" id="c.ASSUME">
 <span class="target" id="utility_8hpp_1a742f604ff3e4bce13794414eeaaaee50"></span><span class="sig-name descname"><span class="n"><span class="pre">ASSUME</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">expr</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.ASSUME" title="Permalink to this definition">#</a><br /></dt>
-<dd><p>A wrapper for C++23’s <code class="docutils literal notranslate"><span class="pre">[[assume(expr</span> <span class="pre">)]]</span></code> attribute. </p>
-<p>Reverts to compiler specific implementations if the attribute is not available. </p>
+<dd><p>A wrapper for C++23’s <code class="docutils literal notranslate"><span class="pre">[[assume(expr)]]</span></code> attribute. </p>
+<p>Reverts to compiler specific implementations if the attribute is not available.</p>
+<p><p></p>
+ </p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Using some intrinsics (i.e. GCC’s <code class="docutils literal notranslate"><span class="pre">__builtin_unreachable()</span></code>) this has different semantics
+than <code class="docutils literal notranslate"><span class="pre">[[assume(expr)]]</span></code> as it WILL evaluate the exprssion at runtime.</p>
+</div>
+</dd></dl>
+
+<dl class="cpp macro">
+<dt class="sig sig-object cpp" id="c.CHECK_ASSUME">
+<span class="target" id="utility_8hpp_1aafe38526546da812bc87fc4e9f444a78"></span><span class="sig-name descname"><span class="n"><span class="pre">CHECK_ASSUME</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">expr</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.CHECK_ASSUME" title="Permalink to this definition">#</a><br /></dt>
+<dd><p><code class="docutils literal notranslate"><a class="reference internal" href="#utility_8hpp_1a73d4f21ad937dbc50a0c0538c78fd4f9"><span class="std std-ref"><span class="pre">ASSERT()</span></span></a></code> in debug builds, <code class="docutils literal notranslate"><a class="reference internal" href="#utility_8hpp_1a742f604ff3e4bce13794414eeaaaee50"><span class="std std-ref"><span class="pre">ASSUME()</span></span></a></code> in release builds. </p>
+</dd></dl>
+
+<dl class="cpp macro">
+<dt class="sig sig-object cpp" id="c.ASSERT_ASSUME">
+<span class="target" id="utility_8hpp_1ae5810561044b8898aed65e7031593589"></span><span class="sig-name descname"><span class="n"><span class="pre">ASSERT_ASSUME</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">expr</span></span>, <span class="n"><span class="pre">message</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.ASSERT_ASSUME" title="Permalink to this definition">#</a><br /></dt>
+<dd><p><code class="docutils literal notranslate"><a class="reference internal" href="#utility_8hpp_1a73d4f21ad937dbc50a0c0538c78fd4f9"><span class="std std-ref"><span class="pre">ASSERT()</span></span></a></code> in debug builds, <code class="docutils literal notranslate"><a class="reference internal" href="#utility_8hpp_1a742f604ff3e4bce13794414eeaaaee50"><span class="std std-ref"><span class="pre">ASSUME()</span></span></a></code> in release builds. </p>
+<p>Only use if <code class="docutils literal notranslate"><span class="pre">expr</span></code> is cheap to evaluate as it MAY be evaluated at runtime. </p>
 </dd></dl>
 
 </section>
