@@ -1,4 +1,7 @@
-# Welcome to libfork
+
+
+
+# Welcome to libfork [![Continuous Integration](https://github.com/ConorWilliams/libfork/actions/workflows/ci.yml/badge.svg)](https://github.com/ConorWilliams/libfork/actions/workflows/ci.yml)
 
 Libfork is an abstraction over the ...
 

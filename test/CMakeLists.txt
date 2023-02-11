@@ -9,8 +9,6 @@ include(../cmake/windows-set-path.cmake)
 
 # ---- Dependencies ----
 
-find_package(Threads)
-
 if(PROJECT_IS_TOP_LEVEL)
   find_package(libfork REQUIRED)
   enable_testing()
@@ -37,7 +35,7 @@ FetchContent_MakeAvailable(Catch2)
 file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 
 add_executable(libfork_test ${TEST_SOURCES})
-target_link_libraries(libfork_test PRIVATE libfork::libfork Catch2::Catch2WithMain ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(libfork_test PRIVATE libfork::libfork Catch2::Catch2WithMain)
 target_compile_features(libfork_test PRIVATE cxx_std_20)
 
 list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
