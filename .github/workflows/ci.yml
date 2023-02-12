@@ -23,6 +23,9 @@ jobs:
     - name: Install codespell
       run: pip3 install codespell
 
+    - name: Get clang-format-15
+      run: apt install clang-format-15
+
     - name: Lint
       run: cmake -D FORMAT_COMMAND=clang-format-15 -P cmake/lint.cmake
 
