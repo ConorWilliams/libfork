@@ -168,8 +168,6 @@ concept is_same_or_any = std::is_same_v<R, any> || std::convertible_to<T, R>;
 
 }  // namespace detail
 
-// clang-format off
-
 /**
  * @brief Verify if a type is awaitable in a generic coroutine context.
  *
@@ -177,12 +175,16 @@ concept is_same_or_any = std::is_same_v<R, any> || std::convertible_to<T, R>;
  */
 template <typename T, typename Result = detail::any>
 concept awaitable = requires(std::coroutine_handle<> handle) {
-  { std::declval<detail::awaiter_t<T>>().await_ready() } -> std::convertible_to<bool>;
-  { std::declval<detail::awaiter_t<T>>().await_suspend(handle) } -> detail::void_bool_or_coro;
-  { std::declval<detail::awaiter_t<T>>().await_resume() } -> detail::is_same_or_any<Result>;
-};
-
-// clang-format on
+                      {
+                        std::declval<detail::awaiter_t<T>>().await_ready()
+                        } -> std::convertible_to<bool>;
+                      {
+                        std::declval<detail::awaiter_t<T>>().await_suspend(handle)
+                        } -> detail::void_bool_or_coro;
+                      {
+                        std::declval<detail::awaiter_t<T>>().await_resume()
+                        } -> detail::is_same_or_any<Result>;
+                    };
 
 /**
  * @brief The result type of ``co_await expr`` when ``expr`` is of type ``T``.
