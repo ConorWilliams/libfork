@@ -108,6 +108,8 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - uses: mattnotmitt/doxygen-action@v1.9.5
+
     - uses: actions/setup-python@v4
       with: { python-version: "3.8" }
 
