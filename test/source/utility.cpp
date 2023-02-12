@@ -94,4 +94,16 @@ struct r_value_await {
 static_assert(awaitable<r_value_await>);
 static_assert(!awaitable<r_value_await&>);
 
+// /////////////////////
+
+struct double_void {
+  bool await_ready() const noexcept;
+  std::coroutine_handle<good_void> await_suspend(std::coroutine_handle<>) const noexcept;
+  void await_resume() const noexcept;
+};
+
+static_assert(awaitable<double_void>);
+static_assert(awaitable<double_void, void>);
+static_assert(!awaitable<double_void, int>);
+
 // NOLINTEND

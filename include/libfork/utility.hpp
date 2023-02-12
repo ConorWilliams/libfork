@@ -128,51 +128,47 @@ constexpr auto file_name(std::string_view path) -> std::string_view {
 
 namespace detail {
 
-// Test for co_await non-member overload
-template <typename T>
-concept has_non_member_co_await = requires { operator co_await(std::declval<T>()); };
-
-// Test for co_await member overload
+// Test for co_await member overload.
 template <typename T>
 concept has_member_co_await = requires { std::declval<T>().operator co_await(); };
 
-// Base case, for (true, true) as ambiguous overload set
-template <typename T, bool Mem, bool Non>
-struct get_awaiter : std::false_type {};
+// Test for co_await non-member overload.
+template <typename T>
+concept has_non_member_co_await = requires { operator co_await(std::declval<T>()); };
+
+// Test for both co_awit overloads.
+template <typename T>
+concept has_both_co_await = has_non_member_co_await<T> && has_member_co_await<T>;
 
 template <typename T>
-struct get_awaiter<T, true, false> : std::true_type {
-  using type = decltype(std::declval<T>().operator co_await());
-};
+struct awaiter : std::type_identity<T> {};
 
+template <has_member_co_await T>
+struct awaiter<T> : std::type_identity<decltype(std::declval<T>().operator co_await())> {};
+
+template <has_non_member_co_await T>
+struct awaiter<T> : std::type_identity<decltype(operator co_await(std::declval<T>()))> {};
+
+template <has_both_co_await T>
+struct awaiter<T> {};
+
+// Fetch the awaiter obtained by (co_await T).
 template <typename T>
-struct get_awaiter<T, false, true> : std::true_type {
-  using type = decltype(operator co_await(std::declval<T>()));
-};
+using awaiter_t = typename awaiter<T>::type;
 
-// General case just return type
-template <typename T>
-struct get_awaiter<T, false, false> : std::true_type {
-  using type = T;
-};
-
-// Fetch the awaiter obtained by (co_await T); either T or operator co_await
-template <typename T>
-using awaiter_t = typename get_awaiter<T, has_member_co_await<T>, has_non_member_co_await<T>>::type;
-
-// Gets the return type of (co_await T).await_suspend(...)
-template <typename T>
-struct awaitor_suspend {
-  using type = decltype(std::declval<awaiter_t<T>>().await_suspend(std::coroutine_handle<>{}));
-};
-
-template <typename T>
-using suspend_t = typename awaitor_suspend<T>::type;
-
-// Tag type
+// Tag type.
 struct any {};
 
+template <typename T>
+concept void_bool_or_coro = std::is_void_v<T> || std::is_same_v<T, bool> ||
+                            std::is_convertible_v<T, std::coroutine_handle<>>;
+
+template <typename T, typename R>
+concept is_same_or_any = std::is_same_v<R, any> || std::convertible_to<T, R>;
+
 }  // namespace detail
+
+// clang-format off
 
 /**
  * @brief Verify if a type is awaitable in a generic coroutine context.
@@ -180,21 +176,13 @@ struct any {};
  * @tparam Result Type to verify that awaiter's ``await_resume()`` is ``std::converible_to``.
  */
 template <typename T, typename Result = detail::any>
-concept awaitable =
-    requires {
-      { std::declval<detail::awaiter_t<T>>().await_ready() } -> std::convertible_to<bool>;
+concept awaitable = requires(std::coroutine_handle<> handle) {
+  { std::declval<detail::awaiter_t<T>>().await_ready() } -> std::convertible_to<bool>;
+  { std::declval<detail::awaiter_t<T>>().await_suspend(handle) } -> detail::void_bool_or_coro;
+  { std::declval<detail::awaiter_t<T>>().await_resume() } -> detail::is_same_or_any<Result>;
+};
 
-      std::declval<detail::awaiter_t<T>>().await_suspend(std::coroutine_handle<>{});
-
-      requires std::is_void_v<detail::suspend_t<T>> || std::is_same_v<detail::suspend_t<T>, bool> ||
-                   std::is_convertible_v<detail::suspend_t<T>, std::coroutine_handle<>>;
-
-      std::declval<detail::awaiter_t<T>>().await_resume();
-
-      requires std::is_same_v<Result, detail::any> ||
-                   std::convertible_to<
-                       decltype(std::declval<detail::awaiter_t<T>>().await_resume()), Result>;
-    };
+// clang-format on
 
 /**
  * @brief The result type of ``co_await expr`` when ``expr`` is of type ``T``.
