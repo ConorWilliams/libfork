@@ -42,7 +42,7 @@ namespace lf {
  * @brief A concept for ``std::is_trivial_v<T>``.
  */
 template <typename T>
-concept Trivial = std::is_trivial_v<T>;
+concept trivial = std::is_trivial_v<T>;
 
 /**
  * @brief A basic wrapper around a c-style array that provides modulo load/stores.
@@ -52,7 +52,7 @@ concept Trivial = std::is_trivial_v<T>;
  *
  * @tparam T The type of the elements in the array.
  */
-template <Trivial T>
+template <trivial T>
 struct ring_buf {
   /**
    * @brief Construct a new ring buff object
@@ -151,7 +151,7 @@ enum class err : int {
  *
  * @tparam T The type of the elements in the queue - must be a trivial type.
  */
-template <Trivial T>
+template <trivial T>
 class queue {
   static constexpr std::ptrdiff_t k_default_capacity = 1024;
   static constexpr std::size_t k_garbage_reserve = 32;
@@ -284,36 +284,36 @@ class queue {
   static constexpr std::memory_order seq_cst = std::memory_order_seq_cst;
 };
 
-template <Trivial T>
+template <trivial T>
 queue<T>::queue(std::ptrdiff_t cap) : m_top(0), m_bottom(0), m_buf(new ring_buf<T>{cap}) {
   m_garbage.reserve(k_garbage_reserve);
 }
 
-template <Trivial T>
+template <trivial T>
 auto queue<T>::size() const noexcept -> std::size_t {
   return static_cast<std::size_t>(ssize());
 }
 
-template <Trivial T>
+template <trivial T>
 auto queue<T>::ssize() const noexcept -> std::ptrdiff_t {
   ptrdiff_t bottom = m_bottom.load(relaxed);
   ptrdiff_t top = m_top.load(relaxed);
   return std::max(bottom - top, ptrdiff_t{0});
 }
 
-template <Trivial T>
+template <trivial T>
 auto queue<T>::capacity() const noexcept -> ptrdiff_t {
   return m_buf.load(relaxed)->capacity();
 }
 
-template <Trivial T>
+template <trivial T>
 auto queue<T>::empty() const noexcept -> bool {
   ptrdiff_t bottom = m_bottom.load(relaxed);
   ptrdiff_t top = m_top.load(relaxed);
   return top >= bottom;
 }
 
-template <Trivial T>
+template <trivial T>
 auto queue<T>::push(T const& val) noexcept -> void {
   std::ptrdiff_t bottom = m_bottom.load(relaxed);
   std::ptrdiff_t top = m_top.load(acquire);
@@ -333,7 +333,7 @@ auto queue<T>::push(T const& val) noexcept -> void {
   m_bottom.store(bottom + 1, relaxed);
 }
 
-template <Trivial T>
+template <trivial T>
 auto queue<T>::pop() noexcept -> std::optional<T> {
   std::ptrdiff_t bottom = m_bottom.load(relaxed) - 1;
   ring_buf<T>* buf = m_buf.load(relaxed);
@@ -362,7 +362,7 @@ auto queue<T>::pop() noexcept -> std::optional<T> {
   return std::nullopt;
 }
 
-template <Trivial T>
+template <trivial T>
 auto queue<T>::steal() noexcept -> steal_t {
   std::ptrdiff_t top = m_top.load(acquire);
   std::atomic_thread_fence(seq_cst);
@@ -384,7 +384,7 @@ auto queue<T>::steal() noexcept -> steal_t {
   return {.code = err::empty};
 }
 
-template <Trivial T>
+template <trivial T>
 queue<T>::~queue() noexcept {
   delete m_buf.load();  // NOLINT
 }

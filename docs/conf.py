@@ -97,8 +97,8 @@ html_theme_options = {
     "source_branch": "main",
     "source_directory": "docs/",
     "navigation_with_keys": True,
-    "light_logo": "fly_light.svg",
-    "dark_logo": "fly_dark.svg",
+    "light_logo": "fork_light.svg",
+    "dark_logo": "fork_light.svg",
     "footer_icons": [
         {
             "name": "GitHub",

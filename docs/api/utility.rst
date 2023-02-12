@@ -22,3 +22,7 @@ Other
     :members:
     :undoc-members:
 
+.. doxygenconcept:: lf::awaitable
+
+.. doxygentypedef:: lf::await_result_t
+
