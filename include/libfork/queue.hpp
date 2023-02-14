@@ -62,12 +62,10 @@ struct ring_buf {
   explicit ring_buf(std::ptrdiff_t cap) : m_cap{cap}, m_mask{cap - 1} {
     ASSERT_ASSUME(cap > 0 && (!(cap & (cap - 1))), "Capacity must be a power of 2!");  // NOLINT
   }
-
   /**
    * @brief Get the capacity of the buffer.
    */
   [[nodiscard]] auto capacity() const noexcept -> std::ptrdiff_t { return m_cap; }
-
   /**
    * @brief Store ``val`` at ``index % this->capacity()``.
    */
@@ -75,7 +73,6 @@ struct ring_buf {
     CHECK_ASSUME(index >= 0);
     *(m_buf.get() + (index & m_mask)) = val;  // NOLINT Avoid cast to std::size_t.
   }
-
   /**
    * @brief Load value at ``index % this->capacity()``.
    */
@@ -83,7 +80,6 @@ struct ring_buf {
     CHECK_ASSUME(index >= 0);
     return *(m_buf.get() + (index & m_mask));  // NOLINT Avoid cast to std::size_t.
   }
-
   /**
    * @brief Copies elements in range ``[bottom, top)`` into a new ring buffer.
    *
@@ -165,14 +161,12 @@ class queue {
    * @brief Construct a new empty queue object.
    */
   queue() : queue(k_default_capacity) {}
-
   /**
    * @brief Construct a new empty queue object.
    *
    * @param cap The capacity of the queue (must be a power of 2).
    */
   explicit queue(std::ptrdiff_t cap);
-
   /**
    * @brief Queue's are not copiable or movable.
    */
@@ -189,7 +183,6 @@ class queue {
    * @brief Queue's are not assignable.
    */
   auto operator=(queue&& other) -> queue& = delete;
-
   /**
    * @brief Get the number of elements in the queue.
    */
@@ -198,17 +191,14 @@ class queue {
    * @brief Get the number of elements in the queue as a signed integer.
    */
   [[nodiscard]] auto ssize() const noexcept -> ptrdiff_t;
-
   /**
    * @brief Get the capacity of the queue.
    */
   [[nodiscard]] auto capacity() const noexcept -> ptrdiff_t;
-
   /**
    * @brief Check if the queue is empty.
    */
   [[nodiscard]] auto empty() const noexcept -> bool;
-
   /**
    * @brief Push an item into the queue.
    *
@@ -218,7 +208,6 @@ class queue {
    * @param val Value to add to the queue.
    */
   auto push(T const& val) noexcept -> void;
-
   /**
    * @brief Pop an item from the queue.
    *
@@ -226,7 +215,6 @@ class queue {
    * this operation fails (i.e. the queue is empty).
    */
   auto pop() noexcept -> std::optional<T>;
-
   /**
    * @brief The return type of the ``steal()`` operation.
    *
@@ -261,7 +249,6 @@ class queue {
    * empty or if another thread simulatniously stole an item from the queue.
    */
   auto steal() noexcept -> steal_t;
-
   /**
    * @brief Destroy the queue object.
    *

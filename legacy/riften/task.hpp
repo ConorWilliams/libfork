@@ -150,7 +150,9 @@ class [[nodiscard]] Task {
     auto await_transform(tag_sync) noexcept {
       struct awaitable {
         constexpr bool await_ready() const noexcept {
-          if (std::uint64_t a = _task.promise()._alpha) {
+          if (std::uint64_t a = _task.promise()._alpha; a != 0) {
+            // Could use relaxed + fence(acquire) in truthy branch but, its better if we see all the
+            // decrements to m_join and avoid suspending the coroutine if possible.
             if (a == IMAX - _task.promise()._n.load(std::memory_order_acquire)) {
               LOG_DEBUG("sync() is ready");
               return true;
@@ -170,11 +172,15 @@ class [[nodiscard]] Task {
           // then             n = num_stolen - num_joined
 
           std::uint64_t a = task.promise()._alpha;
-          std::uint64_t n = task.promise()._n.fetch_sub(IMAX - a, std::memory_order_acq_rel);
+          std::uint64_t n = task.promise()._n.fetch_sub(IMAX - a, std::memory_order_release);
 
-          if (n - (IMAX - a) == 0) {
+          if (IMAX - n == a) {
             // We set n after all children had completed therefore we can resume
             // task
+
+            // Need to acquire to ensure we see all writes by other threads to the result.
+            std::atomic_thread_fence(std::memory_order_acquire);
+
             LOG_DEBUG("sync() wins");
             return task;
           } else {
