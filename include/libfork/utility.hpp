@@ -170,7 +170,7 @@ constexpr inline void log(std::string_view const message, detail::source_locatio
     std::clog << "\033[1;32mLOG\033[0m: ";
     std::clog << detail::file_name(location.file_name());
     std::clog << "(" << location.line() << ":" << location.column() << ") \"";
-    std::clog << message << "\n";
+    std::clog << message << "\"\n";
     // std::cerr << message << "\" in function `";
     // std::cerr << std::string_view{location.function_name()}.substr(0, 30) << "...`\n";
   }
