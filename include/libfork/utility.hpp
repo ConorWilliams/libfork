@@ -11,6 +11,7 @@
 #include <coroutine>
 #include <exception>
 #include <functional>
+#include <iostream>
 #include <string_view>
 #include <type_traits>
 #include <utility>
@@ -21,8 +22,6 @@
  *
  * @brief A small collection of utility functions and macros.
  */
-
-#ifndef NDEBUG
 
 namespace lf::detail {
 
@@ -36,6 +35,8 @@ constexpr auto file_name(std::string_view path) -> std::string_view {
 }  // namespace lf::detail
 
 // NOLINTBEGIN Sometime macros are the only way to do things.
+
+#ifndef NDEBUG
 
 /**
  * @brief Assert an expression is true and ``std::terminate()`` if not.
@@ -77,17 +78,17 @@ constexpr auto file_name(std::string_view path) -> std::string_view {
  * \endrst
  */
 #if __has_cpp_attribute(assume)
-#define ASSUME(expr) [[assume((expr))]]
+#define ASSUME(expr) [[assume(bool(expr))]]
 #elif defined(__clang__)
-#define ASSUME(expr) __builtin_assume((expr))
+#define ASSUME(expr) __builtin_assume(bool(expr))
 #elif defined(__GNUC__) && !defined(__ICC)
 #define ASSUME(expr)         \
-  if ((expr)) {              \
+  if (bool(expr)) {          \
   } else {                   \
     __builtin_unreachable(); \
   }
 #elif defined(_MSC_VER) || defined(__ICC)
-#define ASSUME(expr) __assume((expr))
+#define ASSUME(expr) __assume(bool(expr))
 #else
 #warning "No ASSUME() implementation for this compiler."
 #define ASSUME(expr) \
@@ -119,8 +120,6 @@ constexpr auto file_name(std::string_view path) -> std::string_view {
  * @brief Log a message to ``std::cerr``.
  */
 #ifndef NLOG
-
-#include <iostream>
 
 #if defined(__cpp_lib_source_location)
 
@@ -181,10 +180,10 @@ constexpr inline void log(std::string_view const message, detail::source_locatio
 /**
  * @brief Log a message to ``std::clog``.
  */
-#define FORK_LOG(message) ::lf::log((message), ::lf::detail::source_location::current())
+#define DEBUG_TRACKER(message) ::lf::log((message), ::lf::detail::source_location::current())
 #else
-#define FORK_LOG(message) \
-  do {                    \
+#define DEBUG_TRACKER(message) \
+  do {                         \
   } while (false)
 #endif
 
@@ -262,5 +261,48 @@ concept awaitable = requires(std::coroutine_handle<> handle) {
  */
 template <awaitable T>
 using await_result_t = decltype(std::declval<detail::awaiter_t<T>>().await_resume());
+
+/**
+ * @brief Basic implementation of a Golang like defer.
+ *
+ *
+ * \tparam F The nullary invocable's type, this **MUST** be deducted through CTAD by the deduction
+ * guide and it must be ``noexcept`` callable.
+ *
+ * \rst
+ *
+ * Example:
+ *
+ * .. include:: ../../examples/utility/defer.cpp
+ *    :code:
+ *
+ * \endrst
+ */
+template <class F>
+requires std::is_nothrow_invocable_v<F&&>
+class [[nodiscard("use a regular function")]] defer {
+ public:
+  /**
+   * @brief Defer a nullary invocable untill destruction of this object.
+   *
+   * @param to_defer Nullary invocable forwarded into object and invoked by destructor.
+   */
+  constexpr explicit defer(F && to_defer) : m_f(std::forward<F>(to_defer)) {}
+
+  defer(const defer&) = delete;
+  defer(defer && other) = delete;
+  auto operator=(const defer&)->defer& = delete;
+  auto operator=(defer&&)->defer& = delete;
+
+  /**
+   * @brief Calls the invocable.
+   */
+  ~defer() noexcept {
+    std::invoke(std::forward<F>(m_f));
+  }
+
+ private:
+  F m_f;
+};
 
 }  // namespace lf

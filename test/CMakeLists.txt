@@ -32,7 +32,8 @@ FetchContent_MakeAvailable(Catch2)
 
 # ---- Tests ----
 
-file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+
+file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp")
 
 add_executable(libfork_test ${TEST_SOURCES})
 target_link_libraries(libfork_test PRIVATE libfork::libfork Catch2::Catch2WithMain)
@@ -43,6 +44,8 @@ list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
 include(Catch)
 
 catch_discover_tests(libfork_test)
+
+
 
 # ---- End-of-file commands ----
 

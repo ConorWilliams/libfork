@@ -6,8 +6,10 @@ This is libfork's API documentation, for information on building, installing, an
 .. toctree::
    :caption: Files
 
-   api/utility.rst
+   api/task.rst
    api/queue.rst
+   api/utility.rst
+   
 
 
 

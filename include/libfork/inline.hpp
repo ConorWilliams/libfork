@@ -9,10 +9,11 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <stack>
+#include <thread>
 
+#include "libfork/queue.hpp"
 #include "libfork/task.hpp"
 #include "libfork/utility.hpp"
-
 /**
  * @file inline.hpp
  *
@@ -23,28 +24,11 @@ namespace lf {
 /**
  * @brief An execution context that runs tasks inline.
  */
-struct inline_context : private std::stack<promise<inline_context>*> {
+struct inline_context : queue<task_handle<inline_context>> {
   /**
-   * @brief A noop as tasks cannot be stolen from an inline context.
+   * @brief Submit a root task to the pool.
    */
-  void push(promise<inline_context>* job) noexcept {
-    FORK_LOG("inline_context::push()");
-    std::stack<promise<inline_context>*>::push(job);
-  }
-
-  /**
-   * @brief Just returns the parent as tasks cannot be stolen from an inline context.
-   */
-  auto pop() noexcept -> promise<inline_context>* {
-    if (empty()) {
-      FORK_LOG("inline_context::pop() called on empty stack");
-      return nullptr;
-    }
-    FORK_LOG("inline_context::pop() called on non-empty stack");
-    auto* tmp = std::stack<promise<inline_context>*>::top();
-    std::stack<promise<inline_context>*>::pop();
-    return tmp;
-  }
+  static void submit(task_handle<inline_context> task) noexcept { task.resume(); }
 };
 
 static_assert(context<inline_context>);
