@@ -13,6 +13,8 @@
 #include <functional>
 #include <iostream>
 #include <string_view>
+#include <syncstream>
+#include <thread>
 #include <type_traits>
 #include <utility>
 #include <version>
@@ -38,18 +40,33 @@ constexpr auto file_name(std::string_view path) -> std::string_view {
 
 #ifndef NDEBUG
 
+#include <chrono>
+
 /**
  * @brief Assert an expression is true and ``std::terminate()`` if not.
  */
-#define ASSERT(expr, msg)                                                                          \
-  do {                                                                                             \
-    constexpr std::string_view fname = ::lf::detail::file_name(__FILE__);                          \
-                                                                                                   \
-    if (!(expr)) {                                                                                 \
-      std::cerr << "\033[1;31mERROR\033[0m: ASSERT \"" << #expr << "\" failed in " << fname << ":" \
-                << __LINE__ << " with message: \"" << (msg) << "\"" << std::endl;                  \
-      std::terminate();                                                                            \
-    }                                                                                              \
+#define ASSERT(expr, message)                                           \
+  do {                                                                  \
+    constexpr auto location = ::lf::detail::source_location::current(); \
+                                                                        \
+    if (!(expr)) {                                                      \
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));     \
+      std::cerr << "\033[1;31mERR\033[0m: [";                           \
+      std::cerr << std::this_thread::get_id();                          \
+      std::cerr << "] ";                                                \
+      std::cerr << ::lf::detail::file_name(location.file_name());       \
+      std::cerr << "(";                                                 \
+      std::cerr << location.line();                                     \
+      std::cerr << ":";                                                 \
+      std::cerr << location.column();                                   \
+      std::cerr << ") ASSERT \"";                                       \
+      std::cerr << #expr;                                               \
+      std::cerr << "\" failed with message: \"";                        \
+      std::cerr << message;                                             \
+      std::cerr << "\"\n";                                              \
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));     \
+      std::terminate();                                                 \
+    }                                                                   \
   } while (false)
 
 #else
@@ -164,15 +181,23 @@ namespace lf {
 /**
  * @brief Log a message to ``std::clog``.
  */
-constexpr inline void log(std::string_view const message, detail::source_location const location) {
-  if (!std::is_constant_evaluated()) {
-    std::clog << "\033[1;32mLOG\033[0m: ";
-    std::clog << detail::file_name(location.file_name());
-    std::clog << "(" << location.line() << ":" << location.column() << ") \"";
-    std::clog << message << "\"\n";
-    // std::cerr << message << "\" in function `";
-    // std::cerr << std::string_view{location.function_name()}.substr(0, 30) << "...`\n";
-  }
+inline void log(std::string_view const message, detail::source_location const location) {
+  std::osyncstream synced_out(std::cerr);  // synchronized wrapper for std::clog
+
+  synced_out << "\033[1;32mLOG\033[0m: [";
+  synced_out << std::this_thread::get_id();
+  synced_out << "] ";
+  synced_out << detail::file_name(location.file_name());
+  synced_out << "(";
+  synced_out << location.line();
+  synced_out << ":";
+  synced_out << location.column();
+  synced_out << ") \"";
+  synced_out << message;
+  synced_out << "\"\n";
+
+  // std::cerr << message << "\" in function `";
+  // std::cerr << std::string_view{location.function_name()}.substr(0, 30) << "...`\n";
 }
 
 }  // namespace lf
@@ -283,7 +308,7 @@ requires std::is_nothrow_invocable_v<F&&>
 class [[nodiscard("use a regular function")]] defer {
  public:
   /**
-   * @brief Defer a nullary invocable untill destruction of this object.
+   * @brief Defer a nullary invocable until destruction of this object.
    *
    * @param to_defer Nullary invocable forwarded into object and invoked by destructor.
    */

@@ -73,46 +73,6 @@ TEST_CASE("Basic task manipulation", "[task]") {
   REQUIRE(sync_wait(context, fib(3)) == 2);
   REQUIRE(sync_wait(context, fib(4)) == 3);
   REQUIRE(sync_wait(context, fib(5)) == 5);
-
-  // context.submit_task();
-
-  // task<int, inline_context>::promise_type::ptr = task<int, inline_context>::promise_type::buf;
-
-  // std::vector<int> range(8);
-
-  // for (int count = 1; auto& elem : range) {
-  //   elem = count++;
-  // }
-
-  // {
-  //   auto task = reduce<inline_context, int>(range, 1);
-
-  //   future<int> result;
-
-  //   task.m_promise->set_result_ptr(result);
-  //   task.m_promise->m_stack = &context;
-  //   task.m_promise->m_this.resume();
-
-  //   REQUIRE(result == std::reduce(range.begin(), range.end()));
-  // }
-
-  // BENCHMARK("task based reduce") {
-  //   auto task = reduce<inline_context, int>(range, 1);
-
-  //   future<int> result;
-
-  //   task.m_promise->set_result_ptr(result);
-  //   task.m_promise->m_stack = &context;
-  //   task.m_promise->m_this.resume();
-
-  //   return result;
-  // };
-
-  // BENCHMARK("std::reduce") {
-  //   return std::reduce(range.begin(), range.end());
-  // };
-
-  REQUIRE(false);
 }
 
 // NOLINTEND

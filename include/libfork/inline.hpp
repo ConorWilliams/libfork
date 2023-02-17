@@ -28,7 +28,7 @@ struct inline_context : queue<task_handle<inline_context>> {
   /**
    * @brief Submit a root task to the pool.
    */
-  static void submit(task_handle<inline_context> task) noexcept { task.resume(); }
+  void submit(task_handle<inline_context> task) noexcept { task.resume_root(*this); }
 };
 
 static_assert(context<inline_context>);

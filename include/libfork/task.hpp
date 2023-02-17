@@ -95,7 +95,7 @@ struct promise_base {
 };
 
 /**
- * @brief A specialisation that provides the ``return_value()`` and related methods.
+ * @brief A specialization that provides the ``return_value()`` and related methods.
  */
 template <typename T, typename Context>
 struct promise_result : promise_base<Context> {
@@ -125,7 +125,7 @@ struct promise_result : promise_base<Context> {
 };
 
 /**
- * @brief A specialisation that provides ``return_void()``.
+ * @brief A specialization that provides ``return_void()``.
  */
 template <typename Context>
 struct promise_result<void, Context> : promise_base<Context> {
@@ -189,6 +189,9 @@ struct promise_type : promise_result<T, Context> {
 
           ASSERT_ASSUME(prom.m_parent, "inline task has no parent");
           ASSERT_ASSUME(prom.m_parent->m_this, "inline task's parents this pointer not set");
+
+          prom.m_parent->m_stack = prom.m_stack;  // in-case we stole an inline task
+
           return destroy(child, prom.m_parent->m_this);
         }
 
@@ -222,7 +225,6 @@ struct promise_type : promise_result<T, Context> {
           DEBUG_TRACKER("task is last child to join and resumes parent");
 
           ASSERT_ASSUME(prom.m_parent->m_this, "parent's this handle is null");
-          ASSERT_ASSUME(prom.m_parent->m_stack != prom.m_stack, "parent has same context");
 
           prom.m_parent->m_stack = prom.m_stack;
 
@@ -326,7 +328,7 @@ struct promise_type : promise_result<T, Context> {
       constexpr void await_resume() const noexcept {
         // After a sync we reset a/n
         m_promise->m_steals = 0;
-        // We know we are the only thread who can touch this promise until a steal which whould
+        // We know we are the only thread who can touch this promise until a steal which would
         // provide the required memory syncronisation.
         m_promise->m_join.store(k_imax, std::memory_order_relaxed);
       }
@@ -384,9 +386,11 @@ class task_handle {
    * This should be called by the thread owning the execution context that this task is running
    * on.
    */
-  void resume() const noexcept {
+  void resume_root(Context& context) const noexcept {
     ASSERT_ASSUME(m_promise, "resuming null handle");
     ASSERT_ASSUME(m_promise->m_this, "resuming null coroutine");
+    ASSERT_ASSUME(!m_promise->m_stack, "resuming null coroutine");
+    m_promise->m_stack = std::addressof(context);
     m_promise->m_this.resume();
   }
 
@@ -456,6 +460,16 @@ class [[nodiscard("a task will leak unless it is run to final_suspend")]] task {
     DEBUG_TRACKER("task is constructed");
   }
 
+  /**
+   * @brief Void tasks can be converted to a handle.
+   */
+  [[nodiscard]] constexpr auto get_handle() const noexcept -> task_handle<Context>
+  requires std::is_void_v<T>
+  {
+    ASSERT_ASSUME(m_promise, "attempting to get handle from null task");
+    return task_handle<Context>{*m_promise};
+  }
+
  private:
   [[nodiscard]] friend auto sync_wait(Context & context, task && tsk) noexcept -> T {
     //
@@ -479,7 +493,6 @@ class [[nodiscard("a task will leak unless it is run to final_suspend")]] task {
     }(std::move(tsk), sem);
 
     root_task.m_promise->set_result_ptr(res);
-    root_task.m_promise->m_stack = std::addressof(context);
 
     context.submit(task_handle<Context>{*root_task.m_promise});
 
@@ -489,7 +502,7 @@ class [[nodiscard("a task will leak unless it is run to final_suspend")]] task {
     return res;
   }
 
-  friend auto just(future_type & fut, task && tsk) noexcept -> detail::just<Context>
+  friend auto just(future_type & fut, task tsk) noexcept -> detail::just<Context>
   requires(!std::is_void_v<T>)
   {
     tsk.m_promise->set_result_ptr(fut);
@@ -497,21 +510,21 @@ class [[nodiscard("a task will leak unless it is run to final_suspend")]] task {
     return {tsk.m_promise};
   }
 
-  friend auto just(task && tsk) noexcept -> detail::just<Context>
+  friend auto just(task tsk) noexcept -> detail::just<Context>
   requires std::is_void_v<T>
   {
     tsk.m_promise->m_is_inline = true;
     return {tsk.m_promise};
   }
 
-  friend auto fork(future_type & fut, task && tsk) noexcept -> detail::fork<Context>
+  friend auto fork(future_type & fut, task tsk) noexcept -> detail::fork<Context>
   requires(!std::is_void_v<T>)
   {
     tsk.m_promise->set_result_ptr(fut);
     return {tsk.m_promise};
   }
 
-  friend auto fork(task && tsk) noexcept -> detail::fork<Context>
+  friend auto fork(task tsk) noexcept -> detail::fork<Context>
   requires std::is_void_v<T>
   {
     return {tsk.m_promise};
