@@ -77,18 +77,14 @@ class xoshiro {
    *
    * @return The minimum value that ``xoshiro::operator()`` can return.
    */
-  static constexpr auto min() noexcept -> result_type {
-    return std::numeric_limits<result_type>::lowest();
-  }
+  static constexpr auto min() noexcept -> result_type { return std::numeric_limits<result_type>::lowest(); }
 
   /**
    * @brief Get the maximum value of the generator.
    *
    * @return The maximum value that ``xoshiro::operator()`` can return.
    */
-  static constexpr auto max() noexcept -> result_type {
-    return std::numeric_limits<result_type>::max();
-  }
+  static constexpr auto max() noexcept -> result_type { return std::numeric_limits<result_type>::max(); }
 
   /**
    * @brief Generate a random bit sequence and advance the state of the generator.

@@ -1,6 +1,7 @@
 .idea/
 .vs/
 .vscode/
+gmon.out
 build/
 cmake-build-*/
 prefix/

@@ -15,6 +15,10 @@
 // #define NLOG
 // #define NDEBUG
 
+#include "libfork/basic_task.hpp"
+#include "libfork/result.hpp"
+#include "libfork/unique_handle.hpp"
+
 #include "libfork/inline.hpp"
 #include "libfork/task.hpp"
 #include "libfork/utility.hpp"

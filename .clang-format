@@ -1,6 +1,6 @@
 ---
 Language: Cpp
 BasedOnStyle: Chromium
-ColumnLimit: 100
+ColumnLimit: 999
 IndentRequiresClause : false
 ...

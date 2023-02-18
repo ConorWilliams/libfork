@@ -178,11 +178,10 @@ struct source_location {
 
 namespace lf {
 
-/**
- * @brief Log a message to ``std::clog``.
- */
-inline void log(std::string_view const message, detail::source_location const location) {
-  std::osyncstream synced_out(std::cerr);  // synchronized wrapper for std::clog
+namespace detail {
+
+inline void log_impl(std::string_view const message, detail::source_location const location) {
+  std::osyncstream synced_out(std::clog);
 
   synced_out << "\033[1;32mLOG\033[0m: [";
   synced_out << std::this_thread::get_id();
@@ -195,9 +194,18 @@ inline void log(std::string_view const message, detail::source_location const lo
   synced_out << ") \"";
   synced_out << message;
   synced_out << "\"\n";
+}
+}  // namespace detail
 
-  // std::cerr << message << "\" in function `";
-  // std::cerr << std::string_view{location.function_name()}.substr(0, 30) << "...`\n";
+/**
+ * @brief Log a message to ``std::clog``.
+ *
+ * Does nothing in constant expressions.
+ */
+inline constexpr void log(std::string_view const message, detail::source_location const location) {
+  if (!std::is_constant_evaluated()) {
+    detail::log_impl(message, location);  // Indirection as ``std::osyncstream`` is virtual.
+  }
 }
 
 }  // namespace lf
@@ -257,8 +265,8 @@ using awaiter_t = typename awaiter<T>::type;
 struct any {};
 
 template <typename T>
-concept void_bool_or_coro = std::is_void_v<T> || std::is_same_v<T, bool> ||
-                            std::is_convertible_v<T, std::coroutine_handle<>>;
+concept void_bool_or_coro =
+    std::is_void_v<T> || std::is_same_v<T, bool> || std::is_convertible_v<T, std::coroutine_handle<>>;
 
 template <typename T, typename R>
 concept is_same_or_any = std::is_same_v<R, any> || std::convertible_to<T, R>;
