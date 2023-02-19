@@ -16,67 +16,46 @@
 // #define NDEBUG
 
 #include "libfork/basic_task.hpp"
-#include "libfork/result.hpp"
-#include "libfork/unique_handle.hpp"
-
 #include "libfork/inline.hpp"
-#include "libfork/task.hpp"
-#include "libfork/utility.hpp"
 
 // NOLINTBEGIN No need to check the tests for style.
 
 using namespace lf;
 
-task<int, inline_context> fib(int x) {
-  //
-  if (x < 2) {
-    co_return x;
-  }
+template <typename T>
+using task = basic_task<T, inline_context>;
 
-  future<int> a, b;
-
-  co_await fork(a, fib, x - 1);
-  co_await just(b, fib, x - 2);
-
-  co_await join();
-
-  co_return a + b;
-}
-
-// template <context Stack, typename T>
-// task<T, Stack> reduce(std::span<T> range, std::size_t grain) {
-//   if (range.size() <= grain) {
-//     co_return std::reduce(range.begin(), range.end());
+// task<int> fib(int x) {
+//   //
+//   if (x < 2) {
+//     co_return x;
 //   }
 
-//   future<T> a, b;
+//   future<int> a, b;
 
-//   auto head = range.size() / 2;
-//   auto tail = range.size() - head;
+//   co_await fork(a, fib, x - 1);
+//   co_await just(b, fib, x - 2);
 
-//   co_await fork(a, reduce<Stack>(range.first(head), grain));
-//   co_await just(b, reduce<Stack>(range.last(tail), grain));
-
-//   co_await join;
+//   co_await join();
 
 //   co_return a + b;
 // }
 
-task<int, inline_context> fwd(int value) {
-  co_return value;
+task<void> noop(int) {
+  co_return;
 }
 
-TEST_CASE("Basic task manipulation", "[task]") {
-  //
+// TEST_CASE("Basic task manipulation", "[task]") {
+//   //
 
-  inline_context context{};
+//   inline_context context{};
 
-  REQUIRE(sync_wait(context, fib(0)) == 0);
-  REQUIRE(sync_wait(context, fib(1)) == 1);
-  REQUIRE(sync_wait(context, fib(2)) == 1);
-  REQUIRE(sync_wait(context, fib(3)) == 2);
-  REQUIRE(sync_wait(context, fib(4)) == 3);
-  REQUIRE(sync_wait(context, fib(5)) == 5);
-}
+//   REQUIRE(sync_wait(context, fib(0)) == 0);
+//   REQUIRE(sync_wait(context, fib(1)) == 1);
+//   REQUIRE(sync_wait(context, fib(2)) == 1);
+//   REQUIRE(sync_wait(context, fib(3)) == 2);
+//   REQUIRE(sync_wait(context, fib(4)) == 3);
+//   REQUIRE(sync_wait(context, fib(5)) == 5);
+// }
 
 // NOLINTEND

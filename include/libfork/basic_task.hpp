@@ -21,7 +21,6 @@
 #include <utility>
 
 #include "libfork/result.hpp"
-#include "libfork/task.hpp"
 #include "libfork/unique_handle.hpp"
 #include "libfork/utility.hpp"
 
@@ -29,10 +28,66 @@
  * @file basic_task.hpp
  *
  * @brief The task class and associated utilities.
- *
  */
 
-namespace lf::basic {
+namespace lf {
+
+/**
+ * @brief A regular type which indicates the absence of a return value.
+ */
+struct regular_void {};
+
+template <typename T>
+class future;
+
+template <typename Context>
+class task_handle;
+
+/**
+ * @brief Defines the interface for an execution context.
+ *
+ * \rst
+ *
+ * Specifically:
+ *
+ * .. include:: ../../include/libfork/task.hpp
+ *    :code:
+ *    :start-line: 61
+ *    :end-before: //! END-CONTEXT-CAPTURE
+ *
+ * \endrst
+ */
+template <typename Context>
+concept context = requires(Context context, task_handle<Context> task) {
+                    { context.push(task) } -> std::same_as<void>;
+                    { context.pop() } -> std::convertible_to<std::optional<task_handle<Context>>>;
+                  };
+//! END-CONTEXT-CAPTURE
+
+namespace detail {
+
+template <typename T, context Context>
+struct promise_type;
+
+struct join {};
+
+template <typename P>
+struct fork : unique_handle<P> {};
+
+template <typename P>
+struct just : unique_handle<P> {};
+
+}  // namespace detail
+
+template <typename T, context Context>
+class [[nodiscard]] basic_task;
+
+/**
+ * @brief Produce a tag type which when co_awaited will join the current tasks fork-join group.
+ */
+[[nodiscard]] inline constexpr auto join() noexcept -> detail::join {
+  return {};
+}
 
 /**
  * @brief Represents a computation that may not have completed.
@@ -40,8 +95,7 @@ namespace lf::basic {
 template <typename T>
 class future : unique_handle<T> {
  public:
-  using unique_handle<T>::unique_handle;
-  using unique_handle<T>::operator=;
+  using unique_handle<T>::unique_handle;  ///< Inherit the constructors from ``unique_handle``.
 
   /**
    * @brief Access the result of the task.
@@ -124,7 +178,7 @@ class task_handle {
   /**
    * @brief To make task_handle trivial.
    */
-  task_handle() = default;
+  constexpr task_handle() noexcept = default;
 
   /**
    * @brief Construct a handle to a promise.
@@ -162,45 +216,26 @@ class task_handle {
   }
 
  private:
-  detail::promise_base<Context>* m_promise;
+  template <typename, context>
+  friend class detail::promise_type;
+
+  detail::promise_base<Context>* m_promise;  ///< The promise associated with this handle.
 };
 
-/**
- * @brief Defines the interface for an execution context.
- *
- * \rst
- *
- * Specifically:
- *
- * .. include:: ../../include/libfork/task.hpp
- *    :code:
- *    :start-line: 213
- *    :end-before: //! END-CONTEXT-CAPTURE
- *
- * \endrst
- */
-template <typename Context>
-concept context = requires(Context context, task_handle<Context> task) {
-                    { context.push(task) } noexcept -> std::same_as<void>;
-                    { context.pop() } noexcept -> std::convertible_to<std::optional<task_handle<Context>>>;
-                  };
-//! END-CONTEXT-CAPTURE
-
 namespace detail {
-// Tag types.
 
-struct join {};
+// A minimal context for static-assert.
+struct minimal_context {
+  void push(task_handle<minimal_context>);            // NOLINT
+  std::optional<task_handle<minimal_context>> pop();  // NOLINT
+};
 
-template <typename P>
-struct fork : unique_handle<P> {};
-
-template <typename P>
-struct just : unique_handle<P> {};
+static_assert(std::is_trivial_v<task_handle<minimal_context>>);
 
 /**
  * @brief The promise type for a basic_task.
  */
-template <typename T, typename Context>
+template <typename T, context Context>
 struct promise_type : promise_base<Context>, result<T> {
   /**
    * @brief Construct a new promise type object.
@@ -209,9 +244,9 @@ struct promise_type : promise_base<Context>, result<T> {
   /**
    * @brief This is the object returned when a basic_task is created by a function call.
    */
-  [[nodiscard]] constexpr auto get_return_object() noexcept -> unique_handle<promise_type> {
+  [[nodiscard]] constexpr auto get_return_object() noexcept -> basic_task<T, Context> {
     //
-    return raw_handle<promise_type>::from_promise(*this);
+    return basic_task<T, Context>{raw_handle<promise_type>::from_promise(*this)};
   }
 
   /**
@@ -375,7 +410,7 @@ struct promise_type : promise_base<Context>, result<T> {
         return false;
       }
 
-      [[nodiscard]] constexpr auto await_suspend(raw_handle<promise_type> basic_task) noexcept -> raw_handle<> {
+      [[nodiscard]] constexpr auto await_suspend(raw_handle<promise_type> task) noexcept -> raw_handle<> {
         // Currently        m_join = k_imax - num_joined
         // We set           m_join = m_join - (k_imax - num_steals)
         //                         = num_steals - num_joined
@@ -393,7 +428,7 @@ struct promise_type : promise_base<Context>, result<T> {
           std::atomic_thread_fence(std::memory_order_acquire);
 
           DEBUG_TRACKER("sync() wins");
-          return basic_task;
+          return task;
         }
         // Someone else is responsible for running this task and we have run out of work.
         DEBUG_TRACKER("sync() looses");
@@ -442,72 +477,65 @@ struct promise_type : promise_base<Context>, result<T> {
  * @tparam T
  * @tparam Context
  */
-template <typename T, typename Context>
-class [[nodiscard("a task will leak unless it is run to final_suspend")]] basic_task : unique_handle<detail::promise_type<T, Context>> {
+template <typename T, context Context>
+class [[nodiscard]] basic_task : unique_handle<detail::promise_type<T, Context>> {
  public:
   using value_type = T;                                   ///< The type of value that this task will return.
   using future_type = future<T>;                          ///< The type of future that this task must bind to.
   using context_type = Context;                           ///< The type of execution context that this task will run on.
   using promise_type = detail::promise_type<T, Context>;  ///< The type of promise that this task will use.
+  using handle_type = task_handle<Context>;               ///< The type of handle that this task will use.
 
-  using unique_handle<promise_type>::unique_handle;  ///< Inherit constructors.
+  /**
+   * @brief A named tuple returned by ``get_handle()``.
+   *
+   * In the case of a void task the ``future`` member will be ``regular_void``. This enables
+   * consistent structured bindings.
+   */
+  struct two_tuple {
+    [[no_unique_address]] std::conditional<std::is_void_v<T>, regular_void, future_type> future;  ///< Future to result.
+    [[no_unique_address]] handle_type handle;                                                     ///< Resumable handle
+  };
 
-#ifndef NDEBUG  // Rule of zero in release.
-  constexpr ~basic_task() noexcept {
-    ASSERT_ASSUME(!*this, "task destructed without co_await");
+  /**
+   * @brief Decompose this task into a future and a handle.
+   *
+   * This requires the task to embed a notification mechanism to allow the caller to know when
+   * the future is ready.
+   */
+  [[nodiscard]] constexpr auto get_handle() && noexcept -> two_tuple {
+    ASSERT_ASSUME(this, "attempting to get handle from null task");
+
+    handle_type hand{this->promise()};
+
+    if constexpr (std::is_void_v<T>) {
+      this->release();
+      return {regular_void{}, hand};
+    } else {
+      return {future_type{std::move(*this)}, hand};
+    }
   }
-#endif
 
-  // /**
-  //  * @brief Void tasks can be converted to a handle.
-  //  */
-  // [[nodiscard]] constexpr auto get_handle() const noexcept -> task_handle<Context>
-  // requires std::is_void_v<T>
-  // {
-  //   ASSERT_ASSUME(m_promise, "attempting to get handle from null task");
-  //   return task_handle<Context>{*m_promise};
-  // }
-
- private:
-  // [[nodiscard]] friend auto sync_wait(Context & context, basic_task && tsk) noexcept -> T {
-  //   //
-
-  //   std::binary_semaphore sem{0};
-
-  //   future<T> res;
-
-  //   basic_task root_task = [](basic_task&& tsk, std::binary_semaphore& sem) -> basic_task {
-  //     //
-  //     defer at_exit{[&sem]() noexcept {
-  //       DEBUG_TRACKER("semaphore released");
-  //       sem.release();
-  //     }};
-
-  //     future<T> res;
-
-  //     co_await just(res, std::move(tsk));
-
-  //     co_return res;
-  //   }(std::move(tsk), sem);
-
-  //   root_task.m_promise->set_result_ptr(res);
-
-  //   context.submit(task_handle<Context>{*root_task.m_promise});
-
-  //   sem.acquire();
-  //   DEBUG_TRACKER("semaphore acquired");
-
-  //   return res;
-  // }
-
-  [[nodiscard]] constexpr auto just()&& noexcept -> detail::just<Context> {
+  /**
+   * @brief Get an awaitable which will run this task inline.
+   */
+  [[nodiscard]] constexpr auto just() && noexcept -> detail::just<Context> {
     this->promise().m_is_inline = true;
     return {std::move(*this)};
   }
+  /**
+   * @brief Get an awaitbale which will cause the current task to fork.
+   */
+  [[nodiscard]] constexpr auto fork() && noexcept -> detail::fork<Context> { return {std::move(*this)}; }
 
-  [[nodiscard]] constexpr auto fork()&& noexcept -> detail::fork<Context> {
-    return {std::move(*this)};
-  }
+#ifndef NDEBUG  // Rule of zero in release.
+  constexpr ~basic_task() noexcept { ASSERT_ASSUME(!*this, "task destructed without co_await"); }
+#endif
+
+ private:
+  friend class detail::promise_type<T, Context>;
+
+  constexpr explicit basic_task(detail::raw_handle<promise_type> handle) : unique_handle<promise_type>{handle} {}
 };
 
-}  // namespace lf::basic
+}  // namespace lf

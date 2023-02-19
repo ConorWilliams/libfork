@@ -283,8 +283,8 @@ auto queue<T>::size() const noexcept -> std::size_t {
 
 template <trivial T>
 auto queue<T>::ssize() const noexcept -> std::ptrdiff_t {
-  ptrdiff_t bottom = m_bottom.load(relaxed);
-  ptrdiff_t top = m_top.load(relaxed);
+  ptrdiff_t const bottom = m_bottom.load(relaxed);
+  ptrdiff_t const top = m_top.load(relaxed);
   return std::max(bottom - top, ptrdiff_t{0});
 }
 
@@ -295,15 +295,15 @@ auto queue<T>::capacity() const noexcept -> ptrdiff_t {
 
 template <trivial T>
 auto queue<T>::empty() const noexcept -> bool {
-  ptrdiff_t bottom = m_bottom.load(relaxed);
-  ptrdiff_t top = m_top.load(relaxed);
+  ptrdiff_t const bottom = m_bottom.load(relaxed);
+  ptrdiff_t const top = m_top.load(relaxed);
   return top >= bottom;
 }
 
 template <trivial T>
 auto queue<T>::push(T const& val) noexcept -> void {
-  std::ptrdiff_t bottom = m_bottom.load(relaxed);
-  std::ptrdiff_t top = m_top.load(acquire);
+  std::ptrdiff_t const bottom = m_bottom.load(relaxed);
+  std::ptrdiff_t const top = m_top.load(acquire);
   ring_buf<T>* buf = m_buf.load(relaxed);
 
   if (buf->capacity() < (bottom - top) + 1) {
@@ -322,7 +322,7 @@ auto queue<T>::push(T const& val) noexcept -> void {
 
 template <trivial T>
 auto queue<T>::pop() noexcept -> std::optional<T> {
-  std::ptrdiff_t bottom = m_bottom.load(relaxed) - 1;
+  std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1;
   ring_buf<T>* buf = m_buf.load(relaxed);
 
   m_bottom.store(bottom, relaxed);  // Stealers can no longer steal.
@@ -353,7 +353,7 @@ template <trivial T>
 auto queue<T>::steal() noexcept -> steal_t {
   std::ptrdiff_t top = m_top.load(acquire);
   std::atomic_thread_fence(seq_cst);
-  std::ptrdiff_t bottom = m_bottom.load(acquire);
+  std::ptrdiff_t const bottom = m_bottom.load(acquire);
 
   if (top < bottom) {
     // Must load *before* acquiring the slot as slot may be overwritten immediately after

@@ -131,6 +131,7 @@ class result<T> {
  */
 template <>
 class result<void> {
+ public:
   /**
    * @brief Noop for void returns.
    */

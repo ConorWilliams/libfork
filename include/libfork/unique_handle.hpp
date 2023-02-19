@@ -51,16 +51,16 @@ class unique_handle {
    * @brief Move assign a ``unique_handle`` from ``other``.
    */
   constexpr auto operator=(unique_handle&& other) noexcept -> unique_handle& {
-    if (std::coroutine_handle old = std::exchange(m_data, other.m_data)) {
+    if (std::coroutine_handle const old = std::exchange(m_data, other.m_data)) {
       DEBUG_TRACKER("destroying a coroutine");
-      old->destroy();
+      old.destroy();
     }
     return *this;
   }
   /**
    * @brief Test if the handle is non-null.
    */
-  [[nodiscard]] constexpr explicit operator bool() const noexcept { return bool(m_data); }
+  [[nodiscard]] constexpr explicit operator bool() const noexcept { return static_cast<bool>(m_data); }
   /**
    * @brief Access the underlying handle.
    */
@@ -79,9 +79,9 @@ class unique_handle {
    * @brief Destroy the handle.
    */
   constexpr ~unique_handle() noexcept {
-    if (std::coroutine_handle old = std::exchange(m_data, nullptr)) {
+    if (std::coroutine_handle const old = std::exchange(m_data, nullptr)) {
       DEBUG_TRACKER("destroying a coroutine");
-      old->destroy();
+      old.destroy();
     }
   }
 

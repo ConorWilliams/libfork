@@ -11,8 +11,8 @@
 #include <stack>
 #include <thread>
 
+#include "libfork/basic_task.hpp"
 #include "libfork/queue.hpp"
-#include "libfork/task.hpp"
 #include "libfork/utility.hpp"
 /**
  * @file inline.hpp
@@ -24,11 +24,26 @@ namespace lf {
 /**
  * @brief An execution context that runs tasks inline.
  */
-struct inline_context : queue<task_handle<inline_context>> {
+class inline_context {
+ public:
   /**
-   * @brief Submit a root task to the pool.
+   * @brief Push a task to the context's stack.
    */
-  void submit(task_handle<inline_context> task) noexcept { task.resume_root(*this); }
+  auto push(task_handle<inline_context> task) -> void { m_tasks.push(task); }
+  /**
+   * @brief Pop a task from the context's stack.
+   */
+  auto pop() -> std::optional<task_handle<inline_context>> {
+    if (m_tasks.empty()) {
+      return std::nullopt;
+    }
+    auto task = m_tasks.top();
+    m_tasks.pop();
+    return task;
+  }
+
+ private:
+  std::stack<task_handle<inline_context>, std::vector<task_handle<inline_context>>> m_tasks;
 };
 
 static_assert(context<inline_context>);
