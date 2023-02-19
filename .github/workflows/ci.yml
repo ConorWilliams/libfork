@@ -107,7 +107,7 @@ jobs:
 
   docs:
     # Deploy docs only when builds succeed
-    needs: [sanitize, test]
+    needs: [sanitize-clang, test]
 
     runs-on: ubuntu-22.04
 
