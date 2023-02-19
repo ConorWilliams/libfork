@@ -158,10 +158,10 @@ namespace lf::detail {
  */
 struct source_location {
   static constexpr source_location current() noexcept { return source_location{}; }
-  constexpr const char* file_name() const noexcept { return "unknowm"; }
+  constexpr char const* file_name() const noexcept { return "unknowm"; }
   constexpr std::uint_least32_t line() const noexcept { return 0; }
   constexpr std::uint_least32_t column() const noexcept { return 0; }
-  constexpr const char* function_name() const noexcept { return "unknowm"; }
+  constexpr char const* function_name() const noexcept { return "unknowm"; }
 };
 }  // namespace lf::detail
 
@@ -312,9 +312,9 @@ class [[nodiscard("use a regular function")]] defer {
    */
   constexpr explicit defer(F && to_defer) : m_f(std::forward<F>(to_defer)) {}
 
-  defer(const defer&) = delete;
+  defer(defer const&) = delete;
   defer(defer && other) = delete;
-  auto operator=(const defer&)->defer& = delete;
+  auto operator=(defer const&)->defer& = delete;
   auto operator=(defer&&)->defer& = delete;
 
   /**

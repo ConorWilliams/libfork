@@ -1,6 +1,6 @@
 #pragma once
 
-// This file has been adapted from the following source: https://godbolt.org/
+// This file has been adapted from the following source: https://godbolt.org/z/5hcaPcfvP
 
 #include <algorithm>
 #include <concepts>

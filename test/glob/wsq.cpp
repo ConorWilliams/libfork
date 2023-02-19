@@ -151,7 +151,7 @@ void wsq_test_n_thieves(int N) {
 
     std::set<int> set;
 
-    for (const auto& cdeq : cdeqs) {
+    for (auto const& cdeq : cdeqs) {
       for (auto k : cdeq) {
         set.insert(k);
       }

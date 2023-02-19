@@ -126,44 +126,44 @@ void method() {
   f.future.release();
 }
 
-TEST_CASE("HALO optimisation", "[basic_task][!mayfail][!nonportable]") {
+TEST_CASE("HALO optimization", "[basic_task][!mayfail][!nonportable]") {
   //
   REQUIRE(global_count == 0);
 
   trivial_coro();
 
   if (global_count != 0) {
-    SKIP("HALO optimisation fails for trivial coroutines");
+    SKIP("HALO optimization fails for trivial coroutines");
   }
 
   manual();
 
   if (global_count != 0) {
-    FAIL("HALO optimisation fails at manual");
+    FAIL("HALO optimization fails at manual");
   }
 
   handle();
 
   if (global_count != 0) {
-    FAIL("HALO optimisation fails at handle creation");
+    FAIL("HALO optimization fails at handle creation");
   }
 
   fut();
 
   if (global_count != 0) {
-    FAIL("HALO optimisation fails at future creation");
+    FAIL("HALO optimization fails at future creation");
   }
 
   both();
 
   if (global_count != 0) {
-    FAIL("HALO optimisation fails at both");
+    FAIL("HALO optimization fails at both");
   }
 
   method();
 
   if (global_count != 0) {
-    FAIL("HALO optimisation fails at method");
+    FAIL("HALO optimization fails at method");
   }
 }
 
