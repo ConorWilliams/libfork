@@ -265,8 +265,7 @@ using awaiter_t = typename awaiter<T>::type;
 struct any {};
 
 template <typename T>
-concept void_bool_or_coro =
-    std::is_void_v<T> || std::is_same_v<T, bool> || std::is_convertible_v<T, std::coroutine_handle<>>;
+concept void_bool_or_coro = std::is_void_v<T> || std::is_same_v<T, bool> || std::is_convertible_v<T, std::coroutine_handle<>>;
 
 template <typename T, typename R>
 concept is_same_or_any = std::is_same_v<R, any> || std::convertible_to<T, R>;

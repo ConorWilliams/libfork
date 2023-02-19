@@ -127,7 +127,7 @@ class result<T> {
 };
 
 /**
- * @brief A promise mixin specialisation that provides result handling for void returning tasks.
+ * @brief A promise mixin specialization that provides result handling for void returning tasks.
  */
 template <>
 class result<void> {
