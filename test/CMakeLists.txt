@@ -30,7 +30,7 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(Catch2)
 
-find_package(OpenMP REQUIRED)
+# find_package(OpenMP REQUIRED)
 
 # ---- Tests ----
 
@@ -38,7 +38,7 @@ find_package(OpenMP REQUIRED)
 file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp")
 
 add_executable(libfork_test ${TEST_SOURCES})
-target_link_libraries(libfork_test PRIVATE libfork::libfork Catch2::Catch2WithMain OpenMP::OpenMP_CXX)
+target_link_libraries(libfork_test PRIVATE libfork::libfork Catch2::Catch2WithMain)
 target_compile_features(libfork_test PRIVATE cxx_std_20)
 
 list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
