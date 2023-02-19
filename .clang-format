@@ -3,4 +3,5 @@ Language: Cpp
 BasedOnStyle: Chromium
 ColumnLimit: 999
 IndentRequiresClause : false
+QualifierAlignment: Right
 ...

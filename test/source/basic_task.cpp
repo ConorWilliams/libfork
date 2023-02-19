@@ -6,18 +6,20 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include <memory>
 #include <numeric>
 #include <span>
+#include <string>
 
 #include <catch2/benchmark/catch_benchmark.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <string>
 
 // #define NLOG
 // #define NDEBUG
 
 #include "libfork/basic_task.hpp"
 #include "libfork/inline.hpp"
+#include "libfork/utility.hpp"
 
 // NOLINTBEGIN No need to check the tests for style.
 
@@ -137,25 +139,60 @@ task<void> fib_task_void(int& out, int n) {
   out = a + b;
 }
 
-TEST_CASE("Fibonacci", "[basic_task]") {
+TEST_CASE("Fibonacci - int", "[basic_task]") {
   //
-
   inline_context context{};
 
-  for (int i = 0; i < 10; ++i) {
-    auto [fut, task] = fib_task(i).make_promise();
-    task.resume_root(context);
-    REQUIRE(*fut == fib(i));
-    REQUIRE(context.empty());
+  for (int j = 0; j < 100; ++j) {
+    for (int i = 0; i < 10; ++i) {
+      auto [fut, task] = fib_task(i).make_promise();
+      task.resume_root(context);
+      REQUIRE(*fut == fib(i));
+      REQUIRE(context.empty());
+    }
+  }
+}
+
+TEST_CASE("Fibonacci - void", "[basic_task]") {
+  //
+  inline_context context{};
+
+  for (int j = 0; j < 100; ++j) {
+    for (int i = 0; i < 10; ++i) {
+      int x = 0;
+      auto [fut, task] = fib_task_void(x, i).make_promise();
+      task.resume_root(context);
+      REQUIRE(x == fib(i));
+      REQUIRE(context.empty());
+    }
+  }
+}
+
+template <typename T>
+struct Tracked : std::allocator<T> {
+  [[nodiscard]] constexpr T* allocate(std::size_t n) {
+    DEBUG_TRACKER("ALLOCATING");
+    return std::allocator<T>::allocate(n);
   }
 
-  for (int i = 0; i < 10; ++i) {
-    int x = 0;
-    auto [fut, task] = fib_task_void(x, i).make_promise();
-    task.resume_root(context);
-    REQUIRE(x == fib(i));
-    REQUIRE(context.empty());
-  }
+  Tracked() = default;
+
+  template <typename U>
+  Tracked(Tracked<U>) {}
+};
+
+template <typename T>
+basic_task<T, inline_context, Tracked<T>> track(T x) {
+  co_return x;  //
+}
+
+TEST_CASE("HALO optimisation", "[basic_task]") {
+  //
+  inline_context context{};
+
+  auto [fut, task] = track(0).make_promise();
+  task.resume_root(context);
+  REQUIRE(*fut == 0);
 }
 
 // NOLINTEND
