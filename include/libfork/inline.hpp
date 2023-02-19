@@ -41,6 +41,10 @@ class inline_context {
     m_tasks.pop();
     return task;
   }
+  /**
+   * @brief Check if the context's stack is empty.
+   */
+  [[nodiscard]] auto empty() const noexcept -> bool { return m_tasks.empty(); }
 
  private:
   std::stack<task_handle<inline_context>, std::vector<task_handle<inline_context>>> m_tasks;

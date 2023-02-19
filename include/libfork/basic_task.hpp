@@ -12,6 +12,7 @@
 #include <concepts>
 #include <coroutine>
 #include <cstddef>
+#include <functional>
 #include <limits>
 #include <memory>
 #include <new>
@@ -37,9 +38,6 @@ namespace lf {
  */
 struct regular_void {};
 
-template <typename T>
-class future;
-
 template <typename Context>
 class task_handle;
 
@@ -63,6 +61,10 @@ concept context = requires(Context context, task_handle<Context> task) {
                     { context.pop() } -> std::convertible_to<std::optional<task_handle<Context>>>;
                   };
 //! END-CONTEXT-CAPTURE
+
+template <typename T, context Context>
+requires std::negation_v<std::is_void<T>>
+class [[nodiscard]] basic_future;
 
 namespace detail {
 
@@ -92,27 +94,35 @@ class [[nodiscard]] basic_task;
 /**
  * @brief Represents a computation that may not have completed.
  */
-template <typename T>
-class future : unique_handle<T> {
+template <typename T, context Context>
+requires std::negation_v<std::is_void<T>>
+class [[nodiscard]] basic_future : unique_handle<detail::promise_type<T, Context>> {
  public:
-  using unique_handle<T>::unique_handle;  ///< Inherit the constructors from ``unique_handle``.
+  using value_type = T;                                   ///< The type of value that this future will return.
+  using context_type = Context;                           ///< The type of execution context that this futures task will run on.
+  using promise_type = detail::promise_type<T, Context>;  ///< The type of promise that this future owns.
 
+  constexpr basic_future() noexcept = default;
+  /**
+   * @brief Construct a new basic_future object from a unique handle.
+   */
+  constexpr explicit basic_future(unique_handle<promise_type>&& handle) noexcept : unique_handle<promise_type>{std::move(handle)} {}
   /**
    * @brief Access the result of the task.
    */
-  [[nodiscard]] constexpr auto operator*() & noexcept -> T& { return this->promise().get(); }
+  [[nodiscard]] constexpr auto operator*() & noexcept -> T& { return (*this)->promise().get(); }
   /**
    * @brief Access the result of the task.
    */
-  [[nodiscard]] constexpr auto operator*() && noexcept -> T&& { return std::move(this->promise()).get(); }
+  [[nodiscard]] constexpr auto operator*() && noexcept -> T&& { return std::move((*this)->promise()).get(); }
   /**
    * @brief Access the result of the task.
    */
-  [[nodiscard]] constexpr auto operator*() const& noexcept -> T const& { return this->promise().get(); }
+  [[nodiscard]] constexpr auto operator*() const& noexcept -> T const& { return (*this)->promise().get(); }
   /**
    * @brief Access the result of the task.
    */
-  [[nodiscard]] constexpr auto operator*() const&& noexcept -> T const&& { return std::move(this->promise()).get(); }
+  [[nodiscard]] constexpr auto operator*() const&& noexcept -> T const&& { return std::move((*this)->promise()).get(); }
 };
 
 namespace detail {
@@ -330,7 +340,7 @@ struct promise_type : promise_base<Context>, result<T> {
 
       [[nodiscard]] constexpr auto await_suspend(raw_handle<promise_type> parent) noexcept -> raw_handle<> {
         // In case *this (awaitable) is destructed by stealer after push
-        raw_handle<> child = this->promise().m_this;
+        raw_handle<> child = (*this)->promise().m_this;
 
         DEBUG_TRACKER("task is forking");
 
@@ -339,17 +349,19 @@ struct promise_type : promise_base<Context>, result<T> {
         return child;
       }
 
-      [[nodiscard]] constexpr auto await_resume() noexcept -> std::conditional_t<std::is_void_v<T>, void, future<T>> {
+      [[nodiscard]] constexpr auto await_resume() noexcept {
         if constexpr (std::is_void_v<T>) {
           // Promise cleaned up at final_suspend.
           DEBUG_TRACKER("releasing void promise");
           this->release();
           return;
         } else {
-          return {std::move(*this)};
+          return basic_future<T, Context>{std::move(*this)};
         }
       }
     };
+
+    ASSERT_ASSUME(!child->promise().m_is_inline, "forking inline task");
 
     child->promise().m_parent = this;
     child->promise().m_context = this->m_context;
@@ -366,7 +378,7 @@ struct promise_type : promise_base<Context>, result<T> {
 
       [[nodiscard]] constexpr auto await_suspend(raw_handle<promise_type>) noexcept -> raw_handle<> {  // NOLINT
         DEBUG_TRACKER("launching inline task");
-        return this->promise().m_this;
+        return (*this)->promise().m_this;
       }
 
       [[nodiscard]] constexpr auto await_resume() noexcept -> std::conditional_t<std::is_void_v<T>, void, T> {
@@ -376,11 +388,12 @@ struct promise_type : promise_base<Context>, result<T> {
           this->release();
           return;
         } else {
-          return std::move(this->promise()).get();
+          return std::move((*this)->promise()).get();
         }
       }
     };
 
+    child->promise().m_is_inline = true;
     child->promise().m_parent = this;
     child->promise().m_context = this->m_context;
 
@@ -478,13 +491,18 @@ struct promise_type : promise_base<Context>, result<T> {
  * @tparam Context
  */
 template <typename T, context Context>
-class [[nodiscard]] basic_task : unique_handle<detail::promise_type<T, Context>> {
+class [[nodiscard]] basic_task : unique_handle<detail::promise_type<T, Context>> {  // NOLINT
+  // Remap void -> regular_void to prevent basic_future<void> in false branch of future_type
+  using future_no_void = basic_future<std::conditional_t<std::is_void_v<T>, regular_void, T>, Context>;
+
+  auto get() && noexcept -> unique_handle<detail::promise_type<T, Context>>&& { return std::move(*this); }
+
  public:
-  using value_type = T;                                   ///< The type of value that this task will return.
-  using future_type = future<T>;                          ///< The type of future that this task must bind to.
-  using context_type = Context;                           ///< The type of execution context that this task will run on.
-  using promise_type = detail::promise_type<T, Context>;  ///< The type of promise that this task will use.
-  using handle_type = task_handle<Context>;               ///< The type of handle that this task will use.
+  using value_type = T;                                                                     ///< The type of value that this task will return.
+  using future_type = std::conditional_t<std::is_void_v<T>, regular_void, future_no_void>;  ///< The type of future that this task must bind to.
+  using handle_type = task_handle<Context>;                                                 ///< The type of handle that this task will use.
+  using context_type = Context;                                                             ///< The type of execution context that this task will run on.
+  using promise_type = detail::promise_type<T, Context>;                                    ///< The type of promise that this task will use.
 
   /**
    * @brief A named tuple returned by ``get_handle()``.
@@ -493,24 +511,24 @@ class [[nodiscard]] basic_task : unique_handle<detail::promise_type<T, Context>>
    * consistent structured bindings.
    */
   struct two_tuple {
-    [[no_unique_address]] std::conditional<std::is_void_v<T>, regular_void, future_type> future;  ///< Future to result.
-    [[no_unique_address]] handle_type handle;                                                     ///< Resumable handle
+    future_type future;  ///< Future to result.
+    handle_type handle;  ///< Resumable handle
   };
 
   /**
-   * @brief Decompose this task into a future and a handle.
+   * @brief Decompose this task into a future and a handle and promise to call resume on the handle.
    *
    * This requires the task to embed a notification mechanism to allow the caller to know when
    * the future is ready.
    */
-  [[nodiscard]] constexpr auto get_handle() && noexcept -> two_tuple {
-    ASSERT_ASSUME(this, "attempting to get handle from null task");
+  [[nodiscard]] constexpr auto make_promise() && noexcept -> two_tuple {
+    ASSERT_ASSUME(*this, "attempting to get handle from null task");
 
-    handle_type hand{this->promise()};
+    handle_type const hand{(*this)->promise()};
 
     if constexpr (std::is_void_v<T>) {
       this->release();
-      return {regular_void{}, hand};
+      return {{}, hand};
     } else {
       return {future_type{std::move(*this)}, hand};
     }
@@ -519,14 +537,11 @@ class [[nodiscard]] basic_task : unique_handle<detail::promise_type<T, Context>>
   /**
    * @brief Get an awaitable which will run this task inline.
    */
-  [[nodiscard]] constexpr auto just() && noexcept -> detail::just<Context> {
-    this->promise().m_is_inline = true;
-    return {std::move(*this)};
-  }
+  [[nodiscard]] constexpr auto just() && noexcept -> detail::just<promise_type> { return {std::move(*this)}; }
   /**
    * @brief Get an awaitbale which will cause the current task to fork.
    */
-  [[nodiscard]] constexpr auto fork() && noexcept -> detail::fork<Context> { return {std::move(*this)}; }
+  [[nodiscard]] constexpr auto fork() && noexcept -> detail::fork<promise_type> { return {std::move(*this)}; }
 
 #ifndef NDEBUG  // Rule of zero in release.
   constexpr ~basic_task() noexcept { ASSERT_ASSUME(!*this, "task destructed without co_await"); }

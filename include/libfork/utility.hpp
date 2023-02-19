@@ -59,7 +59,7 @@ constexpr auto file_name(std::string_view path) -> std::string_view {
       std::cerr << location.line();                                     \
       std::cerr << ":";                                                 \
       std::cerr << location.column();                                   \
-      std::cerr << ") ASSERT \"";                                       \
+      std::cerr << ") \033[1;31mASSERT\033[0m: \"";                     \
       std::cerr << #expr;                                               \
       std::cerr << "\" failed with message: \"";                        \
       std::cerr << message;                                             \
@@ -111,15 +111,6 @@ constexpr auto file_name(std::string_view path) -> std::string_view {
 #define ASSUME(expr) \
   do {               \
   } while (false)
-#endif
-
-/**
- * @brief ``ASSERT()`` in debug builds, ``ASSUME()`` in release builds.
- */
-#ifndef NDEBUG
-#define CHECK_ASSUME(expr) ASSERT(expr, "Assumption failed.")
-#else
-#define CHECK_ASSUME(expr) ASSUME(expr)
 #endif
 
 /**

@@ -70,14 +70,14 @@ struct ring_buf {
    * @brief Store ``val`` at ``index % this->capacity()``.
    */
   auto store(std::ptrdiff_t index, T val) noexcept -> void {
-    CHECK_ASSUME(index >= 0);
+    ASSERT_ASSUME(index >= 0, "index must be non-negative!");
     *(m_buf.get() + (index & m_mask)) = val;  // NOLINT Avoid cast to std::size_t.
   }
   /**
    * @brief Load value at ``index % this->capacity()``.
    */
   [[nodiscard]] auto load(std::ptrdiff_t index) const noexcept -> T {
-    CHECK_ASSUME(index >= 0);
+    ASSERT_ASSUME(index >= 0, "index must be non-negative!");
     return *(m_buf.get() + (index & m_mask));  // NOLINT Avoid cast to std::size_t.
   }
   /**

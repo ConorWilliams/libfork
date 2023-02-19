@@ -42,8 +42,11 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Install openMP
+      run: sudo apt update && sudo apt install libomp-dev -y -q 
+
     - name: Configure
-      env: { CXX: clang++-14 }
+      env: { CXX: clang++-15 }
       run: cmake --preset=ci-sanitize
 
     - name: Build
@@ -76,11 +79,11 @@ jobs:
     - name: Install static analyzers
       if: matrix.os == 'ubuntu-22.04'
       run: >-
-        sudo apt-get install clang-tidy-14 cppcheck -y -q
+        sudo apt-get install clang-tidy-15 cppcheck -y -q
 
         sudo update-alternatives --install
         /usr/bin/clang-tidy clang-tidy
-        /usr/bin/clang-tidy-14 140
+        /usr/bin/clang-tidy-15 140
 
     - name: Setup MultiToolTask
       if: matrix.os == 'windows-2022'
