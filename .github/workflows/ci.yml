@@ -43,7 +43,7 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Install openMP
-      run: sudo apt update && sudo apt install libomp-dev -y -q 
+      run: sudo apt update && sudo apt install clang-15 libomp-dev -y -q 
 
     - name: Configure
       env: { CXX: clang++-15 }
