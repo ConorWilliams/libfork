@@ -34,8 +34,7 @@ FetchContent_MakeAvailable(Catch2)
 
 # ---- Tests ----
 
-
-file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp")
+file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/glob/*.cpp")
 
 add_executable(libfork_test ${TEST_SOURCES})
 target_link_libraries(libfork_test PRIVATE libfork::libfork Catch2::Catch2WithMain)
@@ -47,6 +46,9 @@ include(Catch)
 
 catch_discover_tests(libfork_test)
 
+add_executable(libfork_HALO single/halo.cpp)
+target_link_libraries(libfork_HALO PRIVATE libfork::libfork Catch2::Catch2WithMain)
+target_compile_features(libfork_HALO PRIVATE cxx_std_20)
 
 
 # ---- End-of-file commands ----
