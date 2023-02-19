@@ -17,6 +17,9 @@
 // #define NLOG
 // #define NDEBUG
 
+#define private public
+
+#include "libfork/allocator.hpp"
 #include "libfork/basic_task.hpp"
 #include "libfork/inline.hpp"
 #include "libfork/utility.hpp"
@@ -168,10 +171,13 @@ TEST_CASE("Fibonacci - void", "[basic_task]") {
   }
 }
 
+int global_count = 0;
+
 template <typename T>
 struct Tracked : std::allocator<T> {
   [[nodiscard]] constexpr T* allocate(std::size_t n) {
     DEBUG_TRACKER("ALLOCATING");
+    global_count++;
     return std::allocator<T>::allocate(n);
   }
 
@@ -186,13 +192,53 @@ basic_task<T, inline_context, Tracked<T>> track(T x) {
   co_return x;  //
 }
 
-TEST_CASE("HALO optimisation", "[basic_task]") {
+struct promise;
+
+struct coroutine : std::coroutine_handle<promise> {
+  using promise_type = struct promise;
+};
+
+struct promise : detail::allocator_mixin<Tracked<std::byte>> {
+  coroutine get_return_object() { return {coroutine::from_promise(*this)}; }
+  std::suspend_always initial_suspend() noexcept { return {}; }
+  std::suspend_always final_suspend() noexcept { return {}; }
+  void return_void() {}
+  void unhandled_exception() {}
+};
+
+TEST_CASE("HALO optimisation", "[basic_task][!mayfail][!nonportable]") {
   //
+  REQUIRE(global_count == 0);
+
+  coroutine h = [](int i) -> coroutine { co_return; }(0);
+
+  h.resume();
+  h.destroy();
+
+  if (global_count != 0) {
+    FAIL("HALO optimisation fails for trivial coroutines");
+  }
+
   inline_context context{};
 
-  auto [fut, task] = track(0).make_promise();
-  task.resume_root(context);
-  REQUIRE(*fut == 0);
+  auto t = track(0);
+
+  t->promise().m_context = &context;
+
+  t->resume();
+
+  t->destroy();
+
+  t.release();
+  // .resume_root(context);
+
+  // auto [fut, task] = track(0).make_promise();
+  // task.resume_root(context);
+  // REQUIRE(*fut == 0);
+
+  if (global_count != 0) {
+    FAIL("HALO optimisation fails for task<int,...>");
+  }
 }
 
 // NOLINTEND

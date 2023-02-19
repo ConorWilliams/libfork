@@ -97,7 +97,7 @@ class [[nodiscard]] basic_task;
  */
 template <typename T, context Context, typename Allocator>
 requires std::negation_v<std::is_void<T>>
-class [[nodiscard]] basic_future : unique_handle<detail::promise_type<T, Context, Allocator>> {
+class [[nodiscard]] basic_future : private unique_handle<detail::promise_type<T, Context, Allocator>> {
  public:
   using value_type = T;                                              ///< The type of value that this future will return.
   using context_type = Context;                                      ///< The type of execution context that this futures task will run on.
@@ -504,7 +504,7 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
  * @tparam Context
  */
 template <typename T, context Context, typename Allocator>
-class [[nodiscard]] basic_task : unique_handle<detail::promise_type<T, Context, Allocator>> {  // NOLINT
+class [[nodiscard]] basic_task : private unique_handle<detail::promise_type<T, Context, Allocator>> {  // NOLINT
   // Remap void -> regular_void to prevent basic_future<void> in false branch of future_type
   using future_no_void = basic_future<std::conditional_t<std::is_void_v<T>, regular_void, T>, Context, Allocator>;
 
