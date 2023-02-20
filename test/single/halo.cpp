@@ -49,24 +49,22 @@ basic_task<T, inline_context, Tracked<T>> track(T x) {
   co_return x;  //
 }
 
-struct promise;
+struct coroutine {
+  struct promise_type : detail::allocator_mixin<Tracked<std::byte>> {
+    coroutine get_return_object() { return {std::coroutine_handle<promise_type>::from_promise(*this)}; }
+    std::suspend_always initial_suspend() noexcept { return {}; }
+    std::suspend_always final_suspend() noexcept { return {}; }
+    void return_void() {}
+    void unhandled_exception() noexcept {}
+  };
 
-struct coroutine : std::coroutine_handle<promise> {
-  using promise_type = struct promise;
-};
-
-struct promise : detail::allocator_mixin<Tracked<std::byte>> {
-  coroutine get_return_object() { return {coroutine::from_promise(*this)}; }
-  std::suspend_always initial_suspend() noexcept { return {}; }
-  std::suspend_always final_suspend() noexcept { return {}; }
-  void return_void() {}
-  void unhandled_exception() {}
+  std::coroutine_handle<promise_type> handle;
 };
 
 void trivial_coro() {
   coroutine h = []() -> coroutine { co_return; }();
-  h.resume();
-  h.destroy();
+  h.handle.resume();
+  h.handle.destroy();
 }
 
 void manual() {
