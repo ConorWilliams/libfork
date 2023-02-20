@@ -183,4 +183,28 @@ TEST_CASE("Fibonacci - void", "[basic_task]") {
   }
 }
 
+TEST_CASE("Fibonacci - benchmark", "[basic_task]") {
+  //
+  inline_context context{};
+
+  BENCHMARK("fib_task") {
+    //
+    auto [fut, task] = fib_task(10).make_promise();
+    task.resume_root(context);
+    return *fut;
+  };
+
+  BENCHMARK("fib_task_void") {
+    //
+    int x = 0;
+    auto [fut, task] = fib_task_void(x, 10).make_promise();
+    task.resume_root(context);
+    return x;
+  };
+
+  BENCHMARK("fib") {
+    return fib(10);
+  };
+}
+
 // NOLINTEND

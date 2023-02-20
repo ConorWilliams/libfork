@@ -9,6 +9,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <coroutine>
+#include <memory>
 #include <utility>
 
 #include "utility.hpp"
@@ -65,8 +66,8 @@ class unique_handle {
    * @brief Access the underlying handle.
    */
   constexpr auto operator->() const noexcept -> std::coroutine_handle<P> const* {
-    ASSERT_ASSUME(m_data, "drill into a null handle");
-    return &m_data;
+    ASSERT_ASSUME(bool(m_data), "drill into a null handle");
+    return std::addressof(m_data);
   }
   /**
    * @brief Get a copy of the underlying handle, does not release ownership.
