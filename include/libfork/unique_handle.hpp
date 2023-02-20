@@ -64,11 +64,14 @@ class unique_handle {
   /**
    * @brief Access the underlying handle.
    */
-  constexpr auto operator->() const noexcept -> std::coroutine_handle<P> const* { return &m_data; }
+  constexpr auto operator->() const noexcept -> std::coroutine_handle<P> const* {
+    ASSERT_ASSUME(m_data, "drill into a null handle");
+    return &m_data;
+  }
   /**
    * @brief Get a copy of the underlying handle, does not release ownership.
    */
-  [[nodiscard]] constexpr auto get() const noexcept -> std::coroutine_handle<P> { return m_data; }
+  // [[nodiscard]] constexpr auto get() const noexcept -> std::coroutine_handle<P> { return m_data; }
 
   /**
    * @brief Release ownership of the underlying handle.
@@ -76,7 +79,6 @@ class unique_handle {
   constexpr void release() noexcept {
     DEBUG_TRACKER("releasing a coroutine");
     m_data = nullptr;
-    ASSERT_ASSUME(!m_data, "m_data should be null");
   }
 
   /**

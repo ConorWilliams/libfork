@@ -174,6 +174,7 @@ TEST_CASE("Fibonacci - void", "[basic_task]") {
   for (int j = 0; j < 100; ++j) {
     for (int i = 0; i < 10; ++i) {
       int x = 0;
+      DEBUG_TRACKER("iter");
       auto [fut, task] = fib_task_void(x, i).make_promise();
       task.resume_root(context);
       REQUIRE(x == fib(i));

@@ -533,11 +533,14 @@ class [[nodiscard]] basic_task : private unique_handle<detail::promise_type<T, C
    * the future is ready.
    */
   [[nodiscard]] constexpr auto make_promise() && noexcept -> two_tuple {
+    DEBUG_TRACKER("make_promise()");
+
     ASSERT_ASSUME(*this, "attempting to get handle from null task");
 
     handle_type const hand{(*this)->promise()};
 
     if constexpr (std::is_void_v<T>) {
+      DEBUG_TRACKER("make_promise() void");
       this->release();
       return {{}, hand};
     } else {
