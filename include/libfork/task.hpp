@@ -21,13 +21,13 @@
 #include <type_traits>
 #include <utility>
 
-#include "libfork/allocator.hpp"
-#include "libfork/result.hpp"
+#include "libfork/detail/allocator.hpp"
+#include "libfork/detail/result.hpp"
 #include "libfork/unique_handle.hpp"
 #include "libfork/utility.hpp"
 
 /**
- * @file basic_task.hpp
+ * @file task.hpp
  *
  * @brief The task class and associated utilities.
  */

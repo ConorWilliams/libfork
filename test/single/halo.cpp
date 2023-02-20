@@ -21,9 +21,8 @@
 
 #define private public  // Yes I know this is bad but, we need to do bad things here!
 
-#include "libfork/allocator.hpp"
-#include "libfork/basic_task.hpp"
-#include "libfork/inline.hpp"
+#include "libfork/schedule/inline.hpp"
+#include "libfork/task.hpp"
 #include "libfork/utility.hpp"
 
 using namespace lf;

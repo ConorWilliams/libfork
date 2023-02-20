@@ -19,9 +19,8 @@
 
 // NOLINTBEGIN No need to check the tests for style.
 
-#include "libfork/allocator.hpp"
-#include "libfork/basic_task.hpp"
-#include "libfork/inline.hpp"
+#include "libfork/schedule/inline.hpp"
+#include "libfork/task.hpp"
 #include "libfork/utility.hpp"
 
 using namespace lf;
@@ -66,9 +65,13 @@ TEST_CASE("Trivial tasks", "[basic_task]") {
 
   for (int i = 0; i < 100; ++i) {
     int x = 0;
+    DEBUG_TRACKER("A");
     auto [fut, task] = set(x, i).make_promise();
+    DEBUG_TRACKER("B");
     task.resume_root(context);
+    DEBUG_TRACKER("C");
     REQUIRE(x == i);
+    DEBUG_TRACKER("D");
     REQUIRE(context.empty());
   }
 

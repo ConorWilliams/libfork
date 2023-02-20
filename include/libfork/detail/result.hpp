@@ -15,7 +15,7 @@
 #include <type_traits>
 #include <utility>
 
-#include "utility.hpp"
+#include "libfork/utility.hpp"
 
 /**
  * @file result.hpp
@@ -23,7 +23,7 @@
  * @brief Implementation of the ``result`` class.
  */
 
-namespace lf {
+namespace lf::detail {
 
 /**
  * @brief A promise mixin that provides the result handling for a task.
@@ -138,4 +138,4 @@ class result<void> {
   static constexpr void return_void() noexcept { DEBUG_TRACKER("task returns void"); }
 };
 
-}  // namespace lf
+}  // namespace lf::detail

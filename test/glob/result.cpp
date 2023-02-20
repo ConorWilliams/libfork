@@ -9,11 +9,11 @@
 #include <type_traits>
 #include <vector>
 
-#include "libfork/result.hpp"
+#include "libfork/detail/result.hpp"
 
 // NOLINTBEGIN No need to check the tests for style.
 
-using namespace lf;
+using namespace lf::detail;
 
 static_assert(std::is_trivially_destructible_v<result<int>>);
 static_assert(!std::is_trivially_destructible_v<result<std::vector<int>>>);

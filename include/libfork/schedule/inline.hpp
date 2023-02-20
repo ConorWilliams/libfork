@@ -10,9 +10,9 @@
 
 #include <stack>
 #include <thread>
+#include <vector>
 
-#include "libfork/basic_task.hpp"
-#include "libfork/queue.hpp"
+#include "libfork/task.hpp"
 #include "libfork/utility.hpp"
 /**
  * @file inline.hpp

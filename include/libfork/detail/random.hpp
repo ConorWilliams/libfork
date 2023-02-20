@@ -26,7 +26,7 @@
  * @brief Pseudo random number generators (PRNG).
  */
 
-namespace lf {
+namespace lf::detail {
 
 /**
  * @brief A \<random\> compatible implementation of the xoshiro256** 1.0 PRNG
@@ -183,4 +183,4 @@ class xoshiro {
   }
 };
 
-}  // namespace lf
+}  // namespace lf::detail
