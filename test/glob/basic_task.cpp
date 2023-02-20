@@ -54,11 +54,15 @@ TEST_CASE("Trivial tasks", "[basic_task]") {
 
   REQUIRE(context.empty());
 
+  DEBUG_TRACKER("testing noop");
+
   for (int i = 0; i < 100; ++i) {
     auto [fut, task] = noop().make_promise();
     task.resume_root(context);
     REQUIRE(context.empty());
   }
+
+  DEBUG_TRACKER("testing set");
 
   for (int i = 0; i < 100; ++i) {
     int x = 0;
@@ -68,12 +72,16 @@ TEST_CASE("Trivial tasks", "[basic_task]") {
     REQUIRE(context.empty());
   }
 
+  DEBUG_TRACKER("testing fwd");
+
   for (int i = 0; i < 100; ++i) {
     auto [fut, task] = fwd(i).make_promise();
     task.resume_root(context);
     REQUIRE(*fut == i);
     REQUIRE(context.empty());
   }
+
+  DEBUG_TRACKER("testing fwd&");
 
   for (int i = 0; i < 100; ++i) {
     //
@@ -92,6 +100,8 @@ TEST_CASE("Trivial tasks", "[basic_task]") {
 
     REQUIRE(tmp == i);
   }
+
+  DEBUG_TRACKER("testing fwd {std::string}");
 
   for (int i = 0; i < 100; ++i) {
     auto [fut, task] = fwd(std::to_string(i)).make_promise();

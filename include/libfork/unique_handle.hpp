@@ -73,7 +73,11 @@ class unique_handle {
   /**
    * @brief Release ownership of the underlying handle.
    */
-  constexpr void release() noexcept { m_data = nullptr; }
+  constexpr void release() noexcept {
+    DEBUG_TRACKER("releasing a coroutine");
+    m_data = nullptr;
+    ASSERT_ASSUME(!m_data, "m_data should be null");
+  }
 
   /**
    * @brief Destroy the handle.
