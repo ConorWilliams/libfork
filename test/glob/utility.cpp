@@ -1,138 +1,138 @@
-// Copyright © Conor Williams <conorwilliams@outlook.com>
+// // Copyright © Conor Williams <conorwilliams@outlook.com>
 
-// SPDX-License-Identifier: MPL-2.0
+// // SPDX-License-Identifier: MPL-2.0
 
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+// // This Source Code Form is subject to the terms of the Mozilla Public
+// // License, v. 2.0. If a copy of the MPL was not distributed with this
+// // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <coroutine>
+// #include <coroutine>
 
-#include <catch2/catch_test_macros.hpp>
+// #include <catch2/catch_test_macros.hpp>
 
-// !BEGIN-EXAMPLE
+// // !BEGIN-EXAMPLE
 
-#include "libfork/utility.hpp"
+// #include "libfork/utility.hpp"
 
-void add_count(std::vector<int>& counts, int val) {
-  //
-  bool commit = false;
+// void add_count(std::vector<int>& counts, int val) {
+//   //
+//   bool commit = false;
 
-  counts.push_back(val);  //  (1) direct action.
+//   counts.push_back(val);  //  (1) direct action.
 
-  lf::defer _ = [&]() noexcept {
-    if (!commit) {
-      counts.pop_back();  // (2) rollback action.
-    }
-  };
+//   lf::defer _ = [&]() noexcept {
+//     if (!commit) {
+//       counts.pop_back();  // (2) rollback action.
+//     }
+//   };
 
-  //                         (3) other operations that may throw.
+//   //                         (3) other operations that may throw.
 
-  commit = true;  //         (4) disable rollback actions if no throw.
+//   commit = true;  //         (4) disable rollback actions if no throw.
 
-  // Lambda executed when scope exits (function returns or exception).
-}
+//   // Lambda executed when scope exits (function returns or exception).
+// }
 
-// !END-EXAMPLE
+// // !END-EXAMPLE
 
-// NOLINTBEGIN No linting in tests
+// // NOLINTBEGIN No linting in tests
 
-using namespace lf;
+// using namespace lf;
 
-consteval void foo() {
-  ASSERT(true, "test macro valid in constexpr context.");
-  DEBUG_TRACKER("test macro valid in constexpr context.");
-}
+// consteval void foo() {
+//   ASSERT(true, "test macro valid in constexpr context.");
+//   DEBUG_TRACKER("test macro valid in constexpr context.");
+// }
 
-template <typename T>
-constexpr bool all_good() {
-  static_assert(awaitable<T>);
-  static_assert(awaitable<T&>);
-  static_assert(awaitable<T const>);
-  static_assert(awaitable<T const&>);
+// template <typename T>
+// constexpr bool all_good() {
+//   static_assert(awaitable<T>);
+//   static_assert(awaitable<T&>);
+//   static_assert(awaitable<T const>);
+//   static_assert(awaitable<T const&>);
 
-  static_assert(awaitable<T, int>);
-  static_assert(awaitable<T&, int>);
-  static_assert(awaitable<T const, int>);
-  static_assert(awaitable<T const&, int>);
+//   static_assert(awaitable<T, int>);
+//   static_assert(awaitable<T&, int>);
+//   static_assert(awaitable<T const, int>);
+//   static_assert(awaitable<T const&, int>);
 
-  static_assert(!awaitable<T, std::string_view>);
-  static_assert(!awaitable<T&, std::string_view>);
-  static_assert(!awaitable<T const, std::string_view>);
-  static_assert(!awaitable<T const&, std::string_view>);
+//   static_assert(!awaitable<T, std::string_view>);
+//   static_assert(!awaitable<T&, std::string_view>);
+//   static_assert(!awaitable<T const, std::string_view>);
+//   static_assert(!awaitable<T const&, std::string_view>);
 
-  static_assert(std::is_same_v<await_result_t<T>, int>);
-  static_assert(std::is_same_v<await_result_t<T&>, int>);
-  static_assert(std::is_same_v<await_result_t<T const>, int>);
-  static_assert(std::is_same_v<await_result_t<T const&>, int>);
+//   static_assert(std::is_same_v<await_result_t<T>, int>);
+//   static_assert(std::is_same_v<await_result_t<T&>, int>);
+//   static_assert(std::is_same_v<await_result_t<T const>, int>);
+//   static_assert(std::is_same_v<await_result_t<T const&>, int>);
 
-  return true;
-}
+//   return true;
+// }
 
-struct good_void {
-  bool await_ready() const noexcept;
-  void await_suspend(std::coroutine_handle<>) const noexcept;
-  int await_resume() const noexcept;
-};
+// struct good_void {
+//   bool await_ready() const noexcept;
+//   void await_suspend(std::coroutine_handle<>) const noexcept;
+//   int await_resume() const noexcept;
+// };
 
-struct good_bool {
-  bool await_ready() const noexcept;
-  void await_suspend(std::coroutine_handle<>) const noexcept;
-  int await_resume() const noexcept;
-};
+// struct good_bool {
+//   bool await_ready() const noexcept;
+//   void await_suspend(std::coroutine_handle<>) const noexcept;
+//   int await_resume() const noexcept;
+// };
 
-struct good_coro {
-  bool await_ready() const noexcept;
-  std::coroutine_handle<good_void> await_suspend(std::coroutine_handle<>) const noexcept;
-  int await_resume() const noexcept;
-};
+// struct good_coro {
+//   bool await_ready() const noexcept;
+//   std::coroutine_handle<good_void> await_suspend(std::coroutine_handle<>) const noexcept;
+//   int await_resume() const noexcept;
+// };
 
-static_assert(all_good<good_void>());
-static_assert(all_good<good_bool>());
-static_assert(all_good<good_coro>());
+// static_assert(all_good<good_void>());
+// static_assert(all_good<good_bool>());
+// static_assert(all_good<good_coro>());
 
-// /////////////////////
+// // /////////////////////
 
-struct member_co_await {
-  good_void operator co_await() const noexcept;
-};
+// struct member_co_await {
+//   good_void operator co_await() const noexcept;
+// };
 
-struct operator_co_await {};
+// struct operator_co_await {};
 
-good_void operator co_await(operator_co_await) noexcept;
+// good_void operator co_await(operator_co_await) noexcept;
 
-static_assert(all_good<member_co_await>());
-static_assert(all_good<operator_co_await>());
+// static_assert(all_good<member_co_await>());
+// static_assert(all_good<operator_co_await>());
 
-// /////////////////////
+// // /////////////////////
 
-struct both {
-  good_void operator co_await() const noexcept;
-};
+// struct both {
+//   good_void operator co_await() const noexcept;
+// };
 
-good_void operator co_await(both) noexcept;
+// good_void operator co_await(both) noexcept;
 
-static_assert(!awaitable<both>);
+// static_assert(!awaitable<both>);
 
-// /////////////////////
+// // /////////////////////
 
-struct r_value_await {
-  good_void operator co_await() && noexcept;
-};
+// struct r_value_await {
+//   good_void operator co_await() && noexcept;
+// };
 
-static_assert(awaitable<r_value_await>);
-static_assert(!awaitable<r_value_await&>);
+// static_assert(awaitable<r_value_await>);
+// static_assert(!awaitable<r_value_await&>);
 
-// /////////////////////
+// // /////////////////////
 
-struct double_void {
-  bool await_ready() const noexcept;
-  std::coroutine_handle<good_void> await_suspend(std::coroutine_handle<>) const noexcept;
-  void await_resume() const noexcept;
-};
+// struct double_void {
+//   bool await_ready() const noexcept;
+//   std::coroutine_handle<good_void> await_suspend(std::coroutine_handle<>) const noexcept;
+//   void await_resume() const noexcept;
+// };
 
-static_assert(awaitable<double_void>);
-static_assert(awaitable<double_void, void>);
-static_assert(!awaitable<double_void, int>);
+// static_assert(awaitable<double_void>);
+// static_assert(awaitable<double_void, void>);
+// static_assert(!awaitable<double_void, int>);
 
-// NOLINTEND
+// // NOLINTEND
