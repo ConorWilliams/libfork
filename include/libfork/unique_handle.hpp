@@ -59,20 +59,17 @@ class unique_handle {
     return *this;
   }
   /**
-   * @brief Test if the handle is non-null.
+   * @brief Test if the underlying handle is non-null.
    */
   [[nodiscard]] constexpr explicit operator bool() const noexcept { return static_cast<bool>(m_data); }
   /**
    * @brief Access the underlying handle.
    */
-  constexpr auto operator->() const noexcept -> std::coroutine_handle<P> const* {
-    ASSERT_ASSUME(bool(m_data), "drill into a null handle");
-    return std::addressof(m_data);
-  }
+  constexpr auto operator->() const noexcept -> std::coroutine_handle<P> const* { return std::addressof(m_data); }
   /**
-   * @brief Get a copy of the underlying handle, does not release ownership.
+   * @brief Access the underlying handle.
    */
-  // [[nodiscard]] constexpr auto get() const noexcept -> std::coroutine_handle<P> { return m_data; }
+  [[nodiscard]] constexpr auto operator*() const noexcept -> std::coroutine_handle<P> { return m_data; }
 
   /**
    * @brief Release ownership of the underlying handle.

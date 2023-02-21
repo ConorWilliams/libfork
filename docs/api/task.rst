@@ -7,17 +7,31 @@ libfork/task.hpp
 
 .. doxygenconcept:: lf::context
 
+Tasks
+------------------
 
-.. doxygenclass:: lf::task
+.. doxygenclass:: lf::basic_task
     :members:
     :undoc-members:
 
+Associated classes
+-------------------
 
-Functions
--------------
+.. doxygenstruct:: lf::regular_void
+    :members:
+    :undoc-members:
+
+.. doxygenclass:: lf::task_handle
+    :members:
+    :undoc-members:
+
+.. doxygenclass:: lf::basic_future
+    :members:
+    :undoc-members:
+
+Associated functions
+----------------------
 
 .. doxygenfunction:: lf::join
 
-.. doxygenfunction:: lf::just(F &fut, Fn &&fun, Args&&... args)
 
-.. doxygenfunction:: lf::just(Fn &&fun, Args&&... args)

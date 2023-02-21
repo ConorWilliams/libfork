@@ -49,10 +49,12 @@ class task_handle;
  *
  * Specifically:
  *
- * .. include:: ../../include/libfork/task.hpp
- *    :code:
- *    :start-line: 61
- *    :end-before: //! END-CONTEXT-CAPTURE
+ * .. code::
+ *
+ *   concept context = requires(Context context, task_handle<Context> task) {
+ *       { context.push(task) } -> std::same_as<void>;
+         { context.pop() } -> std::convertible_to<std::optional<task_handle<Context>>>;
+ *   }
  *
  * \endrst
  */
@@ -61,7 +63,6 @@ concept context = requires(Context context, task_handle<Context> task) {
                     { context.push(task) } -> std::same_as<void>;
                     { context.pop() } -> std::convertible_to<std::optional<task_handle<Context>>>;
                   };
-//! END-CONTEXT-CAPTURE
 
 template <typename T, context Context, typename Allocator = std::allocator<std::byte>>
 requires std::negation_v<std::is_void<T>>
@@ -75,10 +76,7 @@ struct promise_type;
 struct join {};
 
 template <typename P>
-struct fork : unique_handle<P> {};
-
-template <typename P>
-struct just : unique_handle<P> {};
+struct [[nodiscard]] fork : unique_handle<P> {};
 
 }  // namespace detail
 
@@ -204,11 +202,6 @@ class task_handle {
   constexpr task_handle() noexcept = default;
 
   /**
-   * @brief Construct a handle to a promise.
-   */
-  constexpr explicit task_handle(detail::promise_base<Context>& coro) noexcept : m_promise{&coro} {}
-
-  /**
    * @brief Resume the coroutine associated with this handle.
    *
    * This should be called by the thread owning the execution context that this will is run on.
@@ -242,7 +235,15 @@ class task_handle {
   template <typename, context, typename>
   friend class detail::promise_type;
 
+  template <typename, context, typename>
+  friend class basic_task;
+
   detail::promise_base<Context>* m_promise;  ///< The promise associated with this handle.
+
+  /**
+   * @brief Construct a handle to a promise.
+   */
+  constexpr explicit task_handle(detail::promise_base<Context>& coro) noexcept : m_promise{std::addressof(coro)} {}
 };
 
 namespace detail {
@@ -344,10 +345,10 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
     return final_awaitable{};
   }
 
-  template <typename U, typename Alloc2>
-  [[nodiscard]] constexpr auto await_transform(fork<promise_type<U, Context, Alloc2>> child) noexcept {
+  template <typename U, typename Alloc>
+  [[nodiscard]] constexpr auto await_transform(fork<promise_type<U, Context, Alloc>>&& child) noexcept {
     //
-    struct awaitable : unique_handle<promise_type<U, Context, Alloc2>> {
+    struct awaitable : unique_handle<promise_type<U, Context, Alloc>> {
       //
       [[nodiscard]] static constexpr auto await_ready() noexcept -> bool { return false; }
 
@@ -363,13 +364,13 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
       }
 
       [[nodiscard]] constexpr auto await_resume() noexcept {
-        if constexpr (std::is_void_v<T>) {
+        if constexpr (std::is_void_v<U>) {
           // Promise cleaned up at final_suspend.
           DEBUG_TRACKER("releasing void promise");
           this->release();
           return;
         } else {
-          return basic_future<T, Context, Alloc2>{std::move(*this)};
+          return basic_future<U, Context, Alloc>{std::move(*this)};
         }
       }
     };
@@ -382,10 +383,10 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
     return awaitable{std::move(child)};
   }
 
-  template <typename U, typename Alloc2>
-  [[nodiscard]] constexpr auto await_transform(just<promise_type<U, Context, Alloc2>> child) noexcept {
+  template <typename U, typename Alloc>
+  [[nodiscard]] constexpr auto await_transform(basic_task<U, Context, Alloc>&& child) noexcept {
     //
-    struct awaitable : unique_handle<promise_type<U, Context, Alloc2>> {
+    struct awaitable : unique_handle<promise_type<U, Context, Alloc>> {
       //
       [[nodiscard]] static constexpr auto await_ready() noexcept -> bool { return false; }
 
@@ -394,8 +395,8 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
         return (*this)->promise().m_this;
       }
 
-      [[nodiscard]] constexpr auto await_resume() noexcept -> std::conditional_t<std::is_void_v<T>, void, T> {
-        if constexpr (std::is_void_v<T>) {
+      [[nodiscard]] constexpr auto await_resume() noexcept -> std::conditional_t<std::is_void_v<U>, void, U> {
+        if constexpr (std::is_void_v<U>) {
           // Promise cleaned up at final_suspend.
           DEBUG_TRACKER("releasing void promise");
           this->release();
@@ -506,14 +507,14 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
 template <typename T, context Context, typename Allocator>
 class [[nodiscard]] basic_task : private unique_handle<detail::promise_type<T, Context, Allocator>> {  // NOLINT
   // Remap void -> regular_void to prevent basic_future<void> in false branch of future_type
-  using future_no_void = basic_future<std::conditional_t<std::is_void_v<T>, regular_void, T>, Context, Allocator>;
+  using future_t = basic_future<std::conditional_t<std::is_void_v<T>, regular_void, T>, Context, Allocator>;
 
  public:
-  using value_type = T;                                                                     ///< The type of value that this task will return.
-  using future_type = std::conditional_t<std::is_void_v<T>, regular_void, future_no_void>;  ///< The type of future that this task must bind to.
-  using handle_type = task_handle<Context>;                                                 ///< The type of handle that this task will use.
-  using context_type = Context;                                                             ///< The type of execution context that this task will run on.
-  using promise_type = detail::promise_type<T, Context, Allocator>;                         ///< The type of promise that this task will use.
+  using value_type = T;                                                               ///< The type of value that this task will return.
+  using future_type = std::conditional_t<std::is_void_v<T>, regular_void, future_t>;  ///< The type of future that this task must bind to.
+  using handle_type = task_handle<Context>;                                           ///< The type of handle that this task will use.
+  using context_type = Context;                                                       ///< The type of execution context that this task will run on.
+  using promise_type = detail::promise_type<T, Context, Allocator>;                   ///< The type of promise that this task will use.
 
   /**
    * @brief A named tuple returned by ``get_handle()``.
@@ -549,10 +550,6 @@ class [[nodiscard]] basic_task : private unique_handle<detail::promise_type<T, C
   }
 
   /**
-   * @brief Get an awaitable which will run this task inline.
-   */
-  [[nodiscard]] constexpr auto just() && noexcept -> detail::just<promise_type> { return {std::move(*this)}; }
-  /**
    * @brief Get an awaitbale which will cause the current task to fork.
    */
   [[nodiscard]] constexpr auto fork() && noexcept -> detail::fork<promise_type> { return {std::move(*this)}; }
@@ -562,7 +559,8 @@ class [[nodiscard]] basic_task : private unique_handle<detail::promise_type<T, C
 #endif
 
  private:
-  friend class detail::promise_type<T, Context, Allocator>;
+  template <typename, context, typename>
+  friend class detail::promise_type;
 
   constexpr explicit basic_task(detail::raw_handle<promise_type> handle) : unique_handle<promise_type>{handle} {}
 };

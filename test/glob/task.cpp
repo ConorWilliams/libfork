@@ -13,6 +13,7 @@
 
 #include <catch2/benchmark/catch_benchmark.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <type_traits>
 
 // #define NLOG
 // #define NDEBUG
@@ -129,7 +130,7 @@ task<int> fib_task(int n) {
   }
 
   auto a = co_await fib_task(n - 1).fork();
-  auto b = co_await fib_task(n - 2).just();
+  auto b = co_await fib_task(n - 2);
 
   co_await join();
 
@@ -146,7 +147,7 @@ task<void> fib_task_void(int& out, int n) {
   int a, b;
 
   co_await fib_task_void(a, n - 1).fork();
-  co_await fib_task_void(b, n - 2).just();
+  co_await fib_task_void(b, n - 2);
 
   co_await join();
 
@@ -183,28 +184,25 @@ TEST_CASE("Fibonacci - void", "[basic_task]") {
   }
 }
 
-TEST_CASE("Fibonacci - benchmark", "[basic_task]") {
+// In some implementations, this could cause a stack overflow.
+task<int> stack_overflow() {
+  for (int i = 0; i < 100'000; ++i) {
+    co_await noop().fork();
+    co_await fwd(i).fork();
+
+    co_await noop();
+    co_await fwd(i);
+
+    co_await join();
+  }
+}
+
+TEST_CASE("Stack overflow", "[basic_task]") {
   //
   inline_context context{};
-
-  BENCHMARK("fib_task") {
-    //
-    auto [fut, task] = fib_task(10).make_promise();
-    task.resume_root(context);
-    return *fut;
-  };
-
-  BENCHMARK("fib_task_void") {
-    //
-    int x = 0;
-    auto [fut, task] = fib_task_void(x, 10).make_promise();
-    task.resume_root(context);
-    return x;
-  };
-
-  BENCHMARK("fib") {
-    return fib(10);
-  };
+  auto [fut, task] = stack_overflow().make_promise();
+  task.resume_root(context);
+  REQUIRE(context.empty());
 }
 
 // NOLINTEND

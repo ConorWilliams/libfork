@@ -6,14 +6,43 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <catch2/catch_test_macros.hpp>
 #include <coroutine>
 
+#include <catch2/catch_test_macros.hpp>
+
+// !BEGIN-EXAMPLE
+
 #include "libfork/utility.hpp"
+
+void add_count(std::vector<int>& counts, int val) {
+  //
+  bool commit = false;
+
+  counts.push_back(val);  //  (1) direct action.
+
+  lf::defer _ = [&]() noexcept {
+    if (!commit) {
+      counts.pop_back();  // (2) rollback action.
+    }
+  };
+
+  //                         (3) other operations that may throw.
+
+  commit = true;  //         (4) disable rollback actions if no throw.
+
+  // Lambda executed when scope exits (function returns or exception).
+}
+
+// !END-EXAMPLE
 
 // NOLINTBEGIN No linting in tests
 
 using namespace lf;
+
+consteval void foo() {
+  ASSERT(true, "test macro valid in constexpr context.");
+  DEBUG_TRACKER("test macro valid in constexpr context.");
+}
 
 template <typename T>
 constexpr bool all_good() {
@@ -59,51 +88,51 @@ struct good_coro {
 };
 
 static_assert(all_good<good_void>());
-// static_assert(all_good<good_bool>());
-// static_assert(all_good<good_coro>());
+static_assert(all_good<good_bool>());
+static_assert(all_good<good_coro>());
 
-// // /////////////////////
+// /////////////////////
 
-// struct member_co_await {
-//   good_void operator co_await() const noexcept;
-// };
+struct member_co_await {
+  good_void operator co_await() const noexcept;
+};
 
-// struct operator_co_await {};
+struct operator_co_await {};
 
-// good_void operator co_await(operator_co_await) noexcept;
+good_void operator co_await(operator_co_await) noexcept;
 
-// static_assert(all_good<member_co_await>());
-// static_assert(all_good<operator_co_await>());
+static_assert(all_good<member_co_await>());
+static_assert(all_good<operator_co_await>());
 
-// // /////////////////////
+// /////////////////////
 
-// struct both {
-//   good_void operator co_await() const noexcept;
-// };
+struct both {
+  good_void operator co_await() const noexcept;
+};
 
-// good_void operator co_await(both) noexcept;
+good_void operator co_await(both) noexcept;
 
-// static_assert(!awaitable<both>);
+static_assert(!awaitable<both>);
 
-// // /////////////////////
+// /////////////////////
 
-// struct r_value_await {
-//   good_void operator co_await() && noexcept;
-// };
+struct r_value_await {
+  good_void operator co_await() && noexcept;
+};
 
-// static_assert(awaitable<r_value_await>);
-// static_assert(!awaitable<r_value_await&>);
+static_assert(awaitable<r_value_await>);
+static_assert(!awaitable<r_value_await&>);
 
-// // /////////////////////
+// /////////////////////
 
-// struct double_void {
-//   bool await_ready() const noexcept;
-//   std::coroutine_handle<good_void> await_suspend(std::coroutine_handle<>) const noexcept;
-//   void await_resume() const noexcept;
-// };
+struct double_void {
+  bool await_ready() const noexcept;
+  std::coroutine_handle<good_void> await_suspend(std::coroutine_handle<>) const noexcept;
+  void await_resume() const noexcept;
+};
 
-// static_assert(awaitable<double_void>);
-// static_assert(awaitable<double_void, void>);
-// static_assert(!awaitable<double_void, int>);
+static_assert(awaitable<double_void>);
+static_assert(awaitable<double_void, void>);
+static_assert(!awaitable<double_void, int>);
 
 // NOLINTEND

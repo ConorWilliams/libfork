@@ -25,137 +25,27 @@
  * @brief A small collection of utility functions and macros.
  */
 
-namespace lf::detail {
-
-constexpr auto file_name(std::string_view path) -> std::string_view {
-  if (auto last = path.find_last_of("/\\"); last != std::string_view::npos) {
-    path.remove_prefix(last);
-  }
-  return path;
-}
-
-}  // namespace lf::detail
-
 // NOLINTBEGIN Sometime macros are the only way to do things.
-
-#ifndef NDEBUG
-
-#include <chrono>
-
-/**
- * @brief Assert an expression is true and ``std::terminate()`` if not.
- */
-#define ASSERT(expr, message)                                           \
-  do {                                                                  \
-    constexpr auto location = ::lf::detail::source_location::current(); \
-                                                                        \
-    if (!(expr)) {                                                      \
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));     \
-      std::cerr << "\033[1;31mERR\033[0m: [";                           \
-      std::cerr << std::this_thread::get_id();                          \
-      std::cerr << "] ";                                                \
-      std::cerr << ::lf::detail::file_name(location.file_name());       \
-      std::cerr << "(";                                                 \
-      std::cerr << location.line();                                     \
-      std::cerr << ":";                                                 \
-      std::cerr << location.column();                                   \
-      std::cerr << ") \033[1;31mASSERT\033[0m: \"";                     \
-      std::cerr << #expr;                                               \
-      std::cerr << "\" failed with message: \"";                        \
-      std::cerr << message;                                             \
-      std::cerr << "\"\n";                                              \
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));     \
-      std::terminate();                                                 \
-    }                                                                   \
-  } while (false)
-
-#else
-
-/**
- * @brief Assert an expression is true and ``std::terminate()`` if not.
- */
-#define ASSERT(...) \
-  do {              \
-  } while (false)
-
-#endif  // !NDEBUG
-
-/**
- * @brief A wrapper for C++23's ``[[assume(expr)]]`` attribute.
- *
- * Reverts to compiler specific implementations if the attribute is not available.
- *
- * \rst
- *
- *  .. warning::
- *
- *    Using some intrinsics (i.e. GCC's ``__builtin_unreachable()``) this has different semantics
- *    than ``[[assume(expr)]]`` as it WILL evaluate the exprssion at runtime.
- *
- * \endrst
- */
-#if __has_cpp_attribute(assume)
-#define ASSUME(expr) [[assume(bool(expr))]]
-#elif defined(__clang__)
-#define ASSUME(expr) __builtin_assume(bool(expr))
-#elif defined(__GNUC__) && !defined(__ICC)
-#define ASSUME(expr)         \
-  if (bool(expr)) {          \
-  } else {                   \
-    __builtin_unreachable(); \
-  }
-#elif defined(_MSC_VER) || defined(__ICC)
-#define ASSUME(expr) __assume(bool(expr))
-#else
-#warning "No ASSUME() implementation for this compiler."
-#define ASSUME(expr) \
-  do {               \
-  } while (false)
-#endif
-
-/**
- * @brief ``ASSERT()`` in debug builds, ``ASSUME()`` in release builds.
- *
- * Only use if ``expr`` is cheap to evaluate as it MAY be evaluated at runtime.
- */
-#ifndef NDEBUG
-#define ASSERT_ASSUME(expr, message) ASSERT(expr, message)
-#else
-#define ASSERT_ASSUME(expr, message) ASSUME(expr)
-#endif
-
-/**
- * @brief Log a message to ``std::cerr``.
- */
-#ifndef NLOG
 
 #if defined(__cpp_lib_source_location)
 
-#include <source_location>
+  #include <source_location>
+
 namespace lf::detail {
-/**
- * @brief An alias for ``std::source_location``.
- */
 using source_location = std::source_location;
 }  // namespace lf::detail
 
 #elif defined(__cpp_lib_experimental_source_location)
 
-#include <experimental/source_location>
+  #include <experimental/source_location>
 
 namespace lf::detail {
-/**
- * @brief  An alias for ``std::experimental::source_location``.
- */
 using source_location = std::experimental::source_location;
 }  // namespace lf::detail
 
 #else
 
 namespace lf::detail {
-/**
- * @brief A minimal implementation of ``std::source_location``.
- */
 struct source_location {
   static constexpr source_location current() noexcept { return source_location{}; }
   constexpr char const* file_name() const noexcept { return "unknowm"; }
@@ -171,13 +61,110 @@ namespace lf {
 
 namespace detail {
 
-inline void log_impl(std::string_view const message, detail::source_location const location) {
+constexpr auto file_name(std::string_view path) -> std::string_view {
+  if (auto last = path.find_last_of("/\\"); last != std::string_view::npos) {
+    path.remove_prefix(last);
+  }
+  return path;
+}
+
+#ifndef NDEBUG
+
+inline void assert_impl(std::string_view const expr, std::string_view const message, source_location const location = source_location::current()) {
+  std::osyncstream synced_out(std::cerr);
+
+  synced_out << "\033[1;31mERR\033[0m: [";
+  synced_out << std::this_thread::get_id();
+  synced_out << "] ";
+  synced_out << ::lf::detail::file_name(location.file_name());
+  synced_out << "(";
+  synced_out << location.line();
+  synced_out << ":";
+  synced_out << location.column();
+  synced_out << ") \033[1;31mASSERT\033[0m: \"";
+  synced_out << expr;
+  synced_out << "\" failed with message: \"";
+  synced_out << message;
+  synced_out << "\"\n";
+}
+
+  /**
+   * @brief Assert an expression is true and ``std::terminate()`` if not, a no-op if ``NDEBUG`` is defined.
+   */
+  #define ASSERT(expr, message)                                                                            \
+    do {                                                                                                   \
+      if (!(expr)) {                                                                                       \
+        if (!std::is_constant_evaluated()) {                                                               \
+          ::lf::detail::assert_impl(#expr, message); /* Indirection as ``std::osyncstream`` is virtual. */ \
+        }                                                                                                  \
+        std::terminate();                                                                                  \
+      }                                                                                                    \
+    } while (false)
+
+#else
+   /**
+    * @brief Assert an expression is true and ``std::terminate()`` if not, a no-op if ``NDEBUG`` is defined.
+    */
+  #define ASSERT(...) \
+    do {              \
+    } while (false)
+
+#endif  // !NDEBUG
+
+/**
+ * @brief A wrapper for C++23's ``[[assume(expr)]]`` attribute.
+ *
+ * Reverts to compiler specific implementations if the attribute is not available.
+ *
+ * \rst
+ *
+ *  .. warning::
+ *
+ *    Using some intrinsics (i.e. GCC's ``__builtin_unreachable()``) this has different semantics
+ *    than ``[[assume(expr)]]`` as it WILL evaluate the exprssion at runtime. Hence you should
+ *    conservativly only use this macro if ``expr`` is side-effect free and cheap to evaluate.
+ *
+ * \endrst
+ */
+#if __has_cpp_attribute(assume)
+  #define ASSUME(expr) [[assume(bool(expr))]]
+#elif defined(__clang__)
+  #define ASSUME(expr) __builtin_assume(bool(expr))
+#elif defined(__GNUC__) && !defined(__ICC)
+  #define ASSUME(expr)         \
+    if (bool(expr)) {          \
+    } else {                   \
+      __builtin_unreachable(); \
+    }
+#elif defined(_MSC_VER) || defined(__ICC)
+  #define ASSUME(expr) __assume(bool(expr))
+#else
+  #warning "No ASSUME() implementation for this compiler."
+  #define ASSUME(expr) \
+    do {               \
+    } while (false)
+#endif
+
+/**
+ * @brief `ASSUME()`` if ``NDEBUG`` is defined, otherwise ``ASSERT()``.
+ *
+ * Only use if ``expr`` is cheap to evaluate as it MAY be evaluated at runtime.
+ */
+#ifndef NDEBUG
+  #define ASSERT_ASSUME(expr, message) ASSERT(expr, message)
+#else
+  #define ASSERT_ASSUME(expr, message) ASSUME(expr)
+#endif
+
+#ifndef NLOG
+
+inline void log_impl(std::string_view const message, source_location const location = source_location::current()) {
   std::osyncstream synced_out(std::clog);
 
   synced_out << "\033[1;32mLOG\033[0m: [";
   synced_out << std::this_thread::get_id();
   synced_out << "] ";
-  synced_out << detail::file_name(location.file_name());
+  synced_out << file_name(location.file_name());
   synced_out << "(";
   synced_out << location.line();
   synced_out << ":";
@@ -186,43 +173,24 @@ inline void log_impl(std::string_view const message, detail::source_location con
   synced_out << message;
   synced_out << "\"\n";
 }
-}  // namespace detail
 
-/**
- * @brief Log a message to ``std::clog``.
- *
- * Does nothing in constant expressions.
- */
-inline constexpr void log(std::string_view const message, detail::source_location const location) {
-  if (!std::is_constant_evaluated()) {
-    detail::log_impl(message, location);  // Indirection as ``std::osyncstream`` is virtual.
-  }
-}
-
-}  // namespace lf
-
-/**
- * @brief Log a message to ``std::clog``.
- */
-#define DEBUG_TRACKER(message) ::lf::log((message), ::lf::detail::source_location::current())
+  /**
+   * @brief Log a message to ``std::clog``, a no-op if ``NLOG`` is defined.
+   */
+  #define DEBUG_TRACKER(message)                                                             \
+    if (!std::is_constant_evaluated()) {                                                     \
+      ::lf::detail::log_impl(message); /* Indirection as ``std::osyncstream`` is virtual. */ \
+    }
 #else
-#define DEBUG_TRACKER(message) \
-  do {                         \
-  } while (false)
+   /**
+    * @brief Log a message to ``std::clog``, a no-op if ``NLOG`` is defined.
+    */
+  #define DEBUG_TRACKER(message) \
+    do {                         \
+    } while (false)
 #endif
 
 // NOLINTEND
-
-namespace lf {
-
-/**
- * @brief libfork's error type, derived from ``std::runtime_error``.
- */
-struct error : std::runtime_error {
-  using std::runtime_error::runtime_error;
-};
-
-namespace detail {
 
 // Test for co_await member overload.
 template <typename T>
@@ -296,8 +264,10 @@ using await_result_t = decltype(std::declval<detail::awaiter_t<T>>().await_resum
  *
  * Example:
  *
- * .. include:: ../../examples/utility/defer.cpp
+ * .. include:: ../../test/glob/utility.cpp
  *    :code:
+ *    :start-after: // !BEGIN-EXAMPLE
+ *    :end-before: // !END-EXAMPLE
  *
  * \endrst
  */
@@ -310,7 +280,7 @@ class [[nodiscard("use a regular function")]] defer {
    *
    * @param to_defer Nullary invocable forwarded into object and invoked by destructor.
    */
-  constexpr explicit defer(F && to_defer) : m_f(std::forward<F>(to_defer)) {}
+  constexpr defer(F && to_defer) : m_f(std::forward<F>(to_defer)) {}  // NOLINT
 
   defer(defer const&) = delete;
   defer(defer && other) = delete;
@@ -327,5 +297,11 @@ class [[nodiscard("use a regular function")]] defer {
  private:
   F m_f;
 };
+
+/**
+ * @brief Deduction guide for ``defer``.
+ */
+template <typename F>
+defer(F&&) -> defer<F>;
 
 }  // namespace lf
