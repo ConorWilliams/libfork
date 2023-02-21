@@ -559,7 +559,7 @@ class [[nodiscard]] basic_task : private unique_handle<detail::promise_type<T, C
 
  private:
   template <typename, context, typename>
-  friend class detail::promise_type;
+  friend struct detail::promise_type;
 
   constexpr explicit basic_task(detail::raw_handle<promise_type> handle) : unique_handle<promise_type>{handle} {}
 };
