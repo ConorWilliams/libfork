@@ -4,7 +4,6 @@ project(libforkTests LANGUAGES CXX)
 
 include(../cmake/project-is-top-level.cmake)
 include(../cmake/folders.cmake)
-include(../cmake/windows-set-path.cmake)
 
 # ---- Dependencies ----
 
@@ -24,6 +23,7 @@ FetchContent_Declare(
   Catch2
   GIT_REPOSITORY https://github.com/catchorg/Catch2.git
   GIT_TAG        v3.3.1 
+  GIT_SHALLOW TRUE
   SYSTEM
 )
 
