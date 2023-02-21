@@ -233,7 +233,7 @@ class task_handle {
 
  private:
   template <typename, context, typename>
-  friend class detail::promise_type;
+  friend struct detail::promise_type;
 
   template <typename, context, typename>
   friend class basic_task;
