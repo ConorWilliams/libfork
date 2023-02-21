@@ -43,6 +43,14 @@ class busy_pool {
     detail::xoshiro m_rng;
   };
 
+  busy_pool(busy_pool const&) = delete;
+
+  busy_pool(busy_pool&&) = delete;
+
+  auto operator=(busy_pool const&) -> busy_pool& = delete;
+
+  auto operator=(busy_pool&&) -> busy_pool& = delete;
+
   static_assert(::lf::context<context>);
 
   /**

@@ -102,9 +102,6 @@ inline void assert_impl(std::string_view const expr, std::string_view const mess
     } while (false)
 
 #else
-   /**
-    * @brief Assert an expression is true and ``std::terminate()`` if not, a no-op if ``NDEBUG`` is defined.
-    */
   #define ASSERT(...) \
     do {              \
     } while (false)
@@ -145,18 +142,18 @@ inline void assert_impl(std::string_view const expr, std::string_view const mess
     } while (false)
 #endif
 
+#ifndef NDEBUG
 /**
  * @brief `ASSUME()`` if ``NDEBUG`` is defined, otherwise ``ASSERT()``.
  *
  * Only use if ``expr`` is cheap to evaluate as it MAY be evaluated at runtime.
  */
-#ifndef NDEBUG
   #define ASSERT_ASSUME(expr, message) ASSERT(expr, message)
 #else
   #define ASSERT_ASSUME(expr, message) ASSUME(expr)
 #endif
 
-#ifndef NLOG
+#if !defined(NDEBUG) || !defined(FORK_NO_LOGGING)
 
 inline void log_impl(std::string_view const message, source_location const location = source_location::current()) {
   std::osyncstream synced_out(std::clog);
@@ -175,16 +172,13 @@ inline void log_impl(std::string_view const message, source_location const locat
 }
 
   /**
-   * @brief Log a message to ``std::clog``, a no-op if ``NLOG`` is defined.
+   * @brief Log a message to ``std::clog``, a no-op if ``FORK_NO_LOGGING`` or ``NDEBUG`` is defined.
    */
   #define DEBUG_TRACKER(message)                                                             \
     if (!std::is_constant_evaluated()) {                                                     \
       ::lf::detail::log_impl(message); /* Indirection as ``std::osyncstream`` is virtual. */ \
     }
 #else
-   /**
-    * @brief Log a message to ``std::clog``, a no-op if ``NLOG`` is defined.
-    */
   #define DEBUG_TRACKER(message) \
     do {                         \
     } while (false)
@@ -192,66 +186,7 @@ inline void log_impl(std::string_view const message, source_location const locat
 
 // NOLINTEND
 
-// Test for co_await member overload.
-template <typename T>
-concept has_member_co_await = requires { std::declval<T>().operator co_await(); };
-
-// Test for co_await non-member overload.
-template <typename T>
-concept has_non_member_co_await = requires { operator co_await(std::declval<T>()); };
-
-// Test for both co_awit overloads.
-template <typename T>
-concept has_both_co_await = has_non_member_co_await<T> && has_member_co_await<T>;
-
-template <typename T>
-struct awaiter : std::type_identity<T> {};
-
-template <has_member_co_await T>
-struct awaiter<T> : std::type_identity<decltype(std::declval<T>().operator co_await())> {};
-
-template <has_non_member_co_await T>
-struct awaiter<T> : std::type_identity<decltype(operator co_await(std::declval<T>()))> {};
-
-template <has_both_co_await T>
-struct awaiter<T> {};
-
-// Fetch the awaiter obtained by (co_await T).
-template <typename T>
-using awaiter_t = typename awaiter<T>::type;
-
-// Tag type.
-struct any {};
-
-template <typename T>
-concept void_bool_or_coro = std::is_void_v<T> || std::is_same_v<T, bool> || std::is_convertible_v<T, std::coroutine_handle<>>;
-
-template <typename T, typename R>
-concept is_same_or_any = std::is_same_v<R, any> || std::convertible_to<T, R>;
-
 }  // namespace detail
-
-// clang-format off
-
-/**
- * @brief Verify if a type is awaitable in a generic coroutine context.
- *
- * @tparam Result Type to verify that awaiter's ``await_resume()`` is ``std::converible_to``.
- */
-template <typename T, typename Result = detail::any>
-concept awaitable = requires(std::coroutine_handle<> handle) {
-  { std::declval<detail::awaiter_t<T>>().await_ready() } -> std::convertible_to<bool>;
-  { std::declval<detail::awaiter_t<T>>().await_suspend(handle) } -> detail::void_bool_or_coro;
-  { std::declval<detail::awaiter_t<T>>().await_resume() } -> detail::is_same_or_any<Result>;
-};
-
-// clang-format on
-
-/**
- * @brief The result type of ``co_await expr`` when ``expr`` is of type ``T``.
- */
-template <awaitable T>
-using await_result_t = decltype(std::declval<detail::awaiter_t<T>>().await_resume());
 
 /**
  * @brief Basic implementation of a Golang like defer.
