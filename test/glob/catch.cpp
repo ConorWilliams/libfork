@@ -2,7 +2,7 @@
 
 // NOLINTBEGIN No linting in tests
 
-int factorial(int number) {
+static int factorial(int number) {
   return number <= 1 ? number : factorial(number - 1) * number;
 }
 

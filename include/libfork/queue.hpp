@@ -226,17 +226,32 @@ class queue {
      */
     constexpr explicit operator bool() const noexcept { return code == err::none; }
     /**
-     * @brief Get the value ``like std::optional``.
+     * @brief Get the value like ``std::optional``.
      *
      * Requires ``code == err::none`` .
      */
-    constexpr auto operator*() const noexcept -> T const& { return val; }
+    constexpr auto operator*() noexcept -> T {
+      ASSERT_ASSUME(code == err::none, "bad access to stolen value");
+      return val;
+    }
     /**
      * @brief Get the value ``like std::optional``.
      *
      * Requires ``code == err::none`` .
      */
-    constexpr auto operator*() noexcept -> T& { return val; }
+    constexpr auto operator->() noexcept -> T* {
+      ASSERT_ASSUME(code == err::none, "bad access to stolen value");
+      return std::addressof(val);
+    }
+    /**
+     * @brief Get the value ``like std::optional``.
+     *
+     * Requires ``code == err::none`` .
+     */
+    constexpr auto operator->() const noexcept -> T const* {
+      ASSERT_ASSUME(code == err::none, "bad access to stolen value");
+      return std::addressof(val);
+    }
 
     err code;  ///< The error code of the ``steal()`` operation.
     T val;     ///< The value stolen from the queue, Only valid if ``code == err::stolen``.

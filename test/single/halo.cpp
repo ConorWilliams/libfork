@@ -61,7 +61,9 @@ struct coroutine {
 };
 
 void trivial_coro() {
-  coroutine h = []() -> coroutine { co_return; }();
+  coroutine h = []() -> coroutine {
+    co_return;
+  }();
   h.handle.resume();
   h.handle.destroy();
 }

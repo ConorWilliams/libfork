@@ -46,6 +46,21 @@ class xoshiro {
   using result_type = std::uint64_t;  ///< Required by named requirement: UniformRandomBitGenerator
 
   /**
+   * @brief The default seed for the PRNG.
+   */
+  static constexpr std::array<result_type, 4> default_seed = {
+      0x8D0B73B52EA17D89,
+      0x2AA426A407C2B04F,
+      0xF513614E4798928A,
+      0xA65E479EC5B49D41,
+  };
+
+  /**
+   * @brief Construct and seed the PRNG with the default seed.
+   */
+  constexpr xoshiro() noexcept : xoshiro(default_seed) {}
+
+  /**
    * @brief Construct and seed the PRNG from ``std::random_device``.
    */
   explicit xoshiro(std::random_device& device)
@@ -168,7 +183,7 @@ class xoshiro {
     //
     std::array<result_type, 4> s = {0, 0, 0, 0};  // NOLINT
 
-    for (result_type jump : jump) {
+    for (result_type const jump : jump) {
       for (int bit = 0; bit < 64; ++bit) {   // NOLINT
         if (jump & result_type{1} << bit) {  // NOLINT
           s[0] ^= m_state[0];

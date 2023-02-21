@@ -12,6 +12,8 @@ Checks: "*,\
   -misc-non-private-member-variables-in-classes"
 WarningsAsErrors: ''
 CheckOptions:
+  - key: readability-function-cognitive-complexity.IgnoreMacros
+    value: 'true'
   - key: 'bugprone-argument-comment.StrictMode'
     value: 'true'
 # Prefer using enum classes with 2 values for parameters instead of bools

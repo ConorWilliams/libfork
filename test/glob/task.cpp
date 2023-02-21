@@ -15,9 +15,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <type_traits>
 
-// #define NLOG
-// #define NDEBUG
-
 // NOLINTBEGIN No need to check the tests for style.
 
 #include "libfork/schedule/inline.hpp"
@@ -32,18 +29,18 @@ using task = basic_task<T, inline_context>;
 template <typename T>
 using future = basic_future<T, inline_context>;
 
-task<void> noop() {
+static task<void> noop() {
   co_return;
 }
 
 template <typename T>
-task<void> set(T& out, T in) {
+static task<void> set(T& out, T in) {
   out = std::move(in);
   co_return;
 }
 
 template <typename T>
-task<T> fwd(T x) {
+static task<T> fwd(T x) {
   co_return x;
 }
 
@@ -116,7 +113,7 @@ TEST_CASE("Trivial tasks", "[basic_task]") {
 }
 
 // Fibonacci using recursion
-int fib(int n) {
+static int fib(int n) {
   if (n <= 1) {
     return n;
   }
@@ -124,7 +121,7 @@ int fib(int n) {
 }
 
 // Fibonacci using tasks
-task<int> fib_task(int n) {
+static task<int> fib_task(int n) {
   if (n <= 1) {
     co_return n;
   }
@@ -138,7 +135,7 @@ task<int> fib_task(int n) {
 }
 
 // Fibonacci using void tasks
-task<void> fib_task_void(int& out, int n) {
+static task<void> fib_task_void(int& out, int n) {
   if (n <= 1) {
     out = n;
     co_return;
@@ -185,7 +182,7 @@ TEST_CASE("Fibonacci - void", "[basic_task]") {
 }
 
 // In some implementations, this could cause a stack overflow.
-task<int> stack_overflow() {
+static task<int> stack_overflow() {
   for (int i = 0; i < 100'000; ++i) {
     co_await noop().fork();
     co_await fwd(i).fork();

@@ -278,9 +278,8 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
    *
    * Resumes parent task if we are the last child.
    */
-  [[nodiscard]] constexpr auto final_suspend() const noexcept {  // NOLINT
+  [[nodiscard]] constexpr auto final_suspend() const noexcept {
     struct final_awaitable : std::suspend_always {
-      // NOLINTNEXTLINE(readability-function-cognitive-complexity)
       [[nodiscard]] constexpr auto await_suspend(raw_handle<promise_type> child) const noexcept -> raw_handle<> {
         //
         promise_type const& prom = child.promise();
