@@ -1,4 +1,3 @@
-# 3.25 is the minimum version that supports FetchContent with SYSTEM
 cmake_minimum_required(VERSION 3.25) 
 
 project(libforkTests LANGUAGES CXX)
@@ -49,6 +48,8 @@ catch_discover_tests(libfork_test)
 add_executable(libfork_HALO single/halo.cpp)
 target_link_libraries(libfork_HALO PRIVATE libfork::libfork Catch2::Catch2WithMain)
 target_compile_features(libfork_HALO PRIVATE cxx_std_20)
+
+catch_discover_tests(libfork_HALO)
 
 
 # ---- End-of-file commands ----

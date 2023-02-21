@@ -14,8 +14,9 @@
 #include <catch2/benchmark/catch_benchmark.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-// #define FORK_NO_LOGGING
-// #define NDEBUG
+#ifndef NDEBUG
+  #define NDEBUG
+#endif
 
 // NOLINTBEGIN No need to check the tests for style.
 
@@ -125,7 +126,7 @@ void method() {
   f.future.release();
 }
 
-TEST_CASE("HALO optimization", "[basic_task][!mayfail][!nonportable]") {
+TEST_CASE("HALO optimization", "[!benchmark][!mayfail][!nonportable]") {
   //
   REQUIRE(global_count == 0);
 

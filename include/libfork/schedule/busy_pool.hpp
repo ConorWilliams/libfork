@@ -76,7 +76,7 @@ class busy_pool {
     for (std::size_t i = 1; i < n; ++i) {
       m_workers.emplace_back([this, i, n](std::stop_token token) {  // NOLINT
         for (;;) {
-          // Wait until all awake is set.
+          // Wait for a root task to be submitted.
           this->m_root_task_in_flight.wait(false, std::memory_order_acquire);
 
           DEBUG_TRACKER("worker wakes");

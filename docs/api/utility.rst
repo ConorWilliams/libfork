@@ -15,12 +15,6 @@ Macros
 
 .. doxygendefine:: DEBUG_TRACKER
 
-Meta programming
------------------
-
-.. doxygenconcept:: lf::awaitable
-
-.. doxygentypedef:: lf::await_result_t
 
 Classes
 ------------
