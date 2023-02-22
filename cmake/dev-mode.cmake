@@ -11,10 +11,14 @@ if(BUILD_BENCHMARKS)
   add_subdirectory(benchmark)
 endif()
 
-
 option(BUILD_DOCS "Build documentation using Doxygen and Sphinx" OFF)
 if(BUILD_DOCS)
   add_subdirectory(docs)
+endif()
+
+option(ENABLE_COVERAGE "Enable coverage support separate from CTest's" OFF)
+if(ENABLE_COVERAGE)
+  include(cmake/coverage.cmake)
 endif()
 
 include(cmake/lint-targets.cmake)

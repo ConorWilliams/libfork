@@ -69,8 +69,8 @@ TEST_CASE("fwd", "[busy_pool]") {
 TEST_CASE("re-use", "[busy_pool]") {
   for (int i = 0; i < 100; ++i) {
     busy_pool pool{};
-    for (int i = 0; i < 1; ++i) {
-      REQUIRE(pool.colab(fwd(i)) == i);
+    for (int j = 0; j < 1; ++j) {
+      REQUIRE(pool.colab(fwd(j)) == j);
     }
   }
 }

@@ -362,7 +362,7 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
         return child;
       }
 
-      [[nodiscard]] constexpr auto await_resume() noexcept {
+      constexpr auto await_resume() noexcept {
         if constexpr (std::is_void_v<U>) {
           // Promise cleaned up at final_suspend.
           DEBUG_TRACKER("releasing void promise");
@@ -394,7 +394,7 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
         return (*this)->promise().m_this;
       }
 
-      [[nodiscard]] constexpr auto await_resume() noexcept -> std::conditional_t<std::is_void_v<U>, void, U> {
+      constexpr auto await_resume() noexcept -> std::conditional_t<std::is_void_v<U>, void, U> {
         if constexpr (std::is_void_v<U>) {
           // Promise cleaned up at final_suspend.
           DEBUG_TRACKER("releasing void promise");

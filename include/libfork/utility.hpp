@@ -25,7 +25,7 @@
  * @brief A small collection of utility functions and macros.
  */
 
-// NOLINTBEGIN Sometime macros are the only way to do things.
+// NOLINTBEGIN Sometime macros are the only way to do things...
 
 #if defined(__cpp_lib_source_location)
 

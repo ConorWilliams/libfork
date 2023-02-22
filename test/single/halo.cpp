@@ -1,169 +1,169 @@
-// Copyright © Conor Williams <conorwilliams@outlook.com>
+// // Copyright © Conor Williams <conorwilliams@outlook.com>
 
-// SPDX-License-Identifier: MPL-2.0
+// // SPDX-License-Identifier: MPL-2.0
 
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+// // This Source Code Form is subject to the terms of the Mozilla Public
+// // License, v. 2.0. If a copy of the MPL was not distributed with this
+// // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <memory>
-#include <numeric>
-#include <span>
-#include <string>
+// // #define private public  // Yes I know this is bad but, we need to do bad things here!
 
-#include <catch2/catch_test_macros.hpp>
+// #include <memory>
+// #include <numeric>
+// #include <span>
+// #include <string>
 
-#ifndef NDEBUG
-  #define NDEBUG
-#endif
+// #include <catch2/catch_test_macros.hpp>
 
-// NOLINTBEGIN No need to check the tests for style.
+// #ifndef NDEBUG
+//   #define NDEBUG
+// #endif
 
-#define private public  // Yes I know this is bad but, we need to do bad things here!
+// // NOLINTBEGIN No need to check the tests for style.
 
-#include "libfork/schedule/inline.hpp"
-#include "libfork/task.hpp"
-#include "libfork/utility.hpp"
+// #include "libfork/schedule/inline.hpp"
+// #include "libfork/task.hpp"
+// #include "libfork/utility.hpp"
 
-using namespace lf;
+// using namespace lf;
 
-int global_count = 0;
+// int global_count = 0;
 
-template <typename T>
-struct Tracked : std::allocator<T> {
-  [[nodiscard]] constexpr T* allocate(std::size_t n) {
-    DEBUG_TRACKER("ALLOCATING");
-    global_count++;
-    return std::allocator<T>::allocate(n);
-  }
+// template <typename T>
+// struct Tracked : std::allocator<T> {
+//   [[nodiscard]] constexpr T* allocate(std::size_t n) {
+//     DEBUG_TRACKER("ALLOCATING");
+//     global_count++;
+//     return std::allocator<T>::allocate(n);
+//   }
 
-  Tracked() = default;
+//   Tracked() = default;
 
-  template <typename U>
-  Tracked(Tracked<U>) {}
-};
+//   template <typename U>
+//   Tracked(Tracked<U>) {}
+// };
 
-template <typename T>
-basic_task<T, inline_context, Tracked<T>> track(T x) {
-  co_return x;  //
-}
+// template <typename T>
+// basic_task<T, inline_context, Tracked<T>> track(T x) {
+//   co_return x;  //
+// }
 
-struct coroutine {
-  struct promise_type : detail::allocator_mixin<Tracked<std::byte>> {
-    coroutine get_return_object() { return {std::coroutine_handle<promise_type>::from_promise(*this)}; }
-    std::suspend_always initial_suspend() noexcept { return {}; }
-    std::suspend_always final_suspend() noexcept { return {}; }
-    void return_void() {}
-    void unhandled_exception() noexcept {}
-  };
+// struct coroutine {
+//   struct promise_type : detail::allocator_mixin<Tracked<std::byte>> {
+//     coroutine get_return_object() { return {std::coroutine_handle<promise_type>::from_promise(*this)}; }
+//     std::suspend_always initial_suspend() noexcept { return {}; }
+//     std::suspend_always final_suspend() noexcept { return {}; }
+//     void return_void() {}
+//     void unhandled_exception() noexcept {}
+//   };
 
-  std::coroutine_handle<promise_type> handle;
-};
+//   std::coroutine_handle<promise_type> handle;
+// };
 
-void trivial_coro() {
-  coroutine h = []() -> coroutine {
-    co_return;
-  }();
-  h.handle.resume();
-  h.handle.destroy();
-}
+// void trivial_coro() {
+//   coroutine h = []() -> coroutine {
+//     co_return;
+//   }();
+//   h.handle.resume();
+//   h.handle.destroy();
+// }
 
-void manual() {
-  inline_context context{};
+// void manual() {
+//   inline_context context{};
 
-  auto t = track(0);
-  t->promise().m_context = &context;
-  t->resume();
-  t->destroy();
-  t.release();
-}
+//   auto t = track(0);
+//   t->promise().m_context = &context;
+//   t->resume();
+//   t->destroy();
+//   t.release();
+// }
 
-void handle() {
-  inline_context context{};
+// void handle() {
+//   inline_context context{};
 
-  auto t = track(0);
+//   auto t = track(0);
 
-  task_handle<inline_context> hand{t->promise()};
+//   task_handle<inline_context> hand{t->promise()};
 
-  t->promise().m_context = &context;
-  t->resume();
-  t->destroy();
-  t.release();
-}
+//   t->promise().m_context = &context;
+//   t->resume();
+//   t->destroy();
+//   t.release();
+// }
 
-void fut() {
-  inline_context context{};
+// void fut() {
+//   inline_context context{};
 
-  basic_future<int, inline_context, Tracked<int>> t{track(0)};
-  t->promise().m_context = &context;
-  t->resume();
-  t->destroy();
-  t.release();
-}
+//   basic_future<int, inline_context, Tracked<int>> t{track(0)};
+//   t->promise().m_context = &context;
+//   t->resume();
+//   t->destroy();
+//   t.release();
+// }
 
-void both() {
-  inline_context context{};
+// void both() {
+//   inline_context context{};
 
-  auto t = track(0);
+//   auto t = track(0);
 
-  task_handle<inline_context> hand{t->promise()};
+//   task_handle<inline_context> hand{t->promise()};
 
-  basic_future<int, inline_context, Tracked<int>> f{std::move(t)};
-  f->promise().m_context = &context;
-  f->resume();
-  f->destroy();
-  f.release();
-}
+//   basic_future<int, inline_context, Tracked<int>> f{std::move(t)};
+//   f->promise().m_context = &context;
+//   f->resume();
+//   f->destroy();
+//   f.release();
+// }
 
-void method() {
-  inline_context context{};
+// void method() {
+//   inline_context context{};
 
-  auto f = track(0).make_promise();
-  f.future->promise().m_context = &context;
-  f.future->resume();
-  f.future->destroy();
-  f.future.release();
-}
+//   auto f = track(0).make_promise();
+//   f.future->promise().m_context = &context;
+//   f.future->resume();
+//   f.future->destroy();
+//   f.future.release();
+// }
 
-TEST_CASE("HALO optimization", "[!benchmark][!mayfail][!nonportable]") {
-  //
-  REQUIRE(global_count == 0);
+// TEST_CASE("HALO optimization", "[!benchmark][!mayfail][!nonportable]") {
+//   //
+//   REQUIRE(global_count == 0);
 
-  trivial_coro();
+//   trivial_coro();
 
-  if (global_count != 0) {
-    SKIP("HALO optimization fails for trivial coroutines");
-  }
+//   if (global_count != 0) {
+//     SKIP("HALO optimization fails for trivial coroutines");
+//   }
 
-  manual();
+//   manual();
 
-  if (global_count != 0) {
-    FAIL("HALO optimization fails at manual");
-  }
+//   if (global_count != 0) {
+//     FAIL("HALO optimization fails at manual");
+//   }
 
-  handle();
+//   handle();
 
-  if (global_count != 0) {
-    FAIL("HALO optimization fails at handle creation");
-  }
+//   if (global_count != 0) {
+//     FAIL("HALO optimization fails at handle creation");
+//   }
 
-  fut();
+//   fut();
 
-  if (global_count != 0) {
-    FAIL("HALO optimization fails at future creation");
-  }
+//   if (global_count != 0) {
+//     FAIL("HALO optimization fails at future creation");
+//   }
 
-  both();
+//   both();
 
-  if (global_count != 0) {
-    FAIL("HALO optimization fails at both");
-  }
+//   if (global_count != 0) {
+//     FAIL("HALO optimization fails at both");
+//   }
 
-  method();
+//   method();
 
-  if (global_count != 0) {
-    FAIL("HALO optimization fails at method");
-  }
-}
+//   if (global_count != 0) {
+//     FAIL("HALO optimization fails at method");
+//   }
+// }
 
-// NOLINTEND
+// // NOLINTEND

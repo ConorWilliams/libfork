@@ -24,7 +24,7 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/catchorg/Catch2.git
   GIT_TAG        v3.3.1 
   GIT_SHALLOW TRUE
-  SYSTEM
+  SYSTEM TRUE
 )
 
 FetchContent_MakeAvailable(Catch2)

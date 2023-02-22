@@ -379,11 +379,11 @@ auto queue<T>::steal() noexcept -> steal_t {
     T tmp = m_buf.load(consume)->load(top);
 
     if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
-      return {.code = err::lost};
+      return {.code = err::lost, .val = {}};
     }
     return {.code = err::none, .val = tmp};
   }
-  return {.code = err::empty};
+  return {.code = err::empty, .val = {}};
 }
 
 template <trivial T>

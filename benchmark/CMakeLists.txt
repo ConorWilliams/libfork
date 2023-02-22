@@ -9,7 +9,7 @@ include(../cmake/folders.cmake)
 
 
 if(NOT CMAKE_BUILD_TYPE STREQUAL Release)
-  message(WARNING "CMAKE_BUILD_TYPE is set to ${CMAKE_BUILD_TYPE}. This is not recommended for benchamrking.")
+  message(WARNING "CMAKE_BUILD_TYPE is set to ${CMAKE_BUILD_TYPE}. This is not recommended for benchmarking.")
 endif()
 
 # ---- Dependencies ----
@@ -26,7 +26,7 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/martinus/nanobench.git
     GIT_TAG v4.1.0
     GIT_SHALLOW TRUE
-    SYSTEM
+    SYSTEM TRUE
 )
 
 FetchContent_MakeAvailable(nanobench)
@@ -36,9 +36,15 @@ FetchContent_MakeAvailable(nanobench)
 
 # ---- Tests ----
 
-add_executable(MyExample source/example.cpp)
+add_executable(libforkBench source/example.cpp)
 
-target_link_libraries(MyExample PRIVATE nanobench)
+target_link_libraries(libforkBench PRIVATE nanobench)
+
+add_custom_target(benchmark
+  COMMAND libforkBench
+  DEPENDS libforkBench
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
 
 
 # ---- End-of-file commands ----
