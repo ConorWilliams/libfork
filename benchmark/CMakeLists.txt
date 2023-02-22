@@ -46,6 +46,7 @@ FetchContent_Declare(
         
 FetchContent_MakeAvailable(backward)
 
+find_package(spdlog REQUIRED)
 
 
 # ---- Tests ----
@@ -54,7 +55,12 @@ add_executable(libforkBench source/main.cpp source/fib.cpp ${BACKWARD_ENABLE})
 
 add_backward(libforkBench)
 
-target_link_libraries(libforkBench PRIVATE libfork::libfork nanobench OpenMP::OpenMP_CXX)
+target_link_libraries(libforkBench PRIVATE 
+  libfork::libfork 
+  nanobench 
+  OpenMP::OpenMP_CXX 
+  spdlog::spdlog
+)
 
 add_custom_target(benchmark
   COMMAND libforkBench

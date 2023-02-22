@@ -68,7 +68,8 @@ constexpr auto file_name(std::string_view path) -> std::string_view {
   return path;
 }
 
-#ifndef NDEBUG
+#ifndef ASSERT
+  #ifndef NDEBUG
 
 inline void assert_impl(std::string_view const expr, std::string_view const message, source_location const location = source_location::current()) {
   std::osyncstream synced_out(std::cerr);
@@ -88,25 +89,26 @@ inline void assert_impl(std::string_view const expr, std::string_view const mess
   synced_out << "\"\n";
 }
 
-  /**
-   * @brief Assert an expression is true and ``std::terminate()`` if not, a no-op if ``NDEBUG`` is defined.
-   */
-  #define ASSERT(expr, message)                                                                            \
-    do {                                                                                                   \
-      if (!(expr)) {                                                                                       \
-        if (!std::is_constant_evaluated()) {                                                               \
-          ::lf::detail::assert_impl(#expr, message); /* Indirection as ``std::osyncstream`` is virtual. */ \
-        }                                                                                                  \
-        std::terminate();                                                                                  \
-      }                                                                                                    \
-    } while (false)
+    /**
+     * @brief Assert an expression is true and ``std::terminate()`` if not, a no-op if ``NDEBUG`` is defined.
+     */
+    #define ASSERT(expr, message)                                                                            \
+      do {                                                                                                   \
+        if (!(expr)) {                                                                                       \
+          if (!std::is_constant_evaluated()) {                                                               \
+            ::lf::detail::assert_impl(#expr, message); /* Indirection as ``std::osyncstream`` is virtual. */ \
+          }                                                                                                  \
+          std::terminate();                                                                                  \
+        }                                                                                                    \
+      } while (false)
 
-#else
-  #define ASSERT(...) \
-    do {              \
-    } while (false)
+  #else
+    #define ASSERT(...) \
+      do {              \
+      } while (false)
 
-#endif  // !NDEBUG
+  #endif  // !NDEBUG
+#endif    // !ASSERT
 
 /**
  * @brief A wrapper for C++23's ``[[assume(expr)]]`` attribute.
@@ -153,7 +155,8 @@ inline void assert_impl(std::string_view const expr, std::string_view const mess
   #define ASSERT_ASSUME(expr, message) ASSUME(expr)
 #endif
 
-#if !defined(NDEBUG) && !defined(FORK_NO_LOGGING)
+#ifndef DEBUG_TRACKER
+  #if !defined(NDEBUG) && !defined(FORK_NO_LOGGING)
 
 inline void log_impl(std::string_view const message, source_location const location = source_location::current()) {
   std::osyncstream synced_out(std::clog);
@@ -171,17 +174,18 @@ inline void log_impl(std::string_view const message, source_location const locat
   synced_out << "\"\n";
 }
 
-  /**
-   * @brief Log a message to ``std::clog``, a no-op if ``FORK_NO_LOGGING`` or ``NDEBUG`` is defined.
-   */
-  #define DEBUG_TRACKER(message)                                                             \
-    if (!std::is_constant_evaluated()) {                                                     \
-      ::lf::detail::log_impl(message); /* Indirection as ``std::osyncstream`` is virtual. */ \
-    }
-#else
-  #define DEBUG_TRACKER(message) \
-    do {                         \
-    } while (false)
+    /**
+     * @brief Log a message to ``std::clog``, a no-op if ``FORK_NO_LOGGING`` or ``NDEBUG`` is defined.
+     */
+    #define DEBUG_TRACKER(message)                                                             \
+      if (!std::is_constant_evaluated()) {                                                     \
+        ::lf::detail::log_impl(message); /* Indirection as ``std::osyncstream`` is virtual. */ \
+      }
+  #else
+    #define DEBUG_TRACKER(message) \
+      do {                         \
+      } while (false)
+  #endif
 #endif
 
 // NOLINTEND
