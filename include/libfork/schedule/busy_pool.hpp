@@ -25,7 +25,11 @@
 namespace lf {
 
 /**
- * @brief a handle to a team
+ * @brief A scheduler based on a traditional work-stealing thread pool.
+ *
+ * Worker threads continuously try to steal tasks from other worker threads hence, they
+ * waste CPU cycles if sufficiant work is not available. This is a good choice if the number
+ * of threads is equal to the number of hardware cores and the multiplexer has no other load.
  */
 class busy_pool {
  public:
@@ -98,15 +102,10 @@ class busy_pool {
   }
 
   /**
-   * @brief Submit a tas to the thread pool.
-   *
-   * @tparam T
-   * @tparam Allocator
-   * @param task
-   * @return T
+   * @brief Submit a task to the pool and join the workers until it completes.
    */
   template <typename T, typename Allocator>
-  auto colab(basic_task<T, context, Allocator>&& task) -> T {
+  auto schedule(basic_task<T, context, Allocator>&& task) -> T {
     //
     auto [fut, handle] = make_root(std::move(task)).make_promise();
 

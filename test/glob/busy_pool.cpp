@@ -55,14 +55,14 @@ TEST_CASE("noop", "[busy_pool]") {
   for (int i = 0; i < 100; ++i) {
     DEBUG_TRACKER("\niter");
     busy_pool pool{};
-    pool.colab(noop());
+    pool.schedule(noop());
   }
 }
 
 TEST_CASE("fwd", "[busy_pool]") {
   for (int i = 0; i < 100; ++i) {
     busy_pool pool{};
-    REQUIRE(pool.colab(fwd(i)) == i);
+    REQUIRE(pool.schedule(fwd(i)) == i);
   }
 }
 
@@ -70,7 +70,7 @@ TEST_CASE("re-use", "[busy_pool]") {
   for (int i = 0; i < 100; ++i) {
     busy_pool pool{};
     for (int j = 0; j < 1; ++j) {
-      REQUIRE(pool.colab(fwd(j)) == j);
+      REQUIRE(pool.schedule(fwd(j)) == j);
     }
   }
 }
@@ -100,7 +100,7 @@ static task<int> fib_task(int n) {
 TEST_CASE("Fibonacci - busy_pool", "[busy_pool]") {
   busy_pool pool{};
   for (int i = 0; i < 20; ++i) {
-    REQUIRE(pool.colab(fib_task(i)) == fib(i));
+    REQUIRE(pool.schedule(fib_task(i)) == fib(i));
   }
 }
 
@@ -138,7 +138,7 @@ TEST_CASE("busy reduce", "[busy_task]") {
     //
     busy_pool pool{i};
 
-    auto result = pool.colab(pool_reduce<int>(data, data.size() / (10 * i)));
+    auto result = pool.schedule(pool_reduce<int>(data, data.size() / (10 * i)));
 
     REQUIRE(result == std::reduce(data.begin(), data.end()));
   }

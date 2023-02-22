@@ -16,17 +16,17 @@
 
 // NOLINTBEGIN No need to check the tests for style.
 
-#include "libfork/schedule/inline.hpp"
+#include "libfork/schedule/immediate.hpp"
 #include "libfork/task.hpp"
 #include "libfork/utility.hpp"
 
 using namespace lf;
 
 template <typename T>
-using task = basic_task<T, inline_context>;
+using task = basic_task<T, immediate::context>;
 
 template <typename T>
-using future = basic_future<T, inline_context>;
+using future = basic_future<T, immediate::context>;
 
 static task<void> noop() {
   co_return;
@@ -46,39 +46,31 @@ static task<T> fwd(T x) {
 TEST_CASE("Trivial tasks", "[basic_task]") {
   //
 
-  inline_context context{};
+  immediate sch{};
 
-  REQUIRE(context.empty());
+  REQUIRE(sch.empty());
 
   DEBUG_TRACKER("testing noop");
 
   for (int i = 0; i < 100; ++i) {
-    auto [fut, task] = noop().make_promise();
-    task.resume_root(context);
-    REQUIRE(context.empty());
+    sch.schedule(noop());
+    REQUIRE(sch.empty());
   }
 
   DEBUG_TRACKER("testing set");
 
   for (int i = 0; i < 100; ++i) {
     int x = 0;
-    DEBUG_TRACKER("A");
-    auto [fut, task] = set(x, i).make_promise();
-    DEBUG_TRACKER("B");
-    task.resume_root(context);
-    DEBUG_TRACKER("C");
+    sch.schedule(set(x, i));
     REQUIRE(x == i);
-    DEBUG_TRACKER("D");
-    REQUIRE(context.empty());
+    REQUIRE(sch.empty());
   }
 
   DEBUG_TRACKER("testing fwd");
 
   for (int i = 0; i < 100; ++i) {
-    auto [fut, task] = fwd(i).make_promise();
-    task.resume_root(context);
-    REQUIRE(*fut == i);
-    REQUIRE(context.empty());
+    REQUIRE(sch.schedule(fwd(i)) == i);
+    REQUIRE(sch.empty());
   }
 
   DEBUG_TRACKER("testing fwd&");
@@ -87,16 +79,15 @@ TEST_CASE("Trivial tasks", "[basic_task]") {
     //
     int tmp = i;
 
-    auto [fut, task] = fwd<int&>(tmp).make_promise();
-    task.resume_root(context);
+    int& fut = sch.schedule(fwd<int&>(tmp));
 
-    REQUIRE(context.empty());
+    REQUIRE(sch.empty());
 
     tmp += 1;
 
-    REQUIRE(*fut == i + 1);
+    REQUIRE(fut == i + 1);
 
-    *fut -= 1;
+    fut -= 1;
 
     REQUIRE(tmp == i);
   }
@@ -104,10 +95,8 @@ TEST_CASE("Trivial tasks", "[basic_task]") {
   DEBUG_TRACKER("testing fwd {std::string}");
 
   for (int i = 0; i < 100; ++i) {
-    auto [fut, task] = fwd(std::to_string(i)).make_promise();
-    task.resume_root(context);
-    REQUIRE(*fut == std::to_string(i));
-    REQUIRE(context.empty());
+    REQUIRE(sch.schedule(fwd(std::to_string(i))) == std::to_string(i));
+    REQUIRE(sch.empty());
   }
 }
 
@@ -152,30 +141,26 @@ static task<void> fib_task_void(int& out, int n) {
 
 TEST_CASE("Fibonacci - int", "[basic_task]") {
   //
-  inline_context context{};
+  immediate sch{};
 
   for (int j = 0; j < 100; ++j) {
     for (int i = 0; i < 10; ++i) {
-      auto [fut, task] = fib_task(i).make_promise();
-      task.resume_root(context);
-      REQUIRE(*fut == fib(i));
-      REQUIRE(context.empty());
+      REQUIRE(sch.schedule(fib_task(i)) == fib(i));
+      REQUIRE(sch.empty());
     }
   }
 }
 
 TEST_CASE("Fibonacci - void", "[basic_task]") {
   //
-  inline_context context{};
+  immediate sch{};
 
   for (int j = 0; j < 100; ++j) {
     for (int i = 0; i < 10; ++i) {
       int x = 0;
-      DEBUG_TRACKER("iter");
-      auto [fut, task] = fib_task_void(x, i).make_promise();
-      task.resume_root(context);
+      sch.schedule(fib_task_void(x, i));
       REQUIRE(x == fib(i));
-      REQUIRE(context.empty());
+      REQUIRE(sch.empty());
     }
   }
 }
@@ -199,10 +184,9 @@ static task<int> stack_overflow() {
 // symmetric transfer into tail calls.
 TEST_CASE("Stack overflow", "[basic_task][!benchmark][!mayfail]") {
   //
-  inline_context context{};
-  auto [fut, task] = stack_overflow().make_promise();
-  task.resume_root(context);
-  REQUIRE(context.empty());
+  immediate sch{};
+  sch.schedule(stack_overflow());
+  REQUIRE(sch.empty());
 }
 
 // NOLINTEND

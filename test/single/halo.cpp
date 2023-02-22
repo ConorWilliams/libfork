@@ -21,7 +21,7 @@
 
 // // NOLINTBEGIN No need to check the tests for style.
 
-// #include "libfork/schedule/inline.hpp"
+// #include "libfork/schedule/immediate.hpp"
 // #include "libfork/task.hpp"
 // #include "libfork/utility.hpp"
 
@@ -44,7 +44,7 @@
 // };
 
 // template <typename T>
-// basic_task<T, inline_context, Tracked<T>> track(T x) {
+// basic_task<T, immediate::context, Tracked<T>> track(T x) {
 //   co_return x;  //
 // }
 
@@ -69,7 +69,7 @@
 // }
 
 // void manual() {
-//   inline_context context{};
+//   immediate::context context{};
 
 //   auto t = track(0);
 //   t->promise().m_context = &context;
@@ -79,11 +79,11 @@
 // }
 
 // void handle() {
-//   inline_context context{};
+//   immediate::context context{};
 
 //   auto t = track(0);
 
-//   task_handle<inline_context> hand{t->promise()};
+//   task_handle<immediate::context> hand{t->promise()};
 
 //   t->promise().m_context = &context;
 //   t->resume();
@@ -92,9 +92,9 @@
 // }
 
 // void fut() {
-//   inline_context context{};
+//   immediate::context context{};
 
-//   basic_future<int, inline_context, Tracked<int>> t{track(0)};
+//   basic_future<int, immediate::context, Tracked<int>> t{track(0)};
 //   t->promise().m_context = &context;
 //   t->resume();
 //   t->destroy();
@@ -102,13 +102,13 @@
 // }
 
 // void both() {
-//   inline_context context{};
+//   immediate::context context{};
 
 //   auto t = track(0);
 
-//   task_handle<inline_context> hand{t->promise()};
+//   task_handle<immediate::context> hand{t->promise()};
 
-//   basic_future<int, inline_context, Tracked<int>> f{std::move(t)};
+//   basic_future<int, immediate::context, Tracked<int>> f{std::move(t)};
 //   f->promise().m_context = &context;
 //   f->resume();
 //   f->destroy();
@@ -116,7 +116,7 @@
 // }
 
 // void method() {
-//   inline_context context{};
+//   immediate::context context{};
 
 //   auto f = track(0).make_promise();
 //   f.future->promise().m_context = &context;
