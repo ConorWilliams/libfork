@@ -11,14 +11,16 @@ Macros
 
 .. doxygendefine:: ASSUME
 
-.. doxygendefine:: CHECK_ASSUME
-
 .. doxygendefine:: ASSERT_ASSUME
 
-Other
------------
+.. doxygendefine:: DEBUG_TRACKER
 
-.. doxygenstruct:: lf::error
+
+Classes
+------------
+
+.. doxygenclass:: lf::defer
     :members:
     :undoc-members:
+
 

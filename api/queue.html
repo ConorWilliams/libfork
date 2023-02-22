@@ -3,7 +3,7 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="prev" title="libfork/utility.hpp" href="utility.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="libfork/unique_handle.hpp" href="unique_handle.html" /><link rel="prev" title="libfork/task.hpp" href="task.html" />
 
     <link rel="shortcut icon" href="../_static/favicon.ico"/><!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 -->
         <title>libfork/queue.hpp - libfork documentation</title>
@@ -148,8 +148,8 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
   
   <div class="sidebar-logo-container">
-    <img class="sidebar-logo only-light" src="../_static/fly_light.svg" alt="Light Logo"/>
-    <img class="sidebar-logo only-dark" src="../_static/fly_dark.svg" alt="Dark Logo"/>
+    <img class="sidebar-logo only-light" src="../_static/fork_light.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../_static/fork_light.svg" alt="Dark Logo"/>
   </div>
   
   
@@ -161,8 +161,10 @@
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <p class="caption" role="heading"><span class="caption-text">Files</span></p>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="utility.html">libfork/utility.hpp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="task.html">libfork/task.hpp</a></li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">libfork/queue.hpp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="unique_handle.html">libfork/unique_handle.hpp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utility.html">libfork/utility.hpp</a></li>
 </ul>
 
 </div>
@@ -213,11 +215,11 @@ Memory Models”</a>. Both are available in <a class="reference external" href="
  </p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>doxygenconcept: Cannot find concept “lf::Trivial” in doxygen xml output for project “libfork” from directory: /home/runner/work/libfork/libfork/build/docs/doxygen/xml</p>
+<p>doxygenconcept: Cannot find concept “lf::trivial” in doxygen xml output for project “libfork” from directory: /home/runner/work/libfork/libfork/build/docs/doxygen/xml</p>
 </div>
 <dl class="cpp class">
-<dt class="sig sig-object cpp" id="_CPPv4I_7TrivialEN2lf5queueE">
-<span id="_CPPv3I_7TrivialEN2lf5queueE"></span><span id="_CPPv2I_7TrivialEN2lf5queueE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">Trivial</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classlf_1_1queue"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">queue</span></span></span><a class="headerlink" href="#_CPPv4I_7TrivialEN2lf5queueE" title="Permalink to this definition">#</a><br /></dt>
+<dt class="sig sig-object cpp" id="_CPPv4I_7trivialEN2lf5queueE">
+<span id="_CPPv3I_7trivialEN2lf5queueE"></span><span id="_CPPv2I_7trivialEN2lf5queueE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">trivial</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classlf_1_1queue"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">queue</span></span></span><a class="headerlink" href="#_CPPv4I_7trivialEN2lf5queueE" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>An unbounded lock-free single-producer multiple-consumer queue. </p>
 <p>Only the queue owner can perform <code class="docutils literal notranslate"><a class="reference internal" href="#classlf_1_1queue_1a09cc8230ed6cd3d05c1dd6fc0301ac08"><span class="std std-ref"><span class="pre">pop()</span></span></a></code> and <code class="docutils literal notranslate"><a class="reference internal" href="#classlf_1_1queue_1a2d8d63a44fe6c820281056c859185215"><span class="std std-ref"><span class="pre">push()</span></span></a></code> operations where the queue behaves like a LIFO stack. Others can (only) <code class="docutils literal notranslate"><a class="reference internal" href="#classlf_1_1queue_1a6655e7ca5b5d0970364a44a44fcf25ef"><span class="std std-ref"><span class="pre">steal()</span></span></a></code> data from the queue, they see a FIFO queue. All threads must have finished using the queue before it is destructed.</p>
 <p><p>Example:</p>
@@ -267,7 +269,7 @@ Memory Models”</a>. Both are available in <a class="reference external" href="
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-types">Public Types</p>
 <dl class="cpp type">
 <dt class="sig sig-object cpp" id="_CPPv4N2lf5queue10value_typeE">
-<span id="_CPPv3N2lf5queue10value_typeE"></span><span id="_CPPv2N2lf5queue10value_typeE"></span><span class="target" id="classlf_1_1queue_1ae343bd1afeacd1083243b33dedbaa812"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">value_type</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_7TrivialEN2lf5queueE" title="lf::queue::T"><span class="n"><span class="pre">T</span></span></a><a class="headerlink" href="#_CPPv4N2lf5queue10value_typeE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N2lf5queue10value_typeE"></span><span id="_CPPv2N2lf5queue10value_typeE"></span><span class="target" id="classlf_1_1queue_1ae343bd1afeacd1083243b33dedbaa812"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">value_type</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_7trivialEN2lf5queueE" title="lf::queue::T"><span class="n"><span class="pre">T</span></span></a><a class="headerlink" href="#_CPPv4N2lf5queue10value_typeE" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>The type of the elements in the queue. </p>
 </dd></dl>
 
@@ -324,26 +326,26 @@ Memory Models”</a>. Both are available in <a class="reference external" href="
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N2lf5queueaSERR5queue">
-<span id="_CPPv3N2lf5queueaSERR5queue"></span><span id="_CPPv2N2lf5queueaSERR5queue"></span><span id="lf::queue::assign-operator__queueRR"></span><span class="target" id="classlf_1_1queue_1ada7c42f7c9f0d337b691ff30facf7a1a"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I_7TrivialEN2lf5queueE" title="lf::queue"><span class="n"><span class="pre">queue</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_7TrivialEN2lf5queueE" title="lf::queue"><span class="n"><span class="pre">queue</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N2lf5queueaSERR5queue" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N2lf5queueaSERR5queue"></span><span id="_CPPv2N2lf5queueaSERR5queue"></span><span id="lf::queue::assign-operator__queueRR"></span><span class="target" id="classlf_1_1queue_1ada7c42f7c9f0d337b691ff30facf7a1a"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I_7trivialEN2lf5queueE" title="lf::queue"><span class="n"><span class="pre">queue</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_7trivialEN2lf5queueE" title="lf::queue"><span class="n"><span class="pre">queue</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N2lf5queueaSERR5queue" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>Queue’s are not assignable. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N2lf5queueaSERK5queue">
-<span id="_CPPv3N2lf5queueaSERK5queue"></span><span id="_CPPv2N2lf5queueaSERK5queue"></span><span id="lf::queue::assign-operator__queueCR"></span><span class="target" id="classlf_1_1queue_1afd9769de2c17d8aa9eba793f721d0634"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I_7TrivialEN2lf5queueE" title="lf::queue"><span class="n"><span class="pre">queue</span></span></a><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_7TrivialEN2lf5queueE" title="lf::queue"><span class="n"><span class="pre">queue</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N2lf5queueaSERK5queue" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N2lf5queueaSERK5queue"></span><span id="_CPPv2N2lf5queueaSERK5queue"></span><span id="lf::queue::assign-operator__queueCR"></span><span class="target" id="classlf_1_1queue_1afd9769de2c17d8aa9eba793f721d0634"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I_7trivialEN2lf5queueE" title="lf::queue"><span class="n"><span class="pre">queue</span></span></a><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_7trivialEN2lf5queueE" title="lf::queue"><span class="n"><span class="pre">queue</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N2lf5queueaSERK5queue" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>Queue’s are not assignable. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N2lf5queue3popEv">
-<span id="_CPPv3N2lf5queue3popEv"></span><span id="_CPPv2N2lf5queue3popEv"></span><span id="lf::queue::pop"></span><span class="target" id="classlf_1_1queue_1a09cc8230ed6cd3d05c1dd6fc0301ac08"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">pop</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">optional</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_7TrivialEN2lf5queueE" title="lf::queue::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N2lf5queue3popEv" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N2lf5queue3popEv"></span><span id="_CPPv2N2lf5queue3popEv"></span><span id="lf::queue::pop"></span><span class="target" id="classlf_1_1queue_1a09cc8230ed6cd3d05c1dd6fc0301ac08"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">pop</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">optional</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_7trivialEN2lf5queueE" title="lf::queue::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N2lf5queue3popEv" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>Pop an item from the queue. </p>
 <p>Only the owner thread can pop out an item from the queue. Returns <code class="docutils literal notranslate"><span class="pre">std::nullopt</span></code> if this operation fails (i.e. the queue is empty). </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N2lf5queue4pushERK1T">
-<span id="_CPPv3N2lf5queue4pushERK1T"></span><span id="_CPPv2N2lf5queue4pushERK1T"></span><span id="lf::queue::push__TCR"></span><span class="target" id="classlf_1_1queue_1a2d8d63a44fe6c820281056c859185215"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">push</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I_7TrivialEN2lf5queueE" title="lf::queue::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">val</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><a class="headerlink" href="#_CPPv4N2lf5queue4pushERK1T" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N2lf5queue4pushERK1T"></span><span id="_CPPv2N2lf5queue4pushERK1T"></span><span id="lf::queue::push__TCR"></span><span class="target" id="classlf_1_1queue_1a2d8d63a44fe6c820281056c859185215"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">push</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I_7trivialEN2lf5queueE" title="lf::queue::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">val</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><a class="headerlink" href="#_CPPv4N2lf5queue4pushERK1T" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>Push an item into the queue. </p>
 <p>Only the owner thread can insert an item into the queue. The operation can trigger the queue to resize if more space is required.</p>
 <dl class="field-list simple">
@@ -387,15 +389,22 @@ Memory Models”</a>. Both are available in <a class="reference external" href="
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK2lf5queue7steal_tmlEv">
-<span id="_CPPv3NK2lf5queue7steal_tmlEv"></span><span id="_CPPv2NK2lf5queue7steal_tmlEv"></span><span id="lf::queue::steal_t::mul-operatorCCE"></span><span class="target" id="structlf_1_1queue_1_1steal__t_1a1e4c00d641dcdfbb778f66498508cacf"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">*</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_7TrivialEN2lf5queueE" title="lf::queue::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">&amp;</span></span><a class="headerlink" href="#_CPPv4NK2lf5queue7steal_tmlEv" title="Permalink to this definition">#</a><br /></dt>
+<dt class="sig sig-object cpp" id="_CPPv4N2lf5queue7steal_tmlEv">
+<span id="_CPPv3N2lf5queue7steal_tmlEv"></span><span id="_CPPv2N2lf5queue7steal_tmlEv"></span><span id="lf::queue::steal_t::mul-operatorCE"></span><span class="target" id="structlf_1_1queue_1_1steal__t_1aff9be33dbf826dd6dcc7f66ed4a87bab"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">*</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_7trivialEN2lf5queueE" title="lf::queue::T"><span class="n"><span class="pre">T</span></span></a><a class="headerlink" href="#_CPPv4N2lf5queue7steal_tmlEv" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Get the value like <code class="docutils literal notranslate"><span class="pre">std::optional</span></code>. </p>
+<p>Requires <code class="docutils literal notranslate"><span class="pre">code</span> <span class="pre">==</span> <span class="pre">err::none</span></code> . </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK2lf5queue7steal_tptEv">
+<span id="_CPPv3NK2lf5queue7steal_tptEv"></span><span id="_CPPv2NK2lf5queue7steal_tptEv"></span><span id="lf::queue::steal_t::pointer-operatorCCE"></span><span class="target" id="structlf_1_1queue_1_1steal__t_1a55b28a00e9cb6fc7ae195b260d642a5b"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">-&gt;</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_7trivialEN2lf5queueE" title="lf::queue::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">*</span></span><a class="headerlink" href="#_CPPv4NK2lf5queue7steal_tptEv" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>Get the value <code class="docutils literal notranslate"><span class="pre">like</span> <span class="pre">std::optional</span></code>. </p>
 <p>Requires <code class="docutils literal notranslate"><span class="pre">code</span> <span class="pre">==</span> <span class="pre">err::none</span></code> . </p>
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4N2lf5queue7steal_tmlEv">
-<span id="_CPPv3N2lf5queue7steal_tmlEv"></span><span id="_CPPv2N2lf5queue7steal_tmlEv"></span><span id="lf::queue::steal_t::mul-operatorCE"></span><span class="target" id="structlf_1_1queue_1_1steal__t_1a4ac3358303b02dfcd9b8eb451ff2ad18"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">*</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_7TrivialEN2lf5queueE" title="lf::queue::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">&amp;</span></span><a class="headerlink" href="#_CPPv4N2lf5queue7steal_tmlEv" title="Permalink to this definition">#</a><br /></dt>
+<dt class="sig sig-object cpp" id="_CPPv4N2lf5queue7steal_tptEv">
+<span id="_CPPv3N2lf5queue7steal_tptEv"></span><span id="_CPPv2N2lf5queue7steal_tptEv"></span><span id="lf::queue::steal_t::pointer-operatorCE"></span><span class="target" id="structlf_1_1queue_1_1steal__t_1aeaa2ca4e68ae3b12b6a4f7bd8f45b142"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">-&gt;</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_7trivialEN2lf5queueE" title="lf::queue::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">*</span></span><a class="headerlink" href="#_CPPv4N2lf5queue7steal_tptEv" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>Get the value <code class="docutils literal notranslate"><span class="pre">like</span> <span class="pre">std::optional</span></code>. </p>
 <p>Requires <code class="docutils literal notranslate"><span class="pre">code</span> <span class="pre">==</span> <span class="pre">err::none</span></code> . </p>
 </dd></dl>
@@ -411,7 +420,7 @@ Memory Models”</a>. Both are available in <a class="reference external" href="
 
 <dl class="cpp var">
 <dt class="sig sig-object cpp" id="_CPPv4N2lf5queue7steal_t3valE">
-<span id="_CPPv3N2lf5queue7steal_t3valE"></span><span id="_CPPv2N2lf5queue7steal_t3valE"></span><span id="lf::queue::steal_t::val__T"></span><span class="target" id="structlf_1_1queue_1_1steal__t_1a63b2be600f9bfe2da998e9c90f7047b3"></span><a class="reference internal" href="#_CPPv4I_7TrivialEN2lf5queueE" title="lf::queue::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">val</span></span></span><a class="headerlink" href="#_CPPv4N2lf5queue7steal_t3valE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N2lf5queue7steal_t3valE"></span><span id="_CPPv2N2lf5queue7steal_t3valE"></span><span id="lf::queue::steal_t::val__T"></span><span class="target" id="structlf_1_1queue_1_1steal__t_1a63b2be600f9bfe2da998e9c90f7047b3"></span><a class="reference internal" href="#_CPPv4I_7trivialEN2lf5queueE" title="lf::queue::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">val</span></span></span><a class="headerlink" href="#_CPPv4N2lf5queue7steal_t3valE" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>The value stolen from the queue, Only valid if <code class="docutils literal notranslate"><span class="pre">code</span> <span class="pre">==</span> <span class="pre">err::stolen</span></code>. </p>
 </dd></dl>
 
@@ -427,15 +436,23 @@ Memory Models”</a>. Both are available in <a class="reference external" href="
       <footer>
         
         <div class="related-pages">
-          
-          <a class="prev-page" href="utility.html">
+          <a class="next-page" href="unique_handle.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">libfork/unique_handle.hpp</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="task.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">libfork/utility.hpp</div>
+                <div class="title">libfork/task.hpp</div>
                 
               </div>
             </a>

@@ -3,7 +3,7 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="libfork/queue.hpp" href="queue.html" /><link rel="prev" title="Welcome to libfork v2.0.0" href="../index.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="prev" title="libfork/unique_handle.hpp" href="unique_handle.html" />
 
     <link rel="shortcut icon" href="../_static/favicon.ico"/><!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 -->
         <title>libfork/utility.hpp - libfork documentation</title>
@@ -148,8 +148,8 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
   
   <div class="sidebar-logo-container">
-    <img class="sidebar-logo only-light" src="../_static/fly_light.svg" alt="Light Logo"/>
-    <img class="sidebar-logo only-dark" src="../_static/fly_dark.svg" alt="Dark Logo"/>
+    <img class="sidebar-logo only-light" src="../_static/fork_light.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../_static/fork_light.svg" alt="Dark Logo"/>
   </div>
   
   
@@ -161,8 +161,10 @@
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <p class="caption" role="heading"><span class="caption-text">Files</span></p>
 <ul class="current">
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">libfork/utility.hpp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="task.html">libfork/task.hpp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="queue.html">libfork/queue.hpp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="unique_handle.html">libfork/unique_handle.hpp</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">libfork/utility.hpp</a></li>
 </ul>
 
 </div>
@@ -212,8 +214,8 @@
 <h2>Macros<a class="headerlink" href="#macros" title="Permalink to this heading">#</a></h2>
 <dl class="cpp macro">
 <dt class="sig sig-object cpp" id="c.ASSERT">
-<span class="target" id="utility_8hpp_1a73d4f21ad937dbc50a0c0538c78fd4f9"></span><span class="sig-name descname"><span class="n"><span class="pre">ASSERT</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">expr</span></span>, <span class="n"><span class="pre">msg</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.ASSERT" title="Permalink to this definition">#</a><br /></dt>
-<dd><p>Assert an expression is true and <code class="docutils literal notranslate"><span class="pre">std::terminate()</span></code> if not. </p>
+<span class="target" id="utility_8hpp_1ad5eb1a9f19971b6e492a33d6ed717b1a"></span><span class="sig-name descname"><span class="n"><span class="pre">ASSERT</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">expr</span></span>, <span class="n"><span class="pre">message</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.ASSERT" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Assert an expression is true and <code class="docutils literal notranslate"><span class="pre">std::terminate()</span></code> if not, a no-op if <code class="docutils literal notranslate"><span class="pre">NDEBUG</span></code> is defined. </p>
 </dd></dl>
 
 <dl class="cpp macro">
@@ -226,30 +228,101 @@
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>Using some intrinsics (i.e. GCC’s <code class="docutils literal notranslate"><span class="pre">__builtin_unreachable()</span></code>) this has different semantics
-than <code class="docutils literal notranslate"><span class="pre">[[assume(expr)]]</span></code> as it WILL evaluate the exprssion at runtime.</p>
+than <code class="docutils literal notranslate"><span class="pre">[[assume(expr)]]</span></code> as it WILL evaluate the exprssion at runtime. Hence you should
+conservativly only use this macro if <code class="docutils literal notranslate"><span class="pre">expr</span></code> is side-effect free and cheap to evaluate.</p>
 </div>
-</dd></dl>
-
-<dl class="cpp macro">
-<dt class="sig sig-object cpp" id="c.CHECK_ASSUME">
-<span class="target" id="utility_8hpp_1aafe38526546da812bc87fc4e9f444a78"></span><span class="sig-name descname"><span class="n"><span class="pre">CHECK_ASSUME</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">expr</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.CHECK_ASSUME" title="Permalink to this definition">#</a><br /></dt>
-<dd><p><code class="docutils literal notranslate"><a class="reference internal" href="#utility_8hpp_1a73d4f21ad937dbc50a0c0538c78fd4f9"><span class="std std-ref"><span class="pre">ASSERT()</span></span></a></code> in debug builds, <code class="docutils literal notranslate"><a class="reference internal" href="#utility_8hpp_1a742f604ff3e4bce13794414eeaaaee50"><span class="std std-ref"><span class="pre">ASSUME()</span></span></a></code> in release builds. </p>
 </dd></dl>
 
 <dl class="cpp macro">
 <dt class="sig sig-object cpp" id="c.ASSERT_ASSUME">
 <span class="target" id="utility_8hpp_1ae5810561044b8898aed65e7031593589"></span><span class="sig-name descname"><span class="n"><span class="pre">ASSERT_ASSUME</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">expr</span></span>, <span class="n"><span class="pre">message</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.ASSERT_ASSUME" title="Permalink to this definition">#</a><br /></dt>
-<dd><p><code class="docutils literal notranslate"><a class="reference internal" href="#utility_8hpp_1a73d4f21ad937dbc50a0c0538c78fd4f9"><span class="std std-ref"><span class="pre">ASSERT()</span></span></a></code> in debug builds, <code class="docutils literal notranslate"><a class="reference internal" href="#utility_8hpp_1a742f604ff3e4bce13794414eeaaaee50"><span class="std std-ref"><span class="pre">ASSUME()</span></span></a></code> in release builds. </p>
-<p>Only use if <code class="docutils literal notranslate"><span class="pre">expr</span></code> is cheap to evaluate as it MAY be evaluated at runtime. </p>
+<dd><p><code class="docutils literal notranslate"><a class="reference internal" href="#utility_8hpp_1a742f604ff3e4bce13794414eeaaaee50"><span class="std std-ref"><span class="pre">ASSUME()</span></span></a></code><code class="docutils literal notranslate"><span class="pre">if</span></code><code class="docutils literal notranslate"><span class="pre">NDEBUG</span></code><code class="docutils literal notranslate"><span class="pre">is</span> <span class="pre">defined,</span> <span class="pre">otherwise</span></code><code class="docutils literal notranslate"><a class="reference internal" href="#utility_8hpp_1ad5eb1a9f19971b6e492a33d6ed717b1a"><span class="std std-ref"><span class="pre">ASSERT()</span></span></a></code>`. </p>
+<p>Only use if <code class="docutils literal notranslate"><span class="pre">expr</span></code> is side-effect free and cheap to evaluate as it MAY be evaluated at runtime. </p>
+</dd></dl>
+
+<dl class="cpp macro">
+<dt class="sig sig-object cpp" id="c.DEBUG_TRACKER">
+<span class="target" id="utility_8hpp_1a99fb244b49d531d884de5b22344316bb"></span><span class="sig-name descname"><span class="n"><span class="pre">DEBUG_TRACKER</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">message</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.DEBUG_TRACKER" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Log a message to <code class="docutils literal notranslate"><span class="pre">std::clog</span></code>, a no-op if <code class="docutils literal notranslate"><span class="pre">FORK_NO_LOGGING</span></code> or <code class="docutils literal notranslate"><span class="pre">NDEBUG</span></code> is defined. </p>
 </dd></dl>
 
 </section>
-<section id="other">
-<h2>Other<a class="headerlink" href="#other" title="Permalink to this heading">#</a></h2>
-<dl class="cpp struct">
-<dt class="sig sig-object cpp" id="_CPPv4N2lf5errorE">
-<span id="_CPPv3N2lf5errorE"></span><span id="_CPPv2N2lf5errorE"></span><span id="lf::error"></span><span class="target" id="structlf_1_1error"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">error</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">runtime_error</span></span><a class="headerlink" href="#_CPPv4N2lf5errorE" title="Permalink to this definition">#</a><br /></dt>
-<dd><p>libfork’s error type, derived from <code class="docutils literal notranslate"><span class="pre">std::runtime_error</span></code>. </p>
+<section id="classes">
+<h2>Classes<a class="headerlink" href="#classes" title="Permalink to this heading">#</a></h2>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4I0EN2lf5deferE">
+<span id="_CPPv3I0EN2lf5deferE"></span><span id="_CPPv2I0EN2lf5deferE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">F</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classlf_1_1defer"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">defer</span></span></span><a class="headerlink" href="#_CPPv4I0EN2lf5deferE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Basic implementation of a Golang like defer. </p>
+<p><p><p>Example:</p>
+<div class="code highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;libfork/utility.hpp&quot;</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="nf">add_count</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">counts</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">val</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="c1">//</span>
+<span class="w">  </span><span class="kt">bool</span><span class="w"> </span><span class="n">commit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span>
+
+<span class="w">  </span><span class="n">counts</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">val</span><span class="p">);</span><span class="w">  </span><span class="c1">//  (1) direct action.</span>
+
+<span class="w">  </span><span class="n">lf</span><span class="o">::</span><span class="n">defer</span><span class="w"> </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="o">&amp;</span><span class="p">]()</span><span class="w"> </span><span class="k">noexcept</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">commit</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="n">counts</span><span class="p">.</span><span class="n">pop_back</span><span class="p">();</span><span class="w">  </span><span class="c1">// (2) rollback action.</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">};</span>
+
+<span class="w">  </span><span class="c1">//                         (3) other operations that may throw.</span>
+
+<span class="w">  </span><span class="n">commit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span><span class="w">  </span><span class="c1">//         (4) disable rollback actions if no throw.</span>
+
+<span class="w">  </span><span class="c1">// Lambda executed when scope exits (function returns or exception).</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</p>
+ </p>
+<dl class="field-list simple">
+<dt class="field-odd">Template Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>F</strong> – The nullary invocable’s type, this <strong>MUST</strong> be deducted through CTAD by the deduction guide and it must be <code class="docutils literal notranslate"><span class="pre">noexcept</span></code> callable.</p>
+</dd>
+</dl>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf5defer5deferERR5defer">
+<span id="_CPPv3N2lf5defer5deferERR5defer"></span><span id="_CPPv2N2lf5defer5deferERR5defer"></span><span id="lf::defer::defer__deferRR"></span><span class="target" id="classlf_1_1defer_1a8f3b4539d608cc923343983fe466d7ad"></span><span class="sig-name descname"><span class="n"><span class="pre">defer</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N2lf5defer5deferERR5defer" title="lf::defer::defer"><span class="n"><span class="pre">defer</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N2lf5defer5deferERR5defer" title="Permalink to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf5defer5deferERK5defer">
+<span id="_CPPv3N2lf5defer5deferERK5defer"></span><span id="_CPPv2N2lf5defer5deferERK5defer"></span><span id="lf::defer::defer__deferCR"></span><span class="target" id="classlf_1_1defer_1a7fc8539d7d2f4309f65ed331c944a2a3"></span><span class="sig-name descname"><span class="n"><span class="pre">defer</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N2lf5defer5deferERK5defer" title="lf::defer::defer"><span class="n"><span class="pre">defer</span></span></a><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N2lf5defer5deferERK5defer" title="Permalink to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf5defer5deferERR1F">
+<span id="_CPPv3N2lf5defer5deferERR1F"></span><span id="_CPPv2N2lf5defer5deferERR1F"></span><span id="lf::defer::defer__FRRCE"></span><span class="target" id="classlf_1_1defer_1a08994f47117daa82346599aea93f76a8"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">defer</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN2lf5deferE" title="lf::defer::F"><span class="n"><span class="pre">F</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">to_defer</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2lf5defer5deferERR1F" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Defer a nullary invocable until destruction of this object. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>to_defer</strong> – Nullary invocable forwarded into object and invoked by destructor. </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf5deferD0Ev">
+<span id="_CPPv3N2lf5deferD0Ev"></span><span id="_CPPv2N2lf5deferD0Ev"></span><span id="lf::defer::~defer"></span><span class="target" id="classlf_1_1defer_1a110f1c42eef46038fcf347dc71b474c7"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">~defer</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N2lf5deferD0Ev" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Calls the invocable. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf5deferaSERR5defer">
+<span id="_CPPv3N2lf5deferaSERR5defer"></span><span id="_CPPv2N2lf5deferaSERR5defer"></span><span id="lf::defer::assign-operator__deferRR"></span><span class="target" id="classlf_1_1defer_1ab43221f8083e60a6d28a9880a9c4a21d"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN2lf5deferE" title="lf::defer"><span class="n"><span class="pre">defer</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN2lf5deferE" title="lf::defer"><span class="n"><span class="pre">defer</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N2lf5deferaSERR5defer" title="Permalink to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf5deferaSERK5defer">
+<span id="_CPPv3N2lf5deferaSERK5defer"></span><span id="_CPPv2N2lf5deferaSERK5defer"></span><span id="lf::defer::assign-operator__deferCR"></span><span class="target" id="classlf_1_1defer_1ad54888e521725dbb5dcafe6556b6183e"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN2lf5deferE" title="lf::defer"><span class="n"><span class="pre">defer</span></span></a><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN2lf5deferE" title="lf::defer"><span class="n"><span class="pre">defer</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N2lf5deferaSERK5defer" title="Permalink to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+</div>
 </dd></dl>
 
 </section>
@@ -260,23 +333,15 @@ than <code class="docutils literal notranslate"><span class="pre">[[assume(expr)
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="queue.html">
-              <div class="page-info">
-                <div class="context">
-                  <span>Next</span>
-                </div>
-                <div class="title">libfork/queue.hpp</div>
-              </div>
-              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
-            </a>
-          <a class="prev-page" href="../index.html">
+          
+          <a class="prev-page" href="unique_handle.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Home</div>
+                <div class="title">libfork/unique_handle.hpp</div>
                 
               </div>
             </a>
@@ -319,7 +384,7 @@ than <code class="docutils literal notranslate"><span class="pre">[[assume(expr)
             <ul>
 <li><a class="reference internal" href="#">libfork/utility.hpp</a><ul>
 <li><a class="reference internal" href="#macros">Macros</a></li>
-<li><a class="reference internal" href="#other">Other</a></li>
+<li><a class="reference internal" href="#classes">Classes</a></li>
 </ul>
 </li>
 </ul>
