@@ -39,10 +39,12 @@
 namespace lf {
 
 /**
- * @brief A concept for ``std::is_trivial_v<T>``.
+ * @brief A concept for ``std::is_trivial_v<T> && std::atomic<T>::is_always_lock_free``.
  */
 template <typename T>
-concept trivial = std::is_trivial_v<T>;
+concept simple = std::is_trivial_v<T> && std::atomic<T>::is_always_lock_free;
+
+namespace detail {
 
 /**
  * @brief A basic wrapper around a c-style array that provides modulo load/stores.
@@ -52,7 +54,7 @@ concept trivial = std::is_trivial_v<T>;
  *
  * @tparam T The type of the elements in the array.
  */
-template <trivial T>
+template <simple T>
 struct ring_buf {
   /**
    * @brief Construct a new ring buff object
@@ -71,14 +73,14 @@ struct ring_buf {
    */
   auto store(std::ptrdiff_t index, T val) noexcept -> void {
     ASSERT_ASSUME(index >= 0, "index must be non-negative!");
-    *(m_buf.get() + (index & m_mask)) = val;  // NOLINT Avoid cast to std::size_t.
+    (m_buf.get() + (index & m_mask))->store(val, std::memory_order_relaxed);  // NOLINT Avoid cast to std::size_t.
   }
   /**
    * @brief Load value at ``index % this->capacity()``.
    */
   [[nodiscard]] auto load(std::ptrdiff_t index) const noexcept -> T {
     ASSERT_ASSUME(index >= 0, "index must be non-negative!");
-    return *(m_buf.get() + (index & m_mask));  // NOLINT Avoid cast to std::size_t.
+    return (m_buf.get() + (index & m_mask))->load(std::memory_order_relaxed);  // NOLINT Avoid cast to std::size_t.
   }
   /**
    * @brief Copies elements in range ``[bottom, top)`` into a new ring buffer.
@@ -103,9 +105,9 @@ struct ring_buf {
 
 #ifdef __cpp_lib_smart_ptr_for_overwrite
   // NOLINTNEXTLINE
-  std::unique_ptr<T[]> m_buf = std::make_unique_for_overwrite<T[]>(static_cast<std::size_t>(m_cap));
+  std::unique_ptr<std::atomic<T>[]> m_buf = std::make_unique_for_overwrite<std::atomic<T>[]>(static_cast<std::size_t>(m_cap));
 #else
-  std::unique_ptr<T[]> m_buf = std::make_unique<T[]>(static_cast<std::size_t>(m_cap));
+  std::unique_ptr<std::atomic<T>[]> m_buf = std::make_unique<std::atomic<T>[]>(static_cast<std::size_t>(m_cap));
 #endif
 };
 
@@ -117,6 +119,8 @@ inline constexpr std::size_t k_cache_line = std::hardware_destructive_interferen
 #else
 inline constexpr std::size_t k_cache_line = 64;
 #endif
+
+}  // namespace detail
 
 /**
  * @brief Error codes for ``queue`` 's ``steal()`` operation.
@@ -145,9 +149,9 @@ enum class err : int {
  *
  * \endrst
  *
- * @tparam T The type of the elements in the queue - must be a trivial type.
+ * @tparam T The type of the elements in the queue - must be a simple type.
  */
-template <trivial T>
+template <simple T>
 class queue {
   static constexpr std::ptrdiff_t k_default_capacity = 1024;
   static constexpr std::size_t k_garbage_reserve = 32;
@@ -272,11 +276,11 @@ class queue {
   ~queue() noexcept;
 
  private:
-  alignas(k_cache_line) std::atomic<std::ptrdiff_t> m_top;
-  alignas(k_cache_line) std::atomic<std::ptrdiff_t> m_bottom;
-  alignas(k_cache_line) std::atomic<ring_buf<T>*> m_buf;
+  alignas(detail::k_cache_line) std::atomic<std::ptrdiff_t> m_top;
+  alignas(detail::k_cache_line) std::atomic<std::ptrdiff_t> m_bottom;
+  alignas(detail::k_cache_line) std::atomic<detail::ring_buf<T>*> m_buf;
 
-  std::vector<std::unique_ptr<ring_buf<T>>> m_garbage;  // Store old buffers here.
+  std::vector<std::unique_ptr<detail::ring_buf<T>>> m_garbage;  // Store old buffers here.
 
   // Convenience aliases.
   static constexpr std::memory_order relaxed = std::memory_order_relaxed;
@@ -286,40 +290,40 @@ class queue {
   static constexpr std::memory_order seq_cst = std::memory_order_seq_cst;
 };
 
-template <trivial T>
-queue<T>::queue(std::ptrdiff_t cap) : m_top(0), m_bottom(0), m_buf(new ring_buf<T>{cap}) {
+template <simple T>
+queue<T>::queue(std::ptrdiff_t cap) : m_top(0), m_bottom(0), m_buf(new detail::ring_buf<T>{cap}) {
   m_garbage.reserve(k_garbage_reserve);
 }
 
-template <trivial T>
+template <simple T>
 auto queue<T>::size() const noexcept -> std::size_t {
   return static_cast<std::size_t>(ssize());
 }
 
-template <trivial T>
+template <simple T>
 auto queue<T>::ssize() const noexcept -> std::ptrdiff_t {
   ptrdiff_t const bottom = m_bottom.load(relaxed);
   ptrdiff_t const top = m_top.load(relaxed);
   return std::max(bottom - top, ptrdiff_t{0});
 }
 
-template <trivial T>
+template <simple T>
 auto queue<T>::capacity() const noexcept -> ptrdiff_t {
   return m_buf.load(relaxed)->capacity();
 }
 
-template <trivial T>
+template <simple T>
 auto queue<T>::empty() const noexcept -> bool {
   ptrdiff_t const bottom = m_bottom.load(relaxed);
   ptrdiff_t const top = m_top.load(relaxed);
   return top >= bottom;
 }
 
-template <trivial T>
+template <simple T>
 auto queue<T>::push(T const& val) noexcept -> void {
   std::ptrdiff_t const bottom = m_bottom.load(relaxed);
   std::ptrdiff_t const top = m_top.load(acquire);
-  ring_buf<T>* buf = m_buf.load(relaxed);
+  detail::ring_buf<T>* buf = m_buf.load(relaxed);
 
   if (buf->capacity() < (bottom - top) + 1) {
     // Queue is full, build a new one.
@@ -335,10 +339,10 @@ auto queue<T>::push(T const& val) noexcept -> void {
   m_bottom.store(bottom + 1, relaxed);
 }
 
-template <trivial T>
+template <simple T>
 auto queue<T>::pop() noexcept -> std::optional<T> {
   std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1;
-  ring_buf<T>* buf = m_buf.load(relaxed);
+  detail::ring_buf<T>* buf = m_buf.load(relaxed);
 
   m_bottom.store(bottom, relaxed);  // Stealers can no longer steal.
 
@@ -364,7 +368,7 @@ auto queue<T>::pop() noexcept -> std::optional<T> {
   return std::nullopt;
 }
 
-template <trivial T>
+template <simple T>
 auto queue<T>::steal() noexcept -> steal_t {
   std::ptrdiff_t top = m_top.load(acquire);
   std::atomic_thread_fence(seq_cst);
@@ -386,7 +390,7 @@ auto queue<T>::steal() noexcept -> steal_t {
   return {.code = err::empty, .val = {}};
 }
 
-template <trivial T>
+template <simple T>
 queue<T>::~queue() noexcept {
   delete m_buf.load();  // NOLINT
 }
