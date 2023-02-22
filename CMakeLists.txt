@@ -4,7 +4,7 @@ include(cmake/prelude.cmake)
 
 project(
     libfork
-    VERSION 2.0.0
+    VERSION 2.0.0-alpha
     DESCRIPTION "A C++ library for fork-join parallelism using coroutines"
     HOMEPAGE_URL "https://github.com/ConorWilliams/libfork"
     LANGUAGES CXX
