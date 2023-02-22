@@ -306,8 +306,9 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
 
           ASSERT_ASSUME(prom.m_parent, "parent is null -> task is root but, pop() non-null");
           ASSERT_ASSUME(parent_handle->m_promise->m_this, "parent's this handle is null");
-          ASSERT_ASSUME(prom.m_parent->m_this == parent_handle->m_promise->m_this, "bad parent");
           ASSERT_ASSUME(parent_handle->m_promise->m_context == prom.m_context, "context changed");
+          ASSERT_ASSUME(prom.m_parent->m_this == parent_handle->m_promise->m_this, "pop should have got the same");
+
           return destroy_if_void(child, parent_handle->m_promise->m_this);
         }
 

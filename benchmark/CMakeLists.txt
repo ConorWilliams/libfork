@@ -33,9 +33,26 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(nanobench)
 
+include(FetchContent)
+
+# Also requires one of: libbfd (gnu binutils), libdwarf, libdw (elfutils)
+FetchContent_Declare(
+    backward
+    GIT_REPOSITORY https://github.com/bombela/backward-cpp
+    GIT_TAG v1.6
+    GIT_SHALLOW TRUE
+    SYSTEM TRUE
+)
+        
+FetchContent_MakeAvailable(backward)
+
+
+
 # ---- Tests ----
 
-add_executable(libforkBench source/main.cpp source/fib.cpp)
+add_executable(libforkBench source/main.cpp source/fib.cpp ${BACKWARD_ENABLE})
+
+add_backward(libforkBench)
 
 target_link_libraries(libforkBench PRIVATE libfork::libfork nanobench OpenMP::OpenMP_CXX TBB::tbb)
 

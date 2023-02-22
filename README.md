@@ -17,6 +17,25 @@ The tasking fork-join interface is designed to mirror Cilk.
 
 # Benchmarks
 
+## Fibonacci
+
+This benchmark evenly spawns many-tasks that do almost no computation hence, this benchmark predominantly test task creation/scheduling/deletion overhead.
+
+| relative |          ns/fib(20) |           fib(20)/s |    err% |     total | Fibonacci
+|---------:|--------------------:|--------------------:|--------:|----------:|:----------
+|   100.0% |        1,415,052.87 |              706.69 |    1.5% |     11.01 | `openMP 1 threads`
+|    23.2% |        6,109,785.29 |              163.67 |    4.5% |     11.14 | `openMP 2 threads`
+|    27.6% |        5,129,135.71 |              194.96 |    1.1% |     10.58 | `openMP 3 threads`
+|    30.2% |        4,682,091.67 |              213.58 |    2.3% |     11.23 | `openMP 4 threads`
+|   171.2% |          826,451.28 |            1,209.99 |    0.9% |     10.81 | `busy_pool 1 threads`
+|   260.9% |          542,472.80 |            1,843.41 |    3.9% |     10.91 | `busy_pool 2 threads`
+|   304.0% |          465,541.16 |            2,148.04 |    1.4% |     11.08 | `busy_pool 3 threads`
+|   319.2% |          443,302.26 |            2,255.80 |    2.3% |     11.01 | `busy_pool 4 threads`
+|    82.0% |        1,725,828.99 |              579.43 |    1.3% |     10.86 | `intel TBB 1 threads`
+|   133.1% |        1,063,020.11 |              940.72 |    4.3% |     10.96 | `intel TBB 2 threads`
+|   158.4% |          893,258.47 |            1,119.50 |    1.5% |     10.97 | `intel TBB 3 threads`
+|   164.2% |          861,915.85 |            1,160.21 |    3.1% |     11.11 | `intel TBB 4 threads`
+
 # API reference
 
 See the [API documentation](https://conorwilliams.github.io/libfork/) document.

@@ -8,6 +8,9 @@
 #include <tbb/task_arena.h>
 #include <tbb/task_group.h>
 
+#undef NDEBUG
+#define FORK_NO_LOGGING
+
 #include "libfork/schedule/busy_pool.hpp"
 #include "libfork/task.hpp"
 
@@ -77,26 +80,15 @@ auto benchmark_fib() -> void {
 
   int volatile fib_number = 20;
 
-  bench.title("Fibbonaci");
+  bench.title("Fibonacci");
   bench.unit("fib(" + std::to_string(fib_number) + ")");
   bench.warmup(100);
   bench.relative(true);
-  bench.minEpochIterations(100);
+  bench.epochs(100);
   bench.minEpochTime(std::chrono::milliseconds(100));
+  // bench.minEpochTime(std::chrono::milliseconds(100));
+  // bench.maxEpochTime(std::chrono::milliseconds(1000));
   bench.performanceCounters(true);
-
-  //   for (int i = 1; i <= std::thread::hardware_concurrency(); ++i) {
-  // #pragma omp parallel num_threads(i)
-  // #pragma omp single nowait
-  //     {
-  //       bench.run("openMP " + std::to_string(i) + " threads", [&] {
-  //         //
-  //         int x = omp(fib_number);
-
-  //         ankerl::nanobench::doNotOptimizeAway(x);
-  //       });
-  //     }
-  //   }
 
   for (std::size_t i = 1; i <= std::thread::hardware_concurrency(); ++i) {
     //
@@ -105,6 +97,19 @@ auto benchmark_fib() -> void {
     bench.run("busy_pool " + std::to_string(i) + " threads", [&] {
       ankerl::nanobench::doNotOptimizeAway(pool.schedule(libfork<lf::busy_pool::context>(fib_number)));
     });
+  }
+
+  for (int i = 1; i <= std::thread::hardware_concurrency(); ++i) {
+#pragma omp parallel num_threads(i)
+#pragma omp single nowait
+    {
+      bench.run("openMP " + std::to_string(i) + " threads", [&] {
+        //
+        int x = omp(fib_number);
+
+        ankerl::nanobench::doNotOptimizeAway(x);
+      });
+    }
   }
 
   for (int i = 1; i <= std::thread::hardware_concurrency(); ++i) {
