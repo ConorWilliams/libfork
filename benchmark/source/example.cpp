@@ -274,12 +274,12 @@ void bench(ankerl::nanobench::Bench* bench, char const* name) {
 
 }  // namespace
 
-int main() {
+auto main() -> int {
   // perform a few warmup calls, and since the runtime is not always stable
   // for each generator, increase the number of epochs to get more accurate
   // numbers.
   ankerl::nanobench::Bench b;
-  b.title("Random Number Generators").unit("uint64_t").warmup(100).relative(true).minEpochTime(std::chrono::milliseconds(100));
+  b.title("Fibbonaci").unit("uint64_t").warmup(100).relative(true).minEpochTime(std::chrono::milliseconds(1));
   b.performanceCounters(true);
 
   // sets the first one as the baseline

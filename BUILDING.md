@@ -58,18 +58,51 @@ cmake --install build --config Release
 
 ### CMake integration
 
-This project exports a CMake package to be used with the [`find_package`][3]
-command of CMake:
+This project exports a CMake package to be used with the [`find_package`][3] command of CMake:
 
 * Package name: `libfork`
 * Target name: `libfork::libfork`
 
-Example usage:
+#### If you have installed libfork:
 
 ```cmake
 find_package(libfork REQUIRED)
+
 # Declare the imported target as a build requirement using PRIVATE, where
 # project_target is a target created in the consuming project
+target_link_libraries(
+    project_target PRIVATE
+    libfork::libfork
+)
+```
+
+#### Using ``FetchContent``:
+
+```cmake
+include(FetchContent)
+
+FetchContent_Declare(
+    libfork
+    GIT_REPOSITORY https://github.com/conorwilliams/libfork.git
+    GIT_TAG 08b82dd97dcaadc50a32ff382b785be2869d731c
+    GIT_SHALLOW TRUE
+)
+
+FetchContent_MakeAvailable(libfork)
+
+target_link_libraries(
+    project_target PRIVATE
+    libfork::libfork
+)
+```
+
+#### Using git submodules:
+
+Assuming you clone libfork as a submodule into ``external/libfork``
+
+```cmake
+add_subdirectory(external/libfork)
+
 target_link_libraries(
     project_target PRIVATE
     libfork::libfork

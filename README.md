@@ -3,7 +3,7 @@
 
 # Welcome to libfork (🍴) [![Continuous Integration](https://github.com/ConorWilliams/libfork/actions/workflows/ci.yml/badge.svg)](https://github.com/ConorWilliams/libfork/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/ConorWilliams/libfork/branch/main/graph/badge.svg?token=89MTSXI85F)](https://codecov.io/gh/ConorWilliams/libfork)
 
-Libfork (🍴) is primarily an abstraction for lock-free, wait-free, continuation-stealing [fork-join parallelism](https://en.wikipedia.org/wiki/Fork%E2%80%93join_model). This is made possible without the use of any macros/inline assembly using C++20's coroutines. Libfork presents an API that decouples scheduling tasks (a customization point) from writing tasks and expressing their dependencies. Secondarily, libfork provides a performant work-stealing scheduler for general use.
+Libfork is primarily an abstraction for lock-free, wait-free, continuation-stealing [fork-join parallelism](https://en.wikipedia.org/wiki/Fork%E2%80%93join_model). This is made possible without the use of any macros/inline assembly using C++20's coroutines. Libfork presents an API that decouples scheduling tasks (a customization point) from writing tasks and expressing their dependencies. Secondarily, libfork provides a performant work-stealing scheduler for general use.
 
 # Building and installing
 
@@ -80,6 +80,4 @@ This project implements many of the ideas from (available in [`reference/`](refe
   url       = {https://doi.org/10.1145/1073970.1073974}
 }
 ```
-
-
 
