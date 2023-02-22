@@ -177,13 +177,13 @@ class xoshiro {
     }
 
     return bits;
-  };
+  }
 
-  constexpr void jump_impl(std::array<result_type, 4> const& jump) noexcept {
+  constexpr void jump_impl(std::array<result_type, 4> const& jump_array) noexcept {
     //
     std::array<result_type, 4> s = {0, 0, 0, 0};  // NOLINT
 
-    for (result_type const jump : jump) {
+    for (result_type const jump : jump_array) {
       for (int bit = 0; bit < 64; ++bit) {   // NOLINT
         if (jump & result_type{1} << bit) {  // NOLINT
           s[0] ^= m_state[0];
