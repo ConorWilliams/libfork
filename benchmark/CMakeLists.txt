@@ -19,7 +19,7 @@ endif()
 
 find_package(OpenMP REQUIRED)
 
-find_package(TBB REQUIRED)
+# find_package(TBB REQUIRED)
 
 include(FetchContent)
 
@@ -54,7 +54,7 @@ add_executable(libforkBench source/main.cpp source/fib.cpp ${BACKWARD_ENABLE})
 
 add_backward(libforkBench)
 
-target_link_libraries(libforkBench PRIVATE libfork::libfork nanobench OpenMP::OpenMP_CXX TBB::tbb)
+target_link_libraries(libforkBench PRIVATE libfork::libfork nanobench OpenMP::OpenMP_CXX)
 
 add_custom_target(benchmark
   COMMAND libforkBench

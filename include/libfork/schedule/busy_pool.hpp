@@ -38,13 +38,32 @@ class busy_pool {
    */
   class context : private queue<task_handle<context>> {
    public:
-    using queue<task_handle<context>>::push;
-    using queue<task_handle<context>>::pop;
+    // using queue<task_handle<context>>::push;
+    // using queue<task_handle<context>>::pop;
+
+    /**
+     * @brief Push a task onto the queue.
+     */
+    auto push(task_handle<context> task) -> void {
+      ASSERT(m_id == std::this_thread::get_id(), "push accessed from wrong thread");
+      queue<task_handle<context>>::push(task);
+    }
+    /**
+     * @brief Pop a task from the queue.
+     */
+    auto pop() -> std::optional<task_handle<context>> {
+      ASSERT(m_id == std::this_thread::get_id(), "pop accessed from wrong thread");
+      return queue<task_handle<context>>::pop();
+    }
 
    private:
     friend class busy_pool;
 
     detail::xoshiro m_rng;
+
+#ifndef NDEBUG
+    std::thread::id m_id;
+#endif
   };
 
   busy_pool(busy_pool const&) = delete;
@@ -76,9 +95,17 @@ class busy_pool {
       rng.long_jump();
     }
 
+#ifndef NDEBUG
+    m_contexts[0].m_id = std::this_thread::get_id();
+#endif
+
     // Start the worker threads, note there are n-1 workers, indexed 1...n - 1.
     for (std::size_t i = 1; i < n; ++i) {
       m_workers.emplace_back([this, i, n](std::stop_token token) {  // NOLINT
+//
+#ifndef NDEBUG
+        this->m_contexts[i].m_id = std::this_thread::get_id();
+#endif
         for (;;) {
           // Wait for a root task to be submitted.
           this->m_root_task_in_flight.wait(false, std::memory_order_acquire);
@@ -107,6 +134,12 @@ class busy_pool {
   template <typename T, typename Allocator>
   auto schedule(basic_task<T, context, Allocator>&& task) -> T {
     //
+    constexpr std::size_t uid = 0;
+    //
+#ifndef NDEBUG
+    ASSERT(this->m_contexts[uid].m_id == std::this_thread::get_id(), "root task accessed from wrong thread");
+#endif
+    //
     auto [fut, handle] = make_root(std::move(task)).make_promise();
 
     DEBUG_TRACKER("waking workers");
@@ -114,8 +147,6 @@ class busy_pool {
     // Wake up the workers
     m_root_task_in_flight.test_and_set(std::memory_order_release);
     m_root_task_in_flight.notify_all();
-
-    constexpr std::size_t uid = 0;
 
     DEBUG_TRACKER("root task starts");
 

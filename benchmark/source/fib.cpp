@@ -5,8 +5,8 @@
 
 #include <nanobench.h>
 
-#include <tbb/task_arena.h>
-#include <tbb/task_group.h>
+// #include <tbb/task_arena.h>
+// #include <tbb/task_group.h>
 
 #undef NDEBUG
 #define FORK_NO_LOGGING
@@ -29,11 +29,11 @@ auto libfork(int n) -> lf::basic_task<int, Context> {
     co_return n;
   }
   auto a = co_await libfork<Context>(n - 1).fork();
-  auto b = co_await libfork<Context>(n - 2);
+  auto b = co_await libfork<Context>(n - 2).fork();
 
   co_await lf::join();
 
-  co_return *a + b;
+  co_return *a + *b;
 }
 
 auto omp(int n) -> int {
@@ -53,24 +53,24 @@ auto omp(int n) -> int {
   return a + b;
 }
 
-int fib_tbb(int n) {
-  if (n < 2) {
-    return n;
-  }
-  int x, y;
+// int fib_tbb(int n) {
+//   if (n < 2) {
+//     return n;
+//   }
+//   int x, y;
 
-  tbb::task_group g;
+//   tbb::task_group g;
 
-  g.run([&] {
-    x = fib_tbb(n - 1);
-  });
+//   g.run([&] {
+//     x = fib_tbb(n - 1);
+//   });
 
-  y = fib_tbb(n - 2);
+//   y = fib_tbb(n - 2);
 
-  g.wait();
+//   g.wait();
 
-  return x + y;
-}
+//   return x + y;
+// }
 
 }  // namespace
 
@@ -89,6 +89,15 @@ auto benchmark_fib() -> void {
   // bench.minEpochTime(std::chrono::milliseconds(100));
   // bench.maxEpochTime(std::chrono::milliseconds(1000));
   bench.performanceCounters(true);
+
+  // lf::busy_pool pool{4};
+
+  // //
+  // for (std::size_t i = 1; i <= 1'000'000; ++i) {
+  //   //
+
+  //   int volatile x = pool.schedule(libfork<lf::busy_pool::context>(fib_number));
+  // }
 
   for (std::size_t i = 1; i <= std::thread::hardware_concurrency(); ++i) {
     //
@@ -112,15 +121,15 @@ auto benchmark_fib() -> void {
     }
   }
 
-  for (int i = 1; i <= std::thread::hardware_concurrency(); ++i) {
-    //
+  // for (int i = 1; i <= std::thread::hardware_concurrency(); ++i) {
+  //   //
 
-    tbb::task_arena limited(i);
+  //   tbb::task_arena limited(i);
 
-    limited.execute([&] {
-      bench.run("intel TBB " + std::to_string(i) + " threads", [&] {
-        ankerl::nanobench::doNotOptimizeAway(fib_tbb(fib_number));
-      });
-    });
-  }
+  //   limited.execute([&] {
+  //     bench.run("intel TBB " + std::to_string(i) + " threads", [&] {
+  //       ankerl::nanobench::doNotOptimizeAway(fib_tbb(fib_number));
+  //     });
+  //   });
+  // }
 }

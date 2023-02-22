@@ -4,6 +4,7 @@
 gmon.out
 build/
 cmake-build-*/
+*.log
 prefix/
 CMakeLists.txt.user
 CMakeUserPresets.json

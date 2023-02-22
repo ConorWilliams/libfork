@@ -356,6 +356,8 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
         // In case *this (awaitable) is destructed by stealer after push
         raw_handle<> child = (*this)->promise().m_this;
 
+        ASSERT_ASSUME((*this)->promise().m_context == parent.promise().m_context, "child is not in same context as parent");
+
         DEBUG_TRACKER("task is forking");
 
         parent.promise().m_context->push(task_handle<Context>{parent.promise()});
@@ -390,8 +392,11 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
       //
       [[nodiscard]] static constexpr auto await_ready() noexcept -> bool { return false; }
 
-      [[nodiscard]] constexpr auto await_suspend(raw_handle<promise_type>) noexcept -> raw_handle<> {  // NOLINT
+      [[nodiscard]] constexpr auto await_suspend(raw_handle<promise_type> parent) noexcept -> raw_handle<> {  // NOLINT
         DEBUG_TRACKER("launching inline task");
+
+        ASSERT_ASSUME((*this)->promise().m_context == parent.promise().m_context, "inline child is not in same context as parent");
+
         return (*this)->promise().m_this;
       }
 
@@ -444,6 +449,10 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
 
         // Hence            joined = k_imax - num_joined
         //         k_imax - joined = num_joined
+
+        //  Consider race condition on write to m_context.
+
+        ASSERT(&task.promise() == m_promise, "logic error, task has changed");
 
         auto steals = m_promise->m_steals;
         auto joined = m_promise->m_join.fetch_sub(k_imax - steals, std::memory_order_release);
