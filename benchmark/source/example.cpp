@@ -18,7 +18,7 @@ using uint128_t = unsigned __int128;
     #pragma intrinsic(_umul128)
   #endif
 #endif
-
+//
 class WyRng {
  public:
   using result_type = uint64_t;

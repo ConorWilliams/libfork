@@ -146,7 +146,7 @@ inline void assert_impl(std::string_view const expr, std::string_view const mess
 /**
  * @brief `ASSUME()`` if ``NDEBUG`` is defined, otherwise ``ASSERT()``.
  *
- * Only use if ``expr`` is cheap to evaluate as it MAY be evaluated at runtime.
+ * Only use if ``expr`` is side-effect free and cheap to evaluate as it MAY be evaluated at runtime.
  */
   #define ASSERT_ASSUME(expr, message) ASSERT(expr, message)
 #else
