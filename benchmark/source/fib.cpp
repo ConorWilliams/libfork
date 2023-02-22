@@ -71,7 +71,7 @@ int fib_tbb(int n) {
 
 }  // namespace
 
-auto main() -> int {
+auto benchmark_fib() -> void {
   //
   ankerl::nanobench::Bench bench;
 
@@ -85,15 +85,18 @@ auto main() -> int {
   bench.minEpochTime(std::chrono::milliseconds(100));
   bench.performanceCounters(true);
 
-  for (int i = 1; i <= std::thread::hardware_concurrency(); ++i) {
-#pragma omp parallel num_threads(i)
-#pragma omp single nowait
-    {
-      bench.run("openMP " + std::to_string(i) + " threads", [&] {
-        ankerl::nanobench::doNotOptimizeAway(omp(fib_number));
-      });
-    }
-  }
+  //   for (int i = 1; i <= std::thread::hardware_concurrency(); ++i) {
+  // #pragma omp parallel num_threads(i)
+  // #pragma omp single nowait
+  //     {
+  //       bench.run("openMP " + std::to_string(i) + " threads", [&] {
+  //         //
+  //         int x = omp(fib_number);
+
+  //         ankerl::nanobench::doNotOptimizeAway(x);
+  //       });
+  //     }
+  //   }
 
   for (std::size_t i = 1; i <= std::thread::hardware_concurrency(); ++i) {
     //
@@ -115,6 +118,4 @@ auto main() -> int {
       });
     });
   }
-
-  return 0;
 }

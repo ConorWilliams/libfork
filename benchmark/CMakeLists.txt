@@ -7,7 +7,6 @@ include(../cmake/folders.cmake)
 
 # ---- Set cmake to release ----
 
-
 if(NOT CMAKE_BUILD_TYPE STREQUAL Release)
   message(WARNING "CMAKE_BUILD_TYPE is set to ${CMAKE_BUILD_TYPE}. This is not recommended for benchmarking.")
 endif()
@@ -18,6 +17,9 @@ if(PROJECT_IS_TOP_LEVEL)
   find_package(libfork REQUIRED)
 endif()
 
+find_package(OpenMP REQUIRED)
+
+find_package(TBB REQUIRED)
 
 include(FetchContent)
 
@@ -31,14 +33,9 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(nanobench)
 
-
-find_package(OpenMP REQUIRED)
-
-find_package(TBB REQUIRED)
-
 # ---- Tests ----
 
-add_executable(libforkBench source/example.cpp)
+add_executable(libforkBench source/main.cpp source/fib.cpp)
 
 target_link_libraries(libforkBench PRIVATE libfork::libfork nanobench OpenMP::OpenMP_CXX TBB::tbb)
 

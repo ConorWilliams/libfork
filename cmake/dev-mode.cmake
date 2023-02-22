@@ -6,7 +6,7 @@ if(BUILD_TESTING)
   add_subdirectory(test)
 endif()
 
-option(BUILD_BENCHMARKS "Build benchmarks using nanobench" ${BUILD_TESTING})
+option(BUILD_BENCHMARKS "Build benchmarks using nanobench" OFF)
 if(BUILD_BENCHMARKS)
   add_subdirectory(benchmark)
 endif()
