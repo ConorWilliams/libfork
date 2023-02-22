@@ -1,304 +1,120 @@
+
+#include <chrono>
+#include <string>
+#include <thread>
+
 #include <nanobench.h>
 
-#include <fstream>
-#include <iostream>
-#include <random>
+#include <tbb/task_arena.h>
+#include <tbb/task_group.h>
 
-#if defined(__SIZEOF_INT128__)
-  #if defined(__GNUC__) || defined(__clang__)
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wpedantic"
-using uint128_t = unsigned __int128;
-    #pragma GCC diagnostic pop
-  #endif
-#elif (defined(_MSC_VER) && SIZE_MAX == UINT64_MAX)
-  #include <intrin.h>  // for __umulh
-
-  #ifndef _M_ARM64
-    #pragma intrinsic(_umul128)
-  #endif
-#endif
-//
-class WyRng {
- public:
-  using result_type = uint64_t;
-
-  static constexpr uint64_t(min)() { return 0; }
-  static constexpr uint64_t(max)() { return UINT64_C(0xffffffffffffffff); }
-
-  explicit WyRng(uint64_t seed) noexcept : mState(seed) {}
-
-  uint64_t operator()() noexcept {
-    // static constexpr uint64_t wyp0 = UINT64_C(0xa0761d6478bd642f);
-    static constexpr uint64_t wyp1 = UINT64_C(0xe7037ed1a0b428db);
-
-    ++mState;
-    return mumx(mState ^ wyp1, mState);
-  }
-
- private:
-  // 128bit multiply a and b, xor high and low result
-  static uint64_t mumx(uint64_t a, uint64_t b) noexcept {
-    uint64_t h{};
-    uint64_t const l = umul128(a, b, &h);
-    return h ^ l;
-  }
-
-  static uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) noexcept {
-#if defined(__SIZEOF_INT128__)
-    auto result = static_cast<uint128_t>(a) * static_cast<uint128_t>(b);
-    *high = static_cast<uint64_t>(result >> 64U);
-    return static_cast<uint64_t>(result);
-
-#elif (defined(_MSC_VER) && SIZE_MAX == UINT64_MAX)
-  #ifdef _M_ARM64
-    *high = __umulh(a, b);
-    return ((uint64_t)(a)) * (b);
-  #else
-    return _umul128(a, b, high);
-  #endif
-#else
-    uint64_t const ha = a >> 32U;
-    uint64_t const hb = b >> 32U;
-    uint64_t const la = static_cast<uint32_t>(a);
-    uint64_t const lb = static_cast<uint32_t>(b);
-
-    uint64_t const rh = ha * hb;
-    uint64_t const rm0 = ha * lb;
-    uint64_t const rm1 = hb * la;
-    uint64_t const rl = la * lb;
-
-    uint64_t const t = rl + (rm0 << 32U);
-    uint64_t const lo = t + (rm1 << 32U);
-    auto c = static_cast<uint64_t>(static_cast<bool>(t < rl));
-    c += static_cast<uint64_t>(static_cast<bool>(lo < t));
-    *high = rh + (rm0 >> 32U) + (rm1 >> 32U) + c;
-    return lo;
-#endif
-  }
-  uint64_t mState;
-};
-
-class NasamRng {
- public:
-  using result_type = uint64_t;
-
-  static constexpr uint64_t(min)() { return 0; }
-  static constexpr uint64_t(max)() { return UINT64_C(0xffffffffffffffff); }
-
-  explicit NasamRng(uint64_t seed) noexcept : mState(seed) {}
-
-  ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
-  uint64_t operator()() noexcept {
-    auto x = mState++;
-
-    // rotr(a, r) is a 64-bit rotation of a by r bits.
-    x ^= rotr(x, 25) ^ rotr(x, 47);
-    x *= 0x9E6C63D0676A9A99UL;
-    x ^= x >> 23U ^ x >> 51U;
-    x *= 0x9E6D62D06F6A9A9BUL;
-    x ^= x >> 23U ^ x >> 51U;
-
-    return x;
-  }
-
- private:
-  // rotate right
-  template <typename T>
-  ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
-  static T rotr(T x, size_t k) {
-    return (x >> k) | (x << (8U * sizeof(T) - k));
-  }
-
-  uint64_t mState;
-};
-
-class Sfc4 {
- public:
-  using result_type = uint64_t;
-
-  static constexpr uint64_t(min)() { return 0; }
-  static constexpr uint64_t(max)() { return UINT64_C(0xffffffffffffffff); }
-
-  explicit Sfc4(uint64_t seed) noexcept : mA(seed), mB(seed), mC(seed), mCounter(1) {
-    for (size_t i = 0; i < 12; ++i) {
-      operator()();
-    }
-  }
-
-  ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
-  uint64_t operator()() noexcept {
-    uint64_t const tmp = mA + mB + mCounter++;
-    mA = mB ^ (mB >> 11U);
-    mB = mC + (mC << 3U);
-    mC = rotl(mC, 24U) + tmp;
-    return tmp;
-  }
-
- private:
-  ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
-  static constexpr uint64_t rotl(uint64_t x, unsigned k) noexcept { return (x << k) | (x >> (64U - k)); }
-
-  uint64_t mA{};
-  uint64_t mB{};
-  uint64_t mC{};
-  uint64_t mCounter{};
-};
-
-class RomuTrio {
- public:
-  using result_type = uint64_t;
-
-  static constexpr uint64_t(min)() { return 0; }
-  static constexpr uint64_t(max)() { return UINT64_C(0xffffffffffffffff); }
-
-  explicit RomuTrio(uint64_t seed) noexcept : mX(seed), mY(UINT64_C(0x9E6C63D0676A9A99)), mZ(UINT64_C(0xe7037ed1a0b428db)) { operator()(); }
-
-  uint64_t operator()() noexcept {
-    uint64_t const x = mX;
-    uint64_t const y = mY;
-    uint64_t const z = mZ;
-
-    mX = UINT64_C(15241094284759029579) * z;
-    mY = rotl(y - x, 12);
-    mZ = rotl(z - y, 44);
-
-    return x;
-  }
-
- private:
-  ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
-  static constexpr uint64_t rotl(uint64_t x, unsigned k) noexcept { return (x << k) | (x >> (64U - k)); }
-
-  uint64_t mX{};
-  uint64_t mY{};
-  uint64_t mZ{};
-};
-
-class RomuDuo {
- public:
-  using result_type = uint64_t;
-
-  static constexpr uint64_t(min)() { return 0; }
-  static constexpr uint64_t(max)() { return UINT64_C(0xffffffffffffffff); }
-
-  explicit RomuDuo(uint64_t seed) noexcept : mX(seed), mY(UINT64_C(0x9E6C63D0676A9A99)) { operator()(); }
-
-  uint64_t operator()() noexcept {
-    uint64_t const x = mX;
-
-    mX = UINT64_C(15241094284759029579) * mY;
-    mY = rotl(mY, 36) + rotl(mY, 15) - x;
-
-    return x;
-  }
-
- private:
-  ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
-  static constexpr uint64_t rotl(uint64_t x, unsigned k) noexcept { return (x << k) | (x >> (64U - k)); }
-
-  uint64_t mX{};
-  uint64_t mY{};
-};
-
-class RomuDuoJr {
- public:
-  using result_type = uint64_t;
-
-  static constexpr uint64_t(min)() { return 0; }
-  static constexpr uint64_t(max)() { return UINT64_C(0xffffffffffffffff); }
-
-  explicit RomuDuoJr(uint64_t seed) noexcept : mX(seed), mY(UINT64_C(0x9E6C63D0676A9A99)) {
-    for (size_t i = 0; i < 10; ++i) {
-      operator()();
-    }
-  }
-
-  uint64_t operator()() noexcept {
-    uint64_t const x = mX;
-
-    mX = UINT64_C(15241094284759029579) * mY;
-    mY = rotl(mY - x, 27);
-
-    return x;
-  }
-
- private:
-  ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
-  static constexpr uint64_t rotl(uint64_t x, unsigned k) noexcept { return (x << k) | (x >> (64U - k)); }
-
-  uint64_t mX{};
-  uint64_t mY{};
-};
-
-class Orbit {
- public:
-  using result_type = uint64_t;
-
-  static constexpr uint64_t(min)() { return 0; }
-  static constexpr uint64_t(max)() { return UINT64_C(0xffffffffffffffff); }
-
-  explicit Orbit(uint64_t seed) noexcept : stateA(seed), stateB(UINT64_C(0x9E6C63D0676A9A99)) {
-    for (size_t i = 0; i < 10; ++i) {
-      operator()();
-    }
-  }
-
-  uint64_t operator()() noexcept {
-    uint64_t const s = (stateA += 0xC6BC279692B5C323U);
-    uint64_t const t = ((s == 0U) ? stateB : (stateB += 0x9E3779B97F4A7C15U));
-    uint64_t const z = (s ^ s >> 31U) * ((t ^ t >> 22U) | 1U);
-    return z ^ z >> 26U;
-  }
-
- private:
-  static constexpr uint64_t rotl(uint64_t x, unsigned k) noexcept { return (x << k) | (x >> (64U - k)); }
-
-  uint64_t stateA{};
-  uint64_t stateB{};
-};
+#include "libfork/schedule/busy_pool.hpp"
+#include "libfork/task.hpp"
 
 namespace {
 
-// Benchmarks how fast we can get 64bit random values from Rng.
-template <typename Rng>
-void bench(ankerl::nanobench::Bench* bench, char const* name) {
-  std::random_device dev;
-  Rng rng(dev());
+auto fib(int n) -> int {
+  if (n < 2) {
+    return n;
+  }
+  return fib(n - 1) + fib(n - 2);
+}
 
-  bench->run(name, [&]() {
-    auto r = std::uniform_int_distribution<uint64_t>{}(rng);
-    ankerl::nanobench::doNotOptimizeAway(r);
+template <lf::context Context>
+auto libfork(int n) -> lf::basic_task<int, Context> {
+  if (n < 2) {
+    co_return n;
+  }
+  auto a = co_await libfork<Context>(n - 1).fork();
+  auto b = co_await libfork<Context>(n - 2);
+
+  co_await lf::join();
+
+  co_return *a + b;
+}
+
+auto omp(int n) -> int {
+  if (n < 2) {
+    return n;
+  }
+
+  int a, b;
+
+#pragma omp task untied shared(a)
+  a = omp(n - 1);
+
+  b = omp(n - 2);
+
+#pragma omp taskwait
+
+  return a + b;
+}
+
+int fib_tbb(int n) {
+  if (n < 2) {
+    return n;
+  }
+  int x, y;
+
+  tbb::task_group g;
+
+  g.run([&] {
+    x = fib_tbb(n - 1);
   });
+
+  y = fib_tbb(n - 2);
+
+  g.wait();
+
+  return x + y;
 }
 
 }  // namespace
 
 auto main() -> int {
-  // perform a few warmup calls, and since the runtime is not always stable
-  // for each generator, increase the number of epochs to get more accurate
-  // numbers.
-  ankerl::nanobench::Bench b;
-  b.title("Fibbonaci").unit("uint64_t").warmup(100).relative(true).minEpochTime(std::chrono::milliseconds(1));
-  b.performanceCounters(true);
+  //
+  ankerl::nanobench::Bench bench;
 
-  // sets the first one as the baseline
-  bench<std::default_random_engine>(&b, "std::default_random_engine");
-  bench<std::mt19937>(&b, "std::mt19937");
-  bench<std::mt19937_64>(&b, "std::mt19937_64");
-  bench<std::ranlux24_base>(&b, "std::ranlux24_base");
-  bench<std::ranlux48_base>(&b, "std::ranlux48_base");
-  bench<std::ranlux24>(&b, "std::ranlux24_base");
-  bench<std::ranlux48>(&b, "std::ranlux48");
-  bench<std::knuth_b>(&b, "std::knuth_b");
-  bench<WyRng>(&b, "WyRng");
-  bench<NasamRng>(&b, "NasamRng");
-  bench<Sfc4>(&b, "Sfc4");
-  bench<RomuTrio>(&b, "RomuTrio");
-  bench<RomuDuo>(&b, "RomuDuo");
-  bench<RomuDuoJr>(&b, "RomuDuoJr");
-  bench<Orbit>(&b, "Orbit");
-  bench<ankerl::nanobench::Rng>(&b, "ankerl::nanobench::Rng");
+  int volatile fib_number = 20;
+
+  bench.title("Fibbonaci");
+  bench.unit("fib(" + std::to_string(fib_number) + ")");
+  bench.warmup(100);
+  bench.relative(true);
+  bench.minEpochIterations(100);
+  bench.minEpochTime(std::chrono::milliseconds(100));
+  bench.performanceCounters(true);
+
+  for (int i = 1; i <= std::thread::hardware_concurrency(); ++i) {
+#pragma omp parallel num_threads(i)
+#pragma omp single nowait
+    {
+      bench.run("openMP " + std::to_string(i) + " threads", [&] {
+        ankerl::nanobench::doNotOptimizeAway(omp(fib_number));
+      });
+    }
+  }
+
+  for (std::size_t i = 1; i <= std::thread::hardware_concurrency(); ++i) {
+    //
+    lf::busy_pool pool{i};
+
+    bench.run("busy_pool " + std::to_string(i) + " threads", [&] {
+      ankerl::nanobench::doNotOptimizeAway(pool.schedule(libfork<lf::busy_pool::context>(fib_number)));
+    });
+  }
+
+  for (int i = 1; i <= std::thread::hardware_concurrency(); ++i) {
+    //
+
+    tbb::task_arena limited(i);
+
+    limited.execute([&] {
+      bench.run("intel TBB " + std::to_string(i) + " threads", [&] {
+        ankerl::nanobench::doNotOptimizeAway(fib_tbb(fib_number));
+      });
+    });
+  }
 
   return 0;
 }

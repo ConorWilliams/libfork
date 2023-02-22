@@ -63,7 +63,7 @@ This project exports a CMake package to be used with the [`find_package`][3] com
 * Package name: `libfork`
 * Target name: `libfork::libfork`
 
-#### If you have installed libfork:
+#### If you have installed libfork as above
 
 ```cmake
 find_package(libfork REQUIRED)
@@ -71,12 +71,11 @@ find_package(libfork REQUIRED)
 # Declare the imported target as a build requirement using PRIVATE, where
 # project_target is a target created in the consuming project
 target_link_libraries(
-    project_target PRIVATE
-    libfork::libfork
+    project_target PRIVATE libfork::libfork
 )
 ```
 
-#### Using ``FetchContent``:
+#### Using CMake's ``FetchContent``
 
 ```cmake
 include(FetchContent)
@@ -91,12 +90,11 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(libfork)
 
 target_link_libraries(
-    project_target PRIVATE
-    libfork::libfork
+    project_target PRIVATE libfork::libfork
 )
 ```
 
-#### Using git submodules:
+#### Using git submodules
 
 Assuming you clone libfork as a submodule into ``external/libfork``
 
@@ -104,8 +102,7 @@ Assuming you clone libfork as a submodule into ``external/libfork``
 add_subdirectory(external/libfork)
 
 target_link_libraries(
-    project_target PRIVATE
-    libfork::libfork
+    project_target PRIVATE libfork::libfork
 )
 ```
 

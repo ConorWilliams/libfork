@@ -32,13 +32,15 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(nanobench)
 
 
-# find_package(OpenMP REQUIRED)
+find_package(OpenMP REQUIRED)
+
+find_package(TBB REQUIRED)
 
 # ---- Tests ----
 
 add_executable(libforkBench source/example.cpp)
 
-target_link_libraries(libforkBench PRIVATE nanobench)
+target_link_libraries(libforkBench PRIVATE libfork::libfork nanobench OpenMP::OpenMP_CXX TBB::tbb)
 
 add_custom_target(benchmark
   COMMAND libforkBench

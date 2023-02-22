@@ -153,7 +153,7 @@ inline void assert_impl(std::string_view const expr, std::string_view const mess
   #define ASSERT_ASSUME(expr, message) ASSUME(expr)
 #endif
 
-#if !defined(NDEBUG) || !defined(FORK_NO_LOGGING)
+#if !defined(NDEBUG) && !defined(FORK_NO_LOGGING)
 
 inline void log_impl(std::string_view const message, source_location const location = source_location::current()) {
   std::osyncstream synced_out(std::clog);
