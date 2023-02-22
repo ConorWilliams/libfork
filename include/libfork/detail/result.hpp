@@ -72,9 +72,15 @@ class result {
     std::construct_at(std::addressof(m_value), std::forward<U>(value));  // NOLINT
   }
 
-  ~result()
-  requires(std::is_trivially_destructible_v<T>)
-  = default;
+  // clang-format off
+
+  /// @cond CONCEPTS
+
+  ~result() requires(std::is_trivially_destructible_v<T>) = default;
+
+  /// @endcond
+
+  // clang-format on
 
   constexpr ~result() noexcept {
     std::destroy_at(std::addressof(m_value));  // NOLINT
