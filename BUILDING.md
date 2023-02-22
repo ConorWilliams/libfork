@@ -42,14 +42,14 @@ commands already.
 The below commands require at least CMake 3.15 to run, because that is the
 version in which [Install a Project][2] was added.
 
-Here is the command for installing the release mode artefacts with a
+Here is the command for installing the release mode artifacts with a
 single-configuration generator, like the Unix Makefiles one:
 
 ```sh
 cmake --install build
 ```
 
-Here is the command for installing the release mode artefacts with a
+Here is the command for installing the release mode artifacts with a
 multi-configuration generator, like the Visual Studio ones:
 
 ```sh
