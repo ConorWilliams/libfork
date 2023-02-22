@@ -4,7 +4,6 @@ on:
   push:
     branches:
     - main
-    - v2
 
   pull_request:
     branches:
@@ -39,11 +38,7 @@ jobs:
 
     runs-on: ubuntu-22.04
 
-    # To enable coverage, delete the last line from the conditional below and
-    # edit the "<name>" placeholder to your GitHub name.
-    # If you do not wish to use codecov, then simply delete this job from the
-    # workflow.
-    if: github.repository_owner == 'conorwilliams' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && github.repository_owner == 'conorwilliams' && github.event_name == 'push'
 
     steps:
     - uses: actions/checkout@v3
@@ -172,6 +167,6 @@ jobs:
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./build/docs/sphinx
-      if: github.ref == 'refs/heads/v2' && github.repository_owner == 'conorwilliams' && github.event_name == 'push'
+      if: github.ref == 'refs/heads/main' && github.repository_owner == 'conorwilliams' && github.event_name == 'push'
 
 
