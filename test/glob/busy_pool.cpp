@@ -122,7 +122,7 @@ task<T> pool_reduce(std::span<T> range, std::size_t grain) {
   co_return *a + b;
 }
 
-TEST_CASE("busy reduce", "[busy_task]") {
+TEST_CASE("busy reduce", "[busy_pool]") {
   //
   std::vector<int> data(1 * 2 * 3 * 4 * 1024 * 1024);
 
@@ -141,6 +141,17 @@ TEST_CASE("busy reduce", "[busy_task]") {
     auto result = pool.schedule(pool_reduce<int>(data, data.size() / (10 * i)));
 
     REQUIRE(result == std::reduce(data.begin(), data.end()));
+  }
+}
+
+TEST_CASE("brute force", "[busy_pool]") {
+  //
+  lf::busy_pool pool{2};
+
+  auto f_5 = fib(5);
+
+  for (std::size_t i = 1; i <= 10'000; ++i) {
+    REQUIRE(pool.schedule(fib_task(5)) == f_5);
   }
 }
 

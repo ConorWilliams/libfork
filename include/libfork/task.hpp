@@ -23,6 +23,8 @@
 
 #include "libfork/detail/allocator.hpp"
 #include "libfork/detail/result.hpp"
+#include "libfork/detail/wait.hpp"
+
 #include "libfork/unique_handle.hpp"
 #include "libfork/utility.hpp"
 
@@ -34,13 +36,31 @@
 
 namespace lf {
 
-/**
- * @brief A regular type which indicates the absence of a return value.
- */
-struct regular_void {};
+namespace detail {
 
-template <typename Context>
+template <typename Context, bool Waitable>
 class task_handle;
+
+}
+
+/**
+ * @brief A triviall handle to a generic task.
+ *
+ * A work_handle represents ownership/responsibility for running/resuming a generic task.
+ *
+ * @tparam Context The handle type of the execution context that this task is running on.
+ */
+template <typename Context>
+using work_handle = detail::task_handle<Context, true>;
+
+/**
+ * @brief A triviall handle to a root task.
+ *
+ * A root_handle represents ownership/responsibility for running/resuming a root task.
+ *
+ * @tparam Context The handle type of the execution context that this task is running on.
+ */
+using root_handle = detail::task_handle<Context, false>;
 
 /**
  * @brief Defines the interface for an execution context.
@@ -51,26 +71,26 @@ class task_handle;
  *
  * .. code::
  *
- *   concept context = requires(Context context, task_handle<Context> task) {
+ *   concept context = requires(Context context, work_handle<Context> task) {
  *       { context.push(task) } -> std::same_as<void>;
-         { context.pop() } -> std::convertible_to<std::optional<task_handle<Context>>>;
+ *       { context.pop() } -> std::convertible_to<std::optional<work_handle<Context>>>;
  *   }
  *
  * \endrst
  */
 template <typename Context>
-concept context = requires(Context context, task_handle<Context> task) {
+concept context = requires(Context context, work_handle<Context> task) {
                     { context.push(task) } -> std::same_as<void>;
-                    { context.pop() } -> std::convertible_to<std::optional<task_handle<Context>>>;
+                    { context.pop() } -> std::convertible_to<std::optional<work_handle<Context>>>;
                   };
 
-template <typename T, context Context, typename Allocator = std::allocator<std::byte>>
+template <typename T, context Context, typename Allocator = std::allocator<T>, bool Waitable = false>
 requires std::negation_v<std::is_void<T>>
 class [[nodiscard]] basic_future;
 
 namespace detail {
 
-template <typename T, context Context, typename Allocator>
+template <typename T, context Context, typename Allocator, bool Waitable>
 struct promise_type;
 
 struct join {};
@@ -80,11 +100,12 @@ struct [[nodiscard]] fork : unique_handle<P> {};
 
 }  // namespace detail
 
-template <typename T, context Context, typename Allocator = std::allocator<std::byte>>
+template <typename T, context Context, typename Allocator = std::allocator<T>, bool Waitable = false>
 class [[nodiscard]] basic_task;
 
 /**
- * @brief Produce a tag type which when co_awaited will join the current tasks fork-join group.
+ * @brief Produce a tag type which when co_awaited will join the current tasks
+ * fork-join group.
  */
 [[nodiscard]] inline constexpr auto join() noexcept -> detail::join {
   return {};
@@ -93,13 +114,13 @@ class [[nodiscard]] basic_task;
 /**
  * @brief Represents a computation that may not have completed.
  */
-template <typename T, context Context, typename Allocator>
-requires std::negation_v<std::is_void<T>>
-class [[nodiscard]] basic_future : private unique_handle<detail::promise_type<T, Context, Allocator>> {
+template <typename T, context Context, typename Allocator, bool Waitable>
+requires(Waitable || not std::is_void_v<T>)
+class [[nodiscard]] basic_future : private unique_handle<detail::promise_type<T, Context, Allocator, Waitable>> {
  public:
-  using value_type = T;                                              ///< The type of value that this future will return.
-  using context_type = Context;                                      ///< The type of execution context that this futures task will run on.
-  using promise_type = detail::promise_type<T, Context, Allocator>;  ///< The type of promise that this future owns.
+  using value_type = T;                                                        ///< The type of value that this future will return.
+  using context_type = Context;                                                ///< The type of execution context that this
+  using promise_type = detail::promise_type<T, Context, Allocator, Waitable>;  ///< The type of promise that this future owns.
 
   constexpr basic_future() noexcept = default;
   /**
@@ -107,37 +128,68 @@ class [[nodiscard]] basic_future : private unique_handle<detail::promise_type<T,
    */
   constexpr explicit basic_future(unique_handle<promise_type>&& handle) noexcept : unique_handle<promise_type>{std::move(handle)} {}
   /**
+   * @brief Wait (block) until the task to complete.
+   */
+  auto wait() && noexcept -> void
+  requires(Waitable && std::is_void_v<T>)
+  {
+    (*this)->promise().wait();
+    // Final suspend responcible for destruction.
+    this.release();
+  }
+
+  /**
+   * @brief Wait (block) until the task to complete.
+   */
+  auto wait() && noexcept(std::is_nothrow_constructible_v<T, decltype(std::move(local->promise()).get())>) -> T
+  requires Waitable
+  {
+    unique_handle<promise_type> local = std::move(*this);
+
+    local->promise().wait();
+    // Safe to access the result, promise destructed by local.
+    return std::move(local->promise()).get();
+  }
+
+  /**
    * @brief Access the result of the task.
    */
-  [[nodiscard]] constexpr auto operator*() & noexcept -> T& {
+  [[nodiscard]] constexpr auto operator*() & noexcept -> T&
+  requires(!std::is_void_v<T>)
+  {
     ASSERT_ASSUME(*this, "future is null");
     return (*this)->promise().get();
   }
   /**
    * @brief Access the result of the task.
    */
-  [[nodiscard]] constexpr auto operator*() && noexcept -> T&& {
+  [[nodiscard]] constexpr auto operator*() && noexcept -> T&&
+  requires(!std::is_void_v<T>)
+  {
     ASSERT_ASSUME(*this, "future is null");
     return std::move((*this)->promise()).get();
   }
   /**
    * @brief Access the result of the task.
    */
-  [[nodiscard]] constexpr auto operator*() const& noexcept -> T const& {
+  [[nodiscard]] constexpr auto operator*() const& noexcept -> T const&
+  requires(!std::is_void_v<T>)
+  {
     ASSERT_ASSUME(*this, "future is null");
     return (*this)->promise().get();
   }
   /**
    * @brief Access the result of the task.
    */
-  [[nodiscard]] constexpr auto operator*() const&& noexcept -> T const&& {
+  [[nodiscard]] constexpr auto operator*() const&& noexcept -> T const&&
+  requires(!std::is_void_v<T>)
+  {
     ASSERT_ASSUME(*this, "future is null");
     return std::move((*this)->promise()).get();
   }
 };
 
 namespace detail {
-
 /**
  * @brief An alias for ``std::coroutine_handle<T>`
  */
@@ -147,17 +199,19 @@ using raw_handle = std::coroutine_handle<T>;
 static constexpr int k_imax = std::numeric_limits<int>::max();  ///< Initial value of ``m_join``.
 
 /**
- * @brief The base class which provides, initial-suspend, exception handling and fork-join count.
+ * @brief The base class which provides, initial-suspend, exception handling and
+ * fork-join count.
  */
 template <typename Context>
 struct promise_base {
   /**
-   * @brief Construct a new promise_base base object with a coroutine handle to the derived
-   * promise_base.
+   * @brief Construct a new promise_base base object with a coroutine handle to
+   * the derived promise_base.
    */
   constexpr explicit promise_base(raw_handle<> coro) noexcept : m_this{coro} {}
   /**
-   * @brief Tasks must be lazy as the parent needs to be pushed onto the contexts's stack.
+   * @brief Tasks must be lazy as the parent needs to be pushed onto the
+   * contexts's stack.
    */
   [[nodiscard]] constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
 
@@ -182,9 +236,11 @@ struct promise_base {
   // State
   int m_steals = 0;                  ///< Number of steals.
   std::atomic<int> m_join = k_imax;  ///< Number of children joined (obfuscated).
-};
 
-}  // namespace detail
+#ifndef NDEBUG
+  ~promise_base() { DEBUG_TRACKER("~promise_base()"); }
+#endif
+};
 
 /**
  * @brief A triviall handle to a task.
@@ -193,7 +249,7 @@ struct promise_base {
  *
  * @tparam Context The handle type of the execution context that this task is running on.
  */
-template <typename Context>
+template <typename Context, bool Waitable>
 class task_handle {
  public:
   /**
@@ -205,29 +261,25 @@ class task_handle {
    * @brief Resume the coroutine associated with this handle.
    *
    * This should be called by the thread owning the execution context that this will is run on.
-   * Furthermore this task should be a root task.
    */
-  constexpr void resume_root(Context& context) const noexcept {
+  constexpr void resume(Context& context) const noexcept {
     ASSERT_ASSUME(m_promise, "resuming null handle");
     ASSERT_ASSUME(m_promise->m_this, "resuming null coroutine");
-    ASSERT_ASSUME(!m_promise->m_parent, "not a root task");
-    ASSERT_ASSUME(!m_promise->m_context, "root tasks should not have a context");
-    m_promise->m_context = std::addressof(context);
-    m_promise->m_this.resume();
-  }
 
-  /**
-   * @brief Resume the coroutine associated with this handle.
-   *
-   * This should be called on a handle stolen from another context.
-   */
-  constexpr void resume_stolen(Context& context) const noexcept {
-    ASSERT_ASSUME(m_promise, "resuming null handle");
-    ASSERT_ASSUME(m_promise->m_context, "resuming stolen handle with null context");
-    ASSERT_ASSUME(m_promise->m_context != std::addressof(context), "bad steal call");
-    ASSERT_ASSUME(m_promise->m_this, "resuming null coroutine");
+    if constexpr (Waitable) {
+      ASSERT_ASSUME(!m_promise->m_parent, "not a root task");
+      ASSERT_ASSUME(!m_promise->m_context, "root tasks should not have a context");
+
+    } else {
+      ASSERT_ASSUME(m_promise->m_context, "resuming stolen handle with null context");
+      ASSERT_ASSUME(m_promise->m_context != std::addressof(context), "bad steal call");
+
+      m_promise->m_steals += 1;
+    }
+
+    DEBUG_TRACKER("resume sets context");
+
     m_promise->m_context = std::addressof(context);
-    m_promise->m_steals += 1;
     m_promise->m_this.resume();
   }
 
@@ -246,31 +298,31 @@ class task_handle {
   constexpr explicit task_handle(detail::promise_base<Context>& coro) noexcept : m_promise{std::addressof(coro)} {}
 };
 
-namespace detail {
-
 // A minimal context for static-assert.
 struct minimal_context {
-  void push(task_handle<minimal_context>);            // NOLINT
-  std::optional<task_handle<minimal_context>> pop();  // NOLINT
+  auto push(work_handle<minimal_context>) -> void;            // NOLINT
+  auto pop() -> std::optional<work_handle<minimal_context>>;  // NOLINT
 };
 
-static_assert(std::is_trivial_v<task_handle<minimal_context>>);
+static_assert(std::is_trivial_v<task_handle<minimal_context, true>>);
+static_assert(std::is_trivial_v<task_handle<minimal_context, false>>);
 
 /**
  * @brief The promise type for a basic_task.
  */
-template <typename T, context Context, typename Allocator>
-struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_base<Context> {
+template <typename T, context Context, typename Allocator, bool Waitable>
+struct promise_type : detail::allocator_mixin<Allocator>, result<T>, waiter<Waitable> promise_base<Context> {
   /**
    * @brief Construct a new promise type object.
    */
   constexpr promise_type() noexcept : promise_base<Context>{raw_handle<promise_type>::from_promise(*this)} {}
   /**
-   * @brief This is the object returned when a basic_task is created by a function call.
+   * @brief This is the object returned when a basic_task is created by a
+   * function call.
    */
-  [[nodiscard]] constexpr auto get_return_object() noexcept -> basic_task<T, Context, Allocator> {
+  [[nodiscard]] constexpr auto get_return_object() noexcept -> basic_task<T, Context, Allocator, Waitable> {
     //
-    return basic_task<T, Context, Allocator>{raw_handle<promise_type>::from_promise(*this)};
+    return basic_task<T, Context, Allocator, Waitable>{raw_handle<promise_type>::from_promise(*this)};
   }
 
   /**
@@ -288,9 +340,23 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
 
         ASSERT_ASSUME(prom.m_context, "execution context not set");
         ASSERT_ASSUME(prom.m_steals == 0, "fork without join");
+        ASSERT_ASSUME(prom.m_join.load() == k_imax, "promise destroyed in invalid state");
+
+        if constexpr (Waitable) {
+          DEBUG_TRACKER("waitable task at final suspend");
+
+          ASSER_ASSUME(!prom.m_parent, "waitable task is not a root task");
+
+          if constexpr (std::is_void_v<T>) {
+            // As soon as we call release() we must assume that the promise is deallocated.
+          }
+
+          // Future is responsible for destroying the promise.
+          return std::noop_coroutine();
+        }
 
         if (prom.m_is_inline) {
-          DEBUG_TRACKER("inline task resumes parent");
+          DEBUG_TRACKER("inline task resumes parent and sets context");
 
           ASSERT_ASSUME(prom.m_parent, "inline task has no parent");
           ASSERT_ASSUME(prom.m_parent->m_this, "inline task's parents this pointer not set");
@@ -301,7 +367,8 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
         }
 
         if (std::optional parent_handle = prom.m_context->pop()) {
-          // No-one stole continuation, we are the exclusive owner of parent, just keep rippin!
+          // No-one stole continuation, we are the exclusive owner of parent,
+          // just keep rippin!
           DEBUG_TRACKER("fast path, keeps ripping");
 
           ASSERT_ASSUME(prom.m_parent, "parent is null -> task is root but, pop() non-null");
@@ -312,12 +379,9 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
           return destroy_if_void(child, parent_handle->m_promise->m_this);
         }
 
-        if (!prom.m_parent) {
-          DEBUG_TRACKER("task is parentless and returns");
-          return destroy_if_void(child, std::noop_coroutine());
-        }
-
         DEBUG_TRACKER("task's parent was stolen");
+
+        ASSERT_ASSUME(prom.m_parent, "parent is null");
 
         // Register with parent we have completed this child task.
         if (prom.m_parent->m_join.fetch_sub(1, std::memory_order_release) == 1) {
@@ -326,9 +390,10 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
 
           // Parent has reached join and we are the last child task to complete.
           // We are the exclusive owner of the parent.
-          // Hence, we should continue parent, therefore we must set the parents context.
+          // Hence, we should continue parent, therefore we must set the parents
+          // context.
 
-          DEBUG_TRACKER("task is last child to join and resumes parent");
+          DEBUG_TRACKER("task is last child to join, sets context and resumes parent");
 
           ASSERT_ASSUME(prom.m_parent->m_this, "parent's this handle is null");
 
@@ -346,9 +411,9 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
   }
 
   template <typename U, typename Alloc>
-  [[nodiscard]] constexpr auto await_transform(fork<promise_type<U, Context, Alloc>>&& child) noexcept {
+  [[nodiscard]] constexpr auto await_transform(fork<promise_type<U, Context, Alloc, false>>&& child) noexcept {
     //
-    struct awaitable : unique_handle<promise_type<U, Context, Alloc>> {
+    struct awaitable : unique_handle<promise_type<U, Context, Alloc, false>> {
       //
       [[nodiscard]] static constexpr auto await_ready() noexcept -> bool { return false; }
 
@@ -356,11 +421,11 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
         // In case *this (awaitable) is destructed by stealer after push
         raw_handle<> child = (*this)->promise().m_this;
 
+        DEBUG_TRACKER("forking, push parent to context");
+
         ASSERT_ASSUME((*this)->promise().m_context == parent.promise().m_context, "child is not in same context as parent");
 
-        DEBUG_TRACKER("task is forking");
-
-        parent.promise().m_context->push(task_handle<Context>{parent.promise()});
+        parent.promise().m_context->push(work_handle<Context>{parent.promise()});
 
         return child;
       }
@@ -372,11 +437,14 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
           this->release();
           return;
         } else {
-          return basic_future<U, Context, Alloc>{std::move(*this)};
+          return basic_future<U, Context, Alloc, false>{std::move(*this)};
         }
       }
     };
 
+    DEBUG_TRACKER("forking child context");
+
+    ASSERT_ASSUME(child, "fork child is null");
     ASSERT_ASSUME(!child->promise().m_is_inline, "forking inline task");
 
     child->promise().m_parent = this;
@@ -386,9 +454,9 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
   }
 
   template <typename U, typename Alloc>
-  [[nodiscard]] constexpr auto await_transform(basic_task<U, Context, Alloc>&& child) noexcept {
+  [[nodiscard]] constexpr auto await_transform(basic_task<U, Context, Alloc, false>&& child) noexcept {
     //
-    struct awaitable : unique_handle<promise_type<U, Context, Alloc>> {
+    struct awaitable : unique_handle<promise_type<U, Context, Alloc, false>> {
       //
       [[nodiscard]] static constexpr auto await_ready() noexcept -> bool { return false; }
 
@@ -400,17 +468,26 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
         return (*this)->promise().m_this;
       }
 
-      constexpr auto await_resume() noexcept -> std::conditional_t<std::is_void_v<U>, void, U> {
-        if constexpr (std::is_void_v<U>) {
-          // Promise cleaned up at final_suspend.
-          DEBUG_TRACKER("releasing void promise");
-          this->release();
-          return;
-        } else {
-          return std::move((*this)->promise()).get();
-        }
+      constexpr auto await_resume() noexcept -> void
+      requires(std::is_void_v<U>)
+      {
+        // Promise cleaned up at final_suspend.
+        DEBUG_TRACKER("releasing void promise");
+        this->release();
+        return;
+      }
+
+      constexpr auto await_resume() noexcept(std::is_nothrow_constructible_v<U, decltype(std::move((*this)->promise()).get())>) -> U
+      requires(!std::is_void_v<U>)
+      {
+        return std::move((*this)->promise()).get();
+        //
       }
     };
+
+    DEBUG_TRACKER("inline child sets context");
+
+    ASSERT_ASSUME(child, "inline child is null");
 
     child->promise().m_is_inline = true;
     child->promise().m_parent = this;
@@ -425,13 +502,15 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
         // Currently:            m_join = k_imax - num_joined
         // Hence:       k_imax - m_join = num_joined
 
-        // If no steals then we are the only owner of the parent and we are ready to join.
+        // If no steals then we are the only owner of the parent and we are
+        // ready to join.
         if (m_promise->m_steals == 0) {
           DEBUG_TRACKER("sync() ready (no steals)");
           return true;
         }
-        // Could use (relaxed) + (fence(acquire) in truthy branch) but, its better if we see all the
-        // decrements to m_join and avoid suspending the coroutine if possible.
+        // Could use (relaxed) + (fence(acquire) in truthy branch) but, its
+        // better if we see all the decrements to m_join and avoid suspending
+        // the coroutine if possible.
         auto joined = k_imax - m_promise->m_join.load(std::memory_order_acquire);
 
         if (m_promise->m_steals == joined) {
@@ -458,15 +537,18 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
         auto joined = m_promise->m_join.fetch_sub(k_imax - steals, std::memory_order_release);
 
         if (steals == k_imax - joined) {
-          // We set n after all children had completed therefore we can resume task.
+          // We set n after all children had completed therefore we can resume
+          // task.
 
-          // Need to acquire to ensure we see all writes by other threads to the result.
+          // Need to acquire to ensure we see all writes by other threads to the
+          // result.
           std::atomic_thread_fence(std::memory_order_acquire);
 
           DEBUG_TRACKER("sync() wins");
           return task;
         }
-        // Someone else is responsible for running this task and we have run out of work.
+        // Someone else is responsible for running this task and we have run out
+        // of work.
         DEBUG_TRACKER("sync() looses");
         return std::noop_coroutine();
       }
@@ -474,8 +556,8 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
       constexpr void await_resume() const noexcept {
         // After a sync we reset a/n
         m_promise->m_steals = 0;
-        // We know we are the only thread who can touch this promise until a steal which would
-        // provide the required memory syncronisation.
+        // We know we are the only thread who can touch this promise until a
+        // steal which would provide the required memory syncronisation.
         m_promise->m_join.store(k_imax, std::memory_order_relaxed);
       }
 
@@ -513,36 +595,36 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, promise_bas
  * @tparam T
  * @tparam Context
  */
-template <typename T, context Context, typename Allocator>
-class [[nodiscard]] basic_task : private unique_handle<detail::promise_type<T, Context, Allocator>> {  // NOLINT
-  // Remap void -> regular_void to prevent basic_future<void> in false branch of future_type
-  using future_t = basic_future<std::conditional_t<std::is_void_v<T>, regular_void, T>, Context, Allocator>;
-
+template <typename T, context Context, typename Allocator, bool Waitable>
+class [[nodiscard]] basic_task : private unique_handle<detail::promise_type<T, Context, Allocator, Waitable>> {
  public:
-  using value_type = T;                                                               ///< The type of value that this task will return.
-  using future_type = std::conditional_t<std::is_void_v<T>, regular_void, future_t>;  ///< The type of future that this task must bind to.
-  using handle_type = task_handle<Context>;                                           ///< The type of handle that this task will use.
-  using context_type = Context;                                                       ///< The type of execution context that this task will run on.
-  using promise_type = detail::promise_type<T, Context, Allocator>;                   ///< The type of promise that this task will use.
+  using value_type = T;                                                        ///< The type of value that this task will return.
+  using handle_type = task_handle<Context>;                                    ///< The type of handle that this task will use.
+  using context_type = Context;                                                ///< The type of execution context that this task will run on.
+  using promise_type = detail::promise_type<T, Context, Allocator, Waitable>;  ///< The type of promise that
+                                                                               ///< this task will use.
 
   /**
    * @brief A named tuple returned by ``get_handle()``.
    *
-   * In the case of a void task the ``future`` member will be ``regular_void``. This enables
-   * consistent structured bindings.
+   * In the case of a void task the ``future`` member will be ``regular_void``.
+   * This enables consistent structured bindings.
    */
-  struct two_tuple {
-    future_type future;  ///< Future to result.
-    handle_type handle;  ///< Resumable handle
+  struct named_pair {
+    basic_future<T, Context, Allocator, true> future;  ///< Future to result.
+    handle_type handle;                                ///< Resumable handle to task.
   };
 
   /**
-   * @brief Decompose this task into a future and a handle and promise to call resume on the handle.
+   * @brief Decompose this task into a future and a handle and promise to call
+   * resume on the handle.
    *
-   * This requires the task to embed a notification mechanism to allow the caller to know when
-   * the future is ready.
+   * This requires the task to embed a notification mechanism to allow the
+   * caller to know when the future is ready.
    */
-  [[nodiscard]] constexpr auto make_promise() && noexcept -> two_tuple {
+  [[nodiscard]] constexpr auto make_promise() && noexcept -> named_pair
+  requires Waitable
+  {
     DEBUG_TRACKER("make_promise()");
 
     ASSERT_ASSUME(*this, "attempting to get handle from null task");
@@ -550,18 +632,23 @@ class [[nodiscard]] basic_task : private unique_handle<detail::promise_type<T, C
     handle_type const hand{(*this)->promise()};
 
     if constexpr (std::is_void_v<T>) {
-      DEBUG_TRACKER("make_promise() void");
+      DEBUG_TRACKER("releasing void from make_promise()");
       this->release();
-      return {{}, hand};
-    } else {
-      return {future_type{std::move(*this)}, hand};
     }
+
+    return {
+        .future = basic_future<T, Context, Allocator, Waitable>{std::move(*this)},
+        .handle = hand,
+    };
   }
 
   /**
    * @brief Get an awaitbale which will cause the current task to fork.
    */
-  [[nodiscard]] constexpr auto fork() && noexcept -> detail::fork<promise_type> { return {std::move(*this)}; }
+  [[nodiscard]] constexpr auto fork() && noexcept -> detail::fork<promise_type> {
+    ASSERT_ASSUME(*this, "forking a null task");
+    return {std::move(*this)};
+  }
 
 #ifndef NDEBUG  // Rule of zero in release.
   constexpr ~basic_task() noexcept { ASSERT_ASSUME(!*this, "task destructed without co_await"); }

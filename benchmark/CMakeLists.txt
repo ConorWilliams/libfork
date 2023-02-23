@@ -8,7 +8,7 @@ include(../cmake/folders.cmake)
 # ---- Set cmake to release ----
 
 if(NOT CMAKE_BUILD_TYPE STREQUAL Release)
-  message(WARNING "CMAKE_BUILD_TYPE is set to ${CMAKE_BUILD_TYPE}. This is not recommended for benchmarking.")
+  message(WARNING "CMAKE_BUILD_TYPE is set to '${CMAKE_BUILD_TYPE}'; 'Release' is recommended for benchmarking.")
 endif()
 
 # ---- Dependencies ----

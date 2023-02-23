@@ -20,7 +20,7 @@
 /**
  * @file result.hpp
  *
- * @brief Implementation of the ``result`` class.
+ * @brief Implementation of the ``result`` mixin class.
  */
 
 namespace lf::detail {

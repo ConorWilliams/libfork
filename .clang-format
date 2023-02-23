@@ -6,4 +6,6 @@ IndentRequiresClause : false
 QualifierAlignment: Right
 IndentPPDirectives: BeforeHash
 AllowShortLambdasOnASingleLine: Empty
+IndentRequiresClause: false
+RequiresClausePosition: OwnLine 
 ...

@@ -120,7 +120,7 @@ auto benchmark_fib() -> void {
 
   spdlog::set_default_logger(spdlog::stderr_color_mt("stderr"));
 
-  spdlog::enable_backtrace(128);
+  spdlog::enable_backtrace(256);
 
   //
   std::cout << "fib(" << fib_number << ") = " << 1 << std::endl;

@@ -108,6 +108,8 @@ class busy_pool {
 #endif
         for (;;) {
           // Wait for a root task to be submitted.
+          DEBUG_TRACKER("worker waits");
+
           this->m_root_task_in_flight.wait(false, std::memory_order_acquire);
 
           DEBUG_TRACKER("worker wakes");
@@ -160,6 +162,8 @@ class busy_pool {
       return !m_root_task_in_flight.test(std::memory_order_acquire);
     });
 
+    DEBUG_TRACKER("master thread returns");
+
     if constexpr (!std::is_void_v<T>) {
       return *std::move(fut);
     } else {
@@ -185,7 +189,7 @@ class busy_pool {
   template <typename T, typename Allocator>
   auto make_root(basic_task<T, context, Allocator>&& task) -> basic_task<T, context, Allocator> {
     defer on_exit = [this]() noexcept {
-      DEBUG_TRACKER("root task completes");
+      DEBUG_TRACKER("root releases atomic");
       this->m_root_task_in_flight.clear(std::memory_order_release);
     };
     co_return co_await std::move(task);
@@ -209,6 +213,7 @@ class busy_pool {
             attempt = 0;
             DEBUG_TRACKER("resuming stolen work");
             work->resume_stolen(my_context);
+            DEBUG_TRACKER("worker resumes thieving");
             ASSERT_ASSUME(my_context.empty(), "should have no work left");
           } else {
             ++attempt;
