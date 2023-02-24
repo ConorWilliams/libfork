@@ -247,85 +247,6 @@ conservativly only use this macro if <code class="docutils literal notranslate">
 </dd></dl>
 
 </section>
-<section id="classes">
-<h2>Classes<a class="headerlink" href="#classes" title="Permalink to this heading">#</a></h2>
-<dl class="cpp class">
-<dt class="sig sig-object cpp" id="_CPPv4I0EN2lf5deferE">
-<span id="_CPPv3I0EN2lf5deferE"></span><span id="_CPPv2I0EN2lf5deferE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">F</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classlf_1_1defer"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">defer</span></span></span><a class="headerlink" href="#_CPPv4I0EN2lf5deferE" title="Permalink to this definition">#</a><br /></dt>
-<dd><p>Basic implementation of a Golang like defer. </p>
-<p><p><p>Example:</p>
-<div class="code highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;libfork/utility.hpp&quot;</span>
-
-<span class="kt">void</span><span class="w"> </span><span class="nf">add_count</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">counts</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">val</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="c1">//</span>
-<span class="w">  </span><span class="kt">bool</span><span class="w"> </span><span class="n">commit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span>
-
-<span class="w">  </span><span class="n">counts</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">val</span><span class="p">);</span><span class="w">  </span><span class="c1">//  (1) direct action.</span>
-
-<span class="w">  </span><span class="n">lf</span><span class="o">::</span><span class="n">defer</span><span class="w"> </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="o">&amp;</span><span class="p">]()</span><span class="w"> </span><span class="k">noexcept</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">commit</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="n">counts</span><span class="p">.</span><span class="n">pop_back</span><span class="p">();</span><span class="w">  </span><span class="c1">// (2) rollback action.</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="w">  </span><span class="p">};</span>
-
-<span class="w">  </span><span class="c1">//                         (3) other operations that may throw.</span>
-
-<span class="w">  </span><span class="n">commit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span><span class="w">  </span><span class="c1">//         (4) disable rollback actions if no throw.</span>
-
-<span class="w">  </span><span class="c1">// Lambda executed when scope exits (function returns or exception).</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-</p>
- </p>
-<dl class="field-list simple">
-<dt class="field-odd">Template Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>F</strong> – The nullary invocable’s type, this <strong>MUST</strong> be deducted through CTAD by the deduction guide and it must be <code class="docutils literal notranslate"><span class="pre">noexcept</span></code> callable.</p>
-</dd>
-</dl>
-<div class="breathe-sectiondef docutils container">
-<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
-<dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4N2lf5defer5deferERR5defer">
-<span id="_CPPv3N2lf5defer5deferERR5defer"></span><span id="_CPPv2N2lf5defer5deferERR5defer"></span><span id="lf::defer::defer__deferRR"></span><span class="target" id="classlf_1_1defer_1a8f3b4539d608cc923343983fe466d7ad"></span><span class="sig-name descname"><span class="n"><span class="pre">defer</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N2lf5defer5deferERR5defer" title="lf::defer::defer"><span class="n"><span class="pre">defer</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N2lf5defer5deferERR5defer" title="Permalink to this definition">#</a><br /></dt>
-<dd></dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4N2lf5defer5deferERK5defer">
-<span id="_CPPv3N2lf5defer5deferERK5defer"></span><span id="_CPPv2N2lf5defer5deferERK5defer"></span><span id="lf::defer::defer__deferCR"></span><span class="target" id="classlf_1_1defer_1a7fc8539d7d2f4309f65ed331c944a2a3"></span><span class="sig-name descname"><span class="n"><span class="pre">defer</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N2lf5defer5deferERK5defer" title="lf::defer::defer"><span class="n"><span class="pre">defer</span></span></a><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N2lf5defer5deferERK5defer" title="Permalink to this definition">#</a><br /></dt>
-<dd></dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4N2lf5defer5deferERR1F">
-<span id="_CPPv3N2lf5defer5deferERR1F"></span><span id="_CPPv2N2lf5defer5deferERR1F"></span><span id="lf::defer::defer__FRRCE"></span><span class="target" id="classlf_1_1defer_1a08994f47117daa82346599aea93f76a8"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">defer</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN2lf5deferE" title="lf::defer::F"><span class="n"><span class="pre">F</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">to_defer</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2lf5defer5deferERR1F" title="Permalink to this definition">#</a><br /></dt>
-<dd><p>Defer a nullary invocable until destruction of this object. </p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>to_defer</strong> – Nullary invocable forwarded into object and invoked by destructor. </p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4N2lf5deferD0Ev">
-<span id="_CPPv3N2lf5deferD0Ev"></span><span id="_CPPv2N2lf5deferD0Ev"></span><span id="lf::defer::~defer"></span><span class="target" id="classlf_1_1defer_1a110f1c42eef46038fcf347dc71b474c7"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">~defer</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N2lf5deferD0Ev" title="Permalink to this definition">#</a><br /></dt>
-<dd><p>Calls the invocable. </p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4N2lf5deferaSERR5defer">
-<span id="_CPPv3N2lf5deferaSERR5defer"></span><span id="_CPPv2N2lf5deferaSERR5defer"></span><span id="lf::defer::assign-operator__deferRR"></span><span class="target" id="classlf_1_1defer_1ab43221f8083e60a6d28a9880a9c4a21d"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN2lf5deferE" title="lf::defer"><span class="n"><span class="pre">defer</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN2lf5deferE" title="lf::defer"><span class="n"><span class="pre">defer</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N2lf5deferaSERR5defer" title="Permalink to this definition">#</a><br /></dt>
-<dd></dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4N2lf5deferaSERK5defer">
-<span id="_CPPv3N2lf5deferaSERK5defer"></span><span id="_CPPv2N2lf5deferaSERK5defer"></span><span id="lf::defer::assign-operator__deferCR"></span><span class="target" id="classlf_1_1defer_1ad54888e521725dbb5dcafe6556b6183e"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN2lf5deferE" title="lf::defer"><span class="n"><span class="pre">defer</span></span></a><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN2lf5deferE" title="lf::defer"><span class="n"><span class="pre">defer</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N2lf5deferaSERK5defer" title="Permalink to this definition">#</a><br /></dt>
-<dd></dd></dl>
-
-</div>
-</dd></dl>
-
-</section>
 </section>
 
         </article>
@@ -384,7 +305,6 @@ conservativly only use this macro if <code class="docutils literal notranslate">
             <ul>
 <li><a class="reference internal" href="#">libfork/utility.hpp</a><ul>
 <li><a class="reference internal" href="#macros">Macros</a></li>
-<li><a class="reference internal" href="#classes">Classes</a></li>
 </ul>
 </li>
 </ul>
