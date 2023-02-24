@@ -15,8 +15,6 @@ endif()
 
 CPMAddPackage("gh:catchorg/Catch2#v3.3.1")
 
-# find_package(OpenMP REQUIRED)
-
 # ---- Tests ----
 
 file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/glob/*.cpp")
@@ -25,7 +23,7 @@ add_executable(libfork_test ${TEST_SOURCES})
 target_link_libraries(libfork_test PRIVATE libfork::libfork Catch2::Catch2WithMain)
 target_compile_features(libfork_test PRIVATE cxx_std_20)
 
-list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
+list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/extras)
 
 include(Catch)
 
