@@ -16,11 +16,5 @@ Macros
 .. doxygendefine:: DEBUG_TRACKER
 
 
-Classes
-------------
-
-.. doxygenclass:: lf::defer
-    :members:
-    :undoc-members:
 
 

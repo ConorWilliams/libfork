@@ -13,6 +13,28 @@ See the [BUILDING](BUILDING.md) document.
 
 The tasking fork-join interface is designed to mirror Cilk.
 
+```c++
+
+template <typename T>
+using task = lf::basic_task<int, busy_pool::context>
+
+
+/// Compute the n'th fibonacci number
+auto fib(int n) -> task<int> { 
+
+  if (n < 2) {
+    co_return n;
+  }
+
+  auto a = co_await fib(n - 1).fork(); // Spawn a child task.
+  auto b = co_await fib(n - 2);        // Execute inline.
+
+  co_await lf::join();                 // Wait for children.
+
+  co_return *a + b;                    // Use * to deference future
+}
+```
+
 # Scheduling
 
 # Benchmarks

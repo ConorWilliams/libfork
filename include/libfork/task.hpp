@@ -36,12 +36,8 @@
 
 namespace lf {
 
-namespace detail {
-
 template <typename Context, bool Root>
 class task_handle;
-
-}  // namespace detail
 
 /**
  * @brief A triviall handle to a generic task.
@@ -51,7 +47,7 @@ class task_handle;
  * @tparam Context The handle type of the execution context that this task is running on.
  */
 template <typename Context>
-using work_handle = detail::task_handle<Context, false>;
+using work_handle = task_handle<Context, false>;
 
 /**
  * @brief A triviall handle to a root task.
@@ -61,7 +57,7 @@ using work_handle = detail::task_handle<Context, false>;
  * @tparam Context The handle type of the execution context that this task is running on.
  */
 template <typename Context>
-using root_handle = detail::task_handle<Context, true>;
+using root_handle = task_handle<Context, true>;
 
 /**
  * @brief Defines the interface for an execution context.
@@ -113,6 +109,11 @@ class [[nodiscard]] basic_task;
 
 /**
  * @brief An owning handle to a computation that may not have completed yet.
+ *
+ * @tparam T The type of value that this future will return.
+ * @tparam Context The type of execution context that this future is running on.
+ * @tparam Allocator The type of allocator that this future's promise uses will use.
+ * @tparam Root Whether this future is a future to a root task.
  */
 template <typename T, context Context, typename Allocator, bool Root>
 class [[nodiscard]] basic_future : private unique_handle<detail::promise_type<T, Context, Allocator, Root>> {
@@ -189,8 +190,8 @@ class [[nodiscard]] basic_future : private unique_handle<detail::promise_type<T,
 /**
  * @brief A specialization of ``basic_future`` for non-owning futures.
  *
- * @tparam Context
- * @tparam Allocator
+ * @tparam Context The type of execution context that this future is running on.
+ * @tparam Allocator The type of allocator that this future's promise uses will use.
  */
 template <context Context, typename Allocator>
 class basic_future<void, Context, Allocator, false> {
@@ -265,12 +266,15 @@ struct promise_base {  // NOLINT (special-member-functions)
 #endif
 };
 
+}  // namespace detail
+
 /**
  * @brief A triviall handle to a task.
  *
  * A task_handle represents ownership/responsibility for running/resuming a task.
  *
  * @tparam Context The handle type of the execution context that this task is running on.
+ * @tparam Root True if this is a a handle to root task.
  */
 template <typename Context, bool Root>
 class task_handle {
@@ -309,18 +313,20 @@ class task_handle {
 
  private:
   template <typename, context, typename, bool>
-  friend struct promise_type;
+  friend struct detail::promise_type;
 
   template <typename, context, typename, bool>
-  friend class ::lf::basic_task;
+  friend class basic_task;
 
-  promise_base<Context>* m_promise;  ///< The promise associated with this handle.
+  detail::promise_base<Context>* m_promise;  ///< The promise associated with this handle.
 
   /**
    * @brief Construct a handle to a promise.
    */
-  constexpr explicit task_handle(promise_base<Context>& coro) noexcept : m_promise{std::addressof(coro)} {}
+  constexpr explicit task_handle(detail::promise_base<Context>& coro) noexcept : m_promise{std::addressof(coro)} {}
 };
+
+namespace detail {
 
 // A minimal context for static-assert.
 struct minimal_context {
@@ -603,16 +609,20 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, waiter<Root
 }  // namespace detail
 
 /**
- * @brief ...
+ * @brief The central class of the library, a coroutine type that represents a unit of work.
  *
- * @tparam T
- * @tparam Context
+ * Tasks support custom static/type-erased allocators, using the leading allocator convention.
+ *
+ * @tparam T The type of value that this task will return, supports references.
+ * @tparam Context The type of execution context that this task will run on.
+ * @tparam Allocator The allocator type that this task will use, use ``void`` to type-erase the allocator.
+ * @tparam Root Whether this task is the root task.
  */
 template <typename T, context Context, typename Allocator, bool Root>
 class [[nodiscard]] basic_task : private unique_handle<detail::promise_type<T, Context, Allocator, Root>> {  // NOLINT
  public:
   using value_type = T;                                                    ///< The type of value that this task will return.
-  using handle_type = detail::task_handle<Context, Root>;                  ///< The type of handle that this task will use.
+  using handle_type = task_handle<Context, Root>;                          ///< The type of handle that this task will use.
   using future_type = basic_future<T, Context, Allocator, Root>;           ///< The type of future that this task will use.
   using context_type = Context;                                            ///< The type of execution context that this task will run on.
   using promise_type = detail::promise_type<T, Context, Allocator, Root>;  ///< The type of promise that
@@ -647,7 +657,7 @@ class [[nodiscard]] basic_task : private unique_handle<detail::promise_type<T, C
   }
 
   /**
-   * @brief Get an awaitbale which will cause the current task to fork.
+   * @brief Get an awaitabale which will cause the current task to fork.
    */
   [[nodiscard]] constexpr auto fork() && noexcept -> detail::fork<promise_type> {
     ASSERT_ASSUME(*this, "forking a null task");
@@ -667,12 +677,6 @@ class [[nodiscard]] basic_task : private unique_handle<detail::promise_type<T, C
 
 /**
  * @brief Convert a non-root task to a root task, forwards root tasks.
- *
- * @tparam T
- * @tparam Context
- * @tparam Allocator
- * @param task
- * @return basic_task<T, Context, Allocator, true>
  */
 template <typename T, typename Context, typename Allocator>
 inline auto as_root(basic_task<T, Context, Allocator, false>&& task) -> basic_task<T, Context, Allocator, true> {
@@ -681,12 +685,6 @@ inline auto as_root(basic_task<T, Context, Allocator, false>&& task) -> basic_ta
 
 /**
  * @brief Convert a non-root task to a root task, forwards root tasks.
- *
- * @tparam T
- * @tparam Context
- * @tparam Allocator
- * @param task
- * @return basic_task<T, Context, Allocator, true>
  */
 template <typename T, typename Context, typename Allocator>
 inline auto as_root(basic_task<T, Context, Allocator, true>&& task) noexcept -> basic_task<T, Context, Allocator, false>&& {

@@ -14,24 +14,35 @@ Tasks
     :members:
     :undoc-members:
 
-Associated classes
+Futures
 -------------------
-
-.. doxygenstruct:: lf::regular_void
-    :members:
-    :undoc-members:
-
-.. doxygenclass:: lf::task_handle
-    :members:
-    :undoc-members:
 
 .. doxygenclass:: lf::basic_future
     :members:
     :undoc-members:
 
-Associated functions
+Handles
+--------------
+
+.. doxygentypedef:: lf::work_handle
+
+.. doxygentypedef:: lf::root_handle
+
+
+-------------------------------------
+
+.. doxygenclass:: lf::task_handle
+    :members:
+    :undoc-members:
+
+
+Functions
 ----------------------
 
 .. doxygenfunction:: lf::join
+
+.. doxygenfunction:: lf::as_root(basic_task<T, Context, Allocator, false> &&task)
+
+.. doxygenfunction:: lf::as_root(basic_task<T, Context, Allocator, true> &&task)
 
 

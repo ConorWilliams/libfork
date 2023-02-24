@@ -4,7 +4,7 @@ libfork/queue.hpp
 .. doxygenfile:: queue.hpp
     :sections: briefdescription detaileddescription
 
-.. doxygenconcept:: lf::trivial
+.. doxygenconcept:: lf::simple
 
 .. doxygenclass:: lf::queue
     :members:
