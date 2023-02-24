@@ -91,6 +91,8 @@ struct promise_type;
 
 struct join {};
 
+struct get_context_t {};
+
 template <typename P>
 struct [[nodiscard]] fork : unique_handle<P> {};
 
@@ -100,10 +102,16 @@ template <typename T, context Context, typename Allocator = std::allocator<std::
 class [[nodiscard]] basic_task;
 
 /**
- * @brief Produce a tag type which when co_awaited will join the current tasks
- * fork-join group.
+ * @brief Produce a tag type which when co_awaited will join the current tasks fork-join group.
  */
 [[nodiscard]] inline constexpr auto join() noexcept -> detail::join {
+  return {};
+}
+
+/**
+ * @brief Produce a tag type which when co_awaited returns a pointer to the current tasks execution context.
+ */
+[[nodiscard]] inline constexpr auto get_context() noexcept -> detail::get_context_t {
   return {};
 }
 
@@ -435,6 +443,19 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, waiter<Root
       }
     };
     return final_awaitable{};
+  }
+
+  template <typename U, typename Alloc>
+  [[nodiscard]] constexpr auto await_transform(get_context_t) noexcept {  // NOLINT
+    //
+    struct awaitable : std::suspend_never {
+      [[nodiscard]] constexpr auto await_resume() noexcept -> Context const* { return m_context; }
+
+     private:
+      Context const* m_context;
+    };
+
+    return awaitable{{}, this->m_context};
   }
 
   template <typename U, typename Alloc>
