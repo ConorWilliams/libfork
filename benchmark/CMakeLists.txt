@@ -4,6 +4,7 @@ project(linforkBenchmark LANGUAGES CXX)
 
 include(../cmake/project-is-top-level.cmake)
 include(../cmake/folders.cmake)
+include(../cmake/CPM.cmake)
 
 # ---- Set cmake to release ----
 
@@ -18,49 +19,26 @@ if(PROJECT_IS_TOP_LEVEL)
 endif()
 
 find_package(OpenMP REQUIRED)
+find_package(TBB REQUIRED)
 
-# find_package(TBB REQUIRED)
-
-include(FetchContent)
-
-FetchContent_Declare(
-    nanobench
-    GIT_REPOSITORY https://github.com/martinus/nanobench.git
-    GIT_TAG v4.1.0
-    GIT_SHALLOW TRUE
-    SYSTEM TRUE
-)
-
-FetchContent_MakeAvailable(nanobench)
-
-include(FetchContent)
-
-# Also requires one of: libbfd (gnu binutils), libdwarf, libdw (elfutils)
-FetchContent_Declare(
-    backward
-    GIT_REPOSITORY https://github.com/bombela/backward-cpp
-    GIT_TAG v1.6
-    GIT_SHALLOW TRUE
-    SYSTEM TRUE
-)
-        
-FetchContent_MakeAvailable(backward)
-
-find_package(spdlog REQUIRED)
-
+CPMAddPackage("gh:martinus/nanobench#v4.1.0")
 
 # ---- Tests ----
 
-add_executable(libforkBench source/main.cpp source/fib.cpp ${BACKWARD_ENABLE})
-
-add_backward(libforkBench)
+add_executable(libforkBench 
+  source/main.cpp source/fib/fib.cpp 
+  # source/matmul/matmul.cpp 
+  # source/matmul/openmp.cpp
+)
 
 target_link_libraries(libforkBench PRIVATE 
   libfork::libfork 
   nanobench 
   OpenMP::OpenMP_CXX 
-  spdlog::spdlog
+  TBB::tbb
 )
+
+
 
 add_custom_target(benchmark
   COMMAND libforkBench
