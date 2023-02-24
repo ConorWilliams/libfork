@@ -39,7 +39,7 @@
 namespace lf {
 
 /**
- * @brief A concept for  ``std::is_trivial_v<T> and std::atomic<T>::is_always_lock_free``.
+ * @brief A concept for  that verifies a type is trivil and always lock free.
  */
 template <typename T>
 concept simple = std::is_trivial_v<T> && std::atomic<T>::is_always_lock_free;
