@@ -27,8 +27,8 @@ CPMAddPackage("gh:martinus/nanobench#v4.1.0")
 
 add_executable(libforkBench 
   source/main.cpp source/fib/fib.cpp 
-  # source/matmul/matmul.cpp 
-  # source/matmul/openmp.cpp
+  source/dfs/dfs.cpp 
+  source/dfs/omp.cpp
 )
 
 target_link_libraries(libforkBench PRIVATE 

@@ -1,8 +1,8 @@
 auto benchmark_fib() -> void;
-// auto benchmark_matmul() -> void;
+auto benchmark_dfs() -> void;
 
 auto main() -> int {
-  // benchmark_matmul();
+  benchmark_dfs();
   benchmark_fib();
   return 0;
 }
