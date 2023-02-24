@@ -87,7 +87,7 @@ auto benchmark_fib() -> void {
   // bench.maxEpochTime(std::chrono::milliseconds(1000));
   bench.performanceCounters(true);
 
-  auto ans = fib(fib_number);
+  auto answer = fib(fib_number);
 
   for (std::size_t i = 1; i <= std::thread::hardware_concurrency(); ++i) {
     //
@@ -96,7 +96,7 @@ auto benchmark_fib() -> void {
     bench.run("busy_pool " + std::to_string(i) + " threads", [&] {
       auto x = pool.schedule(libfork<lf::busy_pool::context>(fib_number));
       ankerl::nanobench::doNotOptimizeAway(x);
-      if (x != ans) {
+      if (x != answer) {
         throw std::runtime_error("pool failed");
       }
     });
@@ -111,7 +111,7 @@ auto benchmark_fib() -> void {
       bench.run("intel TBB " + std::to_string(i) + " threads", [&] {
         auto x = fib_tbb(fib_number);
         ankerl::nanobench::doNotOptimizeAway(x);
-        if (x != ans) {
+        if (x != answer) {
           throw std::runtime_error("pool failed");
         }
       });
@@ -126,7 +126,7 @@ auto benchmark_fib() -> void {
         //
         int x = omp(fib_number);
         ankerl::nanobench::doNotOptimizeAway(x);
-        if (x != ans) {
+        if (x != answer) {
           throw std::runtime_error("pool failed");
         }
       });

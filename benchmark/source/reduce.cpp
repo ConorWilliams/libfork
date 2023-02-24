@@ -96,7 +96,7 @@ auto benchmark_reduce() -> void {
 
   std::size_t chunk = 100'000;
 
-  std::vector<int> x(1 * 2 * 3 * 4 * 10'00'000);
+  std::vector<int> x(1 * 2 * 3 * 4 * 10'000'000);
 
   std::iota(x.begin(), x.end(), 0);
 
