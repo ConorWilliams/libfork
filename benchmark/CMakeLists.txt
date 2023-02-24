@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.25) 
+cmake_minimum_required(VERSION 3.14) 
 
 project(linforkBenchmark LANGUAGES CXX)
 
@@ -26,9 +26,10 @@ CPMAddPackage("gh:martinus/nanobench#v4.1.0")
 # ---- Tests ----
 
 add_executable(libforkBench 
-  source/main.cpp source/fib/fib.cpp 
-  source/dfs/dfs.cpp 
-  source/dfs/omp.cpp
+  source/main.cpp 
+  source/fib.cpp 
+  source/merge.cpp
+  source/reduce.cpp
 )
 
 target_link_libraries(libforkBench PRIVATE 
@@ -37,8 +38,6 @@ target_link_libraries(libforkBench PRIVATE
   OpenMP::OpenMP_CXX 
   TBB::tbb
 )
-
-
 
 add_custom_target(benchmark
   COMMAND libforkBench

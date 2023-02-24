@@ -675,7 +675,7 @@ class [[nodiscard]] basic_task : private unique_handle<detail::promise_type<T, C
  * @return basic_task<T, Context, Allocator, true>
  */
 template <typename T, typename Context, typename Allocator>
-static auto as_root(basic_task<T, Context, Allocator, false>&& task) -> basic_task<T, Context, Allocator, true> {
+inline auto as_root(basic_task<T, Context, Allocator, false>&& task) -> basic_task<T, Context, Allocator, true> {
   co_return co_await std::move(task);
 }
 
@@ -689,7 +689,7 @@ static auto as_root(basic_task<T, Context, Allocator, false>&& task) -> basic_ta
  * @return basic_task<T, Context, Allocator, true>
  */
 template <typename T, typename Context, typename Allocator>
-static auto as_root(basic_task<T, Context, Allocator, true>&& task) noexcept -> basic_task<T, Context, Allocator, false>&& {
+inline auto as_root(basic_task<T, Context, Allocator, true>&& task) noexcept -> basic_task<T, Context, Allocator, false>&& {
   return std::move(task);
 }
 

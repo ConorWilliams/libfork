@@ -1,9 +1,10 @@
-cmake_minimum_required(VERSION 3.25) 
+cmake_minimum_required(VERSION 3.14) 
 
 project(libforkTests LANGUAGES CXX)
 
 include(../cmake/project-is-top-level.cmake)
 include(../cmake/folders.cmake)
+include(../cmake/CPM.cmake)
 
 # ---- Dependencies ----
 
@@ -12,22 +13,7 @@ if(PROJECT_IS_TOP_LEVEL)
   enable_testing()
 endif()
 
-# Stop cmake warnings about undefined shared libs in Catch2
-if(NOT DEFINED BUILD_SHARED_LIBS)
-  set(BUILD_SHARED_LIBS OFF)
-endif()
-
-Include(FetchContent)
-
-FetchContent_Declare(
-  Catch2
-  GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-  GIT_TAG        v3.3.1 
-  GIT_SHALLOW TRUE
-  SYSTEM TRUE
-)
-
-FetchContent_MakeAvailable(Catch2)
+CPMAddPackage("gh:catchorg/Catch2#v3.3.1")
 
 # find_package(OpenMP REQUIRED)
 

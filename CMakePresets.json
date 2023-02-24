@@ -13,7 +13,7 @@
       "warnings": {
         "dev": true,
         "deprecated": true,
-        "uninitialized": true,
+        "uninitialized": false,
         "unusedCli": true,
         "systemVars": false
       },
