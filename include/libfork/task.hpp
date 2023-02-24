@@ -38,10 +38,10 @@ namespace lf {
 
 namespace detail {
 
-template <typename Context, bool Waitable>
+template <typename Context, bool Root>
 class task_handle;
 
-}
+}  // namespace detail
 
 /**
  * @brief A triviall handle to a generic task.
@@ -51,7 +51,7 @@ class task_handle;
  * @tparam Context The handle type of the execution context that this task is running on.
  */
 template <typename Context>
-using work_handle = detail::task_handle<Context, true>;
+using work_handle = detail::task_handle<Context, false>;
 
 /**
  * @brief A triviall handle to a root task.
@@ -60,7 +60,8 @@ using work_handle = detail::task_handle<Context, true>;
  *
  * @tparam Context The handle type of the execution context that this task is running on.
  */
-using root_handle = detail::task_handle<Context, false>;
+template <typename Context>
+using root_handle = detail::task_handle<Context, true>;
 
 /**
  * @brief Defines the interface for an execution context.
@@ -84,13 +85,12 @@ concept context = requires(Context context, work_handle<Context> task) {
                     { context.pop() } -> std::convertible_to<std::optional<work_handle<Context>>>;
                   };
 
-template <typename T, context Context, typename Allocator = std::allocator<T>, bool Waitable = false>
-requires std::negation_v<std::is_void<T>>
-class [[nodiscard]] basic_future;
+template <typename T, context Context, typename Allocator = std::allocator<std::byte>, bool Root = false>
+class basic_future;
 
 namespace detail {
 
-template <typename T, context Context, typename Allocator, bool Waitable>
+template <typename T, context Context, typename Allocator, bool Root>
 struct promise_type;
 
 struct join {};
@@ -100,7 +100,7 @@ struct [[nodiscard]] fork : unique_handle<P> {};
 
 }  // namespace detail
 
-template <typename T, context Context, typename Allocator = std::allocator<T>, bool Waitable = false>
+template <typename T, context Context, typename Allocator = std::allocator<std::byte>, bool Root = false>
 class [[nodiscard]] basic_task;
 
 /**
@@ -112,15 +112,14 @@ class [[nodiscard]] basic_task;
 }
 
 /**
- * @brief Represents a computation that may not have completed.
+ * @brief An owning handle to a computation that may not have completed yet.
  */
-template <typename T, context Context, typename Allocator, bool Waitable>
-requires(Waitable || not std::is_void_v<T>)
-class [[nodiscard]] basic_future : private unique_handle<detail::promise_type<T, Context, Allocator, Waitable>> {
+template <typename T, context Context, typename Allocator, bool Root>
+class [[nodiscard]] basic_future : private unique_handle<detail::promise_type<T, Context, Allocator, Root>> {
  public:
-  using value_type = T;                                                        ///< The type of value that this future will return.
-  using context_type = Context;                                                ///< The type of execution context that this
-  using promise_type = detail::promise_type<T, Context, Allocator, Waitable>;  ///< The type of promise that this future owns.
+  using value_type = T;                                                    ///< The type of value that this future will return.
+  using context_type = Context;                                            ///< The type of execution context that this
+  using promise_type = detail::promise_type<T, Context, Allocator, Root>;  ///< The type of promise that this future owns.
 
   constexpr basic_future() noexcept = default;
   /**
@@ -128,33 +127,31 @@ class [[nodiscard]] basic_future : private unique_handle<detail::promise_type<T,
    */
   constexpr explicit basic_future(unique_handle<promise_type>&& handle) noexcept : unique_handle<promise_type>{std::move(handle)} {}
   /**
-   * @brief Wait (block) until the task to complete.
+   * @brief Check if the task has completed, non-blocking.
    */
-  auto wait() && noexcept -> void
-  requires(Waitable && std::is_void_v<T>)
+  [[nodiscard]] auto is_ready() noexcept -> bool
+  requires Root
+  {
+    return (*this)->promise().is_ready();
+  }
+  /**
+   * @brief Block until the task to completes.
+   */
+  auto wait() noexcept -> void
+  requires Root
   {
     (*this)->promise().wait();
-    // Final suspend responcible for destruction.
-    this.release();
   }
 
-  /**
-   * @brief Wait (block) until the task to complete.
-   */
-  auto wait() && noexcept(std::is_nothrow_constructible_v<T, decltype(std::move(local->promise()).get())>) -> T
-  requires Waitable
-  {
-    unique_handle<promise_type> local = std::move(*this);
+ private:
+  // Clang workaround for CWG 2369: https://cplusplus.github.io/CWG/issues/2369.html
+  using just_t = std::conditional_t<std::is_void_v<T>, std::byte, T>;
 
-    local->promise().wait();
-    // Safe to access the result, promise destructed by local.
-    return std::move(local->promise()).get();
-  }
-
+ public:
   /**
    * @brief Access the result of the task.
    */
-  [[nodiscard]] constexpr auto operator*() & noexcept -> T&
+  [[nodiscard]] constexpr auto operator*() & noexcept -> just_t&
   requires(!std::is_void_v<T>)
   {
     ASSERT_ASSUME(*this, "future is null");
@@ -163,7 +160,7 @@ class [[nodiscard]] basic_future : private unique_handle<detail::promise_type<T,
   /**
    * @brief Access the result of the task.
    */
-  [[nodiscard]] constexpr auto operator*() && noexcept -> T&&
+  [[nodiscard]] constexpr auto operator*() && noexcept -> just_t&&
   requires(!std::is_void_v<T>)
   {
     ASSERT_ASSUME(*this, "future is null");
@@ -172,7 +169,7 @@ class [[nodiscard]] basic_future : private unique_handle<detail::promise_type<T,
   /**
    * @brief Access the result of the task.
    */
-  [[nodiscard]] constexpr auto operator*() const& noexcept -> T const&
+  [[nodiscard]] constexpr auto operator*() const& noexcept -> just_t const&
   requires(!std::is_void_v<T>)
   {
     ASSERT_ASSUME(*this, "future is null");
@@ -181,11 +178,37 @@ class [[nodiscard]] basic_future : private unique_handle<detail::promise_type<T,
   /**
    * @brief Access the result of the task.
    */
-  [[nodiscard]] constexpr auto operator*() const&& noexcept -> T const&&
+  [[nodiscard]] constexpr auto operator*() const&& noexcept -> just_t const&&
   requires(!std::is_void_v<T>)
   {
     ASSERT_ASSUME(*this, "future is null");
     return std::move((*this)->promise()).get();
+  }
+};
+
+/**
+ * @brief A specialization of ``basic_future`` for non-owning futures.
+ *
+ * @tparam Context
+ * @tparam Allocator
+ */
+template <context Context, typename Allocator>
+class basic_future<void, Context, Allocator, false> {
+ public:
+  using value_type = void;                                                     ///< The type of value that this future will return.
+  using context_type = Context;                                                ///< The type of execution context that this
+  using promise_type = detail::promise_type<void, Context, Allocator, false>;  ///< The type of promise that this future owns.
+
+  constexpr basic_future() noexcept = default;
+  /**
+   * @brief Construct a new basic_future object from a unique handle.
+   *
+   * This releasses the handle as the void non-root tasks are cleaned up at final suspend.
+   */
+  constexpr explicit basic_future(unique_handle<promise_type>&& handle) noexcept {
+    DEBUG_TRACKER("non-owning future releases");
+    ASSERT_ASSUME(handle, "promise is null");
+    handle.release();
   }
 };
 
@@ -203,7 +226,7 @@ static constexpr int k_imax = std::numeric_limits<int>::max();  ///< Initial val
  * fork-join count.
  */
 template <typename Context>
-struct promise_base {
+struct promise_base {  // NOLINT (special-member-functions)
   /**
    * @brief Construct a new promise_base base object with a coroutine handle to
    * the derived promise_base.
@@ -249,7 +272,7 @@ struct promise_base {
  *
  * @tparam Context The handle type of the execution context that this task is running on.
  */
-template <typename Context, bool Waitable>
+template <typename Context, bool Root>
 class task_handle {
  public:
   /**
@@ -266,36 +289,37 @@ class task_handle {
     ASSERT_ASSUME(m_promise, "resuming null handle");
     ASSERT_ASSUME(m_promise->m_this, "resuming null coroutine");
 
-    if constexpr (Waitable) {
+    if constexpr (Root) {
+      DEBUG_TRACKER("call to resume on root task");
+
       ASSERT_ASSUME(!m_promise->m_parent, "not a root task");
       ASSERT_ASSUME(!m_promise->m_context, "root tasks should not have a context");
 
     } else {
+      DEBUG_TRACKER("call to resume on stolen task");
+
       ASSERT_ASSUME(m_promise->m_context, "resuming stolen handle with null context");
       ASSERT_ASSUME(m_promise->m_context != std::addressof(context), "bad steal call");
 
       m_promise->m_steals += 1;
     }
-
-    DEBUG_TRACKER("resume sets context");
-
     m_promise->m_context = std::addressof(context);
     m_promise->m_this.resume();
   }
 
  private:
-  template <typename, context, typename>
-  friend struct detail::promise_type;
+  template <typename, context, typename, bool>
+  friend struct promise_type;
 
-  template <typename, context, typename>
-  friend class basic_task;
+  template <typename, context, typename, bool>
+  friend class ::lf::basic_task;
 
-  detail::promise_base<Context>* m_promise;  ///< The promise associated with this handle.
+  promise_base<Context>* m_promise;  ///< The promise associated with this handle.
 
   /**
    * @brief Construct a handle to a promise.
    */
-  constexpr explicit task_handle(detail::promise_base<Context>& coro) noexcept : m_promise{std::addressof(coro)} {}
+  constexpr explicit task_handle(promise_base<Context>& coro) noexcept : m_promise{std::addressof(coro)} {}
 };
 
 // A minimal context for static-assert.
@@ -310,8 +334,8 @@ static_assert(std::is_trivial_v<task_handle<minimal_context, false>>);
 /**
  * @brief The promise type for a basic_task.
  */
-template <typename T, context Context, typename Allocator, bool Waitable>
-struct promise_type : detail::allocator_mixin<Allocator>, result<T>, waiter<Waitable> promise_base<Context> {
+template <typename T, context Context, typename Allocator, bool Root>
+struct promise_type : detail::allocator_mixin<Allocator>, result<T>, waiter<Root>, promise_base<Context> {
   /**
    * @brief Construct a new promise type object.
    */
@@ -320,9 +344,9 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, waiter<Wait
    * @brief This is the object returned when a basic_task is created by a
    * function call.
    */
-  [[nodiscard]] constexpr auto get_return_object() noexcept -> basic_task<T, Context, Allocator, Waitable> {
+  [[nodiscard]] constexpr auto get_return_object() noexcept -> basic_task<T, Context, Allocator, Root> {
     //
-    return basic_task<T, Context, Allocator, Waitable>{raw_handle<promise_type>::from_promise(*this)};
+    return basic_task<T, Context, Allocator, Root>{raw_handle<promise_type>::from_promise(*this)};
   }
 
   /**
@@ -342,17 +366,14 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, waiter<Wait
         ASSERT_ASSUME(prom.m_steals == 0, "fork without join");
         ASSERT_ASSUME(prom.m_join.load() == k_imax, "promise destroyed in invalid state");
 
-        if constexpr (Waitable) {
-          DEBUG_TRACKER("waitable task at final suspend");
+        if constexpr (Root) {
+          DEBUG_TRACKER("root task at final suspend");
 
-          ASSER_ASSUME(!prom.m_parent, "waitable task is not a root task");
+          ASSERT_ASSUME(!prom.m_parent, "root task has a parent");
 
-          if constexpr (std::is_void_v<T>) {
-            // As soon as we call release() we must assume that the promise is deallocated.
-          }
+          child.promise().make_ready();  // Assume prom/child now destructed!
 
-          // Future is responsible for destroying the promise.
-          return std::noop_coroutine();
+          return std::noop_coroutine();  // Future is responsible for destroying the promise.
         }
 
         if (prom.m_is_inline) {
@@ -430,16 +451,9 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, waiter<Wait
         return child;
       }
 
-      constexpr auto await_resume() noexcept {
-        if constexpr (std::is_void_v<U>) {
-          // Promise cleaned up at final_suspend.
-          DEBUG_TRACKER("releasing void promise");
-          this->release();
-          return;
-        } else {
-          return basic_future<U, Context, Alloc, false>{std::move(*this)};
-        }
-      }
+      using future_type = basic_future<U, Context, Alloc, false>;
+
+      constexpr auto await_resume() noexcept -> future_type { return future_type{std::move(*this)}; }
     };
 
     DEBUG_TRACKER("forking child context");
@@ -468,20 +482,17 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, waiter<Wait
         return (*this)->promise().m_this;
       }
 
-      constexpr auto await_resume() noexcept -> void
-      requires(std::is_void_v<U>)
-      {
-        // Promise cleaned up at final_suspend.
-        DEBUG_TRACKER("releasing void promise");
-        this->release();
-        return;
-      }
+      // using future_type = basic_future<U, Context, Alloc, false>;
 
-      constexpr auto await_resume() noexcept(std::is_nothrow_constructible_v<U, decltype(std::move((*this)->promise()).get())>) -> U
-      requires(!std::is_void_v<U>)
-      {
-        return std::move((*this)->promise()).get();
-        //
+      constexpr auto await_resume() noexcept(std::is_void_v<U> || std::is_nothrow_move_constructible_v<U>) -> U {
+        // Manages lifetime of child task.
+        basic_future<U, Context, Alloc, false> fut{std::move(*this)};  // NOLINT
+
+        if constexpr (!std::is_void_v<U>) {
+          return *std::move(fut);
+        } else {
+          return;
+        }
       }
     };
 
@@ -576,6 +587,8 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, waiter<Wait
     //
     ASSERT_ASSUME(to_destroy, "attempting to destroy null handle");
 
+    ASSERT_ASSUME(!Root, "this should never be called for root tasks");
+
     if constexpr (std::is_void_v<T>) {
       DEBUG_TRACKER("call to destroy void");
       to_destroy.destroy();
@@ -595,35 +608,31 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, waiter<Wait
  * @tparam T
  * @tparam Context
  */
-template <typename T, context Context, typename Allocator, bool Waitable>
-class [[nodiscard]] basic_task : private unique_handle<detail::promise_type<T, Context, Allocator, Waitable>> {
+template <typename T, context Context, typename Allocator, bool Root>
+class [[nodiscard]] basic_task : private unique_handle<detail::promise_type<T, Context, Allocator, Root>> {  // NOLINT
  public:
-  using value_type = T;                                                        ///< The type of value that this task will return.
-  using handle_type = task_handle<Context>;                                    ///< The type of handle that this task will use.
-  using context_type = Context;                                                ///< The type of execution context that this task will run on.
-  using promise_type = detail::promise_type<T, Context, Allocator, Waitable>;  ///< The type of promise that
-                                                                               ///< this task will use.
+  using value_type = T;                                                    ///< The type of value that this task will return.
+  using handle_type = detail::task_handle<Context, Root>;                  ///< The type of handle that this task will use.
+  using future_type = basic_future<T, Context, Allocator, Root>;           ///< The type of future that this task will use.
+  using context_type = Context;                                            ///< The type of execution context that this task will run on.
+  using promise_type = detail::promise_type<T, Context, Allocator, Root>;  ///< The type of promise that
+                                                                           ///< this task will use.
 
   /**
-   * @brief A named tuple returned by ``get_handle()``.
-   *
-   * In the case of a void task the ``future`` member will be ``regular_void``.
-   * This enables consistent structured bindings.
+   * @brief An aggregate/named-tuple returned by ``make_promise()``.
    */
   struct named_pair {
-    basic_future<T, Context, Allocator, true> future;  ///< Future to result.
-    handle_type handle;                                ///< Resumable handle to task.
+    future_type future;  ///< Future to result.
+    handle_type handle;  ///< Resumable handle to task.
   };
 
   /**
-   * @brief Decompose this task into a future and a handle and promise to call
-   * resume on the handle.
+   * @brief Decompose this task into a future and a handle.
    *
-   * This requires the task to embed a notification mechanism to allow the
-   * caller to know when the future is ready.
+   * The caller promises to call .resume() on the handle.
    */
   [[nodiscard]] constexpr auto make_promise() && noexcept -> named_pair
-  requires Waitable
+  requires(Root)
   {
     DEBUG_TRACKER("make_promise()");
 
@@ -631,13 +640,8 @@ class [[nodiscard]] basic_task : private unique_handle<detail::promise_type<T, C
 
     handle_type const hand{(*this)->promise()};
 
-    if constexpr (std::is_void_v<T>) {
-      DEBUG_TRACKER("releasing void from make_promise()");
-      this->release();
-    }
-
     return {
-        .future = basic_future<T, Context, Allocator, Waitable>{std::move(*this)},
+        .future = basic_future<T, Context, Allocator, Root>{std::move(*this)},
         .handle = hand,
     };
   }
@@ -655,10 +659,38 @@ class [[nodiscard]] basic_task : private unique_handle<detail::promise_type<T, C
 #endif
 
  private:
-  template <typename, context, typename>
+  template <typename, context, typename, bool>
   friend struct detail::promise_type;
 
   constexpr explicit basic_task(detail::raw_handle<promise_type> handle) : unique_handle<promise_type>{handle} {}
 };
+
+/**
+ * @brief Convert a non-root task to a root task, forwards root tasks.
+ *
+ * @tparam T
+ * @tparam Context
+ * @tparam Allocator
+ * @param task
+ * @return basic_task<T, Context, Allocator, true>
+ */
+template <typename T, typename Context, typename Allocator>
+static auto as_root(basic_task<T, Context, Allocator, false>&& task) -> basic_task<T, Context, Allocator, true> {
+  co_return co_await std::move(task);
+}
+
+/**
+ * @brief Convert a non-root task to a root task, forwards root tasks.
+ *
+ * @tparam T
+ * @tparam Context
+ * @tparam Allocator
+ * @param task
+ * @return basic_task<T, Context, Allocator, true>
+ */
+template <typename T, typename Context, typename Allocator>
+static auto as_root(basic_task<T, Context, Allocator, true>&& task) noexcept -> basic_task<T, Context, Allocator, false>&& {
+  return std::move(task);
+}
 
 }  // namespace lf

@@ -100,6 +100,23 @@ TEST_CASE("Trivial tasks", "[basic_task]") {
   }
 }
 
+task<void> double_void() {
+  co_return co_await noop();
+}
+
+TEST_CASE("double void tasks", "[basic_task]") {
+  immediate sch{};
+
+  REQUIRE(sch.empty());
+
+  DEBUG_TRACKER("testing double_void");
+
+  for (int i = 0; i < 100; ++i) {
+    sch.schedule(double_void());
+    REQUIRE(sch.empty());
+  }
+}
+
 // Fibonacci using recursion
 static int fib(int n) {
   if (n <= 1) {

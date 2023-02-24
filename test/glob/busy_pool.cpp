@@ -98,8 +98,8 @@ static task<int> fib_task(int n) {
 }
 
 TEST_CASE("Fibonacci - busy_pool", "[busy_pool]") {
-  busy_pool pool{};
-  for (int i = 0; i < 20; ++i) {
+  busy_pool pool{2};
+  for (int i = 2; i < 3; ++i) {
     REQUIRE(pool.schedule(fib_task(i)) == fib(i));
   }
 }

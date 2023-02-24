@@ -6,13 +6,16 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <catch2/catch_test_macros.hpp>
 #include <memory>
 #include <type_traits>
+
+#include <catch2/catch_template_test_macros.hpp>
+#include <catch2/catch_test_macros.hpp>
 
 // NOLINTBEGIN No need to check the tests for style.
 
 #include "libfork/schedule/busy_pool.hpp"
+#include "libfork/schedule/immediate.hpp"
 #include "libfork/task.hpp"
 
 using namespace lf;
@@ -73,28 +76,28 @@ static int fib(int n) {
   return fib(n - 1) + fib(n - 2);
 }
 
-template <typename Alloc>
-static basic_task<int, busy_pool::context, Alloc> fib_alloc(int n) {
+template <typename Context, typename Alloc>
+static basic_task<int, Context, Alloc> fib_alloc(int n) {
   if (n < 2) {
     co_return n;
   }
 
-  auto a = co_await fib_alloc<Alloc>(n - 1).fork();
-  auto b = co_await fib_alloc<Alloc>(n - 2);
+  auto a = co_await fib_alloc<Context, Alloc>(n - 1).fork();
+  auto b = co_await fib_alloc<Context, Alloc>(n - 2);
 
   co_await join();
 
   co_return *a + b;
 }
 
-template <typename StaticAlloc, typename Alloc = StaticAlloc>
-static basic_task<int, busy_pool::context, Alloc> fib_alloc(std::allocator_arg_t, Alloc const& alloc, int n) {
+template <typename Context, typename StaticAlloc, typename Alloc = StaticAlloc>
+static basic_task<int, Context, Alloc> fib_alloc(std::allocator_arg_t, Alloc const& alloc, int n) {
   if (n < 2) {
     co_return n;
   }
 
-  auto a = co_await fib_alloc<Alloc>(std::allocator_arg, alloc, n - 1).fork();
-  auto b = co_await fib_alloc<Alloc>(std::allocator_arg, alloc, n - 2);
+  auto a = co_await fib_alloc<Context, Alloc>(std::allocator_arg, alloc, n - 1).fork();
+  auto b = co_await fib_alloc<Context, Alloc>(std::allocator_arg, alloc, n - 2);
 
   co_await join();
 
@@ -117,45 +120,39 @@ static basic_task<int, busy_pool::context, Alloc> fib_alloc(std::allocator_arg_t
  *
  */
 
-TEST_CASE("Allocator non-void + stateless + not passed in", "[allocator]") {
+TEMPLATE_TEST_CASE("Allocator non-void + stateless + not passed in", "[allocator][template]", (busy_pool), (immediate)) {
   for (int i = 0; i < 20; ++i) {
-    REQUIRE(busy_pool{}.schedule(fib_alloc<stateless<int>>(i)) == fib(i));
+    REQUIRE(TestType{}.schedule(fib_alloc<typename TestType::context, stateless<int>>(i)) == fib(i));
   }
 }
-
-TEST_CASE("Allocator non-void + stateless + passed in", "[allocator]") {
+TEMPLATE_TEST_CASE("Allocator non-void + stateless + passed in", "[allocator][template]", (busy_pool), (immediate)) {
   for (int i = 0; i < 20; ++i) {
-    REQUIRE(busy_pool{}.schedule(fib_alloc<stateless<int>>(std::allocator_arg, stateless<int>{}, i)) == fib(i));
+    REQUIRE(TestType{}.schedule(fib_alloc<typename TestType::context, stateless<int>>(std::allocator_arg, stateless<int>{}, i)) == fib(i));
   }
 }
-
-TEST_CASE("Allocator non-void + statefull + not passed in", "[allocator]") {
+TEMPLATE_TEST_CASE("Allocator non-void + statefull + not passed in", "[allocator][template]", (busy_pool), (immediate)) {
   for (int i = 0; i < 20; ++i) {
-    REQUIRE(busy_pool{}.schedule(fib_alloc<stateful<int>>(i)) == fib(i));
+    REQUIRE(TestType{}.schedule(fib_alloc<typename TestType::context, stateful<int>>(i)) == fib(i));
   }
 }
-
-TEST_CASE("Allocator non-void + statefull + passed in", "[allocator]") {
+TEMPLATE_TEST_CASE("Allocator non-void + statefull + passed in", "[allocator][template]", (busy_pool), (immediate)) {
   for (int i = 0; i < 20; ++i) {
-    REQUIRE(busy_pool{}.schedule(fib_alloc<stateful<int>>(std::allocator_arg, stateful<int>{}, i)) == fib(i));
+    REQUIRE(TestType{}.schedule(fib_alloc<typename TestType::context, stateful<int>>(std::allocator_arg, stateful<int>{}, i)) == fib(i));
   }
 }
-
-TEST_CASE("Allocator void + default", "[allocator]") {
+TEMPLATE_TEST_CASE("Allocator void + default", "[allocator][template]", (busy_pool), (immediate)) {
   for (int i = 0; i < 20; ++i) {
-    REQUIRE(busy_pool{}.schedule(fib_alloc<void>(i)) == fib(i));
+    REQUIRE(TestType{}.schedule(fib_alloc<typename TestType::context, void>(i)) == fib(i));
   }
 }
-
-TEST_CASE("Allocator void + stateless", "[allocator]") {
+TEMPLATE_TEST_CASE("Allocator void + stateless", "[allocator][template]", (busy_pool), (immediate)) {
   for (int i = 0; i < 20; ++i) {
-    REQUIRE(busy_pool{}.schedule(fib_alloc<void>(std::allocator_arg, stateless<int>{}, i)) == fib(i));
+    REQUIRE(TestType{}.schedule(fib_alloc<typename TestType::context, void>(std::allocator_arg, stateless<int>{}, i)) == fib(i));
   }
 }
-
-TEST_CASE("Allocator void + statefull", "[allocator]") {
+TEMPLATE_TEST_CASE("Allocator void + statefull", "[allocator][template]", (busy_pool), (immediate)) {
   for (int i = 0; i < 20; ++i) {
-    REQUIRE(busy_pool{}.schedule(fib_alloc<void>(std::allocator_arg, stateful<int>{}, i)) == fib(i));
+    REQUIRE(TestType{}.schedule(fib_alloc<typename TestType::context, void>(std::allocator_arg, stateful<int>{}, i)) == fib(i));
   }
 }
 

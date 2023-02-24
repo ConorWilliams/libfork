@@ -12,6 +12,7 @@
 #include <atomic>
 #include <coroutine>
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <random>
 #include <stop_token>
@@ -36,24 +37,24 @@ class busy_pool {
   /**
    * @brief The context type for the busy_pools threads.
    */
-  class context : private queue<task_handle<context>> {
+  class context : private queue<work_handle<context>> {
    public:
-    // using queue<task_handle<context>>::push;
-    // using queue<task_handle<context>>::pop;
+    // using queue<work_handle<context>>::push;
+    // using queue<work_handle<context>>::pop;
 
     /**
      * @brief Push a task onto the queue.
      */
-    auto push(task_handle<context> task) -> void {
+    auto push(work_handle<context> task) -> void {
       ASSERT(m_id == std::this_thread::get_id(), "push accessed from wrong thread");
-      queue<task_handle<context>>::push(task);
+      queue<work_handle<context>>::push(task);
     }
     /**
      * @brief Pop a task from the queue.
      */
-    auto pop() -> std::optional<task_handle<context>> {
+    auto pop() -> std::optional<work_handle<context>> {
       ASSERT(m_id == std::this_thread::get_id(), "pop accessed from wrong thread");
-      return queue<task_handle<context>>::pop();
+      return queue<work_handle<context>>::pop();
     }
 
    private:
@@ -95,10 +96,6 @@ class busy_pool {
       rng.long_jump();
     }
 
-#ifndef NDEBUG
-    m_contexts[0].m_id = std::this_thread::get_id();
-#endif
-
     // Start the worker threads, note there are n-1 workers, indexed 1...n - 1.
     for (std::size_t i = 1; i < n; ++i) {
       m_workers.emplace_back([this, i, n](std::stop_token token) {  // NOLINT
@@ -120,7 +117,7 @@ class busy_pool {
             return;
           }
 
-          DEBUG_TRACKER("worker works");
+          DEBUG_TRACKER("worker starts stealing");
 
           steal_until(i, [&]() -> bool {
             return !m_root_task_in_flight.test(std::memory_order_acquire) || token.stop_requested();
@@ -133,36 +130,38 @@ class busy_pool {
   /**
    * @brief Submit a task to the pool and join the workers until it completes.
    */
-  template <typename T, typename Allocator>
-  auto schedule(basic_task<T, context, Allocator>&& task) -> T {
+  template <typename T, typename Allocator, bool Root>
+  auto schedule(basic_task<T, context, Allocator, Root>&& task) -> T {
     //
     constexpr std::size_t uid = 0;
     //
 #ifndef NDEBUG
-    ASSERT(this->m_contexts[uid].m_id == std::this_thread::get_id(), "root task accessed from wrong thread");
+    this->m_contexts[uid].m_id = std::this_thread::get_id();
 #endif
     //
-    auto [fut, handle] = make_root(std::move(task)).make_promise();
+    auto [fut, handle] = as_root(std::move(task)).make_promise();
 
     DEBUG_TRACKER("waking workers");
 
-    // Wake up the workers
+    // Wake up the workers.
     m_root_task_in_flight.test_and_set(std::memory_order_release);
     m_root_task_in_flight.notify_all();
 
     DEBUG_TRACKER("root task starts");
 
-    // Start the root task
-    handle.resume_root(m_contexts[uid]);
+    // Start the root task.
+    handle.resume(m_contexts[uid]);
 
     DEBUG_TRACKER("master thread starts stealing");
 
-    // Steal until root task completes
-    steal_until(uid, [&]() -> bool {
-      return !m_root_task_in_flight.test(std::memory_order_acquire);
+    // Steal until root task completes, need doggy capture until clang implements P1091
+    steal_until(uid, [fut = std::addressof(fut)]() -> bool {
+      return fut->is_ready();
     });
 
     DEBUG_TRACKER("master thread returns");
+
+    m_root_task_in_flight.clear(std::memory_order_release);
 
     if constexpr (!std::is_void_v<T>) {
       return *std::move(fut);
@@ -186,15 +185,6 @@ class busy_pool {
   std::vector<context> m_contexts;
   std::vector<std::jthread> m_workers;  // After m_context so threads are destroyed before the queues.
 
-  template <typename T, typename Allocator>
-  auto make_root(basic_task<T, context, Allocator>&& task) -> basic_task<T, context, Allocator> {
-    defer on_exit = [this]() noexcept {
-      DEBUG_TRACKER("root releases atomic");
-      this->m_root_task_in_flight.clear(std::memory_order_release);
-    };
-    co_return co_await std::move(task);
-  }
-
   template <typename F>
   void steal_until(std::size_t uid, F&& cond) {
     //
@@ -212,7 +202,7 @@ class busy_pool {
           if (auto work = m_contexts[steal_at].steal()) {
             attempt = 0;
             DEBUG_TRACKER("resuming stolen work");
-            work->resume_stolen(my_context);
+            work->resume(my_context);
             DEBUG_TRACKER("worker resumes thieving");
             ASSERT_ASSUME(my_context.empty(), "should have no work left");
           } else {

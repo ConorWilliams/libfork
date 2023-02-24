@@ -30,20 +30,21 @@ template <>
 class waiter<true> {
  public:
   /**
-   * @brief Wait for the task to complete.
+   * @brief Check if the task has completed, non-blocking.
    */
-  auto wait() noexcept -> void {
-    DEBUG_TRACKER("waiting for task to complete");
-    m_sem.acquire();
-    DEBUG_TRACKER("task completed");
-  }
+  [[nodiscard]] auto is_ready() noexcept -> bool { return m_sem.try_acquire(); }
+
+  /**
+   * @brief Block until the task has completed.
+   */
+  auto wait() noexcept -> void { return m_sem.acquire(); }
 
  protected:
   /**
    * @brief Signal that the task has completed.
    */
-  auto release() noexcept -> void {
-    DEBUG_TRACKER("root task signals completion")
+  auto make_ready() noexcept -> void {
+    DEBUG_TRACKER("root task signals completion");
     m_sem.release();
   }
 

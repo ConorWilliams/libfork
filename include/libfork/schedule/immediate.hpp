@@ -35,11 +35,11 @@ class immediate {
     /**
      * @brief Push a task to the context's stack.
      */
-    auto push(task_handle<context> task) -> void { m_tasks.push(task); }
+    auto push(work_handle<context> task) -> void { m_tasks.push(task); }
     /**
      * @brief Pop a task from the context's stack.
      */
-    auto pop() -> std::optional<task_handle<context>> {
+    auto pop() -> std::optional<work_handle<context>> {
       if (m_tasks.empty()) {
         return std::nullopt;
       }
@@ -51,7 +51,7 @@ class immediate {
    private:
     friend class immediate;
 
-    std::stack<task_handle<context>, std::vector<task_handle<context>>> m_tasks;
+    std::stack<work_handle<context>, std::vector<work_handle<context>>> m_tasks;
   };
 
   static_assert(::lf::context<context>);
@@ -59,12 +59,12 @@ class immediate {
   /**
    * @brief Run a task to completion.
    */
-  template <typename T, typename Allocator>
-  auto schedule(basic_task<T, context, Allocator>&& task) -> T {
+  template <typename T, typename Allocator, bool Root>
+  auto schedule(basic_task<T, context, Allocator, Root>&& task) -> T {
     //
-    auto [fut, handle] = std::move(task).make_promise();
+    auto [fut, handle] = as_root(std::move(task)).make_promise();
 
-    handle.resume_root(m_context);
+    handle.resume(m_context);
 
     if constexpr (!std::is_void_v<T>) {
       return *std::move(fut);
