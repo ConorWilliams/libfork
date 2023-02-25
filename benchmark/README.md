@@ -1,6 +1,6 @@
 # Benchmarks
 
-Benchmarking is hard! The result depend fairly strongly on the compiler + machine. Especially as compiler optimisation of coroutines in C++ is relatively unpredictable with HALO. 
+Benchmarking is hard! The result depend fairly strongly on the compiler + machine. Especially as compiler optimization of coroutines in C++ is relatively unpredictable with HALO. 
 
 ## Fibonacci (fib)
 
