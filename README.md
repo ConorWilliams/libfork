@@ -29,7 +29,7 @@ The tasking fork-join interface is designed to mirror Cilk and other fork-join f
 #include "libfork/schedule/busy_pool.hpp"
 
 /// Compute the n'th fibonacci number
-auto fib(int n) -> basic_task<int, lf::busy_pool::context> { 
+auto fib(int n) -> basic_task<int, busy_pool::context> { 
 
   if (n < 2) {
     co_return n;
@@ -43,17 +43,15 @@ auto fib(int n) -> basic_task<int, lf::busy_pool::context> {
   co_return *a + b;                    // Use * to dereference a future.
 }
 ```
-which can be launched on a scheduler of your choice (such as libfork's ``busy_pool``):
+which can be launched on the ``busy_pool`` scheduler as follows:
 ```c++
-lf::busy_pool pool(num_threads);
+busy_pool pool(num_threads);
 
 int fib_10 = pool.schedule(fib(10));
 ```
-Above ``lf::busy_pool`` is a scheduler, see below for a description.
-
 Note:
 - Tasks **must** join **before** returning or dereferencing a future.
-- Futures must join in their parent.
+- Futures **must** join in their parent task.
 
 ## Schedulers
 

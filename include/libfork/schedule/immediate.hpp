@@ -26,7 +26,7 @@ namespace lf {
 /**
  * @brief An scheduler that runs tasks inline.
  *
- * This is usefull for debugging and testing.
+ * This is useful for debugging and testing.
  */
 class immediate {
  public:
@@ -77,7 +77,7 @@ class immediate {
   }
 
   /**
-   * @brief Check if the exection stack is empty.
+   * @brief Check if the execution stack is empty.
    *
    * This should always be the case for the immediate scheduler.
    */
