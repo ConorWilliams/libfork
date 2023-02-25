@@ -25,8 +25,11 @@ See the [HACKING](HACKING.md) document.
 The tasking fork-join interface is designed to mirror Cilk and other fork-join frameworks. With libfork the canonical recursive-Fibonacci is a simple as:
 
 ```c++
+#include "libfork/task.hpp"
+#include "libfork/schedule/busy_pool.hpp"
+
 /// Compute the n'th fibonacci number
-auto fib(int n) -> basic_task<int, lf::busy_pool> { 
+auto fib(int n) -> basic_task<int, lf::busy_pool::context> { 
 
   if (n < 2) {
     co_return n;
@@ -50,9 +53,19 @@ Above ``lf::busy_pool`` is a scheduler, see below for a description.
 
 Note:
 - Tasks **must** join **before** returning or dereferencing a future.
-- Futures that have not joined cannot be passed to children.
+- Futures must join in their parent.
 
 ## Schedulers
+
+A scheduler is responsible for distributing available work (tasks) to physical CPUs/executors. Each executor must own an execution-context object satisfying:
+```c++
+template <typename T>
+concept context = requires(T context, work_handle<T> task) {
+    { context.push(task) } -> std::same_as<void>;
+    { context.pop() } -> std::convertible_to<std::optional<work_handle<T>>>;
+};
+```
+An execution-context models a FILO stack. Tasks hold a pointer to their executor's context and push/pop tasks onto it. Whilst an executor is running a task, other executors can steal from the top of the stack in a FIFO manner. 
 
 ## API reference
 
