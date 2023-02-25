@@ -10,7 +10,7 @@
  * why this algorithm is good for caches.
  *
  * Note according to its own check it is not computing this correctly!
- * I belive this is because it is overflowing.
+ * I believe this is because it is overflowing.
  */
 
 #include <chrono>

@@ -25,13 +25,13 @@ void run(std::string name, int x) {
     // Set up
     auto pool = busy_pool{n};
 
-    int ans = 0;
+    int answer = 0;
 
     bench([&] {
-      ans = pool.schedule(fib<busy_pool::context>(x));
+      answer = pool.schedule(fib<busy_pool::context>(x));
     });
 
-    return ans;
+    return answer;
   });
 }
 

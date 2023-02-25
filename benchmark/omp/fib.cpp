@@ -19,15 +19,15 @@ auto fib(int n) -> int {
 
 void run(std::string name, int x) {
   benchmark(name, [&](std::size_t n, auto&& bench) {
-    int ans = 0;
+    int answer = 0;
 
-#pragma omp parallel num_threads(n) shared(ans, x)
+#pragma omp parallel num_threads(n) shared(answer, x)
 #pragma omp single nowait
     bench([&] {
-      ans = fib(x);
+      answer = fib(x);
     });
 
-    return ans;
+    return answer;
   });
 }
 

@@ -45,19 +45,7 @@ Task
 
 # Benchmarks
 
-Benchmarking is hard... 
-
-## Fibonacci
-
-This benchmark evenly spawns many-tasks that do almost no computation hence, this benchmark predominantly test task creation/scheduling/deletion overhead.
-
-## Reduction
-
-Memory bound ...
-
-## Some other benchmark
-
-CPU bound ...
+See the benchmark [README](benchmark/README.md).
 
 # API reference
 

@@ -25,15 +25,15 @@ auto fib(int n) -> int {
 
 void run(std::string name, int x) {
   benchmark(name, [&](std::size_t n, auto&& bench) {
-    int ans = 0;
+    int answer = 0;
 
     tbb::task_arena(n).execute([&] {
       bench([&] {
-        ans = fib(x);
+        answer = fib(x);
       });
     });
 
-    return ans;
+    return answer;
   });
 }
 
