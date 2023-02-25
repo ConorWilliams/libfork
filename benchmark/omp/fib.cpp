@@ -7,7 +7,7 @@ auto fib(int n) -> int {
 
   int a, b;
 
-#pragma omp task shared(a)
+#pragma omp task untied shared(a)
   a = fib(n - 1);
 
   b = fib(n - 2);
@@ -36,7 +36,7 @@ auto main() -> int {
   run("omp, fib 10", 10);
   run("omp, fib 15", 15);
   run("omp, fib 20", 20);
-  run("omp, fib 25", 25);
-  run("omp, fib 30", 30);
+  // run("omp, fib 25", 25); // too slow
+  // run("omp, fib 30", 30);
   return 0;
 }

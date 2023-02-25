@@ -144,7 +144,7 @@ void run(std::string name, size_t n) {
     delete[] B;
     delete[] A;
 
-    return check;
+    return res;
   });
 }
 
@@ -155,6 +155,6 @@ int main(int argc, char* argv[]) {
   run("tbb, matmul n=100", 100);
   run("tbb, matmul n=300", 300);
   run("tbb, matmul n=500", 500);
-  run("tbb, matmul n=1000", 1000);
+  run("tbb, matmul n=700", 700);
   return 0;
 }

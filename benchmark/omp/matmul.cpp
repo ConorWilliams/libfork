@@ -83,19 +83,19 @@ void matmul(elem_t* A, elem_t* B, elem_t* C, size_t m, size_t n, size_t p, size_
 
   if (m >= n && n >= p) {
     size_t m1 = m >> 1;
-#pragma omp task shared(A, B, C)
+#pragma omp task untied shared(A, B, C)
     matmul(A, B, C, m1, n, p, ld, add);
 
     matmul(A + m1 * ld, B, C + m1 * ld, m - m1, n, p, ld, add);
   } else if (n >= m && n >= p) {
     size_t n1 = n >> 1;
-#pragma omp task shared(A, B, C)
+#pragma omp task untied shared(A, B, C)
     matmul(A, B, C, m, n1, p, ld, add);
 
     matmul(A + n1, B + n1 * ld, C, m, n - n1, p, ld, true);
   } else {
     size_t p1 = p >> 1;
-#pragma omp task shared(A, B, C)
+#pragma omp task untied shared(A, B, C)
     matmul(A, B, C, m, n, p1, ld, add);
 
     matmul(A, B + p1, C + p1, m, n, p - p1, ld, add);
@@ -105,7 +105,7 @@ void matmul(elem_t* A, elem_t* B, elem_t* C, size_t m, size_t n, size_t p, size_
 }
 
 void test(elem_t* A, elem_t* B, elem_t* C, size_t n) {
-#pragma omp task shared(A, B, C, n)
+#pragma omp task untied shared(A, B, C, n)
   matmul(A, B, C, n, n, n, n, 0);
 #pragma omp taskwait
 }
@@ -135,17 +135,17 @@ void run(std::string name, size_t n) {
     delete[] B;
     delete[] A;
 
-    return check;
+    return res;
   });
 }
 
 int main(int argc, char* argv[]) {
-  run("libfork, matmul n=10", 10);
-  run("libfork, matmul n=30", 30);
-  run("libfork, matmul n=50", 50);
-  run("libfork, matmul n=100", 100);
-  run("libfork, matmul n=300", 300);
-  run("libfork, matmul n=500", 500);
-  run("libfork, matmul n=1000", 1000);
+  run("omp, matmul n=10", 10);
+  run("omp, matmul n=30", 30);
+  run("omp, matmul n=50", 50);
+  run("omp, matmul n=100", 100);
+  run("omp, matmul n=300", 300);
+  run("omp, matmul n=500", 500);
+  run("omp, matmul n=700", 700);
   return 0;
 }

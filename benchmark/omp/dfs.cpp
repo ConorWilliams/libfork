@@ -16,7 +16,7 @@ auto dfs(size_t depth, size_t breadth, unsigned long* sum) -> void {
   vector<unsigned long> sums(breadth);
 
   for (size_t i = 0; i < breadth - 1; ++i) {
-#pragma omp task shared(sums)
+#pragma omp task untied shared(sums)
     dfs(depth - 1, breadth, &sums[i]);
   }
   dfs(depth - 1, breadth, &sums.back());
@@ -52,6 +52,6 @@ int main(int argc, char* argv[]) {
   run("omp, dfs 3,3", 3, 3);
   run("omp, dfs 5,5", 5, 5);
   run("omp, dfs 6,6", 5, 6);
-  run("omp, dfs 7,7", 7, 7);
+  // run("omp, dfs 7,7", 7, 7); // too slow
   return 0;
 }

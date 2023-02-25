@@ -55,9 +55,9 @@ void run(std::string name, size_t depth, size_t breadth) {
 }
 
 int main(int argc, char* argv[]) {
-  run("omp, dfs 3,3", 3, 3);
-  run("omp, dfs 5,5", 5, 5);
-  run("omp, dfs 6,6", 5, 6);
-  run("omp, dfs 7,7", 7, 7);
+  run("tbb, dfs 3,3", 3, 3);
+  run("tbb, dfs 5,5", 5, 5);
+  run("tbb, dfs 6,6", 5, 6);
+  run("tbb, dfs 7,7", 7, 7);
   return 0;
 }

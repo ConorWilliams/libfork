@@ -15,7 +15,7 @@ auto reduce(std::span<unsigned int const> x, std::size_t grain_size) -> unsigned
 
   unsigned int a, b;
 
-#pragma omp task shared(a, x)
+#pragma omp task untied shared(a, x)
   a = reduce(x.first(h), grain_size);
 
   b = reduce(x.last(t), grain_size);

@@ -136,7 +136,7 @@ void run(std::string name, size_t n) {
     delete[] B;
     delete[] A;
 
-    return check;
+    return res;
   });
 }
 
@@ -147,7 +147,7 @@ int main(int argc, char* argv[]) {
   run("libfork, matmul n=100", 100);
   run("libfork, matmul n=300", 300);
   run("libfork, matmul n=500", 500);
-  run("libfork, matmul n=1000", 1000);
+  run("libfork, matmul n=700", 700);
 
   return 0;
 }

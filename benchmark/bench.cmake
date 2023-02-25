@@ -8,7 +8,7 @@ endif()
 
 add_subdirectory(benchmark/libfork)
 
-find_package(OpenMP)
+find_package(OpenMP QUIET)
 
 if(OpenMP_CXX_FOUND)
   add_subdirectory(benchmark/omp)
@@ -16,12 +16,12 @@ else()
   message(WARNING "OpenMP not found; OpenMP benchmarks will not be built.")
 endif()
 
-find_package(TBB)
+find_package(TBB QUIET)
 
 if(TBB_FOUND)
   add_subdirectory(benchmark/tbb)
 else()
-  message(WARNING "TBB not found; TBB benchmarks will not be built.")
+  message(WARNING "Intel TBB not found; TBB benchmarks will not be built.")
 endif()
 
 # ---- End-of-file commands ----
