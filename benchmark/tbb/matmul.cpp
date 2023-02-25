@@ -84,33 +84,39 @@ void matmul(elem_t* A, elem_t* B, elem_t* C, size_t m, size_t n, size_t p, size_
     return;
   }
 
+  tbb::task_group g;
+
   if (m >= n && n >= p) {
     size_t m1 = m >> 1;
-#pragma omp task shared(A, B, C)
-    matmul(A, B, C, m1, n, p, ld, add);
+
+    g.run([&] {
+      matmul(A, B, C, m1, n, p, ld, add);
+    });
 
     matmul(A + m1 * ld, B, C + m1 * ld, m - m1, n, p, ld, add);
   } else if (n >= m && n >= p) {
     size_t n1 = n >> 1;
-#pragma omp task shared(A, B, C)
-    matmul(A, B, C, m, n1, p, ld, add);
+
+    g.run([&] {
+      matmul(A, B, C, m, n1, p, ld, add);
+    });
 
     matmul(A + n1, B + n1 * ld, C, m, n - n1, p, ld, true);
   } else {
     size_t p1 = p >> 1;
-#pragma omp task shared(A, B, C)
-    matmul(A, B, C, m, n, p1, ld, add);
+
+    g.run([&] {
+      matmul(A, B, C, m, n, p1, ld, add);
+    });
 
     matmul(A, B + p1, C + p1, m, n, p - p1, ld, add);
   }
 
-#pragma omp taskwait
+  g.wait();
 }
 
 void test(elem_t* A, elem_t* B, elem_t* C, size_t n) {
-#pragma omp task shared(A, B, C, n)
   matmul(A, B, C, n, n, n, n, 0);
-#pragma omp taskwait
 }
 
 void run(std::string name, size_t n) {
@@ -126,10 +132,10 @@ void run(std::string name, size_t n) {
     fill(B, n);
     zero(C, n);
 
-#pragma omp parallel num_threads(num_threads)
-#pragma omp single nowait
-    bench([&] {
-      test(A, B, C, n);
+    tbb::task_arena(num_threads).execute([&] {
+      bench([&] {
+        test(A, B, C, n);
+      });
     });
 
     int res = check(A, B, C, n);
@@ -143,12 +149,12 @@ void run(std::string name, size_t n) {
 }
 
 int main(int argc, char* argv[]) {
-  run("libfork, matmul n=10", 10);
-  run("libfork, matmul n=30", 30);
-  run("libfork, matmul n=50", 50);
-  run("libfork, matmul n=100", 100);
-  run("libfork, matmul n=300", 300);
-  run("libfork, matmul n=500", 500);
-  run("libfork, matmul n=1000", 1000);
+  run("tbb, matmul n=10", 10);
+  run("tbb, matmul n=30", 30);
+  run("tbb, matmul n=50", 50);
+  run("tbb, matmul n=100", 100);
+  run("tbb, matmul n=300", 300);
+  run("tbb, matmul n=500", 500);
+  run("tbb, matmul n=1000", 1000);
   return 0;
 }

@@ -18,29 +18,34 @@ auto reduce(std::span<unsigned int const> x, std::size_t grain_size) -> unsigned
 
   unsigned int a, b;
 
-#pragma omp task shared(a, x)
-  a = reduce(x.first(h), grain_size);
+  tbb::task_group g;
+
+  g.run([&] {
+    a = reduce(x.first(h), grain_size);
+  });
 
   b = reduce(x.last(t), grain_size);
 
-#pragma omp taskwait
+  g.wait();
 
   return a + b;
 }
 
 void run(std::string name, std::span<unsigned int> data) {
+  //
   auto correct = std::reduce(data.begin(), data.end());
 
   benchmark(name, [&](std::size_t n, auto&& bench) {
     unsigned int res = 0;
 
-#pragma omp parallel num_threads(n) shared(res, data)
-#pragma omp single nowait
-    bench([&] {
-      res = reduce(data, data.size() / (64));
+    tbb::task_arena(n).execute([&] {
+      bench([&] {
+        res = reduce(data, data.size() / (64));
+      });
     });
 
     if (res != correct) {
+      std::cout << res << " != " << correct << std::endl;
       throw std::runtime_error("Incorrect result");
     }
 
@@ -53,12 +58,12 @@ auto main() -> int {
 
   std::iota(data.begin(), data.end(), 0);
 
-  run("omp, reduce 1'000", std::span{data}.first(1'000));
-  run("omp, reduce 10'000", std::span{data}.first(10'000));
-  run("omp, reduce 100'000", std::span{data}.first(100'000));
-  run("omp, reduce 1'000'000", std::span{data}.first(1'000'000));
-  run("omp, reduce 10'000'000", std::span{data}.first(10'000'000));
-  run("omp, reduce 100'000'000", std::span{data}.first(100'000'000));
+  run("tbb, reduce 1'000", std::span{data}.first(1'000));
+  run("tbb, reduce 10'000", std::span{data}.first(10'000));
+  run("tbb, reduce 100'000", std::span{data}.first(100'000));
+  run("tbb, reduce 1'000'000", std::span{data}.first(1'000'000));
+  run("tbb, reduce 10'000'000", std::span{data}.first(10'000'000));
+  run("tbb, reduce 100'000'000", std::span{data}.first(100'000'000));
 
   return 0;
 }
