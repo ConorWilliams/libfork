@@ -17,31 +17,26 @@ auto fib(int n) -> int {
   return a + b;
 }
 
-auto serial_fib(int n) -> int {
-  if (n < 2) {
-    return n;
-  }
-
-  int a, b;
-
-  a = serial_fib(n - 1);
-  b = serial_fib(n - 2);
-
-  return a + b;
-}
-
-auto main() -> int {
-  benchmark("omp, fib", [](std::size_t n, auto&& bench) {
+void run(std::string name, int x) {
+  benchmark(name, [&](std::size_t n, auto&& bench) {
     int ans = 0;
 
-#pragma omp parallel num_threads(n)
+#pragma omp parallel num_threads(n) shared(ans, x)
 #pragma omp single nowait
     bench([&] {
-      ans = fib(25);
+      ans = fib(x);
     });
 
     return ans;
   });
+}
 
+auto main() -> int {
+  run("omp, fib 5", 5);
+  run("omp, fib 10", 10);
+  run("omp, fib 15", 15);
+  run("omp, fib 20", 20);
+  run("omp, fib 25", 25);
+  run("omp, fib 30", 30);
   return 0;
 }

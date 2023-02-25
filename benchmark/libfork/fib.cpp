@@ -20,19 +20,27 @@ auto fib(int n) -> basic_task<int, Context> {
   co_return *a + b;
 }
 
-auto main() -> int {
-  benchmark("libfork, fib", [](std::size_t n, auto&& bench) {
+void run(std::string name, int x) {
+  benchmark(name, [&](std::size_t n, auto&& bench) {
     // Set up
     auto pool = busy_pool{n};
 
     int ans = 0;
 
     bench([&] {
-      ans = pool.schedule(fib<busy_pool::context>(25));
+      ans = pool.schedule(fib<busy_pool::context>(x));
     });
 
     return ans;
   });
+}
 
+auto main() -> int {
+  run("libfork, fib 5", 5);
+  run("libfork, fib 10", 10);
+  run("libfork, fib 15", 15);
+  run("libfork, fib 20", 20);
+  run("libfork, fib 25", 25);
+  run("libfork, fib 30", 30);
   return 0;
 }

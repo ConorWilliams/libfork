@@ -16,40 +16,13 @@ else()
   message(WARNING "OpenMP not found; OpenMP benchmarks will not be built.")
 endif()
 
+find_package(TBB)
 
-
-# # ---- Dependencies ----
-
-# if(PROJECT_IS_TOP_LEVEL)
-#   find_package(libfork REQUIRED)
-# endif()
-
-# find_package(OpenMP REQUIRED)
-# find_package(TBB REQUIRED)
-
-# CPMAddPackage("gh:martinus/nanobench#v4.1.0")
-
-# # ---- Tests ----
-
-# add_executable(libforkBench 
-#   source/main.cpp 
-#   source/fib.cpp 
-#   source/reduce.cpp
-# )
-
-# target_link_libraries(libforkBench PRIVATE 
-#   libfork::libfork 
-#   nanobench 
-#   OpenMP::OpenMP_CXX 
-#   TBB::tbb
-# )
-
-# add_custom_target(benchmark
-#   COMMAND libforkBench
-#   DEPENDS libforkBench
-#   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-# )
-
+if(TBB_FOUND)
+  add_subdirectory(benchmark/tbb)
+else()
+  message(WARNING "TBB not found; TBB benchmarks will not be built.")
+endif()
 
 # ---- End-of-file commands ----
 
