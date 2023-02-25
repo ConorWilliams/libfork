@@ -33,11 +33,6 @@ auto dfs(size_t depth, size_t breadth, unsigned long* sum) -> basic_task<void, C
   }
 }
 
-template <context Context>
-auto test(size_t depth, size_t breadth, unsigned long* sum) -> basic_task<void, Context> {
-  co_await dfs<Context>(depth, breadth, sum);
-}
-
 void run(std::string name, size_t depth = 8, size_t breadth = 8) {
   benchmark(name, [&](std::size_t num_threads, auto&& bench) {
     // Set up
@@ -48,7 +43,7 @@ void run(std::string name, size_t depth = 8, size_t breadth = 8) {
     bench([&] {
       unsigned long tmp = 0;
 
-      pool.schedule(test<lf::busy_pool::context>(depth, breadth, &tmp));
+      pool.schedule(dfs<lf::busy_pool::context>(depth, breadth, &tmp));
 
       answer = tmp;
     });

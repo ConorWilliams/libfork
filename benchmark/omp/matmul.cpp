@@ -20,11 +20,7 @@
 
 #include "../bench.hpp"
 
-#include "libfork/schedule/busy_pool.hpp"
-#include "libfork/task.hpp"
-
 using namespace std;
-using namespace lf;
 
 using elem_t = float;
 
@@ -60,13 +56,12 @@ bool check(elem_t* A, elem_t* B, elem_t* C, size_t n) {
   return fabs(tr_AB - tr_C) < 1e-3;
 }
 
-template <context Context>
-auto matmul(elem_t* A, elem_t* B, elem_t* C, size_t m, size_t n, size_t p, size_t ld, bool add) -> basic_task<void, Context> {
+void matmul(elem_t* A, elem_t* B, elem_t* C, size_t m, size_t n, size_t p, size_t ld, bool add) {
   if ((m + n + p) <= 64) {
     if (add) {
       for (size_t i = 0; i < m; ++i) {
         for (size_t k = 0; k < p; ++k) {
-          double c = 0.0;
+          elem_t c = 0.0;
           for (size_t j = 0; j < n; ++j)
             c += A[i * ld + j] * B[j * ld + k];
           C[i * ld + k] += c;
@@ -75,40 +70,44 @@ auto matmul(elem_t* A, elem_t* B, elem_t* C, size_t m, size_t n, size_t p, size_
     } else {
       for (size_t i = 0; i < m; ++i) {
         for (size_t k = 0; k < p; ++k) {
-          double c = 0.0;
+          elem_t c = 0.0;
           for (size_t j = 0; j < n; ++j)
             c += A[i * ld + j] * B[j * ld + k];
           C[i * ld + k] = c;
         }
       }
     }
-    co_return;
+
+    return;
   }
 
   if (m >= n && n >= p) {
     size_t m1 = m >> 1;
+#pragma omp task shared(A, B, C)
+    matmul(A, B, C, m1, n, p, ld, add);
 
-    co_await matmul<Context>(A, B, C, m1, n, p, ld, add).fork();
-    co_await matmul<Context>(A + m1 * ld, B, C + m1 * ld, m - m1, n, p, ld, add);
-
+    matmul(A + m1 * ld, B, C + m1 * ld, m - m1, n, p, ld, add);
   } else if (n >= m && n >= p) {
     size_t n1 = n >> 1;
+#pragma omp task shared(A, B, C)
+    matmul(A, B, C, m, n1, p, ld, add);
 
-    co_await matmul<Context>(A, B, C, m, n1, p, ld, add).fork();
-    co_await matmul<Context>(A + n1, B + n1 * ld, C, m, n - n1, p, ld, true);
+    matmul(A + n1, B + n1 * ld, C, m, n - n1, p, ld, true);
   } else {
     size_t p1 = p >> 1;
+#pragma omp task shared(A, B, C)
+    matmul(A, B, C, m, n, p1, ld, add);
 
-    co_await matmul<Context>(A, B, C, m, n, p1, ld, add).fork();
-    co_await matmul<Context>(A, B + p1, C + p1, m, n, p - p1, ld, add);
+    matmul(A, B + p1, C + p1, m, n, p - p1, ld, add);
   }
 
-  co_await join();
+#pragma omp taskwait
 }
 
-template <context Context>
-auto test(elem_t* A, elem_t* B, elem_t* C, size_t n) -> basic_task<void, Context> {
-  co_await matmul<Context>(A, B, C, n, n, n, n, 0);
+void test(elem_t* A, elem_t* B, elem_t* C, size_t n) {
+#pragma omp task shared(A, B, C, n)
+  matmul(A, B, C, n, n, n, n, 0);
+#pragma omp taskwait
 }
 
 void run(std::string name, size_t n) {
@@ -124,10 +123,10 @@ void run(std::string name, size_t n) {
     fill(B, n);
     zero(C, n);
 
-    auto pool = busy_pool{num_threads};
-
+#pragma omp parallel num_threads(num_threads)
+#pragma omp single nowait
     bench([&] {
-      pool.schedule(test<busy_pool::context>(A, B, C, n));
+      test(A, B, C, n);
     });
 
     int res = check(A, B, C, n);
@@ -148,6 +147,5 @@ int main(int argc, char* argv[]) {
   run("libfork, matmul n=300", 300);
   run("libfork, matmul n=500", 500);
   run("libfork, matmul n=1000", 1000);
-
   return 0;
 }

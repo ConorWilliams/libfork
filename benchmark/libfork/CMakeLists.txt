@@ -16,20 +16,20 @@ CPMAddPackage("gh:martinus/nanobench#v4.1.0")
 
 # ---- Benchmarks ----
 
-add_executable(fib fib.cpp)
-target_link_libraries(fib PRIVATE libfork::libfork nanobench)
+add_executable(lf_fib.bench fib.cpp)
+target_link_libraries(lf_fib.bench PRIVATE libfork::libfork nanobench)
 
-add_executable(reduce reduce.cpp)
-target_link_libraries(reduce PRIVATE libfork::libfork nanobench)
+add_executable(lf_reduce.bench reduce.cpp)
+target_link_libraries(lf_reduce.bench PRIVATE libfork::libfork nanobench)
 
-add_executable(matmul matmul.cpp)
-target_link_libraries(matmul PRIVATE libfork::libfork nanobench)
+add_executable(lf_matmul.bench matmul.cpp)
+target_link_libraries(lf_matmul.bench PRIVATE libfork::libfork nanobench)
 
-add_executable(dfs dfs.cpp)
-target_link_libraries(dfs PRIVATE libfork::libfork nanobench)
+add_executable(lf_dfs.bench dfs.cpp)
+target_link_libraries(lf_dfs.bench PRIVATE libfork::libfork nanobench)
 
 # ---- End-of-file commands ----
 
-add_folders(bench_libfork)
+add_folders(benchmarks)
 
 

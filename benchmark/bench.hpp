@@ -19,6 +19,7 @@ auto benchmark(std::string name, F const& fun) -> void {
   bench.relative(true);
   bench.performanceCounters(true);
 
+  // bench.minEpochIterations(100);
   // bench.epochs(100);
   // bench.minEpochTime(std::chrono::milliseconds(100));
   // bench.minEpochTime(std::chrono::milliseconds(100));

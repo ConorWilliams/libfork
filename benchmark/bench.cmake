@@ -6,8 +6,15 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL Release)
   message(WARNING "CMAKE_BUILD_TYPE is set to '${CMAKE_BUILD_TYPE}'; 'Release' is recommended for benchmarking.")
 endif()
 
-
 add_subdirectory(benchmark/libfork)
+
+find_package(OpenMP)
+
+if(OpenMP_CXX_FOUND)
+  add_subdirectory(benchmark/omp)
+else()
+  message(WARNING "OpenMP not found; OpenMP benchmarks will not be built.")
+endif()
 
 
 

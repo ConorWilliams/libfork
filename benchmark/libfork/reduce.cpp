@@ -10,7 +10,7 @@
 using namespace lf;
 
 template <context Context>
-auto reduce(std::span<unsigned int const> x, std::size_t grain_size) -> basic_task<int, Context> {
+auto reduce(std::span<unsigned int const> x, std::size_t grain_size) -> basic_task<unsigned int, Context> {
   //
   if (x.size() <= grain_size) {
     co_return std::reduce(x.begin(), x.end());
