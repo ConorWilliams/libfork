@@ -3,10 +3,10 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="libfork/queue.hpp" href="queue.html" /><link rel="prev" title="Welcome to libfork v2.0.0-alpha" href="../index.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="schedule/" href="schedule.html" /><link rel="prev" title="Welcome to libfork v2.0.0" href="../index.html" />
 
     <link rel="shortcut icon" href="../_static/favicon.ico"/><!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 -->
-        <title>libfork/task.hpp - libfork documentation</title>
+        <title>task.hpp - libfork documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
@@ -161,10 +161,15 @@
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <p class="caption" role="heading"><span class="caption-text">Files</span></p>
 <ul class="current">
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">libfork/task.hpp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="queue.html">libfork/queue.hpp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="unique_handle.html">libfork/unique_handle.hpp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="utility.html">libfork/utility.hpp</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">task.hpp</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="schedule.html">schedule/</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="immediate.html">immediate.hpp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="busy_pool.html">busy_pool.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="queue.html">queue.hpp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="unique_handle.html">unique_handle.hpp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utility.html">utility.hpp</a></li>
 </ul>
 
 </div>
@@ -207,8 +212,8 @@
           </label>
         </div>
         <article role="main">
-          <section id="libfork-task-hpp">
-<h1>libfork/task.hpp<a class="headerlink" href="#libfork-task-hpp" title="Permalink to this heading">#</a></h1>
+          <section id="task-hpp">
+<h1>task.hpp<a class="headerlink" href="#task-hpp" title="Permalink to this heading">#</a></h1>
 <p>The task class and associated utilities. </p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
@@ -466,6 +471,14 @@
 <dd><p>Produce a tag type which when co_awaited will join the current tasks fork-join group. </p>
 </dd></dl>
 
+<hr class="docutils" />
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf11get_contextEv">
+<span id="_CPPv3N2lf11get_contextEv"></span><span id="_CPPv2N2lf11get_contextEv"></span><span id="lf::get_contextCE"></span><span class="target" id="task_8hpp_1a831507b26d4d2774384aba8ba3953ce4"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">get_context</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">get_context_t</span></span><a class="headerlink" href="#_CPPv4N2lf11get_contextEv" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Produce a tag type which when co_awaited returns a pointer to the current tasks execution context. </p>
+</dd></dl>
+
+<hr class="docutils" />
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4I000EN2lf7as_rootE10basic_taskI1T7Context9AllocatorXL1EEERR10basic_taskI1T7Context9AllocatorXL0EEE">
 <span id="_CPPv3I000EN2lf7as_rootERR10basic_taskI1T7Context9AllocatorXL0EEE"></span><span id="_CPPv2I000EN2lf7as_rootERR10basic_taskI1T7Context9AllocatorXfalseEE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Context</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Allocator</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="task_8hpp_1a5bca996e90a6308f4c6559452ca32bed"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">as_root</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0_7context0_bEN2lf10basic_taskE" title="lf::basic_task"><span class="n"><span class="pre">basic_task</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I000EN2lf7as_rootE10basic_taskI1T7Context9AllocatorXL1EEERR10basic_taskI1T7Context9AllocatorXL0EEE" title="lf::as_root::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I000EN2lf7as_rootE10basic_taskI1T7Context9AllocatorXL1EEERR10basic_taskI1T7Context9AllocatorXL0EEE" title="lf::as_root::Context"><span class="n"><span class="pre">Context</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I000EN2lf7as_rootE10basic_taskI1T7Context9AllocatorXL1EEERR10basic_taskI1T7Context9AllocatorXL0EEE" title="lf::as_root::Allocator"><span class="n"><span class="pre">Allocator</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">false</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">task</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0_7context0_bEN2lf10basic_taskE" title="lf::basic_task"><span class="n"><span class="pre">basic_task</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I000EN2lf7as_rootE10basic_taskI1T7Context9AllocatorXL1EEERR10basic_taskI1T7Context9AllocatorXL0EEE" title="lf::as_root::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I000EN2lf7as_rootE10basic_taskI1T7Context9AllocatorXL1EEERR10basic_taskI1T7Context9AllocatorXL0EEE" title="lf::as_root::Context"><span class="n"><span class="pre">Context</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I000EN2lf7as_rootE10basic_taskI1T7Context9AllocatorXL1EEERR10basic_taskI1T7Context9AllocatorXL0EEE" title="lf::as_root::Allocator"><span class="n"><span class="pre">Allocator</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">true</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4I000EN2lf7as_rootE10basic_taskI1T7Context9AllocatorXL1EEERR10basic_taskI1T7Context9AllocatorXL0EEE" title="Permalink to this definition">#</a><br /></dt>
@@ -486,12 +499,12 @@
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="queue.html">
+          <a class="next-page" href="schedule.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">libfork/queue.hpp</div>
+                <div class="title">schedule/</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -543,7 +556,7 @@
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">libfork/task.hpp</a><ul>
+<li><a class="reference internal" href="#">task.hpp</a><ul>
 <li><a class="reference internal" href="#tasks">Tasks</a></li>
 <li><a class="reference internal" href="#futures">Futures</a></li>
 <li><a class="reference internal" href="#handles">Handles</a></li>

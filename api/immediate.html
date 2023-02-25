@@ -3,10 +3,10 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="prev" title="unique_handle.hpp" href="unique_handle.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="busy_pool.hpp" href="busy_pool.html" /><link rel="prev" title="schedule/" href="schedule.html" />
 
     <link rel="shortcut icon" href="../_static/favicon.ico"/><!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 -->
-        <title>utility.hpp - libfork documentation</title>
+        <title>immediate.hpp - libfork documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
@@ -136,7 +136,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
         <div class="visually-hidden">Toggle table of contents sidebar</div>
         <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
       </label>
@@ -162,14 +162,14 @@
   <p class="caption" role="heading"><span class="caption-text">Files</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="task.html">task.hpp</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="schedule.html">schedule/</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="immediate.html">immediate.hpp</a></li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="schedule.html">schedule/</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">immediate.hpp</a></li>
 <li class="toctree-l2"><a class="reference internal" href="busy_pool.html">busy_pool.hpp</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="queue.html">queue.hpp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="unique_handle.html">unique_handle.hpp</a></li>
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">utility.hpp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utility.html">utility.hpp</a></li>
 </ul>
 
 </div>
@@ -190,7 +190,7 @@
         </a>
         <div class="content-icon-container">
           <div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/ConorWilliams/libfork/edit/main/docs/api/utility.rst" title="Edit this page">
+  <a class="muted-link" href="https://github.com/ConorWilliams/libfork/edit/main/docs/api/immediate.rst" title="Edit this page">
     <svg aria-hidden="true" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
       <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
       <path d="M4 20h4l10.5 -10.5a1.5 1.5 0 0 0 -4 -4l-10.5 10.5v4" />
@@ -206,52 +206,59 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
             <div class="visually-hidden">Toggle table of contents sidebar</div>
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
         <article role="main">
-          <section id="utility-hpp">
-<h1>utility.hpp<a class="headerlink" href="#utility-hpp" title="Permalink to this heading">#</a></h1>
-<p>A small collection of utility functions and macros. </p>
-<section id="macros">
-<h2>Macros<a class="headerlink" href="#macros" title="Permalink to this heading">#</a></h2>
-<dl class="cpp macro">
-<dt class="sig sig-object cpp" id="c.ASSERT">
-<span class="target" id="utility_8hpp_1ad5eb1a9f19971b6e492a33d6ed717b1a"></span><span class="sig-name descname"><span class="n"><span class="pre">ASSERT</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">expr</span></span>, <span class="n"><span class="pre">message</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.ASSERT" title="Permalink to this definition">#</a><br /></dt>
-<dd><p>Assert an expression is true and <code class="docutils literal notranslate"><span class="pre">std::terminate()</span></code> if not, a no-op if <code class="docutils literal notranslate"><span class="pre">NDEBUG</span></code> is defined. </p>
+          <section id="immediate-hpp">
+<h1>immediate.hpp<a class="headerlink" href="#immediate-hpp" title="Permalink to this heading">#</a></h1>
+<p>An execution context that runs tasks inline. </p>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf9immediateE">
+<span id="_CPPv3N2lf9immediateE"></span><span id="_CPPv2N2lf9immediateE"></span><span id="lf::immediate"></span><span class="target" id="classlf_1_1immediate"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">immediate</span></span></span><a class="headerlink" href="#_CPPv4N2lf9immediateE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>An scheduler that runs tasks inline. </p>
+<p>This is useful for debugging and testing. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK2lf9immediate5emptyEv">
+<span id="_CPPv3NK2lf9immediate5emptyEv"></span><span id="_CPPv2NK2lf9immediate5emptyEv"></span><span id="lf::immediate::emptyC"></span><span class="target" id="classlf_1_1immediate_1a6013bdecc3c811eaadcd47241f97ae12"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">empty</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><a class="headerlink" href="#_CPPv4NK2lf9immediate5emptyEv" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Check if the execution stack is empty. </p>
+<p>This should always be the case for the immediate scheduler. </p>
 </dd></dl>
 
-<dl class="cpp macro">
-<dt class="sig sig-object cpp" id="c.ASSUME">
-<span class="target" id="utility_8hpp_1a742f604ff3e4bce13794414eeaaaee50"></span><span class="sig-name descname"><span class="n"><span class="pre">ASSUME</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">expr</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.ASSUME" title="Permalink to this definition">#</a><br /></dt>
-<dd><p>A wrapper for C++23’s <code class="docutils literal notranslate"><span class="pre">[[assume(expr)]]</span></code> attribute. </p>
-<p>Reverts to compiler specific implementations if the attribute is not available.</p>
-<p><p></p>
- </p>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>Using some intrinsics (i.e. GCC’s <code class="docutils literal notranslate"><span class="pre">__builtin_unreachable()</span></code>) this has different semantics
-than <code class="docutils literal notranslate"><span class="pre">[[assume(expr)]]</span></code> as it WILL evaluate the exprssion at runtime. Hence you should
-conservativly only use this macro if <code class="docutils literal notranslate"><span class="pre">expr</span></code> is side-effect free and cheap to evaluate.</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4I00_bEN2lf9immediate8scheduleE1TRR10basic_taskI1T7context9Allocator4RootE">
+<span id="_CPPv3I00_bEN2lf9immediate8scheduleERR10basic_taskI1T7context9Allocator4RootE"></span><span id="_CPPv2I00_bEN2lf9immediate8scheduleERR10basic_taskI1T7context9Allocator4RootE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Allocator</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Root</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classlf_1_1immediate_1a6996a096c7080fcf327c61217c3e5af7"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">schedule</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="task.html#_CPPv4I0_7context0_bEN2lf10basic_taskE" title="lf::basic_task"><span class="n"><span class="pre">basic_task</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I00_bEN2lf9immediate8scheduleE1TRR10basic_taskI1T7context9Allocator4RootE" title="lf::immediate::schedule::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N2lf9immediate7contextE" title="lf::immediate::context"><span class="n"><span class="pre">context</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I00_bEN2lf9immediate8scheduleE1TRR10basic_taskI1T7context9Allocator4RootE" title="lf::immediate::schedule::Allocator"><span class="n"><span class="pre">Allocator</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I00_bEN2lf9immediate8scheduleE1TRR10basic_taskI1T7context9Allocator4RootE" title="lf::immediate::schedule::Root"><span class="n"><span class="pre">Root</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">task</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I00_bEN2lf9immediate8scheduleE1TRR10basic_taskI1T7context9Allocator4RootE" title="lf::immediate::schedule::T"><span class="n"><span class="pre">T</span></span></a><a class="headerlink" href="#_CPPv4I00_bEN2lf9immediate8scheduleE1TRR10basic_taskI1T7context9Allocator4RootE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Run a task to completion. </p>
+</dd></dl>
+
+</div>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf9immediate7contextE">
+<span id="_CPPv3N2lf9immediate7contextE"></span><span id="_CPPv2N2lf9immediate7contextE"></span><span id="lf::immediate::context"></span><span class="target" id="classlf_1_1immediate_1_1context"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">context</span></span></span><a class="headerlink" href="#_CPPv4N2lf9immediate7contextE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>The context type for the the immediate scheduler. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf9immediate7context3popEv">
+<span id="_CPPv3N2lf9immediate7context3popEv"></span><span id="_CPPv2N2lf9immediate7context3popEv"></span><span id="lf::immediate::context::pop"></span><span class="target" id="classlf_1_1immediate_1_1context_1a68ddeeaff14b4c0f9fe0e48a735e267d"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">pop</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">optional</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="task.html#_CPPv4I0EN2lf11work_handleE" title="lf::work_handle"><span class="n"><span class="pre">work_handle</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4N2lf9immediate7contextE" title="lf::immediate::context"><span class="n"><span class="pre">context</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N2lf9immediate7context3popEv" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Pop a task from the context’s stack. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf9immediate7context4pushE11work_handleI7contextE">
+<span id="_CPPv3N2lf9immediate7context4pushE11work_handleI7contextE"></span><span id="_CPPv2N2lf9immediate7context4pushE11work_handleI7contextE"></span><span id="lf::immediate::context::push__work_handle:context:"></span><span class="target" id="classlf_1_1immediate_1_1context_1a6168d9d10a3ca1509787bdd8dc3c3a17"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">push</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="task.html#_CPPv4I0EN2lf11work_handleE" title="lf::work_handle"><span class="n"><span class="pre">work_handle</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4N2lf9immediate7contextE" title="lf::immediate::context"><span class="n"><span class="pre">context</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">task</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><a class="headerlink" href="#_CPPv4N2lf9immediate7context4pushE11work_handleI7contextE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Push a task to the context’s stack. </p>
+</dd></dl>
+
 </div>
 </dd></dl>
 
-<dl class="cpp macro">
-<dt class="sig sig-object cpp" id="c.ASSERT_ASSUME">
-<span class="target" id="utility_8hpp_1ae5810561044b8898aed65e7031593589"></span><span class="sig-name descname"><span class="n"><span class="pre">ASSERT_ASSUME</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">expr</span></span>, <span class="n"><span class="pre">message</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.ASSERT_ASSUME" title="Permalink to this definition">#</a><br /></dt>
-<dd><p><code class="docutils literal notranslate"><a class="reference internal" href="#utility_8hpp_1a742f604ff3e4bce13794414eeaaaee50"><span class="std std-ref"><span class="pre">ASSUME()</span></span></a></code><code class="docutils literal notranslate"><span class="pre">if</span></code><code class="docutils literal notranslate"><span class="pre">NDEBUG</span></code><code class="docutils literal notranslate"><span class="pre">is</span> <span class="pre">defined,</span> <span class="pre">otherwise</span></code><code class="docutils literal notranslate"><a class="reference internal" href="#utility_8hpp_1ad5eb1a9f19971b6e492a33d6ed717b1a"><span class="std std-ref"><span class="pre">ASSERT()</span></span></a></code>`. </p>
-<p>Only use if <code class="docutils literal notranslate"><span class="pre">expr</span></code> is side-effect free and cheap to evaluate as it MAY be evaluated at runtime. </p>
 </dd></dl>
 
-<dl class="cpp macro">
-<dt class="sig sig-object cpp" id="c.DEBUG_TRACKER">
-<span class="target" id="utility_8hpp_1a99fb244b49d531d884de5b22344316bb"></span><span class="sig-name descname"><span class="n"><span class="pre">DEBUG_TRACKER</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">message</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.DEBUG_TRACKER" title="Permalink to this definition">#</a><br /></dt>
-<dd><p>Log a message to <code class="docutils literal notranslate"><span class="pre">std::clog</span></code>, a no-op if <code class="docutils literal notranslate"><span class="pre">FORK_NO_LOGGING</span></code> or <code class="docutils literal notranslate"><span class="pre">NDEBUG</span></code> is defined. </p>
-</dd></dl>
-
-</section>
 </section>
 
         </article>
@@ -259,15 +266,23 @@ conservativly only use this macro if <code class="docutils literal notranslate">
       <footer>
         
         <div class="related-pages">
-          
-          <a class="prev-page" href="unique_handle.html">
+          <a class="next-page" href="busy_pool.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">busy_pool.hpp</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="schedule.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">unique_handle.hpp</div>
+                <div class="title">schedule/</div>
                 
               </div>
             </a>
@@ -296,27 +311,8 @@ conservativly only use this macro if <code class="docutils literal notranslate">
         
       </footer>
     </div>
-    <aside class="toc-drawer">
+    <aside class="toc-drawer no-toc">
       
-      
-      <div class="toc-sticky toc-scroll">
-        <div class="toc-title-container">
-          <span class="toc-title">
-            On this page
-          </span>
-        </div>
-        <div class="toc-tree-container">
-          <div class="toc-tree">
-            <ul>
-<li><a class="reference internal" href="#">utility.hpp</a><ul>
-<li><a class="reference internal" href="#macros">Macros</a></li>
-</ul>
-</li>
-</ul>
-
-          </div>
-        </div>
-      </div>
       
       
     </aside>

@@ -1,4 +1,4 @@
-libfork/queue.hpp
+queue.hpp
 =====================
 
 .. doxygenfile:: queue.hpp

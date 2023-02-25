@@ -1,4 +1,4 @@
-libfork/unique_handle.hpp
+unique_handle.hpp
 =========================
 
 .. doxygenfile:: unique_handle.hpp
