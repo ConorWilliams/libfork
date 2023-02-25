@@ -23,6 +23,12 @@
 #include "libfork/task.hpp"
 #include "libfork/utility.hpp"
 
+/**
+ * @file busy_pool.hpp
+ *
+ * @brief A traditional work-stealing scheduler.
+ */
+
 namespace lf {
 
 /**
@@ -39,9 +45,6 @@ class busy_pool {
    */
   class context : private queue<work_handle<context>> {
    public:
-    // using queue<work_handle<context>>::push;
-    // using queue<work_handle<context>>::pop;
-
     /**
      * @brief Push a task onto the queue.
      */
@@ -76,11 +79,6 @@ class busy_pool {
   auto operator=(busy_pool&&) -> busy_pool& = delete;
 
   static_assert(::lf::context<context>);
-
-  /**
-   * @brief The number of steals attempted before worker polls its stop condition.
-   */
-  static constexpr std::size_t steal_attempts = 1024;
 
   /**
    * @brief Construct a new busy_pool object.
@@ -181,6 +179,8 @@ class busy_pool {
   }
 
  private:
+  static constexpr std::size_t k_steal_attempts = 1024;
+
   std::atomic_flag m_root_task_in_flight = ATOMIC_FLAG_INIT;
   std::vector<context> m_contexts;
   std::vector<std::jthread> m_workers;  // After m_context so threads are destroyed before the queues.
@@ -197,7 +197,7 @@ class busy_pool {
     while (!cond()) {
       std::size_t attempt = 0;
 
-      while (attempt < steal_attempts) {
+      while (attempt < k_steal_attempts) {
         if (std::size_t const steal_at = dist(my_context.m_rng); steal_at != uid) {
           if (auto work = m_contexts[steal_at].steal()) {
             attempt = 0;

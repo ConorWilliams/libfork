@@ -1,4 +1,4 @@
-libfork/task.hpp
+task.hpp
 =====================
 
 
@@ -40,6 +40,12 @@ Functions
 ----------------------
 
 .. doxygenfunction:: lf::join
+
+-------------------------------------
+
+.. doxygenfunction:: lf::get_context
+
+-------------------------------------
 
 .. doxygenfunction:: lf::as_root(basic_task<T, Context, Allocator, false> &&task)
 

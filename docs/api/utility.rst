@@ -1,4 +1,4 @@
-libfork/utility.hpp
+utility.hpp
 =====================
 
 .. doxygenfile:: utility.hpp

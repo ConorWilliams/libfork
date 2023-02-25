@@ -3,20 +3,30 @@
 
 # Welcome to libfork (🍴) [![Continuous Integration](https://github.com/ConorWilliams/libfork/actions/workflows/ci.yml/badge.svg)](https://github.com/ConorWilliams/libfork/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/ConorWilliams/libfork/branch/main/graph/badge.svg?token=89MTSXI85F)](https://codecov.io/gh/ConorWilliams/libfork)
 
-Libfork is primarily an abstraction for lock-free, wait-free, continuation-stealing [fork-join parallelism](https://en.wikipedia.org/wiki/Fork%E2%80%93join_model). This is made possible without the use of any macros/inline assembly using C++20's coroutines. Libfork presents an API that decouples scheduling tasks (a customization point) from writing tasks and expressing their dependencies. Secondarily, libfork provides a performant work-stealing scheduler for general use.
+Libfork is primarily an abstraction for strict, lock-free, wait-free, continuation-stealing [fork-join parallelism](https://en.wikipedia.org/wiki/Fork%E2%80%93join_model). This is made possible without the use of any macros/inline assembly using C++20's coroutines. 
 
-# Building and installing
+Libfork presents an API that decouples scheduling tasks (a customization point) from writing tasks and expressing their dependencies. Additionally, libfork provides performant work-stealing schedulers for general use.
+
+
+## Building and installing
 
 See the [BUILDING](BUILDING.md) document.
 
-# Tasking
+## Benchmarks
+
+See the benchmark's [README](benchmark/README.md).
+
+## Contributing
+
+See the [HACKING](HACKING.md) document.
+
+## Tasks and futures
 
 The tasking fork-join interface is designed to mirror Cilk and other fork-join frameworks. With libfork the canonical recursive-Fibonacci is a simple as:
 
 ```c++
 /// Compute the n'th fibonacci number
-template<typename Context>
-auto fib(int n) -> basic_task<int, Context> { 
+auto fib(int n) -> basic_task<int, lf::busy_pool> { 
 
   if (n < 2) {
     co_return n;
@@ -27,35 +37,28 @@ auto fib(int n) -> basic_task<int, Context> {
 
   co_await lf::join();                 // Wait for children.
 
-  co_return *a + b;                    // Use * to deference a future.
+  co_return *a + b;                    // Use * to dereference a future.
 }
 ```
-
-Which can be launched on a scheduler of your choice (such as libfork's ``busy_pool``):
-
+which can be launched on a scheduler of your choice (such as libfork's ``busy_pool``):
 ```c++
-lf::busy_pool pool;
+lf::busy_pool pool(num_threads);
 
 int fib_10 = pool.schedule(fib(10));
 ```
+Above ``lf::busy_pool`` is a scheduler, see below for a description.
 
-Task
+Note:
+- Tasks **must** join **before** returning or dereferencing a future.
+- Futures that have not joined cannot be passed to children.
 
-# Scheduling
+## Schedulers
 
-# Benchmarks
-
-See the benchmark [README](benchmark/README.md).
-
-# API reference
+## API reference
 
 See the [API documentation](https://conorwilliams.github.io/libfork/) document.
 
-# Contributing
-
-See the [HACKING](HACKING.md) document.
-
-# Reference
+## Reference
 
 This project implements many of the ideas from (available in [`reference/`](reference)):
 

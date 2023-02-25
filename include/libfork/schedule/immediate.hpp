@@ -14,16 +14,19 @@
 
 #include "libfork/task.hpp"
 #include "libfork/utility.hpp"
+
 /**
  * @file immediate.hpp
  *
- * @brief An execution context that runs tasks inline..
+ * @brief An execution context that runs tasks inline.
  */
 
 namespace lf {
 
 /**
- * @brief An scheduler context that runs tasks inline.
+ * @brief An scheduler that runs tasks inline.
+ *
+ * This is usefull for debugging and testing.
  */
 class immediate {
  public:
@@ -74,7 +77,9 @@ class immediate {
   }
 
   /**
-   * @brief Check if the context's stack is empty.
+   * @brief Check if the exection stack is empty.
+   *
+   * This should always be the case for the immediate scheduler.
    */
   [[nodiscard]] auto empty() const noexcept -> bool { return m_context.m_tasks.empty(); }
 
