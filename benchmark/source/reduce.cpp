@@ -17,23 +17,6 @@
 
 namespace {
 
-template <lf::context Context = lf::busy_pool::context>
-auto libfork_r(std::span<int> x, std::size_t block) -> lf::basic_task<int, Context> {
-  if (x.size() <= block) {
-    co_return std::reduce(x.begin(), x.end());
-  }
-
-  auto h = x.size() / 2;
-  auto t = x.size() - h;
-
-  auto a = co_await libfork_r<Context>(x.first(h), block).fork();
-  auto b = co_await libfork_r<Context>(x.last(h), block);
-
-  co_await lf::join();
-
-  co_return *a + b;
-}
-
 auto omp_r(std::span<int> x, std::size_t block) -> int {
   if (x.size() <= block) {
     return std::reduce(x.begin(), x.end());

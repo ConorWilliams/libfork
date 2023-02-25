@@ -11,16 +11,12 @@ See the [BUILDING](BUILDING.md) document.
 
 # Tasking
 
-The tasking fork-join interface is designed to mirror Cilk.
+The tasking fork-join interface is designed to mirror Cilk and other fork-join frameworks. With libfork the canonical recursive-Fibonacci is a simple as:
 
 ```c++
-
-template <typename T>
-using task = lf::basic_task<int, busy_pool::context>
-
-
 /// Compute the n'th fibonacci number
-auto fib(int n) -> task<int> { 
+template<typename Context>
+auto fib(int n) -> basic_task<int, Context> { 
 
   if (n < 2) {
     co_return n;
@@ -31,9 +27,19 @@ auto fib(int n) -> task<int> {
 
   co_await lf::join();                 // Wait for children.
 
-  co_return *a + b;                    // Use * to deference future
+  co_return *a + b;                    // Use * to deference a future.
 }
 ```
+
+Which can be launched on a scheduler of your choice (such as libfork's ``busy_pool``):
+
+```c++
+lf::busy_pool pool;
+
+int fib_10 = pool.schedule(fib(10));
+```
+
+Task
 
 # Scheduling
 

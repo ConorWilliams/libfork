@@ -8,7 +8,7 @@ endif()
 
 option(BUILD_BENCHMARKS "Build benchmarks using nanobench" OFF)
 if(BUILD_BENCHMARKS)
-  add_subdirectory(benchmark)
+  include(benchmark/bench.cmake)
 endif()
 
 option(BUILD_DOCS "Build documentation using Doxygen and Sphinx" OFF)

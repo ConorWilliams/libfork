@@ -131,6 +131,8 @@ static task<int> fib_task(int n) {
     co_return n;
   }
 
+  co_await get_context();
+
   auto a = co_await fib_task(n - 1).fork();
   auto b = co_await fib_task(n - 2);
 

@@ -68,17 +68,18 @@ using root_handle = task_handle<Context, true>;
  *
  * .. code::
  *
- *   concept context = requires(Context context, work_handle<Context> task) {
+ *   template <typename T>
+ *   concept context = requires(T context, work_handle<T> task) {
  *       { context.push(task) } -> std::same_as<void>;
- *       { context.pop() } -> std::convertible_to<std::optional<work_handle<Context>>>;
+ *       { context.pop() } -> std::convertible_to<std::optional<work_handle<T>>>;
  *   }
  *
  * \endrst
  */
-template <typename Context>
-concept context = requires(Context context, work_handle<Context> task) {
+template <typename T>
+concept context = requires(T context, work_handle<T> task) {
                     { context.push(task) } -> std::same_as<void>;
-                    { context.pop() } -> std::convertible_to<std::optional<work_handle<Context>>>;
+                    { context.pop() } -> std::convertible_to<std::optional<work_handle<T>>>;
                   };
 
 template <typename T, context Context, typename Allocator = std::allocator<std::byte>, bool Root = false>
@@ -445,13 +446,11 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, waiter<Root
     return final_awaitable{};
   }
 
-  template <typename U, typename Alloc>
   [[nodiscard]] constexpr auto await_transform(get_context_t) noexcept {  // NOLINT
     //
     struct awaitable : std::suspend_never {
       [[nodiscard]] constexpr auto await_resume() noexcept -> Context const* { return m_context; }
 
-     private:
       Context const* m_context;
     };
 
