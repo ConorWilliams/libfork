@@ -25,7 +25,7 @@
 
 using namespace std;
 
-using elem_t = float;
+using elem_t = double;
 
 inline auto xorshift_rand() -> uint32_t {
   static uint32_t x = 2463534242;
@@ -48,8 +48,8 @@ void fill(elem_t* A, size_t n) {
 }
 
 bool check(elem_t* A, elem_t* B, elem_t* C, size_t n) {
-  double tr_C = 0;
-  double tr_AB = 0;
+  elem_t tr_C = 0;
+  elem_t tr_AB = 0;
   for (size_t i = 0; i < n; ++i) {
     for (size_t j = 0; j < n; ++j)
       tr_AB += A[i * n + j] * B[j * n + i];

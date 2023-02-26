@@ -26,7 +26,7 @@
 using namespace std;
 using namespace lf;
 
-using elem_t = float;
+using elem_t = double;
 
 inline auto xorshift_rand() -> uint32_t {
   static uint32_t x = 2463534242;
