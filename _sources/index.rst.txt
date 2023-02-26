@@ -8,8 +8,9 @@ This is libfork's API documentation, for info on building and installing please 
 
    api/task.rst
    api/schedule.rst
-   api/queue.rst
    api/unique_handle.rst
+   api/queue.rst
+   api/event_count.rst
    api/utility.rst
    
 
