@@ -7,16 +7,19 @@ if(BUILD_TESTING)
 endif()
 
 option(BUILD_BENCHMARKS "Build benchmarks using nanobench" OFF)
+
 if(BUILD_BENCHMARKS)
   include(benchmark/bench.cmake)
 endif()
 
 option(BUILD_DOCS "Build documentation using Doxygen and Sphinx" OFF)
+
 if(BUILD_DOCS)
   add_subdirectory(docs)
 endif()
 
 option(ENABLE_COVERAGE "Enable coverage support separate from CTest's" OFF)
+
 if(ENABLE_COVERAGE)
   include(cmake/coverage.cmake)
 endif()

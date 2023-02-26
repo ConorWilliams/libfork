@@ -22,7 +22,6 @@ set(
 )
 
 # ---- Coverage target ----
-
 add_custom_target(
     coverage
     COMMAND ${COVERAGE_TRACE_COMMAND}

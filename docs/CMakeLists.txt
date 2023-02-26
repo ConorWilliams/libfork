@@ -36,13 +36,13 @@ file(GLOB_RECURSE FORK_HEADERS CONFIGURE_DEPENDS "${DOXYGEN_INPUT_DIR}/*.hpp")
 
 # Only regenerate Doxygen when the Doxyfile or public headers change
 add_custom_command(
-    OUTPUT ${DOXYGEN_INDEX_FILE}
-    DEPENDS ${FORK_HEADERS}
-    COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYFILE_OUT}
-    MAIN_DEPENDENCY ${DOXYFILE_OUT}
-    ${DOXYFILE_IN}
-    COMMENT "Generating doxygen XML"
-    VERBATIM
+  OUTPUT ${DOXYGEN_INDEX_FILE}
+  DEPENDS ${FORK_HEADERS}
+  COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYFILE_OUT}
+  MAIN_DEPENDENCY ${DOXYFILE_OUT}
+  ${DOXYFILE_IN}
+  COMMENT "Generating doxygen XML"
+  VERBATIM
 )
 
 # Nice named target so we can run the job easily
@@ -57,19 +57,17 @@ file(GLOB_RECURSE FORK_RSTS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.rst
 # Only regenerate Sphinx when: - Doxygen has rerun - Our doc files have been updated - The Sphinx
 # config has been updated
 add_custom_command(
-    OUTPUT ${SPHINX_INDEX_FILE}
-    COMMAND ${SPHINX_EXECUTABLE} -b html -Dbreathe_projects.libfork=${DOXYGEN_OUTPUT_DIR}/xml
-    ${SPHINX_SOURCE} ${SPHINX_BUILD}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    DEPENDS ${FORK_RSTS} ${DOXYGEN_INDEX_FILE}
-    MAIN_DEPENDENCY ${SPHINX_SOURCE}/conf.py
-    COMMENT "Generating documentation with Sphinx"
+  OUTPUT ${SPHINX_INDEX_FILE}
+  COMMAND ${SPHINX_EXECUTABLE} -b html -Dbreathe_projects.libfork=${DOXYGEN_OUTPUT_DIR}/xml
+  ${SPHINX_SOURCE} ${SPHINX_BUILD}
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  DEPENDS ${FORK_RSTS} ${DOXYGEN_INDEX_FILE}
+  MAIN_DEPENDENCY ${SPHINX_SOURCE}/conf.py
+  COMMENT "Generating documentation with Sphinx"
 )
 
 # Nice named target so we can run the job easily
 add_custom_target(docs ALL DEPENDS ${SPHINX_INDEX_FILE})
 
 # ---- End-of-file commands ----
-
 add_folders(Docs)
-

@@ -15,13 +15,15 @@ endif()
 # This is to provide a user experience similar to find_package when
 # add_subdirectory or FetchContent is used to consume this project
 set(warning_guard "")
+
 if(NOT PROJECT_IS_TOP_LEVEL)
   option(
-      libfork_INCLUDES_WITH_SYSTEM
-      "Use SYSTEM modifier for libfork's includes, disabling warnings"
-      ON
+    libfork_INCLUDES_WITH_SYSTEM
+    "Use SYSTEM modifier for libfork's includes, disabling warnings"
+    ON
   )
   mark_as_advanced(libfork_INCLUDES_WITH_SYSTEM)
+
   if(libfork_INCLUDES_WITH_SYSTEM)
     set(warning_guard SYSTEM)
   endif()
