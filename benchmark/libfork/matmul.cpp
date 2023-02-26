@@ -49,8 +49,8 @@ void fill(elem_t* A, size_t n) {
 }
 
 bool check(elem_t* A, elem_t* B, elem_t* C, size_t n) {
-  double tr_C = 0;
-  double tr_AB = 0;
+  elem_t tr_C = 0;
+  elem_t tr_AB = 0;
   for (size_t i = 0; i < n; ++i) {
     for (size_t j = 0; j < n; ++j)
       tr_AB += A[i * n + j] * B[j * n + i];
@@ -66,7 +66,7 @@ auto matmul(elem_t* A, elem_t* B, elem_t* C, size_t m, size_t n, size_t p, size_
     if (add) {
       for (size_t i = 0; i < m; ++i) {
         for (size_t k = 0; k < p; ++k) {
-          double c = 0.0;
+          elem_t c = 0.0;
           for (size_t j = 0; j < n; ++j)
             c += A[i * ld + j] * B[j * ld + k];
           C[i * ld + k] += c;
@@ -75,7 +75,7 @@ auto matmul(elem_t* A, elem_t* B, elem_t* C, size_t m, size_t n, size_t p, size_
     } else {
       for (size_t i = 0; i < m; ++i) {
         for (size_t k = 0; k < p; ++k) {
-          double c = 0.0;
+          elem_t c = 0.0;
           for (size_t j = 0; j < n; ++j)
             c += A[i * ld + j] * B[j * ld + k];
           C[i * ld + k] = c;
