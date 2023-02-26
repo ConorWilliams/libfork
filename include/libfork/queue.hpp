@@ -18,7 +18,7 @@
 #include <utility>
 #include <vector>
 
-#include "libfork/utility.hpp"
+#include "libfork/utility.hpp"  // Only for ASSERT macro + hardware_destructive_interference_size
 
 /**
  * @file queue.hpp
@@ -110,15 +110,6 @@ struct ring_buf {
   std::unique_ptr<std::atomic<T>[]> m_buf = std::make_unique<std::atomic<T>[]>(static_cast<std::size_t>(m_cap));
 #endif
 };
-
-/**
- * @brief The cache line size of the current architecture.
- */
-#ifdef __cpp_lib_hardware_interference_size
-inline constexpr std::size_t k_cache_line = std::hardware_destructive_interference_size;
-#else
-inline constexpr std::size_t k_cache_line = 64;
-#endif
 
 }  // namespace detail
 
