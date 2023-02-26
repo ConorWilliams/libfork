@@ -45,29 +45,13 @@ class busy_pool {
    */
   class context : private queue<work_handle<context>> {
    public:
-    /**
-     * @brief Push a task onto the queue.
-     */
-    auto push(work_handle<context> task) -> void {
-      ASSERT(m_id == std::this_thread::get_id(), "push accessed from wrong thread");
-      queue<work_handle<context>>::push(task);
-    }
-    /**
-     * @brief Pop a task from the queue.
-     */
-    auto pop() -> std::optional<work_handle<context>> {
-      ASSERT(m_id == std::this_thread::get_id(), "pop accessed from wrong thread");
-      return queue<work_handle<context>>::pop();
-    }
+    using queue<work_handle<context>>::push;
+    using queue<work_handle<context>>::pop;
 
    private:
     friend class busy_pool;
 
     detail::xoshiro m_rng;
-
-#ifndef NDEBUG
-    std::thread::id m_id;
-#endif
   };
 
   busy_pool(busy_pool const&) = delete;
@@ -97,10 +81,6 @@ class busy_pool {
     // Start the worker threads, note there are n-1 workers, indexed 1...n - 1.
     for (std::size_t i = 1; i < n; ++i) {
       m_workers.emplace_back([this, i, n](std::stop_token token) {  // NOLINT
-//
-#ifndef NDEBUG
-        this->m_contexts[i].m_id = std::this_thread::get_id();
-#endif
         for (;;) {
           // Wait for a root task to be submitted.
           DEBUG_TRACKER("worker waits");
@@ -132,11 +112,7 @@ class busy_pool {
   auto schedule(basic_task<T, context, Allocator, Root>&& task) -> T {
     //
     constexpr std::size_t uid = 0;
-    //
-#ifndef NDEBUG
-    this->m_contexts[uid].m_id = std::this_thread::get_id();
-#endif
-    //
+
     auto [fut, handle] = as_root(std::move(task)).make_promise();
 
     DEBUG_TRACKER("waking workers");

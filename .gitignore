@@ -3,6 +3,7 @@
 .vscode/
 gmon.out
 build/
+bench_res/
 cmake-build-*/
 *.log
 old/

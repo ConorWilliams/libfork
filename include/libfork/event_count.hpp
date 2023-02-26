@@ -1,9 +1,10 @@
 #pragma once
 
-/* This file has been modified by C.J.Williams to act as a standalone
+/**
+ * This file has been modified by C.J.Williams to act as a standalone
  * version of folly::event_count utilizing c++20's futex wait facilities.
  *
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Conor Williams, Meta Platforms, Inc. and its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,32 +20,28 @@
  */
 
 #include <atomic>
+#include <bit>
 #include <cstdint>
 #include <thread>
+#include <type_traits>
 
 #include "libfork/utility.hpp"
 
 /**
  * @file event_count.hpp
  *
- * @brief A condition variable for lock free algorithms borrowed from folly.
+ * @brief A standalone adaptation of ``folly::EventCount``.
  */
 
 namespace lf {
 
 namespace detail {
 
-// Endianness
-#ifdef _MSC_VER
-  // It's MSVC, so we just have to guess ... and allow an override
-  #ifdef RIFTEN_ENDIAN_BE
-constexpr bool k_is_little_endian = false;
-  #else
-constexpr bool k_is_little_endian = true;
-  #endif
-#else
-constexpr bool k_is_little_endian = __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__;
-#endif
+constexpr bool k_is_little_endian = std::endian::native != std::endian::little;
+
+constexpr bool k_is_big_endian = std::endian::native != std::endian::big;
+
+static_assert(k_is_little_endian || k_is_big_endian, "mixed endian systems are not supported");
 
 }  // namespace detail
 
@@ -80,8 +77,7 @@ constexpr bool k_is_little_endian = __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__;
  *
  *    if (!condition()) {  // handle fast path first
  *      for (;;) {
- *        auto key = eventCount.prepare_wait();
- *        if (condition()) {
+ *        if (auto key = eventCount.prepare_wait(); condition()) {
  *          eventCount.cancel_wait();
  *          break;
  *        } else {
@@ -89,6 +85,8 @@ constexpr bool k_is_little_endian = __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__;
  *        }
  *      }
  *    }
+ *
+ * (This pattern is encapsulated in the ``await()`` method.)
  *
  * Poster:
  *
@@ -140,13 +138,22 @@ class event_count {
    */
   [[nodiscard]] auto prepare_wait() noexcept -> key;
   /**
-   * @brief Cancel a wait.
+   * @brief Cancel a wait that was prepared with ``prepare_wait()``.
    */
   auto cancel_wait() noexcept -> void;
   /**
    * @brief Wait for a notification, this blocks the current thread.
    */
   auto wait(key key) noexcept -> void;
+
+  /**
+   * Wait for ``condition()`` to become true.
+   *
+   * Cleans up appropriately if ``condition()`` throws, and then rethrow.
+   */
+  template <typename Pred>
+  requires std::is_invocable_r_v<bool, Pred const&>
+  void await(Pred const& condition);
 
  private:
   auto epoch() noexcept -> std::atomic<std::uint32_t>* {
@@ -174,38 +181,66 @@ class event_count {
   alignas(detail::k_cache_line) std::atomic<std::uint64_t> m_val = 0;
 };
 
-inline void event_count::notify_one() noexcept {
-  if (m_val.fetch_add(k_add_epoch, std::memory_order_acq_rel) & k_waiter_mask) {  // NOLINT
+void event_count::notify_one() noexcept {
+  if (m_val.fetch_add(k_add_epoch, std::memory_order_acq_rel) & k_waiter_mask) [[unlikely]] {  // NOLINT
     epoch()->notify_one();
   }
 }
 
-inline void event_count::notify_all() noexcept {
-  if (m_val.fetch_add(k_add_epoch, std::memory_order_acq_rel) & k_waiter_mask) {  // NOLINT
+void event_count::notify_all() noexcept {
+  if (m_val.fetch_add(k_add_epoch, std::memory_order_acq_rel) & k_waiter_mask) [[unlikely]] {  // NOLINT
     epoch()->notify_all();
   }
 }
 
-[[nodiscard]] inline auto event_count::prepare_wait() noexcept -> event_count::key {
-  std::uint64_t prev = m_val.fetch_add(k_add_waiter, std::memory_order_acq_rel);
+[[nodiscard]] auto event_count::prepare_wait() noexcept -> event_count::key {
+  auto prev = m_val.fetch_add(k_add_waiter, std::memory_order_acq_rel);
   return key(prev >> k_epoch_shift);
 }
 
-inline void event_count::cancel_wait() noexcept {
+void event_count::cancel_wait() noexcept {
   // memory_order_relaxed would suffice for correctness, but the faster
   // #waiters gets to 0, the less likely it is that we'll do spurious wakeups
   // (and thus system calls).
-  m_val.fetch_add(k_sub_waiter, std::memory_order_seq_cst);
+  auto prev = m_val.fetch_add(k_sub_waiter, std::memory_order_seq_cst);
+
+  ASSERT_ASSUME((prev & k_waiter_mask) != 0, "wait fails");
 }
 
-inline void event_count::wait(key key) noexcept {
+void event_count::wait(key key) noexcept {
   // Use C++20 atomic wait guarantees
   epoch()->wait(key.m_epoch, std::memory_order_acquire);
 
   // memory_order_relaxed would suffice for correctness, but the faster
   // #waiters gets to 0, the less likely it is that we'll do spurious wakeups
   // (and thus system calls)
-  m_val.fetch_add(k_sub_waiter, std::memory_order_seq_cst);
+  auto prev = m_val.fetch_add(k_sub_waiter, std::memory_order_seq_cst);
+
+  ASSERT_ASSUME((prev & k_waiter_mask) != 0, "wait fails");
+}
+
+template <class Pred>
+requires std::is_invocable_r_v<bool, Pred const&>
+void event_count::await(Pred const& condition) {
+  if (std::invoke(condition)) {
+    return;
+  }
+
+  // std::invoke(condition) is the only thing that may throw, everything else is
+  // noexcept, so we can hoist the try/catch block outside of the loop
+  try {
+    for (;;) {
+      auto key = prepare_wait();
+      if (std::invoke(condition)) {
+        cancel_wait();
+        break;
+      }
+      wait(key);
+    }
+  } catch (...) {
+    cancel_wait();
+    throw;
+  }
 }
 
 }  // namespace lf
