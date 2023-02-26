@@ -149,12 +149,12 @@ void run(std::string name, size_t n) {
 }
 
 int main(int argc, char* argv[]) {
-  run("tbb-matmul-n=010", 8);
-  run("tbb-matmul-n=030", 32);
-  run("tbb-matmul-n=050", 64);
-  run("tbb-matmul-n=100", 128);
-  run("tbb-matmul-n=300", 256);
-  run("tbb-matmul-n=500", 512);
-  run("tbb-matmul-n=700", 1024);
+  run("tbb-matmul-n=8", 8);
+  run("tbb-matmul-n=32", 32);
+  run("tbb-matmul-n=64", 64);
+  run("tbb-matmul-n=128", 128);
+  run("tbb-matmul-n=256", 256);
+  run("tbb-matmul-n=512", 512);
+  run("tbb-matmul-n=1024", 1024);
   return 0;
 }

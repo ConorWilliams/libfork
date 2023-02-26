@@ -141,12 +141,12 @@ void run(std::string name, size_t n) {
 }
 
 int main(int argc, char* argv[]) {
-  run("fork-matmul-n=010", 8);
-  run("fork-matmul-n=030", 32);
-  run("fork-matmul-n=050", 64);
-  run("fork-matmul-n=100", 128);
-  run("fork-matmul-n=300", 256);
-  run("fork-matmul-n=500", 512);
-  run("fork-matmul-n=700", 1024);
+  run("fork-matmul-n=8", 8);
+  run("fork-matmul-n=32", 32);
+  run("fork-matmul-n=64", 64);
+  run("fork-matmul-n=128", 128);
+  run("fork-matmul-n=256", 256);
+  run("fork-matmul-n=512", 512);
+  run("fork-matmul-n=1024", 1024);
   return 0;
 }
