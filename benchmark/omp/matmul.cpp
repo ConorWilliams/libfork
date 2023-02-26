@@ -22,7 +22,7 @@
 
 using namespace std;
 
-using elem_t = double;
+using elem_t = float;
 
 inline auto xorshift_rand() -> uint32_t {
   static uint32_t x = 2463534242;
