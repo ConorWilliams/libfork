@@ -9,7 +9,7 @@
  * Sridhar Ramachandran, FOCS 1999, for an explanation of
  * why this algorithm is good for caches.
  *
- * Note according to its own check it is not computing this correctly!
+ * Note according to its own check it is not cforkuting this correctly!
  * I believe this is because it is overflowing.
  */
 
@@ -141,13 +141,12 @@ void run(std::string name, size_t n) {
 }
 
 int main(int argc, char* argv[]) {
-  run("libfork, matmul n=10", 10);
-  run("libfork, matmul n=30", 30);
-  run("libfork, matmul n=50", 50);
-  run("libfork, matmul n=100", 100);
-  run("libfork, matmul n=300", 300);
-  run("libfork, matmul n=500", 500);
-  run("libfork, matmul n=700", 700);
-
+  run("fork-matmul-n=010", 8);
+  run("fork-matmul-n=030", 32);
+  run("fork-matmul-n=050", 64);
+  run("fork-matmul-n=100", 128);
+  run("fork-matmul-n=300", 256);
+  run("fork-matmul-n=500", 512);
+  run("fork-matmul-n=700", 1024);
   return 0;
 }

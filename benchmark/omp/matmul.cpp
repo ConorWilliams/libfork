@@ -140,12 +140,12 @@ void run(std::string name, size_t n) {
 }
 
 int main(int argc, char* argv[]) {
-  run("omp, matmul n=10", 10);
-  run("omp, matmul n=30", 30);
-  run("omp, matmul n=50", 50);
-  run("omp, matmul n=100", 100);
-  run("omp, matmul n=300", 300);
-  run("omp, matmul n=500", 500);
-  run("omp, matmul n=700", 700);
+  run("omp-matmul-n=010", 8);
+  run("omp-matmul-n=030", 32);
+  run("omp-matmul-n=050", 64);
+  run("omp-matmul-n=100", 128);
+  run("omp-matmul-n=300", 256);
+  run("omp-matmul-n=500", 512);
+  run("omp-matmul-n=700", 1024);
   return 0;
 }

@@ -40,12 +40,11 @@ void run(std::string name, std::span<unsigned int> data) {
 
     tbb::task_arena(n).execute([&] {
       bench([&] {
-        res = reduce(data, data.size() / (64));
+        res = reduce(data, data.size() / (10 * n));
       });
     });
 
     if (res != correct) {
-      std::cout << res << " != " << correct << std::endl;
       throw std::runtime_error("Incorrect result");
     }
 
@@ -58,12 +57,12 @@ auto main() -> int {
 
   std::iota(data.begin(), data.end(), 0);
 
-  run("tbb, reduce 1'000", std::span{data}.first(1'000));
-  run("tbb, reduce 10'000", std::span{data}.first(10'000));
-  run("tbb, reduce 100'000", std::span{data}.first(100'000));
-  run("tbb, reduce 1'000'000", std::span{data}.first(1'000'000));
-  run("tbb, reduce 10'000'000", std::span{data}.first(10'000'000));
-  run("tbb, reduce 100'000'000", std::span{data}.first(100'000'000));
+  run("tbb-reduce-1_000", std::span{data}.first(1'000));
+  run("tbb-reduce-10_000", std::span{data}.first(10'000));
+  run("tbb-reduce-100_000", std::span{data}.first(100'000));
+  run("tbb-reduce-1_000_000", std::span{data}.first(1'000'000));
+  run("tbb-reduce-10_000_000", std::span{data}.first(10'000'000));
+  run("tbb-reduce-100_000_000", std::span{data}.first(100'000'000));
 
   return 0;
 }

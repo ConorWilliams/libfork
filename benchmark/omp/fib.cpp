@@ -32,11 +32,11 @@ void run(std::string name, int x) {
 }
 
 auto main() -> int {
-  run("omp, fib 5", 5);
-  run("omp, fib 10", 10);
-  run("omp, fib 15", 15);
-  run("omp, fib 20", 20);
-  // run("omp, fib 25", 25); // too slow
-  // run("omp, fib 30", 30);
+  run("omp-fib-05", 5);
+  run("omp-fib-10", 10);
+  run("omp-fib-15", 15);
+  run("omp-fib-20", 20);
+  run("omp-fib-25", 25);
+  run("omp-fib-30", 30);
   return 0;
 }

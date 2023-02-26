@@ -1,8 +1,8 @@
 #pragma once
 
 #include <chrono>
+#include <fstream>
 #include <functional>
-#include <iostream>
 #include <string_view>
 #include <thread>
 #include <type_traits>
@@ -37,4 +37,8 @@ auto benchmark(std::string name, F const& fun) -> void {
 
     ankerl::nanobench::doNotOptimizeAway(x);
   }
+
+  std::ofstream render("build/" + name + ".json");
+
+  ankerl::nanobench::render(ankerl::nanobench::templates::json(), bench, render);
 }

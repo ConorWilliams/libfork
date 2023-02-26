@@ -37,7 +37,7 @@ void run(std::string name, std::span<unsigned int> data) {
     unsigned int res = 0;
 
     bench([&] {
-      res = pool.schedule(reduce<busy_pool::context>(data, data.size() / (64)));
+      res = pool.schedule(reduce<busy_pool::context>(data, data.size() / (10 * n)));
     });
 
     if (res != correct) {
@@ -53,12 +53,12 @@ auto main() -> int {
 
   std::iota(data.begin(), data.end(), 0);
 
-  run("libfork, reduce 1'000", std::span{data}.first(1'000));
-  run("libfork, reduce 10'000", std::span{data}.first(10'000));
-  run("libfork, reduce 100'000", std::span{data}.first(100'000));
-  run("libfork, reduce 1'000'000", std::span{data}.first(1'000'000));
-  run("libfork, reduce 10'000'000", std::span{data}.first(10'000'000));
-  run("libfork, reduce 100'000'000", std::span{data}.first(100'000'000));
+  run("fork-reduce-1_000", std::span{data}.first(1'000));
+  run("fork-reduce-10_000", std::span{data}.first(10'000));
+  run("fork-reduce-100_000", std::span{data}.first(100'000));
+  run("fork-reduce-1_000_000", std::span{data}.first(1'000'000));
+  run("fork-reduce-10_000_000", std::span{data}.first(10'000'000));
+  run("fork-reduce-100_000_000", std::span{data}.first(100'000'000));
 
   return 0;
 }

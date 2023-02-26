@@ -36,11 +36,11 @@ void run(std::string name, int x) {
 }
 
 auto main() -> int {
-  run("libfork, fib 5", 5);
-  run("libfork, fib 10", 10);
-  run("libfork, fib 15", 15);
-  run("libfork, fib 20", 20);
-  run("libfork, fib 25", 25);
-  run("libfork, fib 30", 30);
+  run("fork-fib-05", 5);
+  run("fork-fib-10", 10);
+  run("fork-fib-15", 15);
+  run("fork-fib-20", 20);
+  run("fork-fib-25", 25);
+  run("fork-fib-30", 30);
   return 0;
 }

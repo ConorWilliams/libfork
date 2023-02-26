@@ -53,9 +53,9 @@ void run(std::string name, size_t depth = 8, size_t breadth = 8) {
 }
 
 int main(int argc, char* argv[]) {
-  run("libfork, dfs 3,3", 3, 3);
-  run("libfork, dfs 5,5", 5, 5);
-  run("libfork, dfs 6,6", 5, 6);
-  run("libfork, dfs 7,7", 7, 7);
+  run("fork-dfs-3,3", 3, 3);
+  run("fork-dfs-5,5", 5, 5);
+  run("fork-dfs-6,6", 5, 6);
+  run("fork-dfs-7,7", 7, 7);
   return 0;
 }

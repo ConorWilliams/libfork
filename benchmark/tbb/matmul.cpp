@@ -9,7 +9,7 @@
  * Sridhar Ramachandran, FOCS 1999, for an explanation of
  * why this algorithm is good for caches.
  *
- * Note according to its own check it is not computing this correctly!
+ * Note according to its own check it is not ctbbuting this correctly!
  * I believe this is because it is overflowing.
  */
 
@@ -149,12 +149,12 @@ void run(std::string name, size_t n) {
 }
 
 int main(int argc, char* argv[]) {
-  run("tbb, matmul n=10", 10);
-  run("tbb, matmul n=30", 30);
-  run("tbb, matmul n=50", 50);
-  run("tbb, matmul n=100", 100);
-  run("tbb, matmul n=300", 300);
-  run("tbb, matmul n=500", 500);
-  run("tbb, matmul n=700", 700);
+  run("tbb-matmul-n=010", 8);
+  run("tbb-matmul-n=030", 32);
+  run("tbb-matmul-n=050", 64);
+  run("tbb-matmul-n=100", 128);
+  run("tbb-matmul-n=300", 256);
+  run("tbb-matmul-n=500", 512);
+  run("tbb-matmul-n=700", 1024);
   return 0;
 }

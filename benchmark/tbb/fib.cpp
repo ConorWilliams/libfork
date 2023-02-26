@@ -38,11 +38,11 @@ void run(std::string name, int x) {
 }
 
 auto main() -> int {
-  run("tbb, fib 5", 5);
-  run("tbb, fib 10", 10);
-  run("tbb, fib 15", 15);
-  run("tbb, fib 20", 20);
-  run("tbb, fib 25", 25);
-  run("tbb, fib 30", 30);
+  run("tbb-fib-05", 5);
+  run("tbb-fib-10", 10);
+  run("tbb-fib-15", 15);
+  run("tbb-fib-20", 20);
+  run("tbb-fib-25", 25);
+  run("tbb-fib-30", 30);
   return 0;
 }
