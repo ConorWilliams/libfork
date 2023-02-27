@@ -65,7 +65,7 @@ Note:
 The mental execution model here is: 
 1. At ``auto a = co_await fib(n - 1).fork()`` the parent/current task is suspended and a child task is spawned, ``a`` is of type ``basic_future<int, busy_pool::context>``. 
 2. The current thread pushes the parent task's continuation onto its execution-context and starts executing the child task; the scheduler is free to hand the parent task's continuation to another thread.
-3. At ``auto b = co_await fib(n - 2)`` a new child task is spawned and the current thread immediately starts executing it. The continuation is not pushed onto the execution-context. This is prefered to ``.fork()`` as a thieving thread would have no work to do before the ``join()``.
+3. At ``auto b = co_await fib(n - 2)`` a new child task is spawned and the current thread immediately starts executing it. The continuation is not pushed onto the execution-context. This is preferred to ``.fork()`` as a thieving thread would have no work to do before the ``join()``.
 4. At ``co_await lf::join()``, if the children have not completed, the parent task is suspended.
 5. The parent task will be resumed by the thread which completes the final child task.
 
