@@ -136,10 +136,10 @@ class allocator_mixin<void> {  // type-erased allocator
   }
   //
  public:
-  static void* operator new(std::size_t const size) {  // default: new/delete
+  static void* operator new([[maybe_unused]] std::size_t const size) {  // default: new/delete
     void* const ptr = ::operator new[](size + sizeof(dealloc_fn));
     dealloc_fn const dealloc = [](void* const ptr, std::size_t const size) {
-#if __cpp_sized_deallocation
+#if defined(__cpp_sized_deallocation)
       ::operator delete[](ptr, size + sizeof(dealloc_fn));
 #else
       ::operator delete[](ptr);

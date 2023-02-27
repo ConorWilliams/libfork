@@ -80,7 +80,7 @@ class busy_pool {
 
     // Start the worker threads, note there are n-1 workers, indexed 1...n - 1.
     for (std::size_t i = 1; i < n; ++i) {
-      m_workers.emplace_back([this, i, n](std::stop_token token) {  // NOLINT
+      m_workers.emplace_back([this, i](std::stop_token token) {  // NOLINT
         for (;;) {
           // Wait for a root task to be submitted.
           DEBUG_TRACKER("worker waits");

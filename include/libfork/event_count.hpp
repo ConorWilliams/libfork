@@ -144,7 +144,7 @@ class event_count {
   /**
    * @brief Wait for a notification, this blocks the current thread.
    */
-  auto wait(key key) noexcept -> void;
+  auto wait(key in_key) noexcept -> void;
 
   /**
    * Wait for ``condition()`` to become true.
@@ -162,16 +162,19 @@ class event_count {
   }
 
   // This requires 64-bit
-  static_assert(sizeof(int) == 4, "bad platform, need 64bits");
-  static_assert(sizeof(std::uint32_t) == 4, "bad platform, need 64bits");
-  static_assert(sizeof(std::uint64_t) == 8, "bad platform, need 64bits");
-  static_assert(sizeof(std::atomic<std::uint32_t>) == 4, "bad platform, need 64bits");
-  static_assert(sizeof(std::atomic<std::uint64_t>) == 8, "bad platform, need 64bits");
+  static constexpr std::size_t k_4byte = 4;
+  static constexpr std::size_t k_8byte = 8;
+
+  static_assert(sizeof(int) == k_4byte, "bad platform, need 64 bit native int");
+  static_assert(sizeof(std::uint32_t) == k_4byte, "bad platform, need 32 bit ints");
+  static_assert(sizeof(std::uint64_t) == k_8byte, "bad platform, need 64 bit ints");
+  static_assert(sizeof(std::atomic<std::uint32_t>) == k_4byte, "bad platform, need 32 bit atomic ints");
+  static_assert(sizeof(std::atomic<std::uint64_t>) == k_8byte, "bad platform, need 64 bit atomic ints");
 
   static constexpr size_t k_epoch_offset = detail::k_is_little_endian ? 1 : 0;
 
   static constexpr std::uint64_t k_add_waiter = 1;
-  static constexpr std::uint64_t k_sub_waiter = -1;
+  static constexpr std::uint64_t k_sub_waiter = static_cast<std::uint64_t>(-1);
   static constexpr std::uint64_t k_epoch_shift = 32;
   static constexpr std::uint64_t k_add_epoch = static_cast<std::uint64_t>(1) << k_epoch_shift;
   static constexpr std::uint64_t k_waiter_mask = k_add_epoch - 1;
@@ -181,24 +184,24 @@ class event_count {
   alignas(detail::k_cache_line) std::atomic<std::uint64_t> m_val = 0;
 };
 
-void event_count::notify_one() noexcept {
+inline void event_count::notify_one() noexcept {
   if (m_val.fetch_add(k_add_epoch, std::memory_order_acq_rel) & k_waiter_mask) [[unlikely]] {  // NOLINT
     epoch()->notify_one();
   }
 }
 
-void event_count::notify_all() noexcept {
+inline void event_count::notify_all() noexcept {
   if (m_val.fetch_add(k_add_epoch, std::memory_order_acq_rel) & k_waiter_mask) [[unlikely]] {  // NOLINT
     epoch()->notify_all();
   }
 }
 
-[[nodiscard]] auto event_count::prepare_wait() noexcept -> event_count::key {
+[[nodiscard]] inline auto event_count::prepare_wait() noexcept -> event_count::key {
   auto prev = m_val.fetch_add(k_add_waiter, std::memory_order_acq_rel);
   return key(prev >> k_epoch_shift);
 }
 
-void event_count::cancel_wait() noexcept {
+inline void event_count::cancel_wait() noexcept {
   // memory_order_relaxed would suffice for correctness, but the faster
   // #waiters gets to 0, the less likely it is that we'll do spurious wakeups
   // (and thus system calls).
@@ -207,9 +210,9 @@ void event_count::cancel_wait() noexcept {
   ASSERT_ASSUME((prev & k_waiter_mask) != 0, "wait fails");
 }
 
-void event_count::wait(key key) noexcept {
+inline void event_count::wait(key in_key) noexcept {
   // Use C++20 atomic wait guarantees
-  epoch()->wait(key.m_epoch, std::memory_order_acquire);
+  epoch()->wait(in_key.m_epoch, std::memory_order_acquire);
 
   // memory_order_relaxed would suffice for correctness, but the faster
   // #waiters gets to 0, the less likely it is that we'll do spurious wakeups
@@ -230,12 +233,12 @@ void event_count::await(Pred const& condition) {
   // noexcept, so we can hoist the try/catch block outside of the loop
   try {
     for (;;) {
-      auto key = prepare_wait();
+      auto my_key = prepare_wait();
       if (std::invoke(condition)) {
         cancel_wait();
         break;
       }
-      wait(key);
+      wait(my_key);
     }
   } catch (...) {
     cancel_wait();

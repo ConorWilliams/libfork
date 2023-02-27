@@ -189,14 +189,16 @@ static task<int> stack_overflow() {
   for (int i = 0; i < 500'000; ++i) {
     DEBUG_TRACKER("iter\n");
 
-    co_await noop().fork();
-    co_await fwd(i).fork();
+    auto a = co_await noop().fork();
+    auto b = co_await fwd(i).fork();
 
     co_await noop();
     co_await fwd(i);
 
     co_await join();
   }
+
+  co_return 0;
 }
 
 // Marked as !mayfail && !benchmark due to GCC not being able to properly optimize
