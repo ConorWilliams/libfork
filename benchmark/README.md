@@ -4,7 +4,7 @@ Benchmarking is hard! The result depend fairly strongly on the compiler + machin
 
 As an example, based on my testing with GCC-12, it seems that GCC currently uses a single job queue for openMP tasking which rapidly becomes a bottleneck causing the Fibonacci and dfs benchmarks to slow down as the number of threads increases. Additionally, during the matmul and reduce benchmarks, libfork generated ~100% more cache-misses than TBB and OMP. I have no idea why!
 
-The following benchmarks were performed on an Intel(R) Xeon(R) CPU E5-2670 0 @ 2.60GHz (8 cores, 16 threads) using Clang-17[^1] and ``libstdc++`` with the optimisation flags: ``-march=native -O3 -DNDEBUG -flto=auto``.
+The following benchmarks were performed on an Intel(R) Xeon(R) CPU E5-2670 0 @ 2.60GHz (8 cores, 16 threads) using Clang-17[^1] and ``libstdc++`` with the optimization flags: ``-march=native -O3 -DNDEBUG -flto=auto``.
 
 [^1]: Built from commit SHA ``561d9cd6f457827bb81fcd036343ad14ec70f89c``
 
