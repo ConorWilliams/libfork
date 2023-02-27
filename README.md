@@ -17,6 +17,10 @@ Note: libfork is tested on GCC (10,11,12) and Clang (14,15), currently Clang see
 
 See the benchmark's [README](benchmark/README.md).
 
+## API reference
+
+See the [API documentation](https://conorwilliams.github.io/libfork/) website.
+
 ## Contributing
 
 See the [HACKING](HACKING.md) document.
@@ -29,8 +33,12 @@ The tasking fork-join interface is designed to mirror Cilk and other fork-join f
 #include "libfork/task.hpp"
 #include "libfork/schedule/busy_pool.hpp"
 
+/// Short-hand for a task that uses the busy_pool scheduler.
+template <typename T>
+using pool_task = lf::basic_task<T, lf::busy_pool::context>;
+
 /// Compute the n'th fibonacci number
-auto fib(int n) -> basic_task<int, busy_pool::context> { 
+auto fib(int n) -> pool_task<int> { 
 
   if (n < 2) {
     co_return n;
@@ -66,9 +74,7 @@ concept context = requires(T context, work_handle<T> task) {
 ```
 An execution-context models a FILO stack. Tasks hold a pointer to their executor's context and push/pop tasks onto it. Whilst an executor is running a task, other executors can steal from the top of the stack in a FIFO manner. 
 
-## API reference
-
-See the [API documentation](https://conorwilliams.github.io/libfork/) document.
+It is recommended that custom schedulers use lock-free stacks for their execution contexts such as the one provided in [libfork](include/libfork/queue.hpp)
 
 ## Reference
 
