@@ -62,6 +62,15 @@ Note:
 - Tasks **must** join **before** returning or dereferencing a future.
 - Futures **must** join in their parent task.
 
+The mental execution model here is: 
+1. At ``auto a = co_await fib(n - 1).fork()`` the parent/current task is suspended and a child task is spawned, ``a`` is of type ``basic_future<int, busy_pool::context>``. 
+2. The current thread pushes the parent task's continuation onto its execution-context and starts executing the child task; the scheduler is free to hand the parent task's continuation to another thread.
+3. At ``auto b = co_await fib(n - 2)`` a new child task is spawned and the current thread immediately starts executing it. The continuation is not pushed onto the execution-context. This is prefered to ``.fork()`` as a thieving thread would have no work to do before the ``join()``.
+4. At ``co_await lf::join()``, if the children have not completed, the parent task is suspended.
+5. The parent task will be resumed by the thread which completes the final child task.
+
+Hence, at every ``co_await`` the thread executing the parent task may change! This is a diamond-shaped dependency graph, where the parent task is the diamond's tip and the children are the diamond's legs. The diamond's base is the continuation following the ``join()``. In this case the children may be recursively more complex sub-graphs. Crucially, the task graph encodes to the scheduler that: the children may be executed in parallel; the children must complete before the parent task can continue past the ``join()``.
+
 ## Schedulers
 
 A scheduler is responsible for distributing available work (tasks) to physical CPUs/executors. Each executor must own an execution-context object satisfying:
