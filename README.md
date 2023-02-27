@@ -5,12 +5,13 @@
 
 Libfork is primarily an abstraction for strict, lock-free, wait-free, continuation-stealing [fork-join parallelism](https://en.wikipedia.org/wiki/Fork%E2%80%93join_model). This is made possible without the use of any macros/inline assembly using C++20's coroutines. 
 
-Libfork presents an API that decouples scheduling tasks (a customization point) from writing tasks and expressing their dependencies. Additionally, libfork provides performant work-stealing schedulers for general use.
-
+Libfork presents a cross-platform API that decouples scheduling tasks (a customization point) from writing tasks and expressing their dependencies. Additionally, libfork provides performant work-stealing schedulers for general use.
 
 ## Building and installing
 
-See the [BUILDING](BUILDING.md) document.
+See the [BUILDING](BUILDING.md) document for full details.
+
+Note: libfork is tested on GCC (10,11,12) and Clang (14,15), currently Clang seems to do a much better job at optimizing coroutines. When Microsoft fixes [this bug](https://developercommunity.visualstudio.com/t/Incorrect-code-generation-for-symmetric/1659260?scope=follow) libfork should build on MSVC.
 
 ## Benchmarks
 
