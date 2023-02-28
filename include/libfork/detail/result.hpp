@@ -37,14 +37,6 @@ class result {
    */
   constexpr result() noexcept : m_empty{} {}
 
-  // clang-format off
-  /// @cond CONCEPTS
-
-  constexpr result() noexcept requires(std::is_trivially_destructible_v<T>)  = default;
-
-  /// @endcond
-  // clang-format on
-
   result(result&) = delete;
 
   result(result&&) = delete;
@@ -81,8 +73,14 @@ class result {
 
   // clang-format off
   /// @cond CONCEPTS
+  
+  #if !(defined(__clang__) && __clang_major__ < 15)  // Work around a bug pre Clang 15
 
-  constexpr ~result() noexcept requires(std::is_trivially_destructible_v<T>) = default;
+    constexpr result() noexcept requires(std::is_trivially_destructible_v<T>) = default;
+    
+    constexpr ~result() noexcept requires(std::is_trivially_destructible_v<T>) = default;
+
+  #endif
 
   /// @endcond
   // clang-format on
