@@ -6,6 +6,7 @@ build/
 cmake-build-*/
 prefix/
 old/
+Testing/
 
 *.log
 

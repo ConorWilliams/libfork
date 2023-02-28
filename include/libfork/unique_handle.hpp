@@ -8,11 +8,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <coroutine>
 #include <memory>
 #include <utility>
 
-#include "utility.hpp"
+#include "libfork/detail/coroutine.hpp"
+
+#include "libfork/utility.hpp"
 
 /**
  * @file unique_handle.hpp
@@ -35,7 +36,7 @@ class unique_handle {
   /**
    * @brief Construct a ``unique_handle`` to manage ``handle``.
    */
-  explicit constexpr unique_handle(std::coroutine_handle<P> handle) noexcept : m_data{handle} {}
+  explicit constexpr unique_handle(coroutine_handle<P> handle) noexcept : m_data{handle} {}
   /**
    * @brief A ``unique_handle`` cannot be copied.
    */
@@ -52,7 +53,7 @@ class unique_handle {
    * @brief Move assign a ``unique_handle`` from ``other``.
    */
   constexpr auto operator=(unique_handle&& other) noexcept -> unique_handle& {
-    if (std::coroutine_handle const old = std::exchange(m_data, other.m_data)) {
+    if (coroutine_handle const old = std::exchange(m_data, other.m_data)) {
       DEBUG_TRACKER("destroying a coroutine");
       old.destroy();
     }
@@ -65,11 +66,11 @@ class unique_handle {
   /**
    * @brief Access the underlying handle.
    */
-  constexpr auto operator->() const noexcept -> std::coroutine_handle<P> const* { return std::addressof(m_data); }
+  constexpr auto operator->() const noexcept -> coroutine_handle<P> const* { return std::addressof(m_data); }
   /**
    * @brief Access the underlying handle.
    */
-  [[nodiscard]] constexpr auto operator*() const noexcept -> std::coroutine_handle<P> { return m_data; }
+  [[nodiscard]] constexpr auto operator*() const noexcept -> coroutine_handle<P> { return m_data; }
 
   /**
    * @brief Release ownership of the underlying handle.
@@ -83,14 +84,14 @@ class unique_handle {
    * @brief Destroy the handle.
    */
   constexpr ~unique_handle() noexcept {
-    if (std::coroutine_handle const old = std::exchange(m_data, nullptr)) {
+    if (coroutine_handle const old = std::exchange(m_data, nullptr)) {
       DEBUG_TRACKER("destroying a coroutine");
       old.destroy();
     }
   }
 
  private:
-  std::coroutine_handle<P> m_data;
+  coroutine_handle<P> m_data;
 };
 
 }  // namespace lf

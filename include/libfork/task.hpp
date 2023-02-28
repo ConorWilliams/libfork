@@ -10,7 +10,6 @@
 
 #include <atomic>
 #include <concepts>
-#include <coroutine>
 #include <cstddef>
 #include <functional>
 #include <limits>
@@ -22,6 +21,7 @@
 #include <utility>
 
 #include "libfork/detail/allocator.hpp"
+#include "libfork/detail/coroutine.hpp"
 #include "libfork/detail/result.hpp"
 #include "libfork/detail/wait.hpp"
 
@@ -223,11 +223,6 @@ class basic_future<void, Context, Allocator, false> {
 };
 
 namespace detail {
-/**
- * @brief An alias for ``std::coroutine_handle<T>`
- */
-template <typename T = void>
-using raw_handle = std::coroutine_handle<T>;
 
 static constexpr int k_imax = std::numeric_limits<int>::max();  ///< Initial value of ``m_join``.
 
@@ -241,12 +236,12 @@ struct promise_base {  // NOLINT (special-member-functions)
    * @brief Construct a new promise_base base object with a coroutine handle to
    * the derived promise_base.
    */
-  constexpr explicit promise_base(raw_handle<> coro) noexcept : m_this{coro} {}
+  constexpr explicit promise_base(coroutine_handle<> coro) noexcept : m_this{coro} {}
   /**
    * @brief Tasks must be lazy as the parent needs to be pushed onto the
    * contexts's stack.
    */
-  [[nodiscard]] constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
+  [[nodiscard]] constexpr static auto initial_suspend() noexcept -> suspend_always { return {}; }
 
   /**
    * @brief Called when an exception is thrown in the coroutine and not handled.
@@ -259,8 +254,8 @@ struct promise_base {  // NOLINT (special-member-functions)
   }
 
   // Intrinsic
-  bool m_is_inline = false;  ///< True if this task is running inline.
-  raw_handle<> m_this;       ///< The coroutine handle for this promise.
+  bool m_is_inline = false;   ///< True if this task is running inline.
+  coroutine_handle<> m_this;  ///< The coroutine handle for this promise.
 
   // Extrinsic
   promise_base* m_parent{};  ///< To promise of task that spawned this task.
@@ -354,14 +349,14 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, waiter<Root
   /**
    * @brief Construct a new promise type object.
    */
-  constexpr promise_type() noexcept : promise_base<Context>{raw_handle<promise_type>::from_promise(*this)} {}
+  constexpr promise_type() noexcept : promise_base<Context>{coroutine_handle<promise_type>::from_promise(*this)} {}
   /**
    * @brief This is the object returned when a basic_task is created by a
    * function call.
    */
   [[nodiscard]] constexpr auto get_return_object() noexcept -> basic_task<T, Context, Allocator, Root> {
     //
-    return basic_task<T, Context, Allocator, Root>{raw_handle<promise_type>::from_promise(*this)};
+    return basic_task<T, Context, Allocator, Root>{coroutine_handle<promise_type>::from_promise(*this)};
   }
 
   /**
@@ -370,8 +365,8 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, waiter<Root
    * Resumes parent task if we are the last child.
    */
   [[nodiscard]] constexpr auto final_suspend() const noexcept {
-    struct final_awaitable : std::suspend_always {
-      [[nodiscard]] constexpr auto await_suspend(raw_handle<promise_type> child) const noexcept -> raw_handle<> {
+    struct final_awaitable : suspend_always {
+      [[nodiscard]] constexpr auto await_suspend(coroutine_handle<promise_type> child) const noexcept -> coroutine_handle<> {
         //
         promise_type const& prom = child.promise();
 
@@ -388,7 +383,7 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, waiter<Root
 
           child.promise().make_ready();  // Assume prom/child now destructed!
 
-          return std::noop_coroutine();  // Future is responsible for destroying the promise.
+          return noop_coroutine();  // Future is responsible for destroying the promise.
         }
 
         if (prom.m_is_inline) {
@@ -448,7 +443,7 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, waiter<Root
 
   [[nodiscard]] constexpr auto await_transform(get_context_t) noexcept {  // NOLINT
     //
-    struct awaitable : std::suspend_never {
+    struct awaitable : suspend_never {
       [[nodiscard]] constexpr auto await_resume() noexcept -> Context const* { return m_context; }
 
       Context const* m_context;
@@ -464,9 +459,9 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, waiter<Root
       //
       [[nodiscard]] static constexpr auto await_ready() noexcept -> bool { return false; }
 
-      [[nodiscard]] constexpr auto await_suspend(raw_handle<promise_type> parent) noexcept -> raw_handle<> {
+      [[nodiscard]] constexpr auto await_suspend(coroutine_handle<promise_type> parent) noexcept -> coroutine_handle<> {
         // In case *this (awaitable) is destructed by stealer after push
-        raw_handle<> child = (*this)->promise().m_this;
+        coroutine_handle<> child = (*this)->promise().m_this;
 
         DEBUG_TRACKER("forking, push parent to context");
 
@@ -500,7 +495,7 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, waiter<Root
       //
       [[nodiscard]] static constexpr auto await_ready() noexcept -> bool { return false; }
 
-      [[nodiscard]] constexpr auto await_suspend(raw_handle<promise_type> parent) noexcept -> raw_handle<> {  // NOLINT
+      [[nodiscard]] constexpr auto await_suspend(coroutine_handle<promise_type> parent) noexcept -> coroutine_handle<> {  // NOLINT
         DEBUG_TRACKER("launching inline task");
 
         ASSERT_ASSUME((*this)->promise().m_context == parent.promise().m_context, "inline child is not in same context as parent");
@@ -558,7 +553,7 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, waiter<Root
         return false;
       }
 
-      [[nodiscard]] constexpr auto await_suspend(raw_handle<promise_type> task) noexcept -> raw_handle<> {
+      [[nodiscard]] constexpr auto await_suspend(coroutine_handle<promise_type> task) noexcept -> coroutine_handle<> {
         // Currently        m_join = k_imax - num_joined
         // We set           m_join = m_join - (k_imax - num_steals)
         //                         = num_steals - num_joined
@@ -587,7 +582,7 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, waiter<Root
         // Someone else is responsible for running this task and we have run out
         // of work.
         DEBUG_TRACKER("sync() looses");
-        return std::noop_coroutine();
+        return noop_coroutine();
       }
 
       constexpr void await_resume() const noexcept {
@@ -609,7 +604,7 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, waiter<Root
    * @brief Destroy a non-null handle to a void basic_task.
    */
   template <typename P>
-  static inline auto destroy_if_void(raw_handle<promise_type> to_destroy, raw_handle<P> fwd) noexcept {
+  static inline auto destroy_if_void(coroutine_handle<promise_type> to_destroy, coroutine_handle<P> fwd) noexcept {
     //
     ASSERT_ASSUME(to_destroy, "attempting to destroy null handle");
 
@@ -692,7 +687,7 @@ class [[nodiscard]] basic_task : private unique_handle<detail::promise_type<T, C
   template <typename, context, typename, bool>
   friend struct detail::promise_type;
 
-  constexpr explicit basic_task(detail::raw_handle<promise_type> handle) : unique_handle<promise_type>{handle} {}
+  constexpr explicit basic_task(coroutine_handle<promise_type> handle) : unique_handle<promise_type>{handle} {}
 };
 
 /**

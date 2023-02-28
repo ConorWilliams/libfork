@@ -29,16 +29,14 @@
 
 // NOLINTBEGIN Sometime macros are the only way to do things...
 
-#if defined(__cpp_lib_source_location)
-
+#if __has_include(<source_location>)
   #include <source_location>
 
 namespace lf::detail {
 using source_location = std::source_location;
 }  // namespace lf::detail
 
-#elif defined(__cpp_lib_experimental_source_location)
-
+#elif __has_include(<experimental/source_location>)
   #include <experimental/source_location>
 
 namespace lf::detail {
@@ -48,6 +46,7 @@ using source_location = std::experimental::source_location;
 #else
 
 namespace lf::detail {
+
 struct source_location {
   static constexpr source_location current() noexcept { return source_location{}; }
   constexpr char const* file_name() const noexcept { return "unknowm"; }
@@ -55,6 +54,7 @@ struct source_location {
   constexpr std::uint_least32_t column() const noexcept { return 0; }
   constexpr char const* function_name() const noexcept { return "unknowm"; }
 };
+
 }  // namespace lf::detail
 
 #endif

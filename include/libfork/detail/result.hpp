@@ -9,7 +9,6 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <concepts>
-#include <coroutine>
 #include <exception>
 #include <memory>
 #include <type_traits>

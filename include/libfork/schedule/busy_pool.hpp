@@ -10,7 +10,6 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <atomic>
-#include <coroutine>
 #include <cstddef>
 #include <memory>
 #include <optional>
