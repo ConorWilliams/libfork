@@ -21,6 +21,8 @@ cmake -S . -B build
 cmake --build build --config Release
 ```
 
+Note: as libfork is a header-only library, there are no build targets by default. If you intended to build the tests/docs/benchmarks check out the [HACKING](HACKING.md) document.
+
 ### Building with MSVC
 
 Note that MSVC by default is not standards compliant and you need to pass some

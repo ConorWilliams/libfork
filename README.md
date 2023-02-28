@@ -15,7 +15,7 @@ Note: libfork is tested on GCC (10,11,12) and Clang (14,15), currently Clang see
 
 ## Benchmarks
 
-See the benchmark's [README](benchmark/README.md).
+See the [benchmark's README](benchmark/README.md).
 
 ## API reference
 
@@ -24,6 +24,10 @@ See the [API documentation](https://conorwilliams.github.io/libfork/) website.
 ## Contributing
 
 See the [HACKING](HACKING.md) document.
+
+## Changelog
+
+See the [ChangeLog](ChangeLog.md) document.
 
 ## Tasks and futures
 

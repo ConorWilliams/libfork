@@ -271,7 +271,7 @@ class queue {
   alignas(detail::k_cache_line) std::atomic<std::ptrdiff_t> m_bottom;
   alignas(detail::k_cache_line) std::atomic<detail::ring_buf<T>*> m_buf;
 
-  std::vector<std::unique_ptr<detail::ring_buf<T>>> m_garbage;  // Store old buffers here.
+  alignas(detail::k_cache_line) std::vector<std::unique_ptr<detail::ring_buf<T>>> m_garbage;  // Store old buffers here.
 
   // Convenience aliases.
   static constexpr std::memory_order relaxed = std::memory_order_relaxed;

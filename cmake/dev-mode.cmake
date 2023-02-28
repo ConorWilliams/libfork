@@ -6,10 +6,10 @@ if(BUILD_TESTING)
   add_subdirectory(test)
 endif()
 
-option(BUILD_BENCHMARKS "Build benchmarks using nanobench" OFF)
+option(BUILD_BENCHMARKS "Build the benchmarks" ${BUILD_TESTING})
 
 if(BUILD_BENCHMARKS)
-  include(benchmark/bench.cmake)
+  include(cmake/benchmark.cmake)
 endif()
 
 option(BUILD_DOCS "Build documentation using Doxygen and Sphinx" OFF)
