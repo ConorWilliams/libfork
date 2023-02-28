@@ -15,7 +15,6 @@
 #include <memory>
 #include <optional>
 #include <random>
-#include <stop_token>
 #include <thread>
 
 #include "libfork/detail/random.hpp"
@@ -78,30 +77,34 @@ class busy_pool {
       rng.long_jump();
     }
 
-    // Start the worker threads, note there are n-1 workers, indexed 1...n - 1.
-    for (std::size_t i = 1; i < n; ++i) {
-      m_workers.emplace_back([this, i](std::stop_token token) {  // NOLINT
-        for (;;) {
-          // Wait for a root task to be submitted.
-          DEBUG_TRACKER("worker waits");
+    try {
+      // Start the worker threads, note there are n-1 workers, indexed 1...n - 1.
+      for (std::size_t i = 1; i < n; ++i) {
+        m_workers.emplace_back([this, i]() {  // NOLINT
+          for (;;) {
+            // Wait for a root task to be submitted.
+            DEBUG_TRACKER("worker waits");
 
-          this->m_root_task_in_flight.wait(false, std::memory_order_acquire);
+            this->m_root_task_in_flight.wait(false, std::memory_order_acquire);
 
-          DEBUG_TRACKER("worker wakes");
+            DEBUG_TRACKER("worker wakes and starts stealing");
 
-          // If we have been awoken by the destructor, return.
-          if (token.stop_requested()) {
-            DEBUG_TRACKER("worker returns");
-            return;
+            this->steal_until(i, [&]() -> bool {
+              return !m_root_task_in_flight.test(std::memory_order_acquire) || this->m_stop_requested.test(std::memory_order_acquire);
+            });
+
+            // If we have been awoken by the destructor, return.
+            if (this->m_stop_requested.test(std::memory_order_acquire)) {
+              DEBUG_TRACKER("worker returns");
+              return;
+            }
           }
-
-          DEBUG_TRACKER("worker starts stealing");
-
-          steal_until(i, [&]() -> bool {
-            return !m_root_task_in_flight.test(std::memory_order_acquire) || token.stop_requested();
-          });
-        }
-      });
+        });
+      }
+    } catch (...) {
+      // Need to stop the threads
+      clean_up();
+      throw;
     }
   }
 
@@ -144,22 +147,34 @@ class busy_pool {
     }
   }
 
-  ~busy_pool() {
-    // Request all workers to stop.
-    for (auto& worker : m_workers) {
-      worker.request_stop();
-    }
-    // Wake up the workers so they can see the stop request.
-    m_root_task_in_flight.test_and_set(std::memory_order_release);
-    m_root_task_in_flight.notify_all();
-  }
+  ~busy_pool() noexcept { clean_up(); }
 
  private:
+  // Request all threads to stop, wake them up and then call join.
+  auto clean_up() noexcept -> void {
+    ASSERT_ASSUME(!m_root_task_in_flight.test(), "clean-up with work in-flight");
+
+    // Set conditions for workers to stop
+    m_stop_requested.test_and_set(std::memory_order_release);
+
+    // Wake workers waiting on m_root_task_in_flight
+    m_root_task_in_flight.test_and_set(std::memory_order_release);
+    m_root_task_in_flight.notify_all();
+
+    // Join workers
+    for (auto& worker : m_workers) {
+      ASSERT_ASSUME(worker.joinable(), "this should be impossible");
+      worker.join();
+    }
+  }
+
   static constexpr std::size_t k_steal_attempts = 1024;
 
-  std::atomic_flag m_root_task_in_flight = ATOMIC_FLAG_INIT;
+  alignas(detail::k_cache_line) std::atomic_flag m_stop_requested = ATOMIC_FLAG_INIT;
+  alignas(detail::k_cache_line) std::atomic_flag m_root_task_in_flight = ATOMIC_FLAG_INIT;
+
   std::vector<context> m_contexts;
-  std::vector<std::jthread> m_workers;  // After m_context so threads are destroyed before the queues.
+  std::vector<std::thread> m_workers;  // After m_context so threads are destroyed before the queues.
 
   template <typename F>
   void steal_until(std::size_t uid, F&& cond) {

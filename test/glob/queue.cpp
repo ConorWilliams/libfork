@@ -21,7 +21,7 @@ auto example() -> int {
   constexpr int num_items = 10000;
 
   // One thread can push and pop items from one end (like a stack)
-  std::jthread owner([&]() {
+  std::thread owner([&]() {
     for (int i = 0; i < num_items; ++i) {
       queue.push(i);
     }
@@ -31,7 +31,7 @@ auto example() -> int {
   });
 
   // While multiple (any) threads can steal items from the other end
-  std::jthread thief([&]() {
+  std::thread thief([&]() {
     while (!queue.empty()) {
       if (auto item = queue.steal()) {
         // Do something with item...
@@ -77,7 +77,7 @@ TEST_CASE("Single producer, single consumer", "[queue]") {
 
   constexpr int tot = 100;
 
-  std::jthread thief([&] {
+  std::thread thief([&] {
     //
     int count = 0;
 
@@ -108,7 +108,7 @@ TEST_CASE("Single producer, multiple consumer", "[queue]") {
   constexpr auto max = 100000;
   unsigned int nthreads = std::thread::hardware_concurrency();
 
-  std::vector<std::jthread> threads;
+  std::vector<std::thread> threads;
   std::atomic<int> remaining(max);
 
   for (unsigned int i = 0; i < nthreads; ++i) {
@@ -142,7 +142,7 @@ TEST_CASE("Single producer + pop(), multiple consumer", "[queue]") {
   constexpr auto max = 100000;
   unsigned int nthreads = std::thread::hardware_concurrency();
 
-  std::vector<std::jthread> threads;
+  std::vector<std::thread> threads;
   std::atomic<int> remaining(max);
 
   for (unsigned int i = 0; i < nthreads; ++i) {
