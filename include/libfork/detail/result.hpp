@@ -14,7 +14,7 @@
 #include <type_traits>
 #include <utility>
 
-#include "libfork/utility.hpp"
+#include "libfork/detail/utility.hpp"
 
 /**
  * @file result.hpp
@@ -77,7 +77,7 @@ class result {
   #if !(defined(__clang__) && __clang_major__ < 15)  // Work around a bug pre Clang 15
 
     constexpr result() noexcept requires(std::is_trivially_destructible_v<T>) = default;
-    
+
     constexpr ~result() noexcept requires(std::is_trivially_destructible_v<T>) = default;
 
   #endif

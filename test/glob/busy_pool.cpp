@@ -11,8 +11,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "libfork/detail/utility.hpp"
 #include "libfork/schedule/busy_pool.hpp"
-#include "libfork/utility.hpp"
 
 // NOLINTBEGIN No need to check the tests for style.
 

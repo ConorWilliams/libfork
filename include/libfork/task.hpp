@@ -23,10 +23,10 @@
 #include "libfork/detail/allocator.hpp"
 #include "libfork/detail/coroutine.hpp"
 #include "libfork/detail/result.hpp"
+#include "libfork/detail/utility.hpp"
 #include "libfork/detail/wait.hpp"
 
 #include "libfork/unique_handle.hpp"
-#include "libfork/utility.hpp"
 
 /**
  * @file task.hpp

@@ -12,7 +12,7 @@
 #include <type_traits>
 #include <utility>
 
-#include "libfork/utility.hpp"
+#include "libfork/detail/utility.hpp"
 
 // NOLINTBEGIN
 

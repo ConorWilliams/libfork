@@ -8,7 +8,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "libfork/utility.hpp"
+#include "libfork/detail/utility.hpp"
 
 // NOLINTBEGIN No linting in tests
 

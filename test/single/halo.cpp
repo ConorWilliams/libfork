@@ -23,7 +23,7 @@
 
 // #include "libfork/schedule/immediate.hpp"
 // #include "libfork/task.hpp"
-// #include "libfork/utility.hpp"
+// #include "libfork/detail/utility.hpp"
 
 // using namespace lf;
 

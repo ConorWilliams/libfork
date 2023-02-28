@@ -12,8 +12,9 @@
 #include <thread>
 #include <vector>
 
+#include "libfork/detail/utility.hpp"
+
 #include "libfork/task.hpp"
-#include "libfork/utility.hpp"
 
 /**
  * @file immediate.hpp

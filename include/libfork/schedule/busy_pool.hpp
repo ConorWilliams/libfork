@@ -17,9 +17,10 @@
 #include <thread>
 
 #include "libfork/detail/random.hpp"
+#include "libfork/detail/utility.hpp"
+
 #include "libfork/queue.hpp"
 #include "libfork/task.hpp"
-#include "libfork/utility.hpp"
 
 /**
  * @file busy_pool.hpp

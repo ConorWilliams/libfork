@@ -12,8 +12,7 @@
 #include <utility>
 
 #include "libfork/detail/coroutine.hpp"
-
-#include "libfork/utility.hpp"
+#include "libfork/detail/utility.hpp"
 
 /**
  * @file unique_handle.hpp

@@ -12,9 +12,23 @@
 
 ### Meta  -->
 
-## Unreleased
+<!-- ## Unreleased
 
 ### Added
+
+### Changed
+
+### Removed
+
+### Bugfixes
+
+### Meta  -->
+
+## Version 2.1.0
+
+### Added
+
+- Support for libc++ and Apple clang.
 
 ### Changed
 
@@ -25,6 +39,8 @@
 ### Bugfixes
 
 ### Meta 
+
+- CI builds on Apple Silicon.
 
 ## Version 2.0.0
 

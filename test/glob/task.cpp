@@ -16,9 +16,9 @@
 
 // NOLINTBEGIN No need to check the tests for style.
 
+#include "libfork/detail/utility.hpp"
 #include "libfork/schedule/immediate.hpp"
 #include "libfork/task.hpp"
-#include "libfork/utility.hpp"
 
 using namespace lf;
 

@@ -10,7 +10,7 @@
 
 #include <semaphore>
 
-#include "libfork/utility.hpp"
+#include "libfork/detail/utility.hpp"
 
 /**
  * @file wait.hpp

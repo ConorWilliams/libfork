@@ -18,7 +18,7 @@
 #include <limits>
 #include <random>
 
-#include "libfork/utility.hpp"
+#include "libfork/detail/utility.hpp"
 
 /**
  * \file random.hpp

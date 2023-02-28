@@ -18,7 +18,7 @@
 #include <utility>
 #include <vector>
 
-#include "libfork/utility.hpp"  // Only for ASSERT macro + hardware_destructive_interference_size
+#include "libfork/detail/utility.hpp"  // Only for ASSERT macro + hardware_destructive_interference_size
 
 /**
  * @file queue.hpp

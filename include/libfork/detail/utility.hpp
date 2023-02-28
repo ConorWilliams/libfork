@@ -63,9 +63,7 @@ struct source_location {
   #error "Missing __has_include macro!"
 #endif
 
-namespace lf {
-
-namespace detail {
+namespace lf::detail {
 
 constexpr auto file_name(std::string_view path) -> std::string_view {
   if (auto last = path.find_last_of("/\\"); last != std::string_view::npos) {
@@ -213,6 +211,4 @@ inline constexpr std::size_t k_cache_line = 64;
 
 // NOLINTEND
 
-}  // namespace detail
-
-}  // namespace lf
+}  // namespace lf::detail
