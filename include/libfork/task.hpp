@@ -435,7 +435,7 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, waiter<Root
         // Parent has not reached join or we are not the last child to complete.
         // We are now out of jobs, yield to executor.
         DEBUG_TRACKER("task is not last to join");
-        return destroy_if_void(child, std::noop_coroutine());
+        return destroy_if_void(child, noop_coroutine());
       }
     };
     return final_awaitable{};
