@@ -12,7 +12,7 @@
 
 ### Meta  -->
 
-<!-- ## Unreleased
+## Unreleased
 
 ### Added
 
@@ -22,9 +22,11 @@
 
 ### Bugfixes
 
-### Meta  -->
+### Meta 
 
 ## Version 2.1.0
+
+This release primarily backports ``jthread`` to ``thread`` for Apple clang and libc++.
 
 ### Added
 
@@ -32,11 +34,7 @@
 
 ### Changed
 
-- Conditional syncstream support.
-
-### Removed
-
-### Bugfixes
+- Conditional ``<syncstream>`` support.
 
 ### Meta 
 
