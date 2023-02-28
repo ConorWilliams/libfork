@@ -10,12 +10,16 @@
 
 #include <functional>
 #include <iostream>
+#include <new>
 #include <string_view>
-#include <syncstream>
 #include <thread>
 #include <type_traits>
 #include <utility>
 #include <version>
+
+#ifdef __cpp_lib_syncbuf
+  #include <syncstream>
+#endif
 
 /**
  * @file utility.hpp
@@ -70,21 +74,25 @@ constexpr auto file_name(std::string_view path) -> std::string_view {
   #ifndef NDEBUG
 
 inline void assert_impl(std::string_view const expr, std::string_view const message, source_location const location = source_location::current()) {
-  std::osyncstream synced_out(std::cerr);
+    #ifdef __cpp_lib_syncbuf
+  std::osyncstream out(std::cerr);
+    #else
+  auto& out = std::cerr;
+    #endif
 
-  synced_out << "\033[1;31mERR\033[0m: [";
-  synced_out << std::this_thread::get_id();
-  synced_out << "] ";
-  synced_out << ::lf::detail::file_name(location.file_name());
-  synced_out << "(";
-  synced_out << location.line();
-  synced_out << ":";
-  synced_out << location.column();
-  synced_out << ") \033[1;31mASSERT\033[0m: \"";
-  synced_out << expr;
-  synced_out << "\" failed with message: \"";
-  synced_out << message;
-  synced_out << "\"\n";
+  out << "\033[1;31mERR\033[0m: [";
+  out << std::this_thread::get_id();
+  out << "] ";
+  out << ::lf::detail::file_name(location.file_name());
+  out << "(";
+  out << location.line();
+  out << ":";
+  out << location.column();
+  out << ") \033[1;31mASSERT\033[0m: \"";
+  out << expr;
+  out << "\" failed with message: \"";
+  out << message;
+  out << "\"\n";
 }
 
     /**
@@ -157,19 +165,23 @@ inline void assert_impl(std::string_view const expr, std::string_view const mess
   #if !defined(NDEBUG) && !defined(FORK_NO_LOGGING)
 
 inline void log_impl(std::string_view const message, source_location const location = source_location::current()) {
-  std::osyncstream synced_out(std::clog);
+    #ifdef __cpp_lib_syncbuf
+  std::osyncstream out(std::clog);
+    #else
+  auto& out = std::clog;
+    #endif
 
-  synced_out << "\033[1;32mLOG\033[0m: [";
-  synced_out << std::this_thread::get_id();
-  synced_out << "] ";
-  synced_out << file_name(location.file_name());
-  synced_out << "(";
-  synced_out << location.line();
-  synced_out << ":";
-  synced_out << location.column();
-  synced_out << ") \"";
-  synced_out << message;
-  synced_out << "\"\n";
+  out << "\033[1;32mLOG\033[0m: [";
+  out << std::this_thread::get_id();
+  out << "] ";
+  out << file_name(location.file_name());
+  out << "(";
+  out << location.line();
+  out << ":";
+  out << location.column();
+  out << ") \"";
+  out << message;
+  out << "\"\n";
 }
 
     /**
