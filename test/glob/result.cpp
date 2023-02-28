@@ -15,8 +15,9 @@
 
 using namespace lf::detail;
 
-static_assert(std::is_trivially_destructible_v<result<int>>);
-static_assert(!std::is_trivially_destructible_v<result<std::vector<int>>>);
+// Removed for clang 14 support
+// static_assert(std::is_trivially_destructible_v<result<int>>);
+// static_assert(!std::is_trivially_destructible_v<result<std::vector<int>>>);
 
 inline constexpr bool test_value = requires(result<int> r1, result<int> const r2, int a, int const& b) {
                                      { r1.return_value(a) } noexcept;
