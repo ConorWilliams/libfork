@@ -18,6 +18,8 @@
 
 ### Changed
 
+- Conditional syncstream support.
+
 ### Removed
 
 ### Bugfixes
