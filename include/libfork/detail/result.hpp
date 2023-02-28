@@ -37,6 +37,14 @@ class result {
    */
   constexpr result() noexcept : m_empty{} {}
 
+  // clang-format off
+  /// @cond CONCEPTS
+
+  constexpr result() noexcept requires(std::is_trivially_destructible_v<T>)  = default;
+
+  /// @endcond
+  // clang-format on
+
   result(result&) = delete;
 
   result(result&&) = delete;
@@ -72,18 +80,14 @@ class result {
   }
 
   // clang-format off
-
   /// @cond CONCEPTS
 
   constexpr ~result() noexcept requires(std::is_trivially_destructible_v<T>) = default;
 
   /// @endcond
-
   // clang-format on
 
-  constexpr ~result() noexcept
-  requires(!std::is_trivially_destructible_v<T>)
-  {
+  constexpr ~result() noexcept {
     std::destroy_at(std::addressof(m_value));  // NOLINT
   }
 
