@@ -15,7 +15,7 @@
 /**
  * @file coroutine.hpp
  *
- * @brief Use a version of coroutines if avaliable.
+ * @brief Use a version of coroutines if available.
  */
 
 #if __has_include(<coroutine>)  // Check for a standard library
