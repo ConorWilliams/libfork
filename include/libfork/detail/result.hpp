@@ -75,13 +75,15 @@ class result {
 
   /// @cond CONCEPTS
 
-  ~result() requires(std::is_trivially_destructible_v<T>) = default;
+  constexpr ~result() noexcept requires(std::is_trivially_destructible_v<T>) = default;
 
   /// @endcond
 
   // clang-format on
 
-  constexpr ~result() noexcept {
+  constexpr ~result() noexcept
+  requires(!std::is_trivially_destructible_v<T>)
+  {
     std::destroy_at(std::addressof(m_value));  // NOLINT
   }
 
