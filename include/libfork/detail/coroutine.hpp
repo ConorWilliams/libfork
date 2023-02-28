@@ -16,9 +16,11 @@
  * @brief Use a version of coroutines if available.
  */
 
-#if __has_include(<coroutine>)  // Check for a standard library
+#ifdef __has_include
 
-  #include <coroutine>
+  #if __has_include(<coroutine>)  // Check for a standard library
+
+    #include <coroutine>
 
 namespace lf {
 
@@ -29,9 +31,9 @@ using std::suspend_never;     // NOLINT
 
 }  // namespace lf
 
-#elif __has_include(<experimental/optional>)  // Check for an experimental version
+  #elif __has_include(<experimental/coroutine>)  // Check for an experimental version
 
-  #include <experimental/optional>
+    #include <experimental/coroutine>
 
 namespace lf {
 
@@ -41,6 +43,10 @@ using std::experimental::suspend_always;    // NOLINT
 using std::experimental::suspend_never;     // NOLINT
 
 }  // namespace lf
+  #else
+    #error "Missing <coroutine> header!"
+  #endif
+
 #else
-  #error "Missing <coroutine> header!"
+  #error "Missing __has_include macro!"
 #endif

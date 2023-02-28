@@ -29,21 +29,22 @@
 
 // NOLINTBEGIN Sometime macros are the only way to do things...
 
-#if __has_include(<source_location>)
-  #include <source_location>
+#ifdef __has_include
+  #if __has_include(<source_location>)
+    #include <source_location>
 
 namespace lf::detail {
 using source_location = std::source_location;
 }  // namespace lf::detail
 
-#elif __has_include(<experimental/source_location>)
-  #include <experimental/source_location>
+  #elif __has_include(<experimental/source_location>)
+    #include <experimental/source_location>
 
 namespace lf::detail {
 using source_location = std::experimental::source_location;
 }  // namespace lf::detail
 
-#else
+  #else
 
 namespace lf::detail {
 
@@ -57,6 +58,9 @@ struct source_location {
 
 }  // namespace lf::detail
 
+  #endif
+#else
+  #error "Missing __has_include macro!"
 #endif
 
 namespace lf {
