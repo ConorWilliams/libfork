@@ -1,6 +1,6 @@
 # Changelog
 
-<!-- ## Unreleased
+<!-- ## [**Version x.x.x**](https://github.com/ConorWilliams/libfork/compare/v2.1.0...dev)
 
 ### Added
 
@@ -12,7 +12,7 @@
 
 ### Meta  -->
 
-## Unreleased
+## [**Version x.x.x**](https://github.com/ConorWilliams/libfork/compare/v2.1.0...dev)
 
 ### Added
 
@@ -24,7 +24,7 @@
 
 ### Meta 
 
-## Version 2.1.0
+## [**Version 2.1.0**](https://github.com/ConorWilliams/libfork/compare/v2.0.0...v2.1.0)
 
 This release primarily backports ``jthread`` to ``thread`` for Apple clang and libc++.
 
@@ -40,7 +40,7 @@ This release primarily backports ``jthread`` to ``thread`` for Apple clang and l
 
 - CI builds on Apple Silicon.
 
-## Version 2.0.0
+## [**Version 2.0.0**](https://github.com/ConorWilliams/libfork/compare/v1.0.0...v2.0.0)
 
 This release overhauled libfork bringing many changes including:
 

@@ -181,6 +181,21 @@
         "ci-win64",
         "dev-mode"
       ]
+    },
+    {
+      "name": "benchmark-nix",
+      "binaryDir": "${sourceDir}/build/bench",
+      "generator": "Unix Makefiles",
+      "inherits": [
+        "dev-mode",
+        "ci-std"
+      ],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BUILD_TESTING": "OFF",
+        "BUILD_BENCHMARKS": "ON",
+        "CMAKE_CXX_FLAGS": "-Wno-assume -flto=auto -march=native"
+      }
     }
   ]
 }

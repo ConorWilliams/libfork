@@ -10,8 +10,6 @@ Testing/
 
 *.log
 
-include/libfork/schedule/thread_pool.hpp
-
 gmon.out
 compile_commands.json
 CMakeLists.txt.user
