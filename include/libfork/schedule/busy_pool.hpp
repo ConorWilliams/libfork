@@ -131,7 +131,7 @@ class busy_pool {
 
     DEBUG_TRACKER("master thread starts stealing");
 
-    // Steal until root task completes, need doggy capture until clang implements P1091
+    // Steal until root task completes, need dodgy capture until clang implements P1091
     steal_until(uid, [fut = std::addressof(fut)]() -> bool {
       return fut->is_ready();
     });

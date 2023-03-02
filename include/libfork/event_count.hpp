@@ -77,7 +77,10 @@ static_assert(k_is_little_endian || k_is_big_endian, "mixed endian systems are n
  *
  *    if (!condition()) {  // handle fast path first
  *      for (;;) {
- *        if (auto key = eventCount.prepare_wait(); condition()) {
+ *
+ *        auto key = eventCount.prepare_wait();
+ *
+ *        if (condition()) {
  *          eventCount.cancel_wait();
  *          break;
  *        } else {
@@ -186,12 +189,14 @@ class event_count {
 
 inline void event_count::notify_one() noexcept {
   if (m_val.fetch_add(k_add_epoch, std::memory_order_acq_rel) & k_waiter_mask) [[unlikely]] {  // NOLINT
+    DEBUG_TRACKER("notify")
     epoch()->notify_one();
   }
 }
 
 inline void event_count::notify_all() noexcept {
   if (m_val.fetch_add(k_add_epoch, std::memory_order_acq_rel) & k_waiter_mask) [[unlikely]] {  // NOLINT
+    DEBUG_TRACKER("notify")
     epoch()->notify_all();
   }
 }
@@ -219,16 +224,16 @@ inline void event_count::wait(key in_key) noexcept {
   // (and thus system calls)
   auto prev = m_val.fetch_add(k_sub_waiter, std::memory_order_seq_cst);
 
-  ASSERT_ASSUME((prev & k_waiter_mask) != 0, "wait fails");
+  ASSERT_ASSUME((prev & k_waiter_mask) != 0, "wait failed");
 }
 
 template <class Pred>
 requires std::is_invocable_r_v<bool, Pred const&>
 void event_count::await(Pred const& condition) {
+  //
   if (std::invoke(condition)) {
     return;
   }
-
   // std::invoke(condition) is the only thing that may throw, everything else is
   // noexcept, so we can hoist the try/catch block outside of the loop
   try {
