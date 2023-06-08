@@ -8,21 +8,30 @@ if [ -z "$commits" ]; then
     exit 0
 fi
 
+# Check there are no untracked changes
+
+git diff-index --quiet HEAD --
+
+if [ $? -ne 0 ]; then
+    echo "Untracked changes!"
+    exit 1
+fi
+
 LINT="cmake --preset=dev && cmake --build --preset=dev -t spell-check format-check"
 
 eval $LINT
 
 if [ $? -ne 0 ]; then
-    echo "failed $LINT"
+    echo "Failed $LINT!"
     exit 1
 fi
 
-LINT="cmake --build --preset=dev && ctest --preset=dev"
+TEST="cmake --build --preset=dev && ctest --preset=dev"
 
-eval $LINT
+eval $TEST
 
 if [ $? -ne 0 ]; then
-    echo "failed $LINT"
+    echo "Failed $TEST!"
     exit 1
 fi
 
