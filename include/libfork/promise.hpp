@@ -85,7 +85,7 @@ struct promise_type : promise_base<T> {
 
   [[nodiscard]] static auto operator new(std::size_t const size) -> void * {
     if constexpr (std::same_as<Tag, root_t>) {
-      // Use gloabal new.
+      // Use global new.
       return ::operator new(size);
     } else {
       // Use the stack that the thread owns which may not be equal to the parent's stack.
@@ -164,13 +164,13 @@ struct promise_type : promise_base<T> {
           LIBFORK_LOG("Parent not stolen, keeps ripping");
           LIBFORK_ASSERT(parent_h == *parent_task_handle);
           // This must be the same thread that created the parent so it already owns the stack.
-          // No steals have occured so we do not need to call reset().;
+          // No steals have occurred so we do not need to call reset().;
           return parent_h;
         }
 
         // We are either: the thread that created the parent or a thread that completed a forked task.
 
-        // Note: emptying stack implies finised a stolen task or finished a task forked from root.
+        // Note: emptying stack implies finished a stolen task or finished a task forked from root.
 
         // Cases:
         // 1. We are fork_from_root_t
@@ -314,7 +314,7 @@ public:
     struct awaitable {
     private:
       constexpr void take_stack_reset_control() const noexcept {
-        // Steals have happend so we cannot currently own this tasks stack.
+        // Steals have happened so we cannot currently own this tasks stack.
         LIBFORK_ASSUME(control_block->steals() != 0);
 
         if constexpr (!std::same_as<Tag, root_t>) {
@@ -332,7 +332,7 @@ public:
           context.stack_push(tasks_stack);
         }
 
-        // Some steals have happend, need to reset the control block.
+        // Some steals have happened, need to reset the control block.
         control_block->reset();
       }
 

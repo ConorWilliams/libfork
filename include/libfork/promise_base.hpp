@@ -82,7 +82,7 @@ template <typename T>
 concept tag = std::same_as<T, root_t> || std::same_as<T, call_t> || std::same_as<T, call_from_root_t> || std::same_as<T, fork_t> || std::same_as<T, fork_from_root_t>;
 
 /**
- * @brief An istance of this type is what is passed as the first argument to all coroutines.
+ * @brief An instance of this type is what is passed as the first argument to all coroutines.
  */
 template <tag Tag, is_wrap_fn Wrap>
 struct magic : Wrap {
@@ -145,7 +145,7 @@ public:
   }
 
   constexpr void reset() noexcept {
-    // This is called when taking owership of a task at a join point.
+    // This is called when taking ownership of a task at a join point.
     LIBFORK_ASSERT(m_steal != 0);
     m_steal = 0;
     // Use construct_at(...) to set non-atomically as we know we are the
@@ -215,7 +215,7 @@ struct is_virtual_stack<virtual_stack<N>> : std::true_type {
 using task_handle = detail::control_block_t::handle_t;
 
 /**
- * @brief A concept which requires a type to define a ``stack_type`` which must be a specialisation of ``lf::virtual_stack``.
+ * @brief A concept which requires a type to define a ``stack_type`` which must be a specialization of ``lf::virtual_stack``.
  */
 template <typename T>
 concept defines_stack = requires() {
@@ -238,7 +238,7 @@ concept defines_stack = requires() {
  *
  *      typename Context::stack_type;
  *
- *      requires // Context::stack_type is a specialisation of lf::virtual_stack //;
+ *      requires // Context::stack_type is a specialization of lf::virtual_stack //;
  *
  *      // Access the thread_local context.
  *      { Context::context() } -> std::same_as<Context &>;

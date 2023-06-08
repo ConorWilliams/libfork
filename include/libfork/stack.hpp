@@ -104,7 +104,7 @@ public:
    * @brief Allocate ``n`` bytes on the stack.
    *
    * @param n The number of bytes to allocate.
-   * @return A pointer to the allocated memory alligned to __STDCPP_DEFAULT_NEW_ALIGNMENT__.
+   * @return A pointer to the allocated memory aligned to __STDCPP_DEFAULT_NEW_ALIGNMENT__.
    */
   [[nodiscard]] constexpr auto allocate(std::size_t const n) -> void * {
     //
@@ -154,7 +154,7 @@ public:
    * @brief Get the stack that is storing ``buf`` in its internal buffer.
    */
   [[nodiscard]] static constexpr auto from_address(void *buf) -> virtual_stack::handle {
-    // This utilises the fact that a stack is aligned to N which is a power of 2.
+    // This utilizes the fact that a stack is aligned to N which is a power of 2.
     //
     //        N  = 001000  or some other power of 2
     //     N - 1 = 000111

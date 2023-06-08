@@ -29,9 +29,6 @@ namespace lf {
 
 /**
  * @brief The return type for libfork's async functions/coroutines.
- *
- * @tparam T The type of the value returned by the coroutine.
- * @tparam Context The type of the context in which the coroutine is executed.
  */
 template <typename T, thread_context Context>
   requires(!std::is_reference_v<T>)
@@ -58,14 +55,21 @@ struct is_task_impl<task<T, Context>> : std::true_type {};
 template <typename T>
 concept is_task = is_task_impl<T>::value;
 
+template <typename F, typename... Args>
+using invoke_t = std::invoke_result_t<F, detail::magic<detail::root_t, wrap_fn<F>>, Args...>;
+
 } // namespace detail
 
 /**
- * @brief Sync wait point.
+ * @brief The entry point for syncronous execution of a coroutine.
+ *
+ * This will create the coroutine and pass its handle to ``schedule``. ``schedule`` is expected to garantee that
+ * some thread will call ``resume()`` on the coroutine handle it is passed. The calling thread will then block
+ * until the task has finished executing. Finally the result of the task will be returned.
  */
-template <std::invocable<stdexp::coroutine_handle<>> Submit, stateless F, class... Args, detail::is_task Task = std::invoke_result_t<F, detail::magic<detail::root_t, wrap_fn<F>>, Args...>>
+template <std::invocable<stdexp::coroutine_handle<>> Schedule, stateless F, class... Args, detail::is_task Task = detail::invoke_t<F, Args...>>
   requires std::default_initializable<typename Task::value_type> || std::is_void_v<typename Task::value_type>
-auto sync_wait(Submit &&submit, wrap_fn<F>, Args &&...args) -> typename Task::value_type {
+auto sync_wait(Schedule &&schedule, wrap_fn<F>, Args &&...args) -> typename Task::value_type {
 
   using value_type = typename Task::value_type;
 
@@ -83,17 +87,17 @@ auto sync_wait(Submit &&submit, wrap_fn<F>, Args &&...args) -> typename Task::va
 
 #if LIBFORK_COMPILER_EXCEPTIONS
   try {
-    std::invoke(std::forward<Submit>(submit), stdexp::coroutine_handle<>{coro});
+    std::invoke(std::forward<Schedule>(schedule), stdexp::coroutine_handle<>{coro});
   } catch (...) {
-    // We cannot know whether the coroutine has been resumed or not once we pass to submit(...).
-    // Hence, we do not know whether or not to .destroy() it if submit(...) throws.
+    // We cannot know whether the coroutine has been resumed or not once we pass to schedule(...).
+    // Hence, we do not know whether or not to .destroy() it if schedule(...) throws.
     // Hence we mark noexcept to trigger termination.
     []() noexcept {
       throw;
     }();
   }
 #else
-  std::invoke(std::forward<Submit>(submit), stdexp::coroutine_handle<>{coro});
+  std::invoke(std::forward<Schedule>(schedule), stdexp::coroutine_handle<>{coro});
 #endif
 
   // Block until the coroutine has finished.

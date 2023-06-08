@@ -16,13 +16,13 @@
 /**
  * @file libfork.hpp
  *
- * @brief Meta header which includes all task<...>, fork, call, join machinary.
+ * @brief Meta header which includes all ``lf::task``, ``lf::fork``, ``lf::call``, ``lf::join`` and ``lf::sync_wait`` machinery.
  */
 
 #ifndef LIBFORK_DOXYGEN_SHOULD_SKIP_THIS
 
 /**
- * @brief Specialise coroutine_traits for task<...> from functions.
+ * @brief Specialize coroutine_traits for task<...> from functions.
  */
 template <typename T, typename Context, typename TagWith, typename... Args>
   requires std::same_as<std::remove_cvref_t<TagWith>, TagWith> && lf::detail::tag<typename TagWith::tag>
@@ -37,7 +37,7 @@ struct lf::stdexp::coroutine_traits<lf::task<T, Context>, TagWith, Args...> {
 };
 
 /**
- * @brief Specialise coroutine_traits for task<...> from member functions.
+ * @brief Specialize coroutine_traits for task<...> from member functions.
  */
 template <typename T, typename Context, typename This, typename TagWith, typename... Args>
   requires std::same_as<std::remove_cvref_t<TagWith>, TagWith> && lf::detail::tag<typename TagWith::tag>
@@ -56,9 +56,9 @@ namespace lf {
 template<template<typename ...> typename Packet>
 struct bind_task {
   /**
-   * @brief Bind return adress `ret` to task.
+   * @brief Bind return address `ret` to task.
    * 
-   * @return A callable object, that will return an awaitable, that will trigger a fork/call .
+   * @return A functor, that will return an awaitable, that will trigger a fork/call .
    */
   template <typename R, typename F>
 #ifdef __cpp_static_call_operator
@@ -74,7 +74,7 @@ struct bind_task {
   /**
    * @brief Set a void return address for a task.
    * 
-   * @return A callable object, that will return an awaitable, that will trigger a fork/call .
+   * @return A functor, that will return an awaitable, that will trigger a fork/call .
    */
   template <typename F>
 #ifdef __cpp_static_call_operator
@@ -87,11 +87,11 @@ struct bind_task {
     };
   }
 
-#if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
+#if defined(LIBFORK_DOXYGEN_SHOULD_SKIP_THIS) || defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
   /**
-   * @brief Bind return adress `ret` to task.
+   * @brief Bind return address `ret` to task.
    * 
-   * @return A callable object, that will return an awaitable, that will trigger a fork/call .
+   * @return A functor, that will return an awaitable, that will trigger a fork/call .
    */
   template <typename R, typename F>
    [[nodiscard]] static constexpr auto operator[](R &ret, wrap_fn<F> func) noexcept {
@@ -101,7 +101,7 @@ struct bind_task {
   /**
    * @brief Set a void return address for a task.
    * 
-   * @return A callable object, that will return an awaitable, that will trigger a fork/call .
+   * @return A functor, that will return an awaitable, that will trigger a fork/call .
    */
   template <typename F>
    [[nodiscard]] static constexpr auto operator[](wrap_fn<F> func) noexcept {
@@ -118,12 +118,12 @@ struct bind_task {
 inline constexpr detail::join_t join = {};
 
 /**
- * @brief Fork point.
+ * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a fork.
  */
 inline constexpr bind_task<detail::fork_packet> fork = {};
 
 /**
- * @brief An awaitable (in a task) that triggers a join.
+ * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a call.
  */
 inline constexpr bind_task<detail::call_packet> call = {};
 
