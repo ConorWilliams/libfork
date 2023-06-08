@@ -65,11 +65,11 @@ using invoke_t = std::invoke_result_t<F, detail::magic<detail::root_t, async_fn<
 } // namespace detail
 
 /**
- * @brief The entry point for syncronous execution of asyncronous functions.
+ * @brief The entry point for synchronous execution of asynchronous functions.
  *
- * This will create the coroutine and pass its handle to ``schedule``. ``schedule`` is expected to garantee that
+ * This will create the coroutine and pass its handle to ``schedule``. ``schedule`` is expected to guarantee that
  * some thread will call ``resume()`` on the coroutine handle it is passed. The calling thread will then block
- * until the asyncronous function has finished executing. Finally the result of the asyncronous function
+ * until the asynchronous function has finished executing. Finally the result of the asynchronous function
  * will be returned.
  */
 template <std::invocable<stdexp::coroutine_handle<>> Schedule, stateless F, class... Args, detail::is_task Task = detail::invoke_t<F, Args...>>
@@ -118,12 +118,12 @@ auto sync_wait(Schedule &&schedule, async_fn<F>, Args &&...args) -> typename Tas
 // clang-format off
 
 /**
- * @brief An invocable (and subscriptable) wrapper that binds a return address to an asyncronous function.
+ * @brief An invocable (and subscriptable) wrapper that binds a return address to an asynchronous function.
  */
 template<template<typename ...> typename Packet>
 struct bind_task {
   /**
-   * @brief Bind return address `ret` to an asyncronous function.
+   * @brief Bind return address `ret` to an asynchronous function.
    * 
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
@@ -139,7 +139,7 @@ struct bind_task {
   }
 
   /**
-   * @brief Set a void return address for an asyncronous function.
+   * @brief Set a void return address for an asynchronous function.
    * 
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
@@ -156,7 +156,7 @@ struct bind_task {
 
 #if defined(LIBFORK_DOXYGEN_SHOULD_SKIP_THIS) || defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
   /**
-   * @brief Bind return address `ret` to an asyncronous function.
+   * @brief Bind return address `ret` to an asynchronous function.
    * 
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
@@ -166,7 +166,7 @@ struct bind_task {
   }
   
   /**
-   * @brief Set a void return address for an asyncronous function.
+   * @brief Set a void return address for an asynchronous function.
    * 
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
