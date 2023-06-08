@@ -99,8 +99,6 @@ TEST_CASE("libfork", "[libfork]") {
 
   basic_context::set(ctx);
 
-  // for (int i = 0; i < 20; ++i) {
-
   int i = 22;
 
   auto answer = sync_wait([](auto handle) { handle(); }, fib, i);
