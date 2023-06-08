@@ -216,6 +216,8 @@ struct is_virtual_stack<virtual_stack<N>> : std::true_type {
  */
 using task_handle = detail::control_block_t::handle_t;
 
+// clang-format off
+
 /**
  * @brief A concept which requires a type to define a ``stack_type`` which must be a specialization of ``lf::virtual_stack``.
  */
@@ -276,6 +278,8 @@ concept thread_context = defines_stack<Context> && requires(Context ctx, typenam
   { ctx.task_pop() } -> std::convertible_to<std::optional<task_handle>>; ///< Remove and return the top element.
   { ctx.task_push(handle) };                                             ///< Insert element at the top.
 };
+
+// clang-format on
 
 // -------------- Define forward decls -------------- //
 

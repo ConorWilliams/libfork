@@ -74,7 +74,7 @@ using invoke_t = std::invoke_result_t<F, detail::magic<detail::root_t, async_fn<
  */
 template <std::invocable<stdexp::coroutine_handle<>> Schedule, stateless F, class... Args, detail::is_task Task = detail::invoke_t<F, Args...>>
   requires std::default_initializable<typename Task::value_type> || std::is_void_v<typename Task::value_type>
-auto sync_wait(Schedule &&schedule, async_fn<F>, Args &&...args) -> typename Task::value_type {
+                                                                  auto sync_wait(Schedule &&schedule, async_fn<F>, Args &&...args) -> typename Task::value_type {
 
   using value_type = typename Task::value_type;
 
