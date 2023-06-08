@@ -103,7 +103,6 @@ TEST_CASE("libfork", "[libfork]") {
 
   int i = 22;
 
-  //
   auto answer = sync_wait([](auto handle) { handle(); }, fib, i);
 
   std::cout << "fib(" << i << ") = " << answer << "\n";
