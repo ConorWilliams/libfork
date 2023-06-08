@@ -42,29 +42,31 @@ template <typename T>
 concept stateless = std::is_trivial_v<T> && std::is_empty_v<T> && std::is_class_v<T>;
 
 /**
- * @brief A result type for fn(...).
+ * @brief The result type for ``lf::fn()``.
+ *
+ * Wraps a stateless callable that returns an ``lf::task``.
  */
 template <stateless Fn>
-struct wrap_fn {};
+struct async_fn {};
 
 /**
- * @brief Use to build a task from a stateless invocable.
+ * @brief Builds an async function from a stateless invocable that returns an ``lf::task``.
  */
 template <stateless F>
-constexpr auto fn(F) -> wrap_fn<F> { return {}; }
+constexpr auto fn(F) -> async_fn<F> { return {}; }
 
 namespace detail {
 
 // -------------- Tag types and constants -------------- //
 
 template <typename T>
-struct is_wrap_fn_impl : std::false_type {};
+struct is_async_fn_impl : std::false_type {};
 
 template <stateless Fn>
-struct is_wrap_fn_impl<wrap_fn<Fn>> : std::true_type {};
+struct is_async_fn_impl<async_fn<Fn>> : std::true_type {};
 
 template <typename T>
-concept is_wrap_fn = is_wrap_fn_impl<T>::value;
+concept is_async_fn = is_async_fn_impl<T>::value;
 
 //  Tags
 
@@ -84,7 +86,7 @@ concept tag = std::same_as<T, root_t> || std::same_as<T, call_t> || std::same_as
 /**
  * @brief An instance of this type is what is passed as the first argument to all coroutines.
  */
-template <tag Tag, is_wrap_fn Wrap>
+template <tag Tag, is_async_fn Wrap>
 struct magic : Wrap {
   using tag = Tag;
 };

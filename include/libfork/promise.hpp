@@ -273,7 +273,7 @@ private:
   using fork_child_tag = std::conditional_t<std::same_as<Tag, root_t>, fork_from_root_t, fork_t>;
 
 public:
-  template <typename R, typename F, typename... Args, typename Magic = magic<fork_child_tag, wrap_fn<F>>>
+  template <typename R, typename F, typename... Args, typename Magic = magic<fork_child_tag, async_fn<F>>>
     requires std::is_invocable_r_v<task<R, Context>, F, Magic, Args...>
   [[nodiscard]] constexpr auto await_transform(fork_packet<R, F, Args...> packet) {
     //
@@ -295,7 +295,7 @@ public:
     return awaitable{{}, invoke_with<Magic>(std::move(packet))};
   }
 
-  template <typename R, typename F, typename... Args, typename Magic = magic<call_child_tag, wrap_fn<F>>>
+  template <typename R, typename F, typename... Args, typename Magic = magic<call_child_tag, async_fn<F>>>
     requires std::is_invocable_r_v<task<R, Context>, F, Magic, Args...>
   [[nodiscard]] constexpr auto await_transform(call_packet<R, F, Args...> packet) {
     //

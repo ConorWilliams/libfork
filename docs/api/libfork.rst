@@ -20,6 +20,9 @@ Interfaces
 Functions
 -------------------------
 
+.. doxygenfunction:: lf::fn
+
+----------------------------
 
 .. doxygenfunction:: lf::sync_wait
 
@@ -42,6 +45,12 @@ Types
 ---------------------------
 
 .. doxygenclass:: lf::task
+    :members:
+    :undoc-members:
+
+----------------------------
+
+.. doxygenstruct:: lf::async_fn
     :members:
     :undoc-members:
 
