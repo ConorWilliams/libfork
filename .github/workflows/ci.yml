@@ -3,11 +3,11 @@ name: Continuous Integration
 on:
   push:
     branches:
-    - master
+    - v3.0.0
 
   pull_request:
     branches:
-    - master
+    - v3.0.0
 
 jobs:
   lint:
