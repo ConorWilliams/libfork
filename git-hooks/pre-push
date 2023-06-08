@@ -28,25 +28,23 @@ echo
 echo "Either include these files in your commits, add them to .gitignore"
 echo "or stash them with git stash -u."
 echo
-exit 1
+
 
 LINT="cmake --preset=dev && cmake --build --preset=dev -t spell-check format-check"
 
 eval $LINT
 
 if [ $? -ne 0 ]; then
-    echo "Failed $LINT!"
+    echo "Lint: $LINT failed!"
     exit 1
 fi
 
 TEST="cmake --build --preset=dev && ctest --preset=dev"
 
-
-
 eval $TEST
 
 if [ $? -ne 0 ]; then
-    echo "Failed $TEST!"
+    echo "Test: $TEST failed!"
     exit 1
 fi
 
