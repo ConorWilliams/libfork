@@ -37,6 +37,11 @@ struct alignas(__STDCPP_DEFAULT_NEW_ALIGNMENT__) stack_mem : exception_packet {
 
 } // namespace detail
 
+/**
+ * @brief A program-managed stack for coroutine frames.
+ *
+ * @tparam The number of bytes to allocate for the stack. Must be a power of two.
+ */
 template <std::size_t N>
   requires(std::has_single_bit(N))
 class alignas(N) virtual_stack : private detail::stack_mem {
@@ -58,8 +63,14 @@ public:
      */
     explicit constexpr handle(virtual_stack &stack) noexcept : m_stack{&stack} {}
 
+    /**
+     * @brief Access the stack pointed at by this handle.
+     */
     [[nodiscard]] constexpr auto operator*() const noexcept -> virtual_stack * { return m_stack; }
 
+    /**
+     * @brief Access the stack pointed at by this handle.
+     */
     constexpr auto operator->() -> virtual_stack * { return m_stack; }
 
     /**
@@ -166,6 +177,8 @@ public:
 
 private:
   static constexpr std::size_t k_align = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
+
+  static_assert(N > sizeof(detail::stack_mem), "Stack is too small!");
 
   alignas(k_align) std::array<std::byte, N - sizeof(detail::stack_mem)> m_buf;
 

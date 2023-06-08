@@ -14,7 +14,7 @@
 /**
  * @file coroutine.hpp
  *
- * @brief Includes <coroutine> or <experimental/coroutine> depending on the compiler.
+ * @brief Includes \<coroutine\> or \<experimental/coroutine\> depending on the compiler.
  */
 
 #ifndef __has_include

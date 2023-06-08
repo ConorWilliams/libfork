@@ -27,14 +27,18 @@
 
 namespace lf {
 
-class invoker {
-};
-
+/**
+ * @brief The return type for libfork's async functions/coroutines.
+ *
+ * @tparam T The type of the value returned by the coroutine.
+ * @tparam Context The type of the context in which the coroutine is executed.
+ */
 template <typename T, thread_context Context>
+  requires(!std::is_reference_v<T>)
 class task : public stdexp::coroutine_handle<detail::promise_base<T>> {
 public:
-  using value_type = T;
-  using context_type = Context;
+  using value_type = T;         ///< The type of the value returned by the coroutine.
+  using context_type = Context; ///< The type of the context in which the coroutine is executed.
 
 private:
   explicit constexpr task(auto handle) noexcept : stdexp::coroutine_handle<detail::promise_base<T>>{handle} {}

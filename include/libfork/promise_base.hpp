@@ -207,12 +207,6 @@ struct is_virtual_stack<virtual_stack<N>> : std::true_type {
   static_assert(sizeof(virtual_stack<N>) == N);
 };
 
-template <typename T>
-concept defines_stack = requires() {
-  typename T::stack_type;
-  requires is_virtual_stack<typename T::stack_type>::value;
-};
-
 } // namespace detail
 
 /**
@@ -221,22 +215,61 @@ concept defines_stack = requires() {
 using task_handle = detail::control_block_t::handle_t;
 
 /**
+ * @brief A concept which requires a type to define a ``stack_type`` which must be a specialisation of ``lf::virtual_stack``.
+ */
+template <typename T>
+concept defines_stack = requires() {
+  typename T::stack_type;
+  requires detail::is_virtual_stack<typename T::stack_type>::value;
+};
+
+/**
  * @brief A concept which defines the context interface.
  *
  * A context owns a LIFO stack of virtual-stacks and a LIFO stack of tasks.
  * The stack of virtual-stacks is expected to never be empty, it should always
  * be able to return an empty virtual-stack.
+ *
+ * \rst
+ *
+ * Specifically this requires:
+ *
+ * .. code::
+ *
+ *      typename Context::stack_type;
+ *
+ *      requires // Context::stack_type is a specialisation of lf::virtual_stack //;
+ *
+ *      // Access the thread_local context.
+ *      { Context::context() } -> std::same_as<Context &>;
+ *
+ *      // Check the maximum parallelism.
+ *      { Context::max_threads() } -> std::same_as<std::size_t>;
+ *
+ *      // Access the top stack.
+ *      { ctx.stack_top() } -> std::convertible_to<typename Context::stack_type::handle>;
+ *      // Remove the top stack.
+ *      { ctx.stack_pop() };
+ *      // Insert stack at the top.
+ *      { ctx.stack_push(stack) };
+ *
+ *      // Remove and return the top task.
+ *      { ctx.task_pop() } -> std::convertible_to<std::optional<task_handle>>;
+ *      // Insert task at the top.
+ *      { ctx.task_push(handle) };
+ *
+ *
+ * \endrst
  */
-template <typename Context, typename Handle = typename Context::stack_type::handle>
-concept thread_context = detail::defines_stack<Context> && requires(Context ctx, Handle stack, task_handle handle) {
-  //
+template <typename Context>
+concept thread_context = defines_stack<Context> && requires(Context ctx, typename Context::stack_type::handle stack, task_handle handle) {
   { Context::context() } -> std::same_as<Context &>; ///< Access the thread_local context.
 
   { Context::max_threads() } -> std::same_as<std::size_t>; ///< Check the maximum parallelism.
 
-  { ctx.stack_top() } -> std::convertible_to<Handle>; ///< Access the top element.
-  { ctx.stack_pop() };                                ///< Remove the top element.
-  { ctx.stack_push(stack) };                          ///< Insert element at the top.
+  { ctx.stack_top() } -> std::convertible_to<typename Context::stack_type::handle>; ///< Access the top element.
+  { ctx.stack_pop() };                                                              ///< Remove the top element.
+  { ctx.stack_push(stack) };                                                        ///< Insert element at the top.
 
   { ctx.task_pop() } -> std::convertible_to<std::optional<task_handle>>; ///< Remove and return the top element.
   { ctx.task_push(handle) };                                             ///< Insert element at the top.

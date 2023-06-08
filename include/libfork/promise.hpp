@@ -34,6 +34,7 @@
 namespace lf {
 
 template <typename T, thread_context Context>
+  requires(!std::is_reference_v<T>)
 class task;
 
 namespace detail {

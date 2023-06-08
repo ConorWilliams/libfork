@@ -14,18 +14,32 @@
 
 #include "libfork/macro.hpp"
 
+/**
+ * @file thread_local.hpp
+ *
+ * @brief Provides a utility class for managing static inline thread_local pointer to an object.
+ */
+
 namespace lf {
 
 /**
  * @brief Store a thread_local static pointer to a T object.
+ *
+ * This is useful for implementing the ``context()`` method of a class satisfying ``lf::thread_context``.
  */
 template <typename T>
 class thread_local_ptr {
 public:
+  /**
+   * @brief A runtime-error thrown when get() is called before set().
+   */
   struct not_set : std::runtime_error {
     not_set() : std::runtime_error("Thread's pointer is not set!") {}
   };
 
+  /**
+   * @brief Get the object pointed to by the thread_local pointer.
+   */
   static auto get() -> T & {
     if (m_ptr == nullptr) {
 #if LIBFORK_COMPILER_EXCEPTIONS
@@ -37,6 +51,9 @@ public:
     return *m_ptr;
   }
 
+  /**
+   * @brief Set the thread_local pointer to the given object.
+   */
   static auto set(T &ctx) noexcept -> void { m_ptr = std::addressof(ctx); }
 
 private:

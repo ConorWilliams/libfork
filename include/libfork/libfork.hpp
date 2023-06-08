@@ -9,14 +9,17 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include "libfork/coroutine.hpp"
 #include "libfork/promise.hpp"
 #include "libfork/task.hpp"
 
 /**
- * @file forky.hpp
+ * @file libfork.hpp
  *
  * @brief Meta header which includes all task<...>, fork, call, join machinary.
  */
+
+#ifndef LIBFORK_DOXYGEN_SHOULD_SKIP_THIS
 
 /**
  * @brief Specialise coroutine_traits for task<...> from functions.
@@ -27,10 +30,10 @@ struct lf::stdexp::coroutine_traits<lf::task<T, Context>, TagWith, Args...> {
   //
   using promise_type = lf::detail::promise_type<T, Context, typename TagWith::tag>;
 
-#ifdef __cpp_lib_is_pointer_interconvertible
+  #ifdef __cpp_lib_is_pointer_interconvertible
   static_assert(std::is_pointer_interconvertible_with_class<promise_type, lf::detail::control_block_t>(&promise_type::control_block));
   static_assert(std::is_pointer_interconvertible_base_of_v<lf::detail::promise_base<T>, promise_type>);
-#endif
+  #endif
 };
 
 /**
@@ -40,6 +43,8 @@ template <typename T, typename Context, typename This, typename TagWith, typenam
   requires std::same_as<std::remove_cvref_t<TagWith>, TagWith> && lf::detail::tag<typename TagWith::tag>
 struct lf::stdexp::coroutine_traits<lf::task<T, Context>, This, TagWith, Args...> : lf::stdexp::coroutine_traits<lf::task<T, Context>, TagWith, Args...> {
 };
+
+#endif /* LIBFORK_DOXYGEN_SHOULD_SKIP_THIS */
 
 namespace lf {
 
@@ -118,7 +123,7 @@ inline constexpr detail::join_t join = {};
 inline constexpr bind_task<detail::fork_packet> fork = {};
 
 /**
- * @brief Call point.
+ * @brief An awaitable (in a task) that triggers a join.
  */
 inline constexpr bind_task<detail::call_packet> call = {};
 
