@@ -102,7 +102,7 @@ inline constexpr std::size_t k_cache_line = 64;
  * @brief A customisable logging macro.
  */
 #ifndef LIBFORK_LOG
-  #ifndef LIBFORK_NO_LOGGING
+  #ifdef LIBFORK_LOGGING
     #include <iostream>
     #include <type_traits>
     #define LIBFORK_LOG(message, ...)        \

@@ -1,3 +1,7 @@
+/**
+ * This file is based on the Catch2 tutorial.
+ */
+
 #include <catch2/catch_test_macros.hpp>
 
 // NOLINTBEGIN No linting in tests
