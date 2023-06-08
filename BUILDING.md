@@ -21,8 +21,6 @@ cmake -S . -B build
 cmake --build build --config Release
 ```
 
-Note: as libfork is a header-only library, there are no build targets by default. If you intended to build the tests/docs/benchmarks check out the [HACKING](HACKING.md) document.
-
 ### Building with MSVC
 
 Note that MSVC by default is not standards compliant and you need to pass some
@@ -65,7 +63,7 @@ This project exports a CMake package to be used with the [`find_package`][3] com
 * Package name: `libfork`
 * Target name: `libfork::libfork`
 
-#### If you have installed libfork as above
+#### If you have installed libfork
 
 ```cmake
 find_package(libfork REQUIRED)
@@ -85,11 +83,25 @@ include(FetchContent)
 FetchContent_Declare(
     libfork
     GIT_REPOSITORY https://github.com/conorwilliams/libfork.git
-    GIT_TAG 08b82dd97dcaadc50a32ff382b785be2869d731c
+    GIT_TAG v3.0.0
     GIT_SHALLOW TRUE
 )
 
 FetchContent_MakeAvailable(libfork)
+
+target_link_libraries(
+    project_target PRIVATE libfork::libfork
+)
+```
+
+#### Using [CMP.cmake](https://github.com/cpm-cmake/CPM.cmake)
+
+Assuming your ``CPM.cmake`` file is the ``cmake`` directory in your project:
+
+```cmake
+include(cmake/CPM.cmake)
+
+CPMAddPackage("gh:conorwilliams/libfork#3.0.0")
 
 target_link_libraries(
     project_target PRIVATE libfork::libfork

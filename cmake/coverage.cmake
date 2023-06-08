@@ -1,6 +1,7 @@
 # ---- Variables ----
 
-# We use variables separate from what CTest uses, because those have customization issues
+# We use variables separate from what CTest uses, because those have
+# customization issues
 set(
     COVERAGE_TRACE_COMMAND
     lcov -c -q
@@ -22,6 +23,7 @@ set(
 )
 
 # ---- Coverage target ----
+
 add_custom_target(
     coverage
     COMMAND ${COVERAGE_TRACE_COMMAND}

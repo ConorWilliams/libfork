@@ -3,11 +3,11 @@ name: Continuous Integration
 on:
   push:
     branches:
-    - main
+    - master
 
   pull_request:
     branches:
-    - main
+    - master
 
 jobs:
   lint:
@@ -32,7 +32,6 @@ jobs:
       if: always()
       run: cmake -P cmake/spell.cmake
 
-  
   coverage:
     needs: [lint]
 
@@ -44,7 +43,8 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Install LCov
-      run: sudo apt-get update -q && sudo apt-get install lcov -q -y
+      run: sudo apt-get update -q
+        && sudo apt-get install lcov -q -y
 
     - name: Configure
       run: cmake --preset=ci-coverage
@@ -54,7 +54,7 @@ jobs:
 
     - name: Test
       working-directory: build/coverage
-      run: ctest --output-on-failure -j 2
+      run: ctest --output-on-failure --no-tests=error -j 2
 
     - name: Process coverage info
       run: cmake --build build/coverage -t coverage
@@ -64,9 +64,7 @@ jobs:
       with:
         file: build/coverage/coverage.info
 
-
-
-  sanitize-clang:
+  sanitize:
     needs: [lint]
 
     runs-on: ubuntu-22.04
@@ -93,15 +91,14 @@ jobs:
           strict_init_order=1:\
           detect_leaks=1"
         UBSAN_OPTIONS: print_stacktrace=1
-      run: ctest --output-on-failure -j 2
+      run: ctest --output-on-failure --no-tests=error -j 2
 
   test:
     needs: [lint]
 
     strategy:
       matrix:
-        os: [ubuntu-22.04, macos-12]
-        # macos-12, windows-2022
+        os: [macos-12, ubuntu-22.04, windows-2022]
 
     runs-on: ${{ matrix.os }}
 
@@ -135,11 +132,11 @@ jobs:
 
     - name: Test
       working-directory: build
-      run: ctest --output-on-failure -C Release -j 2
+      run: ctest --output-on-failure --no-tests=error -C Release -j 2
 
   docs:
     # Deploy docs only when builds succeed
-    needs: [sanitize-clang, test]
+    needs: [sanitize, test]
 
     runs-on: ubuntu-22.04
 

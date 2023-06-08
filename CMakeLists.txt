@@ -4,7 +4,7 @@ include(cmake/prelude.cmake)
 
 project(
   libfork
-  VERSION 2.1.0
+  VERSION 3.0.0
   DESCRIPTION "A C++ library for fork-join parallelism using coroutines"
   HOMEPAGE_URL "https://github.com/ConorWilliams/libfork"
   LANGUAGES CXX
@@ -36,11 +36,13 @@ target_include_directories(
 target_compile_features(libfork_libfork INTERFACE cxx_std_20)
 
 # ---- Install rules ----
+
 if(NOT CMAKE_SKIP_INSTALL_RULES)
   include(cmake/install-rules.cmake)
 endif()
 
 # ---- Developer mode ----
+
 if(NOT libfork_DEVELOPER_MODE)
   return()
 elseif(NOT PROJECT_IS_TOP_LEVEL)

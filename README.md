@@ -19,7 +19,7 @@ Note, libfork is tested on GCC (10,11,12) and Clang (14,15), currently Clang see
 
 ## Contributing
 
-See the [HACKING](HACKING.md) document.
+See the [CONTRIBUTING](CONTRIBUTING.md) document.
 
 ## API reference
 

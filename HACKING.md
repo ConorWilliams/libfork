@@ -3,6 +3,9 @@
 Here is some wisdom to help you build and test this project as a developer and
 potential contributor.
 
+If you plan to contribute, please read the [CONTRIBUTING](CONTRIBUTING.md)
+guide.
+
 ## Developer mode
 
 Build system targets that are only useful for developers of this project are
@@ -66,7 +69,8 @@ the project:
 
 You should replace `<os>` in your newly created presets file with the name of
 the operating system you have, which may be `win64`, `linux` or `darwin`. You
-can see what these correspond to in the [`CMakePresets.json`](CMakePresets.json) file.
+can see what these correspond to in the
+[`CMakePresets.json`](CMakePresets.json) file.
 
 `CMakeUserPresets.json` is also the perfect place in which you can put all
 sorts of things that you would otherwise want to pass to the configure command

@@ -1,11 +1,6 @@
 ---
 Language: Cpp
-BasedOnStyle: Chromium
-ColumnLimit: 999
-IndentRequiresClause : false
-QualifierAlignment: Right
+BasedOnStyle: LLVM
+ColumnLimit: 0
 IndentPPDirectives: BeforeHash
-AllowShortLambdasOnASingleLine: Empty
-IndentRequiresClause: false
-RequiresClausePosition: OwnLine 
 ...

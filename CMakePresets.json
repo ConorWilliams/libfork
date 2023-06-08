@@ -8,12 +8,11 @@
   "configurePresets": [
     {
       "name": "cmake-pedantic",
-      "description": "Enable cmake warnings for developers",
       "hidden": true,
       "warnings": {
         "dev": true,
         "deprecated": true,
-        "uninitialized": false,
+        "uninitialized": true,
         "unusedCli": true,
         "systemVars": false
       },
@@ -24,7 +23,6 @@
     },
     {
       "name": "dev-mode",
-      "description": "Base class, enables developer mode",
       "hidden": true,
       "inherits": "cmake-pedantic",
       "cacheVariables": {
@@ -33,7 +31,6 @@
     },
     {
       "name": "cppcheck",
-      "description": "Base class, enables cppcheck",
       "hidden": true,
       "cacheVariables": {
         "CMAKE_CXX_CPPCHECK": "cppcheck;--inline-suppr"
@@ -41,7 +38,6 @@
     },
     {
       "name": "clang-tidy",
-      "description": "Base class, enables clang-tidy",
       "hidden": true,
       "cacheVariables": {
         "CMAKE_CXX_CLANG_TIDY": "clang-tidy;--header-filter=^${sourceDir}/"
@@ -49,7 +45,7 @@
     },
     {
       "name": "ci-std",
-      "description": "Make sure the project actually builds with at least the specified standard",
+      "description": "This preset makes sure the project actually builds with at least the specified standard",
       "hidden": true,
       "cacheVariables": {
         "CMAKE_CXX_EXTENSIONS": "OFF",
@@ -61,7 +57,7 @@
       "name": "flags-linux",
       "hidden": true,
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "-Wno-assume -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fcf-protection=full -fstack-clash-protection -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wcast-qual -Wformat=2 -Wundef -Werror=float-equal -Wshadow -Wcast-align -Wunused -Wnull-dereference -Wdouble-promotion -Wimplicit-fallthrough -Wextra-semi -Woverloaded-virtual -Wnon-virtual-dtor -Wold-style-cast",
+        "CMAKE_CXX_FLAGS": "-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fcf-protection=full -fstack-clash-protection -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wcast-qual -Wformat=2 -Wundef -Werror=float-equal -Wshadow -Wcast-align -Wunused -Wnull-dereference -Wdouble-promotion -Wimplicit-fallthrough -Wextra-semi -Woverloaded-virtual -Wnon-virtual-dtor -Wold-style-cast",
         "CMAKE_EXE_LINKER_FLAGS": "-Wl,--allow-shlib-undefined,--as-needed,-z,noexecstack,-z,relro,-z,now",
         "CMAKE_SHARED_LINKER_FLAGS": "-Wl,--allow-shlib-undefined,--as-needed,-z,noexecstack,-z,relro,-z,now"
       }
@@ -70,7 +66,7 @@
       "name": "flags-darwin",
       "hidden": true,
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "-Wno-assume -fstack-protector-strong -fcf-protection=full -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wcast-qual -Wformat=2 -Wundef -Werror=float-equal -Wshadow -Wcast-align -Wunused -Wnull-dereference -Wdouble-promotion -Wimplicit-fallthrough -Wextra-semi -Woverloaded-virtual -Wnon-virtual-dtor -Wold-style-cast"
+        "CMAKE_CXX_FLAGS": "-fstack-protector-strong -fcf-protection=full -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wcast-qual -Wformat=2 -Wundef -Werror=float-equal -Wshadow -Wcast-align -Wunused -Wnull-dereference -Wdouble-promotion -Wimplicit-fallthrough -Wextra-semi -Woverloaded-virtual -Wnon-virtual-dtor -Wold-style-cast"
       }
     },
     {
@@ -78,7 +74,7 @@
       "description": "Note that all the flags after /W4 are required for MSVC to conform to the language standard",
       "hidden": true,
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "/sdl /analyze /analyze:external- /guard:cf /utf-8 /w14165 /w44242 /w44254 /w44263 /w34265 /w34287 /w44296 /w44365 /w44388 /w44464 /w14545 /w14546 /w14547 /w14549 /w14555 /w34619 /w34640 /w24826 /w14905 /w14906 /w14928 /w45038 /W4 /permissive- /volatile:iso /Zc:preprocessor /Zc:__cplusplus /Zc:externConstexpr /Zc:throwingNew /EHsc",
+        "CMAKE_CXX_FLAGS": "/sdl /analyze /analyze:external- /guard:cf /utf-8 /diagnostics:caret /w14165 /w44242 /w44254 /w44263 /w34265 /w34287 /w44296 /w44365 /w44388 /w44464 /w14545 /w14546 /w14547 /w14549 /w14555 /w34619 /w34640 /w24826 /w14905 /w14906 /w14928 /w45038 /W4 /permissive- /volatile:iso /Zc:inline /Zc:preprocessor /Zc:enumTypes /Zc:lambda /Zc:__cplusplus /Zc:externConstexpr /Zc:throwingNew /EHsc",
         "CMAKE_EXE_LINKER_FLAGS": "/machine:x64 /guard:cf"
       }
     },
@@ -124,7 +120,7 @@
       "cacheVariables": {
         "ENABLE_COVERAGE": "ON",
         "CMAKE_BUILD_TYPE": "Coverage",
-        "CMAKE_CXX_FLAGS_COVERAGE": "-O0 -fno-inline -g --coverage -fkeep-inline-functions -fkeep-static-functions",
+        "CMAKE_CXX_FLAGS_COVERAGE": "-Og -g --coverage -fkeep-inline-functions -fkeep-static-functions",
         "CMAKE_EXE_LINKER_FLAGS_COVERAGE": "--coverage",
         "CMAKE_SHARED_LINKER_FLAGS_COVERAGE": "--coverage"
       }
@@ -194,7 +190,7 @@
         "CMAKE_BUILD_TYPE": "Release",
         "BUILD_TESTING": "OFF",
         "BUILD_BENCHMARKS": "ON",
-        "CMAKE_CXX_FLAGS": "-Wno-assume -flto=auto -march=native"
+        "CMAKE_CXX_FLAGS": "-flto=auto -march=native"
       }
     }
   ]

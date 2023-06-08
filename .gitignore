@@ -2,15 +2,15 @@
 .vs/
 .vscode/
 .cache/
+
 build/
 cmake-build-*/
 prefix/
 old/
 Testing/
 
-*.log
+**/.DS_Store
 
-gmon.out
 compile_commands.json
 CMakeLists.txt.user
 CMakeUserPresets.json
