@@ -33,7 +33,7 @@ public:
   /**
    * @brief Test if currently storing an exception.
    */
-  explicit constexpr operator bool() const noexcept { return static_cast<bool>(m_exception); }
+  explicit operator bool() const noexcept { return static_cast<bool>(m_exception); }
 
   /**
    * @brief Stash an exception, thread-safe.

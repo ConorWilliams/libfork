@@ -98,7 +98,7 @@ public:
   /**
    * @brief Test if the stack is empty (and has no exception saved on it).
    */
-  constexpr auto empty() const noexcept -> bool { return m_ptr == m_buf.data() && !*this; }
+  auto empty() const noexcept -> bool { return m_ptr == m_buf.data() && !*this; }
 
   /**
    * @brief Allocate ``n`` bytes on the stack.

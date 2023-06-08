@@ -86,7 +86,7 @@ struct promise_type : promise_base<T> {
   [[nodiscard]] static auto operator new(std::size_t const size) -> void * {
     if constexpr (std::same_as<Tag, root_t>) {
       // Use global new.
-      return ::operator new(size);
+      return ::operator new[](size);
     } else {
       // Use the stack that the thread owns which may not be equal to the parent's stack.
       return Context::context().stack_top()->allocate(size);
