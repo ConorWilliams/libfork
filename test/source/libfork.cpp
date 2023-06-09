@@ -17,6 +17,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "libfork/libfork.hpp"
+#include "libfork/stack.hpp"
 
 // NOLINTBEGIN No linting in tests
 
@@ -60,7 +61,7 @@ public:
 private:
   std::stack<task_handle> tasks;
 
-  std::unique_ptr<stack_type> stack = std::make_unique<stack_type>();
+  typename stack_type::unique_ptr_t stack = stack_type::make_unique();
 };
 
 template <typename T>
@@ -80,8 +81,6 @@ inline constexpr auto fib = fn([](auto self, int n) -> Task<int> {
   // co_await fork[blob::b]();
 
   int a = 0, b = 0;
-
-  std::cout << "n = " << n << "\n";
 
   co_await fork(a, self)(n - 1);
   co_await call(b, self)(n - 2);

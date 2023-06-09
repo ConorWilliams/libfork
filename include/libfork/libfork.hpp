@@ -64,6 +64,8 @@ using invoke_t = std::invoke_result_t<F, detail::magic<detail::root_t, async_fn<
 
 } // namespace detail
 
+// clang-format off
+
 /**
  * @brief The entry point for synchronous execution of asynchronous functions.
  *
@@ -74,7 +76,9 @@ using invoke_t = std::invoke_result_t<F, detail::magic<detail::root_t, async_fn<
  */
 template <std::invocable<stdexp::coroutine_handle<>> Schedule, stateless F, class... Args, detail::is_task Task = detail::invoke_t<F, Args...>>
   requires std::default_initializable<typename Task::value_type> || std::is_void_v<typename Task::value_type>
-                                                                  auto sync_wait(Schedule &&schedule, async_fn<F>, Args &&...args) -> typename Task::value_type {
+auto sync_wait(Schedule &&schedule, async_fn<F>, Args &&...args) -> typename Task::value_type {
+
+  // clang-format on
 
   using value_type = typename Task::value_type;
 
@@ -115,41 +119,31 @@ template <std::invocable<stdexp::coroutine_handle<>> Schedule, stateless F, clas
   }
 }
 
-// clang-format off
-
 /**
  * @brief An invocable (and subscriptable) wrapper that binds a return address to an asynchronous function.
  */
-template<template<typename ...> typename Packet>
+template <template <typename...> typename Packet>
 struct bind_task {
   /**
    * @brief Bind return address `ret` to an asynchronous function.
-   * 
+   *
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename R, typename F>
-#ifdef __cpp_static_call_operator
-  [[nodiscard]] static constexpr auto operator()(R &ret, async_fn<F>) noexcept {
-#else
-  [[nodiscard]] constexpr auto operator()(R &ret, async_fn<F>) const noexcept {
-#endif
-    return [&] <typename... Args>(Args &&...args) noexcept -> Packet<R, F, Args...> {
+  [[nodiscard]] LIBFORK_STATIC_CALL constexpr auto operator()(R &ret, async_fn<F>) LIBFORK_STATIC_CONST noexcept {
+    return [&]<typename... Args>(Args &&...args) noexcept -> Packet<R, F, Args...> {
       return {{ret}, std::forward<Args>(args)...};
     };
   }
 
   /**
    * @brief Set a void return address for an asynchronous function.
-   * 
+   *
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename F>
-#ifdef __cpp_static_call_operator
-  [[nodiscard]] static constexpr auto operator()(async_fn<F>) noexcept {
-#else
-  [[nodiscard]] constexpr auto operator()(async_fn<F>) const noexcept {
-#endif
-    return [&] <typename... Args>(Args &&...args) noexcept -> Packet<void, F, Args...> {
+  [[nodiscard]] LIBFORK_STATIC_CALL constexpr auto operator()(async_fn<F>) LIBFORK_STATIC_CONST noexcept {
+    return [&]<typename... Args>(Args &&...args) noexcept -> Packet<void, F, Args...> {
       return {{}, std::forward<Args>(args)...};
     };
   }
@@ -157,27 +151,25 @@ struct bind_task {
 #if defined(LIBFORK_DOXYGEN_SHOULD_SKIP_THIS) || defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
   /**
    * @brief Bind return address `ret` to an asynchronous function.
-   * 
+   *
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename R, typename F>
-   [[nodiscard]] static constexpr auto operator[](R &ret, async_fn<F> func) noexcept {
+  [[nodiscard]] static constexpr auto operator[](R &ret, async_fn<F> func) noexcept {
     return bind_task{}(ret, func);
   }
-  
+
   /**
    * @brief Set a void return address for an asynchronous function.
-   * 
+   *
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename F>
-   [[nodiscard]] static constexpr auto operator[](async_fn<F> func) noexcept {
+  [[nodiscard]] static constexpr auto operator[](async_fn<F> func) noexcept {
     return bind_task{}(func);
   }
 #endif
 };
-
-// clang-format on
 
 /**
  * @brief An awaitable (in a task) that triggers a join.

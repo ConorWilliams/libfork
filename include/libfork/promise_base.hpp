@@ -199,16 +199,6 @@ struct promise_base<void> {
   control_block_t control_block; ///< Control block for this task.
 };
 
-// -------------- Context concept -------------- //
-
-template <typename>
-struct is_virtual_stack : std::false_type {};
-
-template <std::size_t N>
-struct is_virtual_stack<virtual_stack<N>> : std::true_type {
-  static_assert(sizeof(virtual_stack<N>) == N);
-};
-
 } // namespace detail
 
 /**
@@ -216,16 +206,13 @@ struct is_virtual_stack<virtual_stack<N>> : std::true_type {
  */
 using task_handle = detail::control_block_t::handle_t;
 
-// clang-format off
-
 /**
  * @brief A concept which requires a type to define a ``stack_type`` which must be a specialization of ``lf::virtual_stack``.
  */
 template <typename T>
-concept defines_stack = requires() {
-  typename T::stack_type;
-  requires detail::is_virtual_stack<typename T::stack_type>::value;
-};
+concept defines_stack = requires { typename T::stack_type; } && detail::is_virtual_stack<typename T::stack_type>;
+
+// clang-format off
 
 /**
  * @brief A concept which defines the context interface.
@@ -267,16 +254,16 @@ concept defines_stack = requires() {
  */
 template <typename Context>
 concept thread_context = defines_stack<Context> && requires(Context ctx, typename Context::stack_type::handle stack, task_handle handle) {
-  { Context::context() } -> std::same_as<Context &>; ///< Access the thread_local context.
+  { Context::context() } -> std::same_as<Context &>; 
 
-  { Context::max_threads() } -> std::same_as<std::size_t>; ///< Check the maximum parallelism.
+  { Context::max_threads() } -> std::same_as<std::size_t>; 
 
-  { ctx.stack_top() } -> std::convertible_to<typename Context::stack_type::handle>; ///< Access the top element.
-  { ctx.stack_pop() };                                                              ///< Remove the top element.
-  { ctx.stack_push(stack) };                                                        ///< Insert element at the top.
+  { ctx.stack_top() } -> std::convertible_to<typename Context::stack_type::handle>; 
+  { ctx.stack_pop() };                                                              
+  { ctx.stack_push(stack) };                                                        
 
-  { ctx.task_pop() } -> std::convertible_to<std::optional<task_handle>>; ///< Remove and return the top element.
-  { ctx.task_push(handle) };                                             ///< Insert element at the top.
+  { ctx.task_pop() } -> std::convertible_to<std::optional<task_handle>>; 
+  { ctx.task_push(handle) };                                             
 };
 
 // clang-format on

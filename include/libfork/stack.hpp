@@ -14,6 +14,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <exception>
+#include <memory>
+#include <new>
 #include <stdexcept>
 #include <type_traits>
 
@@ -23,35 +25,157 @@
 /**
  * @file stack.hpp
  *
- * @brief The stack class and associated utilities.
+ * @brief The ``lf::virtual_stack`` class and associated utilities.
  */
 
 namespace lf {
 
 namespace detail {
 
-struct alignas(__STDCPP_DEFAULT_NEW_ALIGNMENT__) stack_mem : exception_packet {
+inline constexpr std::size_t k_new_align = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
+
+template <typename T, typename U>
+auto r_cast(U &&expr) noexcept {
+  return reinterpret_cast<T>(std::forward<U>(expr)); // NOLINT
+}
+
+/**
+ * @brief Base class for vitual_stack's
+ */
+struct alignas(k_new_align) stack_mem : exception_packet {
   std::byte *m_ptr;
   std::byte *m_end;
 };
+
+[[nodiscard]] inline auto aligned_alloc(std::size_t size, std::size_t alignment) -> void * {
+
+  LIBFORK_ASSERT(size > 0);                       // Should never want to allocate no memory.
+  LIBFORK_ASSERT(std::has_single_bit(alignment)); // Need power of 2 alignment.
+  LIBFORK_ASSERT(size % alignment == 0);          // Size must be a multiple of alignment.
+
+  alignment = std::max(alignment, k_new_align);
+
+  /**
+   * Whatever the alignment of an allocated pointer we need to add between 0 and alignment - 1 bytes to
+   * bring us to a multiple of alignment. We also need to store the allocated pointer before the returned
+   * pointer so adding sizeof(void *) garanteeds enough space infront.
+   */
+
+  std::size_t offset = alignment - 1 + sizeof(void *);
+
+  void *original_ptr = ::operator new(size + offset);
+
+  LIBFORK_ASSERT(original_ptr);
+
+  std::uintptr_t raw_address = r_cast<std::uintptr_t>(original_ptr);
+  std::uintptr_t ret_address = (raw_address + offset) & ~(alignment - 1);
+
+  LIBFORK_ASSERT(ret_address % alignment == 0);
+
+  *r_cast<void **>(ret_address - sizeof(void *)) = original_ptr; // Store original pointer
+
+  return r_cast<void *>(ret_address);
+}
+
+inline void aligned_free(void *ptr) noexcept {
+  LIBFORK_ASSERT(ptr);
+  ::operator delete(*r_cast<void **>(r_cast<std::uintptr_t>(ptr) - sizeof(void *)));
+}
 
 } // namespace detail
 
 /**
  * @brief A program-managed stack for coroutine frames.
  *
- * @tparam The number of bytes to allocate for the stack. Must be a power of two.
+ * An ``lf::virtual_stack`` should never be allocated on the heap use ``new``/``delete`` or
+ * manage through an ``std::unique_ptr``.
+ *
+ * @tparam N The number of bytes to allocate for the stack. Must be a power of two.
  */
 template <std::size_t N>
   requires(std::has_single_bit(N))
-class alignas(N) virtual_stack : private detail::stack_mem {
-public:
+class alignas(detail::k_new_align) virtual_stack : detail::stack_mem {
+
+  // Our trivialness should be equal to this.
+  static constexpr bool k_trivial = std::is_trivially_destructible_v<detail::stack_mem>;
+
   /**
-   * @brief An exception thrown when the stack overflows.
+   * @brief Construct an empty stack.
+   */
+  constexpr virtual_stack() {
+
+    static_assert(sizeof(virtual_stack) == N, "Bad padding detected!");
+
+    static_assert(k_trivial == std::is_trivially_destructible_v<virtual_stack>);
+
+    if (detail::r_cast<std::uintptr_t>(this) % N != 0) {
+#if LIBFORK_COMPILER_EXCEPTIONS
+      throw unaligned{};
+#else
+      std::abort();
+#endif
+    }
+    m_ptr = m_buf.data();
+    m_end = m_buf.data() + m_buf.size();
+  }
+
+  // Deleters for ``std::unique_ptr``'s
+
+  struct delete_1 {
+    LIBFORK_STATIC_CALL void operator()(virtual_stack *ptr) LIBFORK_STATIC_CONST noexcept {
+      if constexpr (!std::is_trivially_destructible_v<virtual_stack>) {
+        ptr->~virtual_stack();
+      }
+      detail::aligned_free(ptr);
+    }
+  };
+
+  struct delete_n {
+
+    std::size_t count;
+
+    void operator()(virtual_stack *ptr) const noexcept {
+      for (std::size_t i = 0; i < count; ++i) {
+        ptr[i].~virtual_stack(); // NOLINT
+      }
+      detail::aligned_free(ptr);
+    }
+  };
+
+  /**
+   * @brief Destroy the virtual stack object, private requires use of ``make_unique()``.
+   */
+  ~virtual_stack() = default;
+
+public:
+  virtual_stack(virtual_stack const &) = delete;
+  virtual_stack(virtual_stack &&) = delete;
+
+  auto operator=(virtual_stack const &) -> virtual_stack & = delete;
+  auto operator=(virtual_stack &&) -> virtual_stack & = delete;
+
+  /**
+   * @brief An exception thrown when a stack is not aligned corretly.
+   */
+  struct unaligned : std::runtime_error {
+    unaligned() : std::runtime_error("Virtual stack has the wrong alignment, did you allocate it on the stack?") {}
+  };
+  /**
+   * @brief An exception thrown when a stack is not large enough for a requested allocation.
    */
   struct overflow : std::runtime_error {
     overflow() : std::runtime_error("Virtual stack overflows") {}
   };
+
+  /**
+   * @brief A ``std::unique_ptr`` to a single stack.
+   */
+  using unique_ptr_t = std::unique_ptr<virtual_stack, delete_1>;
+
+  /**
+   * @brief A ``std::unique_ptr`` to an array of stacks.
+   */
+  using unique_arr_ptr_t = std::unique_ptr<virtual_stack[], std::conditional_t<k_trivial, delete_1, delete_n>>; // NOLINT
 
   /**
    * @brief A non-owning, non-null handle to a virtual stack.
@@ -82,18 +206,35 @@ public:
     virtual_stack *m_stack;
   };
 
-  constexpr virtual_stack() noexcept {
-    m_ptr = m_buf.data();
-    m_end = m_buf.data() + m_buf.size();
+  /**
+   * @brief Allocate an aligned stack.
+   *
+   * @return A ``std::unique_ptr`` to the allocated stack.
+   */
+  [[nodiscard]] static auto make_unique() -> unique_ptr_t {
+    return {new (detail::aligned_alloc(N, N)) virtual_stack(), {}};
   }
 
-  virtual_stack(virtual_stack const &) = delete;
-  virtual_stack(virtual_stack &&) = delete;
+  /**
+   * @brief Allocate an array of aligned stacks.
+   *
+   * @param count The number of elements in the array.
+   * @return A ``std::unique_ptr`` to the array of stacks.
+   */
+  [[nodiscard]] static auto make_unique(std::size_t count) -> unique_arr_ptr_t { // NOLINT
 
-  auto operator=(virtual_stack const &) -> virtual_stack & = delete;
-  auto operator=(virtual_stack &&) -> virtual_stack & = delete;
+    auto *raw = static_cast<virtual_stack *>(detail::aligned_alloc(N * count, N));
 
-  ~virtual_stack() = default;
+    for (std::size_t i = 0; i < count; ++i) {
+      new (raw + i) virtual_stack();
+    }
+
+    if constexpr (k_trivial) {
+      return {raw, {}};
+    } else {
+      return {raw, {count}};
+    }
+  }
 
   /**
    * @brief Test if the stack is empty (and has no exception saved on it).
@@ -101,13 +242,13 @@ public:
   auto empty() const noexcept -> bool { return m_ptr == m_buf.data() && !*this; }
 
   /**
-   * @brief Allocate ``n`` bytes on the stack.
+   * @brief Allocate ``n`` bytes on this virtual stack.
    *
    * @param n The number of bytes to allocate.
    * @return A pointer to the allocated memory aligned to __STDCPP_DEFAULT_NEW_ALIGNMENT__.
    */
   [[nodiscard]] constexpr auto allocate(std::size_t const n) -> void * {
-    //
+
     LIBFORK_LOG("Allocating {} bytes on the stack", n);
 
     auto *prev = m_ptr;
@@ -130,7 +271,7 @@ public:
   }
 
   /**
-   * @brief Deallocate ``n`` bytes on the stack.
+   * @brief Deallocate ``n`` bytes on from this virtual stack.
    *
    * Must be called matched with the corresponding call to ``allocate`` in a FILO manner.
    *
@@ -176,30 +317,43 @@ public:
   using detail::exception_packet::unhandled_exception;
 
 private:
-  static constexpr std::size_t k_align = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
-
   static_assert(N > sizeof(detail::stack_mem), "Stack is too small!");
 
-  alignas(k_align) std::array<std::byte, N - sizeof(detail::stack_mem)> m_buf;
+  alignas(detail::k_new_align) std::array<std::byte, N - sizeof(detail::stack_mem)> m_buf;
 
   /**
    * @brief Round-up n to a multiple of default new alignment.
    */
   auto align(std::size_t const n) -> std::size_t {
 
-    static_assert(std::has_single_bit(k_align));
+    static_assert(std::has_single_bit(detail::k_new_align));
 
-    //        k_align = 001000  or some other power of 2
-    //    k_align - 1 = 000111
-    // ~(k_align - 1) = 111000
+    //        k_new_align = 001000  or some other power of 2
+    //    k_new_align - 1 = 000111
+    // ~(k_new_align - 1) = 111000
 
-    constexpr auto mask = ~(k_align - 1);
+    constexpr auto mask = ~(detail::k_new_align - 1);
 
-    // (n + k_align - 1) ensures when we round-up unless n is already a multiple of k_align.
+    // (n + k_new_align - 1) ensures when we round-up unless n is already a multiple of k_new_align.
 
-    return (n + k_align - 1) & mask;
+    return (n + detail::k_new_align - 1) & mask;
   }
 };
+
+namespace detail {
+
+template <typename>
+struct is_virtual_stack_impl : std::false_type {};
+
+template <std::size_t N>
+struct is_virtual_stack_impl<virtual_stack<N>> : std::true_type {
+  static_assert(sizeof(virtual_stack<N>) == N);
+};
+
+template <typename T>
+concept is_virtual_stack = is_virtual_stack_impl<T>::value;
+
+} // namespace detail
 
 } // namespace lf
 

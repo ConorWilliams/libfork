@@ -33,6 +33,24 @@ inline constexpr std::size_t k_cache_line = 64;
 } // namespace lf::detail
 
 /**
+ * @brief Use to decorate lambdas and operator() (alongside LIBFORK_STATIC_CONST) and with static if supported.
+ */
+#ifdef __cpp_static_call_operator
+  #define LIBFORK_STATIC_CALL static
+#else
+  #define LIBFORK_STATIC_CALL
+#endif
+
+/**
+ * @brief Use with LIBFORK_STATIC_CALL to decorate operator() with static/const if supported.
+ */
+#ifdef __cpp_static_call_operator
+  #define LIBFORK_STATIC_CONST
+#else
+  #define LIBFORK_STATIC_CONST const
+#endif
+
+/**
  * @brief Detects if the compiler has exceptions enabled.
  */
 #if defined(__cpp_exceptions) || (defined(_MSC_VER) && defined(_CPPUNWIND)) || defined(__EXCEPTIONS)
