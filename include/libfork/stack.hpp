@@ -155,7 +155,7 @@ public:
   auto operator=(virtual_stack &&) -> virtual_stack & = delete;
 
   /**
-   * @brief An exception thrown when a stack is not aligned corretly.
+   * @brief An exception thrown when a stack is not aligned correctly.
    */
   struct unaligned : std::runtime_error {
     unaligned() : std::runtime_error("Virtual stack has the wrong alignment, did you allocate it on the stack?") {}
