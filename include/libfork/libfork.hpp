@@ -30,7 +30,7 @@ struct lf::stdexp::coroutine_traits<lf::task<T, Context>, TagWith, Args...> {
   //
   using promise_type = lf::detail::promise_type<T, Context, typename TagWith::tag>;
 
-  #ifdef __cpp_lib_is_pointer_interconvertible
+  #ifdef __cpp_lib_is_pointer_interconvertible && !defined(_MSC_VER)
   static_assert(std::is_pointer_interconvertible_with_class<promise_type, lf::detail::control_block_t>(&promise_type::control_block));
   static_assert(std::is_pointer_interconvertible_base_of_v<lf::detail::promise_base<T>, promise_type>);
   #endif

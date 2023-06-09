@@ -87,8 +87,7 @@ inline void aligned_free(void *ptr) noexcept {
 /**
  * @brief A program-managed stack for coroutine frames.
  *
- * An ``lf::virtual_stack`` should never be allocated on the heap use ``new``/``delete`` or
- * manage through an ``std::unique_ptr``.
+ * An ``lf::virtual_stack`` can never be allocated on the heap use ``make_unique()``.
  *
  * @tparam N The number of bytes to allocate for the stack. Must be a power of two.
  */
@@ -245,7 +244,7 @@ public:
    * @brief Allocate ``n`` bytes on this virtual stack.
    *
    * @param n The number of bytes to allocate.
-   * @return A pointer to the allocated memory aligned to __STDCPP_DEFAULT_NEW_ALIGNMENT__.
+   * @return A pointer to the allocated memory aligned to ``__STDCPP_DEFAULT_NEW_ALIGNMENT__``.
    */
   [[nodiscard]] constexpr auto allocate(std::size_t const n) -> void * {
 

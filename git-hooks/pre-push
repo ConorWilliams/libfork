@@ -28,7 +28,7 @@ if [ -n "$files" ]; then
     exit 1
 fi
     
-LINT="cmake --preset=dev && cmake --build --preset=dev -t spell-check format-check"
+LINT="cmake --build --preset=dev -t spell-check format-check"
 
 eval $LINT
 
