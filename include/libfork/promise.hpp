@@ -162,7 +162,7 @@ struct promise_type : promise_base<T> {
         if (std::optional<task_handle> parent_task_handle = context.task_pop()) {
           // No-one stole continuation, we are the exclusive owner of parent, just keep rippin!
           LIBFORK_LOG("Parent not stolen, keeps ripping");
-          LIBFORK_ASSERT(parent_h == *parent_task_handle);
+          LIBFORK_ASSERT(parent_h.address() == parent_task_handle->address());
           // This must be the same thread that created the parent so it already owns the stack.
           // No steals have occurred so we do not need to call reset().;
           return parent_h;

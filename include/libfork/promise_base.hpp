@@ -270,23 +270,65 @@ concept thread_context = defines_stack<Context> && requires(Context ctx, typenam
 
 // -------------- Define forward decls -------------- //
 
-class detail::control_block_t::handle_t : stdexp::coroutine_handle<control_block_t> {
+namespace detail {
+
+/**
+ * @brief A trivial wrapper around a coroutine handle.
+ */
+template <typename Prom = void>
+struct trivial_handle_impl {
+
+  using handle_t = stdexp::coroutine_handle<Prom>;
+
+  trivial_handle_impl() = default; ///< To make us a trivial type.
+
+  explicit constexpr trivial_handle_impl(handle_t handle) noexcept : m_address{handle.address()} {}
+
+  explicit constexpr operator bool() const noexcept { return m_address != nullptr; }
+
+  constexpr auto address() const noexcept -> void * { return m_address; }
+
+  void resume() const noexcept {
+    handle_t::from_address(m_address).resume();
+  }
+
+  auto promise() const noexcept -> Prom &
+    requires(!std::is_void_v<Prom>)
+  {
+    handle_t::from_address(m_address).promise();
+  }
+
+private:
+  void *m_address;
+};
+
+template <typename P = void>
+using trivial_handle = std::conditional_t<std::is_trivial_v<P>, stdexp::coroutine_handle<P>, trivial_handle_impl<P>>;
+
+} // namespace detail
+
+class detail::control_block_t::handle_t : detail::trivial_handle<control_block_t> {
 public:
   void resume() noexcept {
     LIBFORK_LOG("Call to resume on stolen task");
     LIBFORK_ASSERT(*this);
 
-    promise().m_steal += 1;
-
-    stdexp::coroutine_handle<control_block_t>::resume();
+    detail::trivial_handle<control_block_t>::promise().m_steal += 1;
+    detail::trivial_handle<control_block_t>::resume();
   }
 
+  handle_t() = default; ///< To make us a trivial type.
+
 private:
+  void *m_adress;
+
   template <typename T, thread_context Context, tag Tag>
   friend struct promise_type;
 
-  explicit handle_t(stdexp::coroutine_handle<control_block_t> handle) : stdexp::coroutine_handle<control_block_t>{handle} {}
+  explicit handle_t(stdexp::coroutine_handle<control_block_t> handle) : detail::trivial_handle<control_block_t>{handle} {}
 };
+
+static_assert(std::is_trivially_default_constructible_v<task_handle>, "Required by queue!");
 
 } // namespace lf
 

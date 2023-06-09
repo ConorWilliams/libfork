@@ -16,8 +16,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "libfork/busy_pool.hpp"
 #include "libfork/libfork.hpp"
-#include "libfork/stack.hpp"
 
 // NOLINTBEGIN No linting in tests
 
