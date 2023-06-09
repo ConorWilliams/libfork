@@ -202,7 +202,7 @@ struct promise_base<void> {
 } // namespace detail
 
 /**
- * @brief A handle to a task with a resume() member function.
+ * @brief A trivial handle to a task with a resume() member function.
  */
 using task_handle = detail::control_block_t::handle_t;
 
@@ -295,20 +295,25 @@ struct trivial_handle_impl {
   auto promise() const noexcept -> Prom &
     requires(!std::is_void_v<Prom>)
   {
-    handle_t::from_address(m_address).promise();
+    return handle_t::from_address(m_address).promise();
   }
 
 private:
   void *m_address;
 };
 
+/**
+ * @brief Fall back to a std::coroutine_handle if the implementation is trivial.
+ */
 template <typename P = void>
 using trivial_handle = std::conditional_t<std::is_trivial_v<P>, stdexp::coroutine_handle<P>, trivial_handle_impl<P>>;
 
 } // namespace detail
 
-class detail::control_block_t::handle_t : detail::trivial_handle<control_block_t> {
+class detail::control_block_t::handle_t : private detail::trivial_handle<control_block_t> {
 public:
+  handle_t() = default; ///< To make us a trivial type.
+
   void resume() noexcept {
     LIBFORK_LOG("Call to resume on stolen task");
     LIBFORK_ASSERT(*this);
@@ -316,8 +321,6 @@ public:
     detail::trivial_handle<control_block_t>::promise().m_steal += 1;
     detail::trivial_handle<control_block_t>::resume();
   }
-
-  handle_t() = default; ///< To make us a trivial type.
 
 private:
   void *m_adress;
