@@ -428,6 +428,13 @@ public:
   }
 
 private:
+  /**
+   * @brief Casts a coroutine_handle<promise_type> to a coroutine_handle<U>.
+   *
+   * This is UB but between static checks here and in libfork.hpp we should be OK.
+   *
+   * See the discussion here: https://lists.isocpp.org/std-proposals/2023/01/5323.php
+   */
   template <typename U>
   static auto cast_handle(stdexp::coroutine_handle<promise_type> this_handle) -> stdexp::coroutine_handle<U> {
 

@@ -1,233 +1,227 @@
-// #ifndef B5AE1829_6F8A_4118_AB15_FE73F851271F
-// #define B5AE1829_6F8A_4118_AB15_FE73F851271F
+#ifndef B5AE1829_6F8A_4118_AB15_FE73F851271F
+#define B5AE1829_6F8A_4118_AB15_FE73F851271F
 
-// // Copyright © Conor Williams <conorwilliams@outlook.com>
+// Copyright © Conor Williams <conorwilliams@outlook.com>
 
-// // SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MPL-2.0
 
-// // This Source Code Form is subject to the terms of the Mozilla Public
-// // License, v. 2.0. If a copy of the MPL was not distributed with this
-// // file, You can obtain one at https://mozilla.org/MPL/2.0/.
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-// #include "libfork/libfork.hpp"
-// #include "libfork/queue.hpp"
-// #include "libfork/random.hpp"
-// #include "libfork/stack.hpp"
-// #include "libfork/thread_local.hpp"
+#include <thread>
 
-// /**
-//  * @file busy_pool.hpp
-//  *
-//  * @brief A work-stealing threadpool where all the threads spin when idle.
-//  */
+#include "libfork/libfork.hpp"
+#include "libfork/promise_base.hpp"
+#include "libfork/queue.hpp"
+#include "libfork/random.hpp"
+#include "libfork/stack.hpp"
+#include "libfork/thread_local.hpp"
 
-// namespace lf {
+/**
+ * @file busy_pool.hpp
+ *
+ * @brief A work-stealing threadpool where all the threads spin when idle.
+ */
 
-// /**
-//  * @brief A scheduler based on a traditional work-stealing thread pool.
-//  *
-//  * Worker threads continuously try to steal tasks from other worker threads hence, they
-//  * waste CPU cycles if sufficient work is not available. This is a good choice if the number
-//  * of threads is equal to the number of hardware cores and the multiplexer has no other load.
-//  */
-// class busy_pool {
-// public:
-//   /**
-//    * @brief The context type for the busy_pools threads.
-//    */
-//   class worker_context : thread_local_ptr<worker_context> {
-//   public:
-//     using stack_type = virtual_stack<4096>;
+namespace lf::detail {
 
-//     static auto context() -> worker_context & { return get(); }
+/**
+ * @brief A scheduler based on a traditional work-stealing thread pool.
+ *
+ * Worker threads continuously try to steal tasks from other worker threads hence, they
+ * waste CPU cycles if sufficient work is not available. This is a good choice if the number
+ * of threads is equal to the number of hardware cores and the multiplexer has no other load.
+ */
+class busy_pool {
+public:
+  /**
+   * @brief The context type for the busy_pools threads.
+   */
+  class worker_context : thread_local_ptr<worker_context> {
+  public:
+    using stack_type = virtual_stack<4096>;
 
-//     static constexpr auto max_threads() noexcept -> std::size_t { return m_max_threads; }
+    static auto context() -> worker_context & { return get(); }
 
-//     auto stack_top() -> stack_type::handle { return stack_type::handle{*stack}; }
+    constexpr auto max_threads() const noexcept -> std::size_t { return m_max_threads; }
 
-//     void stack_pop() {
-//       throw std::runtime_error("Should never be called");
-//     }
+    auto stack_top() -> stack_type::handle { return stack_type::handle{*m_stack}; }
 
-//     void stack_push(stack_type::handle) {
-//       throw std::runtime_error("Should never be called");
-//     }
+    void stack_pop() {
+      static_cast<void>(m_stack.release());
+      m_stack = stack_type::make_unique();
+    }
 
-//     auto task_pop() -> std::optional<task_handle> {
-//       if (tasks.empty()) {
-//         return std::nullopt;
-//       }
-//       auto task = tasks.top();
-//       tasks.pop();
-//       return task;
-//     }
+    void stack_push(stack_type::handle handle) {
+      m_stack = unique_ptr{*handle};
+    }
 
-//     void task_push(task_handle task) {
-//       tasks.push(task);
-//     }
+    auto task_steal() -> auto {
+      return m_tasks.steal();
+    }
 
-//   private:
-//     friend class busy_pool;
+    auto task_pop() -> std::optional<task_handle> {
+      return m_tasks.pop();
+    }
 
-//     std::size_t m_max_threads;
+    void task_push(task_handle task) {
+      m_tasks.push(task);
+    }
 
-//     queue<task_handle> m_tasks;
+  private:
+    using unique_ptr = typename stack_type::unique_ptr_t;
 
-//     detail::xoshiro m_rng;
-//   };
+    friend class busy_pool;
 
-//   busy_pool(busy_pool const &) = delete;
+    std::size_t m_max_threads;
+    unique_ptr m_stack = stack_type::make_unique();
+    queue<task_handle> m_tasks;
+    detail::xoshiro m_rng;
+  };
 
-//   busy_pool(busy_pool &&) = delete;
+  busy_pool(busy_pool const &) = delete;
 
-//   auto operator=(busy_pool const &) -> busy_pool & = delete;
+  busy_pool(busy_pool &&) = delete;
 
-//   auto operator=(busy_pool &&) -> busy_pool & = delete;
+  auto operator=(busy_pool const &) -> busy_pool & = delete;
 
-//   static_assert(::lf::context<context>);
+  auto operator=(busy_pool &&) -> busy_pool & = delete;
 
-//   /**
-//    * @brief Construct a new busy_pool object.
-//    *
-//    * @param n The number of worker threads to create, defaults to the number of hardware threads.
-//    */
-//   explicit busy_pool(std::size_t n = std::thread::hardware_concurrency()) : m_contexts(n) {
-//     // Initialize the rngs.
-//     detail::xoshiro rng(std::random_device{});
+  static_assert(thread_context<worker_context>);
 
-//     for (auto &ctx : m_contexts) {
-//       ctx.m_rng = rng;
-//       rng.long_jump();
-//     }
+  /**
+   * @brief Construct a new busy_pool object.
+   *
+   * @param n The number of worker threads to create, defaults to the number of hardware threads.
+   */
+  explicit busy_pool(std::size_t n = std::thread::hardware_concurrency()) : m_contexts(n) {
+    // Initialize the rngs.
+    detail::xoshiro rng(std::random_device{});
 
-//     try {
-//       // Start the worker threads, note there are n-1 workers, indexed 1...n - 1.
-//       for (std::size_t i = 1; i < n; ++i) {
-//         m_workers.emplace_back([this, i]() { // NOLINT
-//           for (;;) {
-//             // Wait for a root task to be submitted.
-//             DEBUG_TRACKER("worker waits");
+    for (auto &ctx : m_contexts) {
+      ctx.m_rng = rng;
+      ctx.m_max_threads = n;
+      rng.long_jump();
+    }
 
-//             this->m_root_task_in_flight.wait(false, std::memory_order_acquire);
+    try {
+      for (std::size_t i = 0; i < n; ++i) {
+        m_workers.emplace_back([this, i]() {
+          // Set the thread local context.
+          worker_context::set(this->m_contexts[i]);
 
-//             DEBUG_TRACKER("worker wakes and starts stealing");
+          for (;;) {
+            // Wait for a root task to be submitted.
+            LIBFORK_LOG("worker waits");
 
-//             this->steal_until(i, [&]() -> bool {
-//               return !m_root_task_in_flight.test(std::memory_order_acquire) || this->m_stop_requested.test(std::memory_order_acquire);
-//             });
+            this->m_root_task_in_flight.wait(false, std::memory_order_acquire);
 
-//             // If we have been awoken by the destructor, return.
-//             if (this->m_stop_requested.test(std::memory_order_acquire)) {
-//               DEBUG_TRACKER("worker returns");
-//               return;
-//             }
-//           }
-//         });
-//       }
-//     } catch (...) {
-//       // Need to stop the threads
-//       clean_up();
-//       throw;
-//     }
-//   }
+            LIBFORK_LOG("worker wakes and starts stealing");
 
-//   /**
-//    * @brief Submit a task to the pool and join the workers until it completes.
-//    */
-//   template <typename T, typename Allocator, bool Root>
-//   auto schedule(basic_task<T, context, Allocator, Root> &&task) -> T {
-//     //
-//     constexpr std::size_t uid = 0;
+            if (auto submit = this->m_submit.exchange(detail::trivial_handle<void>{nullptr})) {
+              LIBFORK_LOG("Gets root task");
+              submit.resume();
+            }
 
-//     auto [fut, handle] = as_root(std::move(task)).make_promise();
+            this->steal_until(i, [&]() -> bool {
+              return !m_root_task_in_flight.test(std::memory_order_acquire) || this->m_stop_requested.test(std::memory_order_acquire);
+            });
 
-//     DEBUG_TRACKER("waking workers");
+            // If we have been awoken by the destructor, return.
+            if (this->m_stop_requested.test(std::memory_order_acquire)) {
+              LIBFORK_LOG("worker returns");
+              return;
+            }
+          }
+        });
+      }
+    } catch (...) {
+      // Need to stop the threads
+      clean_up();
+      throw;
+    }
+  }
 
-//     // Wake up the workers.
-//     m_root_task_in_flight.test_and_set(std::memory_order_release);
-//     m_root_task_in_flight.notify_all();
+  /**
+   * @brief Submit a task to the pool and join the workers until it completes.
+   */
 
-//     DEBUG_TRACKER("root task starts");
+  auto schedule() {
+    return [this](stdexp::coroutine_handle<> root) {
+      //
+      auto prev = m_submit.exchange(trivial_handle_impl<>{root});
 
-//     // Start the root task.
-//     handle.resume(m_contexts[uid]);
+      LIBFORK_ASSERT(!prev);
 
-//     DEBUG_TRACKER("master thread starts stealing");
+      LIBFORK_LOG("waking workers");
 
-//     // Steal until root task completes, need dodgy capture until clang implements P1091
-//     steal_until(uid, [fut = std::addressof(fut)]() -> bool {
-//       return fut->is_ready();
-//     });
+      // Wake up the workers.
+      m_root_task_in_flight.test_and_set(std::memory_order_release);
+      m_root_task_in_flight.notify_all();
+    };
+  }
 
-//     DEBUG_TRACKER("master thread returns");
+  ~busy_pool() noexcept { clean_up(); }
 
-//     m_root_task_in_flight.clear(std::memory_order_release);
+private:
+  // Request all threads to stop, wake them up and then call join.
+  auto clean_up() noexcept -> void {
+    LIBFORK_ASSUME(!m_root_task_in_flight.test());
 
-//     if constexpr (!std::is_void_v<T>) {
-//       return *std::move(fut);
-//     } else {
-//       return;
-//     }
-//   }
+    // Set conditions for workers to stop
+    m_stop_requested.test_and_set(std::memory_order_release);
 
-//   ~busy_pool() noexcept { clean_up(); }
+    // Wake workers waiting on m_root_task_in_flight
+    m_root_task_in_flight.test_and_set(std::memory_order_release);
+    m_root_task_in_flight.notify_all();
 
-// private:
-//   // Request all threads to stop, wake them up and then call join.
-//   auto clean_up() noexcept -> void {
-//     ASSERT_ASSUME(!m_root_task_in_flight.test(), "clean-up with work in-flight");
+    // Join workers
+    for (auto &worker : m_workers) {
+      LIBFORK_ASSUME(worker.joinable());
+      worker.join();
+    }
+  }
 
-//     // Set conditions for workers to stop
-//     m_stop_requested.test_and_set(std::memory_order_release);
+  static constexpr std::size_t k_steal_attempts = 1024;
 
-//     // Wake workers waiting on m_root_task_in_flight
-//     m_root_task_in_flight.test_and_set(std::memory_order_release);
-//     m_root_task_in_flight.notify_all();
+  alignas(detail::k_cache_line) std::atomic_flag m_stop_requested = ATOMIC_FLAG_INIT;
+  alignas(detail::k_cache_line) std::atomic_flag m_root_task_in_flight = ATOMIC_FLAG_INIT;
 
-//     // Join workers
-//     for (auto &worker : m_workers) {
-//       ASSERT_ASSUME(worker.joinable(), "this should be impossible");
-//       worker.join();
-//     }
-//   }
+  std::atomic<detail::trivial_handle<>> m_submit;
+  std::vector<worker_context> m_contexts;
+  std::vector<std::thread> m_workers; // After m_context so threads are destroyed before the queues.
 
-//   static constexpr std::size_t k_steal_attempts = 1024;
+  template <typename F>
+  void steal_until(std::size_t uid, F &&cond) {
+    //
+    LIBFORK_ASSUME(uid < m_contexts.size());
 
-//   alignas(detail::k_cache_line) std::atomic_flag m_stop_requested = ATOMIC_FLAG_INIT;
-//   alignas(detail::k_cache_line) std::atomic_flag m_root_task_in_flight = ATOMIC_FLAG_INIT;
+    auto &my_context = m_contexts[uid];
 
-//   std::vector<context> m_contexts;
-//   std::vector<std::thread> m_workers; // After m_context so threads are destroyed before the queues.
+    std::uniform_int_distribution<std::size_t> dist(0, m_contexts.size() - 1);
 
-//   template <typename F>
-//   void steal_until(std::size_t uid, F &&cond) {
-//     //
-//     ASSERT_ASSUME(uid < m_contexts.size(), "bad uid");
+    while (!cond()) {
+      std::size_t attempt = 0;
 
-//     auto &my_context = m_contexts[uid];
+      while (attempt < k_steal_attempts) {
+        if (std::size_t const steal_at = dist(my_context.m_rng); steal_at != uid) {
+          if (auto work = m_contexts[steal_at].task_steal()) {
+            attempt = 0;
+            LIBFORK_LOG("resuming stolen work");
+            work->resume();
+            LIBFORK_LOG("worker resumes thieving");
+            LIBFORK_ASSUME(my_context.m_tasks.empty());
+            LIBFORK_ASSUME(my_context.m_stack->empty());
+          } else {
+            ++attempt;
+          }
+        }
+      }
+    };
+  }
+};
 
-//     std::uniform_int_distribution<std::size_t> dist(0, m_contexts.size() - 1);
+} // namespace lf::detail
 
-//     while (!cond()) {
-//       std::size_t attempt = 0;
-
-//       while (attempt < k_steal_attempts) {
-//         if (std::size_t const steal_at = dist(my_context.m_rng); steal_at != uid) {
-//           if (auto work = m_contexts[steal_at].steal()) {
-//             attempt = 0;
-//             DEBUG_TRACKER("resuming stolen work");
-//             work->resume(my_context);
-//             DEBUG_TRACKER("worker resumes thieving");
-//             ASSERT_ASSUME(my_context.empty(), "should have no work left");
-//           } else {
-//             ++attempt;
-//           }
-//         }
-//       }
-//     };
-//   }
-// };
-
-// } // namespace lf
-
-// #endif /* B5AE1829_6F8A_4118_AB15_FE73F851271F */
+#endif /* B5AE1829_6F8A_4118_AB15_FE73F851271F */

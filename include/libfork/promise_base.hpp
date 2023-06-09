@@ -256,7 +256,7 @@ template <typename Context>
 concept thread_context = defines_stack<Context> && requires(Context ctx, typename Context::stack_type::handle stack, task_handle handle) {
   { Context::context() } -> std::same_as<Context &>; 
 
-  { Context::max_threads() } -> std::same_as<std::size_t>; 
+  { ctx.max_threads() } -> std::same_as<std::size_t>; 
 
   { ctx.stack_top() } -> std::convertible_to<typename Context::stack_type::handle>; 
   { ctx.stack_pop() };                                                              
@@ -280,6 +280,8 @@ struct trivial_handle_impl {
 
   using handle_t = stdexp::coroutine_handle<Prom>;
 
+  explicit constexpr trivial_handle_impl(std::nullptr_t) noexcept : m_address{nullptr} {}
+
   trivial_handle_impl() = default; ///< To make us a trivial type.
 
   explicit constexpr trivial_handle_impl(handle_t handle) noexcept : m_address{handle.address()} {}
@@ -292,7 +294,7 @@ struct trivial_handle_impl {
     handle_t::from_address(m_address).resume();
   }
 
-  auto promise() const noexcept -> Prom &
+  auto promise() const noexcept -> decltype(auto)
     requires(!std::is_void_v<Prom>)
   {
     return handle_t::from_address(m_address).promise();
@@ -306,7 +308,7 @@ private:
  * @brief Fall back to a std::coroutine_handle if the implementation is trivial.
  */
 template <typename P = void>
-using trivial_handle = std::conditional_t<std::is_trivial_v<P>, stdexp::coroutine_handle<P>, trivial_handle_impl<P>>;
+using trivial_handle = std::conditional_t<std::is_trivial_v<stdexp::coroutine_handle<P>>, stdexp::coroutine_handle<P>, trivial_handle_impl<P>>;
 
 } // namespace detail
 

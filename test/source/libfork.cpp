@@ -90,6 +90,14 @@ inline constexpr auto fib = fn([](auto fib, int n) -> Task<int> {
   co_return a + b;
 });
 
+int fib_(int n) {
+  if (n < 2) {
+    return n;
+  }
+
+  return fib_(n - 1) + fib_(n - 2);
+}
+
 TEST_CASE("libfork", "[libfork]") {
 
   basic_context ctx;
@@ -101,6 +109,8 @@ TEST_CASE("libfork", "[libfork]") {
   //
 
   auto answer = sync_wait([](auto handle) { handle(); }, fib, i);
+
+  REQUIRE(answer == fib_(i));
 
   std::cout << "fib(" << i << ") = " << answer << "\n";
 }

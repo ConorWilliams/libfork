@@ -23,6 +23,8 @@
 
 /**
  * @brief Specialize coroutine_traits for task<...> from functions.
+ *
+ * Note: https://lists.isocpp.org/std-proposals/2023/01/5323.php
  */
 template <typename T, typename Context, typename TagWith, typename... Args>
   requires std::same_as<std::remove_cvref_t<TagWith>, TagWith> && lf::detail::tag<typename TagWith::tag>
