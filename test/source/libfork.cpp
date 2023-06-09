@@ -73,19 +73,6 @@ using Task = task<T, basic_context>;
 #define call lf::call
 #define join lf::join
 
-template <typename T>
-using ref = std::reference_wrapper<T>;
-
-class private_test {
-public:
-  static constexpr auto find = fn([](auto self) -> Task<ref<int>> {
-    co_return self->i;
-  });
-
-private:
-  int i = 0;
-};
-
 inline constexpr auto fib = fn([](auto fib, int n) -> Task<int> {
   if (n < 2) {
     co_return n;
@@ -102,8 +89,6 @@ inline constexpr auto fib = fn([](auto fib, int n) -> Task<int> {
 
   co_return a + b;
 });
-
-struct poo {};
 
 TEST_CASE("libfork", "[libfork]") {
 
