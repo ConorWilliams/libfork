@@ -270,49 +270,7 @@ concept thread_context = defines_stack<Context> && requires(Context ctx, typenam
 
 // -------------- Define forward decls -------------- //
 
-namespace detail {
-
-/**
- * @brief A trivial wrapper around a coroutine handle.
- */
-template <typename Prom = void>
-struct trivial_handle_impl {
-
-  using handle_t = stdexp::coroutine_handle<Prom>;
-
-  explicit constexpr trivial_handle_impl(std::nullptr_t) noexcept : m_address{nullptr} {}
-
-  trivial_handle_impl() = default; ///< To make us a trivial type.
-
-  explicit constexpr trivial_handle_impl(handle_t handle) noexcept : m_address{handle.address()} {}
-
-  explicit constexpr operator bool() const noexcept { return m_address != nullptr; }
-
-  constexpr auto address() const noexcept -> void * { return m_address; }
-
-  void resume() const noexcept {
-    handle_t::from_address(m_address).resume();
-  }
-
-  auto promise() const noexcept -> decltype(auto)
-    requires(!std::is_void_v<Prom>)
-  {
-    return handle_t::from_address(m_address).promise();
-  }
-
-private:
-  void *m_address;
-};
-
-/**
- * @brief Fall back to a std::coroutine_handle if the implementation is trivial.
- */
-template <typename P = void>
-using trivial_handle = std::conditional_t<std::is_trivial_v<stdexp::coroutine_handle<P>>, stdexp::coroutine_handle<P>, trivial_handle_impl<P>>;
-
-} // namespace detail
-
-class detail::control_block_t::handle_t : private detail::trivial_handle<control_block_t> {
+class detail::control_block_t::handle_t : private stdexp::coroutine_handle<control_block_t> {
 public:
   handle_t() = default; ///< To make us a trivial type.
 
@@ -320,20 +278,16 @@ public:
     LIBFORK_LOG("Call to resume on stolen task");
     LIBFORK_ASSERT(*this);
 
-    detail::trivial_handle<control_block_t>::promise().m_steal += 1;
-    detail::trivial_handle<control_block_t>::resume();
+    stdexp::coroutine_handle<control_block_t>::promise().m_steal += 1;
+    stdexp::coroutine_handle<control_block_t>::resume();
   }
 
 private:
-  void *m_adress;
-
   template <typename T, thread_context Context, tag Tag>
   friend struct promise_type;
 
-  explicit handle_t(stdexp::coroutine_handle<control_block_t> handle) : detail::trivial_handle<control_block_t>{handle} {}
+  explicit handle_t(stdexp::coroutine_handle<control_block_t> handle) : stdexp::coroutine_handle<control_block_t>{handle} {}
 };
-
-static_assert(std::is_trivially_default_constructible_v<task_handle>, "Required by queue!");
 
 } // namespace lf
 

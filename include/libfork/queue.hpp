@@ -10,6 +10,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <atomic>
+#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -40,10 +41,10 @@
 namespace lf {
 
 /**
- * @brief A concept for  that verifies a type is trivil and always lock free.
+ * @brief A concept that verifies a type is sutable for use in a queue.
  */
 template <typename T>
-concept simple = std::is_trivial_v<T> && std::atomic<T>::is_always_lock_free;
+concept simple = std::is_default_constructible_v<T> && std::is_trivially_copyable_v<T> && std::atomic<T>::is_always_lock_free;
 
 namespace detail {
 
@@ -63,7 +64,7 @@ struct ring_buf {
    * @param cap The capacity of the buffer, MUST be a power of 2.
    */
   explicit ring_buf(std::ptrdiff_t cap) : m_cap{cap}, m_mask{cap - 1} {
-    LIBFORK_ASSERT(cap > 0 && (!(cap & (cap - 1)))); // NOLINT
+    LIBFORK_ASSERT(cap > 0 && std::has_single_bit(static_cast<std::size_t>(cap)));
   }
   /**
    * @brief Get the capacity of the buffer.
@@ -101,14 +102,15 @@ struct ring_buf {
   }
 
 private:
+  using array_t = std::atomic<T>[]; // NOLINT
+
   std::ptrdiff_t m_cap;  ///< Capacity of the buffer
   std::ptrdiff_t m_mask; ///< Bit mask to perform modulo capacity operations
 
 #ifdef __cpp_lib_smart_ptr_for_overwrite
-  // NOLINTNEXTLINE
-  std::unique_ptr<std::atomic<T>[]> m_buf = std::make_unique_for_overwrite<std::atomic<T>[]>(static_cast<std::size_t>(m_cap));
+  std::unique_ptr<array_t> m_buf = std::make_unique_for_overwrite<array_t>(static_cast<std::size_t>(m_cap));
 #else
-  std::unique_ptr<std::atomic<T>[]> m_buf = std::make_unique<std::atomic<T>[]>(static_cast<std::size_t>(m_cap));
+  std::unique_ptr<array_t> m_buf = std::make_unique<array_t>(static_cast<std::size_t>(m_cap));
 #endif
 };
 

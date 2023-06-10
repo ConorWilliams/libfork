@@ -29,7 +29,7 @@ using namespace lf;
 template <typename T>
 using ptask = task<T, typename lf::detail::busy_pool::worker_context>;
 
-inline constexpr auto fib = fn([](auto fib, int n) -> ptask<int> {
+inline constexpr auto fib = fn([](auto fib, int n) static -> ptask<int> {
   //
   if (n < 2) {
     co_return n;
@@ -45,29 +45,42 @@ inline constexpr auto fib = fn([](auto fib, int n) -> ptask<int> {
   co_return a + b;
 });
 
-inline int fib_2(int n) {
+__attribute__((noinline)) inline int fib_2(int n) {
   if (n < 2) {
     return n;
   }
-
   return fib_2(n - 1) + fib_2(n - 2);
 };
 
+inline constexpr auto fib2 = fn([](auto, int n) static -> ptask<int> {
+  co_return fib_2(n);
+});
+
+inline constexpr auto noop = fn([](auto, int x) static -> ptask<int> {
+  co_return x;
+});
+
 TEST_CASE("fib_2") {
 
-  BENCHMARK("classic") {
-    return fib_2(25);
+  volatile int x = 30;
+
+  detail::busy_pool pool{2};
+
+  BENCHMARK("no coro") {
+    return fib_2(x);
+  };
+
+  BENCHMARK("noop") {
+    return pool.schedule(noop, x);
+  };
+
+  BENCHMARK("one coro") {
+    return pool.schedule(fib2, x);
   };
 
   BENCHMARK("pool") {
-    detail::busy_pool pool{2};
 
-    LIBFORK_LOG("iter");
-    auto x = sync_wait(pool.schedule(), fib, 0);
-
-    LIBFORK_LOG("psot");
-
-    return x;
+    return pool.schedule(fib, x);
   };
 }
 
@@ -77,10 +90,32 @@ TEST_CASE("busy_pool", "[libfork]") {
 
     detail::busy_pool pool{};
 
-    auto result = sync_wait(pool.schedule(), fib, i);
-
-    REQUIRE(result == fib_2(i));
+    REQUIRE(pool.schedule(fib, i) == fib_2(i));
   }
 }
+
+// inline constexpr auto reduce = fn([](auto fib, int n) static -> Task<int> {
+//   //
+//   if (n < 2) {
+//     co_return n;
+//   }
+
+//   int a, b;
+
+//   co_await lf::fork[a, fib](n - 1);
+//   co_await lf::call[b, fib](n - 2);
+
+//   co_await lf::call[a, reduce<Context>](vec);
+
+//   co_await reduce_on(fib)(vec);
+
+//   co_await lf::fork[a, mem_fn](a, a);
+
+//   co_await lf::fork[a, my_class::mem](inst, n - 1);
+
+//   co_await self.join;
+
+//   co_return a + b;
+// });
 
 // NOLINTEND

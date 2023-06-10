@@ -74,7 +74,7 @@ public:
 
     friend class busy_pool;
 
-    std::size_t m_max_threads;
+    std::size_t m_max_threads = 0;
     unique_ptr m_stack = stack_type::make_unique();
     queue<task_handle> m_tasks;
     detail::xoshiro m_rng;
@@ -119,11 +119,6 @@ public:
 
             LIBFORK_LOG("worker wakes and starts stealing");
 
-            if (auto submit = this->m_submit.exchange(detail::trivial_handle<void>{nullptr})) {
-              LIBFORK_LOG("Gets root task");
-              submit.resume();
-            }
-
             this->steal_until(i, [&]() -> bool {
               return !m_root_task_in_flight.test(std::memory_order_acquire) || this->m_stop_requested.test(std::memory_order_acquire);
             });
@@ -146,13 +141,12 @@ public:
   /**
    * @brief Submit a task to the pool and join the workers until it completes.
    */
+  template <stateless F, class... Args>
+  auto schedule(async_fn<F> fun, Args &&...args) {
 
-  auto schedule() {
-    return [this](stdexp::coroutine_handle<> root) {
+    auto submit = [this](stdexp::coroutine_handle<> root) {
       //
-      auto prev = m_submit.exchange(trivial_handle_impl<>{root});
-
-      LIBFORK_ASSERT(!prev);
+      auto prev = m_submit.exchange(stdexp::coroutine_handle<>{root});
 
       LIBFORK_LOG("waking workers");
 
@@ -160,6 +154,12 @@ public:
       m_root_task_in_flight.test_and_set(std::memory_order_release);
       m_root_task_in_flight.notify_all();
     };
+
+    auto res = sync_wait(submit, fun, std::forward<Args>(args)...);
+
+    m_root_task_in_flight.clear(std::memory_order_release);
+
+    return res;
   }
 
   ~busy_pool() noexcept { clean_up(); }
@@ -188,7 +188,7 @@ private:
   alignas(detail::k_cache_line) std::atomic_flag m_stop_requested = ATOMIC_FLAG_INIT;
   alignas(detail::k_cache_line) std::atomic_flag m_root_task_in_flight = ATOMIC_FLAG_INIT;
 
-  std::atomic<detail::trivial_handle<>> m_submit;
+  std::atomic<stdexp::coroutine_handle<>> m_submit;
   std::vector<worker_context> m_contexts;
   std::vector<std::thread> m_workers; // After m_context so threads are destroyed before the queues.
 
@@ -203,6 +203,11 @@ private:
 
     while (!cond()) {
       std::size_t attempt = 0;
+
+      if (auto submit = this->m_submit.exchange(stdexp::coroutine_handle<>{nullptr})) {
+        LIBFORK_LOG("Gets root task");
+        submit.resume();
+      }
 
       while (attempt < k_steal_attempts) {
         if (std::size_t const steal_at = dist(my_context.m_rng); steal_at != uid) {
@@ -219,6 +224,11 @@ private:
         }
       }
     };
+
+    if (auto submit = this->m_submit.exchange(stdexp::coroutine_handle<>{nullptr})) {
+      LIBFORK_LOG("Gets root task");
+      submit.resume();
+    }
   }
 };
 
