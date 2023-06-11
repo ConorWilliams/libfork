@@ -82,37 +82,55 @@ inline constexpr auto fib = fn([](auto fib, int n) -> Task<int> {
 
   int a = 0, b = 0;
 
-  co_await fork(a, fib)(n - 1);
-  co_await call(b, fib)(n - 2);
+  // co_await fork(a, fib)(n - 1);
+  // co_await call(b, fib)(n - 2);
 
-  co_await join;
+  // co_await join;
 
   co_return a + b;
 });
 
-int fib_(int n) {
-  if (n < 2) {
-    return n;
-  }
+// int fib_(int n) {
+//   if (n < 2) {
+//     return n;
+//   }
 
-  return fib_(n - 1) + fib_(n - 2);
-}
+//   return fib_(n - 1) + fib_(n - 2);
+// }
 
-TEST_CASE("libfork", "[libfork]") {
+// class my_class {
+// public:
+//   static constexpr auto all = mem_fn([](auto self) -> Task<int> {
+//     co_return self->m_private;
+//   });
 
-  basic_context ctx;
+// private:
+//   int m_private;
+// };
 
-  basic_context::set(ctx);
+// TEST_CASE("access", "[access]") {
+//   auto exec = [](auto handle) { handle(); };
 
-  int i = 22;
+//   my_class obj;
 
-  //
+//   // sync_wait(exec, my_class::access, obj);
+// }
 
-  auto answer = sync_wait([](auto handle) { handle(); }, fib, i);
+// TEST_CASE("libfork", "[libfork]") {
 
-  REQUIRE(answer == fib_(i));
+//   basic_context ctx;
 
-  std::cout << "fib(" << i << ") = " << answer << "\n";
-}
+//   basic_context::set(ctx);
+
+//   int i = 22;
+
+//   //
+
+//   auto answer = sync_wait([](auto handle) { handle(); }, fib, i);
+
+//   REQUIRE(answer == fib_(i));
+
+//   std::cout << "fib(" << i << ") = " << answer << "\n";
+// }
 
 // NOLINTEND

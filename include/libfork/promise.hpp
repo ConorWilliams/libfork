@@ -77,14 +77,12 @@ struct [[nodiscard]] call_packet : return_t<R> {
 // ------------------- Main promise type ------------------- //
 
 template <typename T, thread_context Context, tag Tag>
-struct promise_type : promise_base<T> {
+struct promise_type : promise_base {
 
   using stack_type = typename Context::stack_type;
 
-  constexpr promise_type() noexcept : promise_base<T>{control_block_t{Tag{}}} {}
-
   [[nodiscard]] static auto operator new(std::size_t const size) -> void * {
-    if constexpr (std::same_as<Tag, root_t>) {
+    if constexpr (Tag == tag::root) {
       // Use global new.
       return ::operator new(size);
     } else {
@@ -94,7 +92,7 @@ struct promise_type : promise_base<T> {
   }
 
   static auto operator delete(void *const ptr, std::size_t const size) noexcept -> void {
-    if constexpr (std::same_as<Tag, root_t>) {
+    if constexpr (Tag == tag::root) {
 #ifdef __cpp_sized_deallocation
       ::operator delete(ptr, size);
 #else
@@ -108,24 +106,24 @@ struct promise_type : promise_base<T> {
   }
 
   auto get_return_object() -> task<T, Context> {
-    return task<T, Context>{cast_handle<promise_base<T>>(stdexp::coroutine_handle<promise_type>::from_promise(*this))};
+    return task<T, Context>{stdexp::coroutine_handle<promise_type>::from_promise(*this).address()};
   }
 
   static auto initial_suspend() -> stdexp::suspend_always { return {}; }
 
   void unhandled_exception() noexcept {
-    if constexpr (std::same_as<Tag, root_t>) {
+    if constexpr (Tag == tag::root) {
       LIBFORK_LOG("Unhandled exception in root task");
       // Put in our remote root-block.
-      this->control_block.root().unhandled_exception();
-    } else if constexpr (std::same_as<Tag, call_from_root_t> || std::same_as<Tag, fork_from_root_t>) {
+      static_cast<root_block_t<T> *>(ret_address())->unhandled_exception();
+    } else if (!parent().promise().has_parent()) {
       LIBFORK_LOG("Unhandled exception in root child task");
       // Put in parent (root) task's remote root-block.
-      this->control_block.parent().promise().root().unhandled_exception();
+      static_cast<root_block_t<T> *>(parent().promise().ret_address())->unhandled_exception();
     } else {
       LIBFORK_LOG("Unhandled exception in root grandchild or further");
       // Put on stack of parent task.
-      stack_type::from_address(&this->control_block.parent().promise())->unhandled_exception();
+      stack_type::from_address(&parent().promise())->unhandled_exception();
     }
   }
 
@@ -133,13 +131,13 @@ struct promise_type : promise_base<T> {
     struct final_awaitable : stdexp::suspend_always {
       [[nodiscard]] constexpr auto await_suspend(stdexp::coroutine_handle<promise_type> child) const noexcept -> stdexp::coroutine_handle<> {
 
-        if constexpr (std::same_as<Tag, root_t>) {
+        if constexpr (Tag == tag::root) {
           LIBFORK_LOG("Root task at final suspend, releases sem");
 
           // Finishing a root task implies our stack is empty and should have no exceptions.
           LIBFORK_ASSERT(Context::context().stack_top()->empty());
 
-          child.promise().control_block.root().release();
+          static_cast<root_block_t<T> *>(child.promise().ret_address())->release();
           child.destroy();
           return stdexp::noop_coroutine();
         }
@@ -147,11 +145,11 @@ struct promise_type : promise_base<T> {
         LIBFORK_LOG("Task reaches final suspend");
 
         // Must copy onto stack before destroying child.
-        stdexp::coroutine_handle<control_block_t> const parent_h = child.promise().control_block.parent();
+        stdexp::coroutine_handle<promise_base> const parent_h = child.promise().parent();
         // Can no longer touch child.
         child.destroy();
 
-        if constexpr (std::same_as<Tag, call_t> || std::same_as<Tag, call_from_root_t>) {
+        if constexpr (Tag == tag::call) {
           LIBFORK_LOG("Inline task resumes parent");
           // Inline task's parent cannot have been stolen, no need to reset control block.
           return parent_h;
@@ -185,7 +183,7 @@ struct promise_type : promise_base<T> {
 
         LIBFORK_LOG("Task's parent was stolen");
 
-        control_block_t &parent_cb = parent_h.promise();
+        promise_base &parent_cb = parent_h.promise();
 
         // Register with parent we have completed this child task.
         if (parent_cb.joins().fetch_sub(1, std::memory_order_release) == 1) {
@@ -197,7 +195,7 @@ struct promise_type : promise_base<T> {
 
           LIBFORK_LOG("Task is last child to join, resumes parent");
 
-          if constexpr (std::same_as<Tag, fork_t>) {
+          if constexpr (Tag == tag::fork) {
             // Must take control of stack if we do not already own it.
             auto parent_stack = stack_type::from_address(&parent_cb);
             auto thread_stack = context.stack_top();
@@ -220,7 +218,7 @@ struct promise_type : promise_base<T> {
 
         LIBFORK_LOG("Task is not last to join");
 
-        if constexpr (std::same_as<Tag, fork_t>) {
+        if constexpr (Tag == tag::fork) {
           // We are unable to resume the parent, if we were its creator then we should pop a stack
           // from our context as the resuming thread will take ownership of the parent's stack.
           auto parent_stack = stack_type::from_address(&parent_cb);
@@ -238,92 +236,88 @@ struct promise_type : promise_base<T> {
       }
     };
 
-    LIBFORK_ASSERT(this->control_block.steals() == 0);            // Fork without join.
-    LIBFORK_ASSERT(this->control_block.joins().load() == k_imax); // Destroyed in invalid state.
+    LIBFORK_ASSERT(steals() == 0);            // Fork without join.
+    LIBFORK_ASSERT(joins().load() == k_imax); // Destroyed in invalid state.
 
     return final_awaitable{};
   }
 
-private:
-  template <typename TagWith, template <typename...> typename Packet, typename R, typename F, typename... Args>
-    requires std::is_invocable_r_v<task<R, Context>, F, TagWith, Args...>
-  constexpr auto invoke_with(Packet<R, F, Args...> packet) -> stdexp::coroutine_handle<promise_base<R>> {
+  // private:
+  //   template <typename TagWith, template <typename...> typename Packet, typename R, typename F, typename... Args>
+  //     requires std::is_invocable_r_v<task<R, Context>, F, TagWith, Args...>
+  //   constexpr auto invoke_with(Packet<R, F, Args...> packet) -> stdexp::coroutine_handle<promise_base<R>> {
 
-    LIBFORK_LOG("Spawning a task");
+  //     LIBFORK_LOG("Spawning a task");
 
-    auto inject = [&](Args &&...args) {
-      return std::invoke(F{}, TagWith{}, std::forward<Args>(args)...);
-    };
+  //     auto inject = [&](Args &&...args) {
+  //       return std::invoke(F{}, TagWith{}, std::forward<Args>(args)...);
+  //     };
 
-    stdexp::coroutine_handle<promise_base<R>> child = std::apply(inject, std::move(packet.args));
+  //     stdexp::coroutine_handle<promise_base<R>> child = std::apply(inject, std::move(packet.args));
 
-    auto this_handle = stdexp::coroutine_handle<promise_type>::from_promise(*this);
+  //     auto this_handle = stdexp::coroutine_handle<promise_type>::from_promise(*this);
 
-    child.promise().control_block.set(cast_handle<control_block_t>(this_handle));
+  //     child.promise().control_block.set(cast_handle<control_block_t>(this_handle));
 
-    if constexpr (!std::is_void_v<R>) {
-      child.promise().set_return_address(packet.ret);
-    }
+  //     if constexpr (!std::is_void_v<R>) {
+  //       child.promise().set_return_address(packet.ret);
+  //     }
 
-    return child;
-  }
+  //     return child;
+  //   }
 
-  using call_child_tag = std::conditional_t<std::same_as<Tag, root_t>, call_from_root_t, call_t>;
+  // public:
+  //   template <typename R, typename F, typename... Args, typename Magic = magic<fork_child_tag, async_fn<F>>>
+  //     requires std::is_invocable_r_v<task<R, Context>, F, Magic, Args...>
+  //   [[nodiscard]] constexpr auto await_transform(fork_packet<R, F, Args...> packet) {
+  //     //
+  //     struct awaitable : stdexp::suspend_always {
+  //       [[nodiscard]] constexpr auto await_suspend(stdexp::coroutine_handle<promise_type> parent) noexcept -> stdexp::coroutine_handle<> {
+  //         // In case *this (awaitable) is destructed by stealer after push
+  //         stdexp::coroutine_handle<> stack_child = m_child;
 
-  using fork_child_tag = std::conditional_t<std::same_as<Tag, root_t>, fork_from_root_t, fork_t>;
+  //         LIBFORK_LOG("Forking, push parent to context");
 
-public:
-  template <typename R, typename F, typename... Args, typename Magic = magic<fork_child_tag, async_fn<F>>>
-    requires std::is_invocable_r_v<task<R, Context>, F, Magic, Args...>
-  [[nodiscard]] constexpr auto await_transform(fork_packet<R, F, Args...> packet) {
-    //
-    struct awaitable : stdexp::suspend_always {
-      [[nodiscard]] constexpr auto await_suspend(stdexp::coroutine_handle<promise_type> parent) noexcept -> stdexp::coroutine_handle<> {
-        // In case *this (awaitable) is destructed by stealer after push
-        stdexp::coroutine_handle<> stack_child = m_child;
+  //         Context::context().task_push(task_handle{cast_handle<control_block_t>(parent)});
 
-        LIBFORK_LOG("Forking, push parent to context");
+  //         return stack_child;
+  //       }
 
-        Context::context().task_push(task_handle{cast_handle<control_block_t>(parent)});
+  //       stdexp::coroutine_handle<promise_base<R>> m_child;
+  //     };
 
-        return stack_child;
-      }
+  //     return awaitable{{}, invoke_with<Magic>(std::move(packet))};
+  //   }
 
-      stdexp::coroutine_handle<promise_base<R>> m_child;
-    };
+  //   template <typename R, typename F, typename... Args, typename Magic = magic<call_child_tag, async_fn<F>>>
+  //     requires std::is_invocable_r_v<task<R, Context>, F, Magic, Args...>
+  //   [[nodiscard]] constexpr auto await_transform(call_packet<R, F, Args...> packet) {
+  //     //
+  //     struct awaitable : stdexp::suspend_always {
+  //       [[nodiscard]] constexpr auto await_suspend(stdexp::coroutine_handle<promise_type>) noexcept -> stdexp::coroutine_handle<promise_base<R>> {
+  //         return m_child;
+  //       }
 
-    return awaitable{{}, invoke_with<Magic>(std::move(packet))};
-  }
+  //       stdexp::coroutine_handle<promise_base<R>> m_child;
+  //     };
 
-  template <typename R, typename F, typename... Args, typename Magic = magic<call_child_tag, async_fn<F>>>
-    requires std::is_invocable_r_v<task<R, Context>, F, Magic, Args...>
-  [[nodiscard]] constexpr auto await_transform(call_packet<R, F, Args...> packet) {
-    //
-    struct awaitable : stdexp::suspend_always {
-      [[nodiscard]] constexpr auto await_suspend(stdexp::coroutine_handle<promise_type>) noexcept -> stdexp::coroutine_handle<promise_base<R>> {
-        return m_child;
-      }
-
-      stdexp::coroutine_handle<promise_base<R>> m_child;
-    };
-
-    return awaitable{{}, invoke_with<Magic>(std::move(packet))};
-  }
+  //     return awaitable{{}, invoke_with<Magic>(std::move(packet))};
+  //   }
 
   constexpr auto await_transform(join_t) noexcept {
     struct awaitable {
     private:
       constexpr void take_stack_reset_control() const noexcept {
         // Steals have happened so we cannot currently own this tasks stack.
-        LIBFORK_ASSUME(control_block->steals() != 0);
+        LIBFORK_ASSUME(base->steals() != 0);
 
-        if constexpr (!std::same_as<Tag, root_t>) {
+        if constexpr (Tag != tag::root) {
 
           LIBFORK_LOG("Thread takes control of task's stack");
 
           Context &context = Context::context();
 
-          auto tasks_stack = stack_type::from_address(control_block);
+          auto tasks_stack = stack_type::from_address(base);
           auto thread_stack = context.stack_top();
 
           LIBFORK_ASSERT(thread_stack != tasks_stack);
@@ -333,13 +327,13 @@ public:
         }
 
         // Some steals have happened, need to reset the control block.
-        control_block->reset();
+        base->reset();
       }
 
     public:
       [[nodiscard]] constexpr auto await_ready() const noexcept -> bool {
         // If no steals then we are the only owner of the parent and we are ready to join.
-        if (control_block->steals() == 0) {
+        if (base->steals() == 0) {
           LIBFORK_LOG("Sync ready (no steals)");
           // Therefore no need to reset the control block.
           return true;
@@ -350,9 +344,9 @@ public:
         // Could use (relaxed) + (fence(acquire) in truthy branch) but, it's
         // better if we see all the decrements to joins() and avoid suspending
         // the coroutine if possible.
-        auto joined = k_imax - control_block->joins().load(std::memory_order_acquire);
+        auto joined = k_imax - base->joins().load(std::memory_order_acquire);
 
-        if (control_block->steals() == joined) {
+        if (base->steals() == joined) {
           LIBFORK_LOG("Sync is ready");
 
           take_stack_reset_control();
@@ -374,8 +368,8 @@ public:
 
         //  Consider race condition on write to m_context.
 
-        auto steals = control_block->steals();
-        auto joined = control_block->joins().fetch_sub(k_imax - steals, std::memory_order_release);
+        auto steals = base->steals();
+        auto joined = base->joins().fetch_sub(k_imax - steals, std::memory_order_release);
 
         if (steals == k_imax - joined) {
           // We set n after all children had completed therefore we can resume the task.
@@ -394,8 +388,8 @@ public:
 
         // We cannot currently own this stack.
 
-        if constexpr (!std::same_as<Tag, root_t>) {
-          LIBFORK_ASSERT(stack_type::from_address(control_block) != Context::context().stack_top());
+        if constexpr (Tag != tag::root) {
+          LIBFORK_ASSERT(stack_type::from_address(base) != Context::context().stack_top());
         }
         LIBFORK_ASSERT(Context::context().stack_top()->empty());
 
@@ -404,45 +398,49 @@ public:
 
       constexpr void await_resume() const {
         // Check we have been reset.
-        LIBFORK_ASSERT(control_block->steals() == 0);
-        LIBFORK_ASSERT(control_block->joins() == k_imax);
+        LIBFORK_ASSERT(base->steals() == 0);
+        LIBFORK_ASSERT(base->joins() == k_imax);
 
-        if constexpr (!std::same_as<Tag, root_t>) {
-          LIBFORK_ASSERT(stack_type::from_address(control_block) == Context::context().stack_top());
+        if constexpr (Tag != tag::root) {
+          LIBFORK_ASSERT(stack_type::from_address(base) == Context::context().stack_top());
         }
 
         // Propagate exceptions.
         if constexpr (LIBFORK_PROPAGATE_EXCEPTIONS) {
-          if constexpr (std::same_as<Tag, root_t>) {
-            control_block->root().rethrow_if_unhandled();
+          if constexpr (Tag == tag::root) {
+            static_cast<root_block_t<T> *>(base)->rethrow_if_unhandled();
           } else {
-            stack_type::from_address(control_block)->rethrow_if_unhandled();
+            stack_type::from_address(base)->rethrow_if_unhandled();
           }
         }
       }
 
-      control_block_t *control_block;
+      promise_base *base;
     };
 
-    return awaitable{&this->control_block};
+    return awaitable{&this};
   }
 
 private:
   /**
    * @brief Casts a coroutine_handle<promise_type> to a coroutine_handle<U>.
    *
-   * This is UB but between static checks here and in libfork.hpp we should be OK.
-   *
-   * See the discussion here: https://lists.isocpp.org/std-proposals/2023/01/5323.php
+   * This is UB but with static checks should be OK, see: https://lists.isocpp.org/std-proposals/2023/01/5323.php
    */
-  template <typename U>
-  static auto cast_handle(stdexp::coroutine_handle<promise_type> this_handle) -> stdexp::coroutine_handle<U> {
+  auto cast_down() -> stdexp::coroutine_handle<promise_base> {
 
-    static_assert(alignof(promise_type) == alignof(U), "Promise_type must be aligned to U!");
+    // Static checks that UB is OK.
 
-    stdexp::coroutine_handle cast_handle = stdexp::coroutine_handle<U>::from_address(this_handle.address());
+    static_assert(alignof(promise_type) == alignof(promise_base), "Promise_type must be aligned to U!");
 
-    // Runt-time check that UB is OK.
+#ifdef __cpp_lib_is_pointer_interconvertible
+    static_assert(std::is_pointer_interconvertible_base_of_v<promise_base, promise_type>);
+#endif
+
+    stdexp::coroutine_handle this_handle = stdexp::coroutine_handle<promise_type>::from_promise(*this);
+    stdexp::coroutine_handle cast_handle = stdexp::coroutine_handle<promise_base>::from_address(this_handle.address());
+
+    // Run-time check that UB is OK.
     LIBFORK_ASSERT(cast_handle.address() == this_handle.address());
     LIBFORK_ASSERT(stdexp::coroutine_handle<>{cast_handle} == stdexp::coroutine_handle<>{this_handle});
     LIBFORK_ASSERT(static_cast<void *>(&cast_handle.promise()) == static_cast<void *>(&this_handle.promise()));

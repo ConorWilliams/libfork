@@ -11,6 +11,7 @@
 
 #include "libfork/coroutine.hpp"
 #include "libfork/promise.hpp"
+#include "libfork/promise_base.hpp"
 #include "libfork/task.hpp"
 
 /**
@@ -27,10 +28,10 @@
  * Note: https://lists.isocpp.org/std-proposals/2023/01/5323.php
  */
 template <typename T, typename Context, typename TagWith, typename... Args>
-  requires std::same_as<std::remove_cvref_t<TagWith>, TagWith> && lf::detail::tag<typename TagWith::tag>
+  requires std::same_as<std::remove_cvref_t<TagWith>, TagWith>
 struct lf::stdexp::coroutine_traits<lf::task<T, Context>, TagWith, Args...> {
   //
-  using promise_type = lf::detail::promise_type<T, Context, typename TagWith::tag>;
+  using promise_type = lf::detail::promise_type<T, Context, TagWith::tag>;
 
   #ifdef __cpp_lib_is_pointer_interconvertible
   static_assert(std::is_pointer_interconvertible_base_of_v<lf::detail::promise_base<T>, promise_type>);
@@ -42,7 +43,7 @@ struct lf::stdexp::coroutine_traits<lf::task<T, Context>, TagWith, Args...> {
  * @brief Specialize coroutine_traits for task<...> from member functions.
  */
 template <typename T, typename Context, typename This, typename TagWith, typename... Args>
-  requires std::same_as<std::remove_cvref_t<TagWith>, TagWith> && lf::detail::tag<typename TagWith::tag>
+  requires std::same_as<std::remove_cvref_t<TagWith>, TagWith>
 struct lf::stdexp::coroutine_traits<lf::task<T, Context>, This, TagWith, Args...> : lf::stdexp::coroutine_traits<lf::task<T, Context>, TagWith, Args...> {
 };
 
@@ -62,64 +63,64 @@ template <typename T>
 concept is_task = is_task_impl<T>::value;
 
 template <typename F, typename... Args>
-using invoke_t = std::invoke_result_t<F, detail::magic<detail::root_t, async_fn<F>>, Args...>;
+using invoke_t = std::invoke_result_t<F, detail::magic<tag::root, async_fn<F>>, Args...>;
 
 } // namespace detail
 
-// clang-format off
+// // clang-format off
 
-/**
- * @brief The entry point for synchronous execution of asynchronous functions.
- *
- * This will create the coroutine and pass its handle to ``schedule``. ``schedule`` is expected to guarantee that
- * some thread will call ``resume()`` on the coroutine handle it is passed. The calling thread will then block
- * until the asynchronous function has finished executing. Finally the result of the asynchronous function
- * will be returned.
- */
-template <std::invocable<stdexp::coroutine_handle<>> Schedule, stateless F, class... Args, detail::is_task Task = detail::invoke_t<F, Args...>>
-  requires std::default_initializable<typename Task::value_type> || std::is_void_v<typename Task::value_type>
-auto sync_wait(Schedule &&schedule, async_fn<F>, Args &&...args) -> typename Task::value_type {
+// /**
+//  * @brief The entry point for synchronous execution of asynchronous functions.
+//  *
+//  * This will create the coroutine and pass its handle to ``schedule``. ``schedule`` is expected to guarantee that
+//  * some thread will call ``resume()`` on the coroutine handle it is passed. The calling thread will then block
+//  * until the asynchronous function has finished executing. Finally the result of the asynchronous function
+//  * will be returned.
+//  */
+// template <std::invocable<stdexp::coroutine_handle<>> Schedule, async_wrapper F, class... Args, detail::is_task Task = detail::invoke_t<typename F::type, Args...>>
+//   requires std::default_initializable<typename Task::value_type> || std::is_void_v<typename Task::value_type>
+// auto sync_wait(Schedule &&schedule, [[maybe_unused]] F async, Args &&...args) -> typename Task::value_type {
 
-  // clang-format on
+//   // clang-format on
 
-  using value_type = typename Task::value_type;
+//   using value_type = typename Task::value_type;
 
-  task const coro = std::invoke(F{}, detail::magic<detail::root_t, async_fn<F>>{}, std::forward<Args>(args)...);
+//   task const coro = std::invoke(typename F::type{}, detail::magic<detail::tag::root, typename F::type>{}, std::forward<Args>(args)...);
 
-  detail::root_block_t root_block;
+//   detail::root_block_t root_block;
 
-  coro.promise().control_block.set(root_block);
+//   coro.promise().control_block.set(root_block);
 
-  [[maybe_unused]] std::conditional_t<std::is_void_v<value_type>, int, value_type> result;
+//   [[maybe_unused]] std::conditional_t<std::is_void_v<value_type>, int, value_type> result;
 
-  if constexpr (!std::is_void_v<value_type>) {
-    coro.promise().set_return_address(result);
-  }
+//   if constexpr (!std::is_void_v<value_type>) {
+//     coro.promise().set_return_address(result);
+//   }
 
-#if LIBFORK_COMPILER_EXCEPTIONS
-  try {
-    std::invoke(std::forward<Schedule>(schedule), stdexp::coroutine_handle<>{coro});
-  } catch (...) {
-    // We cannot know whether the coroutine has been resumed or not once we pass to schedule(...).
-    // Hence, we do not know whether or not to .destroy() it if schedule(...) throws.
-    // Hence we mark noexcept to trigger termination.
-    []() noexcept {
-      throw;
-    }();
-  }
-#else
-  std::invoke(std::forward<Schedule>(schedule), stdexp::coroutine_handle<>{coro});
-#endif
+// #if LIBFORK_COMPILER_EXCEPTIONS
+//   try {
+//     std::invoke(std::forward<Schedule>(schedule), stdexp::coroutine_handle<>{coro});
+//   } catch (...) {
+//     // We cannot know whether the coroutine has been resumed or not once we pass to schedule(...).
+//     // Hence, we do not know whether or not to .destroy() it if schedule(...) throws.
+//     // Hence we mark noexcept to trigger termination.
+//     []() noexcept {
+//       throw;
+//     }();
+//   }
+// #else
+//   std::invoke(std::forward<Schedule>(schedule), stdexp::coroutine_handle<>{coro});
+// #endif
 
-  // Block until the coroutine has finished.
-  root_block.acquire();
+//   // Block until the coroutine has finished.
+//   root_block.acquire();
 
-  root_block.rethrow_if_unhandled();
+//   root_block.rethrow_if_unhandled();
 
-  if constexpr (!std::is_void_v<value_type>) {
-    return result;
-  }
-}
+//   if constexpr (!std::is_void_v<value_type>) {
+//     return result;
+//   }
+// }
 
 /**
  * @brief An invocable (and subscriptable) wrapper that binds a return address to an asynchronous function.

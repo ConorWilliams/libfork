@@ -32,16 +32,18 @@ namespace lf {
  */
 template <typename T, thread_context Context>
   requires(!std::is_reference_v<T>)
-class task : public stdexp::coroutine_handle<detail::promise_base<T>> {
+class task {
 public:
   using value_type = T;         ///< The type of the value returned by the coroutine.
   using context_type = Context; ///< The type of the context in which the coroutine is executed.
 
 private:
-  explicit constexpr task(auto handle) noexcept : stdexp::coroutine_handle<detail::promise_base<T>>{handle} {}
+  explicit constexpr task(void *handle) noexcept : m_handle{handle} {}
 
   template <typename, thread_context, detail::tag>
   friend struct detail::promise_type;
+
+  void *m_handle;
 };
 
 } // namespace lf

@@ -13,6 +13,7 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <exception>
 #include <limits>
 #include <memory>
 #include <optional>
@@ -33,13 +34,11 @@
 
 namespace lf {
 
-// Stateless callables do not need to be captured, everything else does.
-
 /**
  * @brief Test if a type is a stateless class.
  */
 template <typename T>
-concept stateless = std::is_trivial_v<T> && std::is_empty_v<T> && std::is_class_v<T>;
+concept stateless = std::is_class_v<T> && std::is_trivial_v<T> && std::is_empty_v<T>;
 
 /**
  * @brief The result type for ``lf::fn()``.
@@ -47,13 +46,31 @@ concept stateless = std::is_trivial_v<T> && std::is_empty_v<T> && std::is_class_
  * Wraps a stateless callable that returns an ``lf::task``.
  */
 template <stateless Fn>
-struct async_fn {};
+struct async_fn : std::type_identity<Fn> {};
+
+/**
+ * @brief The result type for ``lf::mem_fn()``.
+ *
+ * Wraps a stateless callable that returns an ``lf::task``.
+ */
+template <stateless Fn>
+struct async_mem_fn : std::type_identity<Fn> {};
 
 /**
  * @brief Builds an async function from a stateless invocable that returns an ``lf::task``.
+ *
+ * Use this to define a global function which is passed a copy of itself as its first parameter (e.g. a y-combinator).
  */
 template <stateless F>
-constexpr auto fn(F) -> async_fn<F> { return {}; }
+consteval auto fn([[maybe_unused]] F invocable_which_returns_a_task) -> async_fn<F> { return {}; }
+
+/**
+ * @brief Builds an async function from a stateless invocable that returns an ``lf::task``.
+ *
+ * Use this to define a member function which is passed the class as its first parameter.
+ */
+template <stateless F>
+consteval auto mem_fn([[maybe_unused]] F invocable_which_returns_a_task) -> async_mem_fn<F> { return {}; }
 
 namespace detail {
 
@@ -65,77 +82,154 @@ struct is_async_fn_impl : std::false_type {};
 template <stateless Fn>
 struct is_async_fn_impl<async_fn<Fn>> : std::true_type {};
 
+template <stateless Fn>
+struct is_async_fn_impl<async_mem_fn<Fn>> : std::true_type {};
+
+} // namespace detail
+
+/**
+ * @brief A concept to test if a type is an async function.
+ */
 template <typename T>
-concept is_async_fn = is_async_fn_impl<T>::value;
+concept async_wrapper = detail::is_async_fn_impl<T>::value;
+
+namespace detail {
 
 //  Tags
 
-struct root_t {};
-
-struct call_t {};
-
-struct call_from_root_t {};
-
-struct fork_t {};
-
-struct fork_from_root_t {};
-
-template <typename T>
-concept tag = std::same_as<T, root_t> || std::same_as<T, call_t> || std::same_as<T, call_from_root_t> || std::same_as<T, fork_t> || std::same_as<T, fork_from_root_t>;
+enum class tag {
+  root,        ///< This coro is a root task (allocated on heap). [pointer to a root block, constructs]
+  call,        ///< Non root task (on a virtual stack) from a lf::call.  [pointer to result, assigns]
+  call_return, ///< Non root task (on a virtual stack) from an lf::call that will return. [pointer to result block, constructs]
+  fork,        ///< Non root task (on a virtual stack) from an lf::fork. [pointer to result, assigns]
+};
 
 /**
  * @brief An instance of this type is what is passed as the first argument to all coroutines.
  */
-template <tag Tag, is_async_fn Wrap>
-struct magic : Wrap {
-  using tag = Tag;
+template <tag Tag, typename...>
+class magic;
+
+// Sepcialisation for global functions
+template <tag Tag, stateless F>
+class magic<Tag, async_fn<F>> : public async_fn<F> {
+  static constexpr tag tag = Tag;
+};
+
+/**
+ * @brief Specialisation for member functions.
+ *
+ * fn(int x, int const y)
+ *
+ *          call(x) -> int &
+ *    call(move(x)) -> int
+ *
+ *          call(x) -> int const &
+ *    call(move(x)) -> int const
+ */
+template <tag Tag, stateless F, typename This>
+class magic<Tag, async_mem_fn<F>, This> {
+public:
+  explicit constexpr magic(This &self) : m_self{std::addressof(self)} {}
+
+  static constexpr tag tag = Tag;
+
+  // [[nodiscard]] constexpr auto operator->() const noexcept -> This * { return m_self; }
+
+  [[nodiscard]] constexpr auto operator*() & noexcept -> std::remove_reference_t<This> & {
+    return *m_self;
+  }
+
+  [[nodiscard]] constexpr auto operator*() && noexcept -> std::remove_reference_t<This> && {
+    return std::move(*m_self);
+  }
+
+private:
+  This m_self;
 };
 
 static constexpr std::int32_t k_imax = std::numeric_limits<std::int32_t>::max();
 
 // -------------- Control block definition -------------- //
 
-class root_block_t : public exception_packet {
-public:
-  void acquire() noexcept {
-    m_semaphore.acquire();
-  }
+// /**
+//  * @brief Store an (uninitialised) T and an exception_ptr.
+//  */
+// template <typename T>
+// class deferred {
+// public:
+//   auto get() && -> std::conditional_t<std::is_void_v<T>, void, T> {
+//     if (m_exception) {
+//       std::rethrow_exception(m_exception);
+//     }
+//     if constexpr (!std::is_void_v<T>) {
+//       return std::move(m_uninit.m_value);
+//     } else {
+//       return;
+//     }
+//   }
 
-  void release() noexcept {
-    m_semaphore.release();
-  }
+//   // clang-format off
 
-private:
+//   ~deferred() requires(std::is_trivially_destructible_v<T> || std::is_void_v<T>) = default;
+
+//   // clang-format on
+
+//   ~deferred() {
+//     if (!m_exception) {
+//       std::destroy_at(std::addressof(m_uninit.m_value)); // NOLINT
+//     }
+//   }
+
+//   struct empty {};
+
+//   union uninitialised {
+//     empty m_init = {};
+//     T m_value;
+//   };
+
+//   std::exception_ptr m_exception;
+//   [[no_unique_address]] std::conditional_t<std::is_void_v<T>, empty, uninitialised> m_uninit{};
+// };
+
+// -------------- Control block definition -------------- //
+
+template <typename T>
+struct root_block_t : exception_packet {
+  std::binary_semaphore m_semaphore{0};
+  std::optional<T> m_result{};
+};
+
+template <>
+struct root_block_t<void> : exception_packet {
   std::binary_semaphore m_semaphore{0};
 };
 
-class control_block_t {
+class promise_base {
 public:
   // Full declaration below, needs concept first
   class handle_t;
 
-  explicit constexpr control_block_t(tag auto) noexcept : m_parent{nullptr} {
-    LIBFORK_LOG("Constructing control block for child task");
+  constexpr void set(void *ret) noexcept {
+    m_return_address = ret;
   }
-  explicit constexpr control_block_t(root_t) noexcept : m_root{nullptr} {
-    LIBFORK_LOG("Constructing control block for root task");
-  }
-
-  constexpr void set(root_block_t &root) noexcept {
-    m_root = &root; // NOLINT
-  }
-  constexpr void set(stdexp::coroutine_handle<control_block_t> parent) noexcept {
-    m_parent = parent; // NOLINT
+  constexpr void set(stdexp::coroutine_handle<promise_base> parent) noexcept {
+    m_parent = parent;
   }
 
-  [[nodiscard]] constexpr auto parent() const noexcept -> stdexp::coroutine_handle<control_block_t> {
+  [[nodiscard]] constexpr auto has_parent() const noexcept -> bool {
+    return static_cast<bool>(m_parent);
+  }
+
+  // Checked access
+  [[nodiscard]] constexpr auto parent() const noexcept -> stdexp::coroutine_handle<promise_base> {
     LIBFORK_ASSERT(m_parent);
-    return m_parent; // NOLINT
+    return m_parent;
   }
 
-  [[nodiscard]] constexpr auto root() const noexcept -> root_block_t & {
-    LIBFORK_ASSERT(m_root);
-    return *m_root; // NOLINT
+  [[nodiscard]] constexpr auto ret_address() const noexcept -> void * {
+    LIBFORK_ASSERT(m_return_address);
+    return m_return_address;
   }
 
   [[nodiscard]] constexpr auto steals() noexcept -> std::int32_t & {
@@ -159,52 +253,20 @@ public:
   }
 
 private:
-  union {
-    stdexp::coroutine_handle<control_block_t> m_parent; ///< Parent task.
-    root_block_t *m_root;                               ///< or root block.
-  };
-  std::int32_t m_steal = 0;            ///< Number of steals.
-  std::atomic_int32_t m_join = k_imax; ///< Number of children joined (obfuscated).
+  stdexp::coroutine_handle<promise_base> m_parent = {}; ///< Parent task (roots dont have one).
+  void *m_return_address = nullptr;                     ///< root_block || T * || defered<T> *
+  std::int32_t m_steal = 0;                             ///< Number of steals.
+  std::atomic_int32_t m_join = k_imax;                  ///< Number of children joined (obfuscated).
 };
 
 // -------------- promise_base -------------- //
-
-// General case with return type.
-template <typename T>
-struct promise_base {
-
-  template <typename U>
-    requires std::assignable_from<T &, U>
-  void return_value(U &&expr) noexcept(std::is_nothrow_assignable_v<T &, U>) {
-    LIBFORK_LOG("Returning a value");
-    LIBFORK_ASSERT(return_address != nullptr);
-    *return_address = std::forward<U>(expr);
-  }
-
-  void set_return_address(T &ptr) noexcept {
-    LIBFORK_LOG("Set return address");
-    LIBFORK_ASSERT(return_address == nullptr);
-    return_address = std::addressof(ptr);
-  }
-
-  control_block_t control_block; ///< Control block for this task.
-  T *return_address = nullptr;   ///< Effectivly private but cannot mix member access for pointer interconvertibility.
-};
-
-// Special case for void return type.
-template <>
-struct promise_base<void> {
-  static constexpr void return_void() noexcept {}
-
-  control_block_t control_block; ///< Control block for this task.
-};
 
 } // namespace detail
 
 /**
  * @brief A trivial handle to a task with a resume() member function.
  */
-using task_handle = detail::control_block_t::handle_t;
+using task_handle = detail::promise_base::handle_t;
 
 /**
  * @brief A concept which requires a type to define a ``stack_type`` which must be a specialization of ``lf::virtual_stack``.
@@ -270,7 +332,7 @@ concept thread_context = defines_stack<Context> && requires(Context ctx, typenam
 
 // -------------- Define forward decls -------------- //
 
-class detail::control_block_t::handle_t : private stdexp::coroutine_handle<control_block_t> {
+class detail::promise_base::handle_t : private stdexp::coroutine_handle<promise_base> {
 public:
   handle_t() = default; ///< To make us a trivial type.
 
@@ -278,15 +340,15 @@ public:
     LIBFORK_LOG("Call to resume on stolen task");
     LIBFORK_ASSERT(*this);
 
-    stdexp::coroutine_handle<control_block_t>::promise().m_steal += 1;
-    stdexp::coroutine_handle<control_block_t>::resume();
+    stdexp::coroutine_handle<promise_base>::promise().m_steal += 1;
+    stdexp::coroutine_handle<promise_base>::resume();
   }
 
 private:
   template <typename T, thread_context Context, tag Tag>
   friend struct promise_type;
 
-  explicit handle_t(stdexp::coroutine_handle<control_block_t> handle) : stdexp::coroutine_handle<control_block_t>{handle} {}
+  explicit handle_t(stdexp::coroutine_handle<promise_base> handle) : stdexp::coroutine_handle<promise_base>{handle} {}
 };
 
 } // namespace lf
