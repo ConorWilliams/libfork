@@ -13,6 +13,7 @@
 #include "libfork/promise.hpp"
 #include "libfork/promise_base.hpp"
 #include "libfork/task.hpp"
+#include <type_traits>
 
 /**
  * @file libfork.hpp
@@ -24,27 +25,18 @@
 
 /**
  * @brief Specialize coroutine_traits for task<...> from functions.
- *
- * Note: https://lists.isocpp.org/std-proposals/2023/01/5323.php
  */
-template <typename T, typename Context, typename TagWith, typename... Args>
-  requires std::same_as<std::remove_cvref_t<TagWith>, TagWith>
-struct lf::stdexp::coroutine_traits<lf::task<T, Context>, TagWith, Args...> {
-  //
-  using promise_type = lf::detail::promise_type<T, Context, TagWith::tag>;
-
-  #ifdef __cpp_lib_is_pointer_interconvertible
-  static_assert(std::is_pointer_interconvertible_base_of_v<lf::detail::promise_base<T>, promise_type>);
-  static_assert(std::is_pointer_interconvertible_with_class(&promise_type::control_block));
-  #endif
+template <typename T, typename Context, auto Tag, typename... F, typename... Args>
+struct lf::stdexp::coroutine_traits<lf::task<T, Context>, lf::detail::magic<Tag, F...>, Args...> {
+  using promise_type = lf::detail::promise_type<T, Context, Tag>;
 };
 
 /**
  * @brief Specialize coroutine_traits for task<...> from member functions.
  */
-template <typename T, typename Context, typename This, typename TagWith, typename... Args>
-  requires std::same_as<std::remove_cvref_t<TagWith>, TagWith>
-struct lf::stdexp::coroutine_traits<lf::task<T, Context>, This, TagWith, Args...> : lf::stdexp::coroutine_traits<lf::task<T, Context>, TagWith, Args...> {
+template <typename T, typename Context, typename This, auto Tag, typename... F, typename... Args>
+struct lf::stdexp::coroutine_traits<lf::task<T, Context>, This, lf::detail::magic<Tag, F...>, Args...> {
+  using promise_type = lf::detail::promise_type<T, Context, Tag>;
 };
 
 #endif /* LIBFORK_DOXYGEN_SHOULD_SKIP_THIS */
@@ -69,58 +61,82 @@ using invoke_t = std::invoke_result_t<F, detail::magic<tag::root, async_fn<F>>, 
 
 // // clang-format off
 
-// /**
-//  * @brief The entry point for synchronous execution of asynchronous functions.
-//  *
-//  * This will create the coroutine and pass its handle to ``schedule``. ``schedule`` is expected to guarantee that
-//  * some thread will call ``resume()`` on the coroutine handle it is passed. The calling thread will then block
-//  * until the asynchronous function has finished executing. Finally the result of the asynchronous function
-//  * will be returned.
-//  */
-// template <std::invocable<stdexp::coroutine_handle<>> Schedule, async_wrapper F, class... Args, detail::is_task Task = detail::invoke_t<typename F::type, Args...>>
-//   requires std::default_initializable<typename Task::value_type> || std::is_void_v<typename Task::value_type>
-// auto sync_wait(Schedule &&schedule, [[maybe_unused]] F async, Args &&...args) -> typename Task::value_type {
+namespace detail {
 
-//   // clang-format on
+// template <tag Tag, typename F, typename... This, typename... Args>
+// auto invoke(magic<Tag, F, This...> head, Args &&...tail) {
 
-//   using value_type = typename Task::value_type;
+//   using magic_t = magic<Tag, F, This...>;
 
-//   task const coro = std::invoke(typename F::type{}, detail::magic<detail::tag::root, typename F::type>{}, std::forward<Args>(args)...);
+//   using task_type = std::invoke_result_t<F, magic_t, Args &&...>;
 
-//   detail::root_block_t root_block;
+//   using promise_type = stdexp::coroutine_traits<task_type, magic_t, Args &&...>::promise_type;
 
-//   coro.promise().control_block.set(root_block);
+//   using handle_type = stdexp::coroutine_handle<promise_type>;
 
-//   [[maybe_unused]] std::conditional_t<std::is_void_v<value_type>, int, value_type> result;
+//   task_type const coro = std::invoke(F{}, head, std::forward<Args>(tail)...);
 
-//   if constexpr (!std::is_void_v<value_type>) {
-//     coro.promise().set_return_address(result);
-//   }
-
-// #if LIBFORK_COMPILER_EXCEPTIONS
-//   try {
-//     std::invoke(std::forward<Schedule>(schedule), stdexp::coroutine_handle<>{coro});
-//   } catch (...) {
-//     // We cannot know whether the coroutine has been resumed or not once we pass to schedule(...).
-//     // Hence, we do not know whether or not to .destroy() it if schedule(...) throws.
-//     // Hence we mark noexcept to trigger termination.
-//     []() noexcept {
-//       throw;
-//     }();
-//   }
-// #else
-//   std::invoke(std::forward<Schedule>(schedule), stdexp::coroutine_handle<>{coro});
-// #endif
-
-//   // Block until the coroutine has finished.
-//   root_block.acquire();
-
-//   root_block.rethrow_if_unhandled();
-
-//   if constexpr (!std::is_void_v<value_type>) {
-//     return result;
-//   }
+//   return handle_type::from_address(coro.m_handle);
 // }
+
+}; // namespace detail
+
+/**
+ * @brief The entry point for synchronous execution of asynchronous functions.
+ *
+ * This will create the coroutine and pass its handle to ``schedule``. ``schedule`` is expected to guarantee that
+ * some thread will call ``resume()`` on the coroutine handle it is passed. The calling thread will then block
+ * until the asynchronous function has finished executing. Finally the result of the asynchronous function
+ * will be returned.
+ */
+template <std::invocable<stdexp::coroutine_handle<>> Schedule, async_wrapper F, class... Args>
+auto sync_wait(Schedule &&schedule, [[maybe_unused]] F async, Args &&...args) {
+
+  // clang-format on
+
+  using magic_t = detail::magic<detail::tag::root, F>;
+
+  using task_type = std::invoke_result_t<typename F::type, magic_t, Args &&...>;
+
+  using value_type = typename task_type::value_type;
+
+  using promise_type = stdexp::coroutine_traits<task_type, magic_t, Args &&...>::promise_type;
+
+  using handle_type = stdexp::coroutine_handle<promise_type>;
+
+  task_type const coro = std::invoke(typename F::type{}, magic_t{}, std::forward<Args>(args)...);
+
+  handle_type const handle = handle_type::from_address(coro.m_handle);
+
+  detail::root_block_t<value_type> root_block;
+
+  // Set address of root block.
+  handle.promise().set(static_cast<void *>(&root_block));
+
+#if LIBFORK_COMPILER_EXCEPTIONS
+  try {
+    std::invoke(std::forward<Schedule>(schedule), stdexp::coroutine_handle<>{handle});
+  } catch (...) {
+    // We cannot know whether the coroutine has been resumed or not once we pass to schedule(...).
+    // Hence, we do not know whether or not to .destroy() it if schedule(...) throws.
+    // Hence we mark noexcept to trigger termination.
+    []() noexcept {
+      throw;
+    }();
+  }
+#else
+  std::invoke(std::forward<Schedule>(schedule), stdexp::coroutine_handle<>{coro});
+#endif
+
+  // Block until the coroutine has finished.
+  root_block.m_semaphore.acquire();
+
+  root_block.rethrow_if_unhandled();
+
+  if constexpr (!std::is_void_v<value_type>) {
+    return std::move(*root_block.m_result);
+  }
+}
 
 /**
  * @brief An invocable (and subscriptable) wrapper that binds a return address to an asynchronous function.

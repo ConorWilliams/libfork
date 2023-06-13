@@ -90,13 +90,13 @@ inline constexpr auto fib = fn([](auto fib, int n) -> Task<int> {
   co_return a + b;
 });
 
-// int fib_(int n) {
-//   if (n < 2) {
-//     return n;
-//   }
+int fib_(int n) {
+  if (n < 2) {
+    return n;
+  }
 
-//   return fib_(n - 1) + fib_(n - 2);
-// }
+  return fib_(n - 1) + fib_(n - 2);
+}
 
 // class my_class {
 // public:
@@ -116,21 +116,21 @@ inline constexpr auto fib = fn([](auto fib, int n) -> Task<int> {
 //   // sync_wait(exec, my_class::access, obj);
 // }
 
-// TEST_CASE("libfork", "[libfork]") {
+TEST_CASE("libfork", "[libfork]") {
 
-//   basic_context ctx;
+  basic_context ctx;
 
-//   basic_context::set(ctx);
+  basic_context::set(ctx);
 
-//   int i = 22;
+  int i = 22;
 
-//   //
+  //
 
-//   auto answer = sync_wait([](auto handle) { handle(); }, fib, i);
+  auto answer = sync_wait([](auto handle) { handle(); }, fib, i);
 
-//   REQUIRE(answer == fib_(i));
+  REQUIRE(answer == fib_(i));
 
-//   std::cout << "fib(" << i << ") = " << answer << "\n";
-// }
+  std::cout << "fib(" << i << ") = " << answer << "\n";
+}
 
 // NOLINTEND

@@ -37,12 +37,16 @@ public:
   using value_type = T;         ///< The type of the value returned by the coroutine.
   using context_type = Context; ///< The type of the context in which the coroutine is executed.
 
-private:
-  explicit constexpr task(void *handle) noexcept : m_handle{handle} {}
+  // private:
+  // explicit constexpr task(void *handle) noexcept : m_handle{handle} {}
 
   template <typename, thread_context, detail::tag>
   friend struct detail::promise_type;
 
+  /**
+   * @brief remove this is private.
+   *
+   */
   void *m_handle;
 };
 

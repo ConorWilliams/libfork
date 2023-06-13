@@ -76,8 +76,29 @@ struct [[nodiscard]] call_packet : return_t<R> {
 
 // ------------------- Main promise type ------------------- //
 
+template <typename T, tag Tag>
+struct mixin_return : promise_base {
+  template <typename U>
+    requires std::constructible_from<T, U> && (Tag == tag::root || Tag == tag::call_return)
+  constexpr void return_value(U &&expr) noexcept(std::is_nothrow_constructible_v<T, U>) {
+    if constexpr (Tag == tag::root) {
+      LIBFORK_LOG("Task returns value");
+      auto *block_addr = static_cast<root_block_t<T> *>(ret_address());
+      LIBFORK_ASSERT(!block_addr->m_result.has_value());
+      block_addr->m_result.emplace(std::forward<U>(expr));
+    } else {
+      static_assert(std::is_void_v<T>, "TODO");
+    }
+  }
+};
+
+template <tag Tag>
+struct mixin_return<void, Tag> : promise_base {
+  static constexpr void return_void() noexcept {}
+};
+
 template <typename T, thread_context Context, tag Tag>
-struct promise_type : promise_base {
+struct promise_type : mixin_return<T, Tag> {
 
   using stack_type = typename Context::stack_type;
 
@@ -115,15 +136,15 @@ struct promise_type : promise_base {
     if constexpr (Tag == tag::root) {
       LIBFORK_LOG("Unhandled exception in root task");
       // Put in our remote root-block.
-      static_cast<root_block_t<T> *>(ret_address())->unhandled_exception();
-    } else if (!parent().promise().has_parent()) {
+      static_cast<root_block_t<T> *>(this->ret_address())->unhandled_exception();
+    } else if (!this->parent().promise().has_parent()) {
       LIBFORK_LOG("Unhandled exception in root child task");
       // Put in parent (root) task's remote root-block.
-      static_cast<root_block_t<T> *>(parent().promise().ret_address())->unhandled_exception();
+      static_cast<root_block_t<T> *>(this->parent().promise().ret_address())->unhandled_exception();
     } else {
       LIBFORK_LOG("Unhandled exception in root grandchild or further");
       // Put on stack of parent task.
-      stack_type::from_address(&parent().promise())->unhandled_exception();
+      stack_type::from_address(&this->parent().promise())->unhandled_exception();
     }
   }
 
@@ -137,7 +158,7 @@ struct promise_type : promise_base {
           // Finishing a root task implies our stack is empty and should have no exceptions.
           LIBFORK_ASSERT(Context::context().stack_top()->empty());
 
-          static_cast<root_block_t<T> *>(child.promise().ret_address())->release();
+          static_cast<root_block_t<T> *>(child.promise().ret_address())->m_semaphore.release();
           child.destroy();
           return stdexp::noop_coroutine();
         }
@@ -236,8 +257,8 @@ struct promise_type : promise_base {
       }
     };
 
-    LIBFORK_ASSERT(steals() == 0);            // Fork without join.
-    LIBFORK_ASSERT(joins().load() == k_imax); // Destroyed in invalid state.
+    LIBFORK_ASSERT(this->steals() == 0);            // Fork without join.
+    LIBFORK_ASSERT(this->joins().load() == k_imax); // Destroyed in invalid state.
 
     return final_awaitable{};
   }

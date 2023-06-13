@@ -112,7 +112,7 @@ class magic;
 
 // Sepcialisation for global functions
 template <tag Tag, stateless F>
-class magic<Tag, async_fn<F>> : public async_fn<F> {
+class magic<Tag, F> : public async_fn<F> {
   static constexpr tag tag = Tag;
 };
 
@@ -128,7 +128,8 @@ class magic<Tag, async_fn<F>> : public async_fn<F> {
  *    call(move(x)) -> int const
  */
 template <tag Tag, stateless F, typename This>
-class magic<Tag, async_mem_fn<F>, This> {
+  requires(!std::is_reference_v<This>)
+class magic<Tag, F, This> {
 public:
   explicit constexpr magic(This &self) : m_self{std::addressof(self)} {}
 
@@ -136,16 +137,16 @@ public:
 
   // [[nodiscard]] constexpr auto operator->() const noexcept -> This * { return m_self; }
 
-  [[nodiscard]] constexpr auto operator*() & noexcept -> std::remove_reference_t<This> & {
+  [[nodiscard]] constexpr auto operator*() const & noexcept -> std::remove_reference_t<This> & {
     return *m_self;
   }
 
-  [[nodiscard]] constexpr auto operator*() && noexcept -> std::remove_reference_t<This> && {
+  [[nodiscard]] constexpr auto operator*() const && noexcept -> std::remove_reference_t<This> && {
     return std::move(*m_self);
   }
 
 private:
-  This m_self;
+  This *m_self;
 };
 
 static constexpr std::int32_t k_imax = std::numeric_limits<std::int32_t>::max();
