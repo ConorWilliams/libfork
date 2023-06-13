@@ -98,10 +98,9 @@ namespace detail {
 //  Tags
 
 enum class tag {
-  root,        ///< This coro is a root task (allocated on heap). [pointer to a root block, constructs]
-  call,        ///< Non root task (on a virtual stack) from a lf::call.  [pointer to result, assigns]
-  call_return, ///< Non root task (on a virtual stack) from an lf::call that will return. [pointer to result block, constructs]
-  fork,        ///< Non root task (on a virtual stack) from an lf::fork. [pointer to result, assigns]
+  root, ///< This coro is a root task (allocated on heap). [pointer to a root block, constructs]
+  call, ///< Non root task (on a virtual stack) from a lf::call.  [pointer to result, assigns]
+  fork, ///< Non root task (on a virtual stack) from an lf::fork. [pointer to result, assigns]
 };
 
 /**
@@ -129,20 +128,16 @@ class magic<Tag, F> : public async_fn<F> {
  */
 template <tag Tag, stateless F, typename This>
   requires(!std::is_reference_v<This>)
-class magic<Tag, F, This> {
+class magic<Tag, F, This> : public async_mem_fn<F> {
 public:
   explicit constexpr magic(This &self) : m_self{std::addressof(self)} {}
 
   static constexpr tag tag = Tag;
 
-  // [[nodiscard]] constexpr auto operator->() const noexcept -> This * { return m_self; }
+  [[nodiscard]] constexpr auto operator->() noexcept -> This * { return m_self; }
 
-  [[nodiscard]] constexpr auto operator*() const & noexcept -> std::remove_reference_t<This> & {
+  [[nodiscard]] constexpr auto operator*() noexcept -> std::remove_reference_t<This> & {
     return *m_self;
-  }
-
-  [[nodiscard]] constexpr auto operator*() const && noexcept -> std::remove_reference_t<This> && {
-    return std::move(*m_self);
   }
 
 private:
@@ -150,48 +145,6 @@ private:
 };
 
 static constexpr std::int32_t k_imax = std::numeric_limits<std::int32_t>::max();
-
-// -------------- Control block definition -------------- //
-
-// /**
-//  * @brief Store an (uninitialised) T and an exception_ptr.
-//  */
-// template <typename T>
-// class deferred {
-// public:
-//   auto get() && -> std::conditional_t<std::is_void_v<T>, void, T> {
-//     if (m_exception) {
-//       std::rethrow_exception(m_exception);
-//     }
-//     if constexpr (!std::is_void_v<T>) {
-//       return std::move(m_uninit.m_value);
-//     } else {
-//       return;
-//     }
-//   }
-
-//   // clang-format off
-
-//   ~deferred() requires(std::is_trivially_destructible_v<T> || std::is_void_v<T>) = default;
-
-//   // clang-format on
-
-//   ~deferred() {
-//     if (!m_exception) {
-//       std::destroy_at(std::addressof(m_uninit.m_value)); // NOLINT
-//     }
-//   }
-
-//   struct empty {};
-
-//   union uninitialised {
-//     empty m_init = {};
-//     T m_value;
-//   };
-
-//   std::exception_ptr m_exception;
-//   [[no_unique_address]] std::conditional_t<std::is_void_v<T>, empty, uninitialised> m_uninit{};
-// };
 
 // -------------- Control block definition -------------- //
 

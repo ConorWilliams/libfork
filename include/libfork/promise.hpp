@@ -39,6 +39,19 @@ class task;
 
 namespace detail {
 
+template <typename Magic, typename... Args>
+struct invoker {
+
+  using task_type = std::invoke_result_t<typename Magic::type, Magic, Args &&...>;
+  using value_type = typename task_type::value_type;
+  using promise_type = stdexp::coroutine_traits<task_type, Magic, Args &&...>::promise_type;
+  using handle_type = stdexp::coroutine_handle<promise_type>;
+
+  static auto invoke(Magic magic, Args &&...args) -> stdexp::coroutine_handle<promise_type> {
+    return handle_type::from_address(std::invoke(typename Magic::type{}, magic, std::forward<Args>(args)...).m_handle);
+  }
+};
+
 // ------------------- Tag types ------------------- //
 
 // NOLINTBEGIN
@@ -57,18 +70,11 @@ template <>
 struct return_t<void> {};
 
 /**
- * @brief An awaitable type (in a task) that triggers a fork.
+ * @brief An awaitable type (in a task) that triggers a fork/call.
  */
-template <typename R, typename F, typename... Args>
-struct [[nodiscard]] fork_packet : return_t<R> {
-  [[no_unique_address]] std::tuple<Args &&...> args;
-};
-
-/**
- * @brief An awaitable type (in a task) that triggers a call.
- */
-template <typename R, typename F, typename... Args>
-struct [[nodiscard]] call_packet : return_t<R> {
+template <typename R, typename Magic, typename... Args>
+struct [[nodiscard]] packet : return_t<R> {
+  [[no_unique_address]] Magic magic;
   [[no_unique_address]] std::tuple<Args &&...> args;
 };
 
@@ -79,16 +85,22 @@ struct [[nodiscard]] call_packet : return_t<R> {
 template <typename T, tag Tag>
 struct mixin_return : promise_base {
   template <typename U>
-    requires std::constructible_from<T, U> && (Tag == tag::root || Tag == tag::call_return)
+    requires std::constructible_from<T, U> && (Tag == tag::root)
   constexpr void return_value(U &&expr) noexcept(std::is_nothrow_constructible_v<T, U>) {
     if constexpr (Tag == tag::root) {
-      LIBFORK_LOG("Task returns value");
+      LIBFORK_LOG("Root task returns value");
       auto *block_addr = static_cast<root_block_t<T> *>(ret_address());
       LIBFORK_ASSERT(!block_addr->m_result.has_value());
       block_addr->m_result.emplace(std::forward<U>(expr));
     } else {
       static_assert(std::is_void_v<T>, "TODO");
     }
+  }
+  template <typename U>
+    requires std::assignable_from<T &, U> && (Tag != tag::root)
+  void return_value(U &&expr) noexcept(std::is_nothrow_assignable_v<T &, U>) {
+    LIBFORK_LOG("Regular task returns a value");
+    *static_cast<T *>(ret_address()) = std::forward<U>(expr);
   }
 };
 
@@ -263,67 +275,71 @@ struct promise_type : mixin_return<T, Tag> {
     return final_awaitable{};
   }
 
-  // private:
-  //   template <typename TagWith, template <typename...> typename Packet, typename R, typename F, typename... Args>
-  //     requires std::is_invocable_r_v<task<R, Context>, F, TagWith, Args...>
-  //   constexpr auto invoke_with(Packet<R, F, Args...> packet) -> stdexp::coroutine_handle<promise_base<R>> {
+private:
+  template <typename R, typename Magic, typename... Args>
+    requires std::is_same_v<R, typename invoker<Magic, Args...>::value_type>
+  constexpr auto invoke(packet<R, Magic, Args...> packet) {
 
-  //     LIBFORK_LOG("Spawning a task");
+    LIBFORK_LOG("Spawning a task");
 
-  //     auto inject = [&](Args &&...args) {
-  //       return std::invoke(F{}, TagWith{}, std::forward<Args>(args)...);
-  //     };
+    auto unwrap = [&](Args &&...args) {
+      return invoker<Magic, Args...>::invoke(packet.magic, std::forward<Args>(args)...);
+    };
 
-  //     stdexp::coroutine_handle<promise_base<R>> child = std::apply(inject, std::move(packet.args));
+    stdexp::coroutine_handle child = std::apply(unwrap, std::move(packet.args));
 
-  //     auto this_handle = stdexp::coroutine_handle<promise_type>::from_promise(*this);
+    child.promise().set(cast_down(stdexp::coroutine_handle<promise_type>::from_promise(*this)));
 
-  //     child.promise().control_block.set(cast_handle<control_block_t>(this_handle));
+    if constexpr (!std::is_void_v<R>) {
+      child.promise().set(static_cast<void *>(std::addressof(packet.ret)));
+    }
 
-  //     if constexpr (!std::is_void_v<R>) {
-  //       child.promise().set_return_address(packet.ret);
-  //     }
+    return child;
+  }
 
-  //     return child;
-  //   }
+public:
+  template <typename R, typename F, typename... This, typename... Args>
+  [[nodiscard]] constexpr auto await_transform(packet<R, magic<tag::fork, F, This...>, Args...> packet)
+    requires requires { invoke(std::move(packet)); }
+  {
+    //
+    stdexp::coroutine_handle child = invoke(std::move(packet));
 
-  // public:
-  //   template <typename R, typename F, typename... Args, typename Magic = magic<fork_child_tag, async_fn<F>>>
-  //     requires std::is_invocable_r_v<task<R, Context>, F, Magic, Args...>
-  //   [[nodiscard]] constexpr auto await_transform(fork_packet<R, F, Args...> packet) {
-  //     //
-  //     struct awaitable : stdexp::suspend_always {
-  //       [[nodiscard]] constexpr auto await_suspend(stdexp::coroutine_handle<promise_type> parent) noexcept -> stdexp::coroutine_handle<> {
-  //         // In case *this (awaitable) is destructed by stealer after push
-  //         stdexp::coroutine_handle<> stack_child = m_child;
+    struct awaitable : stdexp::suspend_always {
+      [[nodiscard]] constexpr auto await_suspend(stdexp::coroutine_handle<promise_type> parent) noexcept -> stdexp::coroutine_handle<> {
+        // In case *this (awaitable) is destructed by stealer after push
+        stdexp::coroutine_handle<> stack_child = m_child;
 
-  //         LIBFORK_LOG("Forking, push parent to context");
+        LIBFORK_LOG("Forking, push parent to context");
 
-  //         Context::context().task_push(task_handle{cast_handle<control_block_t>(parent)});
+        Context::context().task_push(task_handle{promise_type::cast_down(parent)});
 
-  //         return stack_child;
-  //       }
+        return stack_child;
+      }
 
-  //       stdexp::coroutine_handle<promise_base<R>> m_child;
-  //     };
+      decltype(child) m_child;
+    };
 
-  //     return awaitable{{}, invoke_with<Magic>(std::move(packet))};
-  //   }
+    return awaitable{{}, child};
+  }
 
-  //   template <typename R, typename F, typename... Args, typename Magic = magic<call_child_tag, async_fn<F>>>
-  //     requires std::is_invocable_r_v<task<R, Context>, F, Magic, Args...>
-  //   [[nodiscard]] constexpr auto await_transform(call_packet<R, F, Args...> packet) {
-  //     //
-  //     struct awaitable : stdexp::suspend_always {
-  //       [[nodiscard]] constexpr auto await_suspend(stdexp::coroutine_handle<promise_type>) noexcept -> stdexp::coroutine_handle<promise_base<R>> {
-  //         return m_child;
-  //       }
+  template <typename R, typename F, typename... This, typename... Args>
+  [[nodiscard]] constexpr auto await_transform(packet<R, magic<tag::call, F, This...>, Args...> packet)
+    requires requires { invoke(std::move(packet)); }
+  {
+    //
+    stdexp::coroutine_handle child = invoke(std::move(packet));
 
-  //       stdexp::coroutine_handle<promise_base<R>> m_child;
-  //     };
+    struct awaitable : stdexp::suspend_always {
+      [[nodiscard]] constexpr auto await_suspend([[maybe_unused]] stdexp::coroutine_handle<promise_type> parent) noexcept -> decltype(child) {
+        return m_child;
+      }
 
-  //     return awaitable{{}, invoke_with<Magic>(std::move(packet))};
-  //   }
+      decltype(child) m_child;
+    };
+
+    return awaitable{{}, child};
+  }
 
   constexpr auto await_transform(join_t) noexcept {
     struct awaitable {
@@ -429,7 +445,7 @@ struct promise_type : mixin_return<T, Tag> {
         // Propagate exceptions.
         if constexpr (LIBFORK_PROPAGATE_EXCEPTIONS) {
           if constexpr (Tag == tag::root) {
-            static_cast<root_block_t<T> *>(base)->rethrow_if_unhandled();
+            static_cast<root_block_t<T> *>(base->ret_address())->rethrow_if_unhandled();
           } else {
             stack_type::from_address(base)->rethrow_if_unhandled();
           }
@@ -439,26 +455,21 @@ struct promise_type : mixin_return<T, Tag> {
       promise_base *base;
     };
 
-    return awaitable{&this};
+    return awaitable{this};
   }
 
 private:
-  /**
-   * @brief Casts a coroutine_handle<promise_type> to a coroutine_handle<U>.
-   *
-   * This is UB but with static checks should be OK, see: https://lists.isocpp.org/std-proposals/2023/01/5323.php
-   */
-  auto cast_down() -> stdexp::coroutine_handle<promise_base> {
+  template <typename Promise>
+  static auto cast_down(stdexp::coroutine_handle<Promise> this_handle) -> stdexp::coroutine_handle<promise_base> {
 
     // Static checks that UB is OK.
 
-    static_assert(alignof(promise_type) == alignof(promise_base), "Promise_type must be aligned to U!");
+    static_assert(alignof(Promise) == alignof(promise_base), "Promise_type must be aligned to U!");
 
 #ifdef __cpp_lib_is_pointer_interconvertible
-    static_assert(std::is_pointer_interconvertible_base_of_v<promise_base, promise_type>);
+    static_assert(std::is_pointer_interconvertible_base_of_v<promise_base, Promise>);
 #endif
 
-    stdexp::coroutine_handle this_handle = stdexp::coroutine_handle<promise_type>::from_promise(*this);
     stdexp::coroutine_handle cast_handle = stdexp::coroutine_handle<promise_base>::from_address(this_handle.address());
 
     // Run-time check that UB is OK.

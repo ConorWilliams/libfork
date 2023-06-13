@@ -16,6 +16,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#define LIBFORK_LOGGING
+
 #include "libfork/busy_pool.hpp"
 #include "libfork/libfork.hpp"
 
@@ -82,10 +84,10 @@ inline constexpr auto fib = fn([](auto fib, int n) -> Task<int> {
 
   int a = 0, b = 0;
 
-  // co_await fork(a, fib)(n - 1);
-  // co_await call(b, fib)(n - 2);
+  co_await fork(a, fib)(n - 1);
+  co_await call(b, fib)(n - 2);
 
-  // co_await join;
+  co_await join;
 
   co_return a + b;
 });
@@ -98,15 +100,15 @@ int fib_(int n) {
   return fib_(n - 1) + fib_(n - 2);
 }
 
-// class my_class {
-// public:
-//   static constexpr auto all = mem_fn([](auto self) -> Task<int> {
-//     co_return self->m_private;
-//   });
+class my_class {
+public:
+  static constexpr auto get = mem_fn([](auto self) -> Task<int> {
+    co_return self->m_private;
+  });
 
-// private:
-//   int m_private;
-// };
+private:
+  int m_private = 99;
+};
 
 // TEST_CASE("access", "[access]") {
 //   auto exec = [](auto handle) { handle(); };
@@ -124,7 +126,9 @@ TEST_CASE("libfork", "[libfork]") {
 
   int i = 22;
 
-  //
+  my_class obj;
+
+  // REQUIRE(99 == sync_wait([](auto handle) { handle(); }, my_class::get, obj));
 
   auto answer = sync_wait([](auto handle) { handle(); }, fib, i);
 

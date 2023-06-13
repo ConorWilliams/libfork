@@ -59,56 +59,18 @@ using invoke_t = std::invoke_result_t<F, detail::magic<tag::root, async_fn<F>>, 
 
 } // namespace detail
 
-// // clang-format off
-
 namespace detail {
 
-// template <tag Tag, typename F, typename... This, typename... Args>
-// auto invoke(magic<Tag, F, This...> head, Args &&...tail) {
+template <std::invocable<stdexp::coroutine_handle<>> Schedule, typename Magic, class... Args>
+auto sync_wait_impl(Schedule &&schedule, [[maybe_unused]] Magic magic, Args &&...args) {
 
-//   using magic_t = magic<Tag, F, This...>;
+  using invoker = detail::invoker<Magic, Args...>;
 
-//   using task_type = std::invoke_result_t<F, magic_t, Args &&...>;
+  using value_type = typename invoker::value_type;
 
-//   using promise_type = stdexp::coroutine_traits<task_type, magic_t, Args &&...>::promise_type;
+  auto handle = invoker::invoke(magic, std::forward<Args>(args)...);
 
-//   using handle_type = stdexp::coroutine_handle<promise_type>;
-
-//   task_type const coro = std::invoke(F{}, head, std::forward<Args>(tail)...);
-
-//   return handle_type::from_address(coro.m_handle);
-// }
-
-}; // namespace detail
-
-/**
- * @brief The entry point for synchronous execution of asynchronous functions.
- *
- * This will create the coroutine and pass its handle to ``schedule``. ``schedule`` is expected to guarantee that
- * some thread will call ``resume()`` on the coroutine handle it is passed. The calling thread will then block
- * until the asynchronous function has finished executing. Finally the result of the asynchronous function
- * will be returned.
- */
-template <std::invocable<stdexp::coroutine_handle<>> Schedule, async_wrapper F, class... Args>
-auto sync_wait(Schedule &&schedule, [[maybe_unused]] F async, Args &&...args) {
-
-  // clang-format on
-
-  using magic_t = detail::magic<detail::tag::root, F>;
-
-  using task_type = std::invoke_result_t<typename F::type, magic_t, Args &&...>;
-
-  using value_type = typename task_type::value_type;
-
-  using promise_type = stdexp::coroutine_traits<task_type, magic_t, Args &&...>::promise_type;
-
-  using handle_type = stdexp::coroutine_handle<promise_type>;
-
-  task_type const coro = std::invoke(typename F::type{}, magic_t{}, std::forward<Args>(args)...);
-
-  handle_type const handle = handle_type::from_address(coro.m_handle);
-
-  detail::root_block_t<value_type> root_block;
+  root_block_t<value_type> root_block;
 
   // Set address of root block.
   handle.promise().set(static_cast<void *>(&root_block));
@@ -138,10 +100,38 @@ auto sync_wait(Schedule &&schedule, [[maybe_unused]] F async, Args &&...args) {
   }
 }
 
+}; // namespace detail
+
+/**
+ * @brief The entry point for synchronous execution of asynchronous functions.
+ *
+ * This will create the coroutine and pass its handle to ``schedule``. ``schedule`` is expected to guarantee that
+ * some thread will call ``resume()`` on the coroutine handle it is passed. The caller will then block
+ * until the asynchronous function has finished executing. Finally the result of the asynchronous function
+ * will be returned to the caller.
+ */
+template <std::invocable<stdexp::coroutine_handle<>> Schedule, stateless F, class... Args>
+auto sync_wait(Schedule &&schedule, [[maybe_unused]] async_fn<F> async_function, Args &&...args) {
+  return detail::sync_wait_impl(std::forward<Schedule>(schedule), detail::magic<detail::tag::root, F>{}, std::forward<Args>(args)...);
+}
+
+/**
+ * @brief The entry point for synchronous execution of asynchronous member functions.
+ *
+ * This will create the coroutine and pass its handle to ``schedule``. ``schedule`` is expected to guarantee that
+ * some thread will call ``resume()`` on the coroutine handle it is passed. The caller will then block
+ * until the asynchronous member function has finished executing. Finally the result of the asynchronous function
+ * will be returned to the caller.
+ */
+template <std::invocable<stdexp::coroutine_handle<>> Schedule, stateless F, class This, class... Args>
+auto sync_wait(Schedule &&schedule, [[maybe_unused]] async_mem_fn<F> async_member_function, This &self, Args &&...args) {
+  return detail::sync_wait_impl(std::forward<Schedule>(schedule), detail::magic<detail::tag::root, F, This>{self}, std::forward<Args>(args)...);
+}
+
 /**
  * @brief An invocable (and subscriptable) wrapper that binds a return address to an asynchronous function.
  */
-template <template <typename...> typename Packet>
+template <detail::tag Tag>
 struct bind_task {
   /**
    * @brief Bind return address `ret` to an asynchronous function.
@@ -149,21 +139,42 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename R, typename F>
-  [[nodiscard]] LIBFORK_STATIC_CALL constexpr auto operator()(R &ret, async_fn<F>) LIBFORK_STATIC_CONST noexcept {
-    return [&]<typename... Args>(Args &&...args) noexcept -> Packet<R, F, Args...> {
-      return {{ret}, std::forward<Args>(args)...};
+  [[nodiscard]] LIBFORK_STATIC_CALL constexpr auto operator()(R &ret, [[maybe_unused]] async_fn<F> async_fn) LIBFORK_STATIC_CONST noexcept {
+    return [&]<typename... Args>(Args &&...args) noexcept -> detail::packet<R, detail::magic<Tag, F>, Args...> {
+      return {{ret}, {}, std::forward<Args>(args)...};
     };
   }
-
   /**
    * @brief Set a void return address for an asynchronous function.
    *
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename F>
-  [[nodiscard]] LIBFORK_STATIC_CALL constexpr auto operator()(async_fn<F>) LIBFORK_STATIC_CONST noexcept {
-    return [&]<typename... Args>(Args &&...args) noexcept -> Packet<void, F, Args...> {
-      return {{}, std::forward<Args>(args)...};
+  [[nodiscard]] LIBFORK_STATIC_CALL constexpr auto operator()([[maybe_unused]] async_fn<F> async_fn) LIBFORK_STATIC_CONST noexcept {
+    return [&]<typename... Args>(Args &&...args) noexcept -> detail::packet<void, detail::magic<Tag, F>, Args...> {
+      return {{}, {}, std::forward<Args>(args)...};
+    };
+  }
+  /**
+   * @brief Bind return address `ret` to an asynchronous member function.
+   *
+   * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
+   */
+  template <typename R, typename F>
+  [[nodiscard]] LIBFORK_STATIC_CALL constexpr auto operator()(R &ret, [[maybe_unused]] async_mem_fn<F> async_mem_fn) LIBFORK_STATIC_CONST noexcept {
+    return [&]<typename This, typename... Args>(This &self, Args &&...args) noexcept -> detail::packet<R, detail::magic<Tag, F, This>, Args...> {
+      return {{ret}, {self}, std::forward<Args>(args)...};
+    };
+  }
+  /**
+   * @brief Set a void return address for an asynchronous member function.
+   *
+   * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
+   */
+  template <typename F>
+  [[nodiscard]] LIBFORK_STATIC_CALL constexpr auto operator()([[maybe_unused]] async_mem_fn<F> async_fn) LIBFORK_STATIC_CONST noexcept {
+    return [&]<typename This, typename... Args>(This &self, Args &&...args) noexcept -> detail::packet<void, detail::magic<Tag, F, This>, Args...> {
+      return {{}, {self}, std::forward<Args>(args)...};
     };
   }
 
@@ -174,18 +185,43 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename R, typename F>
-  [[nodiscard]] static constexpr auto operator[](R &ret, async_fn<F> func) noexcept {
-    return bind_task{}(ret, func);
+  [[nodiscard]] static constexpr auto operator[](R &ret, [[maybe_unused]] async_fn<F> async_fn) noexcept {
+    return [&]<typename... Args>(Args &&...args) noexcept -> detail::packet<R, detail::magic<Tag, F>, Args...> {
+      return {{ret}, {}, std::forward<Args>(args)...};
+    };
   }
-
   /**
    * @brief Set a void return address for an asynchronous function.
    *
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename F>
-  [[nodiscard]] static constexpr auto operator[](async_fn<F> func) noexcept {
-    return bind_task{}(func);
+  [[nodiscard]] static constexpr auto operator[]([[maybe_unused]] async_fn<F> async_fn) noexcept {
+    return [&]<typename... Args>(Args &&...args) noexcept -> detail::packet<void, detail::magic<Tag, F>, Args...> {
+      return {{}, {}, std::forward<Args>(args)...};
+    };
+  }
+  /**
+   * @brief Bind return address `ret` to an asynchronous member function.
+   *
+   * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
+   */
+  template <typename R, typename F>
+  [[nodiscard]] static constexpr auto operator[](R &ret, [[maybe_unused]] async_mem_fn<F> async_mem_fn) noexcept {
+    return [&]<typename This, typename... Args>(This &self, Args &&...args) noexcept -> detail::packet<R, detail::magic<Tag, F, This>, Args...> {
+      return {{ret}, {self}, std::forward<Args>(args)...};
+    };
+  }
+  /**
+   * @brief Set a void return address for an asynchronous member function.
+   *
+   * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
+   */
+  template <typename F>
+  [[nodiscard]] static constexpr auto operator[]([[maybe_unused]] async_mem_fn<F> async_fn) noexcept {
+    return [&]<typename This, typename... Args>(This &self, Args &&...args) noexcept -> detail::packet<void, detail::magic<Tag, F, This>, Args...> {
+      return {{}, {self}, std::forward<Args>(args)...};
+    };
   }
 #endif
 };
@@ -198,12 +234,12 @@ inline constexpr detail::join_t join = {};
 /**
  * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a fork.
  */
-inline constexpr bind_task<detail::fork_packet> fork = {};
+inline constexpr bind_task<detail::tag::fork> fork = {};
 
 /**
  * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a call.
  */
-inline constexpr bind_task<detail::call_packet> call = {};
+inline constexpr bind_task<detail::tag::call> call = {};
 
 } // namespace lf
 
