@@ -87,7 +87,7 @@ auto sync_wait_impl(Schedule &&schedule, [[maybe_unused]] Magic magic, Args &&..
     }();
   }
 #else
-  std::invoke(std::forward<Schedule>(schedule), stdexp::coroutine_handle<>{coro});
+  std::invoke(std::forward<Schedule>(schedule), stdexp::coroutine_handle<>{handle});
 #endif
 
   // Block until the coroutine has finished.

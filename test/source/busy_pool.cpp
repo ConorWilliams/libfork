@@ -17,7 +17,7 @@
 #include <catch2/benchmark/catch_benchmark.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#define LIBFORK_LOGGING
+#define NDEBUG
 
 #include "libfork/busy_pool.hpp"
 #include "libfork/libfork.hpp"
@@ -62,7 +62,7 @@ inline constexpr auto noop = fn([](auto, int x) static -> ptask<int> {
 
 TEST_CASE("fib_2") {
 
-  volatile int x = 10;
+  volatile int x = 25;
 
   detail::busy_pool pool{2};
 
@@ -88,7 +88,9 @@ TEST_CASE("busy_pool", "[libfork]") {
 
   for (int i = 0; i < 20; ++i) {
 
-    detail::busy_pool pool{2};
+    std::cout << "i=" << i << std::endl;
+
+    detail::busy_pool pool{};
 
     REQUIRE(pool.schedule(fib, i) == fib_2(i));
   }

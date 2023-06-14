@@ -9,6 +9,9 @@ prefix/
 old/
 Testing/
 
+gmon.out
+out.png
+
 **/.DS_Store
 
 compile_commands.json

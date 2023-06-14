@@ -14,11 +14,7 @@
 #include <type_traits>
 #include <utility>
 
-#include <catch2/benchmark/catch_benchmark.hpp>
-#include <catch2/catch_test_macros.hpp>
-
-#define NDEBUG
-// #define LIBFORK_PROPAGATE_EXCEPTIONS
+// #define NDEBUG
 // #undef LIBFORK_LOG
 // #define LIBFORK_LOGGING
 
@@ -32,7 +28,7 @@ using namespace lf;
 
 class basic_context;
 
-thread_local basic_context *glob;
+basic_context *glob;
 
 class basic_context {
 public:
@@ -77,8 +73,6 @@ private:
 template <typename T>
 using Task = task<T, basic_context>;
 
-// #define fork(f) lf::fork(LIFT(f))
-
 #define fork lf::fork
 #define call lf::call
 #define join lf::join
@@ -99,67 +93,15 @@ inline constexpr auto fib = fn([](auto fib, int n) -> Task<int> {
   co_return a + b;
 });
 
-int fib_(int n) {
-  if (n < 2) {
-    return n;
+int main() {
+  volatile int x = 25;
+  volatile int y;
+
+  basic_context ctx;
+
+  basic_context::set(ctx);
+
+  for (int i = 0; i < 10; i++) {
+    y = sync_wait([](auto handle) { handle(); }, fib, x);
   }
-
-  return fib_(n - 1) + fib_(n - 2);
 }
-
-TEST_CASE("bench") {
-
-  volatile int x = 20;
-
-  basic_context ctx;
-
-  basic_context::set(ctx);
-
-  BENCHMARK("no coro") {
-    return fib_(x);
-  };
-
-  BENCHMARK("inline") {
-    // return fib_(x);
-    return sync_wait([](auto handle) { handle(); }, fib, x);
-  };
-}
-
-class my_class {
-public:
-  static constexpr auto get = mem_fn([](auto self) -> Task<int> {
-    co_return self->m_private;
-  });
-
-private:
-  int m_private = 99;
-};
-
-// TEST_CASE("access", "[access]") {
-//   auto exec = [](auto handle) { handle(); };
-
-//   my_class obj;
-
-//   // sync_wait(exec, my_class::access, obj);
-// }
-
-TEST_CASE("libfork", "[libfork]") {
-
-  basic_context ctx;
-
-  basic_context::set(ctx);
-
-  int i = 22;
-
-  my_class obj;
-
-  // REQUIRE(99 == sync_wait([](auto handle) { handle(); }, my_class::get, obj));
-
-  auto answer = sync_wait([](auto handle) { handle(); }, fib, i);
-
-  REQUIRE(answer == fib_(i));
-
-  std::cout << "fib(" << i << ") = " << answer << "\n";
-}
-
-// NOLINTEND

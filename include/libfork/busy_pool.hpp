@@ -104,8 +104,9 @@ public:
       ctx.m_max_threads = n;
       rng.long_jump();
     }
-
+#if LIBFORK_COMPILER_EXCEPTIONS
     try {
+#endif
       for (std::size_t i = 0; i < n; ++i) {
         m_workers.emplace_back([this, i]() {
           // Set the thread local context.
@@ -131,11 +132,13 @@ public:
           }
         });
       }
+#if LIBFORK_COMPILER_EXCEPTIONS
     } catch (...) {
       // Need to stop the threads
       clean_up();
       throw;
     }
+#endif
   }
 
   /**

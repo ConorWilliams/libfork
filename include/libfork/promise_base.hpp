@@ -112,7 +112,7 @@ class magic;
 // Sepcialisation for global functions
 template <tag Tag, stateless F>
 class magic<Tag, F> : public async_fn<F> {
-  static constexpr tag tag = Tag;
+  static constexpr tag tagged = Tag;
 };
 
 /**
@@ -132,7 +132,7 @@ class magic<Tag, F, This> : public async_mem_fn<F> {
 public:
   explicit constexpr magic(This &self) : m_self{std::addressof(self)} {}
 
-  static constexpr tag tag = Tag;
+  static constexpr tag tagged = Tag;
 
   [[nodiscard]] constexpr auto operator->() noexcept -> This * { return m_self; }
 

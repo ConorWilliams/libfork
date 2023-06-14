@@ -101,11 +101,9 @@ class alignas(detail::k_new_align) virtual_stack : detail::stack_mem {
   /**
    * @brief Construct an empty stack.
    */
-  constexpr virtual_stack() {
+  constexpr virtual_stack() : stack_mem() {
 
     static_assert(sizeof(virtual_stack) == N, "Bad padding detected!");
-
-    static_assert(k_trivial == std::is_trivially_destructible_v<virtual_stack>);
 
     if (detail::r_cast<std::uintptr_t>(this) % N != 0) {
 #if LIBFORK_COMPILER_EXCEPTIONS

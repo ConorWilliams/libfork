@@ -122,13 +122,14 @@ inline constexpr std::size_t k_cache_line = 64;
 #ifndef LIBFORK_LOG
   #ifdef LIBFORK_LOGGING
     #include <iostream>
+    #include <syncstream>
     #include <thread>
     #include <type_traits>
-    #define LIBFORK_LOG(message, ...)                                        \
-      do {                                                                   \
-        if (!std::is_constant_evaluated()) {                                 \
-          std::cout << std::this_thread::get_id() << ':' << message << '\n'; \
-        }                                                                    \
+    #define LIBFORK_LOG(message, ...)                                                          \
+      do {                                                                                     \
+        if (!std::is_constant_evaluated()) {                                                   \
+          std::osyncstream(std::cout) << std::this_thread::get_id() << ':' << message << '\n'; \
+        }                                                                                      \
       } while (false)
   #else
     #define LIBFORK_LOG(head, ...) \

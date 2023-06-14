@@ -30,6 +30,12 @@ include(Catch)
 
 catch_discover_tests(libfork_test)
 
+# bench
+
+
+
+
+
 
 # ---- End-of-file commands ----
 

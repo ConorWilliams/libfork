@@ -150,11 +150,11 @@ struct promise_type : mixin_return<T, Tag> {
       // Put in our remote root-block.
       static_cast<root_block_t<T> *>(this->ret_address())->unhandled_exception();
     } else if (!this->parent().promise().has_parent()) {
-      LIBFORK_LOG("Unhandled exception in root child task");
+      LIBFORK_LOG("Unhandled exception in child of root task");
       // Put in parent (root) task's remote root-block.
       static_cast<root_block_t<T> *>(this->parent().promise().ret_address())->unhandled_exception();
     } else {
-      LIBFORK_LOG("Unhandled exception in root grandchild or further");
+      LIBFORK_LOG("Unhandled exception in root's grandchild or further");
       // Put on stack of parent task.
       stack_type::from_address(&this->parent().promise())->unhandled_exception();
     }
@@ -228,7 +228,7 @@ struct promise_type : mixin_return<T, Tag> {
 
           LIBFORK_LOG("Task is last child to join, resumes parent");
 
-          if constexpr (Tag == tag::fork) {
+          if (parent_cb.has_parent()) {
             // Must take control of stack if we do not already own it.
             auto parent_stack = stack_type::from_address(&parent_cb);
             auto thread_stack = context.stack_top();
@@ -251,7 +251,7 @@ struct promise_type : mixin_return<T, Tag> {
 
         LIBFORK_LOG("Task is not last to join");
 
-        if constexpr (Tag == tag::fork) {
+        if (parent_cb.has_parent()) {
           // We are unable to resume the parent, if we were its creator then we should pop a stack
           // from our context as the resuming thread will take ownership of the parent's stack.
           auto parent_stack = stack_type::from_address(&parent_cb);
@@ -306,9 +306,9 @@ public:
     stdexp::coroutine_handle child = invoke(std::move(packet));
 
     struct awaitable : stdexp::suspend_always {
-      [[nodiscard]] constexpr auto await_suspend(stdexp::coroutine_handle<promise_type> parent) noexcept -> stdexp::coroutine_handle<> {
+      [[nodiscard]] constexpr auto await_suspend(stdexp::coroutine_handle<promise_type> parent) noexcept -> decltype(child) {
         // In case *this (awaitable) is destructed by stealer after push
-        stdexp::coroutine_handle<> stack_child = m_child;
+        stdexp::coroutine_handle stack_child = m_child;
 
         LIBFORK_LOG("Forking, push parent to context");
 
