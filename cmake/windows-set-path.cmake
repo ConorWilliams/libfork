@@ -1,7 +1,7 @@
-# This function will add shared libraries to the PATH when running the test, so
-# they can be found. Windows does not support RPATH or similar. See:
-# https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-search-order
-# Usage: windows_set_path(<test> <target>...)
+# This function will add shared libraries to the PATH when running the test, so they can be found.
+# Windows does not support RPATH or similar. See:
+# https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-search-order Usage:
+# windows_set_path(<test> <target>...)
 function(windows_set_path TEST)
   if(NOT CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
     return()

@@ -41,7 +41,7 @@
 namespace lf {
 
 /**
- * @brief A concept that verifies a type is sutable for use in a queue.
+ * @brief A concept that verifies a type is suitable for use in a queue.
  */
 template <typename T>
 concept simple = std::is_default_constructible_v<T> && std::is_trivially_copyable_v<T> && std::atomic<T>::is_always_lock_free;

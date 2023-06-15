@@ -22,15 +22,10 @@ add_library(libfork::libfork ALIAS libfork_libfork)
 
 target_link_libraries(libfork_libfork INTERFACE Threads::Threads)
 
-set_property(
-  TARGET libfork_libfork PROPERTY
-  EXPORT_NAME libfork
-)
+set_property(TARGET libfork_libfork PROPERTY EXPORT_NAME libfork)
 
 target_include_directories(
-  libfork_libfork ${warning_guard}
-  INTERFACE
-  "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
+  libfork_libfork ${warning_guard} INTERFACE "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
 )
 
 target_compile_features(libfork_libfork INTERFACE cxx_std_20)
@@ -46,10 +41,7 @@ endif()
 if(NOT libfork_DEVELOPER_MODE)
   return()
 elseif(NOT PROJECT_IS_TOP_LEVEL)
-  message(
-    AUTHOR_WARNING
-    "Developer mode is intended for developers of libfork"
-  )
+  message(AUTHOR_WARNING "Developer mode is intended for developers of libfork")
 endif()
 
 include(cmake/dev-mode.cmake)

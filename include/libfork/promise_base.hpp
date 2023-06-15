@@ -34,7 +34,7 @@
 namespace lf {
 
 /**
- * @brief An enumeration that determines the behaviour of a coroutine's promise.
+ * @brief An enumeration that determines the behavior of a coroutine's promise.
  */
 enum class tag {
   root, ///< This coro is a root task (allocated on heap). [pointer to a root block, constructs]
@@ -114,8 +114,8 @@ public:
   }
 
 private:
-  stdexp::coroutine_handle<promise_base> m_parent = {}; ///< Parent task (roots dont have one).
-  void *m_return_address = nullptr;                     ///< root_block || T * || defered<T> *
+  stdexp::coroutine_handle<promise_base> m_parent = {}; ///< Parent task (roots don't have one).
+  void *m_return_address = nullptr;                     ///< root_block * || T *
   std::int32_t m_steal = 0;                             ///< Number of steals.
   std::atomic_int32_t m_join = k_imax;                  ///< Number of children joined (obfuscated).
 };

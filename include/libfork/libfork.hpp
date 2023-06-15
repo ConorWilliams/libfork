@@ -48,6 +48,8 @@ struct lf::stdexp::coroutine_traits<lf::task<T>, Self, Head, Args...> {
 
 namespace lf {
 
+// clang-format off
+
 /**
  * @brief A concept which requires a type to define a ``context_type`` which satisfy ``lf::thread_context``.
  */
@@ -58,6 +60,8 @@ template <typename Scheduler>
 concept scheduler = defines_context<Scheduler> && requires(Scheduler &&scheduler) {
   std::forward<Scheduler>(scheduler).schedule(stdexp::coroutine_handle<>{});
 };
+
+// clang-format on
 
 /**
  * @brief Builds an async function from a stateless invocable that returns an ``lf::task``.

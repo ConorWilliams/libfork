@@ -49,12 +49,12 @@ template <tag Tag, typename AsyncFn, typename... Self>
 struct first_arg;
 
 /**
- * @brief A specialisation of ``first_arg`` for asynchronous global functions.
+ * @brief A specialization of ``first_arg`` for asynchronous global functions.
  */
 template <tag Tag, stateless F>
 struct first_arg<Tag, async_fn<F>> : async_fn<F> {
   /**
-   * @brief The type of the underlying asynchronous function origionally wrapped by ``async[_mem]_fn``.
+   * @brief The type of the underlying asynchronous function originally wrapped by ``async[_mem]_fn``.
    */
   using underlying_async_fn = F;
   /**
@@ -64,13 +64,13 @@ struct first_arg<Tag, async_fn<F>> : async_fn<F> {
 };
 
 /**
- * @brief A specialisation of ``first_arg`` for asynchronous member functions.
+ * @brief A specialization of ``first_arg`` for asynchronous member functions.
  */
 template <tag Tag, stateless F, typename This>
   requires(!std::is_reference_v<This>)
 struct first_arg<Tag, async_mem_fn<F>, This> {
   /**
-   * @brief The type of the underlying asynchronous function origionally wrapped by ``async[_mem]_fn``.
+   * @brief The type of the underlying asynchronous function originally wrapped by ``async[_mem]_fn``.
    */
   using underlying_async_fn = F;
   /**
