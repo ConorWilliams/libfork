@@ -74,7 +74,7 @@ inline constexpr auto v_fib = fn([](auto fib, int &ret, int n) -> lf::task<void>
   ret = a + b;
 });
 
-class access {
+class access_test {
 
 public:
   static constexpr auto get = mem_fn([](auto self) -> lf::task<int> {
@@ -94,9 +94,9 @@ private:
 };
 
 inline constexpr auto mem_from_coro = fn([](auto self) -> lf::task<int> {
-  access a;
+  access_test a;
   int r;
-  co_await lf::call(r, access::get)(a);
+  co_await lf::call(r, access_test::get)(a);
   co_return r;
 });
 
@@ -146,8 +146,8 @@ void test(S &schedule) {
     }
   }
   SECTION("member function") {
-    access a;
-    REQUIRE(99 == sync_wait(schedule, access::get, a));
+    access_test a;
+    REQUIRE(99 == sync_wait(schedule, access_test::get, a));
     REQUIRE(99 == sync_wait(schedule, mem_from_coro));
   }
 
