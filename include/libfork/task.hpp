@@ -53,7 +53,7 @@ template <typename T>
   requires(!std::is_reference_v<T>)
 class task {
 public:
-  using value_type = T; ///< The type of the value returned by the coroutine.
+  using value_type = T; ///< The type of the value returned by the coroutine (cannot be a reference, use ``std::reference_wrapper``).
 
 private:
   explicit constexpr task(void *handle) noexcept : m_handle{handle} {}

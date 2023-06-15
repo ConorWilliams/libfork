@@ -16,7 +16,7 @@
 #include "libfork/promise_base.hpp"
 
 /**
- * @file first_arg_arg.hpp
+ * @file first_arg.hpp
  *
  * @brief Implementation of the type that is the first argument to all coroutines.
  */

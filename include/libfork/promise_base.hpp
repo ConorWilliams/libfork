@@ -37,9 +37,9 @@ namespace lf {
  * @brief An enumeration that determines the behavior of a coroutine's promise.
  */
 enum class tag {
-  root, ///< This coro is a root task (allocated on heap). [pointer to a root block, constructs]
-  call, ///< Non root task (on a virtual stack) from a lf::call.  [pointer to result, assigns]
-  fork, ///< Non root task (on a virtual stack) from an lf::fork. [pointer to result, assigns]
+  root, ///< This coroutone is a root task (allocated on heap) fro an ``lf::sync_wait``.
+  call, ///< Non root task (on a virtual stack) from an ``lf::call``.
+  fork, ///< Non root task (on a virtual stack) from an ``lf::fork``.
 };
 
 namespace detail {

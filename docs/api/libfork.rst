@@ -5,56 +5,57 @@ libfork.hpp
     :sections: briefdescription detaileddescription
 
 
-
 Interfaces
 -------------------------
 
 .. doxygenconcept:: lf::stateless
 
-----------------------------
 
 .. doxygenconcept:: lf::thread_context
 
 
-
-Functions
--------------------------
-
-.. doxygenfunction:: lf::fn
-
-----------------------------
-
-.. doxygenfunction:: lf::sync_wait
-
-----------------------------
-
-.. doxygenvariable:: lf::call
-
-----------------------------
-
-.. doxygenvariable:: lf::fork
-
-----------------------------
-
-.. doxygenvariable:: lf::join
+.. doxygenconcept:: lf::scheduler
 
 
-
-
-Types
----------------------------
+Building asynchronous functions
+--------------------------------
 
 .. doxygenclass:: lf::task
     :members:
     :undoc-members:
 
-----------------------------
+
+.. doxygenfunction:: lf::fn
+
+.. doxygenfunction:: lf::mem_fn
+
+-------------------------
 
 .. doxygenstruct:: lf::async_fn
     :members:
     :undoc-members:
 
+.. doxygenstruct:: lf::async_mem_fn
+    :members:
+    :undoc-members:
+
+
+Asynchronous control flow
 ----------------------------
+
+.. doxygenvariable:: lf::fork
+
+.. doxygenvariable:: lf::call
+
+.. doxygenvariable:: lf::join
+
+.. doxygenfunction:: lf::sync_wait(S &&scheduler, async_fn<F> async_function, Args&&... args)
+
+.. doxygenfunction:: lf:: sync_wait(S &&scheduler, async_mem_fn<F> async_member_function, Self &self, Args&&... args)
+
+---------------------------
+
+.. doxygenenum:: lf::tag
 
 .. doxygenstruct:: lf::bind_task
     :members:

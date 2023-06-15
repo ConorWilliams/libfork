@@ -56,6 +56,12 @@ namespace lf {
 template <typename T>
 concept defines_context = requires { typename std::decay_t<T>::context_type; } && thread_context<typename std::decay_t<T>::context_type>;
 
+/**
+ * @brief A concept which defines the requireenets for a scheduler.
+ * 
+ * This requires a type to define a ``context_type`` which satisfies ``lf::thread_context`` and have a ``schedule`` method
+ * which accepts a ``std::coroutine_handle<>`` and garantees some-thread will call it's ``resume()`` member.
+ */
 template <typename Scheduler>
 concept scheduler = defines_context<Scheduler> && requires(Scheduler &&scheduler) {
   std::forward<Scheduler>(scheduler).schedule(stdexp::coroutine_handle<>{});
@@ -68,16 +74,16 @@ concept scheduler = defines_context<Scheduler> && requires(Scheduler &&scheduler
  *
  * Use this to define a global function which is passed a copy of itself as its first parameter (e.g. a y-combinator).
  */
-template <stateless F>
-consteval auto fn([[maybe_unused]] F invocable_which_returns_a_task) -> async_fn<F> { return {}; }
+template <stateless Fn>
+consteval auto fn([[maybe_unused]] Fn invocable_which_returns_a_task) -> async_fn<Fn> { return {}; }
 
 /**
- * @brief Builds an async function from a stateless invocable that returns an ``lf::task``.
+ * @brief Builds an async member function from a stateless invocable that returns an ``lf::task``.
  *
- * Use this to define a member function which is passed the class as its first parameter.
+ * Use this to define a member function which is passed a pointer to an instance of the class as its first parameter.
  */
-template <stateless F>
-consteval auto mem_fn([[maybe_unused]] F invocable_which_returns_a_task) -> async_mem_fn<F> { return {}; }
+template <stateless Fn>
+consteval auto mem_fn([[maybe_unused]] Fn invocable_which_returns_a_task) -> async_mem_fn<Fn> { return {}; }
 
 namespace detail {
 
@@ -130,10 +136,9 @@ struct as_root : first_arg<tag::root, AsyncFn, Self...> {
 /**
  * @brief The entry point for synchronous execution of asynchronous functions.
  *
- * Self will create the coroutine and pass its handle to ``scheduler``. ``scheduler`` is expected to guarantee that
- * some thread will call ``resume()`` on the coroutine handle it is passed. The caller will then block
- * until the asynchronous function has finished executing. Finally the result of the asynchronous function
- * will be returned to the caller.
+ * This will create the coroutine and pass its handle to ``scheduler``'s  ``schedule`` method. The caller
+ * will then block until the asynchronous function has finished executing.
+ * Finally the result of the asynchronous function will be returned to the caller.
  */
 template <scheduler S, stateless F, class... Args>
 auto sync_wait(S &&scheduler, [[maybe_unused]] async_fn<F> async_function, Args &&...args) {
@@ -143,10 +148,9 @@ auto sync_wait(S &&scheduler, [[maybe_unused]] async_fn<F> async_function, Args 
 /**
  * @brief The entry point for synchronous execution of asynchronous member functions.
  *
- * Self will create the coroutine and pass its handle to ``scheduler``. ``scheduler`` is expected to guarantee that
- * some thread will call ``resume()`` on the coroutine handle it is passed. The caller will then block
- * until the asynchronous member function has finished executing. Finally the result of the asynchronous function
- * will be returned to the caller.
+ * This will create the coroutine and pass its handle to ``scheduler``'s  ``schedule`` method. The caller
+ * will then block until the asynchronous member function has finished executing.
+ * Finally the result of the asynchronous member function will be returned to the caller.
  */
 template <scheduler S, stateless F, class Self, class... Args>
 auto sync_wait(S &&scheduler, [[maybe_unused]] async_mem_fn<F> async_member_function, Self &self, Args &&...args) {
