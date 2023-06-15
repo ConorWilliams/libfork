@@ -20,6 +20,7 @@
 #include <atomic>
 #include <bit>
 #include <cstdint>
+#include <functional>
 #include <thread>
 #include <type_traits>
 
@@ -231,9 +232,11 @@ void event_count::await(Pred const &condition) {
   if (std::invoke(condition)) {
     return;
   }
-  // std::invoke(condition) is the only thing that may throw, everything else is
-  // noexcept, so we can hoist the try/catch block outside of the loop
+// std::invoke(condition) is the only thing that may throw, everything else is
+// noexcept, so we can hoist the try/catch block outside of the loop
+#if LIBFORK_COMPILER_EXCEPTIONS
   try {
+#endif
     for (;;) {
       auto my_key = prepare_wait();
       if (std::invoke(condition)) {
@@ -242,10 +245,12 @@ void event_count::await(Pred const &condition) {
       }
       wait(my_key);
     }
+#if LIBFORK_COMPILER_EXCEPTIONS
   } catch (...) {
     cancel_wait();
     throw;
   }
+#endif
 }
 
 } // namespace lf

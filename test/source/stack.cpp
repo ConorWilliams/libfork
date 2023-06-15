@@ -45,12 +45,6 @@ TEST_CASE("virtual_stack - Basic Functionality", "[virtual_stack]") {
   }
 }
 
-TEST_CASE("virtual_stack - Stack Overflow", "[virtual_stack]") {
-  auto stack = Stack<128>::make_unique();
-  REQUIRE_NOTHROW(stack->allocate(10));
-  REQUIRE_THROWS_AS(stack->allocate(128), std::exception);
-}
-
 TEST_CASE("virtual_stack - Alignment Checks", "[virtual_stack]") {
   auto stack = Stack<128>::make_unique();
 
@@ -102,6 +96,14 @@ TEST_CASE("virtual_stack - Unique Pointer Array", "[virtual_stack]") {
   }
 }
 
+#if LIBFORK_COMPILER_EXCEPTIONS
+
+TEST_CASE("virtual_stack - Stack Overflow", "[virtual_stack]") {
+  auto stack = Stack<128>::make_unique();
+  REQUIRE_NOTHROW(stack->allocate(10));
+  REQUIRE_THROWS_AS(stack->allocate(128), std::exception);
+}
+
 TEST_CASE("virtual_stack - full with exception", "[virtual_stack]") {
   auto stack = Stack<4096>::make_unique();
 
@@ -120,5 +122,7 @@ TEST_CASE("virtual_stack - full with exception", "[virtual_stack]") {
 
   REQUIRE(stack->empty());
 }
+
+#endif
 
 // NOLINTEND

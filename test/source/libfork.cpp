@@ -6,7 +6,6 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <coroutine>
 #include <iostream>
 #include <memory>
 #include <new>
@@ -101,14 +100,25 @@ inline constexpr auto mem_from_coro = fn([](auto self) -> lf::task<int> {
   co_return r;
 });
 
+#if LIBFORK_PROPAGATE_EXCEPTIONS
+
 struct deep : std::exception {};
 
 inline constexpr auto deep_except = fn([](auto self, int n) -> lf::task<> {
   if (n > 0) {
     co_await lf::call(self)(n - 1);
+
+    try {
+      co_await ::lf::join;
+      FAIL("Should not reach here");
+    } catch (deep const &) {
+      throw;
+    }
   }
   throw deep{};
 });
+
+#endif
 
 inline constexpr auto noop = fn([](auto self) -> lf::task<> { co_return; });
 
