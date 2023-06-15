@@ -27,7 +27,7 @@
  * @brief Pseudo random number generators (PRNG).
  */
 
-namespace lf::detail {
+namespace lf {
 
 /**
  * @brief A \<random\> compatible implementation of the xoshiro256** 1.0 PRNG
@@ -47,16 +47,6 @@ public:
   using result_type = std::uint64_t; ///< Required by named requirement: UniformRandomBitGenerator
 
   /**
-   * @brief The default seed for the PRNG.
-   */
-  static constexpr std::array<result_type, 4> default_seed = {
-      0x8D0B73B52EA17D89,
-      0x2AA426A407C2B04F,
-      0xF513614E4798928A,
-      0xA65E479EC5B49D41,
-  };
-
-  /**
    * @brief Construct and seed the PRNG with the default seed.
    */
   constexpr xoshiro() noexcept : xoshiro(default_seed) {}
@@ -64,13 +54,12 @@ public:
   /**
    * @brief Construct and seed the PRNG from ``std::random_device``.
    */
-  explicit xoshiro(std::random_device &device)
-      : xoshiro({
-            random_bits(device),
-            random_bits(device),
-            random_bits(device),
-            random_bits(device),
-        }) {}
+  explicit xoshiro(std::random_device &device) : xoshiro({
+                                                     random_bits(device),
+                                                     random_bits(device),
+                                                     random_bits(device),
+                                                     random_bits(device),
+                                                 }) {}
 
   /**
    * @brief Construct and seed the PRNG from a ``std::random_device``.
@@ -129,8 +118,6 @@ public:
    *
    * It is equivalent to 2^128 calls to operator(); it can be used to generate 2^128 non-overlapping
    * sub-sequences for parallel computations.
-   *
-   * @return void.
    */
   constexpr auto jump() noexcept -> void {
     // NOLINTNEXTLINE (magic-numbers)
@@ -143,8 +130,6 @@ public:
    * It is equivalent to 2^192 calls to operator(); it can be used to generate 2^64 starting points,
    * from each of which jump() will generate 2^64 non-overlapping sub-sequences for parallel
    * distributed computations.
-   *
-   * @return void.
    */
   constexpr auto long_jump() noexcept -> void {
     // NOLINTNEXTLINE (magic-numbers)
@@ -152,6 +137,16 @@ public:
   }
 
 private:
+  /**
+   * @brief The default seed for the PRNG.
+   */
+  static constexpr std::array<result_type, 4> default_seed = {
+      0x8D0B73B52EA17D89,
+      0x2AA426A407C2B04F,
+      0xF513614E4798928A,
+      0xA65E479EC5B49D41,
+  };
+
   std::array<result_type, 4> m_state;
 
   /**
@@ -199,6 +194,6 @@ private:
   }
 };
 
-} // namespace lf::detail
+} // namespace lf
 
 #endif /* CA0BE1EA_88CD_4E63_9D89_37395E859565 */

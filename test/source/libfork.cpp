@@ -41,6 +41,9 @@ int fib(int n) {
 
 inline constexpr auto r_fib = fn([](auto fib, int n) -> lf::task<int> {
   //
+
+  REQUIRE(fib.context().max_threads() >= 0);
+
   if (n < 2) {
     co_return n;
   }

@@ -9,6 +9,8 @@ This is libfork's API documentation, for info on building and installing please 
    api/libfork.rst
    api/macro.rst
    api/queue.rst
+   api/random.rst
+   api/event_count.rst
    api/thread_local.rst
 
    
