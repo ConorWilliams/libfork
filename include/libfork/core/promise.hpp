@@ -34,6 +34,11 @@
 
 namespace lf::detail {
 
+/**
+ * @brief An awaitable type (in a task) that triggers a join.
+ */
+struct join_t {};
+
 struct empty {};
 
 /**
@@ -44,12 +49,6 @@ struct [[nodiscard]] packet {
   [[no_unique_address]] std::conditional_t<std::is_void_v<R>, empty, std::add_lvalue_reference_t<R>> ret;
   [[no_unique_address]] Head context;
   [[no_unique_address]] std::tuple<Tail &&...> args;
-};
-
-/**
- * @brief An awaitable type (in a task) that triggers a join.
- */
-struct join_t {
 };
 
 // -------------------------------------------------------------------------- //
