@@ -127,7 +127,7 @@ private:
 /**
  * @brief A handle to a task with a resume() member function.
  */
-using task_handle = detail::promise_base::handle_t;
+using task_handle = typename detail::promise_base::handle_t;
 
 /**
  * @brief A concept which requires a type to define a ``stack_type`` which must be a specialization of ``lf::virtual_stack``.

@@ -31,10 +31,10 @@ namespace detail {
 template <typename Head, typename... Tail>
 struct invoker {
 
-  using task_type = std::invoke_result_t<typename Head::underlying_async_fn, Head, Tail &&...>;
-  using value_type = task_type::value_type;
-  using promise_type = stdexp::coroutine_traits<task_type, Head, Tail &&...>::promise_type;
-  using handle_type = stdexp::coroutine_handle<promise_type>;
+  using task_type = typename std::invoke_result_t<typename Head::underlying_async_fn, Head, Tail &&...>;
+  using value_type = typename task_type::value_type;
+  using promise_type = typename stdexp::coroutine_traits<task_type, Head, Tail &&...>::promise_type;
+  using handle_type = typename stdexp::coroutine_handle<promise_type>;
 
   /**
    * @brief Invoke the stateless callable wrapped in Head with arguments head and tail...
