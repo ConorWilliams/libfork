@@ -92,7 +92,7 @@ struct first_arg<Tag, async_mem_fn<F>, This> {
   /**
    * @brief Construct a ``first_arg`` from a reference to ``this``.
    */
-  explicit(false) constexpr first_arg(This &self) : m_self{std::addressof(self)} {}
+  explicit(false) constexpr first_arg(This &self) : m_self{std::addressof(self)} {} // NOLINT
   /**
    * @brief Access the underlying ``this`` pointer.
    */

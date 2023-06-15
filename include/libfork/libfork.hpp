@@ -103,10 +103,14 @@ inline constexpr make_fn_impl make_fn;
 
 }; // namespace detail
 
+// NOLINTBEGIN
+
 /**
  * @brief Macro to automate the creation of an async function with the first argument ``auto self``.
  */
 #define ASYNC(...) ::lf::detail::make_fn + [](auto self __VA_OPT__(, ) __VA_ARGS__) LIBFORK_STATIC_CALL
+
+// NOLINTEND
 
 namespace detail {
 

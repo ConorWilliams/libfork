@@ -51,7 +51,7 @@ auto r_cast(U &&expr) noexcept {
 /**
  * @brief Base class for virtual stacks
  */
-struct alignas(k_new_align) stack_mem : immovable, exception_packet {
+struct alignas(k_new_align) stack_mem : immovable, exception_packet { // NOLINT
   std::byte *m_ptr;
   std::byte *m_end;
 };
