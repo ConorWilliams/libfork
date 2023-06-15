@@ -43,7 +43,15 @@ struct async_mem_fn {};
 
 // -------------------------------------------------------------------------- //
 
-// Forward decl
+/**
+ * @brief The first argument to all async functions will be passes a type derived from this class.
+ *
+ * If ``AsyncFn`` is an ``async_fn`` then this will derive from ``async_fn``. If ``AsyncFn`` is an ``async_mem_fn``
+ * then this will wrap a pointer to a class and will supply the appropriate ``*`` and ``->`` operators.
+ *
+ * The full type of the first argument will also have a static ``context()`` member function that will defer to the
+ * thread context's ``context()`` member function.
+ */
 template <tag Tag, typename AsyncFn, typename... Self>
   requires(sizeof...(Self) <= 1)
 struct first_arg;
@@ -78,9 +86,13 @@ struct first_arg<Tag, async_mem_fn<F>, This> {
    */
   static constexpr tag tag_value = Tag;
   /**
+   * @brief A tag to detect this type.
+   */
+  using lf_is_first_arg = void;
+  /**
    * @brief Construct a ``first_arg`` from a reference to ``this``.
    */
-  explicit constexpr first_arg(This &self) : m_self{std::addressof(self)} {}
+  explicit(false) constexpr first_arg(This &self) : m_self{std::addressof(self)} {}
   /**
    * @brief Access the underlying ``this`` pointer.
    */

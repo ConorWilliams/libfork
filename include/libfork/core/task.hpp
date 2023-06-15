@@ -49,7 +49,7 @@ struct invoker {
 /**
  * @brief The return type for libfork's async functions/coroutines.
  */
-template <typename T>
+template <typename T = void>
   requires(!std::is_reference_v<T>)
 class task {
 public:

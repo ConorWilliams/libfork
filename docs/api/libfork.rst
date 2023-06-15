@@ -24,12 +24,13 @@ Building asynchronous functions
     :members:
     :undoc-members:
 
-
 .. doxygenfunction:: lf::fn
 
 .. doxygenfunction:: lf::mem_fn
 
 -------------------------
+
+.. doxygenstruct:: lf::first_arg
 
 .. doxygenstruct:: lf::async_fn
     :members:

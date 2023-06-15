@@ -15,7 +15,7 @@
 #include <type_traits>
 #include <utility>
 
-#include <catch2/benchmark/catch_benchmark.hpp>
+#include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #define NDEBUG
@@ -32,7 +32,14 @@
 
 using namespace lf;
 
-inline constexpr auto fib = fn([](auto self, int n) -> task<int> {
+int fib(int n) {
+  if (n < 2) {
+    return n;
+  }
+  return fib(n - 1) + fib(n - 2);
+}
+
+inline constexpr auto r_fib = fn([](auto fib, int n) -> lf::task<int> {
   //
   if (n < 2) {
     co_return n;
@@ -40,73 +47,99 @@ inline constexpr auto fib = fn([](auto self, int n) -> task<int> {
 
   int a, b;
 
-  co_await lf::fork(a, self)(n - 1);
-  co_await lf::call(b, self)(n - 2);
+  co_await lf::fork(a, fib)(n - 1);
+  co_await lf::call(b, fib)(n - 2);
 
   co_await lf::join;
 
   co_return a + b;
 });
 
-int fib_(int n) {
+inline constexpr auto v_fib = fn([](auto fib, int &ret, int n) -> lf::task<void> {
+  //
   if (n < 2) {
-    return n;
+    ret = n;
+    co_return;
   }
 
-  return fib_(n - 1) + fib_(n - 2);
+  int a, b;
+
+  co_await lf::fork(fib)(a, n - 1);
+  co_await lf::call(fib)(b, n - 2);
+
+  co_await lf::join;
+
+  ret = a + b;
+});
+
+class access {
+
+public:
+  static constexpr auto get = mem_fn([](auto self) -> lf::task<int> {
+    co_await lf::call(self->run)(*self, 10);
+    co_return self->m_private;
+  });
+
+private:
+  static constexpr auto run = mem_fn([](auto self, int n) -> lf::task<> {
+    if (n < 0) {
+      co_return;
+    }
+    co_await lf::call(self->run)(*self, n - 1);
+  });
+
+  int m_private = 99;
+};
+
+inline constexpr auto mem_from_coro = fn([](auto self) -> lf::task<int> {
+  access a;
+  int r;
+  co_await lf::call(r, access::get)(a);
+  co_return r;
+});
+
+struct deep : std::exception {};
+
+inline constexpr auto deep_except = fn([](auto self, int n) -> lf::task<> {
+  if (n > 0) {
+    co_await lf::call(self)(n - 1);
+  }
+  throw deep{};
+});
+
+template <scheduler S>
+void test(S &schedule) {
+  SECTION("Fibonacci") {
+    for (int i = 0; i < 25; ++i) {
+      REQUIRE(fib(i) == sync_wait(schedule, r_fib, i));
+    }
+  }
+  SECTION("Void Fibonacci") {
+    int res;
+
+    for (int i = 0; i < 25; ++i) {
+      sync_wait(schedule, v_fib, res, i);
+      REQUIRE(fib(i) == res);
+    }
+  }
+  SECTION("member function") {
+    access a;
+    REQUIRE(99 == sync_wait(schedule, access::get, a));
+    REQUIRE(99 == sync_wait(schedule, mem_from_coro));
+  }
+
+#if LIBFORK_PROPAGATE_EXCEPTIONS
+  SECTION("exception propagate") {
+    REQUIRE_THROWS_AS(sync_wait(schedule, deep_except, 10), deep);
+  }
+#endif
 }
 
-// TEST_CASE("bench") {
-
-//   volatile int x = 20;
-
-//   basic_context ctx;
-
-//   basic_context::set(ctx);
-
-//   BENCHMARK("no coro") {
-//     return fib_(x);
-//   };
-
-//   BENCHMARK("inline") {
-//     // return fib_(x);
-//     return sync_wait([](auto handle) { handle(); }, fib, x);
-//   };
-// }
-
-// class my_class {
-// public:
-//   static constexpr auto get = [](my_class &) -> task<int> {
-//     // co_return self->m_private;
-//   };
-
-// private:
-//   int m_private = 99;
-// };
-
-// TEST_CASE("access", "[access]") {
-//   auto exec = [](auto handle) { handle(); };
-
-//   my_class obj;
-
-//   // sync_wait(exec, my_class::access, obj);
-// }
-
-TEST_CASE("libfork", "[libfork]") {
-
-  inline_scheduler schedule;
-
-  int i = 22;
-
-  // my_class obj;
-
-  // // REQUIRE(99 == sync_wait([](auto handle) { handle(); }, my_class::get, obj));
-
-  auto answer = sync_wait(schedule, fib, i);
-
-  REQUIRE(answer == fib_(i));
-
-  std::cout << "fib(" << i << ") = " << answer << "\n";
+TEMPLATE_TEST_CASE("libfork", "[libfork][template]", inline_scheduler) {
+  for (int i = 0; i < 10; ++i) {
+    TestType schedule{};
+    test(schedule);
+  }
 }
 
 // NOLINTEND

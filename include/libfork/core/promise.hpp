@@ -41,7 +41,7 @@ struct empty {};
  */
 template <typename R, typename Head, typename... Tail>
 struct [[nodiscard]] packet {
-  [[no_unique_address]] std::conditional_t<std::is_void_v<R>, empty, R &> ret;
+  [[no_unique_address]] std::conditional_t<std::is_void_v<R>, empty, std::add_lvalue_reference_t<R>> ret;
   [[no_unique_address]] Head context;
   [[no_unique_address]] std::tuple<Tail &&...> args;
 };
@@ -81,17 +81,18 @@ struct mixin_return<void, Tag> : promise_base {
   static constexpr void return_void() noexcept {}
 };
 
+// Adds a context_type type alias to T.
+template <thread_context Context, typename Head>
+struct with_context : Head {
+  using context_type = Context;
+  static auto context() -> Context & { return Context::context(); }
+};
+
 template <typename T, thread_context Context, tag Tag>
 struct promise_type : mixin_return<T, Tag> {
 private:
-  // Adds a context_type type alias to T.
-  template <typename Head>
-  struct add_context : Head {
-    using context_type = Context;
-  };
-
   template <typename R, typename Head, typename... Tail>
-  constexpr auto add_context_to_packet(packet<R, Head, Tail...> pack) -> packet<R, add_context<Head>, Tail...> {
+  constexpr auto add_context_to_packet(packet<R, Head, Tail...> pack) -> packet<R, with_context<Context, Head>, Tail...> {
     return {pack.ret, {pack.context}, std::move(pack.args)};
   }
 
@@ -293,7 +294,6 @@ public:
   [[nodiscard]] constexpr auto await_transform(packet<R, first_arg<tag::fork, F, This...>, Args...> packet)
     requires requires { invoke(add_context_to_packet(std::move(packet))); }
   {
-    //
     stdexp::coroutine_handle child = invoke(add_context_to_packet(std::move(packet)));
 
     struct awaitable : stdexp::suspend_always {
@@ -318,7 +318,6 @@ public:
   [[nodiscard]] constexpr auto await_transform(packet<R, first_arg<tag::call, F, This...>, Args...> packet)
     requires requires { invoke(add_context_to_packet(std::move(packet))); }
   {
-    //
     stdexp::coroutine_handle child = invoke(add_context_to_packet(std::move(packet)));
 
     struct awaitable : stdexp::suspend_always {

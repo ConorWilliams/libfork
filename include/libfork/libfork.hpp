@@ -14,6 +14,7 @@
 #include <utility>
 
 #include "libfork/core/coroutine.hpp"
+#include "libfork/core/first_arg.hpp"
 #include "libfork/core/promise.hpp"
 #include "libfork/core/promise_base.hpp"
 #include "libfork/core/task.hpp"
@@ -127,9 +128,7 @@ auto sync_wait_impl(Schedule &&scheduler, Head head, Args &&...args) {
 }
 
 template <scheduler S, typename AsyncFn, typename... Self>
-struct as_root : first_arg<tag::root, AsyncFn, Self...> {
-  using context_type = std::decay_t<S>::context_type;
-};
+struct as_root : with_context<typename std::decay_t<S>::context_type, first_arg<tag::root, AsyncFn, Self...>> {};
 
 }; // namespace detail
 
@@ -162,15 +161,21 @@ auto sync_wait(S &&scheduler, [[maybe_unused]] async_mem_fn<F> async_member_func
  */
 template <tag Tag>
 struct bind_task {
+private:
+  template <typename T>
+  static constexpr bool not_first_arg = !requires { typename std::decay_t<T>::lf_is_first_arg; };
+
+public:
   /**
    * @brief Bind return address `ret` to an asynchronous function.
    *
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename R, typename F>
-  [[nodiscard]] LIBFORK_STATIC_CALL constexpr auto operator()(R &ret, [[maybe_unused]] async_fn<F> async) LIBFORK_STATIC_CONST noexcept {
+  [[nodiscard]] LIBFORK_STATIC_CALL constexpr auto
+  operator()(R &ret, [[maybe_unused]] async_fn<F> async) LIBFORK_STATIC_CONST noexcept {
     return [&]<typename... Args>(Args &&...args) noexcept -> detail::packet<R, first_arg<Tag, async_fn<F>>, Args...> {
-      return {{ret}, {}, std::forward<Args>(args)...};
+      return {{ret}, {}, {std::forward<Args>(args)...}};
     };
   }
   /**
@@ -181,7 +186,7 @@ struct bind_task {
   template <typename F>
   [[nodiscard]] LIBFORK_STATIC_CALL constexpr auto operator()([[maybe_unused]] async_fn<F> async) LIBFORK_STATIC_CONST noexcept {
     return [&]<typename... Args>(Args &&...args) noexcept -> detail::packet<void, first_arg<Tag, async_fn<F>>, Args...> {
-      return {{}, {}, std::forward<Args>(args)...};
+      return {{}, {}, {std::forward<Args>(args)...}};
     };
   }
   /**
@@ -191,8 +196,10 @@ struct bind_task {
    */
   template <typename R, typename F>
   [[nodiscard]] LIBFORK_STATIC_CALL constexpr auto operator()(R &ret, [[maybe_unused]] async_mem_fn<F> async) LIBFORK_STATIC_CONST noexcept {
-    return [&]<typename Self, typename... Args>(Self &self, Args &&...args) noexcept -> detail::packet<R, first_arg<Tag, async_mem_fn<F>, Self>, Args...> {
-      return {{ret}, {self}, std::forward<Args>(args)...};
+    return [&]<typename Self, typename... Args>(Self & self, Args && ...args) noexcept -> detail::packet<R, first_arg<Tag, async_mem_fn<F>, Self>, Args...>
+             requires not_first_arg<Self>
+    {
+      return {{ret}, {self}, {std::forward<Args>(args)...}};
     };
   }
   /**
@@ -202,8 +209,10 @@ struct bind_task {
    */
   template <typename F>
   [[nodiscard]] LIBFORK_STATIC_CALL constexpr auto operator()([[maybe_unused]] async_mem_fn<F> async) LIBFORK_STATIC_CONST noexcept {
-    return [&]<typename Self, typename... Args>(Self &self, Args &&...args) noexcept -> detail::packet<void, first_arg<Tag, async_mem_fn<F>, Self>, Args...> {
-      return {{}, {self}, std::forward<Args>(args)...};
+    return [&]<typename Self, typename... Args>(Self & self, Args && ...args) noexcept -> detail::packet<void, first_arg<Tag, async_mem_fn<F>, Self>, Args...>
+             requires not_first_arg<Self>
+    {
+      return {{}, {self}, {std::forward<Args>(args)...}};
     };
   }
 
@@ -216,7 +225,7 @@ struct bind_task {
   template <typename R, typename F>
   [[nodiscard]] static constexpr auto operator[](R &ret, [[maybe_unused]] async_fn<F> async) noexcept {
     return [&]<typename... Args>(Args &&...args) noexcept -> detail::packet<R, first_arg<Tag, async_fn<F>>, Args...> {
-      return {{ret}, {}, std::forward<Args>(args)...};
+      return {{ret}, {}, {std::forward<Args>(args)...}};
     };
   }
   /**
@@ -227,7 +236,7 @@ struct bind_task {
   template <typename F>
   [[nodiscard]] static constexpr auto operator[]([[maybe_unused]] async_fn<F> async) noexcept {
     return [&]<typename... Args>(Args &&...args) noexcept -> detail::packet<void, first_arg<Tag, async_fn<F>>, Args...> {
-      return {{}, {}, std::forward<Args>(args)...};
+      return {{}, {}, {std::forward<Args>(args)...}};
     };
   }
   /**
@@ -237,8 +246,10 @@ struct bind_task {
    */
   template <typename R, typename F>
   [[nodiscard]] static constexpr auto operator[](R &ret, [[maybe_unused]] async_mem_fn<F> async) noexcept {
-    return [&]<typename Self, typename... Args>(Self &self, Args &&...args) noexcept -> detail::packet<R, first_arg<Tag, async_mem_fn<F>, Self>, Args...> {
-      return {{ret}, {self}, std::forward<Args>(args)...};
+    return [&]<typename Self, typename... Args>(Self & self, Args && ...args) noexcept -> detail::packet<R, first_arg<Tag, async_mem_fn<F>, Self>, Args...>
+             requires not_first_arg<Self>
+    {
+      return {{ret}, {self}, {std::forward<Args>(args)...}};
     };
   }
   /**
@@ -248,8 +259,10 @@ struct bind_task {
    */
   template <typename F>
   [[nodiscard]] static constexpr auto operator[]([[maybe_unused]] async_mem_fn<F> async) noexcept {
-    return [&]<typename Self, typename... Args>(Self &self, Args &&...args) noexcept -> detail::packet<void, first_arg<Tag, async_mem_fn<F>, Self>, Args...> {
-      return {{}, {self}, std::forward<Args>(args)...};
+    return [&]<typename Self, typename... Args>(Self & self, Args && ...args) noexcept -> detail::packet<void, first_arg<Tag, async_mem_fn<F>, Self>, Args...>
+             requires not_first_arg<Self>
+    {
+      return {{}, {self}, {std::forward<Args>(args)...}};
     };
   }
 #endif

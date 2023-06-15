@@ -14,9 +14,11 @@ include(cmake/project-is-top-level.cmake)
 include(cmake/variables.cmake)
 
 # ---- Dependencies ----
+
 find_package(Threads REQUIRED)
 
 # ---- Declare library ----
+
 add_library(libfork_libfork INTERFACE)
 add_library(libfork::libfork ALIAS libfork_libfork)
 
