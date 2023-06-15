@@ -25,6 +25,8 @@
  * @brief Meta header which includes all ``lf::task``, ``lf::fork``, ``lf::call``, ``lf::join`` and ``lf::sync_wait`` machinery.
  */
 
+// clang-format off
+
 #ifndef LIBFORK_DOXYGEN_SHOULD_SKIP_THIS
 
 /**
@@ -54,8 +56,6 @@ struct lf::stdexp::coroutine_traits<lf::task<T>, Self, Head, Args...> {
 #endif /* LIBFORK_DOXYGEN_SHOULD_SKIP_THIS */
 
 namespace lf {
-
-// clang-format off
 
 /**
  * @brief A concept which requires a type to define a ``context_type`` which satisfy ``lf::thread_context``.
