@@ -14,7 +14,7 @@
 /**
  * @file macro.hpp
  *
- * @brief A collection of internal macros + configs.
+ * @brief A collection of internal macros + configuration macros.
  */
 
 // NOLINTBEGIN Sometime macros are the only way to do things...
@@ -33,7 +33,7 @@ inline constexpr std::size_t k_cache_line = 64;
 } // namespace lf::detail
 
 /**
- * @brief Use to decorate lambdas and operator() (alongside LIBFORK_STATIC_CONST) and with static if supported.
+ * @brief Use to decorate lambdas and ``operator()`` (alongside ``LIBFORK_STATIC_CONST``) and with ``static`` if supported.
  */
 #ifdef __cpp_static_call_operator
   #define LIBFORK_STATIC_CALL static
@@ -42,7 +42,7 @@ inline constexpr std::size_t k_cache_line = 64;
 #endif
 
 /**
- * @brief Use with LIBFORK_STATIC_CALL to decorate operator() with static/const if supported.
+ * @brief Use with ``LIBFORK_STATIC_CALL`` to decorate ``operator()`` with ``const`` if supported.
  */
 #ifdef __cpp_static_call_operator
   #define LIBFORK_STATIC_CONST
@@ -52,15 +52,21 @@ inline constexpr std::size_t k_cache_line = 64;
 
 /**
  * @brief Detects if the compiler has exceptions enabled.
+ *
+ * Overridable by defining ``LIBFORK_COMPILER_EXCEPTIONS``.
  */
-#if defined(__cpp_exceptions) || (defined(_MSC_VER) && defined(_CPPUNWIND)) || defined(__EXCEPTIONS)
-  #define LIBFORK_COMPILER_EXCEPTIONS 1
-#else
-  #define LIBFORK_COMPILER_EXCEPTIONS 0
+#ifndef LIBFORK_COMPILER_EXCEPTIONS
+  #if defined(__cpp_exceptions) || (defined(_MSC_VER) && defined(_CPPUNWIND)) || defined(__EXCEPTIONS)
+    #define LIBFORK_COMPILER_EXCEPTIONS 1
+  #else
+    #define LIBFORK_COMPILER_EXCEPTIONS 0
+  #endif
 #endif
 
 /**
  * @brief If truthy then coroutines propagate exceptions, if false then termination is triggered.
+ *
+ *  * Overridable by defining ``LIBFORK_PROPAGATE_EXCEPTIONS``.
  */
 #ifndef LIBFORK_PROPAGATE_EXCEPTIONS
   #define LIBFORK_PROPAGATE_EXCEPTIONS LIBFORK_COMPILER_EXCEPTIONS
@@ -107,7 +113,7 @@ inline constexpr std::size_t k_cache_line = 64;
 #endif
 
 /**
- * @brief If NDEBUG is defined then LIBFORK_ASSERT(x) is  LIBFORK_ASSUME(x) otherwise assert(x)
+ * @brief If ``NDEBUG`` is defined then ``LIBFORK_ASSERT(expr)`` is  ``LIBFORK_ASSUME(expr)`` otherwise ``assert(expr)``.
  */
 #ifndef NDEBUG
   #include <cassert>
@@ -118,18 +124,31 @@ inline constexpr std::size_t k_cache_line = 64;
 
 /**
  * @brief A customizable logging macro.
+ *
+ * By default this is a no-op. Defining ``LIBFORK_LOGGING`` will enable a default
+ * logging implementation which prints to ``std::cout``. Overridable by defining your
+ * own ``LIBFORK_LOG`` macro. Formats like ``std::format()``.
  */
 #ifndef LIBFORK_LOG
   #ifdef LIBFORK_LOGGING
+    #include <format>
     #include <iostream>
-    #include <syncstream>
+    #include <mutex>
     #include <thread>
     #include <type_traits>
-    #define LIBFORK_LOG(message, ...)                                                          \
-      do {                                                                                     \
-        if (!std::is_constant_evaluated()) {                                                   \
-          std::osyncstream(std::cout) << std::this_thread::get_id() << ':' << message << '\n'; \
-        }                                                                                      \
+
+    #ifdef __cpp_lib_syncbuf
+      #include <syncstream>
+      #define LIBFORK_SYNC_COUT std::osyncstream(std::cout) << std::this_thread::get_id()
+    #else
+      #define LIBFORK_SYNC_COUT std::cout << std::this_thread::get_id()
+    #endif
+
+    #define LIBFORK_LOG(message, ...)                                                           \
+      do {                                                                                      \
+        if (!std::is_constant_evaluated()) {                                                    \
+          LIBFORK_SYNC_COUT << ": " << std::format(message __VA_OPT__(, ) __VA_ARGS__) << '\n'; \
+        }                                                                                       \
       } while (false)
   #else
     #define LIBFORK_LOG(head, ...) \
@@ -137,6 +156,8 @@ inline constexpr std::size_t k_cache_line = 64;
       } while (false)
   #endif
 #endif
+
+// clang-format on
 
 // NOLINTEND
 

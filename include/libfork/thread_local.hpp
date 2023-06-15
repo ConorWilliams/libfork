@@ -54,9 +54,7 @@ public:
   /**
    * @brief Set the thread_local pointer to the given object.
    */
-  static auto set(T &ctx) noexcept -> void {
-    m_ptr = std::addressof(ctx);
-  }
+  static auto set(T &ctx) noexcept -> void { m_ptr = std::addressof(ctx); }
 
 private:
   static inline thread_local constinit T *m_ptr = nullptr; // NOLINT

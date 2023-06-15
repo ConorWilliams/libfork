@@ -26,58 +26,11 @@
 #include "libfork/libfork.hpp"
 #include "libfork/macro.hpp"
 #include "libfork/queue.hpp"
+#include "libfork/schedule/inline.hpp"
 
 // NOLINTBEGIN No linting in tests
 
 using namespace lf;
-
-class basic_context;
-
-thread_local basic_context *glob;
-
-class basic_context {
-public:
-  static constexpr std::size_t kilobyte = 1024 * 1024;
-
-  using stack_type = virtual_stack<kilobyte>; // NOLINT
-
-  static auto context() -> basic_context & { return *glob; }
-
-  static void set(basic_context &ctx) { glob = &ctx; }
-
-  static constexpr auto max_threads() noexcept -> std::size_t { return 1; }
-
-  auto stack_top() -> stack_type::handle { return stack_type::handle{*stack}; }
-
-  void stack_pop() {
-    std::abort();
-  }
-
-  void stack_push(stack_type::handle) {
-    std::abort();
-  }
-
-  auto task_pop() -> std::optional<task_handle> {
-    if (tasks.empty()) {
-      return std::nullopt;
-    }
-    return tasks.pop();
-  }
-
-  void task_push(task_handle task) {
-    tasks.push(task);
-  }
-
-private:
-  queue<task_handle> tasks;
-  // std::stack<task_handle> tasks;
-
-  typename stack_type::unique_ptr_t stack = stack_type::make_unique();
-};
-
-// #define fork Context::fork
-// #define call Context::call
-// #define join lf::join
 
 inline constexpr auto fib = fn([](auto self, int n) -> task<int> {
   //
@@ -139,20 +92,9 @@ int fib_(int n) {
 //   // sync_wait(exec, my_class::access, obj);
 // }
 
-struct basic_schedule {
-  using context_type = basic_context;
-
-  basic_schedule() { basic_context::set(ctx); }
-
-  void schedule(stdexp::coroutine_handle<> handle) { handle(); }
-
-private:
-  context_type ctx;
-};
-
 TEST_CASE("libfork", "[libfork]") {
 
-  basic_schedule schedule;
+  inline_scheduler schedule;
 
   int i = 22;
 
