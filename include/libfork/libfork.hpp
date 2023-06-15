@@ -31,7 +31,10 @@
  * @brief Specialize coroutine_traits for task<...> from functions.
  */
 template <typename T, typename Head, typename... Args>
-  requires std::same_as<Head, std::decay_t<Head>>
+  requires std::same_as<Head, std::decay_t<Head>> && requires {
+    typename Head::context_type;
+    Head::tag_value;
+  }
 struct lf::stdexp::coroutine_traits<lf::task<T>, Head, Args...> {
   using promise_type = lf::detail::promise_type<T, typename Head::context_type, Head::tag_value>;
 };
@@ -40,7 +43,10 @@ struct lf::stdexp::coroutine_traits<lf::task<T>, Head, Args...> {
  * @brief Specialize coroutine_traits for task<...> from member functions.
  */
 template <typename T, typename Self, typename Head, typename... Args>
-  requires std::same_as<Head, std::decay_t<Head>>
+  requires std::same_as<Head, std::decay_t<Head>> && requires {
+    typename Head::context_type;
+    Head::tag_value;
+  }
 struct lf::stdexp::coroutine_traits<lf::task<T>, Self, Head, Args...> {
   using promise_type = lf::detail::promise_type<T, typename Head::context_type, Head::tag_value>;
 };
@@ -76,7 +82,7 @@ concept scheduler = defines_context<Scheduler> && requires(Scheduler &&scheduler
  * Use this to define a global function which is passed a copy of itself as its first parameter (e.g. a y-combinator).
  */
 template <stateless Fn>
-consteval auto fn([[maybe_unused]] Fn invocable_which_returns_a_task) -> async_fn<Fn> { return {}; }
+[[nodiscard]] consteval auto fn([[maybe_unused]] Fn invocable_which_returns_a_task) -> async_fn<Fn> { return {}; }
 
 /**
  * @brief Builds an async member function from a stateless invocable that returns an ``lf::task``.
@@ -84,7 +90,23 @@ consteval auto fn([[maybe_unused]] Fn invocable_which_returns_a_task) -> async_f
  * Use this to define a member function which is passed a pointer to an instance of the class as its first parameter.
  */
 template <stateless Fn>
-consteval auto mem_fn([[maybe_unused]] Fn invocable_which_returns_a_task) -> async_mem_fn<Fn> { return {}; }
+[[nodiscard]] consteval auto mem_fn([[maybe_unused]] Fn invocable_which_returns_a_task) -> async_mem_fn<Fn> { return {}; }
+
+namespace detail {
+
+struct make_fn_impl {
+  template <stateless Fn>
+  [[nodiscard]] consteval auto operator+([[maybe_unused]] Fn invocable_which_returns_a_task) const -> async_fn<Fn> { return {}; }
+};
+
+inline constexpr make_fn_impl make_fn;
+
+}; // namespace detail
+
+/**
+ * @brief Macro to automate the creation of an async function with the first argument ``auto self``.
+ */
+#define ASYNC(...) ::lf::detail::make_fn + [](auto self __VA_OPT__(, ) __VA_ARGS__) LIBFORK_STATIC_CALL
 
 namespace detail {
 
@@ -140,7 +162,7 @@ struct as_root : with_context<typename std::decay_t<S>::context_type, first_arg<
  * Finally the result of the asynchronous function will be returned to the caller.
  */
 template <scheduler S, stateless F, class... Args>
-auto sync_wait(S &&scheduler, [[maybe_unused]] async_fn<F> async_function, Args &&...args) {
+[[nodiscard]] auto sync_wait(S &&scheduler, [[maybe_unused]] async_fn<F> async_function, Args &&...args) {
   return detail::sync_wait_impl(std::forward<S>(scheduler), detail::as_root<S, async_fn<F>>{}, std::forward<Args>(args)...);
 }
 
@@ -152,7 +174,7 @@ auto sync_wait(S &&scheduler, [[maybe_unused]] async_fn<F> async_function, Args 
  * Finally the result of the asynchronous member function will be returned to the caller.
  */
 template <scheduler S, stateless F, class Self, class... Args>
-auto sync_wait(S &&scheduler, [[maybe_unused]] async_mem_fn<F> async_member_function, Self &self, Args &&...args) {
+[[nodiscard]] auto sync_wait(S &&scheduler, [[maybe_unused]] async_mem_fn<F> async_member_function, Self &self, Args &&...args) {
   return detail::sync_wait_impl(std::forward<S>(scheduler), detail::as_root<S, async_mem_fn<F>, Self>{self}, std::forward<Args>(args)...);
 }
 

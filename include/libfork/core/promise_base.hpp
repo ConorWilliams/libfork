@@ -62,8 +62,8 @@ struct root_block_t<void> {
 };
 
 #ifdef __cpp_lib_is_pointer_interconvertible
-static_assert(std::is_pointer_interconvertible_with_class(&root_block_t<long>::m_exception));
-static_assert(std::is_pointer_interconvertible_with_class(&root_block_t<void>::m_exception));
+static_assert(std::is_pointer_interconvertible_with_class(&root_block_t<long>::exception));
+static_assert(std::is_pointer_interconvertible_with_class(&root_block_t<void>::exception));
 #endif
 
 class promise_base {

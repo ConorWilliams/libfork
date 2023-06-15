@@ -28,6 +28,9 @@ namespace lf {
 
 namespace detail {
 
+template <typename T, thread_context Context, tag Tag>
+struct promise_type;
+
 template <typename Head, typename... Tail>
 struct invoker {
 
