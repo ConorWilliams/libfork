@@ -57,10 +57,10 @@ template <typename T>
 concept defines_context = requires { typename std::decay_t<T>::context_type; } && thread_context<typename std::decay_t<T>::context_type>;
 
 /**
- * @brief A concept which defines the requireenets for a scheduler.
+ * @brief A concept which defines the requirements for a scheduler.
  * 
  * This requires a type to define a ``context_type`` which satisfies ``lf::thread_context`` and have a ``schedule`` method
- * which accepts a ``std::coroutine_handle<>`` and garantees some-thread will call it's ``resume()`` member.
+ * which accepts a ``std::coroutine_handle<>`` and guarantees some-thread will call it's ``resume()`` member.
  */
 template <typename Scheduler>
 concept scheduler = defines_context<Scheduler> && requires(Scheduler &&scheduler) {

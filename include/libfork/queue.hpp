@@ -52,7 +52,7 @@ namespace detail {
  * @brief A basic wrapper around a c-style array that provides modulo load/stores.
  *
  * This class is designed for internal use only. It provides a c-style API that is
- * used efficiantly by queue for low level atomic operations.
+ * used efficiently by queue for low level atomic operations.
  *
  * @tparam T The type of the elements in the array.
  */
@@ -259,7 +259,7 @@ public:
    * @brief Steal an item from the queue.
    *
    * Any threads can try to steal an item from the queue. This operation can fail if the queue is
-   * empty or if another thread simulatniously stole an item from the queue.
+   * empty or if another thread simultaneously stole an item from the queue.
    */
   auto steal() noexcept -> steal_t;
   /**
@@ -371,7 +371,7 @@ auto queue<T>::steal() noexcept -> steal_t {
   if (top < bottom) {
     // Must load *before* acquiring the slot as slot may be overwritten immediately after
     // acquiring. This load is NOT required to be atomic even-though it may race with an overwrite
-    // as we only return the value if we win the race below garanteeing we had no race during our
+    // as we only return the value if we win the race below guaranteeing we had no race during our
     // read. If we loose the race then 'x' could be corrupt due to read-during-write race but as T
     // is trivially destructible this does not matter.
     T tmp = m_buf.load(consume)->load(top);

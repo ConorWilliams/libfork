@@ -82,7 +82,7 @@ inline constexpr std::size_t k_cache_line = 64;
  *
  *    Using some intrinsics (i.e. GCC's ``__builtin_unreachable()``) this has
  *    different semantics than ``[[assume(expr)]]`` as it WILL evaluate the
- *    exprssion at runtime. Hence you should conservativly only use this macro
+ *    expression at runtime. Hence you should conservatively only use this macro
  *    if ``expr`` is side-effect free and cheap to evaluate.
  *
  * \endrst
@@ -117,7 +117,7 @@ inline constexpr std::size_t k_cache_line = 64;
 #endif
 
 /**
- * @brief A customisable logging macro.
+ * @brief A customizable logging macro.
  */
 #ifndef LIBFORK_LOG
   #ifdef LIBFORK_LOGGING

@@ -40,7 +40,7 @@ auto r_cast(U &&expr) noexcept {
 }
 
 /**
- * @brief Base class for vitual_stack's
+ * @brief Base class for virtual stacks
  */
 struct alignas(k_new_align) stack_mem : exception_packet {
   std::byte *m_ptr;
@@ -58,7 +58,7 @@ struct alignas(k_new_align) stack_mem : exception_packet {
   /**
    * Whatever the alignment of an allocated pointer we need to add between 0 and alignment - 1 bytes to
    * bring us to a multiple of alignment. We also need to store the allocated pointer before the returned
-   * pointer so adding sizeof(void *) garanteeds enough space infront.
+   * pointer so adding sizeof(void *) guarantees enough space in-front.
    */
 
   std::size_t offset = alignment - 1 + sizeof(void *);
@@ -95,7 +95,7 @@ template <std::size_t N>
   requires(std::has_single_bit(N))
 class alignas(detail::k_new_align) virtual_stack : detail::stack_mem {
 
-  // Our trivialness should be equal to this.
+  // Our trivial destructibility should be equal to this.
   static constexpr bool k_trivial = std::is_trivially_destructible_v<detail::stack_mem>;
 
   /**
@@ -104,6 +104,8 @@ class alignas(detail::k_new_align) virtual_stack : detail::stack_mem {
   constexpr virtual_stack() : stack_mem() {
 
     static_assert(sizeof(virtual_stack) == N, "Bad padding detected!");
+
+    static_assert(k_trivial == std::is_trivially_destructible_v<virtual_stack>);
 
     if (detail::r_cast<std::uintptr_t>(this) % N != 0) {
 #if LIBFORK_COMPILER_EXCEPTIONS
@@ -139,17 +141,14 @@ class alignas(detail::k_new_align) virtual_stack : detail::stack_mem {
     }
   };
 
-  /**
-   * @brief Destroy the virtual stack object, private requires use of ``make_unique()``.
-   */
-  ~virtual_stack() = default;
-
 public:
   virtual_stack(virtual_stack const &) = delete;
   virtual_stack(virtual_stack &&) = delete;
 
   auto operator=(virtual_stack const &) -> virtual_stack & = delete;
   auto operator=(virtual_stack &&) -> virtual_stack & = delete;
+
+  ~virtual_stack() = default;
 
   /**
    * @brief An exception thrown when a stack is not aligned correctly.

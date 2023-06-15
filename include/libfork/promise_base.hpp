@@ -28,7 +28,7 @@
 /**
  * @file promise_base.hpp
  *
- * @brief Provides the promise_type's common donominator.
+ * @brief Provides the promise_type's common denominator.
  */
 
 namespace lf {
@@ -37,7 +37,7 @@ namespace lf {
  * @brief An enumeration that determines the behavior of a coroutine's promise.
  */
 enum class tag {
-  root, ///< This coroutone is a root task (allocated on heap) fro an ``lf::sync_wait``.
+  root, ///< This coroutine is a root task (allocated on heap) from an ``lf::sync_wait``.
   call, ///< Non root task (on a virtual stack) from an ``lf::call``.
   fork, ///< Non root task (on a virtual stack) from an ``lf::fork``.
 };
@@ -107,7 +107,7 @@ public:
     m_steal = 0;
     // Use construct_at(...) to set non-atomically as we know we are the
     // only thread who can touch this control block until a steal which
-    // would provide the required memory syncronisation.
+    // would provide the required memory synchronization.
     static_assert(std::is_trivially_destructible_v<std::atomic_int32_t>);
 
     std::construct_at(&m_join, k_imax);

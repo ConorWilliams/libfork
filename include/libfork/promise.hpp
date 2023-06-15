@@ -182,7 +182,7 @@ public:
         Context &context = Context::context();
 
         if (std::optional<task_handle> parent_task_handle = context.task_pop()) {
-          // No-one stole continuation, we are the exclusive owner of parent, just keep rippin!
+          // No-one stole continuation, we are the exclusive owner of parent, just keep ripping!
           LIBFORK_LOG("Parent not stolen, keeps ripping");
           LIBFORK_ASSERT(parent_h.address() == parent_task_handle->address());
           // This must be the same thread that created the parent so it already owns the stack.
@@ -332,7 +332,7 @@ public:
     return awaitable{{}, child};
   }
 
-  constexpr auto await_transform(join_t) noexcept {
+  constexpr auto await_transform([[maybe_unused]] join_t join_tag) noexcept {
     struct awaitable {
     private:
       constexpr void take_stack_reset_control() const noexcept {
