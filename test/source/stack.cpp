@@ -10,7 +10,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "libfork/stack.hpp"
+#include "libfork/core/stack.hpp"
 
 // NOLINTBEGIN No linting in tests
 

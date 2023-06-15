@@ -19,7 +19,7 @@
 #include <stdexcept>
 #include <type_traits>
 
-#include "libfork/exception.hpp"
+#include "libfork/core/exception.hpp"
 #include "libfork/macro.hpp"
 
 /**
@@ -32,6 +32,15 @@ namespace lf {
 
 namespace detail {
 
+struct immovable {
+  immovable() = default;
+  immovable(const immovable &) = delete;
+  immovable(immovable &&) = delete;
+  auto operator=(const immovable &) -> immovable & = delete;
+  auto operator=(immovable &&) -> immovable & = delete;
+  ~immovable() = default;
+};
+
 inline constexpr std::size_t k_new_align = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
 
 template <typename T, typename U>
@@ -42,7 +51,7 @@ auto r_cast(U &&expr) noexcept {
 /**
  * @brief Base class for virtual stacks
  */
-struct alignas(k_new_align) stack_mem : exception_packet {
+struct alignas(k_new_align) stack_mem : immovable, exception_packet {
   std::byte *m_ptr;
   std::byte *m_end;
 };
@@ -118,7 +127,7 @@ class alignas(detail::k_new_align) virtual_stack : detail::stack_mem {
     m_end = m_buf.data() + m_buf.size();
   }
 
-  // Deleters for ``std::unique_ptr``'s
+  // Deleter(s) for ``std::unique_ptr``'s
 
   struct delete_1 {
     LIBFORK_STATIC_CALL void operator()(virtual_stack *ptr) LIBFORK_STATIC_CONST noexcept {
@@ -142,14 +151,6 @@ class alignas(detail::k_new_align) virtual_stack : detail::stack_mem {
   };
 
 public:
-  virtual_stack(virtual_stack const &) = delete;
-  virtual_stack(virtual_stack &&) = delete;
-
-  auto operator=(virtual_stack const &) -> virtual_stack & = delete;
-  auto operator=(virtual_stack &&) -> virtual_stack & = delete;
-
-  ~virtual_stack() = default;
-
   /**
    * @brief An exception thrown when a stack is not aligned correctly.
    */

@@ -20,10 +20,10 @@
 #include <type_traits>
 #include <utility>
 
-#include "libfork/coroutine.hpp"
-#include "libfork/exception.hpp"
+#include "libfork/core/coroutine.hpp"
+#include "libfork/core/exception.hpp"
+#include "libfork/core/stack.hpp"
 #include "libfork/macro.hpp"
-#include "libfork/stack.hpp"
 
 /**
  * @file promise_base.hpp

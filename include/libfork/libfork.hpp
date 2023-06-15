@@ -13,10 +13,10 @@
 #include <type_traits>
 #include <utility>
 
-#include "libfork/coroutine.hpp"
-#include "libfork/promise.hpp"
-#include "libfork/promise_base.hpp"
-#include "libfork/task.hpp"
+#include "libfork/core/coroutine.hpp"
+#include "libfork/core/promise.hpp"
+#include "libfork/core/promise_base.hpp"
+#include "libfork/core/task.hpp"
 
 /**
  * @file libfork.hpp

@@ -23,7 +23,6 @@
 // #undef LIBFORK_LOG
 // #define LIBFORK_LOGGING
 
-#include "libfork/busy_pool.hpp"
 #include "libfork/libfork.hpp"
 #include "libfork/macro.hpp"
 #include "libfork/queue.hpp"

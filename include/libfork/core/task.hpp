@@ -14,9 +14,9 @@
 #include <type_traits>
 #include <utility>
 
-#include "libfork/coroutine.hpp"
+#include "libfork/core/coroutine.hpp"
+#include "libfork/core/promise_base.hpp"
 #include "libfork/macro.hpp"
-#include "libfork/promise_base.hpp"
 
 /**
  * @file task.hpp

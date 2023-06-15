@@ -12,8 +12,8 @@
 #include <memory>
 #include <type_traits>
 
+#include "libfork/core/promise_base.hpp"
 #include "libfork/macro.hpp"
-#include "libfork/promise_base.hpp"
 
 /**
  * @file first_arg.hpp

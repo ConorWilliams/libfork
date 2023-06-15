@@ -20,11 +20,11 @@
 #include <utility>
 #include <version>
 
-#include "libfork/coroutine.hpp"
-#include "libfork/first_arg.hpp"
+#include "libfork/core/coroutine.hpp"
+#include "libfork/core/first_arg.hpp"
+#include "libfork/core/promise_base.hpp"
+#include "libfork/core/task.hpp"
 #include "libfork/macro.hpp"
-#include "libfork/promise_base.hpp"
-#include "libfork/task.hpp"
 
 /**
  * @file promise.hpp

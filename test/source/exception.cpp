@@ -13,7 +13,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "libfork/exception.hpp"
+#include "libfork/core/exception.hpp"
 
 // NOLINTBEGIN
 
