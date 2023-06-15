@@ -140,9 +140,9 @@ concept defines_stack = requires { typename T::stack_type; } && detail::is_virtu
 /**
  * @brief A concept which defines the context interface.
  *
- * A context owns a LIFO stack of virtual-stacks and a LIFO stack of tasks.
- * The stack of virtual-stacks is expected to never be empty, it should always
- * be able to return an empty virtual-stack.
+ * A context owns a LIFO stack of ``lf::virtual_stack``s and a LIFO stack of tasks.
+ * The stack of ``lf::virtual_stack``s is expected to never be empty, it should always
+ * be able to return an empty ``lf::virtual_stack``.
  *
  * \rst
  *

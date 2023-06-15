@@ -61,4 +61,10 @@ Asynchronous control flow
     :members:
     :undoc-members:
 
+Virtual stacks
+------------------------------
+
+.. doxygenclass:: lf::virtual_stack
+    :members:
+    :undoc-members:
 

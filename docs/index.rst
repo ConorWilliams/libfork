@@ -7,9 +7,8 @@ This is libfork's API documentation, for info on building and installing please 
    :caption: Files
 
    api/libfork.rst
-   api/thread_local.rst
-   api/stack.rst
    api/queue.rst
+   api/thread_local.rst
 
    
 
