@@ -13,7 +13,6 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
-#include <exception>
 #include <limits>
 #include <memory>
 #include <optional>
@@ -29,145 +28,53 @@
 /**
  * @file promise_base.hpp
  *
- * @brief Provides the pormise_type's common donominator.
+ * @brief Provides the promise_type's common donominator.
  */
 
 namespace lf {
 
 /**
- * @brief Test if a type is a stateless class.
+ * @brief An enumeration that determines the behaviour of a coroutine's promise.
  */
-template <typename T>
-concept stateless = std::is_class_v<T> && std::is_trivial_v<T> && std::is_empty_v<T>;
-
-/**
- * @brief The result type for ``lf::fn()``.
- *
- * Wraps a stateless callable that returns an ``lf::task``.
- */
-template <stateless Fn>
-struct async_fn : std::type_identity<Fn> {};
-
-/**
- * @brief The result type for ``lf::mem_fn()``.
- *
- * Wraps a stateless callable that returns an ``lf::task``.
- */
-template <stateless Fn>
-struct async_mem_fn : std::type_identity<Fn> {};
-
-/**
- * @brief Builds an async function from a stateless invocable that returns an ``lf::task``.
- *
- * Use this to define a global function which is passed a copy of itself as its first parameter (e.g. a y-combinator).
- */
-template <stateless F>
-consteval auto fn([[maybe_unused]] F invocable_which_returns_a_task) -> async_fn<F> { return {}; }
-
-/**
- * @brief Builds an async function from a stateless invocable that returns an ``lf::task``.
- *
- * Use this to define a member function which is passed the class as its first parameter.
- */
-template <stateless F>
-consteval auto mem_fn([[maybe_unused]] F invocable_which_returns_a_task) -> async_mem_fn<F> { return {}; }
-
-namespace detail {
-
-// -------------- Tag types and constants -------------- //
-
-template <typename T>
-struct is_async_fn_impl : std::false_type {};
-
-template <stateless Fn>
-struct is_async_fn_impl<async_fn<Fn>> : std::true_type {};
-
-template <stateless Fn>
-struct is_async_fn_impl<async_mem_fn<Fn>> : std::true_type {};
-
-} // namespace detail
-
-/**
- * @brief A concept to test if a type is an async function.
- */
-template <typename T>
-concept async_wrapper = detail::is_async_fn_impl<T>::value;
-
-namespace detail {
-
-//  Tags
-
 enum class tag {
   root, ///< This coro is a root task (allocated on heap). [pointer to a root block, constructs]
   call, ///< Non root task (on a virtual stack) from a lf::call.  [pointer to result, assigns]
   fork, ///< Non root task (on a virtual stack) from an lf::fork. [pointer to result, assigns]
 };
 
-/**
- * @brief An instance of this type is what is passed as the first argument to all coroutines.
- */
-template <tag Tag, typename...>
-class magic;
-
-// Sepcialisation for global functions
-template <tag Tag, stateless F>
-class magic<Tag, F> : public async_fn<F> {
-  static constexpr tag tagged = Tag;
-};
-
-/**
- * @brief Specialisation for member functions.
- *
- * fn(int x, int const y)
- *
- *          call(x) -> int &
- *    call(move(x)) -> int
- *
- *          call(x) -> int const &
- *    call(move(x)) -> int const
- */
-template <tag Tag, stateless F, typename This>
-  requires(!std::is_reference_v<This>)
-class magic<Tag, F, This> : public async_mem_fn<F> {
-public:
-  explicit constexpr magic(This &self) : m_self{std::addressof(self)} {}
-
-  static constexpr tag tagged = Tag;
-
-  [[nodiscard]] constexpr auto operator->() noexcept -> This * { return m_self; }
-
-  [[nodiscard]] constexpr auto operator*() noexcept -> std::remove_reference_t<This> & {
-    return *m_self;
-  }
-
-private:
-  This *m_self;
-};
-
-static constexpr std::int32_t k_imax = std::numeric_limits<std::int32_t>::max();
+namespace detail {
 
 // -------------- Control block definition -------------- //
 
+static constexpr std::int32_t k_imax = std::numeric_limits<std::int32_t>::max();
+
 template <typename T>
-struct root_block_t : exception_packet {
-  std::binary_semaphore m_semaphore{0};
-  std::optional<T> m_result{};
+struct root_block_t {
+  exception_packet exception{};
+  std::binary_semaphore semaphore{0};
+  std::optional<T> result{};
 };
 
 template <>
-struct root_block_t<void> : exception_packet {
-  std::binary_semaphore m_semaphore{0};
+struct root_block_t<void> {
+  exception_packet exception{};
+  std::binary_semaphore semaphore{0};
 };
+
+#ifdef __cpp_lib_is_pointer_interconvertible
+static_assert(std::is_pointer_interconvertible_with_class(&root_block_t<long>::m_exception));
+static_assert(std::is_pointer_interconvertible_with_class(&root_block_t<void>::m_exception));
+#endif
 
 class promise_base {
 public:
   // Full declaration below, needs concept first
   class handle_t;
 
-  constexpr void set(void *ret) noexcept {
+  constexpr void set_ret_address(void *ret) noexcept {
     m_return_address = ret;
   }
-  constexpr void set(stdexp::coroutine_handle<promise_base> parent) noexcept {
+  constexpr void set_parent(stdexp::coroutine_handle<promise_base> parent) noexcept {
     m_parent = parent;
   }
 
@@ -218,7 +125,7 @@ private:
 } // namespace detail
 
 /**
- * @brief A trivial handle to a task with a resume() member function.
+ * @brief A handle to a task with a resume() member function.
  */
 using task_handle = detail::promise_base::handle_t;
 

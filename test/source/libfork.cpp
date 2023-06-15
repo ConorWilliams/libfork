@@ -6,6 +6,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include <coroutine>
 #include <iostream>
 #include <memory>
 #include <new>
@@ -25,6 +26,7 @@
 #include "libfork/busy_pool.hpp"
 #include "libfork/libfork.hpp"
 #include "libfork/macro.hpp"
+#include "libfork/queue.hpp"
 
 // NOLINTBEGIN No linting in tests
 
@@ -74,16 +76,11 @@ private:
   typename stack_type::unique_ptr_t stack = stack_type::make_unique();
 };
 
-template <typename T>
-using Task = task<T, basic_context>;
+// #define fork Context::fork
+// #define call Context::call
+// #define join lf::join
 
-// #define fork(f) lf::fork(LIFT(f))
-
-#define fork lf::fork
-#define call lf::call
-#define join lf::join
-
-inline constexpr auto fib = fn([](auto fib, int n) -> Task<int> {
+inline constexpr auto fib = fn([](auto self, int n) -> task<int> {
   //
   if (n < 2) {
     co_return n;
@@ -91,10 +88,10 @@ inline constexpr auto fib = fn([](auto fib, int n) -> Task<int> {
 
   int a, b;
 
-  co_await fork(a, fib)(n - 1);
-  co_await call(b, fib)(n - 2);
+  co_await lf::fork(a, self)(n - 1);
+  co_await lf::call(b, self)(n - 2);
 
-  co_await join;
+  co_await lf::join;
 
   co_return a + b;
 });
@@ -107,33 +104,33 @@ int fib_(int n) {
   return fib_(n - 1) + fib_(n - 2);
 }
 
-TEST_CASE("bench") {
+// TEST_CASE("bench") {
 
-  volatile int x = 20;
+//   volatile int x = 20;
 
-  basic_context ctx;
+//   basic_context ctx;
 
-  basic_context::set(ctx);
+//   basic_context::set(ctx);
 
-  BENCHMARK("no coro") {
-    return fib_(x);
-  };
+//   BENCHMARK("no coro") {
+//     return fib_(x);
+//   };
 
-  BENCHMARK("inline") {
-    // return fib_(x);
-    return sync_wait([](auto handle) { handle(); }, fib, x);
-  };
-}
+//   BENCHMARK("inline") {
+//     // return fib_(x);
+//     return sync_wait([](auto handle) { handle(); }, fib, x);
+//   };
+// }
 
-class my_class {
-public:
-  static constexpr auto get = mem_fn([](auto self) -> Task<int> {
-    co_return self->m_private;
-  });
+// class my_class {
+// public:
+//   static constexpr auto get = [](my_class &) -> task<int> {
+//     // co_return self->m_private;
+//   };
 
-private:
-  int m_private = 99;
-};
+// private:
+//   int m_private = 99;
+// };
 
 // TEST_CASE("access", "[access]") {
 //   auto exec = [](auto handle) { handle(); };
@@ -143,19 +140,28 @@ private:
 //   // sync_wait(exec, my_class::access, obj);
 // }
 
+struct basic_schedule {
+  using context_type = basic_context;
+
+  basic_schedule() { basic_context::set(ctx); }
+
+  void schedule(stdexp::coroutine_handle<> handle) { handle(); }
+
+private:
+  context_type ctx;
+};
+
 TEST_CASE("libfork", "[libfork]") {
 
-  basic_context ctx;
-
-  basic_context::set(ctx);
+  basic_schedule schedule;
 
   int i = 22;
 
-  my_class obj;
+  // my_class obj;
 
-  // REQUIRE(99 == sync_wait([](auto handle) { handle(); }, my_class::get, obj));
+  // // REQUIRE(99 == sync_wait([](auto handle) { handle(); }, my_class::get, obj));
 
-  auto answer = sync_wait([](auto handle) { handle(); }, fib, i);
+  auto answer = sync_wait(schedule, fib, i);
 
   REQUIRE(answer == fib_(i));
 

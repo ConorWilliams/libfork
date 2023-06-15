@@ -21,9 +21,10 @@
 #include <version>
 
 #include "libfork/coroutine.hpp"
+#include "libfork/first_arg.hpp"
 #include "libfork/macro.hpp"
 #include "libfork/promise_base.hpp"
-#include "libfork/thread_local.hpp"
+#include "libfork/task.hpp"
 
 /**
  * @file promise.hpp
@@ -31,56 +32,27 @@
  * @brief The promise_type for tasks.
  */
 
-namespace lf {
+namespace lf::detail {
 
-template <typename T, thread_context Context>
-  requires(!std::is_reference_v<T>)
-class task;
-
-namespace detail {
-
-template <typename Magic, typename... Args>
-struct invoker {
-
-  using task_type = std::invoke_result_t<typename Magic::type, Magic, Args &&...>;
-  using value_type = typename task_type::value_type;
-  using promise_type = stdexp::coroutine_traits<task_type, Magic, Args &&...>::promise_type;
-  using handle_type = stdexp::coroutine_handle<promise_type>;
-
-  static auto invoke(Magic magic, Args &&...args) -> stdexp::coroutine_handle<promise_type> {
-    return handle_type::from_address(std::invoke(typename Magic::type{}, magic, std::forward<Args>(args)...).m_handle);
-  }
-};
-
-// ------------------- Tag types ------------------- //
-
-// NOLINTBEGIN
-
-/**
- * @brief An awaitable type (in a task) that triggers a join.
- */
-struct join_t {};
-
-template <typename R>
-struct return_t {
-  R &ret;
-};
-
-template <>
-struct return_t<void> {};
+struct empty {};
 
 /**
  * @brief An awaitable type (in a task) that triggers a fork/call.
  */
-template <typename R, typename Magic, typename... Args>
-struct [[nodiscard]] packet : return_t<R> {
-  [[no_unique_address]] Magic magic;
-  [[no_unique_address]] std::tuple<Args &&...> args;
+template <typename R, typename Head, typename... Tail>
+struct [[nodiscard]] packet {
+  [[no_unique_address]] std::conditional_t<std::is_void_v<R>, empty, R &> ret;
+  [[no_unique_address]] Head context;
+  [[no_unique_address]] std::tuple<Tail &&...> args;
 };
 
-// NOLINTEND
+/**
+ * @brief An awaitable type (in a task) that triggers a join.
+ */
+struct join_t {
+};
 
-// ------------------- Main promise type ------------------- //
+// -------------------------------------------------------------------------- //
 
 template <typename T, tag Tag>
 struct mixin_return : promise_base {
@@ -90,14 +62,14 @@ struct mixin_return : promise_base {
     if constexpr (Tag == tag::root) {
       LIBFORK_LOG("Root task returns value");
       auto *block_addr = static_cast<root_block_t<T> *>(ret_address());
-      LIBFORK_ASSERT(!block_addr->m_result.has_value());
-      block_addr->m_result.emplace(std::forward<U>(expr));
+      LIBFORK_ASSERT(!block_addr->result.has_value());
+      block_addr->result.emplace(std::forward<U>(expr));
     } else {
       static_assert(std::is_void_v<T>, "TODO");
     }
   }
   template <typename U>
-    requires std::assignable_from<T &, U> && (Tag != tag::root)
+    requires std::assignable_from<T &, U> && (Tag == tag::call || Tag == tag::fork)
   void return_value(U &&expr) noexcept(std::is_nothrow_assignable_v<T &, U>) {
     LIBFORK_LOG("Regular task returns a value");
     *static_cast<T *>(ret_address()) = std::forward<U>(expr);
@@ -111,7 +83,26 @@ struct mixin_return<void, Tag> : promise_base {
 
 template <typename T, thread_context Context, tag Tag>
 struct promise_type : mixin_return<T, Tag> {
+private:
+  // Adds a context_type type alias to T.
+  template <typename Head>
+  struct add_context : Head {
+    using context_type = Context;
+  };
 
+  template <typename R, typename Head, typename... Tail>
+  constexpr auto add_context_to_packet(packet<R, Head, Tail...> pack) -> packet<R, add_context<Head>, Tail...> {
+    return {pack.ret, {pack.context}, std::move(pack.args)};
+  }
+
+  template <class = void>
+    requires(Tag == tag::root)
+  static auto root_block(void *ret) -> root_block_t<T> & {
+    return *static_cast<root_block_t<T> *>(ret);
+  }
+
+public:
+  using value_type = T;
   using stack_type = typename Context::stack_type;
 
   [[nodiscard]] static auto operator new(std::size_t const size) -> void * {
@@ -138,8 +129,8 @@ struct promise_type : mixin_return<T, Tag> {
     }
   }
 
-  auto get_return_object() -> task<T, Context> {
-    return task<T, Context>{stdexp::coroutine_handle<promise_type>::from_promise(*this).address()};
+  auto get_return_object() -> task<T> {
+    return task<T>{stdexp::coroutine_handle<promise_type>::from_promise(*this).address()};
   }
 
   static auto initial_suspend() -> stdexp::suspend_always { return {}; }
@@ -148,11 +139,11 @@ struct promise_type : mixin_return<T, Tag> {
     if constexpr (Tag == tag::root) {
       LIBFORK_LOG("Unhandled exception in root task");
       // Put in our remote root-block.
-      static_cast<root_block_t<T> *>(this->ret_address())->unhandled_exception();
+      root_block(this->ret_address()).exception.unhandled_exception();
     } else if (!this->parent().promise().has_parent()) {
       LIBFORK_LOG("Unhandled exception in child of root task");
       // Put in parent (root) task's remote root-block.
-      static_cast<root_block_t<T> *>(this->parent().promise().ret_address())->unhandled_exception();
+      reinterpret_cast<exception_packet *>(this->parent().promise().ret_address())->unhandled_exception(); // NOLINT
     } else {
       LIBFORK_LOG("Unhandled exception in root's grandchild or further");
       // Put on stack of parent task.
@@ -170,7 +161,7 @@ struct promise_type : mixin_return<T, Tag> {
           // Finishing a root task implies our stack is empty and should have no exceptions.
           LIBFORK_ASSERT(Context::context().stack_top()->empty());
 
-          static_cast<root_block_t<T> *>(child.promise().ret_address())->m_semaphore.release();
+          root_block(child.promise().ret_address()).semaphore.release();
           child.destroy();
           return stdexp::noop_coroutine();
         }
@@ -276,22 +267,22 @@ struct promise_type : mixin_return<T, Tag> {
   }
 
 private:
-  template <typename R, typename Magic, typename... Args>
-    requires std::is_same_v<R, typename invoker<Magic, Args...>::value_type>
-  constexpr auto invoke(packet<R, Magic, Args...> packet) {
+  template <typename R, typename Head, typename... Args>
+    requires std::is_same_v<R, typename invoker<Head, Args...>::promise_type::value_type>
+  constexpr auto invoke(packet<R, Head, Args...> packet) {
 
     LIBFORK_LOG("Spawning a task");
 
     auto unwrap = [&](Args &&...args) {
-      return invoker<Magic, Args...>::invoke(packet.magic, std::forward<Args>(args)...);
+      return invoker<Head, Args...>::invoke(packet.context, std::forward<Args>(args)...);
     };
 
     stdexp::coroutine_handle child = std::apply(unwrap, std::move(packet.args));
 
-    child.promise().set(cast_down(stdexp::coroutine_handle<promise_type>::from_promise(*this)));
+    child.promise().set_parent(cast_down(stdexp::coroutine_handle<promise_type>::from_promise(*this)));
 
     if constexpr (!std::is_void_v<R>) {
-      child.promise().set(static_cast<void *>(std::addressof(packet.ret)));
+      child.promise().set_ret_address(std::addressof(packet.ret));
     }
 
     return child;
@@ -299,11 +290,11 @@ private:
 
 public:
   template <typename R, typename F, typename... This, typename... Args>
-  [[nodiscard]] constexpr auto await_transform(packet<R, magic<tag::fork, F, This...>, Args...> packet)
-    requires requires { invoke(std::move(packet)); }
+  [[nodiscard]] constexpr auto await_transform(packet<R, first_arg<tag::fork, F, This...>, Args...> packet)
+    requires requires { invoke(add_context_to_packet(std::move(packet))); }
   {
     //
-    stdexp::coroutine_handle child = invoke(std::move(packet));
+    stdexp::coroutine_handle child = invoke(add_context_to_packet(std::move(packet)));
 
     struct awaitable : stdexp::suspend_always {
       [[nodiscard]] constexpr auto await_suspend(stdexp::coroutine_handle<promise_type> parent) noexcept -> decltype(child) {
@@ -324,11 +315,11 @@ public:
   }
 
   template <typename R, typename F, typename... This, typename... Args>
-  [[nodiscard]] constexpr auto await_transform(packet<R, magic<tag::call, F, This...>, Args...> packet)
-    requires requires { invoke(std::move(packet)); }
+  [[nodiscard]] constexpr auto await_transform(packet<R, first_arg<tag::call, F, This...>, Args...> packet)
+    requires requires { invoke(add_context_to_packet(std::move(packet))); }
   {
     //
-    stdexp::coroutine_handle child = invoke(std::move(packet));
+    stdexp::coroutine_handle child = invoke(add_context_to_packet(std::move(packet)));
 
     struct awaitable : stdexp::suspend_always {
       [[nodiscard]] constexpr auto await_suspend([[maybe_unused]] stdexp::coroutine_handle<promise_type> parent) noexcept -> decltype(child) {
@@ -445,7 +436,7 @@ public:
         // Propagate exceptions.
         if constexpr (LIBFORK_PROPAGATE_EXCEPTIONS) {
           if constexpr (Tag == tag::root) {
-            static_cast<root_block_t<T> *>(base->ret_address())->rethrow_if_unhandled();
+            root_block(base->ret_address()).exception.rethrow_if_unhandled();
           } else {
             stack_type::from_address(base)->rethrow_if_unhandled();
           }
@@ -481,8 +472,6 @@ private:
   }
 };
 
-} // namespace detail
-
-} // namespace lf
+} // namespace lf::detail
 
 #endif /* FF9F3B2C_DC2B_44D2_A3C2_6E40F211C5B0 */

@@ -5,15 +5,18 @@
 
 // SPDX-License-Identifier: MPL-2.0
 
-// This Source Code Form is subject to the terms of the Mozilla Public
+// Self Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>
+#include <type_traits>
+#include <utility>
 
 #include "libfork/coroutine.hpp"
 #include "libfork/promise.hpp"
 #include "libfork/promise_base.hpp"
 #include "libfork/task.hpp"
-#include <type_traits>
 
 /**
  * @file libfork.hpp
@@ -26,58 +29,71 @@
 /**
  * @brief Specialize coroutine_traits for task<...> from functions.
  */
-template <typename T, typename Context, auto Tag, typename... F, typename... Args>
-struct lf::stdexp::coroutine_traits<lf::task<T, Context>, lf::detail::magic<Tag, F...>, Args...> {
-  using promise_type = lf::detail::promise_type<T, Context, Tag>;
+template <typename T, typename Head, typename... Args>
+  requires std::same_as<Head, std::decay_t<Head>>
+struct lf::stdexp::coroutine_traits<lf::task<T>, Head, Args...> {
+  using promise_type = lf::detail::promise_type<T, typename Head::context_type, Head::tag_value>;
 };
 
 /**
  * @brief Specialize coroutine_traits for task<...> from member functions.
  */
-template <typename T, typename Context, typename This, auto Tag, typename... F, typename... Args>
-struct lf::stdexp::coroutine_traits<lf::task<T, Context>, This, lf::detail::magic<Tag, F...>, Args...> {
-  using promise_type = lf::detail::promise_type<T, Context, Tag>;
+template <typename T, typename Self, typename Head, typename... Args>
+  requires std::same_as<Head, std::decay_t<Head>>
+struct lf::stdexp::coroutine_traits<lf::task<T>, Self, Head, Args...> {
+  using promise_type = lf::detail::promise_type<T, typename Head::context_type, Head::tag_value>;
 };
 
 #endif /* LIBFORK_DOXYGEN_SHOULD_SKIP_THIS */
 
 namespace lf {
 
-namespace detail {
-
-template <typename>
-struct is_task_impl : std::false_type {};
-
-template <typename T, thread_context Context>
-struct is_task_impl<task<T, Context>> : std::true_type {};
-
+/**
+ * @brief A concept which requires a type to define a ``context_type`` which satisfy ``lf::thread_context``.
+ */
 template <typename T>
-concept is_task = is_task_impl<T>::value;
+concept defines_context = requires { typename std::decay_t<T>::context_type; } && thread_context<typename std::decay_t<T>::context_type>;
 
-template <typename F, typename... Args>
-using invoke_t = std::invoke_result_t<F, detail::magic<tag::root, async_fn<F>>, Args...>;
+template <typename Scheduler>
+concept scheduler = defines_context<Scheduler> && requires(Scheduler &&scheduler) {
+  std::forward<Scheduler>(scheduler).schedule(stdexp::coroutine_handle<>{});
+};
 
-} // namespace detail
+/**
+ * @brief Builds an async function from a stateless invocable that returns an ``lf::task``.
+ *
+ * Use this to define a global function which is passed a copy of itself as its first parameter (e.g. a y-combinator).
+ */
+template <stateless F>
+consteval auto fn([[maybe_unused]] F invocable_which_returns_a_task) -> async_fn<F> { return {}; }
+
+/**
+ * @brief Builds an async function from a stateless invocable that returns an ``lf::task``.
+ *
+ * Use this to define a member function which is passed the class as its first parameter.
+ */
+template <stateless F>
+consteval auto mem_fn([[maybe_unused]] F invocable_which_returns_a_task) -> async_mem_fn<F> { return {}; }
 
 namespace detail {
 
-template <std::invocable<stdexp::coroutine_handle<>> Schedule, typename Magic, class... Args>
-auto sync_wait_impl(Schedule &&schedule, [[maybe_unused]] Magic magic, Args &&...args) {
+template <scheduler Schedule, typename Head, class... Args>
+auto sync_wait_impl(Schedule &&scheduler, Head head, Args &&...args) {
 
-  using invoker = detail::invoker<Magic, Args...>;
+  using invoker = detail::invoker<Head, Args...>;
 
   using value_type = typename invoker::value_type;
 
-  auto handle = invoker::invoke(magic, std::forward<Args>(args)...);
+  auto handle = invoker::invoke(head, std::forward<Args>(args)...);
 
   root_block_t<value_type> root_block;
 
   // Set address of root block.
-  handle.promise().set(static_cast<void *>(&root_block));
+  handle.promise().set_ret_address(&root_block);
 
 #if LIBFORK_COMPILER_EXCEPTIONS
   try {
-    std::invoke(std::forward<Schedule>(schedule), stdexp::coroutine_handle<>{handle});
+    std::forward<Schedule>(scheduler).schedule(stdexp::coroutine_handle<>{handle});
   } catch (...) {
     // We cannot know whether the coroutine has been resumed or not once we pass to schedule(...).
     // Hence, we do not know whether or not to .destroy() it if schedule(...) throws.
@@ -87,51 +103,56 @@ auto sync_wait_impl(Schedule &&schedule, [[maybe_unused]] Magic magic, Args &&..
     }();
   }
 #else
-  std::invoke(std::forward<Schedule>(schedule), stdexp::coroutine_handle<>{handle});
+  std::forward<Schedule>(scheduler).schedule(stdexp::coroutine_handle<>{handle});
 #endif
 
   // Block until the coroutine has finished.
-  root_block.m_semaphore.acquire();
+  root_block.semaphore.acquire();
 
-  root_block.rethrow_if_unhandled();
+  root_block.exception.rethrow_if_unhandled();
 
   if constexpr (!std::is_void_v<value_type>) {
-    return std::move(*root_block.m_result);
+    return std::move(*root_block.result);
   }
 }
+
+template <scheduler S, typename AsyncFn, typename... Self>
+struct as_root : first_arg<tag::root, AsyncFn, Self...> {
+  using context_type = std::decay_t<S>::context_type;
+};
 
 }; // namespace detail
 
 /**
  * @brief The entry point for synchronous execution of asynchronous functions.
  *
- * This will create the coroutine and pass its handle to ``schedule``. ``schedule`` is expected to guarantee that
+ * Self will create the coroutine and pass its handle to ``scheduler``. ``scheduler`` is expected to guarantee that
  * some thread will call ``resume()`` on the coroutine handle it is passed. The caller will then block
  * until the asynchronous function has finished executing. Finally the result of the asynchronous function
  * will be returned to the caller.
  */
-template <std::invocable<stdexp::coroutine_handle<>> Schedule, stateless F, class... Args>
-auto sync_wait(Schedule &&schedule, [[maybe_unused]] async_fn<F> async_function, Args &&...args) {
-  return detail::sync_wait_impl(std::forward<Schedule>(schedule), detail::magic<detail::tag::root, F>{}, std::forward<Args>(args)...);
+template <scheduler S, stateless F, class... Args>
+auto sync_wait(S &&scheduler, [[maybe_unused]] async_fn<F> async_function, Args &&...args) {
+  return detail::sync_wait_impl(std::forward<S>(scheduler), detail::as_root<S, async_fn<F>>{}, std::forward<Args>(args)...);
 }
 
 /**
  * @brief The entry point for synchronous execution of asynchronous member functions.
  *
- * This will create the coroutine and pass its handle to ``schedule``. ``schedule`` is expected to guarantee that
+ * Self will create the coroutine and pass its handle to ``scheduler``. ``scheduler`` is expected to guarantee that
  * some thread will call ``resume()`` on the coroutine handle it is passed. The caller will then block
  * until the asynchronous member function has finished executing. Finally the result of the asynchronous function
  * will be returned to the caller.
  */
-template <std::invocable<stdexp::coroutine_handle<>> Schedule, stateless F, class This, class... Args>
-auto sync_wait(Schedule &&schedule, [[maybe_unused]] async_mem_fn<F> async_member_function, This &self, Args &&...args) {
-  return detail::sync_wait_impl(std::forward<Schedule>(schedule), detail::magic<detail::tag::root, F, This>{self}, std::forward<Args>(args)...);
+template <scheduler S, stateless F, class Self, class... Args>
+auto sync_wait(S &&scheduler, [[maybe_unused]] async_mem_fn<F> async_member_function, Self &self, Args &&...args) {
+  return detail::sync_wait_impl(std::forward<S>(scheduler), detail::as_root<S, async_mem_fn<F>, Self>{self}, std::forward<Args>(args)...);
 }
 
 /**
  * @brief An invocable (and subscriptable) wrapper that binds a return address to an asynchronous function.
  */
-template <detail::tag Tag>
+template <tag Tag>
 struct bind_task {
   /**
    * @brief Bind return address `ret` to an asynchronous function.
@@ -139,8 +160,8 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename R, typename F>
-  [[nodiscard]] LIBFORK_STATIC_CALL constexpr auto operator()(R &ret, [[maybe_unused]] async_fn<F> async_fn) LIBFORK_STATIC_CONST noexcept {
-    return [&]<typename... Args>(Args &&...args) noexcept -> detail::packet<R, detail::magic<Tag, F>, Args...> {
+  [[nodiscard]] LIBFORK_STATIC_CALL constexpr auto operator()(R &ret, [[maybe_unused]] async_fn<F> async) LIBFORK_STATIC_CONST noexcept {
+    return [&]<typename... Args>(Args &&...args) noexcept -> detail::packet<R, first_arg<Tag, async_fn<F>>, Args...> {
       return {{ret}, {}, std::forward<Args>(args)...};
     };
   }
@@ -150,8 +171,8 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename F>
-  [[nodiscard]] LIBFORK_STATIC_CALL constexpr auto operator()([[maybe_unused]] async_fn<F> async_fn) LIBFORK_STATIC_CONST noexcept {
-    return [&]<typename... Args>(Args &&...args) noexcept -> detail::packet<void, detail::magic<Tag, F>, Args...> {
+  [[nodiscard]] LIBFORK_STATIC_CALL constexpr auto operator()([[maybe_unused]] async_fn<F> async) LIBFORK_STATIC_CONST noexcept {
+    return [&]<typename... Args>(Args &&...args) noexcept -> detail::packet<void, first_arg<Tag, async_fn<F>>, Args...> {
       return {{}, {}, std::forward<Args>(args)...};
     };
   }
@@ -161,8 +182,8 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename R, typename F>
-  [[nodiscard]] LIBFORK_STATIC_CALL constexpr auto operator()(R &ret, [[maybe_unused]] async_mem_fn<F> async_mem_fn) LIBFORK_STATIC_CONST noexcept {
-    return [&]<typename This, typename... Args>(This &self, Args &&...args) noexcept -> detail::packet<R, detail::magic<Tag, F, This>, Args...> {
+  [[nodiscard]] LIBFORK_STATIC_CALL constexpr auto operator()(R &ret, [[maybe_unused]] async_mem_fn<F> async) LIBFORK_STATIC_CONST noexcept {
+    return [&]<typename Self, typename... Args>(Self &self, Args &&...args) noexcept -> detail::packet<R, first_arg<Tag, async_mem_fn<F>, Self>, Args...> {
       return {{ret}, {self}, std::forward<Args>(args)...};
     };
   }
@@ -172,8 +193,8 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename F>
-  [[nodiscard]] LIBFORK_STATIC_CALL constexpr auto operator()([[maybe_unused]] async_mem_fn<F> async_fn) LIBFORK_STATIC_CONST noexcept {
-    return [&]<typename This, typename... Args>(This &self, Args &&...args) noexcept -> detail::packet<void, detail::magic<Tag, F, This>, Args...> {
+  [[nodiscard]] LIBFORK_STATIC_CALL constexpr auto operator()([[maybe_unused]] async_mem_fn<F> async) LIBFORK_STATIC_CONST noexcept {
+    return [&]<typename Self, typename... Args>(Self &self, Args &&...args) noexcept -> detail::packet<void, first_arg<Tag, async_mem_fn<F>, Self>, Args...> {
       return {{}, {self}, std::forward<Args>(args)...};
     };
   }
@@ -185,8 +206,8 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename R, typename F>
-  [[nodiscard]] static constexpr auto operator[](R &ret, [[maybe_unused]] async_fn<F> async_fn) noexcept {
-    return [&]<typename... Args>(Args &&...args) noexcept -> detail::packet<R, detail::magic<Tag, F>, Args...> {
+  [[nodiscard]] static constexpr auto operator[](R &ret, [[maybe_unused]] async_fn<F> async) noexcept {
+    return [&]<typename... Args>(Args &&...args) noexcept -> detail::packet<R, first_arg<Tag, async_fn<F>>, Args...> {
       return {{ret}, {}, std::forward<Args>(args)...};
     };
   }
@@ -196,8 +217,8 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename F>
-  [[nodiscard]] static constexpr auto operator[]([[maybe_unused]] async_fn<F> async_fn) noexcept {
-    return [&]<typename... Args>(Args &&...args) noexcept -> detail::packet<void, detail::magic<Tag, F>, Args...> {
+  [[nodiscard]] static constexpr auto operator[]([[maybe_unused]] async_fn<F> async) noexcept {
+    return [&]<typename... Args>(Args &&...args) noexcept -> detail::packet<void, first_arg<Tag, async_fn<F>>, Args...> {
       return {{}, {}, std::forward<Args>(args)...};
     };
   }
@@ -207,8 +228,8 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename R, typename F>
-  [[nodiscard]] static constexpr auto operator[](R &ret, [[maybe_unused]] async_mem_fn<F> async_mem_fn) noexcept {
-    return [&]<typename This, typename... Args>(This &self, Args &&...args) noexcept -> detail::packet<R, detail::magic<Tag, F, This>, Args...> {
+  [[nodiscard]] static constexpr auto operator[](R &ret, [[maybe_unused]] async_mem_fn<F> async) noexcept {
+    return [&]<typename Self, typename... Args>(Self &self, Args &&...args) noexcept -> detail::packet<R, first_arg<Tag, async_mem_fn<F>, Self>, Args...> {
       return {{ret}, {self}, std::forward<Args>(args)...};
     };
   }
@@ -218,8 +239,8 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename F>
-  [[nodiscard]] static constexpr auto operator[]([[maybe_unused]] async_mem_fn<F> async_fn) noexcept {
-    return [&]<typename This, typename... Args>(This &self, Args &&...args) noexcept -> detail::packet<void, detail::magic<Tag, F, This>, Args...> {
+  [[nodiscard]] static constexpr auto operator[]([[maybe_unused]] async_mem_fn<F> async) noexcept {
+    return [&]<typename Self, typename... Args>(Self &self, Args &&...args) noexcept -> detail::packet<void, first_arg<Tag, async_mem_fn<F>, Self>, Args...> {
       return {{}, {self}, std::forward<Args>(args)...};
     };
   }
@@ -234,12 +255,12 @@ inline constexpr detail::join_t join = {};
 /**
  * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a fork.
  */
-inline constexpr bind_task<detail::tag::fork> fork = {};
+inline constexpr bind_task<tag::fork> fork = {};
 
 /**
  * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a call.
  */
-inline constexpr bind_task<detail::tag::call> call = {};
+inline constexpr bind_task<tag::call> call = {};
 
 } // namespace lf
 

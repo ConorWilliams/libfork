@@ -33,12 +33,21 @@ parse:
         DOWNLOAD_NO_EXTRACT: 1
         HTTP_USERNAME: 1
         HTTP_PASSWORD: 1
+        EXCLUDE_FROM_ALL: 1
+        SYSTEM: 1
+        SOURCE_SUBDIR: 1
         OPTIONS: +
     cpmfindpackage:
       pargs:
         nargs: '*'
         flags: []
       spelling: CPMFindPackage
+      kwargs: *cpmaddpackagekwargs
+    cpmdeclarepackage:
+      pargs:
+        nargs: '*'
+        flags: []
+      spelling: CPMDeclarePackage
       kwargs: *cpmaddpackagekwargs
     packageproject:
       pargs:
@@ -48,10 +57,18 @@ parse:
       kwargs:
         NAME: 1
         VERSION: 1
-        NAMESPACE: 1
         INCLUDE_DIR: 1
         INCLUDE_DESTINATION: 1
         BINARY_DIR: 1
         COMPATIBILITY: 1
         VERSION_HEADER: 1
         DEPENDENCIES: +
+    cpmusepackagelock:
+      pargs: 1
+      spelling: CPMUsePackageLock
+    cpmregisterpackage:
+      pargs: 1
+      spelling: CPMRegisterPackage
+    cpmgetpackageversion:
+      pargs: 2
+      spelling: CPMGetPackageVersion

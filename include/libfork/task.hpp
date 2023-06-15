@@ -16,7 +16,6 @@
 
 #include "libfork/coroutine.hpp"
 #include "libfork/macro.hpp"
-#include "libfork/promise.hpp"
 #include "libfork/promise_base.hpp"
 
 /**
@@ -27,20 +26,39 @@
 
 namespace lf {
 
+namespace detail {
+
+template <typename Head, typename... Tail>
+struct invoker {
+
+  using task_type = std::invoke_result_t<typename Head::underlying_async_fn, Head, Tail &&...>;
+  using value_type = task_type::value_type;
+  using promise_type = stdexp::coroutine_traits<task_type, Head, Tail &&...>::promise_type;
+  using handle_type = stdexp::coroutine_handle<promise_type>;
+
+  /**
+   * @brief Invoke the stateless callable wrapped in Head with arguments head and tail...
+   */
+  static auto invoke(Head head, Tail &&...tail) -> handle_type {
+    return handle_type::from_address(std::invoke(typename Head::underlying_async_fn{}, head, std::forward<Tail>(tail)...).m_handle);
+  }
+};
+
+} // namespace detail
+
 /**
  * @brief The return type for libfork's async functions/coroutines.
  */
-template <typename T, thread_context Context>
+template <typename T>
   requires(!std::is_reference_v<T>)
 class task {
 public:
-  using value_type = T;         ///< The type of the value returned by the coroutine.
-  using context_type = Context; ///< The type of the context in which the coroutine is executed.
+  using value_type = T; ///< The type of the value returned by the coroutine.
 
 private:
   explicit constexpr task(void *handle) noexcept : m_handle{handle} {}
 
-  template <typename, thread_context, detail::tag>
+  template <typename, thread_context, tag>
   friend struct detail::promise_type;
 
   template <typename, typename...>
