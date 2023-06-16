@@ -171,6 +171,14 @@ inline constexpr auto deep_except_2 = fn([](auto self, int n) -> lf::task<> {
 
 inline constexpr auto noop = fn([](auto self) -> lf::task<> { co_return; });
 
+// In some implementations, this could cause a stack overflow if symmetric transfer is not used.
+inline constexpr auto sym_stack_overflow = fn([](auto self) -> lf::task<> {
+  for (int i = 0; i < 100'000; ++i) {
+    co_await lf::call(noop)();
+  }
+  co_await join;
+});
+
 template <scheduler S>
 void test(S &schedule) {
   SECTION("Fibonacci") {
@@ -199,6 +207,9 @@ void test(S &schedule) {
     REQUIRE(99 == sync_wait(schedule, access_test::get_2, a));
     REQUIRE(99 == sync_wait(schedule, mem_from_coro));
   }
+  SECTION("stack-overflow") {
+    sync_wait(schedule, sym_stack_overflow);
+  }
 
 #if LIBFORK_PROPAGATE_EXCEPTIONS
   SECTION("exception propagate") {
@@ -209,20 +220,6 @@ void test(S &schedule) {
     REQUIRE_THROWS_AS(sync_wait(schedule, deep_except_2, 10), deep);
   }
 #endif
-}
-
-// In some implementations, this could cause a stack overflow if symmetric transfer is not used.
-inline constexpr auto sym_stack_overflow = fn([](auto self) -> lf::task<> {
-  for (int i = 0; i < 100'000; ++i) {
-    co_await lf::call(noop)();
-  }
-  co_await join;
-});
-
-TEST_CASE("stack overflow", "[libfork]") {
-  inline_scheduler schedule{};
-
-  sync_wait(schedule, sym_stack_overflow);
 }
 
 TEMPLATE_TEST_CASE("libfork", "[libfork][template]", inline_scheduler) {
