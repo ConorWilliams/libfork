@@ -37,9 +37,10 @@ namespace lf {
  * @brief An enumeration that determines the behavior of a coroutine's promise.
  */
 enum class tag {
-  root, ///< This coroutine is a root task (allocated on heap) from an ``lf::sync_wait``.
-  call, ///< Non root task (on a virtual stack) from an ``lf::call``.
-  fork, ///< Non root task (on a virtual stack) from an ``lf::fork``.
+  root,   ///< This coroutine is a root task (allocated on heap) from an ``lf::sync_wait``.
+  call,   ///< Non root task (on a virtual stack) from an ``lf::call``.
+  fork,   ///< Non root task (on a virtual stack) from an ``lf::fork``.
+  invoke, ///< Non root task (on a virtual stack) from invoking directly (implicit join).
 };
 
 namespace detail {
@@ -54,12 +55,18 @@ struct root_block_t {
   std::binary_semaphore semaphore{0};
   std::optional<T> result{};
 };
-
 template <>
 struct root_block_t<void> {
   exception_packet exception{};
   std::binary_semaphore semaphore{0};
 };
+
+template <typename T>
+struct invoke_block_t {
+  std::optional<T> result{};
+};
+template <>
+struct invoke_block_t<void> {};
 
 #ifdef __cpp_lib_is_pointer_interconvertible
 static_assert(std::is_pointer_interconvertible_with_class(&root_block_t<long>::exception));

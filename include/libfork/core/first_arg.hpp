@@ -24,26 +24,6 @@
 namespace lf {
 
 /**
- * @brief Test if a type is a stateless class.
- */
-template <typename T>
-concept stateless = std::is_class_v<T> && std::is_trivial_v<T> && std::is_empty_v<T>;
-
-/**
- * @brief Wraps a stateless callable that returns an ``lf::task``.
- */
-template <stateless Fn>
-struct async_fn {};
-
-/**
- * @brief Wraps a stateless callable that returns an ``lf::task``.
- */
-template <stateless Fn>
-struct async_mem_fn {};
-
-// -------------------------------------------------------------------------- //
-
-/**
  * @brief The first argument to all async functions will be passes a type derived from this class.
  *
  * If ``AsyncFn`` is an ``async_fn`` then this will derive from ``async_fn``. If ``AsyncFn`` is an ``async_mem_fn``
@@ -55,6 +35,44 @@ struct async_mem_fn {};
 template <tag Tag, typename AsyncFn, typename... Self>
   requires(sizeof...(Self) <= 1)
 struct first_arg;
+
+namespace detail {
+
+template <typename Head, typename... Tail>
+struct invoke_packet {
+  [[no_unique_address]] Head context;
+  [[no_unique_address]] std::tuple<Tail &&...> args;
+};
+
+} // namespace detail
+
+/**
+ * @brief Test if a type is a stateless class.
+ */
+template <typename T>
+concept stateless = std::is_class_v<T> && std::is_trivial_v<T> && std::is_empty_v<T>;
+
+/**
+ * @brief Wraps a stateless callable that returns an ``lf::task``.
+ */
+template <stateless Fn>
+struct async_fn {
+  /**
+   * @brief Wrap the arguments into an awaitable (in an ``lf::task``) that triggers an invoke.
+   */
+  template <typename... Args>
+  LIBFORK_STATIC_CALL constexpr auto operator()(Args &&...args) LIBFORK_STATIC_CONST noexcept -> detail::invoke_packet<first_arg<tag::invoke, async_fn<Fn>>, Args...> {
+    return {{}, {std::forward<Args>(args)...}};
+  }
+};
+
+/**
+ * @brief Wraps a stateless callable that returns an ``lf::task``.
+ */
+template <stateless Fn>
+struct async_mem_fn {};
+
+// -------------------------------------------------------------------------- //
 
 /**
  * @brief A specialization of ``first_arg`` for asynchronous global functions.

@@ -136,6 +136,9 @@ public:
   static auto initial_suspend() -> stdexp::suspend_always { return {}; }
 
   void unhandled_exception() noexcept {
+
+    LIBFORK_ASSERT(this->steals() == 0);
+
     if constexpr (Tag == tag::root) {
       LIBFORK_LOG("Unhandled exception in root task");
       // Put in our remote root-block.
@@ -143,6 +146,7 @@ public:
     } else if (!this->parent().promise().has_parent()) {
       LIBFORK_LOG("Unhandled exception in child of root task");
       // Put in parent (root) task's remote root-block.
+      // This reinterpret_cast is safe because of the static_asserts in promise_base.hpp.
       reinterpret_cast<exception_packet *>(this->parent().promise().ret_address())->unhandled_exception(); // NOLINT
     } else {
       LIBFORK_LOG("Unhandled exception in root's grandchild or further");

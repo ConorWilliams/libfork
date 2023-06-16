@@ -6,6 +6,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include <exception>
 #include <iostream>
 #include <memory>
 #include <new>
@@ -49,10 +50,24 @@ inline constexpr auto r_fib = fn([](auto fib, int n) -> lf::task<int> {
 
   int a, b;
 
-  co_await lf::fork(a, fib)(n - 1);
-  co_await lf::call(b, fib)(n - 2);
+  {
+    std::exception_ptr ptr;
 
-  co_await lf::join;
+    try {
+      // If we leave this scope by exception or otherwise, we must
+      // make sure join is called before a,b destructed.
+      co_await lf::fork(a, fib)(n - 1);
+      co_await lf::call(b, fib)(n - 2);
+    } catch (...) {
+      ptr = std::current_exception();
+    }
+
+    co_await lf::join;
+
+    if (ptr) {
+      std::rethrow_exception(ptr);
+    }
+  }
 
   co_return a + b;
 });
