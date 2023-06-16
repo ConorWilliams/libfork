@@ -148,9 +148,8 @@ auto sync_wait_impl(Schedule &&scheduler, Head head, Args &&...args) {
 
   root_block.exception.rethrow_if_unhandled();
 
-  LIBFORK_ASSERT(root_block.result.has_value());
-
   if constexpr (!std::is_void_v<value_type>) {
+    LIBFORK_ASSERT(root_block.result.has_value());
     return std::move(*root_block.result);
   }
 }

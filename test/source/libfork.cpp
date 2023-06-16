@@ -72,78 +72,78 @@ inline constexpr auto r_fib = fn([](auto fib, int n) -> lf::task<int> {
   co_return a + b;
 });
 
-// inline constexpr auto v_fib = fn([](auto fib, int &ret, int n) -> lf::task<void> {
-//   //
-//   if (n < 2) {
-//     ret = n;
-//     co_return;
-//   }
+inline constexpr auto v_fib = fn([](auto fib, int &ret, int n) -> lf::task<void> {
+  //
+  if (n < 2) {
+    ret = n;
+    co_return;
+  }
 
-//   int a, b;
+  int a, b;
 
-//   co_await lf::fork(fib)(a, n - 1);
-//   co_await lf::call(fib)(b, n - 2);
+  co_await lf::fork(fib)(a, n - 1);
+  co_await lf::call(fib)(b, n - 2);
 
-//   co_await lf::join;
+  co_await lf::join;
 
-//   ret = a + b;
-// });
+  ret = a + b;
+});
 
-// class access_test {
+class access_test {
 
-// public:
-//   static constexpr auto get = mem_fn([](auto self) -> lf::task<int> {
-//     co_await lf::call(self->run)(*self, 10);
-//     co_return self->m_private;
-//   });
+public:
+  static constexpr auto get = mem_fn([](auto self) -> lf::task<int> {
+    co_await lf::call(self->run)(*self, 10);
+    co_return self->m_private;
+  });
 
-// private:
-//   static constexpr auto run = mem_fn([](auto self, int n) -> lf::task<> {
-//     if (n < 0) {
-//       co_return;
-//     }
-//     co_await lf::call(self->run)(*self, n - 1);
-//   });
+private:
+  static constexpr auto run = mem_fn([](auto self, int n) -> lf::task<> {
+    if (n < 0) {
+      co_return;
+    }
+    co_await lf::call(self->run)(*self, n - 1);
+  });
 
-//   int m_private = 99;
-// };
+  int m_private = 99;
+};
 
-// inline constexpr auto mem_from_coro = fn([](auto self) -> lf::task<int> {
-//   access_test a;
-//   int r;
-//   co_await lf::call(r, access_test::get)(a);
-//   co_return r;
-// });
+inline constexpr auto mem_from_coro = fn([](auto self) -> lf::task<int> {
+  access_test a;
+  int r;
+  co_await lf::call(r, access_test::get)(a);
+  co_return r;
+});
 
 #if LIBFORK_PROPAGATE_EXCEPTIONS
 
-// struct deep : std::exception {};
+struct deep : std::exception {};
 
-// inline constexpr auto deep_except = fn([](auto self, int n) -> lf::task<> {
-//   if (n > 0) {
-//     co_await lf::call(self)(n - 1);
+inline constexpr auto deep_except = fn([](auto self, int n) -> lf::task<> {
+  if (n > 0) {
+    co_await lf::call(self)(n - 1);
 
-//     try {
-//       co_await ::lf::join;
-//       FAIL("Should not reach here");
-//     } catch (deep const &) {
-//       throw;
-//     }
-//   }
-//   throw deep{};
-// });
+    try {
+      co_await ::lf::join;
+      FAIL("Should not reach here");
+    } catch (deep const &) {
+      throw;
+    }
+  }
+  throw deep{};
+});
 
 #endif
 
-// inline constexpr auto noop = fn([](auto self) -> lf::task<> { co_return; });
+inline constexpr auto noop = fn([](auto self) -> lf::task<> { co_return; });
 
-// // In some implementations, this could cause a stack overflow if symmetric transfer is not used.
-// inline constexpr auto sym_stack_overflow = fn([](auto self) -> lf::task<> {
-//   for (int i = 0; i < 100'000; ++i) {
-//     co_await lf::call(noop)();
-//   }
-//   co_await join;
-// });
+// In some implementations, this could cause a stack overflow if symmetric transfer is not used.
+inline constexpr auto sym_stack_overflow = fn([](auto self) -> lf::task<> {
+  for (int i = 0; i < 100'000; ++i) {
+    co_await lf::call(noop)();
+  }
+  co_await join;
+});
 
 template <scheduler S>
 void test(S &schedule) {
@@ -152,29 +152,29 @@ void test(S &schedule) {
       REQUIRE(fib(i) == sync_wait(schedule, r_fib, i));
     }
   }
-  //   SECTION("Void Fibonacci") {
-  //     int res;
+  SECTION("Void Fibonacci") {
+    int res;
 
-  //     for (int i = 0; i < 25; ++i) {
-  //       sync_wait(schedule, v_fib, res, i);
-  //       REQUIRE(fib(i) == res);
-  //     }
-  //   }
-  //   SECTION("member function") {
-  //     access_test a;
-  //     REQUIRE(99 == sync_wait(schedule, access_test::get, a));
-  //     REQUIRE(99 == sync_wait(schedule, mem_from_coro));
-  //   }
+    for (int i = 0; i < 25; ++i) {
+      sync_wait(schedule, v_fib, res, i);
+      REQUIRE(fib(i) == res);
+    }
+  }
+  SECTION("member function") {
+    access_test a;
+    REQUIRE(99 == sync_wait(schedule, access_test::get, a));
+    REQUIRE(99 == sync_wait(schedule, mem_from_coro));
+  }
 
-  //   SECTION("stack overflow") {
-  //     sync_wait(schedule, sym_stack_overflow);
-  //   }
+  SECTION("stack overflow") {
+    sync_wait(schedule, sym_stack_overflow);
+  }
 
-  // #if LIBFORK_PROPAGATE_EXCEPTIONS
-  //   SECTION("exception propagate") {
-  //     REQUIRE_THROWS_AS(sync_wait(schedule, deep_except, 10), deep);
-  //   }
-  // #endif
+#if LIBFORK_PROPAGATE_EXCEPTIONS
+  SECTION("exception propagate") {
+    REQUIRE_THROWS_AS(sync_wait(schedule, deep_except, 10), deep);
+  }
+#endif
 }
 
 TEMPLATE_TEST_CASE("libfork", "[libfork][template]", inline_scheduler) {

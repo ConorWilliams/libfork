@@ -76,7 +76,11 @@ struct promise_type : mixin_return<T, Tag> {
 private:
   template <typename R, typename Head, typename... Tail>
   constexpr auto add_context_to_packet(packet<R, Head, Tail...> pack) -> packet<R, with_context<Context, Head>, Tail...> {
-    return {pack.ret, {pack.context}, std::move(pack.args)};
+    if constexpr (!std::is_void_v<R>) {
+      return {pack.ret, {pack.context}, std::move(pack.args)};
+    } else {
+      return {{}, {pack.context}, std::move(pack.args)};
+    }
   }
 
   template <class = void>
