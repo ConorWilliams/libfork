@@ -328,21 +328,6 @@ private:
   }
 };
 
-namespace detail {
-
-template <typename>
-struct is_virtual_stack_impl : std::false_type {};
-
-template <std::size_t N>
-struct is_virtual_stack_impl<virtual_stack<N>> : std::true_type {
-  static_assert(sizeof(virtual_stack<N>) == N);
-};
-
-template <typename T>
-concept is_virtual_stack = is_virtual_stack_impl<T>::value;
-
-} // namespace detail
-
 } // namespace lf
 
 #endif /* B74D7802_9253_47C3_BBD2_00D7058AA901 */

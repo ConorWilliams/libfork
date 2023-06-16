@@ -131,6 +131,17 @@ private:
 
 // -------------- promise_base -------------- //
 
+template <typename>
+struct is_virtual_stack_impl : std::false_type {};
+
+template <std::size_t N>
+struct is_virtual_stack_impl<virtual_stack<N>> : std::true_type {
+  static_assert(sizeof(virtual_stack<N>) == N);
+};
+
+template <typename T>
+concept is_virtual_stack = is_virtual_stack_impl<T>::value;
+
 } // namespace detail
 
 /**
