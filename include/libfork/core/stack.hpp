@@ -32,15 +32,6 @@ namespace lf {
 
 namespace detail {
 
-struct immovable {
-  immovable() = default;
-  immovable(const immovable &) = delete;
-  immovable(immovable &&) = delete;
-  auto operator=(const immovable &) -> immovable & = delete;
-  auto operator=(immovable &&) -> immovable & = delete;
-  ~immovable() = default;
-};
-
 inline constexpr std::size_t k_new_align = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
 
 template <typename T, typename U>
@@ -51,7 +42,7 @@ auto r_cast(U &&expr) noexcept {
 /**
  * @brief Base class for virtual stacks
  */
-struct alignas(k_new_align) stack_mem : immovable, exception_packet { // NOLINT
+struct alignas(k_new_align) stack_mem : exception_packet { // NOLINT
   std::byte *m_ptr;
   std::byte *m_end;
 };

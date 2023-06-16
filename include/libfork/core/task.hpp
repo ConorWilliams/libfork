@@ -53,7 +53,7 @@ struct invoker {
  * @brief The return type for libfork's async functions/coroutines.
  */
 template <typename T = void>
-  requires(!std::is_reference_v<T>)
+  requires(!std::is_reference_v<T> && !std::is_const_v<T>)
 class task {
 public:
   using value_type = T; ///< The type of the value returned by the coroutine (cannot be a reference, use ``std::reference_wrapper``).

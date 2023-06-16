@@ -23,12 +23,21 @@
 
 namespace lf::detail {
 
+struct immovable {
+  immovable() = default;
+  immovable(const immovable &) = delete;
+  immovable(immovable &&) = delete;
+  auto operator=(const immovable &) -> immovable & = delete;
+  auto operator=(immovable &&) -> immovable & = delete;
+  ~immovable() = default;
+};
+
 #if LIBFORK_PROPAGATE_EXCEPTIONS
 
 /**
  * @brief A thread safe std::exception_ptr.
  */
-class exception_packet {
+class exception_packet : immovable {
 public:
   /**
    * @brief Test if currently storing an exception.

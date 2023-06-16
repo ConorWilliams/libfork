@@ -50,30 +50,30 @@ namespace detail {
 static constexpr std::int32_t k_imax = std::numeric_limits<std::int32_t>::max();
 
 template <typename T>
-struct root_block_t {
+struct root_block_t : immovable {
   exception_packet exception{};
   std::binary_semaphore semaphore{0};
   std::optional<T> result{};
 };
 template <>
-struct root_block_t<void> {
+struct root_block_t<void> : immovable {
   exception_packet exception{};
   std::binary_semaphore semaphore{0};
 };
 
 template <typename T>
-struct invoke_block_t {
+struct invoke_block_t : immovable {
   std::optional<T> result{};
 };
 template <>
-struct invoke_block_t<void> {};
+struct invoke_block_t<void> : immovable {};
 
 #ifdef __cpp_lib_is_pointer_interconvertible
 static_assert(std::is_pointer_interconvertible_with_class(&root_block_t<long>::exception));
 static_assert(std::is_pointer_interconvertible_with_class(&root_block_t<void>::exception));
 #endif
 
-class promise_base {
+class promise_base : immovable {
 public:
   // Full declaration below, needs concept first
   class handle_t;

@@ -38,8 +38,21 @@ struct first_arg;
 
 namespace detail {
 
-template <typename Head, typename... Tail>
-struct invoke_packet {
+/**
+ * @brief An awaitable type (in a task) that triggers a join.
+ */
+struct join_t {};
+
+/**
+ * @brief An awaitable type (in a task) that triggers a fork/call.
+ */
+template <typename R, typename Head, typename... Tail>
+struct [[nodiscard]] packet {
+private:
+  struct empty {};
+
+public:
+  [[no_unique_address]] std::conditional_t<std::is_void_v<R>, empty, std::add_lvalue_reference_t<R>> ret;
   [[no_unique_address]] Head context;
   [[no_unique_address]] std::tuple<Tail &&...> args;
 };
@@ -61,8 +74,8 @@ struct async_fn {
    * @brief Wrap the arguments into an awaitable (in an ``lf::task``) that triggers an invoke.
    */
   template <typename... Args>
-  LIBFORK_STATIC_CALL constexpr auto operator()(Args &&...args) LIBFORK_STATIC_CONST noexcept -> detail::invoke_packet<first_arg<tag::invoke, async_fn<Fn>>, Args...> {
-    return {{}, {std::forward<Args>(args)...}};
+  LIBFORK_STATIC_CALL constexpr auto operator()(Args &&...args) LIBFORK_STATIC_CONST noexcept -> detail::packet<void, first_arg<tag::invoke, async_fn<Fn>>, Args...> {
+    return {{}, {}, {std::forward<Args>(args)...}};
   }
 };
 

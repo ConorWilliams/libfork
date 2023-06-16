@@ -34,39 +34,23 @@
 
 namespace lf::detail {
 
-/**
- * @brief An awaitable type (in a task) that triggers a join.
- */
-struct join_t {};
-
-struct empty {};
-
-/**
- * @brief An awaitable type (in a task) that triggers a fork/call.
- */
-template <typename R, typename Head, typename... Tail>
-struct [[nodiscard]] packet {
-  [[no_unique_address]] std::conditional_t<std::is_void_v<R>, empty, std::add_lvalue_reference_t<R>> ret;
-  [[no_unique_address]] Head context;
-  [[no_unique_address]] std::tuple<Tail &&...> args;
-};
-
 // -------------------------------------------------------------------------- //
 
 template <typename T, tag Tag>
 struct mixin_return : promise_base {
   template <typename U>
-    requires std::constructible_from<T, U> && (Tag == tag::root)
+    requires std::constructible_from<T, U> && (Tag == tag::root || Tag == tag::invoke)
   constexpr void return_value(U &&expr) noexcept(std::is_nothrow_constructible_v<T, U>) {
-    if constexpr (Tag == tag::root) {
-      LIBFORK_LOG("Root task returns value");
-      auto *block_addr = static_cast<root_block_t<T> *>(ret_address());
-      LIBFORK_ASSERT(!block_addr->result.has_value());
-      block_addr->result.emplace(std::forward<U>(expr));
-    } else {
-      static_assert(std::is_void_v<T>, "TODO");
-    }
+
+    LIBFORK_LOG("Root/invoked task returns value");
+
+    using block_t = std::conditional_t<Tag == tag::root, root_block_t<T>, invoke_block_t<T>>;
+
+    auto *block_addr = static_cast<block_t *>(ret_address());
+    LIBFORK_ASSERT(!block_addr->result.has_value());
+    block_addr->result.emplace(std::forward<U>(expr));
   }
+
   template <typename U>
     requires std::assignable_from<T &, U> && (Tag == tag::call || Tag == tag::fork)
   void return_value(U &&expr) noexcept(std::is_nothrow_assignable_v<T &, U>) {
@@ -177,7 +161,7 @@ public:
         // Can no longer touch child.
         child.destroy();
 
-        if constexpr (Tag == tag::call) {
+        if constexpr (Tag == tag::call || Tag == tag::invoke) {
           LIBFORK_LOG("Inline task resumes parent");
           // Inline task's parent cannot have been stolen, no need to reset control block.
           return parent_h;
@@ -272,7 +256,7 @@ public:
 
 private:
   template <typename R, typename Head, typename... Args>
-    requires std::is_same_v<R, typename invoker<Head, Args...>::promise_type::value_type>
+    requires((std::is_void_v<R> && Head::tag_vale == tag::invoke) || std::is_same_v<R, typename invoker<Head, Args...>::promise_type::value_type>)
   constexpr auto invoke(packet<R, Head, Args...> packet) {
 
     LIBFORK_LOG("Spawning a task");
@@ -327,11 +311,51 @@ public:
       [[nodiscard]] constexpr auto await_suspend([[maybe_unused]] stdexp::coroutine_handle<promise_type> parent) noexcept -> decltype(child) {
         return m_child;
       }
-
       decltype(child) m_child;
     };
 
     return awaitable{{}, child};
+  }
+
+  template <typename F, typename... This, typename... Args>
+  [[nodiscard]] constexpr auto await_transform(packet<void, first_arg<tag::invoke, F, This...>, Args...> packet)
+    requires requires { invoke(add_context_to_packet(std::move(packet))); }
+  {
+
+    stdexp::coroutine_handle child = invoke(add_context_to_packet(std::move(packet)));
+
+    using value_type = typename std::decay_t<decltype(child.promise())>::value_type;
+
+    struct awaitable : stdexp::suspend_always {
+
+      [[nodiscard]] constexpr auto await_suspend([[maybe_unused]] stdexp::coroutine_handle<promise_type> parent) noexcept -> decltype(child) {
+        if constexpr (!std::is_void_v<value_type>) {
+          m_child.promise().set_ret_address(std::addressof(m_res));
+        }
+        return m_child;
+      }
+
+      [[nodiscard]] constexpr auto await_resume() -> value_type {
+        // Propagate exceptions.
+        if constexpr (LIBFORK_PROPAGATE_EXCEPTIONS) {
+          if constexpr (Tag == tag::root) {
+            root_block(base->ret_address()).exception.rethrow_if_unhandled();
+          } else {
+            stack_type::from_address(base)->rethrow_if_unhandled();
+          }
+        }
+        if constexpr (!std::is_void_v<value_type>) {
+          LIBFORK_ASSERT(m_res.result.has_value());
+          return std::move(*m_res.result);
+        }
+      }
+
+      promise_base *base;
+      decltype(child) m_child;
+      invoke_block_t<value_type> m_res;
+    };
+
+    return awaitable{{}, this, child, {}};
   }
 
   constexpr auto await_transform([[maybe_unused]] join_t join_tag) noexcept {
