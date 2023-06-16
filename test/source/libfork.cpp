@@ -91,11 +91,15 @@ inline constexpr auto v_fib = fn([](auto fib, int &ret, int n) -> lf::task<void>
 
 inline constexpr auto r_fib_2 = fn([](auto fib, int n) -> lf::task<int> {
   //
+
   if (n < 2) {
     co_return n;
   }
 
-  co_return co_await fib(n - 1) + co_await fib(n - 2);
+  int a = co_await fib(n - 1);
+  int b = co_await fib(n - 2);
+
+  co_return a + b;
 });
 
 class access_test {
@@ -174,8 +178,10 @@ void test(S &schedule) {
       REQUIRE(fib(i) == sync_wait(schedule, r_fib, i));
     }
   }
+
   SECTION("Fibonacci inline") {
     for (int i = 0; i < 25; ++i) {
+      LIBFORK_LOG("i={}", i);
       REQUIRE(fib(i) == sync_wait(schedule, r_fib_2, i));
     }
   }

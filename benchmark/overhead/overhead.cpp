@@ -3,6 +3,24 @@
 #include "libfork/libfork.hpp"
 #include "libfork/schedule/inline.hpp"
 
+namespace lf::detail {
+
+struct make_fn_impl {
+  template <stateless Fn>
+  [[nodiscard]] consteval auto operator+([[maybe_unused]] Fn invocable_which_returns_a_task) const -> async_fn<Fn> { return {}; }
+};
+
+inline constexpr make_fn_impl make_fn;
+
+}; // namespace lf::detail
+
+// NOLINTBEGIN
+
+/**
+ * @brief Macro to automate the creation of an async function with the first argument ``auto self``.
+ */
+#define ASYNC(...) ::lf::detail::make_fn + [](auto self __VA_OPT__(, ) __VA_ARGS__) LIBFORK_STATIC_CALL
+
 __attribute__((noinline)) auto fib(int n) -> int {
   if (n < 2) {
     return n;

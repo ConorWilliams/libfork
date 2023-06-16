@@ -131,11 +131,17 @@ inline constexpr std::size_t k_cache_line = 64;
  */
 #ifndef LIBFORK_LOG
   #ifdef LIBFORK_LOGGING
-    #include <format>
     #include <iostream>
     #include <mutex>
     #include <thread>
     #include <type_traits>
+
+    #ifdef __cpp_lib_format
+      #include <format>
+      #define LIBFORK_FORMAT(message, ...) std::format(message __VA_OPT__(, ) __VA_ARGS__)
+    #else
+      #define LIBFORK_FORMAT(message, ...) (message)
+    #endif
 
     #ifdef __cpp_lib_syncbuf
       #include <syncstream>
@@ -144,11 +150,11 @@ inline constexpr std::size_t k_cache_line = 64;
       #define LIBFORK_SYNC_COUT std::cout << std::this_thread::get_id()
     #endif
 
-    #define LIBFORK_LOG(message, ...)                                                           \
-      do {                                                                                      \
-        if (!std::is_constant_evaluated()) {                                                    \
-          LIBFORK_SYNC_COUT << ": " << std::format(message __VA_OPT__(, ) __VA_ARGS__) << '\n'; \
-        }                                                                                       \
+    #define LIBFORK_LOG(message, ...)                                                              \
+      do {                                                                                         \
+        if (!std::is_constant_evaluated()) {                                                       \
+          LIBFORK_SYNC_COUT << ": " << LIBFORK_FORMAT(message __VA_OPT__(, ) __VA_ARGS__) << '\n'; \
+        }                                                                                          \
       } while (false)
   #else
     #define LIBFORK_LOG(head, ...) \
