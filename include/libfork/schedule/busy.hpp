@@ -56,7 +56,7 @@ public:
       m_stack = unique_ptr{*handle};
     }
 
-    auto task_steal() -> auto {
+    auto task_steal() -> auto{
       return m_tasks.steal();
     }
 
