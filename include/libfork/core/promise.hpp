@@ -124,13 +124,8 @@ public:
   static auto initial_suspend() -> stdexp::suspend_always { return {}; }
 
   void unhandled_exception() noexcept {
-    if (this->steals() != 0) {
-#if LIBFORK_COMPILER_EXCEPTIONS
-      throw; // This will call std::terminate(), unhandled_exception without a join is always fatal.
-#else
-      std::abort();
-#endif
-    }
+
+    LIBFORK_ASSERT(this->steals() == 0); // unhandled_exception without a join is always fatal.
 
     if constexpr (Tag == tag::root) {
       LIBFORK_LOG("Unhandled exception in root task");
@@ -324,12 +319,17 @@ public:
     return awaitable{{}, child};
   }
 
+  /**
+   * @brief An invoke should never occur within an async scope as the exceptions will get muddled
+   */
   template <typename F, typename... This, typename... Args>
   [[nodiscard]] constexpr auto await_transform(packet<void, first_arg<tag::invoke, F, This...>, Args...> packet) {
 
     stdexp::coroutine_handle child = invoke(add_context_to_packet(std::move(packet)));
 
     using value_type = typename std::decay_t<decltype(child.promise())>::value_type;
+
+    LIBFORK_ASSERT(this->steals() == 0);
 
     struct awaitable : stdexp::suspend_always {
 
@@ -341,6 +341,9 @@ public:
       }
 
       [[nodiscard]] constexpr auto await_resume() -> value_type {
+
+        LIBFORK_ASSERT(base->steals() == 0);
+
         // Propagate exceptions.
         if constexpr (LIBFORK_PROPAGATE_EXCEPTIONS) {
           if constexpr (Tag == tag::root) {

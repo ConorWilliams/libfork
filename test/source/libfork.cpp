@@ -103,6 +103,12 @@ class access_test {
 public:
   static constexpr auto get = mem_fn([](auto self) -> lf::task<int> {
     co_await lf::call(self->run)(*self, 10);
+    co_await lf::join;
+    co_return self->m_private;
+  });
+
+  static constexpr auto get_2 = mem_fn([](auto self) -> lf::task<int> {
+    co_await self->run(*self, 10);
     co_return self->m_private;
   });
 
@@ -112,6 +118,7 @@ private:
       co_return;
     }
     co_await lf::call(self->run)(*self, n - 1);
+    co_await join;
   });
 
   int m_private = 99;
@@ -121,6 +128,7 @@ inline constexpr auto mem_from_coro = fn([](auto self) -> lf::task<int> {
   access_test a;
   int r;
   co_await lf::call(r, access_test::get)(a);
+  co_await join;
   co_return r;
 });
 
@@ -133,7 +141,7 @@ inline constexpr auto deep_except = fn([](auto self, int n) -> lf::task<> {
     co_await lf::call(self)(n - 1);
 
     try {
-      co_await ::lf::join;
+      co_await lf::join;
       FAIL("Should not reach here");
     } catch (deep const &) {
       throw;
@@ -190,6 +198,7 @@ void test(S &schedule) {
   SECTION("member function") {
     access_test a;
     REQUIRE(99 == sync_wait(schedule, access_test::get, a));
+    REQUIRE(99 == sync_wait(schedule, access_test::get_2, a));
     REQUIRE(99 == sync_wait(schedule, mem_from_coro));
   }
 

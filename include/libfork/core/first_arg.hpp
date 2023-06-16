@@ -118,7 +118,7 @@ struct first_arg<Tag, async_fn<F>> : async_fn<F> {
  */
 template <tag Tag, stateless F, typename This>
   requires(!std::is_reference_v<This>)
-struct first_arg<Tag, async_mem_fn<F>, This> : private async_mem_fn<F> {
+struct first_arg<Tag, async_mem_fn<F>, This> {
   /**
    * @brief The type of the underlying asynchronous function originally wrapped by ``async[_mem]_fn``.
    */
@@ -143,10 +143,6 @@ struct first_arg<Tag, async_mem_fn<F>, This> : private async_mem_fn<F> {
    * @brief Deference the underlying ``this`` pointer.
    */
   [[nodiscard]] constexpr auto operator*() noexcept -> This & { return *m_self; }
-  /**
-   * @brief Inherit the ``operator()`` from ``async_mem_fn`` for invoke.
-   */
-  using async_mem_fn<F>::operator();
 
 private:
   This *m_self;
