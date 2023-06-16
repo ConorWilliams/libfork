@@ -89,6 +89,15 @@ inline constexpr auto v_fib = fn([](auto fib, int &ret, int n) -> lf::task<void>
   ret = a + b;
 });
 
+inline constexpr auto r_fib_2 = fn([](auto fib, int n) -> lf::task<int> {
+  //
+  if (n < 2) {
+    co_return n;
+  }
+
+  co_return co_await fib(n - 1) + co_await fib(n - 2);
+});
+
 class access_test {
 
 public:
@@ -133,6 +142,19 @@ inline constexpr auto deep_except = fn([](auto self, int n) -> lf::task<> {
   throw deep{};
 });
 
+inline constexpr auto deep_except_2 = fn([](auto self, int n) -> lf::task<> {
+  if (n > 0) {
+
+    try {
+      co_await self(n - 1);
+      FAIL("Should not reach here");
+    } catch (deep const &) {
+      throw;
+    }
+  }
+  throw deep{};
+});
+
 #endif
 
 inline constexpr auto noop = fn([](auto self) -> lf::task<> { co_return; });
@@ -150,6 +172,11 @@ void test(S &schedule) {
   SECTION("Fibonacci") {
     for (int i = 0; i < 25; ++i) {
       REQUIRE(fib(i) == sync_wait(schedule, r_fib, i));
+    }
+  }
+  SECTION("Fibonacci inline") {
+    for (int i = 0; i < 25; ++i) {
+      REQUIRE(fib(i) == sync_wait(schedule, r_fib_2, i));
     }
   }
   SECTION("Void Fibonacci") {
@@ -173,6 +200,10 @@ void test(S &schedule) {
 #if LIBFORK_PROPAGATE_EXCEPTIONS
   SECTION("exception propagate") {
     REQUIRE_THROWS_AS(sync_wait(schedule, deep_except, 10), deep);
+  }
+
+  SECTION("exception propagate from invoked") {
+    REQUIRE_THROWS_AS(sync_wait(schedule, deep_except_2, 10), deep);
   }
 #endif
 }

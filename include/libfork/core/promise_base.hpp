@@ -50,15 +50,17 @@ namespace detail {
 static constexpr std::int32_t k_imax = std::numeric_limits<std::int32_t>::max();
 
 template <typename T>
-struct root_block_t : immovable {
+struct root_block_t {
   exception_packet exception{};
   std::binary_semaphore semaphore{0};
   std::optional<T> result{};
+  [[no_unique_address]] immovable anon;
 };
 template <>
-struct root_block_t<void> : immovable {
+struct root_block_t<void> {
   exception_packet exception{};
   std::binary_semaphore semaphore{0};
+  [[no_unique_address]] immovable anon;
 };
 
 template <typename T>

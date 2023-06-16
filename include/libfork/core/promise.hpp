@@ -124,8 +124,13 @@ public:
   static auto initial_suspend() -> stdexp::suspend_always { return {}; }
 
   void unhandled_exception() noexcept {
-
-    LIBFORK_ASSERT(this->steals() == 0);
+    if (this->steals() != 0) {
+#if LIBFORK_COMPILER_EXCEPTIONS
+      throw; // This will call std::terminate(), unhandled_exception without a join is always fatal.
+#else
+      std::abort();
+#endif
+    }
 
     if constexpr (Tag == tag::root) {
       LIBFORK_LOG("Unhandled exception in root task");
@@ -260,7 +265,7 @@ public:
 
 private:
   template <typename R, typename Head, typename... Args>
-    requires((std::is_void_v<R> && Head::tag_vale == tag::invoke) || std::is_same_v<R, typename invoker<Head, Args...>::promise_type::value_type>)
+    requires((std::is_void_v<R> && Head::tag_value == tag::invoke) || std::is_same_v<R, typename invoker<Head, Args...>::promise_type::value_type>)
   constexpr auto invoke(packet<R, Head, Args...> packet) {
 
     LIBFORK_LOG("Spawning a task");
@@ -282,9 +287,8 @@ private:
 
 public:
   template <typename R, typename F, typename... This, typename... Args>
-  [[nodiscard]] constexpr auto await_transform(packet<R, first_arg<tag::fork, F, This...>, Args...> packet)
-    requires requires { invoke(add_context_to_packet(std::move(packet))); }
-  {
+  [[nodiscard]] constexpr auto await_transform(packet<R, first_arg<tag::fork, F, This...>, Args...> packet) {
+
     stdexp::coroutine_handle child = invoke(add_context_to_packet(std::move(packet)));
 
     struct awaitable : stdexp::suspend_always {
@@ -306,9 +310,8 @@ public:
   }
 
   template <typename R, typename F, typename... This, typename... Args>
-  [[nodiscard]] constexpr auto await_transform(packet<R, first_arg<tag::call, F, This...>, Args...> packet)
-    requires requires { invoke(add_context_to_packet(std::move(packet))); }
-  {
+  [[nodiscard]] constexpr auto await_transform(packet<R, first_arg<tag::call, F, This...>, Args...> packet) {
+
     stdexp::coroutine_handle child = invoke(add_context_to_packet(std::move(packet)));
 
     struct awaitable : stdexp::suspend_always {
@@ -322,9 +325,7 @@ public:
   }
 
   template <typename F, typename... This, typename... Args>
-  [[nodiscard]] constexpr auto await_transform(packet<void, first_arg<tag::invoke, F, This...>, Args...> packet)
-    requires requires { invoke(add_context_to_packet(std::move(packet))); }
-  {
+  [[nodiscard]] constexpr auto await_transform(packet<void, first_arg<tag::invoke, F, This...>, Args...> packet) {
 
     stdexp::coroutine_handle child = invoke(add_context_to_packet(std::move(packet)));
 
@@ -455,6 +456,7 @@ public:
       }
 
       constexpr void await_resume() const {
+        LIBFORK_LOG("join resumes");
         // Check we have been reset.
         LIBFORK_ASSERT(base->steals() == 0);
         LIBFORK_ASSERT(base->joins() == k_imax);

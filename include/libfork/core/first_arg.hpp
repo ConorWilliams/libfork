@@ -57,6 +57,9 @@ public:
   [[no_unique_address]] std::tuple<Tail &&...> args;
 };
 
+template <typename T>
+concept not_first_arg = !requires { typename std::decay_t<T>::lf_is_first_arg; };
+
 } // namespace detail
 
 /**
@@ -83,7 +86,15 @@ struct async_fn {
  * @brief Wraps a stateless callable that returns an ``lf::task``.
  */
 template <stateless Fn>
-struct async_mem_fn {};
+struct async_mem_fn {
+  /**
+   * @brief Wrap the arguments into an awaitable (in an ``lf::task``) that triggers an invoke.
+   */
+  template <detail::not_first_arg Self, typename... Args>
+  LIBFORK_STATIC_CALL constexpr auto operator()(Self &self, Args &&...args) LIBFORK_STATIC_CONST noexcept -> detail::packet<void, first_arg<tag::invoke, async_mem_fn<Fn>, Self>, Args...> {
+    return {{}, {self}, {std::forward<Args>(args)...}};
+  }
+};
 
 // -------------------------------------------------------------------------- //
 
@@ -107,7 +118,7 @@ struct first_arg<Tag, async_fn<F>> : async_fn<F> {
  */
 template <tag Tag, stateless F, typename This>
   requires(!std::is_reference_v<This>)
-struct first_arg<Tag, async_mem_fn<F>, This> {
+struct first_arg<Tag, async_mem_fn<F>, This> : private async_mem_fn<F> {
   /**
    * @brief The type of the underlying asynchronous function originally wrapped by ``async[_mem]_fn``.
    */
@@ -132,6 +143,10 @@ struct first_arg<Tag, async_mem_fn<F>, This> {
    * @brief Deference the underlying ``this`` pointer.
    */
   [[nodiscard]] constexpr auto operator*() noexcept -> This & { return *m_self; }
+  /**
+   * @brief Inherit the ``operator()`` from ``async_mem_fn`` for invoke.
+   */
+  using async_mem_fn<F>::operator();
 
 private:
   This *m_self;

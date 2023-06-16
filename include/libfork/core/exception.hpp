@@ -32,6 +32,8 @@ struct immovable {
   ~immovable() = default;
 };
 
+static_assert(std::is_empty_v<immovable>);
+
 #if LIBFORK_PROPAGATE_EXCEPTIONS
 
 /**
