@@ -75,6 +75,9 @@ template <stateless Fn>
 struct async_fn {
   /**
    * @brief Wrap the arguments into an awaitable (in an ``lf::task``) that triggers an invoke.
+   *
+   * An invoke should not be triggered inside a ``fork``/``call``/``join`` region as the exceptions
+   * will be muddled, use ``lf:call`` instead.
    */
   template <typename... Args>
   LIBFORK_STATIC_CALL constexpr auto operator()(Args &&...args) LIBFORK_STATIC_CONST noexcept -> detail::packet<void, first_arg<tag::invoke, async_fn<Fn>>, Args...> {
@@ -89,6 +92,9 @@ template <stateless Fn>
 struct async_mem_fn {
   /**
    * @brief Wrap the arguments into an awaitable (in an ``lf::task``) that triggers an invoke.
+   *
+   * An invoke should not be triggered inside a ``fork``/``call``/``join`` region as the exceptions
+   * will be muddled, use ``lf::call`` instead.
    */
   template <detail::not_first_arg Self, typename... Args>
   LIBFORK_STATIC_CALL constexpr auto operator()(Self &self, Args &&...args) LIBFORK_STATIC_CONST noexcept -> detail::packet<void, first_arg<tag::invoke, async_mem_fn<Fn>, Self>, Args...> {

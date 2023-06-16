@@ -40,7 +40,7 @@ enum class tag {
   root,   ///< This coroutine is a root task (allocated on heap) from an ``lf::sync_wait``.
   call,   ///< Non root task (on a virtual stack) from an ``lf::call``.
   fork,   ///< Non root task (on a virtual stack) from an ``lf::fork``.
-  invoke, ///< Non root task (on a virtual stack) from invoking directly (implicit join).
+  invoke, ///< Non root task (on a virtual stack) from invoking directly, implicit re_throw.
 };
 
 namespace detail {

@@ -31,6 +31,14 @@ inline constexpr auto c_fib = ASYNC(int n) -> lf::task<int> {
   co_return a + b;
 };
 
+inline constexpr auto c_fib_invoke = ASYNC(int n) -> lf::task<int> {
+  if (n < 2) {
+    co_return n;
+  }
+
+  co_return co_await self(n - 1) + co_await self(n - 2);
+};
+
 struct no_register {
   int n;
 
@@ -65,10 +73,14 @@ auto main() -> int {
 
   volatile int in = 30;
 
-  lf::inline_scheduler scheduler;
+  lf::inline_scheduler i_sch;
 
   bench.run("async inline", [&] {
-    ankerl::nanobench::doNotOptimizeAway(lf::sync_wait(scheduler, c_fib, in));
+    ankerl::nanobench::doNotOptimizeAway(lf::sync_wait(i_sch, c_fib, in));
+  });
+
+  bench.run("async invoke", [&] {
+    ankerl::nanobench::doNotOptimizeAway(lf::sync_wait(i_sch, c_fib_invoke, in));
   });
 
   bench.run("function no register", [&] {
