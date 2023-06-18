@@ -125,15 +125,15 @@ jobs:
       run: cmake "--preset=ci-$("${{ matrix.os }}".split("-")[0])"
 
     - name: Build
-      run: cmake --build build --config Release -j 2
+      run: cmake --build build --config Debug -j 2
 
     - name: Install
-      run: cmake --install build --config Release --prefix prefix
+      run: cmake --install build --config Debug --prefix prefix
 
     - name: Test
       if: matrix.os != 'windows-2022'
       working-directory: build
-      run: ctest --output-on-failure --no-tests=error -C Release -j 2
+      run: ctest --output-on-failure --no-tests=error -C Debug -j 2
 
   docs:
     # Deploy docs only when builds succeed
