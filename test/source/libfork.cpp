@@ -82,14 +82,10 @@ inline constexpr auto v_fib = fn([](auto fib, int &ret, int n) -> lf::task<void>
 
   int a, b;
 
-  std::cout << "a\n";
-
   co_await lf::fork(fib)(a, n - 1);
   co_await lf::call(fib)(b, n - 2);
 
   co_await lf::join;
-
-  std::cout << "b\n";
 
   co_await lf::fork(fib)(a, n - 1);
   co_await lf::call(fib)(b, n - 2);
@@ -192,6 +188,10 @@ inline constexpr auto sym_stack_overflow = fn([](auto self) -> lf::task<int> {
 
 template <scheduler S>
 void test(S &schedule) {
+  SECTION("stack-overflow") {
+    REQUIRE(sync_wait(schedule, sym_stack_overflow));
+  }
+
   // SECTION("Fibonacci") {
   //   for (int i = 0; i < 25; ++i) {
   //     REQUIRE(fib(i) == sync_wait(schedule, r_fib, i));
@@ -217,9 +217,6 @@ void test(S &schedule) {
   //     REQUIRE(99 == sync_wait(schedule, access_test::get, a));
   //     REQUIRE(99 == sync_wait(schedule, access_test::get_2, a));
   //     REQUIRE(99 == sync_wait(schedule, mem_from_coro));
-  //   }
-  //   SECTION("stack-overflow") {
-  //     REQUIRE(sync_wait(schedule, sym_stack_overflow));
   //   }
 
   // #if LIBFORK_PROPAGATE_EXCEPTIONS
