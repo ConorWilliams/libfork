@@ -117,7 +117,12 @@ inline constexpr std::size_t k_cache_line = 64;
  */
 #if true
   #include <cassert>
-  #define LIBFORK_ASSERT(expr) assert(expr)
+  #define LIBFORK_ASSERT(expr)                                                       \
+    do {                                                                             \
+      if (!(expr)) {                                                                 \
+        []() noexcept { throw std::runtime_error{"Assert " #expr " is false!"}; }(); \
+      }                                                                              \
+    } while (false)
 #else
   #define LIBFORK_ASSERT(expr) LIBFORK_ASSUME(expr)
 #endif
