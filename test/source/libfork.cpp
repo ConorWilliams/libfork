@@ -207,7 +207,7 @@ void test(S &schedule) {
   SECTION("Void Fibonacci") {
     int res;
 
-    for (int i = 13; i < 14; ++i) {
+    for (int i = 15; i < 16; ++i) {
       sync_wait(schedule, v_fib, res, i);
       REQUIRE(fib(i) == res);
     }
