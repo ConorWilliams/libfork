@@ -118,9 +118,11 @@ public:
     // Use construct_at(...) to set non-atomically as we know we are the
     // only thread who can touch this control block until a steal which
     // would provide the required memory synchronization.
-    static_assert(std::is_trivially_destructible_v<std::atomic_int32_t>);
+    // static_assert(std::is_trivially_destructible_v<std::atomic_int32_t>);
 
-    std::construct_at(&m_join, k_imax);
+    // std::construct_at(&m_join, k_imax);
+
+    m_join.store(k_imax, std::memory_order_relaxed);
   }
 
   // Increase the debug counter
