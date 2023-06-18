@@ -209,12 +209,12 @@ void test(S &schedule) {
   //   }
   // }
   // SECTION("Void Fibonacci") {
-  int res;
+  // int res;
 
-  int i = 12;
+  // int i = 12;
 
   // for (int i = 15; i < 16; ++i) {
-  sync_wait(schedule, v_fib, res, i);
+  // sync_wait(schedule, v_fib, res, i);
   // REQUIRE(fib(i) == res);
   // }
   // }
@@ -227,6 +227,8 @@ void test(S &schedule) {
   //   SECTION("stack-overflow") {
   //     REQUIRE(sync_wait(schedule, sym_stack_overflow));
   //   }
+
+  sync_wait(schedule, sym_stack_overflow);
 
   // #if LIBFORK_PROPAGATE_EXCEPTIONS
   //   SECTION("exception propagate") {

@@ -16,8 +16,10 @@
 #include <exception>
 #include <memory>
 #include <new>
+#include <stack>
 #include <stdexcept>
 #include <type_traits>
+#include <utility>
 
 #include "libfork/core/exception.hpp"
 #include "libfork/macro.hpp"
@@ -45,6 +47,9 @@ auto r_cast(U &&expr) noexcept {
 struct alignas(k_new_align) stack_mem : exception_packet { // NOLINT
   std::byte *m_ptr;
   std::byte *m_end;
+#ifndef NDEBUG
+  std::stack<std::pair<void *, std::size_t>> m_debug;
+#endif
 };
 
 [[nodiscard]] inline auto aligned_alloc(std::size_t size, std::size_t alignment) -> void * {
@@ -255,6 +260,10 @@ public:
 
     m_ptr = next;
 
+#ifndef NDEBUG
+    this->m_debug.push({prev, n});
+#endif
+
     return prev;
   }
 
@@ -269,6 +278,12 @@ public:
   constexpr auto deallocate(void *ptr, std::size_t n) noexcept -> void {
     //
     LIBFORK_LOG("Deallocating {} bytes from the stack", n);
+
+#ifndef NDEBUG
+    LIBFORK_ASSERT(!this->m_debug.empty());
+    LIBFORK_ASSERT(this->m_debug.top() == std::make_pair(ptr, n));
+    this->m_debug.pop();
+#endif
 
     auto *prev = static_cast<std::byte *>(ptr);
 
