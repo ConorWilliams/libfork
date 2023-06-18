@@ -36,6 +36,19 @@ namespace lf::detail {
 
 // -------------------------------------------------------------------------- //
 
+#ifndef NDEBUG
+  #define ASSERT(expr, message)                                 \
+    do {                                                        \
+      if (!(expr)) {                                            \
+        []() noexcept { throw std::runtime_error(message); }(); \
+      }                                                         \
+    } while (false)
+#else
+  #define ASSERT(expr, message) \
+    do {                        \
+    } while (false)
+#endif
+
 template <typename T, tag Tag>
 struct mixin_return : promise_base {
   template <typename U>
@@ -125,7 +138,7 @@ public:
 
   void unhandled_exception() noexcept {
 
-    LIBFORK_ASSERT(this->steals() == 0); // unhandled_exception without a join is always fatal.
+    ASSERT(this->debug_count() == 0, "Unhandled exception without a join!");
 
     if constexpr (Tag == tag::root) {
       LIBFORK_LOG("Unhandled exception in root task");
@@ -252,6 +265,8 @@ public:
       }
     };
 
+    ASSERT(this->debug_count() == 0, "Fork/Call without a join!");
+
     LIBFORK_ASSERT(this->steals() == 0);            // Fork without join.
     LIBFORK_ASSERT(this->joins().load() == k_imax); // Destroyed in invalid state.
 
@@ -284,6 +299,8 @@ public:
   template <typename R, typename F, typename... This, typename... Args>
   [[nodiscard]] constexpr auto await_transform(packet<R, first_arg<tag::fork, F, This...>, Args...> packet) {
 
+    this->debug_inc();
+
     stdexp::coroutine_handle child = invoke(add_context_to_packet(std::move(packet)));
 
     struct awaitable : stdexp::suspend_always {
@@ -307,6 +324,8 @@ public:
   template <typename R, typename F, typename... This, typename... Args>
   [[nodiscard]] constexpr auto await_transform(packet<R, first_arg<tag::call, F, This...>, Args...> packet) {
 
+    this->debug_inc();
+
     stdexp::coroutine_handle child = invoke(add_context_to_packet(std::move(packet)));
 
     struct awaitable : stdexp::suspend_always {
@@ -325,22 +344,24 @@ public:
   template <typename F, typename... This, typename... Args>
   [[nodiscard]] constexpr auto await_transform(packet<void, first_arg<tag::invoke, F, This...>, Args...> packet) {
 
-    stdexp::coroutine_handle child = invoke(add_context_to_packet(std::move(packet)));
-
-    using value_type = typename std::decay_t<decltype(child.promise())>::value_type;
+    ASSERT(this->debug_count() == 0, "Invoke within async scope!");
 
     LIBFORK_ASSERT(this->steals() == 0);
+
+    stdexp::coroutine_handle child = invoke(add_context_to_packet(std::move(packet)));
+
+    using child_value_type = typename std::decay_t<decltype(child.promise())>::value_type;
 
     struct awaitable : stdexp::suspend_always {
 
       [[nodiscard]] constexpr auto await_suspend([[maybe_unused]] stdexp::coroutine_handle<promise_type> parent) noexcept -> decltype(child) {
-        if constexpr (!std::is_void_v<value_type>) {
+        if constexpr (!std::is_void_v<child_value_type>) {
           m_child.promise().set_ret_address(std::addressof(m_res));
         }
         return m_child;
       }
 
-      [[nodiscard]] constexpr auto await_resume() -> value_type {
+      [[nodiscard]] constexpr auto await_resume() -> child_value_type {
 
         LIBFORK_ASSERT(base->steals() == 0);
 
@@ -352,7 +373,7 @@ public:
             stack_type::from_address(base)->rethrow_if_unhandled();
           }
         }
-        if constexpr (!std::is_void_v<value_type>) {
+        if constexpr (!std::is_void_v<child_value_type>) {
           LIBFORK_ASSERT(m_res.result.has_value());
           return std::move(*m_res.result);
         }
@@ -360,7 +381,7 @@ public:
 
       promise_base *base;
       decltype(child) m_child;
-      invoke_block_t<value_type> m_res;
+      invoke_block_t<child_value_type> m_res;
     };
 
     return awaitable{{}, this, child, {}};
@@ -464,6 +485,8 @@ public:
         LIBFORK_ASSERT(base->steals() == 0);
         LIBFORK_ASSERT(base->joins() == k_imax);
 
+        base->debug_reset();
+
         if constexpr (Tag != tag::root) {
           LIBFORK_ASSERT(stack_type::from_address(base) == Context::context().stack_top());
         }
@@ -506,6 +529,8 @@ private:
     return cast_handle;
   }
 };
+
+#undef ASSERT
 
 } // namespace lf::detail
 

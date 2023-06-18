@@ -18,7 +18,7 @@
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#define NDEBUG
+// #define NDEBUG
 // #define LIBFORK_PROPAGATE_EXCEPTIONS
 // #undef LIBFORK_LOG
 // #define LIBFORK_LOGGING
@@ -26,6 +26,7 @@
 #include "libfork/libfork.hpp"
 #include "libfork/macro.hpp"
 #include "libfork/queue.hpp"
+#include "libfork/schedule/busy.hpp"
 #include "libfork/schedule/inline.hpp"
 
 // NOLINTBEGIN No linting in tests
@@ -80,6 +81,11 @@ inline constexpr auto v_fib = fn([](auto fib, int &ret, int n) -> lf::task<void>
   }
 
   int a, b;
+
+  co_await lf::fork(fib)(a, n - 1);
+  co_await lf::call(fib)(b, n - 2);
+
+  co_await lf::join;
 
   co_await lf::fork(fib)(a, n - 1);
   co_await lf::call(fib)(b, n - 2);
@@ -197,7 +203,7 @@ void test(S &schedule) {
   SECTION("Void Fibonacci") {
     int res;
 
-    for (int i = 0; i < 25; ++i) {
+    for (int i = 0; i < 17; ++i) {
       sync_wait(schedule, v_fib, res, i);
       REQUIRE(fib(i) == res);
     }

@@ -113,6 +113,7 @@ public:
   constexpr void reset() noexcept {
     // This is called when taking ownership of a task at a join point.
     LIBFORK_ASSERT(m_steal != 0);
+
     m_steal = 0;
     // Use construct_at(...) to set non-atomically as we know we are the
     // only thread who can touch this control block until a steal which
@@ -122,11 +123,35 @@ public:
     std::construct_at(&m_join, k_imax);
   }
 
+  // Increase the debug counter
+  constexpr void debug_inc() noexcept {
+#ifndef NDEBUG
+    ++m_debug_count;
+#endif
+  }
+  // Fetch the debug count
+  constexpr auto debug_count() const noexcept -> std::int32_t {
+#ifndef NDEBUG
+    return m_debug_count;
+#else
+    return 0;
+#endif
+  }
+  // Reset the debug counter
+  constexpr void debug_reset() noexcept {
+#ifndef NDEBUG
+    m_debug_count = 0;
+#endif
+  }
+
 private:
   stdexp::coroutine_handle<promise_base> m_parent = {}; ///< Parent task (roots don't have one).
   void *m_return_address = nullptr;                     ///< root_block * || T *
   std::int32_t m_steal = 0;                             ///< Number of steals.
   std::atomic_int32_t m_join = k_imax;                  ///< Number of children joined (obfuscated).
+#ifndef NDEBUG
+  std::int32_t m_debug_count = 0; ///< Number of forks/calls (debug).
+#endif
 };
 
 // -------------- promise_base -------------- //
