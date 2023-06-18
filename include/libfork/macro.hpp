@@ -115,7 +115,7 @@ inline constexpr std::size_t k_cache_line = 64;
 /**
  * @brief If ``NDEBUG`` is defined then ``LIBFORK_ASSERT(expr)`` is  ``LIBFORK_ASSUME(expr)`` otherwise ``assert(expr)``.
  */
-#if true
+#if false
   #include <cassert>
   #define LIBFORK_ASSERT(expr)                                                       \
     do {                                                                             \
@@ -124,7 +124,9 @@ inline constexpr std::size_t k_cache_line = 64;
       }                                                                              \
     } while (false)
 #else
-  #define LIBFORK_ASSERT(expr) LIBFORK_ASSUME(expr)
+  #define LIBFORK_ASSERT(expr) \
+    do {                       \
+    } while (false)
 #endif
 
 /**
