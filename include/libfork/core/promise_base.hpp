@@ -122,7 +122,7 @@ public:
 
     // std::construct_at(&m_join, k_imax);
 
-    m_join.store(k_imax, std::memory_order_relaxed);
+    m_join.store(k_imax, std::memory_order_release);
   }
 
   // Increase the debug counter
