@@ -21,7 +21,7 @@
 // #define NDEBUG
 // #define LIBFORK_PROPAGATE_EXCEPTIONS
 // #undef LIBFORK_LOG
-#define LIBFORK_LOGGING
+// #define LIBFORK_LOGGING
 
 #include "libfork/libfork.hpp"
 #include "libfork/macro.hpp"
@@ -82,11 +82,19 @@ inline constexpr auto v_fib = fn([](auto fib, int &ret, int n) -> lf::task<void>
 
   int a, b;
 
-  for (int i = 0; i < 2; ++i) {
-    co_await lf::fork(fib)(a, n - 1);
-    co_await lf::call(fib)(b, n - 2);
-    co_await lf::join;
-  }
+  std::cout << "a\n";
+
+  co_await lf::fork(fib)(a, n - 1);
+  co_await lf::call(fib)(b, n - 2);
+
+  co_await lf::join;
+
+  std::cout << "b\n";
+
+  co_await lf::fork(fib)(a, n - 1);
+  co_await lf::call(fib)(b, n - 2);
+
+  co_await lf::join;
 
   ret = a + b;
 });
@@ -199,17 +207,10 @@ void test(S &schedule) {
   SECTION("Void Fibonacci") {
     int res;
 
-    // for (int i = 0; i < 1'000'000; ++i) {
-    //   sync_wait(schedule, v_fib, res, 5);
-    //   REQUIRE(fib(5) == res);
-    // }
-
-    int i = 15;
-
-    // for (int i = 15; i < 16; ++i) {
-    sync_wait(schedule, v_fib, res, i);
-    REQUIRE(fib(i) == res);
-    // }
+    for (int i = 15; i < 16; ++i) {
+      sync_wait(schedule, v_fib, res, i);
+      REQUIRE(fib(i) == res);
+    }
   }
   //   SECTION("member function") {
   //     access_test a;
