@@ -48,8 +48,6 @@ struct first_arg;
 
 namespace detail {
 
-// clang-format off
-
 /**
  * @brief A type that satisfies the ``thread_context`` concept.
  */
@@ -68,9 +66,9 @@ struct dummy_context {
   auto task_push(task_handle) -> void;
 };
 
-// clang-format on
-
 static_assert(thread_context<dummy_context>, "dummy_context is not a thread_context");
+
+// clang-format off
 
 template <typename Arg>
 concept is_first_arg = requires {
@@ -85,16 +83,6 @@ concept is_first_arg = requires {
   requires stateless<typename Arg::underlying_async_fn>;
   requires thread_context<typename Arg::context_type>;
 };
-
-template <stateless F, tag Tag>
-struct first_arg_base {
-  using lf_is_first_arg = std::true_type;
-  using context_type = detail::dummy_context;
-  using underlying_async_fn = F;
-  static constexpr tag tag_value = Tag;
-};
-
-// clang-format off
 
 template <typename T>
 concept not_first_arg = !is_first_arg<std::remove_cvref_t<T>>;
@@ -155,6 +143,14 @@ public:
 
     return child;
   }
+};
+
+template <stateless F, tag Tag>
+struct first_arg_base {
+  using lf_is_first_arg = std::true_type;
+  using context_type = detail::dummy_context;
+  using underlying_async_fn = F;
+  static constexpr tag tag_value = Tag;
 };
 
 } // namespace detail
