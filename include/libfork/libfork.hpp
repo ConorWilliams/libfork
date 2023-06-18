@@ -99,13 +99,11 @@ namespace detail {
 template <scheduler Schedule, typename Head, class... Args>
 auto sync_wait_impl(Schedule &&scheduler, Head head, Args &&...args) {
 
-  using invoker = detail::invoker<Head, Args...>;
+  using packet_t = packet<void, Head, Args...>;
 
-  using value_type = typename invoker::value_type;
+  root_block_t<typename packet_t::value_type> root_block;
 
-  auto handle = invoker::invoke(head, std::forward<Args>(args)...);
-
-  root_block_t<value_type> root_block;
+  auto handle = packet_t{{}, head, {std::forward<Args>(args)...}}.invoke_bind();
 
   LIBFORK_LOG("Set root address {}", (std::size_t)&root_block);
 
@@ -132,7 +130,7 @@ auto sync_wait_impl(Schedule &&scheduler, Head head, Args &&...args) {
 
   root_block.exception.rethrow_if_unhandled();
 
-  if constexpr (!std::is_void_v<value_type>) {
+  if constexpr (!std::is_void_v<typename packet_t::value_type>) {
     LIBFORK_ASSERT(root_block.result.has_value());
     return std::move(*root_block.result);
   }

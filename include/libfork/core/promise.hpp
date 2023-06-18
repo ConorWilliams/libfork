@@ -36,6 +36,11 @@ namespace lf::detail {
 
 // -------------------------------------------------------------------------- //
 
+/**
+ * @brief An awaitable type (in a task) that triggers a join.
+ */
+struct join_t {};
+
 #ifndef NDEBUG
   #define ASSERT(expr, message)                                 \
     do {                                                        \
@@ -273,35 +278,15 @@ public:
     return final_awaitable{};
   }
 
-private:
-  template <typename R, typename Head, typename... Args>
-    requires((std::is_void_v<R> && Head::tag_value == tag::invoke) || std::is_same_v<R, typename invoker<Head, Args...>::promise_type::value_type>)
-  constexpr auto invoke(packet<R, Head, Args...> packet) {
-
-    LIBFORK_LOG("Spawning a task");
-
-    auto unwrap = [&](Args &&...args) {
-      return invoker<Head, Args...>::invoke(packet.context, std::forward<Args>(args)...);
-    };
-
-    stdexp::coroutine_handle child = std::apply(unwrap, std::move(packet.args));
-
-    child.promise().set_parent(cast_down(stdexp::coroutine_handle<promise_type>::from_promise(*this)));
-
-    if constexpr (!std::is_void_v<R>) {
-      child.promise().set_ret_address(std::addressof(packet.ret));
-    }
-
-    return child;
-  }
-
 public:
   template <typename R, typename F, typename... This, typename... Args>
   [[nodiscard]] constexpr auto await_transform(packet<R, first_arg<tag::fork, F, This...>, Args...> packet) {
 
     this->debug_inc();
 
-    stdexp::coroutine_handle child = invoke(add_context_to_packet(std::move(packet)));
+    stdexp::coroutine_handle child = add_context_to_packet(std::move(packet)).invoke_bind();
+
+    child.promise().set_parent(cast_down(stdexp::coroutine_handle<promise_type>::from_promise(*this)));
 
     struct awaitable : stdexp::suspend_always {
       [[nodiscard]] constexpr auto await_suspend(stdexp::coroutine_handle<promise_type> parent) noexcept -> decltype(child) {
@@ -326,7 +311,9 @@ public:
 
     this->debug_inc();
 
-    stdexp::coroutine_handle child = invoke(add_context_to_packet(std::move(packet)));
+    stdexp::coroutine_handle child = add_context_to_packet(std::move(packet)).invoke_bind();
+
+    child.promise().set_parent(cast_down(stdexp::coroutine_handle<promise_type>::from_promise(*this)));
 
     struct awaitable : stdexp::suspend_always {
       [[nodiscard]] constexpr auto await_suspend([[maybe_unused]] stdexp::coroutine_handle<promise_type> parent) noexcept -> decltype(child) {
@@ -346,9 +333,9 @@ public:
 
     ASSERT(this->debug_count() == 0, "Invoke within async scope!");
 
-    LIBFORK_ASSERT(this->steals() == 0);
+    stdexp::coroutine_handle child = add_context_to_packet(std::move(packet)).invoke_bind();
 
-    stdexp::coroutine_handle child = invoke(add_context_to_packet(std::move(packet)));
+    child.promise().set_parent(cast_down(stdexp::coroutine_handle<promise_type>::from_promise(*this)));
 
     using child_value_type = typename std::decay_t<decltype(child.promise())>::value_type;
 
