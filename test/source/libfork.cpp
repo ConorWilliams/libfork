@@ -82,7 +82,7 @@ inline constexpr auto v_fib = fn([](auto fib, int &ret, int n) -> lf::task<void>
 
   int a, b;
 
-  for (int i = 0; i < 250; ++i) {
+  for (int i = 0; i < 2; ++i) {
     co_await lf::fork(fib)(a, n - 1);
     co_await lf::call(fib)(b, n - 2);
     co_await lf::join;
@@ -204,7 +204,7 @@ void test(S &schedule) {
     //   REQUIRE(fib(5) == res);
     // }
 
-    int i = 3;
+    int i = 15;
 
     // for (int i = 15; i < 16; ++i) {
     sync_wait(schedule, v_fib, res, i);
