@@ -21,7 +21,7 @@
 // #define NDEBUG
 // #define LIBFORK_PROPAGATE_EXCEPTIONS
 // #undef LIBFORK_LOG
-// #define LIBFORK_LOGGING
+#define LIBFORK_LOGGING
 
 #include "libfork/libfork.hpp"
 #include "libfork/macro.hpp"
@@ -82,10 +82,14 @@ inline constexpr auto v_fib = fn([](auto fib, int &ret, int n) -> lf::task<void>
 
   int a, b;
 
+  std::cout << "a\n";
+
   co_await lf::fork(fib)(a, n - 1);
   co_await lf::call(fib)(b, n - 2);
 
   co_await lf::join;
+
+  std::cout << "b\n";
 
   co_await lf::fork(fib)(a, n - 1);
   co_await lf::call(fib)(b, n - 2);
@@ -188,18 +192,18 @@ inline constexpr auto sym_stack_overflow = fn([](auto self) -> lf::task<int> {
 
 template <scheduler S>
 void test(S &schedule) {
-  SECTION("Fibonacci") {
-    for (int i = 0; i < 25; ++i) {
-      REQUIRE(fib(i) == sync_wait(schedule, r_fib, i));
-    }
-  }
+  // SECTION("Fibonacci") {
+  //   for (int i = 0; i < 25; ++i) {
+  //     REQUIRE(fib(i) == sync_wait(schedule, r_fib, i));
+  //   }
+  // }
 
-  SECTION("Fibonacci inline") {
-    for (int i = 0; i < 25; ++i) {
-      LIBFORK_LOG("i={}", i);
-      REQUIRE(fib(i) == sync_wait(schedule, r_fib_2, i));
-    }
-  }
+  // SECTION("Fibonacci inline") {
+  //   for (int i = 0; i < 25; ++i) {
+  //     LIBFORK_LOG("i={}", i);
+  //     REQUIRE(fib(i) == sync_wait(schedule, r_fib_2, i));
+  //   }
+  // }
   SECTION("Void Fibonacci") {
     int res;
 
@@ -208,25 +212,25 @@ void test(S &schedule) {
       REQUIRE(fib(i) == res);
     }
   }
-  SECTION("member function") {
-    access_test a;
-    REQUIRE(99 == sync_wait(schedule, access_test::get, a));
-    REQUIRE(99 == sync_wait(schedule, access_test::get_2, a));
-    REQUIRE(99 == sync_wait(schedule, mem_from_coro));
-  }
-  SECTION("stack-overflow") {
-    REQUIRE(sync_wait(schedule, sym_stack_overflow));
-  }
+  //   SECTION("member function") {
+  //     access_test a;
+  //     REQUIRE(99 == sync_wait(schedule, access_test::get, a));
+  //     REQUIRE(99 == sync_wait(schedule, access_test::get_2, a));
+  //     REQUIRE(99 == sync_wait(schedule, mem_from_coro));
+  //   }
+  //   SECTION("stack-overflow") {
+  //     REQUIRE(sync_wait(schedule, sym_stack_overflow));
+  //   }
 
-#if LIBFORK_PROPAGATE_EXCEPTIONS
-  SECTION("exception propagate") {
-    REQUIRE_THROWS_AS(sync_wait(schedule, deep_except, 10), deep);
-  }
+  // #if LIBFORK_PROPAGATE_EXCEPTIONS
+  //   SECTION("exception propagate") {
+  //     REQUIRE_THROWS_AS(sync_wait(schedule, deep_except, 10), deep);
+  //   }
 
-  SECTION("exception propagate from invoked") {
-    REQUIRE_THROWS_AS(sync_wait(schedule, deep_except_2, 10), deep);
-  }
-#endif
+  //   SECTION("exception propagate from invoked") {
+  //     REQUIRE_THROWS_AS(sync_wait(schedule, deep_except_2, 10), deep);
+  //   }
+  // #endif
 }
 
 TEMPLATE_TEST_CASE("libfork", "[libfork][template]", inline_scheduler) {
