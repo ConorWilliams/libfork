@@ -15,12 +15,8 @@
 #include <type_traits>
 #include <utility>
 
-// #include <catch2/catch_template_test_macros.hpp>
-// #include <catch2/catch_test_macros.hpp>
-
-#ifdef NDEBUG
-  #error "This test must be compiled with assertions enabled."
-#endif
+#include <catch2/catch_template_test_macros.hpp>
+#include <catch2/catch_test_macros.hpp>
 
 // #define NDEBUG
 // #define LIBFORK_PROPAGATE_EXCEPTIONS
@@ -47,7 +43,7 @@ int fib(int n) {
 inline constexpr auto r_fib = fn([](auto fib, int n) -> lf::task<int> {
   //
 
-  // REQUIRE(fib.context().max_threads() >= 0);
+  REQUIRE(fib.context().max_threads() >= 0);
 
   if (n < 2) {
     co_return n;
@@ -86,16 +82,16 @@ inline constexpr auto v_fib = fn([](auto fib, int &ret, int n) -> lf::task<void>
 
   int a, b;
 
-  // std::cout << "a\n";
+  std::cout << "a\n";
 
-  co_await lf::call(fib)(a, n - 1);
+  co_await lf::fork(fib)(a, n - 1);
   co_await lf::call(fib)(b, n - 2);
 
   co_await lf::join;
 
-  // std::cout << "b\n";
+  std::cout << "b\n";
 
-  co_await lf::call(fib)(a, n - 1);
+  co_await lf::fork(fib)(a, n - 1);
   co_await lf::call(fib)(b, n - 2);
 
   co_await lf::join;
@@ -160,7 +156,7 @@ inline constexpr auto deep_except = fn([](auto self, int n) -> lf::task<> {
 
     try {
       co_await lf::join;
-      // FAIL("Should not reach here");
+      FAIL("Should not reach here");
     } catch (deep const &) {
       throw;
     }
@@ -173,7 +169,7 @@ inline constexpr auto deep_except_2 = fn([](auto self, int n) -> lf::task<> {
 
     try {
       co_await self(n - 1);
-      // FAIL("Should not reach here");
+      FAIL("Should not reach here");
     } catch (deep const &) {
       throw;
     }
@@ -208,16 +204,14 @@ void test(S &schedule) {
   //     REQUIRE(fib(i) == sync_wait(schedule, r_fib_2, i));
   //   }
   // }
-  // SECTION("Void Fibonacci") {
-  // int res;
+  SECTION("Void Fibonacci") {
+    int res;
 
-  // int i = 12;
-
-  // for (int i = 15; i < 16; ++i) {
-  // sync_wait(schedule, v_fib, res, i);
-  // REQUIRE(fib(i) == res);
-  // }
-  // }
+    for (int i = 15; i < 16; ++i) {
+      sync_wait(schedule, v_fib, res, i);
+      REQUIRE(fib(i) == res);
+    }
+  }
   //   SECTION("member function") {
   //     access_test a;
   //     REQUIRE(99 == sync_wait(schedule, access_test::get, a));
@@ -227,8 +221,6 @@ void test(S &schedule) {
   //   SECTION("stack-overflow") {
   //     REQUIRE(sync_wait(schedule, sym_stack_overflow));
   //   }
-
-  sync_wait(schedule, sym_stack_overflow);
 
   // #if LIBFORK_PROPAGATE_EXCEPTIONS
   //   SECTION("exception propagate") {
@@ -241,13 +233,11 @@ void test(S &schedule) {
   // #endif
 }
 
-// TEMPLATE_TEST_CASE("libfork", "[libfork][template]", inline_scheduler) {
-int main() {
+TEMPLATE_TEST_CASE("libfork", "[libfork][template]", inline_scheduler) {
   for (int i = 0; i < 10; ++i) {
-    inline_scheduler schedule{};
+    TestType schedule{};
     test(schedule);
   }
 }
-// }
 
 // NOLINTEND
