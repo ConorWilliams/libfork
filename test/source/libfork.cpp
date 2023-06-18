@@ -82,19 +82,11 @@ inline constexpr auto v_fib = fn([](auto fib, int &ret, int n) -> lf::task<void>
 
   int a, b;
 
-  std::cout << "a\n";
-
-  co_await lf::fork(fib)(a, n - 1);
-  co_await lf::call(fib)(b, n - 2);
-
-  co_await lf::join;
-
-  std::cout << "b\n";
-
-  co_await lf::fork(fib)(a, n - 1);
-  co_await lf::call(fib)(b, n - 2);
-
-  co_await lf::join;
+  for (int i = 0; i < 250; ++i) {
+    co_await lf::fork(fib)(a, n - 1);
+    co_await lf::call(fib)(b, n - 2);
+    co_await lf::join;
+  }
 
   ret = a + b;
 });
@@ -212,10 +204,12 @@ void test(S &schedule) {
     //   REQUIRE(fib(5) == res);
     // }
 
-    for (int i = 15; i < 16; ++i) {
-      sync_wait(schedule, v_fib, res, i);
-      REQUIRE(fib(i) == res);
-    }
+    int i = 3;
+
+    // for (int i = 15; i < 16; ++i) {
+    sync_wait(schedule, v_fib, res, i);
+    REQUIRE(fib(i) == res);
+    // }
   }
   //   SECTION("member function") {
   //     access_test a;
