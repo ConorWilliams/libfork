@@ -21,7 +21,7 @@
 // #define NDEBUG
 // #define LIBFORK_PROPAGATE_EXCEPTIONS
 // #undef LIBFORK_LOG
-#define LIBFORK_LOGGING
+// #define LIBFORK_LOGGING
 
 #include "libfork/libfork.hpp"
 #include "libfork/macro.hpp"
@@ -207,7 +207,7 @@ void test(S &schedule) {
   SECTION("Void Fibonacci") {
     int res;
 
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 0; i < 17; ++i) {
       sync_wait(schedule, v_fib, res, i);
       REQUIRE(fib(i) == res);
     }
