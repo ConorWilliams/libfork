@@ -87,10 +87,10 @@ inline constexpr auto v_fib = fn([](auto fib, int &ret, int n) -> lf::task<void>
 
   co_await lf::join;
 
-  co_await lf::fork(fib)(a, n - 1);
-  co_await lf::call(fib)(b, n - 2);
+  // co_await lf::fork(fib)(a, n - 1);
+  // co_await lf::call(fib)(b, n - 2);
 
-  co_await lf::join;
+  // co_await lf::join;
 
   ret = a + b;
 });
