@@ -21,7 +21,7 @@
 // #define NDEBUG
 // #define LIBFORK_PROPAGATE_EXCEPTIONS
 // #undef LIBFORK_LOG
-#define LIBFORK_LOGGING
+// #define LIBFORK_LOGGING
 
 #include "libfork/libfork.hpp"
 #include "libfork/macro.hpp"
