@@ -209,7 +209,7 @@ void test(S &schedule) {
 
     for (int i = 0; i < 1'000'000; ++i) {
       sync_wait(schedule, v_fib, res, 5);
-      REQUIRE(fib(i) == res);
+      REQUIRE(fib(5) == res);
     }
 
     // for (int i = 15; i < 16; ++i) {
