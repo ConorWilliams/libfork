@@ -20,13 +20,14 @@
 #include <type_traits>
 #include <utility>
 
+#include "libfork/macro.hpp"
+
 #include "libfork/core/coroutine.hpp"
 #include "libfork/core/exception.hpp"
 #include "libfork/core/stack.hpp"
-#include "libfork/macro.hpp"
 
 /**
- * @file promise_base.hpp
+ * @file core.hpp
  *
  * @brief Provides the promise_type's common denominator.
  */
@@ -80,6 +81,7 @@ public:
   // Full declaration below, needs concept first
   class handle_t;
 
+  // Either a T* for fork/call or [root/invoke]_block_t *
   constexpr void set_ret_address(void *ret) noexcept {
     m_return_address = ret;
   }
@@ -93,7 +95,7 @@ public:
 
   // Checked access
   [[nodiscard]] constexpr auto parent() const noexcept -> stdx::coroutine_handle<promise_base> {
-    LIBFORK_ASSERT(m_parent);
+    LIBFORK_ASSERT(has_parent());
     return m_parent;
   }
 
@@ -126,11 +128,12 @@ public:
   // Increase the debug counter
   constexpr void debug_inc() noexcept {
 #ifndef NDEBUG
+    LIBFORK_ASSERT(m_debug_count < std::numeric_limits<std::int32_t>::max());
     ++m_debug_count;
 #endif
   }
   // Fetch the debug count
-  constexpr auto debug_count() const noexcept -> std::int32_t {
+  constexpr auto debug_count() const noexcept -> std::int64_t {
 #ifndef NDEBUG
     return m_debug_count;
 #else
@@ -150,7 +153,7 @@ private:
   std::int32_t m_steal = 0;                           ///< Number of steals.
   std::atomic_int32_t m_join = k_imax;                ///< Number of children joined (obfuscated).
 #ifndef NDEBUG
-  std::int32_t m_debug_count = 0; ///< Number of forks/calls (debug).
+  std::int64_t m_debug_count = 0; ///< Number of forks/calls (debug).
 #endif
 };
 

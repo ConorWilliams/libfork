@@ -130,7 +130,7 @@ private:
   int m_private = 99;
 };
 
-inline constexpr auto mem_from_coro = fn([](auto self) -> lf::task<int> {
+inline constexpr auto mem_from_coro = fn([](auto) -> lf::task<int> {
   access_test a;
   int r;
   co_await lf::call(r, access_test::get)(a);
@@ -171,10 +171,10 @@ inline constexpr auto deep_except_2 = fn([](auto self, int n) -> lf::task<> {
 
 #endif
 
-inline constexpr auto noop = fn([](auto self) -> lf::task<> { co_return; });
+inline constexpr auto noop = fn([](auto) -> lf::task<> { co_return; });
 
 // In some implementations, this could cause a stack overflow if symmetric transfer is not used.
-inline constexpr auto sym_stack_overflow_1 = fn([](auto self) -> lf::task<int> {
+inline constexpr auto sym_stack_overflow_1 = fn([](auto) -> lf::task<int> {
   for (int i = 0; i < 100'000'000; ++i) {
     co_await lf::fork(noop)();
     co_await lf::call(noop)();

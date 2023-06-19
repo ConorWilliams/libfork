@@ -88,7 +88,7 @@ public:
   #if LIBFORK_COMPILER_EXCEPTIONS
     throw;
   #else
-    std::abort();
+    std::terminate();
   #endif
   }
 

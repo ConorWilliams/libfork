@@ -61,11 +61,11 @@ public:
     /**
      * @brief Should never be called, aborts the program.
      */
-    static void stack_pop() { std::abort(); }
+    static void stack_pop() { LIBFORK_ASSERT(false); }
     /**
      * @brief Should never be called, aborts the program.
      */
-    static void stack_push([[maybe_unused]] stack_type::handle handle) { std::abort(); }
+    static void stack_push([[maybe_unused]] stack_type::handle handle) { LIBFORK_ASSERT(false); }
     /**
      * @brief Pops a task from the task queue.
      */

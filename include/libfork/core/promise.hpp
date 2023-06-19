@@ -20,11 +20,11 @@
 #include <utility>
 #include <version>
 
-#include "libfork/core/coroutine.hpp"
-#include "libfork/core/first_arg.hpp"
-#include "libfork/core/promise_base.hpp"
-#include "libfork/core/task.hpp"
 #include "libfork/macro.hpp"
+
+#include "libfork/core/core.hpp"
+#include "libfork/core/coroutine.hpp"
+#include "libfork/core/task.hpp"
 
 /**
  * @file promise.hpp
@@ -152,7 +152,7 @@ public:
     } else if (!this->parent().promise().has_parent()) {
       LIBFORK_LOG("Unhandled exception in child of root task");
       // Put in parent (root) task's remote root-block.
-      // This reinterpret_cast is safe because of the static_asserts in promise_base.hpp.
+      // This reinterpret_cast is safe because of the static_asserts in core.hpp.
       reinterpret_cast<exception_packet *>(this->parent().promise().ret_address())->unhandled_exception(); // NOLINT
     } else {
       LIBFORK_LOG("Unhandled exception in root's grandchild or further");

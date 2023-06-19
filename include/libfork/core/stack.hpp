@@ -21,8 +21,9 @@
 #include <type_traits>
 #include <utility>
 
-#include "libfork/core/exception.hpp"
 #include "libfork/macro.hpp"
+
+#include "libfork/core/exception.hpp"
 
 /**
  * @file stack.hpp
@@ -116,7 +117,7 @@ class alignas(detail::k_new_align) virtual_stack : detail::stack_mem {
 #if LIBFORK_COMPILER_EXCEPTIONS
       throw unaligned{};
 #else
-      std::abort();
+      std::terminate();
 #endif
     }
     m_ptr = m_buf.data();
@@ -254,7 +255,7 @@ public:
 #if LIBFORK_COMPILER_EXCEPTIONS
       throw overflow();
 #else
-      std::abort();
+      std::terminate();
 #endif
     }
 

@@ -45,7 +45,7 @@ public:
 #if LIBFORK_COMPILER_EXCEPTIONS
       throw not_set{};
 #else
-      std::abort();
+      std::terminate();
 #endif
     }
     return *m_ptr;
