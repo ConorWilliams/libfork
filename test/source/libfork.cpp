@@ -205,12 +205,10 @@ void test(S &schedule) {
   SECTION("Void Fibonacci") {
     int res;
 
-    int i = 15;
-
-    // for (int i = 15; i < 16; ++i) {
-    sync_wait(schedule, v_fib, res, i);
-    REQUIRE(fib(i) == res);
-    // }
+    for (int i = 0; i < 14; ++i) {
+      sync_wait(schedule, v_fib, res, i);
+      REQUIRE(fib(i) == res);
+    }
   }
   SECTION("member function") {
     access_test a;
