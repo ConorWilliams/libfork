@@ -99,7 +99,7 @@ concept is_task = is_task_impl<T>::value;
 template <typename R, tag Tag, typename TaskValueType>
 concept result_matches = std::same_as<R, TaskValueType> || (std::is_void_v<R> && (Tag == tag::invoke || Tag == tag::root));
 
-// clang-format on
+// clang-format off
 
 template <typename R, typename Head, typename... Tail>
 concept valid_packet = is_first_arg<Head> && requires(typename Head::underlying_async_fn fn, Head head, Tail &&...tail) {
