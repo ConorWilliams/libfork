@@ -82,15 +82,11 @@ inline constexpr auto v_fib = fn([](auto fib, int &ret, int n) -> lf::task<void>
 
   int a, b;
 
-  co_await lf::fork(fib)(a, n - 1);
-  co_await lf::call(fib)(b, n - 2);
-
-  co_await lf::join;
-
-  co_await lf::fork(fib)(a, n - 1);
-  co_await lf::call(fib)(b, n - 2);
-
-  co_await lf::join;
+  for (int i = 0; i < 2; i++) {
+    co_await lf::fork(fib)(a, n - 1);
+    co_await lf::call(fib)(b, n - 2);
+    co_await lf::join;
+  }
 
   ret = a + b;
 });
@@ -178,7 +174,7 @@ inline constexpr auto deep_except_2 = fn([](auto self, int n) -> lf::task<> {
 inline constexpr auto noop = fn([](auto self) -> lf::task<> { co_return; });
 
 // In some implementations, this could cause a stack overflow if symmetric transfer is not used.
-inline constexpr auto sym_stack_overflow = fn([](auto self) -> lf::task<int> {
+inline constexpr auto sym_stack_overflow_1 = fn([](auto self) -> lf::task<int> {
   for (int i = 0; i < 100'000'000; ++i) {
     co_await lf::call(noop)();
   }
@@ -189,7 +185,7 @@ inline constexpr auto sym_stack_overflow = fn([](auto self) -> lf::task<int> {
 template <scheduler S>
 void test(S &schedule) {
   SECTION("stack-overflow") {
-    REQUIRE(sync_wait(schedule, sym_stack_overflow));
+    REQUIRE(sync_wait(schedule, sym_stack_overflow_1));
   }
 
   SECTION("Fibonacci") {
