@@ -26,12 +26,12 @@
 #if __has_include(<coroutine>) // Check for a standard library
   #include <coroutine>
 namespace lf {
-namespace stdexp = std;
+namespace stdx = std;
 }
 #elif __has_include(<experimental/coroutine>) // Check for an experimental version
   #include <experimental/coroutine>
 namespace lf {
-namespace stdexp = std::experimental;
+namespace stdx = std::experimental;
 }
 #else
   #error "Missing <coroutine> header!"

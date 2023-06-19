@@ -92,7 +92,7 @@ public:
   /**
    * @brief Immediately resume the root task.
    */
-  static void schedule(stdexp::coroutine_handle<> root_task) {
+  static void schedule(stdx::coroutine_handle<> root_task) {
     root_task.resume();
   }
 

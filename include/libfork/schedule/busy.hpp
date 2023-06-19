@@ -142,8 +142,8 @@
 //   template <stateless Fn, class... Args>
 //   auto schedule(Fn fun, Args &&...args) {
 
-//     auto submit = [this](stdexp::coroutine_handle<> root) {
-//       auto prev = m_submit.exchange(stdexp::coroutine_handle<>{root});
+//     auto submit = [this](stdx::coroutine_handle<> root) {
+//       auto prev = m_submit.exchange(stdx::coroutine_handle<>{root});
 //       LIBFORK_LOG("waking workers");
 //       m_notify.notify_all();
 //     };
@@ -178,7 +178,7 @@
 
 //   static constexpr std::size_t k_steal_attempts = 1024;
 
-//   std::atomic<stdexp::coroutine_handle<>> m_submit = {nullptr};
+//   std::atomic<stdx::coroutine_handle<>> m_submit = {nullptr};
 
 //   std::atomic_flag m_root_in_flight = ATOMIC_FLAG_INIT;
 //   std::atomic_flag m_stop_requested = ATOMIC_FLAG_INIT;

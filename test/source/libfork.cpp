@@ -179,7 +179,7 @@ inline constexpr auto noop = fn([](auto self) -> lf::task<> { co_return; });
 
 // In some implementations, this could cause a stack overflow if symmetric transfer is not used.
 inline constexpr auto sym_stack_overflow = fn([](auto self) -> lf::task<int> {
-  for (int i = 0; i < 100'000; ++i) {
+  for (int i = 0; i < 100'000'000; ++i) {
     co_await lf::call(noop)();
   }
   co_await join;
@@ -192,42 +192,44 @@ void test(S &schedule) {
     REQUIRE(sync_wait(schedule, sym_stack_overflow));
   }
 
-  // SECTION("Fibonacci") {
-  //   for (int i = 0; i < 25; ++i) {
-  //     REQUIRE(fib(i) == sync_wait(schedule, r_fib, i));
-  //   }
-  // }
+  SECTION("Fibonacci") {
+    for (int i = 0; i < 25; ++i) {
+      REQUIRE(fib(i) == sync_wait(schedule, r_fib, i));
+    }
+  }
 
-  // SECTION("Fibonacci inline") {
-  //   for (int i = 0; i < 25; ++i) {
-  //     LIBFORK_LOG("i={}", i);
-  //     REQUIRE(fib(i) == sync_wait(schedule, r_fib_2, i));
-  //   }
-  // }
+  SECTION("Fibonacci inline") {
+    for (int i = 0; i < 25; ++i) {
+      LIBFORK_LOG("i={}", i);
+      REQUIRE(fib(i) == sync_wait(schedule, r_fib_2, i));
+    }
+  }
   SECTION("Void Fibonacci") {
     int res;
 
-    for (int i = 15; i < 16; ++i) {
-      sync_wait(schedule, v_fib, res, i);
-      REQUIRE(fib(i) == res);
-    }
+    int i = 15;
+
+    // for (int i = 15; i < 16; ++i) {
+    sync_wait(schedule, v_fib, res, i);
+    REQUIRE(fib(i) == res);
+    // }
   }
-  //   SECTION("member function") {
-  //     access_test a;
-  //     REQUIRE(99 == sync_wait(schedule, access_test::get, a));
-  //     REQUIRE(99 == sync_wait(schedule, access_test::get_2, a));
-  //     REQUIRE(99 == sync_wait(schedule, mem_from_coro));
-  //   }
+  SECTION("member function") {
+    access_test a;
+    REQUIRE(99 == sync_wait(schedule, access_test::get, a));
+    REQUIRE(99 == sync_wait(schedule, access_test::get_2, a));
+    REQUIRE(99 == sync_wait(schedule, mem_from_coro));
+  }
 
-  // #if LIBFORK_PROPAGATE_EXCEPTIONS
-  //   SECTION("exception propagate") {
-  //     REQUIRE_THROWS_AS(sync_wait(schedule, deep_except, 10), deep);
-  //   }
+#if LIBFORK_PROPAGATE_EXCEPTIONS
+  SECTION("exception propagate") {
+    REQUIRE_THROWS_AS(sync_wait(schedule, deep_except, 10), deep);
+  }
 
-  //   SECTION("exception propagate from invoked") {
-  //     REQUIRE_THROWS_AS(sync_wait(schedule, deep_except_2, 10), deep);
-  //   }
-  // #endif
+  SECTION("exception propagate from invoked") {
+    REQUIRE_THROWS_AS(sync_wait(schedule, deep_except_2, 10), deep);
+  }
+#endif
 }
 
 TEMPLATE_TEST_CASE("libfork", "[libfork][template]", inline_scheduler) {

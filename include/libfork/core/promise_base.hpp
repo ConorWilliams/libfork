@@ -83,7 +83,7 @@ public:
   constexpr void set_ret_address(void *ret) noexcept {
     m_return_address = ret;
   }
-  constexpr void set_parent(stdexp::coroutine_handle<promise_base> parent) noexcept {
+  constexpr void set_parent(stdx::coroutine_handle<promise_base> parent) noexcept {
     m_parent = parent;
   }
 
@@ -92,7 +92,7 @@ public:
   }
 
   // Checked access
-  [[nodiscard]] constexpr auto parent() const noexcept -> stdexp::coroutine_handle<promise_base> {
+  [[nodiscard]] constexpr auto parent() const noexcept -> stdx::coroutine_handle<promise_base> {
     LIBFORK_ASSERT(m_parent);
     return m_parent;
   }
@@ -145,10 +145,10 @@ public:
   }
 
 private:
-  stdexp::coroutine_handle<promise_base> m_parent = {}; ///< Parent task (roots don't have one).
-  void *m_return_address = nullptr;                     ///< root_block * || T *
-  std::int32_t m_steal = 0;                             ///< Number of steals.
-  std::atomic_int32_t m_join = k_imax;                  ///< Number of children joined (obfuscated).
+  stdx::coroutine_handle<promise_base> m_parent = {}; ///< Parent task (roots don't have one).
+  void *m_return_address = nullptr;                   ///< root_block * || T *
+  std::int32_t m_steal = 0;                           ///< Number of steals.
+  std::atomic_int32_t m_join = k_imax;                ///< Number of children joined (obfuscated).
 #ifndef NDEBUG
   std::int32_t m_debug_count = 0; ///< Number of forks/calls (debug).
 #endif
@@ -238,7 +238,7 @@ concept thread_context = defines_stack<Context> && requires(Context ctx, typenam
 
 // -------------- Define forward decls -------------- //
 
-class detail::promise_base::handle_t : private stdexp::coroutine_handle<promise_base> {
+class detail::promise_base::handle_t : private stdx::coroutine_handle<promise_base> {
 public:
   handle_t() = default; ///< To make us a trivial type.
 
@@ -246,15 +246,15 @@ public:
     LIBFORK_LOG("Call to resume on stolen task");
     LIBFORK_ASSERT(*this);
 
-    stdexp::coroutine_handle<promise_base>::promise().m_steal += 1;
-    stdexp::coroutine_handle<promise_base>::resume();
+    stdx::coroutine_handle<promise_base>::promise().m_steal += 1;
+    stdx::coroutine_handle<promise_base>::resume();
   }
 
 private:
   template <typename T, thread_context Context, tag Tag>
   friend struct promise_type;
 
-  explicit handle_t(stdexp::coroutine_handle<promise_base> handle) : stdexp::coroutine_handle<promise_base>{handle} {}
+  explicit handle_t(stdx::coroutine_handle<promise_base> handle) : stdx::coroutine_handle<promise_base>{handle} {}
 };
 
 } // namespace lf

@@ -37,7 +37,7 @@ template <typename T, typename Head, typename... Args>
     typename Head::context_type;
     Head::tag_value;
   }
-struct lf::stdexp::coroutine_traits<lf::task<T>, Head, Args...> {
+struct lf::stdx::coroutine_traits<lf::task<T>, Head, Args...> {
   using promise_type = lf::detail::promise_type<T, typename Head::context_type, Head::tag_value>;
 };
 
@@ -49,7 +49,7 @@ template <typename T, typename Self, typename Head, typename... Args>
     typename Head::context_type;
     Head::tag_value;
   }
-struct lf::stdexp::coroutine_traits<lf::task<T>, Self, Head, Args...> {
+struct lf::stdx::coroutine_traits<lf::task<T>, Self, Head, Args...> {
   using promise_type = lf::detail::promise_type<T, typename Head::context_type, Head::tag_value>;
 };
 
@@ -71,7 +71,7 @@ concept defines_context = requires { typename std::decay_t<T>::context_type; } &
  */
 template <typename Scheduler>
 concept scheduler = defines_context<Scheduler> && requires(Scheduler &&scheduler) {
-  std::forward<Scheduler>(scheduler).schedule(stdexp::coroutine_handle<>{});
+  std::forward<Scheduler>(scheduler).schedule(stdx::coroutine_handle<>{});
 };
 
 // clang-format on
@@ -112,7 +112,7 @@ auto sync_wait_impl(Schedule &&scheduler, Head head, Args &&...args) {
 
 #if LIBFORK_COMPILER_EXCEPTIONS
   try {
-    std::forward<Schedule>(scheduler).schedule(stdexp::coroutine_handle<>{handle});
+    std::forward<Schedule>(scheduler).schedule(stdx::coroutine_handle<>{handle});
   } catch (...) {
     // We cannot know whether the coroutine has been resumed or not once we pass to schedule(...).
     // Hence, we do not know whether or not to .destroy() it if schedule(...) throws.
@@ -122,7 +122,7 @@ auto sync_wait_impl(Schedule &&scheduler, Head head, Args &&...args) {
     }();
   }
 #else
-  std::forward<Schedule>(scheduler).schedule(stdexp::coroutine_handle<>{handle});
+  std::forward<Schedule>(scheduler).schedule(stdx::coroutine_handle<>{handle});
 #endif
 
   // Block until the coroutine has finished.
@@ -200,7 +200,7 @@ struct bind_task {
    */
   template <typename R, typename F>
   [[nodiscard]] LIBFORK_STATIC_CALL constexpr auto operator()(R &ret, [[maybe_unused]] async_mem_fn<F> async) LIBFORK_STATIC_CONST noexcept {
-    return [&]<detail::not_first_arg Self, typename... Args>(Self & self, Args && ...args) noexcept -> detail::packet<R, first_arg<Tag, async_mem_fn<F>, Self>, Args...> {
+    return [&]<detail::not_first_arg Self, typename... Args>(Self &self, Args &&...args) noexcept -> detail::packet<R, first_arg<Tag, async_mem_fn<F>, Self>, Args...> {
       return {{ret}, {self}, {std::forward<Args>(args)...}};
     };
   }
@@ -211,7 +211,7 @@ struct bind_task {
    */
   template <typename F>
   [[nodiscard]] LIBFORK_STATIC_CALL constexpr auto operator()([[maybe_unused]] async_mem_fn<F> async) LIBFORK_STATIC_CONST noexcept {
-    return [&]<detail::not_first_arg Self, typename... Args>(Self & self, Args && ...args) noexcept -> detail::packet<void, first_arg<Tag, async_mem_fn<F>, Self>, Args...> {
+    return [&]<detail::not_first_arg Self, typename... Args>(Self &self, Args &&...args) noexcept -> detail::packet<void, first_arg<Tag, async_mem_fn<F>, Self>, Args...> {
       return {{}, {self}, {std::forward<Args>(args)...}};
     };
   }
@@ -246,7 +246,7 @@ struct bind_task {
    */
   template <typename R, typename F>
   [[nodiscard]] static constexpr auto operator[](R &ret, [[maybe_unused]] async_mem_fn<F> async) noexcept {
-    return [&]<detail::not_first_arg Self, typename... Args>(Self & self, Args && ...args) noexcept -> detail::packet<R, first_arg<Tag, async_mem_fn<F>, Self>, Args...> {
+    return [&]<detail::not_first_arg Self, typename... Args>(Self &self, Args &&...args) noexcept -> detail::packet<R, first_arg<Tag, async_mem_fn<F>, Self>, Args...> {
       return {{ret}, {self}, {std::forward<Args>(args)...}};
     };
   }
@@ -257,7 +257,7 @@ struct bind_task {
    */
   template <typename F>
   [[nodiscard]] static constexpr auto operator[]([[maybe_unused]] async_mem_fn<F> async) noexcept {
-    return [&]<detail::not_first_arg Self, typename... Args>(Self & self, Args && ...args) noexcept -> detail::packet<void, first_arg<Tag, async_mem_fn<F>, Self>, Args...> {
+    return [&]<detail::not_first_arg Self, typename... Args>(Self &self, Args &&...args) noexcept -> detail::packet<void, first_arg<Tag, async_mem_fn<F>, Self>, Args...> {
       return {{}, {self}, {std::forward<Args>(args)...}};
     };
   }

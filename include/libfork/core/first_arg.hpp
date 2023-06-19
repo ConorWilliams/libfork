@@ -119,8 +119,8 @@ private:
 public:
   using task_type = typename std::invoke_result_t<typename Head::underlying_async_fn, Head, Tail...>;
   using value_type = typename task_type::value_type;
-  using promise_type = typename stdexp::coroutine_traits<task_type, Head, Tail &&...>::promise_type;
-  using handle_type = typename stdexp::coroutine_handle<promise_type>;
+  using promise_type = typename stdx::coroutine_traits<task_type, Head, Tail &&...>::promise_type;
+  using handle_type = typename stdx::coroutine_handle<promise_type>;
 
   [[no_unique_address]] std::conditional_t<std::is_void_v<R>, empty, std::add_lvalue_reference_t<value_type>> ret;
   [[no_unique_address]] Head context;

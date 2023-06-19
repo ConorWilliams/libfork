@@ -136,10 +136,10 @@ public:
   }
 
   auto get_return_object() -> task<T> {
-    return task<T>{stdexp::coroutine_handle<promise_type>::from_promise(*this).address()};
+    return task<T>{stdx::coroutine_handle<promise_type>::from_promise(*this).address()};
   }
 
-  static auto initial_suspend() -> stdexp::suspend_always { return {}; }
+  static auto initial_suspend() -> stdx::suspend_always { return {}; }
 
   void unhandled_exception() noexcept {
 
@@ -162,8 +162,8 @@ public:
   }
 
   auto final_suspend() noexcept {
-    struct final_awaitable : stdexp::suspend_always {
-      [[nodiscard]] constexpr auto await_suspend(stdexp::coroutine_handle<promise_type> child) const noexcept -> stdexp::coroutine_handle<> {
+    struct final_awaitable : stdx::suspend_always {
+      [[nodiscard]] constexpr auto await_suspend(stdx::coroutine_handle<promise_type> child) const noexcept -> stdx::coroutine_handle<> {
 
         if constexpr (Tag == tag::root) {
           LIBFORK_LOG("Root task at final suspend, releases sem");
@@ -173,13 +173,13 @@ public:
 
           root_block(child.promise().ret_address()).semaphore.release();
           child.destroy();
-          return stdexp::noop_coroutine();
+          return stdx::noop_coroutine();
         }
 
         LIBFORK_LOG("Task reaches final suspend");
 
         // Must copy onto stack before destroying child.
-        stdexp::coroutine_handle<promise_base> const parent_h = child.promise().parent();
+        stdx::coroutine_handle<promise_base> const parent_h = child.promise().parent();
         // Can no longer touch child.
         child.destroy();
 
@@ -266,7 +266,7 @@ public:
 
         LIBFORK_ASSUME(context.stack_top()->empty());
 
-        return stdexp::noop_coroutine();
+        return stdx::noop_coroutine();
       }
     };
 
@@ -284,14 +284,14 @@ public:
 
     this->debug_inc();
 
-    stdexp::coroutine_handle child = add_context_to_packet(std::move(packet)).invoke_bind();
+    stdx::coroutine_handle child = add_context_to_packet(std::move(packet)).invoke_bind();
 
-    child.promise().set_parent(cast_down(stdexp::coroutine_handle<promise_type>::from_promise(*this)));
+    child.promise().set_parent(cast_down(stdx::coroutine_handle<promise_type>::from_promise(*this)));
 
-    struct awaitable : stdexp::suspend_always {
-      [[nodiscard]] constexpr auto await_suspend(stdexp::coroutine_handle<promise_type> parent) noexcept -> decltype(child) {
+    struct awaitable : stdx::suspend_always {
+      [[nodiscard]] constexpr auto await_suspend(stdx::coroutine_handle<promise_type> parent) noexcept -> decltype(child) {
         // In case *this (awaitable) is destructed by stealer after push
-        stdexp::coroutine_handle stack_child = m_child;
+        stdx::coroutine_handle stack_child = m_child;
 
         LIBFORK_LOG("Forking, push parent to context");
 
@@ -311,12 +311,12 @@ public:
 
     this->debug_inc();
 
-    stdexp::coroutine_handle child = add_context_to_packet(std::move(packet)).invoke_bind();
+    stdx::coroutine_handle child = add_context_to_packet(std::move(packet)).invoke_bind();
 
-    child.promise().set_parent(cast_down(stdexp::coroutine_handle<promise_type>::from_promise(*this)));
+    child.promise().set_parent(cast_down(stdx::coroutine_handle<promise_type>::from_promise(*this)));
 
-    struct awaitable : stdexp::suspend_always {
-      [[nodiscard]] constexpr auto await_suspend([[maybe_unused]] stdexp::coroutine_handle<promise_type> parent) noexcept -> decltype(child) {
+    struct awaitable : stdx::suspend_always {
+      [[nodiscard]] constexpr auto await_suspend([[maybe_unused]] stdx::coroutine_handle<promise_type> parent) noexcept -> decltype(child) {
         return m_child;
       }
       decltype(child) m_child;
@@ -333,15 +333,15 @@ public:
 
     ASSERT(this->debug_count() == 0, "Invoke within async scope!");
 
-    stdexp::coroutine_handle child = add_context_to_packet(std::move(packet)).invoke_bind();
+    stdx::coroutine_handle child = add_context_to_packet(std::move(packet)).invoke_bind();
 
-    child.promise().set_parent(cast_down(stdexp::coroutine_handle<promise_type>::from_promise(*this)));
+    child.promise().set_parent(cast_down(stdx::coroutine_handle<promise_type>::from_promise(*this)));
 
     using child_value_type = typename std::decay_t<decltype(child.promise())>::value_type;
 
-    struct awaitable : stdexp::suspend_always {
+    struct awaitable : stdx::suspend_always {
 
-      [[nodiscard]] constexpr auto await_suspend([[maybe_unused]] stdexp::coroutine_handle<promise_type> parent) noexcept -> decltype(child) {
+      [[nodiscard]] constexpr auto await_suspend([[maybe_unused]] stdx::coroutine_handle<promise_type> parent) noexcept -> decltype(child) {
         if constexpr (!std::is_void_v<child_value_type>) {
           m_child.promise().set_ret_address(std::addressof(m_res));
         }
@@ -428,7 +428,7 @@ public:
         return false;
       }
 
-      [[nodiscard]] constexpr auto await_suspend(stdexp::coroutine_handle<promise_type> task) noexcept -> stdexp::coroutine_handle<> {
+      [[nodiscard]] constexpr auto await_suspend(stdx::coroutine_handle<promise_type> task) noexcept -> stdx::coroutine_handle<> {
         // Currently        joins  = k_imax - num_joined
         // We set           joins  = joins() - (k_imax - num_steals)
         //                         = num_steals - num_joined
@@ -463,7 +463,7 @@ public:
         }
         LIBFORK_ASSERT(Context::context().stack_top()->empty());
 
-        return stdexp::noop_coroutine();
+        return stdx::noop_coroutine();
       }
 
       constexpr void await_resume() const {
@@ -496,7 +496,7 @@ public:
 
 private:
   template <typename Promise>
-  static auto cast_down(stdexp::coroutine_handle<Promise> this_handle) -> stdexp::coroutine_handle<promise_base> {
+  static auto cast_down(stdx::coroutine_handle<Promise> this_handle) -> stdx::coroutine_handle<promise_base> {
 
     // Static checks that UB is OK.
 
@@ -506,11 +506,11 @@ private:
     static_assert(std::is_pointer_interconvertible_base_of_v<promise_base, Promise>);
 #endif
 
-    stdexp::coroutine_handle cast_handle = stdexp::coroutine_handle<promise_base>::from_address(this_handle.address());
+    stdx::coroutine_handle cast_handle = stdx::coroutine_handle<promise_base>::from_address(this_handle.address());
 
     // Run-time check that UB is OK.
     LIBFORK_ASSERT(cast_handle.address() == this_handle.address());
-    LIBFORK_ASSERT(stdexp::coroutine_handle<>{cast_handle} == stdexp::coroutine_handle<>{this_handle});
+    LIBFORK_ASSERT(stdx::coroutine_handle<>{cast_handle} == stdx::coroutine_handle<>{this_handle});
     LIBFORK_ASSERT(static_cast<void *>(&cast_handle.promise()) == static_cast<void *>(&this_handle.promise()));
 
     return cast_handle;

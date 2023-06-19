@@ -115,18 +115,11 @@ inline constexpr std::size_t k_cache_line = 64;
 /**
  * @brief If ``NDEBUG`` is defined then ``LIBFORK_ASSERT(expr)`` is  ``LIBFORK_ASSUME(expr)`` otherwise ``assert(expr)``.
  */
-#if false
+#ifndef NDEBUG
   #include <cassert>
-  #define LIBFORK_ASSERT(expr)                                                       \
-    do {                                                                             \
-      if (!(expr)) {                                                                 \
-        []() noexcept { throw std::runtime_error{"Assert " #expr " is false!"}; }(); \
-      }                                                                              \
-    } while (false)
+  #define LIBFORK_ASSERT(expr) assert(expr)
 #else
-  #define LIBFORK_ASSERT(expr) \
-    do {                       \
-    } while (false)
+  #define LIBFORK_ASSERT(expr) LIBFORK_ASSUME(expr)
 #endif
 
 /**
@@ -145,7 +138,7 @@ inline constexpr std::size_t k_cache_line = 64;
 
     #ifdef __cpp_lib_format
       #include <format>
-      #define LIBFORK_FORMAT(message, ...) std::format(message __VA_OPT__(, ) __VA_ARGS__)
+      #define LIBFORK_FORMAT(message, ...) std::format((message)__VA_OPT__(, ) __VA_ARGS__)
     #else
       #define LIBFORK_FORMAT(message, ...) (message)
     #endif
