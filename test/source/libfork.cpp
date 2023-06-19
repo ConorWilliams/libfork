@@ -178,8 +178,8 @@ inline constexpr auto sym_stack_overflow_1 = fn([](auto self) -> lf::task<int> {
   for (int i = 0; i < 100'000'000; ++i) {
     co_await lf::fork(noop)();
     co_await lf::call(noop)();
-    co_await join;
   }
+  co_await lf::join;
 
   co_return 1;
 });
