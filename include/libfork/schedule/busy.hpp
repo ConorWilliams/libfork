@@ -59,7 +59,7 @@ public:
       m_stack = unique_ptr{*handle};
     }
 
-    auto task_steal() -> auto {
+    auto task_steal() -> typename queue<task_handle>::steal_t {
       return m_tasks.steal();
     }
 
