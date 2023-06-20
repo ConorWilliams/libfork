@@ -115,7 +115,7 @@ jobs:
         /usr/bin/clang-tidy-15 140
 
     - name: Install modern LLVM
-      if: $("${{ matrix.os }}".split("-")[0])" == 'macos'
+      if: matrix.os == 'macos-12' || matrix.os == 'macos-13'
       run: |
         echo "hello"
         brew install llvm
