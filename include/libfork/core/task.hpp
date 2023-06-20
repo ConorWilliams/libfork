@@ -181,7 +181,7 @@ private:
  * @brief Wraps a stateless callable that returns an ``lf::task``.
  */
 template <stateless Fn>
-struct async_fn {
+struct [[nodiscard]] async_fn {
   /**
    * @brief Wrap the arguments into an awaitable (in an ``lf::task``) that triggers an invoke.
    *
@@ -198,7 +198,7 @@ struct async_fn {
  * @brief Wraps a stateless callable that returns an ``lf::task``.
  */
 template <stateless Fn>
-struct async_mem_fn {
+struct [[nodiscard]] async_mem_fn {
   /**
    * @brief Wrap the arguments into an awaitable (in an ``lf::task``) that triggers an invoke.
    *

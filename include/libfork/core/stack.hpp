@@ -42,17 +42,6 @@ auto r_cast(U &&expr) noexcept {
   return reinterpret_cast<T>(std::forward<U>(expr)); // NOLINT
 }
 
-/**
- * @brief Base class for virtual stacks
- */
-struct alignas(k_new_align) stack_mem : exception_packet { // NOLINT
-  std::byte *m_ptr;
-  std::byte *m_end;
-#ifndef NDEBUG
-  std::stack<std::pair<void *, std::size_t>> m_debug;
-#endif
-};
-
 [[nodiscard]] inline auto aligned_alloc(std::size_t size, std::size_t alignment) -> void * {
 
   LIBFORK_ASSERT(size > 0);                       // Should never want to allocate no memory.
@@ -87,6 +76,22 @@ inline void aligned_free(void *ptr) noexcept {
   LIBFORK_ASSERT(ptr);
   ::operator delete(*r_cast<void **>(r_cast<std::uintptr_t>(ptr) - sizeof(void *)));
 }
+
+inline constexpr std::size_t kibibyte = 1024 * 1;        // NOLINT
+inline constexpr std::size_t mebibyte = 1024 * kibibyte; //
+inline constexpr std::size_t gibibyte = 1024 * mebibyte;
+inline constexpr std::size_t tebibyte = 1024 * gibibyte;
+
+/**
+ * @brief Base class for virtual stacks
+ */
+struct alignas(k_new_align) stack_mem : exception_packet { // NOLINT
+  std::byte *m_ptr;
+  std::byte *m_end;
+#ifndef NDEBUG
+  std::stack<std::pair<void *, std::size_t>> m_debug;
+#endif
+};
 
 } // namespace detail
 

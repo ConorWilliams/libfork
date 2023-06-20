@@ -34,33 +34,31 @@ See the [ChangeLog](ChangeLog.md) document.
 The tasking fork-join interface is designed to mirror Cilk and other fork-join frameworks. With libfork the canonical recursive-Fibonacci is a simple as:
 
 ```c++
-#include "libfork/task.hpp"
-#include "libfork/schedule/busy_pool.hpp"
-
-/// Short-hand for a task that uses the busy_pool scheduler.
-template <typename T>
-using pool_task = lf::basic_task<T, lf::busy_pool::context>;
+#include "libfork/libfork.hpp"
+#include "libfork/schedule/busy.hpp"
 
 /// Compute the n'th fibonacci number
-auto fib(int n) -> pool_task<int> { 
+inline constexpr auto fib = lf::async([](auto fib, int n) -> lf::task<int> { 
 
   if (n < 2) {
     co_return n;
   }
 
-  auto a = co_await fib(n - 1).fork(); // Spawn a child task.
-  auto b = co_await fib(n - 2);        // Execute inline.
+  int a, b
 
-  co_await lf::join();                 // Wait for children.
+  co_await lf::fork[a, fib](n - 1);    // Spawn a child task.
+  co_await lf::call[b, fib](n - 2);    // Execute inline.
 
-  co_return *a + b;                    // Use * to dereference a future.
-}
+  co_await lf::join;                   // Wait for children.
+
+  co_return a + b;                     // Safe to access after join
+});
 ```
 which can be launched on the ``busy_pool`` scheduler as follows:
 ```c++
-busy_pool pool(num_threads);
+lf::busy thread_pool(num_threads);
 
-int fib_10 = pool.schedule(fib(10));
+int fib_10 = lf::wait(thread_pool, fib, 10);
 ```
 Note:
 - Tasks **must** join **before** returning or dereferencing a future.

@@ -11,6 +11,7 @@
 
 #include <vector>
 
+#include "libfork/core/stack.hpp"
 #include "libfork/libfork.hpp"
 #include "libfork/thread_local.hpp"
 
@@ -32,19 +33,16 @@ public:
    */
   class context_type : private thread_local_ptr<context_type> {
 
-    static constexpr std::size_t k_kb = 1024;
-
   public:
     /**
      * @brief The stack type for the scheduler.
      */
-    using stack_type = virtual_stack<k_kb * k_kb>;
+    using stack_type = virtual_stack<detail::mebibyte>;
     /**
      * @brief Construct a new context type object, set the thread_local context object to this object.
      */
     context_type() noexcept {
       inline_scheduler::context_type::set(*this);
-      m_tasks.reserve(k_kb);
     }
     /**
      * @brief Get the thread_local context object.

@@ -24,9 +24,9 @@ Building asynchronous functions
     :members:
     :undoc-members:
 
-.. doxygenfunction:: lf::fn
+.. doxygenfunction:: lf::async
 
-.. doxygenfunction:: lf::mem_fn
+.. doxygenfunction:: lf::async_m
 
 -------------------------
 

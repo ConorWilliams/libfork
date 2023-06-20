@@ -201,7 +201,8 @@ inline void event_count::notify_all() noexcept {
 
 [[nodiscard]] inline auto event_count::prepare_wait() noexcept -> event_count::key {
   auto prev = m_val.fetch_add(k_add_waiter, std::memory_order_acq_rel);
-  return key(prev >> k_epoch_shift);
+  // Cast is safe because we're only using the lower 32 bits.
+  return key(static_cast<std::uint32_t>(prev >> k_epoch_shift));
 }
 
 inline void event_count::cancel_wait() noexcept {
