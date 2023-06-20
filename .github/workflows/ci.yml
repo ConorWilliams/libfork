@@ -93,12 +93,12 @@ jobs:
         UBSAN_OPTIONS: print_stacktrace=1
       run: ctest --output-on-failure --no-tests=error -j 2
 
-  test:
+  test-x86:
     needs: [lint]
 
     strategy:
       matrix:
-        os: [macos-12, macos-13, ubuntu-22.04, windows-2022]
+        os: [ubuntu-22.04, windows-2022]
 
     runs-on: ${{ matrix.os }}
 
@@ -114,9 +114,6 @@ jobs:
         /usr/bin/clang-tidy clang-tidy
         /usr/bin/clang-tidy-15 140
 
-    - name: Install modern LLVM
-      if: matrix.os == 'macos-12' || matrix.os == 'macos-13'
-      uses: KyleMayes/install-llvm-action@v1
   
     - name: Setup MultiToolTask
       if: matrix.os == 'windows-2022'
@@ -139,9 +136,43 @@ jobs:
       working-directory: build
       run: ctest --output-on-failure --no-tests=error -C Release -j 2
 
+  test-darwin:
+        needs: [lint]
+    
+        strategy:
+          matrix:
+            os: [macos-12, macos-13]
+    
+        runs-on: ${{ matrix.os }}
+    
+        steps:
+        - uses: actions/checkout@v3
+    
+        - name: Install modern LLVM
+          if: matrix.os == 'macos-12' || matrix.os == 'macos-13'
+          run: |
+            brew install llvm
+
+      
+        - name: Configure
+          shell: pwsh
+          env: { PATH: /usr/local/opt/llvm/bin:$PATH }      
+          run: cmake "--preset=ci-$("${{ matrix.os }}".split("-")[0])"
+    
+        - name: Build
+          run: cmake --build build --config Release -j 2
+    
+        - name: Install
+          run: cmake --install build --config Release --prefix prefix
+    
+        - name: Test
+          if: matrix.os != 'windows-2022'
+          working-directory: build
+          run: ctest --output-on-failure --no-tests=error -C Release -j 2
+
   docs:
     # Deploy docs only when builds succeed
-    needs: [sanitize, test]
+    needs: [sanitize, test-x86, test-darwin]
 
     runs-on: ubuntu-22.04
 
