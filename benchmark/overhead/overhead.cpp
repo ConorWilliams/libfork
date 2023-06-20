@@ -1,6 +1,7 @@
 #include <nanobench.h>
 
 #include "libfork/libfork.hpp"
+#include "libfork/schedule/busy.hpp"
 #include "libfork/schedule/inline.hpp"
 
 namespace lf::detail {
@@ -88,18 +89,25 @@ auto main() -> int {
   bench.warmup(100);
   bench.relative(true);
   bench.performanceCounters(true);
+  // bench.minEpochIterations(10);
 
   volatile int in = 30;
 
-  lf::inline_scheduler i_sch;
+  for (std::size_t i = 1; i <= 4; ++i) {
+    lf::busy_pool i_sch{i};
 
-  bench.run("async inline", [&] {
-    ankerl::nanobench::doNotOptimizeAway(lf::sync_wait(i_sch, c_fib, in));
-  });
+    bench.run("async busy pool n=" + std::to_string(i), [&] {
+      ankerl::nanobench::doNotOptimizeAway(lf::sync_wait(i_sch, c_fib, in));
+    });
+  }
 
-  bench.run("async invoke", [&] {
-    ankerl::nanobench::doNotOptimizeAway(lf::sync_wait(i_sch, c_fib_invoke, in));
-  });
+  {
+    lf::inline_scheduler i_sch;
+
+    bench.run("async inline", [&] {
+      ankerl::nanobench::doNotOptimizeAway(lf::sync_wait(i_sch, c_fib, in));
+    });
+  }
 
   bench.run("function no register", [&] {
     ankerl::nanobench::doNotOptimizeAway(fib_no_reg({in}));
