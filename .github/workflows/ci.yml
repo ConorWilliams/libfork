@@ -114,6 +114,12 @@ jobs:
         /usr/bin/clang-tidy clang-tidy
         /usr/bin/clang-tidy-15 140
 
+    - name: Install modern LLVM
+      if: $("${{ matrix.os }}".split("-")[0])" == 'macos'
+      run: |
+        echo "hello"
+        brew install llvm
+  
     - name: Setup MultiToolTask
       if: matrix.os == 'windows-2022'
       run: |
