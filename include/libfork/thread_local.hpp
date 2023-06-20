@@ -40,7 +40,12 @@ public:
   /**
    * @brief Get the object pointed to by the thread_local pointer.
    */
-  static auto get() -> T & {
+  [[nodiscard]]
+#ifdef __clang__
+  __attribute((noinline)) ///< Workaround for LLVM coroutine TLS bug.
+#endif
+  static auto
+  get() -> T & {
     if (m_ptr == nullptr) {
 #if LIBFORK_COMPILER_EXCEPTIONS
       throw not_set{};

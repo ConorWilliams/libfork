@@ -48,14 +48,19 @@ public:
 
     constexpr auto max_threads() const noexcept -> std::size_t { return m_max_threads; }
 
-    auto stack_top() -> stack_type::handle { return stack_type::handle{*m_stack}; }
+    auto stack_top() -> stack_type::handle {
+      LIBFORK_ASSERT(&context() == this);
+      return stack_type::handle{*m_stack};
+    }
 
     void stack_pop() {
+      LIBFORK_ASSERT(&context() == this);
       static_cast<void>(m_stack.release());
       m_stack = stack_type::make_unique();
     }
 
     void stack_push(stack_type::handle handle) {
+      LIBFORK_ASSERT(&context() == this);
       m_stack = unique_ptr{*handle};
     }
 
@@ -64,16 +69,13 @@ public:
     }
 
     auto task_pop() -> std::optional<task_handle> {
+      LIBFORK_ASSERT(&context() == this);
       return m_tasks.pop();
     }
 
     void task_push(task_handle task) {
-      // check();
-      m_tasks.push(task);
-    }
-
-    __attribute((noinline)) void check() {
       LIBFORK_ASSERT(&context() == this);
+      m_tasks.push(task);
     }
 
   private:
@@ -109,10 +111,11 @@ public:
 #endif
       for (std::size_t i = 0; i < n; ++i) {
         m_workers.emplace_back([this, i]() {
-          // Set the thread local context.
-          context_type::set(this->m_contexts[i]);
-
+          // Get a reference to the threads context.
           context_type &my_context = m_contexts[i];
+
+          // Set the thread local context.
+          context_type::set(my_context);
 
           std::uniform_int_distribution<std::size_t> dist(0, m_contexts.size() - 1);
 
