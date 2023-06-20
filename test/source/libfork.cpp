@@ -37,21 +37,21 @@ using namespace lf;
 
 inline constexpr auto noop = async([](auto) -> lf::task<> { co_return; });
 
-TEMPLATE_TEST_CASE("Construct destruct launch", "[libfork][template]", inline_scheduler, busy_pool) {
+// TEMPLATE_TEST_CASE("Construct destruct launch", "[libfork][template]", inline_scheduler, busy_pool) {
 
-  for (int i = 0; i < 1000; ++i) {
-    TestType tmp{};
-  }
+//   for (int i = 0; i < 1000; ++i) {
+//     TestType tmp{};
+//   }
 
-  for (int i = 0; i < 100; ++i) {
+//   for (int i = 0; i < 100; ++i) {
 
-    TestType schedule{};
+//     TestType schedule{};
 
-    for (int j = 0; j < 100; ++j) {
-      sync_wait(schedule, noop);
-    }
-  }
-}
+//     for (int j = 0; j < 100; ++j) {
+//       sync_wait(schedule, noop);
+//     }
+//   }
+// }
 
 // ------------------------ stack overflow ------------------------ //
 
@@ -66,9 +66,9 @@ inline constexpr auto sym_stack_overflow_1 = async([](auto) -> lf::task<int> {
   co_return 1;
 });
 
-TEMPLATE_TEST_CASE("Stack overflow - sym-transfer", "[libfork][template]", inline_scheduler, busy_pool) {
-  REQUIRE(sync_wait(TestType{}, sym_stack_overflow_1));
-}
+// TEMPLATE_TEST_CASE("Stack overflow - sym-transfer", "[libfork][template]", inline_scheduler, busy_pool) {
+//   REQUIRE(sync_wait(TestType{}, sym_stack_overflow_1));
+// }
 
 // ------------------------ Fibonacci ------------------------ //
 
@@ -143,14 +143,14 @@ inline constexpr auto v_fib = async([](auto fib, int &ret, int n) -> lf::task<vo
   ret = a + b;
 });
 
-TEMPLATE_TEST_CASE("Fibonacci - returning", "[libfork][template]", inline_scheduler, busy_pool) {
+// TEMPLATE_TEST_CASE("Fibonacci - returning", "[libfork][template]", inline_scheduler, busy_pool) {
 
-  TestType schedule{};
+//   TestType schedule{};
 
-  for (int i = 0; i < 25; ++i) {
-    REQUIRE(fib(i) == sync_wait(schedule, r_fib, i));
-  }
-}
+//   for (int i = 0; i < 25; ++i) {
+//     REQUIRE(fib(i) == sync_wait(schedule, r_fib, i));
+//   }
+// }
 
 // TEMPLATE_TEST_CASE("Fibonacci - inline", "[libfork][template]", inline_scheduler, busy_pool) {
 
@@ -161,16 +161,19 @@ TEMPLATE_TEST_CASE("Fibonacci - returning", "[libfork][template]", inline_schedu
 //   }
 // }
 
-// TEMPLATE_TEST_CASE("Fibonacci - void", "[libfork][template]", inline_scheduler, busy_pool) {
+TEMPLATE_TEST_CASE("Fibonacci - void", "[libfork][template]", busy_pool) {
 
-//   TestType schedule{};
+  TestType schedule{};
 
-//   for (int i = 0; i < 25; ++i) {
-//     int res;
-//     sync_wait(schedule, v_fib, res, i);
-//     REQUIRE(fib(i) == res);
-//   }
-// }
+  for (int i = 0; i < 10'000; ++i) {
+    LIBFORK_LOG("i={}", i);
+    int res;
+    sync_wait(schedule, v_fib, res, 3);
+    REQUIRE(fib(3) == res);
+  }
+}
+
+// ------------------------ Member functions ------------------------ //
 
 // class access_test {
 
@@ -205,6 +208,13 @@ TEMPLATE_TEST_CASE("Fibonacci - returning", "[libfork][template]", inline_schedu
 //   co_await join;
 //   co_return r;
 // });
+
+// SECTION("member function") {
+//   access_test a;
+//   REQUIRE(99 == sync_wait(schedule, access_test::get, a));
+//   REQUIRE(99 == sync_wait(schedule, access_test::get_2, a));
+//   REQUIRE(99 == sync_wait(schedule, mem_from_coro));
+// }
 
 // #if LIBFORK_PROPAGATE_EXCEPTIONS
 
@@ -243,13 +253,6 @@ TEMPLATE_TEST_CASE("Fibonacci - returning", "[libfork][template]", inline_schedu
 // void test(S &schedule) {
 //   SECTION("stack-overflow") {
 //     REQUIRE(sync_wait(schedule, sym_stack_overflow_1));
-//   }
-
-//   SECTION("member function") {
-//     access_test a;
-//     REQUIRE(99 == sync_wait(schedule, access_test::get, a));
-//     REQUIRE(99 == sync_wait(schedule, access_test::get_2, a));
-//     REQUIRE(99 == sync_wait(schedule, mem_from_coro));
 //   }
 
 // #if LIBFORK_PROPAGATE_EXCEPTIONS

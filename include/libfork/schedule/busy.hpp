@@ -68,7 +68,12 @@ public:
     }
 
     void task_push(task_handle task) {
+      // check();
       m_tasks.push(task);
+    }
+
+    __attribute((noinline)) void check() {
+      LIBFORK_ASSERT(&context() == this);
     }
 
   private:
@@ -113,30 +118,22 @@ public:
 
           while (!m_stop_requested.test(std::memory_order_acquire)) {
 
-            if (auto root = m_submit.steal()) {
-              LIBFORK_LOG("resuming root task");
-              root->resume();
-            }
-
-            int attempt = 0;
-
-            while (attempt < k_steal_attempts) {
+            for (int attempt = 0; attempt < k_steal_attempts; ++attempt) {
 
               std::size_t steal_at = dist(my_context.m_rng);
 
               if (steal_at == i) {
-                continue;
-              }
-
-              if (auto work = m_contexts[steal_at].task_steal()) {
+                if (auto root = m_submit.steal()) {
+                  LIBFORK_LOG("resuming root task");
+                  root->resume();
+                }
+              } else if (auto work = m_contexts[steal_at].task_steal()) {
                 attempt = 0;
                 LIBFORK_LOG("resuming stolen work");
                 work->resume();
                 LIBFORK_LOG("worker resumes thieving");
                 LIBFORK_ASSUME(my_context.m_tasks.empty());
                 LIBFORK_ASSUME(my_context.m_stack->empty());
-              } else {
-                ++attempt;
               }
             }
           };
@@ -165,6 +162,8 @@ public:
 private:
   // Request all threads to stop, wake them up and then call join.
   auto clean_up() noexcept -> void {
+
+    LIBFORK_LOG("Request stop");
 
     LIBFORK_ASSERT(m_submit.empty());
 

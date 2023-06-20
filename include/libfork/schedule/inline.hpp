@@ -31,7 +31,7 @@ public:
   /**
    * @brief The context type for the scheduler.
    */
-  class context_type : private thread_local_ptr<context_type> {
+  class context_type : thread_local_ptr<context_type> {
 
   public:
     /**
