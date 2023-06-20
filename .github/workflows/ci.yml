@@ -154,7 +154,7 @@ jobs:
       
         - name: Configure
           shell: pwsh   
-          run: cmake "--preset=ci-$("${{ matrix.os }}".split("-")[0]) -DCMAKE_CXX_COMPILER=/usr/local/opt/llvm/bin/clang++ -DCMAKE_C_COMPILER=/usr/local/opt/llvm/bin/clang"
+          run: cmake -DCMAKE_CXX_COMPILER=/usr/local/opt/llvm/bin/clang++ -DCMAKE_C_COMPILER=/usr/local/opt/llvm/bin/clang "--preset=ci-$("${{ matrix.os }}".split("-")[0])"
     
         - name: Build
           run: cmake --build build --config Release -j 2
