@@ -55,7 +55,7 @@ public:
     /**
      * @brief Get the top stack object.
      */
-    auto stack_top() -> stack_type::handle { return stack_type::handle{*m_stack}; }
+    auto stack_top() -> stack_type::handle { return stack_type::handle{m_stack.get()}; }
     /**
      * @brief Should never be called, aborts the program.
      */

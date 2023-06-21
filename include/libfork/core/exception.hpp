@@ -23,15 +23,6 @@
 
 namespace lf::detail {
 
-struct immovable {
-  immovable() = default;
-  immovable(const immovable &) = delete;
-  immovable(immovable &&) = delete;
-  auto operator=(const immovable &) -> immovable & = delete;
-  auto operator=(immovable &&) -> immovable & = delete;
-  ~immovable() = default;
-};
-
 static_assert(std::is_empty_v<immovable>);
 
 #if LIBFORK_PROPAGATE_EXCEPTIONS

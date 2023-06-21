@@ -64,15 +64,15 @@ TEST_CASE("virtual_stack - Handle Operations", "[virtual_stack]") {
 
   SECTION("Handle Creation and Access") {
     auto stack = Stack<4096>::make_unique();
-    Stack<4096>::handle handle(*stack);
+    Stack<4096>::handle handle(stack.get());
     REQUIRE(handle->empty());
   }
 
   SECTION("Handle Comparison") {
     auto stack1 = Stack<4096>::make_unique();
     auto stack2 = Stack<4096>::make_unique();
-    Stack<4096>::handle handle1(*stack1);
-    Stack<4096>::handle handle2(*stack2);
+    Stack<4096>::handle handle1(stack1.get());
+    Stack<4096>::handle handle2(stack2.get());
     REQUIRE(handle1 <=> handle2 != 0);
     REQUIRE(handle1 <=> handle1 == 0);
   }

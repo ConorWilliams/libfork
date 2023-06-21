@@ -30,6 +30,18 @@ inline constexpr std::size_t k_cache_line = std::hardware_destructive_interferen
 inline constexpr std::size_t k_cache_line = 64;
 #endif
 
+/**
+ * @brief An empty type that is not copyable or movable.
+ */
+struct immovable {
+  immovable() = default;
+  immovable(const immovable &) = delete;
+  immovable(immovable &&) = delete;
+  auto operator=(const immovable &) -> immovable & = delete;
+  auto operator=(immovable &&) -> immovable & = delete;
+  ~immovable() = default;
+};
+
 } // namespace lf::detail
 
 /**

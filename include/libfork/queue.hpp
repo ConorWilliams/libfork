@@ -73,7 +73,7 @@ struct ring_buf {
   /**
    * @brief Store ``val`` at ``index % this->capacity()``.
    */
-  auto store(std::ptrdiff_t index, T val) noexcept -> void {
+  auto store(std::ptrdiff_t index, T const &val) noexcept -> void {
     LIBFORK_ASSERT(index >= 0);
     (m_buf.get() + (index & m_mask))->store(val, std::memory_order_relaxed); // NOLINT Avoid cast to std::size_t.
   }
@@ -87,8 +87,8 @@ struct ring_buf {
   /**
    * @brief Copies elements in range ``[bottom, top)`` into a new ring buffer.
    *
-   * This function allocates a new buffer and returns a pointer to it. The caller is responsible
-   * for deallocating the memory.
+   * This function allocates a new buffer and returns a pointer to it.
+   * The caller is responsible for deallocating the memory.
    *
    * @param bottom The bottom of the range to copy from (inclusive).
    * @param top The top of the range to copy from (exclusive).
@@ -146,7 +146,7 @@ enum class err : int {
  * @tparam T The type of the elements in the queue - must be a simple type.
  */
 template <simple T>
-class queue {
+class queue : detail::immovable {
   static constexpr std::ptrdiff_t k_default_capacity = 1024;
   static constexpr std::size_t k_garbage_reserve = 32;
 
@@ -166,22 +166,6 @@ public:
    */
   explicit queue(std::ptrdiff_t cap);
   /**
-   * @brief Queue's are not copiable or movable.
-   */
-  queue(queue const &other) = delete;
-  /**
-   * @brief Queue's are not copiable or movable.
-   */
-  queue(queue &&other) = delete;
-  /**
-   * @brief Queue's are not assignable.
-   */
-  auto operator=(queue const &other) -> queue & = delete;
-  /**
-   * @brief Queue's are not assignable.
-   */
-  auto operator=(queue &&other) -> queue & = delete;
-  /**
    * @brief Get the number of elements in the queue.
    */
   [[nodiscard]] auto size() const noexcept -> std::size_t;
@@ -200,8 +184,8 @@ public:
   /**
    * @brief Push an item into the queue.
    *
-   * Only the owner thread can insert an item into the queue. The operation can trigger the queue
-   * to resize if more space is required.
+   * Only the owner thread can insert an item into the queue.
+   * This operation can trigger the queue to resize if more space is required.
    *
    * @param val Value to add to the queue.
    */
@@ -209,14 +193,16 @@ public:
   /**
    * @brief Pop an item from the queue.
    *
-   * Only the owner thread can pop out an item from the queue. Returns ``std::nullopt`` if
-   * this operation fails (i.e. the queue is empty).
+   * Only the owner thread can pop out an item from the queue.
+   *
+   * @return ``std::nullopt`` if  this operation fails (i.e. the queue is empty).
    */
   auto pop() noexcept -> std::optional<T>;
   /**
    * @brief The return type of the ``steal()`` operation.
    *
-   * Suitable for structured bindings.
+   * This type is suitable for structured bindings. We return a custom type instead of a
+   * ``std::optional`` to allow for more information to be returned as to why a steal may fail.
    */
   struct steal_t {
     /**
@@ -228,7 +214,16 @@ public:
      *
      * Requires ``code == err::none`` .
      */
-    constexpr auto operator*() noexcept -> T {
+    constexpr auto operator*() noexcept -> T & {
+      LIBFORK_ASSERT(code == err::none);
+      return val;
+    }
+    /**
+     * @brief Get the value like ``std::optional``.
+     *
+     * Requires ``code == err::none`` .
+     */
+    constexpr auto operator*() const noexcept -> T const & {
       LIBFORK_ASSERT(code == err::none);
       return val;
     }
@@ -354,8 +349,8 @@ auto queue<T>::pop() noexcept -> std::optional<T> {
       }
       m_bottom.store(bottom + 1, relaxed);
     }
-    // Can delay load until after acquiring slot as only this thread can push(), this load is not
-    // required to be atomic as we are the exclusive writer.
+    // Can delay load until after acquiring slot as only this thread can push(),
+    // This load is not required to be atomic as we are the exclusive writer.
     return buf->load(bottom);
   }
   m_bottom.store(bottom + 1, relaxed);
@@ -375,6 +370,8 @@ auto queue<T>::steal() noexcept -> steal_t {
     // read. If we loose the race then 'x' could be corrupt due to read-during-write race but as T
     // is trivially destructible this does not matter.
     T tmp = m_buf.load(consume)->load(top);
+
+    static_assert(std::is_trivially_destructible_v<T>, "concept 'simple' should guarantee this already");
 
     if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
       return {.code = err::lost, .val = {}};

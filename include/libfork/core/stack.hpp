@@ -141,15 +141,19 @@ class alignas(detail::k_new_align) virtual_stack : detail::stack_mem {
   };
 
   struct delete_n {
-
-    std::size_t count;
+    constexpr explicit delete_n(std::size_t count) noexcept : m_count(count) {}
 
     void operator()(virtual_stack *ptr) const noexcept {
-      for (std::size_t i = 0; i < count; ++i) {
+      for (std::size_t i = 0; i < m_count; ++i) {
         ptr[i].~virtual_stack(); // NOLINT
       }
       detail::aligned_free(ptr);
     }
+
+    [[nodiscard]] constexpr auto size() const noexcept -> std::size_t { return m_count; }
+
+  private:
+    std::size_t m_count;
   };
 
 public:
@@ -173,6 +177,8 @@ public:
 
   /**
    * @brief A ``std::unique_ptr`` to an array of stacks.
+   *
+   * The deleter has a ``size()`` member function that returns the number of stacks in the array.
    */
   using unique_arr_ptr_t = std::unique_ptr<virtual_stack[], std::conditional_t<k_trivial, delete_1, delete_n>>; // NOLINT
 
@@ -182,19 +188,29 @@ public:
   class handle {
   public:
     /**
+     * @brief Construct an empty/null handle.
+     */
+    constexpr handle() noexcept = default;
+    /**
      * @brief Construct a handle to ``stack``.
      */
-    explicit constexpr handle(virtual_stack &stack) noexcept : m_stack{&stack} {}
+    explicit constexpr handle(virtual_stack *stack) noexcept : m_stack{stack} {}
 
     /**
      * @brief Access the stack pointed at by this handle.
      */
-    [[nodiscard]] constexpr auto operator*() const noexcept -> virtual_stack * { return m_stack; }
+    [[nodiscard]] constexpr auto operator*() const noexcept -> virtual_stack {
+      LIBFORK_ASSERT(m_stack);
+      return *m_stack;
+    }
 
     /**
      * @brief Access the stack pointed at by this handle.
      */
-    constexpr auto operator->() -> virtual_stack * { return m_stack; }
+    constexpr auto operator->() -> virtual_stack * {
+      LIBFORK_ASSERT(m_stack);
+      return m_stack;
+    }
 
     /**
      * @brief Handles compare equal if they point to the same stack.
@@ -202,7 +218,7 @@ public:
     constexpr auto operator<=>(handle const &) const noexcept = default;
 
   private:
-    virtual_stack *m_stack;
+    virtual_stack *m_stack = nullptr;
   };
 
   /**
@@ -229,9 +245,9 @@ public:
     }
 
     if constexpr (k_trivial) {
-      return {raw, {}};
+      return {raw, delete_1{}};
     } else {
-      return {raw, {count}};
+      return {raw, delete_n{count}};
     }
   }
 
@@ -316,7 +332,7 @@ public:
     auto address = as_integral & mask;
     auto stack = reinterpret_cast<virtual_stack *>(address); // NOLINT
 
-    return handle{*stack};
+    return handle{stack};
   }
 
   // ---------- Exceptions ---------- //
