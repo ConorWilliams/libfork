@@ -19,7 +19,7 @@
 
 using namespace lf::detail;
 
-#if LIBFORK_COMPILER_EXCEPTIONS
+#if LF_COMPILER_EXCEPTIONS
 
 TEST_CASE("exception_packet tests") {
 
@@ -126,6 +126,6 @@ TEST_CASE("exception_packet tests") {
   }
 }
 
-#endif // LIBFORK_COMPILER_EXCEPTIONS
+#endif // LF_COMPILER_EXCEPTIONS
 
 // NOLINTEND

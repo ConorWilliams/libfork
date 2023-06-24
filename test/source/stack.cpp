@@ -96,7 +96,7 @@ TEST_CASE("virtual_stack - Unique Pointer Array", "[virtual_stack]") {
   }
 }
 
-#if LIBFORK_COMPILER_EXCEPTIONS
+#if LF_COMPILER_EXCEPTIONS
 
 TEST_CASE("virtual_stack - Stack Overflow", "[virtual_stack]") {
   auto stack = Stack<256>::make_unique();

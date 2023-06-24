@@ -16,8 +16,8 @@ using namespace lf;
 
 consteval void foo() {
   // Test macros valid in constexpr context.
-  LIBFORK_ASSERT(true);
-  LIBFORK_LOG("{}", 1);
+  LF_ASSERT(true);
+  LF_LOG("{}", 1);
 }
 
 // NOLINTEND

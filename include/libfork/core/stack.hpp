@@ -44,9 +44,9 @@ auto r_cast(U &&expr) noexcept {
 
 [[nodiscard]] inline auto aligned_alloc(std::size_t size, std::size_t alignment) -> void * {
 
-  LIBFORK_ASSERT(size > 0);                       // Should never want to allocate no memory.
-  LIBFORK_ASSERT(std::has_single_bit(alignment)); // Need power of 2 alignment.
-  LIBFORK_ASSERT(size % alignment == 0);          // Size must be a multiple of alignment.
+  LF_ASSERT(size > 0);                       // Should never want to allocate no memory.
+  LF_ASSERT(std::has_single_bit(alignment)); // Need power of 2 alignment.
+  LF_ASSERT(size % alignment == 0);          // Size must be a multiple of alignment.
 
   alignment = std::max(alignment, k_new_align);
 
@@ -60,12 +60,12 @@ auto r_cast(U &&expr) noexcept {
 
   void *original_ptr = ::operator new(size + offset);
 
-  LIBFORK_ASSERT(original_ptr);
+  LF_ASSERT(original_ptr);
 
   std::uintptr_t raw_address = r_cast<std::uintptr_t>(original_ptr);
   std::uintptr_t ret_address = (raw_address + offset) & ~(alignment - 1);
 
-  LIBFORK_ASSERT(ret_address % alignment == 0);
+  LF_ASSERT(ret_address % alignment == 0);
 
   *r_cast<void **>(ret_address - sizeof(void *)) = original_ptr; // Store original pointer
 
@@ -73,7 +73,7 @@ auto r_cast(U &&expr) noexcept {
 }
 
 inline void aligned_free(void *ptr) noexcept {
-  LIBFORK_ASSERT(ptr);
+  LF_ASSERT(ptr);
   ::operator delete(*r_cast<void **>(r_cast<std::uintptr_t>(ptr) - sizeof(void *)));
 }
 
@@ -119,7 +119,7 @@ class alignas(detail::k_new_align) virtual_stack : detail::stack_mem {
     static_assert(k_trivial == std::is_trivially_destructible_v<virtual_stack>);
 
     if (detail::r_cast<std::uintptr_t>(this) % N != 0) {
-#if LIBFORK_COMPILER_EXCEPTIONS
+#if LF_COMPILER_EXCEPTIONS
       throw unaligned{};
 #else
       std::terminate();
@@ -132,7 +132,7 @@ class alignas(detail::k_new_align) virtual_stack : detail::stack_mem {
   // Deleter(s) for ``std::unique_ptr``'s
 
   struct delete_1 {
-    LIBFORK_STATIC_CALL void operator()(virtual_stack *ptr) LIBFORK_STATIC_CONST noexcept {
+    LF_STATIC_CALL void operator()(virtual_stack *ptr) LF_STATIC_CONST noexcept {
       if constexpr (!std::is_trivially_destructible_v<virtual_stack>) {
         ptr->~virtual_stack();
       }
@@ -200,7 +200,7 @@ public:
      * @brief Access the stack pointed at by this handle.
      */
     [[nodiscard]] constexpr auto operator*() const noexcept -> virtual_stack {
-      LIBFORK_ASSERT(m_stack);
+      LF_ASSERT(m_stack);
       return *m_stack;
     }
 
@@ -208,7 +208,7 @@ public:
      * @brief Access the stack pointed at by this handle.
      */
     constexpr auto operator->() -> virtual_stack * {
-      LIBFORK_ASSERT(m_stack);
+      LF_ASSERT(m_stack);
       return m_stack;
     }
 
@@ -264,16 +264,16 @@ public:
    */
   [[nodiscard]] constexpr auto allocate(std::size_t const n) -> void * {
 
-    LIBFORK_LOG("Allocating {} bytes on the stack", n);
+    LF_LOG("Allocating {} bytes on the stack", n);
 
     auto *prev = m_ptr;
 
     auto *next = m_ptr + align(n); // NOLINT
 
     if (next >= m_end) {
-      LIBFORK_LOG("Virtual stack overflows");
+      LF_LOG("Virtual stack overflows");
 
-#if LIBFORK_COMPILER_EXCEPTIONS
+#if LF_COMPILER_EXCEPTIONS
       throw overflow();
 #else
       std::terminate();
@@ -299,19 +299,19 @@ public:
    */
   constexpr auto deallocate(void *ptr, std::size_t n) noexcept -> void {
     //
-    LIBFORK_LOG("Deallocating {} bytes from the stack", n);
+    LF_LOG("Deallocating {} bytes from the stack", n);
 
 #ifndef NDEBUG
-    LIBFORK_ASSERT(!this->m_debug.empty());
-    LIBFORK_ASSERT(this->m_debug.top() == std::make_pair(ptr, n));
+    LF_ASSERT(!this->m_debug.empty());
+    LF_ASSERT(this->m_debug.top() == std::make_pair(ptr, n));
     this->m_debug.pop();
 #endif
 
     auto *prev = static_cast<std::byte *>(ptr);
 
     // Rudimentary check that deallocate is called in a FILO manner.
-    LIBFORK_ASSERT(prev >= m_buf.data());
-    LIBFORK_ASSERT(m_ptr - align(n) == prev);
+    LF_ASSERT(prev >= m_buf.data());
+    LF_ASSERT(m_ptr - align(n) == prev);
 
     m_ptr = prev;
   }

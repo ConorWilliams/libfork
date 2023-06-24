@@ -47,7 +47,7 @@ public:
   static auto
   get() -> T & {
     if (m_ptr == nullptr) {
-#if LIBFORK_COMPILER_EXCEPTIONS
+#if LF_COMPILER_EXCEPTIONS
       throw not_set{};
 #else
       std::terminate();

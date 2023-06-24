@@ -95,12 +95,12 @@ public:
 
   // Checked access
   [[nodiscard]] constexpr auto parent() const noexcept -> stdx::coroutine_handle<promise_base> {
-    LIBFORK_ASSERT(has_parent());
+    LF_ASSERT(has_parent());
     return m_parent;
   }
 
   [[nodiscard]] constexpr auto ret_address() const noexcept -> void * {
-    LIBFORK_ASSERT(m_return_address);
+    LF_ASSERT(m_return_address);
     return m_return_address;
   }
 
@@ -114,7 +114,7 @@ public:
 
   constexpr void reset() noexcept {
     // This is called when taking ownership of a task at a join point.
-    LIBFORK_ASSERT(m_steal != 0);
+    LF_ASSERT(m_steal != 0);
 
     m_steal = 0;
     // Use construct_at(...) to set non-atomically as we know we are the
@@ -128,7 +128,7 @@ public:
   // Increase the debug counter
   constexpr void debug_inc() noexcept {
 #ifndef NDEBUG
-    LIBFORK_ASSERT(m_debug_count < std::numeric_limits<std::int32_t>::max());
+    LF_ASSERT(m_debug_count < std::numeric_limits<std::int32_t>::max());
     ++m_debug_count;
 #endif
   }
@@ -246,8 +246,8 @@ public:
   handle_t() = default; ///< To make us a trivial type.
 
   void resume() noexcept {
-    LIBFORK_LOG("Call to resume on stolen task");
-    LIBFORK_ASSERT(*this);
+    LF_LOG("Call to resume on stolen task");
+    LF_ASSERT(*this);
 
     stdx::coroutine_handle<promise_base>::promise().m_steal += 1;
     stdx::coroutine_handle<promise_base>::resume();

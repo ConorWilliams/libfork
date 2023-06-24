@@ -73,7 +73,7 @@ public:
    */
   explicit constexpr xoshiro(std::array<result_type, 4> const &seed) : m_state{seed} {
     if (seed == std::array<result_type, 4>{0, 0, 0, 0}) {
-      LIBFORK_ASSERT(false);
+      LF_ASSERT(false);
     }
   }
 

@@ -64,7 +64,7 @@ struct ring_buf {
    * @param cap The capacity of the buffer, MUST be a power of 2.
    */
   explicit ring_buf(std::ptrdiff_t cap) : m_cap{cap}, m_mask{cap - 1} {
-    LIBFORK_ASSERT(cap > 0 && std::has_single_bit(static_cast<std::size_t>(cap)));
+    LF_ASSERT(cap > 0 && std::has_single_bit(static_cast<std::size_t>(cap)));
   }
   /**
    * @brief Get the capacity of the buffer.
@@ -74,14 +74,14 @@ struct ring_buf {
    * @brief Store ``val`` at ``index % this->capacity()``.
    */
   auto store(std::ptrdiff_t index, T const &val) noexcept -> void {
-    LIBFORK_ASSERT(index >= 0);
+    LF_ASSERT(index >= 0);
     (m_buf.get() + (index & m_mask))->store(val, std::memory_order_relaxed); // NOLINT Avoid cast to std::size_t.
   }
   /**
    * @brief Load value at ``index % this->capacity()``.
    */
   [[nodiscard]] auto load(std::ptrdiff_t index) const noexcept -> T {
-    LIBFORK_ASSERT(index >= 0);
+    LF_ASSERT(index >= 0);
     return (m_buf.get() + (index & m_mask))->load(std::memory_order_relaxed); // NOLINT Avoid cast to std::size_t.
   }
   /**
@@ -215,7 +215,7 @@ public:
      * Requires ``code == err::none`` .
      */
     constexpr auto operator*() noexcept -> T & {
-      LIBFORK_ASSERT(code == err::none);
+      LF_ASSERT(code == err::none);
       return val;
     }
     /**
@@ -224,7 +224,7 @@ public:
      * Requires ``code == err::none`` .
      */
     constexpr auto operator*() const noexcept -> T const & {
-      LIBFORK_ASSERT(code == err::none);
+      LF_ASSERT(code == err::none);
       return val;
     }
     /**
@@ -233,7 +233,7 @@ public:
      * Requires ``code == err::none`` .
      */
     constexpr auto operator->() noexcept -> T * {
-      LIBFORK_ASSERT(code == err::none);
+      LF_ASSERT(code == err::none);
       return std::addressof(val);
     }
     /**
@@ -242,7 +242,7 @@ public:
      * Requires ``code == err::none`` .
      */
     constexpr auto operator->() const noexcept -> T const * {
-      LIBFORK_ASSERT(code == err::none);
+      LF_ASSERT(code == err::none);
       return std::addressof(val);
     }
 

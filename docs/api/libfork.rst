@@ -8,14 +8,27 @@ libfork.hpp
 Interfaces
 -------------------------
 
-.. doxygenconcept:: lf::stateless
-
+.. doxygenconcept:: lf::scheduler
 
 .. doxygenconcept:: lf::thread_context
 
+.. doxygenconcept:: lf::no_rvalue_if
 
-.. doxygenconcept:: lf::scheduler
+.. doxygenconcept:: lf::stateless
 
+.. doxygenconcept:: lf::first_arg
+
+-------------------------
+
+.. doxygenstruct:: lf::first_arg_t
+
+.. doxygenstruct:: lf::first_arg_t< Tag, async_fn< F > >
+    :members:
+    :undoc-members:
+
+.. doxygenstruct:: lf::first_arg_t< Tag, async_mem_fn< F >, This >
+    :members:
+    :undoc-members:
 
 Building asynchronous functions
 --------------------------------
@@ -23,14 +36,6 @@ Building asynchronous functions
 .. doxygenclass:: lf::task
     :members:
     :undoc-members:
-
-.. doxygenfunction:: lf::async
-
-.. doxygenfunction:: lf::async_m
-
--------------------------
-
-.. doxygenstruct:: lf::first_arg
 
 .. doxygenstruct:: lf::async_fn
     :members:

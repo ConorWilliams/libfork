@@ -19,9 +19,9 @@
 #include <catch2/catch_test_macros.hpp>
 
 // #define NDEBUG
-// #define LIBFORK_PROPAGATE_EXCEPTIONS
-// #undef LIBFORK_LOG
-// #define LIBFORK_LOGGING
+// #define LF_PROPAGATE_EXCEPTIONS
+// #undef LF_LOG
+// #define LF_LOGGING
 
 #include "libfork/libfork.hpp"
 #include "libfork/macro.hpp"
@@ -35,7 +35,7 @@ using namespace lf;
 
 // ------------------------ Construct destruct ------------------------ //
 
-inline constexpr auto noop = async([](auto) -> lf::task<> { co_return; });
+inline constexpr async_fn noop = [](auto) -> lf::task<> { co_return; };
 
 TEMPLATE_TEST_CASE("Construct destruct launch", "[libfork][template]", inline_scheduler, busy_pool) {
 
@@ -56,7 +56,7 @@ TEMPLATE_TEST_CASE("Construct destruct launch", "[libfork][template]", inline_sc
 // ------------------------ stack overflow ------------------------ //
 
 // In some implementations, this could cause a stack overflow if symmetric transfer is not used.
-inline constexpr auto sym_stack_overflow_1 = async([](auto) -> lf::task<int> {
+inline constexpr async_fn sym_stack_overflow_1 = [](auto) -> lf::task<int> {
   for (int i = 0; i < 10'000'000; ++i) {
     co_await lf::fork(noop)();
     co_await lf::call(noop)();
@@ -64,7 +64,7 @@ inline constexpr auto sym_stack_overflow_1 = async([](auto) -> lf::task<int> {
   co_await lf::join;
 
   co_return 1;
-});
+};
 
 TEMPLATE_TEST_CASE("Stack overflow - sym-transfer", "[libfork][template]", inline_scheduler, busy_pool) {
   REQUIRE(sync_wait(TestType{}, sym_stack_overflow_1));
@@ -79,7 +79,7 @@ int fib(int n) {
   return fib(n - 1) + fib(n - 2);
 }
 
-inline constexpr auto r_fib = async([](auto fib, int n) -> lf::task<int> {
+inline constexpr async_fn r_fib = [](auto fib, int n) -> lf::task<int> {
   //
 
   REQUIRE(fib.context().max_threads() >= 0);
@@ -110,9 +110,9 @@ inline constexpr auto r_fib = async([](auto fib, int n) -> lf::task<int> {
   }
 
   co_return a + b;
-});
+};
 
-inline constexpr auto inline_fib = async([](auto fib, int n) -> lf::task<int> {
+inline constexpr async_fn inline_fib = [](auto fib, int n) -> lf::task<int> {
   //
 
   if (n < 2) {
@@ -123,9 +123,9 @@ inline constexpr auto inline_fib = async([](auto fib, int n) -> lf::task<int> {
   int b = co_await fib(n - 2);
 
   co_return a + b;
-});
+};
 
-inline constexpr auto v_fib = async([](auto fib, int &ret, int n) -> lf::task<void> {
+inline constexpr async_fn v_fib = [](auto fib, int &ret, int n) -> lf::task<void> {
   //
   if (n < 2) {
     ret = n;
@@ -141,7 +141,7 @@ inline constexpr auto v_fib = async([](auto fib, int &ret, int n) -> lf::task<vo
   }
 
   ret = a + b;
-});
+};
 
 TEMPLATE_TEST_CASE("Fibonacci - returning", "[libfork][template]", inline_scheduler, busy_pool) {
 
@@ -176,36 +176,36 @@ TEMPLATE_TEST_CASE("Fibonacci - void", "[libfork][template]", inline_scheduler, 
 
 class access_test {
 public:
-  static constexpr auto get = async_m([](auto self) -> lf::task<int> {
+  static constexpr async_mem_fn get = [](auto self) -> lf::task<int> {
     co_await lf::call(self->run)(*self, 10);
     co_await lf::join;
     co_return self->m_private;
-  });
+  };
 
-  static constexpr auto get_2 = async_m([](auto self) -> lf::task<int> {
+  static constexpr async_mem_fn get_2 = [](auto self) -> lf::task<int> {
     co_await self->run(*self, 10);
     co_return self->m_private;
-  });
+  };
 
 private:
-  static constexpr auto run = async_m([](auto self, int n) -> lf::task<> {
+  static constexpr async_mem_fn run = [](auto self, int n) -> lf::task<> {
     if (n < 0) {
       co_return;
     }
     co_await lf::call(self->run)(*self, n - 1);
     co_await join;
-  });
+  };
 
   int m_private = 99;
 };
 
-inline constexpr auto mem_from_coro = async([](auto) -> lf::task<int> {
+inline constexpr async_fn mem_from_coro = [](auto) -> lf::task<int> {
   access_test a;
   int r;
   co_await lf::call(r, access_test::get)(a);
   co_await join;
   co_return r;
-});
+};
 
 TEMPLATE_TEST_CASE("Member functions", "[libfork][template]", inline_scheduler, busy_pool) {
 
@@ -218,12 +218,12 @@ TEMPLATE_TEST_CASE("Member functions", "[libfork][template]", inline_scheduler, 
   REQUIRE(99 == sync_wait(schedule, mem_from_coro));
 }
 
-#if LIBFORK_PROPAGATE_EXCEPTIONS
+#if LF_PROPAGATE_EXCEPTIONS
 
 struct deep : std::exception {};
 
-inline constexpr auto deep_except = async([](auto self, int n) -> lf::task<> {
-  if (n > 0) {
+inline constexpr async_fn deep_except = [](auto self, int n) -> lf::task<> {
+  if (n <= 0) {
     co_await lf::call(self)(n - 1);
 
     try {
@@ -234,10 +234,10 @@ inline constexpr auto deep_except = async([](auto self, int n) -> lf::task<> {
     }
   }
   throw deep{};
-});
+};
 
-inline constexpr auto deep_except_2 = async([](auto self, int n) -> lf::task<> {
-  if (n > 0) {
+inline constexpr async_fn deep_except_2 = [](auto self, int n) -> lf::task<> {
+  if (n <= 0) {
 
     try {
       co_await self(n - 1);
@@ -247,7 +247,7 @@ inline constexpr auto deep_except_2 = async([](auto self, int n) -> lf::task<> {
     }
   }
   throw deep{};
-});
+};
 
 TEMPLATE_TEST_CASE("Exceptions", "[libfork][template]", inline_scheduler, busy_pool) {
 

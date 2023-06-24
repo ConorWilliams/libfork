@@ -38,7 +38,7 @@ public:
 
   // See what would be popped
   [[nodiscard]] auto peek() -> T & {
-    LIBFORK_ASSERT(!empty());
+    LF_ASSERT(!empty());
     return load(m_bottom - 1);
   }
 
@@ -104,9 +104,9 @@ private:
 //   }
 
 //   void stack_pop() {
-//     LIBFORK_LOG("stack_pop()");
+//     LF_LOG("stack_pop()");
 
-//     LIBFORK_ASSERT(!m_stacks.empty());
+//     LF_ASSERT(!m_stacks.empty());
 
 //     m_stacks.pop();
 
@@ -114,20 +114,20 @@ private:
 //       return;
 //     }
 
-//     LIBFORK_LOG("No stack, stealing from other threads");
+//     LF_LOG("No stack, stealing from other threads");
 
 //     if (std::optional handle = std::invoke(m_steal)) {
-//       LIBFORK_ASSERT(m_stacks.empty());
+//       LF_ASSERT(m_stacks.empty());
 //       m_stacks.push(*handle);
 //     }
 
-//     LIBFORK_LOG("No stacks found, allocating new stacks");
+//     LF_LOG("No stacks found, allocating new stacks");
 //     alloc_stacks();
 //   }
 
 //   void stack_push(handle_t handle) {
-//     LIBFORK_LOG("Pushing stack to private queue");
-//     LIBFORK_ASSERT(stack_top()->empty());
+//     LF_LOG("Pushing stack to private queue");
+//     LF_ASSERT(stack_top()->empty());
 //     m_stacks.push(handle);
 //   }
 
@@ -142,7 +142,7 @@ private:
 
 //   void alloc_stacks() {
 
-//     LIBFORK_ASSERT(m_stacks.empty());
+//     LF_ASSERT(m_stacks.empty());
 
 //     stack_block stacks = Stack::make_unique(k_buff);
 
@@ -179,15 +179,15 @@ public:
     constexpr auto max_threads() const noexcept -> std::size_t { return m_pool->m_workers.size(); }
 
     auto stack_top() -> stack_type::handle {
-      LIBFORK_ASSERT(&context() == this);
+      LF_ASSERT(&context() == this);
       return m_stacks.peek();
     }
 
     void stack_pop() {
-      LIBFORK_ASSERT(&context() == this);
-      LIBFORK_ASSERT(!m_stacks.empty());
+      LF_ASSERT(&context() == this);
+      LF_ASSERT(!m_stacks.empty());
 
-      LIBFORK_LOG("Pop stack");
+      LF_LOG("Pop stack");
 
       m_stacks.pop();
 
@@ -195,7 +195,7 @@ public:
         return;
       }
 
-      LIBFORK_LOG("No stack, stealing from other threads");
+      LF_LOG("No stack, stealing from other threads");
 
       auto n = max_threads();
 
@@ -210,8 +210,8 @@ public:
         }
 
         if (auto handle = m_pool->m_contexts[steal_at].m_stacks.steal()) {
-          LIBFORK_LOG("Stole stack from thread {}", steal_at);
-          LIBFORK_ASSERT(m_stacks.empty());
+          LF_LOG("Stole stack from thread {}", steal_at);
+          LF_ASSERT(m_stacks.empty());
           m_stacks.push(*handle);
           return;
         }
@@ -219,15 +219,15 @@ public:
         ++attempts;
       }
 
-      LIBFORK_LOG("No stacks found, allocating new stacks");
+      LF_LOG("No stacks found, allocating new stacks");
       alloc_stacks();
     }
 
     void stack_push(stack_type::handle handle) {
-      LIBFORK_ASSERT(&context() == this);
-      LIBFORK_ASSERT(stack_top()->empty());
+      LF_ASSERT(&context() == this);
+      LF_ASSERT(stack_top()->empty());
 
-      LIBFORK_LOG("Pushing stack to private queue");
+      LF_LOG("Pushing stack to private queue");
 
       m_stacks.push(handle);
     }
@@ -237,12 +237,12 @@ public:
     }
 
     auto task_pop() -> std::optional<task_handle> {
-      LIBFORK_ASSERT(&context() == this);
+      LF_ASSERT(&context() == this);
       return m_tasks.pop();
     }
 
     void task_push(task_handle task) {
-      LIBFORK_ASSERT(&context() == this);
+      LF_ASSERT(&context() == this);
       m_tasks.push(task);
     }
 
@@ -266,7 +266,7 @@ public:
     // Alloc k new stacks and insert them into our private queue.
     void alloc_stacks() {
 
-      LIBFORK_ASSERT(m_stacks.empty());
+      LF_ASSERT(m_stacks.empty());
 
       stack_block stacks = stack_type::make_unique(block_size);
 
@@ -298,7 +298,7 @@ public:
       ctx.m_id = count++;
     }
 
-#if LIBFORK_COMPILER_EXCEPTIONS
+#if LF_COMPILER_EXCEPTIONS
     try {
 #endif
       for (std::size_t i = 0; i < n; ++i) {
@@ -319,23 +319,23 @@ public:
 
               if (steal_at == i) {
                 if (auto root = m_submit.steal()) {
-                  LIBFORK_LOG("resuming root task");
+                  LF_LOG("resuming root task");
                   root->resume();
                 }
               } else if (auto work = m_contexts[steal_at].task_steal()) {
                 attempt = 0;
-                LIBFORK_LOG("Stole work from {}", steal_at);
+                LF_LOG("Stole work from {}", steal_at);
                 work->resume();
-                LIBFORK_LOG("worker resumes thieving");
-                LIBFORK_ASSUME(my_context.m_tasks.empty());
+                LF_LOG("worker resumes thieving");
+                LF_ASSUME(my_context.m_tasks.empty());
               }
             }
           };
 
-          LIBFORK_LOG("Worker {} stopping", i);
+          LF_LOG("Worker {} stopping", i);
         });
       }
-#if LIBFORK_COMPILER_EXCEPTIONS
+#if LF_COMPILER_EXCEPTIONS
     } catch (...) {
       // Need to stop the threads
       clean_up();
@@ -357,16 +357,16 @@ private:
   // Request all threads to stop, wake them up and then call join.
   auto clean_up() noexcept -> void {
 
-    LIBFORK_LOG("Request stop");
+    LF_LOG("Request stop");
 
-    LIBFORK_ASSERT(m_submit.empty());
+    LF_ASSERT(m_submit.empty());
 
     // Set conditions for workers to stop
     m_stop_requested.test_and_set(std::memory_order_release);
 
     // Join workers
     for (auto &worker : m_workers) {
-      LIBFORK_ASSUME(worker.joinable());
+      LF_ASSUME(worker.joinable());
       worker.join();
     }
   }

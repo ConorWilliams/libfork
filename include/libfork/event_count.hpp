@@ -187,14 +187,14 @@ private:
 
 inline void event_count::notify_one() noexcept {
   if (m_val.fetch_add(k_add_epoch, std::memory_order_acq_rel) & k_waiter_mask) [[unlikely]] { // NOLINT
-    LIBFORK_LOG("notify");
+    LF_LOG("notify");
     epoch()->notify_one();
   }
 }
 
 inline void event_count::notify_all() noexcept {
   if (m_val.fetch_add(k_add_epoch, std::memory_order_acq_rel) & k_waiter_mask) [[unlikely]] { // NOLINT
-    LIBFORK_LOG("notify");
+    LF_LOG("notify");
     epoch()->notify_all();
   }
 }
@@ -211,7 +211,7 @@ inline void event_count::cancel_wait() noexcept {
   // (and thus system calls).
   auto prev = m_val.fetch_add(k_sub_waiter, std::memory_order_seq_cst);
 
-  LIBFORK_ASSERT((prev & k_waiter_mask) != 0);
+  LF_ASSERT((prev & k_waiter_mask) != 0);
 }
 
 inline void event_count::wait(key in_key) noexcept {
@@ -223,7 +223,7 @@ inline void event_count::wait(key in_key) noexcept {
   // (and thus system calls)
   auto prev = m_val.fetch_add(k_sub_waiter, std::memory_order_seq_cst);
 
-  LIBFORK_ASSERT((prev & k_waiter_mask) != 0);
+  LF_ASSERT((prev & k_waiter_mask) != 0);
 }
 
 template <class Pred>
@@ -235,7 +235,7 @@ void event_count::await(Pred const &condition) {
   }
 // std::invoke(condition) is the only thing that may throw, everything else is
 // noexcept, so we can hoist the try/catch block outside of the loop
-#if LIBFORK_COMPILER_EXCEPTIONS
+#if LF_COMPILER_EXCEPTIONS
   try {
 #endif
     for (;;) {
@@ -246,7 +246,7 @@ void event_count::await(Pred const &condition) {
       }
       wait(my_key);
     }
-#if LIBFORK_COMPILER_EXCEPTIONS
+#if LF_COMPILER_EXCEPTIONS
   } catch (...) {
     cancel_wait();
     throw;

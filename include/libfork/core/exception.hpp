@@ -25,7 +25,7 @@ namespace lf::detail {
 
 static_assert(std::is_empty_v<immovable>);
 
-#if LIBFORK_PROPAGATE_EXCEPTIONS
+#if LF_PROPAGATE_EXCEPTIONS
 
 /**
  * @brief A thread safe std::exception_ptr.
@@ -42,11 +42,11 @@ public:
    */
   void unhandled_exception() noexcept {
     if (!m_ready.test_and_set(std::memory_order_acq_rel)) {
-      LIBFORK_LOG("Exception saved");
+      LF_LOG("Exception saved");
       m_exception = std::current_exception();
-      LIBFORK_ASSERT(m_exception);
+      LF_ASSERT(m_exception);
     } else {
-      LIBFORK_LOG("Exception discarded");
+      LF_LOG("Exception discarded");
     }
   }
 
@@ -57,7 +57,7 @@ public:
    */
   void rethrow_if_unhandled() {
     if (m_exception) {
-      LIBFORK_LOG("Rethrowing exception");
+      LF_LOG("Rethrowing exception");
       // We are the only thread that can touch this until a steal, which provides the required syncronisation.
       m_ready.clear(std::memory_order_relaxed);
       std::rethrow_exception(std::exchange(m_exception, {}));
@@ -76,7 +76,7 @@ public:
   explicit constexpr operator bool() const noexcept { return false; }
 
   void unhandled_exception() noexcept {
-  #if LIBFORK_COMPILER_EXCEPTIONS
+  #if LF_COMPILER_EXCEPTIONS
     throw;
   #else
     std::terminate();

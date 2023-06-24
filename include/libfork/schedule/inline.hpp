@@ -59,11 +59,11 @@ public:
     /**
      * @brief Should never be called, aborts the program.
      */
-    static void stack_pop() { LIBFORK_ASSERT(false); }
+    static void stack_pop() { LF_ASSERT(false); }
     /**
      * @brief Should never be called, aborts the program.
      */
-    static void stack_push([[maybe_unused]] stack_type::handle handle) { LIBFORK_ASSERT(false); }
+    static void stack_push([[maybe_unused]] stack_type::handle handle) { LF_ASSERT(false); }
     /**
      * @brief Pops a task from the task queue.
      */

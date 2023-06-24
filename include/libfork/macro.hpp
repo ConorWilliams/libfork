@@ -9,6 +9,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include <cstddef>
+#include <new>
+#include <utility>
 #include <version>
 
 /**
@@ -45,46 +48,61 @@ struct immovable {
 } // namespace lf::detail
 
 /**
- * @brief Use to decorate lambdas and ``operator()`` (alongside ``LIBFORK_STATIC_CONST``) and with ``static`` if supported.
+ * @brief Use to decorate lambdas and ``operator()`` (alongside ``LF_STATIC_CONST``) and with ``static`` if supported.
  */
 #ifdef __cpp_static_call_operator
-  #define LIBFORK_STATIC_CALL static
+  #define LF_STATIC_CALL static
 #else
-  #define LIBFORK_STATIC_CALL
+  #define LF_STATIC_CALL
 #endif
 
 /**
- * @brief Use with ``LIBFORK_STATIC_CALL`` to decorate ``operator()`` with ``const`` if supported.
+ * @brief Use with ``LF_STATIC_CALL`` to decorate ``operator()`` with ``const`` if supported.
  */
 #ifdef __cpp_static_call_operator
-  #define LIBFORK_STATIC_CONST
+  #define LF_STATIC_CONST
 #else
-  #define LIBFORK_STATIC_CONST const
+  #define LF_STATIC_CONST const
 #endif
+
+// clang-format off
+
+/**
+ * @brief Use like BOOST_HOF_RETURNS to define a function/lambda with all the noexcept/requires/decltype specifiers.
+ * 
+ */
+#define LF_HOF_RETURNS(expr) noexcept(noexcept(expr)) -> decltype(auto) requires requires { expr; } { return expr;}
+
+// clang-format on
+
+/**
+ * @brief Lift an overload-set/template into a constrained lambda.
+ */
+#define LF_LIFT(overload_set) [](auto &&...args) LF_STATIC_CALL LF_HOF_RETURNS(overload_set(std::forward<decltype(args)>(args)...))
 
 /**
  * @brief Detects if the compiler has exceptions enabled.
  *
- * Overridable by defining ``LIBFORK_COMPILER_EXCEPTIONS``.
+ * Overridable by defining ``LF_COMPILER_EXCEPTIONS``.
  */
-#ifndef LIBFORK_COMPILER_EXCEPTIONS
+#ifndef LF_COMPILER_EXCEPTIONS
   #if defined(__cpp_exceptions) || (defined(_MSC_VER) && defined(_CPPUNWIND)) || defined(__EXCEPTIONS)
-    #define LIBFORK_COMPILER_EXCEPTIONS 1
+    #define LF_COMPILER_EXCEPTIONS 1
   #else
-    #define LIBFORK_COMPILER_EXCEPTIONS 0
+    #define LF_COMPILER_EXCEPTIONS 0
   #endif
 #endif
 
 /**
  * @brief If truthy then coroutines propagate exceptions, if false then termination is triggered.
  *
- *  * Overridable by defining ``LIBFORK_PROPAGATE_EXCEPTIONS``.
+ *  * Overridable by defining ``LF_PROPAGATE_EXCEPTIONS``.
  */
-#ifndef LIBFORK_PROPAGATE_EXCEPTIONS
-  #define LIBFORK_PROPAGATE_EXCEPTIONS LIBFORK_COMPILER_EXCEPTIONS
+#ifndef LF_PROPAGATE_EXCEPTIONS
+  #define LF_PROPAGATE_EXCEPTIONS LF_COMPILER_EXCEPTIONS
 #endif
 
-#if !LIBFORK_COMPILER_EXCEPTIONS && LIBFORK_PROPAGATE_EXCEPTIONS
+#if !LF_COMPILER_EXCEPTIONS && LF_PROPAGATE_EXCEPTIONS
   #error "Cannot propagate exceptions without exceptions enabled!"
 #endif
 
@@ -106,43 +124,43 @@ struct immovable {
  * \endrst
  */
 #if __has_cpp_attribute(assume)
-  #define LIBFORK_ASSUME(expr) [[assume(bool(expr))]]
+  #define LF_ASSUME(expr) [[assume(bool(expr))]]
 #elif defined(__clang__)
-  #define LIBFORK_ASSUME(expr) __builtin_assume(bool(expr))
+  #define LF_ASSUME(expr) __builtin_assume(bool(expr))
 #elif defined(__GNUC__) && !defined(__ICC)
-  #define LIBFORK_ASSUME(expr) \
+  #define LF_ASSUME(expr)      \
     if (bool(expr)) {          \
     } else {                   \
       __builtin_unreachable(); \
     }
 #elif defined(_MSC_VER) || defined(__ICC)
-  #define LIBFORK_ASSUME(expr) __assume(bool(expr))
+  #define LF_ASSUME(expr) __assume(bool(expr))
 #else
-  #warning "No LIBFORK_ASSUME() implementation for this compiler."
-  #define LIBFORK_ASSUME(expr) \
-    do {                       \
+  #warning "No LF_ASSUME() implementation for this compiler."
+  #define LF_ASSUME(expr) \
+    do {                  \
     } while (false)
 #endif
 
 /**
- * @brief If ``NDEBUG`` is defined then ``LIBFORK_ASSERT(expr)`` is  ``LIBFORK_ASSUME(expr)`` otherwise ``assert(expr)``.
+ * @brief If ``NDEBUG`` is defined then ``LF_ASSERT(expr)`` is  ``LF_ASSUME(expr)`` otherwise ``assert(expr)``.
  */
 #ifndef NDEBUG
   #include <cassert>
-  #define LIBFORK_ASSERT(expr) assert(expr)
+  #define LF_ASSERT(expr) assert(expr)
 #else
-  #define LIBFORK_ASSERT(expr) LIBFORK_ASSUME(expr)
+  #define LF_ASSERT(expr) LF_ASSUME(expr)
 #endif
 
 /**
  * @brief A customizable logging macro.
  *
- * By default this is a no-op. Defining ``LIBFORK_LOGGING`` will enable a default
+ * By default this is a no-op. Defining ``LF_LOGGING`` will enable a default
  * logging implementation which prints to ``std::cout``. Overridable by defining your
- * own ``LIBFORK_LOG`` macro. Formats like ``std::format()``.
+ * own ``LF_LOG`` macro. Formats like ``std::format()``.
  */
-#ifndef LIBFORK_LOG
-  #ifdef LIBFORK_LOGGING
+#ifndef LF_LOG
+  #ifdef LF_LOGGING
     #include <iostream>
     #include <mutex>
     #include <thread>
@@ -150,27 +168,27 @@ struct immovable {
 
     #ifdef __cpp_lib_format
       #include <format>
-      #define LIBFORK_FORMAT(message, ...) std::format((message)__VA_OPT__(, ) __VA_ARGS__)
+      #define LF_FORMAT(message, ...) std::format((message)__VA_OPT__(, ) __VA_ARGS__)
     #else
-      #define LIBFORK_FORMAT(message, ...) (message)
+      #define LF_FORMAT(message, ...) (message)
     #endif
 
     #ifdef __cpp_lib_syncbuf
       #include <syncstream>
-      #define LIBFORK_SYNC_COUT std::osyncstream(std::cout) << std::this_thread::get_id()
+      #define LF_SYNC_COUT std::osyncstream(std::cout) << std::this_thread::get_id()
     #else
-      #define LIBFORK_SYNC_COUT std::cout << std::this_thread::get_id()
+      #define LF_SYNC_COUT std::cout << std::this_thread::get_id()
     #endif
 
-    #define LIBFORK_LOG(message, ...)                                                              \
-      do {                                                                                         \
-        if (!std::is_constant_evaluated()) {                                                       \
-          LIBFORK_SYNC_COUT << ": " << LIBFORK_FORMAT(message __VA_OPT__(, ) __VA_ARGS__) << '\n'; \
-        }                                                                                          \
+    #define LF_LOG(message, ...)                                                         \
+      do {                                                                               \
+        if (!std::is_constant_evaluated()) {                                             \
+          LF_SYNC_COUT << ": " << LF_FORMAT(message __VA_OPT__(, ) __VA_ARGS__) << '\n'; \
+        }                                                                                \
       } while (false)
   #else
-    #define LIBFORK_LOG(head, ...) \
-      do {                         \
+    #define LF_LOG(head, ...) \
+      do {                    \
       } while (false)
   #endif
 #endif
