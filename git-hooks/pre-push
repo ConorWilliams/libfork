@@ -46,35 +46,4 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-SINGLE="./build/dev/tools/make_single_header ./include/libfork.hpp ./single_header/libfork.hpp"
-
-eval $SINGLE
-
-if [ $? -ne 0 ]; then
-    echo "$SINGLE failed!"
-    exit 1
-fi
-
-# git add ./single_header/libfork.hpp && git commit -m "Update single header"
-
-# Check there are no untracked changes
-
-pattern=$(git config --get hooks.prepush.sourcepattern)
-if [ -z "$pattern" ]; then
-    pattern="(?:(?:^|/)CMakeLists\.txt|\.h|\.cpp|\.cmake)$"
-fi
-    
-files=$(git status -u --porcelain --no-column | sed "s/^?? //" | grep -P "$pattern")
-if [ -n "$files" ]; then
-    echo
-    echo "ERROR: Preventing push with untracked source files:"
-    echo
-    echo "$files" | sed "s/^/    /"
-    echo
-    echo "Either include these files in your commits, add them to .gitignore"
-    echo "or stash them with git stash -u."
-    echo
-    exit 1
-fi
-
 exit 0
