@@ -176,7 +176,7 @@ public:
 
     static auto context() -> context_type & { return get(); }
 
-    constexpr auto max_threads() const noexcept -> std::size_t { return m_pool->m_workers.size(); }
+    auto max_threads() const noexcept -> std::size_t { return m_pool->m_workers.size(); }
 
     auto stack_top() -> stack_type::handle {
       LF_ASSERT(&context() == this);

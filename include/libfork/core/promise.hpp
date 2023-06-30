@@ -77,7 +77,7 @@ struct shim_ret_obj : promise_base {
 template <typename Ret, typename T, tag Tag>
 struct mixin_return : shim_ret_obj<Ret> {
   template <typename U>
-    requires std::constructible_from<T, U> && (std::is_void_v<Ret> || std::is_assignable_v<Ret &, U>)
+    requires std::constructible_from<T, U> && (std::is_void_v<Ret> || std::is_assignable_v<std::add_lvalue_reference_t<Ret>, U>)
   void return_value([[maybe_unused]] U &&expr) noexcept(std::is_void_v<Ret> || std::is_nothrow_assignable_v<std::add_lvalue_reference_t<Ret>, U>) {
     if constexpr (!std::is_void_v<Ret>) {
       this->get_return_address_obj() = std::forward<U>(expr);
