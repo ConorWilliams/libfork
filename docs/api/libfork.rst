@@ -1,4 +1,4 @@
-libfork.hpp
+core.hpp
 =====================
 
 .. doxygenfile:: libfork.hpp

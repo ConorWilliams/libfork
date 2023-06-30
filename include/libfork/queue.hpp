@@ -136,7 +136,7 @@ enum class err : int {
  *
  * Example:
  *
- * .. include:: ../../test/glob/queue.cpp
+ * .. include:: ../../test/source/queue.cpp
  *    :code:
  *    :start-after: // !BEGIN-EXAMPLE
  *    :end-before: // !END-EXAMPLE

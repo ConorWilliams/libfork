@@ -1,6 +1,6 @@
 #include <nanobench.h>
 
-#include "libfork/libfork.hpp"
+#include "libfork/core.hpp"
 #include "libfork/schedule/busy.hpp"
 #include "libfork/schedule/inline.hpp"
 
