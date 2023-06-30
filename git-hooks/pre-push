@@ -55,6 +55,8 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# git add ./single_header/libfork.hpp && git commit -m "Update single header"
+
 # Check there are no untracked changes
 
 pattern=$(git config --get hooks.prepush.sourcepattern)
