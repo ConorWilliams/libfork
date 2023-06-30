@@ -41,12 +41,21 @@ namespace lf::detail {
  */
 struct join_t {};
 
-#ifndef NDEBUG
-  #define FATAL_IN_DEBUG(expr, message)                         \
-    do {                                                        \
-      if (!(expr)) {                                            \
-        []() noexcept { throw std::runtime_error(message); }(); \
-      }                                                         \
+#if !defined(NDEBUG) && LF_COMPILER_EXCEPTIONS
+  #define FATAL_IN_DEBUG(expr, message)      \
+    do {                                     \
+      if (!(expr)) {                         \
+        []() noexcept {                      \
+          throw std::runtime_error(message); \
+        }();                                 \
+      }                                      \
+    } while (false)
+#elif !defined(NDEBUG) && !LF_COMPILER_EXCEPTIONS
+  #define FATAL_IN_DEBUG(expr, message) \
+    do {                                \
+      if (!(expr)) {                    \
+        std::terminate();               \
+      }                                 \
     } while (false)
 #else
   #define FATAL_IN_DEBUG(expr, message) \
