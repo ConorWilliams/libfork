@@ -18,6 +18,12 @@ if(BUILD_DOCS)
   add_subdirectory(docs)
 endif()
 
+option(BUILD_TOOLS "Build developer tools" ON)
+
+if(BUILD_TOOLS)
+  add_subdirectory(tools)
+endif()
+
 option(ENABLE_COVERAGE "Enable coverage support separate from CTest's" OFF)
 
 if(ENABLE_COVERAGE)

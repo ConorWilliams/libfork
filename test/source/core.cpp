@@ -23,7 +23,7 @@
 // #undef LF_LOG
 // #define LF_LOGGING
 
-#include "libfork/libfork.hpp"
+#include "libfork/core.hpp"
 #include "libfork/macro.hpp"
 #include "libfork/queue.hpp"
 #include "libfork/schedule/busy.hpp"
@@ -62,6 +62,8 @@ inline constexpr async_fn sym_stack_overflow_1 = [](auto) -> lf::task<int> {
     co_await lf::call(noop)();
   }
   co_await lf::join;
+
+  co_await noop();
 
   co_return 1;
 };
@@ -112,6 +114,15 @@ inline constexpr async_fn r_fib = [](auto fib, int n) -> lf::task<int> {
   co_return a + b;
 };
 
+TEMPLATE_TEST_CASE("Fibonacci - returning", "[libfork][template]", inline_scheduler, busy_pool) {
+
+  TestType schedule{};
+
+  for (int i = 0; i < 25; ++i) {
+    REQUIRE(fib(i) == sync_wait(schedule, r_fib, i));
+  }
+}
+
 inline constexpr async_fn inline_fib = [](auto fib, int n) -> lf::task<int> {
   //
 
@@ -125,6 +136,15 @@ inline constexpr async_fn inline_fib = [](auto fib, int n) -> lf::task<int> {
   co_return a + b;
 };
 
+TEMPLATE_TEST_CASE("Fibonacci - inline", "[libfork][template]", inline_scheduler, busy_pool) {
+
+  TestType schedule{};
+
+  for (int i = 0; i < 25; ++i) {
+    REQUIRE(fib(i) == sync_wait(schedule, inline_fib, i));
+  }
+}
+
 inline constexpr async_fn v_fib = [](auto fib, int &ret, int n) -> lf::task<void> {
   //
   if (n < 2) {
@@ -136,30 +156,12 @@ inline constexpr async_fn v_fib = [](auto fib, int &ret, int n) -> lf::task<void
 
   for (int i = 0; i < 2; i++) {
     co_await lf::fork(fib)(a, n - 1);
-    co_await lf::fork(fib)(b, n - 2);
+    co_await lf::call(fib)(b, n - 2);
     co_await lf::join;
   }
 
   ret = a + b;
 };
-
-TEMPLATE_TEST_CASE("Fibonacci - returning", "[libfork][template]", inline_scheduler, busy_pool) {
-
-  TestType schedule{};
-
-  for (int i = 0; i < 25; ++i) {
-    REQUIRE(fib(i) == sync_wait(schedule, r_fib, i));
-  }
-}
-
-TEMPLATE_TEST_CASE("Fibonacci - inline", "[libfork][template]", inline_scheduler, busy_pool) {
-
-  TestType schedule{};
-
-  for (int i = 0; i < 25; ++i) {
-    REQUIRE(fib(i) == sync_wait(schedule, inline_fib, i));
-  }
-}
 
 TEMPLATE_TEST_CASE("Fibonacci - void", "[libfork][template]", inline_scheduler, busy_pool) {
 
@@ -169,6 +171,45 @@ TEMPLATE_TEST_CASE("Fibonacci - void", "[libfork][template]", inline_scheduler, 
     int res;
     sync_wait(schedule, v_fib, res, i);
     REQUIRE(fib(i) == res);
+  }
+}
+
+// ------------------------ differing return types ------------------------ //
+
+inline constexpr async_fn v_fib_ignore = [](auto fib, int &ret, int n) -> lf::task<int> {
+  //
+  if (n < 2) {
+    ret = n;
+    co_return n;
+  }
+
+  int a, b;
+
+  std::optional<int> c;
+
+  for (int i = 0; i < 2; i++) {
+    co_await lf::fork(fib)(a, n - 1);    // Test explicit ignore
+    co_await lf::call(c, fib)(b, n - 2); // Test bind to a different type.
+    co_await lf::join;
+
+    REQUIRE(c);
+    REQUIRE(b == c);
+  }
+
+  ret = a + b;
+
+  co_return a + b;
+};
+
+TEMPLATE_TEST_CASE("Fibonacci - ignored", "[libfork][template]", inline_scheduler, busy_pool) {
+
+  TestType schedule{};
+
+  for (int i = 0; i < 15; ++i) {
+    int res;
+    int x = sync_wait(schedule, v_fib_ignore, res, i);
+    REQUIRE(fib(i) == res);
+    REQUIRE(res == x);
   }
 }
 
@@ -200,7 +241,7 @@ private:
 };
 
 inline constexpr async_fn mem_from_coro = [](auto) -> lf::task<int> {
-  access_test a;
+  access_test const a;
   int r;
   co_await lf::call(r, access_test::get)(a);
   co_await join;
@@ -263,5 +304,41 @@ TEMPLATE_TEST_CASE("Exceptions", "[libfork][template]", inline_scheduler, busy_p
 }
 
 #endif
+
+// ------------------------ References ------------------------ //
+
+class ref_test {
+public:
+  static constexpr async_mem_fn get = []<class Self>(Self self) -> lf::task<int &> {
+    //
+    auto &also_prov = co_await self->get_2(*self);
+
+    REQUIRE(&also_prov == &self->m_private);
+
+    co_return self->m_private;
+  };
+
+  int m_private = 99;
+
+private:
+  static constexpr async_mem_fn get_2 = []<class Self>(Self self) -> lf::task<int &> {
+    co_return self->m_private;
+  };
+};
+
+TEMPLATE_TEST_CASE("Reference test", "[libfork][template]", inline_scheduler, busy_pool) {
+
+  TestType schedule{};
+
+  ref_test a;
+
+  int &r = sync_wait(schedule, ref_test::get, a);
+
+  REQUIRE(r == 99);
+
+  r = 100;
+
+  REQUIRE(a.m_private == 100);
+}
 
 // NOLINTEND

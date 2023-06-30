@@ -42,43 +42,52 @@ namespace lf::detail {
 struct join_t {};
 
 #ifndef NDEBUG
-  #define ASSERT(expr, message)                                 \
+  #define FATAL_IN_DEBUG(expr, message)                         \
     do {                                                        \
       if (!(expr)) {                                            \
         []() noexcept { throw std::runtime_error(message); }(); \
       }                                                         \
     } while (false)
 #else
-  #define ASSERT(expr, message) \
-    do {                        \
+  #define FATAL_IN_DEBUG(expr, message) \
+    do {                                \
     } while (false)
 #endif
 
-template <typename T, tag Tag>
-struct mixin_return : promise_base {
-  template <typename U>
-    requires std::constructible_from<T, U> && (Tag == tag::root || Tag == tag::invoke)
-  constexpr void return_value(U &&expr) noexcept(std::is_nothrow_constructible_v<T, U>) {
+// Add in a get/set functions that return a reference to the return object.
+template <typename Ret>
+struct shim_ret_obj : promise_base {
 
-    LF_LOG("Root/invoked task returns value");
+  using ret_ref = std::conditional_t<std::is_void_v<Ret>, int, std::add_lvalue_reference_t<Ret>>;
 
-    using block_t = std::conditional_t<Tag == tag::root, root_block_t<T>, invoke_block_t<T>>;
-
-    auto *block_addr = static_cast<block_t *>(ret_address());
-    LF_ASSERT(!block_addr->result.has_value());
-    block_addr->result.emplace(std::forward<U>(expr));
+  template <typename = void>
+    requires(!std::is_void_v<Ret>)
+  [[nodiscard]] constexpr auto get_return_address_obj() noexcept -> ret_ref {
+    return *static_cast<Ret *>(ret_address());
   }
 
-  template <typename U>
-    requires std::assignable_from<T &, U> && (Tag == tag::call || Tag == tag::fork)
-  void return_value(U &&expr) noexcept(std::is_nothrow_assignable_v<T &, U>) {
-    LF_LOG("Regular task returns a value");
-    *static_cast<T *>(ret_address()) = std::forward<U>(expr);
+  template <typename = void>
+    requires(!std::is_void_v<Ret>)
+  [[nodiscard]] constexpr auto set_ret_address(ret_ref obj) noexcept {
+    promise_base::set_ret_address(std::addressof(obj));
   }
 };
 
-template <tag Tag>
-struct mixin_return<void, Tag> : promise_base {
+// Specialization for both non-void
+template <typename Ret, typename T, tag Tag>
+struct mixin_return : shim_ret_obj<Ret> {
+  template <typename U>
+    requires std::constructible_from<T, U> && (std::is_void_v<Ret> || std::is_assignable_v<Ret &, U>)
+  void return_value([[maybe_unused]] U &&expr) noexcept(std::is_void_v<Ret> || std::is_nothrow_assignable_v<std::add_lvalue_reference_t<Ret>, U>) {
+    if constexpr (!std::is_void_v<Ret>) {
+      this->get_return_address_obj() = std::forward<U>(expr);
+    }
+  }
+};
+
+// Specialization for void returning tasks.
+template <typename Ret, tag Tag>
+struct mixin_return<Ret, void, Tag> : shim_ret_obj<Ret> {
   static constexpr void return_void() noexcept {}
 };
 
@@ -89,22 +98,19 @@ struct with_context : Head {
   static auto context() -> Context & { return Context::context(); }
 };
 
-template <typename T, thread_context Context, tag Tag>
-struct promise_type : mixin_return<T, Tag> {
-private:
-  template <typename R, typename Head, typename... Tail>
-  constexpr auto add_context_to_packet(packet<R, Head, Tail...> pack) -> packet<R, with_context<Context, Head>, Tail...> {
-    if constexpr (!std::is_void_v<R>) {
-      return {pack.ret, {pack.context}, std::move(pack.args)};
-    } else {
-      return {{}, {pack.context}, std::move(pack.args)};
-    }
-  }
+template <typename R, thread_context Context, typename Head>
+struct shim_with_context : with_context<Context, Head> {
+  using return_address_t = R;
+};
 
-  template <class = void>
-    requires(Tag == tag::root)
-  static auto root_block(void *ret) -> root_block_t<T> & {
-    return *static_cast<root_block_t<T> *>(ret);
+struct regular_void {};
+
+template <typename Ret, typename T, thread_context Context, tag Tag>
+struct promise_type : mixin_return<Ret, T, Tag> {
+private:
+  template <typename Head, typename... Tail>
+  constexpr auto add_context_to_packet(packet<Head, Tail...> &&pack) -> packet<with_context<Context, Head>, Tail...> {
+    return {pack.ret, {std::move(pack.context)}, std::move(pack.args)};
   }
 
 public:
@@ -143,12 +149,12 @@ public:
 
   void unhandled_exception() noexcept {
 
-    ASSERT(this->debug_count() == 0, "Unhandled exception without a join!");
+    FATAL_IN_DEBUG(this->debug_count() == 0, "Unhandled exception without a join!");
 
     if constexpr (Tag == tag::root) {
       LF_LOG("Unhandled exception in root task");
       // Put in our remote root-block.
-      root_block(this->ret_address()).exception.unhandled_exception();
+      this->get_return_address_obj().exception.unhandled_exception();
     } else if (!this->parent().promise().has_parent()) {
       LF_LOG("Unhandled exception in child of root task");
       // Put in parent (root) task's remote root-block.
@@ -171,7 +177,8 @@ public:
           // Finishing a root task implies our stack is empty and should have no exceptions.
           LF_ASSERT(Context::context().stack_top()->empty());
 
-          root_block(child.promise().ret_address()).semaphore.release();
+          child.promise().get_return_address_obj().semaphore.release();
+
           child.destroy();
           return stdx::noop_coroutine();
         }
@@ -270,7 +277,7 @@ public:
       }
     };
 
-    ASSERT(this->debug_count() == 0, "Fork/Call without a join!");
+    FATAL_IN_DEBUG(this->debug_count() == 0, "Fork/Call without a join!");
 
     LF_ASSERT(this->steals() == 0);            // Fork without join.
     LF_ASSERT(this->joins().load() == k_imax); // Destroyed in invalid state.
@@ -280,13 +287,13 @@ public:
 
 public:
   template <typename R, typename F, typename... This, typename... Args>
-  [[nodiscard]] constexpr auto await_transform(packet<R, first_arg_t<tag::fork, F, This...>, Args...> packet) {
+  [[nodiscard]] constexpr auto await_transform(packet<first_arg_t<R, tag::fork, F, This...>, Args...> &&packet) {
 
     this->debug_inc();
 
-    stdx::coroutine_handle child = add_context_to_packet(std::move(packet)).invoke_bind();
+    auto my_handle = cast_down(stdx::coroutine_handle<promise_type>::from_promise(*this));
 
-    child.promise().set_parent(cast_down(stdx::coroutine_handle<promise_type>::from_promise(*this)));
+    stdx::coroutine_handle child = add_context_to_packet(std::move(packet)).invoke_bind(my_handle);
 
     struct awaitable : stdx::suspend_always {
       [[nodiscard]] constexpr auto await_suspend(stdx::coroutine_handle<promise_type> parent) noexcept -> decltype(child) {
@@ -307,13 +314,13 @@ public:
   }
 
   template <typename R, typename F, typename... This, typename... Args>
-  [[nodiscard]] constexpr auto await_transform(packet<R, first_arg_t<tag::call, F, This...>, Args...> packet) {
+  [[nodiscard]] constexpr auto await_transform(packet<first_arg_t<R, tag::call, F, This...>, Args...> &&packet) {
 
     this->debug_inc();
 
-    stdx::coroutine_handle child = add_context_to_packet(std::move(packet)).invoke_bind();
+    auto my_handle = cast_down(stdx::coroutine_handle<promise_type>::from_promise(*this));
 
-    child.promise().set_parent(cast_down(stdx::coroutine_handle<promise_type>::from_promise(*this)));
+    stdx::coroutine_handle child = add_context_to_packet(std::move(packet)).invoke_bind(my_handle);
 
     struct awaitable : stdx::suspend_always {
       [[nodiscard]] constexpr auto await_suspend([[maybe_unused]] stdx::coroutine_handle<promise_type> parent) noexcept -> decltype(child) {
@@ -329,49 +336,53 @@ public:
    * @brief An invoke should never occur within an async scope as the exceptions will get muddled
    */
   template <typename F, typename... This, typename... Args>
-  [[nodiscard]] constexpr auto await_transform(packet<void, first_arg_t<tag::invoke, F, This...>, Args...> packet) {
+  [[nodiscard]] constexpr auto await_transform(packet<first_arg_t<void, tag::invoke, F, This...>, Args...> &&in_packet) {
 
-    ASSERT(this->debug_count() == 0, "Invoke within async scope!");
+    FATAL_IN_DEBUG(this->debug_count() == 0, "Invoke within async scope!");
 
-    stdx::coroutine_handle child = add_context_to_packet(std::move(packet)).invoke_bind();
+    using value_type_child = typename packet<first_arg_t<void, tag::invoke, F, This...>, Args...>::value_type;
 
-    child.promise().set_parent(cast_down(stdx::coroutine_handle<promise_type>::from_promise(*this)));
+    using wrapped_value_type = std::conditional_t<std::is_reference_v<value_type_child>, std::reference_wrapper<std::remove_reference_t<value_type_child>>, value_type_child>;
 
-    using child_value_type = typename std::decay_t<decltype(child.promise())>::value_type;
+    using return_type = std::conditional_t<std::is_void_v<value_type_child>, regular_void, std::optional<wrapped_value_type>>;
+
+    using packet_type = packet<shim_with_context<return_type, Context, first_arg_t<void, tag::invoke, F, This...>>, Args...>;
+
+    static_assert(std::same_as<value_type_child, typename packet_type::value_type>, "An async function's value_type must be return_address_t independent!");
 
     struct awaitable : stdx::suspend_always {
 
-      [[nodiscard]] constexpr auto await_suspend([[maybe_unused]] stdx::coroutine_handle<promise_type> parent) noexcept -> decltype(child) {
-        if constexpr (!std::is_void_v<child_value_type>) {
-          m_child.promise().set_ret_address(std::addressof(m_res));
-        }
+      explicit constexpr awaitable(promise_type *in_self, packet<first_arg_t<void, tag::invoke, F, This...>, Args...> &&in_packet) : self(in_self), m_child(packet_type{m_res, {std::move(in_packet.context)}, std::move(in_packet.args)}.invoke_bind(cast_down(stdx::coroutine_handle<promise_type>::from_promise(*self)))) {}
+
+      [[nodiscard]] constexpr auto await_suspend([[maybe_unused]] stdx::coroutine_handle<promise_type> parent) noexcept -> typename packet_type::handle_type {
         return m_child;
       }
 
-      [[nodiscard]] constexpr auto await_resume() -> child_value_type {
+      [[nodiscard]] constexpr auto await_resume() -> value_type_child {
 
-        LF_ASSERT(base->steals() == 0);
+        LF_ASSERT(self->steals() == 0);
 
         // Propagate exceptions.
         if constexpr (LF_PROPAGATE_EXCEPTIONS) {
           if constexpr (Tag == tag::root) {
-            root_block(base->ret_address()).exception.rethrow_if_unhandled();
+            self->get_return_address_obj().exception.rethrow_if_unhandled();
           } else {
-            stack_type::from_address(base)->rethrow_if_unhandled();
+            stack_type::from_address(self)->rethrow_if_unhandled();
           }
         }
-        if constexpr (!std::is_void_v<child_value_type>) {
-          LF_ASSERT(m_res.result.has_value());
-          return std::move(*m_res.result);
+
+        if constexpr (!std::is_void_v<value_type_child>) {
+          LF_ASSERT(m_res.has_value());
+          return std::move(*m_res);
         }
       }
 
-      promise_base *base;
-      decltype(child) m_child;
-      invoke_block_t<child_value_type> m_res;
+      return_type m_res;
+      promise_type *self;
+      typename packet_type::handle_type m_child;
     };
 
-    return awaitable{{}, this, child, {}};
+    return awaitable{this, std::move(in_packet)};
   }
 
   constexpr auto await_transform([[maybe_unused]] join_t join_tag) noexcept {
@@ -379,7 +390,7 @@ public:
     private:
       constexpr void take_stack_reset_control() const noexcept {
         // Steals have happened so we cannot currently own this tasks stack.
-        LF_ASSUME(base->steals() != 0);
+        LF_ASSUME(self->steals() != 0);
 
         if constexpr (Tag != tag::root) {
 
@@ -387,7 +398,7 @@ public:
 
           Context &context = Context::context();
 
-          auto tasks_stack = stack_type::from_address(base);
+          auto tasks_stack = stack_type::from_address(self);
           auto thread_stack = context.stack_top();
 
           LF_ASSERT(thread_stack != tasks_stack);
@@ -397,13 +408,13 @@ public:
         }
 
         // Some steals have happened, need to reset the control block.
-        base->reset();
+        self->reset();
       }
 
     public:
       [[nodiscard]] constexpr auto await_ready() const noexcept -> bool {
         // If no steals then we are the only owner of the parent and we are ready to join.
-        if (base->steals() == 0) {
+        if (self->steals() == 0) {
           LF_LOG("Sync ready (no steals)");
           // Therefore no need to reset the control block.
           return true;
@@ -414,9 +425,9 @@ public:
         // Could use (relaxed) + (fence(acquire) in truthy branch) but, it's
         // better if we see all the decrements to joins() and avoid suspending
         // the coroutine if possible.
-        auto joined = k_imax - base->joins().load(std::memory_order_acquire);
+        auto joined = k_imax - self->joins().load(std::memory_order_acquire);
 
-        if (base->steals() == joined) {
+        if (self->steals() == joined) {
           LF_LOG("Sync is ready");
 
           take_stack_reset_control();
@@ -438,8 +449,8 @@ public:
 
         //  Consider race condition on write to m_context.
 
-        auto steals = base->steals();
-        auto joined = base->joins().fetch_sub(k_imax - steals, std::memory_order_release);
+        auto steals = self->steals();
+        auto joined = self->joins().fetch_sub(k_imax - steals, std::memory_order_release);
 
         if (steals == k_imax - joined) {
           // We set n after all children had completed therefore we can resume the task.
@@ -459,7 +470,7 @@ public:
         // We cannot currently own this stack.
 
         if constexpr (Tag != tag::root) {
-          LF_ASSERT(stack_type::from_address(base) != Context::context().stack_top());
+          LF_ASSERT(stack_type::from_address(self) != Context::context().stack_top());
         }
         LF_ASSERT(Context::context().stack_top()->empty());
 
@@ -469,26 +480,26 @@ public:
       constexpr void await_resume() const {
         LF_LOG("join resumes");
         // Check we have been reset.
-        LF_ASSERT(base->steals() == 0);
-        LF_ASSERT(base->joins() == k_imax);
+        LF_ASSERT(self->steals() == 0);
+        LF_ASSERT(self->joins() == k_imax);
 
-        base->debug_reset();
+        self->debug_reset();
 
         if constexpr (Tag != tag::root) {
-          LF_ASSERT(stack_type::from_address(base) == Context::context().stack_top());
+          LF_ASSERT(stack_type::from_address(self) == Context::context().stack_top());
         }
 
         // Propagate exceptions.
         if constexpr (LF_PROPAGATE_EXCEPTIONS) {
           if constexpr (Tag == tag::root) {
-            root_block(base->ret_address()).exception.rethrow_if_unhandled();
+            self->get_return_address_obj().exception.rethrow_if_unhandled();
           } else {
-            stack_type::from_address(base)->rethrow_if_unhandled();
+            stack_type::from_address(self)->rethrow_if_unhandled();
           }
         }
       }
 
-      promise_base *base;
+      promise_type *self;
     };
 
     return awaitable{this};
@@ -498,7 +509,7 @@ private:
   template <typename Promise>
   static auto cast_down(stdx::coroutine_handle<Promise> this_handle) -> stdx::coroutine_handle<promise_base> {
 
-    // Static checks that UB is OK.
+    // Static checks that UB is OK...
 
     static_assert(alignof(Promise) == alignof(promise_base), "Promise_type must be aligned to U!");
 
@@ -517,7 +528,7 @@ private:
   }
 };
 
-#undef ASSERT
+#undef FATAL_IN_DEBUG
 
 } // namespace lf::detail
 

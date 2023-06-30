@@ -52,24 +52,31 @@ static constexpr std::int32_t k_imax = std::numeric_limits<std::int32_t>::max();
 
 template <typename T>
 struct root_block_t {
+
   exception_packet exception{};
   std::binary_semaphore semaphore{0};
   std::optional<T> result{};
   [[no_unique_address]] immovable anon;
+
+  template <typename U>
+    requires std::constructible_from<std::optional<T>, U>
+  constexpr auto operator=(U &&expr) noexcept(std::is_nothrow_constructible_v<T, U>) -> root_block_t & {
+
+    LF_LOG("Root task assigns");
+
+    LF_ASSERT(!result.has_value());
+    result.emplace(std::forward<U>(expr));
+
+    return *this;
+  }
 };
+
 template <>
 struct root_block_t<void> {
   exception_packet exception{};
   std::binary_semaphore semaphore{0};
   [[no_unique_address]] immovable anon;
 };
-
-template <typename T>
-struct invoke_block_t : immovable {
-  std::optional<T> result{};
-};
-template <>
-struct invoke_block_t<void> : immovable {};
 
 #ifdef __cpp_lib_is_pointer_interconvertible
 static_assert(std::is_pointer_interconvertible_with_class(&root_block_t<long>::exception));
@@ -254,7 +261,7 @@ public:
   }
 
 private:
-  template <typename T, thread_context Context, tag Tag>
+  template <typename R, typename T, thread_context Context, tag Tag>
   friend struct promise_type;
 
   explicit handle_t(stdx::coroutine_handle<promise_base> handle) : stdx::coroutine_handle<promise_base>{handle} {}

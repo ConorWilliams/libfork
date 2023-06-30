@@ -12,21 +12,21 @@ Interfaces
 
 .. doxygenconcept:: lf::thread_context
 
-.. doxygenconcept:: lf::no_rvalue_if
+.. doxygenconcept:: lf::first_arg
 
 .. doxygenconcept:: lf::stateless
 
-.. doxygenconcept:: lf::first_arg
+.. doxygenconcept:: lf::no_forked_rvalue
 
 -------------------------
 
 .. doxygenstruct:: lf::first_arg_t
 
-.. doxygenstruct:: lf::first_arg_t< Tag, async_fn< F > >
+.. doxygenstruct:: lf::first_arg_t< R, Tag, async_fn< F > >
     :members:
     :undoc-members:
 
-.. doxygenstruct:: lf::first_arg_t< Tag, async_mem_fn< F >, This >
+.. doxygenstruct:: lf::first_arg_t< R, Tag, async_mem_fn< F >, Self >
     :members:
     :undoc-members:
 
@@ -57,7 +57,7 @@ Asynchronous control flow
 
 .. doxygenfunction:: lf::sync_wait(S &&scheduler, async_fn<F> async_function, Args&&... args)
 
-.. doxygenfunction:: lf:: sync_wait(S &&scheduler, async_mem_fn<F> async_member_function, Self &self, Args&&... args)
+.. doxygenfunction:: lf:: sync_wait(S &&scheduler, async_mem_fn<F> async_member_function, Self &&self, Args&&... args)
 
 ---------------------------
 

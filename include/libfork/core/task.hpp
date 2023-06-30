@@ -13,6 +13,7 @@
 #include <functional>
 #include <memory>
 #include <type_traits>
+#include <utility>
 
 #include "libfork/macro.hpp"
 
@@ -37,19 +38,25 @@ concept stateless = std::is_class_v<T> && std::is_trivial_v<T> && std::is_empty_
 
 namespace detail {
 
-template <typename, thread_context, tag>
+template <typename, typename, thread_context, tag>
 struct promise_type;
 
 } // namespace detail
 
 template <typename T = void>
-  requires(!std::is_reference_v<T> && !std::is_const_v<T>)
+  requires(!std::is_rvalue_reference_v<T>)
 class task;
+
+template <stateless Fn>
+struct [[nodiscard]] async_fn;
+
+template <stateless Fn>
+struct [[nodiscard]] async_mem_fn;
 
 /**
  * @brief The first argument to all async functions will be passes a type derived from a specialization of this class.
  */
-template <tag Tag, typename AsyncFn, typename... Self>
+template <typename R, tag Tag, typename AsyncFn, typename... Self>
   requires(sizeof...(Self) <= 1)
 struct first_arg_t;
 
@@ -62,7 +69,7 @@ struct first_arg_t;
  * will then destructed in the parent task before the child task retuns.
  */
 template <typename T, typename Self>
-concept no_rvalue_if = Self::tag_value != tag::fork || std::is_reference_v<T>;
+concept no_forked_rvalue = Self::tag_value != tag::fork || std::is_reference_v<T>;
 
 // clang-format off
 
@@ -82,7 +89,7 @@ concept first_arg =  requires {
 
   typename Arg::underlying_fn;  /* -> */ requires stateless<typename Arg::underlying_fn>;
   
-  { Arg::tag_value } -> std::same_as<tag const &>;
+  { Arg::tag_value } -> std::convertible_to<tag>;
 };
 
 namespace detail {
@@ -104,55 +111,64 @@ template <typename T>
 concept is_task = is_task_impl<T>::value;
 
 template <typename R, tag Tag, typename TaskValueType>
-concept result_matches = std::same_as<R, TaskValueType> || (std::is_void_v<R> && (Tag == tag::invoke || Tag == tag::root));
+concept result_matches = std::is_void_v<R> || Tag == tag::root || Tag == tag::invoke || std::assignable_from<R &, TaskValueType>;
 
 // clang-format off
 
-template <typename R, typename Head, typename... Tail>
+template <typename Head, typename... Tail>
 concept valid_packet = first_arg<Head> && requires(typename Head::underlying_fn fun, Head head, Tail &&...tail) {
-  { std::invoke(fun, head, std::forward<Tail>(tail)...) } -> is_task;
-} && result_matches<R, Head::tag_value, typename std::invoke_result_t<typename Head::underlying_fn, Head, Tail...>::value_type>;
+  //  
+  { std::invoke(fun, std::move(head), std::forward<Tail>(tail)...) } -> is_task;
+
+} && result_matches<typename Head::return_address_t, Head::tag_value, typename std::invoke_result_t<typename Head::underlying_fn, Head, Tail...>::value_type>;
+
+
+
+
+//&& result_matches<R, Head::tag_value, typename std::invoke_result_t<typename Head::underlying_fn, Head, Tail...>::value_type>;
 
 // clang-format on
 
 struct empty {};
 
-template <typename R, typename Head>
-struct patch : Head {
-  using return_address_t = R;
-};
-
 /**
  * @brief An awaitable type (in a task) that triggers a fork/call/invoke.
+ *
+ * This will store a patched version of Head that includes the return type.
  */
-template <typename R, typename Head, typename... Tail>
-  requires valid_packet<R, detail::patch<R, Head>, Tail...>
+template <typename Head, typename... Tail>
+  requires valid_packet<Head, Tail...>
 struct [[nodiscard]] packet {
-
-  using patched = patch<R, Head>;
-
-  using task_type = typename std::invoke_result_t<typename patched::underlying_fn, patched, Tail...>;
+  //
+  using return_type = typename Head::return_address_t;
+  using task_type = typename std::invoke_result_t<typename Head::underlying_fn, Head, Tail...>;
   using value_type = typename task_type::value_type;
-  using promise_type = typename stdx::coroutine_traits<task_type, patched, Tail &&...>::promise_type;
+  using promise_type = typename stdx::coroutine_traits<task_type, Head, Tail &&...>::promise_type;
   using handle_type = typename stdx::coroutine_handle<promise_type>;
 
-  [[no_unique_address]] std::conditional_t<std::is_void_v<R>, detail::empty, std::add_lvalue_reference_t<value_type>> ret;
-  [[no_unique_address]] patched context;
+  [[no_unique_address]] std::conditional_t<std::is_void_v<return_type>, detail::empty, std::add_lvalue_reference_t<return_type>> ret;
+  [[no_unique_address]] Head context;
   [[no_unique_address]] std::tuple<Tail &&...> args;
 
+  [[no_unique_address]] immovable _anon = {}; // NOLINT
+
   /**
-   * @brief Call the underlying async function and return a handle to it, set the return address if ``R != void``.
+   * @brief Call the underlying async function and return a handle to it, sets the return address if ``R != void``.
    */
-  auto invoke_bind() && -> handle_type {
+  auto invoke_bind(stdx::coroutine_handle<promise_base> parent) && -> handle_type {
+
+    LF_ASSERT(parent || Head::tag_value == tag::root);
 
     auto unwrap = [&]<class... Args>(Args &&...xargs) -> handle_type {
-      return handle_type::from_address(std::invoke(typename Head::underlying_fn{}, context, std::forward<Args>(xargs)...).m_handle);
+      return handle_type::from_address(std::invoke(typename Head::underlying_fn{}, std::move(context), std::forward<Args>(xargs)...).m_handle);
     };
 
     handle_type child = std::apply(unwrap, std::move(args));
 
-    if constexpr (!std::is_void_v<R>) {
-      child.promise().set_ret_address(std::addressof(ret));
+    child.promise().set_parent(parent);
+
+    if constexpr (!std::is_void_v<return_type>) {
+      child.promise().set_ret_address(ret);
     }
 
     return child;
@@ -167,17 +183,17 @@ struct [[nodiscard]] packet {
  * @brief The return type for libfork's async functions/coroutines.
  */
 template <typename T>
-  requires(!std::is_reference_v<T> && !std::is_const_v<T>)
+  requires(!std::is_rvalue_reference_v<T>)
 class task {
 public:
   using value_type = T; ///< The type of the value returned by the coroutine (cannot be a reference, use ``std::reference_wrapper``).
 
 private:
-  template <typename R, typename Head, typename... Tail>
-    requires detail::valid_packet<R, detail::patch<R, Head>, Tail...>
+  template <typename Head, typename... Tail>
+    requires detail::valid_packet<Head, Tail...>
   friend struct detail::packet;
 
-  template <typename, thread_context, tag>
+  template <typename, typename, thread_context, tag>
   friend struct detail::promise_type;
 
   // Promise constructs, packets accesses.
@@ -212,7 +228,7 @@ struct [[nodiscard]] async_fn {
    * will be muddled, use ``lf:call`` instead.
    */
   template <typename... Args>
-  LF_STATIC_CALL constexpr auto operator()(Args &&...args) LF_STATIC_CONST noexcept -> detail::packet<void, first_arg_t<tag::invoke, async_fn<Fn>>, Args...> {
+  LF_STATIC_CALL constexpr auto operator()(Args &&...args) LF_STATIC_CONST noexcept -> detail::packet<first_arg_t<void, tag::invoke, async_fn<Fn>>, Args...> {
     return {{}, {}, {std::forward<Args>(args)...}};
   }
 };
@@ -237,8 +253,8 @@ struct [[nodiscard]] async_mem_fn {
    * will be muddled, use ``lf::call`` instead.
    */
   template <detail::not_first_arg Self, typename... Args>
-  LF_STATIC_CALL constexpr auto operator()(Self &self, Args &&...args) LF_STATIC_CONST noexcept -> detail::packet<void, first_arg_t<tag::invoke, async_mem_fn<Fn>, Self>, Args...> {
-    return {{}, {self}, {std::forward<Args>(args)...}};
+  LF_STATIC_CALL constexpr auto operator()(Self &&self, Args &&...args) LF_STATIC_CONST noexcept -> detail::packet<first_arg_t<void, tag::invoke, async_mem_fn<Fn>, Self>, Args...> {
+    return {{}, {std::forward<Self>(self)}, {std::forward<Args>(args)...}};
   }
 };
 
@@ -266,10 +282,11 @@ struct dummy_context {
 
 static_assert(thread_context<dummy_context>, "dummy_context is not a thread_context");
 
-template <stateless F, tag Tag>
+template <typename R, stateless F, tag Tag>
 struct first_arg_base {
   using lf_first_arg = std::true_type;
   using context_type = dummy_context;
+  using return_address_t = R;
   static auto context() -> context_type &;
   using underlying_fn = F;
   static constexpr tag tag_value = Tag;
@@ -290,8 +307,8 @@ struct first_arg_base {
  *
  * This derives from the global function to allow to allow for use as a y-combinator.
  */
-template <tag Tag, stateless F>
-struct first_arg_t<Tag, async_fn<F>> : detail::first_arg_base<F, Tag>, async_fn<F> {};
+template <typename R, tag Tag, stateless F>
+struct first_arg_t<R, Tag, async_fn<F>> : detail::first_arg_base<R, F, Tag>, async_fn<F> {};
 
 /**
  * @brief A specialization of ``first_arg_t`` for asynchronous member functions.
@@ -299,24 +316,42 @@ struct first_arg_t<Tag, async_fn<F>> : detail::first_arg_base<F, Tag>, async_fn<
  * This wraps a pointer to an instance of the parent type to allow for use as
  * an explicit ``this`` parameter.
  */
-template <tag Tag, stateless F, typename This>
-  requires(!std::is_reference_v<This>)
-struct first_arg_t<Tag, async_mem_fn<F>, This> : detail::first_arg_base<F, Tag> {
+template <typename R, tag Tag, stateless F, typename Self>
+struct first_arg_t<R, Tag, async_mem_fn<F>, Self> : detail::first_arg_base<R, F, Tag> {
   /**
-   * @brief Construct a ``first_arg_t`` from a reference to ``this``.
+   * @brief Identify if this is a forked task passed an rvalue self parameter.
    */
-  explicit(false) constexpr first_arg_t(This &self) : m_self{std::addressof(self)} {} // NOLINT
+  static constexpr bool is_forked_rvalue = Tag == tag::fork && !std::is_reference_v<Self>;
+
+  /**
+   * @brief If forking a temporary we copy a value to the coroutine frame, otherwise we store a reference.
+   */
+  using self_type = std::conditional_t<is_forked_rvalue, std::remove_const_t<Self>, Self &&>;
+
+  /**
+   * @brief Construct an ``lf::async_mem_fn_for`` from a reference to ``self``.
+   */
+  explicit(false) constexpr first_arg_t(Self &&self) : m_self{std::forward<Self>(self)} {} // NOLINT
+
+  /**
+   * @brief Access the class instance.
+   */
+  [[nodiscard]] constexpr auto operator*() & noexcept -> std::remove_reference_t<Self> & { return m_self; }
+
+  /**
+   * @brief Access the class with a value category corresponding to forwarding a forwarding-reference.
+   */
+  [[nodiscard]] constexpr auto operator*() && noexcept -> Self && {
+    return std::forward<std::conditional_t<is_forked_rvalue, std::remove_const_t<Self>, Self>>(m_self);
+  }
+
   /**
    * @brief Access the underlying ``this`` pointer.
    */
-  [[nodiscard]] constexpr auto operator->() noexcept -> This * { return m_self; }
-  /**
-   * @brief Deference the underlying ``this`` pointer.
-   */
-  [[nodiscard]] constexpr auto operator*() noexcept -> This & { return *m_self; }
+  [[nodiscard]] constexpr auto operator->() noexcept -> std::remove_reference_t<Self> * { return std::addressof(m_self); }
 
 private:
-  This *m_self;
+  self_type m_self;
 };
 
 } // namespace lf

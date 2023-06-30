@@ -5,7 +5,7 @@
 #include <iterator>
 #include <ranges>
 
-#include "libfork/libfork.hpp"
+#include "libfork/core.hpp"
 
 namespace lf {
 

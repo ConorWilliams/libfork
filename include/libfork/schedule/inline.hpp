@@ -11,8 +11,7 @@
 
 #include <vector>
 
-#include "libfork/core/stack.hpp"
-#include "libfork/libfork.hpp"
+#include "libfork/core.hpp"
 #include "libfork/thread_local.hpp"
 
 /**

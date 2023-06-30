@@ -13,8 +13,8 @@
 #include <random>
 #include <thread>
 
+#include "libfork/core.hpp"
 #include "libfork/event_count.hpp"
-#include "libfork/libfork.hpp"
 #include "libfork/macro.hpp"
 #include "libfork/queue.hpp"
 #include "libfork/random.hpp"
