@@ -2143,4 +2143,1415 @@ inline constexpr bind_task<tag::call> call = {};
 #endif /* E8D38B49_7170_41BC_90E9_6D6389714304 */
 
 
+#ifndef B5AE1829_6F8A_4118_AB15_FE73F851271F
+#define B5AE1829_6F8A_4118_AB15_FE73F851271F
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <bit>
+#include <random>
+#include <thread>
+
+
+#pragma once
+
+// This file has been modified by C.J.Williams to act as a standalone
+// version of ``folly::event_count`` utilizing C++20's atomic wait facilities.
+//
+// Copyright (c) Conor Williams, Meta Platforms, Inc. and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include <atomic>
+#include <bit>
+#include <cstdint>
+#include <functional>
+#include <thread>
+#include <type_traits>
+
+
+
+/**
+ * @file event_count.hpp
+ *
+ * @brief A standalone adaptation of ``folly::EventCount``.
+ */
+
+namespace lf {
+
+namespace detail {
+
+constexpr bool k_is_little_endian = std::endian::native != std::endian::little;
+
+constexpr bool k_is_big_endian = std::endian::native != std::endian::big;
+
+static_assert(k_is_little_endian || k_is_big_endian, "mixed endian systems are not supported");
+
+} // namespace detail
+
+/**
+ * @brief A condition variable for lock free algorithms.
+ *
+ * \rst
+ *
+ * See http://www.1024cores.net/home/lock-free-algorithms/eventcounts for details.
+ *
+ * Event counts allow you to convert a non-blocking lock-free / wait-free
+ * algorithm into a blocking one, by isolating the blocking logic.  You call
+ * prepare_wait() before checking your condition and then either cancel_wait()
+ * or wait() depending on whether the condition was true.  When another
+ * thread makes the condition true, it must call notify() / notify_all() just
+ * like a regular condition variable.
+ *
+ * If "<" denotes the happens-before relationship, consider 2 threads (T1 and
+ * T2) and 3 events:
+ *
+ * * E1: T1 returns from prepare_wait.
+ * * E2: T1 calls wait (obviously E1 < E2, intra-thread).
+ * * E3: T2 calls ``notify_all()``.
+ *
+ * If E1 < E3, then E2's wait will complete (and T1 will either wake up,
+ * or not block at all)
+ *
+ * This means that you can use an event_count in the following manner:
+ *
+ * Waiter:
+ *
+ * .. code::
+ *
+ *    if (!condition()) {  // handle fast path first
+ *      for (;;) {
+ *
+ *        auto key = eventCount.prepare_wait();
+ *
+ *        if (condition()) {
+ *          eventCount.cancel_wait();
+ *          break;
+ *        } else {
+ *          eventCount.wait(key);
+ *        }
+ *      }
+ *    }
+ *
+ * (This pattern is encapsulated in the ``await()`` method.)
+ *
+ * Poster:
+ *
+ * .. code::
+ *
+ *    make_condition_true();
+ *    eventCount.notify_all();
+ *
+ * .. note::
+ *
+ *    Just like with regular condition variables, the waiter needs to
+ *    be tolerant of spurious wakeups and needs to recheck the condition after
+ *    being woken up.  Also, as there is no mutual exclusion implied, "checking"
+ *    the condition likely means attempting an operation on an underlying
+ *    data structure (push into a lock-free queue, etc) and returning true on
+ *    success and false on failure.
+ *
+ * \endrst
+ */
+class event_count {
+public:
+  event_count() = default;
+  event_count(event_count const &) = delete;
+  event_count(event_count &&) = delete;
+  auto operator=(event_count const &) -> event_count & = delete;
+  auto operator=(event_count &&) -> event_count & = delete;
+  ~event_count() = default;
+
+  /**
+   * @brief The return type of ``prepare_wait()``.
+   */
+  class key {
+    friend class event_count;
+    explicit key(uint32_t epoch) noexcept : m_epoch(epoch) {}
+    std::uint32_t m_epoch;
+  };
+  /**
+   * @brief Wake up one waiter.
+   */
+  auto notify_one() noexcept -> void;
+  /**
+   * @brief Wake up all waiters.
+   */
+  auto notify_all() noexcept -> void;
+  /**
+   * @brief Prepare to wait.
+   *
+   * Once this has been called, you must either call ``wait()`` with the key or ``cancel_wait()``.
+   */
+  [[nodiscard]] auto prepare_wait() noexcept -> key;
+  /**
+   * @brief Cancel a wait that was prepared with ``prepare_wait()``.
+   */
+  auto cancel_wait() noexcept -> void;
+  /**
+   * @brief Wait for a notification, this blocks the current thread.
+   */
+  auto wait(key in_key) noexcept -> void;
+
+  /**
+   * Wait for ``condition()`` to become true.
+   *
+   * Cleans up appropriately if ``condition()`` throws, and then rethrow.
+   */
+  template <typename Pred>
+    requires std::is_invocable_r_v<bool, Pred const &>
+  void await(Pred const &condition);
+
+private:
+  auto epoch() noexcept -> std::atomic<std::uint32_t> * {
+    return reinterpret_cast<std::atomic<std::uint32_t> *>(&m_val) + k_epoch_offset; // NOLINT
+  }
+
+  // This requires 64-bit
+  static constexpr std::size_t k_4byte = 4;
+  static constexpr std::size_t k_8byte = 8;
+
+  static_assert(sizeof(int) == k_4byte, "bad platform, need 64 bit native int");
+  static_assert(sizeof(std::uint32_t) == k_4byte, "bad platform, need 32 bit ints");
+  static_assert(sizeof(std::uint64_t) == k_8byte, "bad platform, need 64 bit ints");
+  static_assert(sizeof(std::atomic<std::uint32_t>) == k_4byte, "bad platform, need 32 bit atomic ints");
+  static_assert(sizeof(std::atomic<std::uint64_t>) == k_8byte, "bad platform, need 64 bit atomic ints");
+
+  static constexpr size_t k_epoch_offset = detail::k_is_little_endian ? 1 : 0;
+
+  static constexpr std::uint64_t k_add_waiter = 1;
+  static constexpr std::uint64_t k_sub_waiter = static_cast<std::uint64_t>(-1);
+  static constexpr std::uint64_t k_epoch_shift = 32;
+  static constexpr std::uint64_t k_add_epoch = static_cast<std::uint64_t>(1) << k_epoch_shift;
+  static constexpr std::uint64_t k_waiter_mask = k_add_epoch - 1;
+
+  // m_val stores the epoch in the most significant 32 bits and the
+  // waiter count in the least significant 32 bits.
+  alignas(detail::k_cache_line) std::atomic<std::uint64_t> m_val = 0;
+};
+
+inline void event_count::notify_one() noexcept {
+  if (m_val.fetch_add(k_add_epoch, std::memory_order_acq_rel) & k_waiter_mask) [[unlikely]] { // NOLINT
+    LF_LOG("notify");
+    epoch()->notify_one();
+  }
+}
+
+inline void event_count::notify_all() noexcept {
+  if (m_val.fetch_add(k_add_epoch, std::memory_order_acq_rel) & k_waiter_mask) [[unlikely]] { // NOLINT
+    LF_LOG("notify");
+    epoch()->notify_all();
+  }
+}
+
+[[nodiscard]] inline auto event_count::prepare_wait() noexcept -> event_count::key {
+  auto prev = m_val.fetch_add(k_add_waiter, std::memory_order_acq_rel);
+  // Cast is safe because we're only using the lower 32 bits.
+  return key(static_cast<std::uint32_t>(prev >> k_epoch_shift));
+}
+
+inline void event_count::cancel_wait() noexcept {
+  // memory_order_relaxed would suffice for correctness, but the faster
+  // #waiters gets to 0, the less likely it is that we'll do spurious wakeups
+  // (and thus system calls).
+  auto prev = m_val.fetch_add(k_sub_waiter, std::memory_order_seq_cst);
+
+  LF_ASSERT((prev & k_waiter_mask) != 0);
+}
+
+inline void event_count::wait(key in_key) noexcept {
+  // Use C++20 atomic wait guarantees
+  epoch()->wait(in_key.m_epoch, std::memory_order_acquire);
+
+  // memory_order_relaxed would suffice for correctness, but the faster
+  // #waiters gets to 0, the less likely it is that we'll do spurious wakeups
+  // (and thus system calls)
+  auto prev = m_val.fetch_add(k_sub_waiter, std::memory_order_seq_cst);
+
+  LF_ASSERT((prev & k_waiter_mask) != 0);
+}
+
+template <class Pred>
+  requires std::is_invocable_r_v<bool, Pred const &>
+void event_count::await(Pred const &condition) {
+  //
+  if (std::invoke(condition)) {
+    return;
+  }
+// std::invoke(condition) is the only thing that may throw, everything else is
+// noexcept, so we can hoist the try/catch block outside of the loop
+#if LF_COMPILER_EXCEPTIONS
+  try {
+#endif
+    for (;;) {
+      auto my_key = prepare_wait();
+      if (std::invoke(condition)) {
+        cancel_wait();
+        break;
+      }
+      wait(my_key);
+    }
+#if LF_COMPILER_EXCEPTIONS
+  } catch (...) {
+    cancel_wait();
+    throw;
+  }
+#endif
+}
+
+} // namespace lf
+
+#ifndef C9703881_3D9C_41A5_A7A2_44615C4CFA6A
+#define C9703881_3D9C_41A5_A7A2_44615C4CFA6A
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <atomic>
+#include <bit>
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <new>
+#include <optional>
+#include <type_traits>
+#include <utility>
+#include <vector>
+
+ // Only for ASSERT macro + hardware_destructive_interference_size
+
+/**
+ * @file queue.hpp
+ *
+ * @brief A stand-alone, production-quality implementation of the Chase-Lev lock-free
+ * single-producer multiple-consumer queue.
+ *
+ * \rst
+ *
+ * Implements the queue described in the papers, `"Dynamic Circular Work-Stealing Queue"
+ * <https://doi.org/10.1145/1073970.1073974>`_ and `"Correct and Efficient Work-Stealing for Weak
+ * Memory Models" <https://doi.org/10.1145/2442516.2442524>`_. Both are available in `reference/
+ * <https://github.com/ConorWilliams/libfork/tree/main/reference>`_.
+ *
+ * \endrst
+ */
+
+namespace lf {
+
+/**
+ * @brief A concept that verifies a type is suitable for use in a queue.
+ */
+template <typename T>
+concept simple = std::is_default_constructible_v<T> && std::is_trivially_copyable_v<T> && std::atomic<T>::is_always_lock_free;
+
+namespace detail {
+
+/**
+ * @brief A basic wrapper around a c-style array that provides modulo load/stores.
+ *
+ * This class is designed for internal use only. It provides a c-style API that is
+ * used efficiently by queue for low level atomic operations.
+ *
+ * @tparam T The type of the elements in the array.
+ */
+template <simple T>
+struct ring_buf {
+  /**
+   * @brief Construct a new ring buff object
+   *
+   * @param cap The capacity of the buffer, MUST be a power of 2.
+   */
+  explicit ring_buf(std::ptrdiff_t cap) : m_cap{cap}, m_mask{cap - 1} {
+    LF_ASSERT(cap > 0 && std::has_single_bit(static_cast<std::size_t>(cap)));
+  }
+  /**
+   * @brief Get the capacity of the buffer.
+   */
+  [[nodiscard]] auto capacity() const noexcept -> std::ptrdiff_t { return m_cap; }
+  /**
+   * @brief Store ``val`` at ``index % this->capacity()``.
+   */
+  auto store(std::ptrdiff_t index, T const &val) noexcept -> void {
+    LF_ASSERT(index >= 0);
+    (m_buf.get() + (index & m_mask))->store(val, std::memory_order_relaxed); // NOLINT Avoid cast to std::size_t.
+  }
+  /**
+   * @brief Load value at ``index % this->capacity()``.
+   */
+  [[nodiscard]] auto load(std::ptrdiff_t index) const noexcept -> T {
+    LF_ASSERT(index >= 0);
+    return (m_buf.get() + (index & m_mask))->load(std::memory_order_relaxed); // NOLINT Avoid cast to std::size_t.
+  }
+  /**
+   * @brief Copies elements in range ``[bottom, top)`` into a new ring buffer.
+   *
+   * This function allocates a new buffer and returns a pointer to it.
+   * The caller is responsible for deallocating the memory.
+   *
+   * @param bottom The bottom of the range to copy from (inclusive).
+   * @param top The top of the range to copy from (exclusive).
+   */
+  auto resize(std::ptrdiff_t bottom, std::ptrdiff_t top) const -> ring_buf<T> * { // NOLINT
+    auto *ptr = new ring_buf{2 * m_cap};                                          // NOLINT
+    for (std::ptrdiff_t i = top; i != bottom; ++i) {
+      ptr->store(i, load(i));
+    }
+    return ptr;
+  }
+
+private:
+  using array_t = std::atomic<T>[]; // NOLINT
+
+  std::ptrdiff_t m_cap;  ///< Capacity of the buffer
+  std::ptrdiff_t m_mask; ///< Bit mask to perform modulo capacity operations
+
+#ifdef __cpp_lib_smart_ptr_for_overwrite
+  std::unique_ptr<array_t> m_buf = std::make_unique_for_overwrite<array_t>(static_cast<std::size_t>(m_cap));
+#else
+  std::unique_ptr<array_t> m_buf = std::make_unique<array_t>(static_cast<std::size_t>(m_cap));
+#endif
+};
+
+} // namespace detail
+
+/**
+ * @brief Error codes for ``queue`` 's ``steal()`` operation.
+ */
+enum class err : int {
+  none = 0, ///< The ``steal()`` operation succeeded.
+  lost,     ///< Lost the ``steal()`` race hence, the ``steal()`` operation failed.
+  empty,    ///< The queue is empty and hence, the ``steal()`` operation failed.
+};
+
+/**
+ * @brief An unbounded lock-free single-producer multiple-consumer queue.
+ *
+ * Only the queue owner can perform ``pop()`` and ``push()`` operations where the queue behaves
+ * like a LIFO stack. Others can (only) ``steal()`` data from the queue, they see a FIFO queue.
+ * All threads must have finished using the queue before it is destructed.
+ *
+ * \rst
+ *
+ * Example:
+ *
+ * .. include:: ../../test/source/queue.cpp
+ *    :code:
+ *    :start-after: // !BEGIN-EXAMPLE
+ *    :end-before: // !END-EXAMPLE
+ *
+ * \endrst
+ *
+ * @tparam T The type of the elements in the queue - must be a simple type.
+ */
+template <simple T>
+class queue : detail::immovable {
+  static constexpr std::ptrdiff_t k_default_capacity = 1024;
+  static constexpr std::size_t k_garbage_reserve = 32;
+
+public:
+  /**
+   * @brief The type of the elements in the queue.
+   */
+  using value_type = T;
+  /**
+   * @brief Construct a new empty queue object.
+   */
+  queue() : queue(k_default_capacity) {}
+  /**
+   * @brief Construct a new empty queue object.
+   *
+   * @param cap The capacity of the queue (must be a power of 2).
+   */
+  explicit queue(std::ptrdiff_t cap);
+  /**
+   * @brief Get the number of elements in the queue.
+   */
+  [[nodiscard]] auto size() const noexcept -> std::size_t;
+  /**
+   * @brief Get the number of elements in the queue as a signed integer.
+   */
+  [[nodiscard]] auto ssize() const noexcept -> ptrdiff_t;
+  /**
+   * @brief Get the capacity of the queue.
+   */
+  [[nodiscard]] auto capacity() const noexcept -> ptrdiff_t;
+  /**
+   * @brief Check if the queue is empty.
+   */
+  [[nodiscard]] auto empty() const noexcept -> bool;
+  /**
+   * @brief Push an item into the queue.
+   *
+   * Only the owner thread can insert an item into the queue.
+   * This operation can trigger the queue to resize if more space is required.
+   *
+   * @param val Value to add to the queue.
+   */
+  auto push(T const &val) noexcept -> void;
+  /**
+   * @brief Pop an item from the queue.
+   *
+   * Only the owner thread can pop out an item from the queue.
+   *
+   * @return ``std::nullopt`` if  this operation fails (i.e. the queue is empty).
+   */
+  auto pop() noexcept -> std::optional<T>;
+  /**
+   * @brief The return type of the ``steal()`` operation.
+   *
+   * This type is suitable for structured bindings. We return a custom type instead of a
+   * ``std::optional`` to allow for more information to be returned as to why a steal may fail.
+   */
+  struct steal_t {
+    /**
+     * @brief Check if the operation succeeded.
+     */
+    constexpr explicit operator bool() const noexcept { return code == err::none; }
+    /**
+     * @brief Get the value like ``std::optional``.
+     *
+     * Requires ``code == err::none`` .
+     */
+    constexpr auto operator*() noexcept -> T & {
+      LF_ASSERT(code == err::none);
+      return val;
+    }
+    /**
+     * @brief Get the value like ``std::optional``.
+     *
+     * Requires ``code == err::none`` .
+     */
+    constexpr auto operator*() const noexcept -> T const & {
+      LF_ASSERT(code == err::none);
+      return val;
+    }
+    /**
+     * @brief Get the value ``like std::optional``.
+     *
+     * Requires ``code == err::none`` .
+     */
+    constexpr auto operator->() noexcept -> T * {
+      LF_ASSERT(code == err::none);
+      return std::addressof(val);
+    }
+    /**
+     * @brief Get the value ``like std::optional``.
+     *
+     * Requires ``code == err::none`` .
+     */
+    constexpr auto operator->() const noexcept -> T const * {
+      LF_ASSERT(code == err::none);
+      return std::addressof(val);
+    }
+
+    err code; ///< The error code of the ``steal()`` operation.
+    T val;    ///< The value stolen from the queue, Only valid if ``code == err::stolen``.
+  };
+
+  /**
+   * @brief Steal an item from the queue.
+   *
+   * Any threads can try to steal an item from the queue. This operation can fail if the queue is
+   * empty or if another thread simultaneously stole an item from the queue.
+   */
+  auto steal() noexcept -> steal_t;
+  /**
+   * @brief Destroy the queue object.
+   *
+   * All threads must have finished using the queue before it is destructed.
+   */
+  ~queue() noexcept;
+
+private:
+  alignas(detail::k_cache_line) std::atomic<std::ptrdiff_t> m_top;
+  alignas(detail::k_cache_line) std::atomic<std::ptrdiff_t> m_bottom;
+  alignas(detail::k_cache_line) std::atomic<detail::ring_buf<T> *> m_buf;
+
+  alignas(detail::k_cache_line) std::vector<std::unique_ptr<detail::ring_buf<T>>> m_garbage; // Store old buffers here.
+
+  // Convenience aliases.
+  static constexpr std::memory_order relaxed = std::memory_order_relaxed;
+  static constexpr std::memory_order consume = std::memory_order_consume;
+  static constexpr std::memory_order acquire = std::memory_order_acquire;
+  static constexpr std::memory_order release = std::memory_order_release;
+  static constexpr std::memory_order seq_cst = std::memory_order_seq_cst;
+};
+
+template <simple T>
+queue<T>::queue(std::ptrdiff_t cap) : m_top(0), m_bottom(0), m_buf(new detail::ring_buf<T>{cap}) {
+  m_garbage.reserve(k_garbage_reserve);
+}
+
+template <simple T>
+auto queue<T>::size() const noexcept -> std::size_t {
+  return static_cast<std::size_t>(ssize());
+}
+
+template <simple T>
+auto queue<T>::ssize() const noexcept -> std::ptrdiff_t {
+  ptrdiff_t const bottom = m_bottom.load(relaxed);
+  ptrdiff_t const top = m_top.load(relaxed);
+  return std::max(bottom - top, ptrdiff_t{0});
+}
+
+template <simple T>
+auto queue<T>::capacity() const noexcept -> ptrdiff_t {
+  return m_buf.load(relaxed)->capacity();
+}
+
+template <simple T>
+auto queue<T>::empty() const noexcept -> bool {
+  ptrdiff_t const bottom = m_bottom.load(relaxed);
+  ptrdiff_t const top = m_top.load(relaxed);
+  return top >= bottom;
+}
+
+template <simple T>
+auto queue<T>::push(T const &val) noexcept -> void {
+  std::ptrdiff_t const bottom = m_bottom.load(relaxed);
+  std::ptrdiff_t const top = m_top.load(acquire);
+  detail::ring_buf<T> *buf = m_buf.load(relaxed);
+
+  if (buf->capacity() < (bottom - top) + 1) {
+    // Queue is full, build a new one.
+    m_garbage.emplace_back(std::exchange(buf, buf->resize(bottom, top)));
+    m_buf.store(buf, relaxed);
+  }
+
+  // Construct new object, this does not have to be atomic as no one can steal this item until
+  // after we store the new value of bottom, ordering is maintained by surrounding atomics.
+  buf->store(bottom, val);
+
+  std::atomic_thread_fence(release);
+  m_bottom.store(bottom + 1, relaxed);
+}
+
+template <simple T>
+auto queue<T>::pop() noexcept -> std::optional<T> {
+  std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1;
+  detail::ring_buf<T> *buf = m_buf.load(relaxed);
+
+  m_bottom.store(bottom, relaxed); // Stealers can no longer steal.
+
+  std::atomic_thread_fence(seq_cst);
+  std::ptrdiff_t top = m_top.load(relaxed);
+
+  if (top <= bottom) {
+    // Non-empty queue
+    if (top == bottom) {
+      // The last item could get stolen, by a stealer that loaded bottom before our write above.
+      if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
+        // Failed race, thief got the last item.
+        m_bottom.store(bottom + 1, relaxed);
+        return std::nullopt;
+      }
+      m_bottom.store(bottom + 1, relaxed);
+    }
+    // Can delay load until after acquiring slot as only this thread can push(),
+    // This load is not required to be atomic as we are the exclusive writer.
+    return buf->load(bottom);
+  }
+  m_bottom.store(bottom + 1, relaxed);
+  return std::nullopt;
+}
+
+template <simple T>
+auto queue<T>::steal() noexcept -> steal_t {
+  std::ptrdiff_t top = m_top.load(acquire);
+  std::atomic_thread_fence(seq_cst);
+  std::ptrdiff_t const bottom = m_bottom.load(acquire);
+
+  if (top < bottom) {
+    // Must load *before* acquiring the slot as slot may be overwritten immediately after
+    // acquiring. This load is NOT required to be atomic even-though it may race with an overwrite
+    // as we only return the value if we win the race below guaranteeing we had no race during our
+    // read. If we loose the race then 'x' could be corrupt due to read-during-write race but as T
+    // is trivially destructible this does not matter.
+    T tmp = m_buf.load(consume)->load(top);
+
+    static_assert(std::is_trivially_destructible_v<T>, "concept 'simple' should guarantee this already");
+
+    if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
+      return {.code = err::lost, .val = {}};
+    }
+    return {.code = err::none, .val = tmp};
+  }
+  return {.code = err::empty, .val = {}};
+}
+
+template <simple T>
+queue<T>::~queue() noexcept {
+  delete m_buf.load(); // NOLINT
+}
+
+} // namespace lf
+
+#endif /* C9703881_3D9C_41A5_A7A2_44615C4CFA6A */
+
+#ifndef CA0BE1EA_88CD_4E63_9D89_37395E859565
+#define CA0BE1EA_88CD_4E63_9D89_37395E859565
+
+// The code in this file is adapted from the original implementation:
+// http://prng.di.unimi.it/xoshiro256starstar.c
+
+// Written in 2018 by David Blackman and Sebastiano Vigna (vigna@acm.org)
+
+// To the extent possible under law, the author has dedicated all copyright
+// and related and neighboring rights to this software to the public domain
+// worldwide. This software is distributed without any warranty.
+
+// See <http://creativecommons.org/publicdomain/zero/1.0/>.
+
+#include <array>
+#include <climits>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <random>
+
+
+
+/**
+ * \file random.hpp
+ *
+ * @brief Pseudo random number generators (PRNG).
+ */
+
+namespace lf {
+
+/**
+ * @brief A \<random\> compatible implementation of the xoshiro256** 1.0 PRNG
+ *
+ * \rst
+ *
+ * From `the original <https://prng.di.unimi.it/>`_:
+ *
+ * This is xoshiro256** 1.0, one of our all-purpose, rock-solid generators. It has excellent
+ * (sub-ns) speed, a state (256 bits) that is large enough for any parallel application, and it
+ * passes all tests we are aware of.
+ *
+ * \endrst
+ */
+class xoshiro {
+public:
+  using result_type = std::uint64_t; ///< Required by named requirement: UniformRandomBitGenerator
+
+  /**
+   * @brief Construct and seed the PRNG with the default seed.
+   */
+  constexpr xoshiro() noexcept : xoshiro(default_seed) {}
+
+  /**
+   * @brief Construct and seed the PRNG from ``std::random_device``.
+   */
+  explicit xoshiro(std::random_device &device) : xoshiro({
+                                                     random_bits(device),
+                                                     random_bits(device),
+                                                     random_bits(device),
+                                                     random_bits(device),
+                                                 }) {}
+
+  /**
+   * @brief Construct and seed the PRNG from a ``std::random_device``.
+   */
+  explicit xoshiro(std::random_device &&device) : xoshiro(device) {}
+
+  /**
+   * @brief Construct and seed the PRNG.
+   *
+   * @param seed The PRNG's seed, must not be everywhere zero.
+   */
+  explicit constexpr xoshiro(std::array<result_type, 4> const &seed) : m_state{seed} {
+    if (seed == std::array<result_type, 4>{0, 0, 0, 0}) {
+      LF_ASSERT(false);
+    }
+  }
+
+  /**
+   * @brief Get the minimum value of the generator.
+   *
+   * @return The minimum value that ``xoshiro::operator()`` can return.
+   */
+  static constexpr auto min() noexcept -> result_type { return std::numeric_limits<result_type>::lowest(); }
+
+  /**
+   * @brief Get the maximum value of the generator.
+   *
+   * @return The maximum value that ``xoshiro::operator()`` can return.
+   */
+  static constexpr auto max() noexcept -> result_type { return std::numeric_limits<result_type>::max(); }
+
+  /**
+   * @brief Generate a random bit sequence and advance the state of the generator.
+   *
+   * @return A pseudo-random number.
+   */
+  constexpr auto operator()() noexcept -> result_type {
+    result_type const result = rotl(m_state[1] * 5, 7) * 9;
+
+    result_type const temp = m_state[1] << 17; // NOLINT
+
+    m_state[2] ^= m_state[0];
+    m_state[3] ^= m_state[1];
+    m_state[1] ^= m_state[2];
+    m_state[0] ^= m_state[3];
+
+    m_state[2] ^= temp;
+
+    m_state[3] = rotl(m_state[3], 45); // NOLINT (magic-numbers)
+
+    return result;
+  }
+
+  /**
+   * @brief This is the jump function for the generator.
+   *
+   * It is equivalent to 2^128 calls to operator(); it can be used to generate 2^128 non-overlapping
+   * sub-sequences for parallel computations.
+   */
+  constexpr auto jump() noexcept -> void {
+    // NOLINTNEXTLINE (magic-numbers)
+    jump_impl({0x180ec6d33cfd0aba, 0xd5a61266f0c9392c, 0xa9582618e03fc9aa, 0x39abdc4529b1661c});
+  }
+
+  /**
+   * @brief This is the long-jump function for the generator.
+   *
+   * It is equivalent to 2^192 calls to operator(); it can be used to generate 2^64 starting points,
+   * from each of which jump() will generate 2^64 non-overlapping sub-sequences for parallel
+   * distributed computations.
+   */
+  constexpr auto long_jump() noexcept -> void {
+    // NOLINTNEXTLINE (magic-numbers)
+    jump_impl({0x76e15d3efefdcbbf, 0xc5004e441c522fb3, 0x77710069854ee241, 0x39109bb02acbe635});
+  }
+
+private:
+  /**
+   * @brief The default seed for the PRNG.
+   */
+  static constexpr std::array<result_type, 4> default_seed = {
+      0x8D0B73B52EA17D89,
+      0x2AA426A407C2B04F,
+      0xF513614E4798928A,
+      0xA65E479EC5B49D41,
+  };
+
+  std::array<result_type, 4> m_state;
+
+  /**
+   * @brief Utility function.
+   */
+  static constexpr auto rotl(result_type const val, int const bits) noexcept -> result_type {
+    return (val << bits) | (val >> (64 - bits)); // NOLINT
+  }
+
+  /**
+   * @brief Utility function to upscale random::device result_type to xoshiro's result_type.
+   */
+  static auto random_bits(std::random_device &device) -> result_type {
+    //
+    constexpr auto chars_in_rd = sizeof(std::random_device::result_type);
+
+    static_assert(sizeof(result_type) % chars_in_rd == 0);
+
+    result_type bits = 0;
+
+    for (std::size_t i = 0; i < sizeof(result_type) / chars_in_rd; i++) {
+      bits <<= CHAR_BIT * chars_in_rd;
+      bits += device();
+    }
+
+    return bits;
+  }
+
+  constexpr void jump_impl(std::array<result_type, 4> const &jump_array) noexcept {
+    //
+    std::array<result_type, 4> s = {0, 0, 0, 0}; // NOLINT
+
+    for (result_type const jump : jump_array) {
+      for (int bit = 0; bit < 64; ++bit) {  // NOLINT
+        if (jump & result_type{1} << bit) { // NOLINT
+          s[0] ^= m_state[0];
+          s[1] ^= m_state[1];
+          s[2] ^= m_state[2];
+          s[3] ^= m_state[3];
+        }
+        operator()();
+      }
+    }
+    m_state = s;
+  }
+};
+
+} // namespace lf
+
+#endif /* CA0BE1EA_88CD_4E63_9D89_37395E859565 */
+
+#ifndef F4C3CE1A_F0F7_485D_8D54_473CCE8294DC
+#define F4C3CE1A_F0F7_485D_8D54_473CCE8294DC
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <memory>
+#include <stdexcept>
+
+
+
+/**
+ * @file thread_local.hpp
+ *
+ * @brief Provides a utility class for managing static inline thread_local pointer to an object.
+ */
+
+namespace lf {
+
+/**
+ * @brief Store a thread_local static pointer to a T object.
+ *
+ * This is useful for implementing the ``context()`` method of a class satisfying ``lf::thread_context``.
+ */
+template <typename T>
+class thread_local_ptr {
+public:
+  /**
+   * @brief A runtime-error thrown when get() is called before set().
+   */
+  struct not_set : std::runtime_error {
+    not_set() : std::runtime_error("Thread's pointer is not set!") {}
+  };
+
+  /**
+   * @brief Get the object pointed to by the thread_local pointer.
+   */
+  [[nodiscard]]
+#ifdef __clang__
+  __attribute((noinline)) ///< Workaround for LLVM coroutine TLS bug.
+#endif
+  static auto
+  get() -> T & {
+    if (m_ptr == nullptr) {
+#if LF_COMPILER_EXCEPTIONS
+      throw not_set{};
+#else
+      std::terminate();
+#endif
+    }
+    return *m_ptr;
+  }
+
+  /**
+   * @brief Set the thread_local pointer to the given object.
+   */
+  static auto set(T &ctx) noexcept -> void { m_ptr = std::addressof(ctx); }
+
+private:
+  static inline thread_local constinit T *m_ptr = nullptr; // NOLINT
+};
+
+} // namespace lf
+
+#endif /* F4C3CE1A_F0F7_485D_8D54_473CCE8294DC */
+
+
+/**
+ * @file busy.hpp
+ *
+ * @brief A work-stealing threadpool where all the threads spin when idle.
+ */
+
+namespace lf {
+
+namespace detail {
+
+template <simple T, std::size_t N>
+  requires(std::has_single_bit(N))
+class buffered_queue {
+public:
+  [[nodiscard]] auto empty() const noexcept -> bool { return m_top == m_bottom; }
+
+  // See what would be popped
+  [[nodiscard]] auto peek() -> T & {
+    LF_ASSERT(!empty());
+    return load(m_bottom - 1);
+  }
+
+  auto push(T const &val) noexcept -> void {
+    if (buff_full()) {
+      m_queue.push(load(m_top++));
+    }
+    store(m_bottom++, val);
+  }
+
+  auto pop() noexcept -> std::optional<T> {
+
+    if (empty()) {
+      return std::nullopt;
+    }
+
+    bool was_full = buff_full();
+
+    T val = load(--m_bottom);
+
+    if (was_full) {
+      if (auto opt = m_queue.pop()) {
+        store(--m_top, *opt);
+      }
+    }
+
+    return val;
+  }
+
+  auto steal() noexcept -> typename queue<T>::steal_t { return m_queue.steal(); }
+
+private:
+  [[nodiscard]] auto buff_full() const noexcept -> bool { return m_bottom - m_top == N; }
+
+  auto store(std::size_t index, T const &val) noexcept -> void {
+    m_buff[index & mask] = val; // NOLINT
+  }
+
+  [[nodiscard]] auto load(std::size_t index) noexcept -> T & {
+    return m_buff[(index & mask)]; // NOLINT
+  }
+
+  static constexpr std::size_t mask = N - 1;
+
+  std::size_t m_top = 0;
+  std::size_t m_bottom = 0;
+  std::array<T, N> m_buff;
+  queue<T> m_queue;
+};
+
+// template <is_virtual_stack Stack, typename Steal>
+//   requires requires(Steal steal) {
+//     { std::invoke(steal) } -> std::convertible_to<std::optional<typename Stack::handle>>;
+//   }
+// class stack_controller {
+// public:
+//   using handle_t = typename Stack::handle;
+
+//   explicit constexpr stack_controller(Steal const &steal) : m_steal{steal} {}
+
+//   auto stack_top() -> handle_t {
+//     return m_stacks.peek();
+//   }
+
+//   void stack_pop() {
+//     LF_LOG("stack_pop()");
+
+//     LF_ASSERT(!m_stacks.empty());
+
+//     m_stacks.pop();
+
+//     if (!m_stacks.empty()) {
+//       return;
+//     }
+
+//     LF_LOG("No stack, stealing from other threads");
+
+//     if (std::optional handle = std::invoke(m_steal)) {
+//       LF_ASSERT(m_stacks.empty());
+//       m_stacks.push(*handle);
+//     }
+
+//     LF_LOG("No stacks found, allocating new stacks");
+//     alloc_stacks();
+//   }
+
+//   void stack_push(handle_t handle) {
+//     LF_LOG("Pushing stack to private queue");
+//     LF_ASSERT(stack_top()->empty());
+//     m_stacks.push(handle);
+//   }
+
+// private:
+//   using stack_block = typename Stack::unique_arr_ptr_t;
+
+//   static constexpr std::size_t k_buff = 16;
+
+//   Steal m_steal;
+//   buffered_queue<typename Stack::handle, k_buff> m_stacks;
+//   std::vector<stack_block> m_stack_storage;
+
+//   void alloc_stacks() {
+
+//     LF_ASSERT(m_stacks.empty());
+
+//     stack_block stacks = Stack::make_unique(k_buff);
+
+//     for (std::size_t i = 0; i < k_buff; ++i) {
+//       m_stacks.push(handle_t{stacks.get() + i});
+//     }
+
+//     m_stack_storage.push_back(std::move(stacks));
+//   }
+// };
+
+} // namespace detail
+
+/**
+ * @brief A scheduler based on a traditional work-stealing thread pool.
+ *
+ * Worker threads continuously try to steal tasks from other worker threads hence, they
+ * waste CPU cycles if sufficient work is not available. This is a good choice if the number
+ * of threads is equal to the number of hardware cores and the multiplexer has no other load.
+ */
+class busy_pool : detail::immovable {
+public:
+  /**
+   * @brief The context type for the busy_pools threads.
+   */
+  class context_type : thread_local_ptr<context_type> {
+  public:
+    using stack_type = virtual_stack<detail::mebibyte>;
+
+    context_type() { alloc_stacks(); }
+
+    static auto context() -> context_type & { return get(); }
+
+    auto max_threads() const noexcept -> std::size_t { return m_pool->m_workers.size(); }
+
+    auto stack_top() -> stack_type::handle {
+      LF_ASSERT(&context() == this);
+      return m_stacks.peek();
+    }
+
+    void stack_pop() {
+      LF_ASSERT(&context() == this);
+      LF_ASSERT(!m_stacks.empty());
+
+      LF_LOG("Pop stack");
+
+      m_stacks.pop();
+
+      if (!m_stacks.empty()) {
+        return;
+      }
+
+      LF_LOG("No stack, stealing from other threads");
+
+      auto n = max_threads();
+
+      std::uniform_int_distribution<std::size_t> dist(0, n - 1);
+
+      for (std::size_t attempts = 0; attempts < 2 * n;) {
+
+        auto steal_at = dist(m_rng);
+
+        if (steal_at == m_id) {
+          continue;
+        }
+
+        if (auto handle = m_pool->m_contexts[steal_at].m_stacks.steal()) {
+          LF_LOG("Stole stack from thread {}", steal_at);
+          LF_ASSERT(m_stacks.empty());
+          m_stacks.push(*handle);
+          return;
+        }
+
+        ++attempts;
+      }
+
+      LF_LOG("No stacks found, allocating new stacks");
+      alloc_stacks();
+    }
+
+    void stack_push(stack_type::handle handle) {
+      LF_ASSERT(&context() == this);
+      LF_ASSERT(stack_top()->empty());
+
+      LF_LOG("Pushing stack to private queue");
+
+      m_stacks.push(handle);
+    }
+
+    auto task_steal() -> typename queue<task_handle>::steal_t {
+      return m_tasks.steal();
+    }
+
+    auto task_pop() -> std::optional<task_handle> {
+      LF_ASSERT(&context() == this);
+      return m_tasks.pop();
+    }
+
+    void task_push(task_handle task) {
+      LF_ASSERT(&context() == this);
+      m_tasks.push(task);
+    }
+
+  private:
+    static constexpr std::size_t block_size = 16;
+
+    using stack_block = typename stack_type::unique_arr_ptr_t;
+    using stack_handle = typename stack_type::handle;
+
+    friend class busy_pool;
+
+    busy_pool *m_pool = nullptr; ///< To the pool this context belongs to.
+    std::size_t m_id = 0;        ///< Index in the pool.
+    xoshiro m_rng;               ///< Our personal PRNG.
+
+    detail::buffered_queue<stack_handle, block_size> m_stacks; ///< Our (stealable) stack queue.
+    queue<task_handle> m_tasks;                                ///< Our (stealable) task queue.
+
+    std::vector<stack_block> m_stack_storage; ///< Controls ownership of the stacks.
+
+    // Alloc k new stacks and insert them into our private queue.
+    void alloc_stacks() {
+
+      LF_ASSERT(m_stacks.empty());
+
+      stack_block stacks = stack_type::make_unique(block_size);
+
+      for (std::size_t i = 0; i < block_size; ++i) {
+        m_stacks.push(stack_handle{stacks.get() + i});
+      }
+
+      m_stack_storage.push_back(std::move(stacks));
+    }
+  };
+
+  static_assert(thread_context<context_type>);
+
+  /**
+   * @brief Construct a new busy_pool object.
+   *
+   * @param n The number of worker threads to create, defaults to the number of hardware threads.
+   */
+  explicit busy_pool(std::size_t n = std::thread::hardware_concurrency()) : m_contexts(n) {
+    // Initialize the random number generator.
+    xoshiro rng(std::random_device{});
+
+    std::size_t count = 0;
+
+    for (auto &ctx : m_contexts) {
+      ctx.m_pool = this;
+      ctx.m_rng = rng;
+      rng.long_jump();
+      ctx.m_id = count++;
+    }
+
+#if LF_COMPILER_EXCEPTIONS
+    try {
+#endif
+      for (std::size_t i = 0; i < n; ++i) {
+        m_workers.emplace_back([this, i]() {
+          // Get a reference to the threads context.
+          context_type &my_context = m_contexts[i];
+
+          // Set the thread local context.
+          context_type::set(my_context);
+
+          std::uniform_int_distribution<std::size_t> dist(0, m_contexts.size() - 1);
+
+          while (!m_stop_requested.test(std::memory_order_acquire)) {
+
+            for (int attempt = 0; attempt < k_steal_attempts; ++attempt) {
+
+              std::size_t steal_at = dist(my_context.m_rng);
+
+              if (steal_at == i) {
+                if (auto root = m_submit.steal()) {
+                  LF_LOG("resuming root task");
+                  root->resume();
+                }
+              } else if (auto work = m_contexts[steal_at].task_steal()) {
+                attempt = 0;
+                LF_LOG("Stole work from {}", steal_at);
+                work->resume();
+                LF_LOG("worker resumes thieving");
+                LF_ASSUME(my_context.m_tasks.empty());
+              }
+            }
+          };
+
+          LF_LOG("Worker {} stopping", i);
+        });
+      }
+#if LF_COMPILER_EXCEPTIONS
+    } catch (...) {
+      // Need to stop the threads
+      clean_up();
+      throw;
+    }
+#endif
+  }
+
+  /**
+   * @brief Schedule a task for execution.
+   */
+  auto schedule(stdx::coroutine_handle<> root) noexcept {
+    m_submit.push(root);
+  }
+
+  ~busy_pool() noexcept { clean_up(); }
+
+private:
+  // Request all threads to stop, wake them up and then call join.
+  auto clean_up() noexcept -> void {
+
+    LF_LOG("Request stop");
+
+    LF_ASSERT(m_submit.empty());
+
+    // Set conditions for workers to stop
+    m_stop_requested.test_and_set(std::memory_order_release);
+
+    // Join workers
+    for (auto &worker : m_workers) {
+      LF_ASSUME(worker.joinable());
+      worker.join();
+    }
+  }
+
+  static constexpr int k_steal_attempts = 1024;
+
+  queue<stdx::coroutine_handle<>> m_submit;
+
+  std::atomic_flag m_stop_requested = ATOMIC_FLAG_INIT;
+
+  std::vector<context_type> m_contexts;
+  std::vector<std::thread> m_workers; // After m_context so threads are destroyed before the queues.
+};
+
+static_assert(scheduler<busy_pool>);
+
+} // namespace lf
+
+#endif /* B5AE1829_6F8A_4118_AB15_FE73F851271F */
+
+#ifndef C8EE9A0A_3B9F_4FFE_8FF5_910645E0C7CC
+#define C8EE9A0A_3B9F_4FFE_8FF5_910645E0C7CC
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// Self Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <vector>
+
+
+
+
+/**
+ * @file inline.hpp
+ *
+ * @brief A scheduler that runs all tasks inline on current thread.
+ */
+
+namespace lf {
+
+/**
+ * @brief A scheduler that runs all tasks inline on current thread.
+ */
+class inline_scheduler {
+public:
+  /**
+   * @brief The context type for the scheduler.
+   */
+  class context_type : thread_local_ptr<context_type> {
+
+  public:
+    /**
+     * @brief The stack type for the scheduler.
+     */
+    using stack_type = virtual_stack<detail::mebibyte>;
+    /**
+     * @brief Construct a new context type object, set the thread_local context object to this object.
+     */
+    context_type() noexcept {
+      inline_scheduler::context_type::set(*this);
+    }
+    /**
+     * @brief Get the thread_local context object.
+     */
+    static auto context() -> context_type & { return context_type::get(); }
+    /**
+     * @brief Returns one as this runs all tasks inline.
+     */
+    static constexpr auto max_threads() noexcept -> std::size_t { return 1; }
+    /**
+     * @brief Get the top stack object.
+     */
+    auto stack_top() -> stack_type::handle { return stack_type::handle{m_stack.get()}; }
+    /**
+     * @brief Should never be called, aborts the program.
+     */
+    static void stack_pop() { LF_ASSERT(false); }
+    /**
+     * @brief Should never be called, aborts the program.
+     */
+    static void stack_push([[maybe_unused]] stack_type::handle handle) { LF_ASSERT(false); }
+    /**
+     * @brief Pops a task from the task queue.
+     */
+    auto task_pop() -> std::optional<task_handle> {
+      if (m_tasks.empty()) {
+        return std::nullopt;
+      }
+      task_handle task = m_tasks.back();
+      m_tasks.pop_back();
+      return task;
+    }
+    /**
+     * @brief Pushes a task to the task queue.
+     */
+    void task_push(task_handle task) {
+      m_tasks.push_back(task);
+    }
+
+  private:
+    std::vector<task_handle> m_tasks;
+    typename stack_type::unique_ptr_t m_stack = stack_type::make_unique();
+  };
+
+  /**
+   * @brief Immediately resume the root task.
+   */
+  static void schedule(stdx::coroutine_handle<> root_task) {
+    root_task.resume();
+  }
+
+private:
+  context_type m_context;
+};
+
+static_assert(scheduler<inline_scheduler>);
+
+} // namespace lf
+
+#endif /* C8EE9A0A_3B9F_4FFE_8FF5_910645E0C7CC */
+
+
 #endif /* EDCA974A_808F_4B62_95D5_4D84E31B8911 */
