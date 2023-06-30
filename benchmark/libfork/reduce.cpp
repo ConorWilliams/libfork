@@ -4,14 +4,12 @@
 
 #include "../bench.hpp"
 
-#include "libfork/schedule/busy_pool.hpp"
-#include "libfork/task.hpp"
+#include "libfork/core.hpp"
+#include "libfork/schedule/busy.hpp"
 
 using namespace lf;
 
-template <context Context>
-auto reduce(std::span<unsigned int const> x, std::size_t grain_size) -> basic_task<unsigned int, Context> {
-  //
+inline constexpr lf::async_fn reduce = [](auto reduce, std::span<unsigned int const> x, std::size_t grain_size) -> task<unsigned int> {
   if (x.size() <= grain_size) {
     co_return std::reduce(x.begin(), x.end());
   }
@@ -19,25 +17,28 @@ auto reduce(std::span<unsigned int const> x, std::size_t grain_size) -> basic_ta
   auto h = x.size() / 2;
   auto t = x.size() - h;
 
-  auto a = co_await reduce<Context>(x.first(h), grain_size).fork();
-  auto b = co_await reduce<Context>(x.last(t), grain_size);
+  unsigned int a, b;
 
-  co_await join();
+  co_await lf::fork(a, reduce)(x.first(h), grain_size);
+  co_await lf::call(b, reduce)(x.last(t), grain_size);
 
-  co_return *a + b;
-}
+  co_await join;
+
+  co_return a + b;
+};
 
 void run(std::string name, std::span<unsigned int> data) {
+  //
   auto correct = std::reduce(data.begin(), data.end());
 
-  benchmark(name, [&](std::size_t n, auto&& bench) {
+  benchmark(name, [&](std::size_t n, auto &&bench) {
     // Set up
-    auto pool = busy_pool{n};
+    auto pool = lf::busy_pool{n};
 
-    unsigned int res = 0;
+    int res = 0;
 
     bench([&] {
-      res = pool.schedule(reduce<busy_pool::context>(data, data.size() / (10 * n)));
+      res = lf::sync_wait(pool, reduce, data, data.size() / (10 * n));
     });
 
     if (res != correct) {

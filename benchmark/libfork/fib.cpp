@@ -1,34 +1,35 @@
 
 #include "../bench.hpp"
 
-#include "libfork/schedule/busy_pool.hpp"
-#include "libfork/task.hpp"
+#include "libfork/core.hpp"
+#include "libfork/schedule/busy.hpp"
 
 using namespace lf;
 
-template <context Context>
-auto fib(int n) -> basic_task<int, Context> {
+inline constexpr async_fn fib = [](auto fib, int n) -> task<int> {
   if (n < 2) {
     co_return n;
   }
 
-  auto a = co_await fib<Context>(n - 1).fork();
-  auto b = co_await fib<Context>(n - 2);
+  int a, b;
 
-  co_await join();
+  co_await lf::fork(a, fib)(n - 1);
+  co_await lf::call(b, fib)(n - 2);
 
-  co_return *a + b;
-}
+  co_await lf::join;
+
+  co_return a + b;
+};
 
 void run(std::string name, int x) {
-  benchmark(name, [&](std::size_t n, auto&& bench) {
+  benchmark(name, [&](std::size_t n, auto &&bench) {
     // Set up
-    auto pool = busy_pool{n};
+    auto pool = lf::busy_pool{n};
 
     int answer = 0;
 
     bench([&] {
-      answer = pool.schedule(fib<busy_pool::context>(x));
+      answer = lf::sync_wait(pool, fib, x);
     });
 
     return answer;

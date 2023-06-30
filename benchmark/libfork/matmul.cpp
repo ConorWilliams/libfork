@@ -9,8 +9,7 @@
  * Sridhar Ramachandran, FOCS 1999, for an explanation of
  * why this algorithm is good for caches.
  *
- * Note according to its own check it is not cforkuting this correctly!
- * I believe this is because it is overflowing.
+ * Note according to its own check it is not computing this correctly! I believe this is because it is overflowing.
  */
 
 #include <chrono>
@@ -20,8 +19,8 @@
 
 #include "../bench.hpp"
 
-#include "libfork/schedule/busy_pool.hpp"
-#include "libfork/task.hpp"
+#include "libfork/core.hpp"
+#include "libfork/schedule/busy.hpp"
 
 using namespace std;
 using namespace lf;
@@ -36,19 +35,19 @@ inline auto xorshift_rand() -> uint32_t {
   return x;
 }
 
-void zero(elem_t* A, size_t n) {
+void zero(elem_t *A, size_t n) {
   for (size_t i = 0; i < n; ++i)
     for (size_t j = 0; j < n; ++j)
       A[i * n + j] = 0.0;
 }
 
-void fill(elem_t* A, size_t n) {
+void fill(elem_t *A, size_t n) {
   for (size_t i = 0; i < n; ++i)
     for (size_t j = 0; j < n; ++j)
       A[i * n + j] = xorshift_rand() % n;
 }
 
-bool check(elem_t* A, elem_t* B, elem_t* C, size_t n) {
+bool check(elem_t *A, elem_t *B, elem_t *C, size_t n) {
   elem_t tr_C = 0;
   elem_t tr_AB = 0;
   for (size_t i = 0; i < n; ++i) {
@@ -60,8 +59,7 @@ bool check(elem_t* A, elem_t* B, elem_t* C, size_t n) {
   return fabs(tr_AB - tr_C) < 1e-3;
 }
 
-template <context Context>
-auto matmul(elem_t* A, elem_t* B, elem_t* C, size_t m, size_t n, size_t p, size_t ld, bool add) -> basic_task<void, Context> {
+inline constexpr lf::async_fn matmul = [](auto matmul, elem_t *A, elem_t *B, elem_t *C, size_t m, size_t n, size_t p, size_t ld, bool add) -> task<void> {
   if ((m + n + p) <= 64) {
     if (add) {
       for (size_t i = 0; i < m; ++i) {
@@ -88,31 +86,30 @@ auto matmul(elem_t* A, elem_t* B, elem_t* C, size_t m, size_t n, size_t p, size_
   if (m >= n && n >= p) {
     size_t m1 = m >> 1;
 
-    co_await matmul<Context>(A, B, C, m1, n, p, ld, add).fork();
-    co_await matmul<Context>(A + m1 * ld, B, C + m1 * ld, m - m1, n, p, ld, add);
+    co_await lf::fork(matmul)(A, B, C, m1, n, p, ld, add);
+    co_await lf::call(matmul)(A + m1 * ld, B, C + m1 * ld, m - m1, n, p, ld, add);
 
   } else if (n >= m && n >= p) {
     size_t n1 = n >> 1;
 
-    co_await matmul<Context>(A, B, C, m, n1, p, ld, add).fork();
-    co_await matmul<Context>(A + n1, B + n1 * ld, C, m, n - n1, p, ld, true);
+    co_await lf::fork(matmul)(A, B, C, m, n1, p, ld, add);
+    co_await lf::call(matmul)(A + n1, B + n1 * ld, C, m, n - n1, p, ld, true);
   } else {
     size_t p1 = p >> 1;
 
-    co_await matmul<Context>(A, B, C, m, n, p1, ld, add).fork();
-    co_await matmul<Context>(A, B + p1, C + p1, m, n, p - p1, ld, add);
+    co_await lf::fork(matmul)(A, B, C, m, n, p1, ld, add);
+    co_await lf::call(matmul)(A, B + p1, C + p1, m, n, p - p1, ld, add);
   }
 
-  co_await join();
-}
+  co_await join;
+};
 
-template <context Context>
-auto test(elem_t* A, elem_t* B, elem_t* C, size_t n) -> basic_task<void, Context> {
-  co_await matmul<Context>(A, B, C, n, n, n, n, 0);
-}
+inline constexpr async_fn test = [](auto self, elem_t *A, elem_t *B, elem_t *C, size_t n) -> task<void> {
+  co_await matmul(A, B, C, n, n, n, n, 0);
+};
 
 void run(std::string name, size_t n) {
-  benchmark(name, [&](std::size_t num_threads, auto&& bench) {
+  benchmark(name, [&](std::size_t num_threads, auto &&bench) {
     // Set up
     elem_t *A, *B, *C;
 
@@ -124,10 +121,10 @@ void run(std::string name, size_t n) {
     fill(B, n);
     zero(C, n);
 
-    auto pool = busy_pool{num_threads};
+    auto pool = lf::busy_pool{num_threads};
 
     bench([&] {
-      pool.schedule(test<busy_pool::context>(A, B, C, n));
+      lf::sync_wait(pool, test, A, B, C, n);
     });
 
     int res = check(A, B, C, n);
@@ -140,7 +137,7 @@ void run(std::string name, size_t n) {
   });
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
   run("fork-matmul-n=8", 8);
   run("fork-matmul-n=32", 32);
   run("fork-matmul-n=64", 64);
