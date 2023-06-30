@@ -2,7 +2,7 @@
 # Run the following command in the root of your project to install this pre-commit hook:
 # cp git-hooks/pre-commit .git/hooks/pre-commit; chmod 700 .git/hooks/pre-commit
 
-SINGLE="cmake --build --preset=dev -t make_single_header && ./build/dev/tools/make_single_header ./include/libfork.hpp ./single_header/libfork.hpp"
+SINGLE="cmake --preset=dev && cmake --build --preset=dev -t make_single_header && ./build/dev/tools/make_single_header ./include/libfork.hpp ./single_header/libfork.hpp"
 
 eval $SINGLE
 
