@@ -66,7 +66,7 @@ struct first_arg_t;
  * @brief Disable rvalue references for T&& template types if an async function is forked.
  *
  * This is to prevent the user from accidentally passing a temporary object to an async function that
- * will then destructed in the parent task before the child task retuns.
+ * will then destructed in the parent task before the child task returns.
  */
 template <typename T, typename Self>
 concept no_forked_rvalue = Self::tag_value != tag::fork || std::is_reference_v<T>;

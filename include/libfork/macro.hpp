@@ -34,7 +34,7 @@ inline constexpr std::size_t k_cache_line = 64;
 #endif
 
 /**
- * @brief An empty type that is not copyable or movable.
+ * @brief An empty type that is not copiable or movable.
  */
 struct immovable {
   immovable() = default;
