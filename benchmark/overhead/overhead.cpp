@@ -101,14 +101,6 @@ auto main() -> int {
     });
   }
 
-  {
-    lf::inline_scheduler i_sch;
-
-    bench.run("async inline", [&] {
-      ankerl::nanobench::doNotOptimizeAway(lf::sync_wait(i_sch, c_fib, in));
-    });
-  }
-
   bench.run("function no register", [&] {
     ankerl::nanobench::doNotOptimizeAway(fib_no_reg({in}));
   });
