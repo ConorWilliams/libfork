@@ -1091,7 +1091,7 @@ struct first_arg_t;
  * @brief Disable rvalue references for T&& template types if an async function is forked.
  *
  * This is to prevent the user from accidentally passing a temporary object to an async function that
- * will then destructed in the parent task before the child task returns. 
+ * will then destructed in the parent task before the child task returns.
  */
 template <typename T, typename Self>
 concept no_forked_rvalue = Self::tag_value != tag::fork || std::is_reference_v<T>;
@@ -1134,8 +1134,7 @@ template <typename T>
 concept is_task = is_task_impl<T>::value;
 
 template <typename R, tag Tag, typename TaskValueType>
-concept result_matches = std::is_void_v<R> || Tag ==
-tag::root || Tag == tag::invoke || std::assignable_from<R &, TaskValueType>;
+concept result_matches = std::is_void_v<R> || Tag == tag::root || Tag == tag::invoke || std::assignable_from<R &, TaskValueType>;
 
 // clang-format off
 
@@ -1360,12 +1359,12 @@ struct first_arg_t<R, Tag, async_mem_fn<F>, Self> : detail::first_arg_base<R, F,
   /**
    * @brief Access the class instance.
    */
-  [[nodiscard]] constexpr auto operator*() &noexcept -> std::remove_reference_t<Self> & { return m_self; }
+  [[nodiscard]] constexpr auto operator*() & noexcept -> std::remove_reference_t<Self> & { return m_self; }
 
   /**
    * @brief Access the class with a value category corresponding to forwarding a forwarding-reference.
    */
-  [[nodiscard]] constexpr auto operator*() &&noexcept -> Self && {
+  [[nodiscard]] constexpr auto operator*() && noexcept -> Self && {
     return std::forward<std::conditional_t<is_forked_rvalue, std::remove_const_t<Self>, Self>>(m_self);
   }
 
