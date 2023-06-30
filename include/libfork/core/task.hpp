@@ -62,6 +62,8 @@ struct first_arg_t;
 
 // ------------------------ Interfaces ------------------------ //
 
+// clang-format off
+
 /**
  * @brief Disable rvalue references for T&& template types if an async function is forked.
  *
@@ -70,8 +72,6 @@ struct first_arg_t;
  */
 template <typename T, typename Self>
 concept no_forked_rvalue = Self::tag_value != tag::fork || std::is_reference_v<T>;
-
-// clang-format off
 
 /**
  * @brief The first argument to all coroutines must conform to this concept and be derived from ``lf::first_arg_t``
