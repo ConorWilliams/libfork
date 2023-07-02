@@ -38,7 +38,7 @@ namespace detail {
 inline constexpr std::size_t k_new_align = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
 
 template <typename T, typename U>
-auto r_cast(U &&expr) noexcept {
+auto r_cast(U &&expr) noexcept -> T {
   return reinterpret_cast<T>(std::forward<U>(expr)); // NOLINT
 }
 

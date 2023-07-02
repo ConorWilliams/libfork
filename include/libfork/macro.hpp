@@ -9,8 +9,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include <cassert>
 #include <cstddef>
+#include <exception>
 #include <new>
+#include <type_traits>
 #include <utility>
 #include <version>
 
@@ -44,6 +47,8 @@ struct immovable {
   auto operator=(immovable &&) -> immovable & = delete;
   ~immovable() = default;
 };
+
+static_assert(std::is_empty_v<immovable>);
 
 } // namespace lf::detail
 
@@ -91,6 +96,24 @@ struct immovable {
   #else
     #define LF_COMPILER_EXCEPTIONS 0
   #endif
+#endif
+
+#if LF_COMPILER_EXCEPTIONS
+  #define LF_TRY try
+  #define LF_CATCH_ALL catch (...)
+  #define LF_THROW(X) throw X
+  #define LF_RETHROW throw
+#else
+  #define LF_TRY if constexpr (true)
+  #define LF_CATCH_ALL if constexpr (false)
+  #ifndef NDEBUG
+    #define LF_THROW(X) assert(false && "Tried to throw: " #X)
+  #else
+    #define LF_THROW(X) std::terminate()
+  #endif
+  #define LF_RETHROW \
+    do {             \
+    } while (false)
 #endif
 
 /**
@@ -146,7 +169,6 @@ struct immovable {
  * @brief If ``NDEBUG`` is defined then ``LF_ASSERT(expr)`` is  ``LF_ASSUME(expr)`` otherwise ``assert(expr)``.
  */
 #ifndef NDEBUG
-  #include <cassert>
   #define LF_ASSERT(expr) assert(expr)
 #else
   #define LF_ASSERT(expr) LF_ASSUME(expr)

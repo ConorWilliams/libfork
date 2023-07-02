@@ -49,8 +49,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include <cassert>
 #include <cstddef>
+#include <exception>
 #include <new>
+#include <type_traits>
 #include <utility>
 #include <version>
 
@@ -84,6 +87,8 @@ struct immovable {
   auto operator=(immovable &&) -> immovable & = delete;
   ~immovable() = default;
 };
+
+static_assert(std::is_empty_v<immovable>);
 
 } // namespace lf::detail
 
@@ -131,6 +136,24 @@ struct immovable {
   #else
     #define LF_COMPILER_EXCEPTIONS 0
   #endif
+#endif
+
+#if LF_COMPILER_EXCEPTIONS
+  #define LF_TRY try
+  #define LF_CATCH_ALL catch (...)
+  #define LF_THROW(X) throw X
+  #define LF_RETHROW throw
+#else
+  #define LF_TRY if constexpr (true)
+  #define LF_CATCH_ALL if constexpr (false)
+  #ifndef NDEBUG
+    #define LF_THROW(X) assert(false && "Tried to throw: " #X)
+  #else
+    #define LF_THROW(X) std::terminate()
+  #endif
+  #define LF_RETHROW \
+    do {             \
+    } while (false)
 #endif
 
 /**
@@ -186,7 +209,6 @@ struct immovable {
  * @brief If ``NDEBUG`` is defined then ``LF_ASSERT(expr)`` is  ``LF_ASSUME(expr)`` otherwise ``assert(expr)``.
  */
 #ifndef NDEBUG
-  #include <cassert>
   #define LF_ASSERT(expr) assert(expr)
 #else
   #define LF_ASSERT(expr) LF_ASSUME(expr)
@@ -308,8 +330,6 @@ namespace stdx = std::experimental;
 
 namespace lf::detail {
 
-static_assert(std::is_empty_v<immovable>);
-
 #if LF_PROPAGATE_EXCEPTIONS
 
 /**
@@ -417,7 +437,7 @@ namespace detail {
 inline constexpr std::size_t k_new_align = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
 
 template <typename T, typename U>
-auto r_cast(U &&expr) noexcept {
+auto r_cast(U &&expr) noexcept -> T {
   return reinterpret_cast<T>(std::forward<U>(expr)); // NOLINT
 }
 
@@ -1138,18 +1158,12 @@ concept is_task = is_task_impl<T>::value;
 template <typename R, tag Tag, typename TaskValueType>
 concept result_matches = std::is_void_v<R> || Tag == tag::root || Tag == tag::invoke || std::assignable_from<R &, TaskValueType>;
 
-
 template <typename Head, typename... Tail>
 concept valid_packet = first_arg<Head> && requires(typename Head::underlying_fn fun, Head head, Tail &&...tail) {
   //  
   { std::invoke(fun, std::move(head), std::forward<Tail>(tail)...) } -> is_task;
 
 } && result_matches<typename Head::return_address_t, Head::tag_value, typename std::invoke_result_t<typename Head::underlying_fn, Head, Tail...>::value_type>;
-
-
-
-
-//&& result_matches<R, Head::tag_value, typename std::invoke_result_t<typename Head::underlying_fn, Head, Tail...>::value_type>;
 
 // clang-format on
 
@@ -1316,15 +1330,9 @@ struct first_arg_base {
   static constexpr tag tag_value = Tag;
 };
 
-// static_assert(first_arg<first_arg_base<decltype([] {}), tag::invoke>>, "first_arg_base is not a first_arg_t!");
+static_assert(first_arg<first_arg_base<void, decltype([] {}), tag::invoke>>, "first_arg_base is not a first_arg_t!");
 
 } // namespace detail
-
-//  * If ``AsyncFn`` is an ``async_fn`` then this will derive from ``async_fn``. If ``AsyncFn`` is an ``async_mem_fn``
-//  * then this will wrap a pointer to a class and will supply the appropriate ``*`` and ``->`` operators.
-//  *
-//  * The full type of the first argument will also have a static ``context()`` member function that will defer to the
-//  * thread context's ``context()`` member function.
 
 /**
  * @brief A specialization of ``first_arg_t`` for asynchronous global functions.
@@ -1337,20 +1345,17 @@ struct first_arg_t<R, Tag, async_fn<F>> : detail::first_arg_base<R, F, Tag>, asy
 /**
  * @brief A specialization of ``first_arg_t`` for asynchronous member functions.
  *
- * This wraps a pointer to an instance of the parent type to allow for use as
- * an explicit ``this`` parameter.
+ * This wraps a pointer to an instance of the parent type to allow for use as an explicit ``this`` parameter.
  */
 template <typename R, tag Tag, stateless F, typename Self>
 struct first_arg_t<R, Tag, async_mem_fn<F>, Self> : detail::first_arg_base<R, F, Tag> {
-  /**
-   * @brief Identify if this is a forked task passed an rvalue self parameter.
-   */
-  static constexpr bool is_forked_rvalue = Tag == tag::fork && !std::is_reference_v<Self>;
+
+  static_assert(Tag != tag::fork || std::is_reference_v<Self>, "A forked task passed a temporary self parameter will dangle!");
 
   /**
-   * @brief If forking a temporary we copy a value to the coroutine frame, otherwise we store a reference.
+   * @brief The type of the deduced forwarding reference.
    */
-  using self_type = std::conditional_t<is_forked_rvalue, std::remove_const_t<Self>, Self &&>;
+  using self_type = Self;
 
   /**
    * @brief Construct an ``lf::async_mem_fn_for`` from a reference to ``self``.
@@ -1358,16 +1363,14 @@ struct first_arg_t<R, Tag, async_mem_fn<F>, Self> : detail::first_arg_base<R, F,
   explicit(false) constexpr first_arg_t(Self &&self) : m_self{std::forward<Self>(self)} {} // NOLINT
 
   /**
-   * @brief Access the class instance.
+   * @brief Access the underlying class instance.
    */
-  [[nodiscard]] constexpr auto operator*() &noexcept -> std::remove_reference_t<Self> & { return m_self; }
+  [[nodiscard]] constexpr auto operator*() & noexcept -> Self & { return m_self; }
 
   /**
-   * @brief Access the class with a value category corresponding to forwarding a forwarding-reference.
+   * @brief Access the underlying class with a value category corresponding to forwarding a forwarding-reference.
    */
-  [[nodiscard]] constexpr auto operator*() &&noexcept -> Self && {
-    return std::forward<std::conditional_t<is_forked_rvalue, std::remove_const_t<Self>, Self>>(m_self);
-  }
+  [[nodiscard]] constexpr auto operator*() && noexcept -> Self && { return std::forward<Self>(m_self); }
 
   /**
    * @brief Access the underlying ``this`` pointer.
@@ -1375,7 +1378,7 @@ struct first_arg_t<R, Tag, async_mem_fn<F>, Self> : detail::first_arg_base<R, F,
   [[nodiscard]] constexpr auto operator->() noexcept -> std::remove_reference_t<Self> * { return std::addressof(m_self); }
 
 private:
-  self_type m_self;
+  std::add_rvalue_reference_t<Self> m_self;
 };
 
 } // namespace lf
@@ -1714,13 +1717,15 @@ public:
 
     using packet_type = packet<shim_with_context<return_type, Context, first_arg_t<void, tag::invoke, F, This...>>, Args...>;
 
+    using handle_type = typename packet_type::handle_type;
+
     static_assert(std::same_as<value_type_child, typename packet_type::value_type>, "An async function's value_type must be return_address_t independent!");
 
     struct awaitable : stdx::suspend_always {
 
       explicit constexpr awaitable(promise_type *in_self, packet<first_arg_t<void, tag::invoke, F, This...>, Args...> &&in_packet) : self(in_self), m_child(packet_type{m_res, {std::move(in_packet.context)}, std::move(in_packet.args)}.invoke_bind(cast_down(stdx::coroutine_handle<promise_type>::from_promise(*self)))) {}
 
-      [[nodiscard]] constexpr auto await_suspend([[maybe_unused]] stdx::coroutine_handle<promise_type> parent) noexcept -> typename packet_type::handle_type {
+      [[nodiscard]] constexpr auto await_suspend([[maybe_unused]] stdx::coroutine_handle<promise_type> parent) noexcept -> handle_type {
         return m_child;
       }
 
@@ -1745,7 +1750,7 @@ public:
 
       return_type m_res;
       promise_type *self;
-      typename packet_type::handle_type m_child;
+      handle_type m_child;
     };
 
     return awaitable{this, std::move(in_packet)};
@@ -2278,15 +2283,8 @@ static_assert(k_is_little_endian || k_is_big_endian, "mixed endian systems are n
  *
  * \endrst
  */
-class event_count {
+class event_count : detail::immovable {
 public:
-  event_count() = default;
-  event_count(event_count const &) = delete;
-  event_count(event_count &&) = delete;
-  auto operator=(event_count const &) -> event_count & = delete;
-  auto operator=(event_count &&) -> event_count & = delete;
-  ~event_count() = default;
-
   /**
    * @brief The return type of ``prepare_wait()``.
    */
@@ -2357,14 +2355,12 @@ private:
 
 inline void event_count::notify_one() noexcept {
   if (m_val.fetch_add(k_add_epoch, std::memory_order_acq_rel) & k_waiter_mask) [[unlikely]] { // NOLINT
-    LF_LOG("notify");
     epoch()->notify_one();
   }
 }
 
 inline void event_count::notify_all() noexcept {
   if (m_val.fetch_add(k_add_epoch, std::memory_order_acq_rel) & k_waiter_mask) [[unlikely]] { // NOLINT
-    LF_LOG("notify");
     epoch()->notify_all();
   }
 }
@@ -2403,11 +2399,10 @@ void event_count::await(Pred const &condition) {
   if (std::invoke(condition)) {
     return;
   }
-// std::invoke(condition) is the only thing that may throw, everything else is
-// noexcept, so we can hoist the try/catch block outside of the loop
-#if LF_COMPILER_EXCEPTIONS
-  try {
-#endif
+  // std::invoke(condition) is the only thing that may throw, everything else is
+  // noexcept, so we can hoist the try/catch block outside of the loop
+
+  LF_TRY {
     for (;;) {
       auto my_key = prepare_wait();
       if (std::invoke(condition)) {
@@ -2416,12 +2411,11 @@ void event_count::await(Pred const &condition) {
       }
       wait(my_key);
     }
-#if LF_COMPILER_EXCEPTIONS
-  } catch (...) {
-    cancel_wait();
-    throw;
   }
-#endif
+  LF_CATCH_ALL {
+    cancel_wait();
+    LF_RETHROW;
+  }
 }
 
 } // namespace lf
@@ -2940,8 +2934,7 @@ public:
    * sub-sequences for parallel computations.
    */
   constexpr auto jump() noexcept -> void {
-    // NOLINTNEXTLINE (magic-numbers)
-    jump_impl({0x180ec6d33cfd0aba, 0xd5a61266f0c9392c, 0xa9582618e03fc9aa, 0x39abdc4529b1661c});
+    jump_impl({0x180ec6d33cfd0aba, 0xd5a61266f0c9392c, 0xa9582618e03fc9aa, 0x39abdc4529b1661c}); // NOLINT
   }
 
   /**
@@ -2952,8 +2945,7 @@ public:
    * distributed computations.
    */
   constexpr auto long_jump() noexcept -> void {
-    // NOLINTNEXTLINE (magic-numbers)
-    jump_impl({0x76e15d3efefdcbbf, 0xc5004e441c522fb3, 0x77710069854ee241, 0x39109bb02acbe635});
+    jump_impl({0x76e15d3efefdcbbf, 0xc5004e441c522fb3, 0x77710069854ee241, 0x39109bb02acbe635}); // NOLINT
   }
 
 private:

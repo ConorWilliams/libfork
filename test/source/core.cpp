@@ -93,22 +93,11 @@ inline constexpr async_fn r_fib = [](auto fib, int n) -> lf::task<int> {
   int a, b;
 
   {
-    std::exception_ptr ptr;
 
-    try {
-      // If we leave this scope by exception or otherwise, we must
-      // make sure join is called before a,b destructed.
-      co_await lf::fork(a, fib)(n - 1);
-      co_await lf::call(b, fib)(n - 2);
-    } catch (...) {
-      ptr = std::current_exception();
-    }
+    co_await lf::fork(a, fib)(n - 1);
+    co_await lf::call(b, fib)(n - 2);
 
     co_await lf::join;
-
-    if (ptr) {
-      std::rethrow_exception(ptr);
-    }
   }
 
   co_return a + b;

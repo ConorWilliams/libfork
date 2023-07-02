@@ -357,13 +357,15 @@ public:
 
     using packet_type = packet<shim_with_context<return_type, Context, first_arg_t<void, tag::invoke, F, This...>>, Args...>;
 
+    using handle_type = typename packet_type::handle_type;
+
     static_assert(std::same_as<value_type_child, typename packet_type::value_type>, "An async function's value_type must be return_address_t independent!");
 
     struct awaitable : stdx::suspend_always {
 
       explicit constexpr awaitable(promise_type *in_self, packet<first_arg_t<void, tag::invoke, F, This...>, Args...> &&in_packet) : self(in_self), m_child(packet_type{m_res, {std::move(in_packet.context)}, std::move(in_packet.args)}.invoke_bind(cast_down(stdx::coroutine_handle<promise_type>::from_promise(*self)))) {}
 
-      [[nodiscard]] constexpr auto await_suspend([[maybe_unused]] stdx::coroutine_handle<promise_type> parent) noexcept -> typename packet_type::handle_type {
+      [[nodiscard]] constexpr auto await_suspend([[maybe_unused]] stdx::coroutine_handle<promise_type> parent) noexcept -> handle_type {
         return m_child;
       }
 
@@ -388,7 +390,7 @@ public:
 
       return_type m_res;
       promise_type *self;
-      typename packet_type::handle_type m_child;
+      handle_type m_child;
     };
 
     return awaitable{this, std::move(in_packet)};

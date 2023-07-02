@@ -115,18 +115,12 @@ concept is_task = is_task_impl<T>::value;
 template <typename R, tag Tag, typename TaskValueType>
 concept result_matches = std::is_void_v<R> || Tag == tag::root || Tag == tag::invoke || std::assignable_from<R &, TaskValueType>;
 
-
 template <typename Head, typename... Tail>
 concept valid_packet = first_arg<Head> && requires(typename Head::underlying_fn fun, Head head, Tail &&...tail) {
   //  
   { std::invoke(fun, std::move(head), std::forward<Tail>(tail)...) } -> is_task;
 
 } && result_matches<typename Head::return_address_t, Head::tag_value, typename std::invoke_result_t<typename Head::underlying_fn, Head, Tail...>::value_type>;
-
-
-
-
-//&& result_matches<R, Head::tag_value, typename std::invoke_result_t<typename Head::underlying_fn, Head, Tail...>::value_type>;
 
 // clang-format on
 
@@ -293,15 +287,9 @@ struct first_arg_base {
   static constexpr tag tag_value = Tag;
 };
 
-// static_assert(first_arg<first_arg_base<decltype([] {}), tag::invoke>>, "first_arg_base is not a first_arg_t!");
+static_assert(first_arg<first_arg_base<void, decltype([] {}), tag::invoke>>, "first_arg_base is not a first_arg_t!");
 
 } // namespace detail
-
-//  * If ``AsyncFn`` is an ``async_fn`` then this will derive from ``async_fn``. If ``AsyncFn`` is an ``async_mem_fn``
-//  * then this will wrap a pointer to a class and will supply the appropriate ``*`` and ``->`` operators.
-//  *
-//  * The full type of the first argument will also have a static ``context()`` member function that will defer to the
-//  * thread context's ``context()`` member function.
 
 /**
  * @brief A specialization of ``first_arg_t`` for asynchronous global functions.
@@ -314,20 +302,17 @@ struct first_arg_t<R, Tag, async_fn<F>> : detail::first_arg_base<R, F, Tag>, asy
 /**
  * @brief A specialization of ``first_arg_t`` for asynchronous member functions.
  *
- * This wraps a pointer to an instance of the parent type to allow for use as
- * an explicit ``this`` parameter.
+ * This wraps a pointer to an instance of the parent type to allow for use as an explicit ``this`` parameter.
  */
 template <typename R, tag Tag, stateless F, typename Self>
 struct first_arg_t<R, Tag, async_mem_fn<F>, Self> : detail::first_arg_base<R, F, Tag> {
-  /**
-   * @brief Identify if this is a forked task passed an rvalue self parameter.
-   */
-  static constexpr bool is_forked_rvalue = Tag == tag::fork && !std::is_reference_v<Self>;
+
+  static_assert(Tag != tag::fork || std::is_reference_v<Self>, "A forked task passed a temporary self parameter will dangle!");
 
   /**
-   * @brief If forking a temporary we copy a value to the coroutine frame, otherwise we store a reference.
+   * @brief The type of the deduced forwarding reference.
    */
-  using self_type = std::conditional_t<is_forked_rvalue, std::remove_const_t<Self>, Self &&>;
+  using self_type = Self;
 
   /**
    * @brief Construct an ``lf::async_mem_fn_for`` from a reference to ``self``.
@@ -335,16 +320,14 @@ struct first_arg_t<R, Tag, async_mem_fn<F>, Self> : detail::first_arg_base<R, F,
   explicit(false) constexpr first_arg_t(Self &&self) : m_self{std::forward<Self>(self)} {} // NOLINT
 
   /**
-   * @brief Access the class instance.
+   * @brief Access the underlying class instance.
    */
-  [[nodiscard]] constexpr auto operator*() &noexcept -> std::remove_reference_t<Self> & { return m_self; }
+  [[nodiscard]] constexpr auto operator*() & noexcept -> Self & { return m_self; }
 
   /**
-   * @brief Access the class with a value category corresponding to forwarding a forwarding-reference.
+   * @brief Access the underlying class with a value category corresponding to forwarding a forwarding-reference.
    */
-  [[nodiscard]] constexpr auto operator*() &&noexcept -> Self && {
-    return std::forward<std::conditional_t<is_forked_rvalue, std::remove_const_t<Self>, Self>>(m_self);
-  }
+  [[nodiscard]] constexpr auto operator*() && noexcept -> Self && { return std::forward<Self>(m_self); }
 
   /**
    * @brief Access the underlying ``this`` pointer.
@@ -352,7 +335,7 @@ struct first_arg_t<R, Tag, async_mem_fn<F>, Self> : detail::first_arg_base<R, F,
   [[nodiscard]] constexpr auto operator->() noexcept -> std::remove_reference_t<Self> * { return std::addressof(m_self); }
 
 private:
-  self_type m_self;
+  std::add_rvalue_reference_t<Self> m_self;
 };
 
 } // namespace lf

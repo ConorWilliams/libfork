@@ -108,15 +108,8 @@ static_assert(k_is_little_endian || k_is_big_endian, "mixed endian systems are n
  *
  * \endrst
  */
-class event_count {
+class event_count : detail::immovable {
 public:
-  event_count() = default;
-  event_count(event_count const &) = delete;
-  event_count(event_count &&) = delete;
-  auto operator=(event_count const &) -> event_count & = delete;
-  auto operator=(event_count &&) -> event_count & = delete;
-  ~event_count() = default;
-
   /**
    * @brief The return type of ``prepare_wait()``.
    */
@@ -187,14 +180,12 @@ private:
 
 inline void event_count::notify_one() noexcept {
   if (m_val.fetch_add(k_add_epoch, std::memory_order_acq_rel) & k_waiter_mask) [[unlikely]] { // NOLINT
-    LF_LOG("notify");
     epoch()->notify_one();
   }
 }
 
 inline void event_count::notify_all() noexcept {
   if (m_val.fetch_add(k_add_epoch, std::memory_order_acq_rel) & k_waiter_mask) [[unlikely]] { // NOLINT
-    LF_LOG("notify");
     epoch()->notify_all();
   }
 }
@@ -233,11 +224,10 @@ void event_count::await(Pred const &condition) {
   if (std::invoke(condition)) {
     return;
   }
-// std::invoke(condition) is the only thing that may throw, everything else is
-// noexcept, so we can hoist the try/catch block outside of the loop
-#if LF_COMPILER_EXCEPTIONS
-  try {
-#endif
+  // std::invoke(condition) is the only thing that may throw, everything else is
+  // noexcept, so we can hoist the try/catch block outside of the loop
+
+  LF_TRY {
     for (;;) {
       auto my_key = prepare_wait();
       if (std::invoke(condition)) {
@@ -246,12 +236,11 @@ void event_count::await(Pred const &condition) {
       }
       wait(my_key);
     }
-#if LF_COMPILER_EXCEPTIONS
-  } catch (...) {
-    cancel_wait();
-    throw;
   }
-#endif
+  LF_CATCH_ALL {
+    cancel_wait();
+    LF_RETHROW;
+  }
 }
 
 } // namespace lf

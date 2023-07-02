@@ -23,8 +23,6 @@
 
 namespace lf::detail {
 
-static_assert(std::is_empty_v<immovable>);
-
 #if LF_PROPAGATE_EXCEPTIONS
 
 /**

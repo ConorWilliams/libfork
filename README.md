@@ -8,22 +8,6 @@ Libfork is primarily an abstraction for strict, lock-free, wait-free, continuati
 Libfork presents a cross-platform API that decouples scheduling tasks (a customization point) from writing tasks and expressing their dependencies. Additionally, libfork provides performant work-stealing schedulers for general use. 
 
 
-
-
-Notes:
-
-make first arg type a forwarding container that supports l/r values (strip const)
-
-return type different from value type, returning references etc
-
-
-
-
-
-
-
-
-
 ## Benchmarks
 
 See the [benchmark's README](benchmark/README.md) for a comparison of libfork to openMP and Intel's TBB, as well as some ARM/weak-memory-model benchmarks. 
