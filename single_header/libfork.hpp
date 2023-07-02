@@ -1365,12 +1365,12 @@ struct first_arg_t<R, Tag, async_mem_fn<F>, Self> : detail::first_arg_base<R, F,
   /**
    * @brief Access the underlying class instance.
    */
-  [[nodiscard]] constexpr auto operator*() & noexcept -> Self & { return m_self; }
+  [[nodiscard]] constexpr auto operator*() &noexcept -> Self & { return m_self; }
 
   /**
    * @brief Access the underlying class with a value category corresponding to forwarding a forwarding-reference.
    */
-  [[nodiscard]] constexpr auto operator*() && noexcept -> Self && { return std::forward<Self>(m_self); }
+  [[nodiscard]] constexpr auto operator*() &&noexcept -> Self && { return std::forward<Self>(m_self); }
 
   /**
    * @brief Access the underlying ``this`` pointer.
