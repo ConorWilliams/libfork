@@ -9,6 +9,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -40,9 +41,14 @@ inline constexpr std::size_t k_cache_line = 64;
 inline constexpr std::size_t k_new_align = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
 
 /**
- * @brief Shorthand for `std::numeric_limits<std::int32_t>::max()`.
+ * @brief Shorthand for `std::numeric_limits<std::unt16_t>::max()`.
  */
-static constexpr std::int32_t k_i32_max = std::numeric_limits<std::int32_t>::max();
+static constexpr std::uint16_t k_u16_max = std::numeric_limits<std::uint16_t>::max();
+
+/**
+ * @brief Shorthand for `std::numeric_limits<std::uint32_t>::max()`.
+ */
+static constexpr std::uint32_t k_u32_max = std::numeric_limits<std::uint32_t>::max();
 
 inline constexpr std::size_t k_kibibyte = 1024 * 1;          // NOLINT
 inline constexpr std::size_t k_mebibyte = 1024 * k_kibibyte; //
@@ -85,6 +91,14 @@ static_assert(std::is_empty_v<immovable<void>>);
 template <typename... Args, std::invocable<Args...> Fn>
 constexpr auto noexcept_invoke(Fn &&fun, Args &&...args) noexcept -> std::invoke_result_t<Fn, Args...> {
   return std::invoke(std::forward<Fn>(fun), std::forward<Args>(args)...);
+}
+
+/**
+ * @brief Get an integral representation of a pointer.
+ */
+template <typename T>
+auto iddress(T *ptr) -> std::uintptr_t {
+  return std::bit_cast<std::uintptr_t>(ptr);
 }
 
 } // namespace lf::detail

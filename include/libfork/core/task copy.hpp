@@ -1,5 +1,5 @@
-#ifndef E91EA187_42EF_436C_A3FF_A86DE54BCDBE
-#define E91EA187_42EF_436C_A3FF_A86DE54BCDBE
+#ifndef B47E8824_9B07_4E52_943D_235F61EC526F
+#define B47E8824_9B07_4E52_943D_235F61EC526F
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
 
@@ -37,6 +37,8 @@ enum class tag {
   call, ///< Non root task (on a virtual stack) from an ``lf::call``.
   fork, ///< Non root task (on a virtual stack) from an ``lf::fork``.
 };
+
+// ----------------------------------------------- //
 
 /**
  * @brief Test if a type is a stateless class.
@@ -348,4 +350,4 @@ private:
 
 } // namespace lf
 
-#endif /* E91EA187_42EF_436C_A3FF_A86DE54BCDBE */
+#endif /* B47E8824_9B07_4E52_943D_235F61EC526F */

@@ -98,7 +98,7 @@ auto sync_wait_impl(Schedule &&scheduler, Head head, Args &&...args) -> typename
   }
   LF_CATCH_ALL {
     // We cannot know whether the coroutine has been resumed or not once we pass to schedule(...).
-    // Hence, we do not know whether or not to .destroy() was called it if schedule(...) throws.
+    // Hence, we do not know whether or not to .destroy() if schedule(...) threw.
     // Hence we mark noexcept to trigger termination.
     detail::noexcept_invoke([] { LF_RETHROW; });
   }
