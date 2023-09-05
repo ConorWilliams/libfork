@@ -22,7 +22,7 @@ file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/so
 
 add_executable(libfork_test ${TEST_SOURCES})
 target_link_libraries(libfork_test PRIVATE libfork::libfork Catch2::Catch2WithMain)
-target_compile_features(libfork_test PRIVATE cxx_std_20)
+target_compile_features(libfork_test PRIVATE cxx_std_23)
 
 list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/extras)
 

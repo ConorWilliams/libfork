@@ -14,10 +14,11 @@
 
 #include <array>
 #include <climits>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <random>
+#include <utility>
 
 #include "libfork/macro.hpp"
 
@@ -28,6 +29,12 @@
  */
 
 namespace lf {
+
+/**
+ * @brief A utility for ensuring that two types, stripped of CV and ref qualifiers, are different.
+ */
+template <typename T, typename U>
+concept different_from = !std::same_as<std::remove_cvref_t<T>, std::remove_cvref_t<U>>;
 
 /**
  * @brief A \<random\> compatible implementation of the xoshiro256** 1.0 PRNG
@@ -46,25 +53,17 @@ class xoshiro {
 public:
   using result_type = std::uint64_t; ///< Required by named requirement: UniformRandomBitGenerator
 
-  /**
-   * @brief Construct and seed the PRNG with the default seed.
-   */
-  constexpr xoshiro() noexcept : xoshiro(default_seed) {}
+  xoshiro() = default;
 
-  /**
-   * @brief Construct and seed the PRNG from ``std::random_device``.
-   */
-  explicit xoshiro(std::random_device &device) : xoshiro({
-                                                     random_bits(device),
-                                                     random_bits(device),
-                                                     random_bits(device),
-                                                     random_bits(device),
-                                                 }) {}
+  xoshiro(xoshiro const &) = default;
 
-  /**
-   * @brief Construct and seed the PRNG from a ``std::random_device``.
-   */
-  explicit xoshiro(std::random_device &&device) : xoshiro(device) {}
+  xoshiro(xoshiro &&) = default;
+
+  auto operator=(xoshiro const &) -> xoshiro & = default;
+
+  auto operator=(xoshiro &&) -> xoshiro & = default;
+
+  ~xoshiro() = default;
 
   /**
    * @brief Construct and seed the PRNG.
@@ -78,25 +77,34 @@ public:
   }
 
   /**
+   * @brief Construct and seed the PRNG from some other generator.
+   */
+  template <different_from<xoshiro> PRNG>
+    requires requires(PRNG &&device) {
+      { std::invoke(device) } -> std::unsigned_integral;
+    }
+  constexpr explicit xoshiro(PRNG &&device) : m_state{random_bits(device), random_bits(device), random_bits(device), random_bits(device)} {} // NOLINT
+
+  /**
    * @brief Get the minimum value of the generator.
    *
    * @return The minimum value that ``xoshiro::operator()`` can return.
    */
-  static constexpr auto min() noexcept -> result_type { return std::numeric_limits<result_type>::lowest(); }
+  [[nodiscard]] static constexpr auto min() noexcept -> result_type { return std::numeric_limits<result_type>::lowest(); }
 
   /**
    * @brief Get the maximum value of the generator.
    *
    * @return The maximum value that ``xoshiro::operator()`` can return.
    */
-  static constexpr auto max() noexcept -> result_type { return std::numeric_limits<result_type>::max(); }
+  [[nodiscard]] static constexpr auto max() noexcept -> result_type { return std::numeric_limits<result_type>::max(); }
 
   /**
    * @brief Generate a random bit sequence and advance the state of the generator.
    *
    * @return A pseudo-random number.
    */
-  constexpr auto operator()() noexcept -> result_type {
+  [[nodiscard]] constexpr auto operator()() noexcept -> result_type {
     result_type const result = rotl(m_state[1] * 5, 7) * 9;
 
     result_type const temp = m_state[1] << 17; // NOLINT
@@ -138,36 +146,39 @@ private:
   /**
    * @brief The default seed for the PRNG.
    */
-  static constexpr std::array<result_type, 4> default_seed = {
+  std::array<result_type, 4> m_state = {
       0x8D0B73B52EA17D89,
       0x2AA426A407C2B04F,
       0xF513614E4798928A,
       0xA65E479EC5B49D41,
   };
 
-  std::array<result_type, 4> m_state;
-
   /**
    * @brief Utility function.
    */
-  static constexpr auto rotl(result_type const val, int const bits) noexcept -> result_type {
+  [[nodiscard]] static constexpr auto rotl(result_type const val, int const bits) noexcept -> result_type {
     return (val << bits) | (val >> (64 - bits)); // NOLINT
   }
 
   /**
-   * @brief Utility function to upscale random::device result_type to xoshiro's result_type.
+   * @brief Utility function to upscale prng's result_type to xoshiro's result_type.
    */
-  static auto random_bits(std::random_device &device) -> result_type {
+  template <typename PRNG>
+    requires requires(PRNG &&device) {
+      { std::invoke(device) } -> std::unsigned_integral;
+    }
+  [[nodiscard]] static constexpr auto random_bits(PRNG &&device) -> result_type {
     //
-    constexpr auto chars_in_rd = sizeof(std::random_device::result_type);
+    constexpr std::size_t chars_in_prng = sizeof(std::invoke_result_t<PRNG>);
 
-    static_assert(sizeof(result_type) % chars_in_rd == 0);
+    constexpr std::size_t chars_in_xoshiro = sizeof(result_type);
 
-    result_type bits = 0;
+    static_assert(chars_in_xoshiro < chars_in_prng || chars_in_xoshiro % chars_in_prng == 0);
 
-    for (std::size_t i = 0; i < sizeof(result_type) / chars_in_rd; i++) {
-      bits <<= CHAR_BIT * chars_in_rd;
-      bits += device();
+    result_type bits = std::invoke(device);
+
+    for (std::size_t i = 1; i < chars_in_xoshiro / chars_in_prng; i++) {
+      bits = (bits << CHAR_BIT * chars_in_prng) + std::invoke(device);
     }
 
     return bits;
@@ -185,7 +196,7 @@ private:
           s[2] ^= m_state[2];
           s[3] ^= m_state[3];
         }
-        operator()();
+        std::invoke(*this);
       }
     }
     m_state = s;

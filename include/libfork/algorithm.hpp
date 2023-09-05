@@ -13,14 +13,14 @@ namespace detail {
 
 inline constexpr async_fn for_each = []<std::input_iterator I, std::sentinel_for<I> S, class Proj = std::identity, std::indirectly_unary_invocable<std::projected<I, Proj>> Fun>(auto for_each, I head, S tail, Fun f, Proj proj = {}, std::iter_difference_t<I> chunk = 1) LF_STATIC_CALL->lf::task<void> {
   //
-  auto len = std::ranges::distance(head, tail);
+  auto len = head - tail;
 
   if (len <= chunk) {
-    std::ranges::for_each(head, tail, f, proj);
+    std::for_each(head, tail, f, proj);
     co_return;
   }
 
-  auto mid = std::ranges::next(head, len / 2);
+  auto mid = head + len / 2;
 
   co_await lf::fork(for_each)(head, mid, f, proj, chunk);
   co_await lf::call(for_each)(mid, tail, f, proj, chunk);

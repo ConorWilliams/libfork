@@ -20,11 +20,10 @@
 #include <type_traits>
 #include <utility>
 
-#include "libfork/macro.hpp"
-
 #include "libfork/core/coroutine.hpp"
-#include "libfork/core/exception.hpp"
 #include "libfork/core/stack.hpp"
+#include "libfork/macro.hpp"
+#include "libfork/utility.hpp"
 
 /**
  * @file core.hpp
@@ -38,25 +37,27 @@ namespace lf {
  * @brief An enumeration that determines the behavior of a coroutine's promise.
  */
 enum class tag {
-  root,   ///< This coroutine is a root task (allocated on heap) from an ``lf::sync_wait``.
-  call,   ///< Non root task (on a virtual stack) from an ``lf::call``.
-  fork,   ///< Non root task (on a virtual stack) from an ``lf::fork``.
-  invoke, ///< Non root task (on a virtual stack) from invoking directly, implicit re_throw.
+  root, ///< This coroutine is a root task (allocated on heap) from an ``lf::sync_wait``.
+  call, ///< Non root task (on a virtual stack) from an ``lf::call``.
+  fork, ///< Non root task (on a virtual stack) from an ``lf::fork``.
 };
 
 namespace detail {
 
 // -------------- Control block definition -------------- //
 
-static constexpr std::int32_t k_imax = std::numeric_limits<std::int32_t>::max();
+template <typename T>
+struct root_block_t;
+
+template <>
+struct root_block_t<void> : immovable<root_block_t<void>> {
+  std::binary_semaphore semaphore{0};
+};
 
 template <typename T>
-struct root_block_t {
+struct root_block_t : root_block_t<void> {
 
-  exception_packet exception{};
-  std::binary_semaphore semaphore{0};
   std::optional<T> result{};
-  [[no_unique_address]] immovable anon;
 
   template <typename U>
     requires std::constructible_from<std::optional<T>, U>
@@ -65,34 +66,46 @@ struct root_block_t {
     LF_LOG("Root task assigns");
 
     LF_ASSERT(!result.has_value());
+
     result.emplace(std::forward<U>(expr));
 
     return *this;
   }
 };
 
-template <>
-struct root_block_t<void> {
-  exception_packet exception{};
-  std::binary_semaphore semaphore{0};
-  [[no_unique_address]] immovable anon;
+// ----------------------------------------------- //
+
+/* In theory if the compiler coroutine frame looks like this:
+
+struct coroutine_frame {
+  ... // maybe excess-alignment padding here when coro frame alignment > 2 * sizeof (ptr).
+  void (*resume_fn)();
+  void (*destroy_fn)();
+  promise_type promise;
+  ... // Other needed variables
 };
 
-#ifdef __cpp_lib_is_pointer_interconvertible
-static_assert(std::is_pointer_interconvertible_with_class(&root_block_t<long>::exception));
-static_assert(std::is_pointer_interconvertible_with_class(&root_block_t<void>::exception));
-#endif
+If we know that there is no excess-alignment padding, then we can compress
+all of this into just the parent pointer and just pass around a pointer to
+the coroutine_frame.
+*/
 
-class promise_base : immovable {
+/**
+ * @brief A base class for all promise_types.
+ *
+ * Stores a partially type-erased pointer to the parent task, as
+ * well as fork/join specific counters.
+ */
+class control_block_t : immovable<control_block_t> {
 public:
   // Full declaration below, needs concept first
   class handle_t;
 
-  // Either a T* for fork/call or [root/invoke]_block_t *
+  // Either a T* for fork/call or root_block_t *
   constexpr void set_ret_address(void *ret) noexcept {
     m_return_address = ret;
   }
-  constexpr void set_parent(stdx::coroutine_handle<promise_base> parent) noexcept {
+  constexpr void set_parent(stdx::coroutine_handle<control_block_t> parent) noexcept {
     m_parent = parent;
   }
 
@@ -101,7 +114,7 @@ public:
   }
 
   // Checked access
-  [[nodiscard]] constexpr auto parent() const noexcept -> stdx::coroutine_handle<promise_base> {
+  [[nodiscard]] constexpr auto parent() const noexcept -> stdx::coroutine_handle<control_block_t> {
     LF_ASSERT(has_parent());
     return m_parent;
   }
@@ -140,7 +153,7 @@ public:
 #endif
   }
   // Fetch the debug count
-  constexpr auto debug_count() const noexcept -> std::int64_t {
+  [[nodiscard]] constexpr auto debug_count() const noexcept -> std::int64_t {
 #ifndef NDEBUG
     return m_debug_count;
 #else
@@ -155,59 +168,85 @@ public:
   }
 
 private:
-  stdx::coroutine_handle<promise_base> m_parent = {}; ///< Parent task (roots don't have one).
-  void *m_return_address = nullptr;                   ///< root_block * || T *
-  std::int32_t m_steal = 0;                           ///< Number of steals.
-  std::atomic_int32_t m_join = k_imax;                ///< Number of children joined (obfuscated).
+  std::atomic_int32_t m_join = k_imax; ///< Number of children joined (obfuscated).
+  control_block_t *m_parent = {};      ///< Parent task (roots don't have one).
+  std::int32_t m_steal = 0;            ///< Number of steals.
+
 #ifndef NDEBUG
   std::int64_t m_debug_count = 0; ///< Number of forks/calls (debug).
 #endif
 };
 
-// -------------- promise_base -------------- //
+static_assert(std::is_standard_layout_v<control_block_t>);
 
-template <typename>
-struct is_virtual_stack_impl : std::false_type {};
+// ----------------------------------------------- //
 
-template <std::size_t N>
-struct is_virtual_stack_impl<virtual_stack<N>> : std::true_type {
-  static_assert(sizeof(virtual_stack<N>) == N);
+/**
+ * @brief A base class for all promise types that includes the type of the coroutine's return value and return address.
+ *
+ * If the coroutine is a root task then its return address is wrapped in a ``root_block_t``.
+ *
+ * @tparam R Type of the coroutine's return address.
+ * @tparam T Type of the coroutine's return value.
+ */
+template <typename R, typename T>
+struct promise_base;
+
+template <>
+struct promise_base<void, void> {
+  //
+  control_block_t m_control_block;
+
+  static constexpr void return_void() noexcept {}
 };
 
-template <typename T>
-concept is_virtual_stack = is_virtual_stack_impl<T>::value;
+template <>
+struct promise_base<root_block_t<void>, void> {
+  //
+  control_block_t m_control_block;
+
+  root_block_t<void> *m_root_block;
+
+  static constexpr void return_void() noexcept {}
+};
+
+template <typename R, typename T>
+struct promise_base {
+  //
+  control_block_t m_control_block;
+
+  template <typename U>
+    requires std::constructible_from<T, U> && (std::is_void_v<R> || std::is_assignable_v<std::add_lvalue_reference_t<Ret>, U>)
+  void return_value([[maybe_unused]] U &&expr) noexcept(std::is_void_v<Ret> || std::is_nothrow_assignable_v<std::add_lvalue_reference_t<Ret>, U>) {
+    if constexpr (!std::is_void_v<Ret>) {
+      this->get_return_address_obj() = std::forward<U>(expr);
+    }
+  };
+};
 
 } // namespace detail
+
+// ----------------------------------------------- //
 
 /**
  * @brief A handle to a task with a resume() member function.
  */
-using task_handle = typename detail::promise_base::handle_t;
-
-/**
- * @brief A concept which requires a type to define a ``stack_type`` which must be a specialization of ``lf::virtual_stack``.
- */
-template <typename T>
-concept defines_stack = requires { typename T::stack_type; } && detail::is_virtual_stack<typename T::stack_type>;
+using task_handle = typename detail::control_block_t::handle_t;
 
 // clang-format off
 
 /**
  * @brief A concept which defines the context interface.
  *
- * A context owns a LIFO stack of ``lf::virtual_stack``s and a LIFO stack of tasks.
- * The stack of ``lf::virtual_stack``s is expected to never be empty, it should always
- * be able to return an empty ``lf::virtual_stack``.
+ * A context owns a LIFO stack of ``lf::async_stack``s and a LIFO stack of tasks.
+ * The stack of ``lf::async_stack``s is expected to never be empty, it should always
+ * be able to return an empty ``lf::async_stack``.
  *
  * \rst
  *
  * Specifically this requires:
  *
  * .. code::
- *
- *      typename Context::stack_type;
- *
- *      requires // Context::stack_type is a specialization of lf::virtual_stack //;
  *
  *      // Access the thread_local context.
  *      { Context::context() } -> std::same_as<Context &>;
@@ -231,13 +270,12 @@ concept defines_stack = requires { typename T::stack_type; } && detail::is_virtu
  * \endrst
  */
 template <typename Context>
-concept thread_context = defines_stack<Context> && requires(Context ctx, typename Context::stack_type::handle stack, task_handle handle) {
+concept thread_context =  requires(Context ctx, async_stack* stack, task_handle handle) {
   { Context::context() } -> std::same_as<Context &>; 
 
   { ctx.max_threads() } -> std::same_as<std::size_t>; 
 
-  { ctx.stack_top() } -> std::convertible_to<typename Context::stack_type::handle>; 
-  { ctx.stack_pop() };                                                              
+  { ctx.stack_pop() }-> std::convertible_to<async_stack*>;                                                               
   { ctx.stack_push(stack) };                                                        
 
   { ctx.task_pop() } -> std::convertible_to<std::optional<task_handle>>; 
@@ -248,7 +286,7 @@ concept thread_context = defines_stack<Context> && requires(Context ctx, typenam
 
 // -------------- Define forward decls -------------- //
 
-class detail::promise_base::handle_t : private stdx::coroutine_handle<promise_base> {
+class detail::control_block_t::handle_t : private stdx::coroutine_handle<control_block_t> {
 public:
   handle_t() = default; ///< To make us a trivial type.
 
@@ -256,15 +294,15 @@ public:
     LF_LOG("Call to resume on stolen task");
     LF_ASSERT(*this);
 
-    stdx::coroutine_handle<promise_base>::promise().m_steal += 1;
-    stdx::coroutine_handle<promise_base>::resume();
+    stdx::coroutine_handle<control_block_t>::promise().m_steal += 1;
+    stdx::coroutine_handle<control_block_t>::resume();
   }
 
 private:
   template <typename R, typename T, thread_context Context, tag Tag>
   friend struct promise_type;
 
-  explicit handle_t(stdx::coroutine_handle<promise_base> handle) : stdx::coroutine_handle<promise_base>{handle} {}
+  explicit handle_t(stdx::coroutine_handle<control_block_t> handle) : stdx::coroutine_handle<control_block_t>{handle} {}
 };
 
 } // namespace lf

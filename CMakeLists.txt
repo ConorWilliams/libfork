@@ -34,7 +34,7 @@ target_include_directories(
   libfork_libfork ${warning_guard} INTERFACE "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
 )
 
-target_compile_features(libfork_libfork INTERFACE cxx_std_20)
+target_compile_features(libfork_libfork INTERFACE cxx_std_23)
 
 if(HWLOC_FOUND)
   target_compile_definitions(libfork_libfork INTERFACE LF_HAS_HWLOC)

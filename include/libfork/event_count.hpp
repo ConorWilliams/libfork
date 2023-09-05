@@ -34,16 +34,6 @@
 
 namespace lf {
 
-namespace detail {
-
-constexpr bool k_is_little_endian = std::endian::native != std::endian::little;
-
-constexpr bool k_is_big_endian = std::endian::native != std::endian::big;
-
-static_assert(k_is_little_endian || k_is_big_endian, "mixed endian systems are not supported");
-
-} // namespace detail
-
 /**
  * @brief A condition variable for lock free algorithms.
  *
@@ -156,16 +146,17 @@ private:
   }
 
   // This requires 64-bit
-  static constexpr std::size_t k_4byte = 4;
-  static constexpr std::size_t k_8byte = 8;
+  static_assert(sizeof(std::uint32_t) == 4, "bad platform, need 32 bit ints");
+  static_assert(sizeof(std::uint64_t) == 8, "bad platform, need 64 bit ints");
 
-  static_assert(sizeof(int) == k_4byte, "bad platform, need 64 bit native int");
-  static_assert(sizeof(std::uint32_t) == k_4byte, "bad platform, need 32 bit ints");
-  static_assert(sizeof(std::uint64_t) == k_8byte, "bad platform, need 64 bit ints");
-  static_assert(sizeof(std::atomic<std::uint32_t>) == k_4byte, "bad platform, need 32 bit atomic ints");
-  static_assert(sizeof(std::atomic<std::uint64_t>) == k_8byte, "bad platform, need 64 bit atomic ints");
+  static_assert(sizeof(std::atomic<std::uint32_t>) == 4, "bad platform, need 32 bit atomic ints");
+  static_assert(sizeof(std::atomic<std::uint64_t>) == 8, "bad platform, need 64 bit atomic ints");
 
-  static constexpr size_t k_epoch_offset = detail::k_is_little_endian ? 1 : 0;
+  static constexpr bool k_is_little_endian = std::endian::native == std::endian::little;
+
+  static_assert(k_is_little_endian || std::endian::native == std::endian::big, "bad platform, mixed endian");
+
+  static constexpr size_t k_epoch_offset = k_is_little_endian ? 1 : 0;
 
   static constexpr std::uint64_t k_add_waiter = 1;
   static constexpr std::uint64_t k_sub_waiter = static_cast<std::uint64_t>(-1);
@@ -173,9 +164,8 @@ private:
   static constexpr std::uint64_t k_add_epoch = static_cast<std::uint64_t>(1) << k_epoch_shift;
   static constexpr std::uint64_t k_waiter_mask = k_add_epoch - 1;
 
-  // m_val stores the epoch in the most significant 32 bits and the
-  // waiter count in the least significant 32 bits.
-  alignas(detail::k_cache_line) std::atomic<std::uint64_t> m_val = 0;
+  // Stores the epoch in the most significant 32 bits and the waiter count in the least significant 32 bits.
+  std::atomic<std::uint64_t> m_val = 0;
 };
 
 inline void event_count::notify_one() noexcept {

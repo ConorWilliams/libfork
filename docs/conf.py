@@ -21,7 +21,7 @@
 
 from textwrap import dedent
 project = 'libfork'
-copyright = '2022, ConorWilliams'
+copyright = '2023, ConorWilliams'
 author = 'ConorWilliams'
 
 

@@ -12,7 +12,7 @@
 #include <vector>
 
 #include "libfork/core.hpp"
-#include "libfork/thread_local.hpp"
+#include "libfork/schedule/thread_local.hpp"
 
 /**
  * @file inline.hpp
@@ -34,10 +34,6 @@ public:
 
   public:
     /**
-     * @brief The stack type for the scheduler.
-     */
-    using stack_type = virtual_stack<detail::mebibyte>;
-    /**
      * @brief Construct a new context type object, set the thread_local context object to this object.
      */
     context_type() noexcept {
@@ -54,7 +50,7 @@ public:
     /**
      * @brief Get the top stack object.
      */
-    auto stack_top() -> stack_type::handle { return stack_type::handle{m_stack.get()}; }
+    auto stack_top() -> virtual_stack::handle { return virtual_stack::handle{m_stack.get()}; }
     /**
      * @brief Should never be called, aborts the program.
      */
@@ -62,7 +58,7 @@ public:
     /**
      * @brief Should never be called, aborts the program.
      */
-    static void stack_push([[maybe_unused]] stack_type::handle handle) { LF_ASSERT(false); }
+    static void stack_push([[maybe_unused]] virtual_stack::handle handle) { LF_ASSERT(false); }
     /**
      * @brief Pops a task from the task queue.
      */
@@ -83,7 +79,7 @@ public:
 
   private:
     std::vector<task_handle> m_tasks;
-    typename stack_type::unique_ptr_t m_stack = stack_type::make_unique();
+    typename virtual_stack::unique_ptr_t m_stack = virtual_stack::make_unique();
   };
 
   /**

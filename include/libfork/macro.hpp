@@ -10,8 +10,11 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <cassert>
+#include <concepts>
 #include <cstddef>
+#include <cstdint>
 #include <exception>
+#include <functional>
 #include <new>
 #include <type_traits>
 #include <utility>
@@ -26,29 +29,6 @@
 // NOLINTBEGIN Sometime macros are the only way to do things...
 
 namespace lf::detail {
-
-/**
- * @brief The cache line size of the current architecture.
- */
-#ifdef __cpp_lib_hardware_interference_size
-inline constexpr std::size_t k_cache_line = std::hardware_destructive_interference_size;
-#else
-inline constexpr std::size_t k_cache_line = 64;
-#endif
-
-/**
- * @brief An empty type that is not copiable or movable.
- */
-struct immovable {
-  immovable() = default;
-  immovable(const immovable &) = delete;
-  immovable(immovable &&) = delete;
-  auto operator=(const immovable &) -> immovable & = delete;
-  auto operator=(immovable &&) -> immovable & = delete;
-  ~immovable() = default;
-};
-
-static_assert(std::is_empty_v<immovable>);
 
 } // namespace lf::detail
 
@@ -98,10 +78,22 @@ static_assert(std::is_empty_v<immovable>);
   #endif
 #endif
 
-#if LF_COMPILER_EXCEPTIONS
+#if LF_COMPILER_EXCEPTIONS || defined(LF_DOXYGEN_SHOULD_SKIP_THIS)
+  /**
+   * @brief Expands to ``try`` if exceptions are enabled, otherwise expands to ``if constexpr (true)``.
+   */
   #define LF_TRY try
+  /**
+   * @brief Expands to ``catch (...)`` if exceptions are enabled, otherwise expands to ``if constexpr (false)``.
+   */
   #define LF_CATCH_ALL catch (...)
+  /**
+   * @brief Expands to ``throw X`` if exceptions are enabled, otherwise terminates the program.
+   */
   #define LF_THROW(X) throw X
+  /**
+   * @brief Expands to ``throw`` if exceptions are enabled, otherwise terminates the program.
+   */
   #define LF_RETHROW throw
 #else
   #define LF_TRY if constexpr (true)
@@ -111,15 +103,17 @@ static_assert(std::is_empty_v<immovable>);
   #else
     #define LF_THROW(X) std::terminate()
   #endif
-  #define LF_RETHROW \
-    do {             \
-    } while (false)
+  #ifndef NDEBUG
+    #define LF_RETHROW assert(false && "Tried to rethrow without compiler exceptions")
+  #else
+    #define LF_RETHROW std::terminate()
+  #endif
 #endif
 
 /**
  * @brief If truthy then coroutines propagate exceptions, if false then termination is triggered.
  *
- *  * Overridable by defining ``LF_PROPAGATE_EXCEPTIONS``.
+ *  Overridable by defining ``LF_PROPAGATE_EXCEPTIONS``.
  */
 #ifndef LF_PROPAGATE_EXCEPTIONS
   #define LF_PROPAGATE_EXCEPTIONS LF_COMPILER_EXCEPTIONS

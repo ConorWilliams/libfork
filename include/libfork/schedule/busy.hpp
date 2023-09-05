@@ -18,7 +18,7 @@
 #include "libfork/macro.hpp"
 #include "libfork/queue.hpp"
 #include "libfork/random.hpp"
-#include "libfork/thread_local.hpp"
+#include "libfork/schedule/thread_local.hpp"
 
 /**
  * @file busy.hpp
@@ -170,15 +170,13 @@ public:
    */
   class context_type : thread_local_ptr<context_type> {
   public:
-    using stack_type = virtual_stack<detail::mebibyte>;
-
     context_type() { alloc_stacks(); }
 
     static auto context() -> context_type & { return get(); }
 
     auto max_threads() const noexcept -> std::size_t { return m_pool->m_workers.size(); }
 
-    auto stack_top() -> stack_type::handle {
+    auto stack_top() -> virtual_stack::handle {
       LF_ASSERT(&context() == this);
       return m_stacks.peek();
     }
@@ -223,7 +221,7 @@ public:
       alloc_stacks();
     }
 
-    void stack_push(stack_type::handle handle) {
+    void stack_push(virtual_stack::handle handle) {
       LF_ASSERT(&context() == this);
       LF_ASSERT(stack_top()->empty());
 
@@ -249,8 +247,8 @@ public:
   private:
     static constexpr std::size_t block_size = 16;
 
-    using stack_block = typename stack_type::unique_arr_ptr_t;
-    using stack_handle = typename stack_type::handle;
+    using stack_block = typename virtual_stack::unique_arr_ptr_t;
+    using stack_handle = typename virtual_stack::handle;
 
     friend class busy_pool;
 
@@ -268,7 +266,7 @@ public:
 
       LF_ASSERT(m_stacks.empty());
 
-      stack_block stacks = stack_type::make_unique(block_size);
+      stack_block stacks = virtual_stack::make_unique(block_size);
 
       for (std::size_t i = 0; i < block_size; ++i) {
         m_stacks.push(stack_handle{stacks.get() + i});

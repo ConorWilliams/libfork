@@ -63,24 +63,24 @@ struct ring_buf {
    *
    * @param cap The capacity of the buffer, MUST be a power of 2.
    */
-  explicit ring_buf(std::ptrdiff_t cap) : m_cap{cap}, m_mask{cap - 1} {
+  constexpr explicit ring_buf(std::ptrdiff_t cap) : m_cap{cap}, m_mask{cap - 1} {
     LF_ASSERT(cap > 0 && std::has_single_bit(static_cast<std::size_t>(cap)));
   }
   /**
    * @brief Get the capacity of the buffer.
    */
-  [[nodiscard]] auto capacity() const noexcept -> std::ptrdiff_t { return m_cap; }
+  [[nodiscard]] constexpr auto capacity() const noexcept -> std::ptrdiff_t { return m_cap; }
   /**
    * @brief Store ``val`` at ``index % this->capacity()``.
    */
-  auto store(std::ptrdiff_t index, T const &val) noexcept -> void {
+  constexpr auto store(std::ptrdiff_t index, T const &val) noexcept -> void {
     LF_ASSERT(index >= 0);
     (m_buf.get() + (index & m_mask))->store(val, std::memory_order_relaxed); // NOLINT Avoid cast to std::size_t.
   }
   /**
    * @brief Load value at ``index % this->capacity()``.
    */
-  [[nodiscard]] auto load(std::ptrdiff_t index) const noexcept -> T {
+  [[nodiscard]] constexpr auto load(std::ptrdiff_t index) const noexcept -> T {
     LF_ASSERT(index >= 0);
     return (m_buf.get() + (index & m_mask))->load(std::memory_order_relaxed); // NOLINT Avoid cast to std::size_t.
   }
@@ -93,8 +93,8 @@ struct ring_buf {
    * @param bottom The bottom of the range to copy from (inclusive).
    * @param top The top of the range to copy from (exclusive).
    */
-  auto resize(std::ptrdiff_t bottom, std::ptrdiff_t top) const -> ring_buf<T> * { // NOLINT
-    auto *ptr = new ring_buf{2 * m_cap};                                          // NOLINT
+  [[nodiscard]] constexpr auto resize(std::ptrdiff_t bottom, std::ptrdiff_t top) const -> ring_buf<T> * { // NOLINT
+    auto *ptr = new ring_buf{2 * m_cap};                                                                  // NOLINT
     for (std::ptrdiff_t i = top; i != bottom; ++i) {
       ptr->store(i, load(i));
     }
@@ -147,6 +147,7 @@ enum class err : int {
  */
 template <simple T>
 class queue : detail::immovable {
+
   static constexpr std::ptrdiff_t k_default_capacity = 1024;
   static constexpr std::size_t k_garbage_reserve = 32;
 
@@ -158,29 +159,29 @@ public:
   /**
    * @brief Construct a new empty queue object.
    */
-  queue() : queue(k_default_capacity) {}
+  constexpr queue() : queue(k_default_capacity) {}
   /**
    * @brief Construct a new empty queue object.
    *
    * @param cap The capacity of the queue (must be a power of 2).
    */
-  explicit queue(std::ptrdiff_t cap);
+  constexpr explicit queue(std::ptrdiff_t cap);
   /**
    * @brief Get the number of elements in the queue.
    */
-  [[nodiscard]] auto size() const noexcept -> std::size_t;
+  [[nodiscard]] constexpr auto size() const noexcept -> std::size_t;
   /**
    * @brief Get the number of elements in the queue as a signed integer.
    */
-  [[nodiscard]] auto ssize() const noexcept -> ptrdiff_t;
+  [[nodiscard]] constexpr auto ssize() const noexcept -> ptrdiff_t;
   /**
    * @brief Get the capacity of the queue.
    */
-  [[nodiscard]] auto capacity() const noexcept -> ptrdiff_t;
+  [[nodiscard]] constexpr auto capacity() const noexcept -> ptrdiff_t;
   /**
    * @brief Check if the queue is empty.
    */
-  [[nodiscard]] auto empty() const noexcept -> bool;
+  [[nodiscard]] constexpr auto empty() const noexcept -> bool;
   /**
    * @brief Push an item into the queue.
    *
@@ -189,7 +190,7 @@ public:
    *
    * @param val Value to add to the queue.
    */
-  auto push(T const &val) noexcept -> void;
+  constexpr void push(T const &val) noexcept;
   /**
    * @brief Pop an item from the queue.
    *
@@ -197,7 +198,7 @@ public:
    *
    * @return ``std::nullopt`` if  this operation fails (i.e. the queue is empty).
    */
-  auto pop() noexcept -> std::optional<T>;
+  constexpr auto pop() noexcept -> std::optional<T>;
   /**
    * @brief The return type of the ``steal()`` operation.
    *
@@ -208,13 +209,13 @@ public:
     /**
      * @brief Check if the operation succeeded.
      */
-    constexpr explicit operator bool() const noexcept { return code == err::none; }
+    [[nodiscard]] constexpr explicit operator bool() const noexcept { return code == err::none; }
     /**
      * @brief Get the value like ``std::optional``.
      *
      * Requires ``code == err::none`` .
      */
-    constexpr auto operator*() noexcept -> T & {
+    [[nodiscard]] constexpr auto operator*() noexcept -> T & {
       LF_ASSERT(code == err::none);
       return val;
     }
@@ -223,7 +224,7 @@ public:
      *
      * Requires ``code == err::none`` .
      */
-    constexpr auto operator*() const noexcept -> T const & {
+    [[nodiscard]] constexpr auto operator*() const noexcept -> T const & {
       LF_ASSERT(code == err::none);
       return val;
     }
@@ -256,13 +257,13 @@ public:
    * Any threads can try to steal an item from the queue. This operation can fail if the queue is
    * empty or if another thread simultaneously stole an item from the queue.
    */
-  auto steal() noexcept -> steal_t;
+  constexpr auto steal() noexcept -> steal_t;
   /**
    * @brief Destroy the queue object.
    *
    * All threads must have finished using the queue before it is destructed.
    */
-  ~queue() noexcept;
+  constexpr ~queue() noexcept;
 
 private:
   alignas(detail::k_cache_line) std::atomic<std::ptrdiff_t> m_top;
@@ -280,36 +281,36 @@ private:
 };
 
 template <simple T>
-queue<T>::queue(std::ptrdiff_t cap) : m_top(0), m_bottom(0), m_buf(new detail::ring_buf<T>{cap}) {
+constexpr queue<T>::queue(std::ptrdiff_t cap) : m_top(0), m_bottom(0), m_buf(new detail::ring_buf<T>{cap}) {
   m_garbage.reserve(k_garbage_reserve);
 }
 
 template <simple T>
-auto queue<T>::size() const noexcept -> std::size_t {
+constexpr auto queue<T>::size() const noexcept -> std::size_t {
   return static_cast<std::size_t>(ssize());
 }
 
 template <simple T>
-auto queue<T>::ssize() const noexcept -> std::ptrdiff_t {
+constexpr auto queue<T>::ssize() const noexcept -> std::ptrdiff_t {
   ptrdiff_t const bottom = m_bottom.load(relaxed);
   ptrdiff_t const top = m_top.load(relaxed);
   return std::max(bottom - top, ptrdiff_t{0});
 }
 
 template <simple T>
-auto queue<T>::capacity() const noexcept -> ptrdiff_t {
+constexpr auto queue<T>::capacity() const noexcept -> ptrdiff_t {
   return m_buf.load(relaxed)->capacity();
 }
 
 template <simple T>
-auto queue<T>::empty() const noexcept -> bool {
+constexpr auto queue<T>::empty() const noexcept -> bool {
   ptrdiff_t const bottom = m_bottom.load(relaxed);
   ptrdiff_t const top = m_top.load(relaxed);
   return top >= bottom;
 }
 
 template <simple T>
-auto queue<T>::push(T const &val) noexcept -> void {
+constexpr auto queue<T>::push(T const &val) noexcept -> void {
   std::ptrdiff_t const bottom = m_bottom.load(relaxed);
   std::ptrdiff_t const top = m_top.load(acquire);
   detail::ring_buf<T> *buf = m_buf.load(relaxed);
@@ -329,7 +330,7 @@ auto queue<T>::push(T const &val) noexcept -> void {
 }
 
 template <simple T>
-auto queue<T>::pop() noexcept -> std::optional<T> {
+constexpr auto queue<T>::pop() noexcept -> std::optional<T> {
   std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1;
   detail::ring_buf<T> *buf = m_buf.load(relaxed);
 
@@ -358,7 +359,7 @@ auto queue<T>::pop() noexcept -> std::optional<T> {
 }
 
 template <simple T>
-auto queue<T>::steal() noexcept -> steal_t {
+constexpr auto queue<T>::steal() noexcept -> steal_t {
   std::ptrdiff_t top = m_top.load(acquire);
   std::atomic_thread_fence(seq_cst);
   std::ptrdiff_t const bottom = m_bottom.load(acquire);
@@ -382,7 +383,7 @@ auto queue<T>::steal() noexcept -> steal_t {
 }
 
 template <simple T>
-queue<T>::~queue() noexcept {
+constexpr queue<T>::~queue() noexcept {
   delete m_buf.load(); // NOLINT
 }
 

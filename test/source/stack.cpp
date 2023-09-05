@@ -16,13 +16,9 @@
 
 using namespace lf;
 
-// Define an alias for simplicity
-template <std::size_t N>
-using Stack = virtual_stack<N>;
-
 TEST_CASE("virtual_stack - Basic Functionality", "[virtual_stack]") {
   //
-  auto stack = Stack<4096>::make_unique();
+  auto stack = virtual_stack::make_unique();
 
   SECTION("Stack Creation and Empty Check") {
     REQUIRE(stack->empty());
@@ -46,7 +42,7 @@ TEST_CASE("virtual_stack - Basic Functionality", "[virtual_stack]") {
 }
 
 TEST_CASE("virtual_stack - Alignment Checks", "[virtual_stack]") {
-  auto stack = Stack<256>::make_unique();
+  auto stack = virtual_stack::make_unique();
 
   void *ptr1 = stack->allocate(10);
   void *ptr2 = stack->allocate(10);
@@ -63,24 +59,24 @@ TEST_CASE("virtual_stack - Alignment Checks", "[virtual_stack]") {
 TEST_CASE("virtual_stack - Handle Operations", "[virtual_stack]") {
 
   SECTION("Handle Creation and Access") {
-    auto stack = Stack<4096>::make_unique();
-    Stack<4096>::handle handle(stack.get());
+    auto stack = virtual_stack::make_unique();
+    virtual_stack::handle handle(stack.get());
     REQUIRE(handle->empty());
   }
 
   SECTION("Handle Comparison") {
-    auto stack1 = Stack<4096>::make_unique();
-    auto stack2 = Stack<4096>::make_unique();
-    Stack<4096>::handle handle1(stack1.get());
-    Stack<4096>::handle handle2(stack2.get());
+    auto stack1 = virtual_stack::make_unique();
+    auto stack2 = virtual_stack::make_unique();
+    virtual_stack::handle handle1(stack1.get());
+    virtual_stack::handle handle2(stack2.get());
     REQUIRE(handle1 <=> handle2 != 0);
     REQUIRE(handle1 <=> handle1 == 0);
   }
 
   SECTION("Get Stack from Address") {
-    auto stack = Stack<4096>::make_unique();
+    auto stack = virtual_stack::make_unique();
     void *ptr = stack->allocate(64);
-    auto handle = Stack<4096>::from_address(ptr);
+    auto handle = virtual_stack::from_address(ptr);
     REQUIRE(!handle->empty());
     handle->deallocate(ptr, 64);
     REQUIRE(stack->empty());
@@ -89,7 +85,7 @@ TEST_CASE("virtual_stack - Handle Operations", "[virtual_stack]") {
 
 TEST_CASE("virtual_stack - Unique Pointer Array", "[virtual_stack]") {
 
-  auto stackArray = Stack<4096>::make_unique(5);
+  auto stackArray = virtual_stack::make_unique(5);
 
   for (std::size_t i = 0; i < 5; ++i) {
     REQUIRE(stackArray[i].empty());
@@ -99,13 +95,14 @@ TEST_CASE("virtual_stack - Unique Pointer Array", "[virtual_stack]") {
 #if LF_COMPILER_EXCEPTIONS
 
 TEST_CASE("virtual_stack - Stack Overflow", "[virtual_stack]") {
-  auto stack = Stack<256>::make_unique();
+  auto stack = virtual_stack::make_unique();
+
   REQUIRE_NOTHROW(stack->allocate(10));
-  REQUIRE_THROWS_AS(stack->allocate(256), std::exception);
+  REQUIRE_THROWS_AS(stack->allocate(10 * detail::mebibyte), std::exception);
 }
 
 TEST_CASE("virtual_stack - full with exception", "[virtual_stack]") {
-  auto stack = Stack<4096>::make_unique();
+  auto stack = virtual_stack::make_unique();
 
   REQUIRE(stack->empty());
 

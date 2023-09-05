@@ -41,21 +41,12 @@ namespace lf::detail {
  */
 struct join_t {};
 
-#if !defined(NDEBUG) && LF_COMPILER_EXCEPTIONS
-  #define FATAL_IN_DEBUG(expr, message)      \
-    do {                                     \
-      if (!(expr)) {                         \
-        []() noexcept {                      \
-          throw std::runtime_error(message); \
-        }();                                 \
-      }                                      \
-    } while (false)
-#elif !defined(NDEBUG) && !LF_COMPILER_EXCEPTIONS
-  #define FATAL_IN_DEBUG(expr, message) \
-    do {                                \
-      if (!(expr)) {                    \
-        std::terminate();               \
-      }                                 \
+#ifndef NDEBUG
+  #define FATAL_IN_DEBUG(expr, message)                                               \
+    do {                                                                              \
+      if (!(expr)) {                                                                  \
+        ::lf::detail::noexcept_invoke([] { LF_THROW(std::runtime_error(message)); }); \
+      }                                                                               \
     } while (false)
 #else
   #define FATAL_IN_DEBUG(expr, message) \
@@ -124,7 +115,6 @@ private:
 
 public:
   using value_type = T;
-  using stack_type = typename Context::stack_type;
 
   [[nodiscard]] static auto operator new(std::size_t const size) -> void * {
     if constexpr (Tag == tag::root) {
@@ -136,7 +126,11 @@ public:
     }
   }
 
-  static auto operator delete(void *const ptr, std::size_t const size) noexcept -> void {
+  static void operator delete(void *const ptr) noexcept {
+    throw std::runtime_error("Nauty compiler");
+  }
+
+  static void operator delete(void *const ptr, std::size_t const size) noexcept {
     if constexpr (Tag == tag::root) {
 #ifdef __cpp_sized_deallocation
       ::operator delete(ptr, size);
@@ -145,8 +139,8 @@ public:
 #endif
     } else {
       // When destroying a task we must be the running on the current threads stack.
-      LF_ASSERT(stack_type::from_address(ptr) == Context::context().stack_top());
-      stack_type::from_address(ptr)->deallocate(ptr, size);
+      LF_ASSERT(virtual_stack::from_address(ptr) == Context::context().stack_top());
+      virtual_stack::from_address(ptr)->deallocate(ptr, size);
     }
   }
 
@@ -172,7 +166,7 @@ public:
     } else {
       LF_LOG("Unhandled exception in root's grandchild or further");
       // Put on stack of parent task.
-      stack_type::from_address(&this->parent().promise())->unhandled_exception();
+      virtual_stack::from_address(&this->parent().promise())->unhandled_exception();
     }
   }
 
@@ -247,7 +241,7 @@ public:
 
           if (parent_cb.has_parent()) {
             // Must take control of stack if we do not already own it.
-            auto parent_stack = stack_type::from_address(&parent_cb);
+            auto parent_stack = virtual_stack::from_address(&parent_cb);
             auto thread_stack = context.stack_top();
 
             if (parent_stack != thread_stack) {
@@ -271,7 +265,7 @@ public:
         if (parent_cb.has_parent()) {
           // We are unable to resume the parent, if we were its creator then we should pop a stack
           // from our context as the resuming thread will take ownership of the parent's stack.
-          auto parent_stack = stack_type::from_address(&parent_cb);
+          auto parent_stack = virtual_stack::from_address(&parent_cb);
           auto thread_stack = context.stack_top();
 
           if (parent_stack == thread_stack) {
@@ -378,7 +372,7 @@ public:
           if constexpr (Tag == tag::root) {
             self->get_return_address_obj().exception.rethrow_if_unhandled();
           } else {
-            stack_type::from_address(self)->rethrow_if_unhandled();
+            virtual_stack::from_address(self)->rethrow_if_unhandled();
           }
         }
 
@@ -401,6 +395,7 @@ public:
     private:
       constexpr void take_stack_reset_control() const noexcept {
         // Steals have happened so we cannot currently own this tasks stack.
+        // The above is incorrect as we could steal back!
         LF_ASSUME(self->steals() != 0);
 
         if constexpr (Tag != tag::root) {
@@ -409,7 +404,7 @@ public:
 
           Context &context = Context::context();
 
-          auto tasks_stack = stack_type::from_address(self);
+          auto tasks_stack = virtual_stack::from_address(self);
           auto thread_stack = context.stack_top();
 
           LF_ASSERT(thread_stack != tasks_stack);
@@ -435,7 +430,8 @@ public:
 
         // Could use (relaxed) + (fence(acquire) in truthy branch) but, it's
         // better if we see all the decrements to joins() and avoid suspending
-        // the coroutine if possible.
+        // the coroutine if possible. Cannot fetch_sub() here and write to frame
+        // as coroutine must be suspended first.
         auto joined = k_imax - self->joins().load(std::memory_order_acquire);
 
         if (self->steals() == joined) {
@@ -458,13 +454,11 @@ public:
         // Hence            joined = k_imax - num_joined
         //         k_imax - joined = num_joined
 
-        //  Consider race condition on write to m_context.
-
         auto steals = self->steals();
         auto joined = self->joins().fetch_sub(k_imax - steals, std::memory_order_release);
 
         if (steals == k_imax - joined) {
-          // We set n after all children had completed therefore we can resume the task.
+          // We set joins after all children had completed therefore we can resume the task.
 
           // Need to acquire to ensure we see all writes by other threads to the result.
           std::atomic_thread_fence(std::memory_order_acquire);
@@ -481,7 +475,7 @@ public:
         // We cannot currently own this stack.
 
         if constexpr (Tag != tag::root) {
-          LF_ASSERT(stack_type::from_address(self) != Context::context().stack_top());
+          LF_ASSERT(virtual_stack::from_address(self) != Context::context().stack_top());
         }
         LF_ASSERT(Context::context().stack_top()->empty());
 
@@ -497,7 +491,7 @@ public:
         self->debug_reset();
 
         if constexpr (Tag != tag::root) {
-          LF_ASSERT(stack_type::from_address(self) == Context::context().stack_top());
+          LF_ASSERT(virtual_stack::from_address(self) == Context::context().stack_top());
         }
 
         // Propagate exceptions.
@@ -505,7 +499,7 @@ public:
           if constexpr (Tag == tag::root) {
             self->get_return_address_obj().exception.rethrow_if_unhandled();
           } else {
-            stack_type::from_address(self)->rethrow_if_unhandled();
+            virtual_stack::from_address(self)->rethrow_if_unhandled();
           }
         }
       }

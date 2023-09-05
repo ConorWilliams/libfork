@@ -261,15 +261,13 @@ namespace detail {
  * @brief A type that satisfies the ``thread_context`` concept.
  */
 struct dummy_context {
-  using stack_type = virtual_stack<128>;
-
   static auto context() -> dummy_context &;
 
   auto max_threads() -> std::size_t;
 
-  auto stack_top() -> typename stack_type::handle;
+  auto stack_top() -> typename virtual_stack::handle;
   auto stack_pop() -> void;
-  auto stack_push(typename stack_type::handle) -> void;
+  auto stack_push(typename virtual_stack::handle) -> void;
 
   auto task_pop() -> std::optional<task_handle>;
   auto task_push(task_handle) -> void;
@@ -278,7 +276,7 @@ struct dummy_context {
 static_assert(thread_context<dummy_context>, "dummy_context is not a thread_context");
 
 template <typename R, stateless F, tag Tag>
-struct first_arg_base {
+struct first_arg_base : private move_only {
   using lf_first_arg = std::true_type;
   using context_type = dummy_context;
   using return_address_t = R;
@@ -322,12 +320,12 @@ struct first_arg_t<R, Tag, async_mem_fn<F>, Self> : detail::first_arg_base<R, F,
   /**
    * @brief Access the underlying class instance.
    */
-  [[nodiscard]] constexpr auto operator*() &noexcept -> Self & { return m_self; }
+  [[nodiscard]] constexpr auto operator*() & noexcept -> Self & { return m_self; }
 
   /**
    * @brief Access the underlying class with a value category corresponding to forwarding a forwarding-reference.
    */
-  [[nodiscard]] constexpr auto operator*() &&noexcept -> Self && { return std::forward<Self>(m_self); }
+  [[nodiscard]] constexpr auto operator*() && noexcept -> Self && { return std::forward<Self>(m_self); }
 
   /**
    * @brief Access the underlying ``this`` pointer.
