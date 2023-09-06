@@ -1,11 +1,25 @@
 
 
 
-# Welcome to libfork 🍴 [![Continuous Integration](https://github.com/ConorWilliams/libfork/actions/workflows/ci.yml/badge.svg)](https://github.com/ConorWilliams/libfork/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/ConorWilliams/libfork/branch/main/graph/badge.svg?token=89MTSXI85F)](https://codecov.io/gh/ConorWilliams/libfork)
+# Welcome to `cojex` [🌵]
+
+coroutine, tex (thread), executor, context, cortex (brain), cactus
+
+#  Welcome to `cotex` [🌵]   [![Continuous Integration](https://github.com/ConorWilliams/libfork/actions/workflows/ci.yml/badge.svg)](https://github.com/ConorWilliams/libfork/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/ConorWilliams/libfork/branch/main/graph/badge.svg?token=89MTSXI85F)](https://codecov.io/gh/ConorWilliams/libfork)
 
 Libfork is primarily an abstraction for strict, lock-free, wait-free, continuation-stealing [fork-join parallelism](https://en.wikipedia.org/wiki/Fork%E2%80%93join_model). This is made possible without the use of any macros/inline assembly using C++20's coroutines.
 
 Libfork presents a cross-platform API that decouples scheduling tasks (a customization point) from writing tasks and expressing their dependencies. Additionally, libfork provides performant work-stealing schedulers for general use. 
+
+TODO: split docs into:
+
+User api:
+Context API (for implementors)
+Internal:
+
+TODO:
+
+Catalogue deps (i.e pkg-config)
 
 
 ## Benchmarks

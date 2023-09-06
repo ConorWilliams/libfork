@@ -88,6 +88,13 @@ cmake --build --preset=dev
 ctest --preset=dev
 ```
 
+TODO: remove clang-tidy and the other one from CI, add sonar lint pipeline
+
+TODO: tools target
+
+TODO: git hooks
+
+
 If you are using a compatible editor (e.g. VSCode) or IDE (e.g. CLion, VS), you
 will also be able to select the above created user presets for automatic
 integration.

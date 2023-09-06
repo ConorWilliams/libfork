@@ -46,10 +46,20 @@ if(NOT HWLOC_FOUND)
   endif()
 endif()
 
-set(ENV_HWLOC_DIR "$ENV{HWLOC_DIR}")
-set(ENV_HWLOC_INCDIR "$ENV{HWLOC_INCDIR}")
-set(ENV_HWLOC_LIBDIR "$ENV{HWLOC_LIBDIR}")
+if(DEFINED ENV{HWLOC_DIR})
+  set(ENV_HWLOC_DIR "$ENV{HWLOC_DIR}")
+endif()
+
+if(DEFINED ENV{HWLOC_INCDIR})
+  set(ENV_HWLOC_INCDIR "$ENV{HWLOC_INCDIR}")
+endif()
+
+if(DEFINED ENV{HWLOC_LIBDIR})
+  set(ENV_HWLOC_LIBDIR "$ENV{HWLOC_LIBDIR}")
+endif()
+
 set(HWLOC_GIVEN_BY_USER "FALSE")
+
 if(HWLOC_DIR
    OR (HWLOC_INCDIR AND HWLOC_LIBDIR)
    OR ENV_HWLOC_DIR
@@ -61,19 +71,18 @@ endif()
 # Optionally use pkg-config to detect include/library dirs (if pkg-config is available)
 # -------------------------------------------------------------------------------------
 include(CMakeFindDependencyMacro)
-# include(FindPkgConfig)
-find_dependency(PkgConfig QUIET)
+
+find_dependency(PkgConfig)
+
 if(PKG_CONFIG_EXECUTABLE AND NOT HWLOC_GIVEN_BY_USER)
 
   pkg_search_module(HWLOC hwloc)
+
   if(NOT HWLOC_FIND_QUIETLY)
     if(HWLOC_FOUND AND HWLOC_LIBRARIES)
-      message(STATUS "Looking for HWLOC - found using PkgConfig")
-      # if(NOT HWLOC_INCLUDE_DIRS) message("${Magenta}HWLOC_INCLUDE_DIRS is empty using PkgConfig."
-      # "Perhaps the path to hwloc headers is already present in your" "C(PLUS)_INCLUDE_PATH
-      # environment variable.${ColourReset}") endif()
+      message(STATUS "Found HWLOC using PkgConfig")
     else()
-      message(STATUS "${Magenta}Looking for HWLOC - not found using PkgConfig."
+      message(STATUS "${Magenta}Did not find HWLOC using PkgConfig."
                      "\n   Perhaps you should add the directory containing hwloc.pc to"
                      "\n   the PKG_CONFIG_PATH environment variable.${ColourReset}"
       )
@@ -88,7 +97,7 @@ if((NOT PKG_CONFIG_EXECUTABLE)
 )
 
   if(NOT HWLOC_FIND_QUIETLY)
-    message(STATUS "Looking for HWLOC - PkgConfig not used")
+    message(STATUS "Looking for HWLOC without PkgConfig")
   endif()
 
   # Looking for include
@@ -260,17 +269,21 @@ if((NOT PKG_CONFIG_EXECUTABLE)
     if(HWLOC_INCLUDE_DIRS)
       set(REQUIRED_INCDIRS "${HWLOC_INCLUDE_DIRS}")
     endif()
+
     if(HWLOC_LIBRARY_DIRS)
       set(REQUIRED_LIBDIRS "${HWLOC_LIBRARY_DIRS}")
     endif()
+
     set(REQUIRED_LIBS "${HWLOC_LIBRARIES}")
 
     # set required libraries for link
     set(CMAKE_REQUIRED_INCLUDES "${REQUIRED_INCDIRS}")
     set(CMAKE_REQUIRED_LIBRARIES)
+
     foreach(lib_dir ${REQUIRED_LIBDIRS})
       list(APPEND CMAKE_REQUIRED_LIBRARIES "-L${lib_dir}")
     endforeach()
+
     list(APPEND CMAKE_REQUIRED_LIBRARIES "${REQUIRED_LIBS}")
     string(REGEX REPLACE "^ -" "-" CMAKE_REQUIRED_LIBRARIES "${CMAKE_REQUIRED_LIBRARIES}")
 
@@ -321,6 +334,7 @@ mark_as_advanced(HWLOC_DIR_FOUND)
 # check that HWLOC has been found
 # -------------------------------
 include(FindPackageHandleStandardArgs)
+
 if(PKG_CONFIG_EXECUTABLE AND HWLOC_FOUND)
   find_package_handle_standard_args(HWLOC DEFAULT_MSG HWLOC_LIBRARIES)
 else()
@@ -328,17 +342,25 @@ else()
 endif()
 
 if(HWLOC_FOUND)
+  if(NOT HWLOC_FIND_QUIETLY)
+    message(STATUS "Testing HWLOC")
+  endif()
+
   set(HWLOC_SAVE_CMAKE_REQUIRED_INCLUDES ${CMAKE_REQUIRED_INCLUDES})
   list(APPEND CMAKE_REQUIRED_INCLUDES ${HWLOC_INCLUDE_DIRS})
 
   # test headers to guess the version
   check_struct_has_member("struct hwloc_obj" parent hwloc.h HAVE_HWLOC_PARENT_MEMBER)
+
   check_struct_has_member("struct hwloc_cache_attr_s" size hwloc.h HAVE_HWLOC_CACHE_ATTR)
+
   check_c_source_compiles(
     "#include <hwloc.h>
 	    int main(void) { hwloc_obj_t o; o->type = HWLOC_OBJ_PU; return 0;}" HAVE_HWLOC_OBJ_PU
   )
+
   include(CheckLibraryExists)
+
   check_library_exists(${HWLOC_LIBRARIES} hwloc_bitmap_free "" HAVE_HWLOC_BITMAP)
 
   set(CMAKE_REQUIRED_INCLUDES ${HWLOC_SAVE_CMAKE_REQUIRED_INCLUDES})

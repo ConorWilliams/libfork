@@ -139,6 +139,25 @@ auto byte_cast(T *ptr) -> forward_cv_t<T, std::byte> * {
   return std::bit_cast<forward_cv_t<T, std::byte> *>(ptr);
 }
 
+/**
+ * @brief An empty type.
+ */
+struct empty {};
+
 } // namespace lf::detail
+
+/**
+ * @brief An (unchecked, transparent) annotation to indicate that a pointer is non-null.
+ */
+template <typename T>
+  requires std::is_pointer_v<T>
+using non_null = T;
+
+/**
+ * @brief An (unchecked, transparent) annotation to indicate that a pointer is owning.
+ */
+template <typename T>
+  requires std::is_pointer_v<T>
+using owner = T;
 
 #endif /* DF63D333_F8C0_4BBA_97E1_32A78466B8B7 */

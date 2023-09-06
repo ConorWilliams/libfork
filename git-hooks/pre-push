@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # Run the following command in the root of your project to install this pre-push hook:
 # cp git-hooks/pre-push .git/hooks/pre-push; chmod 700 .git/hooks/pre-push
 

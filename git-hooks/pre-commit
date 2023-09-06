@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # Run the following command in the root of your project to install this pre-commit hook:
 # cp git-hooks/pre-commit .git/hooks/pre-commit; chmod 700 .git/hooks/pre-commit
 

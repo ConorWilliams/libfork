@@ -23,14 +23,52 @@
 /**
  * @file macro.hpp
  *
- * @brief A collection of internal macros + configuration macros.
+ * @brief A collection of internal and public macros.
  */
 
 // NOLINTBEGIN Sometime macros are the only way to do things...
 
-namespace lf::detail {
+/**
+ * @brief The major version of libfork.
+ *
+ * Changes with incompatible API/ABI changes.
+ */
+#define LF_VERSION_MAJOR 3
+/**
+ * @brief The minor version of libfork.
+ *
+ * Changes when functionality is added in an API/ABI backward compatible manner.
+ */
+#define LF_VERSION_MINOR 1
+/**
+ * @brief The patch version of libfork.
+ *
+ * Changes when bug fixes are made in an API/ABI backward compatible manner.
+ */
+#define LF_VERSION_PATCH 0
 
-} // namespace lf::detail
+namespace detail {
+
+#define LF_CONCAT_IMPL(x, y) x##y
+#define LF_CONCAT(x, y) LF_CONCAT_IMPL(x, y)
+
+} // namespace detail
+
+/**
+ * @brief Use with ``inline namespace`` to mangle the major version number into the symbol names.
+ *
+ */
+#define LF_API LF_CONCAT(v, LF_VERSION_MAJOR)
+
+/**
+ * @brief Use with ``inline namespace`` to alter the symbols of classes with different ABI in debug/release mode.
+ *
+ */
+#ifndef NDEBUG
+  #define LF_DEPENDANT_ABI release
+#else
+  #define LF_DEPENDANT_ABI debug
+#endif
 
 /**
  * @brief Use to decorate lambdas and ``operator()`` (alongside ``LF_STATIC_CONST``) and with ``static`` if supported.
@@ -111,19 +149,6 @@ namespace lf::detail {
 #endif
 
 /**
- * @brief If truthy then coroutines propagate exceptions, if false then termination is triggered.
- *
- *  Overridable by defining ``LF_PROPAGATE_EXCEPTIONS``.
- */
-#ifndef LF_PROPAGATE_EXCEPTIONS
-  #define LF_PROPAGATE_EXCEPTIONS LF_COMPILER_EXCEPTIONS
-#endif
-
-#if !LF_COMPILER_EXCEPTIONS && LF_PROPAGATE_EXCEPTIONS
-  #error "Cannot propagate exceptions without exceptions enabled!"
-#endif
-
-/**
  * @brief A wrapper for C++23's ``[[assume(expr)]]`` attribute.
  *
  * Reverts to compiler specific implementations if the attribute is not
@@ -173,7 +198,7 @@ namespace lf::detail {
  *
  * By default this is a no-op. Defining ``LF_LOGGING`` will enable a default
  * logging implementation which prints to ``std::cout``. Overridable by defining your
- * own ``LF_LOG`` macro. Formats like ``std::format()``.
+ * own ``LF_LOG`` macro. API like ``std::format()``.
  */
 #ifndef LF_LOG
   #ifdef LF_LOGGING
@@ -208,8 +233,6 @@ namespace lf::detail {
       } while (false)
   #endif
 #endif
-
-// clang-format on
 
 // NOLINTEND
 

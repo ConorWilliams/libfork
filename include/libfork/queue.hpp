@@ -20,7 +20,8 @@
 #include <utility>
 #include <vector>
 
-#include "libfork/macro.hpp" // Only for ASSERT macro + hardware_destructive_interference_size
+#include "libfork/macro.hpp"
+#include "libfork/utility.hpp"
 
 /**
  * @file queue.hpp
@@ -125,6 +126,9 @@ enum class err : int {
   empty,    ///< The queue is empty and hence, the ``steal()`` operation failed.
 };
 
+template <typename Optional, typename T>
+concept optional_for = std::is_default_constructible_v<Optional> && std::constructible_from<Optional, T>;
+
 /**
  * @brief An unbounded lock-free single-producer multiple-consumer queue.
  *
@@ -144,9 +148,10 @@ enum class err : int {
  * \endrst
  *
  * @tparam T The type of the elements in the queue - must be a simple type.
+ * @tparam T The type returned by ``pop()``.
  */
-template <simple T>
-class queue : detail::immovable {
+template <simple T, optional_for<T> Optional = std::optional<T>>
+class queue : detail::immovable<queue<T>> {
 
   static constexpr std::ptrdiff_t k_default_capacity = 1024;
   static constexpr std::size_t k_garbage_reserve = 32;
@@ -196,9 +201,9 @@ public:
    *
    * Only the owner thread can pop out an item from the queue.
    *
-   * @return ``std::nullopt`` if  this operation fails (i.e. the queue is empty).
+   * @return A default-constructed ``Optional`` if  this operation fails (i.e. the queue is empty).
    */
-  constexpr auto pop() noexcept -> std::optional<T>;
+  constexpr auto pop() noexcept -> Optional;
   /**
    * @brief The return type of the ``steal()`` operation.
    *
@@ -280,37 +285,37 @@ private:
   static constexpr std::memory_order seq_cst = std::memory_order_seq_cst;
 };
 
-template <simple T>
-constexpr queue<T>::queue(std::ptrdiff_t cap) : m_top(0), m_bottom(0), m_buf(new detail::ring_buf<T>{cap}) {
+template <simple T, optional_for<T> Optional>
+constexpr queue<T, Optional>::queue(std::ptrdiff_t cap) : m_top(0), m_bottom(0), m_buf(new detail::ring_buf<T>{cap}) {
   m_garbage.reserve(k_garbage_reserve);
 }
 
-template <simple T>
-constexpr auto queue<T>::size() const noexcept -> std::size_t {
+template <simple T, optional_for<T> Optional>
+constexpr auto queue<T, Optional>::size() const noexcept -> std::size_t {
   return static_cast<std::size_t>(ssize());
 }
 
-template <simple T>
-constexpr auto queue<T>::ssize() const noexcept -> std::ptrdiff_t {
+template <simple T, optional_for<T> Optional>
+constexpr auto queue<T, Optional>::ssize() const noexcept -> std::ptrdiff_t {
   ptrdiff_t const bottom = m_bottom.load(relaxed);
   ptrdiff_t const top = m_top.load(relaxed);
   return std::max(bottom - top, ptrdiff_t{0});
 }
 
-template <simple T>
-constexpr auto queue<T>::capacity() const noexcept -> ptrdiff_t {
+template <simple T, optional_for<T> Optional>
+constexpr auto queue<T, Optional>::capacity() const noexcept -> ptrdiff_t {
   return m_buf.load(relaxed)->capacity();
 }
 
-template <simple T>
-constexpr auto queue<T>::empty() const noexcept -> bool {
+template <simple T, optional_for<T> Optional>
+constexpr auto queue<T, Optional>::empty() const noexcept -> bool {
   ptrdiff_t const bottom = m_bottom.load(relaxed);
   ptrdiff_t const top = m_top.load(relaxed);
   return top >= bottom;
 }
 
-template <simple T>
-constexpr auto queue<T>::push(T const &val) noexcept -> void {
+template <simple T, optional_for<T> Optional>
+constexpr auto queue<T, Optional>::push(T const &val) noexcept -> void {
   std::ptrdiff_t const bottom = m_bottom.load(relaxed);
   std::ptrdiff_t const top = m_top.load(acquire);
   detail::ring_buf<T> *buf = m_buf.load(relaxed);
@@ -329,8 +334,8 @@ constexpr auto queue<T>::push(T const &val) noexcept -> void {
   m_bottom.store(bottom + 1, relaxed);
 }
 
-template <simple T>
-constexpr auto queue<T>::pop() noexcept -> std::optional<T> {
+template <simple T, optional_for<T> Optional>
+constexpr auto queue<T, Optional>::pop() noexcept -> Optional {
   std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1;
   detail::ring_buf<T> *buf = m_buf.load(relaxed);
 
@@ -346,7 +351,7 @@ constexpr auto queue<T>::pop() noexcept -> std::optional<T> {
       if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
         // Failed race, thief got the last item.
         m_bottom.store(bottom + 1, relaxed);
-        return std::nullopt;
+        return {};
       }
       m_bottom.store(bottom + 1, relaxed);
     }
@@ -355,11 +360,11 @@ constexpr auto queue<T>::pop() noexcept -> std::optional<T> {
     return buf->load(bottom);
   }
   m_bottom.store(bottom + 1, relaxed);
-  return std::nullopt;
+  return {};
 }
 
-template <simple T>
-constexpr auto queue<T>::steal() noexcept -> steal_t {
+template <simple T, optional_for<T> Optional>
+constexpr auto queue<T, Optional>::steal() noexcept -> steal_t {
   std::ptrdiff_t top = m_top.load(acquire);
   std::atomic_thread_fence(seq_cst);
   std::ptrdiff_t const bottom = m_bottom.load(acquire);
@@ -382,8 +387,8 @@ constexpr auto queue<T>::steal() noexcept -> steal_t {
   return {.code = err::empty, .val = {}};
 }
 
-template <simple T>
-constexpr queue<T>::~queue() noexcept {
+template <simple T, optional_for<T> Optional>
+constexpr queue<T, Optional>::~queue() noexcept {
   delete m_buf.load(); // NOLINT
 }
 

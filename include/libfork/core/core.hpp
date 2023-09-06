@@ -35,15 +35,6 @@
 
 namespace lf {
 
-/**
- * @brief An enumeration that determines the behavior of a coroutine's promise.
- */
-enum class tag {
-  root, ///< This coroutine is a root task (allocated on heap) from an ``lf::sync_wait``.
-  call, ///< Non root task (on a virtual stack) from an ``lf::call``.
-  fork, ///< Non root task (on a virtual stack) from an ``lf::fork``.
-};
-
 // ----------------------------------------------- //
 
 /**
@@ -95,6 +86,8 @@ struct root_block : root_block<void> {
 
 // ----------------------------------------------- //
 
+inline namespace LF_DEPENDANT_ABI {
+
 /**
  * @brief A base class that (compile-time) conditionally adds debugging information.
  */
@@ -125,31 +118,43 @@ struct debug_block {
 #ifndef NDEBUG
 private:
   std::int32_t m_count = 0;            ///< Number of forks/calls (debug).
-  std::int32_t m_pad1, m_pad2, m_pad3; ///< In the future we can add more symbols for async-stack tracing.
+  std::array<std::int32_t, 3> m_pad{}; ///< In the future we can add more symbols for async-stack tracing.
 #endif
 };
+
+} // namespace LF_DEPENDANT_ABI
 
 static_assert(sizeof(debug_block) % k_new_align == 0);
 static_assert(std::is_trivially_destructible_v<debug_block>);
 
 // ----------------------------------------------- //
 
-} // namespace detail
-
 /**
  * @brief A small bookkeeping struct allocated immediately before each coroutine frame.
  */
-class frame_block : detail::immovable<frame_block>, detail::debug_block {
+class frame_block : immovable<frame_block>, debug_block {
 public:
   /**
-   * @brief Resume a stolen task.
+   * @brief A lightweight nullable handle to a `frame_block` that contains the public API.
    */
-  void resume() noexcept {
-    LF_LOG("Call to resume on stolen task");
+  class handle {
+  public:
+    /**
+     * @brief Resume a stolen task.
+     */
+    void resume() noexcept {
+      LF_LOG("Call to resume on stolen task");
+      m_frame_block->m_steal += 1;
+      m_frame_block->get_self().resume();
+    }
 
-    m_steal += 1;
-    get_self().resume();
-  }
+  private:
+    frame_block *m_frame_block = nullptr;
+
+    friend class frame_block;
+  };
+
+  static constexpr auto from_handle(frame_block *frame) { return handle{frame}; }
 
   // For root blocks
   explicit constexpr frame_block(stdx::coroutine_handle<> self) noexcept {
@@ -158,7 +163,7 @@ public:
 
   // For non-root blocks -- require a call to post-init later.
   explicit constexpr frame_block(std::uintptr_t prev_frame_offset) : m_prev_frame_offset(prev_frame_offset) {
-    LF_ASSUME(prev_frame_offset <= detail::k_u16_max);
+    LF_ASSUME(prev_frame_offset <= k_u16_max);
     LF_ASSUME(prev_frame_offset >= sizeof(frame_block));
   }
 
@@ -167,8 +172,8 @@ public:
    */
   void post_init(stdx::coroutine_handle<> self, frame_block *parent) noexcept {
 
-    std::uintptr_t self_offset = detail::as_integer(self.address()) - detail::as_integer(this);
-    LF_ASSUME(self_offset <= detail::k_u16_max);
+    std::uintptr_t self_offset = as_integer(self.address()) - as_integer(this);
+    LF_ASSUME(self_offset <= k_u16_max);
     LF_ASSUME(self_offset >= sizeof(frame_block));
     m_self_offset = static_cast<std::uint16_t>(self_offset);
 
@@ -177,7 +182,7 @@ public:
 
   auto get_prev_frame() const noexcept -> frame_block * {
     LF_ASSUME(m_prev_frame_offset >= sizeof(frame_block));
-    return std::bit_cast<frame_block *>(detail::byte_cast(this) + m_prev_frame_offset);
+    return std::bit_cast<frame_block *>(byte_cast(this) + m_prev_frame_offset);
   }
 
   /**
@@ -185,7 +190,7 @@ public:
    */
   auto get_self() const noexcept -> stdx::coroutine_handle<> {
     LF_ASSUME(m_self_offset >= sizeof(frame_block));
-    return stdx::coroutine_handle<>::from_address(std::bit_cast<void *>(detail::byte_cast(this) + m_self_offset));
+    return stdx::coroutine_handle<>::from_address(std::bit_cast<void *>(byte_cast(this) + m_self_offset));
   }
 
   /**
@@ -206,40 +211,18 @@ private:
    *
    * R = root, F = fork/call.
    */
-  std::atomic_uint16_t m_join = detail::k_u16_max; ///< [R/F] Number of children joined (with offset).
-  std::uint16_t m_steal = 0;                       ///< [R/F] Number of steals.
-  std::uint16_t m_prev_frame_offset = 0;           ///< [F]   For future aligned coroutine new/delete.
-  std::uint16_t m_self_offset = 0;                 ///< [R/F] Offset from `this` to paired coroutine's void handle address.
-  frame_block *m_parent = nullptr;                 ///< [R/F] Parent task (roots don't have one).
+  std::atomic_uint16_t m_join = k_u16_max; ///< [R/F] Number of children joined (with offset).
+  std::uint16_t m_steal = 0;               ///< [R/F] Number of steals.
+  std::uint16_t m_prev_frame_offset = 0;   ///< [F]   For future aligned coroutine new/delete.
+  std::uint16_t m_self_offset = 0;         ///< [R/F] Offset from `this` to paired coroutine's void handle address.
+  frame_block *m_parent = nullptr;         ///< [R/F] Parent task (roots don't have one).
 };
 
-static_assert(alignof(frame_block) <= detail::k_new_align);
-static_assert(sizeof(frame_block) % detail::k_new_align == 0);
+static_assert(alignof(frame_block) <= k_new_align);
+static_assert(sizeof(frame_block) % k_new_align == 0);
 static_assert(std::is_trivially_destructible_v<frame_block>);
 
 // ----------------------------------------------- //
-
-// /**
-//  * @brief A concept which defines the context interface.
-//  *
-//  * A context owns a LIFO stack of ``lf::async_stack``s and a LIFO stack of tasks.
-//  * The stack of ``lf::async_stack``s is expected to never be empty, it should always
-//  * be able to return an empty ``lf::async_stack``.
-//  */
-// template <typename Context>
-// concept thread_context = requires(Context ctx, async_stack *stack, frame_block *handle) {
-//   { Context::context() } -> std::same_as<Context &>;
-
-//   { ctx.max_threads() } -> std::same_as<std::size_t>;
-
-//   { ctx.stack_pop() } -> std::convertible_to<async_stack *>;
-//   { ctx.stack_push(stack) };
-
-//   { ctx.task_pop() } -> std::convertible_to<std::optional<frame_block *>>;
-//   { ctx.task_push(handle) };
-// };
-
-namespace detail {
 
 constinit inline thread_local frame_block *asp = nullptr; ///< Async Stack Pointer.
 
@@ -258,28 +241,12 @@ inline auto from_asp() noexcept -> async_stack * {
 // ----------------------------------------------- //
 
 /**
- * @brief A base class for promises that handles allocation.
+ * @brief A promise base class that allocates on an `async_stack`
  */
-template <tag Tag>
-struct promise_alloc;
-
-/**
- * @brief Specialization for root promises that allocates on the heap.
- *
- * This includes an intrusive frame_block.
- */
-template <>
-struct promise_alloc<tag::root> : frame_block {
-  // No new/delete defined, will fall back to global.
-};
-
-/**
- * @brief General case for call/fork promises that allocates on an `async_stack`
- */
-template <tag Tag>
 struct promise_alloc {
 private:
-  static auto unwrap(std::align_val_t al) noexcept -> std::uintptr_t {
+  // Convert an alignment to a std::uintptr_t, ensure its is a power of two greater and >= k_new_align.
+  constexpr static auto unwrap(std::align_val_t al) noexcept -> std::uintptr_t {
     auto align = static_cast<std::underlying_type_t<std::align_val_t>>(al);
     LF_ASSUME(std::has_single_bit(align));
     return std::max(align, k_new_align);
@@ -287,10 +254,12 @@ private:
 
 public:
   /**
-   * @brief Call `promise_alloc::operator new(size, __STDCPP_DEFAULT_NEW_ALIGNMENT__)`.
+   * @brief Allocate a new `frame_block` on the current `async_stack` and enough space for the coroutine frame.
+   *
+   * This will update `asp` to point to the top of the new async stack.
    */
   [[nodiscard]] static auto operator new(std::size_t size) noexcept -> void * {
-    return promise_alloc::operator new(size, k_new_align);
+    return promise_alloc::operator new(size, std::align_val_t{k_new_align});
   }
 
   /**
@@ -303,6 +272,8 @@ public:
     std::uintptr_t align = unwrap(al);
 
     frame_block *prev_asp = asp;
+
+    LF_ASSUME(prev_asp);
 
     auto prev_stack_addr = as_integer(prev_asp);
 
@@ -323,7 +294,7 @@ public:
   /**
    * @brief Move `asp` to the previous frame.
    */
-  static void operator delete(void *ptr) noexcept {
+  static void operator delete([[maybe_unused]] void *ptr) noexcept {
     LF_ASSERT(ptr == asp - 1); // Check we are deleting the top of the stack.
     asp = asp->get_prev_frame();
   }
@@ -331,12 +302,20 @@ public:
   /**
    * @brief Move `asp` to the previous frame.
    */
-  static void operator delete([[maybe_unused]] void *ptr, std::size_t, std::align_val_t) noexcept {
+  static void operator delete(void *ptr, std::size_t, std::align_val_t) noexcept {
     promise_alloc::operator delete(ptr);
   }
 };
 
 } // namespace detail
+
+/**
+ * @brief An aliases to the internal type that controls a task.
+ *
+ * Pointers given/received to this type are all non-owning, the only method
+ * implementors of a context are permitted to use is `resume()`.
+ */
+using task_block = detail::frame_block;
 
 } // namespace lf
 

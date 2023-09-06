@@ -1,13 +1,16 @@
 cmake_minimum_required(VERSION 3.14)
 
 include(cmake/prelude.cmake)
+include(cmake/read_version.cmake)
+
+read_version(${CMAKE_CURRENT_SOURCE_DIR}/include/libfork/macro.hpp)
 
 project(
   libfork
-  VERSION 3.0.0
-  DESCRIPTION "A C++ library for fork-join parallelism using coroutines"
+  VERSION ${version_major}.${version_minor}.${version_patch}
+  DESCRIPTION "A C++20 coroutine library for fork-join parallelism"
   HOMEPAGE_URL "https://github.com/ConorWilliams/libfork"
-  LANGUAGES CXX C
+  LANGUAGES CXX
 )
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
