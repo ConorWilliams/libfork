@@ -287,6 +287,13 @@ private:
 
 public:
   /**
+   * @brief Call `promise_alloc::operator new(size, __STDCPP_DEFAULT_NEW_ALIGNMENT__)`.
+   */
+  [[nodiscard]] static auto operator new(std::size_t size) noexcept -> void * {
+    return promise_alloc::operator new(size, k_new_align);
+  }
+
+  /**
    * @brief Allocate a new `frame_block` on the current `async_stack` and enough space for the coroutine frame.
    *
    * This will update `asp` to point to the top of the new async stack.
@@ -301,7 +308,11 @@ public:
 
     std::uintptr_t coro_frame_addr = (prev_stack_addr - size) & ~(align - 1);
 
+    LF_ASSERT(coro_frame_addr % align == 0);
+
     std::uintptr_t frame_addr = coro_frame_addr - sizeof(frame_block);
+
+    LF_ASSERT(frame_addr % alignof(frame_block) == 0);
 
     // Starts the lifetime of the new frame block.
     asp = new (std::bit_cast<void *>(frame_addr)) frame_block{prev_stack_addr - frame_addr};
@@ -309,9 +320,19 @@ public:
     return std::bit_cast<void *>(coro_frame_addr);
   }
 
-  static void operator delete([[maybe_unused]] void *ptr, std::size_t, std::align_val_t) noexcept {
+  /**
+   * @brief Move `asp` to the previous frame.
+   */
+  static void operator delete(void *ptr) noexcept {
     LF_ASSERT(ptr == asp - 1); // Check we are deleting the top of the stack.
     asp = asp->get_prev_frame();
+  }
+
+  /**
+   * @brief Move `asp` to the previous frame.
+   */
+  static void operator delete([[maybe_unused]] void *ptr, std::size_t, std::align_val_t) noexcept {
+    promise_alloc::operator delete(ptr);
   }
 };
 
