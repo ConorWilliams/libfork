@@ -36,9 +36,11 @@ inline constexpr std::size_t k_cache_line = 64;
 #endif
 
 /**
- * @brief The default alignment of `operator new`.
+ * @brief The default alignment of `operator new`, a power of two.
  */
 inline constexpr std::size_t k_new_align = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
+
+static_assert(std::has_single_bit(k_new_align));
 
 /**
  * @brief Shorthand for `std::numeric_limits<std::unt16_t>::max()`.
@@ -94,11 +96,47 @@ constexpr auto noexcept_invoke(Fn &&fun, Args &&...args) noexcept -> std::invoke
 }
 
 /**
- * @brief Get an integral representation of a pointer.
+ * @brief Ensure a type is not const/volatile or ref qualified.
  */
 template <typename T>
-auto iddress(T *ptr) -> std::uintptr_t {
+concept unqualified = std::same_as<std::remove_cvref_t<T>, T>;
+
+namespace detail {
+
+template <typename From, typename To>
+struct forward_cv;
+
+template <unqualified From, typename To>
+struct forward_cv<From, To> : std::type_identity<To> {};
+
+template <unqualified From, typename To>
+struct forward_cv<From const, To> : std::type_identity<To const> {};
+
+template <unqualified From, typename To>
+struct forward_cv<From volatile, To> : std::type_identity<To volatile> {};
+
+template <unqualified From, typename To>
+struct forward_cv<From const volatile, To> : std::type_identity<To const volatile> {};
+
+} // namespace detail
+
+template <typename From, typename To>
+using forward_cv_t = typename detail::forward_cv<From, To>::type;
+
+/**
+ * @brief Get an integral representation of a pointer.
+ */
+template <unqualified T>
+auto as_integer(T *ptr) -> std::uintptr_t {
   return std::bit_cast<std::uintptr_t>(ptr);
+}
+
+/**
+ * @brief Cast a pointer to a byte pointer.
+ */
+template <typename T>
+auto byte_cast(T *ptr) -> forward_cv_t<T, std::byte> * {
+  return std::bit_cast<forward_cv_t<T, std::byte> *>(ptr);
 }
 
 } // namespace lf::detail
