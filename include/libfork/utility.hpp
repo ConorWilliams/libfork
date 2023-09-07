@@ -48,9 +48,19 @@ static_assert(std::has_single_bit(k_new_align));
 static constexpr std::uint16_t k_u16_max = std::numeric_limits<std::uint16_t>::max();
 
 /**
- * @brief Shorthand for `std::numeric_limits<std::uint32_t>::max()`.
+ * @brief Shorthand for `std::numeric_limits<std::int16_t>::max()`.
  */
-static constexpr std::uint32_t k_u32_max = std::numeric_limits<std::uint32_t>::max();
+static constexpr std::int16_t k_i16_max = std::numeric_limits<std::int16_t>::max();
+
+/**
+ * @brief Shorthand for `std::numeric_limits<std::unt16_t>::min()`.
+ */
+static constexpr std::int16_t k_i16_min = std::numeric_limits<std::int16_t>::min();
+
+// /**
+//  * @brief Shorthand for `std::numeric_limits<std::uint32_t>::max()`.
+//  */
+// static constexpr std::uint32_t k_u32_max = std::numeric_limits<std::uint32_t>::max();
 
 inline constexpr std::size_t k_kibibyte = 1024 * 1;          // NOLINT
 inline constexpr std::size_t k_mebibyte = 1024 * k_kibibyte; //
@@ -127,8 +137,8 @@ using forward_cv_t = typename detail::forward_cv<From, To>::type;
  * @brief Get an integral representation of a pointer.
  */
 template <unqualified T>
-auto as_integer(T *ptr) -> std::uintptr_t {
-  return std::bit_cast<std::uintptr_t>(ptr);
+auto as_integer(T *ptr) -> std::intptr_t {
+  return std::bit_cast<std::intptr_t>(ptr);
 }
 
 /**
@@ -150,14 +160,12 @@ struct empty {};
  * @brief An (unchecked, transparent) annotation to indicate that a pointer is non-null.
  */
 template <typename T>
-  requires std::is_pointer_v<T>
 using non_null = T;
 
 /**
  * @brief An (unchecked, transparent) annotation to indicate that a pointer is owning.
  */
 template <typename T>
-  requires std::is_pointer_v<T>
 using owner = T;
 
 #endif /* DF63D333_F8C0_4BBA_97E1_32A78466B8B7 */

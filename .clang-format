@@ -1,6 +1,7 @@
 ---
 Language: Cpp
-BasedOnStyle: LLVM
-ColumnLimit: 0
+ColumnLimit: 110
 IndentPPDirectives: BeforeHash
+AlwaysBreakTemplateDeclarations : true
+PackConstructorInitializers : Never
 ...

@@ -10,7 +10,7 @@ project(
   VERSION ${version_major}.${version_minor}.${version_patch}
   DESCRIPTION "A C++20 coroutine library for fork-join parallelism"
   HOMEPAGE_URL "https://github.com/ConorWilliams/libfork"
-  LANGUAGES CXX
+  LANGUAGES CXX C
 )
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -42,7 +42,7 @@ target_compile_features(libfork_libfork INTERFACE cxx_std_23)
 if(HWLOC_FOUND)
   target_compile_definitions(libfork_libfork INTERFACE LF_HAS_HWLOC)
 else()
-  message(WARNING "Disabling libfork's hwloc support")
+  message(WARNING "Disabling libfork's hwloc support becasue we couldn't find it")
 endif()
 
 # ---- Install rules ----
