@@ -18,7 +18,7 @@ namespace fs = std::filesystem;
 
 namespace {
 
-constexpr auto &include_regex = R"-(#include "(libfork(?:/\w*)+.hpp)")-";
+constexpr auto &include_regex = R"-((?:^|\n)#include "(libfork(?:/\w*)+.hpp)")-";
 
 template <typename Rng, typename Value>
 auto contains(Rng const &range, Value const &val) -> bool {
@@ -111,6 +111,15 @@ auto main(int argc, char **argv) -> int try {
   const auto out_str = include_processor::run(infile_path);
 
   std::ofstream outfile(outfile_path);
+
+  outfile << std::endl;
+
+  outfile << "//---------------------------------------------------------------//" << std::endl;
+  outfile << "//        This is a machine generated file DO NOT EDIT IT        //" << std::endl;
+  outfile << "//---------------------------------------------------------------//" << std::endl;
+
+  outfile << std::endl;
+
   std::copy(out_str.begin(), out_str.end(), std::ostreambuf_iterator<char>(outfile));
 
 } catch (const std::exception &ex) {

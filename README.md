@@ -21,6 +21,8 @@ TODO:
 
 Catalogue deps (i.e pkg-config)
 
+TODO: A check in the CI that makes sure single header is up to date with the rest of the code.
+
 
 ## Benchmarks
 
