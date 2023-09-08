@@ -3,5 +3,5 @@ Language: Cpp
 ColumnLimit: 110
 IndentPPDirectives: BeforeHash
 AlwaysBreakTemplateDeclarations : true
-PackConstructorInitializers : Never
+PackConstructorInitializers : CurrentLine
 ...

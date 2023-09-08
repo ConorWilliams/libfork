@@ -61,7 +61,8 @@ namespace detail {
 #define LF_API LF_CONCAT(v, LF_VERSION_MAJOR)
 
 /**
- * @brief Use with ``inline namespace`` to alter the symbols of classes with different ABI in debug/release mode.
+ * @brief Use with ``inline namespace`` to alter the symbols of classes with different ABI in debug/release
+ * mode.
  *
  */
 #ifndef NDEBUG
@@ -71,7 +72,8 @@ namespace detail {
 #endif
 
 /**
- * @brief Use to decorate lambdas and ``operator()`` (alongside ``LF_STATIC_CONST``) and with ``static`` if supported.
+ * @brief Use to decorate lambdas and ``operator()`` (alongside ``LF_STATIC_CONST``) and with ``static`` if
+ * supported.
  */
 #ifdef __cpp_static_call_operator
   #define LF_STATIC_CALL static
@@ -101,7 +103,8 @@ namespace detail {
 /**
  * @brief Lift an overload-set/template into a constrained lambda.
  */
-#define LF_LIFT(overload_set) [](auto &&...args) LF_STATIC_CALL LF_HOF_RETURNS(overload_set(std::forward<decltype(args)>(args)...))
+#define LF_LIFT(overload_set)                                                                                \
+  [](auto &&...args) LF_STATIC_CALL LF_HOF_RETURNS(overload_set(std::forward<decltype(args)>(args)...))
 
 /**
  * @brief Detects if the compiler has exceptions enabled.
@@ -122,7 +125,8 @@ namespace detail {
    */
   #define LF_TRY try
   /**
-   * @brief Expands to ``catch (...)`` if exceptions are enabled, otherwise expands to ``if constexpr (false)``.
+   * @brief Expands to ``catch (...)`` if exceptions are enabled, otherwise expands to ``if constexpr
+   * (false)``.
    */
   #define LF_CATCH_ALL catch (...)
   /**
@@ -170,22 +174,23 @@ namespace detail {
 #elif defined(__clang__)
   #define LF_ASSUME(expr) __builtin_assume(bool(expr))
 #elif defined(__GNUC__) && !defined(__ICC)
-  #define LF_ASSUME(expr)      \
-    if (bool(expr)) {          \
-    } else {                   \
-      __builtin_unreachable(); \
+  #define LF_ASSUME(expr)                                                                                    \
+    if (bool(expr)) {                                                                                        \
+    } else {                                                                                                 \
+      __builtin_unreachable();                                                                               \
     }
 #elif defined(_MSC_VER) || defined(__ICC)
   #define LF_ASSUME(expr) __assume(bool(expr))
 #else
   #warning "No LF_ASSUME() implementation for this compiler."
-  #define LF_ASSUME(expr) \
-    do {                  \
+  #define LF_ASSUME(expr)                                                                                    \
+    do {                                                                                                     \
     } while (false)
 #endif
 
 /**
- * @brief If ``NDEBUG`` is defined then ``LF_ASSERT(expr)`` is  ``LF_ASSUME(expr)`` otherwise ``assert(expr)``.
+ * @brief If ``NDEBUG`` is defined then ``LF_ASSERT(expr)`` is  ``LF_ASSUME(expr)`` otherwise
+ * ``assert(expr)``.
  */
 #ifndef NDEBUG
   #define LF_ASSERT(expr) assert(expr)
@@ -221,15 +226,15 @@ namespace detail {
       #define LF_SYNC_COUT std::cout << std::this_thread::get_id()
     #endif
 
-    #define LF_LOG(message, ...)                                                         \
-      do {                                                                               \
-        if (!std::is_constant_evaluated()) {                                             \
-          LF_SYNC_COUT << ": " << LF_FORMAT(message __VA_OPT__(, ) __VA_ARGS__) << '\n'; \
-        }                                                                                \
+    #define LF_LOG(message, ...)                                                                             \
+      do {                                                                                                   \
+        if (!std::is_constant_evaluated()) {                                                                 \
+          LF_SYNC_COUT << ": " << LF_FORMAT(message __VA_OPT__(, ) __VA_ARGS__) << '\n';                     \
+        }                                                                                                    \
       } while (false)
   #else
-    #define LF_LOG(head, ...) \
-      do {                    \
+    #define LF_LOG(head, ...)                                                                                \
+      do {                                                                                                   \
       } while (false)
   #endif
 #endif

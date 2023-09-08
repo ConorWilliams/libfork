@@ -134,14 +134,6 @@ template <typename From, typename To>
 using forward_cv_t = typename detail::forward_cv<From, To>::type;
 
 /**
- * @brief Get an integral representation of a pointer.
- */
-template <unqualified T>
-auto as_integer(T *ptr) -> std::intptr_t {
-  return std::bit_cast<std::intptr_t>(ptr);
-}
-
-/**
  * @brief Cast a pointer to a byte pointer.
  */
 template <typename T>

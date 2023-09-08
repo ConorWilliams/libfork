@@ -14,6 +14,6 @@ endif()
 
 add_executable(make_single_header make_single_header.cpp)
 target_link_libraries(make_single_header PRIVATE libfork::libfork)
-target_compile_features(make_single_header PRIVATE cxx_std_20)
+target_compile_features(make_single_header PRIVATE cxx_std_23)
 
 add_folders(Tools)
