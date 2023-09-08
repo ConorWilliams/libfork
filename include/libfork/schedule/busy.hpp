@@ -30,6 +30,8 @@ namespace lf {
 
 namespace detail {
 
+// TODO: make unordered, move to its own file, make it just a ring_buffer
+
 template <simple T, std::size_t N>
   requires(std::has_single_bit(N))
 class buffered_queue {
@@ -41,6 +43,8 @@ public:
     LF_ASSERT(!empty());
     return load(m_bottom - 1);
   }
+
+  // TODO: add on_fail call_back
 
   auto push(T const &val) noexcept -> void {
     if (buff_full()) {
@@ -230,9 +234,7 @@ public:
       m_stacks.push(handle);
     }
 
-    auto task_steal() -> typename queue<task_handle>::steal_t {
-      return m_tasks.steal();
-    }
+    auto task_steal() -> typename queue<task_handle>::steal_t { return m_tasks.steal(); }
 
     auto task_pop() -> std::optional<task_handle> {
       LF_ASSERT(&context() == this);
@@ -345,9 +347,7 @@ public:
   /**
    * @brief Schedule a task for execution.
    */
-  auto schedule(stdx::coroutine_handle<> root) noexcept {
-    m_submit.push(root);
-  }
+  auto schedule(stdx::coroutine_handle<> root) noexcept { m_submit.push(root); }
 
   ~busy_pool() noexcept { clean_up(); }
 

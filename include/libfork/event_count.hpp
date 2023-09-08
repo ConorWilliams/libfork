@@ -25,6 +25,7 @@
 #include <type_traits>
 
 #include "libfork/macro.hpp"
+#include "libfork/utility.hpp"
 
 /**
  * @file event_count.hpp
@@ -98,7 +99,7 @@ namespace lf {
  *
  * \endrst
  */
-class event_count : detail::immovable {
+class event_count : detail::immovable<event_count> {
 public:
   /**
    * @brief The return type of ``prepare_wait()``.

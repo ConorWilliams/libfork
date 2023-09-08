@@ -12,8 +12,6 @@
 
 // NOLINTBEGIN No linting in tests
 
-using namespace lf;
-
 consteval void foo() {
   // Test macros valid in constexpr context.
   LF_ASSERT(true);
