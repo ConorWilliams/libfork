@@ -18,7 +18,7 @@ namespace fs = std::filesystem;
 
 namespace {
 
-constexpr auto &include_regex = R"-(^#include "(libfork(?:/\w*)+.hpp)")-";
+constexpr auto &include_regex = R"-(#include "(libfork(?:/\w*)+.hpp)")-";
 
 template <typename Rng, typename Value>
 auto contains(Rng const &range, Value const &val) -> bool {
