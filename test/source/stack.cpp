@@ -6,7 +6,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#undef NDEBUG
+#define NDEBUG
 
 #include <memory>
 
@@ -69,7 +69,7 @@ struct non_root_task {
   };
 };
 
-auto fib(int &res, int n) -> non_root_task {
+__attribute__((noinline)) auto fib(int &res, int n) -> non_root_task {
   if (n <= 1) {
     res = n;
   } else {
@@ -87,7 +87,7 @@ auto fib(int &res, int n) -> non_root_task {
   co_return;
 }
 
-void inline_fib(int &res, int n) {
+__attribute__((noinline)) void inline_fib(int &res, int n) {
   if (n <= 1) {
     res = n;
   } else {
@@ -112,7 +112,6 @@ TEST_CASE("fib on stack", "[virtual_stack]") {
 
     int x;
 
-    // now let's benchmark:
     BENCHMARK("Fibonacci " + std::to_string(p) + " coroutine") {
       fib(x, p);
       asp->get_coro().resume();

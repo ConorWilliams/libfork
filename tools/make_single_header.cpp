@@ -4,6 +4,7 @@
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
+#include "libfork/macro.hpp"
 #include <algorithm>
 #include <deque>
 #include <filesystem>
@@ -100,9 +101,9 @@ private:
 
 } // namespace
 
-auto main(int argc, char **argv) -> int try {
+auto main(int argc, char **argv) -> int {
   if (argc != 3) {
-    throw std::invalid_argument{"Usage: make_single_header IN_FILE.hpp OUT_FILE.hpp"};
+    LF_THROW(std::invalid_argument{"Usage: make_single_header IN_FILE.hpp OUT_FILE.hpp"});
   }
 
   const auto infile_path = fs::canonical(fs::path(argv[1]));
@@ -121,8 +122,4 @@ auto main(int argc, char **argv) -> int try {
   outfile << std::endl;
 
   std::copy(out_str.begin(), out_str.end(), std::ostreambuf_iterator<char>(outfile));
-
-} catch (const std::exception &ex) {
-  std::cout << ex.what() << '\n';
-  return 1;
 }

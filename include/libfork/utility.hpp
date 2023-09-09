@@ -160,4 +160,10 @@ using non_null = T;
 template <typename T>
 using owner = T;
 
+/**
+ * @brief Forwards to ``std::is_reference_v<T>``.
+ */
+template <typename T>
+concept reference = std::is_reference_v<T>;
+
 #endif /* DF63D333_F8C0_4BBA_97E1_32A78466B8B7 */

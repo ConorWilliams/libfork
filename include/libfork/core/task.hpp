@@ -33,9 +33,10 @@ namespace lf {
  * @brief An enumeration that determines the behavior of a coroutine's promise.
  */
 enum class tag {
-  root, ///< This coroutine is a root task (allocated on heap) from an ``lf::sync_wait``.
-  call, ///< Non root task (on a virtual stack) from an ``lf::call``.
-  fork, ///< Non root task (on a virtual stack) from an ``lf::fork``.
+  root,   ///< This coroutine is a root task (allocated on heap) from an ``lf::sync_wait``.
+  call,   ///< Non root task (on a virtual stack) from an ``lf::call``, completes synchronously.
+  fork,   ///< Non root task (on a virtual stack) from an ``lf::fork``, completes asynchronously.
+  invoke, ///< Equivalent to ``call`` but caches the return (extra move required).
 };
 
 // ---------------------- Concepts ------------------------- //
@@ -48,15 +49,16 @@ enum class tag {
  * should always be able to return an empty ``lf::async_stack``.
  */
 template <typename Context>
-concept thread_context = requires(Context ctx, owner<async_stack *> stack, non_null<task_ptr> handle) {
-  { ctx.max_threads() } -> std::same_as<std::size_t>;
+concept thread_context =
+    requires(Context ctx, owner<detail::async_stack *> stack, non_null<task_ptr> handle) {
+      { ctx.max_threads() } -> std::same_as<std::size_t>;
 
-  { ctx.stack_pop() } -> std::convertible_to<owner<async_stack *>>;
-  { ctx.stack_push(stack) };
+      { ctx.stack_pop() } -> std::convertible_to<owner<detail::async_stack *>>;
+      { ctx.stack_push(stack) };
 
-  { ctx.task_pop() } -> std::convertible_to<task_ptr>;
-  { ctx.task_push(handle) };
-};
+      { ctx.task_pop() } -> std::convertible_to<task_ptr>;
+      { ctx.task_push(handle) };
+    };
 
 /**
  * @brief Test if a type is a stateless class.
@@ -132,81 +134,105 @@ struct dummy_context {
 static_assert(thread_context<dummy_context>, "dummy_context is not a thread_context");
 
 /**
- * @brief A base class for building the first argument to asynchronous
- * functions.
+ * @brief A base class for building the first argument to asynchronous functions.
  *
  * This derives from `async_fn<F>` to allow to allow for use as a y-combinator.
  *
  * This is used by `std::coroutine_traits` to build the promise type.
  */
 template <typename R, tag Tag, stateless F>
-struct first_arg_base : async_fn<F>, move_only<first_arg_base<R, Tag, F>> {
+struct first_arg_base;
+
+/**
+ * @brief Void specialization.
+ */
+template <tag Tag, stateless F>
+struct first_arg_base<void, Tag, F> : async_fn<F>, move_only<first_arg_base<void, Tag, F>> {
   using context_type = dummy_context;   ///< A default context
-  using return_type = R;                ///< The type of the return address.
+  using return_type = void;             ///< The type of the return address.
   using function_type = F;              ///< The underlying async_fn
   static constexpr tag tag_value = Tag; ///< The tag value.
 };
 
 /**
- * @brief A helper to fetch `T::context_type`.
+ * @brief Specialization for non-void returning task.
  */
-template <typename T>
-  requires requires { typename T::context_type; }
-using context_of = typename T::context_type;
+template <typename R, tag Tag, stateless F>
+struct first_arg_base : first_arg_base<void, Tag, F> {
+
+  using return_type = R; ///< The type of the return address.
+
+  explicit constexpr first_arg_base(return_type &ret) : m_ret{std::addressof(ret)} {}
+
+  constexpr auto address() const noexcept -> return_type * { return m_ret; }
+
+private:
+  R *m_ret;
+};
 
 /**
- * @brief A helper to fetch `T::return_type`.
+ * @brief A helper to fetch `typename std::remove_cvref_t<T>::context_type`.
  */
 template <typename T>
-  requires requires { typename T::return_type; }
-using return_of = typename T::return_type;
+  requires requires { typename std::remove_cvref_t<T>::context_type; }
+using context_of = typename std::remove_cvref_t<T>::context_type;
 
 /**
- * @brief A helper to fetch `T::function_type`.
+ * @brief A helper to fetch `typename std::remove_cvref_t<T>::return_type`.
  */
 template <typename T>
-  requires requires { typename T::function_type; }
-using function_of = typename T::function_type;
+  requires requires { typename std::remove_cvref_t<T>::return_type; }
+using return_of = typename std::remove_cvref_t<T>::return_type;
 
 /**
- * @brief A helper to fetch `T::tag_value`.
+ * @brief A helper to fetch `typename std::remove_cvref_t<T>::function_type`.
+ */
+template <typename T>
+  requires requires { typename std::remove_cvref_t<T>::function_type; }
+using function_of = typename std::remove_cvref_t<T>::function_type;
+
+/**
+ * @brief A helper to fetch `std::remove_cvref_t<T>::tag_value`.
  */
 template <typename T>
   requires requires {
-    { T::tag_value } -> std::convertible_to<tag>;
+    { std::remove_cvref_t<T>::tag_value } -> std::convertible_to<tag>;
   }
-inline constexpr tag tag_of = T::tag_value;
+inline constexpr tag tag_of = std::remove_cvref_t<T>::tag_value;
 
 /**
- * @brief A helper to fetch `T::value_type`.
+ * @brief A helper to fetch `typename std::remove_cvref_t<T>::value_type`.
  */
 template <typename T>
-  requires requires { typename T::value_type; }
-using value_of = typename T::value_type;
+  requires requires { typename std::remove_cvref_t<T>::value_type; }
+using value_of = typename std::remove_cvref_t<T>::value_type;
 
 /**
- * @brief
- *
- * @tparam Arg
+ * @brief The API of the first arg passed to an async function.
  */
 template <typename Arg>
-concept first_arg = std::is_empty_v<std::remove_cvref_t<Arg>> && requires(Arg arg) {
+concept first_arg = requires(Arg arg) {
   //
+  tag_of<Arg>;
+
   typename context_of<Arg>;
   typename return_of<Arg>;
   typename function_of<Arg>;
-  tag_of<Arg>;
+
+  requires std::is_void_v<return_of<Arg>> || requires {
+    { arg.address() } -> std::convertible_to<return_of<Arg> *>;
+  };
 
   []<typename F>(async_fn<F>)
     requires std::same_as<F, function_of<Arg>>
   {
-    // Check implicitly convertible to async_fn and that deduced template
-    // parameter is the correct type.
+    // Check implicitly convertible to async_fn and that deduced template parameter is the correct type.
   }
   (arg);
 };
 
 static_assert(first_arg<first_arg_base<void, tag::root, decltype([] {})>>);
+static_assert(first_arg<first_arg_base<int, tag::root, decltype([] {})>>);
 
 template <typename T>
 concept not_first_arg = !first_arg<T>;
@@ -220,8 +246,8 @@ concept not_first_arg = !first_arg<T>;
  * child task returns.
  */
 template <typename T, typename Self>
-concept protect_forwarding_tparam =
-    first_arg<Self> && !std::is_rvalue_reference_v<T> && (tag_of<Self> != tag::fork || std::is_reference_v<T>);
+concept protect_forwarding_tparam = first_arg<Self> && !std::is_rvalue_reference_v<T> &&
+                                    (tag_of<Self> != tag::fork || std::is_reference_v<T>);
 
 // ------------------------ Packet ------------------------ //
 
@@ -238,9 +264,10 @@ template <typename R, tag Tag, typename TaskValueType>
 concept result_matches = std::is_void_v<R> || Tag == tag::root || std::assignable_from<R &, TaskValueType>;
 
 template <typename Head, typename... Tail>
-concept valid_packet = first_arg<Head> && is_task<std::invoke_result_t<function_of<Head>, Head, Tail...>> &&
-                       result_matches<return_of<Head>, tag_of<Head>,
-                                      value_of<std::invoke_result_t<typename Head::underlying_fn, Head, Tail...>>>;
+concept valid_packet =
+    first_arg<Head> && is_task<std::invoke_result_t<function_of<Head>, Head, Tail...>> &&
+    result_matches<return_of<Head>, tag_of<Head>,
+                   value_of<std::invoke_result_t<typename Head::underlying_fn, Head, Tail...>>>;
 
 /**
  * @brief An awaitable type (in a task) that triggers a fork/call/invoke.
@@ -272,7 +299,8 @@ public:
 
     auto unwrap = [&]<class... Args>(Args &&...xargs) -> handle_type {
       return handle_type::from_address(
-          std::invoke(typename Head::underlying_fn{}, std::move(context), std::forward<Args>(xargs)...).m_handle);
+          std::invoke(typename Head::underlying_fn{}, std::move(context), std::forward<Args>(xargs)...)
+              .m_handle);
     };
 
     handle_type child = std::apply(unwrap, std::move(args));
@@ -308,7 +336,9 @@ private:
   friend struct detail::promise_type;
 
   // Promise constructs, packets accesses.
-  explicit constexpr task(non_null<frame_block *> handle) noexcept : m_handle{handle} { LF_ASSERT(handle != nullptr); }
+  explicit constexpr task(non_null<frame_block *> handle) noexcept : m_handle{handle} {
+    LF_ASSERT(handle != nullptr);
+  }
 
   non_null<frame_block *> m_handle; ///< The handle to the coroutine.
 };

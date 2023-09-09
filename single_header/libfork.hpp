@@ -138,14 +138,25 @@ namespace detail {
  * mode.
  *
  */
-#ifndef NDEBUG
-  #define LF_DEPENDANT_ABI release
+#ifdef NDEBUG
+  #define LF_DEPENDENT_ABI release_abi
 #else
-  #define LF_DEPENDANT_ABI debug
+  #define LF_DEPENDENT_ABI debug_abi
 #endif
 
+#ifndef LF_ASYNC_STACK_SIZE
+  /**
+   * @brief A customizable stack size for ``async_stack``'s (in kibibytes).
+   *
+   * You can override this by defining ``LF_ASYNC_STACK_SIZE`` to whatever you like.
+   */
+  #define LF_ASYNC_STACK_SIZE 1024
+#endif
+
+static_assert(LF_ASYNC_STACK_SIZE >= 1, "LF_ASYNC_STACK_SIZE must be at least 1 kilobyte");
+
 /**
- * @brief Use to decorate lambdas and ``operator()`` (alongside ``LF_STATIC_CONST``) and with ``static`` if
+ * @brief Use to decorate lambdas and ``operator()`` (alongside ``LF_STATIC_CONST``) with ``static`` if
  * supported.
  */
 #ifdef __cpp_static_call_operator
@@ -166,10 +177,10 @@ namespace detail {
 // clang-format off
 
 /**
- * @brief Use like BOOST_HOF_RETURNS to define a function/lambda with all the noexcept/requires/decltype specifiers.
+ * @brief Use like `BOOST_HOF_RETURNS` to define a function/lambda with all the noexcept/requires/decltype specifiers.
  * 
  */
-#define LF_HOF_RETURNS(expr) noexcept(noexcept(expr)) -> decltype(auto) requires requires { expr; } { return expr;}
+#define LF_HOF_RETURNS(expr) noexcept(noexcept(expr)) -> decltype(expr) requires requires { expr; } { return expr;}
 
 // clang-format on
 
@@ -477,6 +488,12 @@ using non_null = T;
 template <typename T>
 using owner = T;
 
+/**
+ * @brief Forwards to ``std::is_reference_v<T>``.
+ */
+template <typename T>
+concept reference = std::is_reference_v<T>;
+
 #endif /* DF63D333_F8C0_4BBA_97E1_32A78466B8B7 */
 
 
@@ -524,7 +541,7 @@ struct root_block : root_block<void> {
 
 // ----------------------------------------------- //
 
-inline namespace LF_DEPENDANT_ABI {
+inline namespace LF_DEPENDENT_ABI {
 
 /**
  * @brief A base class that (compile-time) conditionally adds debugging information.
@@ -565,7 +582,7 @@ static_assert(std::is_trivially_destructible_v<debug_block>);
 
 struct frame_block; ///< Forward declaration, impl below.
 
-} // namespace LF_DEPENDANT_ABI
+} // namespace LF_DEPENDENT_ABI
 
 /**
  * @brief The async stack pointer.
@@ -594,7 +611,7 @@ constinit inline thread_local frame_block *asp = nullptr;
 
 // ----------------------------------------------- //
 
-inline namespace LF_DEPENDANT_ABI {
+inline namespace LF_DEPENDENT_ABI {
 
 /**
  * @brief A small bookkeeping struct allocated immediately before/after each coroutine frame.
@@ -781,64 +798,63 @@ private:
 static_assert(alignof(frame_block) <= k_new_align, "Will be allocated above a coroutine-frame");
 static_assert(std::is_trivially_destructible_v<frame_block>);
 
-} // namespace LF_DEPENDANT_ABI
+} // namespace LF_DEPENDENT_ABI
 
 // ----------------------------------------------- //
 
 /**
  * @brief A fraction of a thread's cactus stack.
  */
-class alignas(k_new_align) async_stack : immovable<async_stack>, std::array<std::byte, k_mebibyte> {
-
-public:
-  /**
-   * @brief The size of an `async_stack` (number of bytes it can store).
-   */
-  static constexpr auto size() noexcept -> std::size_t { return k_mebibyte; }
-
-private:
-  static_assert(alignof(frame_block) <= alignof(frame_block *), "As we will allocate sentinel above pointer");
-
-  static constexpr std::size_t sentinel_offset = k_mebibyte - sizeof(frame_block) - sizeof(frame_block *);
-
+class async_stack : immovable<async_stack> {
 public:
   /**
    * @brief Construct a new `async_stack`.
    */
   async_stack() noexcept {
     // Initialize the sentinel with space for a pointer behind it.
-    new (static_cast<void *>(data() + sentinel_offset)) frame_block{lf::detail::empty{}};
+    new (static_cast<void *>(m_buf + sentinel_offset)) frame_block{lf::detail::empty{}};
   }
 
   /**
    * @brief Get a pointer to the sentinel `frame_block` on the stack.
    */
   auto sentinel() noexcept -> frame_block * {
-    return std::launder(std::bit_cast<frame_block *>(data() + sentinel_offset));
+    return std::launder(std::bit_cast<frame_block *>(m_buf + sentinel_offset));
   }
 
   /**
    * @brief Convert a pointer to a stack's sentinel `frame_block` to a pointer to the stack.
    */
   static auto unsafe_from_sentinel(frame_block *sentinel) noexcept -> async_stack * {
+#ifdef __cpp_lib_is_pointer_interconvertible
+    static_assert(std::is_pointer_interconvertible_with_class(&async_stack::m_buf));
+#endif
     return std::bit_cast<async_stack *>(std::launder(byte_cast(sentinel) - sentinel_offset));
   }
+
+private:
+  static constexpr std::size_t k_size = k_kibibyte * LF_ASYNC_STACK_SIZE;
+  static constexpr std::size_t sentinel_offset = k_size - sizeof(frame_block) - sizeof(frame_block *);
+
+  alignas(k_new_align) std::byte m_buf[k_size]; // NOLINT
+
+  static_assert(alignof(frame_block) <= alignof(frame_block *), "As we will allocate sentinel above pointer");
 };
 
 static_assert(std::is_standard_layout_v<async_stack>);
-static_assert(sizeof(async_stack) == async_stack::size(), "Spurious padding in async_stack!");
-static_assert(async_stack::size() >= k_kibibyte, "Stack is too small!");
+
+static_assert(sizeof(async_stack) == k_kibibyte * LF_ASYNC_STACK_SIZE, "Spurious padding in async_stack!");
 
 // ----------------------------------------------- //
 
-inline namespace LF_DEPENDANT_ABI {
+inline namespace LF_DEPENDENT_ABI {
 
 class promise_alloc_heap : frame_block {
 protected:
   explicit promise_alloc_heap(std::coroutine_handle<> self) noexcept : frame_block{self} { asp = this; }
 };
 
-} // namespace LF_DEPENDANT_ABI
+} // namespace LF_DEPENDENT_ABI
 
 /**
  * @brief A base class for promises that allocates on an `async_stack`.

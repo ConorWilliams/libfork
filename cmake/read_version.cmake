@@ -4,7 +4,7 @@ function(read_version fname)
 
   string(REGEX MATCH "#define [A-Z_0-9]*VERSION_MAJOR ([0-9]*)" _ ${ver})
 
-  message(STATUS "Found majour version: ${CMAKE_MATCH_1}")
+  message(STATUS "Found ${fname} majour version: ${CMAKE_MATCH_1}")
 
   set(version_major
       ${CMAKE_MATCH_1}
@@ -13,7 +13,7 @@ function(read_version fname)
 
   string(REGEX MATCH "#define [A-Z_0-9]*VERSION_MINOR ([0-9]*)" _ ${ver})
 
-  message(STATUS "Found minor version: ${CMAKE_MATCH_1}")
+  message(STATUS "Found ${fname}  minor version: ${CMAKE_MATCH_1}")
 
   set(version_minor
       ${CMAKE_MATCH_1}
@@ -22,7 +22,7 @@ function(read_version fname)
 
   string(REGEX MATCH "#define [A-Z_0-9]*VERSION_PATCH ([0-9]*)" _ ${ver})
 
-  message(STATUS "Found patch version: ${CMAKE_MATCH_1}")
+  message(STATUS "Found ${fname}  patch version: ${CMAKE_MATCH_1}")
 
   set(version_patch
       ${CMAKE_MATCH_1}

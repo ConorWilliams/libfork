@@ -17,6 +17,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 include(cmake/project-is-top-level.cmake)
 include(cmake/variables.cmake)
+include(cmake/CPM.cmake)
 
 # ---- Dependencies ----
 
@@ -24,12 +25,14 @@ find_package(Threads REQUIRED)
 
 find_package(HWLOC)
 
+CPMAddPackage("gh:codeinred/tuplet#v2.1.1")
+
 # ---- Declare library ----
 
 add_library(libfork_libfork INTERFACE)
 add_library(libfork::libfork ALIAS libfork_libfork)
 
-target_link_libraries(libfork_libfork INTERFACE Threads::Threads)
+target_link_libraries(libfork_libfork INTERFACE Threads::Threads tuplet::tuplet)
 
 set_property(TARGET libfork_libfork PROPERTY EXPORT_NAME libfork)
 

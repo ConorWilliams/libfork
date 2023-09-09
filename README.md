@@ -17,9 +17,23 @@ User api:
 Context API (for implementors)
 Internal:
 
-TODO:
+TODO: Catalogue deps (i.e pkg-config) (fresh ubuntu wsl)
 
-Catalogue deps (i.e pkg-config)
+TODO: detect HALO and bail out
+
+TODO: invoke (eventually<T>, because exceptions don't propagate return will never have thrown!) 
+
+TODO: logging at call-site, name at definition task<T, "name">
+
+TODO: pass return_address in first_arg
+
+TODO: no forked r-values at the promise constructor level
+
+TODO: test dependencies when installing, test install on fresh machine.
+
+TODO: CI -fno-exceptions
+
+TODO: remove constexpr in byte_cast and friends (MSVC showed us the way)
 
 TODO: A check in the CI that makes sure single header is up to date with the rest of the code.
 

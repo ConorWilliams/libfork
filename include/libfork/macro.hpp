@@ -65,14 +65,25 @@ namespace detail {
  * mode.
  *
  */
-#ifndef NDEBUG
-  #define LF_DEPENDANT_ABI release
+#ifdef NDEBUG
+  #define LF_DEPENDENT_ABI release_abi
 #else
-  #define LF_DEPENDANT_ABI debug
+  #define LF_DEPENDENT_ABI debug_abi
 #endif
 
+#ifndef LF_ASYNC_STACK_SIZE
+  /**
+   * @brief A customizable stack size for ``async_stack``'s (in kibibytes).
+   *
+   * You can override this by defining ``LF_ASYNC_STACK_SIZE`` to whatever you like.
+   */
+  #define LF_ASYNC_STACK_SIZE 1024
+#endif
+
+static_assert(LF_ASYNC_STACK_SIZE >= 1, "LF_ASYNC_STACK_SIZE must be at least 1 kilobyte");
+
 /**
- * @brief Use to decorate lambdas and ``operator()`` (alongside ``LF_STATIC_CONST``) and with ``static`` if
+ * @brief Use to decorate lambdas and ``operator()`` (alongside ``LF_STATIC_CONST``) with ``static`` if
  * supported.
  */
 #ifdef __cpp_static_call_operator
@@ -93,10 +104,10 @@ namespace detail {
 // clang-format off
 
 /**
- * @brief Use like BOOST_HOF_RETURNS to define a function/lambda with all the noexcept/requires/decltype specifiers.
+ * @brief Use like `BOOST_HOF_RETURNS` to define a function/lambda with all the noexcept/requires/decltype specifiers.
  * 
  */
-#define LF_HOF_RETURNS(expr) noexcept(noexcept(expr)) -> decltype(auto) requires requires { expr; } { return expr;}
+#define LF_HOF_RETURNS(expr) noexcept(noexcept(expr)) -> decltype(expr) requires requires { expr; } { return expr;}
 
 // clang-format on
 
