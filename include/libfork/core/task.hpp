@@ -150,16 +150,15 @@ concept stateless = std::is_class_v<T> && std::is_trivial_v<T> && std::is_empty_
  * should always be able to return an empty ``lf::async_stack``.
  */
 template <typename Context>
-concept thread_context =
-    requires(Context ctx, owner<detail::async_stack *> stack, non_null<task_ptr> handle) {
-      { ctx.max_threads() } -> std::same_as<std::size_t>;
+concept thread_context = requires(Context ctx, owner<detail::async_stack *> stack, non_null<task_ptr> handle) {
+  { ctx.max_threads() } -> std::same_as<std::size_t>;
 
-      { ctx.stack_pop() } -> std::convertible_to<owner<detail::async_stack *>>;
-      { ctx.stack_push(stack) };
+  { ctx.stack_pop() } -> std::convertible_to<owner<detail::async_stack *>>;
+  { ctx.stack_push(stack) };
 
-      { ctx.task_pop() } -> std::convertible_to<task_ptr>;
-      { ctx.task_push(handle) };
-    };
+  { ctx.task_pop() } -> std::convertible_to<task_ptr>;
+  { ctx.task_push(handle) };
+};
 
 // ----------------------------------------------- //
 
@@ -201,8 +200,7 @@ concept not_first_arg = !first_arg<T>;
 namespace detail {
 
 template <typename Task, typename Head>
-concept valid_return =
-    is_task<Task> && requires { typename promise_result<return_of<Head>, value_of<Task>>; };
+concept valid_return = is_task<Task> && requires { typename promise_result<return_of<Head>, value_of<Task>>; };
 
 } // namespace detail
 
@@ -210,8 +208,7 @@ concept valid_return =
  * @brief Check that the async function encoded in `Head` is invocable with arguments in `Tail`.
  */
 template <typename Head, typename... Tail>
-concept valid_packet =
-    first_arg<Head> && detail::valid_return<std::invoke_result_t<function_of<Head>, Head, Tail...>, Head>;
+concept valid_packet = first_arg<Head> && detail::valid_return<std::invoke_result_t<function_of<Head>, Head, Tail...>, Head>;
 
 /**
  * @brief A helper to statically attach a new `context_type` to a `first_arg`.

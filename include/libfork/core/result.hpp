@@ -13,6 +13,10 @@
 #include "tuplet/tuple.hpp"
 
 namespace lf {
+/**
+ * @brief A tag type to explicitly ignore the return value of a task.
+ */
+struct ignore_t {};
 
 /**
  * @brief Like `std::assignable_from` but without the common reference type requirement.
@@ -21,10 +25,6 @@ template <typename LHS, typename RHS>
 concept assignable = std::is_lvalue_reference_v<LHS> && requires(LHS lhs, RHS &&rhs) {
   { lhs = std::forward<RHS>(rhs) } -> std::same_as<LHS>;
 };
-
-// TODO: move wherever invoke goes
-
-struct ignore_t {};
 
 /**
  * @brief A tuple-like type with forwarding semantics for in place construction.
@@ -135,6 +135,8 @@ private:
   R *m_ret_address;
 };
 
+// ----------------------------------------------------- //
+
 /**
  * @brief A small control structure that a root tasks use to communicate with the main thread.
  */
@@ -163,12 +165,6 @@ struct is_root_result<root_result<T>> : std::true_type {};
 
 template <typename T>
 inline constexpr bool is_root_result_v = detail::is_root_result<T>::value;
-
-// void test() {
-//   root_result<int> x;
-//   int y;
-//   x = y;
-// }
 
 } // namespace lf
 

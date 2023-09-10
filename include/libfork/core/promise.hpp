@@ -99,40 +99,36 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
     struct final_awaitable : stdx::suspend_always {
       constexpr auto await_suspend(stdx::coroutine_handle<promise_type> child) const noexcept -> stdx::coroutine_handle<> {
 
+        // Completing a task means we currently own the async_stack this child is on
+
         if constexpr (Tag == tag::root) {
           LF_LOG("Root task at final suspend, releases semaphore");
-
           // Finishing a root task implies our stack is empty and should have no exceptions.
-          LF_ASSERT(Context::context().stack_top()->empty());
-
-          child.promise().get_return_address_obj().semaphore.release();
-
+          child.promise().address()->semaphore.release();
           child.destroy();
           return stdx::noop_coroutine();
         }
 
         LF_LOG("Task reaches final suspend");
 
-        // Must copy onto stack before destroying child.
-        stdx::coroutine_handle<promise_base> const parent_h = child.promise().parent();
-        // Can no longer touch child.
-        child.destroy();
+        auto [parent, this_was_last] = frame_block::pop_asp();
 
         if constexpr (Tag == tag::call || Tag == tag::invoke) {
           LF_LOG("Inline task resumes parent");
           // Inline task's parent cannot have been stolen, no need to reset control block.
-          return parent_h;
+          return parent->get_coro();
         }
 
         Context &context = Context::context();
 
-        if (std::optional<task_handle> parent_task_handle = context.task_pop()) {
+        if (task_ptr parent_task = context.task_pop()) {
           // No-one stole continuation, we are the exclusive owner of parent, just keep ripping!
           LF_LOG("Parent not stolen, keeps ripping");
-          LF_ASSERT(parent_h.address() == parent_task_handle->address());
+          LF_ASSERT(parent_task.m_frame_block == parent);
+          LF_ASSERT(!this_was_last);
           // This must be the same thread that created the parent so it already owns the stack.
           // No steals have occurred so we do not need to call reset().;
-          return parent_h;
+          return parent->get_coro();
         }
 
         // We are either: the thread that created the parent or a thread that completed a forked task.
@@ -152,10 +148,8 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
         LF_LOG("Task's parent was stolen");
 
-        promise_base &parent_cb = parent_h.promise();
-
         // Register with parent we have completed this child task.
-        if (parent_cb.joins().fetch_sub(1, std::memory_order_release) == 1) {
+        if (parent->joins().fetch_sub(1, std::memory_order_release) == 1) {
           // Acquire all writes before resuming.
           std::atomic_thread_fence(std::memory_order_acquire);
 

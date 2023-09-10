@@ -11,11 +11,10 @@ namespace lf {
 
 namespace detail {
 
-inline constexpr async_fn for_each =
-    []<std::input_iterator I, std::sentinel_for<I> S, class Proj = std::identity,
-       std::indirectly_unary_invocable<std::projected<I, Proj>> Fun>(
-        auto for_each, I head, S tail, Fun f, Proj proj = {}, std::iter_difference_t<I> chunk = 1)
-        LF_STATIC_CALL->lf::task<void> {
+inline constexpr async_fn for_each = []<std::input_iterator I, std::sentinel_for<I> S, class Proj = std::identity,
+                                        std::indirectly_unary_invocable<std::projected<I, Proj>> Fun>(
+                                         auto for_each, I head, S tail, Fun f, Proj proj = {},
+                                         std::iter_difference_t<I> chunk = 1) LF_STATIC_CALL->lf::task<void> {
   //
   auto len = head - tail;
 

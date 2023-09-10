@@ -137,6 +137,8 @@ struct frame_block : immovable<frame_block>, debug_block {
       m_frame_block->get_coro().resume();
     }
 
+    explicit operator bool() const noexcept { return m_frame_block != nullptr; }
+
     // TODO: make private
     // private:
     frame_block *m_frame_block = nullptr;
@@ -192,6 +194,7 @@ struct frame_block : immovable<frame_block>, debug_block {
   static auto pop_asp() -> parent_t {
 
     frame_block *top = asp;
+    LF_ASSERT(top);
 
     // Destroy the coroutine (this does not effect top)
     LF_ASSERT(top->is_regular());
@@ -206,6 +209,8 @@ struct frame_block : immovable<frame_block>, debug_block {
     }
     return {asp, false};
   }
+
+  [[nodiscard]] constexpr auto joins() -> std::atomic_uint16_t { return m_joins; }
 
 private:
   static constexpr std::int16_t uninitialized = 1;

@@ -187,7 +187,7 @@ static_assert(LF_ASYNC_STACK_SIZE >= 1, "LF_ASYNC_STACK_SIZE must be at least 1 
 /**
  * @brief Lift an overload-set/template into a constrained lambda.
  */
-#define LF_LIFT(overload_set)                                                                                \
+#define LF_LIFT(overload_set)                                                                                               \
   [](auto &&...args) LF_STATIC_CALL LF_HOF_RETURNS(overload_set(std::forward<decltype(args)>(args)...))
 
 /**
@@ -258,17 +258,17 @@ static_assert(LF_ASYNC_STACK_SIZE >= 1, "LF_ASYNC_STACK_SIZE must be at least 1 
 #elif defined(__clang__)
   #define LF_ASSUME(expr) __builtin_assume(bool(expr))
 #elif defined(__GNUC__) && !defined(__ICC)
-  #define LF_ASSUME(expr)                                                                                    \
-    if (bool(expr)) {                                                                                        \
-    } else {                                                                                                 \
-      __builtin_unreachable();                                                                               \
+  #define LF_ASSUME(expr)                                                                                                   \
+    if (bool(expr)) {                                                                                                       \
+    } else {                                                                                                                \
+      __builtin_unreachable();                                                                                              \
     }
 #elif defined(_MSC_VER) || defined(__ICC)
   #define LF_ASSUME(expr) __assume(bool(expr))
 #else
   #warning "No LF_ASSUME() implementation for this compiler."
-  #define LF_ASSUME(expr)                                                                                    \
-    do {                                                                                                     \
+  #define LF_ASSUME(expr)                                                                                                   \
+    do {                                                                                                                    \
     } while (false)
 #endif
 
@@ -310,15 +310,15 @@ static_assert(LF_ASYNC_STACK_SIZE >= 1, "LF_ASYNC_STACK_SIZE must be at least 1 
       #define LF_SYNC_COUT std::cout << std::this_thread::get_id()
     #endif
 
-    #define LF_LOG(message, ...)                                                                             \
-      do {                                                                                                   \
-        if (!std::is_constant_evaluated()) {                                                                 \
-          LF_SYNC_COUT << ": " << LF_FORMAT(message __VA_OPT__(, ) __VA_ARGS__) << '\n';                     \
-        }                                                                                                    \
+    #define LF_LOG(message, ...)                                                                                            \
+      do {                                                                                                                  \
+        if (!std::is_constant_evaluated()) {                                                                                \
+          LF_SYNC_COUT << ": " << LF_FORMAT(message __VA_OPT__(, ) __VA_ARGS__) << '\n';                                    \
+        }                                                                                                                   \
       } while (false)
   #else
-    #define LF_LOG(head, ...)                                                                                \
-      do {                                                                                                   \
+    #define LF_LOG(head, ...)                                                                                               \
+      do {                                                                                                                  \
       } while (false)
   #endif
 #endif
@@ -607,6 +607,8 @@ struct frame_block : immovable<frame_block>, debug_block {
       m_frame_block->get_coro().resume();
     }
 
+    explicit operator bool() const noexcept { return m_frame_block != nullptr; }
+
     // TODO: make private
     // private:
     frame_block *m_frame_block = nullptr;
@@ -662,6 +664,7 @@ struct frame_block : immovable<frame_block>, debug_block {
   static auto pop_asp() -> parent_t {
 
     frame_block *top = asp;
+    LF_ASSERT(top);
 
     // Destroy the coroutine (this does not effect top)
     LF_ASSERT(top->is_regular());
@@ -676,6 +679,8 @@ struct frame_block : immovable<frame_block>, debug_block {
     }
     return {asp, false};
   }
+
+  [[nodiscard]] constexpr auto joins() -> std::atomic_uint16_t { return m_joins; }
 
 private:
   static constexpr std::int16_t uninitialized = 1;
