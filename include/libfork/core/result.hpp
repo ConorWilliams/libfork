@@ -12,6 +12,14 @@
 
 namespace lf {
 
+/**
+ * @brief Like `std::assignable_from` but without the common reference type requirement.
+ */
+template <typename LHS, typename RHS>
+concept assignable = std::is_lvalue_reference_v<LHS> && requires(LHS lhs, RHS &&rhs) {
+  { lhs = std::forward<RHS>(rhs) } -> std::same_as<LHS>;
+};
+
 namespace detail {
 
 struct ignore_t {};
@@ -38,24 +46,17 @@ in_place_args(Args &&...) -> in_place_args<Args &&...>;
 template <typename R, typename T>
 struct promise_result;
 
+/**
+ * @brief Specialization for `void` and ignored return types.
+ *
+ * @tparam R The type of the return address.
+ * @tparam T The type of the return value.
+ */
 template <typename R, typename T>
   requires std::same_as<R, void> or std::same_as<R, detail::ignore_t>
 struct promise_result<R, T> {
-  // TODO
+  constexpr void return_void() const noexcept {}
 };
-
-/**
- * @brief Like `std::assignable_from` but without the common reference type requirement.
- */
-template <typename LHS, typename RHS>
-concept assignable = std::is_lvalue_reference_v<LHS> && requires(LHS lhs, RHS &&rhs) {
-  { lhs = std::forward<RHS>(rhs) } -> std::same_as<LHS>;
-};
-
-// template <typename T>
-// using X = T &&;
-
-// static_assert(std::same_as<int &&, X<int>>);
 
 /**
  * @brief A promise base-class that provides the return_[...] methods.
@@ -70,13 +71,6 @@ struct promise_result<R, T> {
    * @brief Assign a value to the return address.
    *
    * If the return address is directly assignable from `value` this will not construct a temporary.
-   *
-   * Const reference collapse rules:
-   *    T         const& -> T const &
-   *    T&        const& -> T&
-   *    T&&       const& -> T&
-   *    T const&  const& -> T const &
-   *    T const&& const& -> T const &
    */
   constexpr void return_value(T const &value) const
     requires std::constructible_from<T, T const &> and (!reference<T>)
@@ -87,7 +81,6 @@ struct promise_result<R, T> {
       *address() = T(value);
     }
   }
-
   /**
    * @brief Assign a value directly to the return address.
    */
@@ -100,7 +93,6 @@ struct promise_result<R, T> {
       *address() = value;
     }
   }
-
   /**
    * @brief Assign a value to the return address.
    *
@@ -115,7 +107,6 @@ struct promise_result<R, T> {
       *address() = T(std::forward<U>(value));
     }
   }
-
   /**
    * @brief Assign a value constructed from the arguments stored in `args` to the return address.
    *
