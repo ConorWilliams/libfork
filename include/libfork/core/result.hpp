@@ -2,6 +2,7 @@
 #define EE6A2701_7559_44C9_B708_474B1AE823B2
 
 #include <concepts>
+#include <type_traits>
 #include <utility>
 
 #include "libfork/macro.hpp"
@@ -37,6 +38,25 @@ in_place_args(Args &&...) -> in_place_args<Args &&...>;
 template <typename R, typename T>
 struct promise_result;
 
+template <typename R, typename T>
+  requires std::same_as<R, void> or std::same_as<R, detail::ignore_t>
+struct promise_result<R, T> {
+  // TODO
+};
+
+/**
+ * @brief Like `std::assignable_from` but without the common reference type requirement.
+ */
+template <typename LHS, typename RHS>
+concept assignable = std::is_lvalue_reference_v<LHS> && requires(LHS lhs, RHS &&rhs) {
+  { lhs = std::forward<RHS>(rhs) } -> std::same_as<LHS>;
+};
+
+// template <typename T>
+// using X = T &&;
+
+// static_assert(std::same_as<int &&, X<int>>);
+
 /**
  * @brief A promise base-class that provides the return_[...] methods.
  *
@@ -44,20 +64,27 @@ struct promise_result;
  * @tparam T The type of the return value.
  */
 template <typename R, typename T>
-  requires std::assignable_from<R &, T>
+  requires assignable<R &, T>
 struct promise_result<R, T> {
   /**
    * @brief Assign a value to the return address.
    *
-   *  If the return address is directly assignable from `value` this will not construct a temporary.
+   * If the return address is directly assignable from `value` this will not construct a temporary.
+   *
+   * Const reference collapse rules:
+   *    T         const& -> T const &
+   *    T&        const& -> T&
+   *    T&&       const& -> T&
+   *    T const&  const& -> T const &
+   *    T const&& const& -> T const &
    */
   constexpr void return_value(T const &value) const
-    requires std::constructible_from<T, T const &>
+    requires std::constructible_from<T, T const &> and (!reference<T>)
   {
-    if constexpr (std::assignable_from<R &, T const &>) {
+    if constexpr (assignable<R &, T const &>) {
       *address() = value;
-    } else {
-      *address() = [&]() -> T { return value; }();
+    } else /* if constexpr (assignable<R &, T>) */ { // ensured by struct constraint
+      *address() = T(value);
     }
   }
 
@@ -67,7 +94,11 @@ struct promise_result<R, T> {
   constexpr void return_value(T &&value) const
     requires std::constructible_from<T, T>
   {
-    *address() = std::move(value);
+    if constexpr (std::is_rvalue_reference_v<T &&>) {
+      *address() = std::move(value);
+    } else {
+      *address() = value;
+    }
   }
 
   /**
@@ -78,10 +109,10 @@ struct promise_result<R, T> {
   template <typename U>
     requires std::constructible_from<T, U>
   constexpr void return_value(U &&value) const {
-    if constexpr (std::assignable_from<R &, U>) {
+    if constexpr (assignable<R &, U>) {
       *address() = std::forward<U>(value);
     } else {
-      *address() = [&]() -> T { return std::forward<U>(value); }();
+      *address() = T(std::forward<U>(value));
     }
   }
 
@@ -105,11 +136,13 @@ protected:
   constexpr auto address() const noexcept -> non_null<R *> { return m_ret_address; }
 
 private:
-  static constexpr auto emplace = [](R *ret, auto &&...args) LF_STATIC_CALL {
-    if constexpr (requires { ret->emplace(std::forward<decltype(args)>(args)...); }) {
-      (*ret).emplace(std::forward<decltype(args)>(args)...);
+  static constexpr auto emplace = []<typename... Args>(R *ret, Args &&...args) LF_STATIC_CALL {
+    if constexpr (requires { ret->emplace(std::forward<Args>(args)...); }) {
+      (*ret).emplace(std::forward<Args>(args)...);
+    } else if constexpr (std::is_move_assignable_v<R> && std::constructible_from<R, Args...>) {
+      (*ret) = R(std::forward<Args>(args)...);
     } else {
-      (*ret) = [&]() -> T { return {std::forward<decltype(args)>(args)...}; }();
+      (*ret) = T(std::forward<Args>(args)...);
     }
   };
 
