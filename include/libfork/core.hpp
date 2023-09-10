@@ -28,25 +28,7 @@
 
 // clang-format off
 
-#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
 
-/**
- * @brief Specialize coroutine_traits for task<...> from functions.
- */
-template <typename T, lf::first_arg Head, typename... Args>
-struct lf::stdx::coroutine_traits<lf::task<T>, Head, Args...> {
-  using promise_type = ::lf::detail::promise_type<typename Head::return_address_t, T, typename Head::context_type, Head::tag_value>;
-};
-
-/**
- * @brief Specialize coroutine_traits for task<...> from member functions.
- */
-template <typename T, lf::detail::not_first_arg Self, lf::first_arg Head, typename... Args>
-struct lf::stdx::coroutine_traits<lf::task<T>, Self, Head, Args...> {
-  using promise_type = lf::detail::promise_type<typename Head::return_address_t, T, typename Head::context_type, Head::tag_value>;
-};
-
-#endif /* LF_DOXYGEN_SHOULD_SKIP_THIS */
 
 namespace lf {
 

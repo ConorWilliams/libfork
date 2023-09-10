@@ -21,9 +21,11 @@
 #include <version>
 
 #include "libfork/macro.hpp"
+#include "libfork/utility.hpp"
 
-#include "libfork/core/core.hpp"
 #include "libfork/core/coroutine.hpp"
+#include "libfork/core/result.hpp"
+#include "libfork/core/stack.hpp"
 #include "libfork/core/task.hpp"
 
 /**
@@ -36,110 +38,69 @@ namespace lf::detail {
 
 // -------------------------------------------------------------------------- //
 
+// TODO: Cleanup below
+
+// /**
+//  * @brief Disable rvalue references for T&& template types if an async function
+//  * is forked.
+//  *
+//  * This is to prevent the user from accidentally passing a temporary object to
+//  * an async function that will then destructed in the parent task before the
+//  * child task returns.
+//  */
+// template <typename T, typename Self>
+// concept protect_forwarding_tparam = first_arg<Self> && !std::is_rvalue_reference_v<T> &&
+//                                     (tag_of<Self> != tag::fork || std::is_reference_v<T>);
+
 /**
  * @brief An awaitable type (in a task) that triggers a join.
  */
 struct join_t {};
 
 #ifndef NDEBUG
-  #define FATAL_IN_DEBUG(expr, message)                                                                      \
-    do {                                                                                                     \
-      if (!(expr)) {                                                                                         \
-        ::lf::detail::noexcept_invoke([] { LF_THROW(std::runtime_error(message)); });                        \
-      }                                                                                                      \
+  #define FATAL_IN_DEBUG(expr, message)                                                                                     \
+    do {                                                                                                                    \
+      if (!(expr)) {                                                                                                        \
+        ::lf::detail::noexcept_invoke([] { LF_THROW(std::runtime_error(message)); });                                       \
+      }                                                                                                                     \
     } while (false)
 #else
-  #define FATAL_IN_DEBUG(expr, message)                                                                      \
-    do {                                                                                                     \
+  #define FATAL_IN_DEBUG(expr, message)                                                                                     \
+    do {                                                                                                                    \
     } while (false)
 #endif
 
-// Adds a context_type type alias to T.
-template <thread_context Context, typename Head>
-struct with_context : Head {
-  using context_type = Context;
-  static auto context() -> Context & { return Context::context(); }
-};
+template <tag Tag>
+using allocator = std::conditional_t<Tag == tag::root, promise_alloc_heap, promise_alloc_stack>;
 
-template <typename R, thread_context Context, typename Head>
-struct shim_with_context : with_context<Context, Head> {
-  using return_address_t = R;
-};
+template <typename R, typename T, thread_context Context, tag Tag>
+struct promise_type : allocator<Tag>, promise_result<R, T> {
 
-struct regular_void {};
+  static_assert(Tag == tag::fork || Tag == tag::call || Tag == tag::root);
+  static_assert(Tag != tag::root || is_root_result_v<R>);
 
-template <typename Ret, typename T, thread_context Context, tag Tag>
-struct promise_type : mixin_return<Ret, T, Tag> {
-private:
-  template <typename Head, typename... Tail>
-  constexpr auto add_context_to_packet(packet<Head, Tail...> &&pack)
-      -> packet<with_context<Context, Head>, Tail...> {
-    return {pack.ret, {std::move(pack.context)}, std::move(pack.args)};
-  }
+  using handle_t = stdx::coroutine_handle<promise_type>;
 
-public:
-  using value_type = T;
+  template <first_arg Head, typename... Tail>
+  constexpr promise_type(Head head, [[maybe_unused]] Tail &&...tail) noexcept
+    requires std::constructible_from<promise_result<R, T>, R *>
+      : allocator<Tag>{handle_t::from_promise(this)},
+        promise_result<R, T>{head.address()} {}
 
-  [[nodiscard]] static auto operator new(std::size_t const size) -> void * {
-    if constexpr (Tag == tag::root) {
-      // Use global new.
-      return ::operator new(size);
-    } else {
-      // Use the stack that the thread owns which may not be equal to the parent's stack.
-      return Context::context().stack_top()->allocate(size);
-    }
-  }
+  constexpr promise_type() noexcept : allocator<Tag>{handle_t::from_promise(this)} {}
 
-  static void operator delete(void *const ptr) noexcept { throw std::runtime_error("Nauty compiler"); }
-
-  static void operator delete(void *const ptr, std::size_t const size) noexcept {
-    if constexpr (Tag == tag::root) {
-#ifdef __cpp_sized_deallocation
-      ::operator delete(ptr, size);
-#else
-      ::operator delete(ptr);
-#endif
-    } else {
-      // When destroying a task we must be the running on the current threads stack.
-      LF_ASSERT(virtual_stack::from_address(ptr) == Context::context().stack_top());
-      virtual_stack::from_address(ptr)->deallocate(ptr, size);
-    }
-  }
-
-  auto get_return_object() -> task<T> {
-    return task<T>{stdx::coroutine_handle<promise_type>::from_promise(*this).address()};
-  }
+  static auto get_return_object() noexcept -> task_construct_key { return {}; }
 
   static auto initial_suspend() -> stdx::suspend_always { return {}; }
 
-  void unhandled_exception() noexcept {
-
-    FATAL_IN_DEBUG(this->debug_count() == 0, "Unhandled exception without a join!");
-
-    if constexpr (Tag == tag::root) {
-      LF_LOG("Unhandled exception in root task");
-      // Put in our remote root-block.
-      this->get_return_address_obj().exception.unhandled_exception();
-    } else if (!this->parent().promise().has_parent()) {
-      LF_LOG("Unhandled exception in child of root task");
-      // Put in parent (root) task's remote root-block.
-      // This reinterpret_cast is safe because of the static_asserts in core.hpp.
-      reinterpret_cast<exception_packet *>(this->parent().promise().ret_address())
-          ->unhandled_exception(); // NOLINT
-    } else {
-      LF_LOG("Unhandled exception in root's grandchild or further");
-      // Put on stack of parent task.
-      virtual_stack::from_address(&this->parent().promise())->unhandled_exception();
-    }
-  }
+  void unhandled_exception() noexcept { LF_RETHROW; }
 
   auto final_suspend() noexcept {
     struct final_awaitable : stdx::suspend_always {
-      [[nodiscard]] constexpr auto await_suspend(stdx::coroutine_handle<promise_type> child) const noexcept
-          -> stdx::coroutine_handle<> {
+      constexpr auto await_suspend(stdx::coroutine_handle<promise_type> child) const noexcept -> stdx::coroutine_handle<> {
 
         if constexpr (Tag == tag::root) {
-          LF_LOG("Root task at final suspend, releases sem");
+          LF_LOG("Root task at final suspend, releases semaphore");
 
           // Finishing a root task implies our stack is empty and should have no exceptions.
           LF_ASSERT(Context::context().stack_top()->empty());
@@ -252,267 +213,239 @@ public:
     return final_awaitable{};
   }
 
-public:
-  template <typename R, typename F, typename... This, typename... Args>
-  [[nodiscard]] constexpr auto
-  await_transform(packet<first_arg_t<R, tag::fork, F, This...>, Args...> &&packet) {
+  // public:
+  //   template <typename R, typename F, typename... This, typename... Args>
+  //   [[nodiscard]] constexpr auto await_transform(packet<first_arg_t<R, tag::fork, F, This...>, Args...> &&packet) {
 
-    this->debug_inc();
+  //     this->debug_inc();
 
-    auto my_handle = cast_down(stdx::coroutine_handle<promise_type>::from_promise(*this));
+  //     auto my_handle = cast_down(stdx::coroutine_handle<promise_type>::from_promise(*this));
 
-    stdx::coroutine_handle child = add_context_to_packet(std::move(packet)).invoke_bind(my_handle);
+  //     stdx::coroutine_handle child = add_context_to_packet(std::move(packet)).invoke_bind(my_handle);
 
-    struct awaitable : stdx::suspend_always {
-      [[nodiscard]] constexpr auto await_suspend(stdx::coroutine_handle<promise_type> parent) noexcept
-          -> decltype(child) {
-        // In case *this (awaitable) is destructed by stealer after push
-        stdx::coroutine_handle stack_child = m_child;
+  //     struct awaitable : stdx::suspend_always {
+  //       [[nodiscard]] constexpr auto await_suspend(stdx::coroutine_handle<promise_type> parent) noexcept ->
+  //       decltype(child) {
+  //         // In case *this (awaitable) is destructed by stealer after push
+  //         stdx::coroutine_handle stack_child = m_child;
 
-        LF_LOG("Forking, push parent to context");
+  //         LF_LOG("Forking, push parent to context");
 
-        Context::context().task_push(task_handle{promise_type::cast_down(parent)});
+  //         Context::context().task_push(task_handle{promise_type::cast_down(parent)});
 
-        return stack_child;
-      }
+  //         return stack_child;
+  //       }
 
-      decltype(child) m_child;
-    };
+  //       decltype(child) m_child;
+  //     };
 
-    return awaitable{{}, child};
-  }
+  //     return awaitable{{}, child};
+  //   }
 
-  template <typename R, typename F, typename... This, typename... Args>
-  [[nodiscard]] constexpr auto
-  await_transform(packet<first_arg_t<R, tag::call, F, This...>, Args...> &&packet) {
+  //   template <typename R, typename F, typename... This, typename... Args>
+  //   [[nodiscard]] constexpr auto await_transform(packet<first_arg_t<R, tag::call, F, This...>, Args...> &&packet) {
 
-    this->debug_inc();
+  //     this->debug_inc();
 
-    auto my_handle = cast_down(stdx::coroutine_handle<promise_type>::from_promise(*this));
+  //     auto my_handle = cast_down(stdx::coroutine_handle<promise_type>::from_promise(*this));
 
-    stdx::coroutine_handle child = add_context_to_packet(std::move(packet)).invoke_bind(my_handle);
+  //     stdx::coroutine_handle child = add_context_to_packet(std::move(packet)).invoke_bind(my_handle);
 
-    struct awaitable : stdx::suspend_always {
-      [[nodiscard]] constexpr auto
-      await_suspend([[maybe_unused]] stdx::coroutine_handle<promise_type> parent) noexcept
-          -> decltype(child) {
-        return m_child;
-      }
-      decltype(child) m_child;
-    };
+  //     struct awaitable : stdx::suspend_always {
+  //       [[nodiscard]] constexpr auto await_suspend([[maybe_unused]] stdx::coroutine_handle<promise_type> parent) noexcept
+  //           -> decltype(child) {
+  //         return m_child;
+  //       }
+  //       decltype(child) m_child;
+  //     };
 
-    return awaitable{{}, child};
-  }
+  //     return awaitable{{}, child};
+  //   }
 
-  /**
-   * @brief An invoke should never occur within an async scope as the exceptions will get muddled
-   */
-  template <typename F, typename... This, typename... Args>
-  [[nodiscard]] constexpr auto
-  await_transform(packet<first_arg_t<void, tag::invoke, F, This...>, Args...> &&in_packet) {
+  //   /**
+  //    * @brief An invoke should never occur within an async scope as the exceptions will get muddled
+  //    */
+  // template <typename F, typename... This, typename... Args>
+  // [[nodiscard]] constexpr auto await_transform(packet<first_arg_t<void, tag::invoke, F, This...>, Args...> &&in_packet) {
 
-    FATAL_IN_DEBUG(this->debug_count() == 0, "Invoke within async scope!");
+  //   FATAL_IN_DEBUG(this->debug_count() == 0, "Invoke within async scope!");
 
-    using value_type_child = typename packet<first_arg_t<void, tag::invoke, F, This...>, Args...>::value_type;
+  //   using value_type_child = typename packet<first_arg_t<void, tag::invoke, F, This...>, Args...>::value_type;
 
-    using wrapped_value_type =
-        std::conditional_t<std::is_reference_v<value_type_child>,
-                           std::reference_wrapper<std::remove_reference_t<value_type_child>>,
-                           value_type_child>;
+  //   using wrapped_value_type =
+  //       std::conditional_t<std::is_reference_v<value_type_child>,
+  //                          std::reference_wrapper<std::remove_reference_t<value_type_child>>, value_type_child>;
 
-    using return_type =
-        std::conditional_t<std::is_void_v<value_type_child>, regular_void, std::optional<wrapped_value_type>>;
+  //   using return_type =
+  //       std::conditional_t<std::is_void_v<value_type_child>, regular_void, std::optional<wrapped_value_type>>;
 
-    using packet_type =
-        packet<shim_with_context<return_type, Context, first_arg_t<void, tag::invoke, F, This...>>, Args...>;
+  //   using packet_type = packet<shim_with_context<return_type, Context, first_arg_t<void, tag::invoke, F, This...>>,
+  //   Args...>;
 
-    using handle_type = typename packet_type::handle_type;
+  //   using handle_type = typename packet_type::handle_type;
 
-    static_assert(std::same_as<value_type_child, typename packet_type::value_type>,
-                  "An async function's value_type must be return_address_t independent!");
+  //   static_assert(std::same_as<value_type_child, typename packet_type::value_type>,
+  //                 "An async function's value_type must be return_address_t independent!");
 
-    struct awaitable : stdx::suspend_always {
+  //   struct awaitable : stdx::suspend_always {
 
-      explicit constexpr awaitable(promise_type *in_self,
-                                   packet<first_arg_t<void, tag::invoke, F, This...>, Args...> &&in_packet)
-          : self(in_self),
-            m_child(packet_type{m_res, {std::move(in_packet.context)}, std::move(in_packet.args)}.invoke_bind(
-                cast_down(stdx::coroutine_handle<promise_type>::from_promise(*self)))) {}
+  //     explicit constexpr awaitable(promise_type *in_self,
+  //                                  packet<first_arg_t<void, tag::invoke, F, This...>, Args...> &&in_packet)
+  //         : self(in_self),
+  //           m_child(packet_type{m_res, {std::move(in_packet.context)}, std::move(in_packet.args)}.invoke_bind(
+  //               cast_down(stdx::coroutine_handle<promise_type>::from_promise(*self)))) {}
 
-      [[nodiscard]] constexpr auto
-      await_suspend([[maybe_unused]] stdx::coroutine_handle<promise_type> parent) noexcept -> handle_type {
-        return m_child;
-      }
+  //     [[nodiscard]] constexpr auto await_suspend([[maybe_unused]] stdx::coroutine_handle<promise_type> parent) noexcept
+  //         -> handle_type {
+  //       return m_child;
+  //     }
 
-      [[nodiscard]] constexpr auto await_resume() -> value_type_child {
+  //     [[nodiscard]] constexpr auto await_resume() -> value_type_child {
 
-        LF_ASSERT(self->steals() == 0);
+  //       LF_ASSERT(self->steals() == 0);
 
-        // Propagate exceptions.
-        if constexpr (LF_PROPAGATE_EXCEPTIONS) {
-          if constexpr (Tag == tag::root) {
-            self->get_return_address_obj().exception.rethrow_if_unhandled();
-          } else {
-            virtual_stack::from_address(self)->rethrow_if_unhandled();
-          }
-        }
+  //       // Propagate exceptions.
+  //       if constexpr (LF_PROPAGATE_EXCEPTIONS) {
+  //         if constexpr (Tag == tag::root) {
+  //           self->get_return_address_obj().exception.rethrow_if_unhandled();
+  //         } else {
+  //           virtual_stack::from_address(self)->rethrow_if_unhandled();
+  //         }
+  //       }
 
-        if constexpr (!std::is_void_v<value_type_child>) {
-          LF_ASSERT(m_res.has_value());
-          return std::move(*m_res);
-        }
-      }
+  //       if constexpr (!std::is_void_v<value_type_child>) {
+  //         LF_ASSERT(m_res.has_value());
+  //         return std::move(*m_res);
+  //       }
+  //     }
 
-      return_type m_res;
-      promise_type *self;
-      handle_type m_child;
-    };
+  //     return_type m_res;
+  //     promise_type *self;
+  //     handle_type m_child;
+  //   };
 
-    return awaitable{this, std::move(in_packet)};
-  }
+  //   return awaitable{this, std::move(in_packet)};
+  // }
 
-  constexpr auto await_transform([[maybe_unused]] join_t join_tag) noexcept {
-    struct awaitable {
-    private:
-      constexpr void take_stack_reset_control() const noexcept {
-        // Steals have happened so we cannot currently own this tasks stack.
-        LF_ASSUME(self->steals() != 0);
+  // constexpr auto await_transform([[maybe_unused]] join_t join_tag) noexcept {
+  //   struct awaitable {
+  //   private:
+  //     constexpr void take_stack_reset_control() const noexcept {
+  //       // Steals have happened so we cannot currently own this tasks stack.
+  //       LF_ASSUME(self->steals() != 0);
 
-        if constexpr (Tag != tag::root) {
+  //       if constexpr (Tag != tag::root) {
 
-          LF_LOG("Thread takes control of task's stack");
-
-          Context &context = Context::context();
-
-          auto tasks_stack = virtual_stack::from_address(self);
-          auto thread_stack = context.stack_top();
-
-          LF_ASSERT(thread_stack != tasks_stack);
-          LF_ASSERT(thread_stack->empty());
-
-          context.stack_push(tasks_stack);
-        }
+  //         LF_LOG("Thread takes control of task's stack");
 
-        // Some steals have happened, need to reset the control block.
-        self->reset();
-      }
+  //         Context &context = Context::context();
+
+  //         auto tasks_stack = virtual_stack::from_address(self);
+  //         auto thread_stack = context.stack_top();
+
+  //         LF_ASSERT(thread_stack != tasks_stack);
+  //         LF_ASSERT(thread_stack->empty());
 
-    public:
-      [[nodiscard]] constexpr auto await_ready() const noexcept -> bool {
-        // If no steals then we are the only owner of the parent and we are ready to join.
-        if (self->steals() == 0) {
-          LF_LOG("Sync ready (no steals)");
-          // Therefore no need to reset the control block.
-          return true;
-        }
-        // Currently:            joins() = k_imax - num_joined
-        // Hence:       k_imax - joins() = num_joined
-
-        // Could use (relaxed) + (fence(acquire) in truthy branch) but, it's
-        // better if we see all the decrements to joins() and avoid suspending
-        // the coroutine if possible. Cannot fetch_sub() here and write to frame
-        // as coroutine must be suspended first.
-        auto joined = k_imax - self->joins().load(std::memory_order_acquire);
-
-        if (self->steals() == joined) {
-          LF_LOG("Sync is ready");
-
-          take_stack_reset_control();
-
-          return true;
-        }
-
-        LF_LOG("Sync not ready");
-        return false;
-      }
-
-      [[nodiscard]] constexpr auto await_suspend(stdx::coroutine_handle<promise_type> task) noexcept
-          -> stdx::coroutine_handle<> {
-        // Currently        joins  = k_imax - num_joined
-        // We set           joins  = joins() - (k_imax - num_steals)
-        //                         = num_steals - num_joined
-
-        // Hence            joined = k_imax - num_joined
-        //         k_imax - joined = num_joined
-
-        auto steals = self->steals();
-        auto joined = self->joins().fetch_sub(k_imax - steals, std::memory_order_release);
-
-        if (steals == k_imax - joined) {
-          // We set joins after all children had completed therefore we can resume the task.
-
-          // Need to acquire to ensure we see all writes by other threads to the result.
-          std::atomic_thread_fence(std::memory_order_acquire);
-
-          LF_LOG("Wins join race");
-
-          take_stack_reset_control();
-
-          return task;
-        }
-        // Someone else is responsible for running this task and we have run out of work.
-        LF_LOG("Looses join race");
-
-        // We cannot currently own this stack.
-
-        if constexpr (Tag != tag::root) {
-          LF_ASSERT(virtual_stack::from_address(self) != Context::context().stack_top());
-        }
-        LF_ASSERT(Context::context().stack_top()->empty());
-
-        return stdx::noop_coroutine();
-      }
-
-      constexpr void await_resume() const {
-        LF_LOG("join resumes");
-        // Check we have been reset.
-        LF_ASSERT(self->steals() == 0);
-        LF_ASSERT(self->joins() == k_imax);
-
-        self->debug_reset();
-
-        if constexpr (Tag != tag::root) {
-          LF_ASSERT(virtual_stack::from_address(self) == Context::context().stack_top());
-        }
-
-        // Propagate exceptions.
-        if constexpr (LF_PROPAGATE_EXCEPTIONS) {
-          if constexpr (Tag == tag::root) {
-            self->get_return_address_obj().exception.rethrow_if_unhandled();
-          } else {
-            virtual_stack::from_address(self)->rethrow_if_unhandled();
-          }
-        }
-      }
-
-      promise_type *self;
-    };
-
-    return awaitable{this};
-  }
-
-private:
-  template <typename Promise>
-  static auto cast_down(stdx::coroutine_handle<Promise> this_handle) -> stdx::coroutine_handle<promise_base> {
-
-    // Static checks that UB is OK...
-
-    static_assert(alignof(Promise) == alignof(promise_base), "Promise_type must be aligned to U!");
-
-#ifdef __cpp_lib_is_pointer_interconvertible
-    static_assert(std::is_pointer_interconvertible_base_of_v<promise_base, Promise>);
-#endif
-
-    stdx::coroutine_handle cast_handle =
-        stdx::coroutine_handle<promise_base>::from_address(this_handle.address());
-
-    // Run-time check that UB is OK.
-    LF_ASSERT(cast_handle.address() == this_handle.address());
-    LF_ASSERT(stdx::coroutine_handle<>{cast_handle} == stdx::coroutine_handle<>{this_handle});
-    LF_ASSERT(static_cast<void *>(&cast_handle.promise()) == static_cast<void *>(&this_handle.promise()));
-
-    return cast_handle;
-  }
+  //         context.stack_push(tasks_stack);
+  //       }
+
+  //       // Some steals have happened, need to reset the control block.
+  //       self->reset();
+  //     }
+
+  //   public:
+  //     [[nodiscard]] constexpr auto await_ready() const noexcept -> bool {
+  //       // If no steals then we are the only owner of the parent and we are ready to join.
+  //       if (self->steals() == 0) {
+  //         LF_LOG("Sync ready (no steals)");
+  //         // Therefore no need to reset the control block.
+  //         return true;
+  //       }
+  //       // Currently:            joins() = k_imax - num_joined
+  //       // Hence:       k_imax - joins() = num_joined
+
+  //       // Could use (relaxed) + (fence(acquire) in truthy branch) but, it's
+  //       // better if we see all the decrements to joins() and avoid suspending
+  //       // the coroutine if possible. Cannot fetch_sub() here and write to frame
+  //       // as coroutine must be suspended first.
+  //       auto joined = k_imax - self->joins().load(std::memory_order_acquire);
+
+  //       if (self->steals() == joined) {
+  //         LF_LOG("Sync is ready");
+
+  //         take_stack_reset_control();
+
+  //         return true;
+  //       }
+
+  //       LF_LOG("Sync not ready");
+  //       return false;
+  //     }
+
+  //     [[nodiscard]] constexpr auto await_suspend(stdx::coroutine_handle<promise_type> task) noexcept
+  //         -> stdx::coroutine_handle<> {
+  //       // Currently        joins  = k_imax - num_joined
+  //       // We set           joins  = joins() - (k_imax - num_steals)
+  //       //                         = num_steals - num_joined
+
+  //       // Hence            joined = k_imax - num_joined
+  //       //         k_imax - joined = num_joined
+
+  //       auto steals = self->steals();
+  //       auto joined = self->joins().fetch_sub(k_imax - steals, std::memory_order_release);
+
+  //       if (steals == k_imax - joined) {
+  //         // We set joins after all children had completed therefore we can resume the task.
+
+  //         // Need to acquire to ensure we see all writes by other threads to the result.
+  //         std::atomic_thread_fence(std::memory_order_acquire);
+
+  //         LF_LOG("Wins join race");
+
+  //         take_stack_reset_control();
+
+  //         return task;
+  //       }
+  //       // Someone else is responsible for running this task and we have run out of work.
+  //       LF_LOG("Looses join race");
+
+  //       // We cannot currently own this stack.
+
+  //       if constexpr (Tag != tag::root) {
+  //         LF_ASSERT(virtual_stack::from_address(self) != Context::context().stack_top());
+  //       }
+  //       LF_ASSERT(Context::context().stack_top()->empty());
+
+  //       return stdx::noop_coroutine();
+  //     }
+
+  //     constexpr void await_resume() const {
+  //       LF_LOG("join resumes");
+  //       // Check we have been reset.
+  //       LF_ASSERT(self->steals() == 0);
+  //       LF_ASSERT(self->joins() == k_imax);
+
+  //       self->debug_reset();
+
+  //       if constexpr (Tag != tag::root) {
+  //         LF_ASSERT(virtual_stack::from_address(self) == Context::context().stack_top());
+  //       }
+
+  //       // Propagate exceptions.
+  //       if constexpr (LF_PROPAGATE_EXCEPTIONS) {
+  //         if constexpr (Tag == tag::root) {
+  //           self->get_return_address_obj().exception.rethrow_if_unhandled();
+  //         } else {
+  //           virtual_stack::from_address(self)->rethrow_if_unhandled();
+  //         }
+  //       }
+  //     }
+
+  //     promise_type *self;
+  //   };
+
+  //   return awaitable{this};
+  // }
 };
 
 #undef FATAL_IN_DEBUG

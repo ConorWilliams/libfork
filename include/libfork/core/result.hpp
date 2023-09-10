@@ -2,9 +2,11 @@
 #define EE6A2701_7559_44C9_B708_474B1AE823B2
 
 #include <concepts>
+#include <semaphore>
 #include <type_traits>
 #include <utility>
 
+#include "libfork/core/eventually.hpp"
 #include "libfork/macro.hpp"
 #include "libfork/utility.hpp"
 
@@ -22,16 +24,7 @@ concept assignable = std::is_lvalue_reference_v<LHS> && requires(LHS lhs, RHS &&
 
 // TODO: move wherever invoke goes
 
-namespace detail {
-
 struct ignore_t {};
-
-} // namespace detail
-
-/**
- * @brief A sentinel value that can be used to explicitly ignore the result of an async function.
- */
-inline constexpr auto ignore = detail::ignore_t{};
 
 /**
  * @brief A tuple-like type with forwarding semantics for in place construction.
@@ -54,8 +47,9 @@ struct promise_result;
  * @tparam R The type of the return address.
  * @tparam T The type of the return value.
  */
-template <typename T>
-struct promise_result<void, T> {
+template <typename R, typename T>
+  requires std::same_as<R, void> or std::same_as<R, ignore_t>
+struct promise_result<R, T> {
   constexpr void return_void() const noexcept {}
 };
 
@@ -140,6 +134,41 @@ private:
 
   R *m_ret_address;
 };
+
+/**
+ * @brief A small control structure that a root tasks use to communicate with the main thread.
+ */
+template <typename T>
+struct root_result;
+
+template <>
+struct root_result<void> : detail::immovable<root_result<void>> {
+  std::binary_semaphore semaphore{0};
+};
+
+template <typename T>
+struct root_result : eventually<T>, root_result<void> {
+  using eventually<T>::operator=;
+};
+
+namespace detail {
+
+template <typename T>
+struct is_root_result : std::false_type {};
+
+template <typename T>
+struct is_root_result<root_result<T>> : std::true_type {};
+
+} // namespace detail
+
+template <typename T>
+inline constexpr bool is_root_result_v = detail::is_root_result<T>::value;
+
+// void test() {
+//   root_result<int> x;
+//   int y;
+//   x = y;
+// }
 
 } // namespace lf
 

@@ -24,7 +24,11 @@ public:
   /**
    * @brief Construct an empty eventually.
    */
-  constexpr eventually() noexcept = default;
+  constexpr eventually() noexcept
+    requires std::is_trivially_constructible_v<T>
+  = default;
+
+  constexpr eventually() noexcept : m_init{} {};
 
   /**
    * @brief Construct an object inside the eventually from ``args...``.
@@ -33,8 +37,10 @@ public:
     requires std::constructible_from<T, Args...>
   constexpr void emplace(Args &&...args) noexcept(std::is_nothrow_constructible_v<T, Args...>) {
     LF_LOG("Constructing an eventually");
+#ifndef NDEBUG
     LF_ASSERT(!m_constructed);
-    std::construct_at(std::addressof(&m_value), std::forward<Args>(args)...);
+#endif
+    std::construct_at(std::addressof(m_value), std::forward<Args>(args)...);
 #ifndef NDEBUG
     m_constructed = true;
 #endif
@@ -47,7 +53,7 @@ public:
   constexpr auto operator=(U &&expr) noexcept(noexcept(emplace(std::forward<U>(expr)))) -> eventually &
     requires requires { emplace(std::forward<U>(expr)); }
   {
-    emplace(std::forward<U>(expr)), *this;
+    emplace(std::forward<U>(expr));
     return *this;
   }
 
@@ -56,21 +62,25 @@ public:
   // clang-format on
 
   constexpr ~eventually() noexcept(std::is_nothrow_destructible_v<T>) {
+#ifndef NDEBUG
     LF_ASSUME(m_constructed);
-    std::destroy_at(std::addressof(&m_value));
+#endif
+    std::destroy_at(std::addressof(m_value));
   }
 
   /**
    * @brief Access the wrapped object.
    */
   [[nodiscard]] constexpr auto operator*() & noexcept -> T & {
+#ifndef NDEBUG
     LF_ASSUME(m_constructed);
+#endif
     return m_value;
   }
 
 private:
   union {
-    detail::empty _;
+    detail::empty m_init;
     T m_value;
   };
 

@@ -14,6 +14,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "libfork/core/stack.hpp"
+#include "libfork/core/task.hpp"
 
 // NOLINTBEGIN No linting in tests
 
@@ -141,5 +142,9 @@ TEST_CASE("fib on stack", "[virtual_stack]") {
   root_block->get_coro().resume();
   root_block->get_coro().destroy();
 }
+
+inline constexpr async noop = [](auto noop) -> task<void> {};
+
+TEST_CASE("no_discard", "[just]") { noop(); }
 
 // NOLINTEND

@@ -509,36 +509,6 @@ namespace lf {
 
 namespace detail {
 
-/**
- * @brief A small control structure that a root tasks use to communicate with the main thread.
- */
-template <typename T>
-struct root_block;
-
-template <>
-struct root_block<void> : immovable<root_block<void>> {
-  std::binary_semaphore semaphore{0};
-};
-
-template <typename T>
-struct root_block : root_block<void> {
-
-  std::optional<T> result{};
-
-  template <typename U>
-    requires std::constructible_from<std::optional<T>, U>
-  constexpr auto operator=(U &&expr) noexcept(std::is_nothrow_constructible_v<T, U>) -> root_block & {
-
-    LF_LOG("Root task assigns");
-
-    LF_ASSERT(!result.has_value());
-
-    result.emplace(std::forward<U>(expr));
-
-    return *this;
-  }
-};
-
 // ----------------------------------------------- //
 
 inline namespace LF_DEPENDENT_ABI {
@@ -645,9 +615,7 @@ struct frame_block : immovable<frame_block>, debug_block {
   /**
    * @brief For root blocks.
    */
-  explicit constexpr frame_block(stdx::coroutine_handle<> coro) noexcept
-      : m_prev{0},
-        m_coro(offset(coro.address())) {}
+  explicit constexpr frame_block(stdx::coroutine_handle<> coro) noexcept : m_prev{0}, m_coro(offset(coro.address())) {}
 
   /**
    * @brief For regular blocks -- need to call `set_coro` after construction.
@@ -818,9 +786,7 @@ public:
   /**
    * @brief Get a pointer to the sentinel `frame_block` on the stack.
    */
-  auto sentinel() noexcept -> frame_block * {
-    return std::launder(std::bit_cast<frame_block *>(m_buf + sentinel_offset));
-  }
+  auto sentinel() noexcept -> frame_block * { return std::launder(std::bit_cast<frame_block *>(m_buf + sentinel_offset)); }
 
   /**
    * @brief Convert a pointer to a stack's sentinel `frame_block` to a pointer to the stack.
