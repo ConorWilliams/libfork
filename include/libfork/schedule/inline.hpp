@@ -36,9 +36,7 @@ public:
     /**
      * @brief Construct a new context type object, set the thread_local context object to this object.
      */
-    context_type() noexcept {
-      inline_scheduler::context_type::set(*this);
-    }
+    context_type() noexcept { inline_scheduler::context_type::set(*this); }
     /**
      * @brief Get the thread_local context object.
      */
@@ -73,9 +71,7 @@ public:
     /**
      * @brief Pushes a task to the task queue.
      */
-    void task_push(task_handle task) {
-      m_tasks.push_back(task);
-    }
+    void task_push(task_handle task) { m_tasks.push_back(task); }
 
   private:
     std::vector<task_handle> m_tasks;
@@ -85,9 +81,7 @@ public:
   /**
    * @brief Immediately resume the root task.
    */
-  static void schedule(stdx::coroutine_handle<> root_task) {
-    root_task.resume();
-  }
+  static void schedule(stdx::coroutine_handle<> root_task) { root_task.resume(); }
 
 private:
   context_type m_context;

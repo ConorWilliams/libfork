@@ -45,9 +45,7 @@ public:
   explicit semaphore(int v = 0) : value_(v) {}
 
   void down() {
-    ec_.await([this] {
-      return tryDown();
-    });
+    ec_.await([this] { return tryDown(); });
   }
 
   void up() {

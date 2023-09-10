@@ -66,7 +66,7 @@ inline constexpr std::size_t k_kibibyte = 1024 * 1;          // NOLINT
 inline constexpr std::size_t k_mebibyte = 1024 * k_kibibyte; //
 
 /**
- * @brief An empty type that is not copyable or movable.
+ * @brief An empty type that is not copiable or movable.
  *
  * The template parameter prevents multiple empty bases.
  */

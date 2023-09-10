@@ -45,7 +45,8 @@ namespace lf {
  * @brief A concept that verifies a type is suitable for use in a queue.
  */
 template <typename T>
-concept simple = std::is_default_constructible_v<T> && std::is_trivially_copyable_v<T> && std::atomic<T>::is_always_lock_free;
+concept simple = std::is_default_constructible_v<T> && std::is_trivially_copyable_v<T> &&
+                 std::atomic<T>::is_always_lock_free;
 
 namespace detail {
 
@@ -76,14 +77,16 @@ struct ring_buf {
    */
   constexpr auto store(std::ptrdiff_t index, T const &val) noexcept -> void {
     LF_ASSERT(index >= 0);
-    (m_buf.get() + (index & m_mask))->store(val, std::memory_order_relaxed); // NOLINT Avoid cast to std::size_t.
+    (m_buf.get() + (index & m_mask))
+        ->store(val, std::memory_order_relaxed); // NOLINT Avoid cast to std::size_t.
   }
   /**
    * @brief Load value at ``index % this->capacity()``.
    */
   [[nodiscard]] constexpr auto load(std::ptrdiff_t index) const noexcept -> T {
     LF_ASSERT(index >= 0);
-    return (m_buf.get() + (index & m_mask))->load(std::memory_order_relaxed); // NOLINT Avoid cast to std::size_t.
+    return (m_buf.get() + (index & m_mask))
+        ->load(std::memory_order_relaxed); // NOLINT Avoid cast to std::size_t.
   }
   /**
    * @brief Copies elements in range ``[bottom, top)`` into a new ring buffer.
@@ -94,8 +97,9 @@ struct ring_buf {
    * @param bottom The bottom of the range to copy from (inclusive).
    * @param top The top of the range to copy from (exclusive).
    */
-  [[nodiscard]] constexpr auto resize(std::ptrdiff_t bottom, std::ptrdiff_t top) const -> ring_buf<T> * { // NOLINT
-    auto *ptr = new ring_buf{2 * m_cap};                                                                  // NOLINT
+  [[nodiscard]] constexpr auto resize(std::ptrdiff_t bottom, std::ptrdiff_t top) const
+      -> ring_buf<T> * {                 // NOLINT
+    auto *ptr = new ring_buf{2 * m_cap}; // NOLINT
     for (std::ptrdiff_t i = top; i != bottom; ++i) {
       ptr->store(i, load(i));
     }
@@ -275,7 +279,8 @@ private:
   alignas(detail::k_cache_line) std::atomic<std::ptrdiff_t> m_bottom;
   alignas(detail::k_cache_line) std::atomic<detail::ring_buf<T> *> m_buf;
 
-  alignas(detail::k_cache_line) std::vector<std::unique_ptr<detail::ring_buf<T>>> m_garbage; // Store old buffers here.
+  alignas(detail::k_cache_line)
+      std::vector<std::unique_ptr<detail::ring_buf<T>>> m_garbage; // Store old buffers here.
 
   // Convenience aliases.
   static constexpr std::memory_order relaxed = std::memory_order_relaxed;
@@ -286,7 +291,10 @@ private:
 };
 
 template <simple T, optional_for<T> Optional>
-constexpr queue<T, Optional>::queue(std::ptrdiff_t cap) : m_top(0), m_bottom(0), m_buf(new detail::ring_buf<T>{cap}) {
+constexpr queue<T, Optional>::queue(std::ptrdiff_t cap)
+    : m_top(0),
+      m_bottom(0),
+      m_buf(new detail::ring_buf<T>{cap}) {
   m_garbage.reserve(k_garbage_reserve);
 }
 

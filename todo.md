@@ -1,7 +1,7 @@
 
 
 - split docs into: User api, Context API (for implementors), Internal + detail for no-doc
-- Catalogue deps (i.e pkg-config) (fresh ubuntu wsl)
+- Catalog deps (i.e pkg-config) (fresh ubuntu wsl)
 - detect HALO and bail out
 - invoke (eventually<T>, because exceptions don't propagate return will never have thrown!) 
 - logging at call-site, name at definition task<T, "name">, can make static_string constructor accept a defaulted soucre_location

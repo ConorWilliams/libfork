@@ -49,9 +49,7 @@ auto example() -> int {
 
 // NOLINTBEGIN No linting in tests
 
-TEST_CASE("Example", "[queue]") {
-  REQUIRE(!example());
-}
+TEST_CASE("Example", "[queue]") { REQUIRE(!example()); }
 
 TEST_CASE("Single thread as stack", "[queue]") {
   lf::queue<int> queue;

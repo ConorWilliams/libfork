@@ -6,9 +6,7 @@
 
 // NOLINTBEGIN No linting in tests
 
-static int factorial(int number) {
-  return number <= 1 ? number : factorial(number - 1) * number;
-}
+static int factorial(int number) { return number <= 1 ? number : factorial(number - 1) * number; }
 
 TEST_CASE("Factorials", "[catch]") {
   REQUIRE(factorial(1) == 1);

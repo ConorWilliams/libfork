@@ -45,7 +45,7 @@ target_compile_features(libfork_libfork INTERFACE cxx_std_23)
 if(HWLOC_FOUND)
   target_compile_definitions(libfork_libfork INTERFACE LF_HAS_HWLOC)
 else()
-  message(WARNING "Disabling libfork's hwloc support becasue we couldn't find it")
+  message(WARNING "Disabling libfork's hwloc support because we couldn't find it")
 endif()
 
 # ---- Install rules ----
