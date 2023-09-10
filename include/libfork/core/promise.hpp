@@ -54,45 +54,6 @@ struct join_t {};
     } while (false)
 #endif
 
-// Add in a get/set functions that return a reference to the return object.
-template <typename Ret>
-struct shim_ret_obj : promise_base {
-
-  using ret_ref = std::conditional_t<std::is_void_v<Ret>, int, std::add_lvalue_reference_t<Ret>>;
-
-  template <typename = void>
-    requires(!std::is_void_v<Ret>)
-  [[nodiscard]] constexpr auto get_return_address_obj() noexcept -> ret_ref {
-    return *static_cast<Ret *>(ret_address());
-  }
-
-  template <typename = void>
-    requires(!std::is_void_v<Ret>)
-  [[nodiscard]] constexpr auto set_ret_address(ret_ref obj) noexcept {
-    promise_base::set_ret_address(std::addressof(obj));
-  }
-};
-
-// Specialization for both non-void
-template <typename Ret, typename T, tag Tag>
-struct mixin_return : shim_ret_obj<Ret> {
-  template <typename U>
-    requires std::constructible_from<T, U> &&
-             (std::is_void_v<Ret> || std::is_assignable_v<std::add_lvalue_reference_t<Ret>, U>)
-  void return_value([[maybe_unused]] U &&expr) noexcept(
-      std::is_void_v<Ret> || std::is_nothrow_assignable_v<std::add_lvalue_reference_t<Ret>, U>) {
-    if constexpr (!std::is_void_v<Ret>) {
-      this->get_return_address_obj() = std::forward<U>(expr);
-    }
-  }
-};
-
-// Specialization for void returning tasks.
-template <typename Ret, tag Tag>
-struct mixin_return<Ret, void, Tag> : shim_ret_obj<Ret> {
-  static constexpr void return_void() noexcept {}
-};
-
 // Adds a context_type type alias to T.
 template <thread_context Context, typename Head>
 struct with_context : Head {

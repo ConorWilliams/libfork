@@ -286,7 +286,6 @@ private:
   using handle_type = typename stdx::coroutine_handle<promise_type>;
 
 public:
-  [[no_unique_address]] return_p ret;
   [[no_unique_address]] Head context;
   [[no_unique_address]] std::tuple<Tail &&...> args;
 

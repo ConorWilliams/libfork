@@ -46,6 +46,7 @@ TEST_CASE("Root task", "[virtual_stack]") {
   REQUIRE(asp);
 
   asp->get_coro().resume();
+  asp->get_coro().destroy();
 
   REQUIRE(x == 1);
 }
@@ -69,7 +70,7 @@ struct non_root_task {
   };
 };
 
-__attribute__((noinline)) auto fib(int &res, int n) -> non_root_task {
+auto fib(int &res, int n) -> non_root_task {
   if (n <= 1) {
     res = n;
   } else {
@@ -87,7 +88,7 @@ __attribute__((noinline)) auto fib(int &res, int n) -> non_root_task {
   co_return;
 }
 
-__attribute__((noinline)) void inline_fib(int &res, int n) {
+void inline_fib(int &res, int n) {
   if (n <= 1) {
     res = n;
   } else {
@@ -131,9 +132,14 @@ TEST_CASE("fib on stack", "[virtual_stack]") {
     auto *f = async_stack::unsafe_from_sentinel(asp);
 
     REQUIRE(s == f);
+
+    delete s;
   });
 
-  asp->get_coro().resume();
+  auto root_block = asp;
+
+  root_block->get_coro().resume();
+  root_block->get_coro().destroy();
 }
 
 // NOLINTEND

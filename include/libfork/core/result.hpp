@@ -20,6 +20,8 @@ concept assignable = std::is_lvalue_reference_v<LHS> && requires(LHS lhs, RHS &&
   { lhs = std::forward<RHS>(rhs) } -> std::same_as<LHS>;
 };
 
+// TODO: move wherever invoke goes
+
 namespace detail {
 
 struct ignore_t {};
@@ -52,9 +54,8 @@ struct promise_result;
  * @tparam R The type of the return address.
  * @tparam T The type of the return value.
  */
-template <typename R, typename T>
-  requires std::same_as<R, void> or std::same_as<R, detail::ignore_t>
-struct promise_result<R, T> {
+template <typename T>
+struct promise_result<void, T> {
   constexpr void return_void() const noexcept {}
 };
 
