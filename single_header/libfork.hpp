@@ -680,7 +680,7 @@ struct frame_block : immovable<frame_block>, debug_block {
     return {asp, false};
   }
 
-  [[nodiscard]] constexpr auto joins() -> std::atomic_uint16_t { return m_joins; }
+  [[nodiscard]] constexpr auto joins() -> std::atomic_uint16_t & { return m_join; }
 
 private:
   static constexpr std::int16_t uninitialized = 1;
