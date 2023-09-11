@@ -80,10 +80,14 @@ See the [ChangeLog](ChangeLog.md) document.
 #### Contents:
 
 - [Fork-join introduction](#Tasks-and-futures)
-- [y-combinators](#y-combinator)
-- [`invoke`, `tail` and `ignore`](#Invoke-and-tail)
+   - [The cactus stack]()
+   - [What is that first argument? (y-combinators)](#y-combinator)
+- [Core API:](#Features-of-the-consumer-API)
+  - [Non default-constructible types and `eventually<T>`](#eventually)
+  - [Exotic calls with `invoke`, `tail` and `ignore`](#Invoke-and-tail)
 - [Asynchronous stack-tracing]()
-- [Schedulers](#Schedulers)
+- [Exception in `libfork`](#exceptions)
+- [Scheduling and contexts](#Schedulers)
 - [Algorithms and the high-level API]()
 
 ### Tasks and futures

@@ -99,10 +99,10 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
     struct final_awaitable : stdx::suspend_always {
       constexpr auto await_suspend(stdx::coroutine_handle<promise_type> child) const noexcept -> stdx::coroutine_handle<> {
 
-        FATAL_IN_DEBUG(asp->debug_count() == 0, "Fork/Call without a join!");
+        FATAL_IN_DEBUG(tls::asp->debug_count() == 0, "Fork/Call without a join!");
 
-        LF_ASSERT(asp->steals() == 0);                                      // Fork without join.
-        LF_ASSERT(asp->load_joins(std::memory_order_acquire) == k_u16_max); // Destroyed in invalid state.
+        LF_ASSERT(tls::asp->steals() == 0);                                      // Fork without join.
+        LF_ASSERT(tls::asp->load_joins(std::memory_order_acquire) == k_u16_max); // Destroyed in invalid state.
 
         // Completing a task means we currently own the async_stack this child is on
 
@@ -129,7 +129,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
         if (task_ptr parent_task = context.task_pop()) {
           // No-one stole continuation, we are the exclusive owner of parent, just keep ripping!
           LF_LOG("Parent not stolen, keeps ripping");
-          LF_ASSERT(parent_task.m_frame_block == parent);
+          LF_ASSERT(parent_task.m_stolen == parent);
           LF_ASSERT(parent_on_asp);
           // This must be the same thread that created the parent so it already owns the stack.
           // No steals have occurred so we do not need to call reset().;
@@ -164,10 +164,8 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
           LF_LOG("Task is last child to join, resumes parent");
 
           if (!parent_on_asp) {
-            if (!parent->is_root()) /* [[likely]] */ {
-              LF_ASSUME(asp->is_sentinel());
-              LF_LOG("Thread takes control of parent's stack");
-              context.stack_push(async_stack::unsafe_from_sentinel(std::exchange(asp, parent)));
+            if (!parent->is_root()) [[likely]] {
+              tls::eat(parent);
             }
           }
 
@@ -186,10 +184,10 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
           // We are unable to resume the parent, as the resuming thread will take ownership of the parent's stack we must
           // give it up.
           LF_LOG("Thread releases control of parent's stack");
-          asp = context.stack_pop();
+          tls::asp = tls::sbuf.pop()->sentinel();
         }
 
-        LF_ASSUME(asp->is_sentinel());
+        LF_ASSERT(tls::asp->is_sentinel());
 
         return stdx::noop_coroutine();
       }
@@ -317,7 +315,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
   //   private:
   //     constexpr void take_stack_reset_control() const noexcept {
   //       // Steals have happened so we cannot currently own this tasks stack.
-  //       LF_ASSUME(self->steals() != 0);
+  //       LF_ASSERT(self->steals() != 0);
 
   //       if constexpr (Tag != tag::root) {
 
@@ -436,5 +434,24 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 #undef FATAL_IN_DEBUG
 
 } // namespace lf::detail
+
+#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
+
+/**
+ * @brief Specialize coroutine_traits for task<...> from functions.
+ */
+template <lf::is_task Task, lf::first_arg Head, typename... Args>
+struct lf::stdx::coroutine_traits<Task, Head, Args...> {
+  using promise_type =
+      lf::detail::promise_type<lf::return_of<Head>, lf::value_of<Task>, lf::context_of<Head>, lf::tag_of<Head>>;
+};
+
+/**
+ * @brief Specialize coroutine_traits for task<...> from member functions.
+ */
+template <lf::is_task Task, lf::not_first_arg This, lf::first_arg Head, typename... Args>
+struct lf::stdx::coroutine_traits<Task, This, Head, Args...> : lf::stdx::coroutine_traits<Task, Head, Args...> {};
+
+#endif /* LF_DOXYGEN_SHOULD_SKIP_THIS */
 
 #endif /* FF9F3B2C_DC2B_44D2_A3C2_6E40F211C5B0 */

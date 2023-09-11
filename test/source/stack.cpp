@@ -6,9 +6,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#define NDEBUG
-
-#include <memory>
+// #define NDEBUG
 
 #include <catch2/benchmark/catch_benchmark.hpp>
 #include <catch2/catch_test_macros.hpp>
@@ -44,10 +42,10 @@ TEST_CASE("Root task", "[virtual_stack]") {
   root([&] { ++x; });
 
   REQUIRE(x == 0);
-  REQUIRE(asp);
+  REQUIRE(tls::asp);
 
-  asp->get_coro().resume();
-  asp->get_coro().destroy();
+  tls::asp->get_coro().resume();
+  tls::asp->get_coro().destroy();
 
   REQUIRE(x == 1);
 }
@@ -78,10 +76,10 @@ auto fib(int &res, int n) -> non_root_task {
     int x, y;
 
     fib(x, n - 1);
-    asp->get_coro().resume();
+    tls::asp->get_coro().resume();
 
     fib(y, n - 2);
-    asp->get_coro().resume();
+    tls::asp->get_coro().resume();
 
     res = x + y;
   }
@@ -108,18 +106,9 @@ TEST_CASE("fib on stack", "[virtual_stack]") {
     //
     auto *s = new async_stack{};
 
-    asp = s->sentinel();
+    tls::asp = s->sentinel();
 
     volatile int p = 30;
-
-    int x;
-
-    BENCHMARK("Fibonacci " + std::to_string(p) + " coroutine") {
-      fib(x, p);
-      asp->get_coro().resume();
-
-      return x;
-    };
 
     int y;
 
@@ -128,23 +117,28 @@ TEST_CASE("fib on stack", "[virtual_stack]") {
       return y;
     };
 
+    int x;
+
+    BENCHMARK("Fibonacci " + std::to_string(p) + " coroutine") {
+      fib(x, p);
+      tls::asp->get_coro().resume();
+
+      return x;
+    };
+
     REQUIRE(x == y);
 
-    auto *f = async_stack::unsafe_from_sentinel(asp);
+    auto *f = async_stack::unsafe_from_sentinel(tls::asp);
 
     REQUIRE(s == f);
 
     delete s;
   });
 
-  auto root_block = asp;
+  auto root_block = tls::asp;
 
   root_block->get_coro().resume();
   root_block->get_coro().destroy();
 }
-
-inline constexpr async noop = [](auto noop) -> task<void> {};
-
-TEST_CASE("no_discard", "[just]") { noop(); }
 
 // NOLINTEND

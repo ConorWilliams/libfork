@@ -150,15 +150,19 @@ concept stateless = std::is_class_v<T> && std::is_trivial_v<T> && std::is_empty_
  * should always be able to return an empty ``lf::async_stack``.
  */
 template <typename Context>
-concept thread_context = requires(Context ctx, owner<detail::async_stack *> stack, non_null<task_ptr> handle) {
-  { ctx.max_threads() } -> std::same_as<std::size_t>;
-
-  { ctx.stack_pop() } -> std::convertible_to<owner<detail::async_stack *>>;
-  { ctx.stack_push(stack) };
-
-  { ctx.task_pop() } -> std::convertible_to<task_ptr>;
-  { ctx.task_push(handle) };
+concept thread_context = requires(Context ctx, ext_ptr ext, detail::async_stack *stack, task_ptr task) {
+  { ctx.submit(ext) };                                 // Submit an external task to the context.
+  { ctx.max_threads() } -> std::same_as<std::size_t>;  // The maximum number of threads.
+  { ctx.task_pop() } -> std::convertible_to<task_ptr>; // If the stack is empty, return a null pointer.
+  { ctx.task_push(task) };                             // Push a non-null pointer.
 };
+
+namespace detail::tls {
+
+template <thread_context Context>
+constinit inline thread_local Context *ctx = nullptr;
+
+} // namespace detail::tls
 
 // ----------------------------------------------- //
 
@@ -321,10 +325,9 @@ struct [[nodiscard("async functions must be called")]] async {
  */
 struct dummy_context {
   auto max_threads() -> std::size_t;
-  auto stack_pop() -> owner<detail::async_stack *>;
-  auto stack_push(owner<detail::async_stack *>) -> void;
+  auto submit(ext_ptr) -> void;
   auto task_pop() -> task_ptr;
-  auto task_push(non_null<task_ptr>) -> void;
+  auto task_push(task_ptr) -> void;
 };
 
 static_assert(thread_context<dummy_context>, "dummy_context is not a thread_context");

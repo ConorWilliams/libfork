@@ -10,7 +10,7 @@ project(
   VERSION ${version_major}.${version_minor}.${version_patch}
   DESCRIPTION "A C++20 coroutine library for fork-join parallelism"
   HOMEPAGE_URL "https://github.com/ConorWilliams/libfork"
-  LANGUAGES CXX C
+  LANGUAGES CXX
 )
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -25,6 +25,10 @@ find_package(Threads REQUIRED)
 
 find_package(HWLOC)
 
+# find_package(MiMalloc)
+
+# find_package(mimalloc)
+
 CPMAddPackage("gh:codeinred/tuplet#v2.1.1")
 
 # ---- Declare library ----
@@ -32,7 +36,7 @@ CPMAddPackage("gh:codeinred/tuplet#v2.1.1")
 add_library(libfork_libfork INTERFACE)
 add_library(libfork::libfork ALIAS libfork_libfork)
 
-target_link_libraries(libfork_libfork INTERFACE Threads::Threads tuplet::tuplet)
+target_link_libraries(libfork_libfork INTERFACE Threads::Threads tuplet::tuplet mimalloc)
 
 set_property(TARGET libfork_libfork PROPERTY EXPORT_NAME libfork)
 

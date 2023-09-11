@@ -115,11 +115,11 @@ struct promise_result<R, T> {
   }
 
 protected:
-  explicit constexpr promise_result(non_null<R *> return_address) noexcept : m_ret_address(return_address) {
+  explicit constexpr promise_result(R *return_address) noexcept : m_ret_address(return_address) {
     LF_ASSERT(return_address);
   }
 
-  constexpr auto address() const noexcept -> non_null<R *> { return m_ret_address; }
+  constexpr auto address() const noexcept -> R * { return m_ret_address; }
 
 private:
   static constexpr auto emplace = []<typename... Args>(R *ret, Args &&...args) LF_STATIC_CALL {

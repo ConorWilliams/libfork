@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "libfork/core.hpp"
+#include "libfork/core/stack.hpp"
 #include "libfork/schedule/thread_local.hpp"
 
 /**
@@ -31,12 +32,20 @@ public:
    * @brief The context type for the scheduler.
    */
   class context_type : thread_local_ptr<context_type> {
-
   public:
     /**
      * @brief Construct a new context type object, set the thread_local context object to this object.
      */
-    context_type() noexcept { inline_scheduler::context_type::set(*this); }
+    context_type() {
+      inline_scheduler::context_type::set(*this);
+      m_tasks.reserve(128);
+    }
+
+    static void submit(ext_ptr ptr) {
+      LF_ASSERT(ptr);
+      ptr.resume();
+    }
+
     /**
      * @brief Get the thread_local context object.
      */
@@ -46,48 +55,33 @@ public:
      */
     static constexpr auto max_threads() noexcept -> std::size_t { return 1; }
     /**
-     * @brief Get the top stack object.
-     */
-    auto stack_top() -> virtual_stack::handle { return virtual_stack::handle{m_stack.get()}; }
-    /**
-     * @brief Should never be called, aborts the program.
-     */
-    static void stack_pop() { LF_ASSERT(false); }
-    /**
-     * @brief Should never be called, aborts the program.
-     */
-    static void stack_push([[maybe_unused]] virtual_stack::handle handle) { LF_ASSERT(false); }
-    /**
      * @brief Pops a task from the task queue.
      */
-    auto task_pop() -> std::optional<task_handle> {
+    auto task_pop() -> task_ptr {
       if (m_tasks.empty()) {
-        return std::nullopt;
+        return {};
       }
-      task_handle task = m_tasks.back();
+      task_ptr task = m_tasks.back();
       m_tasks.pop_back();
       return task;
     }
     /**
      * @brief Pushes a task to the task queue.
      */
-    void task_push(task_handle task) { m_tasks.push_back(task); }
+    void task_push(task_ptr task) {
+      LF_ASSERT(task);
+      m_tasks.push_back(task);
+    }
 
   private:
-    std::vector<task_handle> m_tasks;
-    typename virtual_stack::unique_ptr_t m_stack = virtual_stack::make_unique();
+    std::vector<task_ptr> m_tasks;
   };
 
-  /**
-   * @brief Immediately resume the root task.
-   */
-  static void schedule(stdx::coroutine_handle<> root_task) { root_task.resume(); }
+  static_assert(thread_context<context_type>);
 
 private:
   context_type m_context;
 };
-
-static_assert(scheduler<inline_scheduler>);
 
 } // namespace lf
 

@@ -39,6 +39,45 @@ namespace lf {
 
 namespace detail {
 
+class async_stack;
+
+/**
+ * @brief An infinite ring-buffer of async_stack pointers.
+ *
+ * This is implemented as a ring-buffer instead of a stack such that when the buffer
+ * overflows the oldest stack can be freed.This increases temporal cache coherency.
+ */
+template <std::size_t N>
+  requires(std::has_single_bit(N))
+class stack_buffer : immovable<stack_buffer<N>> {
+public:
+  [[nodiscard]] constexpr auto empty() const noexcept -> bool { return m_top == m_bottom; }
+
+  [[nodiscard]] constexpr auto full() const noexcept -> bool { return m_bottom - m_top == N; }
+
+  constexpr auto push(async_stack *stack) noexcept -> void;
+
+  [[nodiscard]] constexpr auto pop() noexcept -> async_stack *;
+
+  constexpr ~stack_buffer() noexcept;
+
+private:
+  static constexpr std::size_t k_mask = N - 1;
+
+  constexpr void store(std::size_t index, async_stack *stack) noexcept {
+    m_buff[index & k_mask] = stack; // NOLINT
+  }
+
+  constexpr auto load(std::size_t index) noexcept -> async_stack * {
+    return m_buff[index & k_mask]; // NOLINT
+  }
+
+  std::size_t m_top = 0;
+  std::size_t m_bottom = 0;
+
+  std::array<async_stack *, N> m_buff = {};
+};
+
 // ----------------------------------------------- //
 
 inline namespace LF_DEPENDENT_ABI {
@@ -85,6 +124,11 @@ struct frame_block; ///< Forward declaration, impl below.
 } // namespace LF_DEPENDENT_ABI
 
 /**
+ * @brief This namespace contains `inline thread_local constinit` variables and functions to manipulate them.
+ */
+namespace tls {
+
+/**
  * @brief The async stack pointer.
  *
  * \rst
@@ -109,6 +153,13 @@ struct frame_block; ///< Forward declaration, impl below.
  */
 constinit inline thread_local frame_block *asp = nullptr;
 
+/**
+ * @brief A small thread-local buffer of `async_stack` pointers.
+ */
+constinit inline thread_local stack_buffer<16> sbuf;
+
+}; // namespace tls
+
 // ----------------------------------------------- //
 
 inline namespace LF_DEPENDENT_ABI {
@@ -120,29 +171,12 @@ struct frame_block : immovable<frame_block>, debug_block {
   /**
    * @brief A lightweight nullable handle to a `frame_block` that contains the public API for thieves.
    */
-  struct thief_handle {
-    /**
-     * @brief Resume a stolen task.
-     */
-    void resume() const noexcept {
-      LF_LOG("Call to resume on stolen task");
+  struct thief_handle;
 
-      // Link the sentinel to the parent.
-      LF_ASSERT(asp);
-      asp->write_sentinel_parent(m_frame_block);
-
-      LF_ASSERT(m_frame_block);
-      LF_ASSERT(m_frame_block->is_regular()); // Only regular tasks should be stolen.
-      m_frame_block->m_steal += 1;
-      m_frame_block->get_coro().resume();
-    }
-
-    explicit operator bool() const noexcept { return m_frame_block != nullptr; }
-
-    // TODO: make private
-    // private:
-    frame_block *m_frame_block = nullptr;
-  };
+  /**
+   * @brief A lightweight nullable handle to a `frame_block` that contains the public API for external submissions.
+   */
+  struct external_handle;
 
   /**
    * @brief For root blocks.
@@ -189,25 +223,25 @@ struct frame_block : immovable<frame_block>, debug_block {
   };
 
   /**
-   * @brief Destroy the coroutine on the top of this threads async stack, sets asp.
+   * @brief Destroy the coroutine on the top of this threads async stack, sets `tls::asp`.
    */
   static auto pop_asp() -> parent_t {
 
-    frame_block *top = asp;
+    frame_block *top = tls::asp;
     LF_ASSERT(top);
 
     // Destroy the coroutine (this does not effect top)
     LF_ASSERT(top->is_regular());
     top->get_coro().destroy();
 
-    asp = std::bit_cast<frame_block *>(top->from_offset(top->m_prev));
+    tls::asp = std::bit_cast<frame_block *>(top->from_offset(top->m_prev));
 
-    LF_ASSERT(is_aligned(asp, alignof(frame_block)));
+    LF_ASSERT(is_aligned(tls::asp, alignof(frame_block)));
 
-    if (asp->is_sentinel()) [[unlikely]] {
-      return {asp->read_sentinel_parent(), false};
+    if (tls::asp->is_sentinel()) [[unlikely]] {
+      return {tls::asp->read_sentinel_parent(), false};
     }
-    return {asp, true};
+    return {tls::asp, true};
   }
 
   /**
@@ -232,7 +266,7 @@ struct frame_block : immovable<frame_block>, debug_block {
   /**
    * @brief Check if a non-sentinel frame is a root frame.
    */
-  [[nodiscard]] constexpr auto is_root() const noexcept {
+  [[nodiscard]] constexpr auto is_root() const noexcept -> bool {
     LF_ASSERT(!is_sentinel());
     return !is_regular();
   }
@@ -247,7 +281,6 @@ struct frame_block : immovable<frame_block>, debug_block {
 
   /**
    * @brief Reset the join and steal counters, must be outside a fork-join region.
-   *
    */
   void reset() noexcept {
     LF_ASSERT(!is_sentinel());
@@ -393,19 +426,140 @@ static_assert(sizeof(async_stack) == k_kibibyte * LF_ASYNC_STACK_SIZE, "Spurious
 
 // ----------------------------------------------- //
 
+namespace tls {
+
+/**
+ * @brief Set `tls::asp` to point at frame.
+ *
+ * It must currently be pointing at a sentinel.
+ */
+inline void eat(frame_block *frame) {
+  LF_LOG("Thread eats a stack");
+  LF_ASSERT(tls::asp);
+  LF_ASSERT(tls::asp->is_sentinel());
+  auto *prev = std::exchange(tls::asp, frame);
+  auto *stack = async_stack::unsafe_from_sentinel(prev);
+  tls::sbuf.push(stack);
+}
+
+} // namespace tls
+
+// ----------------------------------------------- //
+
+// Needed a definition of async_stack first
+
+template <std::size_t N>
+  requires(std::has_single_bit(N))
+constexpr auto stack_buffer<N>::push(async_stack *stack) noexcept -> void {
+  if (full()) {
+    delete load(m_top++); // Free the oldest.
+  } else {
+    store(m_bottom++, stack);
+  }
+}
+
+template <std::size_t N>
+  requires(std::has_single_bit(N))
+[[nodiscard]] constexpr auto stack_buffer<N>::pop() noexcept -> async_stack * {
+  if (empty()) {
+    return new async_stack;
+  }
+  return load(--m_bottom);
+}
+
+template <std::size_t N>
+  requires(std::has_single_bit(N))
+constexpr stack_buffer<N>::~stack_buffer() noexcept {
+  while (!empty()) {
+    delete pop();
+  }
+}
+
+// ----------------------------------------------- //
+
+struct frame_block::thief_handle {
+  /**
+   * @brief Resume a stolen task.
+   *
+   * When this function returns this worker will have run out of tasks
+   * and their `tls::asp` will be pointing at a sentinel.
+   */
+  void resume() const noexcept {
+    LF_LOG("Call to resume on stolen task");
+
+    // Link the sentinel to the parent.
+    LF_ASSERT(tls::asp);
+    tls::asp->write_sentinel_parent(m_stolen);
+
+    LF_ASSERT(m_stolen);
+    LF_ASSERT(m_stolen->is_regular()); // Only regular tasks should be stolen.
+    m_stolen->m_steal += 1;
+    m_stolen->get_coro().resume();
+
+    LF_ASSERT(tls::asp);
+    LF_ASSERT(tls::asp->is_sentinel());
+  }
+
+  explicit operator bool() const noexcept { return m_stolen != nullptr; }
+
+  // TODO: make private
+  // private:
+  frame_block *m_stolen = nullptr;
+};
+
+// ----------------------------------------------- //
+
+struct frame_block::external_handle {
+  /**
+   * @brief Resume an external task.
+   *
+   * When this function returns this worker will have run out of tasks
+   * and their asp will be pointing at a sentinel.
+   */
+  void resume() const noexcept {
+
+    LF_LOG("Call to resume on external task");
+
+    LF_ASSERT(tls::asp);
+    LF_ASSERT(tls::asp->is_sentinel());
+
+    LF_ASSERT(m_external);
+    LF_ASSERT(!m_external->is_sentinel()); // Only regular/root tasks are external
+
+    if (!m_external->is_root()) {
+      tls::eat(m_external);
+    }
+
+    m_external->get_coro().resume();
+
+    LF_ASSERT(tls::asp);
+    LF_ASSERT(tls::asp->is_sentinel());
+  }
+
+  explicit operator bool() const noexcept { return m_external != nullptr; }
+
+  // TODO: make private
+  // private:
+  frame_block *m_external = nullptr;
+};
+
+// ----------------------------------------------- //
+
 inline namespace LF_DEPENDENT_ABI {
 
 class promise_alloc_heap : frame_block {
 protected:
-  explicit promise_alloc_heap(std::coroutine_handle<> self) noexcept : frame_block{self} { asp = this; }
+  explicit promise_alloc_heap(std::coroutine_handle<> self) noexcept : frame_block{self} { tls::asp = this; }
 };
 
 } // namespace LF_DEPENDENT_ABI
 
+// ----------------------------------------------- //
+
 /**
  * @brief A base class for promises that allocates on an `async_stack`.
  *
- * When a promise deriving from this class is constructed 'asp' will be set and when it is destroyed 'asp'
+ * When a promise deriving from this class is constructed 'tls::asp' will be set and when it is destroyed 'tls::asp'
  * will be returned to the previous frame.
  */
 class promise_alloc_stack {
@@ -420,8 +574,8 @@ class promise_alloc_stack {
 
 protected:
   explicit promise_alloc_stack(std::coroutine_handle<> self) noexcept {
-    LF_ASSERT(asp);
-    asp->set_coro(self);
+    LF_ASSERT(tls::asp);
+    tls::asp->set_coro(self);
   }
 
 public:
@@ -429,7 +583,7 @@ public:
    * @brief Allocate a new `frame_block` on the current `async_stack` and enough space for the coroutine
    * frame.
    *
-   * This will update `asp` to point to the top of the new async stack.
+   * This will update `tls::asp` to point to the top of the new async stack.
    */
   [[nodiscard]] static auto operator new(std::size_t size) noexcept -> void * {
     return promise_alloc_stack::operator new(size, std::align_val_t{k_new_align});
@@ -439,13 +593,13 @@ public:
    * @brief Allocate a new `frame_block` on the current `async_stack` and enough space for the coroutine
    * frame.
    *
-   * This will update `asp` to point to the top of the new async stack.
+   * This will update `tls::asp` to point to the top of the new async stack.
    */
   [[nodiscard]] static auto operator new(std::size_t size, std::align_val_t al) noexcept -> void * {
 
     std::uintptr_t align = unwrap(al);
 
-    frame_block *prev_asp = asp;
+    frame_block *prev_asp = tls::asp;
 
     LF_ASSERT(prev_asp);
 
@@ -460,7 +614,7 @@ public:
     LF_ASSERT(frame_addr % alignof(frame_block) == 0);
 
     // Starts the lifetime of the new frame block.
-    asp = new (std::bit_cast<void *>(frame_addr)) frame_block{prev_asp};
+    tls::asp = new (std::bit_cast<void *>(frame_addr)) frame_block{prev_asp};
 
     return std::bit_cast<void *>(coro_frame_addr);
   }
@@ -481,10 +635,18 @@ public:
 /**
  * @brief An aliases to the internal type that controls a task.
  *
- * Pointers given/received to this type are all non-owning, the only method
+ * Instances of `task_ptr` are non-owning, the only method
  * implementors of a context are permitted to use is `resume()`.
  */
 using task_ptr = detail::frame_block::thief_handle;
+
+/**
+ * @brief An aliases to the internal type that controls a task.
+ *
+ * Instances of `ext_ptr` are non-owning, the only method
+ * implementors of a context are permitted to use is `resume()`.
+ */
+using ext_ptr = detail::frame_block::external_handle;
 
 } // namespace lf
 

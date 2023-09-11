@@ -47,11 +47,7 @@ public:
   static auto
   get() -> T & {
     if (m_ptr == nullptr) {
-#if LF_COMPILER_EXCEPTIONS
-      throw not_set{};
-#else
-      std::terminate();
-#endif
+      LF_THROW(not_set{});
     }
     return *m_ptr;
   }

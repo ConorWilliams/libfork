@@ -149,18 +149,6 @@ struct empty {};
 } // namespace lf::detail
 
 /**
- * @brief An (unchecked, transparent) annotation to indicate that a pointer is non-null.
- */
-template <typename T>
-using non_null = T;
-
-/**
- * @brief An (unchecked, transparent) annotation to indicate that a pointer is owning.
- */
-template <typename T>
-using owner = T;
-
-/**
  * @brief Forwards to ``std::is_reference_v<T>``.
  */
 template <typename T>
