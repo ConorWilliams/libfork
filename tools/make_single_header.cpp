@@ -19,7 +19,7 @@ namespace fs = std::filesystem;
 
 namespace {
 
-constexpr auto &include_regex = R"-((?:^|\n)#include "(libfork(?:/\w*)+.hpp)")-";
+constexpr auto &include_regex = R"-((?:^|\n)#include "(libfork(?:[\w/]*)+.hpp)")-";
 
 template <typename Rng, typename Value>
 auto contains(Rng const &range, Value const &val) -> bool {
@@ -52,23 +52,22 @@ private:
 
     std::deque<replacement> replacements;
 
-    std::for_each(std::sregex_iterator(text.begin(), text.end(), m_regex), std::sregex_iterator{},
-                  [&](auto const &match) {
-                    //
-                    auto rep = replacement{match.position(), match.length(), {}};
+    std::for_each(std::sregex_iterator(text.begin(), text.end(), m_regex), std::sregex_iterator{}, [&](auto const &match) {
+      //
+      auto rep = replacement{match.position(), match.length(), {}};
 
-                    auto new_path = m_start_path;
+      auto new_path = m_start_path;
 
-                    std::cout << "Matched " << match.str(1) << '\n';
+      std::cout << "Matched " << match.str(1) << '\n';
 
-                    new_path = fs::canonical(new_path.append(match.str(1)));
+      new_path = fs::canonical(new_path.append(match.str(1)));
 
-                    if (!contains(m_processed_paths, new_path)) {
-                      rep.text = process_one(new_path);
-                    }
+      if (!contains(m_processed_paths, new_path)) {
+        rep.text = process_one(new_path);
+      }
 
-                    replacements.push_back(std::move(rep));
-                  });
+      replacements.push_back(std::move(rep));
+    });
 
     process_replacements(text, replacements);
     m_processed_paths.push_back(path);
@@ -77,8 +76,7 @@ private:
 
   static void process_replacements(std::string &str, std::deque<replacement> &replacements) {
 
-    std::sort(replacements.begin(), replacements.end(),
-              [](const auto &lhs, const auto &rhs) { return lhs.pos < rhs.pos; });
+    std::sort(replacements.begin(), replacements.end(), [](const auto &lhs, const auto &rhs) { return lhs.pos < rhs.pos; });
 
     while (!replacements.empty()) {
 

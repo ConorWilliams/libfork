@@ -28,7 +28,7 @@ TEST_CASE("basic counting", "[inline_scheduler]") {
 
   int x = 10;
 
-  // packet p = count(x);
+  packet p = count(x);
 
   //
 }

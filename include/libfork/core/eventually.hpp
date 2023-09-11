@@ -1,11 +1,11 @@
 #ifndef B7972761_4CBF_4B86_B195_F754295372BF
 #define B7972761_4CBF_4B86_B195_F754295372BF
 
-#include "libfork/macro.hpp"
-#include "libfork/utility.hpp"
-
 #include <memory>
 #include <utility>
+
+#include "libfork/macro.hpp"
+#include "libfork/utility.hpp"
 
 namespace lf {
 
