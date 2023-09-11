@@ -185,7 +185,7 @@ struct frame_block : immovable<frame_block>, debug_block {
    */
   struct parent_t {
     frame_block *parent; ///< The parent of the destroyed coroutine on top of the stack.
-    bool was_last;       ///< `true` if the destroyed coroutine was the last on the stack.
+    bool parent_on_asp;  ///< `true` if the parent is on the same stack as task that was just popped.
   };
 
   /**
@@ -205,12 +205,62 @@ struct frame_block : immovable<frame_block>, debug_block {
     LF_ASSERT(is_aligned(asp, alignof(frame_block)));
 
     if (asp->is_sentinel()) [[unlikely]] {
-      return {asp->read_sentinel_parent(), true};
+      return {asp->read_sentinel_parent(), false};
     }
-    return {asp, false};
+    return {asp, true};
   }
 
-  [[nodiscard]] constexpr auto joins() -> std::atomic_uint16_t & { return m_join; }
+  /**
+   * @brief Perform a `.load(order)` on the atomic join counter.
+   */
+  [[nodiscard]] constexpr auto load_joins(std::memory_order order) const noexcept -> std::uint16_t {
+    return m_join.load(order);
+  }
+
+  /**
+   * @brief Perform a `.fetch_sub(val, order)` on the atomic join counter.
+   */
+  constexpr auto fetch_sub_joins(std::uint16_t val, std::memory_order order) noexcept -> std::uint16_t {
+    return m_join.fetch_sub(val, order);
+  }
+
+  /**
+   * @brief Get the number of times this frame has been stolen.
+   */
+  [[nodiscard]] constexpr auto steals() const noexcept -> std::uint16_t { return m_steal; }
+
+  /**
+   * @brief Check if a non-sentinel frame is a root frame.
+   */
+  [[nodiscard]] constexpr auto is_root() const noexcept {
+    LF_ASSERT(!is_sentinel());
+    return !is_regular();
+  }
+
+  /**
+   * @brief Check if any frame is a sentinel frame.
+   */
+  constexpr auto is_sentinel() const noexcept -> bool {
+    LF_ASSUME(is_initialised());
+    return m_coro == 0;
+  }
+
+  /**
+   * @brief Reset the join and steal counters, must be outside a fork-join region.
+   *
+   */
+  void reset() noexcept {
+    LF_ASSERT(!is_sentinel());
+    LF_ASSERT(m_steal != 0); // Reset not needed if steal is zero.
+
+    m_steal = 0;
+
+    static_assert(std::is_trivially_destructible_v<decltype(m_join)>);
+    // Use construct_at(...) to set non-atomically as we know we are the
+    // only thread who can touch this control block until a steal which
+    // would provide the required memory synchronization.
+    std::construct_at(&m_join, k_u16_max);
+  }
 
 private:
   static constexpr std::int16_t uninitialized = 1;
@@ -234,12 +284,7 @@ private:
     return m_prev != uninitialized && m_coro != uninitialized;
   }
 
-  auto is_sentinel() const noexcept -> bool {
-    LF_ASSUME(is_initialised());
-    return m_coro == 0;
-  }
-
-  auto is_regular() const noexcept -> bool {
+  constexpr auto is_regular() const noexcept -> bool {
     LF_ASSUME(is_initialised());
     return m_prev != 0;
   }

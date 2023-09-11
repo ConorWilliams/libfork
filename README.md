@@ -1,40 +1,92 @@
 
 
 
-# Welcome to `cojex` [🌵]
 
-coroutine, tex (thread), executor, context, cortex (brain), cactus
+<h1 align="center"> Welcome to <tt>libfork</tt> 🍴 </h1>
 
-#  Welcome to `cotex` [🌵]   [![Continuous Integration](https://github.com/ConorWilliams/libfork/actions/workflows/ci.yml/badge.svg)](https://github.com/ConorWilliams/libfork/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/ConorWilliams/libfork/branch/main/graph/badge.svg?token=89MTSXI85F)](https://codecov.io/gh/ConorWilliams/libfork)
 
-Libfork is primarily an abstraction for strict, lock-free, wait-free, continuation-stealing [fork-join parallelism](https://en.wikipedia.org/wiki/Fork%E2%80%93join_model). This is made possible without the use of any macros/inline assembly using C++20's coroutines.
+<p align="center">
+<a href="https://github.com/ConorWilliams/libfork/actions/workflows/ci.yml">
+    <img src="https://github.com/ConorWilliams/libfork/actions/workflows/ci.yml/badge.svg">
+</a>
+<a href="https://github.com/ConorWilliams/openFLY/actions/workflows/pages/pages-build-deployment">
+    <img src="https://github.com/ConorWilliams/openFLY/actions/workflows/pages/pages-build-deployment/badge.svg">
+</a>
+<a href="https://codecov.io/gh/ConorWilliams/libfork">
+    <img src="https://codecov.io/gh/ConorWilliams/libfork/branch/main/graph/badge.svg?token=89MTSXI85F)">
+</a>
+</p>
+<p align="center">
+  A bleeding edge, lock-free, wait-free, continuation-stealing coroutine-tasking library.
+</p>
 
-Libfork presents a cross-platform API that decouples scheduling tasks (a customization point) from writing tasks and expressing their dependencies. Additionally, libfork provides performant work-stealing schedulers for general use. 
+<h3 align="center"> ** Now with 🌵 **  </h1>
+
+`libfork` is primarily an abstraction for strict [fork-join parallelism](https://en.wikipedia.org/wiki/Fork%E2%80%93join_model). This is made possible without the use of any macros/inline assembly using C++20's coroutines. Ultra-fine grained parallelism (the ability to spawn tasks with near zero overhead) is enabled by an innovative implementation of a non-allocating [cactus-stack](https://en.wikipedia.org/wiki/Parent_pointer_tree) that utilizes _stack-stealing_.
+
+__TLDR:__
+```c++
+
+inline constexpr async fib = [](auto fib, int n) -> lf::task<int> { 
+  
+  if (n < 2) {
+    co_return n;
+  }
+
+  int a, b
+
+  co_await lf::fork[a, fib](n - 1);    // Spawn a child task.
+  co_await lf::call[b, fib](n - 2);    // Execute inline.
+
+  co_await lf::join;                   // Wait for children.
+
+  co_return a + b;                     // Safe to access after join.
+};
+```
+
+`libfork` presents a cross-platform API that decouples scheduling tasks (a customization point) from writing tasks and expressing their dependencies. Additionally, `libfork` provides performant NUMA-aware work-stealing schedulers for general use. 
+
+
 
 
 ## Benchmarks
 
-See the [benchmark's README](benchmark/README.md) for a comparison of libfork to openMP and Intel's TBB, as well as some ARM/weak-memory-model benchmarks. 
+See the [benchmark's README](benchmark/README.md) for a comparison of `libfork` to openMP and Intel's TBB, as well as some ARM/weak-memory-model benchmarks. 
 
 ## Building and installing
 
-See the [BUILDING](BUILDING.md) document for full details. 
+See the [BUILDING](BUILDING.md) document for full details on compilation, installation and optional dependencies.
 
-Note, libfork is tested on GCC (10,11,12) and Clang (14,15), currently Clang seems to do a much better job at optimizing coroutines. When Microsoft fixes [this bug](https://developercommunity.visualstudio.com/t/Incorrect-code-generation-for-symmetric/1659260?scope=follow) libfork should build on MSVC.
+Note, `libfork` is currently tested on GCC (13) and Clang (16). At the moment Clang seems to do a much better job at optimizing coroutines. When Microsoft fixes [this bug](https://developercommunity.visualstudio.com/t/Incorrect-code-generation-for-symmetric/1659260?scope=follow) `libfork` should build on MSVC.
 
 ## Contributing
 
-See the [CONTRIBUTING](CONTRIBUTING.md) document.
+1. See the [CONTRIBUTING](CONTRIBUTING.md) document.
+2. Have a snoop around the [`impl` api]().
+3. Ask as many questions as you can think of!
 
-## API reference
+## API reference/documentation
 
-See the [API documentation](https://conorwilliams.github.io/libfork/) website.
+See the generated [docs](https://conorwilliams.github.io/libfork/).
 
 ## Changelog
 
 See the [ChangeLog](ChangeLog.md) document.
 
-## Tasks and futures
+## A tour of `libfork`
+
+<!-- This section provides some background and highlights the [consumer api](), for details on implementing your own schedulers on top of `libfork` see the [context api](). -->
+
+#### Contents:
+
+- [Fork-join introduction](#Tasks-and-futures)
+- [y-combinators](#y-combinator)
+- [`invoke`, `tail` and `ignore`](#Invoke-and-tail)
+- [Asynchronous stack-tracing]()
+- [Schedulers](#Schedulers)
+- [Algorithms and the high-level API]()
+
+### Tasks and futures
 
 The tasking fork-join interface is designed to mirror Cilk and other fork-join frameworks. With libfork the canonical recursive-Fibonacci is a simple as:
 
@@ -94,7 +146,7 @@ It is recommended that custom schedulers use lock-free stacks for their executio
 
 ## Reference
 
-This project implements many of the ideas from (available in [`reference/`](reference)):
+This project builds on many of the ideas (available in [`reference/`](reference)) developed by the following papers:
 
 ```bibtex
 @inproceedings{Schmaus2021,

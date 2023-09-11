@@ -99,6 +99,11 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
     struct final_awaitable : stdx::suspend_always {
       constexpr auto await_suspend(stdx::coroutine_handle<promise_type> child) const noexcept -> stdx::coroutine_handle<> {
 
+        FATAL_IN_DEBUG(asp->debug_count() == 0, "Fork/Call without a join!");
+
+        LF_ASSERT(asp->steals() == 0);                                      // Fork without join.
+        LF_ASSERT(asp->load_joins(std::memory_order_acquire) == k_u16_max); // Destroyed in invalid state.
+
         // Completing a task means we currently own the async_stack this child is on
 
         if constexpr (Tag == tag::root) {
@@ -111,7 +116,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
         LF_LOG("Task reaches final suspend");
 
-        auto [parent, this_was_last] = frame_block::pop_asp();
+        auto [parent, parent_on_asp] = frame_block::pop_asp();
 
         if constexpr (Tag == tag::call || Tag == tag::invoke) {
           LF_LOG("Inline task resumes parent");
@@ -125,7 +130,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
           // No-one stole continuation, we are the exclusive owner of parent, just keep ripping!
           LF_LOG("Parent not stolen, keeps ripping");
           LF_ASSERT(parent_task.m_frame_block == parent);
-          LF_ASSERT(!this_was_last);
+          LF_ASSERT(parent_on_asp);
           // This must be the same thread that created the parent so it already owns the stack.
           // No steals have occurred so we do not need to call reset().;
           return parent->get_coro();
@@ -149,7 +154,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
         LF_LOG("Task's parent was stolen");
 
         // Register with parent we have completed this child task.
-        if (parent->joins().fetch_sub(1, std::memory_order_release) == 1) {
+        if (parent->fetch_sub_joins(1, std::memory_order_release) == 1) {
           // Acquire all writes before resuming.
           std::atomic_thread_fence(std::memory_order_acquire);
 
@@ -158,22 +163,18 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
           LF_LOG("Task is last child to join, resumes parent");
 
-          if (parent_cb.has_parent()) {
-            // Must take control of stack if we do not already own it.
-            auto parent_stack = virtual_stack::from_address(&parent_cb);
-            auto thread_stack = context.stack_top();
-
-            if (parent_stack != thread_stack) {
+          if (!parent_on_asp) {
+            if (!parent->is_root()) /* [[likely]] */ {
+              LF_ASSUME(asp->is_sentinel());
               LF_LOG("Thread takes control of parent's stack");
-              LF_ASSUME(thread_stack->empty());
-              context.stack_push(parent_stack);
+              context.stack_push(async_stack::unsafe_from_sentinel(std::exchange(asp, parent)));
             }
           }
 
           // Must reset parents control block before resuming parent.
-          parent_cb.reset();
+          parent->reset();
 
-          return parent_h;
+          return parent->get_coro();
         }
 
         // Parent has not reached join or we are not the last child to complete.
@@ -181,28 +182,18 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
         LF_LOG("Task is not last to join");
 
-        if (parent_cb.has_parent()) {
-          // We are unable to resume the parent, if we were its creator then we should pop a stack
-          // from our context as the resuming thread will take ownership of the parent's stack.
-          auto parent_stack = virtual_stack::from_address(&parent_cb);
-          auto thread_stack = context.stack_top();
-
-          if (parent_stack == thread_stack) {
-            LF_LOG("Thread releases control of parent's stack");
-            context.stack_pop();
-          }
+        if (parent_on_asp) {
+          // We are unable to resume the parent, as the resuming thread will take ownership of the parent's stack we must
+          // give it up.
+          LF_LOG("Thread releases control of parent's stack");
+          asp = context.stack_pop();
         }
 
-        LF_ASSUME(context.stack_top()->empty());
+        LF_ASSUME(asp->is_sentinel());
 
         return stdx::noop_coroutine();
       }
     };
-
-    FATAL_IN_DEBUG(this->debug_count() == 0, "Fork/Call without a join!");
-
-    LF_ASSERT(this->steals() == 0);            // Fork without join.
-    LF_ASSERT(this->joins().load() == k_imax); // Destroyed in invalid state.
 
     return final_awaitable{};
   }
