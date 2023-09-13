@@ -28,12 +28,7 @@ inline constexpr auto count = [](auto count, int &var) -> task<void> {
   co_return;
 };
 
-#include <iostream>
-
 TEST_CASE("basic counting", "[inline_scheduler]") {
-
-  //
-  // inline_scheduler::context_type ctx;
 
   root_result<void> block;
 
@@ -46,22 +41,20 @@ TEST_CASE("basic counting", "[inline_scheduler]") {
   count(Head{basic_first_arg<root_result<void>, tag::root, decltype(count)>{block}}, x);
 
   auto *root = tls::asp;
-
   REQUIRE(root);
+  tls::asp = nullptr;
 
-  tls::asp = tls::sbuf.pop()->sentinel();
+  inline_scheduler::context_type ctx;
+
+  worker_init(&ctx);
 
   REQUIRE(x == 10);
-  root->get_coro().resume();
+
+  ctx.submit(wrap<external_ptr<inline_scheduler::context_type>>(root));
+
   REQUIRE(x == 9);
 
-  // count(x);
-
-  // std::cout << "------------------------" << x << std::endl;
-
-  // REQUIRE(x == 8);
-
-  //
+  worker_finalize(&ctx);
 }
 
 // NOLINTEND

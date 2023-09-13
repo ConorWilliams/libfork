@@ -128,10 +128,10 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
         LF_ASSERT(context);
 
-        if (task_ptr parent_task = context->task_pop()) {
+        if (internal_ptr<Context> parent_task = context->task_pop()) {
           // No-one stole continuation, we are the exclusive owner of parent, just keep ripping!
           LF_LOG("Parent not stolen, keeps ripping");
-          LF_ASSERT(parent_task.m_stolen == parent);
+          LF_ASSERT(unwrap(parent_task) == parent);
           LF_ASSERT(parent_on_asp);
           // This must be the same thread that created the parent so it already owns the stack.
           // No steals have occurred so we do not need to call reset().;
@@ -167,7 +167,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
           if (!parent_on_asp) {
             if (!parent->is_root()) [[likely]] {
-              tls::eat(parent);
+              tls::eat<Context>(parent);
             }
           }
 
@@ -183,10 +183,10 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
         LF_LOG("Task is not last to join");
 
         if (parent_on_asp) {
-          // We are unable to resume the parent, as the resuming thread will take ownership of the parent's stack we must
-          // give it up.
+          // We are unable to resume the parent, as the resuming thread will take
+          // ownership of the parent's stack we must give it up.
           LF_LOG("Thread releases control of parent's stack");
-          tls::asp = tls::sbuf.pop()->sentinel();
+          tls::asp = context->stack_pop()->sentinel();
         }
 
         LF_ASSERT(tls::asp->is_sentinel());

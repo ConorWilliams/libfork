@@ -37,7 +37,7 @@ public:
      */
     context_type() { m_tasks.reserve(128); }
 
-    static void submit(ext_ptr ptr) {
+    static void submit(external_ptr<context_type> ptr) {
       LF_ASSERT(ptr);
       ptr.resume();
     }
@@ -46,27 +46,33 @@ public:
      * @brief Returns one as this runs all tasks inline.
      */
     static constexpr auto max_threads() noexcept -> std::size_t { return 1; }
+
     /**
      * @brief Pops a task from the task queue.
      */
-    auto task_pop() -> task_ptr {
+    auto task_pop() -> internal_ptr<context_type> {
       if (m_tasks.empty()) {
         return {};
       }
-      task_ptr task = m_tasks.back();
+      internal_ptr<context_type> task = m_tasks.back();
       m_tasks.pop_back();
       return task;
     }
+
     /**
      * @brief Pushes a task to the task queue.
      */
-    void task_push(task_ptr task) {
+    void task_push(internal_ptr<context_type> task) {
       LF_ASSERT(task);
       m_tasks.push_back(task);
     }
 
+    void stack_push(async_stack *stack) { delete stack; }
+
+    auto stack_pop() -> async_stack * { return new async_stack; }
+
   private:
-    std::vector<task_ptr> m_tasks;
+    std::vector<internal_ptr<context_type>> m_tasks;
   };
 
   static_assert(thread_context<context_type>);
