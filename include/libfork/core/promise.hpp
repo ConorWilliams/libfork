@@ -128,10 +128,10 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
         LF_ASSERT(context);
 
-        if (internal_ptr<Context> parent_task = context->task_pop()) {
+        if (frame_block *parent_task = context->task_pop()) {
           // No-one stole continuation, we are the exclusive owner of parent, just keep ripping!
           LF_LOG("Parent not stolen, keeps ripping");
-          LF_ASSERT(unwrap(parent_task) == parent);
+          LF_ASSERT(parent_task == parent);
           LF_ASSERT(parent_on_asp);
           // This must be the same thread that created the parent so it already owns the stack.
           // No steals have occurred so we do not need to call reset().;

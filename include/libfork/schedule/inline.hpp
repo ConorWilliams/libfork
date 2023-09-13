@@ -37,9 +37,9 @@ public:
      */
     context_type() { m_tasks.reserve(128); }
 
-    static void submit(external_ptr<context_type> ptr) {
+    static void submit(frame_block *ptr) {
       LF_ASSERT(ptr);
-      ptr.resume();
+      ptr->resume_external<context_type>();
     }
 
     /**
@@ -50,11 +50,11 @@ public:
     /**
      * @brief Pops a task from the task queue.
      */
-    auto task_pop() -> internal_ptr<context_type> {
+    auto task_pop() -> frame_block * {
       if (m_tasks.empty()) {
         return {};
       }
-      internal_ptr<context_type> task = m_tasks.back();
+      frame_block *task = m_tasks.back();
       m_tasks.pop_back();
       return task;
     }
@@ -62,7 +62,7 @@ public:
     /**
      * @brief Pushes a task to the task queue.
      */
-    void task_push(internal_ptr<context_type> task) {
+    void task_push(frame_block *task) {
       LF_ASSERT(task);
       m_tasks.push_back(task);
     }
@@ -72,7 +72,7 @@ public:
     auto stack_pop() -> async_stack * { return new async_stack; }
 
   private:
-    std::vector<internal_ptr<context_type>> m_tasks;
+    std::vector<frame_block *> m_tasks;
   };
 
   static_assert(thread_context<context_type>);

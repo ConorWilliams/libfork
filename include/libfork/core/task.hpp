@@ -301,9 +301,9 @@ struct [[nodiscard("async functions must be called")]] async {
  */
 struct dummy_context {
   auto max_threads() -> std::size_t;
-  auto submit(external_ptr<dummy_context>) -> void;
-  auto task_pop() -> internal_ptr<dummy_context>;
-  auto task_push(internal_ptr<dummy_context>) -> void;
+  auto submit(frame_block *) -> void;
+  auto task_pop() -> frame_block *;
+  auto task_push(frame_block *) -> void;
   auto stack_pop() -> async_stack *;
   auto stack_push(async_stack *) -> void;
 };
@@ -341,27 +341,5 @@ static_assert(first_arg<basic_first_arg<void, tag::root, decltype([] {})>>);
 static_assert(first_arg<basic_first_arg<int, tag::root, decltype([] {})>>);
 
 } // namespace lf
-
-#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
-
-  // /**
-  //  * @brief Specialize coroutine_traits for task<...> from functions.
-  //  */
-  // template <typename T, lf::first_arg Head, typename... Args>
-  // struct lf::stdx::coroutine_traits<lf::task<T>, Head, Args...> {
-  //   using promise_type = ::lf::detail::promise_type<typename Head::return_address_t, T,
-  //                                                   typename Head::context_type, Head::tag_value>;
-  // };
-
-  // /**
-  //  * @brief Specialize coroutine_traits for task<...> from member functions.
-  //  */
-  // template <typename T, lf::detail::not_first_arg Self, lf::first_arg Head, typename... Args>
-  // struct lf::stdx::coroutine_traits<lf::task<T>, Self, Head, Args...> {
-  //   using promise_type = lf::detail::promise_type<typename Head::return_address_t, T,
-  //                                                 typename Head::context_type, Head::tag_value>;
-  // };
-
-#endif /* LF_DOXYGEN_SHOULD_SKIP_THIS */
 
 #endif /* E91EA187_42EF_436C_A3FF_A86DE54BCDBE */

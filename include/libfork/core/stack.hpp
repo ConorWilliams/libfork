@@ -39,11 +39,7 @@ namespace lf {
 
 class async_stack;
 
-template <typename Context>
-struct internal_ptr;
-
-template <typename Context>
-struct external_ptr;
+class frame_block;
 
 // ----------------------------------------------- //
 
@@ -55,18 +51,16 @@ struct external_ptr;
  * should always be able to return an empty ``lf::async_stack``.
  */
 template <typename Context>
-concept thread_context = requires(Context ctx, async_stack *stack, external_ptr<Context> ext, internal_ptr<Context> task) {
-  { ctx.max_threads() } -> std::same_as<std::size_t>;               // The maximum number of threads.
-  { ctx.submit(ext) };                                              // Submit an external task to the context.
-  { ctx.task_pop() } -> std::convertible_to<internal_ptr<Context>>; // If the stack is empty, return a null pointer.
-  { ctx.task_push(task) };                                          // Push a non-null pointer.
-  { ctx.stack_pop() } -> std::convertible_to<async_stack *>;        // Return a non-null pointer
-  { ctx.stack_push(stack) };                                        // Push a non-null pointer
+concept thread_context = requires(Context ctx, async_stack *stack, frame_block *ext, frame_block *task) {
+  { ctx.max_threads() } -> std::same_as<std::size_t>;        // The maximum number of threads.
+  { ctx.submit(ext) };                                       // Submit an external task to the context.
+  { ctx.task_pop() } -> std::convertible_to<frame_block *>;  // If the stack is empty, return a null pointer.
+  { ctx.task_push(task) };                                   // Push a non-null pointer.
+  { ctx.stack_pop() } -> std::convertible_to<async_stack *>; // Return a non-null pointer
+  { ctx.stack_push(stack) };                                 // Push a non-null pointer
 };
 
 // ----------------------------------------------- //
-
-struct frame_block;
 
 /**
  * @brief This namespace contains `inline thread_local constinit` variables and functions to manipulate them.
@@ -145,14 +139,8 @@ static_assert(std::is_trivially_destructible_v<debug_block>);
 /**
  * @brief A small bookkeeping struct allocated immediately before/after each coroutine frame.
  */
-struct frame_block : detail::immovable<frame_block>, debug_block {
-
-  template <typename>
-  friend struct ::lf::internal_ptr;
-
-  template <typename>
-  friend struct ::lf::external_ptr;
-
+class frame_block : detail::immovable<frame_block>, public debug_block {
+public:
   /**
    * @brief For root blocks.
    */
@@ -170,6 +158,23 @@ struct frame_block : detail::immovable<frame_block>, debug_block {
    * default constructor that maybe called by accident.
    */
   explicit constexpr frame_block([[maybe_unused]] detail::empty tag) noexcept : m_prev{0}, m_coro{0} {};
+
+  /**
+   * @brief Resume a stolen task.
+   *
+   * When this function returns this worker will have run out of tasks
+   * and their `tls::asp` will be pointing at a sentinel.
+   */
+  void resume_stolen() noexcept;
+
+  /**
+   * @brief Resume an external task.
+   *
+   * When this function returns this worker will have run out of tasks
+   * and their asp will be pointing at a sentinel.
+   */
+  template <thread_context Context>
+  void resume_external() noexcept;
 
   /**
    * @brief Set the offset to coro.
@@ -332,7 +337,7 @@ private:
   /**
    * @brief Write the parent below a sentinel frame.
    */
-  void write_sentinel_parent(frame_block *parent) noexcept {
+  void write_sentinels_parent(frame_block *parent) noexcept {
     LF_ASSERT(is_sentinel());
     void *address = from_offset(sizeof(frame_block));
     LF_ASSERT(is_aligned(address, alignof(frame_block *)));
@@ -422,112 +427,54 @@ inline void eat(frame_block *frame) {
 
 // ----------------------------------------------- //
 
-namespace detail {
-
-template <typename Ptr>
-auto wrap(frame_block *frame) -> Ptr {
-  return Ptr{frame};
-};
-
-template <typename Ptr>
-auto unwrap(Ptr ptr) -> frame_block * {
-  return ptr.m_frame;
-};
-
-} // namespace detail
-
-// ----------------------------------------------- //
-
 /**
- * @brief A lightweight nullable handle to a `frame_block` that contexts use to keep track of their tasks.
+ * @brief Resume a stolen task.
  *
- * This kind of handle can also be stolen.
+ * When this function returns this worker will have run out of tasks
+ * and their `tls::asp` will be pointing at a sentinel.
  */
-template <typename Context>
-// requires thread_context<Context>
-struct internal_ptr {
+inline void frame_block::resume_stolen() noexcept {
+  LF_LOG("Call to resume on stolen task");
 
-  constexpr internal_ptr() noexcept = default;
+  // Link the sentinel to the parent.
+  LF_ASSERT(tls::asp);
+  tls::asp->write_sentinels_parent(this);
 
-  explicit operator bool() const noexcept { return m_frame != nullptr; }
+  LF_ASSERT(is_regular()); // Only regular tasks should be stolen.
+  m_steal += 1;
+  get_coro().resume();
 
-  /**
-   * @brief Resume a stolen task.
-   *
-   * When this function returns this worker will have run out of tasks
-   * and their `tls::asp` will be pointing at a sentinel.
-   */
-  void resume() const noexcept {
-    LF_LOG("Call to resume on stolen task");
-
-    // Link the sentinel to the parent.
-    LF_ASSERT(tls::asp);
-    tls::asp->write_sentinel_parent(m_frame);
-
-    LF_ASSERT(m_frame);
-    LF_ASSERT(m_frame->is_regular()); // Only regular tasks should be stolen.
-    m_frame->m_steal += 1;
-    m_frame->get_coro().resume();
-
-    LF_ASSERT(tls::asp);
-    LF_ASSERT(tls::asp->is_sentinel());
-  }
-
-private:
-  frame_block *m_frame = nullptr;
-
-  constexpr explicit internal_ptr(frame_block *frame) noexcept : m_frame{frame} {}
-
-  friend auto detail::wrap<internal_ptr<Context>>(frame_block *) -> internal_ptr<Context>;
-  friend auto detail::unwrap<internal_ptr<Context>>(internal_ptr<Context>) -> frame_block *;
-};
+  LF_ASSERT(tls::asp);
+  LF_ASSERT(tls::asp->is_sentinel());
+}
 
 // ----------------------------------------------- //
 
 /**
- * @brief A lightweight nullable handle to a `frame_block` that contains that can be submitted to a context.
+ * @brief Resume an external task.
+ *
+ * When this function returns this worker will have run out of tasks
+ * and their asp will be pointing at a sentinel.
  */
-template <typename Context>
-struct external_ptr {
+template <thread_context Context>
+inline void frame_block::resume_external() noexcept {
 
-  constexpr external_ptr() noexcept = default;
+  LF_LOG("Call to resume on external task");
 
-  explicit operator bool() const noexcept { return m_frame != nullptr; }
+  LF_ASSERT(tls::asp);
+  LF_ASSERT(tls::asp->is_sentinel());
 
-  /**
-   * @brief Resume an external task.
-   *
-   * When this function returns this worker will have run out of tasks
-   * and their asp will be pointing at a sentinel.
-   */
-  void resume() const noexcept {
+  LF_ASSERT(!is_sentinel()); // Only regular/root tasks are external
 
-    LF_LOG("Call to resume on external task");
-
-    LF_ASSERT(tls::asp);
-    LF_ASSERT(tls::asp->is_sentinel());
-
-    LF_ASSERT(m_frame);
-    LF_ASSERT(!m_frame->is_sentinel()); // Only regular/root tasks are external
-
-    if (!m_frame->is_root()) {
-      tls::eat<Context>(m_frame);
-    }
-
-    m_frame->get_coro().resume();
-
-    LF_ASSERT(tls::asp);
-    LF_ASSERT(tls::asp->is_sentinel());
+  if (!is_root()) {
+    tls::eat<Context>(this);
   }
 
-private:
-  frame_block *m_frame = nullptr;
+  get_coro().resume();
 
-  constexpr explicit external_ptr(frame_block *frame) noexcept : m_frame{frame} {}
-
-  friend auto detail::wrap<external_ptr<Context>>(frame_block *) -> external_ptr<Context>;
-  friend auto detail::unwrap<external_ptr<Context>>(external_ptr<Context>) -> frame_block *;
-};
+  LF_ASSERT(tls::asp);
+  LF_ASSERT(tls::asp->is_sentinel());
+}
 
 // ----------------------------------------------- //
 

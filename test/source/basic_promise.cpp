@@ -50,7 +50,7 @@ TEST_CASE("basic counting", "[inline_scheduler]") {
 
   REQUIRE(x == 10);
 
-  ctx.submit(wrap<external_ptr<inline_scheduler::context_type>>(root));
+  ctx.submit(root);
 
   REQUIRE(x == 9);
 
