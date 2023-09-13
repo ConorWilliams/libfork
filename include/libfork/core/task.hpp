@@ -329,7 +329,7 @@ struct basic_first_arg : basic_first_arg<void, Tag, F> {
 
   using return_type = R; ///< The type of the return address.
 
-  explicit constexpr basic_first_arg(return_type &ret) : m_ret{std::addressof(ret)} {}
+  explicit(false) constexpr basic_first_arg(return_type &ret) : m_ret{std::addressof(ret)} {}
 
   [[nodiscard]] constexpr auto address() const noexcept -> return_type * { return m_ret; }
 

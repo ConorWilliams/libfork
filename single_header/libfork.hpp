@@ -585,6 +585,39 @@ private:
 #include <utility>
 #include <version>
 
+#ifndef E8D38B49_7170_41BC_90E9_6D6389714304
+#define E8D38B49_7170_41BC_90E9_6D6389714304
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// Self Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>
+#include <type_traits>
+#include <utility>
+#ifndef E91EA187_42EF_436C_A3FF_A86DE54BCDBE
+#define E91EA187_42EF_436C_A3FF_A86DE54BCDBE
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>
+#include <functional>
+#include <memory>
+#include <source_location>
+#include <type_traits>
+#include <utility>
+
+#include "tuplet/tuple.hpp"
 #ifndef EE6A2701_7559_44C9_B708_474B1AE823B2
 #define EE6A2701_7559_44C9_B708_474B1AE823B2
 
@@ -972,6 +1005,19 @@ public:
     bool parent_on_asp;  ///< `true` if the parent is on the same stack as task that was just popped.
   };
 
+  [[nodiscard]] auto parent() const noexcept -> parent_t {
+
+    LF_ASSERT(!is_sentinel());
+
+    auto *parent = std::bit_cast<frame_block *>(from_offset(m_prev));
+
+    if (parent->is_sentinel()) [[unlikely]] {
+      return {parent->read_sentinel_parent(), false};
+    }
+
+    return {parent, true};
+  }
+
   /**
    * @brief Destroy the coroutine on the top of this threads async stack, sets `tls::asp`.
    */
@@ -1024,7 +1070,7 @@ public:
   /**
    * @brief Check if any frame is a sentinel frame.
    */
-  constexpr auto is_sentinel() const noexcept -> bool {
+  [[nodiscard]] constexpr auto is_sentinel() const noexcept -> bool {
     LF_ASSUME(is_initialised());
     return m_coro == 0;
   }
@@ -1062,17 +1108,17 @@ private:
   std::int16_t m_prev;                             ///< Distance to previous frame.
   std::int16_t m_coro;                             ///< Offset from `this` to paired coroutine's void handle.
 
-  constexpr auto is_initialised() const noexcept -> bool {
+  [[nodiscard]] constexpr auto is_initialised() const noexcept -> bool {
     static_assert(sizeof(frame_block) > uninitialized, "Required for uninitialized to be invalid offset");
     return m_prev != uninitialized && m_coro != uninitialized;
   }
 
-  constexpr auto is_regular() const noexcept -> bool {
+  [[nodiscard]] constexpr auto is_regular() const noexcept -> bool {
     LF_ASSUME(is_initialised());
     return m_prev != 0;
   }
 
-  static constexpr auto is_aligned(void *address, std::size_t align) noexcept -> bool {
+  [[nodiscard]] static constexpr auto is_aligned(void *address, std::size_t align) noexcept -> bool {
     return std::bit_cast<std::uintptr_t>(address) % align == 0;
   }
 
@@ -1117,7 +1163,7 @@ private:
   /**
    * @brief Read the parent below a sentinel frame.
    */
-  auto read_sentinel_parent() noexcept -> frame_block * {
+  [[nodiscard]] auto read_sentinel_parent() noexcept -> frame_block * {
     LF_ASSERT(is_sentinel());
     void *address = from_offset(sizeof(frame_block));
     LF_ASSERT(is_aligned(address, alignof(frame_block *)));
@@ -1354,25 +1400,6 @@ void worker_finalize(Context *context) {
 } // namespace lf
 
 #endif /* D66428B1_3B80_45ED_A7C2_6368A0903810 */
-#ifndef E91EA187_42EF_436C_A3FF_A86DE54BCDBE
-#define E91EA187_42EF_436C_A3FF_A86DE54BCDBE
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>
-#include <functional>
-#include <memory>
-#include <source_location>
-#include <type_traits>
-#include <utility>
-
-#include "tuplet/tuple.hpp"
 
 
 /**
@@ -1682,7 +1709,7 @@ struct basic_first_arg : basic_first_arg<void, Tag, F> {
 
   using return_type = R; ///< The type of the return address.
 
-  explicit constexpr basic_first_arg(return_type &ret) : m_ret{std::addressof(ret)} {}
+  explicit(false) constexpr basic_first_arg(return_type &ret) : m_ret{std::addressof(ret)} {}
 
   [[nodiscard]] constexpr auto address() const noexcept -> return_type * { return m_ret; }
 
@@ -1696,6 +1723,105 @@ static_assert(first_arg<basic_first_arg<int, tag::root, decltype([] {})>>);
 } // namespace lf
 
 #endif /* E91EA187_42EF_436C_A3FF_A86DE54BCDBE */
+
+
+/**
+ * @file call.hpp
+ *
+ * @brief Meta header which includes all ``lf::task``, ``lf::fork``, ``lf::call``, ``lf::join`` and
+ * ``lf::sync_wait`` machinery.
+ */
+
+namespace lf {
+
+namespace detail {
+
+/**
+ * @brief An invocable (and subscriptable) wrapper that binds a return address to an asynchronous function.
+ */
+template <tag Tag>
+struct bind_task {
+  /**
+   * @brief Bind return address `ret` to an asynchronous function.
+   *
+   * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
+   */
+  template <typename R, typename F>
+    requires(Tag != tag::tail)
+  [[nodiscard("HOF needs to be called")]] LF_STATIC_CALL constexpr auto
+  operator()(R &ret, [[maybe_unused]] async<F> async) LF_STATIC_CONST noexcept {
+    return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...> {
+      return {{ret}, std::forward<Args>(args)...};
+    };
+  }
+  /**
+   * @brief Set a void return address for an asynchronous function.
+   *
+   * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
+   */
+  template <typename F>
+  [[nodiscard("HOF needs to be called")]] LF_STATIC_CALL constexpr auto
+  operator()([[maybe_unused]] async<F> async) LF_STATIC_CONST noexcept {
+    return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
+      return {{}, std::forward<Args>(args)...};
+    };
+  }
+
+#if defined(LF_DOXYGEN_SHOULD_SKIP_THIS) ||                                                                                 \
+    (defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L)
+    // /**
+    //  * @brief Bind return address `ret` to an asynchronous function.
+    //  *
+    //  * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
+    //  */
+    // template <typename R, typename F>
+    // [[nodiscard]] static constexpr auto operator[](R &ret, [[maybe_unused]] async_fn<F> async) noexcept {
+    //   return [&]<typename... Args>(Args &&...args) noexcept -> detail::packet<first_arg_t<R, Tag, async_fn<F>>, Args...> {
+    //     return {{ret}, {}, {std::forward<Args>(args)...}};
+    //   };
+    // }
+    // /**
+    //  * @brief Set a void return address for an asynchronous function.
+    //  *
+    //  * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
+    //  */
+    // template <typename F>
+    // [[nodiscard]] static constexpr auto operator[]([[maybe_unused]] async_fn<F> async) noexcept {
+    //   return [&]<typename... Args>(Args &&...args) noexcept -> detail::packet<first_arg_t<void, Tag, async_fn<F>>,
+    //   Args...> {
+    //     return {{}, {}, {std::forward<Args>(args)...}};
+    //   };
+    // }
+#endif
+};
+
+struct join_type {};
+
+} // namespace detail
+
+/**
+ * @brief An awaitable (in a task) that triggers a join.
+ */
+inline constexpr detail::join_type join = {};
+
+/**
+ * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a fork.
+ */
+inline constexpr detail::bind_task<tag::fork> fork = {};
+
+/**
+ * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a call.
+ */
+inline constexpr detail::bind_task<tag::call> call = {};
+
+/**
+ * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a tail-call.
+ */
+inline constexpr detail::bind_task<tag::tail> tail = {};
+
+} // namespace lf
+
+#endif /* E8D38B49_7170_41BC_90E9_6D6389714304 */
 
 
 /**
@@ -1868,34 +1994,33 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
     return final_awaitable{};
   }
 
-  // public:
-  //   template <typename R, typename F, typename... This, typename... Args>
-  //   [[nodiscard]] constexpr auto await_transform(packet<first_arg_t<R, tag::fork, F, This...>, Args...> &&packet) {
+public:
+  template <typename U, typename F, typename... This, typename... Args>
+  [[nodiscard]] constexpr auto await_transform(packet<basic_first_arg<U, tag::fork, F>, Args...> &&packet)
+    requires requires { std::move(packet).template patch_with<Context>(); }
+  {
 
-  //     this->debug_inc();
+    this->debug_inc();
 
-  //     auto my_handle = cast_down(stdx::coroutine_handle<promise_type>::from_promise(*this));
+    std::move(packet).template patch_with<Context>().invoke();
 
-  //     stdx::coroutine_handle child = add_context_to_packet(std::move(packet)).invoke_bind(my_handle);
+    struct awaitable : stdx::suspend_always {
+      [[nodiscard]] constexpr auto await_suspend(stdx::coroutine_handle<promise_type>) noexcept -> stdx::coroutine_handle<> {
 
-  //     struct awaitable : stdx::suspend_always {
-  //       [[nodiscard]] constexpr auto await_suspend(stdx::coroutine_handle<promise_type> parent) noexcept ->
-  //       decltype(child) {
-  //         // In case *this (awaitable) is destructed by stealer after push
-  //         stdx::coroutine_handle stack_child = m_child;
+        LF_LOG("Forking, push parent to context");
 
-  //         LF_LOG("Forking, push parent to context");
+        frame_block *child = tls::asp;
 
-  //         Context::context().task_push(task_handle{promise_type::cast_down(parent)});
+        auto [parent, _] = child->parent();
 
-  //         return stack_child;
-  //       }
+        tls::ctx<Context>->task_push(parent);
 
-  //       decltype(child) m_child;
-  //     };
+        return child->get_coro();
+      }
+    };
 
-  //     return awaitable{{}, child};
-  //   }
+    return awaitable{};
+  }
 
   //   template <typename R, typename F, typename... This, typename... Args>
   //   [[nodiscard]] constexpr auto await_transform(packet<first_arg_t<R, tag::call, F, This...>, Args...> &&packet) {

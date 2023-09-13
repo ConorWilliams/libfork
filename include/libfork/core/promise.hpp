@@ -23,6 +23,7 @@
 #include "libfork/macro.hpp"
 #include "libfork/utility.hpp"
 
+#include "libfork/core/call.hpp"
 #include "libfork/core/coroutine.hpp"
 #include "libfork/core/result.hpp"
 #include "libfork/core/stack.hpp"
@@ -198,34 +199,33 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
     return final_awaitable{};
   }
 
-  // public:
-  //   template <typename R, typename F, typename... This, typename... Args>
-  //   [[nodiscard]] constexpr auto await_transform(packet<first_arg_t<R, tag::fork, F, This...>, Args...> &&packet) {
+public:
+  template <typename U, typename F, typename... This, typename... Args>
+  [[nodiscard]] constexpr auto await_transform(packet<basic_first_arg<U, tag::fork, F>, Args...> &&packet)
+    requires requires { std::move(packet).template patch_with<Context>(); }
+  {
 
-  //     this->debug_inc();
+    this->debug_inc();
 
-  //     auto my_handle = cast_down(stdx::coroutine_handle<promise_type>::from_promise(*this));
+    std::move(packet).template patch_with<Context>().invoke();
 
-  //     stdx::coroutine_handle child = add_context_to_packet(std::move(packet)).invoke_bind(my_handle);
+    struct awaitable : stdx::suspend_always {
+      [[nodiscard]] constexpr auto await_suspend(stdx::coroutine_handle<promise_type>) noexcept -> stdx::coroutine_handle<> {
 
-  //     struct awaitable : stdx::suspend_always {
-  //       [[nodiscard]] constexpr auto await_suspend(stdx::coroutine_handle<promise_type> parent) noexcept ->
-  //       decltype(child) {
-  //         // In case *this (awaitable) is destructed by stealer after push
-  //         stdx::coroutine_handle stack_child = m_child;
+        LF_LOG("Forking, push parent to context");
 
-  //         LF_LOG("Forking, push parent to context");
+        frame_block *child = tls::asp;
 
-  //         Context::context().task_push(task_handle{promise_type::cast_down(parent)});
+        auto [parent, _] = child->parent();
 
-  //         return stack_child;
-  //       }
+        tls::ctx<Context>->task_push(parent);
 
-  //       decltype(child) m_child;
-  //     };
+        return child->get_coro();
+      }
+    };
 
-  //     return awaitable{{}, child};
-  //   }
+    return awaitable{};
+  }
 
   //   template <typename R, typename F, typename... This, typename... Args>
   //   [[nodiscard]] constexpr auto await_transform(packet<first_arg_t<R, tag::call, F, This...>, Args...> &&packet) {

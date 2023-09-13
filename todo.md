@@ -17,6 +17,7 @@
 - remove DEPENDANT_ABI namespace.
 - Update licenses at top of files
 - Taskflow benchmark
+- Rename DOXYGEN_SHOULD_SKIP_THIS to DOXYGEN_PROCESSOR
 
 Naming:
 

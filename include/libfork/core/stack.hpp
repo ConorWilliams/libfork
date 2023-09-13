@@ -202,6 +202,19 @@ public:
     bool parent_on_asp;  ///< `true` if the parent is on the same stack as task that was just popped.
   };
 
+  [[nodiscard]] auto parent() const noexcept -> parent_t {
+
+    LF_ASSERT(!is_sentinel());
+
+    auto *parent = std::bit_cast<frame_block *>(from_offset(m_prev));
+
+    if (parent->is_sentinel()) [[unlikely]] {
+      return {parent->read_sentinel_parent(), false};
+    }
+
+    return {parent, true};
+  }
+
   /**
    * @brief Destroy the coroutine on the top of this threads async stack, sets `tls::asp`.
    */
@@ -254,7 +267,7 @@ public:
   /**
    * @brief Check if any frame is a sentinel frame.
    */
-  constexpr auto is_sentinel() const noexcept -> bool {
+  [[nodiscard]] constexpr auto is_sentinel() const noexcept -> bool {
     LF_ASSUME(is_initialised());
     return m_coro == 0;
   }
@@ -292,17 +305,17 @@ private:
   std::int16_t m_prev;                             ///< Distance to previous frame.
   std::int16_t m_coro;                             ///< Offset from `this` to paired coroutine's void handle.
 
-  constexpr auto is_initialised() const noexcept -> bool {
+  [[nodiscard]] constexpr auto is_initialised() const noexcept -> bool {
     static_assert(sizeof(frame_block) > uninitialized, "Required for uninitialized to be invalid offset");
     return m_prev != uninitialized && m_coro != uninitialized;
   }
 
-  constexpr auto is_regular() const noexcept -> bool {
+  [[nodiscard]] constexpr auto is_regular() const noexcept -> bool {
     LF_ASSUME(is_initialised());
     return m_prev != 0;
   }
 
-  static constexpr auto is_aligned(void *address, std::size_t align) noexcept -> bool {
+  [[nodiscard]] static constexpr auto is_aligned(void *address, std::size_t align) noexcept -> bool {
     return std::bit_cast<std::uintptr_t>(address) % align == 0;
   }
 
@@ -347,7 +360,7 @@ private:
   /**
    * @brief Read the parent below a sentinel frame.
    */
-  auto read_sentinel_parent() noexcept -> frame_block * {
+  [[nodiscard]] auto read_sentinel_parent() noexcept -> frame_block * {
     LF_ASSERT(is_sentinel());
     void *address = from_offset(sizeof(frame_block));
     LF_ASSERT(is_aligned(address, alignof(frame_block *)));
