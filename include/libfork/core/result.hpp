@@ -54,9 +54,7 @@ inline constexpr bool is_root_result_v = detail::is_root_result<T>::value;
  * @brief Like `std::assignable_from` but without the common reference type requirement.
  */
 template <typename LHS, typename RHS>
-concept assignable = std::is_lvalue_reference_v<LHS> && requires(LHS lhs, RHS &&rhs) {
-  { lhs = std::forward<RHS>(rhs) } -> std::same_as<LHS>;
-};
+concept assignable = std::is_lvalue_reference_v<LHS> && requires(LHS lhs, RHS &&rhs) { lhs = std::forward<RHS>(rhs); };
 
 /**
  * @brief A tuple-like type with forwarding semantics for in place construction.
@@ -173,7 +171,9 @@ private:
     if constexpr (requires { ret->emplace(std::forward<Args>(args)...); }) {
       (*ret).emplace(std::forward<Args>(args)...);
     } else if constexpr (std::is_move_assignable_v<R> && std::constructible_from<R, Args...>) {
-      (*ret) = R(std::forward<Args>(args)...);
+      // TODO: clang is choking on this...?
+      throw std::runtime_error("not implemented");
+      // (*ret) = R(std::forward<Args>(args)...);
     } else {
       (*ret) = T(std::forward<Args>(args)...);
     }

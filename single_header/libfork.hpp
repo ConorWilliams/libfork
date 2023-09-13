@@ -601,6 +601,7 @@ private:
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include <bit>
 #include <concepts>
 #include <functional>
 #include <memory>
@@ -662,9 +663,7 @@ inline constexpr bool is_root_result_v = detail::is_root_result<T>::value;
  * @brief Like `std::assignable_from` but without the common reference type requirement.
  */
 template <typename LHS, typename RHS>
-concept assignable = std::is_lvalue_reference_v<LHS> && requires(LHS lhs, RHS &&rhs) {
-  { lhs = std::forward<RHS>(rhs) } -> std::same_as<LHS>;
-};
+concept assignable = std::is_lvalue_reference_v<LHS> && requires(LHS lhs, RHS &&rhs) { lhs = std::forward<RHS>(rhs); };
 
 /**
  * @brief A tuple-like type with forwarding semantics for in place construction.
@@ -781,7 +780,9 @@ private:
     if constexpr (requires { ret->emplace(std::forward<Args>(args)...); }) {
       (*ret).emplace(std::forward<Args>(args)...);
     } else if constexpr (std::is_move_assignable_v<R> && std::constructible_from<R, Args...>) {
-      (*ret) = R(std::forward<Args>(args)...);
+      // TODO: clang is choking on this...?
+      throw std::runtime_error("not implemented");
+      // (*ret) = R(std::forward<Args>(args)...);
     } else {
       (*ret) = T(std::forward<Args>(args)...);
     }
@@ -1374,9 +1375,12 @@ public:
    */
   template <thread_context Context>
   constexpr auto patch_with() && noexcept -> packet<patched<Context, Head>, Tail...> {
-    return std::move(m_args).apply([](Head head, Tail &&...tail) {
-      return packet<patched<Context, Head>, Tail...>{{std::move(head)}, std::forward<Tail>(tail)...};
-    });
+    return std::bit_cast<packet<patched<Context, Head>, Tail...>>(*this);
+
+    // std::move(m_args).apply([](Head head, auto &&...tail) {
+    //   // int i = {tail...};
+    //   return packet<patched<Context, Head>, Tail...>{{std::move(head)}, std::forward<decltype(tail)>(tail)...};
+    // });
   }
 
 private:
@@ -1796,25 +1800,25 @@ public:
     return awaitable{{}, this, child};
   }
 
-  //   template <typename R, typename F, typename... This, typename... Args>
-  //   [[nodiscard]] constexpr auto await_transform(packet<first_arg_t<R, tag::call, F, This...>, Args...> &&packet) {
+  template <typename U, typename F, typename... Args>
+  [[nodiscard]] constexpr auto await_transform(packet<basic_first_arg<U, tag::call, F>, Args...> &&packet)
+    requires requires { std::move(packet).template patch_with<Context>(); }
+  {
 
-  //     this->debug_inc();
+    frame_block *child = std::move(packet).template patch_with<Context>().invoke(this);
 
-  //     auto my_handle = cast_down(stdx::coroutine_handle<promise_type>::from_promise(*this));
+    struct awaitable : stdx::suspend_always {
+      [[nodiscard]] constexpr auto await_suspend(std::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
 
-  //     stdx::coroutine_handle child = add_context_to_packet(std::move(packet)).invoke_bind(my_handle);
+        LF_LOG("Calling");
+        return m_child->coro();
+      }
 
-  //     struct awaitable : stdx::suspend_always {
-  //       [[nodiscard]] constexpr auto await_suspend([[maybe_unused]] stdx::coroutine_handle<promise_type> parent) noexcept
-  //           -> decltype(child) {
-  //         return m_child;
-  //       }
-  //       decltype(child) m_child;
-  //     };
+      frame_block *m_child;
+    };
 
-  //     return awaitable{{}, child};
-  //   }
+    return awaitable{{}, child};
+  }
 
   //   /**
   //    * @brief An invoke should never occur within an async scope as the exceptions will get muddled

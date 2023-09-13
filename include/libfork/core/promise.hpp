@@ -231,25 +231,25 @@ public:
     return awaitable{{}, this, child};
   }
 
-  //   template <typename R, typename F, typename... This, typename... Args>
-  //   [[nodiscard]] constexpr auto await_transform(packet<first_arg_t<R, tag::call, F, This...>, Args...> &&packet) {
+  template <typename U, typename F, typename... Args>
+  [[nodiscard]] constexpr auto await_transform(packet<basic_first_arg<U, tag::call, F>, Args...> &&packet)
+    requires requires { std::move(packet).template patch_with<Context>(); }
+  {
 
-  //     this->debug_inc();
+    frame_block *child = std::move(packet).template patch_with<Context>().invoke(this);
 
-  //     auto my_handle = cast_down(stdx::coroutine_handle<promise_type>::from_promise(*this));
+    struct awaitable : stdx::suspend_always {
+      [[nodiscard]] constexpr auto await_suspend(std::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
 
-  //     stdx::coroutine_handle child = add_context_to_packet(std::move(packet)).invoke_bind(my_handle);
+        LF_LOG("Calling");
+        return m_child->coro();
+      }
 
-  //     struct awaitable : stdx::suspend_always {
-  //       [[nodiscard]] constexpr auto await_suspend([[maybe_unused]] stdx::coroutine_handle<promise_type> parent) noexcept
-  //           -> decltype(child) {
-  //         return m_child;
-  //       }
-  //       decltype(child) m_child;
-  //     };
+      frame_block *m_child;
+    };
 
-  //     return awaitable{{}, child};
-  //   }
+    return awaitable{{}, child};
+  }
 
   //   /**
   //    * @brief An invoke should never occur within an async scope as the exceptions will get muddled

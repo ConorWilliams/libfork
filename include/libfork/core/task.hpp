@@ -9,6 +9,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include <bit>
 #include <concepts>
 #include <functional>
 #include <memory>
@@ -231,9 +232,12 @@ public:
    */
   template <thread_context Context>
   constexpr auto patch_with() && noexcept -> packet<patched<Context, Head>, Tail...> {
-    return std::move(m_args).apply([](Head head, Tail &&...tail) {
-      return packet<patched<Context, Head>, Tail...>{{std::move(head)}, std::forward<Tail>(tail)...};
-    });
+    return std::bit_cast<packet<patched<Context, Head>, Tail...>>(*this);
+
+    // std::move(m_args).apply([](Head head, auto &&...tail) {
+    //   // int i = {tail...};
+    //   return packet<patched<Context, Head>, Tail...>{{std::move(head)}, std::forward<decltype(tail)>(tail)...};
+    // });
   }
 
 private:

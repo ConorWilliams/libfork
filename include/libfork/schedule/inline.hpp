@@ -13,6 +13,7 @@
 
 #include "libfork/core.hpp"
 #include "libfork/core/stack.hpp"
+#include "libfork/queue.hpp"
 
 /**
  * @file inline.hpp
@@ -35,7 +36,7 @@ public:
     /**
      * @brief Construct a new context type object, set the thread_local context object to this object.
      */
-    context_type() { m_tasks.reserve(128); }
+    context_type() {}
 
     static void submit(frame_block *ptr) {
       LF_ASSERT(ptr);
@@ -50,21 +51,14 @@ public:
     /**
      * @brief Pops a task from the task queue.
      */
-    auto task_pop() -> frame_block * {
-      if (m_tasks.empty()) {
-        return {};
-      }
-      frame_block *task = m_tasks.back();
-      m_tasks.pop_back();
-      return task;
-    }
+    auto task_pop() -> frame_block * { return m_tasks.pop(); }
 
     /**
      * @brief Pushes a task to the task queue.
      */
     void task_push(frame_block *task) {
       LF_ASSERT(task);
-      m_tasks.push_back(task);
+      m_tasks.push(task);
     }
 
     void stack_push(async_stack *stack) { delete stack; }
@@ -72,7 +66,7 @@ public:
     auto stack_pop() -> async_stack * { return new async_stack; }
 
   private:
-    std::vector<frame_block *> m_tasks;
+    queue<frame_block *, frame_block *> m_tasks;
   };
 
   static_assert(thread_context<context_type>);
