@@ -74,8 +74,8 @@ struct task {
 template <typename>
 struct is_task_impl : std::false_type {};
 
-template <typename T>
-struct is_task_impl<task<T>> : std::true_type {};
+template <typename T, auto Name>
+struct is_task_impl<task<T, Name>> : std::true_type {};
 
 template <typename T>
 concept is_task = is_task_impl<T>::value;
@@ -335,9 +335,8 @@ static_assert(thread_context<dummy_context>, "dummy_context is not a thread_cont
 /**
  * @brief Void/ignore specialization.
  */
-template <typename R, tag Tag, stateless F>
-  requires std::same_as<R, void> or std::same_as<R, ignore_t>
-struct basic_first_arg<R, Tag, F> : async<F>, detail::move_only<basic_first_arg<void, Tag, F>> {
+template <tag Tag, stateless F>
+struct basic_first_arg<void, Tag, F> : async<F>, detail::move_only<basic_first_arg<void, Tag, F>> {
   using context_type = dummy_context;   ///< A default context
   using return_type = void;             ///< The type of the return address.
   using function_type = F;              ///< The underlying async

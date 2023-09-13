@@ -5,29 +5,16 @@
 
 #ifndef EDCA974A_808F_4B62_95D5_4D84E31B8911
 #define EDCA974A_808F_4B62_95D5_4D84E31B8911
-#ifndef D66428B1_3B80_45ED_A7C2_6368A0903810
-#define D66428B1_3B80_45ED_A7C2_6368A0903810
+#ifndef A6BE090F_9077_40E8_9B57_9BAFD9620469
+#define A6BE090F_9077_40E8_9B57_9BAFD9620469
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
 
 // SPDX-License-Identifier: MPL-2.0
 
-// This Source Code Form is subject to the terms of the Mozilla Public
+// Self Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <atomic>
-#include <bit>
-#include <concepts>
-#include <cstddef>
-#include <cstdint>
-#include <limits>
-#include <memory>
-#include <new>
-#include <optional>
-#include <semaphore>
-#include <type_traits>
-#include <utility>
 #ifndef FE9C96B0_5DDD_4438_A3B0_E77BD54F8673
 #define FE9C96B0_5DDD_4438_A3B0_E77BD54F8673
 
@@ -70,7 +57,11 @@ namespace stdx = std::experimental;
 // NOLINTEND
 
 #endif /* FE9C96B0_5DDD_4438_A3B0_E77BD54F8673 */
+#ifndef B7972761_4CBF_4B86_B195_F754295372BF
+#define B7972761_4CBF_4B86_B195_F754295372BF
 
+#include <memory>
+#include <utility>
 #ifndef C5DCA647_8269_46C2_B76F_5FA68738AEDA
 #define C5DCA647_8269_46C2_B76F_5FA68738AEDA
 
@@ -483,6 +474,327 @@ template <typename T>
 concept reference = std::is_reference_v<T>;
 
 #endif /* DF63D333_F8C0_4BBA_97E1_32A78466B8B7 */
+
+
+namespace lf {
+
+inline namespace LF_DEPENDENT_ABI {
+
+/**
+ * @brief A wrapper to delay construction of an object.
+ *
+ * It is up to the caller to guarantee that the object is constructed before it is used and that an object is
+ * constructed before the lifetime of the eventually ends (regardless of it is used).
+ */
+template <typename T>
+  requires(not std::is_void_v<T>)
+class eventually : detail::immovable<eventually<T>> {
+public:
+  /**
+   * @brief Construct an empty eventually.
+   */
+  constexpr eventually() noexcept
+    requires std::is_trivially_constructible_v<T>
+  = default;
+
+  constexpr eventually() noexcept : m_init{} {};
+
+  /**
+   * @brief Construct an object inside the eventually from ``args...``.
+   */
+  template <typename... Args>
+    requires std::constructible_from<T, Args...>
+  constexpr void emplace(Args &&...args) noexcept(std::is_nothrow_constructible_v<T, Args...>) {
+    LF_LOG("Constructing an eventually");
+#ifndef NDEBUG
+    LF_ASSERT(!m_constructed);
+#endif
+    std::construct_at(std::addressof(m_value), std::forward<Args>(args)...);
+#ifndef NDEBUG
+    m_constructed = true;
+#endif
+  }
+
+  /**
+   * @brief Construct an object inside the eventually from ``expr``.
+   */
+  template <typename U>
+  constexpr auto operator=(U &&expr) noexcept(noexcept(emplace(std::forward<U>(expr)))) -> eventually &
+    requires requires { emplace(std::forward<U>(expr)); }
+  {
+    emplace(std::forward<U>(expr));
+    return *this;
+  }
+
+  // clang-format off
+  constexpr ~eventually() noexcept requires std::is_trivially_destructible_v<T> = default;
+  // clang-format on
+
+  constexpr ~eventually() noexcept(std::is_nothrow_destructible_v<T>) {
+#ifndef NDEBUG
+    LF_ASSUME(m_constructed);
+#endif
+    std::destroy_at(std::addressof(m_value));
+  }
+
+  /**
+   * @brief Access the wrapped object.
+   */
+  [[nodiscard]] constexpr auto operator*() & noexcept -> T & {
+#ifndef NDEBUG
+    LF_ASSUME(m_constructed);
+#endif
+    return m_value;
+  }
+
+private:
+  union {
+    detail::empty m_init;
+    T m_value;
+  };
+
+#ifndef NDEBUG
+  bool m_constructed = false;
+#endif
+};
+
+} // namespace LF_DEPENDENT_ABI
+
+} // namespace lf
+
+#endif /* B7972761_4CBF_4B86_B195_F754295372BF */
+#ifndef FF9F3B2C_DC2B_44D2_A3C2_6E40F211C5B0
+#define FF9F3B2C_DC2B_44D2_A3C2_6E40F211C5B0
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <atomic>
+#include <concepts>
+#include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <optional>
+#include <tuple>
+#include <type_traits>
+#include <utility>
+#include <version>
+
+#ifndef EE6A2701_7559_44C9_B708_474B1AE823B2
+#define EE6A2701_7559_44C9_B708_474B1AE823B2
+
+#include <concepts>
+#include <semaphore>
+#include <type_traits>
+#include <utility>
+
+
+#include "tuplet/tuple.hpp"
+
+namespace lf {
+
+/**
+ * @brief A small control structure that a root tasks use to communicate with the main thread.
+ */
+template <typename T>
+struct root_result;
+
+template <>
+struct root_result<void> : detail::immovable<root_result<void>> {
+  std::binary_semaphore semaphore{0};
+};
+
+template <typename T>
+struct root_result : eventually<T>, root_result<void> {
+  using eventually<T>::operator=;
+};
+
+namespace detail {
+
+template <typename T>
+struct is_root_result : std::false_type {};
+
+template <typename T>
+struct is_root_result<root_result<T>> : std::true_type {};
+
+} // namespace detail
+
+template <typename T>
+inline constexpr bool is_root_result_v = detail::is_root_result<T>::value;
+
+// ------------------------------ //
+
+// /**
+//  * @brief A tag type to explicitly ignore the return value of a task.
+//  */
+// struct ignore_t {};
+
+/**
+ * @brief Like `std::assignable_from` but without the common reference type requirement.
+ */
+template <typename LHS, typename RHS>
+concept assignable = std::is_lvalue_reference_v<LHS> && requires(LHS lhs, RHS &&rhs) {
+  { lhs = std::forward<RHS>(rhs) } -> std::same_as<LHS>;
+};
+
+/**
+ * @brief A tuple-like type with forwarding semantics for in place construction.
+ */
+template <typename... Args>
+struct in_place_args : tuplet::tuple<Args...> {};
+
+/**
+ * @brief A forwarding deduction guide.
+ */
+template <typename... Args>
+in_place_args(Args &&...) -> in_place_args<Args &&...>;
+
+template <typename R, typename T>
+struct promise_result;
+
+/**
+ * @brief Specialization for `void` and ignored return types.
+ *
+ * @tparam R The type of the return address.
+ * @tparam T The type of the return value.
+ */
+template <typename T>
+struct promise_result<void, T> {
+  constexpr void return_void() const noexcept {}
+};
+
+template <>
+struct promise_result<root_result<void>, void> {
+
+  constexpr void return_void() const noexcept {}
+
+  explicit constexpr promise_result(root_result<void> *return_address) noexcept : m_ret_address(return_address) {
+    LF_ASSERT(return_address);
+  }
+
+protected:
+  constexpr auto address() const noexcept -> root_result<void> * { return m_ret_address; }
+
+private:
+  root_result<void> *m_ret_address;
+};
+
+/**
+ * @brief A promise base-class that provides the return_[...] methods.
+ *
+ * @tparam R The type of the return address.
+ * @tparam T The type of the return value.
+ */
+template <typename R, typename T>
+  requires assignable<R &, T>
+struct promise_result<R, T> {
+  /**
+   * @brief Assign a value to the return address.
+   *
+   * If the return address is directly assignable from `value` this will not construct a temporary.
+   */
+  constexpr void return_value(T const &value) const
+    requires std::constructible_from<T, T const &> and (!reference<T>)
+  {
+    if constexpr (assignable<R &, T const &>) {
+      *address() = value;
+    } else /* if constexpr (assignable<R &, T>) */ { // ensured by struct constraint
+      *address() = T(value);
+    }
+  }
+  /**
+   * @brief Assign a value directly to the return address.
+   */
+  constexpr void return_value(T &&value) const
+    requires std::constructible_from<T, T>
+  {
+    if constexpr (std::is_rvalue_reference_v<T &&>) {
+      *address() = std::move(value);
+    } else {
+      *address() = value;
+    }
+  }
+  /**
+   * @brief Assign a value to the return address.
+   *
+   * If the return address is directly assignable from `value` this will not construct the intermediate `T`.
+   */
+  template <typename U>
+    requires std::constructible_from<T, U>
+  constexpr void return_value(U &&value) const {
+    if constexpr (assignable<R &, U>) {
+      *address() = std::forward<U>(value);
+    } else {
+      *address() = T(std::forward<U>(value));
+    }
+  }
+  /**
+   * @brief Assign a value constructed from the arguments stored in `args` to the return address.
+   *
+   * If the return address has a `.emplace()` method that accepts the arguments in the tuple this will be
+   * called directly.
+   */
+  template <reference... Args>
+    requires std::constructible_from<T, Args...>
+  constexpr void return_value(in_place_args<Args...> args) const {
+    tuplet::apply(emplace, std::move(args));
+  }
+
+  explicit constexpr promise_result(R *return_address) noexcept : m_ret_address(return_address) {
+    LF_ASSERT(return_address);
+  }
+
+protected:
+  constexpr auto address() const noexcept -> R * { return m_ret_address; }
+
+private:
+  static constexpr auto emplace = []<typename... Args>(R *ret, Args &&...args) LF_STATIC_CALL {
+    if constexpr (requires { ret->emplace(std::forward<Args>(args)...); }) {
+      (*ret).emplace(std::forward<Args>(args)...);
+    } else if constexpr (std::is_move_assignable_v<R> && std::constructible_from<R, Args...>) {
+      (*ret) = R(std::forward<Args>(args)...);
+    } else {
+      (*ret) = T(std::forward<Args>(args)...);
+    }
+  };
+
+  R *m_ret_address;
+};
+
+// ----------------------------------------------------- //
+
+} // namespace lf
+
+#endif /* EE6A2701_7559_44C9_B708_474B1AE823B2 */
+#ifndef D66428B1_3B80_45ED_A7C2_6368A0903810
+#define D66428B1_3B80_45ED_A7C2_6368A0903810
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <atomic>
+#include <bit>
+#include <concepts>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <memory>
+#include <new>
+#include <optional>
+#include <semaphore>
+#include <type_traits>
+#include <utility>
+
 
 
 /**
@@ -1109,6 +1421,832 @@ using ext_ptr = detail::frame_block::external_handle;
 } // namespace lf
 
 #endif /* D66428B1_3B80_45ED_A7C2_6368A0903810 */
+#ifndef E91EA187_42EF_436C_A3FF_A86DE54BCDBE
+#define E91EA187_42EF_436C_A3FF_A86DE54BCDBE
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>
+#include <functional>
+#include <memory>
+#include <source_location>
+#include <type_traits>
+#include <utility>
+
+#include "tuplet/tuple.hpp"
+
+
+/**
+ * @file task.hpp
+ *
+ * @brief Implementation of the core ``lf::task`` type.
+ */
+
+namespace lf {
+
+template <typename Char, std::size_t N>
+struct fixed_string {
+private:
+  using sloc = std::source_location;
+
+public:
+  explicit(false) consteval fixed_string(Char const (&str)[N], sloc loc = sloc::current()) noexcept
+      : line{loc.line()},
+        column{loc.column()} {
+    for (std::size_t i = 0; i < N; ++i) {
+      function_name[i] = str[i];
+    }
+  }
+
+  static constexpr std::size_t file_name_max_size = 127;
+
+  std::array<Char, N> function_name;
+  // std::array<Char, file_name_max_size + 1> file_name_buf;
+  // std::size_t file_name_size;
+  std::uint_least32_t line;
+  std::uint_least32_t column;
+};
+
+// ----------------------------------------------- //
+
+namespace detail {
+
+struct task_construct_key {};
+
+} // namespace detail
+
+/**
+ * @brief The return type for libfork's async functions/coroutines.
+ */
+template <typename T, fixed_string Name = "">
+struct task {
+  using value_type = T; ///< The type of the value returned by the coroutine.
+
+  explicit(false) constexpr task([[maybe_unused]] detail::task_construct_key key) noexcept {};
+};
+
+template <typename>
+struct is_task_impl : std::false_type {};
+
+template <typename T, auto Name>
+struct is_task_impl<task<T, Name>> : std::true_type {};
+
+template <typename T>
+concept is_task = is_task_impl<T>::value;
+
+// ----------------------------------------------- //
+
+/**
+ * @brief An enumeration that determines the behavior of a coroutine's promise.
+ */
+enum class tag {
+  root,   ///< This coroutine is a root task (allocated on heap) from an ``lf::sync_wait``.
+  call,   ///< Non root task (on a virtual stack) from an ``lf::call``, completes synchronously.
+  fork,   ///< Non root task (on a virtual stack) from an ``lf::fork``, completes asynchronously.
+  invoke, ///< Equivalent to ``call`` but caches the return (extra move required).
+  tail,   ///< Force a tail-call optimization.
+};
+
+// ----------------------------------------------- //
+
+/**
+ * @brief A helper to fetch `typename std::remove_cvref_t<T>::context_type`.
+ */
+template <typename T>
+  requires requires { typename std::remove_cvref_t<T>::context_type; }
+using context_of = typename std::remove_cvref_t<T>::context_type;
+
+/**
+ * @brief A helper to fetch `typename std::remove_cvref_t<T>::return_type`.
+ */
+template <typename T>
+  requires requires { typename std::remove_cvref_t<T>::return_type; }
+using return_of = typename std::remove_cvref_t<T>::return_type;
+
+/**
+ * @brief A helper to fetch `typename std::remove_cvref_t<T>::function_type`.
+ */
+template <typename T>
+  requires requires { typename std::remove_cvref_t<T>::function_type; }
+using function_of = typename std::remove_cvref_t<T>::function_type;
+
+/**
+ * @brief A helper to fetch `std::remove_cvref_t<T>::tag_value`.
+ */
+template <typename T>
+  requires requires {
+    { std::remove_cvref_t<T>::tag_value } -> std::convertible_to<tag>;
+  }
+inline constexpr tag tag_of = std::remove_cvref_t<T>::tag_value;
+
+/**
+ * @brief A helper to fetch `typename std::remove_cvref_t<T>::value_type`.
+ */
+template <typename T>
+  requires requires { typename std::remove_cvref_t<T>::value_type; }
+using value_of = typename std::remove_cvref_t<T>::value_type;
+
+// ----------------------------------------------- //
+
+/**
+ * @brief Test if a type is a stateless class.
+ */
+template <typename T>
+concept stateless = std::is_class_v<T> && std::is_trivial_v<T> && std::is_empty_v<T>;
+
+// ----------------------------------------------- //
+
+/**
+ * @brief A concept which defines the context interface.
+ *
+ * A context owns a LIFO stack of ``lf::async_stack``s and a LIFO stack of
+ * tasks. The stack of ``lf::async_stack``s is expected to never be empty, it
+ * should always be able to return an empty ``lf::async_stack``.
+ */
+template <typename Context>
+concept thread_context = requires(Context ctx, ext_ptr ext, detail::async_stack *stack, task_ptr task) {
+  { ctx.submit(ext) };                                 // Submit an external task to the context.
+  { ctx.max_threads() } -> std::same_as<std::size_t>;  // The maximum number of threads.
+  { ctx.task_pop() } -> std::convertible_to<task_ptr>; // If the stack is empty, return a null pointer.
+  { ctx.task_push(task) };                             // Push a non-null pointer.
+};
+
+namespace detail::tls {
+
+template <thread_context Context>
+constinit inline thread_local Context *ctx = nullptr;
+
+} // namespace detail::tls
+
+// ----------------------------------------------- //
+
+/**
+ * @brief Forward decl for concepts.
+ */
+template <stateless Fn>
+struct [[nodiscard("async functions must be called")]] async;
+
+/**
+ * @brief The API of the first arg passed to an async function.
+ */
+template <typename Arg>
+concept first_arg = requires(Arg arg) {
+  //
+  tag_of<Arg>;
+
+  typename context_of<Arg>;
+  typename return_of<Arg>;
+  typename function_of<Arg>;
+
+  requires std::is_void_v<return_of<Arg>> || requires {
+    { arg.address() } -> std::convertible_to<return_of<Arg> *>;
+  };
+
+  []<typename F>(async<F>)
+    requires std::same_as<F, function_of<Arg>>
+  {
+    // Check implicitly convertible to async and that deduced template parameter is the correct type.
+  }
+  (arg);
+};
+
+template <typename T>
+concept not_first_arg = !first_arg<T>;
+
+// ----------------------------------------------- //
+
+namespace detail {
+
+template <typename Task, typename Head>
+concept valid_return = is_task<Task> && requires { typename promise_result<return_of<Head>, value_of<Task>>; };
+
+} // namespace detail
+
+/**
+ * @brief Check that the async function encoded in `Head` is invocable with arguments in `Tail`.
+ */
+template <typename Head, typename... Tail>
+concept valid_packet = first_arg<Head> && detail::valid_return<std::invoke_result_t<function_of<Head>, Head, Tail...>, Head>;
+
+/**
+ * @brief A helper to statically attach a new `context_type` to a `first_arg`.
+ */
+template <thread_context Context, first_arg T>
+struct patched : T {
+  using context_type = Context;
+};
+
+/**
+ * @brief An awaitable type (in a task) that triggers a fork/call/invoke.
+ */
+template <typename Head, typename... Tail>
+  requires valid_packet<Head, Tail...>
+class [[nodiscard("packets must be co_awaited")]] packet : detail::move_only<packet<Head, Tail...>> {
+public:
+  /**
+   * @brief Build a packet.
+   *
+   * It is implicitly constructible because we specify the return type for SFINE and we don't want to
+   * repeat the type.
+   *
+   */
+  explicit(false) constexpr packet(Head head, Tail &&...tail) noexcept
+      : m_args{std::move(head), std::forward<Tail>(tail)...} {}
+
+  /**
+   * @brief Call the underlying async function with args.
+   */
+  void invoke() && { std::move(m_args).apply(function_of<Head>{}); }
+
+  /**
+   * @brief Patch the `Head` type with `Context`
+   */
+  template <thread_context Context>
+  constexpr auto patch_with() && noexcept -> packet<patched<Context, Head>, Tail...> {
+    return std::move(m_args).apply([](Head head, Tail &&...tail) {
+      return packet<patched<Context, Head>, Tail...>{std::move(head), std::forward<Tail>(tail)...};
+    });
+  }
+
+private:
+  [[no_unique_address]] tuplet::tuple<Head, Tail &&...> m_args;
+};
+
+// /**
+//  * @brief Deduction guide that forwards its arguments as references.
+//  */
+// template <typename Head, typename... Tail>
+// packet(Head, Tail &&...) -> packet<Head, Tail &&...>;
+
+// ----------------------------------------------- //
+
+/**
+ * @brief A base class for building the first argument to asynchronous functions.
+ *
+ * This derives from `async<F>` to allow to allow for use as a y-combinator.
+ *
+ * It needs the true context type to be patched to it.
+ *
+ * This is used by `std::coroutine_traits` to build the promise type.
+ */
+template <typename R, tag Tag, stateless F>
+struct basic_first_arg;
+
+/**
+ * @brief Wraps a stateless callable that returns an ``lf::task``.
+ */
+template <stateless Fn>
+struct [[nodiscard("async functions must be called")]] async {
+  /**
+   * @brief Use with explicit template-parameter.
+   */
+  consteval async() = default;
+
+  /**
+   * @brief Implicitly constructible from an invocable, deduction guide
+   * generated from this.
+   *
+   * This is to allow concise definitions from lambdas:
+   *
+   * .. code::
+   *
+   *    constexpr async fib = [](auto fib, ...) -> task<int, "fib"> {
+   *        // ...
+   *    };
+   */
+  explicit(false) consteval async([[maybe_unused]] Fn invocable_which_returns_a_task) {}
+
+  /**
+   * @brief Wrap the arguments into an awaitable (in an ``lf::task``) that triggers an invoke.
+   *
+   * Note that the return type is tagged void however during the `await_transform` the full type will be
+   * captured.
+   */
+  template <typename... Args>
+  LF_STATIC_CALL constexpr auto operator()(Args &&...args) LF_STATIC_CONST noexcept
+      -> packet<basic_first_arg<void, tag::invoke, Fn>, Args...> {
+    return {{}, std::forward<Args>(args)...};
+  }
+};
+
+// ----------------------------------------------- //
+
+/**
+ * @brief A type that satisfies the ``thread_context`` concept.
+ *
+ * This is used to detect bad coroutine calls early. All its methods are
+ * unimplemented as it is only used in unevaluated contexts.
+ */
+struct dummy_context {
+  auto max_threads() -> std::size_t;
+  auto submit(ext_ptr) -> void;
+  auto task_pop() -> task_ptr;
+  auto task_push(task_ptr) -> void;
+};
+
+static_assert(thread_context<dummy_context>, "dummy_context is not a thread_context");
+
+/**
+ * @brief Void/ignore specialization.
+ */
+template <tag Tag, stateless F>
+struct basic_first_arg<void, Tag, F> : async<F>, detail::move_only<basic_first_arg<void, Tag, F>> {
+  using context_type = dummy_context;   ///< A default context
+  using return_type = void;             ///< The type of the return address.
+  using function_type = F;              ///< The underlying async
+  static constexpr tag tag_value = Tag; ///< The tag value.
+};
+
+/**
+ * @brief Specialization for non-void returning task.
+ */
+template <typename R, tag Tag, stateless F>
+struct basic_first_arg : basic_first_arg<void, Tag, F> {
+
+  using return_type = R; ///< The type of the return address.
+
+  explicit constexpr basic_first_arg(return_type &ret) : m_ret{std::addressof(ret)} {}
+
+  [[nodiscard]] constexpr auto address() const noexcept -> return_type * { return m_ret; }
+
+private:
+  R *m_ret;
+};
+
+static_assert(first_arg<basic_first_arg<void, tag::root, decltype([] {})>>);
+static_assert(first_arg<basic_first_arg<int, tag::root, decltype([] {})>>);
+
+} // namespace lf
+
+#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
+
+  // /**
+  //  * @brief Specialize coroutine_traits for task<...> from functions.
+  //  */
+  // template <typename T, lf::first_arg Head, typename... Args>
+  // struct lf::stdx::coroutine_traits<lf::task<T>, Head, Args...> {
+  //   using promise_type = ::lf::detail::promise_type<typename Head::return_address_t, T,
+  //                                                   typename Head::context_type, Head::tag_value>;
+  // };
+
+  // /**
+  //  * @brief Specialize coroutine_traits for task<...> from member functions.
+  //  */
+  // template <typename T, lf::detail::not_first_arg Self, lf::first_arg Head, typename... Args>
+  // struct lf::stdx::coroutine_traits<lf::task<T>, Self, Head, Args...> {
+  //   using promise_type = lf::detail::promise_type<typename Head::return_address_t, T,
+  //                                                 typename Head::context_type, Head::tag_value>;
+  // };
+
+#endif /* LF_DOXYGEN_SHOULD_SKIP_THIS */
+
+#endif /* E91EA187_42EF_436C_A3FF_A86DE54BCDBE */
+
+
+/**
+ * @file promise.hpp
+ *
+ * @brief The promise_type for tasks.
+ */
+
+namespace lf::detail {
+
+// -------------------------------------------------------------------------- //
+
+// TODO: Cleanup below
+
+// /**
+//  * @brief Disable rvalue references for T&& template types if an async function
+//  * is forked.
+//  *
+//  * This is to prevent the user from accidentally passing a temporary object to
+//  * an async function that will then destructed in the parent task before the
+//  * child task returns.
+//  */
+// template <typename T, typename Self>
+// concept protect_forwarding_tparam = first_arg<Self> && !std::is_rvalue_reference_v<T> &&
+//                                     (tag_of<Self> != tag::fork || std::is_reference_v<T>);
+
+/**
+ * @brief An awaitable type (in a task) that triggers a join.
+ */
+struct join_t {};
+
+#ifndef NDEBUG
+  #define FATAL_IN_DEBUG(expr, message)                                                                                     \
+    do {                                                                                                                    \
+      if (!(expr)) {                                                                                                        \
+        ::lf::detail::noexcept_invoke([] { LF_THROW(std::runtime_error(message)); });                                       \
+      }                                                                                                                     \
+    } while (false)
+#else
+  #define FATAL_IN_DEBUG(expr, message)                                                                                     \
+    do {                                                                                                                    \
+    } while (false)
+#endif
+
+template <tag Tag>
+using allocator = std::conditional_t<Tag == tag::root, promise_alloc_heap, promise_alloc_stack>;
+
+template <typename R, typename T, thread_context Context, tag Tag>
+struct promise_type : allocator<Tag>, promise_result<R, T> {
+
+  static_assert(Tag == tag::fork || Tag == tag::call || Tag == tag::root);
+  static_assert(Tag != tag::root || is_root_result_v<R>);
+
+  using handle_t = stdx::coroutine_handle<promise_type>;
+
+  template <first_arg Head, typename... Tail>
+  constexpr promise_type(Head const &head, [[maybe_unused]] Tail &&...tail) noexcept
+    requires std::constructible_from<promise_result<R, T>, R *>
+      : allocator<Tag>{handle_t::from_promise(*this)},
+        promise_result<R, T>{head.address()} {}
+
+  constexpr promise_type() noexcept : allocator<Tag>{handle_t::from_promise(*this)} {}
+
+  static auto get_return_object() noexcept -> task_construct_key { return {}; }
+
+  static auto initial_suspend() -> stdx::suspend_always { return {}; }
+
+  void unhandled_exception() noexcept { LF_RETHROW; }
+
+  auto final_suspend() noexcept {
+    struct final_awaitable : stdx::suspend_always {
+      constexpr auto await_suspend(stdx::coroutine_handle<promise_type> child) const noexcept -> stdx::coroutine_handle<> {
+
+        if constexpr (Tag == tag::root) {
+          LF_LOG("Root task at final suspend, releases semaphore");
+          // Finishing a root task implies our stack is empty and should have no exceptions.
+          child.promise().address()->semaphore.release();
+          child.destroy();
+          return stdx::noop_coroutine();
+        }
+
+        // Completing a non-root task means we currently own the async_stack this child is on
+
+        FATAL_IN_DEBUG(tls::asp->debug_count() == 0, "Fork/Call without a join!");
+
+        LF_ASSERT(tls::asp->steals() == 0);                                      // Fork without join.
+        LF_ASSERT(tls::asp->load_joins(std::memory_order_acquire) == k_u16_max); // Destroyed in invalid state.
+
+        LF_LOG("Task reaches final suspend");
+
+        auto [parent, parent_on_asp] = frame_block::pop_asp();
+
+        if constexpr (Tag == tag::call || Tag == tag::invoke) {
+          LF_LOG("Inline task resumes parent");
+          // Inline task's parent cannot have been stolen, no need to reset control block.
+          return parent->get_coro();
+        }
+
+        Context *context = tls::ctx<Context>;
+
+        LF_ASSERT(context);
+
+        if (task_ptr parent_task = context->task_pop()) {
+          // No-one stole continuation, we are the exclusive owner of parent, just keep ripping!
+          LF_LOG("Parent not stolen, keeps ripping");
+          LF_ASSERT(parent_task.m_stolen == parent);
+          LF_ASSERT(parent_on_asp);
+          // This must be the same thread that created the parent so it already owns the stack.
+          // No steals have occurred so we do not need to call reset().;
+          return parent->get_coro();
+        }
+
+        // We are either: the thread that created the parent or a thread that completed a forked task.
+
+        // Note: emptying stack implies finished a stolen task or finished a task forked from root.
+
+        // Cases:
+        // 1. We are fork_from_root_t
+        //    - Every task forked from root is the the first task on a stack -> stack is empty now.
+        //      Parent (root) is not on a stack so do not need to take/release control
+        // 2. We are fork_t
+        //    - Stack is empty -> we cannot be the thread that created the parent as it would be on our stack.
+        //    - Stack is non-empty -> we must be the creator of the parent
+
+        // If we created the parent then our current stack is non empty (unless the parent is a root task).
+        // If we did not create the parent then we just cleared our current stack and it is now empty.
+
+        LF_LOG("Task's parent was stolen");
+
+        // Register with parent we have completed this child task.
+        if (parent->fetch_sub_joins(1, std::memory_order_release) == 1) {
+          // Acquire all writes before resuming.
+          std::atomic_thread_fence(std::memory_order_acquire);
+
+          // Parent has reached join and we are the last child task to complete.
+          // We are the exclusive owner of the parent therefore, we must continue parent.
+
+          LF_LOG("Task is last child to join, resumes parent");
+
+          if (!parent_on_asp) {
+            if (!parent->is_root()) [[likely]] {
+              tls::eat(parent);
+            }
+          }
+
+          // Must reset parents control block before resuming parent.
+          parent->reset();
+
+          return parent->get_coro();
+        }
+
+        // Parent has not reached join or we are not the last child to complete.
+        // We are now out of jobs, must yield to executor.
+
+        LF_LOG("Task is not last to join");
+
+        if (parent_on_asp) {
+          // We are unable to resume the parent, as the resuming thread will take ownership of the parent's stack we must
+          // give it up.
+          LF_LOG("Thread releases control of parent's stack");
+          tls::asp = tls::sbuf.pop()->sentinel();
+        }
+
+        LF_ASSERT(tls::asp->is_sentinel());
+
+        return stdx::noop_coroutine();
+      }
+    };
+
+    return final_awaitable{};
+  }
+
+  // public:
+  //   template <typename R, typename F, typename... This, typename... Args>
+  //   [[nodiscard]] constexpr auto await_transform(packet<first_arg_t<R, tag::fork, F, This...>, Args...> &&packet) {
+
+  //     this->debug_inc();
+
+  //     auto my_handle = cast_down(stdx::coroutine_handle<promise_type>::from_promise(*this));
+
+  //     stdx::coroutine_handle child = add_context_to_packet(std::move(packet)).invoke_bind(my_handle);
+
+  //     struct awaitable : stdx::suspend_always {
+  //       [[nodiscard]] constexpr auto await_suspend(stdx::coroutine_handle<promise_type> parent) noexcept ->
+  //       decltype(child) {
+  //         // In case *this (awaitable) is destructed by stealer after push
+  //         stdx::coroutine_handle stack_child = m_child;
+
+  //         LF_LOG("Forking, push parent to context");
+
+  //         Context::context().task_push(task_handle{promise_type::cast_down(parent)});
+
+  //         return stack_child;
+  //       }
+
+  //       decltype(child) m_child;
+  //     };
+
+  //     return awaitable{{}, child};
+  //   }
+
+  //   template <typename R, typename F, typename... This, typename... Args>
+  //   [[nodiscard]] constexpr auto await_transform(packet<first_arg_t<R, tag::call, F, This...>, Args...> &&packet) {
+
+  //     this->debug_inc();
+
+  //     auto my_handle = cast_down(stdx::coroutine_handle<promise_type>::from_promise(*this));
+
+  //     stdx::coroutine_handle child = add_context_to_packet(std::move(packet)).invoke_bind(my_handle);
+
+  //     struct awaitable : stdx::suspend_always {
+  //       [[nodiscard]] constexpr auto await_suspend([[maybe_unused]] stdx::coroutine_handle<promise_type> parent) noexcept
+  //           -> decltype(child) {
+  //         return m_child;
+  //       }
+  //       decltype(child) m_child;
+  //     };
+
+  //     return awaitable{{}, child};
+  //   }
+
+  //   /**
+  //    * @brief An invoke should never occur within an async scope as the exceptions will get muddled
+  //    */
+  // template <typename F, typename... This, typename... Args>
+  // [[nodiscard]] constexpr auto await_transform(packet<first_arg_t<void, tag::invoke, F, This...>, Args...> &&in_packet) {
+
+  //   FATAL_IN_DEBUG(this->debug_count() == 0, "Invoke within async scope!");
+
+  //   using value_type_child = typename packet<first_arg_t<void, tag::invoke, F, This...>, Args...>::value_type;
+
+  //   using wrapped_value_type =
+  //       std::conditional_t<std::is_reference_v<value_type_child>,
+  //                          std::reference_wrapper<std::remove_reference_t<value_type_child>>, value_type_child>;
+
+  //   using return_type =
+  //       std::conditional_t<std::is_void_v<value_type_child>, regular_void, std::optional<wrapped_value_type>>;
+
+  //   using packet_type = packet<shim_with_context<return_type, Context, first_arg_t<void, tag::invoke, F, This...>>,
+  //   Args...>;
+
+  //   using handle_type = typename packet_type::handle_type;
+
+  //   static_assert(std::same_as<value_type_child, typename packet_type::value_type>,
+  //                 "An async function's value_type must be return_address_t independent!");
+
+  //   struct awaitable : stdx::suspend_always {
+
+  //     explicit constexpr awaitable(promise_type *in_self,
+  //                                  packet<first_arg_t<void, tag::invoke, F, This...>, Args...> &&in_packet)
+  //         : self(in_self),
+  //           m_child(packet_type{m_res, {std::move(in_packet.context)}, std::move(in_packet.args)}.invoke_bind(
+  //               cast_down(stdx::coroutine_handle<promise_type>::from_promise(*self)))) {}
+
+  //     [[nodiscard]] constexpr auto await_suspend([[maybe_unused]] stdx::coroutine_handle<promise_type> parent) noexcept
+  //         -> handle_type {
+  //       return m_child;
+  //     }
+
+  //     [[nodiscard]] constexpr auto await_resume() -> value_type_child {
+
+  //       LF_ASSERT(self->steals() == 0);
+
+  //       // Propagate exceptions.
+  //       if constexpr (LF_PROPAGATE_EXCEPTIONS) {
+  //         if constexpr (Tag == tag::root) {
+  //           self->get_return_address_obj().exception.rethrow_if_unhandled();
+  //         } else {
+  //           virtual_stack::from_address(self)->rethrow_if_unhandled();
+  //         }
+  //       }
+
+  //       if constexpr (!std::is_void_v<value_type_child>) {
+  //         LF_ASSERT(m_res.has_value());
+  //         return std::move(*m_res);
+  //       }
+  //     }
+
+  //     return_type m_res;
+  //     promise_type *self;
+  //     handle_type m_child;
+  //   };
+
+  //   return awaitable{this, std::move(in_packet)};
+  // }
+
+  // constexpr auto await_transform([[maybe_unused]] join_t join_tag) noexcept {
+  //   struct awaitable {
+  //   private:
+  //     constexpr void take_stack_reset_control() const noexcept {
+  //       // Steals have happened so we cannot currently own this tasks stack.
+  //       LF_ASSERT(self->steals() != 0);
+
+  //       if constexpr (Tag != tag::root) {
+
+  //         LF_LOG("Thread takes control of task's stack");
+
+  //         Context &context = Context::context();
+
+  //         auto tasks_stack = virtual_stack::from_address(self);
+  //         auto thread_stack = context.stack_top();
+
+  //         LF_ASSERT(thread_stack != tasks_stack);
+  //         LF_ASSERT(thread_stack->empty());
+
+  //         context.stack_push(tasks_stack);
+  //       }
+
+  //       // Some steals have happened, need to reset the control block.
+  //       self->reset();
+  //     }
+
+  //   public:
+  //     [[nodiscard]] constexpr auto await_ready() const noexcept -> bool {
+  //       // If no steals then we are the only owner of the parent and we are ready to join.
+  //       if (self->steals() == 0) {
+  //         LF_LOG("Sync ready (no steals)");
+  //         // Therefore no need to reset the control block.
+  //         return true;
+  //       }
+  //       // Currently:            joins() = k_imax - num_joined
+  //       // Hence:       k_imax - joins() = num_joined
+
+  //       // Could use (relaxed) + (fence(acquire) in truthy branch) but, it's
+  //       // better if we see all the decrements to joins() and avoid suspending
+  //       // the coroutine if possible. Cannot fetch_sub() here and write to frame
+  //       // as coroutine must be suspended first.
+  //       auto joined = k_imax - self->joins().load(std::memory_order_acquire);
+
+  //       if (self->steals() == joined) {
+  //         LF_LOG("Sync is ready");
+
+  //         take_stack_reset_control();
+
+  //         return true;
+  //       }
+
+  //       LF_LOG("Sync not ready");
+  //       return false;
+  //     }
+
+  //     [[nodiscard]] constexpr auto await_suspend(stdx::coroutine_handle<promise_type> task) noexcept
+  //         -> stdx::coroutine_handle<> {
+  //       // Currently        joins  = k_imax - num_joined
+  //       // We set           joins  = joins() - (k_imax - num_steals)
+  //       //                         = num_steals - num_joined
+
+  //       // Hence            joined = k_imax - num_joined
+  //       //         k_imax - joined = num_joined
+
+  //       auto steals = self->steals();
+  //       auto joined = self->joins().fetch_sub(k_imax - steals, std::memory_order_release);
+
+  //       if (steals == k_imax - joined) {
+  //         // We set joins after all children had completed therefore we can resume the task.
+
+  //         // Need to acquire to ensure we see all writes by other threads to the result.
+  //         std::atomic_thread_fence(std::memory_order_acquire);
+
+  //         LF_LOG("Wins join race");
+
+  //         take_stack_reset_control();
+
+  //         return task;
+  //       }
+  //       // Someone else is responsible for running this task and we have run out of work.
+  //       LF_LOG("Looses join race");
+
+  //       // We cannot currently own this stack.
+
+  //       if constexpr (Tag != tag::root) {
+  //         LF_ASSERT(virtual_stack::from_address(self) != Context::context().stack_top());
+  //       }
+  //       LF_ASSERT(Context::context().stack_top()->empty());
+
+  //       return stdx::noop_coroutine();
+  //     }
+
+  //     constexpr void await_resume() const {
+  //       LF_LOG("join resumes");
+  //       // Check we have been reset.
+  //       LF_ASSERT(self->steals() == 0);
+  //       LF_ASSERT(self->joins() == k_imax);
+
+  //       self->debug_reset();
+
+  //       if constexpr (Tag != tag::root) {
+  //         LF_ASSERT(virtual_stack::from_address(self) == Context::context().stack_top());
+  //       }
+
+  //       // Propagate exceptions.
+  //       if constexpr (LF_PROPAGATE_EXCEPTIONS) {
+  //         if constexpr (Tag == tag::root) {
+  //           self->get_return_address_obj().exception.rethrow_if_unhandled();
+  //         } else {
+  //           virtual_stack::from_address(self)->rethrow_if_unhandled();
+  //         }
+  //       }
+  //     }
+
+  //     promise_type *self;
+  //   };
+
+  //   return awaitable{this};
+  // }
+};
+
+#undef FATAL_IN_DEBUG
+
+} // namespace lf::detail
+
+#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
+
+/**
+ * @brief Specialize coroutine_traits for task<...> from functions.
+ */
+template <lf::is_task Task, lf::first_arg Head, typename... Args>
+struct lf::stdx::coroutine_traits<Task, Head, Args...> {
+  using promise_type =
+      lf::detail::promise_type<lf::return_of<Head>, lf::value_of<Task>, lf::context_of<Head>, lf::tag_of<Head>>;
+};
+
+/**
+ * @brief Specialize coroutine_traits for task<...> from member functions.
+ */
+template <lf::is_task Task, lf::not_first_arg This, lf::first_arg Head, typename... Args>
+struct lf::stdx::coroutine_traits<Task, This, Head, Args...> : lf::stdx::coroutine_traits<Task, Head, Args...> {};
+
+#endif /* LF_DOXYGEN_SHOULD_SKIP_THIS */
+
+#endif /* FF9F3B2C_DC2B_44D2_A3C2_6E40F211C5B0 */
+
+
+/**
+ * @file core.hpp
+ *
+ * @brief Meta header which includes all of ``libfork/core/*.hpp``.
+ */
+
+#endif /* A6BE090F_9077_40E8_9B57_9BAFD9620469 */
 
 
 // #include "libfork/schedule/busy.hpp"

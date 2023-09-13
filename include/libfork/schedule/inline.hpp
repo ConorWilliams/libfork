@@ -13,7 +13,6 @@
 
 #include "libfork/core.hpp"
 #include "libfork/core/stack.hpp"
-#include "libfork/schedule/thread_local.hpp"
 
 /**
  * @file inline.hpp
@@ -31,25 +30,18 @@ public:
   /**
    * @brief The context type for the scheduler.
    */
-  class context_type : thread_local_ptr<context_type> {
+  class context_type {
   public:
     /**
      * @brief Construct a new context type object, set the thread_local context object to this object.
      */
-    context_type() {
-      inline_scheduler::context_type::set(*this);
-      m_tasks.reserve(128);
-    }
+    context_type() { m_tasks.reserve(128); }
 
     static void submit(ext_ptr ptr) {
       LF_ASSERT(ptr);
       ptr.resume();
     }
 
-    /**
-     * @brief Get the thread_local context object.
-     */
-    static auto context() -> context_type & { return context_type::get(); }
     /**
      * @brief Returns one as this runs all tasks inline.
      */

@@ -10,25 +10,56 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "libfork/core.hpp"
+#include "libfork/core/result.hpp"
+#include "libfork/core/stack.hpp"
+#include "libfork/core/task.hpp"
 #include "libfork/schedule/inline.hpp"
 
 // NOLINTBEGIN No linting in tests
 
 using namespace lf;
 
-inline constexpr async count = [](auto count, int &var) -> task<void> {
+using namespace lf::detail;
+
+inline constexpr auto count = [](auto count, int &var) -> task<void> {
   if (var > 0) {
     --var;
   }
   co_return;
 };
 
+#include <iostream>
+
 TEST_CASE("basic counting", "[inline_scheduler]") {
-  inline_scheduler::context_type ctx;
+
+  //
+  // inline_scheduler::context_type ctx;
+
+  root_result<void> block;
+
+  struct Head : basic_first_arg<root_result<void>, tag::root, decltype(count)> {
+    using context_type = inline_scheduler::context_type;
+  };
 
   int x = 10;
 
-  packet p = count(x);
+  count(Head{basic_first_arg<root_result<void>, tag::root, decltype(count)>{block}}, x);
+
+  auto *root = tls::asp;
+
+  REQUIRE(root);
+
+  tls::asp = tls::sbuf.pop()->sentinel();
+
+  REQUIRE(x == 10);
+  root->get_coro().resume();
+  REQUIRE(x == 9);
+
+  // count(x);
+
+  // std::cout << "------------------------" << x << std::endl;
+
+  // REQUIRE(x == 8);
 
   //
 }

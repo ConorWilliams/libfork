@@ -82,12 +82,12 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
   using handle_t = stdx::coroutine_handle<promise_type>;
 
   template <first_arg Head, typename... Tail>
-  constexpr promise_type(Head head, [[maybe_unused]] Tail &&...tail) noexcept
+  constexpr promise_type(Head const &head, [[maybe_unused]] Tail &&...tail) noexcept
     requires std::constructible_from<promise_result<R, T>, R *>
-      : allocator<Tag>{handle_t::from_promise(this)},
+      : allocator<Tag>{handle_t::from_promise(*this)},
         promise_result<R, T>{head.address()} {}
 
-  constexpr promise_type() noexcept : allocator<Tag>{handle_t::from_promise(this)} {}
+  constexpr promise_type() noexcept : allocator<Tag>{handle_t::from_promise(*this)} {}
 
   static auto get_return_object() noexcept -> task_construct_key { return {}; }
 
@@ -99,13 +99,6 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
     struct final_awaitable : stdx::suspend_always {
       constexpr auto await_suspend(stdx::coroutine_handle<promise_type> child) const noexcept -> stdx::coroutine_handle<> {
 
-        FATAL_IN_DEBUG(tls::asp->debug_count() == 0, "Fork/Call without a join!");
-
-        LF_ASSERT(tls::asp->steals() == 0);                                      // Fork without join.
-        LF_ASSERT(tls::asp->load_joins(std::memory_order_acquire) == k_u16_max); // Destroyed in invalid state.
-
-        // Completing a task means we currently own the async_stack this child is on
-
         if constexpr (Tag == tag::root) {
           LF_LOG("Root task at final suspend, releases semaphore");
           // Finishing a root task implies our stack is empty and should have no exceptions.
@@ -113,6 +106,13 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
           child.destroy();
           return stdx::noop_coroutine();
         }
+
+        // Completing a non-root task means we currently own the async_stack this child is on
+
+        FATAL_IN_DEBUG(tls::asp->debug_count() == 0, "Fork/Call without a join!");
+
+        LF_ASSERT(tls::asp->steals() == 0);                                      // Fork without join.
+        LF_ASSERT(tls::asp->load_joins(std::memory_order_acquire) == k_u16_max); // Destroyed in invalid state.
 
         LF_LOG("Task reaches final suspend");
 
@@ -124,9 +124,11 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
           return parent->get_coro();
         }
 
-        Context &context = Context::context();
+        Context *context = tls::ctx<Context>;
 
-        if (task_ptr parent_task = context.task_pop()) {
+        LF_ASSERT(context);
+
+        if (task_ptr parent_task = context->task_pop()) {
           // No-one stole continuation, we are the exclusive owner of parent, just keep ripping!
           LF_LOG("Parent not stolen, keeps ripping");
           LF_ASSERT(parent_task.m_stolen == parent);

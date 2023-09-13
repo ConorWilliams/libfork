@@ -13,10 +13,42 @@
 #include "tuplet/tuple.hpp"
 
 namespace lf {
+
 /**
- * @brief A tag type to explicitly ignore the return value of a task.
+ * @brief A small control structure that a root tasks use to communicate with the main thread.
  */
-struct ignore_t {};
+template <typename T>
+struct root_result;
+
+template <>
+struct root_result<void> : detail::immovable<root_result<void>> {
+  std::binary_semaphore semaphore{0};
+};
+
+template <typename T>
+struct root_result : eventually<T>, root_result<void> {
+  using eventually<T>::operator=;
+};
+
+namespace detail {
+
+template <typename T>
+struct is_root_result : std::false_type {};
+
+template <typename T>
+struct is_root_result<root_result<T>> : std::true_type {};
+
+} // namespace detail
+
+template <typename T>
+inline constexpr bool is_root_result_v = detail::is_root_result<T>::value;
+
+// ------------------------------ //
+
+// /**
+//  * @brief A tag type to explicitly ignore the return value of a task.
+//  */
+// struct ignore_t {};
 
 /**
  * @brief Like `std::assignable_from` but without the common reference type requirement.
@@ -47,10 +79,25 @@ struct promise_result;
  * @tparam R The type of the return address.
  * @tparam T The type of the return value.
  */
-template <typename R, typename T>
-  requires std::same_as<R, void> or std::same_as<R, ignore_t>
-struct promise_result<R, T> {
+template <typename T>
+struct promise_result<void, T> {
   constexpr void return_void() const noexcept {}
+};
+
+template <>
+struct promise_result<root_result<void>, void> {
+
+  constexpr void return_void() const noexcept {}
+
+  explicit constexpr promise_result(root_result<void> *return_address) noexcept : m_ret_address(return_address) {
+    LF_ASSERT(return_address);
+  }
+
+protected:
+  constexpr auto address() const noexcept -> root_result<void> * { return m_ret_address; }
+
+private:
+  root_result<void> *m_ret_address;
 };
 
 /**
@@ -114,11 +161,11 @@ struct promise_result<R, T> {
     tuplet::apply(emplace, std::move(args));
   }
 
-protected:
   explicit constexpr promise_result(R *return_address) noexcept : m_ret_address(return_address) {
     LF_ASSERT(return_address);
   }
 
+protected:
   constexpr auto address() const noexcept -> R * { return m_ret_address; }
 
 private:
@@ -136,35 +183,6 @@ private:
 };
 
 // ----------------------------------------------------- //
-
-/**
- * @brief A small control structure that a root tasks use to communicate with the main thread.
- */
-template <typename T>
-struct root_result;
-
-template <>
-struct root_result<void> : detail::immovable<root_result<void>> {
-  std::binary_semaphore semaphore{0};
-};
-
-template <typename T>
-struct root_result : eventually<T>, root_result<void> {
-  using eventually<T>::operator=;
-};
-
-namespace detail {
-
-template <typename T>
-struct is_root_result : std::false_type {};
-
-template <typename T>
-struct is_root_result<root_result<T>> : std::true_type {};
-
-} // namespace detail
-
-template <typename T>
-inline constexpr bool is_root_result_v = detail::is_root_result<T>::value;
 
 } // namespace lf
 
