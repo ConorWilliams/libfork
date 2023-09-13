@@ -68,7 +68,9 @@ template <typename T, fixed_string Name = "">
 struct task {
   using value_type = T; ///< The type of the value returned by the coroutine.
 
-  explicit(false) constexpr task([[maybe_unused]] detail::task_construct_key key) noexcept {};
+  task(frame_block *f) : frame{f} { LF_ASSERT(f); }
+
+  frame_block *frame; ///< The frame block for the coroutine.
 };
 
 template <typename>
@@ -218,7 +220,11 @@ public:
   /**
    * @brief Call the underlying async function with args.
    */
-  void invoke() && { std::move(m_args).apply(function_of<Head>{}); }
+  auto invoke(frame_block *parent) && -> frame_block *requires(tag_of<Head> != tag::root) {
+    auto tsk = std::move(m_args).apply(function_of<Head>{});
+    tsk.frame->set_parent(parent);
+    return tsk.frame;
+  }
 
   /**
    * @brief Patch the `Head` type with `Context`
@@ -226,7 +232,7 @@ public:
   template <thread_context Context>
   constexpr auto patch_with() && noexcept -> packet<patched<Context, Head>, Tail...> {
     return std::move(m_args).apply([](Head head, Tail &&...tail) {
-      return packet<patched<Context, Head>, Tail...>{std::move(head), std::forward<Tail>(tail)...};
+      return packet<patched<Context, Head>, Tail...>{{std::move(head)}, std::forward<Tail>(tail)...};
     });
   }
 

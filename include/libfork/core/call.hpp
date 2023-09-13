@@ -59,29 +59,31 @@ struct bind_task {
 
 #if defined(LF_DOXYGEN_SHOULD_SKIP_THIS) ||                                                                                 \
     (defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L)
-    // /**
-    //  * @brief Bind return address `ret` to an asynchronous function.
-    //  *
-    //  * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
-    //  */
-    // template <typename R, typename F>
-    // [[nodiscard]] static constexpr auto operator[](R &ret, [[maybe_unused]] async_fn<F> async) noexcept {
-    //   return [&]<typename... Args>(Args &&...args) noexcept -> detail::packet<first_arg_t<R, Tag, async_fn<F>>, Args...> {
-    //     return {{ret}, {}, {std::forward<Args>(args)...}};
-    //   };
-    // }
-    // /**
-    //  * @brief Set a void return address for an asynchronous function.
-    //  *
-    //  * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
-    //  */
-    // template <typename F>
-    // [[nodiscard]] static constexpr auto operator[]([[maybe_unused]] async_fn<F> async) noexcept {
-    //   return [&]<typename... Args>(Args &&...args) noexcept -> detail::packet<first_arg_t<void, Tag, async_fn<F>>,
-    //   Args...> {
-    //     return {{}, {}, {std::forward<Args>(args)...}};
-    //   };
-    // }
+  /**
+   * @brief Bind return address `ret` to an asynchronous function.
+   *
+   * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
+   */
+  template <typename R, typename F>
+    requires(Tag != tag::tail)
+  [[nodiscard("HOF needs to be called")]] static constexpr auto operator[](R &ret,
+                                                                           [[maybe_unused]] async<F> async) noexcept {
+    return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...> {
+      return {{ret}, std::forward<Args>(args)...};
+    };
+  }
+  /**
+   * @brief Set a void return address for an asynchronous function.
+   *
+   * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
+   */
+  template <typename F>
+  [[nodiscard("HOF needs to be called")]] static constexpr auto operator[]([[maybe_unused]] async<F> async) noexcept {
+    return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
+      LF_LOG("in call");
+      return {{}, std::forward<Args>(args)...};
+    };
+  }
 #endif
 };
 

@@ -362,19 +362,9 @@ inline constexpr std::size_t k_new_align = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
 static_assert(std::has_single_bit(k_new_align));
 
 /**
- * @brief Shorthand for `std::numeric_limits<std::unt16_t>::max()`.
+ * @brief Shorthand for `std::numeric_limits<std::unt32_t>::max()`.
  */
-static constexpr std::uint16_t k_u16_max = std::numeric_limits<std::uint16_t>::max();
-
-/**
- * @brief Shorthand for `std::numeric_limits<std::int16_t>::max()`.
- */
-static constexpr std::int16_t k_i16_max = std::numeric_limits<std::int16_t>::max();
-
-/**
- * @brief Shorthand for `std::numeric_limits<std::unt16_t>::min()`.
- */
-static constexpr std::int16_t k_i16_min = std::numeric_limits<std::int16_t>::min();
+static constexpr std::uint32_t k_u32_max = std::numeric_limits<std::uint32_t>::max();
 
 // /**
 //  * @brief Shorthand for `std::numeric_limits<std::uint32_t>::max()`.
@@ -576,6 +566,7 @@ private:
 
 #include <atomic>
 #include <concepts>
+#include <coroutine>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -804,8 +795,8 @@ private:
 } // namespace lf
 
 #endif /* EE6A2701_7559_44C9_B708_474B1AE823B2 */
-#ifndef D66428B1_3B80_45ED_A7C2_6368A0903810
-#define D66428B1_3B80_45ED_A7C2_6368A0903810
+#ifndef C5C3AA77_D533_4A89_8D33_99BD819C1B4C
+#define C5C3AA77_D533_4A89_8D33_99BD819C1B4C
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
 
@@ -838,11 +829,38 @@ private:
 
 namespace lf {
 
+/**
+ * @brief A fraction of a thread's cactus stack.
+ */
+class async_stack : detail::immovable<async_stack> {
+public:
+  /**
+   * @brief Get a pointer to the sentinel `frame_block` on the stack.
+   */
+  auto as_bytes() noexcept -> std::byte * { return std::launder(m_buf + k_size); }
+
+  /**
+   * @brief Convert a pointer to a stack's sentinel `frame_block` to a pointer to the stack.
+   */
+  static auto unsafe_from_bytes(std::byte *bytes) noexcept -> async_stack * {
+#ifdef __cpp_lib_is_pointer_interconvertible
+    static_assert(std::is_pointer_interconvertible_with_class(&async_stack::m_buf));
+#endif
+    return std::launder(std::bit_cast<async_stack *>(bytes - k_size));
+  }
+
+private:
+  static constexpr std::size_t k_size = detail::k_kibibyte * LF_ASYNC_STACK_SIZE;
+
+  alignas(detail::k_new_align) std::byte m_buf[k_size]; // NOLINT
+};
+
+static_assert(std::is_standard_layout_v<async_stack>);
+static_assert(sizeof(async_stack) == detail::k_kibibyte * LF_ASYNC_STACK_SIZE, "Spurious padding in async_stack!");
+
 // -------------------- Forward decls -------------------- //
 
-class async_stack;
-
-class frame_block;
+struct frame_block;
 
 // ----------------------------------------------- //
 
@@ -873,30 +891,7 @@ namespace tls {
 template <thread_context Context>
 constinit inline thread_local Context *ctx = nullptr;
 
-/**
- * @brief The async stack pointer.
- *
- * \rst
- *
- * Each thread has a pointer into its current async stack, the end of the stack is marked with a sentinel
- * `frame_block`. It is assumed that the runtime initializes this to a sentinel-guarded `async_stack`. A
- * stack looks a little bit like this:
- *
- * .. code::
- *
- *    |--------------- async_stack object ----------------|
- *
- *                 R[coro_frame].....R[coro_frame].......SP
- *                 |---------------->|------------------> |--> Pointer to parent (some other stack)
- *
- * Key:
- * - `R` = regular `frame_block`.
- * - `S` = sentinel `frame_block`.
- * - `.` = padding.
- *
- * \endrst
- */
-constinit inline thread_local frame_block *asp = nullptr;
+constinit inline thread_local std::byte *asp = nullptr;
 
 } // namespace tls
 
@@ -942,33 +937,19 @@ static_assert(std::is_trivially_destructible_v<debug_block>);
 /**
  * @brief A small bookkeeping struct allocated immediately before/after each coroutine frame.
  */
-class frame_block : detail::immovable<frame_block>, public debug_block {
-public:
-  /**
-   * @brief For root blocks.
-   */
-  explicit constexpr frame_block(stdx::coroutine_handle<> coro) noexcept : m_prev{0}, m_coro(offset(coro.address())) {}
-
-  /**
-   * @brief For regular blocks -- need to call `set_coro` after construction.
-   */
-  explicit constexpr frame_block(frame_block *parent) : m_prev{offset(parent)}, m_coro{uninitialized} {}
-
-  /**
-   * @brief For sentinel blocks.
-   *
-   * The `tag` parameter is unused, but is required to disambiguate the constructor without introducing a
-   * default constructor that maybe called by accident.
-   */
-  explicit constexpr frame_block([[maybe_unused]] detail::empty tag) noexcept : m_prev{0}, m_coro{0} {};
+struct frame_block : detail::immovable<frame_block>, debug_block {
 
   /**
    * @brief Resume a stolen task.
    *
-   * When this function returns this worker will have run out of tasks
-   * and their `tls::asp` will be pointing at a sentinel.
+   * When this function returns this worker will have run out of tasks.
    */
-  void resume_stolen() noexcept;
+  void resume_stolen() noexcept {
+    LF_LOG("Call to resume on stolen task");
+    LF_ASSERT(tls::asp);
+    m_steal += 1;
+    coro().resume();
+  }
 
   /**
    * @brief Resume an external task.
@@ -977,109 +958,69 @@ public:
    * and their asp will be pointing at a sentinel.
    */
   template <thread_context Context>
-  void resume_external() noexcept;
+  inline void resume_external() noexcept;
 
-  /**
-   * @brief Set the offset to coro.
-   *
-   * Only regular blocks should call this as rooted blocks can set it at construction.
-   */
-  constexpr void set_coro(stdx::coroutine_handle<> coro) noexcept {
-    LF_ASSERT(m_coro == uninitialized && m_prev != 0 && m_prev != uninitialized);
-    m_coro = offset(coro.address());
+/**
+ * @brief For non-root tasks.
+ */
+#ifndef LF_COROUTINE_ABI
+  constexpr frame_block(std::coroutine_handle<> coro, std::byte *top) : m_coro{coro}, m_top(top) {}
+#else
+  constexpr frame_block([[maybe_unused]] std::coroutine_handle<>, std::byte *top) : m_top(top) {}
+#endif
+
+  auto set_parent(frame_block *parent) noexcept {
+    LF_ASSERT(!m_parent);
+    m_parent = parent;
   }
 
-  /**
-   * @brief Get a handle to the adjacent/paired coroutine frame.
-   */
-  [[nodiscard]] auto get_coro() const noexcept -> stdx::coroutine_handle<> {
-    LF_ASSERT(!is_sentinel());
-    return stdx::coroutine_handle<>::from_address(from_offset(m_coro));
+  [[nodiscard]] auto top() const noexcept -> std::byte * {
+    LF_ASSERT(!is_root());
+    return m_top;
   }
 
-  /**
-   * @brief The result of a `frame_block::destroy` call, suitable for structured binding.
-   */
-  struct parent_t {
-    frame_block *parent; ///< The parent of the destroyed coroutine on top of the stack.
-    bool parent_on_asp;  ///< `true` if the parent is on the same stack as task that was just popped.
-  };
-
-  [[nodiscard]] auto parent() const noexcept -> parent_t {
-
-    LF_ASSERT(!is_sentinel());
-
-    auto *parent = std::bit_cast<frame_block *>(from_offset(m_prev));
-
-    if (parent->is_sentinel()) [[unlikely]] {
-      return {parent->read_sentinel_parent(), false};
-    }
-
-    return {parent, true};
+  auto parent() const noexcept -> frame_block * {
+    LF_ASSERT(m_parent);
+    return m_parent;
   }
 
-  /**
-   * @brief Destroy the coroutine on the top of this threads async stack, sets `tls::asp`.
-   */
-  static auto pop_asp() -> parent_t {
-
-    frame_block *top = tls::asp;
-    LF_ASSERT(top);
-
-    // Destroy the coroutine (this does not effect top)
-    LF_ASSERT(top->is_regular());
-    top->get_coro().destroy();
-
-    tls::asp = std::bit_cast<frame_block *>(top->from_offset(top->m_prev));
-
-    LF_ASSERT(is_aligned(tls::asp, alignof(frame_block)));
-
-    if (tls::asp->is_sentinel()) [[unlikely]] {
-      return {tls::asp->read_sentinel_parent(), false};
-    }
-    return {tls::asp, true};
+  auto coro() noexcept -> std::coroutine_handle<> {
+#ifndef LF_COROUTINE_ABI
+    return m_coro;
+#else
+    return std::coroutine_handle<>::from_address(byte_cast(this) - LF_COROUTINE_ABI);
+#endif
   }
 
   /**
    * @brief Perform a `.load(order)` on the atomic join counter.
    */
-  [[nodiscard]] constexpr auto load_joins(std::memory_order order) const noexcept -> std::uint16_t {
+  [[nodiscard]] constexpr auto load_joins(std::memory_order order) const noexcept -> std::uint32_t {
     return m_join.load(order);
   }
 
   /**
    * @brief Perform a `.fetch_sub(val, order)` on the atomic join counter.
    */
-  constexpr auto fetch_sub_joins(std::uint16_t val, std::memory_order order) noexcept -> std::uint16_t {
+  constexpr auto fetch_sub_joins(std::uint32_t val, std::memory_order order) noexcept -> std::uint32_t {
     return m_join.fetch_sub(val, order);
   }
 
   /**
    * @brief Get the number of times this frame has been stolen.
    */
-  [[nodiscard]] constexpr auto steals() const noexcept -> std::uint16_t { return m_steal; }
+  [[nodiscard]] constexpr auto steals() const noexcept -> std::uint32_t { return m_steal; }
 
   /**
    * @brief Check if a non-sentinel frame is a root frame.
    */
-  [[nodiscard]] constexpr auto is_root() const noexcept -> bool {
-    LF_ASSERT(!is_sentinel());
-    return !is_regular();
-  }
-
-  /**
-   * @brief Check if any frame is a sentinel frame.
-   */
-  [[nodiscard]] constexpr auto is_sentinel() const noexcept -> bool {
-    LF_ASSUME(is_initialised());
-    return m_coro == 0;
-  }
+  [[nodiscard]] constexpr auto is_root() const noexcept -> bool { return m_parent == nullptr; }
 
   /**
    * @brief Reset the join and steal counters, must be outside a fork-join region.
    */
   void reset() noexcept {
-    LF_ASSERT(!is_sentinel());
+
     LF_ASSERT(m_steal != 0); // Reset not needed if steal is zero.
 
     m_steal = 0;
@@ -1088,137 +1029,22 @@ public:
     // Use construct_at(...) to set non-atomically as we know we are the
     // only thread who can touch this control block until a steal which
     // would provide the required memory synchronization.
-    std::construct_at(&m_join, detail::k_u16_max);
+    std::construct_at(&m_join, detail::k_u32_max);
   }
 
 private:
-  static constexpr std::int16_t uninitialized = 1;
+#ifndef LF_COROUTINE_ABI
+  std::coroutine_handle<> m_coro;
+#endif
 
-  /**
-   * m_prev and m_coro are both offsets to external values hence values 0..sizeof(frame_block) are invalid.
-   * Hence, we use 1 to mark uninitialized values.
-   *
-   * Rooted has:   m_prev == 0 and m_coro != 0
-   * Sentinel has: m_prev == 0 and m_coro == 0,
-   * Regular has:  m_prev != 0 and m_coro != 0
-   */
-
-  std::atomic_uint16_t m_join = detail::k_u16_max; ///< Number of children joined (with offset).
-  std::uint16_t m_steal = 0;                       ///< Number of steals.
-  std::int16_t m_prev;                             ///< Distance to previous frame.
-  std::int16_t m_coro;                             ///< Offset from `this` to paired coroutine's void handle.
-
-  [[nodiscard]] constexpr auto is_initialised() const noexcept -> bool {
-    static_assert(sizeof(frame_block) > uninitialized, "Required for uninitialized to be invalid offset");
-    return m_prev != uninitialized && m_coro != uninitialized;
-  }
-
-  [[nodiscard]] constexpr auto is_regular() const noexcept -> bool {
-    LF_ASSUME(is_initialised());
-    return m_prev != 0;
-  }
-
-  [[nodiscard]] static constexpr auto is_aligned(void *address, std::size_t align) noexcept -> bool {
-    return std::bit_cast<std::uintptr_t>(address) % align == 0;
-  }
-
-  /**
-   * @brief Compute the offset from `this` to `external`.
-   *
-   * Satisfies: `external == from_offset(offset(external))`
-   */
-  [[nodiscard]] constexpr auto offset(void *external) const noexcept -> std::int16_t {
-    LF_ASSERT(external);
-
-    std::ptrdiff_t offset = detail::byte_cast(external) - detail::byte_cast(this);
-
-    LF_ASSERT(detail::k_i16_min <= offset && offset <= detail::k_i16_max); // Check fits in i16.
-    LF_ASSERT(offset < 0 || sizeof(frame_block) <= offset);                // Check is not internal.
-
-    return static_cast<std::int16_t>(offset);
-  }
-
-  /**
-   * @brief Compute an external pointer a distance offset from `this`
-   *
-   * Satisfies: `external == from_offset(offset(external))`
-   */
-  [[nodiscard]] constexpr auto from_offset(std::int16_t offset) const noexcept -> void * {
-    // Check offset is not internal.
-    LF_ASSERT(offset < 0 || sizeof(frame_block) <= offset);
-
-    return const_cast<std::byte *>(byte_cast(this) + offset); // Const cast is safe as pointer is external.
-  }
-
-  /**
-   * @brief Write the parent below a sentinel frame.
-   */
-  void write_sentinels_parent(frame_block *parent) noexcept {
-    LF_ASSERT(is_sentinel());
-    void *address = from_offset(sizeof(frame_block));
-    LF_ASSERT(is_aligned(address, alignof(frame_block *)));
-    new (address) frame_block *{parent};
-  }
-
-  /**
-   * @brief Read the parent below a sentinel frame.
-   */
-  [[nodiscard]] auto read_sentinel_parent() noexcept -> frame_block * {
-    LF_ASSERT(is_sentinel());
-    void *address = from_offset(sizeof(frame_block));
-    LF_ASSERT(is_aligned(address, alignof(frame_block *)));
-    // Strict aliasing ok as from_offset(...) guarantees external.
-    return *std::bit_cast<frame_block **>(address);
-  }
+  std::byte *m_top;                                ///< Needs to be separate in-case allocation elided.
+  frame_block *m_parent = nullptr;                 ///< Same ^
+  std::atomic_uint32_t m_join = detail::k_u32_max; ///< Number of children joined (with offset).
+  std::uint32_t m_steal = 0;                       ///< Number of steals.
 };
 
 static_assert(alignof(frame_block) <= detail::k_new_align, "Will be allocated above a coroutine-frame");
 static_assert(std::is_trivially_destructible_v<frame_block>);
-
-// ----------------------------------------------- //
-
-namespace detail {}
-
-/**
- * @brief A fraction of a thread's cactus stack.
- */
-class async_stack : detail::immovable<async_stack> {
-public:
-  /**
-   * @brief Construct a new `async_stack`.
-   */
-  async_stack() noexcept {
-    static_assert(std::is_standard_layout_v<async_stack>);
-    static_assert(alignof(frame_block) <= detail::k_new_align);
-    static_assert(alignof(frame_block) <= alignof(frame_block *));
-
-    static_assert(sizeof(async_stack) == k_size, "Spurious padding in async_stack!");
-
-    // Initialize the sentinel with space for a pointer behind it.
-    new (static_cast<void *>(m_buf + k_sentinel_offset)) frame_block{lf::detail::empty{}};
-  }
-
-  /**
-   * @brief Get a pointer to the sentinel `frame_block` on the stack.
-   */
-  auto sentinel() noexcept -> frame_block * { return std::launder(std::bit_cast<frame_block *>(m_buf + k_sentinel_offset)); }
-
-  /**
-   * @brief Convert a pointer to a stack's sentinel `frame_block` to a pointer to the stack.
-   */
-  static auto unsafe_from_sentinel(frame_block *sentinel) noexcept -> async_stack * {
-#ifdef __cpp_lib_is_pointer_interconvertible
-    static_assert(std::is_pointer_interconvertible_with_class(&async_stack::m_buf));
-#endif
-    return std::bit_cast<async_stack *>(std::launder(byte_cast(sentinel) - k_sentinel_offset));
-  }
-
-private:
-  static constexpr std::size_t k_size = detail::k_kibibyte * LF_ASYNC_STACK_SIZE;
-  static constexpr std::size_t k_sentinel_offset = k_size - sizeof(frame_block) - sizeof(frame_block *);
-
-  alignas(detail::k_new_align) std::byte m_buf[k_size]; // NOLINT
-};
 
 // ----------------------------------------------- //
 
@@ -1230,12 +1056,12 @@ namespace tls {
  * It must currently be pointing at a sentinel.
  */
 template <thread_context Context>
-inline void eat(frame_block *frame) {
+inline void eat(std::byte *top) {
   LF_LOG("Thread eats a stack");
   LF_ASSERT(tls::asp);
-  LF_ASSERT(tls::asp->is_sentinel());
-  frame_block *prev = std::exchange(tls::asp, frame);
-  async_stack *stack = async_stack::unsafe_from_sentinel(prev);
+  std::byte *prev = std::exchange(tls::asp, top);
+  LF_ASSERT(prev != top);
+  async_stack *stack = async_stack::unsafe_from_bytes(prev);
   ctx<Context>->stack_push(stack);
 }
 
@@ -1243,60 +1069,27 @@ inline void eat(frame_block *frame) {
 
 // ----------------------------------------------- //
 
-/**
- * @brief Resume a stolen task.
- *
- * When this function returns this worker will have run out of tasks
- * and their `tls::asp` will be pointing at a sentinel.
- */
-inline void frame_block::resume_stolen() noexcept {
-  LF_LOG("Call to resume on stolen task");
-
-  // Link the sentinel to the parent.
-  LF_ASSERT(tls::asp);
-  tls::asp->write_sentinels_parent(this);
-
-  LF_ASSERT(is_regular()); // Only regular tasks should be stolen.
-  m_steal += 1;
-  get_coro().resume();
-
-  LF_ASSERT(tls::asp);
-  LF_ASSERT(tls::asp->is_sentinel());
-}
-
-// ----------------------------------------------- //
-
-/**
- * @brief Resume an external task.
- *
- * When this function returns this worker will have run out of tasks
- * and their asp will be pointing at a sentinel.
- */
 template <thread_context Context>
 inline void frame_block::resume_external() noexcept {
 
   LF_LOG("Call to resume on external task");
 
   LF_ASSERT(tls::asp);
-  LF_ASSERT(tls::asp->is_sentinel());
-
-  LF_ASSERT(!is_sentinel()); // Only regular/root tasks are external
 
   if (!is_root()) {
-    tls::eat<Context>(this);
+    tls::eat<Context>(top());
   }
 
-  get_coro().resume();
+  coro().resume();
 
   LF_ASSERT(tls::asp);
-  LF_ASSERT(tls::asp->is_sentinel());
 }
 
 // ----------------------------------------------- //
 
-class promise_alloc_heap : frame_block {
+struct promise_alloc_heap : frame_block {
 protected:
-  explicit promise_alloc_heap(std::coroutine_handle<> self) noexcept : frame_block{self} { tls::asp = this; }
+  explicit promise_alloc_heap(std::coroutine_handle<> self) noexcept : frame_block{self, nullptr} {}
 };
 
 // ----------------------------------------------- //
@@ -1307,72 +1100,43 @@ protected:
  * When a promise deriving from this class is constructed 'tls::asp' will be set and when it is destroyed 'tls::asp'
  * will be returned to the previous frame.
  */
-class promise_alloc_stack {
+struct promise_alloc_stack : frame_block {
 
   // Convert an alignment to a std::uintptr_t, ensure its is a power of two and >= k_new_align.
-  constexpr static auto unwrap(std::align_val_t al) noexcept -> std::uintptr_t {
-    auto align = static_cast<std::underlying_type_t<std::align_val_t>>(al);
-    LF_ASSERT(std::has_single_bit(align));
-    LF_ASSERT(align > 0);
-    return std::max(align, detail::k_new_align);
-  }
+  // constexpr static auto unwrap(std::align_val_t al) noexcept -> std::uintptr_t {
+  //   auto align = static_cast<std::underlying_type_t<std::align_val_t>>(al);
+  //   LF_ASSERT(std::has_single_bit(align));
+  //   LF_ASSERT(align > 0);
+  //   return std::max(align, detail::k_new_align);
+  // }
 
 protected:
-  explicit promise_alloc_stack(std::coroutine_handle<> self) noexcept {
-    LF_ASSERT(tls::asp);
-    tls::asp->set_coro(self);
-  }
+  explicit promise_alloc_stack(std::coroutine_handle<> self) noexcept : frame_block{self, tls::asp} {}
 
 public:
   /**
-   * @brief Allocate a new `frame_block` on the current `async_stack` and enough space for the coroutine
-   * frame.
+   * @brief Allocate the coroutine on the current `async_stack`.
    *
    * This will update `tls::asp` to point to the top of the new async stack.
    */
   [[nodiscard]] static auto operator new(std::size_t size) noexcept -> void * {
-    return promise_alloc_stack::operator new(size, std::align_val_t{detail::k_new_align});
+    LF_ASSERT(tls::asp);
+
+    tls::asp -= (size + detail::k_new_align - 1) & ~(detail::k_new_align - 1);
+
+    LF_LOG("Allocating {} bytes on stack at {}", size, (void *)tls::asp);
+
+    return tls::asp;
   }
 
   /**
-   * @brief Allocate a new `frame_block` on the current `async_stack` and enough space for the coroutine
-   * frame.
-   *
-   * This will update `tls::asp` to point to the top of the new async stack.
+   * @brief Deallocate the coroutine on the current `async_stack`.
    */
-  [[nodiscard]] static auto operator new(std::size_t size, std::align_val_t al) noexcept -> void * {
-
-    std::uintptr_t align = unwrap(al);
-
-    frame_block *prev_asp = tls::asp;
-
-    LF_ASSERT(prev_asp);
-
-    auto prev_stack_addr = std::bit_cast<std::uintptr_t>(prev_asp);
-
-    std::uintptr_t coro_frame_addr = (prev_stack_addr - size) & ~(align - 1);
-
-    LF_ASSERT(coro_frame_addr % align == 0);
-
-    std::uintptr_t frame_addr = coro_frame_addr - sizeof(frame_block);
-
-    LF_ASSERT(frame_addr % alignof(frame_block) == 0);
-
-    // Starts the lifetime of the new frame block.
-    tls::asp = new (std::bit_cast<void *>(frame_addr)) frame_block{prev_asp};
-
-    return std::bit_cast<void *>(coro_frame_addr);
+  static void operator delete(void *ptr, std::size_t size) noexcept {
+    LF_ASSERT(ptr == tls::asp);
+    tls::asp += (size + detail::k_new_align - 1) & ~(detail::k_new_align - 1);
+    LF_LOG("Deallocating {} bytes on stack to {}", size, (void *)tls::asp);
   }
-
-  /**
-   * @brief A noop -- use the destroy method!
-   */
-  static void operator delete(void *) noexcept {}
-
-  /**
-   * @brief A noop -- use the destroy method!
-   */
-  static void operator delete(void *, std::size_t, std::align_val_t) noexcept {}
 };
 
 template <thread_context Context>
@@ -1382,16 +1146,15 @@ void worker_init(Context *context) {
   LF_ASSERT(!tls::asp);
 
   tls::ctx<Context> = context;
-  tls::asp = context->stack_pop()->sentinel();
+  tls::asp = context->stack_pop()->as_bytes();
 }
 
 template <thread_context Context>
 void worker_finalize(Context *context) {
   LF_ASSERT(context == tls::ctx<Context>);
   LF_ASSERT(tls::asp);
-  LF_ASSERT(tls::asp->is_sentinel());
 
-  context->stack_push(async_stack::unsafe_from_sentinel(tls::asp));
+  context->stack_push(async_stack::unsafe_from_bytes(tls::asp));
 
   tls::asp = nullptr;
   tls::ctx<Context> = nullptr;
@@ -1399,7 +1162,7 @@ void worker_finalize(Context *context) {
 
 } // namespace lf
 
-#endif /* D66428B1_3B80_45ED_A7C2_6368A0903810 */
+#endif /* C5C3AA77_D533_4A89_8D33_99BD819C1B4C */
 
 
 /**
@@ -1448,7 +1211,9 @@ template <typename T, fixed_string Name = "">
 struct task {
   using value_type = T; ///< The type of the value returned by the coroutine.
 
-  explicit(false) constexpr task([[maybe_unused]] detail::task_construct_key key) noexcept {};
+  task(frame_block *f) : frame{f} { LF_ASSERT(f); }
+
+  frame_block *frame; ///< The frame block for the coroutine.
 };
 
 template <typename>
@@ -1598,7 +1363,11 @@ public:
   /**
    * @brief Call the underlying async function with args.
    */
-  void invoke() && { std::move(m_args).apply(function_of<Head>{}); }
+  auto invoke(frame_block *parent) && -> frame_block *requires(tag_of<Head> != tag::root) {
+    auto tsk = std::move(m_args).apply(function_of<Head>{});
+    tsk.frame->set_parent(parent);
+    return tsk.frame;
+  }
 
   /**
    * @brief Patch the `Head` type with `Context`
@@ -1606,7 +1375,7 @@ public:
   template <thread_context Context>
   constexpr auto patch_with() && noexcept -> packet<patched<Context, Head>, Tail...> {
     return std::move(m_args).apply([](Head head, Tail &&...tail) {
-      return packet<patched<Context, Head>, Tail...>{std::move(head), std::forward<Tail>(tail)...};
+      return packet<patched<Context, Head>, Tail...>{{std::move(head)}, std::forward<Tail>(tail)...};
     });
   }
 
@@ -1769,29 +1538,31 @@ struct bind_task {
 
 #if defined(LF_DOXYGEN_SHOULD_SKIP_THIS) ||                                                                                 \
     (defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L)
-    // /**
-    //  * @brief Bind return address `ret` to an asynchronous function.
-    //  *
-    //  * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
-    //  */
-    // template <typename R, typename F>
-    // [[nodiscard]] static constexpr auto operator[](R &ret, [[maybe_unused]] async_fn<F> async) noexcept {
-    //   return [&]<typename... Args>(Args &&...args) noexcept -> detail::packet<first_arg_t<R, Tag, async_fn<F>>, Args...> {
-    //     return {{ret}, {}, {std::forward<Args>(args)...}};
-    //   };
-    // }
-    // /**
-    //  * @brief Set a void return address for an asynchronous function.
-    //  *
-    //  * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
-    //  */
-    // template <typename F>
-    // [[nodiscard]] static constexpr auto operator[]([[maybe_unused]] async_fn<F> async) noexcept {
-    //   return [&]<typename... Args>(Args &&...args) noexcept -> detail::packet<first_arg_t<void, Tag, async_fn<F>>,
-    //   Args...> {
-    //     return {{}, {}, {std::forward<Args>(args)...}};
-    //   };
-    // }
+  /**
+   * @brief Bind return address `ret` to an asynchronous function.
+   *
+   * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
+   */
+  template <typename R, typename F>
+    requires(Tag != tag::tail)
+  [[nodiscard("HOF needs to be called")]] static constexpr auto operator[](R &ret,
+                                                                           [[maybe_unused]] async<F> async) noexcept {
+    return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...> {
+      return {{ret}, std::forward<Args>(args)...};
+    };
+  }
+  /**
+   * @brief Set a void return address for an asynchronous function.
+   *
+   * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
+   */
+  template <typename F>
+  [[nodiscard("HOF needs to be called")]] static constexpr auto operator[]([[maybe_unused]] async<F> async) noexcept {
+    return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
+      LF_LOG("in call");
+      return {{}, std::forward<Args>(args)...};
+    };
+  }
 #endif
 };
 
@@ -1848,11 +1619,6 @@ namespace lf::detail {
 // concept protect_forwarding_tparam = first_arg<Self> && !std::is_rvalue_reference_v<T> &&
 //                                     (tag_of<Self> != tag::fork || std::is_reference_v<T>);
 
-/**
- * @brief An awaitable type (in a task) that triggers a join.
- */
-struct join_t {};
-
 #ifndef NDEBUG
   #define FATAL_IN_DEBUG(expr, message)                                                                                     \
     do {                                                                                                                    \
@@ -1880,18 +1646,31 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
   template <first_arg Head, typename... Tail>
   constexpr promise_type(Head const &head, [[maybe_unused]] Tail &&...tail) noexcept
     requires std::constructible_from<promise_result<R, T>, R *>
-      : allocator<Tag>{handle_t::from_promise(*this)},
+      : allocator<Tag>{std::coroutine_handle<>{handle_t::from_promise(*this)}},
         promise_result<R, T>{head.address()} {}
 
-  constexpr promise_type() noexcept : allocator<Tag>{handle_t::from_promise(*this)} {}
+  template <not_first_arg Self, first_arg Head, typename... Tail>
+  constexpr promise_type([[maybe_unused]] Self const &self, Head const &head, Tail &&...tail) noexcept
+    requires std::constructible_from<promise_result<R, T>, R *>
+      : promise_type{head, std::forward<Tail>(tail)...} {}
 
-  static auto get_return_object() noexcept -> task_construct_key { return {}; }
+  constexpr promise_type() noexcept : allocator<Tag>(handle_t::from_promise(*this)) {}
+
+  auto get_return_object() noexcept -> frame_block * { return this; }
 
   static auto initial_suspend() -> stdx::suspend_always { return {}; }
 
   void unhandled_exception() noexcept { LF_RETHROW; }
 
   auto final_suspend() noexcept {
+
+    // Completing a non-root task means we currently own the async_stack this child is on
+
+    FATAL_IN_DEBUG(this->debug_count() == 0, "Fork/Call without a join!");
+
+    LF_ASSERT(this->steals() == 0);                                      // Fork without join.
+    LF_ASSERT(this->load_joins(std::memory_order_acquire) == k_u32_max); // Destroyed in invalid state.
+
     struct final_awaitable : stdx::suspend_always {
       constexpr auto await_suspend(stdx::coroutine_handle<promise_type> child) const noexcept -> stdx::coroutine_handle<> {
 
@@ -1900,24 +1679,21 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
           // Finishing a root task implies our stack is empty and should have no exceptions.
           child.promise().address()->semaphore.release();
           child.destroy();
+          LF_LOG("Root task yields to executor");
           return stdx::noop_coroutine();
         }
 
-        // Completing a non-root task means we currently own the async_stack this child is on
-
-        FATAL_IN_DEBUG(tls::asp->debug_count() == 0, "Fork/Call without a join!");
-
-        LF_ASSERT(tls::asp->steals() == 0);                                      // Fork without join.
-        LF_ASSERT(tls::asp->load_joins(std::memory_order_acquire) == k_u16_max); // Destroyed in invalid state.
-
         LF_LOG("Task reaches final suspend");
 
-        auto [parent, parent_on_asp] = frame_block::pop_asp();
+        frame_block *parent = child.promise().parent();
+        child.destroy();
+
+        LF_ASSERT(parent);
 
         if constexpr (Tag == tag::call || Tag == tag::invoke) {
           LF_LOG("Inline task resumes parent");
           // Inline task's parent cannot have been stolen, no need to reset control block.
-          return parent->get_coro();
+          return parent->coro();
         }
 
         Context *context = tls::ctx<Context>;
@@ -1928,10 +1704,9 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
           // No-one stole continuation, we are the exclusive owner of parent, just keep ripping!
           LF_LOG("Parent not stolen, keeps ripping");
           LF_ASSERT(parent_task == parent);
-          LF_ASSERT(parent_on_asp);
           // This must be the same thread that created the parent so it already owns the stack.
           // No steals have occurred so we do not need to call reset().;
-          return parent->get_coro();
+          return parent->coro();
         }
 
         // We are either: the thread that created the parent or a thread that completed a forked task.
@@ -1961,16 +1736,16 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
           LF_LOG("Task is last child to join, resumes parent");
 
-          if (!parent_on_asp) {
-            if (!parent->is_root()) [[likely]] {
-              tls::eat<Context>(parent);
+          if (!parent->is_root()) [[likely]] {
+            if (parent->top() != tls::asp) {
+              tls::eat<Context>(parent->top());
             }
           }
 
           // Must reset parents control block before resuming parent.
           parent->reset();
 
-          return parent->get_coro();
+          return parent->coro();
         }
 
         // Parent has not reached join or we are not the last child to complete.
@@ -1978,14 +1753,12 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
         LF_LOG("Task is not last to join");
 
-        if (parent_on_asp) {
+        if (parent->top() == tls::asp) {
           // We are unable to resume the parent, as the resuming thread will take
           // ownership of the parent's stack we must give it up.
           LF_LOG("Thread releases control of parent's stack");
-          tls::asp = context->stack_pop()->sentinel();
+          tls::asp = context->stack_pop()->as_bytes();
         }
-
-        LF_ASSERT(tls::asp->is_sentinel());
 
         return stdx::noop_coroutine();
       }
@@ -1995,31 +1768,32 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
   }
 
 public:
-  template <typename U, typename F, typename... This, typename... Args>
+  template <typename U, typename F, typename... Args>
   [[nodiscard]] constexpr auto await_transform(packet<basic_first_arg<U, tag::fork, F>, Args...> &&packet)
     requires requires { std::move(packet).template patch_with<Context>(); }
   {
 
     this->debug_inc();
 
-    std::move(packet).template patch_with<Context>().invoke();
+    frame_block *child = std::move(packet).template patch_with<Context>().invoke(this);
 
     struct awaitable : stdx::suspend_always {
-      [[nodiscard]] constexpr auto await_suspend(stdx::coroutine_handle<promise_type>) noexcept -> stdx::coroutine_handle<> {
+      [[nodiscard]] constexpr auto await_suspend(std::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
 
         LF_LOG("Forking, push parent to context");
 
-        frame_block *child = tls::asp;
+        auto *child = m_child; // Need it here (on real stack) in case *this is destructed after push.
 
-        auto [parent, _] = child->parent();
+        tls::ctx<Context>->task_push(m_parent);
 
-        tls::ctx<Context>->task_push(parent);
-
-        return child->get_coro();
+        return child->coro();
       }
+
+      frame_block *m_parent;
+      frame_block *m_child;
     };
 
-    return awaitable{};
+    return awaitable{{}, this, child};
   }
 
   //   template <typename R, typename F, typename... This, typename... Args>
@@ -2107,125 +1881,103 @@ public:
   //   return awaitable{this, std::move(in_packet)};
   // }
 
-  // constexpr auto await_transform([[maybe_unused]] join_t join_tag) noexcept {
-  //   struct awaitable {
-  //   private:
-  //     constexpr void take_stack_reset_control() const noexcept {
-  //       // Steals have happened so we cannot currently own this tasks stack.
-  //       LF_ASSERT(self->steals() != 0);
+  constexpr auto await_transform([[maybe_unused]] join_type join_tag) noexcept {
+    struct awaitable {
+    private:
+      constexpr void take_stack_reset_control() const noexcept {
+        // Steals have happened so we cannot currently own this tasks stack.
+        LF_ASSERT(self->steals() != 0);
 
-  //       if constexpr (Tag != tag::root) {
+        if constexpr (Tag != tag::root) {
+          tls::eat<Context>(self->top());
+        }
+        // Some steals have happened, need to reset the control block.
+        self->reset();
+      }
 
-  //         LF_LOG("Thread takes control of task's stack");
+    public:
+      [[nodiscard]] constexpr auto await_ready() const noexcept -> bool {
+        // If no steals then we are the only owner of the parent and we are ready to join.
+        if (self->steals() == 0) {
+          LF_LOG("Sync ready (no steals)");
+          // Therefore no need to reset the control block.
+          return true;
+        }
+        // Currently:            joins() = k_u32_max - num_joined
+        // Hence:       k_u32_max - joins() = num_joined
 
-  //         Context &context = Context::context();
+        // Could use (relaxed) + (fence(acquire) in truthy branch) but, it's
+        // better if we see all the decrements to joins() and avoid suspending
+        // the coroutine if possible. Cannot fetch_sub() here and write to frame
+        // as coroutine must be suspended first.
+        auto joined = k_u32_max - self->load_joins(std::memory_order_acquire);
 
-  //         auto tasks_stack = virtual_stack::from_address(self);
-  //         auto thread_stack = context.stack_top();
+        if (self->steals() == joined) {
+          LF_LOG("Sync is ready");
 
-  //         LF_ASSERT(thread_stack != tasks_stack);
-  //         LF_ASSERT(thread_stack->empty());
+          take_stack_reset_control();
 
-  //         context.stack_push(tasks_stack);
-  //       }
+          return true;
+        }
 
-  //       // Some steals have happened, need to reset the control block.
-  //       self->reset();
-  //     }
+        LF_LOG("Sync not ready");
+        return false;
+      }
 
-  //   public:
-  //     [[nodiscard]] constexpr auto await_ready() const noexcept -> bool {
-  //       // If no steals then we are the only owner of the parent and we are ready to join.
-  //       if (self->steals() == 0) {
-  //         LF_LOG("Sync ready (no steals)");
-  //         // Therefore no need to reset the control block.
-  //         return true;
-  //       }
-  //       // Currently:            joins() = k_imax - num_joined
-  //       // Hence:       k_imax - joins() = num_joined
+      [[nodiscard]] constexpr auto await_suspend(stdx::coroutine_handle<promise_type> task) noexcept
+          -> stdx::coroutine_handle<> {
+        // Currently        joins  = k_u32_max  - num_joined
+        // We set           joins  = joins()    - (k_u32_max - num_steals)
+        //                         = num_steals - num_joined
 
-  //       // Could use (relaxed) + (fence(acquire) in truthy branch) but, it's
-  //       // better if we see all the decrements to joins() and avoid suspending
-  //       // the coroutine if possible. Cannot fetch_sub() here and write to frame
-  //       // as coroutine must be suspended first.
-  //       auto joined = k_imax - self->joins().load(std::memory_order_acquire);
+        // Hence               joined = k_u32_max - num_joined
+        //         k_u32_max - joined = num_joined
 
-  //       if (self->steals() == joined) {
-  //         LF_LOG("Sync is ready");
+        auto steals = self->steals();
+        auto joined = self->fetch_sub_joins(k_u32_max - steals, std::memory_order_release);
 
-  //         take_stack_reset_control();
+        if (steals == k_u32_max - joined) {
+          // We set joins after all children had completed therefore we can resume the task.
 
-  //         return true;
-  //       }
+          // Need to acquire to ensure we see all writes by other threads to the result.
+          std::atomic_thread_fence(std::memory_order_acquire);
 
-  //       LF_LOG("Sync not ready");
-  //       return false;
-  //     }
+          LF_LOG("Wins join race");
 
-  //     [[nodiscard]] constexpr auto await_suspend(stdx::coroutine_handle<promise_type> task) noexcept
-  //         -> stdx::coroutine_handle<> {
-  //       // Currently        joins  = k_imax - num_joined
-  //       // We set           joins  = joins() - (k_imax - num_steals)
-  //       //                         = num_steals - num_joined
+          take_stack_reset_control();
 
-  //       // Hence            joined = k_imax - num_joined
-  //       //         k_imax - joined = num_joined
+          return task;
+        }
+        // Someone else is responsible for running this task and we have run out of work.
+        LF_LOG("Looses join race");
 
-  //       auto steals = self->steals();
-  //       auto joined = self->joins().fetch_sub(k_imax - steals, std::memory_order_release);
+        // We cannot currently own this stack.
 
-  //       if (steals == k_imax - joined) {
-  //         // We set joins after all children had completed therefore we can resume the task.
+        if constexpr (Tag != tag::root) {
+          LF_ASSERT(self->top() != tls::asp);
+        }
 
-  //         // Need to acquire to ensure we see all writes by other threads to the result.
-  //         std::atomic_thread_fence(std::memory_order_acquire);
+        return stdx::noop_coroutine();
+      }
 
-  //         LF_LOG("Wins join race");
+      constexpr void await_resume() const noexcept {
+        LF_LOG("join resumes");
+        // Check we have been reset.
+        LF_ASSERT(self->steals() == 0);
+        LF_ASSERT(self->load_joins(std::memory_order_relaxed) == k_u32_max);
 
-  //         take_stack_reset_control();
+        self->debug_reset();
 
-  //         return task;
-  //       }
-  //       // Someone else is responsible for running this task and we have run out of work.
-  //       LF_LOG("Looses join race");
+        if constexpr (Tag != tag::root) {
+          LF_ASSERT(self->top() == tls::asp);
+        }
+      }
 
-  //       // We cannot currently own this stack.
+      frame_block *self;
+    };
 
-  //       if constexpr (Tag != tag::root) {
-  //         LF_ASSERT(virtual_stack::from_address(self) != Context::context().stack_top());
-  //       }
-  //       LF_ASSERT(Context::context().stack_top()->empty());
-
-  //       return stdx::noop_coroutine();
-  //     }
-
-  //     constexpr void await_resume() const {
-  //       LF_LOG("join resumes");
-  //       // Check we have been reset.
-  //       LF_ASSERT(self->steals() == 0);
-  //       LF_ASSERT(self->joins() == k_imax);
-
-  //       self->debug_reset();
-
-  //       if constexpr (Tag != tag::root) {
-  //         LF_ASSERT(virtual_stack::from_address(self) == Context::context().stack_top());
-  //       }
-
-  //       // Propagate exceptions.
-  //       if constexpr (LF_PROPAGATE_EXCEPTIONS) {
-  //         if constexpr (Tag == tag::root) {
-  //           self->get_return_address_obj().exception.rethrow_if_unhandled();
-  //         } else {
-  //           virtual_stack::from_address(self)->rethrow_if_unhandled();
-  //         }
-  //       }
-  //     }
-
-  //     promise_type *self;
-  //   };
-
-  //   return awaitable{this};
-  // }
+    return awaitable{this};
+  }
 };
 
 #undef FATAL_IN_DEBUG

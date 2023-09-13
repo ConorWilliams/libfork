@@ -6,13 +6,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-// #define NDEBUG
+#define NDEBUG
+#define LF_COROUTINE_ABI 2 * sizeof(void *)
 
 #include <catch2/benchmark/catch_benchmark.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include "libfork/core/stack.hpp"
-#include "libfork/core/task.hpp"
 
 // NOLINTBEGIN No linting in tests
 
@@ -25,12 +25,19 @@ struct root_task {
 
     promise_type() : promise_alloc_heap{stdx::coroutine_handle<promise_type>::from_promise(*this)} {}
 
-    auto get_return_object() noexcept -> root_task { return {}; }
+    auto get_return_object() noexcept -> root_task { return {this}; }
     auto initial_suspend() noexcept -> stdx::suspend_always { return {}; }
-    auto final_suspend() noexcept -> stdx::suspend_always { return {}; }
+    auto final_suspend() noexcept {
+      struct implode : stdx::suspend_always {
+        auto await_suspend(stdx::coroutine_handle<promise_type> h) noexcept { h.destroy(); }
+      };
+      return implode{};
+    }
     void return_void() noexcept {}
     void unhandled_exception() noexcept {}
   };
+
+  frame_block *frame;
 };
 
 auto root(auto fun) -> root_task { co_return fun(); }
@@ -39,13 +46,11 @@ TEST_CASE("Root task", "[virtual_stack]") {
 
   int x = 0;
 
-  root([&] { ++x; });
+  root_task t = root([&] { ++x; });
 
   REQUIRE(x == 0);
-  REQUIRE(tls::asp);
 
-  tls::asp->get_coro().resume();
-  tls::asp->get_coro().destroy();
+  t.frame->coro().resume();
 
   REQUIRE(x == 1);
 }
@@ -55,18 +60,19 @@ struct non_root_task {
 
     promise_type() : promise_alloc_stack{stdx::coroutine_handle<promise_type>::from_promise(*this)} {}
 
-    auto get_return_object() noexcept -> non_root_task { return {}; }
+    auto get_return_object() noexcept -> non_root_task { return {this}; }
     auto initial_suspend() noexcept -> stdx::suspend_always { return {}; }
     auto final_suspend() noexcept {
       struct implode : stdx::suspend_always {
-
-        auto await_suspend(stdx::coroutine_handle<promise_type> h) noexcept { frame_block::pop_asp(); }
+        auto await_suspend(stdx::coroutine_handle<promise_type> h) noexcept { h.destroy(); }
       };
       return implode{};
     }
     void return_void() noexcept {}
     void unhandled_exception() noexcept {}
   };
+
+  frame_block *frame;
 };
 
 auto fib(int &res, int n) -> non_root_task {
@@ -75,11 +81,9 @@ auto fib(int &res, int n) -> non_root_task {
   } else {
     int x, y;
 
-    fib(x, n - 1);
-    tls::asp->get_coro().resume();
+    fib(x, n - 1).frame->coro().resume();
 
-    fib(y, n - 2);
-    tls::asp->get_coro().resume();
+    fib(y, n - 2).frame->coro().resume();
 
     res = x + y;
   }
@@ -106,7 +110,7 @@ TEST_CASE("fib on stack", "[virtual_stack]") {
     //
     auto *s = new async_stack{};
 
-    tls::asp = s->sentinel();
+    tls::asp = s->as_bytes();
 
     volatile int p = 30;
 
@@ -120,25 +124,20 @@ TEST_CASE("fib on stack", "[virtual_stack]") {
     int x;
 
     BENCHMARK("Fibonacci " + std::to_string(p) + " coroutine") {
-      fib(x, p);
-      tls::asp->get_coro().resume();
-
+      fib(x, p).frame->coro().resume();
       return x;
     };
 
     REQUIRE(x == y);
 
-    auto *f = async_stack::unsafe_from_sentinel(tls::asp);
+    auto *f = async_stack::unsafe_from_bytes(tls::asp);
 
     REQUIRE(s == f);
 
     delete s;
-  });
-
-  auto root_block = tls::asp;
-
-  root_block->get_coro().resume();
-  root_block->get_coro().destroy();
+  })
+      .frame->coro()
+      .resume();
 }
 
 // NOLINTEND

@@ -9,7 +9,10 @@
 #include <catch2/benchmark/catch_benchmark.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+// #define LF_LOGGING
+
 #include "libfork/core.hpp"
+#include "libfork/core/call.hpp"
 #include "libfork/core/result.hpp"
 #include "libfork/core/stack.hpp"
 #include "libfork/core/task.hpp"
@@ -21,9 +24,11 @@ using namespace lf;
 
 using namespace lf::detail;
 
-inline constexpr auto count = [](auto count, int &var) -> task<void> {
+inline constexpr auto count = [](auto count, int &var) static -> task<void, "count"> {
   if (var > 0) {
     --var;
+    co_await lf::fork[count](var);
+    co_await lf::join;
   }
   co_return;
 };
@@ -32,17 +37,19 @@ TEST_CASE("basic counting", "[inline_scheduler]") {
 
   root_result<void> block;
 
-  struct Head : basic_first_arg<root_result<void>, tag::root, decltype(count)> {
+  using base = basic_first_arg<root_result<void>, tag::root, decltype(count)>;
+
+  struct Head : base {
     using context_type = inline_scheduler::context_type;
   };
 
   int x = 10;
 
-  count(Head{basic_first_arg<root_result<void>, tag::root, decltype(count)>{block}}, x);
+  static_assert(first_arg<Head>);
 
-  auto *root = tls::asp;
-  REQUIRE(root);
-  tls::asp = nullptr;
+  auto arg = Head{base{block}};
+
+  auto root = count(std::move(arg), x);
 
   inline_scheduler::context_type ctx;
 
@@ -50,9 +57,13 @@ TEST_CASE("basic counting", "[inline_scheduler]") {
 
   REQUIRE(x == 10);
 
-  ctx.submit(root);
+  ctx.submit(root.frame);
 
-  REQUIRE(x == 9);
+  block.semaphore.acquire();
+
+  LF_LOG("x = {}", x);
+
+  REQUIRE(x == 0);
 
   worker_finalize(&ctx);
 }
