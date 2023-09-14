@@ -17,8 +17,6 @@
 #include <type_traits>
 #include <utility>
 
-#include "tuplet/tuple.hpp"
-
 #include "libfork/core/result.hpp"
 #include "libfork/core/stack.hpp"
 #include "libfork/macro.hpp"
@@ -222,7 +220,8 @@ public:
    * @brief Call the underlying async function with args.
    */
   auto invoke(frame_block *parent) && -> frame_block *requires(tag_of<Head> != tag::root) {
-    auto tsk = std::move(m_args).apply(function_of<Head>{});
+    auto tsk = apply(function_of<Head>{}, std::move(m_args));
+    // .apply();
     tsk.frame->set_parent(parent);
     return tsk.frame;
   }
@@ -232,16 +231,15 @@ public:
    */
   template <thread_context Context>
   constexpr auto patch_with() && noexcept -> packet<patched<Context, Head>, Tail...> {
-    return std::bit_cast<packet<patched<Context, Head>, Tail...>>(*this);
-
-    // std::move(m_args).apply([](Head head, auto &&...tail) {
-    //   // int i = {tail...};
-    //   return packet<patched<Context, Head>, Tail...>{{std::move(head)}, std::forward<decltype(tail)>(tail)...};
-    // });
+    return apply(
+        [](Head head, Tail &&...tail) -> packet<patched<Context, Head>, Tail...> {
+          return {patched<Context, Head>{std::move(head)}, std::forward<Tail>(tail)...};
+        },
+        std::move(m_args));
   }
 
 private:
-  [[no_unique_address]] tuplet::tuple<Head, Tail &&...> m_args;
+  [[no_unique_address]] std::tuple<Head, Tail &&...> m_args;
 };
 
 // /**

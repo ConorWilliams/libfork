@@ -38,10 +38,12 @@ TEST_CASE("basic counting", "[inline_scheduler]") {
 
   root_result<void> block;
 
+  using C = inline_vec::context_type;
+
   using base = basic_first_arg<root_result<void>, tag::root, decltype(count)>;
 
   struct Head : base {
-    using context_type = inline_scheduler::context_type;
+    using context_type = C;
   };
 
   int x = 10;
@@ -52,7 +54,7 @@ TEST_CASE("basic counting", "[inline_scheduler]") {
 
   auto root = count(std::move(arg), x);
 
-  inline_scheduler::context_type ctx;
+  C ctx;
 
   worker_init(&ctx);
 
@@ -69,23 +71,28 @@ TEST_CASE("basic counting", "[inline_scheduler]") {
   worker_finalize(&ctx);
 }
 
-__attribute__((noinline)) int inline_fib(int n) {
+__attribute__((noinline)) void inline_fiber(int &res, int n) {
   if (n <= 1) {
-    return n;
+    res = n;
+  } else {
+    int a, b;
+
+    inline_fiber(a, n - 1);
+    inline_fiber(b, n - 2);
+
+    res = a + b;
   }
-
-  int a = inline_fib(n - 1);
-  int b = inline_fib(n - 2);
-
-  return a + b;
 }
 
 inline constexpr auto fib = [](auto fib, int n) static -> task<int> {
+  //
   if (n <= 1) {
     co_return n;
   }
 
   int a, b;
+
+  // int arg = n - 1;
 
   co_await lf::fork[a, fib](n - 1);
   co_await lf::call[b, fib](n - 2);
@@ -97,14 +104,17 @@ inline constexpr auto fib = [](auto fib, int n) static -> task<int> {
 
 TEST_CASE("fib", "[promise]") {
   //
-  inline_scheduler::context_type ctx;
+
+  using C = inline_scheduler::context_type;
+
+  C ctx;
 
   worker_init(&ctx);
 
   using base = basic_first_arg<root_result<int>, tag::root, decltype(fib)>;
 
   struct Head : base {
-    using context_type = inline_scheduler::context_type;
+    using context_type = C;
   };
 
   volatile int in = 30;
@@ -112,16 +122,18 @@ TEST_CASE("fib", "[promise]") {
   int x;
   int y;
 
-  BENCHMARK("inline") { return y = inline_fib(in); };
+  BENCHMARK("inline") {
+    inline_fiber(y, in);
+    return y;
+  };
 
   BENCHMARK("coroutine") {
     root_result<int> block;
     auto root = fib(Head{base{block}}, in);
     ctx.submit(root.frame);
+    REQUIRE(*block == y);
     return x = *block;
   };
-
-  REQUIRE(x == y);
 
   worker_finalize(&ctx);
 }

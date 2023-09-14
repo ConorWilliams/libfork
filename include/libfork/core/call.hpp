@@ -80,7 +80,6 @@ struct bind_task {
   template <typename F>
   [[nodiscard("HOF needs to be called")]] static constexpr auto operator[]([[maybe_unused]] async<F> async) noexcept {
     return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
-      LF_LOG("in call");
       return {{}, std::forward<Args>(args)...};
     };
   }

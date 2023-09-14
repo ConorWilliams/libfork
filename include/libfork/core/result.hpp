@@ -10,8 +10,6 @@
 #include "libfork/macro.hpp"
 #include "libfork/utility.hpp"
 
-#include "tuplet/tuple.hpp"
-
 namespace lf {
 
 /**
@@ -60,7 +58,7 @@ concept assignable = std::is_lvalue_reference_v<LHS> && requires(LHS lhs, RHS &&
  * @brief A tuple-like type with forwarding semantics for in place construction.
  */
 template <typename... Args>
-struct in_place_args : tuplet::tuple<Args...> {};
+struct in_place_args : std::tuple<Args...> {};
 
 /**
  * @brief A forwarding deduction guide.
@@ -156,7 +154,7 @@ struct promise_result<R, T> {
   template <reference... Args>
     requires std::constructible_from<T, Args...>
   constexpr void return_value(in_place_args<Args...> args) const {
-    tuplet::apply(emplace, std::move(args));
+    std::apply(emplace, std::move(args));
   }
 
   explicit constexpr promise_result(R *return_address) noexcept : m_ret_address(return_address) {
@@ -172,7 +170,7 @@ private:
       (*ret).emplace(std::forward<Args>(args)...);
     } else if constexpr (std::is_move_assignable_v<R> && std::constructible_from<R, Args...>) {
       // TODO: clang is choking on this...?
-      throw std::runtime_error("not implemented");
+      LF_THROW(std::runtime_error("not implemented"));
       // (*ret) = R(std::forward<Args>(args)...);
     } else {
       (*ret) = T(std::forward<Args>(args)...);

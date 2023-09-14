@@ -26,6 +26,66 @@ namespace lf {
 /**
  * @brief A scheduler that runs all tasks inline on current thread.
  */
+class inline_vec {
+public:
+  /**
+   * @brief The context type for the scheduler.
+   */
+  class context_type {
+  public:
+    /**
+     * @brief Construct a new context type object, set the thread_local context object to this object.
+     */
+    context_type() { m_tasks.reserve(1024); }
+
+    static void submit(frame_block *ptr) {
+      LF_ASSERT(ptr);
+      ptr->resume_external<context_type>();
+    }
+
+    /**
+     * @brief Returns one as this runs all tasks inline.
+     */
+    static constexpr auto max_threads() noexcept -> std::size_t { return 1; }
+
+    /**
+     * @brief Pops a task from the task queue.
+     */
+    auto task_pop() -> frame_block * {
+      if (m_tasks.empty()) {
+        return {};
+      }
+      auto *x = m_tasks.back();
+      m_tasks.pop_back();
+
+      return x;
+    }
+
+    /**
+     * @brief Pushes a task to the task queue.
+     */
+    void task_push(frame_block *task) {
+      LF_ASSERT(task);
+      m_tasks.push_back(task);
+    }
+
+    void stack_push(async_stack *stack) { delete stack; }
+
+    auto stack_pop() -> async_stack * { return new async_stack; }
+
+  private:
+    std::vector<frame_block *> m_tasks;
+  };
+
+  static_assert(thread_context<context_type>);
+
+private:
+  context_type m_context;
+};
+
+/**
+ * @brief A scheduler that runs all tasks inline on current thread.
+ */
 class inline_scheduler {
 public:
   /**

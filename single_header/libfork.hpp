@@ -608,8 +608,6 @@ private:
 #include <source_location>
 #include <type_traits>
 #include <utility>
-
-#include "tuplet/tuple.hpp"
 #ifndef EE6A2701_7559_44C9_B708_474B1AE823B2
 #define EE6A2701_7559_44C9_B708_474B1AE823B2
 
@@ -618,8 +616,6 @@ private:
 #include <type_traits>
 #include <utility>
 
-
-#include "tuplet/tuple.hpp"
 
 namespace lf {
 
@@ -669,7 +665,7 @@ concept assignable = std::is_lvalue_reference_v<LHS> && requires(LHS lhs, RHS &&
  * @brief A tuple-like type with forwarding semantics for in place construction.
  */
 template <typename... Args>
-struct in_place_args : tuplet::tuple<Args...> {};
+struct in_place_args : std::tuple<Args...> {};
 
 /**
  * @brief A forwarding deduction guide.
@@ -765,7 +761,7 @@ struct promise_result<R, T> {
   template <reference... Args>
     requires std::constructible_from<T, Args...>
   constexpr void return_value(in_place_args<Args...> args) const {
-    tuplet::apply(emplace, std::move(args));
+    std::apply(emplace, std::move(args));
   }
 
   explicit constexpr promise_result(R *return_address) noexcept : m_ret_address(return_address) {
@@ -781,7 +777,7 @@ private:
       (*ret).emplace(std::forward<Args>(args)...);
     } else if constexpr (std::is_move_assignable_v<R> && std::constructible_from<R, Args...>) {
       // TODO: clang is choking on this...?
-      throw std::runtime_error("not implemented");
+      LF_THROW(std::runtime_error("not implemented"));
       // (*ret) = R(std::forward<Args>(args)...);
     } else {
       (*ret) = T(std::forward<Args>(args)...);
@@ -1365,7 +1361,8 @@ public:
    * @brief Call the underlying async function with args.
    */
   auto invoke(frame_block *parent) && -> frame_block *requires(tag_of<Head> != tag::root) {
-    auto tsk = std::move(m_args).apply(function_of<Head>{});
+    auto tsk = apply(function_of<Head>{}, std::move(m_args));
+    // .apply();
     tsk.frame->set_parent(parent);
     return tsk.frame;
   }
@@ -1375,16 +1372,15 @@ public:
    */
   template <thread_context Context>
   constexpr auto patch_with() && noexcept -> packet<patched<Context, Head>, Tail...> {
-    return std::bit_cast<packet<patched<Context, Head>, Tail...>>(*this);
-
-    // std::move(m_args).apply([](Head head, auto &&...tail) {
-    //   // int i = {tail...};
-    //   return packet<patched<Context, Head>, Tail...>{{std::move(head)}, std::forward<decltype(tail)>(tail)...};
-    // });
+    return apply(
+        [](Head head, Tail &&...tail) -> packet<patched<Context, Head>, Tail...> {
+          return {patched<Context, Head>{std::move(head)}, std::forward<Tail>(tail)...};
+        },
+        std::move(m_args));
   }
 
 private:
-  [[no_unique_address]] tuplet::tuple<Head, Tail &&...> m_args;
+  [[no_unique_address]] std::tuple<Head, Tail &&...> m_args;
 };
 
 // /**
@@ -1563,7 +1559,6 @@ struct bind_task {
   template <typename F>
   [[nodiscard("HOF needs to be called")]] static constexpr auto operator[]([[maybe_unused]] async<F> async) noexcept {
     return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
-      LF_LOG("in call");
       return {{}, std::forward<Args>(args)...};
     };
   }
