@@ -53,7 +53,7 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
 
   std::forward<Sch>(sch).submit(ext);
 
-  LF_LOG("Aquire semaphore");
+  LF_LOG("Acquire semaphore");
 
   root_block.semaphore.acquire();
 
