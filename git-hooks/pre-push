@@ -27,7 +27,7 @@ fi
 
 pattern=$(git config --get hooks.prepush.sourcepattern)
 if [ -z "$pattern" ]; then
-    pattern="(?:(?:^|/)CMakeLists\.txt|\.h|\.cpp|\.cmake)$"
+    pattern="(?:(?:^|/)CMakeLists\.txt|\.hpp|\.cpp|\.cmake)$"
 fi
     
 files=$(git status -u --porcelain --no-column | sed "s/^?? //" | grep -P "$pattern")
