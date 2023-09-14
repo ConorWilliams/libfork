@@ -60,7 +60,7 @@ TEST_CASE("basic counting", "[inline_scheduler]") {
 
   REQUIRE(x == 10);
 
-  ctx.submit(root.frame);
+  ctx.submit(root.frame());
 
   block.semaphore.acquire();
 
@@ -91,8 +91,6 @@ inline constexpr auto fib = [](auto fib, int n) static -> task<int> {
   }
 
   int a, b;
-
-  // int arg = n - 1;
 
   co_await lf::fork[a, fib](n - 1);
   co_await lf::call[b, fib](n - 2);
@@ -129,11 +127,15 @@ TEST_CASE("fib", "[promise]") {
 
   BENCHMARK("coroutine") {
     root_result<int> block;
-    auto root = fib(Head{base{block}}, in);
-    ctx.submit(root.frame);
-    REQUIRE(*block == y);
-    return x = *block;
+    auto root = fib(Head{base{block}}, int(in));
+    ctx.submit(root.frame());
+
+    x = *std::move(block);
+
+    return x;
   };
+
+  REQUIRE(x == y);
 
   worker_finalize(&ctx);
 }

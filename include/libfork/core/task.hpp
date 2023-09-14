@@ -54,12 +54,6 @@ public:
 
 // ----------------------------------------------- //
 
-namespace detail {
-
-struct task_construct_key {};
-
-} // namespace detail
-
 /**
  * @brief The return type for libfork's async functions/coroutines.
  */
@@ -67,9 +61,12 @@ template <typename T, fixed_string Name = "">
 struct task {
   using value_type = T; ///< The type of the value returned by the coroutine.
 
-  task(frame_block *f) : frame{f} { LF_ASSERT(f); }
+  explicit(false) task(frame_block *frame) : m_frame{frame} { LF_ASSERT(frame); }
 
-  frame_block *frame; ///< The frame block for the coroutine.
+  [[nodiscard]] constexpr auto frame() const noexcept -> frame_block * { return m_frame; }
+
+private:
+  frame_block *m_frame; ///< The frame block for the coroutine.
 };
 
 template <typename>
@@ -192,10 +189,22 @@ template <typename Head, typename... Tail>
 concept valid_packet = first_arg<Head> && detail::valid_return<std::invoke_result_t<function_of<Head>, Head, Tail...>, Head>;
 
 /**
+ * @brief A base class for building the first argument to asynchronous functions.
+ *
+ * This derives from `async<F>` to allow to allow for use as a y-combinator.
+ *
+ * It needs the true context type to be patched to it.
+ *
+ * This is used by `std::coroutine_traits` to build the promise type.
+ */
+template <typename R, tag Tag, stateless F>
+struct basic_first_arg;
+
+/**
  * @brief A helper to statically attach a new `context_type` to a `first_arg`.
  */
-template <thread_context Context, first_arg T>
-struct patched : T {
+template <thread_context Context, first_arg Head>
+struct patched : Head {
   using context_type = Context;
 };
 
@@ -206,6 +215,9 @@ template <typename Head, typename... Tail>
   requires valid_packet<Head, Tail...>
 class [[nodiscard("packets must be co_awaited")]] packet : detail::move_only<packet<Head, Tail...>> {
 public:
+  using task_type = std::invoke_result_t<function_of<Head>, Head, Tail...>;
+  using value_type = value_of<task_type>;
+
   /**
    * @brief Build a packet.
    *
@@ -220,10 +232,21 @@ public:
    * @brief Call the underlying async function with args.
    */
   auto invoke(frame_block *parent) && -> frame_block *requires(tag_of<Head> != tag::root) {
-    auto tsk = apply(function_of<Head>{}, std::move(m_args));
-    // .apply();
-    tsk.frame->set_parent(parent);
-    return tsk.frame;
+    auto tsk = std::apply(function_of<Head>{}, std::move(m_args));
+    tsk.frame()->set_parent(parent);
+    return tsk.frame();
+  }
+
+  /**
+   * @brief Call the underlying async function with args.
+   */
+  auto invoke() && -> frame_block *requires(tag_of<Head> == tag::root) {
+    return std::apply(function_of<Head>{}, std::move(m_args)).frame();
+  }
+
+  template <typename F>
+  constexpr auto apply(F &&func) && -> decltype(auto) {
+    return std::apply(std::forward<F>(func), std::move(m_args));
   }
 
   /**
@@ -231,11 +254,9 @@ public:
    */
   template <thread_context Context>
   constexpr auto patch_with() && noexcept -> packet<patched<Context, Head>, Tail...> {
-    return apply(
-        [](Head head, Tail &&...tail) -> packet<patched<Context, Head>, Tail...> {
-          return {patched<Context, Head>{std::move(head)}, std::forward<Tail>(tail)...};
-        },
-        std::move(m_args));
+    return std::move(*this).apply([](Head head, Tail &&...tail) -> packet<patched<Context, Head>, Tail...> {
+      return {{std::move(head)}, std::forward<Tail>(tail)...};
+    });
   }
 
 private:
@@ -249,18 +270,6 @@ private:
 // packet(Head, Tail &&...) -> packet<Head, Tail &&...>;
 
 // ----------------------------------------------- //
-
-/**
- * @brief A base class for building the first argument to asynchronous functions.
- *
- * This derives from `async<F>` to allow to allow for use as a y-combinator.
- *
- * It needs the true context type to be patched to it.
- *
- * This is used by `std::coroutine_traits` to build the promise type.
- */
-template <typename R, tag Tag, stateless F>
-struct basic_first_arg;
 
 /**
  * @brief Wraps a stateless callable that returns an ``lf::task``.
@@ -327,6 +336,11 @@ struct basic_first_arg<void, Tag, F> : async<F>, detail::move_only<basic_first_a
   using return_type = void;             ///< The type of the return address.
   using function_type = F;              ///< The underlying async
   static constexpr tag tag_value = Tag; ///< The tag value.
+
+  template <typename R>
+  auto rebind(R &ret) const noexcept -> basic_first_arg<R, Tag, F> {
+    return {ret};
+  }
 };
 
 /**

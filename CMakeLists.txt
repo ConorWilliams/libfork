@@ -29,14 +29,12 @@ find_package(HWLOC)
 
 # find_package(mimalloc)
 
-CPMAddPackage("gh:codeinred/tuplet#v2.1.1")
-
 # ---- Declare library ----
 
 add_library(libfork_libfork INTERFACE)
 add_library(libfork::libfork ALIAS libfork_libfork)
 
-target_link_libraries(libfork_libfork INTERFACE Threads::Threads tuplet::tuplet)
+target_link_libraries(libfork_libfork INTERFACE Threads::Threads)
 
 set_property(TARGET libfork_libfork PROPERTY EXPORT_NAME libfork)
 

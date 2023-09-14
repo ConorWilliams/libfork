@@ -38,7 +38,10 @@ TEST_CASE("Eventually, non-trivial types", "[eventually]") {
   a = std::vector<float>{1, 2, 3};
 
   eventually<std::vector<float>> b;
-  b.emplace((*a).begin(), (*a).end());
+
+  std::vector<float> c = *std::move(a);
+
+  b.emplace(c.begin(), c.end());
 }
 
 // NOLINTEND

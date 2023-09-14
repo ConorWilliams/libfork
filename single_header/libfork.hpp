@@ -61,6 +61,7 @@ namespace stdx = std::experimental;
 #define B7972761_4CBF_4B86_B195_F754295372BF
 
 #include <memory>
+#include <type_traits>
 #include <utility>
 #ifndef C5DCA647_8269_46C2_B76F_5FA68738AEDA
 #define C5DCA647_8269_46C2_B76F_5FA68738AEDA
@@ -470,22 +471,62 @@ namespace lf {
 
 inline namespace LF_DEPENDENT_ABI {
 
+template <typename T>
+concept non_void = !std::is_void_v<T>;
+
+template <non_void T>
+class eventually;
+
 /**
  * @brief A wrapper to delay construction of an object.
  *
  * It is up to the caller to guarantee that the object is constructed before it is used and that an object is
  * constructed before the lifetime of the eventually ends (regardless of it is used).
  */
-template <typename T>
-  requires(not std::is_void_v<T>)
+template <non_void T>
+  requires std::is_reference_v<T>
+class eventually<T> {
+public:
+  /**
+   * @brief Construct an object inside the eventually from ``expr``.
+   */
+  constexpr auto operator=(T expr) -> eventually & {
+    m_value = std::addressof(expr);
+    return *this;
+  }
+
+  /**
+   * @brief Access the wrapped object.
+   */
+  [[nodiscard]] constexpr auto operator*() && noexcept -> T {
+    if constexpr (std::is_rvalue_reference_v<T>) {
+      return std::move(*m_value);
+    } else {
+      return m_value;
+    }
+  }
+
+private:
+  std::remove_reference_t<T> *m_value;
+};
+
+/**
+ * @brief A wrapper to delay construction of an object.
+ *
+ * It is up to the caller to guarantee that the object is constructed before it is used and that an object is
+ * constructed before the lifetime of the eventually ends (regardless of it is used).
+ */
+template <non_void T>
 class eventually : detail::immovable<eventually<T>> {
 public:
+  // clang-format off
+
   /**
    * @brief Construct an empty eventually.
    */
-  constexpr eventually() noexcept
-    requires std::is_trivially_constructible_v<T>
-  = default;
+  constexpr eventually() noexcept requires std::is_trivially_constructible_v<T> = default;
+
+  // clang-format on
 
   constexpr eventually() noexcept : m_init{} {};
 
@@ -530,11 +571,11 @@ public:
   /**
    * @brief Access the wrapped object.
    */
-  [[nodiscard]] constexpr auto operator*() & noexcept -> T & {
+  [[nodiscard]] constexpr auto operator*() && noexcept -> T {
 #ifndef NDEBUG
     LF_ASSUME(m_constructed);
 #endif
-    return m_value;
+    return std::move(m_value);
   }
 
 private:
@@ -1195,12 +1236,6 @@ public:
 
 // ----------------------------------------------- //
 
-namespace detail {
-
-struct task_construct_key {};
-
-} // namespace detail
-
 /**
  * @brief The return type for libfork's async functions/coroutines.
  */
@@ -1208,9 +1243,12 @@ template <typename T, fixed_string Name = "">
 struct task {
   using value_type = T; ///< The type of the value returned by the coroutine.
 
-  task(frame_block *f) : frame{f} { LF_ASSERT(f); }
+  explicit(false) task(frame_block *frame) : m_frame{frame} { LF_ASSERT(frame); }
 
-  frame_block *frame; ///< The frame block for the coroutine.
+  [[nodiscard]] constexpr auto frame() const noexcept -> frame_block * { return m_frame; }
+
+private:
+  frame_block *m_frame; ///< The frame block for the coroutine.
 };
 
 template <typename>
@@ -1333,10 +1371,22 @@ template <typename Head, typename... Tail>
 concept valid_packet = first_arg<Head> && detail::valid_return<std::invoke_result_t<function_of<Head>, Head, Tail...>, Head>;
 
 /**
+ * @brief A base class for building the first argument to asynchronous functions.
+ *
+ * This derives from `async<F>` to allow to allow for use as a y-combinator.
+ *
+ * It needs the true context type to be patched to it.
+ *
+ * This is used by `std::coroutine_traits` to build the promise type.
+ */
+template <typename R, tag Tag, stateless F>
+struct basic_first_arg;
+
+/**
  * @brief A helper to statically attach a new `context_type` to a `first_arg`.
  */
-template <thread_context Context, first_arg T>
-struct patched : T {
+template <thread_context Context, first_arg Head>
+struct patched : Head {
   using context_type = Context;
 };
 
@@ -1347,6 +1397,9 @@ template <typename Head, typename... Tail>
   requires valid_packet<Head, Tail...>
 class [[nodiscard("packets must be co_awaited")]] packet : detail::move_only<packet<Head, Tail...>> {
 public:
+  using task_type = std::invoke_result_t<function_of<Head>, Head, Tail...>;
+  using value_type = value_of<task_type>;
+
   /**
    * @brief Build a packet.
    *
@@ -1361,10 +1414,21 @@ public:
    * @brief Call the underlying async function with args.
    */
   auto invoke(frame_block *parent) && -> frame_block *requires(tag_of<Head> != tag::root) {
-    auto tsk = apply(function_of<Head>{}, std::move(m_args));
-    // .apply();
-    tsk.frame->set_parent(parent);
-    return tsk.frame;
+    auto tsk = std::apply(function_of<Head>{}, std::move(m_args));
+    tsk.frame()->set_parent(parent);
+    return tsk.frame();
+  }
+
+  /**
+   * @brief Call the underlying async function with args.
+   */
+  auto invoke() && -> frame_block *requires(tag_of<Head> == tag::root) {
+    return std::apply(function_of<Head>{}, std::move(m_args)).frame();
+  }
+
+  template <typename F>
+  constexpr auto apply(F &&func) && -> decltype(auto) {
+    return std::apply(std::forward<F>(func), std::move(m_args));
   }
 
   /**
@@ -1372,11 +1436,9 @@ public:
    */
   template <thread_context Context>
   constexpr auto patch_with() && noexcept -> packet<patched<Context, Head>, Tail...> {
-    return apply(
-        [](Head head, Tail &&...tail) -> packet<patched<Context, Head>, Tail...> {
-          return {patched<Context, Head>{std::move(head)}, std::forward<Tail>(tail)...};
-        },
-        std::move(m_args));
+    return std::move(*this).apply([](Head head, Tail &&...tail) -> packet<patched<Context, Head>, Tail...> {
+      return {{std::move(head)}, std::forward<Tail>(tail)...};
+    });
   }
 
 private:
@@ -1390,18 +1452,6 @@ private:
 // packet(Head, Tail &&...) -> packet<Head, Tail &&...>;
 
 // ----------------------------------------------- //
-
-/**
- * @brief A base class for building the first argument to asynchronous functions.
- *
- * This derives from `async<F>` to allow to allow for use as a y-combinator.
- *
- * It needs the true context type to be patched to it.
- *
- * This is used by `std::coroutine_traits` to build the promise type.
- */
-template <typename R, tag Tag, stateless F>
-struct basic_first_arg;
 
 /**
  * @brief Wraps a stateless callable that returns an ``lf::task``.
@@ -1468,6 +1518,11 @@ struct basic_first_arg<void, Tag, F> : async<F>, detail::move_only<basic_first_a
   using return_type = void;             ///< The type of the return address.
   using function_type = F;              ///< The underlying async
   static constexpr tag tag_value = Tag; ///< The tag value.
+
+  template <typename R>
+  auto rebind(R &ret) const noexcept -> basic_first_arg<R, Tag, F> {
+    return {ret};
+  }
 };
 
 /**
@@ -1605,18 +1660,6 @@ namespace lf::detail {
 // -------------------------------------------------------------------------- //
 
 // TODO: Cleanup below
-
-// /**
-//  * @brief Disable rvalue references for T&& template types if an async function
-//  * is forked.
-//  *
-//  * This is to prevent the user from accidentally passing a temporary object to
-//  * an async function that will then destructed in the parent task before the
-//  * child task returns.
-//  */
-// template <typename T, typename Self>
-// concept protect_forwarding_tparam = first_arg<Self> && !std::is_rvalue_reference_v<T> &&
-//                                     (tag_of<Self> != tag::fork || std::is_reference_v<T>);
 
 #ifndef NDEBUG
   #define FATAL_IN_DEBUG(expr, message)                                                                                     \
@@ -1767,8 +1810,9 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
   }
 
 public:
-  template <typename U, typename F, typename... Args>
-  [[nodiscard]] constexpr auto await_transform(packet<basic_first_arg<U, tag::fork, F>, Args...> &&packet)
+  template <first_arg Head, typename... Args>
+    requires(tag_of<Head> == tag::fork)
+  [[nodiscard]] constexpr auto await_transform(packet<Head, Args...> &&packet)
     requires requires { std::move(packet).template patch_with<Context>(); }
   {
 
@@ -1795,8 +1839,9 @@ public:
     return awaitable{{}, this, child};
   }
 
-  template <typename U, typename F, typename... Args>
-  [[nodiscard]] constexpr auto await_transform(packet<basic_first_arg<U, tag::call, F>, Args...> &&packet)
+  template <first_arg Head, typename... Args>
+    requires(tag_of<Head> == tag::call)
+  [[nodiscard]] constexpr auto await_transform(packet<Head, Args...> &&packet)
     requires requires { std::move(packet).template patch_with<Context>(); }
   {
 
@@ -1813,6 +1858,48 @@ public:
     };
 
     return awaitable{{}, child};
+  }
+
+  template <typename F, typename... Args>
+  [[nodiscard]] constexpr auto await_transform(packet<basic_first_arg<void, tag::invoke, F>, Args...> &&packet)
+    requires requires { std::move(packet).template patch_with<Context>(); }
+  {
+
+    using packet_t = lf::packet<basic_first_arg<void, tag::invoke, F>, Args...>;
+    using return_t = eventually<value_of<packet_t>>;
+
+    struct awaitable : stdx::suspend_always {
+      [[nodiscard]] constexpr auto await_suspend(std::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
+
+        using new_packet_t = lf::packet<basic_first_arg<return_t, tag::call, F>>;
+
+        new_packet_t new_packet = std::move(m_packet).apply([&](auto, Args &&...args) -> new_packet_t {
+          return {{m_res}, std::forward<Args>(args)...};
+        });
+
+        static_assert(std::same_as<value_of<packet_t>, value_of<new_packet_t>>, "Value type dependant on first arg!");
+
+        LF_LOG("Invoking");
+
+        return std::move(new_packet).template patch_with<Context>().invoke(parent)->coro();
+      }
+
+      [[nodiscard]] constexpr auto await_resume() -> value_of<packet_t> {
+        if constexpr (!std::is_void_v<value_of<packet_t>>) {
+          if constexpr (std::is_reference_v<value_of<packet_t>>) {
+            return *m_res;
+          }
+          LF_ASSERT(m_res.has_value());
+          return std::move(*m_res);
+        }
+      }
+
+      frame_block *parent;
+      packet_t m_packet;
+      return_t m_res;
+    };
+
+    return awaitable{{}, this, std::move(packet), {}};
   }
 
   //   /**
@@ -1983,21 +2070,37 @@ public:
 
 } // namespace lf::detail
 
+namespace lf {
+/**
+ * @brief Disable rvalue references for T&& template types if an async function is forked.
+ *
+ * This is to prevent the user from accidentally passing a temporary object to
+ * an async function that will then destructed in the parent task before the
+ * child task returns.
+ */
+template <typename T, tag Tag>
+
+concept no_dangling = Tag != tag::fork || !std::is_rvalue_reference_v<T>;
+
+template <first_arg Head, lf::is_task Task>
+using promise_for = detail::promise_type<return_of<Head>, value_of<Task>, context_of<Head>, tag_of<Head>>;
+
+} // namespace lf
+
 #ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
 
 /**
  * @brief Specialize coroutine_traits for task<...> from functions.
  */
-template <lf::is_task Task, lf::first_arg Head, typename... Args>
+template <lf::is_task Task, lf::first_arg Head, lf::no_dangling<lf::tag_of<Head>>... Args>
 struct lf::stdx::coroutine_traits<Task, Head, Args...> {
-  using promise_type =
-      lf::detail::promise_type<lf::return_of<Head>, lf::value_of<Task>, lf::context_of<Head>, lf::tag_of<Head>>;
+  using promise_type = lf::promise_for<Head, Task>;
 };
 
 /**
  * @brief Specialize coroutine_traits for task<...> from member functions.
  */
-template <lf::is_task Task, lf::not_first_arg This, lf::first_arg Head, typename... Args>
+template <lf::is_task Task, lf::not_first_arg This, lf::first_arg Head, lf::no_dangling<lf::tag_of<Head>>... Args>
 struct lf::stdx::coroutine_traits<Task, This, Head, Args...> : lf::stdx::coroutine_traits<Task, Head, Args...> {};
 
 #endif /* LF_DOXYGEN_SHOULD_SKIP_THIS */

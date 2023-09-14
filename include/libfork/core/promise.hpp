@@ -42,18 +42,6 @@ namespace lf::detail {
 
 // TODO: Cleanup below
 
-// /**
-//  * @brief Disable rvalue references for T&& template types if an async function
-//  * is forked.
-//  *
-//  * This is to prevent the user from accidentally passing a temporary object to
-//  * an async function that will then destructed in the parent task before the
-//  * child task returns.
-//  */
-// template <typename T, typename Self>
-// concept protect_forwarding_tparam = first_arg<Self> && !std::is_rvalue_reference_v<T> &&
-//                                     (tag_of<Self> != tag::fork || std::is_reference_v<T>);
-
 #ifndef NDEBUG
   #define FATAL_IN_DEBUG(expr, message)                                                                                     \
     do {                                                                                                                    \
@@ -203,8 +191,9 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
   }
 
 public:
-  template <typename U, typename F, typename... Args>
-  [[nodiscard]] constexpr auto await_transform(packet<basic_first_arg<U, tag::fork, F>, Args...> &&packet)
+  template <first_arg Head, typename... Args>
+    requires(tag_of<Head> == tag::fork)
+  [[nodiscard]] constexpr auto await_transform(packet<Head, Args...> &&packet)
     requires requires { std::move(packet).template patch_with<Context>(); }
   {
 
@@ -231,8 +220,9 @@ public:
     return awaitable{{}, this, child};
   }
 
-  template <typename U, typename F, typename... Args>
-  [[nodiscard]] constexpr auto await_transform(packet<basic_first_arg<U, tag::call, F>, Args...> &&packet)
+  template <first_arg Head, typename... Args>
+    requires(tag_of<Head> == tag::call)
+  [[nodiscard]] constexpr auto await_transform(packet<Head, Args...> &&packet)
     requires requires { std::move(packet).template patch_with<Context>(); }
   {
 
@@ -249,6 +239,48 @@ public:
     };
 
     return awaitable{{}, child};
+  }
+
+  template <typename F, typename... Args>
+  [[nodiscard]] constexpr auto await_transform(packet<basic_first_arg<void, tag::invoke, F>, Args...> &&packet)
+    requires requires { std::move(packet).template patch_with<Context>(); }
+  {
+
+    using packet_t = lf::packet<basic_first_arg<void, tag::invoke, F>, Args...>;
+    using return_t = eventually<value_of<packet_t>>;
+
+    struct awaitable : stdx::suspend_always {
+      [[nodiscard]] constexpr auto await_suspend(std::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
+
+        using new_packet_t = lf::packet<basic_first_arg<return_t, tag::call, F>>;
+
+        new_packet_t new_packet = std::move(m_packet).apply([&](auto, Args &&...args) -> new_packet_t {
+          return {{m_res}, std::forward<Args>(args)...};
+        });
+
+        static_assert(std::same_as<value_of<packet_t>, value_of<new_packet_t>>, "Value type dependant on first arg!");
+
+        LF_LOG("Invoking");
+
+        return std::move(new_packet).template patch_with<Context>().invoke(parent)->coro();
+      }
+
+      [[nodiscard]] constexpr auto await_resume() -> value_of<packet_t> {
+        if constexpr (!std::is_void_v<value_of<packet_t>>) {
+          if constexpr (std::is_reference_v<value_of<packet_t>>) {
+            return *m_res;
+          }
+          LF_ASSERT(m_res.has_value());
+          return std::move(*m_res);
+        }
+      }
+
+      frame_block *parent;
+      packet_t m_packet;
+      return_t m_res;
+    };
+
+    return awaitable{{}, this, std::move(packet), {}};
   }
 
   //   /**
@@ -419,21 +451,37 @@ public:
 
 } // namespace lf::detail
 
+namespace lf {
+/**
+ * @brief Disable rvalue references for T&& template types if an async function is forked.
+ *
+ * This is to prevent the user from accidentally passing a temporary object to
+ * an async function that will then destructed in the parent task before the
+ * child task returns.
+ */
+template <typename T, tag Tag>
+
+concept no_dangling = Tag != tag::fork || !std::is_rvalue_reference_v<T>;
+
+template <first_arg Head, lf::is_task Task>
+using promise_for = detail::promise_type<return_of<Head>, value_of<Task>, context_of<Head>, tag_of<Head>>;
+
+} // namespace lf
+
 #ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
 
 /**
  * @brief Specialize coroutine_traits for task<...> from functions.
  */
-template <lf::is_task Task, lf::first_arg Head, typename... Args>
+template <lf::is_task Task, lf::first_arg Head, lf::no_dangling<lf::tag_of<Head>>... Args>
 struct lf::stdx::coroutine_traits<Task, Head, Args...> {
-  using promise_type =
-      lf::detail::promise_type<lf::return_of<Head>, lf::value_of<Task>, lf::context_of<Head>, lf::tag_of<Head>>;
+  using promise_type = lf::promise_for<Head, Task>;
 };
 
 /**
  * @brief Specialize coroutine_traits for task<...> from member functions.
  */
-template <lf::is_task Task, lf::not_first_arg This, lf::first_arg Head, typename... Args>
+template <lf::is_task Task, lf::not_first_arg This, lf::first_arg Head, lf::no_dangling<lf::tag_of<Head>>... Args>
 struct lf::stdx::coroutine_traits<Task, This, Head, Args...> : lf::stdx::coroutine_traits<Task, Head, Args...> {};
 
 #endif /* LF_DOXYGEN_SHOULD_SKIP_THIS */

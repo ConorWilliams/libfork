@@ -2,6 +2,7 @@
 #define B7972761_4CBF_4B86_B195_F754295372BF
 
 #include <memory>
+#include <type_traits>
 #include <utility>
 
 #include "libfork/macro.hpp"
@@ -11,22 +12,62 @@ namespace lf {
 
 inline namespace LF_DEPENDENT_ABI {
 
+template <typename T>
+concept non_void = !std::is_void_v<T>;
+
+template <non_void T>
+class eventually;
+
 /**
  * @brief A wrapper to delay construction of an object.
  *
  * It is up to the caller to guarantee that the object is constructed before it is used and that an object is
  * constructed before the lifetime of the eventually ends (regardless of it is used).
  */
-template <typename T>
-  requires(not std::is_void_v<T>)
+template <non_void T>
+  requires std::is_reference_v<T>
+class eventually<T> {
+public:
+  /**
+   * @brief Construct an object inside the eventually from ``expr``.
+   */
+  constexpr auto operator=(T expr) -> eventually & {
+    m_value = std::addressof(expr);
+    return *this;
+  }
+
+  /**
+   * @brief Access the wrapped object.
+   */
+  [[nodiscard]] constexpr auto operator*() && noexcept -> T {
+    if constexpr (std::is_rvalue_reference_v<T>) {
+      return std::move(*m_value);
+    } else {
+      return m_value;
+    }
+  }
+
+private:
+  std::remove_reference_t<T> *m_value;
+};
+
+/**
+ * @brief A wrapper to delay construction of an object.
+ *
+ * It is up to the caller to guarantee that the object is constructed before it is used and that an object is
+ * constructed before the lifetime of the eventually ends (regardless of it is used).
+ */
+template <non_void T>
 class eventually : detail::immovable<eventually<T>> {
 public:
+  // clang-format off
+
   /**
    * @brief Construct an empty eventually.
    */
-  constexpr eventually() noexcept
-    requires std::is_trivially_constructible_v<T>
-  = default;
+  constexpr eventually() noexcept requires std::is_trivially_constructible_v<T> = default;
+
+  // clang-format on
 
   constexpr eventually() noexcept : m_init{} {};
 
@@ -71,11 +112,11 @@ public:
   /**
    * @brief Access the wrapped object.
    */
-  [[nodiscard]] constexpr auto operator*() & noexcept -> T & {
+  [[nodiscard]] constexpr auto operator*() && noexcept -> T {
 #ifndef NDEBUG
     LF_ASSUME(m_constructed);
 #endif
-    return m_value;
+    return std::move(m_value);
   }
 
 private:
