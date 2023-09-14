@@ -4,7 +4,7 @@
 #
 # find_package(MiMalloc)
 #
-# Variables used by this module, they can change the default behaviour and need to be set before
+# Variables used by this module, they can change the default behavior and need to be set before
 # calling find_package:
 #
 # MIMALLOC_ROOT_DIR Set this variable to the root installation of mimalloc if the module has

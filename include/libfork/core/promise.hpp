@@ -256,7 +256,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
           return {{}, std::forward<Args>(args)...};
         });
 
-        static_assert(std::is_void_v<value_of<new_packet_t>>, "Value type dependant on first arg!");
+        static_assert(std::is_void_v<value_of<new_packet_t>>, "Value type dependent on first arg!");
 
         LF_LOG("Invoking");
 
@@ -285,7 +285,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
           return {{m_res}, std::forward<Args>(args)...};
         });
 
-        static_assert(std::same_as<value_of<packet_t>, value_of<new_packet_t>>, "Value type dependant on first arg!");
+        static_assert(std::same_as<value_of<packet_t>, value_of<new_packet_t>>, "Value type dependent on first arg!");
 
         LF_LOG("Invoking");
 
