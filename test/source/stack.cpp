@@ -6,8 +6,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#define NDEBUG
-#define LF_COROUTINE_ABI 2 * sizeof(void *)
+// #define NDEBUG
+// #define LF_COROUTINE_OFFSET 2 * sizeof(void *)
 
 #include <catch2/benchmark/catch_benchmark.hpp>
 #include <catch2/catch_test_macros.hpp>

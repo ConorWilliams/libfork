@@ -118,20 +118,22 @@ namespace detail {
 
 /**
  * @brief Use with ``inline namespace`` to mangle the major version number into the symbol names.
- *
  */
-#define LF_API LF_CONCAT(v, LF_VERSION_MAJOR)
+#define LF_VERSION_ABI LF_CONCAT(_v, LF_VERSION_MAJOR)
 
-/**
- * @brief Use with ``inline namespace`` to alter the symbols of classes with different ABI in debug/release
- * mode.
- *
- */
-#ifdef NDEBUG
-  #define LF_DEPENDENT_ABI release_abi
+#ifdef LF_COROUTINE_OFFSET
+  #define LF_COROUTINE_ABI LF_CONCAT(LF_COROUTINE_OFFSET, LF_VERSION_ABI)
 #else
-  #define LF_DEPENDENT_ABI debug_abi
+  #define LF_COROUTINE_ABI LF_CONCAT(dynamic, LF_VERSION_ABI)
 #endif
+
+#if defined(NDEBUG)
+  #define LF_ABI LF_CONCAT(release_, LF_COROUTINE_ABI)
+#else
+  #define LF_ABI LF_CONCAT(debug_, LF_COROUTINE_ABI)
+#endif
+
+// LF_ABI
 
 #ifndef LF_ASYNC_STACK_SIZE
   /**
@@ -983,7 +985,7 @@ struct frame_block : detail::immovable<frame_block>, debug_block {
 /**
  * @brief For non-root tasks.
  */
-#ifndef LF_COROUTINE_ABI
+#ifndef LF_COROUTINE_OFFSET
   constexpr frame_block(std::coroutine_handle<> coro, std::byte *top) : m_coro{coro}, m_top(top) {}
 #else
   constexpr frame_block([[maybe_unused]] std::coroutine_handle<>, std::byte *top) : m_top(top) {}
@@ -1005,10 +1007,10 @@ struct frame_block : detail::immovable<frame_block>, debug_block {
   }
 
   auto coro() noexcept -> std::coroutine_handle<> {
-#ifndef LF_COROUTINE_ABI
+#ifndef LF_COROUTINE_OFFSET
     return m_coro;
 #else
-    return std::coroutine_handle<>::from_address(byte_cast(this) - LF_COROUTINE_ABI);
+    return std::coroutine_handle<>::from_address(byte_cast(this) - LF_COROUTINE_OFFSET);
 #endif
   }
 
@@ -1053,7 +1055,7 @@ struct frame_block : detail::immovable<frame_block>, debug_block {
   }
 
 private:
-#ifndef LF_COROUTINE_ABI
+#ifndef LF_COROUTINE_OFFSET
   std::coroutine_handle<> m_coro;
 #endif
 

@@ -19,12 +19,14 @@
 #include <catch2/catch_test_macros.hpp>
 
 // #define NDEBUG
+
+// #define LF_ASSERT(x)
+
 // #define LF_PROPAGATE_EXCEPTIONS
 // #undef LF_LOG
-#define LF_LOGGING
+// #define LF_LOGGING
 
 #include "libfork/core.hpp"
-
 #include "libfork/schedule/inline.hpp"
 
 // NOLINTBEGIN No linting in tests
@@ -58,12 +60,10 @@ inline constexpr async noop = [](auto) -> task<> {
 
 // In some implementations, this could cause a stack overflow if symmetric transfer is not used.
 inline constexpr async sym_stack_overflow_1 = [](auto) -> lf::task<int> {
-  // for (int i = 0; i < 10; ++i) {
-  LF_LOG("At fork");
-  co_await lf::fork[noop]();
-  LF_LOG("post fork");
-  // co_await lf::call(noop)();
-  // }
+  for (int i = 0; i < 100'000'000; ++i) {
+    co_await lf::fork[noop]();
+    co_await lf::call(noop)();
+  }
 
   co_await lf::join;
 
@@ -71,7 +71,6 @@ inline constexpr async sym_stack_overflow_1 = [](auto) -> lf::task<int> {
 };
 
 TEMPLATE_TEST_CASE("Stack overflow - sym-transfer", "[libfork][template]", inline_scheduler) {
-
   REQUIRE(sync_wait(TestType{}, sym_stack_overflow_1));
 }
 

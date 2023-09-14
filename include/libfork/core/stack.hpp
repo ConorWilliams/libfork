@@ -169,7 +169,7 @@ struct frame_block : detail::immovable<frame_block>, debug_block {
 /**
  * @brief For non-root tasks.
  */
-#ifndef LF_COROUTINE_ABI
+#ifndef LF_COROUTINE_OFFSET
   constexpr frame_block(std::coroutine_handle<> coro, std::byte *top) : m_coro{coro}, m_top(top) {}
 #else
   constexpr frame_block([[maybe_unused]] std::coroutine_handle<>, std::byte *top) : m_top(top) {}
@@ -191,10 +191,10 @@ struct frame_block : detail::immovable<frame_block>, debug_block {
   }
 
   auto coro() noexcept -> std::coroutine_handle<> {
-#ifndef LF_COROUTINE_ABI
+#ifndef LF_COROUTINE_OFFSET
     return m_coro;
 #else
-    return std::coroutine_handle<>::from_address(byte_cast(this) - LF_COROUTINE_ABI);
+    return std::coroutine_handle<>::from_address(byte_cast(this) - LF_COROUTINE_OFFSET);
 #endif
   }
 
@@ -239,7 +239,7 @@ struct frame_block : detail::immovable<frame_block>, debug_block {
   }
 
 private:
-#ifndef LF_COROUTINE_ABI
+#ifndef LF_COROUTINE_OFFSET
   std::coroutine_handle<> m_coro;
 #endif
 

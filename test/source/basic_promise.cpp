@@ -10,7 +10,8 @@
 #include <catch2/catch_test_macros.hpp>
 
 // #define LF_LOGGING
-#define NDEBUG
+// #define NDEBUG
+// #define LF_LOGGING
 
 #include "libfork/core.hpp"
 #include "libfork/core/call.hpp"
