@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <iostream>
 #include <optional>
 #include <tuple>
 #include <type_traits>
@@ -87,7 +88,11 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
     noexcept_invoke([] { LF_RETHROW; });
   }
 
+  ~promise_type() noexcept { LF_LOG("promise destructs"); }
+
   auto final_suspend() noexcept {
+
+    LF_LOG("At final suspend call");
 
     // Completing a non-root task means we currently own the async_stack this child is on
 
@@ -111,6 +116,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
         LF_LOG("Task reaches final suspend");
 
         frame_block *parent = child.promise().parent();
+
         child.destroy();
 
         LF_ASSERT(parent);
@@ -120,6 +126,8 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
           // Inline task's parent cannot have been stolen, no need to reset control block.
           return parent->coro();
         }
+
+        // std::cout << "context is " << (void *)(tls::ctx<Context>) << std::endl;
 
         Context *context = tls::ctx<Context>;
 
@@ -202,16 +210,24 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
     frame_block *child = std::move(packet).template patch_with<Context>().invoke(this);
 
+    LF_ASSERT(child);
+
     struct awaitable : stdx::suspend_always {
-      [[nodiscard]] constexpr auto await_suspend(std::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
+      [[nodiscard]] constexpr auto await_suspend(std::coroutine_handle<promise_type> p) noexcept
+          -> stdx::coroutine_handle<> {
 
         LF_LOG("Forking, push parent to context");
 
-        auto *child = m_child; // Need it here (on real stack) in case *this is destructed after push.
+        LF_ASSERT(&p.promise() == m_parent);
+
+        // Need it here (on real stack) in case *this is destructed after push.
+        stdx::coroutine_handle child = m_child->coro();
+
+        // std::cout << "context is " << (void *)(tls::ctx<Context>) << std::endl;
 
         tls::ctx<Context>->task_push(m_parent);
 
-        return child->coro();
+        return child;
       }
 
       frame_block *m_parent;

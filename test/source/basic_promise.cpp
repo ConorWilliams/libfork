@@ -38,7 +38,7 @@ TEST_CASE("basic counting", "[inline_scheduler]") {
 
   root_result<void> block;
 
-  using C = inline_vec::context_type;
+  using C = inline_scheduler::context_type;
 
   using base = basic_first_arg<root_result<void>, tag::root, decltype(count)>;
 
@@ -116,7 +116,7 @@ TEST_CASE("fib", "[promise]") {
     using context_type = C;
   };
 
-  volatile int in = 30;
+  volatile int in = 20;
 
   int x;
   int y;

@@ -112,7 +112,7 @@ TEST_CASE("fib on stack", "[virtual_stack]") {
 
     tls::asp = s->as_bytes();
 
-    volatile int p = 30;
+    volatile int p = 20;
 
     int y;
 

@@ -284,6 +284,8 @@ inline void frame_block::resume_external() noexcept {
 
   if (!is_root()) {
     tls::eat<Context>(top());
+  } else {
+    LF_LOG("External was root");
   }
 
   coro().resume();

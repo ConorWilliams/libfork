@@ -77,13 +77,13 @@ struct promise_result;
  */
 template <typename T>
 struct promise_result<void, T> {
-  constexpr void return_void() const noexcept {}
+  constexpr void return_void() const noexcept { LF_LOG("return void"); }
 };
 
 template <>
 struct promise_result<root_result<void>, void> {
 
-  constexpr void return_void() const noexcept {}
+  constexpr void return_void() const noexcept { LF_LOG("return void"); }
 
   explicit constexpr promise_result(root_result<void> *return_address) noexcept : m_ret_address(return_address) {
     LF_ASSERT(return_address);

@@ -18,30 +18,22 @@
 /**
  * @file inline.hpp
  *
- * @brief A scheduler that runs all tasks inline on current thread.
+ * @brief A scheduler that runs all tasks inline on the current thread.
  */
 
 namespace lf {
 
 /**
- * @brief A scheduler that runs all tasks inline on current thread.
+ * @brief A scheduler that runs all tasks inline on the current thread.
  */
-class inline_vec {
+class inline_scheduler {
 public:
   /**
    * @brief The context type for the scheduler.
    */
   class context_type {
   public:
-    /**
-     * @brief Construct a new context type object, set the thread_local context object to this object.
-     */
-    context_type() { m_tasks.reserve(1024); }
-
-    static void submit(frame_block *ptr) {
-      LF_ASSERT(ptr);
-      ptr->resume_external<context_type>();
-    }
+    static void submit(frame_block *ptr) { ptr->resume_external<context_type>(); }
 
     /**
      * @brief Returns one as this runs all tasks inline.
@@ -52,84 +44,41 @@ public:
      * @brief Pops a task from the task queue.
      */
     auto task_pop() -> frame_block * {
-      if (m_tasks.empty()) {
-        return {};
-      }
-      auto *x = m_tasks.back();
-      m_tasks.pop_back();
-
-      return x;
+      LF_LOG("task_pop");
+      return m_tasks.pop();
     }
 
     /**
      * @brief Pushes a task to the task queue.
      */
     void task_push(frame_block *task) {
-      LF_ASSERT(task);
-      m_tasks.push_back(task);
-    }
-
-    void stack_push(async_stack *stack) { delete stack; }
-
-    auto stack_pop() -> async_stack * { return new async_stack; }
-
-  private:
-    std::vector<frame_block *> m_tasks;
-  };
-
-  static_assert(thread_context<context_type>);
-
-private:
-  context_type m_context;
-};
-
-/**
- * @brief A scheduler that runs all tasks inline on current thread.
- */
-class inline_scheduler {
-public:
-  /**
-   * @brief The context type for the scheduler.
-   */
-  class context_type {
-  public:
-    /**
-     * @brief Construct a new context type object, set the thread_local context object to this object.
-     */
-    context_type() {}
-
-    static void submit(frame_block *ptr) {
-      LF_ASSERT(ptr);
-      ptr->resume_external<context_type>();
-    }
-
-    /**
-     * @brief Returns one as this runs all tasks inline.
-     */
-    static constexpr auto max_threads() noexcept -> std::size_t { return 1; }
-
-    /**
-     * @brief Pops a task from the task queue.
-     */
-    auto task_pop() -> frame_block * { return m_tasks.pop(); }
-
-    /**
-     * @brief Pushes a task to the task queue.
-     */
-    void task_push(frame_block *task) {
+      LF_LOG("task_push");
       LF_ASSERT(task);
       m_tasks.push(task);
     }
 
-    void stack_push(async_stack *stack) { delete stack; }
+    void stack_push(async_stack *stack) {
+      LF_LOG("stack_push");
+      LF_ASSERT(stack);
+      delete stack;
+    }
 
-    auto stack_pop() -> async_stack * { return new async_stack; }
+    auto stack_pop() -> async_stack * {
+      LF_LOG("stack_pop");
+      return new async_stack;
+    }
 
   private:
     queue<frame_block *, frame_block *> m_tasks;
   };
 
   static_assert(thread_context<context_type>);
+
+  static void submit(frame_block *ptr) { context_type::submit(ptr); }
+
+  inline_scheduler() { worker_init(&m_context); }
+
+  ~inline_scheduler() { worker_finalize(&m_context); }
 
 private:
   context_type m_context;

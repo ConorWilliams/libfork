@@ -15,8 +15,22 @@
 // Self Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
-#ifndef FE9C96B0_5DDD_4438_A3B0_E77BD54F8673
-#define FE9C96B0_5DDD_4438_A3B0_E77BD54F8673
+#ifndef E8D38B49_7170_41BC_90E9_6D6389714304
+#define E8D38B49_7170_41BC_90E9_6D6389714304
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// Self Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>
+#include <type_traits>
+#include <utility>
+#ifndef E91EA187_42EF_436C_A3FF_A86DE54BCDBE
+#define E91EA187_42EF_436C_A3FF_A86DE54BCDBE
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
 
@@ -26,37 +40,20 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <version>
+#include <bit>
+#include <concepts>
+#include <functional>
+#include <memory>
+#include <source_location>
+#include <type_traits>
+#include <utility>
+#ifndef EE6A2701_7559_44C9_B708_474B1AE823B2
+#define EE6A2701_7559_44C9_B708_474B1AE823B2
 
-/**
- * @file coroutine.hpp
- *
- * @brief Includes \<coroutine\> or \<experimental/coroutine\> depending on the compiler.
- */
-
-#ifndef __has_include
-  #error "Missing __has_include macro!"
-#endif
-
-// NOLINTBEGIN
-
-#if __has_include(<coroutine>) // Check for a standard library
-  #include <coroutine>
-namespace lf {
-namespace stdx = std;
-}
-#elif __has_include(<experimental/coroutine>) // Check for an experimental version
-  #include <experimental/coroutine>
-namespace lf {
-namespace stdx = std::experimental;
-}
-#else
-  #error "Missing <coroutine> header!"
-#endif
-
-// NOLINTEND
-
-#endif /* FE9C96B0_5DDD_4438_A3B0_E77BD54F8673 */
+#include <concepts>
+#include <semaphore>
+#include <type_traits>
+#include <utility>
 #ifndef B7972761_4CBF_4B86_B195_F754295372BF
 #define B7972761_4CBF_4B86_B195_F754295372BF
 
@@ -599,68 +596,6 @@ private:
 } // namespace lf
 
 #endif /* B7972761_4CBF_4B86_B195_F754295372BF */
-#ifndef FF9F3B2C_DC2B_44D2_A3C2_6E40F211C5B0
-#define FF9F3B2C_DC2B_44D2_A3C2_6E40F211C5B0
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <atomic>
-#include <concepts>
-#include <coroutine>
-#include <cstddef>
-#include <cstdint>
-#include <functional>
-#include <optional>
-#include <tuple>
-#include <type_traits>
-#include <utility>
-#include <version>
-
-#ifndef E8D38B49_7170_41BC_90E9_6D6389714304
-#define E8D38B49_7170_41BC_90E9_6D6389714304
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// Self Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>
-#include <type_traits>
-#include <utility>
-#ifndef E91EA187_42EF_436C_A3FF_A86DE54BCDBE
-#define E91EA187_42EF_436C_A3FF_A86DE54BCDBE
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <bit>
-#include <concepts>
-#include <functional>
-#include <memory>
-#include <source_location>
-#include <type_traits>
-#include <utility>
-#ifndef EE6A2701_7559_44C9_B708_474B1AE823B2
-#define EE6A2701_7559_44C9_B708_474B1AE823B2
-
-#include <concepts>
-#include <semaphore>
-#include <type_traits>
-#include <utility>
 
 
 namespace lf {
@@ -730,13 +665,13 @@ struct promise_result;
  */
 template <typename T>
 struct promise_result<void, T> {
-  constexpr void return_void() const noexcept {}
+  constexpr void return_void() const noexcept { LF_LOG("return void"); }
 };
 
 template <>
 struct promise_result<root_result<void>, void> {
 
-  constexpr void return_void() const noexcept {}
+  constexpr void return_void() const noexcept { LF_LOG("return void"); }
 
   explicit constexpr promise_result(root_result<void> *return_address) noexcept : m_ret_address(return_address) {
     LF_ASSERT(return_address);
@@ -861,6 +796,48 @@ private:
 #include <semaphore>
 #include <type_traits>
 #include <utility>
+#ifndef FE9C96B0_5DDD_4438_A3B0_E77BD54F8673
+#define FE9C96B0_5DDD_4438_A3B0_E77BD54F8673
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <version>
+
+/**
+ * @file coroutine.hpp
+ *
+ * @brief Includes \<coroutine\> or \<experimental/coroutine\> depending on the compiler.
+ */
+
+#ifndef __has_include
+  #error "Missing __has_include macro!"
+#endif
+
+// NOLINTBEGIN
+
+#if __has_include(<coroutine>) // Check for a standard library
+  #include <coroutine>
+namespace lf {
+namespace stdx = std;
+}
+#elif __has_include(<experimental/coroutine>) // Check for an experimental version
+  #include <experimental/coroutine>
+namespace lf {
+namespace stdx = std::experimental;
+}
+#else
+  #error "Missing <coroutine> header!"
+#endif
+
+// NOLINTEND
+
+#endif /* FE9C96B0_5DDD_4438_A3B0_E77BD54F8673 */
 
 
 
@@ -1121,6 +1098,8 @@ inline void frame_block::resume_external() noexcept {
 
   if (!is_root()) {
     tls::eat<Context>(top());
+  } else {
+    LF_LOG("External was root");
   }
 
   coro().resume();
@@ -1244,7 +1223,7 @@ public:
 /**
  * @brief The return type for libfork's async functions/coroutines.
  */
-template <typename T, fixed_string Name = "">
+template <typename T = void, fixed_string Name = "">
 struct task {
   using value_type = T; ///< The type of the value returned by the coroutine.
 
@@ -1284,7 +1263,7 @@ enum class tag {
  * @brief A helper to fetch `typename std::remove_cvref_t<T>::context_type`.
  */
 template <typename T>
-  requires requires { typename std::remove_cvref_t<T>::context_type; }
+  requires requires { requires thread_context<typename std::remove_cvref_t<T>::context_type>; }
 using context_of = typename std::remove_cvref_t<T>::context_type;
 
 /**
@@ -1659,6 +1638,30 @@ inline constexpr detail::bind_task<tag::tail> tail = {};
 } // namespace lf
 
 #endif /* E8D38B49_7170_41BC_90E9_6D6389714304 */
+#ifndef FF9F3B2C_DC2B_44D2_A3C2_6E40F211C5B0
+#define FF9F3B2C_DC2B_44D2_A3C2_6E40F211C5B0
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <atomic>
+#include <concepts>
+#include <coroutine>
+#include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <iostream>
+#include <optional>
+#include <tuple>
+#include <type_traits>
+#include <utility>
+#include <version>
+
 
 
 /**
@@ -1718,7 +1721,11 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
     noexcept_invoke([] { LF_RETHROW; });
   }
 
+  ~promise_type() noexcept { LF_LOG("promise destructs"); }
+
   auto final_suspend() noexcept {
+
+    LF_LOG("At final suspend call");
 
     // Completing a non-root task means we currently own the async_stack this child is on
 
@@ -1742,6 +1749,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
         LF_LOG("Task reaches final suspend");
 
         frame_block *parent = child.promise().parent();
+
         child.destroy();
 
         LF_ASSERT(parent);
@@ -1751,6 +1759,8 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
           // Inline task's parent cannot have been stolen, no need to reset control block.
           return parent->coro();
         }
+
+        // std::cout << "context is " << (void *)(tls::ctx<Context>) << std::endl;
 
         Context *context = tls::ctx<Context>;
 
@@ -1833,16 +1843,24 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
     frame_block *child = std::move(packet).template patch_with<Context>().invoke(this);
 
+    LF_ASSERT(child);
+
     struct awaitable : stdx::suspend_always {
-      [[nodiscard]] constexpr auto await_suspend(std::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
+      [[nodiscard]] constexpr auto await_suspend(std::coroutine_handle<promise_type> p) noexcept
+          -> stdx::coroutine_handle<> {
 
         LF_LOG("Forking, push parent to context");
 
-        auto *child = m_child; // Need it here (on real stack) in case *this is destructed after push.
+        LF_ASSERT(&p.promise() == m_parent);
+
+        // Need it here (on real stack) in case *this is destructed after push.
+        stdx::coroutine_handle child = m_child->coro();
+
+        // std::cout << "context is " << (void *)(tls::ctx<Context>) << std::endl;
 
         tls::ctx<Context>->task_push(m_parent);
 
-        return child->coro();
+        return child;
       }
 
       frame_block *m_parent;
@@ -2072,12 +2090,78 @@ struct lf::stdx::coroutine_traits<Task, This, Head, Args...> : lf::stdx::corouti
 #endif /* LF_DOXYGEN_SHOULD_SKIP_THIS */
 
 #endif /* FF9F3B2C_DC2B_44D2_A3C2_6E40F211C5B0 */
+#ifndef E54125F4_034E_45CD_8DF4_7A71275A5308
+#define E54125F4_034E_45CD_8DF4_7A71275A5308
+
+#include <type_traits>
+
+
+namespace lf {
+
+template <typename Sch>
+concept scheduler = requires(Sch &&sch, frame_block *ext) {
+  typename context_of<Sch>;
+  std::forward<Sch>(sch).submit(ext);
+};
+
+template <typename Context, typename R, stateless F>
+struct root_head : basic_first_arg<R, tag::root, F> {
+  using context_type = Context;
+};
+
+template <typename Context, stateless F, typename... Args>
+struct sync_wait_impl {
+  using dummy_packet = packet<root_head<Context, void, F>, Args...>;
+  using dummy_packet_value_type = value_of<std::invoke_result_t<F, dummy_packet, Args...>>;
+
+  using real_packet = packet<root_head<Context, root_result<dummy_packet_value_type>, F>, Args...>;
+  using real_packet_value_type = value_of<std::invoke_result_t<F, real_packet, Args...>>;
+
+  static_assert(std::same_as<dummy_packet_value_type, real_packet_value_type>, "Value type changes!");
+};
+
+template <scheduler Sch, stateless F, typename... Args>
+using result_t = typename sync_wait_impl<context_of<Sch>, F, Args...>::real_packet_value_type;
+
+template <scheduler Sch, stateless F, typename... Args>
+using packet_t = typename sync_wait_impl<context_of<Sch>, F, Args...>::real_packet;
+
+/**
+ * @brief The entry point for synchronous execution of asynchronous functions.
+ */
+template <scheduler Sch, stateless F, class... Args>
+auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcept -> result_t<Sch, F, Args...> {
+
+  root_result<result_t<Sch, F, Args...>> root_block;
+
+  packet_t<Sch, F, Args...> packet{{{root_block}}, std::forward<Args>(args)...};
+
+  frame_block *ext = std::move(packet).invoke();
+
+  LF_LOG("Submitting root");
+
+  std::forward<Sch>(sch).submit(ext);
+
+  LF_LOG("Aquire semaphore");
+
+  root_block.semaphore.acquire();
+
+  LF_LOG("Semaphore acquired");
+
+  if constexpr (!std::is_void_v<result_t<Sch, F, Args...>>) {
+    return *std::move(root_block);
+  }
+}
+
+} // namespace lf
+
+#endif /* E54125F4_034E_45CD_8DF4_7A71275A5308 */
 
 
 /**
  * @file core.hpp
  *
- * @brief Meta header which includes all of ``libfork/core/*.hpp``.
+ * @brief Meta header which includes all the headers in ``libfork/core``.
  */
 
 #endif /* A6BE090F_9077_40E8_9B57_9BAFD9620469 */

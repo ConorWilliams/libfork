@@ -57,7 +57,7 @@ public:
 /**
  * @brief The return type for libfork's async functions/coroutines.
  */
-template <typename T, fixed_string Name = "">
+template <typename T = void, fixed_string Name = "">
 struct task {
   using value_type = T; ///< The type of the value returned by the coroutine.
 
@@ -97,7 +97,7 @@ enum class tag {
  * @brief A helper to fetch `typename std::remove_cvref_t<T>::context_type`.
  */
 template <typename T>
-  requires requires { typename std::remove_cvref_t<T>::context_type; }
+  requires requires { requires thread_context<typename std::remove_cvref_t<T>::context_type>; }
 using context_of = typename std::remove_cvref_t<T>::context_type;
 
 /**
