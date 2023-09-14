@@ -498,7 +498,7 @@ public:
   /**
    * @brief Access the wrapped object.
    */
-  [[nodiscard]] constexpr auto operator*() && noexcept -> T {
+  [[nodiscard]] constexpr auto operator*() noexcept -> T {
     if constexpr (std::is_rvalue_reference_v<T>) {
       return std::move(*m_value);
     } else {
@@ -567,6 +567,11 @@ public:
 #endif
     std::destroy_at(std::addressof(m_value));
   }
+
+  /**
+   * @brief Access the wrapped object.
+   */
+  [[nodiscard]] constexpr auto operator*() & noexcept -> T & { return m_value; }
 
   /**
    * @brief Access the wrapped object.
@@ -1560,6 +1565,12 @@ namespace lf {
 
 namespace detail {
 
+#if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
+  #define LF_DEPRECATE [[deprecated("Use operator[] instead")]]
+#else
+  #define LF_DEPRECATE
+#endif
+
 /**
  * @brief An invocable (and subscriptable) wrapper that binds a return address to an asynchronous function.
  */
@@ -1572,7 +1583,7 @@ struct bind_task {
    */
   template <typename R, typename F>
     requires(Tag != tag::tail)
-  [[nodiscard("HOF needs to be called")]] LF_STATIC_CALL constexpr auto
+  LF_DEPRECATE [[nodiscard("HOF needs to be called")]] LF_STATIC_CALL constexpr auto
   operator()(R &ret, [[maybe_unused]] async<F> async) LF_STATIC_CONST noexcept {
     return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...> {
       return {{ret}, std::forward<Args>(args)...};
@@ -1584,15 +1595,14 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename F>
-  [[nodiscard("HOF needs to be called")]] LF_STATIC_CALL constexpr auto
+  LF_DEPRECATE [[nodiscard("HOF needs to be called")]] LF_STATIC_CALL constexpr auto
   operator()([[maybe_unused]] async<F> async) LF_STATIC_CONST noexcept {
     return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
       return {{}, std::forward<Args>(args)...};
     };
   }
 
-#if defined(LF_DOXYGEN_SHOULD_SKIP_THIS) ||                                                                                 \
-    (defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L)
+#if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
   /**
    * @brief Bind return address `ret` to an asynchronous function.
    *
@@ -1619,6 +1629,8 @@ struct bind_task {
   }
 #endif
 };
+
+#undef LF_DEPRECATE
 
 struct join_type {};
 
@@ -1702,7 +1714,9 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
   static auto initial_suspend() -> stdx::suspend_always { return {}; }
 
-  void unhandled_exception() noexcept { LF_RETHROW; }
+  void unhandled_exception() noexcept {
+    noexcept_invoke([] { LF_RETHROW; });
+  }
 
   auto final_suspend() noexcept {
 
@@ -1732,7 +1746,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
         LF_ASSERT(parent);
 
-        if constexpr (Tag == tag::call || Tag == tag::invoke) {
+        if constexpr (Tag == tag::call) {
           LF_LOG("Inline task resumes parent");
           // Inline task's parent cannot have been stolen, no need to reset control block.
           return parent->coro();
@@ -1809,7 +1823,6 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
     return final_awaitable{};
   }
 
-public:
   template <first_arg Head, typename... Args>
     requires(tag_of<Head> == tag::fork)
   [[nodiscard]] constexpr auto await_transform(packet<Head, Args...> &&packet)
@@ -1862,8 +1875,34 @@ public:
 
   template <typename F, typename... Args>
   [[nodiscard]] constexpr auto await_transform(packet<basic_first_arg<void, tag::invoke, F>, Args...> &&packet)
-    requires requires { std::move(packet).template patch_with<Context>(); }
+    requires std::is_void_v<value_of<lf::packet<basic_first_arg<void, tag::invoke, F>, Args...>>>
   {
+
+    struct awaitable : stdx::suspend_always {
+      [[nodiscard]] constexpr auto await_suspend(std::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
+
+        using new_packet_t = lf::packet<basic_first_arg<void, tag::call, F>, Args...>;
+
+        new_packet_t new_packet = std::move(m_packet).apply([&](auto, Args &&...args) -> new_packet_t {
+          return {{}, std::forward<Args>(args)...};
+        });
+
+        static_assert(std::is_void_v<value_of<new_packet_t>>, "Value type dependant on first arg!");
+
+        LF_LOG("Invoking");
+
+        return std::move(new_packet).template patch_with<Context>().invoke(parent)->coro();
+      }
+
+      frame_block *parent;
+      lf::packet<basic_first_arg<void, tag::invoke, F>, Args...> m_packet;
+    };
+
+    return awaitable{{}, this, std::move(packet)};
+  }
+
+  template <typename F, typename... Args>
+  [[nodiscard]] constexpr auto await_transform(packet<basic_first_arg<void, tag::invoke, F>, Args...> &&packet) {
 
     using packet_t = lf::packet<basic_first_arg<void, tag::invoke, F>, Args...>;
     using return_t = eventually<value_of<packet_t>>;
@@ -1871,7 +1910,7 @@ public:
     struct awaitable : stdx::suspend_always {
       [[nodiscard]] constexpr auto await_suspend(std::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
 
-        using new_packet_t = lf::packet<basic_first_arg<return_t, tag::call, F>>;
+        using new_packet_t = lf::packet<basic_first_arg<return_t, tag::call, F>, Args...>;
 
         new_packet_t new_packet = std::move(m_packet).apply([&](auto, Args &&...args) -> new_packet_t {
           return {{m_res}, std::forward<Args>(args)...};
@@ -1884,15 +1923,7 @@ public:
         return std::move(new_packet).template patch_with<Context>().invoke(parent)->coro();
       }
 
-      [[nodiscard]] constexpr auto await_resume() -> value_of<packet_t> {
-        if constexpr (!std::is_void_v<value_of<packet_t>>) {
-          if constexpr (std::is_reference_v<value_of<packet_t>>) {
-            return *m_res;
-          }
-          LF_ASSERT(m_res.has_value());
-          return std::move(*m_res);
-        }
-      }
+      [[nodiscard]] constexpr auto await_resume() -> value_of<packet_t> { return *std::move(m_res); }
 
       frame_block *parent;
       packet_t m_packet;
@@ -1901,71 +1932,6 @@ public:
 
     return awaitable{{}, this, std::move(packet), {}};
   }
-
-  //   /**
-  //    * @brief An invoke should never occur within an async scope as the exceptions will get muddled
-  //    */
-  // template <typename F, typename... This, typename... Args>
-  // [[nodiscard]] constexpr auto await_transform(packet<first_arg_t<void, tag::invoke, F, This...>, Args...> &&in_packet) {
-
-  //   FATAL_IN_DEBUG(this->debug_count() == 0, "Invoke within async scope!");
-
-  //   using value_type_child = typename packet<first_arg_t<void, tag::invoke, F, This...>, Args...>::value_type;
-
-  //   using wrapped_value_type =
-  //       std::conditional_t<std::is_reference_v<value_type_child>,
-  //                          std::reference_wrapper<std::remove_reference_t<value_type_child>>, value_type_child>;
-
-  //   using return_type =
-  //       std::conditional_t<std::is_void_v<value_type_child>, regular_void, std::optional<wrapped_value_type>>;
-
-  //   using packet_type = packet<shim_with_context<return_type, Context, first_arg_t<void, tag::invoke, F, This...>>,
-  //   Args...>;
-
-  //   using handle_type = typename packet_type::handle_type;
-
-  //   static_assert(std::same_as<value_type_child, typename packet_type::value_type>,
-  //                 "An async function's value_type must be return_address_t independent!");
-
-  //   struct awaitable : stdx::suspend_always {
-
-  //     explicit constexpr awaitable(promise_type *in_self,
-  //                                  packet<first_arg_t<void, tag::invoke, F, This...>, Args...> &&in_packet)
-  //         : self(in_self),
-  //           m_child(packet_type{m_res, {std::move(in_packet.context)}, std::move(in_packet.args)}.invoke_bind(
-  //               cast_down(stdx::coroutine_handle<promise_type>::from_promise(*self)))) {}
-
-  //     [[nodiscard]] constexpr auto await_suspend([[maybe_unused]] stdx::coroutine_handle<promise_type> parent) noexcept
-  //         -> handle_type {
-  //       return m_child;
-  //     }
-
-  //     [[nodiscard]] constexpr auto await_resume() -> value_type_child {
-
-  //       LF_ASSERT(self->steals() == 0);
-
-  //       // Propagate exceptions.
-  //       if constexpr (LF_PROPAGATE_EXCEPTIONS) {
-  //         if constexpr (Tag == tag::root) {
-  //           self->get_return_address_obj().exception.rethrow_if_unhandled();
-  //         } else {
-  //           virtual_stack::from_address(self)->rethrow_if_unhandled();
-  //         }
-  //       }
-
-  //       if constexpr (!std::is_void_v<value_type_child>) {
-  //         LF_ASSERT(m_res.has_value());
-  //         return std::move(*m_res);
-  //       }
-  //     }
-
-  //     return_type m_res;
-  //     promise_type *self;
-  //     handle_type m_child;
-  //   };
-
-  //   return awaitable{this, std::move(in_packet)};
-  // }
 
   constexpr auto await_transform([[maybe_unused]] join_type join_tag) noexcept {
     struct awaitable {

@@ -90,7 +90,8 @@ inline constexpr auto fib = [](auto fib, int n) static -> task<int> {
     co_return n;
   }
 
-  int a, b;
+  int a;
+  int b;
 
   co_await lf::fork[a, fib](n - 1);
   co_await lf::call[b, fib](n - 2);

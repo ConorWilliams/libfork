@@ -39,7 +39,7 @@ public:
   /**
    * @brief Access the wrapped object.
    */
-  [[nodiscard]] constexpr auto operator*() && noexcept -> T {
+  [[nodiscard]] constexpr auto operator*() noexcept -> T {
     if constexpr (std::is_rvalue_reference_v<T>) {
       return std::move(*m_value);
     } else {
@@ -108,6 +108,11 @@ public:
 #endif
     std::destroy_at(std::addressof(m_value));
   }
+
+  /**
+   * @brief Access the wrapped object.
+   */
+  [[nodiscard]] constexpr auto operator*() & noexcept -> T & { return m_value; }
 
   /**
    * @brief Access the wrapped object.

@@ -9,7 +9,6 @@
 - no forked r-values at the promise constructor level
 - test dependencies when installing, test install on fresh machine.
 - CI -fno-exceptions
-- non-null make a strong type
 - tail/invoke
 - remove constexpr in byte_cast and friends (MSVC showed us the way)
 - A check in the CI that makes sure single header is up to date with the rest of the code.

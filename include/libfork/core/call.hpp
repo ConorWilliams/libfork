@@ -26,6 +26,12 @@ namespace lf {
 
 namespace detail {
 
+#if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
+  #define LF_DEPRECATE [[deprecated("Use operator[] instead")]]
+#else
+  #define LF_DEPRECATE
+#endif
+
 /**
  * @brief An invocable (and subscriptable) wrapper that binds a return address to an asynchronous function.
  */
@@ -38,7 +44,7 @@ struct bind_task {
    */
   template <typename R, typename F>
     requires(Tag != tag::tail)
-  [[nodiscard("HOF needs to be called")]] LF_STATIC_CALL constexpr auto
+  LF_DEPRECATE [[nodiscard("HOF needs to be called")]] LF_STATIC_CALL constexpr auto
   operator()(R &ret, [[maybe_unused]] async<F> async) LF_STATIC_CONST noexcept {
     return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...> {
       return {{ret}, std::forward<Args>(args)...};
@@ -50,15 +56,14 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename F>
-  [[nodiscard("HOF needs to be called")]] LF_STATIC_CALL constexpr auto
+  LF_DEPRECATE [[nodiscard("HOF needs to be called")]] LF_STATIC_CALL constexpr auto
   operator()([[maybe_unused]] async<F> async) LF_STATIC_CONST noexcept {
     return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
       return {{}, std::forward<Args>(args)...};
     };
   }
 
-#if defined(LF_DOXYGEN_SHOULD_SKIP_THIS) ||                                                                                 \
-    (defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L)
+#if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
   /**
    * @brief Bind return address `ret` to an asynchronous function.
    *
@@ -85,6 +90,8 @@ struct bind_task {
   }
 #endif
 };
+
+#undef LF_DEPRECATE
 
 struct join_type {};
 

@@ -1,26 +1,14 @@
 #ifndef E54125F4_034E_45CD_8DF4_7A71275A5308
 #define E54125F4_034E_45CD_8DF4_7A71275A5308
 
-/**
- * @brief A concept which requires a type to define a ``context_type`` which satisfy ``lf::thread_context``.
- */
-template <typename T>
-concept defines_context =
-    requires { typename std::decay_t<T>::context_type; } && thread_context<typename std::decay_t<T>::context_type>;
+#include "libfork/core/result.hpp"
+#include "libfork/core/stack.hpp"
+#include "libfork/core/task.hpp"
 
-/**
- * @brief A concept which defines the requirements for a scheduler.
- *
- * This requires a type to define a ``context_type`` which satisfies ``lf::thread_context`` and have a ``schedule()`` method
- * which accepts a ``std::coroutine_handle<>`` and guarantees some-thread will call it's ``resume()`` member.
- */
-template <typename Scheduler>
-concept scheduler = defines_context<Scheduler> && requires(Scheduler &&scheduler) {
-  std::forward<Scheduler>(scheduler).schedule(stdx::coroutine_handle<>{});
-};
+namespace lf {
 
-template <scheduler Schedule, typename Head, class... Args>
-auto sync_wait_impl(Schedule &&scheduler, Head head, Args &&...args) -> typename packet<Head, Args...>::value_type {
+template <thread_context Context, typename Head, class... Args>
+auto sync_wait_impl(Context &scheduler, Head head, Args &&...args) -> typename packet<Head, Args...>::value_type {
 
   // using packet_t = packet<Head, Args...>;
 
@@ -61,40 +49,49 @@ auto sync_wait_impl(Schedule &&scheduler, Head head, Args &&...args) -> typename
   }
 }
 
-template <scheduler S, typename AsyncFn, typename... Self>
-struct root_first_arg_t
-    : with_context<typename std::decay_t<S>::context_type, first_arg_t<void, tag::root, AsyncFn, Self...>> {};
+template <typename Context, typename R, stateless F>
+struct root_head : basic_first_arg<R, tag::root, F> {
+  using context_type = Context;
+};
 
-} // namespace detail
+template <typename Context, stateless F, typename... Args>
+struct sync_wait_impl_2 {
+  using dummy_packet = packet<root_head<Context, void, F>, Args...>;
+  using dummy_packet_value_type = value_of<std::invoke_result_t<F, dummy_packet, Args...>>;
+
+  using real_packet = packet<root_head<Context, root_result<dummy_packet_value_type>, F>, Args...>;
+  using real_packet_value_type = value_of<std::invoke_result_t<F, real_packet, Args...>>;
+
+  static_assert(std::same_as<dummy_packet_value_type, real_packet_value_type>, "Value type changes!");
+};
+
+template <typename Context, stateless F, typename... Args>
+using result_t = typename sync_wait_impl_2<Context, F, Args...>::real_packet_value_type;
+
+template <typename Context, stateless F, typename... Args>
+using packet_t = typename sync_wait_impl_2<Context, F, Args...>::real_packet;
 
 /**
  * @brief The entry point for synchronous execution of asynchronous functions.
- *
- * This will create the coroutine and pass its handle to ``scheduler``'s  ``schedule`` method. The caller
- * will then block until the asynchronous function has finished executing.
- * Finally the result of the asynchronous function will be returned to the caller.
  */
-template <scheduler S, stateless F, class... Args>
-  requires detail::valid_packet<detail::root_first_arg_t<S, async_fn<F>>, Args...>
-[[nodiscard]] auto sync_wait(S &&scheduler, [[maybe_unused]] async_fn<F> function, Args &&...args) -> decltype(auto) {
-  return detail::sync_wait_impl(std::forward<S>(scheduler), detail::root_first_arg_t<S, async_fn<F>>{},
-                                std::forward<Args>(args)...);
+template <thread_context Context, stateless F, class... Args>
+auto sync_wait(Context &context, [[maybe_unused]] async<F> fun, Args &&...args) noexcept -> result_t<Context, F, Args...> {
+
+  root_result<result_t<Context, F, Args...>> root_block;
+
+  packet_t<Context, F, Args...> packet{{{root_block}}, std::forward<Args>(args)...};
+
+  frame_block *ext = std::move(packet).invoke();
+
+  context.submit(ext);
+
+  root_block.semaphore.acquire();
+
+  if constexpr (!std::is_void_v<result_t<Context, F, Args...>>) {
+    return *std::move(root_block);
+  }
 }
 
-/**
- * @brief The entry point for synchronous execution of asynchronous member functions.
- *
- * This will create the coroutine and pass its handle to ``scheduler``'s  ``schedule`` method. The caller
- * will then block until the asynchronous member function has finished executing.
- * Finally the result of the asynchronous member function will be returned to the caller.
- */
-template <scheduler S, stateless F, class Self, class... Args>
-  requires detail::valid_packet<detail::root_first_arg_t<S, async_mem_fn<F>, Self>, Args...>
-[[nodiscard]] auto sync_wait(S &&scheduler, [[maybe_unused]] async_mem_fn<F> function, Self &&self, Args &&...args)
-    -> decltype(auto) {
-  return detail::sync_wait_impl(std::forward<S>(scheduler),
-                                detail::root_first_arg_t<S, async_mem_fn<F>, Self>{std::forward<Self>(self)},
-                                std::forward<Args>(args)...);
-}
+} // namespace lf
 
 #endif /* E54125F4_034E_45CD_8DF4_7A71275A5308 */
