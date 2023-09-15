@@ -1,6 +1,7 @@
 #ifndef B7972761_4CBF_4B86_B195_F754295372BF
 #define B7972761_4CBF_4B86_B195_F754295372BF
 
+#include <functional>
 #include <memory>
 #include <type_traits>
 #include <utility>
@@ -10,13 +11,28 @@
 
 namespace lf {
 
-inline namespace LF_DEPENDENT_ABI {
+// ------------------------------------------------------------------------ //
+
+namespace detail {
 
 template <typename T>
-concept non_void = !std::is_void_v<T>;
+struct constify_ref;
 
-template <non_void T>
-class eventually;
+template <typename T>
+struct constify_ref<T &> : std::type_identity<T const &> {};
+
+template <typename T>
+struct constify_ref<T &&> : std::type_identity<T const &&> {};
+
+} // namespace detail
+
+/**
+ * @brief Convert ``T & -> T const&`` and ``T && -> T const&&``.
+ */
+template <reference T>
+using constify_ref_t = detail::constify_ref<T>::type;
+
+// ------------------------------------------------------------------------ //
 
 /**
  * @brief A wrapper to delay construction of an object.
@@ -25,25 +41,39 @@ class eventually;
  * constructed before the lifetime of the eventually ends (regardless of it is used).
  */
 template <non_void T>
-  requires std::is_reference_v<T>
-class eventually<T> {
+class eventually;
+
+// ------------------------------------------------------------------------ //
+
+template <non_void T>
+  requires reference<T>
+class eventually<T> : detail::immovable<eventually<T>> {
 public:
   /**
    * @brief Construct an object inside the eventually from ``expr``.
    */
-  constexpr auto operator=(T expr) -> eventually & {
+  template <typename U>
+    requires std::same_as<T, U &&> || std::same_as<T, constify_ref_t<U &&>>
+  constexpr auto operator=(U &&expr) noexcept -> eventually & {
     m_value = std::addressof(expr);
     return *this;
   }
 
   /**
    * @brief Access the wrapped object.
+   *
+   * This will decay T&& to T& just like a regular T&& function parameter.
    */
-  [[nodiscard]] constexpr auto operator*() noexcept -> T {
+  [[nodiscard]] constexpr auto operator*() const & noexcept -> std::remove_reference_t<T> & { return *m_value; }
+
+  /**
+   * @brief Access the wrapped object.
+   */
+  [[nodiscard]] constexpr auto operator*() const && noexcept -> T {
     if constexpr (std::is_rvalue_reference_v<T>) {
       return std::move(*m_value);
     } else {
-      return m_value;
+      return *m_value;
     }
   }
 
@@ -51,12 +81,49 @@ private:
   std::remove_reference_t<T> *m_value;
 };
 
-/**
- * @brief A wrapper to delay construction of an object.
- *
- * It is up to the caller to guarantee that the object is constructed before it is used and that an object is
- * constructed before the lifetime of the eventually ends (regardless of it is used).
- */
+// ------------------------------------------------------------------------ //
+
+namespace detail::static_test {
+
+template <typename T>
+using def_t = decltype(*std::declval<T>());
+
+static_assert(std::is_assignable_v<eventually<int &>, int &>);
+static_assert(not std::is_assignable_v<eventually<int &>, int &&>);
+static_assert(not std::is_assignable_v<eventually<int &>, int const &>);
+static_assert(not std::is_assignable_v<eventually<int &>, int const &&>);
+
+static_assert(std::is_assignable_v<eventually<int const &>, int &>);
+static_assert(not std::is_assignable_v<eventually<int const &>, int &&>);
+static_assert(std::is_assignable_v<eventually<int const &>, int const &>);
+static_assert(not std::is_assignable_v<eventually<int const &>, int const &&>);
+
+static_assert(not std::is_assignable_v<eventually<int &&>, int &>);
+static_assert(std::is_assignable_v<eventually<int &&>, int &&>);
+static_assert(not std::is_assignable_v<eventually<int &&>, int const &>);
+static_assert(not std::is_assignable_v<eventually<int &&>, int const &&>);
+
+static_assert(not std::is_assignable_v<eventually<int const &&>, int &>);
+static_assert(std::is_assignable_v<eventually<int const &&>, int &&>);
+static_assert(not std::is_assignable_v<eventually<int const &&>, int const &>);
+static_assert(std::is_assignable_v<eventually<int const &&>, int const &&>);
+
+// ---------------------------------- //
+
+static_assert(std::same_as<def_t<eventually<int &> &>, int &>);
+static_assert(std::same_as<def_t<eventually<int &&> &>, int &>);
+static_assert(std::same_as<def_t<eventually<int const &> &>, int const &>);
+static_assert(std::same_as<def_t<eventually<int const &&> &>, int const &>);
+
+static_assert(std::same_as<def_t<eventually<int &>>, int &>);
+static_assert(std::same_as<def_t<eventually<int &&>>, int &&>);
+static_assert(std::same_as<def_t<eventually<int const &>>, int const &>);
+static_assert(std::same_as<def_t<eventually<int const &&>>, int const &&>);
+
+} // namespace detail::static_test
+
+// ------------------------------------------------------------------------ //
+
 template <non_void T>
 class eventually : detail::immovable<eventually<T>> {
 public:
@@ -112,7 +179,12 @@ public:
   /**
    * @brief Access the wrapped object.
    */
-  [[nodiscard]] constexpr auto operator*() & noexcept -> T & { return m_value; }
+  [[nodiscard]] constexpr auto operator*() & noexcept -> T & {
+#ifndef NDEBUG
+    LF_ASSUME(m_constructed);
+#endif
+    return m_value;
+  }
 
   /**
    * @brief Access the wrapped object.
@@ -135,7 +207,26 @@ private:
 #endif
 };
 
-} // namespace LF_DEPENDENT_ABI
+// ------------------------------------------------------------------------ //
+
+namespace detail::static_test {
+
+static_assert(std::is_assignable_v<eventually<int>, int &>);
+static_assert(std::is_assignable_v<eventually<int>, int &&>);
+static_assert(std::is_assignable_v<eventually<int>, int const &>);
+static_assert(std::is_assignable_v<eventually<int>, int const &&>);
+
+static_assert(std::is_assignable_v<eventually<int>, float &>);
+static_assert(std::is_assignable_v<eventually<int>, float &&>);
+static_assert(std::is_assignable_v<eventually<int>, float const &>);
+static_assert(std::is_assignable_v<eventually<int>, float const &&>);
+
+// ---------------------------------- //
+
+static_assert(std::same_as<def_t<eventually<int> &>, int &>);
+static_assert(std::same_as<def_t<eventually<int> &&>, int>);
+
+} // namespace detail::static_test
 
 } // namespace lf
 
