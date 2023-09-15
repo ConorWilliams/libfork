@@ -20,6 +20,10 @@
 - test returning all the different types/constructors, test reference types in eventually
 - resume_on(context*);
 - touch up std:: includes
+- think hard about noexcept, eventually and constexpr everywhere
+
+
+Need a plan, minimal working CI?
 
 
 Naming:

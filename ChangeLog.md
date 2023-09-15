@@ -60,7 +60,7 @@ This release overhauled libfork bringing many changes including:
 ### Removed
 
 - Exception handling (tasks now call ``terminate()`` if they exit with an unhandled exception).
-- The global ``forkpool`` thread pool. This functionality will be reintroduced in a future release but in the form of a customisable scheduler.
+- The global ``forkpool`` thread pool. This functionality will be reintroduced in a future release but in the form of a customizable scheduler.
 
 ### Meta 
 

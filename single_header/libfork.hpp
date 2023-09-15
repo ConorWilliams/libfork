@@ -686,6 +686,8 @@ private:
   root_result<void> *m_ret_address;
 };
 
+// static_assert(std::assignable<std::optional<int>, int>);
+
 /**
  * @brief A promise base-class that provides the return_[...] methods.
  *

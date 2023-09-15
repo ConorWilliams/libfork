@@ -117,7 +117,7 @@ TEST_CASE("fib", "[promise]") {
     using context_type = C;
   };
 
-  volatile int in = 20;
+  volatile int in = 30;
 
   int x;
   int y;

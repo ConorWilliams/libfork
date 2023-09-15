@@ -1,0 +1,8 @@
+{
+    "dependencies": [
+        "hwloc",
+        "mimalloc",
+        "catch2",
+        "nanobench"
+    ]
+}
