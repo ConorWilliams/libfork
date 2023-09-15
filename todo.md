@@ -21,7 +21,7 @@
 - resume_on(context*);
 - touch up std:: includes
 - think hard about noexcept, eventually and constexpr everywhere
-
+- add vcpkg to hacking/building
 
 Need a plan, minimal working CI?
 
