@@ -18,6 +18,8 @@
 #include <type_traits>
 #include <utility>
 
+#include "libfork/macro.hpp"
+
 /**
  * @file utility.hpp
  *
@@ -25,6 +27,11 @@
  */
 
 namespace lf::detail {
+
+/**
+ * @brief An empty type.
+ */
+struct empty {};
 
 /**
  * @brief The cache line size (bytes) of the current architecture.
@@ -127,16 +134,11 @@ using forward_cv_t = typename detail::forward_cv<From, To>::type;
  * @brief Cast a pointer to a byte pointer.
  */
 template <typename T>
-auto byte_cast(T *ptr) -> forward_cv_t<T, std::byte> * {
-  return std::bit_cast<forward_cv_t<T, std::byte> *>(ptr);
-}
-
-/**
- * @brief An empty type.
- */
-struct empty {};
+auto byte_cast(T *ptr) LF_HOF_RETURNS(std::bit_cast<forward_cv_t<T, std::byte> *>(ptr))
 
 } // namespace lf::detail
+
+namespace lf {
 
 /**
  * @brief Forwards to ``std::is_reference_v<T>``.
@@ -146,5 +148,10 @@ concept reference = std::is_reference_v<T>;
 
 template <typename T>
 concept non_void = !std::is_void_v<T>;
+
+template <class F, class Tuple>
+constexpr auto apply(Tuple &&tup, F &&func) LF_HOF_RETURNS(std::apply(std::forward<F>(func), std::forward<Tuple>(tup)))
+
+} // namespace lf
 
 #endif /* DF63D333_F8C0_4BBA_97E1_32A78466B8B7 */

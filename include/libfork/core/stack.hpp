@@ -172,10 +172,10 @@ struct frame_block : detail::immovable<frame_block>, debug_block {
 #ifndef LF_COROUTINE_OFFSET
   constexpr frame_block(std::coroutine_handle<> coro, std::byte *top) : m_coro{coro}, m_top(top) {}
 #else
-  constexpr frame_block([[maybe_unused]] std::coroutine_handle<>, std::byte *top) : m_top(top) {}
+  constexpr frame_block(std::coroutine_handle<>, std::byte *top) : m_top(top) {}
 #endif
 
-  auto set_parent(frame_block *parent) noexcept {
+  void set_parent(frame_block *parent) noexcept {
     LF_ASSERT(!m_parent);
     m_parent = parent;
   }
@@ -329,11 +329,8 @@ public:
    */
   [[nodiscard]] static auto operator new(std::size_t size) noexcept -> void * {
     LF_ASSERT(tls::asp);
-
     tls::asp -= (size + detail::k_new_align - 1) & ~(detail::k_new_align - 1);
-
-    LF_LOG("Allocating {} bytes on stack at {}", size, (void *)tls::asp);
-
+    LF_LOG("Allocating {} bytes on stack from {}", size, (void *)tls::asp);
     return tls::asp;
   }
 

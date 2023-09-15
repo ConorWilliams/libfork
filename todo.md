@@ -1,29 +1,43 @@
+# The todo list
 
+1. Complete Core:
+      1. Complete test suit for core.
+      2. Tidy up propagate exception macros.
+      3. Update licenses at top of files.
+      4. Touch up `std::` includes.
+      5. Redo name spacing (rm `DEPENDANT_ABI`, `user`, `detail`, `impl`, and `schedule`).
+      6. Where we can use `LF_HOF_RETURNS`
 
-- split docs into: User api, Context API (for implementors), Internal + detail for no-doc
-- Catalog deps (i.e pkg-config) (fresh ubuntu wsl)
-- detect HALO and bail out
-- invoke (eventually<T>, because exceptions don't propagate return will never have thrown!) 
-- logging at call-site, name at definition task<T, "name">, can make static_string constructor accept a defaulted soucre_location
-- pass return_address in first_arg
-- no forked r-values at the promise constructor level
-- test dependencies when installing, test install on fresh machine.
-- CI -fno-exceptions
-- tail/invoke
-- remove constexpr in byte_cast and friends (MSVC showed us the way)
-- A check in the CI that makes sure single header is up to date with the rest of the code.
-- tidy up propagete exception macros
-- remove DEPENDANT_ABI namespace.
-- Update licenses at top of files
-- Taskflow benchmark
-- Rename DOXYGEN_SHOULD_SKIP_THIS to DOXYGEN_PROCESSOR
-- test returning all the different types/constructors, test reference types in eventually
-- resume_on(context*);
-- touch up std:: includes
-- think hard about noexcept, eventually and constexpr everywhere
-- add vcpkg to hacking/building
+2. Get the docs building and looking good again.
+      1. Rename `DOXYGEN_SHOULD_SKIP_THIS` to `DOXYGEN_PROCESSOR`.
 
-Need a plan, minimal working CI?
+3. Get it compiling on CI:
+      1. Try core test suit on compiler explorer, fix constexpr requirements in i.e. `byte_cast`.
+      2. vcpkg for tests
+      3. `-fno-exceptions` test
+      4. check `single_header.hpp` is up to date.
+
+4. Review `noexcept`/`constexpr`
+
+5. Core features + tests for them:
+      1. `co_await resume_on(...)`;
+      2. `lf::tail`
+      3. Logging at call-site (`std::source_location`) + stack tracing api
+
+6. NUMA aware scheduler
+
+7. Benchmarks (and task-flow)
+
+8. Documentation:
+      1. Add vcpkg to hacking/building
+      2. Catalog deps for compilation (i.e pkg-config) (fresh ubuntu wsl)
+      3. Update readme
+
+9. Algorithms: 
+      1. `for_each`
+      2. `reduce`
+      3. `scan`
+
 
 
 Naming:
@@ -35,27 +49,6 @@ lace
 fibril
 nowa
 taskflow 
-
-
-Notes:
-
-ORDER THIS LIST
-
-
-1. Migration:
-      - Move to c++23
-      - ADD an -fno-exceptions compilation test.
-
-2. Code changes
-      - TRY/CATCH macros
-      - terminate_with(lambda) function tagged noexcept
-      - make thread_local.hpp private / remove from API -> move into schedule, add a master schedule.hpp
-      - Update includes (prune exess std)
-      - [[nodiscard]],constexpr,noexcept double checking
-      
-3. Code additions:
-      - A good scheduler that uses HWLOC
-      - Parallel functions: fold, for_each, scan
 
 
 

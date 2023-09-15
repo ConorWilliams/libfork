@@ -15,17 +15,16 @@ concept scheduler = requires(Sch &&sch, frame_block *ext) {
   std::forward<Sch>(sch).submit(ext);
 };
 
-template <typename Context, typename R, stateless F>
-struct root_head : basic_first_arg<R, tag::root, F> {
-  using context_type = Context;
-};
-
 template <typename Context, stateless F, typename... Args>
 struct sync_wait_impl {
-  using dummy_packet = packet<root_head<Context, void, F>, Args...>;
+
+  template <typename R>
+  using first_arg_t = patched<Context, basic_first_arg<R, tag::root, F>>;
+
+  using dummy_packet = packet<first_arg_t<void>, Args...>;
   using dummy_packet_value_type = value_of<std::invoke_result_t<F, dummy_packet, Args...>>;
 
-  using real_packet = packet<root_head<Context, root_result<dummy_packet_value_type>, F>, Args...>;
+  using real_packet = packet<first_arg_t<root_result<dummy_packet_value_type>>, Args...>;
   using real_packet_value_type = value_of<std::invoke_result_t<F, real_packet, Args...>>;
 
   static_assert(std::same_as<dummy_packet_value_type, real_packet_value_type>, "Value type changes!");

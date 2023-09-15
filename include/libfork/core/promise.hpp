@@ -41,54 +41,54 @@ namespace lf::detail {
 
 // -------------------------------------------------------------------------- //
 
-// TODO: Cleanup below
-
-#ifndef NDEBUG
-  #define FATAL_IN_DEBUG(expr, message)                                                                                     \
-    do {                                                                                                                    \
-      if (!(expr)) {                                                                                                        \
-        ::lf::detail::noexcept_invoke([] { LF_THROW(std::runtime_error(message)); });                                       \
-      }                                                                                                                     \
-    } while (false)
-#else
-  #define FATAL_IN_DEBUG(expr, message)                                                                                     \
-    do {                                                                                                                    \
-    } while (false)
-#endif
-
+/**
+ * @brief Switches the allocator used by `promise_type` depending on tag.
+ */
 template <tag Tag>
 using allocator = std::conditional_t<Tag == tag::root, promise_alloc_heap, promise_alloc_stack>;
 
 template <typename R, typename T, thread_context Context, tag Tag>
 struct promise_type : allocator<Tag>, promise_result<R, T> {
 
+private:
   static_assert(Tag == tag::fork || Tag == tag::call || Tag == tag::root);
   static_assert(Tag != tag::root || is_root_result_v<R>);
 
-  using handle_t = stdx::coroutine_handle<promise_type>;
-
+public:
+  /**
+   * @brief Construct promise, sets return address.
+   */
   template <first_arg Head, typename... Tail>
-  constexpr promise_type(Head const &head, [[maybe_unused]] Tail &&...tail) noexcept
+  explicit constexpr promise_type(Head const &head, Tail const &...) noexcept
     requires std::constructible_from<promise_result<R, T>, R *>
-      : allocator<Tag>{std::coroutine_handle<>{handle_t::from_promise(*this)}},
+      : allocator<Tag>{stdx::coroutine_handle<promise_type>::from_promise(*this)},
         promise_result<R, T>{head.address()} {}
 
+  /**
+   * @brief Construct promise, sets return address.
+   *
+   * For member function coroutines.
+   */
   template <not_first_arg Self, first_arg Head, typename... Tail>
-  constexpr promise_type([[maybe_unused]] Self const &self, Head const &head, Tail &&...tail) noexcept
+  explicit constexpr promise_type(Self const &, Head const &head, Tail const &...tail) noexcept
     requires std::constructible_from<promise_result<R, T>, R *>
       : promise_type{head, std::forward<Tail>(tail)...} {}
 
-  constexpr promise_type() noexcept : allocator<Tag>(handle_t::from_promise(*this)) {}
+  /**
+   * @brief Construct promise with void return type.
+   */
+  constexpr promise_type() noexcept : allocator<Tag>(stdx::coroutine_handle<promise_type>::from_promise(*this)) {}
 
   auto get_return_object() noexcept -> frame_block * { return this; }
 
   static auto initial_suspend() -> stdx::suspend_always { return {}; }
 
+  /**
+   * @brief Terminates the program.
+   */
   void unhandled_exception() noexcept {
     noexcept_invoke([] { LF_RETHROW; });
   }
-
-  ~promise_type() noexcept { LF_LOG("promise destructs"); }
 
   auto final_suspend() noexcept {
 
@@ -96,10 +96,9 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
     // Completing a non-root task means we currently own the async_stack this child is on
 
-    FATAL_IN_DEBUG(this->debug_count() == 0, "Fork/Call without a join!");
-
+    LF_ASSERT(this->debug_count() == 0);
     LF_ASSERT(this->steals() == 0);                                      // Fork without join.
-    LF_ASSERT(this->load_joins(std::memory_order_acquire) == k_u32_max); // Destroyed in invalid state.
+    LF_ASSERT(this->load_joins(std::memory_order_relaxed) == k_u32_max); // Destroyed in invalid state.
 
     struct final_awaitable : stdx::suspend_always {
       constexpr auto await_suspend(stdx::coroutine_handle<promise_type> child) const noexcept -> stdx::coroutine_handle<> {
@@ -126,8 +125,6 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
           // Inline task's parent cannot have been stolen, no need to reset control block.
           return parent->coro();
         }
-
-        // std::cout << "context is " << (void *)(tls::ctx<Context>) << std::endl;
 
         Context *context = tls::ctx<Context>;
 
@@ -200,33 +197,24 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
     return final_awaitable{};
   }
 
+  /**
+   * @brief Transform a fork packet into a fork awaitable.
+   */
   template <first_arg Head, typename... Args>
     requires(tag_of<Head> == tag::fork)
-  [[nodiscard]] constexpr auto await_transform(packet<Head, Args...> &&packet)
-    requires requires { std::move(packet).template patch_with<Context>(); }
-  {
+  constexpr auto await_transform(packet<Head, Args...> &&packet) {
 
     this->debug_inc();
 
     frame_block *child = std::move(packet).template patch_with<Context>().invoke(this);
 
-    LF_ASSERT(child);
-
     struct awaitable : stdx::suspend_always {
-      [[nodiscard]] constexpr auto await_suspend(std::coroutine_handle<promise_type> p) noexcept
-          -> stdx::coroutine_handle<> {
-
+      constexpr auto await_suspend(std::coroutine_handle<promise_type> parent) noexcept -> stdx::coroutine_handle<> {
         LF_LOG("Forking, push parent to context");
-
-        LF_ASSERT(&p.promise() == m_parent);
-
+        LF_ASSERT(&parent.promise() == m_parent);
         // Need it here (on real stack) in case *this is destructed after push.
         stdx::coroutine_handle child = m_child->coro();
-
-        // std::cout << "context is " << (void *)(tls::ctx<Context>) << std::endl;
-
         tls::ctx<Context>->task_push(m_parent);
-
         return child;
       }
 
@@ -239,15 +227,12 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
   template <first_arg Head, typename... Args>
     requires(tag_of<Head> == tag::call)
-  [[nodiscard]] constexpr auto await_transform(packet<Head, Args...> &&packet)
-    requires requires { std::move(packet).template patch_with<Context>(); }
-  {
+  constexpr auto await_transform(packet<Head, Args...> &&packet) {
 
     frame_block *child = std::move(packet).template patch_with<Context>().invoke(this);
 
     struct awaitable : stdx::suspend_always {
-      [[nodiscard]] constexpr auto await_suspend(std::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
-
+      constexpr auto await_suspend(std::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
         LF_LOG("Calling");
         return m_child->coro();
       }
@@ -259,41 +244,14 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
   }
 
   template <typename F, typename... Args>
-  [[nodiscard]] constexpr auto await_transform(packet<basic_first_arg<void, tag::invoke, F>, Args...> &&packet)
-    requires std::is_void_v<value_of<lf::packet<basic_first_arg<void, tag::invoke, F>, Args...>>>
-  {
-
-    struct awaitable : stdx::suspend_always {
-      [[nodiscard]] constexpr auto await_suspend(std::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
-
-        using new_packet_t = lf::packet<basic_first_arg<void, tag::call, F>, Args...>;
-
-        new_packet_t new_packet = std::move(m_packet).apply([&](auto, Args &&...args) -> new_packet_t {
-          return {{}, std::forward<Args>(args)...};
-        });
-
-        static_assert(std::is_void_v<value_of<new_packet_t>>, "Value type dependent on first arg!");
-
-        LF_LOG("Invoking");
-
-        return std::move(new_packet).template patch_with<Context>().invoke(parent)->coro();
-      }
-
-      frame_block *parent;
-      lf::packet<basic_first_arg<void, tag::invoke, F>, Args...> m_packet;
-    };
-
-    return awaitable{{}, this, std::move(packet)};
-  }
-
-  template <typename F, typename... Args>
-  [[nodiscard]] constexpr auto await_transform(packet<basic_first_arg<void, tag::invoke, F>, Args...> &&packet) {
+  constexpr auto await_transform(packet<basic_first_arg<void, tag::invoke, F>, Args...> &&packet) {
 
     using packet_t = lf::packet<basic_first_arg<void, tag::invoke, F>, Args...>;
+    static_assert(!std::is_void_v<value_of<packet_t>>, "async's call op should prevent this");
     using return_t = eventually<value_of<packet_t>>;
 
     struct awaitable : stdx::suspend_always {
-      [[nodiscard]] constexpr auto await_suspend(std::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
+      constexpr auto await_suspend(std::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
 
         using new_packet_t = lf::packet<basic_first_arg<return_t, tag::call, F>, Args...>;
 
@@ -304,7 +262,6 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
         static_assert(std::same_as<value_of<packet_t>, value_of<new_packet_t>>, "Value type dependent on first arg!");
 
         LF_LOG("Invoking");
-
         return std::move(new_packet).template patch_with<Context>().invoke(parent)->coro();
       }
 
@@ -318,7 +275,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
     return awaitable{{}, this, std::move(packet), {}};
   }
 
-  constexpr auto await_transform([[maybe_unused]] join_type join_tag) noexcept {
+  constexpr auto await_transform(join_type) noexcept {
     struct awaitable {
     private:
       constexpr void take_stack_reset_control() const noexcept {
@@ -333,7 +290,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
       }
 
     public:
-      [[nodiscard]] constexpr auto await_ready() const noexcept -> bool {
+      constexpr auto await_ready() const noexcept -> bool {
         // If no steals then we are the only owner of the parent and we are ready to join.
         if (self->steals() == 0) {
           LF_LOG("Sync ready (no steals)");
@@ -351,9 +308,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
         if (self->steals() == joined) {
           LF_LOG("Sync is ready");
-
           take_stack_reset_control();
-
           return true;
         }
 
@@ -361,8 +316,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
         return false;
       }
 
-      [[nodiscard]] constexpr auto await_suspend(stdx::coroutine_handle<promise_type> task) noexcept
-          -> stdx::coroutine_handle<> {
+      constexpr auto await_suspend(stdx::coroutine_handle<promise_type> task) noexcept -> stdx::coroutine_handle<> {
         // Currently        joins  = k_u32_max  - num_joined
         // We set           joins  = joins()    - (k_u32_max - num_steals)
         //                         = num_steals - num_joined
@@ -378,22 +332,17 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
           // Need to acquire to ensure we see all writes by other threads to the result.
           std::atomic_thread_fence(std::memory_order_acquire);
-
           LF_LOG("Wins join race");
-
           take_stack_reset_control();
-
           return task;
         }
+
         // Someone else is responsible for running this task and we have run out of work.
         LF_LOG("Looses join race");
-
         // We cannot currently own this stack.
-
         if constexpr (Tag != tag::root) {
           LF_ASSERT(self->top() != tls::asp);
         }
-
         return stdx::noop_coroutine();
       }
 
@@ -416,8 +365,6 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
     return awaitable{this};
   }
 };
-
-#undef FATAL_IN_DEBUG
 
 } // namespace lf::detail
 

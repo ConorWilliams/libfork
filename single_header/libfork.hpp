@@ -45,6 +45,7 @@
 #include <functional>
 #include <memory>
 #include <source_location>
+#include <stdexcept>
 #include <type_traits>
 #include <utility>
 #ifndef EE6A2701_7559_44C9_B708_474B1AE823B2
@@ -52,13 +53,6 @@
 
 #include <concepts>
 #include <semaphore>
-#include <type_traits>
-#include <utility>
-#ifndef B7972761_4CBF_4B86_B195_F754295372BF
-#define B7972761_4CBF_4B86_B195_F754295372BF
-
-#include <functional>
-#include <memory>
 #include <type_traits>
 #include <utility>
 #ifndef C5DCA647_8269_46C2_B76F_5FA68738AEDA
@@ -171,8 +165,9 @@ static_assert(LF_ASYNC_STACK_SIZE >= 1, "LF_ASYNC_STACK_SIZE must be at least 1 
 /**
  * @brief Use like `BOOST_HOF_RETURNS` to define a function/lambda with all the noexcept/requires/decltype specifiers.
  * 
+ * This macro is not truly variadic but the ``...`` allows commas in the macro argument.
  */
-#define LF_HOF_RETURNS(expr) noexcept(noexcept(expr)) -> decltype(expr) requires requires { expr; } { return expr;}
+#define LF_HOF_RETURNS(...) noexcept(noexcept(__VA_ARGS__)) -> decltype(__VA_ARGS__) requires requires { __VA_ARGS__; } { return __VA_ARGS__;}
 
 // clang-format on
 
@@ -338,6 +333,7 @@ static_assert(LF_ASYNC_STACK_SIZE >= 1, "LF_ASYNC_STACK_SIZE must be at least 1 
 #include <type_traits>
 #include <utility>
 
+
 /**
  * @file utility.hpp
  *
@@ -345,6 +341,11 @@ static_assert(LF_ASYNC_STACK_SIZE >= 1, "LF_ASYNC_STACK_SIZE must be at least 1 
  */
 
 namespace lf::detail {
+
+/**
+ * @brief An empty type.
+ */
+struct empty {};
 
 /**
  * @brief The cache line size (bytes) of the current architecture.
@@ -447,16 +448,11 @@ using forward_cv_t = typename detail::forward_cv<From, To>::type;
  * @brief Cast a pointer to a byte pointer.
  */
 template <typename T>
-auto byte_cast(T *ptr) -> forward_cv_t<T, std::byte> * {
-  return std::bit_cast<forward_cv_t<T, std::byte> *>(ptr);
-}
-
-/**
- * @brief An empty type.
- */
-struct empty {};
+auto byte_cast(T *ptr) LF_HOF_RETURNS(std::bit_cast<forward_cv_t<T, std::byte> *>(ptr))
 
 } // namespace lf::detail
+
+namespace lf {
 
 /**
  * @brief Forwards to ``std::is_reference_v<T>``.
@@ -467,7 +463,20 @@ concept reference = std::is_reference_v<T>;
 template <typename T>
 concept non_void = !std::is_void_v<T>;
 
+template <class F, class Tuple>
+constexpr auto apply(Tuple &&tup, F &&func) LF_HOF_RETURNS(std::apply(std::forward<F>(func), std::forward<Tuple>(tup)))
+
+} // namespace lf
+
 #endif /* DF63D333_F8C0_4BBA_97E1_32A78466B8B7 */
+
+#ifndef B7972761_4CBF_4B86_B195_F754295372BF
+#define B7972761_4CBF_4B86_B195_F754295372BF
+
+#include <functional>
+#include <memory>
+#include <type_traits>
+#include <utility>
 
 
 namespace lf {
@@ -725,145 +734,184 @@ struct is_root_result<root_result<T>> : std::true_type {};
 template <typename T>
 inline constexpr bool is_root_result_v = detail::is_root_result<T>::value;
 
-// ------------------------------ //
-
-// /**
-//  * @brief A tag type to explicitly ignore the return value of a task.
-//  */
-// struct ignore_t {};
-
-/**
- * @brief Like `std::assignable_from` but without the common reference type requirement.
- */
-template <typename LHS, typename RHS>
-concept assignable = std::is_lvalue_reference_v<LHS> && requires(LHS lhs, RHS &&rhs) { lhs = std::forward<RHS>(rhs); };
+// ------------------------------------------------------------------------ //
 
 /**
  * @brief A tuple-like type with forwarding semantics for in place construction.
  */
 template <typename... Args>
-struct in_place_args : std::tuple<Args...> {};
+struct in_place : std::tuple<Args...> {
+  using std::tuple<Args...>::tuple;
+};
 
 /**
  * @brief A forwarding deduction guide.
  */
 template <typename... Args>
-in_place_args(Args &&...) -> in_place_args<Args &&...>;
+in_place(Args &&...) -> in_place<Args &&...>;
+
+// ------------------------------------------------------------------------ //
+
+namespace detail {
 
 template <typename R, typename T>
-struct promise_result;
+struct valid_result_help : std::false_type {};
 
-/**
- * @brief Specialization for `void` and ignored return types.
- *
- * @tparam R The type of the return address.
- * @tparam T The type of the return value.
- */
 template <typename T>
-struct promise_result<void, T> {
-  constexpr void return_void() const noexcept { LF_LOG("return void"); }
+struct valid_result_help<void, T> : std::true_type {};
+
+template <typename T>
+struct valid_result_help<root_result<T>, T> : std::true_type {};
+
+template <typename T>
+struct valid_result_help<eventually<T>, T> : std::true_type {};
+
+template <typename R, typename T>
+  requires std::is_assignable_v<R &, T>
+struct valid_result_help<R, T> : std::true_type {};
+
+} // namespace detail
+
+template <typename R, typename T>
+concept valid_result = !reference<R> && detail::valid_result_help<R, T>::value;
+
+// ------------------------------------------------------------------------ //
+
+template <typename T>
+struct maybe_ptr {
+  explicit constexpr maybe_ptr(T *ptr) noexcept : m_ptr(ptr) { LF_ASSERT(ptr); }
+
+  constexpr auto address() const noexcept -> T * { return m_ptr; }
+
+private:
+  T *m_ptr;
 };
 
 template <>
-struct promise_result<root_result<void>, void> {
+struct maybe_ptr<void> {};
 
-  constexpr void return_void() const noexcept { LF_LOG("return void"); }
-
-  explicit constexpr promise_result(root_result<void> *return_address) noexcept : m_ret_address(return_address) {
-    LF_ASSERT(return_address);
-  }
-
-protected:
-  constexpr auto address() const noexcept -> root_result<void> * { return m_ret_address; }
-
-private:
-  root_result<void> *m_ret_address;
-};
-
-// static_assert(std::assignable<std::optional<int>, int>);
+// ----------------------- //
 
 /**
- * @brief A promise base-class that provides the return_[...] methods.
+ * @brief A base class for promises that provides the return_[...] methods.
  *
  * @tparam R The type of the return address.
  * @tparam T The type of the return value.
  */
 template <typename R, typename T>
-  requires assignable<R &, T>
-struct promise_result<R, T> {
+  requires valid_result<R, T>
+struct promise_result;
+
+// ------------------------------ void/ignore ------------------------------ //
+
+template <>
+struct promise_result<void, void> {
+  static constexpr void return_void() noexcept { LF_LOG("return void"); }
+};
+
+// ------------------------------ rooted void ------------------------------ //
+
+template <>
+struct promise_result<root_result<void>, void> : maybe_ptr<root_result<void>> {
+
+  using maybe_ptr<root_result<void>>::maybe_ptr;
+
+  static constexpr void return_void() noexcept { LF_LOG("return void"); }
+};
+
+// ------------------------------ general case ------------------------------ //
+
+/*
+
+Want to model:
+
+R val;
+
+val = [] -> T { ... }();
+
+*/
+
+template <typename T, typename U>
+concept converting = !std::same_as<std::remove_cvref_t<U>, std::remove_cvref_t<T>>;
+
+template <typename R, typename T>
+  requires valid_result<R, T>
+struct promise_result : maybe_ptr<R> {
+
+  using maybe_ptr<R>::maybe_ptr;
+
   /**
-   * @brief Assign a value to the return address.
-   *
-   * If the return address is directly assignable from `value` this will not construct a temporary.
+   * @brief Assign `value` to the return address.
    */
   constexpr void return_value(T const &value) const
-    requires std::constructible_from<T, T const &> and (!reference<T>)
+    requires std::convertible_to<T const &, T> && (not reference<T>)
   {
-    if constexpr (assignable<R &, T const &>) {
-      *address() = value;
-    } else /* if constexpr (assignable<R &, T>) */ { // ensured by struct constraint
-      *address() = T(value);
+    if constexpr (!std::is_void_v<R>) {
+      *(this->address()) = value;
     }
   }
+
   /**
-   * @brief Assign a value directly to the return address.
+   * @brief Move assign `value` to the return address.
    */
   constexpr void return_value(T &&value) const
-    requires std::constructible_from<T, T>
+    requires std::convertible_to<T &&, T>
   {
-    if constexpr (std::is_rvalue_reference_v<T &&>) {
-      *address() = std::move(value);
-    } else {
-      *address() = value;
+    if constexpr (!std::is_void_v<R>) {
+      if constexpr (std::is_rvalue_reference_v<T &&>) {
+        *(this->address()) = std::move(value);
+      } else {
+        *(this->address()) = value;
+      }
     }
   }
+
   /**
-   * @brief Assign a value to the return address.
+   * @brief Assign `value` to the return address.
    *
    * If the return address is directly assignable from `value` this will not construct the intermediate `T`.
    */
-  template <typename U>
-    requires std::constructible_from<T, U>
+  template <std::convertible_to<T> U>
+    requires converting<T, U>
   constexpr void return_value(U &&value) const {
-    if constexpr (assignable<R &, U>) {
-      *address() = std::forward<U>(value);
-    } else {
-      *address() = T(std::forward<U>(value));
+    if constexpr (!std::is_void_v<R>) {
+      if constexpr (std::is_assignable_v<R &, U &&>) {
+        *(this->address()) = std::forward<U>(value);
+      } else {
+        *(this->address()) = [&]() -> T { return std::forward<U>(value); }();
+      }
     }
   }
+
+private:
+  template <typename U>
+  using strip_rvalue_ref_t = std::conditional_t<std::is_rvalue_reference_v<U>, std::remove_reference_t<U>, U>;
+
+public:
   /**
    * @brief Assign a value constructed from the arguments stored in `args` to the return address.
    *
-   * If the return address has a `.emplace()` method that accepts the arguments in the tuple this will be
+   * If the return address has an `.emplace()` method that accepts the arguments in the tuple this will be
    * called directly.
    */
   template <reference... Args>
     requires std::constructible_from<T, Args...>
-  constexpr void return_value(in_place_args<Args...> args) const {
-    std::apply(emplace, std::move(args));
-  }
+  constexpr void return_value(in_place<Args...> args) const {
 
-  explicit constexpr promise_result(R *return_address) noexcept : m_ret_address(return_address) {
-    LF_ASSERT(return_address);
-  }
+#define LF_FWD_ARGS std::forward<strip_rvalue_ref_t<Args>>(args)...
 
-protected:
-  constexpr auto address() const noexcept -> R * { return m_ret_address; }
-
-private:
-  static constexpr auto emplace = []<typename... Args>(R *ret, Args &&...args) LF_STATIC_CALL {
-    if constexpr (requires { ret->emplace(std::forward<Args>(args)...); }) {
-      (*ret).emplace(std::forward<Args>(args)...);
-    } else if constexpr (std::is_move_assignable_v<R> && std::constructible_from<R, Args...>) {
-      // TODO: clang is choking on this...?
-      LF_THROW(std::runtime_error("not implemented"));
-      // (*ret) = R(std::forward<Args>(args)...);
-    } else {
-      (*ret) = T(std::forward<Args>(args)...);
+    if constexpr (!std::is_void_v<R>) {
+      lf::apply(static_cast<std::tuple<Args...> &&>(args), [ret = this->address()](Args... args) {
+        if constexpr (requires { ret->emplace(LF_FWD_ARGS); }) {
+          ret->emplace(LF_FWD_ARGS);
+        } else {
+          (*ret) = T(LF_FWD_ARGS);
+        }
+      });
     }
-  };
+  }
 
-  R *m_ret_address;
+#undef LF_FWD_ARGS
 };
 
 // ----------------------------------------------------- //
@@ -1084,10 +1132,10 @@ struct frame_block : detail::immovable<frame_block>, debug_block {
 #ifndef LF_COROUTINE_OFFSET
   constexpr frame_block(std::coroutine_handle<> coro, std::byte *top) : m_coro{coro}, m_top(top) {}
 #else
-  constexpr frame_block([[maybe_unused]] std::coroutine_handle<>, std::byte *top) : m_top(top) {}
+  constexpr frame_block(std::coroutine_handle<>, std::byte *top) : m_top(top) {}
 #endif
 
-  auto set_parent(frame_block *parent) noexcept {
+  void set_parent(frame_block *parent) noexcept {
     LF_ASSERT(!m_parent);
     m_parent = parent;
   }
@@ -1241,11 +1289,8 @@ public:
    */
   [[nodiscard]] static auto operator new(std::size_t size) noexcept -> void * {
     LF_ASSERT(tls::asp);
-
     tls::asp -= (size + detail::k_new_align - 1) & ~(detail::k_new_align - 1);
-
-    LF_LOG("Allocating {} bytes on stack at {}", size, (void *)tls::asp);
-
+    LF_LOG("Allocating {} bytes on stack from {}", size, (void *)tls::asp);
     return tls::asp;
   }
 
@@ -1422,6 +1467,10 @@ concept first_arg = requires(Arg arg) {
   typename return_of<Arg>;
   typename function_of<Arg>;
 
+  requires !std::is_reference_v<return_of<Arg>>;
+
+  { std::remove_cvref_t<Arg>::context() } -> std::same_as<context_of<Arg> &>;
+
   requires std::is_void_v<return_of<Arg>> || requires {
     { arg.address() } -> std::convertible_to<return_of<Arg> *>;
   };
@@ -1442,7 +1491,7 @@ concept not_first_arg = !first_arg<T>;
 namespace detail {
 
 template <typename Task, typename Head>
-concept valid_return = is_task<Task> && requires { typename promise_result<return_of<Head>, value_of<Task>>; };
+concept valid_return = is_task<Task> && valid_result<return_of<Head>, value_of<Task>>;
 
 } // namespace detail
 
@@ -1469,7 +1518,14 @@ struct basic_first_arg;
  */
 template <thread_context Context, first_arg Head>
 struct patched : Head {
+
   using context_type = Context;
+
+  [[nodiscard]] static auto context() -> Context & {
+    Context *ctx = tls::ctx<Context>;
+    LF_ASSERT(ctx);
+    return *ctx;
+  }
 };
 
 /**
@@ -1527,12 +1583,6 @@ private:
   [[no_unique_address]] std::tuple<Head, Tail &&...> m_args;
 };
 
-// /**
-//  * @brief Deduction guide that forwards its arguments as references.
-//  */
-// template <typename Head, typename... Tail>
-// packet(Head, Tail &&...) -> packet<Head, Tail &&...>;
-
 // ----------------------------------------------- //
 
 /**
@@ -1559,15 +1609,30 @@ struct [[nodiscard("async functions must be called")]] async {
    */
   explicit(false) consteval async([[maybe_unused]] Fn invocable_which_returns_a_task) {}
 
+private:
+  template <typename... Args>
+  using invoke_packet = packet<basic_first_arg<void, tag::invoke, Fn>, Args...>;
+
+  template <typename... Args>
+  using call_packet = packet<basic_first_arg<void, tag::call, Fn>, Args...>;
+
+public:
   /**
    * @brief Wrap the arguments into an awaitable (in an ``lf::task``) that triggers an invoke.
    *
-   * Note that the return type is tagged void however during the `await_transform` the full type will be
-   * captured.
+   * Note that the return type is tagged void however during the `await_transform` the full type deduced.
    */
   template <typename... Args>
-  LF_STATIC_CALL constexpr auto operator()(Args &&...args) LF_STATIC_CONST noexcept
-      -> packet<basic_first_arg<void, tag::invoke, Fn>, Args...> {
+  LF_STATIC_CALL constexpr auto operator()(Args &&...args) LF_STATIC_CONST noexcept -> invoke_packet<Args...> {
+    return {{}, std::forward<Args>(args)...};
+  }
+
+  /**
+   * @brief Wrap the arguments into an awaitable (in an ``lf::task``) that triggers an invoke.
+   */
+  template <typename... Args>
+    requires std::is_void_v<value_of<invoke_packet<Args...>>>
+  LF_STATIC_CALL constexpr auto operator()(Args &&...args) LF_STATIC_CONST noexcept -> call_packet<Args...> {
     return {{}, std::forward<Args>(args)...};
   }
 };
@@ -1601,10 +1666,7 @@ struct basic_first_arg<void, Tag, F> : async<F>, detail::move_only<basic_first_a
   using function_type = F;              ///< The underlying async
   static constexpr tag tag_value = Tag; ///< The tag value.
 
-  template <typename R>
-  auto rebind(R &ret) const noexcept -> basic_first_arg<R, Tag, F> {
-    return {ret};
-  }
+  [[nodiscard]] static auto context() -> context_type & { LF_THROW(std::runtime_error{"Should never be called!"}); }
 };
 
 /**
@@ -1634,8 +1696,7 @@ static_assert(first_arg<basic_first_arg<int, tag::root, decltype([] {})>>);
 /**
  * @file call.hpp
  *
- * @brief Meta header which includes all ``lf::task``, ``lf::fork``, ``lf::call``, ``lf::join`` and
- * ``lf::sync_wait`` machinery.
+ * @brief Meta header which includes all ``lf::task``, ``lf::fork``, ``lf::call``, ``lf::join`` machinery.
  */
 
 namespace lf {
@@ -1772,54 +1833,54 @@ namespace lf::detail {
 
 // -------------------------------------------------------------------------- //
 
-// TODO: Cleanup below
-
-#ifndef NDEBUG
-  #define FATAL_IN_DEBUG(expr, message)                                                                                     \
-    do {                                                                                                                    \
-      if (!(expr)) {                                                                                                        \
-        ::lf::detail::noexcept_invoke([] { LF_THROW(std::runtime_error(message)); });                                       \
-      }                                                                                                                     \
-    } while (false)
-#else
-  #define FATAL_IN_DEBUG(expr, message)                                                                                     \
-    do {                                                                                                                    \
-    } while (false)
-#endif
-
+/**
+ * @brief Switches the allocator used by `promise_type` depending on tag.
+ */
 template <tag Tag>
 using allocator = std::conditional_t<Tag == tag::root, promise_alloc_heap, promise_alloc_stack>;
 
 template <typename R, typename T, thread_context Context, tag Tag>
 struct promise_type : allocator<Tag>, promise_result<R, T> {
 
+private:
   static_assert(Tag == tag::fork || Tag == tag::call || Tag == tag::root);
   static_assert(Tag != tag::root || is_root_result_v<R>);
 
-  using handle_t = stdx::coroutine_handle<promise_type>;
-
+public:
+  /**
+   * @brief Construct promise, sets return address.
+   */
   template <first_arg Head, typename... Tail>
-  constexpr promise_type(Head const &head, [[maybe_unused]] Tail &&...tail) noexcept
+  explicit constexpr promise_type(Head const &head, Tail const &...) noexcept
     requires std::constructible_from<promise_result<R, T>, R *>
-      : allocator<Tag>{std::coroutine_handle<>{handle_t::from_promise(*this)}},
+      : allocator<Tag>{stdx::coroutine_handle<promise_type>::from_promise(*this)},
         promise_result<R, T>{head.address()} {}
 
+  /**
+   * @brief Construct promise, sets return address.
+   *
+   * For member function coroutines.
+   */
   template <not_first_arg Self, first_arg Head, typename... Tail>
-  constexpr promise_type([[maybe_unused]] Self const &self, Head const &head, Tail &&...tail) noexcept
+  explicit constexpr promise_type(Self const &, Head const &head, Tail const &...tail) noexcept
     requires std::constructible_from<promise_result<R, T>, R *>
       : promise_type{head, std::forward<Tail>(tail)...} {}
 
-  constexpr promise_type() noexcept : allocator<Tag>(handle_t::from_promise(*this)) {}
+  /**
+   * @brief Construct promise with void return type.
+   */
+  constexpr promise_type() noexcept : allocator<Tag>(stdx::coroutine_handle<promise_type>::from_promise(*this)) {}
 
   auto get_return_object() noexcept -> frame_block * { return this; }
 
   static auto initial_suspend() -> stdx::suspend_always { return {}; }
 
+  /**
+   * @brief Terminates the program.
+   */
   void unhandled_exception() noexcept {
     noexcept_invoke([] { LF_RETHROW; });
   }
-
-  ~promise_type() noexcept { LF_LOG("promise destructs"); }
 
   auto final_suspend() noexcept {
 
@@ -1827,10 +1888,9 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
     // Completing a non-root task means we currently own the async_stack this child is on
 
-    FATAL_IN_DEBUG(this->debug_count() == 0, "Fork/Call without a join!");
-
+    LF_ASSERT(this->debug_count() == 0);
     LF_ASSERT(this->steals() == 0);                                      // Fork without join.
-    LF_ASSERT(this->load_joins(std::memory_order_acquire) == k_u32_max); // Destroyed in invalid state.
+    LF_ASSERT(this->load_joins(std::memory_order_relaxed) == k_u32_max); // Destroyed in invalid state.
 
     struct final_awaitable : stdx::suspend_always {
       constexpr auto await_suspend(stdx::coroutine_handle<promise_type> child) const noexcept -> stdx::coroutine_handle<> {
@@ -1857,8 +1917,6 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
           // Inline task's parent cannot have been stolen, no need to reset control block.
           return parent->coro();
         }
-
-        // std::cout << "context is " << (void *)(tls::ctx<Context>) << std::endl;
 
         Context *context = tls::ctx<Context>;
 
@@ -1931,33 +1989,24 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
     return final_awaitable{};
   }
 
+  /**
+   * @brief Transform a fork packet into a fork awaitable.
+   */
   template <first_arg Head, typename... Args>
     requires(tag_of<Head> == tag::fork)
-  [[nodiscard]] constexpr auto await_transform(packet<Head, Args...> &&packet)
-    requires requires { std::move(packet).template patch_with<Context>(); }
-  {
+  constexpr auto await_transform(packet<Head, Args...> &&packet) {
 
     this->debug_inc();
 
     frame_block *child = std::move(packet).template patch_with<Context>().invoke(this);
 
-    LF_ASSERT(child);
-
     struct awaitable : stdx::suspend_always {
-      [[nodiscard]] constexpr auto await_suspend(std::coroutine_handle<promise_type> p) noexcept
-          -> stdx::coroutine_handle<> {
-
+      constexpr auto await_suspend(std::coroutine_handle<promise_type> parent) noexcept -> stdx::coroutine_handle<> {
         LF_LOG("Forking, push parent to context");
-
-        LF_ASSERT(&p.promise() == m_parent);
-
+        LF_ASSERT(&parent.promise() == m_parent);
         // Need it here (on real stack) in case *this is destructed after push.
         stdx::coroutine_handle child = m_child->coro();
-
-        // std::cout << "context is " << (void *)(tls::ctx<Context>) << std::endl;
-
         tls::ctx<Context>->task_push(m_parent);
-
         return child;
       }
 
@@ -1970,15 +2019,12 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
   template <first_arg Head, typename... Args>
     requires(tag_of<Head> == tag::call)
-  [[nodiscard]] constexpr auto await_transform(packet<Head, Args...> &&packet)
-    requires requires { std::move(packet).template patch_with<Context>(); }
-  {
+  constexpr auto await_transform(packet<Head, Args...> &&packet) {
 
     frame_block *child = std::move(packet).template patch_with<Context>().invoke(this);
 
     struct awaitable : stdx::suspend_always {
-      [[nodiscard]] constexpr auto await_suspend(std::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
-
+      constexpr auto await_suspend(std::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
         LF_LOG("Calling");
         return m_child->coro();
       }
@@ -1990,41 +2036,14 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
   }
 
   template <typename F, typename... Args>
-  [[nodiscard]] constexpr auto await_transform(packet<basic_first_arg<void, tag::invoke, F>, Args...> &&packet)
-    requires std::is_void_v<value_of<lf::packet<basic_first_arg<void, tag::invoke, F>, Args...>>>
-  {
-
-    struct awaitable : stdx::suspend_always {
-      [[nodiscard]] constexpr auto await_suspend(std::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
-
-        using new_packet_t = lf::packet<basic_first_arg<void, tag::call, F>, Args...>;
-
-        new_packet_t new_packet = std::move(m_packet).apply([&](auto, Args &&...args) -> new_packet_t {
-          return {{}, std::forward<Args>(args)...};
-        });
-
-        static_assert(std::is_void_v<value_of<new_packet_t>>, "Value type dependent on first arg!");
-
-        LF_LOG("Invoking");
-
-        return std::move(new_packet).template patch_with<Context>().invoke(parent)->coro();
-      }
-
-      frame_block *parent;
-      lf::packet<basic_first_arg<void, tag::invoke, F>, Args...> m_packet;
-    };
-
-    return awaitable{{}, this, std::move(packet)};
-  }
-
-  template <typename F, typename... Args>
-  [[nodiscard]] constexpr auto await_transform(packet<basic_first_arg<void, tag::invoke, F>, Args...> &&packet) {
+  constexpr auto await_transform(packet<basic_first_arg<void, tag::invoke, F>, Args...> &&packet) {
 
     using packet_t = lf::packet<basic_first_arg<void, tag::invoke, F>, Args...>;
+    static_assert(!std::is_void_v<value_of<packet_t>>, "async's call op should prevent this");
     using return_t = eventually<value_of<packet_t>>;
 
     struct awaitable : stdx::suspend_always {
-      [[nodiscard]] constexpr auto await_suspend(std::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
+      constexpr auto await_suspend(std::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
 
         using new_packet_t = lf::packet<basic_first_arg<return_t, tag::call, F>, Args...>;
 
@@ -2035,7 +2054,6 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
         static_assert(std::same_as<value_of<packet_t>, value_of<new_packet_t>>, "Value type dependent on first arg!");
 
         LF_LOG("Invoking");
-
         return std::move(new_packet).template patch_with<Context>().invoke(parent)->coro();
       }
 
@@ -2049,7 +2067,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
     return awaitable{{}, this, std::move(packet), {}};
   }
 
-  constexpr auto await_transform([[maybe_unused]] join_type join_tag) noexcept {
+  constexpr auto await_transform(join_type) noexcept {
     struct awaitable {
     private:
       constexpr void take_stack_reset_control() const noexcept {
@@ -2064,7 +2082,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
       }
 
     public:
-      [[nodiscard]] constexpr auto await_ready() const noexcept -> bool {
+      constexpr auto await_ready() const noexcept -> bool {
         // If no steals then we are the only owner of the parent and we are ready to join.
         if (self->steals() == 0) {
           LF_LOG("Sync ready (no steals)");
@@ -2082,9 +2100,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
         if (self->steals() == joined) {
           LF_LOG("Sync is ready");
-
           take_stack_reset_control();
-
           return true;
         }
 
@@ -2092,8 +2108,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
         return false;
       }
 
-      [[nodiscard]] constexpr auto await_suspend(stdx::coroutine_handle<promise_type> task) noexcept
-          -> stdx::coroutine_handle<> {
+      constexpr auto await_suspend(stdx::coroutine_handle<promise_type> task) noexcept -> stdx::coroutine_handle<> {
         // Currently        joins  = k_u32_max  - num_joined
         // We set           joins  = joins()    - (k_u32_max - num_steals)
         //                         = num_steals - num_joined
@@ -2109,22 +2124,17 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
           // Need to acquire to ensure we see all writes by other threads to the result.
           std::atomic_thread_fence(std::memory_order_acquire);
-
           LF_LOG("Wins join race");
-
           take_stack_reset_control();
-
           return task;
         }
+
         // Someone else is responsible for running this task and we have run out of work.
         LF_LOG("Looses join race");
-
         // We cannot currently own this stack.
-
         if constexpr (Tag != tag::root) {
           LF_ASSERT(self->top() != tls::asp);
         }
-
         return stdx::noop_coroutine();
       }
 
@@ -2147,8 +2157,6 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
     return awaitable{this};
   }
 };
-
-#undef FATAL_IN_DEBUG
 
 } // namespace lf::detail
 
@@ -2202,17 +2210,16 @@ concept scheduler = requires(Sch &&sch, frame_block *ext) {
   std::forward<Sch>(sch).submit(ext);
 };
 
-template <typename Context, typename R, stateless F>
-struct root_head : basic_first_arg<R, tag::root, F> {
-  using context_type = Context;
-};
-
 template <typename Context, stateless F, typename... Args>
 struct sync_wait_impl {
-  using dummy_packet = packet<root_head<Context, void, F>, Args...>;
+
+  template <typename R>
+  using first_arg_t = patched<Context, basic_first_arg<R, tag::root, F>>;
+
+  using dummy_packet = packet<first_arg_t<void>, Args...>;
   using dummy_packet_value_type = value_of<std::invoke_result_t<F, dummy_packet, Args...>>;
 
-  using real_packet = packet<root_head<Context, root_result<dummy_packet_value_type>, F>, Args...>;
+  using real_packet = packet<first_arg_t<root_result<dummy_packet_value_type>>, Args...>;
   using real_packet_value_type = value_of<std::invoke_result_t<F, real_packet, Args...>>;
 
   static_assert(std::same_as<dummy_packet_value_type, real_packet_value_type>, "Value type changes!");

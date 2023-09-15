@@ -43,9 +43,7 @@ TEST_CASE("basic counting", "[inline_scheduler]") {
 
   using base = basic_first_arg<root_result<void>, tag::root, decltype(count)>;
 
-  struct Head : base {
-    using context_type = C;
-  };
+  using Head = patched<C, base>;
 
   int x = 10;
 
@@ -113,9 +111,7 @@ TEST_CASE("fib", "[promise]") {
 
   using base = basic_first_arg<root_result<int>, tag::root, decltype(fib)>;
 
-  struct Head : base {
-    using context_type = C;
-  };
+  using Head = patched<C, base>;
 
   volatile int in = 20;
 

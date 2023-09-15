@@ -18,8 +18,7 @@
 /**
  * @file call.hpp
  *
- * @brief Meta header which includes all ``lf::task``, ``lf::fork``, ``lf::call``, ``lf::join`` and
- * ``lf::sync_wait`` machinery.
+ * @brief Meta header which includes all ``lf::task``, ``lf::fork``, ``lf::call``, ``lf::join`` machinery.
  */
 
 namespace lf {

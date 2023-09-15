@@ -14,6 +14,7 @@
 #include <functional>
 #include <memory>
 #include <source_location>
+#include <stdexcept>
 #include <type_traits>
 #include <utility>
 
@@ -158,6 +159,10 @@ concept first_arg = requires(Arg arg) {
   typename return_of<Arg>;
   typename function_of<Arg>;
 
+  requires !std::is_reference_v<return_of<Arg>>;
+
+  { std::remove_cvref_t<Arg>::context() } -> std::same_as<context_of<Arg> &>;
+
   requires std::is_void_v<return_of<Arg>> || requires {
     { arg.address() } -> std::convertible_to<return_of<Arg> *>;
   };
@@ -178,7 +183,7 @@ concept not_first_arg = !first_arg<T>;
 namespace detail {
 
 template <typename Task, typename Head>
-concept valid_return = is_task<Task> && requires { typename promise_result<return_of<Head>, value_of<Task>>; };
+concept valid_return = is_task<Task> && valid_result<return_of<Head>, value_of<Task>>;
 
 } // namespace detail
 
@@ -205,7 +210,14 @@ struct basic_first_arg;
  */
 template <thread_context Context, first_arg Head>
 struct patched : Head {
+
   using context_type = Context;
+
+  [[nodiscard]] static auto context() -> Context & {
+    Context *ctx = tls::ctx<Context>;
+    LF_ASSERT(ctx);
+    return *ctx;
+  }
 };
 
 /**
@@ -263,12 +275,6 @@ private:
   [[no_unique_address]] std::tuple<Head, Tail &&...> m_args;
 };
 
-// /**
-//  * @brief Deduction guide that forwards its arguments as references.
-//  */
-// template <typename Head, typename... Tail>
-// packet(Head, Tail &&...) -> packet<Head, Tail &&...>;
-
 // ----------------------------------------------- //
 
 /**
@@ -295,15 +301,30 @@ struct [[nodiscard("async functions must be called")]] async {
    */
   explicit(false) consteval async([[maybe_unused]] Fn invocable_which_returns_a_task) {}
 
+private:
+  template <typename... Args>
+  using invoke_packet = packet<basic_first_arg<void, tag::invoke, Fn>, Args...>;
+
+  template <typename... Args>
+  using call_packet = packet<basic_first_arg<void, tag::call, Fn>, Args...>;
+
+public:
   /**
    * @brief Wrap the arguments into an awaitable (in an ``lf::task``) that triggers an invoke.
    *
-   * Note that the return type is tagged void however during the `await_transform` the full type will be
-   * captured.
+   * Note that the return type is tagged void however during the `await_transform` the full type deduced.
    */
   template <typename... Args>
-  LF_STATIC_CALL constexpr auto operator()(Args &&...args) LF_STATIC_CONST noexcept
-      -> packet<basic_first_arg<void, tag::invoke, Fn>, Args...> {
+  LF_STATIC_CALL constexpr auto operator()(Args &&...args) LF_STATIC_CONST noexcept -> invoke_packet<Args...> {
+    return {{}, std::forward<Args>(args)...};
+  }
+
+  /**
+   * @brief Wrap the arguments into an awaitable (in an ``lf::task``) that triggers an invoke.
+   */
+  template <typename... Args>
+    requires std::is_void_v<value_of<invoke_packet<Args...>>>
+  LF_STATIC_CALL constexpr auto operator()(Args &&...args) LF_STATIC_CONST noexcept -> call_packet<Args...> {
     return {{}, std::forward<Args>(args)...};
   }
 };
@@ -337,10 +358,7 @@ struct basic_first_arg<void, Tag, F> : async<F>, detail::move_only<basic_first_a
   using function_type = F;              ///< The underlying async
   static constexpr tag tag_value = Tag; ///< The tag value.
 
-  template <typename R>
-  auto rebind(R &ret) const noexcept -> basic_first_arg<R, Tag, F> {
-    return {ret};
-  }
+  [[nodiscard]] static auto context() -> context_type & { LF_THROW(std::runtime_error{"Should never be called!"}); }
 };
 
 /**
