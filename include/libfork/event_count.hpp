@@ -1,8 +1,5 @@
 #pragma once
 
-// This file has been modified by C.J.Williams to act as a standalone
-// version of ``folly::event_count`` utilizing C++20's atomic wait facilities.
-//
 // Copyright (c) Conor Williams, Meta Platforms, Inc. and its affiliates.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +27,9 @@
 /**
  * @file event_count.hpp
  *
- * @brief A standalone adaptation of ``folly::EventCount``.
+ * @brief A standalone adaptation of ``folly::EventCount`` utilizing C++20's atomic wait facilities.
+ *
+ * This file has been adapted from: ``https://github.com/facebook/folly/blob/main/folly/experimental/EventCount.h``
  */
 
 namespace lf {

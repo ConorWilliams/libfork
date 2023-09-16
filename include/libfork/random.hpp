@@ -1,14 +1,13 @@
 #ifndef CA0BE1EA_88CD_4E63_9D89_37395E859565
 #define CA0BE1EA_88CD_4E63_9D89_37395E859565
 
-// The code in this file is adapted from the original implementation:
-// http://prng.di.unimi.it/xoshiro256starstar.c
+// Copyright © Conor Williams <conorwilliams@outlook.com>
 
-// Written in 2018 by David Blackman and Sebastiano Vigna (vigna@acm.org)
+// SPDX-License-Identifier: MPL-2.0
 
-// To the extent possible under law, the author has dedicated all copyright
-// and related and neighboring rights to this software to the public domain
-// worldwide. This software is distributed without any warranty.
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 // See <http://creativecommons.org/publicdomain/zero/1.0/>.
 
@@ -26,6 +25,8 @@
  * \file random.hpp
  *
  * @brief Pseudo random number generators (PRNG).
+ *
+ * This implementation has been adapted from ``http://prng.di.unimi.it/xoshiro256starstar.c``
  */
 
 namespace lf {

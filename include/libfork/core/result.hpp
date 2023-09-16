@@ -1,6 +1,14 @@
 #ifndef EE6A2701_7559_44C9_B708_474B1AE823B2
 #define EE6A2701_7559_44C9_B708_474B1AE823B2
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <concepts>
 #include <semaphore>
 #include <type_traits>
@@ -62,15 +70,19 @@ in_place(Args &&...) -> in_place<Args &&...>;
 
 namespace detail {
 
+// General case = invalid.
 template <typename R, typename T>
 struct valid_result_help : std::false_type {};
 
+// Ignore case
 template <typename T>
 struct valid_result_help<void, T> : std::true_type {};
 
+// Root result special case (especially T = void)
 template <typename T>
 struct valid_result_help<root_result<T>, T> : std::true_type {};
 
+// Eventually special (for immovable types that cannot be assigned).
 template <typename T>
 struct valid_result_help<eventually<T>, T> : std::true_type {};
 
@@ -87,7 +99,7 @@ concept valid_result = !reference<R> && detail::valid_result_help<R, T>::value;
 
 template <typename T>
 struct maybe_ptr {
-  explicit constexpr maybe_ptr(T *ptr) noexcept : m_ptr(ptr) { LF_ASSERT(ptr); }
+  explicit constexpr maybe_ptr(T *ptr) noexcept : m_ptr(non_null(ptr)) {}
 
   constexpr auto address() const noexcept -> T * { return m_ptr; }
 
@@ -132,6 +144,10 @@ struct promise_result<root_result<void>, void> : maybe_ptr<root_result<void>> {
 /*
 
 Want to model:
+
+R val = [] -> T { ... }();
+
+But really have:
 
 R val;
 

@@ -2,9 +2,9 @@
 
 1. Complete Core:
       - [x] Complete test suit for core.
-      - [ ] Tidy up propagate exception macros.
-      - [ ] Where we can use `LF_HOF_RETURNS`
-      - [ ] Update licenses at top of files.
+      - [x] Tidy up propagate exception macros.
+      - [x] Where we can use `LF_HOF_RETURNS`
+      - [x] Update licenses at top of files.
       - [ ] Touch up `std::` includes.
       - [ ] Redo name spacing (rm `DEPENDANT_ABI`, `user`, `detail`, `impl`, and `schedule`).
 

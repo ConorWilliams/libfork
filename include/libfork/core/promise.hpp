@@ -118,17 +118,13 @@ public:
 
         child.destroy();
 
-        LF_ASSERT(parent);
-
         if constexpr (Tag == tag::call) {
           LF_LOG("Inline task resumes parent");
           // Inline task's parent cannot have been stolen, no need to reset control block.
           return parent->coro();
         }
 
-        Context *context = tls::ctx<Context>;
-
-        LF_ASSERT(context);
+        Context *context = non_null(tls::ctx<Context>);
 
         if (frame_block *parent_task = context->task_pop()) {
           // No-one stole continuation, we are the exclusive owner of parent, just keep ripping!

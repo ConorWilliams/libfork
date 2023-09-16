@@ -62,7 +62,7 @@ template <typename T = void, fixed_string Name = "">
 struct task {
   using value_type = T; ///< The type of the value returned by the coroutine.
 
-  explicit(false) task(frame_block *frame) : m_frame{frame} { LF_ASSERT(frame); }
+  explicit(false) task(frame_block *frame) : m_frame{non_null(frame)} {}
 
   [[nodiscard]] constexpr auto frame() const noexcept -> frame_block * { return m_frame; }
 
@@ -161,7 +161,7 @@ concept first_arg = requires(Arg arg) {
 
   requires !std::is_reference_v<return_of<Arg>>;
 
-  { std::remove_cvref_t<Arg>::context() } -> std::same_as<context_of<Arg> &>;
+  { std::remove_cvref_t<Arg>::context() } -> std::same_as<context_of<Arg> *>;
 
   requires std::is_void_v<return_of<Arg>> || requires {
     { arg.address() } -> std::convertible_to<return_of<Arg> *>;
@@ -213,11 +213,7 @@ struct patched : Head {
 
   using context_type = Context;
 
-  [[nodiscard]] static auto context() -> Context & {
-    Context *ctx = tls::ctx<Context>;
-    LF_ASSERT(ctx);
-    return *ctx;
-  }
+  [[nodiscard]] static auto context() -> Context * { return non_null(tls::ctx<Context>); }
 };
 
 /**
@@ -358,7 +354,7 @@ struct basic_first_arg<void, Tag, F> : async<F>, detail::move_only<basic_first_a
   using function_type = F;              ///< The underlying async
   static constexpr tag tag_value = Tag; ///< The tag value.
 
-  [[nodiscard]] static auto context() -> context_type & { LF_THROW(std::runtime_error{"Should never be called!"}); }
+  [[nodiscard]] static auto context() -> context_type * { LF_THROW(std::runtime_error{"Should never be called!"}); }
 };
 
 /**

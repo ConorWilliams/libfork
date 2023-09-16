@@ -47,32 +47,6 @@
  */
 #define LF_VERSION_PATCH 0
 
-namespace detail {
-
-#define LF_CONCAT_IMPL(x, y) x##y
-#define LF_CONCAT(x, y) LF_CONCAT_IMPL(x, y)
-
-} // namespace detail
-
-/**
- * @brief Use with ``inline namespace`` to mangle the major version number into the symbol names.
- */
-#define LF_VERSION_ABI LF_CONCAT(_v, LF_VERSION_MAJOR)
-
-#ifdef LF_COROUTINE_OFFSET
-  #define LF_COROUTINE_ABI LF_CONCAT(LF_COROUTINE_OFFSET, LF_VERSION_ABI)
-#else
-  #define LF_COROUTINE_ABI LF_CONCAT(dynamic, LF_VERSION_ABI)
-#endif
-
-#if defined(NDEBUG)
-  #define LF_ABI LF_CONCAT(release_, LF_COROUTINE_ABI)
-#else
-  #define LF_ABI LF_CONCAT(debug_, LF_COROUTINE_ABI)
-#endif
-
-// LF_ABI
-
 #ifndef LF_ASYNC_STACK_SIZE
   /**
    * @brief A customizable stack size for ``async_stack``'s (in kibibytes).
@@ -85,8 +59,7 @@ namespace detail {
 static_assert(LF_ASYNC_STACK_SIZE >= 1, "LF_ASYNC_STACK_SIZE must be at least 1 kilobyte");
 
 /**
- * @brief Use to decorate lambdas and ``operator()`` (alongside ``LF_STATIC_CONST``) with ``static`` if
- * supported.
+ * @brief Use to conditionally decorate lambdas and ``operator()`` (alongside ``LF_STATIC_CONST``) with ``static``.
  */
 #ifdef __cpp_static_call_operator
   #define LF_STATIC_CALL static
@@ -95,7 +68,7 @@ static_assert(LF_ASYNC_STACK_SIZE >= 1, "LF_ASYNC_STACK_SIZE must be at least 1 
 #endif
 
 /**
- * @brief Use with ``LF_STATIC_CALL`` to decorate ``operator()`` with ``const`` if supported.
+ * @brief Use with ``LF_STATIC_CALL`` to conditionally decorate ``operator()`` with ``const``.
  */
 #ifdef __cpp_static_call_operator
   #define LF_STATIC_CONST
@@ -222,7 +195,6 @@ static_assert(LF_ASYNC_STACK_SIZE >= 1, "LF_ASYNC_STACK_SIZE must be at least 1 
 #ifndef LF_LOG
   #ifdef LF_LOGGING
     #include <iostream>
-    #include <mutex>
     #include <thread>
     #include <type_traits>
 

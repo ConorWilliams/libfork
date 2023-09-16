@@ -1,6 +1,14 @@
 #ifndef E54125F4_034E_45CD_8DF4_7A71275A5308
 #define E54125F4_034E_45CD_8DF4_7A71275A5308
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <type_traits>
 
 #include "libfork/core/result.hpp"

@@ -1,6 +1,14 @@
 #ifndef B7972761_4CBF_4B86_B195_F754295372BF
 #define B7972761_4CBF_4B86_B195_F754295372BF
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <functional>
 #include <memory>
 #include <type_traits>
@@ -64,21 +72,25 @@ public:
    *
    * This will decay T&& to T& just like a regular T&& function parameter.
    */
-  [[nodiscard]] constexpr auto operator*() const & noexcept -> std::remove_reference_t<T> & { return *m_value; }
+  [[nodiscard]] constexpr auto operator*() const & noexcept -> std::remove_reference_t<T> & { return *non_null(m_value); }
 
   /**
    * @brief Access the wrapped object.
    */
   [[nodiscard]] constexpr auto operator*() const && noexcept -> T {
     if constexpr (std::is_rvalue_reference_v<T>) {
-      return std::move(*m_value);
+      return std::move(*non_null(m_value));
     } else {
-      return *m_value;
+      return *non_null(m_value);
     }
   }
 
 private:
+#ifndef NDEBUG
+  std::remove_reference_t<T> *m_value = nullptr;
+#else
   std::remove_reference_t<T> *m_value;
+#endif
 };
 
 // ------------------------------------------------------------------------ //

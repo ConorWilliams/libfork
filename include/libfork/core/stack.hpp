@@ -185,12 +185,9 @@ struct frame_block : detail::immovable<frame_block>, debug_block {
     return m_top;
   }
 
-  auto parent() const noexcept -> frame_block * {
-    LF_ASSERT(m_parent);
-    return m_parent;
-  }
+  [[nodiscard]] auto parent() const noexcept -> frame_block * { return non_null(m_parent); }
 
-  auto coro() noexcept -> std::coroutine_handle<> {
+  [[nodiscard]] auto coro() noexcept -> std::coroutine_handle<> {
 #ifndef LF_COROUTINE_OFFSET
     return m_coro;
 #else

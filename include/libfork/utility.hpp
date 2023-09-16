@@ -149,6 +149,12 @@ concept reference = std::is_reference_v<T>;
 template <typename T>
 concept non_void = !std::is_void_v<T>;
 
+template <typename T>
+auto non_null(T *ptr) noexcept -> T * {
+  LF_ASSERT(ptr != nullptr);
+  return ptr;
+}
+
 template <class F, class Tuple>
 constexpr auto apply(Tuple &&tup, F &&func) LF_HOF_RETURNS(std::apply(std::forward<F>(func), std::forward<Tuple>(tup)))
 

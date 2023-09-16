@@ -12,7 +12,7 @@
 
 // SPDX-License-Identifier: MPL-2.0
 
-// Self Source Code Form is subject to the terms of the Mozilla Public
+// This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #ifndef E8D38B49_7170_41BC_90E9_6D6389714304
@@ -22,7 +22,7 @@
 
 // SPDX-License-Identifier: MPL-2.0
 
-// Self Source Code Form is subject to the terms of the Mozilla Public
+// This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
@@ -50,6 +50,14 @@
 #include <utility>
 #ifndef EE6A2701_7559_44C9_B708_474B1AE823B2
 #define EE6A2701_7559_44C9_B708_474B1AE823B2
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <concepts>
 #include <semaphore>
@@ -104,32 +112,6 @@
  */
 #define LF_VERSION_PATCH 0
 
-namespace detail {
-
-#define LF_CONCAT_IMPL(x, y) x##y
-#define LF_CONCAT(x, y) LF_CONCAT_IMPL(x, y)
-
-} // namespace detail
-
-/**
- * @brief Use with ``inline namespace`` to mangle the major version number into the symbol names.
- */
-#define LF_VERSION_ABI LF_CONCAT(_v, LF_VERSION_MAJOR)
-
-#ifdef LF_COROUTINE_OFFSET
-  #define LF_COROUTINE_ABI LF_CONCAT(LF_COROUTINE_OFFSET, LF_VERSION_ABI)
-#else
-  #define LF_COROUTINE_ABI LF_CONCAT(dynamic, LF_VERSION_ABI)
-#endif
-
-#if defined(NDEBUG)
-  #define LF_ABI LF_CONCAT(release_, LF_COROUTINE_ABI)
-#else
-  #define LF_ABI LF_CONCAT(debug_, LF_COROUTINE_ABI)
-#endif
-
-// LF_ABI
-
 #ifndef LF_ASYNC_STACK_SIZE
   /**
    * @brief A customizable stack size for ``async_stack``'s (in kibibytes).
@@ -142,8 +124,7 @@ namespace detail {
 static_assert(LF_ASYNC_STACK_SIZE >= 1, "LF_ASYNC_STACK_SIZE must be at least 1 kilobyte");
 
 /**
- * @brief Use to decorate lambdas and ``operator()`` (alongside ``LF_STATIC_CONST``) with ``static`` if
- * supported.
+ * @brief Use to conditionally decorate lambdas and ``operator()`` (alongside ``LF_STATIC_CONST``) with ``static``.
  */
 #ifdef __cpp_static_call_operator
   #define LF_STATIC_CALL static
@@ -152,7 +133,7 @@ static_assert(LF_ASYNC_STACK_SIZE >= 1, "LF_ASYNC_STACK_SIZE must be at least 1 
 #endif
 
 /**
- * @brief Use with ``LF_STATIC_CALL`` to decorate ``operator()`` with ``const`` if supported.
+ * @brief Use with ``LF_STATIC_CALL`` to conditionally decorate ``operator()`` with ``const``.
  */
 #ifdef __cpp_static_call_operator
   #define LF_STATIC_CONST
@@ -279,7 +260,6 @@ static_assert(LF_ASYNC_STACK_SIZE >= 1, "LF_ASYNC_STACK_SIZE must be at least 1 
 #ifndef LF_LOG
   #ifdef LF_LOGGING
     #include <iostream>
-    #include <mutex>
     #include <thread>
     #include <type_traits>
 
@@ -463,6 +443,12 @@ concept reference = std::is_reference_v<T>;
 template <typename T>
 concept non_void = !std::is_void_v<T>;
 
+template <typename T>
+auto non_null(T *ptr) noexcept -> T * {
+  LF_ASSERT(ptr != nullptr);
+  return ptr;
+}
+
 template <class F, class Tuple>
 constexpr auto apply(Tuple &&tup, F &&func) LF_HOF_RETURNS(std::apply(std::forward<F>(func), std::forward<Tuple>(tup)))
 
@@ -472,6 +458,14 @@ constexpr auto apply(Tuple &&tup, F &&func) LF_HOF_RETURNS(std::apply(std::forwa
 
 #ifndef B7972761_4CBF_4B86_B195_F754295372BF
 #define B7972761_4CBF_4B86_B195_F754295372BF
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <functional>
 #include <memory>
@@ -534,21 +528,25 @@ public:
    *
    * This will decay T&& to T& just like a regular T&& function parameter.
    */
-  [[nodiscard]] constexpr auto operator*() const & noexcept -> std::remove_reference_t<T> & { return *m_value; }
+  [[nodiscard]] constexpr auto operator*() const & noexcept -> std::remove_reference_t<T> & { return *non_null(m_value); }
 
   /**
    * @brief Access the wrapped object.
    */
   [[nodiscard]] constexpr auto operator*() const && noexcept -> T {
     if constexpr (std::is_rvalue_reference_v<T>) {
-      return std::move(*m_value);
+      return std::move(*non_null(m_value));
     } else {
-      return *m_value;
+      return *non_null(m_value);
     }
   }
 
 private:
+#ifndef NDEBUG
+  std::remove_reference_t<T> *m_value = nullptr;
+#else
   std::remove_reference_t<T> *m_value;
+#endif
 };
 
 // ------------------------------------------------------------------------ //
@@ -754,15 +752,19 @@ in_place(Args &&...) -> in_place<Args &&...>;
 
 namespace detail {
 
+// General case = invalid.
 template <typename R, typename T>
 struct valid_result_help : std::false_type {};
 
+// Ignore case
 template <typename T>
 struct valid_result_help<void, T> : std::true_type {};
 
+// Root result special case (especially T = void)
 template <typename T>
 struct valid_result_help<root_result<T>, T> : std::true_type {};
 
+// Eventually special (for immovable types that cannot be assigned).
 template <typename T>
 struct valid_result_help<eventually<T>, T> : std::true_type {};
 
@@ -779,7 +781,7 @@ concept valid_result = !reference<R> && detail::valid_result_help<R, T>::value;
 
 template <typename T>
 struct maybe_ptr {
-  explicit constexpr maybe_ptr(T *ptr) noexcept : m_ptr(ptr) { LF_ASSERT(ptr); }
+  explicit constexpr maybe_ptr(T *ptr) noexcept : m_ptr(non_null(ptr)) {}
 
   constexpr auto address() const noexcept -> T * { return m_ptr; }
 
@@ -824,6 +826,10 @@ struct promise_result<root_result<void>, void> : maybe_ptr<root_result<void>> {
 /*
 
 Want to model:
+
+R val = [] -> T { ... }();
+
+But really have:
 
 R val;
 
@@ -1145,12 +1151,9 @@ struct frame_block : detail::immovable<frame_block>, debug_block {
     return m_top;
   }
 
-  auto parent() const noexcept -> frame_block * {
-    LF_ASSERT(m_parent);
-    return m_parent;
-  }
+  [[nodiscard]] auto parent() const noexcept -> frame_block * { return non_null(m_parent); }
 
-  auto coro() noexcept -> std::coroutine_handle<> {
+  [[nodiscard]] auto coro() noexcept -> std::coroutine_handle<> {
 #ifndef LF_COROUTINE_OFFSET
     return m_coro;
 #else
@@ -1370,7 +1373,7 @@ template <typename T = void, fixed_string Name = "">
 struct task {
   using value_type = T; ///< The type of the value returned by the coroutine.
 
-  explicit(false) task(frame_block *frame) : m_frame{frame} { LF_ASSERT(frame); }
+  explicit(false) task(frame_block *frame) : m_frame{non_null(frame)} {}
 
   [[nodiscard]] constexpr auto frame() const noexcept -> frame_block * { return m_frame; }
 
@@ -1469,7 +1472,7 @@ concept first_arg = requires(Arg arg) {
 
   requires !std::is_reference_v<return_of<Arg>>;
 
-  { std::remove_cvref_t<Arg>::context() } -> std::same_as<context_of<Arg> &>;
+  { std::remove_cvref_t<Arg>::context() } -> std::same_as<context_of<Arg> *>;
 
   requires std::is_void_v<return_of<Arg>> || requires {
     { arg.address() } -> std::convertible_to<return_of<Arg> *>;
@@ -1521,11 +1524,7 @@ struct patched : Head {
 
   using context_type = Context;
 
-  [[nodiscard]] static auto context() -> Context & {
-    Context *ctx = tls::ctx<Context>;
-    LF_ASSERT(ctx);
-    return *ctx;
-  }
+  [[nodiscard]] static auto context() -> Context * { return non_null(tls::ctx<Context>); }
 };
 
 /**
@@ -1666,7 +1665,7 @@ struct basic_first_arg<void, Tag, F> : async<F>, detail::move_only<basic_first_a
   using function_type = F;              ///< The underlying async
   static constexpr tag tag_value = Tag; ///< The tag value.
 
-  [[nodiscard]] static auto context() -> context_type & { LF_THROW(std::runtime_error{"Should never be called!"}); }
+  [[nodiscard]] static auto context() -> context_type * { LF_THROW(std::runtime_error{"Should never be called!"}); }
 };
 
 /**
@@ -1910,17 +1909,13 @@ public:
 
         child.destroy();
 
-        LF_ASSERT(parent);
-
         if constexpr (Tag == tag::call) {
           LF_LOG("Inline task resumes parent");
           // Inline task's parent cannot have been stolen, no need to reset control block.
           return parent->coro();
         }
 
-        Context *context = tls::ctx<Context>;
-
-        LF_ASSERT(context);
+        Context *context = non_null(tls::ctx<Context>);
 
         if (frame_block *parent_task = context->task_pop()) {
           // No-one stole continuation, we are the exclusive owner of parent, just keep ripping!
@@ -2198,6 +2193,14 @@ struct lf::stdx::coroutine_traits<Task, This, Head, Args...> : lf::stdx::corouti
 #endif /* FF9F3B2C_DC2B_44D2_A3C2_6E40F211C5B0 */
 #ifndef E54125F4_034E_45CD_8DF4_7A71275A5308
 #define E54125F4_034E_45CD_8DF4_7A71275A5308
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <type_traits>
 
