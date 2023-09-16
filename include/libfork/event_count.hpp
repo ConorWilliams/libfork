@@ -154,8 +154,9 @@ private:
   static_assert(sizeof(std::atomic<std::uint64_t>) == 8, "bad platform, need 64 bit atomic ints");
 
   static constexpr bool k_is_little_endian = std::endian::native == std::endian::little;
+  static constexpr bool k_is_big_endian = std::endian::native == std::endian::big;
 
-  static_assert(k_is_little_endian || std::endian::native == std::endian::big, "bad platform, mixed endian");
+  static_assert(k_is_little_endian || k_is_big_endian, "bad platform, mixed endian");
 
   static constexpr size_t k_epoch_offset = k_is_little_endian ? 1 : 0;
 

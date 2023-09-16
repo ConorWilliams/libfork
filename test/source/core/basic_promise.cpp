@@ -115,8 +115,8 @@ TEST_CASE("fib", "[promise]") {
 
   volatile int in = 20;
 
-  int x;
-  int y;
+  int x = 0;
+  int y = 1;
 
   BENCHMARK("inline") {
     inline_fiber(y, in);

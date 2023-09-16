@@ -110,7 +110,7 @@ target_link_libraries(
 
 #### Using git submodules
 
-Assuming you clone libfork as a submodule into ``external/libfork``
+Assuming you cloned libfork as a submodule into ``external/libfork``
 
 ```cmake
 add_subdirectory(external/libfork)

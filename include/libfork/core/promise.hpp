@@ -72,7 +72,7 @@ public:
   template <not_first_arg Self, first_arg Head, typename... Tail>
   explicit constexpr promise_type(Self const &, Head const &head, Tail const &...tail) noexcept
     requires std::constructible_from<promise_result<R, T>, R *>
-      : promise_type{head, std::forward<Tail>(tail)...} {}
+      : promise_type{head, tail...} {}
 
   /**
    * @brief Construct promise with void return type.

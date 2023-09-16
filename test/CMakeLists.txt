@@ -5,7 +5,6 @@ project(libforkTests LANGUAGES CXX)
 include(../cmake/project-is-top-level.cmake)
 include(../cmake/folders.cmake)
 include(../cmake/windows-set-path.cmake)
-include(../cmake/CPM.cmake)
 
 # ---- Dependencies ----
 
@@ -14,7 +13,7 @@ if(PROJECT_IS_TOP_LEVEL)
   enable_testing()
 endif()
 
-CPMAddPackage("gh:catchorg/Catch2#v3.3.2")
+find_package(Catch2 REQUIRED)
 
 # ---- Tests ----
 

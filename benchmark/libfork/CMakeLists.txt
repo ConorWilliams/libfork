@@ -4,14 +4,13 @@ project(bench_libfork LANGUAGES CXX)
 
 include(../../cmake/project-is-top-level.cmake)
 include(../../cmake/folders.cmake)
-include(../../cmake/CPM.cmake)
 
 # ---- Dependencies ----
 if(PROJECT_IS_TOP_LEVEL)
   find_package(libfork REQUIRED)
 endif()
 
-CPMAddPackage("gh:martinus/nanobench#v4.1.0")
+find_package(nanobench REQUIRED)
 
 # ---- Benchmarks ----
 add_executable(lf_fib.bench fib.cpp)

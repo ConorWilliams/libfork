@@ -114,14 +114,14 @@ TEST_CASE("fib on stack", "[virtual_stack]") {
 
     volatile int p = 20;
 
-    int y;
+    int y = 0;
 
     BENCHMARK("Fibonacci " + std::to_string(p) + " function") {
       inline_fib(y, p);
       return y;
     };
 
-    int x;
+    int x = 1;
 
     BENCHMARK("Fibonacci " + std::to_string(p) + " coroutine") {
       fib(x, p).frame->coro().resume();

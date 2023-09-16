@@ -17,7 +17,6 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 include(cmake/project-is-top-level.cmake)
 include(cmake/variables.cmake)
-include(cmake/CPM.cmake)
 
 # ---- Dependencies ----
 
