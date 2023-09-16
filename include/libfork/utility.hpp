@@ -36,7 +36,7 @@
 namespace lf {
 
 /**
- * @brief A inline namespace that wraps core functionality.
+ * @brief An inline namespace that wraps core functionality.
  *
  * This is the namespace that contains the user-facing API of ``libfork``.
  */

@@ -8,6 +8,9 @@ Namespaces in ``libfork``
 
 Below namespace ``lf`` this library is partitioned into disjoint namespaces.
 
+Core API
+~~~~~~~~~~~~~~~~~~~~~~~~
+
 .. doxygennamespace:: lf::core
     :desc-only:
     :no-link:
@@ -17,6 +20,9 @@ Below namespace ``lf`` this library is partitioned into disjoint namespaces.
 
    api/core.rst
 
+Extension API
+~~~~~~~~~~~~~~~~~~~~~~~~
+
 .. doxygennamespace:: lf::ext
     :desc-only:
     :no-link:  
@@ -25,6 +31,9 @@ Below namespace ``lf`` this library is partitioned into disjoint namespaces.
    :maxdepth: 3
 
    api/ext.rst
+
+Internal docs
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygennamespace:: lf::impl
     :desc-only:

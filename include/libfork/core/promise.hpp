@@ -53,146 +53,96 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
   static_assert(Tag == tag::fork || Tag == tag::call || Tag == tag::root);
   static_assert(Tag != tag::root || is_root_result_v<R>);
 
- public:
-  /**
-   * @brief Construct promise, sets return address.
-   */
-  template <first_arg Head, typename... Tail>
-  explicit constexpr promise_type(Head const &head, Tail const &...) noexcept
-    requires std::constructible_from<promise_result<R, T>, R *>
-      : allocator<Tag>{stdx::coroutine_handle<promise_type>::from_promise(*this)},
-        promise_result<R, T>{head.address()} {}
+  struct final_awaitable : stdx::suspend_always {
+    constexpr auto await_suspend(stdx::coroutine_handle<promise_type> child) const noexcept -> stdx::coroutine_handle<> {
 
-  /**
-   * @brief Construct promise, sets return address.
-   *
-   * For member function coroutines.
-   */
-  template <not_first_arg Self, first_arg Head, typename... Tail>
-  explicit constexpr promise_type(Self const &, Head const &head, Tail const &...tail) noexcept
-    requires std::constructible_from<promise_result<R, T>, R *>
-      : promise_type{head, tail...} {}
-
-  /**
-   * @brief Construct promise with void return type.
-   */
-  constexpr promise_type() noexcept : allocator<Tag>(stdx::coroutine_handle<promise_type>::from_promise(*this)) {}
-
-  auto get_return_object() noexcept -> frame_block * { return this; }
-
-  static auto initial_suspend() -> stdx::suspend_always { return {}; }
-
-  /**
-   * @brief Terminates the program.
-   */
-  void unhandled_exception() noexcept {
-    noexcept_invoke([] { LF_RETHROW; });
-  }
-
-  auto final_suspend() noexcept {
-
-    LF_LOG("At final suspend call");
-
-    // Completing a non-root task means we currently own the async_stack this child is on
-
-    LF_ASSERT(this->debug_count() == 0);
-    LF_ASSERT(this->steals() == 0);                                      // Fork without join.
-    LF_ASSERT(this->load_joins(std::memory_order_relaxed) == k_u32_max); // Destroyed in invalid state.
-
-    struct final_awaitable : stdx::suspend_always {
-      constexpr auto await_suspend(stdx::coroutine_handle<promise_type> child) const noexcept -> stdx::coroutine_handle<> {
-
-        if constexpr (Tag == tag::root) {
-          LF_LOG("Root task at final suspend, releases semaphore");
-          // Finishing a root task implies our stack is empty and should have no exceptions.
-          child.promise().address()->semaphore.release();
-          child.destroy();
-          LF_LOG("Root task yields to executor");
-          return stdx::noop_coroutine();
-        }
-
-        LF_LOG("Task reaches final suspend");
-
-        frame_block *parent = child.promise().parent();
-
+      if constexpr (Tag == tag::root) {
+        LF_LOG("Root task at final suspend, releases semaphore");
+        // Finishing a root task implies our stack is empty and should have no exceptions.
+        child.promise().address()->semaphore.release();
         child.destroy();
-
-        if constexpr (Tag == tag::call) {
-          LF_LOG("Inline task resumes parent");
-          // Inline task's parent cannot have been stolen, no need to reset control block.
-          return parent->coro();
-        }
-
-        Context *context = non_null(tls::ctx<Context>);
-
-        if (frame_block *parent_task = context->task_pop()) {
-          // No-one stole continuation, we are the exclusive owner of parent, just keep ripping!
-          LF_LOG("Parent not stolen, keeps ripping");
-          LF_ASSERT(parent_task == parent);
-          // This must be the same thread that created the parent so it already owns the stack.
-          // No steals have occurred so we do not need to call reset().;
-          return parent->coro();
-        }
-
-        // We are either: the thread that created the parent or a thread that completed a forked task.
-
-        // Note: emptying stack implies finished a stolen task or finished a task forked from root.
-
-        // Cases:
-        // 1. We are fork_from_root_t
-        //    - Every task forked from root is the the first task on a stack -> stack is empty now.
-        //      Parent (root) is not on a stack so do not need to take/release control
-        // 2. We are fork_t
-        //    - Stack is empty -> we cannot be the thread that created the parent as it would be on our stack.
-        //    - Stack is non-empty -> we must be the creator of the parent
-
-        // If we created the parent then our current stack is non empty (unless the parent is a root task).
-        // If we did not create the parent then we just cleared our current stack and it is now empty.
-
-        LF_LOG("Task's parent was stolen");
-
-        // Register with parent we have completed this child task.
-        if (parent->fetch_sub_joins(1, std::memory_order_release) == 1) {
-          // Acquire all writes before resuming.
-          std::atomic_thread_fence(std::memory_order_acquire);
-
-          // Parent has reached join and we are the last child task to complete.
-          // We are the exclusive owner of the parent therefore, we must continue parent.
-
-          LF_LOG("Task is last child to join, resumes parent");
-
-          if (!parent->is_root()) [[likely]] {
-            if (parent->top() != tls::asp) {
-              tls::eat<Context>(parent->top());
-            }
-          }
-
-          // Must reset parents control block before resuming parent.
-          parent->reset();
-
-          return parent->coro();
-        }
-
-        // Parent has not reached join or we are not the last child to complete.
-        // We are now out of jobs, must yield to executor.
-
-        LF_LOG("Task is not last to join");
-
-        if (parent->top() == tls::asp) {
-          // We are unable to resume the parent, as the resuming thread will take
-          // ownership of the parent's stack we must give it up.
-          LF_LOG("Thread releases control of parent's stack");
-          tls::asp = stack_as_bytes(context->stack_pop());
-        }
-
+        LF_LOG("Root task yields to executor");
         return stdx::noop_coroutine();
       }
-    };
 
-    return final_awaitable{};
-  }
+      LF_LOG("Task reaches final suspend");
 
- private:
+      frame_block *parent = child.promise().parent();
+
+      child.destroy();
+
+      if constexpr (Tag == tag::call) {
+        LF_LOG("Inline task resumes parent");
+        // Inline task's parent cannot have been stolen, no need to reset control block.
+        return parent->coro();
+      }
+
+      Context *context = non_null(tls::ctx<Context>);
+
+      if (frame_block *parent_task = context->task_pop()) {
+        // No-one stole continuation, we are the exclusive owner of parent, just keep ripping!
+        LF_LOG("Parent not stolen, keeps ripping");
+        LF_ASSERT(parent_task == parent);
+        // This must be the same thread that created the parent so it already owns the stack.
+        // No steals have occurred so we do not need to call reset().;
+        return parent->coro();
+      }
+
+      // We are either: the thread that created the parent or a thread that completed a forked task.
+
+      // Note: emptying stack implies finished a stolen task or finished a task forked from root.
+
+      // Cases:
+      // 1. We are fork_from_root_t
+      //    - Every task forked from root is the the first task on a stack -> stack is empty now.
+      //      Parent (root) is not on a stack so do not need to take/release control
+      // 2. We are fork_t
+      //    - Stack is empty -> we cannot be the thread that created the parent as it would be on our stack.
+      //    - Stack is non-empty -> we must be the creator of the parent
+
+      // If we created the parent then our current stack is non empty (unless the parent is a root task).
+      // If we did not create the parent then we just cleared our current stack and it is now empty.
+
+      LF_LOG("Task's parent was stolen");
+
+      // Register with parent we have completed this child task.
+      if (parent->fetch_sub_joins(1, std::memory_order_release) == 1) {
+        // Acquire all writes before resuming.
+        std::atomic_thread_fence(std::memory_order_acquire);
+
+        // Parent has reached join and we are the last child task to complete.
+        // We are the exclusive owner of the parent therefore, we must continue parent.
+
+        LF_LOG("Task is last child to join, resumes parent");
+
+        if (!parent->is_root()) [[likely]] {
+          if (parent->top() != tls::asp) {
+            tls::eat<Context>(parent->top());
+          }
+        }
+
+        // Must reset parents control block before resuming parent.
+        parent->reset();
+
+        return parent->coro();
+      }
+
+      // Parent has not reached join or we are not the last child to complete.
+      // We are now out of jobs, must yield to executor.
+
+      LF_LOG("Task is not last to join");
+
+      if (parent->top() == tls::asp) {
+        // We are unable to resume the parent, as the resuming thread will take
+        // ownership of the parent's stack we must give it up.
+        LF_LOG("Thread releases control of parent's stack");
+        tls::asp = stack_as_bytes(context->stack_pop());
+      }
+
+      return stdx::noop_coroutine();
+    }
+  };
+
   struct fork_awaitable : stdx::suspend_always {
     constexpr auto await_suspend(stdx::coroutine_handle<promise_type> parent) noexcept -> stdx::coroutine_handle<> {
       LF_LOG("Forking, push parent to context");
@@ -302,6 +252,54 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
  public:
   /**
+   * @brief Construct promise with void return type.
+   */
+  constexpr promise_type() noexcept : allocator<Tag>(stdx::coroutine_handle<promise_type>::from_promise(*this)) {}
+
+  /**
+   * @brief Construct promise, sets return address.
+   */
+  template <first_arg Head, typename... Tail>
+  explicit constexpr promise_type(Head const &head, Tail const &...) noexcept
+    requires std::constructible_from<promise_result<R, T>, R *>
+      : allocator<Tag>{stdx::coroutine_handle<promise_type>::from_promise(*this)},
+        promise_result<R, T>{head.address()} {}
+
+  /**
+   * @brief Construct promise, sets return address.
+   *
+   * For member function coroutines.
+   */
+  template <not_first_arg Self, first_arg Head, typename... Tail>
+  explicit constexpr promise_type(Self const &, Head const &head, Tail const &...tail) noexcept
+    requires std::constructible_from<promise_result<R, T>, R *>
+      : promise_type{head, tail...} {}
+
+  auto get_return_object() noexcept -> frame_block * { return this; }
+
+  static auto initial_suspend() -> stdx::suspend_always { return {}; }
+
+  /**
+   * @brief Terminates the program.
+   */
+  void unhandled_exception() noexcept {
+    noexcept_invoke([] { LF_RETHROW; });
+  }
+
+  auto final_suspend() noexcept -> final_awaitable {
+
+    LF_LOG("At final suspend call");
+
+    // Completing a non-root task means we currently own the async_stack this child is on
+
+    LF_ASSERT(this->debug_count() == 0);
+    LF_ASSERT(this->steals() == 0);                                      // Fork without join.
+    LF_ASSERT(this->load_joins(std::memory_order_relaxed) == k_u32_max); // Destroyed in invalid state.
+
+    return final_awaitable{};
+  }
+
+  /**
    * @brief Transform a fork packet into a fork awaitable.
    */
   template <first_arg Head, typename... Args>
@@ -310,6 +308,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
     this->debug_inc();
     return {{}, this, std::move(packet).template patch_with<Context>().invoke(this)};
   }
+
   /**
    * @brief Transform a call packet into a call awaitable.
    */
@@ -319,23 +318,26 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
     return {{}, std::move(packet).template patch_with<Context>().invoke(this)};
   }
 
+  /**
+   * @brief Transform an invoke packet into a call awaitable.
+   */
   template <typename F, typename... Args>
   constexpr auto await_transform(packet<basic_first_arg<void, tag::invoke, F>, Args...> &&packet) {
 
     using packet_t = impl::packet<basic_first_arg<void, tag::invoke, F>, Args...>;
+
     static_assert(non_void<value_of<packet_t>>, "async's call op should prevent this");
-    using return_t = eventually<value_of<packet_t>>;
+
+    using new_packet_t = impl::packet<basic_first_arg<eventually<value_of<packet_t>>, tag::call, F>, Args...>;
 
     struct awaitable : stdx::suspend_always {
       constexpr auto await_suspend(stdx::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
-
-        using new_packet_t = impl::packet<basic_first_arg<return_t, tag::call, F>, Args...>;
 
         new_packet_t new_packet = std::move(m_packet).apply([&](auto, Args &&...args) -> new_packet_t {
           return {{m_res}, std::forward<Args>(args)...};
         });
 
-        static_assert(std::same_as<value_of<packet_t>, value_of<new_packet_t>>, "Value type dependent on first arg!");
+        static_assert(std::same_as<value_of<packet_t>, value_of<new_packet_t>>, "value_type dependent on first arg!");
 
         LF_LOG("Invoking");
         return std::move(new_packet).template patch_with<Context>().invoke(parent)->coro();
@@ -345,7 +347,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
       frame_block *parent;
       packet_t m_packet;
-      return_t m_res;
+      eventually<value_of<packet_t>> m_res;
     };
 
     return awaitable{{}, this, std::move(packet), {}};

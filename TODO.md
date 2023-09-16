@@ -9,7 +9,7 @@
       - [x] Redo name spacing (rm `DEPENDANT_ABI`, `user`, `detail`, `impl`, and `schedule`).
 
 2. Get the docs building and looking good again.
-      - [ ] Rename `DOXYGEN_SHOULD_SKIP_THIS` to `DOXYGEN_PROCESSOR`.
+      - [x] Rename `DOXYGEN_SHOULD_SKIP_THIS` to `DOXYGEN_PROCESSOR`.
 
 3. Get it compiling on CI:
       - [x] Remove CPM.cmake

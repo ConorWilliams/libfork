@@ -1,7 +1,7 @@
 Core
 ===================
 
-The core module contains the basic building blocks of the library. 
+The ``core`` namespace contains the basic building blocks of the library. 
 
 Concepts
 ------------
@@ -9,11 +9,6 @@ Concepts
 .. doxygenconcept:: lf::core::stateless
 
 .. doxygenconcept:: lf::core::first_arg
-
-.. literalinclude:: ../../include/libfork/core/task.hpp
-   :start-at: template <typename Arg>
-   :end-before: // !END-GRAB
-
 
 Control flow
 --------------------------------
@@ -28,7 +23,6 @@ Control flow
 
 .. doxygenvariable:: lf::core::tail
 
-
 Classes
 ------------
 
@@ -38,8 +32,7 @@ Classes
 
    core/*
 
-
-Automatic listing:
+Generated listing
 ---------------------
 
 .. toctree::
