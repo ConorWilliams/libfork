@@ -605,7 +605,7 @@ inline namespace core {
  *    for the reference specialization.
  *
  * .. warning::
- *    It is undefined behaviour if the object is not constructed before it is used or if the lifetime of the
+ *    It is undefined behavior if the object is not constructed before it is used or if the lifetime of the
  *    ``lf::eventually`` ends before an object is constructed.
  *
  * \endrst

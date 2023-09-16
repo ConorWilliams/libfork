@@ -6,15 +6,15 @@
       - [x] Where we can use `LF_HOF_RETURNS`
       - [x] Update licenses at top of files.
       - [x] Touch up `std::` includes.
-      - [ ] Redo name spacing (rm `DEPENDANT_ABI`, `user`, `detail`, `impl`, and `schedule`).
+      - [x] Redo name spacing (rm `DEPENDANT_ABI`, `user`, `detail`, `impl`, and `schedule`).
 
 2. Get the docs building and looking good again.
       - [ ] Rename `DOXYGEN_SHOULD_SKIP_THIS` to `DOXYGEN_PROCESSOR`.
 
 3. Get it compiling on CI:
-      - [ ] Remove CPM.cmake
+      - [x] Remove CPM.cmake
       - [ ] Try core test suit on compiler explorer, fix constexpr requirements in i.e. `byte_cast`.
-      - [ ] vcpkg for tests.
+      - [x] vcpkg for tests.
       - [ ] `-fno-exceptions` test.
       - [ ] check `single_header.hpp` is up to date.
 
