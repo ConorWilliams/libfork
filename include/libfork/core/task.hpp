@@ -33,35 +33,47 @@
 
 namespace lf {
 
+inline namespace core {
+
+/**
+ * @brief A fixed string type for template parameters that tracks its source location.
+ */
 template <typename Char, std::size_t N>
-struct fixed_string {
+struct tracked_fixed_string {
 private:
   using sloc = std::source_location;
+  static constexpr std::size_t file_name_max_size = 127;
 
 public:
-  explicit(false) consteval fixed_string(Char const (&str)[N], sloc loc = sloc::current()) noexcept
+  explicit(false) consteval tracked_fixed_string(Char const (&str)[N], sloc loc = sloc::current()) noexcept
       : line{loc.line()},
         column{loc.column()} {
     for (std::size_t i = 0; i < N; ++i) {
       function_name[i] = str[i];
     }
+
+    // std::size_t count = 0 loc.while
   }
 
-  static constexpr std::size_t file_name_max_size = 127;
-
   std::array<Char, N> function_name;
-  // std::array<Char, file_name_max_size + 1> file_name_buf;
+  // std::array<char, file_name_max_size + 1> file_name_buf;
   // std::size_t file_name_size;
   std::uint_least32_t line;
   std::uint_least32_t column;
 };
 
+} // namespace core
+
 // ----------------------------------------------- //
+
+inline namespace core {
 
 /**
  * @brief The return type for libfork's async functions/coroutines.
+ *
+ * IMPORTANT: The value type ``T`` of a coroutine should not be a function of its first argument.
  */
-template <typename T = void, fixed_string Name = "">
+template <typename T = void, tracked_fixed_string Name = "">
 struct task {
   using value_type = T; ///< The type of the value returned by the coroutine.
 
@@ -73,6 +85,10 @@ private:
   frame_block *m_frame; ///< The frame block for the coroutine.
 };
 
+} // namespace core
+
+namespace impl {
+
 template <typename>
 struct is_task_impl : std::false_type {};
 
@@ -82,10 +98,16 @@ struct is_task_impl<task<T, Name>> : std::true_type {};
 template <typename T>
 concept is_task = is_task_impl<T>::value;
 
+} // namespace impl
+
+inline namespace core {
+
 // ----------------------------------------------- //
 
 /**
  * @brief An enumeration that determines the behavior of a coroutine's promise.
+ *
+ * You can inspect the first arg of an async function to determine the tag.
  */
 enum class tag {
   root,   ///< This coroutine is a root task (allocated on heap) from an ``lf::sync_wait``.
@@ -154,7 +176,7 @@ struct [[nodiscard("async functions must be called")]] async;
  * @brief The API of the first arg passed to an async function.
  */
 template <typename Arg>
-concept first_arg = requires(Arg arg) {
+concept first_arg = impl::unqualified<Arg> && std::is_trivially_copyable_v<Arg> && requires(Arg arg) {
   //
   tag_of<Arg>;
 
@@ -166,7 +188,7 @@ concept first_arg = requires(Arg arg) {
 
   { std::remove_cvref_t<Arg>::context() } -> std::same_as<context_of<Arg> *>;
 
-  requires is_void<return_of<Arg>> || requires {
+  requires impl::is_void<return_of<Arg>> || requires {
     { arg.address() } -> std::convertible_to<return_of<Arg> *>;
   };
 
@@ -178,23 +200,25 @@ concept first_arg = requires(Arg arg) {
   (arg);
 };
 
+} // namespace core
+
+namespace impl {
+
+// ----------------------------------------------- //
+
 template <typename T>
 concept not_first_arg = !first_arg<T>;
 
 // ----------------------------------------------- //
 
-namespace detail {
-
 template <typename Task, typename Head>
 concept valid_return = is_task<Task> && valid_result<return_of<Head>, value_of<Task>>;
-
-} // namespace detail
 
 /**
  * @brief Check that the async function encoded in `Head` is invocable with arguments in `Tail`.
  */
 template <typename Head, typename... Tail>
-concept valid_packet = first_arg<Head> && detail::valid_return<std::invoke_result_t<function_of<Head>, Head, Tail...>, Head>;
+concept valid_packet = first_arg<Head> && valid_return<std::invoke_result_t<function_of<Head>, Head, Tail...>, Head>;
 
 /**
  * @brief A base class for building the first argument to asynchronous functions.
@@ -224,7 +248,7 @@ struct patched : Head {
  */
 template <typename Head, typename... Tail>
   requires valid_packet<Head, Tail...>
-class [[nodiscard("packets must be co_awaited")]] packet : detail::move_only<packet<Head, Tail...>> {
+class [[nodiscard("packets must be co_awaited")]] packet : move_only<packet<Head, Tail...>> {
 public:
   using task_type = std::invoke_result_t<function_of<Head>, Head, Tail...>;
   using value_type = value_of<task_type>;
@@ -274,7 +298,11 @@ private:
   [[no_unique_address]] std::tuple<Head, Tail &&...> m_args;
 };
 
+} // namespace impl
+
 // ----------------------------------------------- //
+
+inline namespace core {
 
 /**
  * @brief Wraps a stateless callable that returns an ``lf::task``.
@@ -302,10 +330,10 @@ struct [[nodiscard("async functions must be called")]] async {
 
 private:
   template <typename... Args>
-  using invoke_packet = packet<basic_first_arg<void, tag::invoke, Fn>, Args...>;
+  using invoke_packet = impl::packet<impl::basic_first_arg<void, tag::invoke, Fn>, Args...>;
 
   template <typename... Args>
-  using call_packet = packet<basic_first_arg<void, tag::call, Fn>, Args...>;
+  using call_packet = impl::packet<impl::basic_first_arg<void, tag::call, Fn>, Args...>;
 
 public:
   /**
@@ -322,13 +350,17 @@ public:
    * @brief Wrap the arguments into an awaitable (in an ``lf::task``) that triggers an invoke.
    */
   template <typename... Args>
-    requires is_void<value_of<invoke_packet<Args...>>>
+    requires impl::is_void<value_of<invoke_packet<Args...>>>
   LF_STATIC_CALL constexpr auto operator()(Args &&...args) LF_STATIC_CONST noexcept -> call_packet<Args...> {
     return {{}, std::forward<Args>(args)...};
   }
 };
 
+} // namespace core
+
 // ----------------------------------------------- //
+
+namespace impl {
 
 /**
  * @brief A type that satisfies the ``thread_context`` concept.
@@ -351,7 +383,7 @@ static_assert(thread_context<dummy_context>, "dummy_context is not a thread_cont
  * @brief Void/ignore specialization.
  */
 template <tag Tag, stateless F>
-struct basic_first_arg<void, Tag, F> : async<F>, detail::move_only<basic_first_arg<void, Tag, F>> {
+struct basic_first_arg<void, Tag, F> : async<F>, move_only<basic_first_arg<void, Tag, F>> {
   using context_type = dummy_context;   ///< A default context
   using return_type = void;             ///< The type of the return address.
   using function_type = F;              ///< The underlying async
@@ -378,6 +410,8 @@ private:
 
 static_assert(first_arg<basic_first_arg<void, tag::root, decltype([] {})>>);
 static_assert(first_arg<basic_first_arg<int, tag::root, decltype([] {})>>);
+
+} // namespace impl
 
 } // namespace lf
 

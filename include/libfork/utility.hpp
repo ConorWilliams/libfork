@@ -15,8 +15,10 @@
 #include <functional>
 #include <limits>
 #include <new>
+#include <tuple>
 #include <type_traits>
 #include <utility>
+#include <version>
 
 #include "libfork/macro.hpp"
 
@@ -26,12 +28,42 @@
  * @brief A collection of internal utilities.
  */
 
-namespace lf::detail {
+/**
+ * @brief The ``libfork`` namespace.
+ *
+ * Everything in ``libfork`` is contained within this namespace.
+ */
+namespace lf {
 
 /**
- * @brief An empty type.
+ * @brief A inline namespace that wraps core functionality.
+ *
+ * This is the namespace that contains the user facing API of ``libfork``.
  */
-struct empty {};
+inline namespace core {}
+
+/**
+ * @brief An inline namespace that wraps extension functionality.
+ *
+ * This namespace is part of ``libfork``s public API but is intended for advanced users writing schedulers, It exposes the
+ * scheduler/context API's alongside some implementation details (such as lock-free queues, and other synchronization
+ * primitives) that could be useful when implementing custom schedulers.
+ */
+inline namespace ext {}
+
+/**
+ * @brief An internal namespace that wraps implementation details.
+ *
+ * This is exposed for internal documentation however it is not part of the public facing API. No entities wrapped in this
+ * namespace should be used as their API's are not stable.
+ */
+namespace impl {}
+
+} // namespace lf
+
+namespace lf::impl {
+
+// ---------------- Constants ---------------- //
 
 /**
  * @brief The cache line size (bytes) of the current architecture.
@@ -54,56 +86,91 @@ static_assert(std::has_single_bit(k_new_align));
  */
 static constexpr std::uint32_t k_u32_max = std::numeric_limits<std::uint32_t>::max();
 
-// /**
-//  * @brief Shorthand for `std::numeric_limits<std::uint32_t>::max()`.
-//  */
-// static constexpr std::uint32_t k_u32_max = std::numeric_limits<std::uint32_t>::max();
+/**
+ * @brief Number of bytes in a kibibyte.
+ */
+inline constexpr std::size_t k_kibibyte = 1024;
 
-inline constexpr std::size_t k_kibibyte = 1024 * 1;          // NOLINT
-inline constexpr std::size_t k_mebibyte = 1024 * k_kibibyte; //
+// ---------------- Utility classes ---------------- //
 
 /**
- * @brief An empty type that is not copiable or movable.
+ * @brief An empty type.
+ */
+struct empty {};
+
+static_assert(std::is_empty_v<empty>);
+
+// -------------------------------- //
+
+/**
+ * @brief An empty base class that is not copiable or movable.
  *
- * The template parameter prevents multiple empty bases.
+ * The template parameter prevents multiple empty bases when inheriting multiple classes.
  */
 template <typename CRTP>
 struct immovable {
-  immovable() = default;
   immovable(const immovable &) = delete;
   immovable(immovable &&) = delete;
   auto operator=(const immovable &) -> immovable & = delete;
   auto operator=(immovable &&) -> immovable & = delete;
+
+protected:
+  immovable() = default;
   ~immovable() = default;
 };
 
 static_assert(std::is_empty_v<immovable<void>>);
 
+// -------------------------------- //
+
 /**
- * @brief An empty type that is only movable.
+ * @brief An empty base class that is move-only.
+ *
+ * The template parameter prevents multiple empty bases when inheriting multiple classes.
  */
 template <typename CRTP>
 struct move_only {
-  move_only() = default;
+
   move_only(const move_only &) = delete;
   move_only(move_only &&) noexcept = default;
   auto operator=(const move_only &) -> move_only & = delete;
   auto operator=(move_only &&) noexcept -> move_only & = default;
+
+protected:
+  move_only() = default;
   ~move_only() = default;
 };
 
 static_assert(std::is_empty_v<immovable<void>>);
 
-/**
- * @brief Invoke a callable with the given arguments, unconditionally noexcept.
- */
-template <typename... Args, std::invocable<Args...> Fn>
-constexpr auto noexcept_invoke(Fn &&fun, Args &&...args) noexcept -> std::invoke_result_t<Fn, Args...> {
-  return std::invoke(std::forward<Fn>(fun), std::forward<Args>(args)...);
-}
+// ---------------- Meta programming ---------------- //
 
 /**
- * @brief Ensure a type is not const/volatile or ref qualified.
+ * @brief Forwards to ``std::is_reference_v<T>``.
+ */
+template <typename T>
+concept reference = std::is_reference_v<T>;
+
+/**
+ * @brief Forwards to ``!std::is_reference_v<T>``.
+ */
+template <typename T>
+concept non_reference = !std::is_reference_v<T>;
+
+/**
+ * @brief Check is a type is ``void``.
+ */
+template <typename T>
+concept is_void = std::is_void_v<T>;
+
+/**
+ * @brief Check is a type is not ``void``.
+ */
+template <typename T>
+concept non_void = !std::is_void_v<T>;
+
+/**
+ * @brief Check if a type has ``const``, ``volatile`` or reference qualifiers.
  */
 template <typename T>
 concept unqualified = std::same_as<std::remove_cvref_t<T>, T>;
@@ -127,40 +194,76 @@ struct forward_cv<From const volatile, To> : std::type_identity<To const volatil
 
 } // namespace detail
 
-template <typename From, typename To>
+/**
+ * @brief Copy the ``const``/``volatile`` qualifiers from ``From`` to ``To``.
+ */
+template <non_reference From, unqualified To>
 using forward_cv_t = typename detail::forward_cv<From, To>::type;
 
+namespace detail {
+
+template <typename T>
+struct constify_ref;
+
+template <typename T>
+struct constify_ref<T &> : std::type_identity<T const &> {};
+
+template <typename T>
+struct constify_ref<T &&> : std::type_identity<T const &&> {};
+
+} // namespace detail
+
 /**
- * @brief Cast a pointer to a byte pointer.
+ * @brief Convert ``T & -> T const&`` and ``T && -> T const&&``.
  */
-template <typename T>
-auto byte_cast(T *ptr) LF_HOF_RETURNS(std::bit_cast<forward_cv_t<T, std::byte> *>(ptr))
-
-} // namespace lf::detail
-
-namespace lf {
+template <reference T>
+using constify_ref_t = detail::constify_ref<T>::type;
 
 /**
- * @brief Forwards to ``std::is_reference_v<T>``.
+ * @brief True if the unqualified ``T`` and ``U`` refer to different types.
+ *
+ * This is useful for preventing ''T &&'' constructor/assignment from replacing the defaults.
  */
-template <typename T>
-concept reference = std::is_reference_v<T>;
+template <typename T, typename U>
+concept converting = !std::same_as<std::remove_cvref_t<U>, std::remove_cvref_t<T>>;
 
-template <typename T>
-concept is_void = std::is_void_v<T>;
+// ---------------- Small functions ---------------- //
 
-template <typename T>
-concept non_void = !std::is_void_v<T>;
+/**
+ * @brief Invoke a callable with the given arguments, unconditionally noexcept.
+ */
+template <typename... Args, std::invocable<Args...> Fn>
+constexpr auto noexcept_invoke(Fn &&fun, Args &&...args) noexcept -> std::invoke_result_t<Fn, Args...> {
+  return std::invoke(std::forward<Fn>(fun), std::forward<Args>(args)...);
+}
 
+// -------------------------------- //
+
+/**
+ * @brief Returns ``ptr`` and asserts it is non-null
+ */
 template <typename T>
 auto non_null(T *ptr) noexcept -> T * {
   LF_ASSERT(ptr != nullptr);
   return ptr;
 }
 
+// -------------------------------- //
+
+/**
+ * @brief Like ``std::apply`` but reverses the argument order.
+ */
 template <class F, class Tuple>
 constexpr auto apply_to(Tuple &&tup, F &&func) LF_HOF_RETURNS(std::apply(std::forward<F>(func), std::forward<Tuple>(tup)))
 
-} // namespace lf
+    // -------------------------------- //
+
+    /**
+     * @brief Cast a pointer to a byte pointer.
+     */
+    template <typename T>
+    auto byte_cast(T *ptr) LF_HOF_RETURNS(std::bit_cast<forward_cv_t<T, std::byte> *>(ptr))
+
+} // namespace lf::impl
 
 #endif /* DF63D333_F8C0_4BBA_97E1_32A78466B8B7 */

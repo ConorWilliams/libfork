@@ -23,22 +23,33 @@
 
 namespace lf {
 
+inline namespace ext {
+
+/**
+ * @brief A concept that schedulers must satisfy.
+ */
 template <typename Sch>
 concept scheduler = requires(Sch &&sch, frame_block *ext) {
   typename context_of<Sch>;
   std::forward<Sch>(sch).submit(ext);
 };
 
+} // namespace ext
+
+inline namespace core {
+
+namespace detail {
+
 template <typename Context, stateless F, typename... Args>
 struct sync_wait_impl {
 
   template <typename R>
-  using first_arg_t = patched<Context, basic_first_arg<R, tag::root, F>>;
+  using first_arg_t = impl::patched<Context, impl::basic_first_arg<R, tag::root, F>>;
 
-  using dummy_packet = packet<first_arg_t<void>, Args...>;
+  using dummy_packet = impl::packet<first_arg_t<void>, Args...>;
   using dummy_packet_value_type = value_of<std::invoke_result_t<F, dummy_packet, Args...>>;
 
-  using real_packet = packet<first_arg_t<root_result<dummy_packet_value_type>>, Args...>;
+  using real_packet = impl::packet<first_arg_t<impl::root_result<dummy_packet_value_type>>, Args...>;
   using real_packet_value_type = value_of<std::invoke_result_t<F, real_packet, Args...>>;
 
   static_assert(std::same_as<dummy_packet_value_type, real_packet_value_type>, "Value type changes!");
@@ -50,15 +61,17 @@ using result_t = typename sync_wait_impl<context_of<Sch>, F, Args...>::real_pack
 template <scheduler Sch, stateless F, typename... Args>
 using packet_t = typename sync_wait_impl<context_of<Sch>, F, Args...>::real_packet;
 
+} // namespace detail
+
 /**
  * @brief The entry point for synchronous execution of asynchronous functions.
  */
 template <scheduler Sch, stateless F, class... Args>
-auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcept -> result_t<Sch, F, Args...> {
+auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcept -> detail::result_t<Sch, F, Args...> {
 
-  root_result<result_t<Sch, F, Args...>> root_block;
+  impl::root_result<detail::result_t<Sch, F, Args...>> root_block;
 
-  packet_t<Sch, F, Args...> packet{{{root_block}}, std::forward<Args>(args)...};
+  detail::packet_t<Sch, F, Args...> packet{{{root_block}}, std::forward<Args>(args)...};
 
   frame_block *ext = std::move(packet).invoke();
 
@@ -72,10 +85,12 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
 
   LF_LOG("Semaphore acquired");
 
-  if constexpr (non_void<result_t<Sch, F, Args...>>) {
+  if constexpr (impl::non_void<detail::result_t<Sch, F, Args...>>) {
     return *std::move(root_block);
   }
 }
+
+} // namespace core
 
 } // namespace lf
 

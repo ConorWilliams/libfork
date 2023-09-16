@@ -274,8 +274,10 @@ static_assert(LF_ASYNC_STACK_SIZE >= 1, "LF_ASYNC_STACK_SIZE must be at least 1 
 #include <functional>
 #include <limits>
 #include <new>
+#include <tuple>
 #include <type_traits>
 #include <utility>
+#include <version>
 
 
 /**
@@ -284,12 +286,42 @@ static_assert(LF_ASYNC_STACK_SIZE >= 1, "LF_ASYNC_STACK_SIZE must be at least 1 
  * @brief A collection of internal utilities.
  */
 
-namespace lf::detail {
+/**
+ * @brief The ``libfork`` namespace.
+ *
+ * Everything in ``libfork`` is contained within this namespace.
+ */
+namespace lf {
 
 /**
- * @brief An empty type.
+ * @brief A inline namespace that wraps core functionality.
+ *
+ * This is the namespace that contains the user facing API of ``libfork``.
  */
-struct empty {};
+inline namespace core {}
+
+/**
+ * @brief An inline namespace that wraps extension functionality.
+ *
+ * This namespace is part of ``libfork``s public API but is intended for advanced users writing schedulers, It exposes the
+ * scheduler/context API's alongside some implementation details (such as lock-free queues, and other synchronization
+ * primitives) that could be useful when implementing custom schedulers.
+ */
+inline namespace ext {}
+
+/**
+ * @brief An internal namespace that wraps implementation details.
+ *
+ * This is exposed for internal documentation however it is not part of the public facing API. No entities wrapped in this
+ * namespace should be used as their API's are not stable.
+ */
+namespace impl {}
+
+} // namespace lf
+
+namespace lf::impl {
+
+// ---------------- Constants ---------------- //
 
 /**
  * @brief The cache line size (bytes) of the current architecture.
@@ -312,56 +344,91 @@ static_assert(std::has_single_bit(k_new_align));
  */
 static constexpr std::uint32_t k_u32_max = std::numeric_limits<std::uint32_t>::max();
 
-// /**
-//  * @brief Shorthand for `std::numeric_limits<std::uint32_t>::max()`.
-//  */
-// static constexpr std::uint32_t k_u32_max = std::numeric_limits<std::uint32_t>::max();
+/**
+ * @brief Number of bytes in a kibibyte.
+ */
+inline constexpr std::size_t k_kibibyte = 1024;
 
-inline constexpr std::size_t k_kibibyte = 1024 * 1;          // NOLINT
-inline constexpr std::size_t k_mebibyte = 1024 * k_kibibyte; //
+// ---------------- Utility classes ---------------- //
 
 /**
- * @brief An empty type that is not copiable or movable.
+ * @brief An empty type.
+ */
+struct empty {};
+
+static_assert(std::is_empty_v<empty>);
+
+// -------------------------------- //
+
+/**
+ * @brief An empty base class that is not copiable or movable.
  *
- * The template parameter prevents multiple empty bases.
+ * The template parameter prevents multiple empty bases when inheriting multiple classes.
  */
 template <typename CRTP>
 struct immovable {
-  immovable() = default;
   immovable(const immovable &) = delete;
   immovable(immovable &&) = delete;
   auto operator=(const immovable &) -> immovable & = delete;
   auto operator=(immovable &&) -> immovable & = delete;
+
+protected:
+  immovable() = default;
   ~immovable() = default;
 };
 
 static_assert(std::is_empty_v<immovable<void>>);
 
+// -------------------------------- //
+
 /**
- * @brief An empty type that is only movable.
+ * @brief An empty base class that is move-only.
+ *
+ * The template parameter prevents multiple empty bases when inheriting multiple classes.
  */
 template <typename CRTP>
 struct move_only {
-  move_only() = default;
+
   move_only(const move_only &) = delete;
   move_only(move_only &&) noexcept = default;
   auto operator=(const move_only &) -> move_only & = delete;
   auto operator=(move_only &&) noexcept -> move_only & = default;
+
+protected:
+  move_only() = default;
   ~move_only() = default;
 };
 
 static_assert(std::is_empty_v<immovable<void>>);
 
-/**
- * @brief Invoke a callable with the given arguments, unconditionally noexcept.
- */
-template <typename... Args, std::invocable<Args...> Fn>
-constexpr auto noexcept_invoke(Fn &&fun, Args &&...args) noexcept -> std::invoke_result_t<Fn, Args...> {
-  return std::invoke(std::forward<Fn>(fun), std::forward<Args>(args)...);
-}
+// ---------------- Meta programming ---------------- //
 
 /**
- * @brief Ensure a type is not const/volatile or ref qualified.
+ * @brief Forwards to ``std::is_reference_v<T>``.
+ */
+template <typename T>
+concept reference = std::is_reference_v<T>;
+
+/**
+ * @brief Forwards to ``!std::is_reference_v<T>``.
+ */
+template <typename T>
+concept non_reference = !std::is_reference_v<T>;
+
+/**
+ * @brief Check is a type is ``void``.
+ */
+template <typename T>
+concept is_void = std::is_void_v<T>;
+
+/**
+ * @brief Check is a type is not ``void``.
+ */
+template <typename T>
+concept non_void = !std::is_void_v<T>;
+
+/**
+ * @brief Check if a type has ``const``, ``volatile`` or reference qualifiers.
  */
 template <typename T>
 concept unqualified = std::same_as<std::remove_cvref_t<T>, T>;
@@ -385,41 +452,77 @@ struct forward_cv<From const volatile, To> : std::type_identity<To const volatil
 
 } // namespace detail
 
-template <typename From, typename To>
+/**
+ * @brief Copy the ``const``/``volatile`` qualifiers from ``From`` to ``To``.
+ */
+template <non_reference From, unqualified To>
 using forward_cv_t = typename detail::forward_cv<From, To>::type;
 
+namespace detail {
+
+template <typename T>
+struct constify_ref;
+
+template <typename T>
+struct constify_ref<T &> : std::type_identity<T const &> {};
+
+template <typename T>
+struct constify_ref<T &&> : std::type_identity<T const &&> {};
+
+} // namespace detail
+
 /**
- * @brief Cast a pointer to a byte pointer.
+ * @brief Convert ``T & -> T const&`` and ``T && -> T const&&``.
  */
-template <typename T>
-auto byte_cast(T *ptr) LF_HOF_RETURNS(std::bit_cast<forward_cv_t<T, std::byte> *>(ptr))
-
-} // namespace lf::detail
-
-namespace lf {
+template <reference T>
+using constify_ref_t = detail::constify_ref<T>::type;
 
 /**
- * @brief Forwards to ``std::is_reference_v<T>``.
+ * @brief True if the unqualified ``T`` and ``U`` refer to different types.
+ *
+ * This is useful for preventing ''T &&'' constructor/assignment from replacing the defaults.
  */
-template <typename T>
-concept reference = std::is_reference_v<T>;
+template <typename T, typename U>
+concept converting = !std::same_as<std::remove_cvref_t<U>, std::remove_cvref_t<T>>;
 
-template <typename T>
-concept is_void = std::is_void_v<T>;
+// ---------------- Small functions ---------------- //
 
-template <typename T>
-concept non_void = !std::is_void_v<T>;
+/**
+ * @brief Invoke a callable with the given arguments, unconditionally noexcept.
+ */
+template <typename... Args, std::invocable<Args...> Fn>
+constexpr auto noexcept_invoke(Fn &&fun, Args &&...args) noexcept -> std::invoke_result_t<Fn, Args...> {
+  return std::invoke(std::forward<Fn>(fun), std::forward<Args>(args)...);
+}
 
+// -------------------------------- //
+
+/**
+ * @brief Returns ``ptr`` and asserts it is non-null
+ */
 template <typename T>
 auto non_null(T *ptr) noexcept -> T * {
   LF_ASSERT(ptr != nullptr);
   return ptr;
 }
 
+// -------------------------------- //
+
+/**
+ * @brief Like ``std::apply`` but reverses the argument order.
+ */
 template <class F, class Tuple>
 constexpr auto apply_to(Tuple &&tup, F &&func) LF_HOF_RETURNS(std::apply(std::forward<F>(func), std::forward<Tuple>(tup)))
 
-} // namespace lf
+    // -------------------------------- //
+
+    /**
+     * @brief Cast a pointer to a byte pointer.
+     */
+    template <typename T>
+    auto byte_cast(T *ptr) LF_HOF_RETURNS(std::bit_cast<forward_cv_t<T, std::byte> *>(ptr))
+
+} // namespace lf::impl
 
 #endif /* DF63D333_F8C0_4BBA_97E1_32A78466B8B7 */
 
@@ -480,26 +583,7 @@ constexpr auto apply_to(Tuple &&tup, F &&func) LF_HOF_RETURNS(std::apply(std::fo
 
 namespace lf {
 
-// ------------------------------------------------------------------------ //
-
-namespace detail {
-
-template <typename T>
-struct constify_ref;
-
-template <typename T>
-struct constify_ref<T &> : std::type_identity<T const &> {};
-
-template <typename T>
-struct constify_ref<T &&> : std::type_identity<T const &&> {};
-
-} // namespace detail
-
-/**
- * @brief Convert ``T & -> T const&`` and ``T && -> T const&&``.
- */
-template <reference T>
-using constify_ref_t = detail::constify_ref<T>::type;
+inline namespace core {
 
 // ------------------------------------------------------------------------ //
 
@@ -509,20 +593,20 @@ using constify_ref_t = detail::constify_ref<T>::type;
  * It is up to the caller to guarantee that the object is constructed before it is used and that an object is
  * constructed before the lifetime of the eventually ends (regardless of it is used).
  */
-template <non_void T>
+template <impl::non_void T>
 class eventually;
 
 // ------------------------------------------------------------------------ //
 
-template <non_void T>
-  requires reference<T>
-class eventually<T> : detail::immovable<eventually<T>> {
+template <impl::non_void T>
+  requires impl::reference<T>
+class eventually<T> : impl::immovable<eventually<T>> {
 public:
   /**
    * @brief Construct an object inside the eventually from ``expr``.
    */
   template <typename U>
-    requires std::same_as<T, U &&> || std::same_as<T, constify_ref_t<U &&>>
+    requires std::same_as<T, U &&> || std::same_as<T, impl::constify_ref_t<U &&>>
   constexpr auto operator=(U &&expr) noexcept -> eventually & {
     m_value = std::addressof(expr);
     return *this;
@@ -597,8 +681,8 @@ static_assert(std::same_as<def_t<eventually<int const &&>>, int const &&>);
 
 // ------------------------------------------------------------------------ //
 
-template <non_void T>
-class eventually : detail::immovable<eventually<T>> {
+template <impl::non_void T>
+class eventually : impl::immovable<eventually<T>> {
 public:
   // clang-format off
 
@@ -671,7 +755,7 @@ public:
 
 private:
   union {
-    detail::empty m_init;
+    impl::empty m_init;
     T m_value;
   };
 
@@ -701,6 +785,8 @@ static_assert(std::same_as<def_t<eventually<int> &&>, int>);
 
 } // namespace detail::static_test
 
+} // namespace core
+
 } // namespace lf
 
 #endif /* B7972761_4CBF_4B86_B195_F754295372BF */
@@ -708,14 +794,16 @@ static_assert(std::same_as<def_t<eventually<int> &&>, int>);
 
 namespace lf {
 
+namespace impl {
+
 /**
- * @brief A small control structure that a root tasks use to communicate with the main thread.
+ * @brief A small control structure that a root task uses to communicate with the main thread.
  */
 template <typename T>
 struct root_result;
 
 template <>
-struct root_result<void> : detail::immovable<root_result<void>> {
+struct root_result<void> : immovable<root_result<void>> {
   std::binary_semaphore semaphore{0};
 };
 
@@ -734,13 +822,22 @@ struct is_root_result<root_result<T>> : std::true_type {};
 
 } // namespace detail
 
+/**
+ * @brief Check if a type is a specialization of `root_result`.
+ */
 template <typename T>
 inline constexpr bool is_root_result_v = detail::is_root_result<T>::value;
 
+} // namespace impl
+
 // ------------------------------------------------------------------------ //
+
+inline namespace core {
 
 /**
  * @brief A tuple-like type with forwarding semantics for in place construction.
+ *
+ * This is can be used as ``co_return in_place{...}`` to return an immovable type to an ``eventually``.
  */
 template <typename... Args>
 struct in_place : std::tuple<Args...> {
@@ -753,7 +850,11 @@ struct in_place : std::tuple<Args...> {
 template <typename... Args>
 in_place(Args &&...) -> in_place<Args &&...>;
 
+} // namespace core
+
 // ------------------------------------------------------------------------ //
+
+inline namespace core {
 
 namespace detail {
 
@@ -767,7 +868,7 @@ struct valid_result_help<void, T> : std::true_type {};
 
 // Root result special case (especially T = void)
 template <typename T>
-struct valid_result_help<root_result<T>, T> : std::true_type {};
+struct valid_result_help<impl::root_result<T>, T> : std::true_type {};
 
 // Eventually special (for immovable types that cannot be assigned).
 template <typename T>
@@ -779,10 +880,17 @@ struct valid_result_help<R, T> : std::true_type {};
 
 } // namespace detail
 
+/**
+ * @brief Verify if a coroutine that returns a ``T`` can be bound to an object of type ``R``.
+ */
 template <typename R, typename T>
-concept valid_result = !reference<R> && detail::valid_result_help<R, T>::value;
+concept valid_result = !impl::reference<R> && detail::valid_result_help<R, T>::value;
+
+} // namespace core
 
 // ------------------------------------------------------------------------ //
+
+namespace impl {
 
 template <typename T>
 struct maybe_ptr {
@@ -797,10 +905,16 @@ private:
 template <>
 struct maybe_ptr<void> {};
 
+} // namespace impl
+
 // ----------------------- //
 
+inline namespace core {
+
 /**
- * @brief A base class for promises that provides the return_[...] methods.
+ * @brief A base class for promises that provides the ``return_[...]`` methods.
+ *
+ * This type is in the ``core`` namespace as return ``return_[...]`` methods are part of the API.
  *
  * @tparam R The type of the return address.
  * @tparam T The type of the return value.
@@ -819,45 +933,32 @@ struct promise_result<void, void> {
 // ------------------------------ rooted void ------------------------------ //
 
 template <>
-struct promise_result<root_result<void>, void> : maybe_ptr<root_result<void>> {
+struct promise_result<impl::root_result<void>, void> : private impl::maybe_ptr<impl::root_result<void>> {
 
-  using maybe_ptr<root_result<void>>::maybe_ptr;
+  using maybe_ptr<impl::root_result<void>>::maybe_ptr;
+
+  using maybe_ptr<impl::root_result<void>>::address;
 
   static constexpr void return_void() noexcept { LF_LOG("return void"); }
 };
 
 // ------------------------------ general case ------------------------------ //
 
-/*
-
-Want to model:
-
-R val = [] -> T { ... }();
-
-But really have:
-
-R val;
-
-val = [] -> T { ... }();
-
-*/
-
-template <typename T, typename U>
-concept converting = !std::same_as<std::remove_cvref_t<U>, std::remove_cvref_t<T>>;
-
 template <typename R, typename T>
   requires valid_result<R, T>
-struct promise_result : maybe_ptr<R> {
+struct promise_result : private impl::maybe_ptr<R> {
 
-  using maybe_ptr<R>::maybe_ptr;
+  using impl::maybe_ptr<R>::maybe_ptr;
+
+  using impl::maybe_ptr<R>::address;
 
   /**
    * @brief Assign `value` to the return address.
    */
   constexpr void return_value(T const &value) const
-    requires std::convertible_to<T const &, T> && (not reference<T>)
+    requires std::convertible_to<T const &, T> && impl::non_reference<R>
   {
-    if constexpr (non_void<R>) {
+    if constexpr (impl::non_void<R>) {
       *(this->address()) = value;
     }
   }
@@ -868,7 +969,7 @@ struct promise_result : maybe_ptr<R> {
   constexpr void return_value(T &&value) const
     requires std::convertible_to<T &&, T>
   {
-    if constexpr (non_void<R>) {
+    if constexpr (impl::non_void<R>) {
       if constexpr (std::is_rvalue_reference_v<T &&>) {
         *(this->address()) = std::move(value);
       } else {
@@ -883,9 +984,9 @@ struct promise_result : maybe_ptr<R> {
    * If the return address is directly assignable from `value` this will not construct the intermediate `T`.
    */
   template <std::convertible_to<T> U>
-    requires converting<T, U>
+    requires impl::converting<T, U>
   constexpr void return_value(U &&value) const {
-    if constexpr (non_void<R>) {
+    if constexpr (impl::non_void<R>) {
       if constexpr (std::is_assignable_v<R &, U &&>) {
         *(this->address()) = std::forward<U>(value);
       } else {
@@ -905,13 +1006,13 @@ public:
    * If the return address has an `.emplace()` method that accepts the arguments in the tuple this will be
    * called directly.
    */
-  template <reference... Args>
+  template <impl::reference... Args>
     requires std::constructible_from<T, Args...>
   constexpr void return_value(in_place<Args...> args) const {
 
 #define LF_FWD_ARGS std::forward<strip_rvalue_ref_t<Args>>(args)...
 
-    if constexpr (non_void<R>) {
+    if constexpr (impl::non_void<R>) {
       apply_to(static_cast<std::tuple<Args...> &&>(args), [ret = this->address()](Args... args) {
         if constexpr (requires { ret->emplace(LF_FWD_ARGS); }) {
           ret->emplace(LF_FWD_ARGS);
@@ -924,6 +1025,8 @@ public:
 
 #undef LF_FWD_ARGS
 };
+
+} // namespace core
 
 // ----------------------------------------------------- //
 
@@ -1004,40 +1107,65 @@ namespace stdx = std::experimental;
 
 namespace lf {
 
+// -------------------- async stack -------------------- //
+
+inline namespace ext {
+
+class async_stack;
+
+} // namespace ext
+
+namespace impl {
+
+static constexpr std::size_t k_stack_size = k_kibibyte * LF_ASYNC_STACK_SIZE;
+
+/**
+ * @brief Get a pointer to the end of a stack's buffer.
+ */
+auto stack_as_bytes(async_stack *stack) noexcept -> std::byte *;
+/**
+ * @brief Convert a pointer to a stack's sentinel `frame_block` to a pointer to the stack.
+ */
+auto bytes_to_stack(std::byte *bytes) noexcept -> async_stack *;
+
+} // namespace impl
+
+inline namespace ext {
+
 /**
  * @brief A fraction of a thread's cactus stack.
  */
-class async_stack : detail::immovable<async_stack> {
-public:
-  /**
-   * @brief Get a pointer to the sentinel `frame_block` on the stack.
-   */
-  auto as_bytes() noexcept -> std::byte * { return std::launder(m_buf + k_size); }
+class async_stack : impl::immovable<async_stack> {
+  alignas(impl::k_new_align) std::byte m_buf[impl::k_stack_size]; // NOLINT
 
-  /**
-   * @brief Convert a pointer to a stack's sentinel `frame_block` to a pointer to the stack.
-   */
-  static auto unsafe_from_bytes(std::byte *bytes) noexcept -> async_stack * {
-#ifdef __cpp_lib_is_pointer_interconvertible
-    static_assert(std::is_pointer_interconvertible_with_class(&async_stack::m_buf));
-#endif
-    return std::launder(std::bit_cast<async_stack *>(bytes - k_size));
-  }
+  friend auto impl::stack_as_bytes(async_stack *stack) noexcept -> std::byte *;
 
-private:
-  static constexpr std::size_t k_size = detail::k_kibibyte * LF_ASYNC_STACK_SIZE;
-
-  alignas(detail::k_new_align) std::byte m_buf[k_size]; // NOLINT
+  friend auto impl::bytes_to_stack(std::byte *bytes) noexcept -> async_stack *;
 };
 
 static_assert(std::is_standard_layout_v<async_stack>);
-static_assert(sizeof(async_stack) == detail::k_kibibyte * LF_ASYNC_STACK_SIZE, "Spurious padding in async_stack!");
+static_assert(sizeof(async_stack) == impl::k_stack_size, "Spurious padding in async_stack!");
 
-// -------------------- Forward decls -------------------- //
+} // namespace ext
+
+namespace impl {
+
+inline auto stack_as_bytes(async_stack *stack) noexcept -> std::byte * { return std::launder(stack->m_buf + k_stack_size); }
+
+inline auto bytes_to_stack(std::byte *bytes) noexcept -> async_stack * {
+#ifdef __cpp_lib_is_pointer_interconvertible
+  static_assert(std::is_pointer_interconvertible_with_class(&async_stack::m_buf));
+#endif
+  return std::launder(std::bit_cast<async_stack *>(bytes - k_stack_size));
+}
+
+} // namespace impl
+
+// ---------------------------------------- //
+
+inline namespace ext {
 
 struct frame_block;
-
-// ----------------------------------------------- //
 
 /**
  * @brief A concept which defines the context interface.
@@ -1056,21 +1184,25 @@ concept thread_context = requires(Context ctx, async_stack *stack, frame_block *
   { ctx.stack_push(stack) };                                 // Push a non-null pointer
 };
 
+} // namespace ext
+
 // ----------------------------------------------- //
 
 /**
  * @brief This namespace contains `inline thread_local constinit` variables and functions to manipulate them.
  */
-namespace tls {
+namespace impl::tls {
 
 template <thread_context Context>
 constinit inline thread_local Context *ctx = nullptr;
 
 constinit inline thread_local std::byte *asp = nullptr;
 
-} // namespace tls
+} // namespace impl::tls
 
 // ----------------------------------------------- //
+
+namespace impl {
 
 /**
  * @brief A base class that (compile-time) conditionally adds debugging information.
@@ -1107,13 +1239,16 @@ private:
 
 static_assert(std::is_trivially_destructible_v<debug_block>);
 
+} // namespace impl
+
 // ----------------------------------------------- //
 
-/**
- * @brief A small bookkeeping struct allocated immediately before/after each coroutine frame.
- */
-struct frame_block : detail::immovable<frame_block>, debug_block {
+inline namespace ext {
 
+/**
+ * @brief A small bookkeeping struct which is a member of each task's promise.
+ */
+struct frame_block : private impl::immovable<frame_block>, protected impl::debug_block {
   /**
    * @brief Resume a stolen task.
    *
@@ -1121,11 +1256,10 @@ struct frame_block : detail::immovable<frame_block>, debug_block {
    */
   void resume_stolen() noexcept {
     LF_LOG("Call to resume on stolen task");
-    LF_ASSERT(tls::asp);
+    LF_ASSERT(impl::tls::asp);
     m_steal += 1;
     coro().resume();
   }
-
   /**
    * @brief Resume an external task.
    *
@@ -1135,27 +1269,39 @@ struct frame_block : detail::immovable<frame_block>, debug_block {
   template <thread_context Context>
   inline void resume_external() noexcept;
 
+protected:
 /**
- * @brief For non-root tasks.
+ * @brief Construct a frame block.
+ *
+ * Pass ``top == nullptr`` if this is on the heap. Non-root tasks will need to call ``set_parent(...)``.
  */
 #ifndef LF_COROUTINE_OFFSET
-  constexpr frame_block(stdx::coroutine_handle<> coro, std::byte *top) : m_coro{coro}, m_top(top) {}
+  constexpr frame_block(stdx::coroutine_handle<> coro, std::byte *top) : m_coro{coro}, m_top(top) { LF_ASSERT(coro); }
 #else
   constexpr frame_block(stdx::coroutine_handle<>, std::byte *top) : m_top(top) {}
 #endif
 
+  /**
+   * @brief Set the pointer to the parent frame.
+   */
   void set_parent(frame_block *parent) noexcept {
     LF_ASSERT(!m_parent);
-    m_parent = parent;
+    m_parent = impl::non_null(parent);
   }
 
-  [[nodiscard]] auto top() const noexcept -> std::byte * {
-    LF_ASSERT(!is_root());
-    return m_top;
-  }
+  /**
+   * @brief Get a pointer to the parent frame.
+   */
+  [[nodiscard]] auto parent() const noexcept -> frame_block * { return impl::non_null(m_parent); }
 
-  [[nodiscard]] auto parent() const noexcept -> frame_block * { return non_null(m_parent); }
+  /**
+   * @brief Get a pointer to the top of the top of the async-stack this frame was allocated on.
+   */
+  [[nodiscard]] auto top() const noexcept -> std::byte * { return impl::non_null(m_top); }
 
+  /**
+   * @brief Get the coroutine handle for this frames coroutine.
+   */
   [[nodiscard]] auto coro() noexcept -> stdx::coroutine_handle<> {
 #ifndef LF_COROUTINE_OFFSET
     return m_coro;
@@ -1184,7 +1330,7 @@ struct frame_block : detail::immovable<frame_block>, debug_block {
   [[nodiscard]] constexpr auto steals() const noexcept -> std::uint32_t { return m_steal; }
 
   /**
-   * @brief Check if a non-sentinel frame is a root frame.
+   * @brief Check if this is a root frame.
    */
   [[nodiscard]] constexpr auto is_root() const noexcept -> bool { return m_parent == nullptr; }
 
@@ -1201,7 +1347,7 @@ struct frame_block : detail::immovable<frame_block>, debug_block {
     // Use construct_at(...) to set non-atomically as we know we are the
     // only thread who can touch this control block until a steal which
     // would provide the required memory synchronization.
-    std::construct_at(&m_join, detail::k_u32_max);
+    std::construct_at(&m_join, impl::k_u32_max);
   }
 
 private:
@@ -1209,18 +1355,20 @@ private:
   stdx::coroutine_handle<> m_coro;
 #endif
 
-  std::byte *m_top;                                ///< Needs to be separate in-case allocation elided.
-  frame_block *m_parent = nullptr;                 ///< Same ^
-  std::atomic_uint32_t m_join = detail::k_u32_max; ///< Number of children joined (with offset).
-  std::uint32_t m_steal = 0;                       ///< Number of steals.
+  std::byte *m_top;                              ///< Needs to be separate in-case allocation elided.
+  frame_block *m_parent = nullptr;               ///< Same ^
+  std::atomic_uint32_t m_join = impl::k_u32_max; ///< Number of children joined (with offset).
+  std::uint32_t m_steal = 0;                     ///< Number of steals.
 };
 
-static_assert(alignof(frame_block) <= detail::k_new_align, "Will be allocated above a coroutine-frame");
+static_assert(alignof(frame_block) <= impl::k_new_align, "Will be allocated above a coroutine-frame");
 static_assert(std::is_trivially_destructible_v<frame_block>);
+
+} // namespace ext
 
 // ----------------------------------------------- //
 
-namespace tls {
+namespace impl::tls {
 
 /**
  * @brief Set `tls::asp` to point at `frame`.
@@ -1233,34 +1381,43 @@ inline void eat(std::byte *top) {
   LF_ASSERT(tls::asp);
   std::byte *prev = std::exchange(tls::asp, top);
   LF_ASSERT(prev != top);
-  async_stack *stack = async_stack::unsafe_from_bytes(prev);
+  async_stack *stack = bytes_to_stack(prev);
   ctx<Context>->stack_push(stack);
 }
 
-} // namespace tls
+} // namespace impl::tls
 
 // ----------------------------------------------- //
+
+inline namespace ext {
 
 template <thread_context Context>
 inline void frame_block::resume_external() noexcept {
 
   LF_LOG("Call to resume on external task");
 
-  LF_ASSERT(tls::asp);
+  LF_ASSERT(impl::tls::asp);
 
   if (!is_root()) {
-    tls::eat<Context>(top());
+    impl::tls::eat<Context>(top());
   } else {
     LF_LOG("External was root");
   }
 
   coro().resume();
 
-  LF_ASSERT(tls::asp);
+  LF_ASSERT(impl::tls::asp);
 }
+
+} // namespace ext
+
+namespace impl {
 
 // ----------------------------------------------- //
 
+/**
+ * @brief A base class for promises that allocates on the heap.
+ */
 struct promise_alloc_heap : frame_block {
 protected:
   explicit promise_alloc_heap(stdx::coroutine_handle<> self) noexcept : frame_block{self, nullptr} {}
@@ -1281,7 +1438,7 @@ struct promise_alloc_stack : frame_block {
   //   auto align = static_cast<std::underlying_type_t<std::align_val_t>>(al);
   //   LF_ASSERT(std::has_single_bit(align));
   //   LF_ASSERT(align > 0);
-  //   return std::max(align, detail::k_new_align);
+  //   return std::max(align, impl::k_new_align);
   // }
 
 protected:
@@ -1295,7 +1452,7 @@ public:
    */
   [[nodiscard]] static auto operator new(std::size_t size) noexcept -> void * {
     LF_ASSERT(tls::asp);
-    tls::asp -= (size + detail::k_new_align - 1) & ~(detail::k_new_align - 1);
+    tls::asp -= (size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
     LF_LOG("Allocating {} bytes on stack from {}", size, (void *)tls::asp);
     return tls::asp;
   }
@@ -1305,31 +1462,38 @@ public:
    */
   static void operator delete(void *ptr, std::size_t size) noexcept {
     LF_ASSERT(ptr == tls::asp);
-    tls::asp += (size + detail::k_new_align - 1) & ~(detail::k_new_align - 1);
+    tls::asp += (size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
     LF_LOG("Deallocating {} bytes on stack to {}", size, (void *)tls::asp);
   }
 };
 
+} // namespace impl
+
+inline namespace ext {
+
 template <thread_context Context>
 void worker_init(Context *context) {
-  LF_ASSERT(context);
-  LF_ASSERT(!tls::ctx<Context>);
-  LF_ASSERT(!tls::asp);
 
-  tls::ctx<Context> = context;
-  tls::asp = context->stack_pop()->as_bytes();
+  LF_ASSERT(context);
+  LF_ASSERT(!impl::tls::ctx<Context>);
+  LF_ASSERT(!impl::tls::asp);
+
+  impl::tls::ctx<Context> = context;
+  impl::tls::asp = context->stack_pop()->as_bytes();
 }
 
 template <thread_context Context>
 void worker_finalize(Context *context) {
-  LF_ASSERT(context == tls::ctx<Context>);
-  LF_ASSERT(tls::asp);
+  LF_ASSERT(context == impl::tls::ctx<Context>);
+  LF_ASSERT(impl::tls::asp);
 
-  context->stack_push(async_stack::unsafe_from_bytes(tls::asp));
+  context->stack_push(impl::bytes_to_stack(impl::tls::asp));
 
-  tls::asp = nullptr;
-  tls::ctx<Context> = nullptr;
+  impl::tls::asp = nullptr;
+  impl::tls::ctx<Context> = nullptr;
 }
+
+} // namespace ext
 
 } // namespace lf
 
@@ -1344,35 +1508,47 @@ void worker_finalize(Context *context) {
 
 namespace lf {
 
+inline namespace core {
+
+/**
+ * @brief A fixed string type for template parameters that tracks its source location.
+ */
 template <typename Char, std::size_t N>
-struct fixed_string {
+struct tracked_fixed_string {
 private:
   using sloc = std::source_location;
+  static constexpr std::size_t file_name_max_size = 127;
 
 public:
-  explicit(false) consteval fixed_string(Char const (&str)[N], sloc loc = sloc::current()) noexcept
+  explicit(false) consteval tracked_fixed_string(Char const (&str)[N], sloc loc = sloc::current()) noexcept
       : line{loc.line()},
         column{loc.column()} {
     for (std::size_t i = 0; i < N; ++i) {
       function_name[i] = str[i];
     }
+
+    // std::size_t count = 0 loc.while
   }
 
-  static constexpr std::size_t file_name_max_size = 127;
-
   std::array<Char, N> function_name;
-  // std::array<Char, file_name_max_size + 1> file_name_buf;
+  // std::array<char, file_name_max_size + 1> file_name_buf;
   // std::size_t file_name_size;
   std::uint_least32_t line;
   std::uint_least32_t column;
 };
 
+} // namespace core
+
 // ----------------------------------------------- //
+
+inline namespace core {
 
 /**
  * @brief The return type for libfork's async functions/coroutines.
+ *
+ * IMPORTANT: The value type ``T`` of a coroutine should not be a function of its first argument.
  */
-template <typename T = void, fixed_string Name = "">
+template <typename T = void, tracked_fixed_string Name = "">
 struct task {
   using value_type = T; ///< The type of the value returned by the coroutine.
 
@@ -1384,6 +1560,10 @@ private:
   frame_block *m_frame; ///< The frame block for the coroutine.
 };
 
+} // namespace core
+
+namespace impl {
+
 template <typename>
 struct is_task_impl : std::false_type {};
 
@@ -1393,10 +1573,16 @@ struct is_task_impl<task<T, Name>> : std::true_type {};
 template <typename T>
 concept is_task = is_task_impl<T>::value;
 
+} // namespace impl
+
+inline namespace core {
+
 // ----------------------------------------------- //
 
 /**
  * @brief An enumeration that determines the behavior of a coroutine's promise.
+ *
+ * You can inspect the first arg of an async function to determine the tag.
  */
 enum class tag {
   root,   ///< This coroutine is a root task (allocated on heap) from an ``lf::sync_wait``.
@@ -1465,7 +1651,7 @@ struct [[nodiscard("async functions must be called")]] async;
  * @brief The API of the first arg passed to an async function.
  */
 template <typename Arg>
-concept first_arg = requires(Arg arg) {
+concept first_arg = impl::unqualified<Arg> && std::is_trivially_copyable_v<Arg> && requires(Arg arg) {
   //
   tag_of<Arg>;
 
@@ -1477,7 +1663,7 @@ concept first_arg = requires(Arg arg) {
 
   { std::remove_cvref_t<Arg>::context() } -> std::same_as<context_of<Arg> *>;
 
-  requires is_void<return_of<Arg>> || requires {
+  requires impl::is_void<return_of<Arg>> || requires {
     { arg.address() } -> std::convertible_to<return_of<Arg> *>;
   };
 
@@ -1489,23 +1675,25 @@ concept first_arg = requires(Arg arg) {
   (arg);
 };
 
+} // namespace core
+
+namespace impl {
+
+// ----------------------------------------------- //
+
 template <typename T>
 concept not_first_arg = !first_arg<T>;
 
 // ----------------------------------------------- //
 
-namespace detail {
-
 template <typename Task, typename Head>
 concept valid_return = is_task<Task> && valid_result<return_of<Head>, value_of<Task>>;
-
-} // namespace detail
 
 /**
  * @brief Check that the async function encoded in `Head` is invocable with arguments in `Tail`.
  */
 template <typename Head, typename... Tail>
-concept valid_packet = first_arg<Head> && detail::valid_return<std::invoke_result_t<function_of<Head>, Head, Tail...>, Head>;
+concept valid_packet = first_arg<Head> && valid_return<std::invoke_result_t<function_of<Head>, Head, Tail...>, Head>;
 
 /**
  * @brief A base class for building the first argument to asynchronous functions.
@@ -1535,7 +1723,7 @@ struct patched : Head {
  */
 template <typename Head, typename... Tail>
   requires valid_packet<Head, Tail...>
-class [[nodiscard("packets must be co_awaited")]] packet : detail::move_only<packet<Head, Tail...>> {
+class [[nodiscard("packets must be co_awaited")]] packet : move_only<packet<Head, Tail...>> {
 public:
   using task_type = std::invoke_result_t<function_of<Head>, Head, Tail...>;
   using value_type = value_of<task_type>;
@@ -1585,7 +1773,11 @@ private:
   [[no_unique_address]] std::tuple<Head, Tail &&...> m_args;
 };
 
+} // namespace impl
+
 // ----------------------------------------------- //
+
+inline namespace core {
 
 /**
  * @brief Wraps a stateless callable that returns an ``lf::task``.
@@ -1613,10 +1805,10 @@ struct [[nodiscard("async functions must be called")]] async {
 
 private:
   template <typename... Args>
-  using invoke_packet = packet<basic_first_arg<void, tag::invoke, Fn>, Args...>;
+  using invoke_packet = impl::packet<impl::basic_first_arg<void, tag::invoke, Fn>, Args...>;
 
   template <typename... Args>
-  using call_packet = packet<basic_first_arg<void, tag::call, Fn>, Args...>;
+  using call_packet = impl::packet<impl::basic_first_arg<void, tag::call, Fn>, Args...>;
 
 public:
   /**
@@ -1633,13 +1825,17 @@ public:
    * @brief Wrap the arguments into an awaitable (in an ``lf::task``) that triggers an invoke.
    */
   template <typename... Args>
-    requires is_void<value_of<invoke_packet<Args...>>>
+    requires impl::is_void<value_of<invoke_packet<Args...>>>
   LF_STATIC_CALL constexpr auto operator()(Args &&...args) LF_STATIC_CONST noexcept -> call_packet<Args...> {
     return {{}, std::forward<Args>(args)...};
   }
 };
 
+} // namespace core
+
 // ----------------------------------------------- //
+
+namespace impl {
 
 /**
  * @brief A type that satisfies the ``thread_context`` concept.
@@ -1662,7 +1858,7 @@ static_assert(thread_context<dummy_context>, "dummy_context is not a thread_cont
  * @brief Void/ignore specialization.
  */
 template <tag Tag, stateless F>
-struct basic_first_arg<void, Tag, F> : async<F>, detail::move_only<basic_first_arg<void, Tag, F>> {
+struct basic_first_arg<void, Tag, F> : async<F>, move_only<basic_first_arg<void, Tag, F>> {
   using context_type = dummy_context;   ///< A default context
   using return_type = void;             ///< The type of the return address.
   using function_type = F;              ///< The underlying async
@@ -1690,6 +1886,8 @@ private:
 static_assert(first_arg<basic_first_arg<void, tag::root, decltype([] {})>>);
 static_assert(first_arg<basic_first_arg<int, tag::root, decltype([] {})>>);
 
+} // namespace impl
+
 } // namespace lf
 
 #endif /* E91EA187_42EF_436C_A3FF_A86DE54BCDBE */
@@ -1703,7 +1901,7 @@ static_assert(first_arg<basic_first_arg<int, tag::root, decltype([] {})>>);
 
 namespace lf {
 
-namespace detail {
+namespace impl {
 
 #if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
   #define LF_DEPRECATE [[deprecated("Use operator[] instead")]]
@@ -1772,29 +1970,36 @@ struct bind_task {
 
 #undef LF_DEPRECATE
 
+/**
+ * @brief A empty tag type used to disambiguate a join.
+ */
 struct join_type {};
 
-} // namespace detail
+} // namespace impl
+
+inline namespace core {
 
 /**
  * @brief An awaitable (in a task) that triggers a join.
  */
-inline constexpr detail::join_type join = {};
+inline constexpr impl::join_type join = {};
 
 /**
  * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a fork.
  */
-inline constexpr detail::bind_task<tag::fork> fork = {};
+inline constexpr impl::bind_task<tag::fork> fork = {};
 
 /**
  * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a call.
  */
-inline constexpr detail::bind_task<tag::call> call = {};
+inline constexpr impl::bind_task<tag::call> call = {};
 
 /**
  * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a tail-call.
  */
-inline constexpr detail::bind_task<tag::tail> tail = {};
+inline constexpr impl::bind_task<tag::tail> tail = {};
+
+} // namespace core
 
 } // namespace lf
 
@@ -1823,7 +2028,7 @@ inline constexpr detail::bind_task<tag::tail> tail = {};
  * @brief The promise_type for tasks.
  */
 
-namespace lf::detail {
+namespace lf::impl {
 
 // -------------------------------------------------------------------------- //
 
@@ -2028,14 +2233,14 @@ public:
   template <typename F, typename... Args>
   constexpr auto await_transform(packet<basic_first_arg<void, tag::invoke, F>, Args...> &&packet) {
 
-    using packet_t = lf::packet<basic_first_arg<void, tag::invoke, F>, Args...>;
+    using packet_t = impl::packet<basic_first_arg<void, tag::invoke, F>, Args...>;
     static_assert(non_void<value_of<packet_t>>, "async's call op should prevent this");
     using return_t = eventually<value_of<packet_t>>;
 
     struct awaitable : stdx::suspend_always {
       constexpr auto await_suspend(stdx::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
 
-        using new_packet_t = lf::packet<basic_first_arg<return_t, tag::call, F>, Args...>;
+        using new_packet_t = impl::packet<basic_first_arg<return_t, tag::call, F>, Args...>;
 
         new_packet_t new_packet = std::move(m_packet).apply([&](auto, Args &&...args) -> new_packet_t {
           return {{m_res}, std::forward<Args>(args)...};
@@ -2148,9 +2353,10 @@ public:
   }
 };
 
-} // namespace lf::detail
+} // namespace lf::impl
 
-namespace lf {
+namespace lf::impl {
+
 /**
  * @brief Disable rvalue references for T&& template types if an async function is forked.
  *
@@ -2159,28 +2365,32 @@ namespace lf {
  * child task returns.
  */
 template <typename T, tag Tag>
-
 concept no_dangling = Tag != tag::fork || !std::is_rvalue_reference_v<T>;
 
-template <first_arg Head, lf::is_task Task>
-using promise_for = detail::promise_type<return_of<Head>, value_of<Task>, context_of<Head>, tag_of<Head>>;
+namespace detail {
 
-} // namespace lf
+template <first_arg Head, is_task Task>
+using promise_for = impl::promise_type<return_of<Head>, value_of<Task>, context_of<Head>, tag_of<Head>>;
+
+} // namespace detail
+
+} // namespace lf::impl
 
 #ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
 
 /**
  * @brief Specialize coroutine_traits for task<...> from functions.
  */
-template <lf::is_task Task, lf::first_arg Head, lf::no_dangling<lf::tag_of<Head>>... Args>
+template <lf::impl::is_task Task, lf::first_arg Head, lf::impl::no_dangling<lf::tag_of<Head>>... Args>
 struct lf::stdx::coroutine_traits<Task, Head, Args...> {
-  using promise_type = lf::promise_for<Head, Task>;
+  using promise_type = lf::impl::detail::promise_for<Head, Task>;
 };
 
 /**
  * @brief Specialize coroutine_traits for task<...> from member functions.
  */
-template <lf::is_task Task, lf::not_first_arg This, lf::first_arg Head, lf::no_dangling<lf::tag_of<Head>>... Args>
+template <lf::impl::is_task Task, lf::impl::not_first_arg This, lf::first_arg Head,
+          lf::impl::no_dangling<lf::tag_of<Head>>... Args>
 struct lf::stdx::coroutine_traits<Task, This, Head, Args...> : lf::stdx::coroutine_traits<Task, Head, Args...> {};
 
 #endif /* LF_DOXYGEN_SHOULD_SKIP_THIS */
@@ -2206,22 +2416,33 @@ struct lf::stdx::coroutine_traits<Task, This, Head, Args...> : lf::stdx::corouti
 
 namespace lf {
 
+inline namespace ext {
+
+/**
+ * @brief A concept that schedulers must satisfy.
+ */
 template <typename Sch>
 concept scheduler = requires(Sch &&sch, frame_block *ext) {
   typename context_of<Sch>;
   std::forward<Sch>(sch).submit(ext);
 };
 
+} // namespace ext
+
+inline namespace core {
+
+namespace detail {
+
 template <typename Context, stateless F, typename... Args>
 struct sync_wait_impl {
 
   template <typename R>
-  using first_arg_t = patched<Context, basic_first_arg<R, tag::root, F>>;
+  using first_arg_t = impl::patched<Context, impl::basic_first_arg<R, tag::root, F>>;
 
-  using dummy_packet = packet<first_arg_t<void>, Args...>;
+  using dummy_packet = impl::packet<first_arg_t<void>, Args...>;
   using dummy_packet_value_type = value_of<std::invoke_result_t<F, dummy_packet, Args...>>;
 
-  using real_packet = packet<first_arg_t<root_result<dummy_packet_value_type>>, Args...>;
+  using real_packet = impl::packet<first_arg_t<impl::root_result<dummy_packet_value_type>>, Args...>;
   using real_packet_value_type = value_of<std::invoke_result_t<F, real_packet, Args...>>;
 
   static_assert(std::same_as<dummy_packet_value_type, real_packet_value_type>, "Value type changes!");
@@ -2233,15 +2454,17 @@ using result_t = typename sync_wait_impl<context_of<Sch>, F, Args...>::real_pack
 template <scheduler Sch, stateless F, typename... Args>
 using packet_t = typename sync_wait_impl<context_of<Sch>, F, Args...>::real_packet;
 
+} // namespace detail
+
 /**
  * @brief The entry point for synchronous execution of asynchronous functions.
  */
 template <scheduler Sch, stateless F, class... Args>
-auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcept -> result_t<Sch, F, Args...> {
+auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcept -> detail::result_t<Sch, F, Args...> {
 
-  root_result<result_t<Sch, F, Args...>> root_block;
+  impl::root_result<detail::result_t<Sch, F, Args...>> root_block;
 
-  packet_t<Sch, F, Args...> packet{{{root_block}}, std::forward<Args>(args)...};
+  detail::packet_t<Sch, F, Args...> packet{{{root_block}}, std::forward<Args>(args)...};
 
   frame_block *ext = std::move(packet).invoke();
 
@@ -2255,10 +2478,12 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
 
   LF_LOG("Semaphore acquired");
 
-  if constexpr (non_void<result_t<Sch, F, Args...>>) {
+  if constexpr (impl::non_void<detail::result_t<Sch, F, Args...>>) {
     return *std::move(root_block);
   }
 }
+
+} // namespace core
 
 } // namespace lf
 

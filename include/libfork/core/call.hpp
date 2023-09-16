@@ -24,7 +24,7 @@
 
 namespace lf {
 
-namespace detail {
+namespace impl {
 
 #if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
   #define LF_DEPRECATE [[deprecated("Use operator[] instead")]]
@@ -93,29 +93,36 @@ struct bind_task {
 
 #undef LF_DEPRECATE
 
+/**
+ * @brief A empty tag type used to disambiguate a join.
+ */
 struct join_type {};
 
-} // namespace detail
+} // namespace impl
+
+inline namespace core {
 
 /**
  * @brief An awaitable (in a task) that triggers a join.
  */
-inline constexpr detail::join_type join = {};
+inline constexpr impl::join_type join = {};
 
 /**
  * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a fork.
  */
-inline constexpr detail::bind_task<tag::fork> fork = {};
+inline constexpr impl::bind_task<tag::fork> fork = {};
 
 /**
  * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a call.
  */
-inline constexpr detail::bind_task<tag::call> call = {};
+inline constexpr impl::bind_task<tag::call> call = {};
 
 /**
  * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a tail-call.
  */
-inline constexpr detail::bind_task<tag::tail> tail = {};
+inline constexpr impl::bind_task<tag::tail> tail = {};
+
+} // namespace core
 
 } // namespace lf
 

@@ -33,40 +33,65 @@
 
 namespace lf {
 
+// -------------------- async stack -------------------- //
+
+inline namespace ext {
+
+class async_stack;
+
+} // namespace ext
+
+namespace impl {
+
+static constexpr std::size_t k_stack_size = k_kibibyte * LF_ASYNC_STACK_SIZE;
+
+/**
+ * @brief Get a pointer to the end of a stack's buffer.
+ */
+auto stack_as_bytes(async_stack *stack) noexcept -> std::byte *;
+/**
+ * @brief Convert a pointer to a stack's sentinel `frame_block` to a pointer to the stack.
+ */
+auto bytes_to_stack(std::byte *bytes) noexcept -> async_stack *;
+
+} // namespace impl
+
+inline namespace ext {
+
 /**
  * @brief A fraction of a thread's cactus stack.
  */
-class async_stack : detail::immovable<async_stack> {
-public:
-  /**
-   * @brief Get a pointer to the sentinel `frame_block` on the stack.
-   */
-  auto as_bytes() noexcept -> std::byte * { return std::launder(m_buf + k_size); }
+class async_stack : impl::immovable<async_stack> {
+  alignas(impl::k_new_align) std::byte m_buf[impl::k_stack_size]; // NOLINT
 
-  /**
-   * @brief Convert a pointer to a stack's sentinel `frame_block` to a pointer to the stack.
-   */
-  static auto unsafe_from_bytes(std::byte *bytes) noexcept -> async_stack * {
-#ifdef __cpp_lib_is_pointer_interconvertible
-    static_assert(std::is_pointer_interconvertible_with_class(&async_stack::m_buf));
-#endif
-    return std::launder(std::bit_cast<async_stack *>(bytes - k_size));
-  }
+  friend auto impl::stack_as_bytes(async_stack *stack) noexcept -> std::byte *;
 
-private:
-  static constexpr std::size_t k_size = detail::k_kibibyte * LF_ASYNC_STACK_SIZE;
-
-  alignas(detail::k_new_align) std::byte m_buf[k_size]; // NOLINT
+  friend auto impl::bytes_to_stack(std::byte *bytes) noexcept -> async_stack *;
 };
 
 static_assert(std::is_standard_layout_v<async_stack>);
-static_assert(sizeof(async_stack) == detail::k_kibibyte * LF_ASYNC_STACK_SIZE, "Spurious padding in async_stack!");
+static_assert(sizeof(async_stack) == impl::k_stack_size, "Spurious padding in async_stack!");
 
-// -------------------- Forward decls -------------------- //
+} // namespace ext
+
+namespace impl {
+
+inline auto stack_as_bytes(async_stack *stack) noexcept -> std::byte * { return std::launder(stack->m_buf + k_stack_size); }
+
+inline auto bytes_to_stack(std::byte *bytes) noexcept -> async_stack * {
+#ifdef __cpp_lib_is_pointer_interconvertible
+  static_assert(std::is_pointer_interconvertible_with_class(&async_stack::m_buf));
+#endif
+  return std::launder(std::bit_cast<async_stack *>(bytes - k_stack_size));
+}
+
+} // namespace impl
+
+// ---------------------------------------- //
+
+inline namespace ext {
 
 struct frame_block;
-
-// ----------------------------------------------- //
 
 /**
  * @brief A concept which defines the context interface.
@@ -85,21 +110,25 @@ concept thread_context = requires(Context ctx, async_stack *stack, frame_block *
   { ctx.stack_push(stack) };                                 // Push a non-null pointer
 };
 
+} // namespace ext
+
 // ----------------------------------------------- //
 
 /**
  * @brief This namespace contains `inline thread_local constinit` variables and functions to manipulate them.
  */
-namespace tls {
+namespace impl::tls {
 
 template <thread_context Context>
 constinit inline thread_local Context *ctx = nullptr;
 
 constinit inline thread_local std::byte *asp = nullptr;
 
-} // namespace tls
+} // namespace impl::tls
 
 // ----------------------------------------------- //
+
+namespace impl {
 
 /**
  * @brief A base class that (compile-time) conditionally adds debugging information.
@@ -136,13 +165,16 @@ private:
 
 static_assert(std::is_trivially_destructible_v<debug_block>);
 
+} // namespace impl
+
 // ----------------------------------------------- //
 
-/**
- * @brief A small bookkeeping struct allocated immediately before/after each coroutine frame.
- */
-struct frame_block : detail::immovable<frame_block>, debug_block {
+inline namespace ext {
 
+/**
+ * @brief A small bookkeeping struct which is a member of each task's promise.
+ */
+struct frame_block : private impl::immovable<frame_block>, protected impl::debug_block {
   /**
    * @brief Resume a stolen task.
    *
@@ -150,11 +182,10 @@ struct frame_block : detail::immovable<frame_block>, debug_block {
    */
   void resume_stolen() noexcept {
     LF_LOG("Call to resume on stolen task");
-    LF_ASSERT(tls::asp);
+    LF_ASSERT(impl::tls::asp);
     m_steal += 1;
     coro().resume();
   }
-
   /**
    * @brief Resume an external task.
    *
@@ -164,27 +195,39 @@ struct frame_block : detail::immovable<frame_block>, debug_block {
   template <thread_context Context>
   inline void resume_external() noexcept;
 
+protected:
 /**
- * @brief For non-root tasks.
+ * @brief Construct a frame block.
+ *
+ * Pass ``top == nullptr`` if this is on the heap. Non-root tasks will need to call ``set_parent(...)``.
  */
 #ifndef LF_COROUTINE_OFFSET
-  constexpr frame_block(stdx::coroutine_handle<> coro, std::byte *top) : m_coro{coro}, m_top(top) {}
+  constexpr frame_block(stdx::coroutine_handle<> coro, std::byte *top) : m_coro{coro}, m_top(top) { LF_ASSERT(coro); }
 #else
   constexpr frame_block(stdx::coroutine_handle<>, std::byte *top) : m_top(top) {}
 #endif
 
+  /**
+   * @brief Set the pointer to the parent frame.
+   */
   void set_parent(frame_block *parent) noexcept {
     LF_ASSERT(!m_parent);
-    m_parent = parent;
+    m_parent = impl::non_null(parent);
   }
 
-  [[nodiscard]] auto top() const noexcept -> std::byte * {
-    LF_ASSERT(!is_root());
-    return m_top;
-  }
+  /**
+   * @brief Get a pointer to the parent frame.
+   */
+  [[nodiscard]] auto parent() const noexcept -> frame_block * { return impl::non_null(m_parent); }
 
-  [[nodiscard]] auto parent() const noexcept -> frame_block * { return non_null(m_parent); }
+  /**
+   * @brief Get a pointer to the top of the top of the async-stack this frame was allocated on.
+   */
+  [[nodiscard]] auto top() const noexcept -> std::byte * { return impl::non_null(m_top); }
 
+  /**
+   * @brief Get the coroutine handle for this frames coroutine.
+   */
   [[nodiscard]] auto coro() noexcept -> stdx::coroutine_handle<> {
 #ifndef LF_COROUTINE_OFFSET
     return m_coro;
@@ -213,7 +256,7 @@ struct frame_block : detail::immovable<frame_block>, debug_block {
   [[nodiscard]] constexpr auto steals() const noexcept -> std::uint32_t { return m_steal; }
 
   /**
-   * @brief Check if a non-sentinel frame is a root frame.
+   * @brief Check if this is a root frame.
    */
   [[nodiscard]] constexpr auto is_root() const noexcept -> bool { return m_parent == nullptr; }
 
@@ -230,7 +273,7 @@ struct frame_block : detail::immovable<frame_block>, debug_block {
     // Use construct_at(...) to set non-atomically as we know we are the
     // only thread who can touch this control block until a steal which
     // would provide the required memory synchronization.
-    std::construct_at(&m_join, detail::k_u32_max);
+    std::construct_at(&m_join, impl::k_u32_max);
   }
 
 private:
@@ -238,18 +281,20 @@ private:
   stdx::coroutine_handle<> m_coro;
 #endif
 
-  std::byte *m_top;                                ///< Needs to be separate in-case allocation elided.
-  frame_block *m_parent = nullptr;                 ///< Same ^
-  std::atomic_uint32_t m_join = detail::k_u32_max; ///< Number of children joined (with offset).
-  std::uint32_t m_steal = 0;                       ///< Number of steals.
+  std::byte *m_top;                              ///< Needs to be separate in-case allocation elided.
+  frame_block *m_parent = nullptr;               ///< Same ^
+  std::atomic_uint32_t m_join = impl::k_u32_max; ///< Number of children joined (with offset).
+  std::uint32_t m_steal = 0;                     ///< Number of steals.
 };
 
-static_assert(alignof(frame_block) <= detail::k_new_align, "Will be allocated above a coroutine-frame");
+static_assert(alignof(frame_block) <= impl::k_new_align, "Will be allocated above a coroutine-frame");
 static_assert(std::is_trivially_destructible_v<frame_block>);
+
+} // namespace ext
 
 // ----------------------------------------------- //
 
-namespace tls {
+namespace impl::tls {
 
 /**
  * @brief Set `tls::asp` to point at `frame`.
@@ -262,34 +307,43 @@ inline void eat(std::byte *top) {
   LF_ASSERT(tls::asp);
   std::byte *prev = std::exchange(tls::asp, top);
   LF_ASSERT(prev != top);
-  async_stack *stack = async_stack::unsafe_from_bytes(prev);
+  async_stack *stack = bytes_to_stack(prev);
   ctx<Context>->stack_push(stack);
 }
 
-} // namespace tls
+} // namespace impl::tls
 
 // ----------------------------------------------- //
+
+inline namespace ext {
 
 template <thread_context Context>
 inline void frame_block::resume_external() noexcept {
 
   LF_LOG("Call to resume on external task");
 
-  LF_ASSERT(tls::asp);
+  LF_ASSERT(impl::tls::asp);
 
   if (!is_root()) {
-    tls::eat<Context>(top());
+    impl::tls::eat<Context>(top());
   } else {
     LF_LOG("External was root");
   }
 
   coro().resume();
 
-  LF_ASSERT(tls::asp);
+  LF_ASSERT(impl::tls::asp);
 }
+
+} // namespace ext
+
+namespace impl {
 
 // ----------------------------------------------- //
 
+/**
+ * @brief A base class for promises that allocates on the heap.
+ */
 struct promise_alloc_heap : frame_block {
 protected:
   explicit promise_alloc_heap(stdx::coroutine_handle<> self) noexcept : frame_block{self, nullptr} {}
@@ -310,7 +364,7 @@ struct promise_alloc_stack : frame_block {
   //   auto align = static_cast<std::underlying_type_t<std::align_val_t>>(al);
   //   LF_ASSERT(std::has_single_bit(align));
   //   LF_ASSERT(align > 0);
-  //   return std::max(align, detail::k_new_align);
+  //   return std::max(align, impl::k_new_align);
   // }
 
 protected:
@@ -324,7 +378,7 @@ public:
    */
   [[nodiscard]] static auto operator new(std::size_t size) noexcept -> void * {
     LF_ASSERT(tls::asp);
-    tls::asp -= (size + detail::k_new_align - 1) & ~(detail::k_new_align - 1);
+    tls::asp -= (size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
     LF_LOG("Allocating {} bytes on stack from {}", size, (void *)tls::asp);
     return tls::asp;
   }
@@ -334,31 +388,38 @@ public:
    */
   static void operator delete(void *ptr, std::size_t size) noexcept {
     LF_ASSERT(ptr == tls::asp);
-    tls::asp += (size + detail::k_new_align - 1) & ~(detail::k_new_align - 1);
+    tls::asp += (size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
     LF_LOG("Deallocating {} bytes on stack to {}", size, (void *)tls::asp);
   }
 };
 
+} // namespace impl
+
+inline namespace ext {
+
 template <thread_context Context>
 void worker_init(Context *context) {
-  LF_ASSERT(context);
-  LF_ASSERT(!tls::ctx<Context>);
-  LF_ASSERT(!tls::asp);
 
-  tls::ctx<Context> = context;
-  tls::asp = context->stack_pop()->as_bytes();
+  LF_ASSERT(context);
+  LF_ASSERT(!impl::tls::ctx<Context>);
+  LF_ASSERT(!impl::tls::asp);
+
+  impl::tls::ctx<Context> = context;
+  impl::tls::asp = context->stack_pop()->as_bytes();
 }
 
 template <thread_context Context>
 void worker_finalize(Context *context) {
-  LF_ASSERT(context == tls::ctx<Context>);
-  LF_ASSERT(tls::asp);
+  LF_ASSERT(context == impl::tls::ctx<Context>);
+  LF_ASSERT(impl::tls::asp);
 
-  context->stack_push(async_stack::unsafe_from_bytes(tls::asp));
+  context->stack_push(impl::bytes_to_stack(impl::tls::asp));
 
-  tls::asp = nullptr;
-  tls::ctx<Context> = nullptr;
+  impl::tls::asp = nullptr;
+  impl::tls::ctx<Context> = nullptr;
 }
+
+} // namespace ext
 
 } // namespace lf
 

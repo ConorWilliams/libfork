@@ -19,26 +19,7 @@
 
 namespace lf {
 
-// ------------------------------------------------------------------------ //
-
-namespace detail {
-
-template <typename T>
-struct constify_ref;
-
-template <typename T>
-struct constify_ref<T &> : std::type_identity<T const &> {};
-
-template <typename T>
-struct constify_ref<T &&> : std::type_identity<T const &&> {};
-
-} // namespace detail
-
-/**
- * @brief Convert ``T & -> T const&`` and ``T && -> T const&&``.
- */
-template <reference T>
-using constify_ref_t = detail::constify_ref<T>::type;
+inline namespace core {
 
 // ------------------------------------------------------------------------ //
 
@@ -48,20 +29,20 @@ using constify_ref_t = detail::constify_ref<T>::type;
  * It is up to the caller to guarantee that the object is constructed before it is used and that an object is
  * constructed before the lifetime of the eventually ends (regardless of it is used).
  */
-template <non_void T>
+template <impl::non_void T>
 class eventually;
 
 // ------------------------------------------------------------------------ //
 
-template <non_void T>
-  requires reference<T>
-class eventually<T> : detail::immovable<eventually<T>> {
+template <impl::non_void T>
+  requires impl::reference<T>
+class eventually<T> : impl::immovable<eventually<T>> {
 public:
   /**
    * @brief Construct an object inside the eventually from ``expr``.
    */
   template <typename U>
-    requires std::same_as<T, U &&> || std::same_as<T, constify_ref_t<U &&>>
+    requires std::same_as<T, U &&> || std::same_as<T, impl::constify_ref_t<U &&>>
   constexpr auto operator=(U &&expr) noexcept -> eventually & {
     m_value = std::addressof(expr);
     return *this;
@@ -136,8 +117,8 @@ static_assert(std::same_as<def_t<eventually<int const &&>>, int const &&>);
 
 // ------------------------------------------------------------------------ //
 
-template <non_void T>
-class eventually : detail::immovable<eventually<T>> {
+template <impl::non_void T>
+class eventually : impl::immovable<eventually<T>> {
 public:
   // clang-format off
 
@@ -210,7 +191,7 @@ public:
 
 private:
   union {
-    detail::empty m_init;
+    impl::empty m_init;
     T m_value;
   };
 
@@ -239,6 +220,8 @@ static_assert(std::same_as<def_t<eventually<int> &>, int &>);
 static_assert(std::same_as<def_t<eventually<int> &&>, int>);
 
 } // namespace detail::static_test
+
+} // namespace core
 
 } // namespace lf
 

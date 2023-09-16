@@ -29,7 +29,7 @@
  * @brief The promise_type for tasks.
  */
 
-namespace lf::detail {
+namespace lf::impl {
 
 // -------------------------------------------------------------------------- //
 
@@ -234,14 +234,14 @@ public:
   template <typename F, typename... Args>
   constexpr auto await_transform(packet<basic_first_arg<void, tag::invoke, F>, Args...> &&packet) {
 
-    using packet_t = lf::packet<basic_first_arg<void, tag::invoke, F>, Args...>;
+    using packet_t = impl::packet<basic_first_arg<void, tag::invoke, F>, Args...>;
     static_assert(non_void<value_of<packet_t>>, "async's call op should prevent this");
     using return_t = eventually<value_of<packet_t>>;
 
     struct awaitable : stdx::suspend_always {
       constexpr auto await_suspend(stdx::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
 
-        using new_packet_t = lf::packet<basic_first_arg<return_t, tag::call, F>, Args...>;
+        using new_packet_t = impl::packet<basic_first_arg<return_t, tag::call, F>, Args...>;
 
         new_packet_t new_packet = std::move(m_packet).apply([&](auto, Args &&...args) -> new_packet_t {
           return {{m_res}, std::forward<Args>(args)...};
@@ -354,9 +354,10 @@ public:
   }
 };
 
-} // namespace lf::detail
+} // namespace lf::impl
 
-namespace lf {
+namespace lf::impl {
+
 /**
  * @brief Disable rvalue references for T&& template types if an async function is forked.
  *
@@ -365,28 +366,32 @@ namespace lf {
  * child task returns.
  */
 template <typename T, tag Tag>
-
 concept no_dangling = Tag != tag::fork || !std::is_rvalue_reference_v<T>;
 
-template <first_arg Head, lf::is_task Task>
-using promise_for = detail::promise_type<return_of<Head>, value_of<Task>, context_of<Head>, tag_of<Head>>;
+namespace detail {
 
-} // namespace lf
+template <first_arg Head, is_task Task>
+using promise_for = impl::promise_type<return_of<Head>, value_of<Task>, context_of<Head>, tag_of<Head>>;
+
+} // namespace detail
+
+} // namespace lf::impl
 
 #ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
 
 /**
  * @brief Specialize coroutine_traits for task<...> from functions.
  */
-template <lf::is_task Task, lf::first_arg Head, lf::no_dangling<lf::tag_of<Head>>... Args>
+template <lf::impl::is_task Task, lf::first_arg Head, lf::impl::no_dangling<lf::tag_of<Head>>... Args>
 struct lf::stdx::coroutine_traits<Task, Head, Args...> {
-  using promise_type = lf::promise_for<Head, Task>;
+  using promise_type = lf::impl::detail::promise_for<Head, Task>;
 };
 
 /**
  * @brief Specialize coroutine_traits for task<...> from member functions.
  */
-template <lf::is_task Task, lf::not_first_arg This, lf::first_arg Head, lf::no_dangling<lf::tag_of<Head>>... Args>
+template <lf::impl::is_task Task, lf::impl::not_first_arg This, lf::first_arg Head,
+          lf::impl::no_dangling<lf::tag_of<Head>>... Args>
 struct lf::stdx::coroutine_traits<Task, This, Head, Args...> : lf::stdx::coroutine_traits<Task, Head, Args...> {};
 
 #endif /* LF_DOXYGEN_SHOULD_SKIP_THIS */

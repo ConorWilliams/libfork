@@ -5,7 +5,7 @@
       - [x] Tidy up propagate exception macros.
       - [x] Where we can use `LF_HOF_RETURNS`
       - [x] Update licenses at top of files.
-      - [ ] Touch up `std::` includes.
+      - [x] Touch up `std::` includes.
       - [ ] Redo name spacing (rm `DEPENDANT_ABI`, `user`, `detail`, `impl`, and `schedule`).
 
 2. Get the docs building and looking good again.
