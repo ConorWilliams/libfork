@@ -37,7 +37,7 @@ class eventually;
 template <impl::non_void T>
   requires impl::reference<T>
 class eventually<T> : impl::immovable<eventually<T>> {
-public:
+ public:
   /**
    * @brief Construct an object inside the eventually from ``expr``.
    */
@@ -68,7 +68,7 @@ public:
     }
   }
 
-private:
+ private:
 #ifndef NDEBUG
   std::remove_reference_t<T> *m_value = nullptr;
 #else
@@ -121,7 +121,7 @@ static_assert(std::same_as<def_t<eventually<int const &&>>, int const &&>);
 
 template <impl::non_void T>
 class eventually : impl::immovable<eventually<T>> {
-public:
+ public:
   // clang-format off
 
   /**
@@ -191,7 +191,7 @@ public:
     return std::move(m_value);
   }
 
-private:
+ private:
   union {
     impl::empty m_init;
     T m_value;

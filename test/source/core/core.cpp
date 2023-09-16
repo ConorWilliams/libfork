@@ -204,7 +204,7 @@ TEMPLATE_TEST_CASE("Fibonacci - ignored", "[libfork][template]", inline_schedule
 // ------------------------ References and member functions ------------------------ //
 
 class ref_test {
-public:
+ public:
   static constexpr async get = [](auto, auto &&self) -> lf::task<int &> {
     //
     auto &also_prov = co_await self.get_2(self);
@@ -216,7 +216,7 @@ public:
 
   int m_private = 99;
 
-private:
+ private:
   static constexpr async get_2 = [](auto, auto &&self) -> lf::task<int &> { co_return self.m_private; };
 };
 

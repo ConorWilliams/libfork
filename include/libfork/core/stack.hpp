@@ -158,7 +158,7 @@ struct debug_block {
   }
 
 #ifndef NDEBUG
-private:
+ private:
   std::int32_t m_count = 0; ///< Number of forks/calls (debug).
 #endif
 };
@@ -276,7 +276,7 @@ struct frame_block : private impl::immovable<frame_block>, impl::debug_block {
     std::construct_at(&m_join, impl::k_u32_max);
   }
 
-private:
+ private:
 #ifndef LF_COROUTINE_OFFSET
   stdx::coroutine_handle<> m_coro;
 #endif
@@ -345,7 +345,7 @@ namespace impl {
  * @brief A base class for promises that allocates on the heap.
  */
 struct promise_alloc_heap : frame_block {
-protected:
+ protected:
   explicit promise_alloc_heap(stdx::coroutine_handle<> self) noexcept : frame_block{self, nullptr} {}
 };
 
@@ -367,10 +367,10 @@ struct promise_alloc_stack : frame_block {
   //   return std::max(align, impl::k_new_align);
   // }
 
-protected:
+ protected:
   explicit promise_alloc_stack(stdx::coroutine_handle<> self) noexcept : frame_block{self, tls::asp} {}
 
-public:
+ public:
   /**
    * @brief Allocate the coroutine on the current `async_stack`.
    *

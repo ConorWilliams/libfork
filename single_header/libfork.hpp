@@ -602,7 +602,7 @@ class eventually;
 template <impl::non_void T>
   requires impl::reference<T>
 class eventually<T> : impl::immovable<eventually<T>> {
-public:
+ public:
   /**
    * @brief Construct an object inside the eventually from ``expr``.
    */
@@ -633,7 +633,7 @@ public:
     }
   }
 
-private:
+ private:
 #ifndef NDEBUG
   std::remove_reference_t<T> *m_value = nullptr;
 #else
@@ -686,7 +686,7 @@ static_assert(std::same_as<def_t<eventually<int const &&>>, int const &&>);
 
 template <impl::non_void T>
 class eventually : impl::immovable<eventually<T>> {
-public:
+ public:
   // clang-format off
 
   /**
@@ -756,7 +756,7 @@ public:
     return std::move(m_value);
   }
 
-private:
+ private:
   union {
     impl::empty m_init;
     T m_value;
@@ -1239,7 +1239,7 @@ struct debug_block {
   }
 
 #ifndef NDEBUG
-private:
+ private:
   std::int32_t m_count = 0; ///< Number of forks/calls (debug).
 #endif
 };
@@ -1357,7 +1357,7 @@ struct frame_block : private impl::immovable<frame_block>, impl::debug_block {
     std::construct_at(&m_join, impl::k_u32_max);
   }
 
-private:
+ private:
 #ifndef LF_COROUTINE_OFFSET
   stdx::coroutine_handle<> m_coro;
 #endif
@@ -1426,7 +1426,7 @@ namespace impl {
  * @brief A base class for promises that allocates on the heap.
  */
 struct promise_alloc_heap : frame_block {
-protected:
+ protected:
   explicit promise_alloc_heap(stdx::coroutine_handle<> self) noexcept : frame_block{self, nullptr} {}
 };
 
@@ -1448,10 +1448,10 @@ struct promise_alloc_stack : frame_block {
   //   return std::max(align, impl::k_new_align);
   // }
 
-protected:
+ protected:
   explicit promise_alloc_stack(stdx::coroutine_handle<> self) noexcept : frame_block{self, tls::asp} {}
 
-public:
+ public:
   /**
    * @brief Allocate the coroutine on the current `async_stack`.
    *
@@ -1522,11 +1522,11 @@ inline namespace core {
  */
 template <typename Char, std::size_t N>
 struct tracked_fixed_string {
-private:
+ private:
   using sloc = std::source_location;
   static constexpr std::size_t file_name_max_size = 127;
 
-public:
+ public:
   explicit(false) consteval tracked_fixed_string(Char const (&str)[N], sloc loc = sloc::current()) noexcept
       : line{loc.line()},
         column{loc.column()} {
@@ -1563,7 +1563,7 @@ struct task {
 
   [[nodiscard]] constexpr auto frame() const noexcept -> frame_block * { return m_frame; }
 
-private:
+ private:
   frame_block *m_frame; ///< The frame block for the coroutine.
 };
 
@@ -1731,7 +1731,7 @@ struct patched : Head {
 template <typename Head, typename... Tail>
   requires valid_packet<Head, Tail...>
 class [[nodiscard("packets must be co_awaited")]] packet : move_only<packet<Head, Tail...>> {
-public:
+ public:
   using task_type = std::invoke_result_t<function_of<Head>, Head, Tail...>;
   using value_type = value_of<task_type>;
 
@@ -1776,7 +1776,7 @@ public:
     });
   }
 
-private:
+ private:
   [[no_unique_address]] std::tuple<Head, Tail &&...> m_args;
 };
 
@@ -1810,14 +1810,14 @@ struct [[nodiscard("async functions must be called")]] async {
    */
   explicit(false) consteval async([[maybe_unused]] Fn invocable_which_returns_a_task) {}
 
-private:
+ private:
   template <typename... Args>
   using invoke_packet = impl::packet<impl::basic_first_arg<void, tag::invoke, Fn>, Args...>;
 
   template <typename... Args>
   using call_packet = impl::packet<impl::basic_first_arg<void, tag::call, Fn>, Args...>;
 
-public:
+ public:
   /**
    * @brief Wrap the arguments into an awaitable (in an ``lf::task``) that triggers an invoke.
    *
@@ -1886,7 +1886,7 @@ struct basic_first_arg : basic_first_arg<void, Tag, F> {
 
   [[nodiscard]] constexpr auto address() const noexcept -> return_type * { return m_ret; }
 
-private:
+ private:
   R *m_ret;
 };
 
