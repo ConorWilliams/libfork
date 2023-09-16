@@ -26,13 +26,26 @@ inline namespace core {
 /**
  * @brief A wrapper to delay construction of an object.
  *
- * It is up to the caller to guarantee that the object is constructed before it is used and that an object is
- * constructed before the lifetime of the eventually ends (regardless of it is used).
+ * This class supports delayed construction of immovable types and reference types.
+ *
+ * \rst
+ *
+ * .. note::
+ *    This documentation is generated from the non-reference specialization, see the source
+ *    for the reference specialization.
+ *
+ * .. warning::
+ *    It is undefined behaviour if the object is not constructed before it is used or if the lifetime of the
+ *    ``lf::eventually`` ends before an object is constructed.
+ *
+ * \endrst
  */
 template <impl::non_void T>
 class eventually;
 
 // ------------------------------------------------------------------------ //
+
+#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
 
 template <impl::non_void T>
   requires impl::reference<T>
@@ -47,8 +60,6 @@ class eventually<T> : impl::immovable<eventually<T>> {
     m_value = std::addressof(expr);
     return *this;
   }
-
-#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
 
   /**
    * @brief Access the wrapped object.
@@ -70,15 +81,15 @@ class eventually<T> : impl::immovable<eventually<T>> {
     }
   }
 
-#endif
-
  private:
-#ifndef NDEBUG
+  #ifndef NDEBUG
   std::remove_reference_t<T> *m_value = nullptr;
-#else
+  #else
   std::remove_reference_t<T> *m_value;
-#endif
+  #endif
 };
+
+#endif
 
 // ------------------------------------------------------------------------ //
 
@@ -135,10 +146,12 @@ class eventually : impl::immovable<eventually<T>> {
 
   // clang-format on
 
+#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
   constexpr eventually() noexcept : m_init{} {};
+#endif
 
   /**
-   * @brief Construct an object inside the eventually from ``args...``.
+   * @brief Construct an object inside the eventually as if by ``T(args...)``.
    */
   template <typename... Args>
     requires std::constructible_from<T, Args...>
@@ -165,15 +178,24 @@ class eventually : impl::immovable<eventually<T>> {
   }
 
   // clang-format off
+
+  /**
+   * @brief Destroy the object which __must__ be inside the eventually.
+   */
   constexpr ~eventually() noexcept requires std::is_trivially_destructible_v<T> = default;
+
   // clang-format on
 
+#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
+
   constexpr ~eventually() noexcept(std::is_nothrow_destructible_v<T>) {
-#ifndef NDEBUG
+  #ifndef NDEBUG
     LF_ASSUME(m_constructed);
-#endif
+  #endif
     std::destroy_at(std::addressof(m_value));
   }
+
+#endif
 
   /**
    * @brief Access the wrapped object.

@@ -65,6 +65,16 @@ using packet_t = typename sync_wait_impl<context_of<Sch>, F, Args...>::real_pack
 
 /**
  * @brief The entry point for synchronous execution of asynchronous functions.
+ *
+ * This is a blocking call to an `lf::async` function. The function will be executed on `sch`.
+ *
+ * \rst
+ *
+ * .. warning::
+ *
+ *    This should never be called from within a coroutine.
+ *
+ * \endrst
  */
 template <scheduler Sch, stateless F, class... Args>
 auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcept -> detail::result_t<Sch, F, Args...> {

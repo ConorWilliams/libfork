@@ -397,6 +397,12 @@ struct promise_alloc_stack : frame_block {
 
 inline namespace ext {
 
+/**
+ * @brief Initialize thread-local variables before a worker can resume submitted tasks.
+ *
+ * .. warning::
+ *    These should be cleaned up with `worker_finalize(...)`.
+ */
 template <thread_context Context>
 void worker_init(Context *context) {
 
@@ -408,6 +414,12 @@ void worker_init(Context *context) {
   impl::tls::asp = impl::stack_as_bytes(context->stack_pop());
 }
 
+/**
+ * @brief Clean-up thread-local variable before destructing a worker's context.
+ *
+ * .. warning::
+ *    These must be initialized with `worker_init(...)`.
+ */
 template <thread_context Context>
 void worker_finalize(Context *context) {
   LF_ASSERT(context == impl::tls::ctx<Context>);

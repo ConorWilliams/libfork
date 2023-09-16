@@ -39,6 +39,14 @@ namespace lf::impl {
 template <tag Tag>
 using allocator = std::conditional_t<Tag == tag::root, promise_alloc_heap, promise_alloc_stack>;
 
+/**
+ * @brief The promise type for all tasks/coroutines.
+ *
+ * @tparam R The type of the return address.
+ * @tparam T The value type of the coroutine (what it promises to return).
+ * @tparam Context The type of the context this coroutine is running on.
+ * @tparam Tag The dispatch tag of the coroutine.
+ */
 template <typename R, typename T, thread_context Context, tag Tag>
 struct promise_type : allocator<Tag>, promise_result<R, T> {
  private:
@@ -369,8 +377,6 @@ using promise_for = impl::promise_type<return_of<Head>, value_of<Task>, context_
 
 } // namespace lf::impl
 
-#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
-
 /**
  * @brief Specialize coroutine_traits for task<...> from functions.
  */
@@ -385,7 +391,5 @@ struct lf::stdx::coroutine_traits<Task, Head, Args...> {
 template <lf::impl::is_task Task, lf::impl::not_first_arg This, lf::first_arg Head,
           lf::impl::no_dangling<lf::tag_of<Head>>... Args>
 struct lf::stdx::coroutine_traits<Task, This, Head, Args...> : lf::stdx::coroutine_traits<Task, Head, Args...> {};
-
-#endif /* LF_DOXYGEN_SHOULD_SKIP_THIS */
 
 #endif /* FF9F3B2C_DC2B_44D2_A3C2_6E40F211C5B0 */

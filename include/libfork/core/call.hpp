@@ -103,7 +103,7 @@ struct join_type {};
 inline namespace core {
 
 /**
- * @brief An awaitable (in a task) that triggers a join.
+ * @brief An awaitable (in a `lf::task`) that triggers a join.
  */
 inline constexpr impl::join_type join = {};
 
@@ -118,7 +118,8 @@ inline constexpr impl::bind_task<tag::fork> fork = {};
 inline constexpr impl::bind_task<tag::call> call = {};
 
 /**
- * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a tail-call.
+ * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a
+ * [tail-call](https://en.wikipedia.org/wiki/Tail_call).
  */
 inline constexpr impl::bind_task<tag::tail> tail = {};
 

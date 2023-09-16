@@ -37,7 +37,8 @@ author = 'ConorWilliams'
 extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.githubpages',
-    'sphinx_copybutton',
+    'sphinx_copybutton', 
+    'sphinx.ext.todo',
     'breathe',
 ]
 

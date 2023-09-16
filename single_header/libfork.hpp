@@ -296,7 +296,7 @@ namespace lf {
 /**
  * @brief A inline namespace that wraps core functionality.
  *
- * This is the namespace that contains the user facing API of ``libfork``.
+ * This is the namespace that contains the user-facing API of ``libfork``.
  */
 inline namespace core {}
 
@@ -312,8 +312,13 @@ inline namespace ext {}
 /**
  * @brief An internal namespace that wraps implementation details.
  *
- * This is exposed for internal documentation however it is not part of the public facing API. No entities wrapped in this
- * namespace should be used as their API's are not stable.
+ * \rst
+ *
+ * .. warning::
+ *
+ *    This is exposed as internal documentation only it is not part of the public facing API.
+ *
+ * \endrst
  */
 namespace impl {}
 
@@ -591,13 +596,26 @@ inline namespace core {
 /**
  * @brief A wrapper to delay construction of an object.
  *
- * It is up to the caller to guarantee that the object is constructed before it is used and that an object is
- * constructed before the lifetime of the eventually ends (regardless of it is used).
+ * This class supports delayed construction of immovable types and reference types.
+ *
+ * \rst
+ *
+ * .. note::
+ *    This documentation is generated from the non-reference specialization, see the source
+ *    for the reference specialization.
+ *
+ * .. warning::
+ *    It is undefined behaviour if the object is not constructed before it is used or if the lifetime of the
+ *    ``lf::eventually`` ends before an object is constructed.
+ *
+ * \endrst
  */
 template <impl::non_void T>
 class eventually;
 
 // ------------------------------------------------------------------------ //
+
+#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
 
 template <impl::non_void T>
   requires impl::reference<T>
@@ -612,8 +630,6 @@ class eventually<T> : impl::immovable<eventually<T>> {
     m_value = std::addressof(expr);
     return *this;
   }
-
-#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
 
   /**
    * @brief Access the wrapped object.
@@ -635,15 +651,15 @@ class eventually<T> : impl::immovable<eventually<T>> {
     }
   }
 
-#endif
-
  private:
-#ifndef NDEBUG
+  #ifndef NDEBUG
   std::remove_reference_t<T> *m_value = nullptr;
-#else
+  #else
   std::remove_reference_t<T> *m_value;
-#endif
+  #endif
 };
+
+#endif
 
 // ------------------------------------------------------------------------ //
 
@@ -700,10 +716,12 @@ class eventually : impl::immovable<eventually<T>> {
 
   // clang-format on
 
+#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
   constexpr eventually() noexcept : m_init{} {};
+#endif
 
   /**
-   * @brief Construct an object inside the eventually from ``args...``.
+   * @brief Construct an object inside the eventually as if by ``T(args...)``.
    */
   template <typename... Args>
     requires std::constructible_from<T, Args...>
@@ -730,15 +748,24 @@ class eventually : impl::immovable<eventually<T>> {
   }
 
   // clang-format off
+
+  /**
+   * @brief Destroy the object which __must__ be inside the eventually.
+   */
   constexpr ~eventually() noexcept requires std::is_trivially_destructible_v<T> = default;
+
   // clang-format on
 
+#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
+
   constexpr ~eventually() noexcept(std::is_nothrow_destructible_v<T>) {
-#ifndef NDEBUG
+  #ifndef NDEBUG
     LF_ASSUME(m_constructed);
-#endif
+  #endif
     std::destroy_at(std::addressof(m_value));
   }
+
+#endif
 
   /**
    * @brief Access the wrapped object.
@@ -805,12 +832,21 @@ namespace impl {
 
 /**
  * @brief A small control structure that a root task uses to communicate with the main thread.
+ *
+ * In general this stores an `lf::eventually` for the result and a semaphore that is
+ * used to signal the main thread that the result is ready.
  */
 template <typename T>
 struct root_result;
 
+/**
+ * @brief A specialization of `root_result` for `void`.
+ */
 template <>
 struct root_result<void> : immovable<root_result<void>> {
+  /**
+   * @brief A semaphore that is used to signal the main thread that the result is ready.
+   */
   std::binary_semaphore semaphore{0};
 };
 
@@ -844,18 +880,22 @@ inline namespace core {
 /**
  * @brief A tuple-like type with forwarding semantics for in place construction.
  *
- * This is can be used as ``co_return in_place{...}`` to return an immovable type to an ``eventually``.
+ * This is can be used as ``co_return in_place{...}`` to return an immovable type to an ``lf::eventually``.
  */
 template <typename... Args>
 struct in_place : std::tuple<Args...> {
   using std::tuple<Args...>::tuple;
 };
 
+#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
+
 /**
  * @brief A forwarding deduction guide.
  */
 template <typename... Args>
 in_place(Args &&...) -> in_place<Args &&...>;
+
+#endif /* LF_DOXYGEN_SHOULD_SKIP_THIS */
 
 } // namespace core
 
@@ -899,10 +939,19 @@ concept valid_result = !impl::reference<R> && detail::valid_result_help<R, T>::v
 
 namespace impl {
 
+/**
+ * @brief A utility that stores `T*` if `T` is non-void and is otherwise empty.
+ */
 template <typename T>
 struct maybe_ptr {
+  /**
+   * @brief Construct with a non-null pointer.
+   */
   explicit constexpr maybe_ptr(T *ptr) noexcept : m_ptr(non_null(ptr)) {}
 
+  /**
+   * @brief Get the non-null stored pointer.
+   */
   constexpr auto address() const noexcept -> T * { return m_ptr; }
 
  private:
@@ -921,14 +970,46 @@ inline namespace core {
 /**
  * @brief A base class for promises that provides the ``return_[...]`` methods.
  *
- * This type is in the ``core`` namespace as return ``return_[...]`` methods are part of the API.
+ * This type is in the ``core`` namespace as return ``return_[...]`` methods are part of the public API.
+ *
+ * \rst
+ *
+ * In general an async function is are trying to emulate the requirements/interface of a regular function that looks like
+ * this:
+ *
+ * .. code::
+ *
+ *    auto foo() -> T {
+ *      // ...
+ *    }
+ *
+ *    R val = foo();
+ *
+ * But really it looks like more like this:
+ *
+ * .. code::
+ *
+ *    R val;
+ *
+ *    val = foo()
+ *
+ * Hence in general we require that for ``co_await expr`` that ``expr`` is ``std::convertible_to`` ``T`` and that ``T`` is
+ * ``std::is_assignable`` to ``R``. When possible we try to elide the intermediate ``T`` and assign directly to ``R``.
+ *
+ * .. note::
+ *    This documentation is generated from the non-reference specialization, see the source
+ *    for the reference specialization.
+ *
+ * \endrst
  *
  * @tparam R The type of the return address.
- * @tparam T The type of the return value.
+ * @tparam T The type of the return value, i.e. the `T` in `lf::task<T>`.
  */
 template <typename R, typename T>
   requires valid_result<R, T>
 struct promise_result;
+
+#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
 
 // ------------------------------ void/ignore ------------------------------ //
 
@@ -940,29 +1021,24 @@ struct promise_result<void, void> {
 // ------------------------------ rooted void ------------------------------ //
 
 template <>
-struct promise_result<impl::root_result<void>, void> : private impl::maybe_ptr<impl::root_result<void>> {
+struct promise_result<impl::root_result<void>, void> : protected impl::maybe_ptr<impl::root_result<void>> {
 
   using maybe_ptr<impl::root_result<void>>::maybe_ptr;
 
-  using maybe_ptr<impl::root_result<void>>::address;
-
   static constexpr void return_void() noexcept { LF_LOG("return void"); }
 };
+
+#endif
 
 // ------------------------------ general case ------------------------------ //
 
 template <typename R, typename T>
   requires valid_result<R, T>
-struct promise_result : private impl::maybe_ptr<R> {
-
+struct promise_result : protected impl::maybe_ptr<R> {
+ protected:
   using impl::maybe_ptr<R>::maybe_ptr;
 
-  constexpr auto address() const noexcept -> R *
-    requires impl::non_void<R>
-  {
-    return impl::maybe_ptr<R>::address();
-  }
-
+ public:
   /**
    * @brief Assign `value` to the return address.
    */
@@ -990,7 +1066,7 @@ struct promise_result : private impl::maybe_ptr<R> {
   }
 
   /**
-   * @brief Assign `value` to the return address.
+   * @brief Convert and assign `value` to the return address.
    *
    * If the return address is directly assignable from `value` this will not construct the intermediate `T`.
    */
@@ -1482,6 +1558,12 @@ struct promise_alloc_stack : frame_block {
 
 inline namespace ext {
 
+/**
+ * @brief Initialize thread-local variables before a worker can resume submitted tasks.
+ *
+ * .. warning::
+ *    These should be cleaned up with `worker_finalize(...)`.
+ */
 template <thread_context Context>
 void worker_init(Context *context) {
 
@@ -1493,6 +1575,12 @@ void worker_init(Context *context) {
   impl::tls::asp = impl::stack_as_bytes(context->stack_pop());
 }
 
+/**
+ * @brief Clean-up thread-local variable before destructing a worker's context.
+ *
+ * .. warning::
+ *    These must be initialized with `worker_init(...)`.
+ */
 template <thread_context Context>
 void worker_finalize(Context *context) {
   LF_ASSERT(context == impl::tls::ctx<Context>);
@@ -1531,6 +1619,9 @@ struct tracked_fixed_string {
   static constexpr std::size_t file_name_max_size = 127;
 
  public:
+  /**
+   * @brief Construct a tracked fixed string from a string literal.
+   */
   consteval tracked_fixed_string(Char const (&str)[N], sloc loc = sloc::current()) noexcept
       : line{loc.line()},
         column{loc.column()} {
@@ -1541,11 +1632,12 @@ struct tracked_fixed_string {
     // std::size_t count = 0 loc.while
   }
 
-  std::array<Char, N> function_name;
   // std::array<char, file_name_max_size + 1> file_name_buf;
   // std::size_t file_name_size;
-  std::uint_least32_t line;
-  std::uint_least32_t column;
+
+  std::array<Char, N> function_name; ///< The given name of the function.
+  std::uint_least32_t line;          ///< The line number where `this` was constructed.
+  std::uint_least32_t column;        ///< The column number where `this` was constructed.
 };
 
 } // namespace core
@@ -1557,14 +1649,29 @@ inline namespace core {
 /**
  * @brief The return type for libfork's async functions/coroutines.
  *
- * IMPORTANT: The value type ``T`` of a coroutine should not be a function of its first argument.
+ * This predominantly exists to disambiguate `lf` coroutines from other coroutines.
+ *
+ * \rst
+ *
+ * .. warning::
+ *    The value type ``T`` of a coroutine should never be a function of its context or return address type.
+ *
+ * \endrst
  */
 template <typename T = void, tracked_fixed_string Name = "">
 struct task {
   using value_type = T; ///< The type of the value returned by the coroutine.
 
+  /**
+   * @brief Construct a new task object.
+   *
+   * This should only be called by the compiler.
+   */
   task(frame_block *frame) : m_frame{non_null(frame)} {}
 
+  /**
+   * @brief __Not__ part of the public API.
+   */
   [[nodiscard]] constexpr auto frame() const noexcept -> frame_block * { return m_frame; }
 
  private:
@@ -1599,8 +1706,8 @@ enum class tag {
   root,   ///< This coroutine is a root task (allocated on heap) from an ``lf::sync_wait``.
   call,   ///< Non root task (on a virtual stack) from an ``lf::call``, completes synchronously.
   fork,   ///< Non root task (on a virtual stack) from an ``lf::fork``, completes asynchronously.
-  invoke, ///< Equivalent to ``call`` but caches the return (extra move required).
-  tail,   ///< Force a tail-call optimization.
+  invoke, ///< Equivalent to ``lf::call`` but caches the return (extra move required).
+  tail,   ///< Force a [tail-call](https://en.wikipedia.org/wiki/Tail_call) optimization.
 };
 
 // ----------------------------------------------- //
@@ -1645,21 +1752,21 @@ using value_of = typename std::remove_cvref_t<T>::value_type;
 // ----------------------------------------------- //
 
 /**
- * @brief Test if a type is a stateless class.
+ * @brief Check if an invocable is suitable for use as an `lf::async` function.
  */
 template <typename T>
 concept stateless = std::is_class_v<T> && std::is_trivial_v<T> && std::is_empty_v<T>;
 
 // ----------------------------------------------- //
 
-/**
- * @brief Forward decl for concepts.
- */
 template <stateless Fn>
 struct [[nodiscard("async functions must be called")]] async;
 
 /**
- * @brief The API of the first arg passed to an async function.
+ * @brief The API of the first argument passed to an async function.
+ *
+ * All async functions must have a templated first arguments, this argument
+ * will be generated by the compiler and encodes many useful/queryable properties.
  */
 template <typename Arg>
 concept first_arg = impl::unqualified<Arg> && std::is_trivially_copyable_v<Arg> && requires(Arg arg) {
@@ -1685,6 +1792,7 @@ concept first_arg = impl::unqualified<Arg> && std::is_trivially_copyable_v<Arg> 
   }
   (arg);
 };
+// !END-GRAB
 
 } // namespace core
 
@@ -1726,6 +1834,16 @@ struct patched : Head {
 
   using context_type = Context;
 
+  /**
+   * @brief Get a pointer to the thread-local context.
+   *
+   * \rst
+   *
+   * .. warning::
+   *    This may change at every ``co_await``!
+   *
+   * \endrst
+   */
   [[nodiscard]] static auto context() -> Context * { return non_null(tls::ctx<Context>); }
 };
 
@@ -1791,11 +1909,13 @@ inline namespace core {
 
 /**
  * @brief Wraps a stateless callable that returns an ``lf::task``.
+ *
+ * Use this type to define an synchronous function.
  */
 template <stateless Fn>
 struct [[nodiscard("async functions must be called")]] async {
   /**
-   * @brief Use with explicit template-parameter.
+   * @brief For use with an explicit template-parameter.
    */
   consteval async() = default;
 
@@ -1803,13 +1923,16 @@ struct [[nodiscard("async functions must be called")]] async {
    * @brief Implicitly constructible from an invocable, deduction guide
    * generated from this.
    *
-   * This is to allow concise definitions from lambdas:
+   * \rst
    *
+   * This is to allow concise definitions from lambdas:
    * .. code::
    *
    *    constexpr async fib = [](auto fib, ...) -> task<int, "fib"> {
    *        // ...
    *    };
+   *
+   * \endrst
    */
   consteval async([[maybe_unused]] Fn invocable_which_returns_a_task) {}
 
@@ -1823,13 +1946,13 @@ struct [[nodiscard("async functions must be called")]] async {
  public:
   /**
    * @brief Wrap the arguments into an awaitable (in an ``lf::task``) that triggers an invoke.
-   *
-   * Note that the return type is tagged void however during the `await_transform` the full type deduced.
    */
   template <typename... Args>
   LF_STATIC_CALL constexpr auto operator()(Args &&...args) LF_STATIC_CONST noexcept -> invoke_packet<Args...> {
     return {{}, std::forward<Args>(args)...};
   }
+
+#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
 
   /**
    * @brief Wrap the arguments into an awaitable (in an ``lf::task``) that triggers an invoke.
@@ -1839,6 +1962,8 @@ struct [[nodiscard("async functions must be called")]] async {
   LF_STATIC_CALL constexpr auto operator()(Args &&...args) LF_STATIC_CONST noexcept -> call_packet<Args...> {
     return {{}, std::forward<Args>(args)...};
   }
+
+#endif
 };
 
 } // namespace core
@@ -1854,12 +1979,12 @@ namespace impl {
  * unimplemented as it is only used in unevaluated contexts.
  */
 struct dummy_context {
-  auto max_threads() -> std::size_t;
-  auto submit(frame_block *) -> void;
-  auto task_pop() -> frame_block *;
-  auto task_push(frame_block *) -> void;
-  auto stack_pop() -> async_stack *;
-  auto stack_push(async_stack *) -> void;
+  auto max_threads() -> std::size_t;      ///< Unimplemented.
+  auto submit(frame_block *) -> void;     ///< Unimplemented.
+  auto task_pop() -> frame_block *;       ///< Unimplemented.
+  auto task_push(frame_block *) -> void;  ///< Unimplemented.
+  auto stack_pop() -> async_stack *;      ///< Unimplemented.
+  auto stack_push(async_stack *) -> void; ///< Unimplemented.
 };
 
 static_assert(thread_context<dummy_context>, "dummy_context is not a thread_context");
@@ -1874,6 +1999,9 @@ struct basic_first_arg<void, Tag, F> : async<F>, private move_only<basic_first_a
   using function_type = F;              ///< The underlying async
   static constexpr tag tag_value = Tag; ///< The tag value.
 
+  /**
+   * @brief Unimplemented - to satisfy the ``thread_context`` concept.
+   */
   [[nodiscard]] static auto context() -> context_type * { LF_THROW(std::runtime_error{"Should never be called!"}); }
 };
 
@@ -1990,7 +2118,7 @@ struct join_type {};
 inline namespace core {
 
 /**
- * @brief An awaitable (in a task) that triggers a join.
+ * @brief An awaitable (in a `lf::task`) that triggers a join.
  */
 inline constexpr impl::join_type join = {};
 
@@ -2005,7 +2133,8 @@ inline constexpr impl::bind_task<tag::fork> fork = {};
 inline constexpr impl::bind_task<tag::call> call = {};
 
 /**
- * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a tail-call.
+ * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a
+ * [tail-call](https://en.wikipedia.org/wiki/Tail_call).
  */
 inline constexpr impl::bind_task<tag::tail> tail = {};
 
@@ -2048,6 +2177,14 @@ namespace lf::impl {
 template <tag Tag>
 using allocator = std::conditional_t<Tag == tag::root, promise_alloc_heap, promise_alloc_stack>;
 
+/**
+ * @brief The promise type for all tasks/coroutines.
+ *
+ * @tparam R The type of the return address.
+ * @tparam T The value type of the coroutine (what it promises to return).
+ * @tparam Context The type of the context this coroutine is running on.
+ * @tparam Tag The dispatch tag of the coroutine.
+ */
 template <typename R, typename T, thread_context Context, tag Tag>
 struct promise_type : allocator<Tag>, promise_result<R, T> {
  private:
@@ -2378,8 +2515,6 @@ using promise_for = impl::promise_type<return_of<Head>, value_of<Task>, context_
 
 } // namespace lf::impl
 
-#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
-
 /**
  * @brief Specialize coroutine_traits for task<...> from functions.
  */
@@ -2394,8 +2529,6 @@ struct lf::stdx::coroutine_traits<Task, Head, Args...> {
 template <lf::impl::is_task Task, lf::impl::not_first_arg This, lf::first_arg Head,
           lf::impl::no_dangling<lf::tag_of<Head>>... Args>
 struct lf::stdx::coroutine_traits<Task, This, Head, Args...> : lf::stdx::coroutine_traits<Task, Head, Args...> {};
-
-#endif /* LF_DOXYGEN_SHOULD_SKIP_THIS */
 
 #endif /* FF9F3B2C_DC2B_44D2_A3C2_6E40F211C5B0 */
 #ifndef E54125F4_034E_45CD_8DF4_7A71275A5308
@@ -2460,6 +2593,16 @@ using packet_t = typename sync_wait_impl<context_of<Sch>, F, Args...>::real_pack
 
 /**
  * @brief The entry point for synchronous execution of asynchronous functions.
+ *
+ * This is a blocking call to an `lf::async` function. The function will be executed on `sch`.
+ *
+ * \rst
+ *
+ * .. warning::
+ *
+ *    This should never be called from within a coroutine.
+ *
+ * \endrst
  */
 template <scheduler Sch, stateless F, class... Args>
 auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcept -> detail::result_t<Sch, F, Args...> {

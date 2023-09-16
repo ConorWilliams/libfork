@@ -38,7 +38,7 @@ namespace lf {
 /**
  * @brief A inline namespace that wraps core functionality.
  *
- * This is the namespace that contains the user facing API of ``libfork``.
+ * This is the namespace that contains the user-facing API of ``libfork``.
  */
 inline namespace core {}
 
@@ -54,8 +54,13 @@ inline namespace ext {}
 /**
  * @brief An internal namespace that wraps implementation details.
  *
- * This is exposed for internal documentation however it is not part of the public facing API. No entities wrapped in this
- * namespace should be used as their API's are not stable.
+ * \rst
+ *
+ * .. warning::
+ *
+ *    This is exposed as internal documentation only it is not part of the public facing API.
+ *
+ * \endrst
  */
 namespace impl {}
 

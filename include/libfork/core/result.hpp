@@ -26,12 +26,21 @@ namespace impl {
 
 /**
  * @brief A small control structure that a root task uses to communicate with the main thread.
+ *
+ * In general this stores an `lf::eventually` for the result and a semaphore that is
+ * used to signal the main thread that the result is ready.
  */
 template <typename T>
 struct root_result;
 
+/**
+ * @brief A specialization of `root_result` for `void`.
+ */
 template <>
 struct root_result<void> : immovable<root_result<void>> {
+  /**
+   * @brief A semaphore that is used to signal the main thread that the result is ready.
+   */
   std::binary_semaphore semaphore{0};
 };
 
@@ -65,18 +74,22 @@ inline namespace core {
 /**
  * @brief A tuple-like type with forwarding semantics for in place construction.
  *
- * This is can be used as ``co_return in_place{...}`` to return an immovable type to an ``eventually``.
+ * This is can be used as ``co_return in_place{...}`` to return an immovable type to an ``lf::eventually``.
  */
 template <typename... Args>
 struct in_place : std::tuple<Args...> {
   using std::tuple<Args...>::tuple;
 };
 
+#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
+
 /**
  * @brief A forwarding deduction guide.
  */
 template <typename... Args>
 in_place(Args &&...) -> in_place<Args &&...>;
+
+#endif /* LF_DOXYGEN_SHOULD_SKIP_THIS */
 
 } // namespace core
 
@@ -120,10 +133,19 @@ concept valid_result = !impl::reference<R> && detail::valid_result_help<R, T>::v
 
 namespace impl {
 
+/**
+ * @brief A utility that stores `T*` if `T` is non-void and is otherwise empty.
+ */
 template <typename T>
 struct maybe_ptr {
+  /**
+   * @brief Construct with a non-null pointer.
+   */
   explicit constexpr maybe_ptr(T *ptr) noexcept : m_ptr(non_null(ptr)) {}
 
+  /**
+   * @brief Get the non-null stored pointer.
+   */
   constexpr auto address() const noexcept -> T * { return m_ptr; }
 
  private:
@@ -142,14 +164,46 @@ inline namespace core {
 /**
  * @brief A base class for promises that provides the ``return_[...]`` methods.
  *
- * This type is in the ``core`` namespace as return ``return_[...]`` methods are part of the API.
+ * This type is in the ``core`` namespace as return ``return_[...]`` methods are part of the public API.
+ *
+ * \rst
+ *
+ * In general an async function is are trying to emulate the requirements/interface of a regular function that looks like
+ * this:
+ *
+ * .. code::
+ *
+ *    auto foo() -> T {
+ *      // ...
+ *    }
+ *
+ *    R val = foo();
+ *
+ * But really it looks like more like this:
+ *
+ * .. code::
+ *
+ *    R val;
+ *
+ *    val = foo()
+ *
+ * Hence in general we require that for ``co_await expr`` that ``expr`` is ``std::convertible_to`` ``T`` and that ``T`` is
+ * ``std::is_assignable`` to ``R``. When possible we try to elide the intermediate ``T`` and assign directly to ``R``.
+ *
+ * .. note::
+ *    This documentation is generated from the non-reference specialization, see the source
+ *    for the reference specialization.
+ *
+ * \endrst
  *
  * @tparam R The type of the return address.
- * @tparam T The type of the return value.
+ * @tparam T The type of the return value, i.e. the `T` in `lf::task<T>`.
  */
 template <typename R, typename T>
   requires valid_result<R, T>
 struct promise_result;
+
+#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
 
 // ------------------------------ void/ignore ------------------------------ //
 
@@ -161,29 +215,24 @@ struct promise_result<void, void> {
 // ------------------------------ rooted void ------------------------------ //
 
 template <>
-struct promise_result<impl::root_result<void>, void> : private impl::maybe_ptr<impl::root_result<void>> {
+struct promise_result<impl::root_result<void>, void> : protected impl::maybe_ptr<impl::root_result<void>> {
 
   using maybe_ptr<impl::root_result<void>>::maybe_ptr;
 
-  using maybe_ptr<impl::root_result<void>>::address;
-
   static constexpr void return_void() noexcept { LF_LOG("return void"); }
 };
+
+#endif
 
 // ------------------------------ general case ------------------------------ //
 
 template <typename R, typename T>
   requires valid_result<R, T>
-struct promise_result : private impl::maybe_ptr<R> {
-
+struct promise_result : protected impl::maybe_ptr<R> {
+ protected:
   using impl::maybe_ptr<R>::maybe_ptr;
 
-  constexpr auto address() const noexcept -> R *
-    requires impl::non_void<R>
-  {
-    return impl::maybe_ptr<R>::address();
-  }
-
+ public:
   /**
    * @brief Assign `value` to the return address.
    */
@@ -211,7 +260,7 @@ struct promise_result : private impl::maybe_ptr<R> {
   }
 
   /**
-   * @brief Assign `value` to the return address.
+   * @brief Convert and assign `value` to the return address.
    *
    * If the return address is directly assignable from `value` this will not construct the intermediate `T`.
    */
