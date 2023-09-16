@@ -383,7 +383,7 @@ static_assert(thread_context<dummy_context>, "dummy_context is not a thread_cont
  * @brief Void/ignore specialization.
  */
 template <tag Tag, stateless F>
-struct basic_first_arg<void, Tag, F> : async<F>, move_only<basic_first_arg<void, Tag, F>> {
+struct basic_first_arg<void, Tag, F> : async<F>, private move_only<basic_first_arg<void, Tag, F>> {
   using context_type = dummy_context;   ///< A default context
   using return_type = void;             ///< The type of the return address.
   using function_type = F;              ///< The underlying async

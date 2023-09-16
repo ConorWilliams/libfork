@@ -126,7 +126,7 @@ struct maybe_ptr {
 
   constexpr auto address() const noexcept -> T * { return m_ptr; }
 
-private:
+ private:
   T *m_ptr;
 };
 
@@ -178,13 +178,17 @@ struct promise_result : private impl::maybe_ptr<R> {
 
   using impl::maybe_ptr<R>::maybe_ptr;
 
-  using impl::maybe_ptr<R>::address;
+  constexpr auto address() const noexcept -> R *
+    requires impl::non_void<R>
+  {
+    return impl::maybe_ptr<R>::address();
+  }
 
   /**
    * @brief Assign `value` to the return address.
    */
   constexpr void return_value(T const &value) const
-    requires std::convertible_to<T const &, T> && impl::non_reference<R>
+    requires std::convertible_to<T const &, T> && impl::non_reference<T>
   {
     if constexpr (impl::non_void<R>) {
       *(this->address()) = value;
@@ -223,11 +227,11 @@ struct promise_result : private impl::maybe_ptr<R> {
     }
   }
 
-private:
+ private:
   template <typename U>
   using strip_rvalue_ref_t = std::conditional_t<std::is_rvalue_reference_v<U>, std::remove_reference_t<U>, U>;
 
-public:
+ public:
   /**
    * @brief Assign a value constructed from the arguments stored in `args` to the return address.
    *
@@ -241,7 +245,7 @@ public:
 #define LF_FWD_ARGS std::forward<strip_rvalue_ref_t<Args>>(args)...
 
     if constexpr (impl::non_void<R>) {
-      apply_to(static_cast<std::tuple<Args...> &&>(args), [ret = this->address()](Args... args) {
+      impl::apply_to(static_cast<std::tuple<Args...> &&>(args), [ret = this->address()](Args... args) {
         if constexpr (requires { ret->emplace(LF_FWD_ARGS); }) {
           ret->emplace(LF_FWD_ARGS);
         } else {

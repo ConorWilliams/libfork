@@ -12,7 +12,7 @@
 
 #include <thread>
 
-#include "libfork/queue.hpp"
+#include "libfork/schedule/queue.hpp"
 
 auto example() -> int {
   // Work-stealing queue of ints

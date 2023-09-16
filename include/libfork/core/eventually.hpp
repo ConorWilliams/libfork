@@ -53,16 +53,18 @@ public:
    *
    * This will decay T&& to T& just like a regular T&& function parameter.
    */
-  [[nodiscard]] constexpr auto operator*() const & noexcept -> std::remove_reference_t<T> & { return *non_null(m_value); }
+  [[nodiscard]] constexpr auto operator*() const & noexcept -> std::remove_reference_t<T> & {
+    return *impl::non_null(m_value);
+  }
 
   /**
    * @brief Access the wrapped object.
    */
   [[nodiscard]] constexpr auto operator*() const && noexcept -> T {
     if constexpr (std::is_rvalue_reference_v<T>) {
-      return std::move(*non_null(m_value));
+      return std::move(*impl::non_null(m_value));
     } else {
-      return *non_null(m_value);
+      return *impl::non_null(m_value);
     }
   }
 

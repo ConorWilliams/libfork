@@ -174,7 +174,7 @@ inline namespace ext {
 /**
  * @brief A small bookkeeping struct which is a member of each task's promise.
  */
-struct frame_block : private impl::immovable<frame_block>, protected impl::debug_block {
+struct frame_block : private impl::immovable<frame_block>, impl::debug_block {
   /**
    * @brief Resume a stolen task.
    *
@@ -195,7 +195,7 @@ struct frame_block : private impl::immovable<frame_block>, protected impl::debug
   template <thread_context Context>
   inline void resume_external() noexcept;
 
-protected:
+// protected:
 /**
  * @brief Construct a frame block.
  *
@@ -376,7 +376,7 @@ public:
    *
    * This will update `tls::asp` to point to the top of the new async stack.
    */
-  [[nodiscard]] static auto operator new(std::size_t size) noexcept -> void * {
+  [[nodiscard]] static auto operator new(std::size_t size) -> void * {
     LF_ASSERT(tls::asp);
     tls::asp -= (size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
     LF_LOG("Allocating {} bytes on stack from {}", size, (void *)tls::asp);
@@ -386,7 +386,7 @@ public:
   /**
    * @brief Deallocate the coroutine on the current `async_stack`.
    */
-  static void operator delete(void *ptr, std::size_t size) noexcept {
+  static void operator delete(void *ptr, std::size_t size) {
     LF_ASSERT(ptr == tls::asp);
     tls::asp += (size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
     LF_LOG("Deallocating {} bytes on stack to {}", size, (void *)tls::asp);
@@ -405,7 +405,7 @@ void worker_init(Context *context) {
   LF_ASSERT(!impl::tls::asp);
 
   impl::tls::ctx<Context> = context;
-  impl::tls::asp = context->stack_pop()->as_bytes();
+  impl::tls::asp = impl::stack_as_bytes(context->stack_pop());
 }
 
 template <thread_context Context>

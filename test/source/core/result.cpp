@@ -23,6 +23,8 @@
 
 using namespace lf;
 
+using namespace lf::impl;
+
 template <typename R, typename T>
 struct coro {
   struct promise_type : promise_result<R, T> {
@@ -94,7 +96,7 @@ vector(root, root_result<std::vector<int>>);
 
 // ------------------------------------------- //
 
-struct I : lf::detail::immovable<I> {
+struct I : lf::impl::immovable<I> {
   I() = default;
   I(int) {}
   I(int, int){};

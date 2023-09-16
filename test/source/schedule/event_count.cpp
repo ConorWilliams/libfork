@@ -24,8 +24,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "libfork/event_count.hpp"
-#include "libfork/random.hpp"
+#include "libfork/schedule/event_count.hpp"
+#include "libfork/schedule/random.hpp"
 
 // NOLINTBEGIN No need to check the tests for style.
 
@@ -41,7 +41,7 @@ void randomPartition(Random &random, T key, int n, std::vector<std::pair<T, int>
 }
 
 class semaphore {
-public:
+ public:
   explicit semaphore(int v = 0) : value_(v) {}
 
   void down() {
@@ -55,7 +55,7 @@ public:
 
   int value() const { return value_; }
 
-private:
+ private:
   bool tryDown() {
     for (int v = value_; v != 0;) {
       if (value_.compare_exchange_weak(v, v - 1)) {
@@ -79,12 +79,12 @@ TEST_CASE("event count, deadlocking (folly)", "[event_count]") {
   };
 
   std::vector<std::pair<Op, int>> ops;
-  lf::xoshiro rnd(std::random_device{});
+  lf::xoshiro rnd(lf::seed, std::random_device{});
 
   randomPartition(rnd, Op::UP, count, ops);
-  size_t uppers = ops.size();
+  // size_t uppers = ops.size();
   randomPartition(rnd, Op::DOWN, count, ops);
-  size_t downers = ops.size() - uppers;
+  // size_t downers = ops.size() - uppers;
 
   std::shuffle(ops.begin(), ops.end(), rnd);
 

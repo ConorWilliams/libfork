@@ -34,6 +34,8 @@
 
 namespace lf {
 
+inline namespace ext {
+
 /**
  * @brief A condition variable for lock free algorithms.
  *
@@ -98,8 +100,8 @@ namespace lf {
  *
  * \endrst
  */
-class event_count : detail::immovable<event_count> {
-public:
+class event_count : impl::immovable<event_count> {
+ public:
   /**
    * @brief The return type of ``prepare_wait()``.
    */
@@ -140,7 +142,7 @@ public:
     requires std::is_invocable_r_v<bool, Pred const &>
   void await(Pred const &condition);
 
-private:
+ private:
   auto epoch() noexcept -> std::atomic<std::uint32_t> * {
     return reinterpret_cast<std::atomic<std::uint32_t> *>(&m_val) + k_epoch_offset; // NOLINT
   }
@@ -233,5 +235,7 @@ void event_count::await(Pred const &condition) {
     LF_RETHROW;
   }
 }
+
+} // namespace ext
 
 } // namespace lf

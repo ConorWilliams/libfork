@@ -24,7 +24,7 @@
 
 using namespace lf;
 
-using namespace lf::detail;
+using namespace lf::impl;
 
 inline constexpr auto count = [](auto count, int &var) static -> task<void, "count"> {
   if (var > 0) {

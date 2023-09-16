@@ -41,6 +41,8 @@
 
 namespace lf {
 
+inline namespace ext {
+
 /**
  * @brief A concept that verifies a type is suitable for use in a queue.
  */
@@ -48,7 +50,9 @@ template <typename T>
 concept simple =
     std::is_default_constructible_v<T> && std::is_trivially_copyable_v<T> && std::atomic<T>::is_always_lock_free;
 
-namespace detail {
+} // namespace ext
+
+namespace impl {
 
 /**
  * @brief A basic wrapper around a c-style array that provides modulo load/stores.
@@ -103,7 +107,7 @@ struct ring_buf {
     return ptr;
   }
 
-private:
+ private:
   using array_t = std::atomic<T>[]; // NOLINT
 
   std::ptrdiff_t m_cap;  ///< Capacity of the buffer
@@ -116,7 +120,9 @@ private:
 #endif
 };
 
-} // namespace detail
+} // namespace impl
+
+inline namespace ext {
 
 /**
  * @brief Error codes for ``queue`` 's ``steal()`` operation.
@@ -127,6 +133,11 @@ enum class err : int {
   empty,    ///< The queue is empty and hence, the ``steal()`` operation failed.
 };
 
+/**
+ * @brief A concept that verifies a type is suitable for use as the return type of ``queue::pop()``.
+ *
+ * Ideally this has the semantic implication that ``Optional`` is a ``std::optional``-like type.
+ */
 template <typename Optional, typename T>
 concept optional_for = std::is_default_constructible_v<Optional> && std::constructible_from<Optional, T>;
 
@@ -141,23 +152,23 @@ concept optional_for = std::is_default_constructible_v<Optional> && std::constru
  *
  * Example:
  *
- * .. include:: ../../test/source/queue.cpp
+ * .. include:: ../../../test/source/schedule/queue.cpp
  *    :code:
  *    :start-after: // !BEGIN-EXAMPLE
  *    :end-before: // !END-EXAMPLE
  *
  * \endrst
  *
- * @tparam T The type of the elements in the queue - must be a simple type.
+ * @tparam T The type of the elements in the queue.
  * @tparam T The type returned by ``pop()``.
  */
 template <simple T, optional_for<T> Optional = std::optional<T>>
-class queue : detail::immovable<queue<T>> {
+class queue : impl::immovable<queue<T>> {
 
   static constexpr std::ptrdiff_t k_default_capacity = 1024;
   static constexpr std::size_t k_garbage_reserve = 32;
 
-public:
+ public:
   /**
    * @brief The type of the elements in the queue.
    */
@@ -271,12 +282,11 @@ public:
    */
   constexpr ~queue() noexcept;
 
-private:
-  alignas(detail::k_cache_line) std::atomic<std::ptrdiff_t> m_top;
-  alignas(detail::k_cache_line) std::atomic<std::ptrdiff_t> m_bottom;
-  alignas(detail::k_cache_line) std::atomic<detail::ring_buf<T> *> m_buf;
-
-  alignas(detail::k_cache_line) std::vector<std::unique_ptr<detail::ring_buf<T>>> m_garbage; // Store old buffers here.
+ private:
+  alignas(impl::k_cache_line) std::atomic<std::ptrdiff_t> m_top;
+  alignas(impl::k_cache_line) std::atomic<std::ptrdiff_t> m_bottom;
+  alignas(impl::k_cache_line) std::atomic<impl::ring_buf<T> *> m_buf;
+  alignas(impl::k_cache_line) std::vector<std::unique_ptr<impl::ring_buf<T>>> m_garbage; // Store old buffers here.
 
   // Convenience aliases.
   static constexpr std::memory_order relaxed = std::memory_order_relaxed;
@@ -289,7 +299,7 @@ private:
 template <simple T, optional_for<T> Optional>
 constexpr queue<T, Optional>::queue(std::ptrdiff_t cap) : m_top(0),
                                                           m_bottom(0),
-                                                          m_buf(new detail::ring_buf<T>{cap}) {
+                                                          m_buf(new impl::ring_buf<T>{cap}) {
   m_garbage.reserve(k_garbage_reserve);
 }
 
@@ -321,7 +331,7 @@ template <simple T, optional_for<T> Optional>
 constexpr auto queue<T, Optional>::push(T const &val) noexcept -> void {
   std::ptrdiff_t const bottom = m_bottom.load(relaxed);
   std::ptrdiff_t const top = m_top.load(acquire);
-  detail::ring_buf<T> *buf = m_buf.load(relaxed);
+  impl::ring_buf<T> *buf = m_buf.load(relaxed);
 
   if (buf->capacity() < (bottom - top) + 1) {
     // Queue is full, build a new one.
@@ -340,7 +350,7 @@ constexpr auto queue<T, Optional>::push(T const &val) noexcept -> void {
 template <simple T, optional_for<T> Optional>
 constexpr auto queue<T, Optional>::pop() noexcept -> Optional {
   std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1;
-  detail::ring_buf<T> *buf = m_buf.load(relaxed);
+  impl::ring_buf<T> *buf = m_buf.load(relaxed);
 
   m_bottom.store(bottom, relaxed); // Stealers can no longer steal.
 
@@ -394,6 +404,8 @@ template <simple T, optional_for<T> Optional>
 constexpr queue<T, Optional>::~queue() noexcept {
   delete m_buf.load(); // NOLINT
 }
+
+} // namespace ext
 
 } // namespace lf
 

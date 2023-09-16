@@ -9,7 +9,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "libfork/queue.hpp"
+#include "libfork/schedule/queue.hpp"
 
 // NOLINTBEGIN No linting in tests
 

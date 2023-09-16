@@ -114,7 +114,7 @@ struct immovable {
   auto operator=(const immovable &) -> immovable & = delete;
   auto operator=(immovable &&) -> immovable & = delete;
 
-protected:
+ protected:
   immovable() = default;
   ~immovable() = default;
 };
@@ -136,9 +136,10 @@ struct move_only {
   auto operator=(const move_only &) -> move_only & = delete;
   auto operator=(move_only &&) noexcept -> move_only & = default;
 
-protected:
-  move_only() = default;
   ~move_only() = default;
+
+ protected:
+  move_only() = default;
 };
 
 static_assert(std::is_empty_v<immovable<void>>);

@@ -13,7 +13,8 @@
 
 #include "libfork/core.hpp"
 #include "libfork/core/stack.hpp"
-#include "libfork/queue.hpp"
+
+#include "libfork/schedule/queue.hpp"
 
 /**
  * @file inline.hpp
@@ -27,12 +28,12 @@ namespace lf {
  * @brief A scheduler that runs all tasks inline on the current thread.
  */
 class inline_scheduler {
-public:
+ public:
   /**
    * @brief The context type for the scheduler.
    */
   class context_type {
-  public:
+   public:
     static void submit(frame_block *ptr) { ptr->resume_external<context_type>(); }
 
     /**
@@ -68,7 +69,7 @@ public:
       return new async_stack;
     }
 
-  private:
+   private:
     queue<frame_block *, frame_block *> m_tasks;
   };
 
@@ -80,7 +81,7 @@ public:
 
   ~inline_scheduler() { worker_finalize(&m_context); }
 
-private:
+ private:
   context_type m_context;
 };
 

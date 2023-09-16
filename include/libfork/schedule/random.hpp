@@ -31,11 +31,18 @@
 
 namespace lf {
 
+inline namespace ext {
+
+namespace impl {
+
 /**
- * @brief A utility for ensuring that two types, stripped of CV and ref qualifiers, are different.
+ * @brief A tag type to disambiguated seeding from other operations.
  */
-template <typename T, typename U>
-concept different_from = !std::same_as<std::remove_cvref_t<T>, std::remove_cvref_t<U>>;
+struct seed_t {};
+
+} // namespace impl
+
+inline constexpr impl::seed_t seed = {}; ///< A tag to disambiguate seeding from other operations.
 
 /**
  * @brief A \<random\> compatible implementation of the xoshiro256** 1.0 PRNG
@@ -51,20 +58,13 @@ concept different_from = !std::same_as<std::remove_cvref_t<T>, std::remove_cvref
  * \endrst
  */
 class xoshiro {
-public:
+ public:
   using result_type = std::uint64_t; ///< Required by named requirement: UniformRandomBitGenerator
 
+  /**
+   * @brief Construct a new xoshiro with a fixed default-seed.
+   */
   xoshiro() = default;
-
-  xoshiro(xoshiro const &) = default;
-
-  xoshiro(xoshiro &&) = default;
-
-  auto operator=(xoshiro const &) -> xoshiro & = default;
-
-  auto operator=(xoshiro &&) -> xoshiro & = default;
-
-  ~xoshiro() = default;
 
   /**
    * @brief Construct and seed the PRNG.
@@ -80,12 +80,11 @@ public:
   /**
    * @brief Construct and seed the PRNG from some other generator.
    */
-  template <different_from<xoshiro> PRNG>
+  template <typename PRNG>
     requires requires(PRNG &&device) {
       { std::invoke(device) } -> std::unsigned_integral;
     }
-  constexpr explicit xoshiro(PRNG &&device)
-      : m_state{random_bits(device), random_bits(device), random_bits(device), random_bits(device)} {} // NOLINT
+  constexpr xoshiro(impl::seed_t, PRNG &&device) : xoshiro({scale(device), scale(device), scale(device), scale(device)}) {}
 
   /**
    * @brief Get the minimum value of the generator.
@@ -144,7 +143,7 @@ public:
     jump_impl({0x76e15d3efefdcbbf, 0xc5004e441c522fb3, 0x77710069854ee241, 0x39109bb02acbe635}); // NOLINT
   }
 
-private:
+ private:
   /**
    * @brief The default seed for the PRNG.
    */
@@ -169,7 +168,7 @@ private:
     requires requires(PRNG &&device) {
       { std::invoke(device) } -> std::unsigned_integral;
     }
-  [[nodiscard]] static constexpr auto random_bits(PRNG &&device) -> result_type {
+  [[nodiscard]] static constexpr auto scale(PRNG &&device) -> result_type {
     //
     constexpr std::size_t chars_in_prng = sizeof(std::invoke_result_t<PRNG>);
 
@@ -204,6 +203,8 @@ private:
     m_state = s;
   }
 };
+
+} // namespace ext
 
 } // namespace lf
 

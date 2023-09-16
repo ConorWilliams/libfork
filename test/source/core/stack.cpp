@@ -18,7 +18,7 @@
 
 using namespace lf;
 
-using namespace lf::detail;
+using namespace lf::impl;
 
 struct root_task {
   struct promise_type : promise_alloc_heap {
@@ -110,7 +110,7 @@ TEST_CASE("fib on stack", "[virtual_stack]") {
     //
     auto *s = new async_stack{};
 
-    tls::asp = s->as_bytes();
+    tls::asp = stack_as_bytes(s);
 
     volatile int p = 20;
 
@@ -130,7 +130,7 @@ TEST_CASE("fib on stack", "[virtual_stack]") {
 
     REQUIRE(x == y);
 
-    auto *f = async_stack::unsafe_from_bytes(tls::asp);
+    auto *f = bytes_to_stack(tls::asp);
 
     REQUIRE(s == f);
 
