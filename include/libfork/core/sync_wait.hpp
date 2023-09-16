@@ -9,7 +9,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include <concepts>
+#include <functional>
 #include <type_traits>
+#include <utility>
+
+#include "libfork/macro.hpp"
+#include "libfork/utility.hpp"
 
 #include "libfork/core/result.hpp"
 #include "libfork/core/stack.hpp"
@@ -66,7 +72,7 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
 
   LF_LOG("Semaphore acquired");
 
-  if constexpr (!std::is_void_v<result_t<Sch, F, Args...>>) {
+  if constexpr (non_void<result_t<Sch, F, Args...>>) {
     return *std::move(root_block);
   }
 }

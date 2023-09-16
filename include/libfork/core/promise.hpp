@@ -11,16 +11,8 @@
 
 #include <atomic>
 #include <concepts>
-#include <coroutine>
-#include <cstddef>
-#include <cstdint>
-#include <functional>
-#include <iostream>
-#include <optional>
-#include <tuple>
 #include <type_traits>
 #include <utility>
-#include <version>
 
 #include "libfork/macro.hpp"
 #include "libfork/utility.hpp"
@@ -205,7 +197,7 @@ public:
     frame_block *child = std::move(packet).template patch_with<Context>().invoke(this);
 
     struct awaitable : stdx::suspend_always {
-      constexpr auto await_suspend(std::coroutine_handle<promise_type> parent) noexcept -> stdx::coroutine_handle<> {
+      constexpr auto await_suspend(stdx::coroutine_handle<promise_type> parent) noexcept -> stdx::coroutine_handle<> {
         LF_LOG("Forking, push parent to context");
         LF_ASSERT(&parent.promise() == m_parent);
         // Need it here (on real stack) in case *this is destructed after push.
@@ -228,7 +220,7 @@ public:
     frame_block *child = std::move(packet).template patch_with<Context>().invoke(this);
 
     struct awaitable : stdx::suspend_always {
-      constexpr auto await_suspend(std::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
+      constexpr auto await_suspend(stdx::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
         LF_LOG("Calling");
         return m_child->coro();
       }
@@ -243,11 +235,11 @@ public:
   constexpr auto await_transform(packet<basic_first_arg<void, tag::invoke, F>, Args...> &&packet) {
 
     using packet_t = lf::packet<basic_first_arg<void, tag::invoke, F>, Args...>;
-    static_assert(!std::is_void_v<value_of<packet_t>>, "async's call op should prevent this");
+    static_assert(non_void<value_of<packet_t>>, "async's call op should prevent this");
     using return_t = eventually<value_of<packet_t>>;
 
     struct awaitable : stdx::suspend_always {
-      constexpr auto await_suspend(std::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
+      constexpr auto await_suspend(stdx::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
 
         using new_packet_t = lf::packet<basic_first_arg<return_t, tag::call, F>, Args...>;
 

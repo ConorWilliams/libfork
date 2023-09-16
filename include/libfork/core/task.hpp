@@ -9,18 +9,21 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <bit>
+#include <array>
 #include <concepts>
 #include <functional>
 #include <memory>
 #include <source_location>
 #include <stdexcept>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 
+#include "libfork/macro.hpp"
+#include "libfork/utility.hpp"
+
 #include "libfork/core/result.hpp"
 #include "libfork/core/stack.hpp"
-#include "libfork/macro.hpp"
 
 /**
  * @file task.hpp
@@ -163,7 +166,7 @@ concept first_arg = requires(Arg arg) {
 
   { std::remove_cvref_t<Arg>::context() } -> std::same_as<context_of<Arg> *>;
 
-  requires std::is_void_v<return_of<Arg>> || requires {
+  requires is_void<return_of<Arg>> || requires {
     { arg.address() } -> std::convertible_to<return_of<Arg> *>;
   };
 
@@ -200,7 +203,7 @@ concept valid_packet = first_arg<Head> && detail::valid_return<std::invoke_resul
  *
  * It needs the true context type to be patched to it.
  *
- * This is used by `std::coroutine_traits` to build the promise type.
+ * This is used by `stdx::coroutine_traits` to build the promise type.
  */
 template <typename R, tag Tag, stateless F>
 struct basic_first_arg;
@@ -319,7 +322,7 @@ public:
    * @brief Wrap the arguments into an awaitable (in an ``lf::task``) that triggers an invoke.
    */
   template <typename... Args>
-    requires std::is_void_v<value_of<invoke_packet<Args...>>>
+    requires is_void<value_of<invoke_packet<Args...>>>
   LF_STATIC_CALL constexpr auto operator()(Args &&...args) LF_STATIC_CONST noexcept -> call_packet<Args...> {
     return {{}, std::forward<Args>(args)...};
   }

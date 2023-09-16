@@ -26,42 +26,6 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>
-#include <type_traits>
-#include <utility>
-#ifndef E91EA187_42EF_436C_A3FF_A86DE54BCDBE
-#define E91EA187_42EF_436C_A3FF_A86DE54BCDBE
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <bit>
-#include <concepts>
-#include <functional>
-#include <memory>
-#include <source_location>
-#include <stdexcept>
-#include <type_traits>
-#include <utility>
-#ifndef EE6A2701_7559_44C9_B708_474B1AE823B2
-#define EE6A2701_7559_44C9_B708_474B1AE823B2
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>
-#include <semaphore>
-#include <type_traits>
 #include <utility>
 #ifndef C5DCA647_8269_46C2_B76F_5FA68738AEDA
 #define C5DCA647_8269_46C2_B76F_5FA68738AEDA
@@ -441,6 +405,9 @@ template <typename T>
 concept reference = std::is_reference_v<T>;
 
 template <typename T>
+concept is_void = std::is_void_v<T>;
+
+template <typename T>
 concept non_void = !std::is_void_v<T>;
 
 template <typename T>
@@ -450,11 +417,49 @@ auto non_null(T *ptr) noexcept -> T * {
 }
 
 template <class F, class Tuple>
-constexpr auto apply(Tuple &&tup, F &&func) LF_HOF_RETURNS(std::apply(std::forward<F>(func), std::forward<Tuple>(tup)))
+constexpr auto apply_to(Tuple &&tup, F &&func) LF_HOF_RETURNS(std::apply(std::forward<F>(func), std::forward<Tuple>(tup)))
 
 } // namespace lf
 
 #endif /* DF63D333_F8C0_4BBA_97E1_32A78466B8B7 */
+
+#ifndef E91EA187_42EF_436C_A3FF_A86DE54BCDBE
+#define E91EA187_42EF_436C_A3FF_A86DE54BCDBE
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <array>
+#include <concepts>
+#include <functional>
+#include <memory>
+#include <source_location>
+#include <stdexcept>
+#include <tuple>
+#include <type_traits>
+#include <utility>
+
+#ifndef EE6A2701_7559_44C9_B708_474B1AE823B2
+#define EE6A2701_7559_44C9_B708_474B1AE823B2
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>
+#include <semaphore>
+#include <tuple>
+#include <type_traits>
+#include <utility>
 
 #ifndef B7972761_4CBF_4B86_B195_F754295372BF
 #define B7972761_4CBF_4B86_B195_F754295372BF
@@ -467,7 +472,7 @@ constexpr auto apply(Tuple &&tup, F &&func) LF_HOF_RETURNS(std::apply(std::forwa
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <functional>
+#include <concepts>
 #include <memory>
 #include <type_traits>
 #include <utility>
@@ -852,7 +857,7 @@ struct promise_result : maybe_ptr<R> {
   constexpr void return_value(T const &value) const
     requires std::convertible_to<T const &, T> && (not reference<T>)
   {
-    if constexpr (!std::is_void_v<R>) {
+    if constexpr (non_void<R>) {
       *(this->address()) = value;
     }
   }
@@ -863,7 +868,7 @@ struct promise_result : maybe_ptr<R> {
   constexpr void return_value(T &&value) const
     requires std::convertible_to<T &&, T>
   {
-    if constexpr (!std::is_void_v<R>) {
+    if constexpr (non_void<R>) {
       if constexpr (std::is_rvalue_reference_v<T &&>) {
         *(this->address()) = std::move(value);
       } else {
@@ -880,7 +885,7 @@ struct promise_result : maybe_ptr<R> {
   template <std::convertible_to<T> U>
     requires converting<T, U>
   constexpr void return_value(U &&value) const {
-    if constexpr (!std::is_void_v<R>) {
+    if constexpr (non_void<R>) {
       if constexpr (std::is_assignable_v<R &, U &&>) {
         *(this->address()) = std::forward<U>(value);
       } else {
@@ -906,8 +911,8 @@ public:
 
 #define LF_FWD_ARGS std::forward<strip_rvalue_ref_t<Args>>(args)...
 
-    if constexpr (!std::is_void_v<R>) {
-      lf::apply(static_cast<std::tuple<Args...> &&>(args), [ret = this->address()](Args... args) {
+    if constexpr (non_void<R>) {
+      apply_to(static_cast<std::tuple<Args...> &&>(args), [ret = this->address()](Args... args) {
         if constexpr (requires { ret->emplace(LF_FWD_ARGS); }) {
           ret->emplace(LF_FWD_ARGS);
         } else {
@@ -944,10 +949,9 @@ public:
 #include <limits>
 #include <memory>
 #include <new>
-#include <optional>
-#include <semaphore>
 #include <type_traits>
 #include <utility>
+
 #ifndef FE9C96B0_5DDD_4438_A3B0_E77BD54F8673
 #define FE9C96B0_5DDD_4438_A3B0_E77BD54F8673
 
@@ -990,7 +994,6 @@ namespace stdx = std::experimental;
 // NOLINTEND
 
 #endif /* FE9C96B0_5DDD_4438_A3B0_E77BD54F8673 */
-
 
 
 /**
@@ -1136,9 +1139,9 @@ struct frame_block : detail::immovable<frame_block>, debug_block {
  * @brief For non-root tasks.
  */
 #ifndef LF_COROUTINE_OFFSET
-  constexpr frame_block(std::coroutine_handle<> coro, std::byte *top) : m_coro{coro}, m_top(top) {}
+  constexpr frame_block(stdx::coroutine_handle<> coro, std::byte *top) : m_coro{coro}, m_top(top) {}
 #else
-  constexpr frame_block(std::coroutine_handle<>, std::byte *top) : m_top(top) {}
+  constexpr frame_block(stdx::coroutine_handle<>, std::byte *top) : m_top(top) {}
 #endif
 
   void set_parent(frame_block *parent) noexcept {
@@ -1153,11 +1156,11 @@ struct frame_block : detail::immovable<frame_block>, debug_block {
 
   [[nodiscard]] auto parent() const noexcept -> frame_block * { return non_null(m_parent); }
 
-  [[nodiscard]] auto coro() noexcept -> std::coroutine_handle<> {
+  [[nodiscard]] auto coro() noexcept -> stdx::coroutine_handle<> {
 #ifndef LF_COROUTINE_OFFSET
     return m_coro;
 #else
-    return std::coroutine_handle<>::from_address(byte_cast(this) - LF_COROUTINE_OFFSET);
+    return stdx::coroutine_handle<>::from_address(byte_cast(this) - LF_COROUTINE_OFFSET);
 #endif
   }
 
@@ -1203,7 +1206,7 @@ struct frame_block : detail::immovable<frame_block>, debug_block {
 
 private:
 #ifndef LF_COROUTINE_OFFSET
-  std::coroutine_handle<> m_coro;
+  stdx::coroutine_handle<> m_coro;
 #endif
 
   std::byte *m_top;                                ///< Needs to be separate in-case allocation elided.
@@ -1260,7 +1263,7 @@ inline void frame_block::resume_external() noexcept {
 
 struct promise_alloc_heap : frame_block {
 protected:
-  explicit promise_alloc_heap(std::coroutine_handle<> self) noexcept : frame_block{self, nullptr} {}
+  explicit promise_alloc_heap(stdx::coroutine_handle<> self) noexcept : frame_block{self, nullptr} {}
 };
 
 // ----------------------------------------------- //
@@ -1282,7 +1285,7 @@ struct promise_alloc_stack : frame_block {
   // }
 
 protected:
-  explicit promise_alloc_stack(std::coroutine_handle<> self) noexcept : frame_block{self, tls::asp} {}
+  explicit promise_alloc_stack(stdx::coroutine_handle<> self) noexcept : frame_block{self, tls::asp} {}
 
 public:
   /**
@@ -1474,7 +1477,7 @@ concept first_arg = requires(Arg arg) {
 
   { std::remove_cvref_t<Arg>::context() } -> std::same_as<context_of<Arg> *>;
 
-  requires std::is_void_v<return_of<Arg>> || requires {
+  requires is_void<return_of<Arg>> || requires {
     { arg.address() } -> std::convertible_to<return_of<Arg> *>;
   };
 
@@ -1511,7 +1514,7 @@ concept valid_packet = first_arg<Head> && detail::valid_return<std::invoke_resul
  *
  * It needs the true context type to be patched to it.
  *
- * This is used by `std::coroutine_traits` to build the promise type.
+ * This is used by `stdx::coroutine_traits` to build the promise type.
  */
 template <typename R, tag Tag, stateless F>
 struct basic_first_arg;
@@ -1630,7 +1633,7 @@ public:
    * @brief Wrap the arguments into an awaitable (in an ``lf::task``) that triggers an invoke.
    */
   template <typename... Args>
-    requires std::is_void_v<value_of<invoke_packet<Args...>>>
+    requires is_void<value_of<invoke_packet<Args...>>>
   LF_STATIC_CALL constexpr auto operator()(Args &&...args) LF_STATIC_CONST noexcept -> call_packet<Args...> {
     return {{}, std::forward<Args>(args)...};
   }
@@ -1809,16 +1812,8 @@ inline constexpr detail::bind_task<tag::tail> tail = {};
 
 #include <atomic>
 #include <concepts>
-#include <coroutine>
-#include <cstddef>
-#include <cstdint>
-#include <functional>
-#include <iostream>
-#include <optional>
-#include <tuple>
 #include <type_traits>
 #include <utility>
-#include <version>
 
 
 
@@ -1996,7 +1991,7 @@ public:
     frame_block *child = std::move(packet).template patch_with<Context>().invoke(this);
 
     struct awaitable : stdx::suspend_always {
-      constexpr auto await_suspend(std::coroutine_handle<promise_type> parent) noexcept -> stdx::coroutine_handle<> {
+      constexpr auto await_suspend(stdx::coroutine_handle<promise_type> parent) noexcept -> stdx::coroutine_handle<> {
         LF_LOG("Forking, push parent to context");
         LF_ASSERT(&parent.promise() == m_parent);
         // Need it here (on real stack) in case *this is destructed after push.
@@ -2019,7 +2014,7 @@ public:
     frame_block *child = std::move(packet).template patch_with<Context>().invoke(this);
 
     struct awaitable : stdx::suspend_always {
-      constexpr auto await_suspend(std::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
+      constexpr auto await_suspend(stdx::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
         LF_LOG("Calling");
         return m_child->coro();
       }
@@ -2034,11 +2029,11 @@ public:
   constexpr auto await_transform(packet<basic_first_arg<void, tag::invoke, F>, Args...> &&packet) {
 
     using packet_t = lf::packet<basic_first_arg<void, tag::invoke, F>, Args...>;
-    static_assert(!std::is_void_v<value_of<packet_t>>, "async's call op should prevent this");
+    static_assert(non_void<value_of<packet_t>>, "async's call op should prevent this");
     using return_t = eventually<value_of<packet_t>>;
 
     struct awaitable : stdx::suspend_always {
-      constexpr auto await_suspend(std::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
+      constexpr auto await_suspend(stdx::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
 
         using new_packet_t = lf::packet<basic_first_arg<return_t, tag::call, F>, Args...>;
 
@@ -2202,7 +2197,11 @@ struct lf::stdx::coroutine_traits<Task, This, Head, Args...> : lf::stdx::corouti
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include <concepts>
+#include <functional>
 #include <type_traits>
+#include <utility>
+
 
 
 namespace lf {
@@ -2256,7 +2255,7 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
 
   LF_LOG("Semaphore acquired");
 
-  if constexpr (!std::is_void_v<result_t<Sch, F, Args...>>) {
+  if constexpr (non_void<result_t<Sch, F, Args...>>) {
     return *std::move(root_block);
   }
 }

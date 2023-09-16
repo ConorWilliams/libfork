@@ -50,6 +50,9 @@
       - [ ] `reduce`.
       - [ ] `scan`.
 
+11. Stretch:
+      - [ ] Module `support`.
+
 
 
 Naming:

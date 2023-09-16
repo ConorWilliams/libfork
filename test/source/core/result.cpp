@@ -28,7 +28,7 @@ struct coro {
   struct promise_type : promise_result<R, T> {
     // clang-format off
     promise_type() : promise_result<R, T>{nullptr} {}
-    promise_type() requires std::is_void_v<R> = default;
+    promise_type() requires is_void<R> = default;
     // clang-format on
 
     auto get_return_object() noexcept -> coro { return {}; }

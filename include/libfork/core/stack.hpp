@@ -17,15 +17,13 @@
 #include <limits>
 #include <memory>
 #include <new>
-#include <optional>
-#include <semaphore>
 #include <type_traits>
 #include <utility>
 
-#include "libfork/core/coroutine.hpp"
-
 #include "libfork/macro.hpp"
 #include "libfork/utility.hpp"
+
+#include "libfork/core/coroutine.hpp"
 
 /**
  * @file stack.hpp
@@ -170,9 +168,9 @@ struct frame_block : detail::immovable<frame_block>, debug_block {
  * @brief For non-root tasks.
  */
 #ifndef LF_COROUTINE_OFFSET
-  constexpr frame_block(std::coroutine_handle<> coro, std::byte *top) : m_coro{coro}, m_top(top) {}
+  constexpr frame_block(stdx::coroutine_handle<> coro, std::byte *top) : m_coro{coro}, m_top(top) {}
 #else
-  constexpr frame_block(std::coroutine_handle<>, std::byte *top) : m_top(top) {}
+  constexpr frame_block(stdx::coroutine_handle<>, std::byte *top) : m_top(top) {}
 #endif
 
   void set_parent(frame_block *parent) noexcept {
@@ -187,11 +185,11 @@ struct frame_block : detail::immovable<frame_block>, debug_block {
 
   [[nodiscard]] auto parent() const noexcept -> frame_block * { return non_null(m_parent); }
 
-  [[nodiscard]] auto coro() noexcept -> std::coroutine_handle<> {
+  [[nodiscard]] auto coro() noexcept -> stdx::coroutine_handle<> {
 #ifndef LF_COROUTINE_OFFSET
     return m_coro;
 #else
-    return std::coroutine_handle<>::from_address(byte_cast(this) - LF_COROUTINE_OFFSET);
+    return stdx::coroutine_handle<>::from_address(byte_cast(this) - LF_COROUTINE_OFFSET);
 #endif
   }
 
@@ -237,7 +235,7 @@ struct frame_block : detail::immovable<frame_block>, debug_block {
 
 private:
 #ifndef LF_COROUTINE_OFFSET
-  std::coroutine_handle<> m_coro;
+  stdx::coroutine_handle<> m_coro;
 #endif
 
   std::byte *m_top;                                ///< Needs to be separate in-case allocation elided.
@@ -294,7 +292,7 @@ inline void frame_block::resume_external() noexcept {
 
 struct promise_alloc_heap : frame_block {
 protected:
-  explicit promise_alloc_heap(std::coroutine_handle<> self) noexcept : frame_block{self, nullptr} {}
+  explicit promise_alloc_heap(stdx::coroutine_handle<> self) noexcept : frame_block{self, nullptr} {}
 };
 
 // ----------------------------------------------- //
@@ -316,7 +314,7 @@ struct promise_alloc_stack : frame_block {
   // }
 
 protected:
-  explicit promise_alloc_stack(std::coroutine_handle<> self) noexcept : frame_block{self, tls::asp} {}
+  explicit promise_alloc_stack(stdx::coroutine_handle<> self) noexcept : frame_block{self, tls::asp} {}
 
 public:
   /**

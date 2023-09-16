@@ -11,6 +11,7 @@
 
 #include <concepts>
 #include <semaphore>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -170,7 +171,7 @@ struct promise_result : maybe_ptr<R> {
   constexpr void return_value(T const &value) const
     requires std::convertible_to<T const &, T> && (not reference<T>)
   {
-    if constexpr (!std::is_void_v<R>) {
+    if constexpr (non_void<R>) {
       *(this->address()) = value;
     }
   }
@@ -181,7 +182,7 @@ struct promise_result : maybe_ptr<R> {
   constexpr void return_value(T &&value) const
     requires std::convertible_to<T &&, T>
   {
-    if constexpr (!std::is_void_v<R>) {
+    if constexpr (non_void<R>) {
       if constexpr (std::is_rvalue_reference_v<T &&>) {
         *(this->address()) = std::move(value);
       } else {
@@ -198,7 +199,7 @@ struct promise_result : maybe_ptr<R> {
   template <std::convertible_to<T> U>
     requires converting<T, U>
   constexpr void return_value(U &&value) const {
-    if constexpr (!std::is_void_v<R>) {
+    if constexpr (non_void<R>) {
       if constexpr (std::is_assignable_v<R &, U &&>) {
         *(this->address()) = std::forward<U>(value);
       } else {
@@ -224,8 +225,8 @@ public:
 
 #define LF_FWD_ARGS std::forward<strip_rvalue_ref_t<Args>>(args)...
 
-    if constexpr (!std::is_void_v<R>) {
-      lf::apply(static_cast<std::tuple<Args...> &&>(args), [ret = this->address()](Args... args) {
+    if constexpr (non_void<R>) {
+      apply_to(static_cast<std::tuple<Args...> &&>(args), [ret = this->address()](Args... args) {
         if constexpr (requires { ret->emplace(LF_FWD_ARGS); }) {
           ret->emplace(LF_FWD_ARGS);
         } else {
