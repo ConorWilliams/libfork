@@ -1,9 +1,11 @@
-# Look for an executable called sphinx-build
-find_program(
-  SPHINX_EXECUTABLE
-  NAMES sphinx-build
-  DOC "Path to sphinx-build executable"
-)
+if(NOT DEFINED SPHINX_EXECUTABLE)
+  # Look for an executable called sphinx-build
+  find_program(
+    SPHINX_EXECUTABLE
+    NAMES sphinx-build
+    DOC "Path to sphinx-build executable"
+  )
+endif()
 
 include(FindPackageHandleStandardArgs)
 

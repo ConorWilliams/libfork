@@ -411,7 +411,7 @@ template <typename T>
 concept reference = std::is_reference_v<T>;
 
 /**
- * @brief Forwards to ``!std::is_reference_v<T>``.
+ * @brief Forwards to ``std::is_reference_v<T>``.
  */
 template <typename T>
 concept non_reference = !std::is_reference_v<T>;
@@ -613,6 +613,8 @@ class eventually<T> : impl::immovable<eventually<T>> {
     return *this;
   }
 
+#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
+
   /**
    * @brief Access the wrapped object.
    *
@@ -632,6 +634,8 @@ class eventually<T> : impl::immovable<eventually<T>> {
       return *impl::non_null(m_value);
     }
   }
+
+#endif
 
  private:
 #ifndef NDEBUG
@@ -1092,7 +1096,7 @@ struct promise_result : private impl::maybe_ptr<R> {
 namespace lf {
 namespace stdx = std;
 }
-#elif __has_include(<experimental/coroutine>) // Check for an experimental version
+#elif __has_include(<experimental/coroutine>) // Check for an experimental version.
   #include <experimental/coroutine>
 namespace lf {
 namespace stdx = std::experimental;
@@ -1527,7 +1531,7 @@ struct tracked_fixed_string {
   static constexpr std::size_t file_name_max_size = 127;
 
  public:
-  explicit(false) consteval tracked_fixed_string(Char const (&str)[N], sloc loc = sloc::current()) noexcept
+  consteval tracked_fixed_string(Char const (&str)[N], sloc loc = sloc::current()) noexcept
       : line{loc.line()},
         column{loc.column()} {
     for (std::size_t i = 0; i < N; ++i) {
@@ -1559,7 +1563,7 @@ template <typename T = void, tracked_fixed_string Name = "">
 struct task {
   using value_type = T; ///< The type of the value returned by the coroutine.
 
-  explicit(false) task(frame_block *frame) : m_frame{non_null(frame)} {}
+  task(frame_block *frame) : m_frame{non_null(frame)} {}
 
   [[nodiscard]] constexpr auto frame() const noexcept -> frame_block * { return m_frame; }
 
@@ -1742,8 +1746,7 @@ class [[nodiscard("packets must be co_awaited")]] packet : move_only<packet<Head
    * repeat the type.
    *
    */
-  explicit(false) constexpr packet(Head head, Tail &&...tail) noexcept
-      : m_args{std::move(head), std::forward<Tail>(tail)...} {}
+  constexpr packet(Head head, Tail &&...tail) noexcept : m_args{std::move(head), std::forward<Tail>(tail)...} {}
 
   /**
    * @brief Call the underlying async function with args.
@@ -1808,7 +1811,7 @@ struct [[nodiscard("async functions must be called")]] async {
    *        // ...
    *    };
    */
-  explicit(false) consteval async([[maybe_unused]] Fn invocable_which_returns_a_task) {}
+  consteval async([[maybe_unused]] Fn invocable_which_returns_a_task) {}
 
  private:
   template <typename... Args>
@@ -1882,7 +1885,7 @@ struct basic_first_arg : basic_first_arg<void, Tag, F> {
 
   using return_type = R; ///< The type of the return address.
 
-  explicit(false) constexpr basic_first_arg(return_type &ret) : m_ret{std::addressof(ret)} {}
+  constexpr basic_first_arg(return_type &ret) : m_ret{std::addressof(ret)} {}
 
   [[nodiscard]] constexpr auto address() const noexcept -> return_type * { return m_ret; }
 

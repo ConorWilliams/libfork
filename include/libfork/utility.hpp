@@ -153,7 +153,7 @@ template <typename T>
 concept reference = std::is_reference_v<T>;
 
 /**
- * @brief Forwards to ``!std::is_reference_v<T>``.
+ * @brief Forwards to ``std::is_reference_v<T>``.
  */
 template <typename T>
 concept non_reference = !std::is_reference_v<T>;

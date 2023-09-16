@@ -28,7 +28,7 @@
 namespace lf {
 namespace stdx = std;
 }
-#elif __has_include(<experimental/coroutine>) // Check for an experimental version
+#elif __has_include(<experimental/coroutine>) // Check for an experimental version.
   #include <experimental/coroutine>
 namespace lf {
 namespace stdx = std::experimental;

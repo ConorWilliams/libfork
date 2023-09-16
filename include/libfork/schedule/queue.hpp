@@ -152,7 +152,7 @@ concept optional_for = std::is_default_constructible_v<Optional> && std::constru
  *
  * Example:
  *
- * .. include:: ../../../test/source/schedule/queue.cpp
+ * .. include:: ../../test/source/schedule/queue.cpp
  *    :code:
  *    :start-after: // !BEGIN-EXAMPLE
  *    :end-before: // !END-EXAMPLE
@@ -160,7 +160,7 @@ concept optional_for = std::is_default_constructible_v<Optional> && std::constru
  * \endrst
  *
  * @tparam T The type of the elements in the queue.
- * @tparam T The type returned by ``pop()``.
+ * @tparam Optional The type returned by ``pop()``.
  */
 template <simple T, optional_for<T> Optional = std::optional<T>>
 class queue : impl::immovable<queue<T>> {

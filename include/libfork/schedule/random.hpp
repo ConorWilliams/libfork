@@ -31,8 +31,6 @@
 
 namespace lf {
 
-inline namespace ext {
-
 namespace impl {
 
 /**
@@ -41,6 +39,8 @@ namespace impl {
 struct seed_t {};
 
 } // namespace impl
+
+inline namespace ext {
 
 inline constexpr impl::seed_t seed = {}; ///< A tag to disambiguate seeding from other operations.
 

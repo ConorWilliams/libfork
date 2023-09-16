@@ -48,6 +48,8 @@ class eventually<T> : impl::immovable<eventually<T>> {
     return *this;
   }
 
+#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
+
   /**
    * @brief Access the wrapped object.
    *
@@ -67,6 +69,8 @@ class eventually<T> : impl::immovable<eventually<T>> {
       return *impl::non_null(m_value);
     }
   }
+
+#endif
 
  private:
 #ifndef NDEBUG
