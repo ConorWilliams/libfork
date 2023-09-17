@@ -1,4 +1,4 @@
-name: vcpkg
+name: ci
 on:
   push:
   pull_request:
@@ -108,6 +108,40 @@ jobs:
           detect_leaks=1"
         UBSAN_OPTIONS: print_stacktrace=1
       run: ctest --output-on-failure --no-tests=error -j 2
+
+  coverage:
+    needs: [lint]
+
+    runs-on: ubuntu-22.04
+
+    if: github.ref == 'refs/heads/main' && github.repository_owner == 'conorwilliams' && github.event_name == 'push'
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - uses: ./.github/actions/setup
+
+    - name: Install LCov
+      run: sudo apt-get update -q
+        && sudo apt-get install lcov -q -y
+
+    - name: Configure
+      run: cmake --preset=ci-coverage -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build
+      run: cmake --build build/coverage -j 2
+
+    - name: Test
+      working-directory: build/coverage
+      run: ctest --output-on-failure --no-tests=error -j 2
+
+    - name: Process coverage info
+      run: cmake --build build/coverage -t coverage
+
+    - name: Submit to codecov.io
+      uses: codecov/codecov-action@v3
+      with:
+        file: build/coverage/coverage.info
 
   docs:
     # Deploy docs only when builds succeed
