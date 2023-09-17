@@ -1814,12 +1814,12 @@ concept first_arg = impl::unqualified<Arg> && requires(Arg arg) {
     { arg.address() } -> std::convertible_to<return_of<Arg> *>;
   };
 
-  []<typename F>(async<F>)
-    requires std::same_as<F, function_of<Arg>>
-  {
-    // Check Args is implicitly convertible to the appropriate async<?>.
-  }
-  (arg);
+  // []<typename F>(async<F>)
+  //   requires std::same_as<F, function_of<Arg>>
+  // {
+  //   // Check Args is implicitly convertible to the appropriate async<?>.
+  // }
+  // (arg);
 };
 
 } // namespace core

@@ -70,7 +70,7 @@ TEST_CASE("basic counting", "[inline_scheduler]") {
   worker_finalize(&ctx);
 }
 
-__attribute__((noinline)) void inline_fiber(int &res, int n) {
+void inline_fiber(int &res, int n) {
   if (n <= 1) {
     res = n;
   } else {
