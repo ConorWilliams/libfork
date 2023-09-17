@@ -50,6 +50,8 @@ jobs:
             triplet: x64-osx
 
     steps:
+      - uses: actions/checkout@v2
+      
       - uses: ./.github/actions/setup
 
       - name: Restore from cache the dependencies and generate project files
