@@ -1,207 +1,100 @@
-name: Continuous Integration
-
+name: vcpkg
 on:
   push:
-    branches:
-    - v3.1.0
-
   pull_request:
-    branches:
-    - v3.1.0
+    branches: 
+    - main
+  workflow_dispatch:
+  schedule:
+  - cron: '0 1 * * *'
 
 jobs:
-  lint:
-    runs-on: ubuntu-22.04
-
-    steps:
-    - uses: actions/checkout@v3
-
-    - uses: actions/setup-python@v4
-      with: { python-version: "3.11" }
-
-    - name: Install codespell
-      run: pip3 install codespell
-    
-    - name: Install clang-format
-      run: pip3 install clang-format
-
-    - name: Lint
-      run: cmake -D FORMAT_COMMAND=clang-format -P cmake/lint.cmake
-
-    - name: Spell check
-      if: always()
-      run: cmake -P cmake/spell.cmake
-
-  coverage:
-    needs: [lint]
-
-    runs-on: ubuntu-22.04
-
-    if: github.ref == 'refs/heads/main' && github.repository_owner == 'conorwilliams' && github.event_name == 'push'
-
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Install LCov
-      run: sudo apt-get update -q
-        && sudo apt-get install lcov -q -y
-
-    - name: Configure
-      run: cmake --preset=ci-coverage
-
-    - name: Build
-      run: cmake --build build/coverage -j 2
-
-    - name: Test
-      working-directory: build/coverage
-      run: ctest --output-on-failure --no-tests=error -j 2
-
-    - name: Process coverage info
-      run: cmake --build build/coverage -t coverage
-
-    - name: Submit to codecov.io
-      uses: codecov/codecov-action@v3
-      with:
-        file: build/coverage/coverage.info
-
-  sanitize:
-    needs: [lint]
-
-    runs-on: ubuntu-22.04
-
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Install openMP
-      run: sudo apt update && sudo apt install clang-15 libomp-dev -y
-
-    - name: Configure
-      env: { CXX: clang++-15 }
-      run: cmake --preset=ci-sanitize
-
-    - name: Build
-      run: cmake --build build/sanitize -j 2
-
-    - name: Test
-      working-directory: build/sanitize
-      env:
-        ASAN_OPTIONS: "strict_string_checks=1:\
-          detect_stack_use_after_return=1:\
-          check_initialization_order=1:\
-          strict_init_order=1:\
-          detect_leaks=1"
-        UBSAN_OPTIONS: print_stacktrace=1
-      run: ctest --output-on-failure --no-tests=error -j 2
-
-  test:
-    needs: [lint]
-
-    strategy:
-      matrix:
-        os: [macos-13, ubuntu-22.04, windows-2022]
-
-
+  job:
+    name: test-${{ matrix.os }}-${{ github.workflow }}
     runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-13, windows-latest]
+        include:
+          - os: windows-latest
+            triplet: x64-windows
+          - os: ubuntu-latest
+            triplet: x64-linux
+          - os: macos-13
+            triplet: x64-osx
+    env:
+      VCPKG_ROOT_DIR: ${{ github.workspace }}/vcpkg
+      # Tells vcpkg where binary packages are stored.
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg/bincache
+      # Let's use GitHub Action cache as storage for the vcpkg Binary Caching feature.
+      VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
 
     steps:
-    - uses: actions/checkout@v3
+    # Set env vars needed for vcpkg to leverage the GitHub Action cache as a storage for Binary Caching.
+      - uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-    - name: Install static analyzers and hwloc-nox
-      if: matrix.os == 'ubuntu-22.04'
-      run: >-
-        sudo apt-get install clang-tidy-15 cppcheck libhwloc-dev -y -q
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: "Create directory '${{ env.VCPKG_DEFAULT_BINARY_CACHE }}'"
+        run: mkdir -p $VCPKG_DEFAULT_BINARY_CACHE
+        shell: bash
 
-        sudo update-alternatives --install
-        /usr/bin/clang-tidy clang-tidy
-        /usr/bin/clang-tidy-15 140
+      # Setup the build machine with the most recent versions of CMake and Ninja. 
+      # Both are cached if not already: on subsequent runs both will be quickly restored from GitHub cache service.
+      - uses: lukka/get-cmake@latest
 
-  
-    - name: Setup MultiToolTask
-      if: matrix.os == 'windows-2022'
-      run: |
-        Add-Content "$env:GITHUB_ENV" 'UseMultiToolTask=true'
-        Add-Content "$env:GITHUB_ENV" 'EnforceProcessCountAcrossBuilds=true'
+      # Restore vcpkg from the GitHub Action cache service. 
+      # Note that packages are restored by vcpkg's binary caching when it is being run afterwards by CMake.
+      - name: Restore vcpkg
+        uses: actions/cache@v3
+        with:
+          # The first path is the location of vcpkg: it contains the vcpkg executable and data files, as long as the
+          # built package archives (aka binary cache) which are located by VCPKG_DEFAULT_BINARY_CACHE env var.
+          # The other paths starting with '!' are exclusions: they contain termporary files generated 
+          # during the build of the installed packages.
+          path: |
+            ${{ env.VCPKG_ROOT_DIR }}
+            !${{ env.VCPKG_ROOT_DIR }}/buildtrees
+            !${{ env.VCPKG_ROOT_DIR }}/packages
+            !${{ env.VCPKG_ROOT_DIR }}/downloads
+            !${{ env.VCPKG_ROOT_DIR }}/installed
+          # The key is composed in a way that it gets properly invalidated whenever a different version of vcpkg is being used.
+          key: |
+            ${{ hashFiles( '.git/modules/vcpkg/HEAD' )}}
 
-    - name: Setup xcode
-      if: matrix.os == 'macos-13'
-      run: sudo xcode-select --switch /Applications/Xcode_15.0.app/Contents/Developer  
+      # On Windows runners, let's ensure to have the Developer Command Prompt environment setup correctly.
+      # As used here the Developer Command Prompt created is targeting x64 and using the default the Windows SDK.
+      - uses: ilammy/msvc-dev-cmd@v1
 
-    - name: Configure
-      shell: pwsh
-      run: cmake "--preset=ci-$("${{ matrix.os }}".split("-")[0])"
+      # Run CMake to generate Ninja project files, using the vcpkg's toolchain file to resolve and install
+      # the dependencies as specified in vcpkg.json. Note that the vcpkg's toolchain is specified
+      # in the CMakePresets.json file.
+      # This step also runs vcpkg with Binary Caching leveraging GitHub Action cache to
+      # store the built packages artifacts.
+      - name: Restore from cache the dependencies and generate project files
+        run: |
+          cmake --preset ninja-multi-vcpkg
 
-    - name: Build
-      run: cmake --build build --config Release -j 2
+      - name: Setup xcode
+        if: matrix.os == 'macos-13'
+        run: sudo xcode-select --switch /Applications/Xcode_15.0.app/Contents/Developer  
 
-    - name: Install
-      run: cmake --install build --config Release --prefix prefix
+      - name: Configure
+        shell: pwsh
+        run: cmake "--preset=ci-$("${{ matrix.os }}".split("-")[0])"
 
-    - name: Test
-      if: matrix.os != 'windows-2022'
-      working-directory: build
-      run: ctest --output-on-failure --no-tests=error -C Release -j 2
+      - name: Build
+        run: cmake --build build --config Release -j 2
 
-  test-darwin:
-        needs: [lint]
-    
-        strategy:
-          matrix:
-            os: [macos-12, macos-13]
-    
-        runs-on: ${{ matrix.os }}
-    
-        steps:
-        - uses: actions/checkout@v3
-    
-        - name: Install modern LLVM
-          run: |
-            brew install llvm
-      
-        - name: Configure
-          shell: pwsh   
-          run: cmake -DCMAKE_CXX_COMPILER=/usr/local/opt/llvm/bin/clang++ -DCMAKE_C_COMPILER=/usr/local/opt/llvm/bin/clang "--preset=ci-$("${{ matrix.os }}".split("-")[0])"
-    
-        - name: Build
-          run: cmake --build build --config Release -j 2
-    
-        - name: Install
-          run: cmake --install build --config Release --prefix prefix
-    
-        - name: Test
-          if: matrix.os != 'windows-2022'
-          working-directory: build
-          run: ctest --output-on-failure --no-tests=error -C Release -j 2
+      - name: Install
+        run: cmake --install build --config Release --prefix prefix
 
-  docs:
-    # Deploy docs only when builds succeed
-    needs: [sanitize, test]
-
-    runs-on: ubuntu-22.04
-
-    steps:
-    - uses: actions/checkout@v3
-
-    - uses: actions/setup-python@v4
-      with: { python-version: "3.8" }
-
-    - name: Install python dependencies
-      run: pip3 install -r docs/requirements.txt
-
-    - name: Install Doxygen
-      run: sudo apt-get update -q
-        && sudo apt-get install doxygen -q -y
-
-    - name: Configure docs
-      run: cmake -S ./docs -B build/docs
-
-    - name: Build docs
-      run: cmake --build build/docs
-
-    - name: Deploy docs
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./build/docs/sphinx
-      if: github.ref == 'refs/heads/main' && github.repository_owner == 'conorwilliams' && github.event_name == 'push'
-
-
+      - name: Test
+        working-directory: build
+        run: ctest --output-on-failure --no-tests=error -C Release -j 2

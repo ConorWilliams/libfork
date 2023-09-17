@@ -20,8 +20,8 @@
       - [ ] check `single_header.hpp` is up to date.
 
 4. Review: 
-      - [ ] `constexpr`.
-      - [x] `noexcept`.
+      - [x] `constexpr`.
+      - [ ] `noexcept`.
 
 5. Core features + tests for them:
       - [ ] `co_await resume_on(...)`.

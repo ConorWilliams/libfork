@@ -1,0 +1,207 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+    - v3.1.0
+
+  pull_request:
+    branches:
+    - v3.1.0
+
+jobs:
+  lint:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - uses: actions/setup-python@v4
+      with: { python-version: "3.11" }
+
+    - name: Install codespell
+      run: pip3 install codespell
+    
+    - name: Install clang-format
+      run: pip3 install clang-format
+
+    - name: Lint
+      run: cmake -D FORMAT_COMMAND=clang-format -P cmake/lint.cmake
+
+    - name: Spell check
+      if: always()
+      run: cmake -P cmake/spell.cmake
+
+  coverage:
+    needs: [lint]
+
+    runs-on: ubuntu-22.04
+
+    if: github.ref == 'refs/heads/main' && github.repository_owner == 'conorwilliams' && github.event_name == 'push'
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install LCov
+      run: sudo apt-get update -q
+        && sudo apt-get install lcov -q -y
+
+    - name: Configure
+      run: cmake --preset=ci-coverage
+
+    - name: Build
+      run: cmake --build build/coverage -j 2
+
+    - name: Test
+      working-directory: build/coverage
+      run: ctest --output-on-failure --no-tests=error -j 2
+
+    - name: Process coverage info
+      run: cmake --build build/coverage -t coverage
+
+    - name: Submit to codecov.io
+      uses: codecov/codecov-action@v3
+      with:
+        file: build/coverage/coverage.info
+
+  sanitize:
+    needs: [lint]
+
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Get a newer clang
+      run: sudo apt update && sudo apt install clang-15 -y
+
+    - name: Configure
+      env: { CXX: clang++-15 }
+      run: cmake --preset=ci-sanitize
+
+    - name: Build
+      run: cmake --build build/sanitize -j 2
+
+    - name: Test
+      working-directory: build/sanitize
+      env:
+        ASAN_OPTIONS: "strict_string_checks=1:\
+          detect_stack_use_after_return=1:\
+          check_initialization_order=1:\
+          strict_init_order=1:\
+          detect_leaks=1"
+        UBSAN_OPTIONS: print_stacktrace=1
+      run: ctest --output-on-failure --no-tests=error -j 2
+
+  test:
+    needs: [lint]
+
+    strategy:
+      matrix:
+        os: [macos-13, ubuntu-22.04, windows-2022]
+
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install static analyzers and hwloc-nox
+      if: matrix.os == 'ubuntu-22.04'
+      run: >-
+        sudo apt-get install clang-tidy-15 cppcheck libhwloc-dev -y -q
+
+        sudo update-alternatives --install
+        /usr/bin/clang-tidy clang-tidy
+        /usr/bin/clang-tidy-15 140
+
+  
+    - name: Setup MultiToolTask
+      if: matrix.os == 'windows-2022'
+      run: |
+        Add-Content "$env:GITHUB_ENV" 'UseMultiToolTask=true'
+        Add-Content "$env:GITHUB_ENV" 'EnforceProcessCountAcrossBuilds=true'
+
+    - name: Setup xcode
+      if: matrix.os == 'macos-13'
+      run: sudo xcode-select --switch /Applications/Xcode_15.0.app/Contents/Developer  
+
+    - name: Configure
+      shell: pwsh
+      run: cmake "--preset=ci-$("${{ matrix.os }}".split("-")[0])"
+
+    - name: Build
+      run: cmake --build build --config Release -j 2
+
+    - name: Install
+      run: cmake --install build --config Release --prefix prefix
+
+    - name: Test
+      if: matrix.os != 'windows-2022'
+      working-directory: build
+      run: ctest --output-on-failure --no-tests=error -C Release -j 2
+
+  test-darwin:
+        needs: [lint]
+    
+        strategy:
+          matrix:
+            os: [macos-12, macos-13]
+    
+        runs-on: ${{ matrix.os }}
+    
+        steps:
+        - uses: actions/checkout@v3
+    
+        - name: Install modern LLVM
+          run: |
+            brew install llvm
+      
+        - name: Configure
+          shell: pwsh   
+          run: cmake -DCMAKE_CXX_COMPILER=/usr/local/opt/llvm/bin/clang++ -DCMAKE_C_COMPILER=/usr/local/opt/llvm/bin/clang "--preset=ci-$("${{ matrix.os }}".split("-")[0])"
+    
+        - name: Build
+          run: cmake --build build --config Release -j 2
+    
+        - name: Install
+          run: cmake --install build --config Release --prefix prefix
+    
+        - name: Test
+          if: matrix.os != 'windows-2022'
+          working-directory: build
+          run: ctest --output-on-failure --no-tests=error -C Release -j 2
+
+  docs:
+    # Deploy docs only when builds succeed
+    needs: [sanitize, test]
+
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - uses: actions/setup-python@v4
+      with: { python-version: "3.8" }
+
+    - name: Install python dependencies
+      run: pip3 install -r docs/requirements.txt
+
+    - name: Install Doxygen
+      run: sudo apt-get update -q
+        && sudo apt-get install doxygen -q -y
+
+    - name: Configure docs
+      run: cmake -S ./docs -B build/docs
+
+    - name: Build docs
+      run: cmake --build build/docs
+
+    - name: Deploy docs
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./build/docs/sphinx
+      if: github.ref == 'refs/heads/main' && github.repository_owner == 'conorwilliams' && github.event_name == 'push'
+
+
