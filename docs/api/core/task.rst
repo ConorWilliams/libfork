@@ -1,4 +1,4 @@
-`task` type
+``task``
 ==================================
 
 .. doxygenstruct:: lf::core::task

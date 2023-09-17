@@ -28,7 +28,7 @@
 /**
  * @file stack.hpp
  *
- * @brief Provides an async cactus-stack, control blocks and memory management.
+ * @brief Provides an async cactus-stack, control blocks and memory management utilities.
  */
 
 namespace lf {

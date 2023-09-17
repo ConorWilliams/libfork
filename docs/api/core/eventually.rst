@@ -1,4 +1,4 @@
-`eventually` wrapper
+``eventually``
 =========================
 
 .. doxygenclass:: lf::core::eventually

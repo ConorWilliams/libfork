@@ -10,17 +10,18 @@
 
 2. Get the docs building and looking good again.
       - [x] Rename `DOXYGEN_SHOULD_SKIP_THIS` to `DOXYGEN_PROCESSOR`.
-      - [ ] Document macros.
+      - [x] Document macros.
 
 3. Get it compiling on CI:
       - [x] Remove CPM.cmake
-      - [ ] Try core test suit on compiler explorer, fix constexpr requirements in i.e. `byte_cast`.
+      - [x] Try core test suit on compiler explorer, fix constexpr requirements in i.e. `byte_cast`.
       - [x] vcpkg for tests.
       - [ ] `-fno-exceptions` test.
       - [ ] check `single_header.hpp` is up to date.
 
 4. Review: 
-      - [ ] `noexcept`/`constexpr`.
+      - [ ] `constexpr`.
+      - [x] `noexcept`.
 
 5. Core features + tests for them:
       - [ ] `co_await resume_on(...)`.

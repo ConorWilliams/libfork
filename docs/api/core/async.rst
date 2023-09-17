@@ -1,5 +1,5 @@
 
-`async` class
+``async``
 ==================
 
 .. doxygenstruct:: lf::core::async

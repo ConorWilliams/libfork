@@ -23,35 +23,38 @@
 /**
  * @file macro.hpp
  *
- * @brief A collection of internal and public macros.
+ * @brief A collection of internal/public macros.
+ *
+ * These are exhaustively documented due to macros nasty visibility rules however, only
+ * macros that are marked as __[public]__ should be consumed.
  */
 
 // NOLINTBEGIN Sometime macros are the only way to do things...
 
 /**
- * @brief The major version of libfork.
+ * @brief __[public]__ The major version of libfork.
  *
- * Changes with incompatible API/ABI changes.
+ * Changes with incompatible API changes.
  */
 #define LF_VERSION_MAJOR 3
 /**
- * @brief The minor version of libfork.
+ * @brief __[public]__ The minor version of libfork.
  *
- * Changes when functionality is added in an API/ABI backward compatible manner.
+ * Changes when functionality is added in an API backward compatible manner.
  */
 #define LF_VERSION_MINOR 1
 /**
- * @brief The patch version of libfork.
+ * @brief __[public]__ The patch version of libfork.
  *
- * Changes when bug fixes are made in an API/ABI backward compatible manner.
+ * Changes when bug fixes are made in an API backward compatible manner.
  */
 #define LF_VERSION_PATCH 0
 
 #ifndef LF_ASYNC_STACK_SIZE
   /**
-   * @brief A customizable stack size for ``async_stack``'s (in multiples of 4 kibibytes i.e. the page size).
+   * @brief __[public]__ A customizable stack size for ``async_stack``'s (in multiples of 4 kibibytes i.e. the page size).
    *
-   * You can override this by defining ``LF_ASYNC_STACK_SIZE`` to whatever you like.
+   * You can override this by defining ``LF_ASYNC_STACK_SIZE`` to a power of two.
    */
   #define LF_ASYNC_STACK_SIZE 256
 #endif
@@ -89,12 +92,14 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
 
 /**
  * @brief Lift an overload-set/template into a constrained lambda.
+ *
+ * This is useful for passing overloaded/template functions to higher order functions like `lf::fork`, `lf::call` etc.
  */
 #define LF_LIFT(overload_set)                                                                                               \
   [](auto &&...args) LF_STATIC_CALL LF_HOF_RETURNS(overload_set(std::forward<decltype(args)>(args)...))
 
 /**
- * @brief Detects if the compiler has exceptions enabled.
+ * @brief __[public]__ Detects if the compiler has exceptions enabled.
  *
  * Overridable by defining ``LF_COMPILER_EXCEPTIONS``.
  */
@@ -186,14 +191,14 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
 #endif
 
 /**
- * @brief A customizable logging macro.
+ * @brief __[public]__ A customizable logging macro.
  *
- * By default this is a no-op. Defining ``LF_LOGGING`` will enable a default
+ * By default this is a no-op. Defining ``LF_DEFAULT_LOGGING`` will enable a default
  * logging implementation which prints to ``std::cout``. Overridable by defining your
- * own ``LF_LOG`` macro. API like ``std::format()``.
+ * own ``LF_LOG`` macro with an API like ``std::format()``.
  */
 #ifndef LF_LOG
-  #ifdef LF_LOGGING
+  #ifdef LF_DEFAULT_LOGGING
     #include <iostream>
     #include <thread>
     #include <type_traits>

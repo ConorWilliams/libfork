@@ -1,4 +1,4 @@
-`promise_result` base
+``promise_result``
 ==================================
 
 .. doxygenstruct:: lf::core::promise_result

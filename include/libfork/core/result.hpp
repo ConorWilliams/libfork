@@ -20,6 +20,12 @@
 
 #include "libfork/core/eventually.hpp"
 
+/**
+ * @file result.hpp
+ *
+ * @brief A base class that provides the ``return_[...]`` methods for coroutine promises.
+ */
+
 namespace lf {
 
 namespace impl {

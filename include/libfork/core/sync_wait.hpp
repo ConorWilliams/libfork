@@ -21,6 +21,12 @@
 #include "libfork/core/stack.hpp"
 #include "libfork/core/task.hpp"
 
+/**
+ * @file sync_wait.hpp
+ *
+ * @brief Utilities for synchronous execution of asynchronous functions.
+ */
+
 namespace lf {
 
 inline namespace ext {

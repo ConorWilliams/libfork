@@ -1,4 +1,4 @@
-Internal/implementation
+Internal docs
 ============================
 
 .. doxygennamespace:: lf::impl

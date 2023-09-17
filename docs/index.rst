@@ -32,8 +32,15 @@ Extension API
 
    api/ext.rst
 
-Internal docs
-~~~~~~~~~~~~~~~~~~~~~~~~
+
+Macros in ``libfork``
+---------------------------
+
+.. doxygenfile:: libfork/macro.hpp
+
+
+Internal documentation
+---------------------------
 
 .. doxygennamespace:: lf::impl
     :desc-only:
@@ -43,7 +50,6 @@ Internal docs
    :maxdepth: 3
 
    api/impl.rst
-
 
 
 

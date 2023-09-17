@@ -1,4 +1,4 @@
-Extension
+Extension API
 =========================
 
 .. doxygenconcept:: lf::ext::scheduler

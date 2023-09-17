@@ -26,7 +26,7 @@
 /**
  * @file promise.hpp
  *
- * @brief The promise_type for tasks.
+ * @brief The `promise_type` for tasks.
  */
 
 namespace lf::impl {

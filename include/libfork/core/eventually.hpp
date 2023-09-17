@@ -17,6 +17,12 @@
 #include "libfork/macro.hpp"
 #include "libfork/utility.hpp"
 
+/**
+ * @file eventually.hpp
+ *
+ * @brief A class for delaying construction of an object.
+ */
+
 namespace lf {
 
 inline namespace core {
