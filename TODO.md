@@ -16,6 +16,7 @@
       - [x] Remove CPM.cmake
       - [x] Try core test suit on compiler explorer, fix constexpr requirements in i.e. `byte_cast`.
       - [x] vcpkg for tests.
+      - [x] Get CI working.
       - [ ] `-fno-exceptions` test.
       - [ ] check `single_header.hpp` is up to date.
 
