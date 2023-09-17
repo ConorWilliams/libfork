@@ -96,10 +96,7 @@
         "flags-linux",
         "ci-vcpkg",
         "ci-std"
-      ],
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
-      }
+      ]
     },
     {
       "name": "ci-darwin",
@@ -109,10 +106,7 @@
         "flags-darwin",
         "ci-vcpkg",
         "ci-std"
-      ],
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
-      }
+      ]
     },
     {
       "name": "ci-win64",

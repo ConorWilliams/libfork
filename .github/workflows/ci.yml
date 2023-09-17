@@ -10,11 +10,12 @@ on:
 
 jobs:
   job:
-    name: test-${{ matrix.os }}-${{ github.workflow }}
+    name: test-${{ matrix.os }}-${{ github.workflow }}-${{ matrix.build-type }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        build-type: [Debug, Release]
         os: [ubuntu-latest, macos-13, windows-latest]
         include:
           - os: windows-latest
@@ -86,11 +87,12 @@ jobs:
         run: cmake "--preset=ci-$("${{ matrix.os }}".split("-")[0])"
 
       - name: Build
-        run: cmake --build build --config Release -j 2
+        run: cmake --build build --config ${{ matrix.os }} -j 2
 
       - name: Install
-        run: cmake --install build --config Release --prefix prefix
+        run: cmake --install build --config ${{ matrix.os }} --prefix prefix
 
       - name: Test
+        if: matrix.os != 'windows-latest'
         working-directory: build
-        run: ctest --output-on-failure --no-tests=error -C Release -j 2
+        run: ctest --output-on-failure --no-tests=error -C ${{ matrix.os }} -j 2
