@@ -84,10 +84,10 @@ jobs:
       # store the built packages artifacts.
       - name: Restore from cache the dependencies and generate project files
         shell: pwsh
-        run: cmake "--preset=ci-$("${{ matrix.os }}".split("-")[0])"
+        run: cmake "-DCMAKE_BUILD_TYPE=${{ matrix.build-type }} --preset=ci-$("${{ matrix.os }}".split("-")[0])"
 
       - name: Build
-        run: cmake --build build --config ${{ matrix.build-type }} -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -j 2
+        run: cmake --build build --config ${{ matrix.build-type }} -j 2
 
       - name: Install
         run: cmake --install build --config ${{ matrix.build-type }} --prefix prefix
