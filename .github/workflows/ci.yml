@@ -49,9 +49,16 @@ jobs:
           - os: macos-13
             triplet: x64-osx
 
+    env:
+      VCPKG_ROOT_DIR: ${{ github.workspace }}/vcpkg
+      # Tells vcpkg where binary packages are stored.
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg/bincache
+      # Let's use GitHub Action cache as storage for the vcpkg Binary Caching feature.
+      VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+
     steps:
       - uses: actions/checkout@v2
-      
+
       - uses: ./.github/actions/setup
 
       - name: Restore from cache the dependencies and generate project files
