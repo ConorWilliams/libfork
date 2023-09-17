@@ -87,7 +87,7 @@ jobs:
         run: cmake "--preset=ci-$("${{ matrix.os }}".split("-")[0])"
 
       - name: Build
-        run: cmake --build build --config ${{ matrix.build-type }} -j 2
+        run: cmake --build build --config ${{ matrix.build-type }} -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -j 2
 
       - name: Install
         run: cmake --install build --config ${{ matrix.build-type }} --prefix prefix
