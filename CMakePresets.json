@@ -44,6 +44,16 @@
       }
     },
     {
+      "name": "ci-vcpkg",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": {
+          "type": "FILEPATH",
+          "value": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake"
+        }
+      }
+    },
+    {
       "name": "ci-std",
       "description": "This preset makes sure the project actually builds with at least the specified standard",
       "hidden": true,
@@ -84,6 +94,7 @@
       "hidden": true,
       "inherits": [
         "flags-linux",
+        "ci-vcpkg",
         "ci-std"
       ],
       "cacheVariables": {
@@ -96,6 +107,7 @@
       "hidden": true,
       "inherits": [
         "flags-darwin",
+        "ci-vcpkg",
         "ci-std"
       ],
       "cacheVariables": {
@@ -106,6 +118,7 @@
       "name": "ci-win64",
       "inherits": [
         "flags-windows",
+        "ci-vcpkg",
         "ci-std"
       ],
       "generator": "Visual Studio 17 2022",
