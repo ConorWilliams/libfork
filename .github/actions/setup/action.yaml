@@ -1,15 +1,15 @@
 name: 'setup'
 description: 'setup vcpkg/cmake/ninja and caching'
 
+env:
+  VCPKG_ROOT_DIR: ${{ github.workspace }}/vcpkg
+  # Tells vcpkg where binary packages are stored.
+  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg/bincache
+  # Let's use GitHub Action cache as storage for the vcpkg Binary Caching feature.
+  VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+
 runs:
   using: "composite"
-
-  env:
-    VCPKG_ROOT_DIR: ${{ github.workspace }}/vcpkg
-    # Tells vcpkg where binary packages are stored.
-    VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg/bincache
-    # Let's use GitHub Action cache as storage for the vcpkg Binary Caching feature.
-    VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
 
   steps:
     # Set env vars needed for vcpkg to leverage the GitHub Action cache as a storage for Binary Caching.
