@@ -79,7 +79,7 @@ jobs:
         run: ctest --output-on-failure --no-tests=error -C ${{ matrix.build-type }} -j 2
 
   sanitize:
-    needs: [test]
+    needs: [lint]
 
     runs-on: ubuntu-22.04
 
@@ -89,8 +89,8 @@ jobs:
     - uses: ./.github/actions/setup
 
     - name: Get a newer clang
-      run: sudo apt update && sudo apt install clang-15 -y
-
+      run: sudo apt-get update && sudo apt-get install clang-15 -y
+  
     - name: Configure
       env: { CXX: clang++-15 }
       run: cmake --preset=ci-sanitize
@@ -108,3 +108,35 @@ jobs:
           detect_leaks=1"
         UBSAN_OPTIONS: print_stacktrace=1
       run: ctest --output-on-failure --no-tests=error -j 2
+
+  docs:
+    # Deploy docs only when builds succeed
+    needs: [sanitize, test]
+
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - uses: actions/setup-python@v4
+      with: { python-version: "3.8" }
+
+    - name: Install python dependencies
+      run: pip3 install -r docs/requirements.txt
+
+    - name: Install Doxygen
+      run: sudo apt-get update -q
+        && sudo apt-get install doxygen -q -y
+
+    - name: Configure docs
+      run: cmake -S ./docs -B build/docs
+
+    - name: Build docs
+      run: cmake --build build/docs
+
+    - name: Deploy docs
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./build/docs/sphinx
+      if: github.ref == 'refs/heads/main' && github.repository_owner == 'conorwilliams' && github.event_name == 'push'
