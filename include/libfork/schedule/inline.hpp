@@ -11,8 +11,10 @@
 
 #include <vector>
 
+#include "libfork/macro.hpp"
+#include "libfork/utility.hpp"
+
 #include "libfork/core.hpp"
-#include "libfork/core/stack.hpp"
 
 /**
  * @file inline.hpp
@@ -25,7 +27,7 @@ namespace lf {
 /**
  * @brief A scheduler that runs all tasks inline on the current thread.
  */
-class inline_scheduler {
+class inline_scheduler : impl::immovable<inline_scheduler> {
  public:
   /**
    * @brief The context type for the scheduler.
@@ -65,13 +67,13 @@ class inline_scheduler {
       m_tasks.push_back(task);
     }
 
-    void stack_push(async_stack *stack) {
+    static void stack_push(async_stack *stack) {
       LF_LOG("stack_push");
       LF_ASSERT(stack);
       delete stack;
     }
 
-    auto stack_pop() -> async_stack * {
+    static auto stack_pop() -> async_stack * {
       LF_LOG("stack_pop");
       return new async_stack;
     }

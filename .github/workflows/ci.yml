@@ -158,6 +158,9 @@ jobs:
     - name: Install python dependencies
       run: pip3 install -r docs/requirements.txt
 
+    - name: Install Linuxbrew
+      run: sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)"
+
     - name: Install Doxygen
       run: brew install doxygen
 

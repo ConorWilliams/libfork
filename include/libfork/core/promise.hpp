@@ -37,7 +37,7 @@ namespace detail {
 
 template <thread_context Context>
 struct fork_awaitable : stdx::suspend_always {
-  auto await_suspend(stdx::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
+  auto await_suspend(stdx::coroutine_handle<>) const noexcept -> stdx::coroutine_handle<> {
     LF_LOG("Forking, push parent to context");
     m_parent->debug_inc();
     // Need it here (on real stack) in case *this is destructed after push.
@@ -52,7 +52,7 @@ struct fork_awaitable : stdx::suspend_always {
 // -------------------------------------------------------------------------- //
 
 struct call_awaitable : stdx::suspend_always {
-  auto await_suspend(stdx::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
+  auto await_suspend(stdx::coroutine_handle<>) const noexcept -> stdx::coroutine_handle<> {
     LF_LOG("Calling");
     return m_child->coro();
   }
@@ -102,7 +102,7 @@ struct join_awaitable {
     return false;
   }
 
-  auto await_suspend(stdx::coroutine_handle<> task) noexcept -> stdx::coroutine_handle<> {
+  auto await_suspend(stdx::coroutine_handle<> task) const noexcept -> stdx::coroutine_handle<> {
     // Currently        joins  = k_u32_max  - num_joined
     // We set           joins  = joins()    - (k_u32_max - num_steals)
     //                         = num_steals - num_joined
@@ -151,7 +151,7 @@ struct join_awaitable {
 // -------------------------------------------------------------------------- //
 
 template <thread_context Context>
-auto final_await_suspend(frame_block *parent) -> std::coroutine_handle<> {
+auto final_await_suspend(frame_block *parent) noexcept -> std::coroutine_handle<> {
 
   Context *context = non_null(tls::ctx<Context>);
 
@@ -279,7 +279,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
    * @brief Construct promise, sets return address.
    */
   template <first_arg Head, typename... Tail>
-  explicit promise_type(Head const &head, Tail const &...) noexcept
+  explicit promise_type(Head const &head, Tail const &...)
     requires std::constructible_from<promise_result<R, T>, R *>
       : allocator<Tag>{stdx::coroutine_handle<promise_type>::from_promise(*this)},
         promise_result<R, T>{head.address()} {}
@@ -290,25 +290,25 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
    * For member function coroutines.
    */
   template <not_first_arg Self, first_arg Head, typename... Tail>
-  explicit promise_type(Self const &, Head const &head, Tail const &...tail) noexcept
+  explicit promise_type(Self const &, Head const &head, Tail const &...tail)
     requires std::constructible_from<promise_result<R, T>, R *>
       : promise_type{head, tail...} {}
 
   auto get_return_object() noexcept -> frame_block * { return this; }
 
-  static auto initial_suspend() -> stdx::suspend_always { return {}; }
+  static auto initial_suspend() noexcept -> stdx::suspend_always { return {}; }
 
   /**
    * @brief Terminates the program.
    */
-  void unhandled_exception() noexcept {
+  static void unhandled_exception() noexcept {
     noexcept_invoke([] { LF_RETHROW; });
   }
 
   /**
    * @brief Try to resume the parent.
    */
-  auto final_suspend() noexcept -> final_awaitable {
+  auto final_suspend() const noexcept -> final_awaitable {
 
     LF_LOG("At final suspend call");
 
@@ -348,7 +348,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
    * @brief Transform an invoke packet into a call awaitable.
    */
   template <typename F, typename... Args>
-  constexpr auto await_transform(packet<basic_first_arg<void, tag::invoke, F>, Args...> &&packet) {
+  constexpr auto await_transform(packet<basic_first_arg<void, tag::invoke, F>, Args...> &&packet) noexcept {
 
     using old_packet_t = impl::packet<basic_first_arg<void, tag::invoke, F>, Args...>;
     static_assert(non_void<value_of<old_packet_t>>, "async's call op should prevent this");

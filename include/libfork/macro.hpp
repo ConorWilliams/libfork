@@ -223,9 +223,7 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
         }                                                                                                                   \
       } while (false)
   #else
-    #define LF_LOG(head, ...)                                                                                               \
-      do {                                                                                                                  \
-      } while (false)
+    #define LF_LOG(head, ...)
   #endif
 #endif
 
