@@ -1,0 +1,57 @@
+name: 'setup'
+description: 'setup vcpkg/cmake/ninja and caching'
+runs:
+  env:
+    VCPKG_ROOT_DIR: ${{ github.workspace }}/vcpkg
+    # Tells vcpkg where binary packages are stored.
+    VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg/bincache
+    # Let's use GitHub Action cache as storage for the vcpkg Binary Caching feature.
+    VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+
+  using: "composite"
+
+  steps:
+    # Set env vars needed for vcpkg to leverage the GitHub Action cache as a storage for Binary Caching.
+    - uses: actions/github-script@v6
+      with:
+        script: |
+          core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+          core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+    - uses: actions/checkout@v3
+      with:
+        submodules: true
+    - name: "Create directory '${{ env.VCPKG_DEFAULT_BINARY_CACHE }}'"
+      run: mkdir -p $VCPKG_DEFAULT_BINARY_CACHE
+      shell: bash
+
+    # Setup the build machine with the most recent versions of CMake and Ninja. 
+    # Both are cached if not already: on subsequent runs both will be quickly restored from GitHub cache service.
+    - uses: lukka/get-cmake@latest
+
+    # Restore vcpkg from the GitHub Action cache service. 
+    # Note that packages are restored by vcpkg's binary caching when it is being run afterwards by CMake.
+    - name: Restore vcpkg
+      uses: actions/cache@v3
+      with:
+        # The first path is the location of vcpkg: it contains the vcpkg executable and data files, as long as the
+        # built package archives (aka binary cache) which are located by VCPKG_DEFAULT_BINARY_CACHE env var.
+        # The other paths starting with '!' are exclusions: they contain temporary files generated 
+        # during the build of the installed packages.
+        path: |
+          ${{ env.VCPKG_ROOT_DIR }}
+          !${{ env.VCPKG_ROOT_DIR }}/buildtrees
+          !${{ env.VCPKG_ROOT_DIR }}/packages
+          !${{ env.VCPKG_ROOT_DIR }}/downloads
+          !${{ env.VCPKG_ROOT_DIR }}/installed
+        # The key is composed in a way that it gets properly invalidated whenever a different version of vcpkg is being used.
+        key: |
+          ${{ hashFiles( '.git/modules/vcpkg/HEAD' )}}
+
+    # On Windows runners, let's ensure to have the Developer Command Prompt environment setup correctly.
+    # As used here the Developer Command Prompt created is targeting x64 and using the default the Windows SDK.
+    - uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Setup xcode
+      if: matrix.os == 'macos-13'
+      run: sudo xcode-select --switch /Applications/Xcode_15.0.app/Contents/Developer 

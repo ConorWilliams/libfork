@@ -47,7 +47,7 @@ jobs:
         && sudo apt-get install lcov -q -y
 
     - name: Configure
-      run: cmake --preset=ci-coverage
+      run: cmake --preset=ci-coverage -DCMAKE_BUILD_TYPE=Release
 
     - name: Build
       run: cmake --build build/coverage -j 2
