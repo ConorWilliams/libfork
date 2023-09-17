@@ -481,7 +481,7 @@ struct constify_ref<T &&> : std::type_identity<T const &&> {};
  * @brief Convert ``T & -> T const&`` and ``T && -> T const&&``.
  */
 template <reference T>
-using constify_ref_t = detail::constify_ref<T>::type;
+using constify_ref_t = typename detail::constify_ref<T>::type;
 
 /**
  * @brief True if the unqualified ``T`` and ``U`` refer to different types.
@@ -743,7 +743,7 @@ class eventually : impl::immovable<eventually<T>> {
    */
   template <typename U>
   constexpr auto operator=(U &&expr) noexcept(noexcept(emplace(std::forward<U>(expr)))) -> eventually &
-    requires requires { emplace(std::forward<U>(expr)); }
+    requires requires(eventually self) { self.emplace(std::forward<U>(expr)); }
   {
     emplace(std::forward<U>(expr));
     return *this;

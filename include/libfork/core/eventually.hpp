@@ -173,7 +173,7 @@ class eventually : impl::immovable<eventually<T>> {
    */
   template <typename U>
   constexpr auto operator=(U &&expr) noexcept(noexcept(emplace(std::forward<U>(expr)))) -> eventually &
-    requires requires { emplace(std::forward<U>(expr)); }
+    requires requires(eventually self) { self.emplace(std::forward<U>(expr)); }
   {
     emplace(std::forward<U>(expr));
     return *this;
