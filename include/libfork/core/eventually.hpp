@@ -155,7 +155,7 @@ class eventually : impl::immovable<eventually<T>> {
   // clang-format on
 
 #ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
-  constexpr eventually() noexcept : m_init{} {};
+  constexpr eventually() noexcept : m_init{} {}
 #endif
 
   /**

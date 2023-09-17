@@ -26,7 +26,7 @@ using namespace lf;
 
 using namespace lf::impl;
 
-inline constexpr auto count = [](auto count, int &var) static -> task<void, "count"> {
+inline constexpr auto count = [](auto count, int &var) -> task<void, "count"> {
   if (var > 0) {
     --var;
     co_await lf::fork[count](var);
@@ -83,7 +83,7 @@ __attribute__((noinline)) void inline_fiber(int &res, int n) {
   }
 }
 
-inline constexpr auto fib = [](auto fib, int n) static -> task<int> {
+inline constexpr auto fib = [](auto fib, int n) -> task<int> {
   //
   if (n <= 1) {
     co_return n;
