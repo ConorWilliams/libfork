@@ -155,15 +155,12 @@ jobs:
     - uses: actions/setup-python@v4
       with: { python-version: "3.8" }
 
+    - uses: ssciwr/doxygen-install@v1
+      with:
+        version: "1.9.8"
+
     - name: Install python dependencies
       run: pip3 install -r docs/requirements.txt
-
-    - name: Install brew
-      run: |
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
-
-    - name: Install Doxygen
-      run: /home/linuxbrew/.linuxbrew/bin/brew/brew install doxygen
 
     - name: Configure docs
       run: cmake -S ./docs -B build/docs
