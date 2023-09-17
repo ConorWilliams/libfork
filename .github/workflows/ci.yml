@@ -159,8 +159,7 @@ jobs:
       run: pip3 install -r docs/requirements.txt
 
     - name: Install Doxygen
-      run: sudo apt-get update -q
-        && sudo apt-get install doxygen -q -y
+      run: brew install doxygen
 
     - name: Configure docs
       run: cmake -S ./docs -B build/docs
