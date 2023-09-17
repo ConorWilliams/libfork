@@ -48,4 +48,5 @@ runs:
 
     - name: Setup xcode
       if: matrix.os == 'macos-13'
+      shell: bash
       run: sudo xcode-select --switch /Applications/Xcode_15.0.app/Contents/Developer 
