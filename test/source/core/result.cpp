@@ -94,6 +94,8 @@ vector(root, root_result<std::vector<int>>);
 
 // ------------------------------------------- //
 
+#if !defined(_MSC_VER) || _MSC_VER >= 1936
+
 struct I : lf::impl::immovable<I> {
   I() = default;
   I(int) {}
@@ -106,6 +108,8 @@ auto test_immovable() -> coro<eventually<I>, I> {
   co_return in_place{1, 2};
   co_return in_place{};
 }
+
+#endif
 
 // ------------------------------------------- //
 
