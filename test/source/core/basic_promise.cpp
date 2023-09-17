@@ -29,7 +29,7 @@ using namespace lf::impl;
 inline constexpr auto count = [](auto count, int &var) -> task<void, "count"> {
   if (var > 0) {
     --var;
-    co_await lf::fork[count](var);
+    co_await lf::fork(count)(var);
     co_await lf::join;
   }
   co_return;
@@ -92,8 +92,8 @@ inline constexpr auto fib = [](auto fib, int n) -> task<int> {
   int a;
   int b;
 
-  co_await lf::fork[a, fib](n - 1);
-  co_await lf::call[b, fib](n - 2);
+  co_await lf::fork(a, fib)(n - 1);
+  co_await lf::call(b, fib)(n - 2);
 
   co_await lf::join;
 

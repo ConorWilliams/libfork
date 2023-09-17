@@ -62,7 +62,7 @@ TEMPLATE_TEST_CASE("Construct destruct launch", "[libfork][template]", inline_sc
 // In some implementations, this could cause a stack overflow if symmetric transfer is not used.
 inline constexpr async sym_stack_overflow_1 = [](auto) -> lf::task<int> {
   for (int i = 0; i < 100'000'000; ++i) {
-    co_await lf::fork[noop]();
+    co_await lf::fork(noop)();
     co_await lf::call(noop)();
   }
 
