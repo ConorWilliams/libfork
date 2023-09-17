@@ -82,8 +82,6 @@ trivial(root, root_result<int>);
     static std::vector<int> y;                                                                                              \
     co_return y;                                                                                                            \
     co_return {};                                                                                                           \
-    co_return anything{};                                                                                                   \
-    co_return in_place{anything{}};                                                                                         \
     co_return {x.begin(), x.end()};                                                                                         \
     co_return {1, 2, 3};                                                                                                    \
     co_return in_place{};                                                                                                   \

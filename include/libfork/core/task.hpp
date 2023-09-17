@@ -188,12 +188,19 @@ concept stateless = std::is_class_v<T> && std::is_trivial_v<T> && std::is_empty_
 template <stateless Fn>
 struct [[nodiscard("async functions must be called")]] async;
 
-namespace detail {
+} // namespace core
 
+namespace impl {
+
+/**
+ * @brief Detect what kind of async function a type can be cast to.
+ */
 template <typename T>
 consteval auto implicit_cast_to_async(async<T>) -> T;
 
-} // namespace detail
+} // namespace impl
+
+inline namespace core {
 
 /**
  * @brief The API of the first argument passed to an async function.
@@ -205,8 +212,8 @@ consteval auto implicit_cast_to_async(async<T>) -> T;
  *
  * .. include:: ../../include/libfork/core/task.hpp
  *    :code:
- *    :start-line: 213
- *    :end-line: 234
+ *    :start-line: 220
+ *    :end-line: 241
  *
  * \endrst
  */
@@ -230,7 +237,7 @@ concept first_arg = impl::unqualified<Arg> && requires(Arg arg) {
     { arg.address() } -> std::convertible_to<return_of<Arg> *>;
   };
 
-  { detail::implicit_cast_to_async(arg) } -> std::same_as<function_of<Arg>>;
+  { impl::implicit_cast_to_async(arg) } -> std::same_as<function_of<Arg>>;
 };
 
 } // namespace core
