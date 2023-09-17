@@ -78,14 +78,14 @@
 
 #ifndef LF_ASYNC_STACK_SIZE
   /**
-   * @brief A customizable stack size for ``async_stack``'s (in kibibytes).
+   * @brief A customizable stack size for ``async_stack``'s (in multiples of 4 kibibytes i.e. the page size).
    *
    * You can override this by defining ``LF_ASYNC_STACK_SIZE`` to whatever you like.
    */
-  #define LF_ASYNC_STACK_SIZE 1024
+  #define LF_ASYNC_STACK_SIZE 256
 #endif
 
-static_assert(LF_ASYNC_STACK_SIZE >= 1, "LF_ASYNC_STACK_SIZE must be at least 1 kilobyte");
+static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZE - 1)), "Must be a power of 2");
 
 /**
  * @brief Use to conditionally decorate lambdas and ``operator()`` (alongside ``LF_STATIC_CONST``) with ``static``.
@@ -507,7 +507,7 @@ constexpr auto noexcept_invoke(Fn &&fun, Args &&...args) noexcept -> std::invoke
  * @brief Returns ``ptr`` and asserts it is non-null
  */
 template <typename T>
-auto non_null(T *ptr) noexcept -> T * {
+constexpr auto non_null(T *ptr) noexcept -> T * {
   LF_ASSERT(ptr != nullptr);
   return ptr;
 }
@@ -641,7 +641,9 @@ class eventually<T> : impl::immovable<eventually<T>> {
   }
 
   /**
-   * @brief Access the wrapped object.
+   * @brief Access the wrapped object as is.
+   *
+   * This will not decay T&& to T&, nor will it promote T& to T&&.
    */
   [[nodiscard]] constexpr auto operator*() const && noexcept -> T {
     if constexpr (std::is_rvalue_reference_v<T>) {
@@ -780,7 +782,7 @@ class eventually : impl::immovable<eventually<T>> {
   /**
    * @brief Access the wrapped object.
    */
-  [[nodiscard]] constexpr auto operator*() && noexcept -> T {
+  [[nodiscard]] constexpr auto operator*() && noexcept(std::is_nothrow_move_constructible_v<T>) -> T {
 #ifndef NDEBUG
     LF_ASSUME(m_constructed);
 #endif
@@ -1204,7 +1206,7 @@ class async_stack;
 
 namespace impl {
 
-static constexpr std::size_t k_stack_size = k_kibibyte * LF_ASYNC_STACK_SIZE;
+static constexpr std::size_t k_stack_size = 4 * k_kibibyte * LF_ASYNC_STACK_SIZE;
 
 /**
  * @brief Get a pointer to the end of a stack's buffer.
@@ -1363,9 +1365,9 @@ struct frame_block : private impl::immovable<frame_block>, impl::debug_block {
  * Pass ``top == nullptr`` if this is on the heap. Non-root tasks will need to call ``set_parent(...)``.
  */
 #ifndef LF_COROUTINE_OFFSET
-  constexpr frame_block(stdx::coroutine_handle<> coro, std::byte *top) : m_coro{coro}, m_top(top) { LF_ASSERT(coro); }
+  frame_block(stdx::coroutine_handle<> coro, std::byte *top) : m_coro{coro}, m_top(top) { LF_ASSERT(coro); }
 #else
-  constexpr frame_block(stdx::coroutine_handle<>, std::byte *top) : m_top(top) {}
+  frame_block(stdx::coroutine_handle<>, std::byte *top) : m_top(top) {}
 #endif
 
   /**
@@ -1400,26 +1402,24 @@ struct frame_block : private impl::immovable<frame_block>, impl::debug_block {
   /**
    * @brief Perform a `.load(order)` on the atomic join counter.
    */
-  [[nodiscard]] constexpr auto load_joins(std::memory_order order) const noexcept -> std::uint32_t {
-    return m_join.load(order);
-  }
+  [[nodiscard]] auto load_joins(std::memory_order order) const noexcept -> std::uint32_t { return m_join.load(order); }
 
   /**
    * @brief Perform a `.fetch_sub(val, order)` on the atomic join counter.
    */
-  constexpr auto fetch_sub_joins(std::uint32_t val, std::memory_order order) noexcept -> std::uint32_t {
+  auto fetch_sub_joins(std::uint32_t val, std::memory_order order) noexcept -> std::uint32_t {
     return m_join.fetch_sub(val, order);
   }
 
   /**
    * @brief Get the number of times this frame has been stolen.
    */
-  [[nodiscard]] constexpr auto steals() const noexcept -> std::uint32_t { return m_steal; }
+  [[nodiscard]] auto steals() const noexcept -> std::uint32_t { return m_steal; }
 
   /**
    * @brief Check if this is a root frame.
    */
-  [[nodiscard]] constexpr auto is_root() const noexcept -> bool { return m_parent == nullptr; }
+  [[nodiscard]] auto is_root() const noexcept -> bool { return m_parent == nullptr; }
 
   /**
    * @brief Reset the join and steal counters, must be outside a fork-join region.
@@ -1521,7 +1521,7 @@ struct promise_alloc_heap : frame_block {
 struct promise_alloc_stack : frame_block {
 
   // Convert an alignment to a std::uintptr_t, ensure its is a power of two and >= k_new_align.
-  // constexpr static auto unwrap(std::align_val_t al) noexcept -> std::uintptr_t {
+  //  static auto unwrap(std::align_val_t al) noexcept -> std::uintptr_t {
   //   auto align = static_cast<std::underlying_type_t<std::align_val_t>>(al);
   //   LF_ASSERT(std::has_single_bit(align));
   //   LF_ASSERT(align > 0);
@@ -1667,7 +1667,7 @@ struct task {
    *
    * This should only be called by the compiler.
    */
-  task(frame_block *frame) : m_frame{non_null(frame)} {}
+  constexpr task(frame_block *frame) : m_frame{non_null(frame)} {}
 
   /**
    * @brief __Not__ part of the public API.
@@ -2180,7 +2180,196 @@ inline constexpr impl::bind_task<tag::tail> tail = {};
 
 namespace lf::impl {
 
+namespace detail {
+
 // -------------------------------------------------------------------------- //
+
+template <thread_context Context>
+struct fork_awaitable : stdx::suspend_always {
+  auto await_suspend(stdx::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
+    LF_LOG("Forking, push parent to context");
+    m_parent->debug_inc();
+    // Need it here (on real stack) in case *this is destructed after push.
+    stdx::coroutine_handle child = m_child->coro();
+    tls::ctx<Context>->task_push(m_parent);
+    return child;
+  }
+  frame_block *m_parent;
+  frame_block *m_child;
+};
+
+// -------------------------------------------------------------------------- //
+
+struct call_awaitable : stdx::suspend_always {
+  auto await_suspend(stdx::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
+    LF_LOG("Calling");
+    return m_child->coro();
+  }
+  frame_block *m_child;
+};
+
+// -------------------------------------------------------------------------- //
+
+template <thread_context Context, bool IsRoot>
+struct join_awaitable {
+ private:
+  void take_stack_reset_control() const noexcept {
+    // Steals have happened so we cannot currently own this tasks stack.
+    LF_ASSERT(self->steals() != 0);
+
+    if constexpr (!IsRoot) {
+      tls::eat<Context>(self->top());
+    }
+    // Some steals have happened, need to reset the control block.
+    self->reset();
+  }
+
+ public:
+  auto await_ready() const noexcept -> bool {
+    // If no steals then we are the only owner of the parent and we are ready to join.
+    if (self->steals() == 0) {
+      LF_LOG("Sync ready (no steals)");
+      // Therefore no need to reset the control block.
+      return true;
+    }
+    // Currently:            joins() = k_u32_max - num_joined
+    // Hence:       k_u32_max - joins() = num_joined
+
+    // Could use (relaxed) + (fence(acquire) in truthy branch) but, it's
+    // better if we see all the decrements to joins() and avoid suspending
+    // the coroutine if possible. Cannot fetch_sub() here and write to frame
+    // as coroutine must be suspended first.
+    auto joined = k_u32_max - self->load_joins(std::memory_order_acquire);
+
+    if (self->steals() == joined) {
+      LF_LOG("Sync is ready");
+      take_stack_reset_control();
+      return true;
+    }
+
+    LF_LOG("Sync not ready");
+    return false;
+  }
+
+  auto await_suspend(stdx::coroutine_handle<> task) noexcept -> stdx::coroutine_handle<> {
+    // Currently        joins  = k_u32_max  - num_joined
+    // We set           joins  = joins()    - (k_u32_max - num_steals)
+    //                         = num_steals - num_joined
+
+    // Hence               joined = k_u32_max - num_joined
+    //         k_u32_max - joined = num_joined
+
+    auto steals = self->steals();
+    auto joined = self->fetch_sub_joins(k_u32_max - steals, std::memory_order_release);
+
+    if (steals == k_u32_max - joined) {
+      // We set joins after all children had completed therefore we can resume the task.
+
+      // Need to acquire to ensure we see all writes by other threads to the result.
+      std::atomic_thread_fence(std::memory_order_acquire);
+      LF_LOG("Wins join race");
+      take_stack_reset_control();
+      return task;
+    }
+
+    // Someone else is responsible for running this task and we have run out of work.
+    LF_LOG("Looses join race");
+    // We cannot currently own this stack.
+    if constexpr (!IsRoot) {
+      LF_ASSERT(self->top() != tls::asp);
+    }
+    return stdx::noop_coroutine();
+  }
+
+  void await_resume() const noexcept {
+    LF_LOG("join resumes");
+    // Check we have been reset.
+    LF_ASSERT(self->steals() == 0);
+    LF_ASSERT(self->load_joins(std::memory_order_relaxed) == k_u32_max);
+
+    self->debug_reset();
+
+    if constexpr (!IsRoot) {
+      LF_ASSERT(self->top() == tls::asp);
+    }
+  }
+
+  frame_block *self;
+};
+
+// -------------------------------------------------------------------------- //
+
+template <thread_context Context>
+auto final_await_suspend(frame_block *parent) -> std::coroutine_handle<> {
+
+  Context *context = non_null(tls::ctx<Context>);
+
+  if (frame_block *parent_task = context->task_pop()) {
+    // No-one stole continuation, we are the exclusive owner of parent, just keep ripping!
+    LF_LOG("Parent not stolen, keeps ripping");
+    LF_ASSERT(parent_task == parent);
+    // This must be the same thread that created the parent so it already owns the stack.
+    // No steals have occurred so we do not need to call reset().;
+    return parent->coro();
+  }
+
+  // We are either: the thread that created the parent or a thread that completed a forked task.
+
+  // Note: emptying stack implies finished a stolen task or finished a task forked from root.
+
+  // Cases:
+  // 1. We are fork_from_root_t
+  //    - Every task forked from root is the the first task on a stack -> stack is empty now.
+  //      Parent (root) is not on a stack so do not need to take/release control
+  // 2. We are fork_t
+  //    - Stack is empty -> we cannot be the thread that created the parent as it would be on our stack.
+  //    - Stack is non-empty -> we must be the creator of the parent
+
+  // If we created the parent then our current stack is non empty (unless the parent is a root task).
+  // If we did not create the parent then we just cleared our current stack and it is now empty.
+
+  LF_LOG("Task's parent was stolen");
+
+  // Register with parent we have completed this child task.
+  if (parent->fetch_sub_joins(1, std::memory_order_release) == 1) {
+    // Acquire all writes before resuming.
+    std::atomic_thread_fence(std::memory_order_acquire);
+
+    // Parent has reached join and we are the last child task to complete.
+    // We are the exclusive owner of the parent therefore, we must continue parent.
+
+    LF_LOG("Task is last child to join, resumes parent");
+
+    if (!parent->is_root()) [[likely]] {
+      if (parent->top() != tls::asp) {
+        tls::eat<Context>(parent->top());
+      }
+    }
+
+    // Must reset parents control block before resuming parent.
+    parent->reset();
+
+    return parent->coro();
+  }
+
+  // Parent has not reached join or we are not the last child to complete.
+  // We are now out of jobs, must yield to executor.
+
+  LF_LOG("Task is not last to join");
+
+  if (parent->top() == tls::asp) {
+    // We are unable to resume the parent, as the resuming thread will take
+    // ownership of the parent's stack we must give it up.
+    LF_LOG("Thread releases control of parent's stack");
+    tls::asp = stack_as_bytes(context->stack_pop());
+  }
+
+  return stdx::noop_coroutine();
+}
+
+// -------------------------------------------------------------------------- //
+
+} // namespace detail
 
 /**
  * @brief Selects the allocator used by `promise_type` depending on tag.
@@ -2203,7 +2392,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
   static_assert(Tag != tag::root || is_root_result_v<R>);
 
   struct final_awaitable : stdx::suspend_always {
-    constexpr auto await_suspend(stdx::coroutine_handle<promise_type> child) const noexcept -> stdx::coroutine_handle<> {
+    auto await_suspend(stdx::coroutine_handle<promise_type> child) const noexcept -> stdx::coroutine_handle<> {
 
       if constexpr (Tag == tag::root) {
         LF_LOG("Root task at final suspend, releases semaphore");
@@ -2225,191 +2414,21 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
         // Inline task's parent cannot have been stolen, no need to reset control block.
         return parent->coro();
       }
-
-      Context *context = non_null(tls::ctx<Context>);
-
-      if (frame_block *parent_task = context->task_pop()) {
-        // No-one stole continuation, we are the exclusive owner of parent, just keep ripping!
-        LF_LOG("Parent not stolen, keeps ripping");
-        LF_ASSERT(parent_task == parent);
-        // This must be the same thread that created the parent so it already owns the stack.
-        // No steals have occurred so we do not need to call reset().;
-        return parent->coro();
-      }
-
-      // We are either: the thread that created the parent or a thread that completed a forked task.
-
-      // Note: emptying stack implies finished a stolen task or finished a task forked from root.
-
-      // Cases:
-      // 1. We are fork_from_root_t
-      //    - Every task forked from root is the the first task on a stack -> stack is empty now.
-      //      Parent (root) is not on a stack so do not need to take/release control
-      // 2. We are fork_t
-      //    - Stack is empty -> we cannot be the thread that created the parent as it would be on our stack.
-      //    - Stack is non-empty -> we must be the creator of the parent
-
-      // If we created the parent then our current stack is non empty (unless the parent is a root task).
-      // If we did not create the parent then we just cleared our current stack and it is now empty.
-
-      LF_LOG("Task's parent was stolen");
-
-      // Register with parent we have completed this child task.
-      if (parent->fetch_sub_joins(1, std::memory_order_release) == 1) {
-        // Acquire all writes before resuming.
-        std::atomic_thread_fence(std::memory_order_acquire);
-
-        // Parent has reached join and we are the last child task to complete.
-        // We are the exclusive owner of the parent therefore, we must continue parent.
-
-        LF_LOG("Task is last child to join, resumes parent");
-
-        if (!parent->is_root()) [[likely]] {
-          if (parent->top() != tls::asp) {
-            tls::eat<Context>(parent->top());
-          }
-        }
-
-        // Must reset parents control block before resuming parent.
-        parent->reset();
-
-        return parent->coro();
-      }
-
-      // Parent has not reached join or we are not the last child to complete.
-      // We are now out of jobs, must yield to executor.
-
-      LF_LOG("Task is not last to join");
-
-      if (parent->top() == tls::asp) {
-        // We are unable to resume the parent, as the resuming thread will take
-        // ownership of the parent's stack we must give it up.
-        LF_LOG("Thread releases control of parent's stack");
-        tls::asp = stack_as_bytes(context->stack_pop());
-      }
-
-      return stdx::noop_coroutine();
+      return detail::final_await_suspend<Context>(parent);
     }
-  };
-
-  struct fork_awaitable : stdx::suspend_always {
-    constexpr auto await_suspend(stdx::coroutine_handle<promise_type> parent) noexcept -> stdx::coroutine_handle<> {
-      LF_LOG("Forking, push parent to context");
-      LF_ASSERT(&parent.promise() == m_parent);
-      // Need it here (on real stack) in case *this is destructed after push.
-      stdx::coroutine_handle child = m_child->coro();
-      tls::ctx<Context>->task_push(m_parent);
-      return child;
-    }
-    frame_block *m_parent;
-    frame_block *m_child;
-  };
-
-  struct call_awaitable : stdx::suspend_always {
-    constexpr auto await_suspend(stdx::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
-      LF_LOG("Calling");
-      return m_child->coro();
-    }
-    frame_block *m_child;
-  };
-
-  struct join_awaitable {
-   private:
-    constexpr void take_stack_reset_control() const noexcept {
-      // Steals have happened so we cannot currently own this tasks stack.
-      LF_ASSERT(self->steals() != 0);
-
-      if constexpr (Tag != tag::root) {
-        tls::eat<Context>(self->top());
-      }
-      // Some steals have happened, need to reset the control block.
-      self->reset();
-    }
-
-   public:
-    constexpr auto await_ready() const noexcept -> bool {
-      // If no steals then we are the only owner of the parent and we are ready to join.
-      if (self->steals() == 0) {
-        LF_LOG("Sync ready (no steals)");
-        // Therefore no need to reset the control block.
-        return true;
-      }
-      // Currently:            joins() = k_u32_max - num_joined
-      // Hence:       k_u32_max - joins() = num_joined
-
-      // Could use (relaxed) + (fence(acquire) in truthy branch) but, it's
-      // better if we see all the decrements to joins() and avoid suspending
-      // the coroutine if possible. Cannot fetch_sub() here and write to frame
-      // as coroutine must be suspended first.
-      auto joined = k_u32_max - self->load_joins(std::memory_order_acquire);
-
-      if (self->steals() == joined) {
-        LF_LOG("Sync is ready");
-        take_stack_reset_control();
-        return true;
-      }
-
-      LF_LOG("Sync not ready");
-      return false;
-    }
-
-    constexpr auto await_suspend(stdx::coroutine_handle<promise_type> task) noexcept -> stdx::coroutine_handle<> {
-      // Currently        joins  = k_u32_max  - num_joined
-      // We set           joins  = joins()    - (k_u32_max - num_steals)
-      //                         = num_steals - num_joined
-
-      // Hence               joined = k_u32_max - num_joined
-      //         k_u32_max - joined = num_joined
-
-      auto steals = self->steals();
-      auto joined = self->fetch_sub_joins(k_u32_max - steals, std::memory_order_release);
-
-      if (steals == k_u32_max - joined) {
-        // We set joins after all children had completed therefore we can resume the task.
-
-        // Need to acquire to ensure we see all writes by other threads to the result.
-        std::atomic_thread_fence(std::memory_order_acquire);
-        LF_LOG("Wins join race");
-        take_stack_reset_control();
-        return task;
-      }
-
-      // Someone else is responsible for running this task and we have run out of work.
-      LF_LOG("Looses join race");
-      // We cannot currently own this stack.
-      if constexpr (Tag != tag::root) {
-        LF_ASSERT(self->top() != tls::asp);
-      }
-      return stdx::noop_coroutine();
-    }
-
-    constexpr void await_resume() const noexcept {
-      LF_LOG("join resumes");
-      // Check we have been reset.
-      LF_ASSERT(self->steals() == 0);
-      LF_ASSERT(self->load_joins(std::memory_order_relaxed) == k_u32_max);
-
-      self->debug_reset();
-
-      if constexpr (Tag != tag::root) {
-        LF_ASSERT(self->top() == tls::asp);
-      }
-    }
-
-    frame_block *self;
   };
 
  public:
   /**
    * @brief Construct promise with void return type.
    */
-  constexpr promise_type() noexcept : allocator<Tag>(stdx::coroutine_handle<promise_type>::from_promise(*this)) {}
+  promise_type() noexcept : allocator<Tag>(stdx::coroutine_handle<promise_type>::from_promise(*this)) {}
 
   /**
    * @brief Construct promise, sets return address.
    */
   template <first_arg Head, typename... Tail>
-  explicit constexpr promise_type(Head const &head, Tail const &...) noexcept
+  explicit promise_type(Head const &head, Tail const &...) noexcept
     requires std::constructible_from<promise_result<R, T>, R *>
       : allocator<Tag>{stdx::coroutine_handle<promise_type>::from_promise(*this)},
         promise_result<R, T>{head.address()} {}
@@ -2420,7 +2439,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
    * For member function coroutines.
    */
   template <not_first_arg Self, first_arg Head, typename... Tail>
-  explicit constexpr promise_type(Self const &, Head const &head, Tail const &...tail) noexcept
+  explicit promise_type(Self const &, Head const &head, Tail const &...tail) noexcept
     requires std::constructible_from<promise_result<R, T>, R *>
       : promise_type{head, tail...} {}
 
@@ -2435,6 +2454,9 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
     noexcept_invoke([] { LF_RETHROW; });
   }
 
+  /**
+   * @brief Try to resume the parent.
+   */
   auto final_suspend() noexcept -> final_awaitable {
 
     LF_LOG("At final suspend call");
@@ -2453,8 +2475,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
    */
   template <first_arg Head, typename... Args>
     requires(tag_of<Head> == tag::fork)
-  constexpr auto await_transform(packet<Head, Args...> &&packet) noexcept -> fork_awaitable {
-    this->debug_inc();
+  constexpr auto await_transform(packet<Head, Args...> &&packet) noexcept -> detail::fork_awaitable<Context> {
     return {{}, this, std::move(packet).template patch_with<Context>().invoke(this)};
   }
 
@@ -2463,9 +2484,14 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
    */
   template <first_arg Head, typename... Args>
     requires(tag_of<Head> == tag::call)
-  constexpr auto await_transform(packet<Head, Args...> &&packet) noexcept -> call_awaitable {
+  constexpr auto await_transform(packet<Head, Args...> &&packet) noexcept -> detail::call_awaitable {
     return {{}, std::move(packet).template patch_with<Context>().invoke(this)};
   }
+
+  /**
+   * @brief Get a join awaitable.
+   */
+  constexpr auto await_transform(join_type) noexcept -> detail::join_awaitable<Context, Tag == tag::root> { return {this}; }
 
   /**
    * @brief Transform an invoke packet into a call awaitable.
@@ -2473,41 +2499,35 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
   template <typename F, typename... Args>
   constexpr auto await_transform(packet<basic_first_arg<void, tag::invoke, F>, Args...> &&packet) {
 
-    using packet_t = impl::packet<basic_first_arg<void, tag::invoke, F>, Args...>;
-
-    static_assert(non_void<value_of<packet_t>>, "async's call op should prevent this");
-
-    using new_packet_t = impl::packet<basic_first_arg<eventually<value_of<packet_t>>, tag::call, F>, Args...>;
+    using old_packet_t = impl::packet<basic_first_arg<void, tag::invoke, F>, Args...>;
+    static_assert(non_void<value_of<old_packet_t>>, "async's call op should prevent this");
+    using new_packet_t = impl::packet<basic_first_arg<eventually<value_of<old_packet_t>>, tag::call, F>, Args...>;
+    static_assert(std::same_as<value_of<old_packet_t>, value_of<new_packet_t>>, "value_type dependent on first arg!");
 
     struct awaitable : stdx::suspend_always {
-      constexpr auto await_suspend(stdx::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
+      auto await_suspend(stdx::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
+
+        LF_LOG("Invoking");
 
         new_packet_t new_packet = std::move(m_packet).apply([&](auto, Args &&...args) -> new_packet_t {
           return {{m_res}, std::forward<Args>(args)...};
         });
 
-        static_assert(std::same_as<value_of<packet_t>, value_of<new_packet_t>>, "value_type dependent on first arg!");
-
-        LF_LOG("Invoking");
         return std::move(new_packet).template patch_with<Context>().invoke(parent)->coro();
       }
 
-      [[nodiscard]] constexpr auto await_resume() -> value_of<packet_t> { return *std::move(m_res); }
+      [[nodiscard]] auto await_resume() -> value_of<old_packet_t> { return *std::move(m_res); }
 
       frame_block *parent;
-      packet_t m_packet;
-      eventually<value_of<packet_t>> m_res;
+      old_packet_t m_packet;
+      eventually<value_of<old_packet_t>> m_res;
     };
 
     return awaitable{{}, this, std::move(packet), {}};
   }
-
-  constexpr auto await_transform(join_type) noexcept -> join_awaitable { return {this}; }
 };
 
-} // namespace lf::impl
-
-namespace lf::impl {
+// -------------------------------------------------------------------------- //
 
 /**
  * @brief Disable rvalue references for T&& template types if an async function is forked.
@@ -2655,9 +2675,101 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
  */
 
 #endif /* A6BE090F_9077_40E8_9B57_9BAFD9620469 */
+#ifndef C8EE9A0A_3B9F_4FFE_8FF5_910645E0C7CC
+#define C8EE9A0A_3B9F_4FFE_8FF5_910645E0C7CC
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// Self Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <vector>
 
 
-// #include "libfork/schedule/busy.hpp"
-// #include "libfork/schedule/inline.hpp"
+/**
+ * @file inline.hpp
+ *
+ * @brief A scheduler that runs all tasks inline on the current thread.
+ */
+
+namespace lf {
+
+/**
+ * @brief A scheduler that runs all tasks inline on the current thread.
+ */
+class inline_scheduler {
+ public:
+  /**
+   * @brief The context type for the scheduler.
+   */
+  class context_type {
+   public:
+    context_type() { m_tasks.reserve(1024); }
+
+    static void submit(frame_block *ptr) { ptr->resume_external<context_type>(); }
+
+    /**
+     * @brief Returns one as this runs all tasks inline.
+     */
+    static constexpr auto max_threads() noexcept -> std::size_t { return 1; }
+
+    /**
+     * @brief Pops a task from the task queue.
+     */
+    auto task_pop() -> frame_block * {
+      LF_LOG("task_pop");
+
+      if (m_tasks.empty()) {
+        return nullptr;
+      }
+
+      frame_block *last = m_tasks.back();
+      m_tasks.pop_back();
+      return last;
+    }
+
+    /**
+     * @brief Pushes a task to the task queue.
+     */
+    void task_push(frame_block *task) {
+      LF_LOG("task_push");
+      LF_ASSERT(task);
+      m_tasks.push_back(task);
+    }
+
+    void stack_push(async_stack *stack) {
+      LF_LOG("stack_push");
+      LF_ASSERT(stack);
+      delete stack;
+    }
+
+    auto stack_pop() -> async_stack * {
+      LF_LOG("stack_pop");
+      return new async_stack;
+    }
+
+   private:
+    std::vector<frame_block *> m_tasks;
+  };
+
+  static_assert(thread_context<context_type>);
+
+  static void submit(frame_block *ptr) { context_type::submit(ptr); }
+
+  inline_scheduler() { worker_init(&m_context); }
+
+  ~inline_scheduler() { worker_finalize(&m_context); }
+
+ private:
+  context_type m_context;
+};
+
+} // namespace lf
+
+#endif /* C8EE9A0A_3B9F_4FFE_8FF5_910645E0C7CC */
+
 
 #endif /* EDCA974A_808F_4B62_95D5_4D84E31B8911 */

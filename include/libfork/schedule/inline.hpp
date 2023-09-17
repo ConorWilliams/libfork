@@ -14,8 +14,6 @@
 #include "libfork/core.hpp"
 #include "libfork/core/stack.hpp"
 
-#include "libfork/schedule/queue.hpp"
-
 /**
  * @file inline.hpp
  *
@@ -34,6 +32,8 @@ class inline_scheduler {
    */
   class context_type {
    public:
+    context_type() { m_tasks.reserve(1024); }
+
     static void submit(frame_block *ptr) { ptr->resume_external<context_type>(); }
 
     /**
@@ -46,7 +46,14 @@ class inline_scheduler {
      */
     auto task_pop() -> frame_block * {
       LF_LOG("task_pop");
-      return m_tasks.pop();
+
+      if (m_tasks.empty()) {
+        return nullptr;
+      }
+
+      frame_block *last = m_tasks.back();
+      m_tasks.pop_back();
+      return last;
     }
 
     /**
@@ -55,7 +62,7 @@ class inline_scheduler {
     void task_push(frame_block *task) {
       LF_LOG("task_push");
       LF_ASSERT(task);
-      m_tasks.push(task);
+      m_tasks.push_back(task);
     }
 
     void stack_push(async_stack *stack) {
@@ -70,7 +77,7 @@ class inline_scheduler {
     }
 
    private:
-    queue<frame_block *, frame_block *> m_tasks;
+    std::vector<frame_block *> m_tasks;
   };
 
   static_assert(thread_context<context_type>);

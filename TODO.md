@@ -10,6 +10,7 @@
 
 2. Get the docs building and looking good again.
       - [x] Rename `DOXYGEN_SHOULD_SKIP_THIS` to `DOXYGEN_PROCESSOR`.
+      - [ ] Document macros.
 
 3. Get it compiling on CI:
       - [x] Remove CPM.cmake

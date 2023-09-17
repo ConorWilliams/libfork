@@ -71,7 +71,9 @@ class eventually<T> : impl::immovable<eventually<T>> {
   }
 
   /**
-   * @brief Access the wrapped object.
+   * @brief Access the wrapped object as is.
+   *
+   * This will not decay T&& to T&, nor will it promote T& to T&&.
    */
   [[nodiscard]] constexpr auto operator*() const && noexcept -> T {
     if constexpr (std::is_rvalue_reference_v<T>) {
@@ -210,7 +212,7 @@ class eventually : impl::immovable<eventually<T>> {
   /**
    * @brief Access the wrapped object.
    */
-  [[nodiscard]] constexpr auto operator*() && noexcept -> T {
+  [[nodiscard]] constexpr auto operator*() && noexcept(std::is_nothrow_move_constructible_v<T>) -> T {
 #ifndef NDEBUG
     LF_ASSUME(m_constructed);
 #endif

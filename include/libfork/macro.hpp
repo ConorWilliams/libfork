@@ -49,14 +49,14 @@
 
 #ifndef LF_ASYNC_STACK_SIZE
   /**
-   * @brief A customizable stack size for ``async_stack``'s (in kibibytes).
+   * @brief A customizable stack size for ``async_stack``'s (in multiples of 4 kibibytes i.e. the page size).
    *
    * You can override this by defining ``LF_ASYNC_STACK_SIZE`` to whatever you like.
    */
-  #define LF_ASYNC_STACK_SIZE 1024
+  #define LF_ASYNC_STACK_SIZE 256
 #endif
 
-static_assert(LF_ASYNC_STACK_SIZE >= 1, "LF_ASYNC_STACK_SIZE must be at least 1 kilobyte");
+static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZE - 1)), "Must be a power of 2");
 
 /**
  * @brief Use to conditionally decorate lambdas and ``operator()`` (alongside ``LF_STATIC_CONST``) with ``static``.

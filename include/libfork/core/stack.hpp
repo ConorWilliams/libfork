@@ -43,7 +43,7 @@ class async_stack;
 
 namespace impl {
 
-static constexpr std::size_t k_stack_size = k_kibibyte * LF_ASYNC_STACK_SIZE;
+static constexpr std::size_t k_stack_size = 4 * k_kibibyte * LF_ASYNC_STACK_SIZE;
 
 /**
  * @brief Get a pointer to the end of a stack's buffer.
@@ -202,9 +202,9 @@ struct frame_block : private impl::immovable<frame_block>, impl::debug_block {
  * Pass ``top == nullptr`` if this is on the heap. Non-root tasks will need to call ``set_parent(...)``.
  */
 #ifndef LF_COROUTINE_OFFSET
-  constexpr frame_block(stdx::coroutine_handle<> coro, std::byte *top) : m_coro{coro}, m_top(top) { LF_ASSERT(coro); }
+  frame_block(stdx::coroutine_handle<> coro, std::byte *top) : m_coro{coro}, m_top(top) { LF_ASSERT(coro); }
 #else
-  constexpr frame_block(stdx::coroutine_handle<>, std::byte *top) : m_top(top) {}
+  frame_block(stdx::coroutine_handle<>, std::byte *top) : m_top(top) {}
 #endif
 
   /**
@@ -239,26 +239,24 @@ struct frame_block : private impl::immovable<frame_block>, impl::debug_block {
   /**
    * @brief Perform a `.load(order)` on the atomic join counter.
    */
-  [[nodiscard]] constexpr auto load_joins(std::memory_order order) const noexcept -> std::uint32_t {
-    return m_join.load(order);
-  }
+  [[nodiscard]] auto load_joins(std::memory_order order) const noexcept -> std::uint32_t { return m_join.load(order); }
 
   /**
    * @brief Perform a `.fetch_sub(val, order)` on the atomic join counter.
    */
-  constexpr auto fetch_sub_joins(std::uint32_t val, std::memory_order order) noexcept -> std::uint32_t {
+  auto fetch_sub_joins(std::uint32_t val, std::memory_order order) noexcept -> std::uint32_t {
     return m_join.fetch_sub(val, order);
   }
 
   /**
    * @brief Get the number of times this frame has been stolen.
    */
-  [[nodiscard]] constexpr auto steals() const noexcept -> std::uint32_t { return m_steal; }
+  [[nodiscard]] auto steals() const noexcept -> std::uint32_t { return m_steal; }
 
   /**
    * @brief Check if this is a root frame.
    */
-  [[nodiscard]] constexpr auto is_root() const noexcept -> bool { return m_parent == nullptr; }
+  [[nodiscard]] auto is_root() const noexcept -> bool { return m_parent == nullptr; }
 
   /**
    * @brief Reset the join and steal counters, must be outside a fork-join region.
@@ -360,7 +358,7 @@ struct promise_alloc_heap : frame_block {
 struct promise_alloc_stack : frame_block {
 
   // Convert an alignment to a std::uintptr_t, ensure its is a power of two and >= k_new_align.
-  // constexpr static auto unwrap(std::align_val_t al) noexcept -> std::uintptr_t {
+  //  static auto unwrap(std::align_val_t al) noexcept -> std::uintptr_t {
   //   auto align = static_cast<std::underlying_type_t<std::align_val_t>>(al);
   //   LF_ASSERT(std::has_single_bit(align));
   //   LF_ASSERT(align > 0);

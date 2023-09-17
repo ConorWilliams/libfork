@@ -93,7 +93,7 @@ struct task {
    *
    * This should only be called by the compiler.
    */
-  task(frame_block *frame) : m_frame{non_null(frame)} {}
+  constexpr task(frame_block *frame) : m_frame{non_null(frame)} {}
 
   /**
    * @brief __Not__ part of the public API.

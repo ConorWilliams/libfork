@@ -10,6 +10,7 @@
 #include <iostream>
 #include <memory>
 #include <new>
+#include <optional>
 #include <semaphore>
 #include <stack>
 #include <type_traits>
@@ -40,21 +41,21 @@ inline constexpr async noop = [](auto) -> task<> {
   co_return;
 };
 
-// TEMPLATE_TEST_CASE("Construct destruct launch", "[libfork][template]", inline_scheduler) {
+TEMPLATE_TEST_CASE("Construct destruct launch", "[libfork][template]", inline_scheduler) {
 
-//   for (int i = 0; i < 1000; ++i) {
-//     TestType tmp{};
-//   }
+  for (int i = 0; i < 1000; ++i) {
+    TestType tmp{};
+  }
 
-//   for (int i = 0; i < 100; ++i) {
+  for (int i = 0; i < 100; ++i) {
 
-//     TestType schedule{};
+    TestType schedule{};
 
-//     for (int j = 0; j < 100; ++j) {
-//       sync_wait(schedule, noop);
-//     }
-//   }
-// }
+    for (int j = 0; j < 100; ++j) {
+      sync_wait(schedule, noop);
+    }
+  }
+}
 
 // ------------------------ stack overflow ------------------------ //
 
@@ -147,6 +148,12 @@ inline constexpr async v_fib = [](auto fib, int &ret, int n) -> lf::task<void> {
     co_await lf::call(fib)(b, n - 2);
     co_await lf::join;
   }
+
+  int c;
+
+  co_await fib(c, n - 2);
+
+  REQUIRE(b == c);
 
   ret = a + b;
 };

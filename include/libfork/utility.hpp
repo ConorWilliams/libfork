@@ -249,7 +249,7 @@ constexpr auto noexcept_invoke(Fn &&fun, Args &&...args) noexcept -> std::invoke
  * @brief Returns ``ptr`` and asserts it is non-null
  */
 template <typename T>
-auto non_null(T *ptr) noexcept -> T * {
+constexpr auto non_null(T *ptr) noexcept -> T * {
   LF_ASSERT(ptr != nullptr);
   return ptr;
 }
