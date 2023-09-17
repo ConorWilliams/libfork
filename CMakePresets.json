@@ -49,7 +49,7 @@
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": {
           "type": "FILEPATH",
-          "value": "${sourceDir}/../vcpkg/scripts/buildsystems/vcpkg.cmake"
+          "value": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake"
         }
       }
     },
@@ -90,7 +90,7 @@
     },
     {
       "name": "ci-linux",
-      "generator": "Unix Makefiles",
+      "generator": "Ninja",
       "hidden": true,
       "inherits": [
         "flags-linux",
@@ -103,7 +103,7 @@
     },
     {
       "name": "ci-darwin",
-      "generator": "Unix Makefiles",
+      "generator": "Ninja",
       "hidden": true,
       "inherits": [
         "flags-darwin",
@@ -121,7 +121,7 @@
         "ci-vcpkg",
         "ci-std"
       ],
-      "generator": "Visual Studio 17 2022",
+      "generator": "Ninja",
       "architecture": "x64",
       "hidden": true
     },
@@ -192,7 +192,7 @@
     {
       "name": "benchmark-nix",
       "binaryDir": "${sourceDir}/build/bench",
-      "generator": "Unix Makefiles",
+      "generator": "Ninja",
       "inherits": [
         "dev-mode",
         "ci-std"
