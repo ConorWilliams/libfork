@@ -8,6 +8,13 @@ on:
   schedule:
   - cron: '0 1 * * *'
 
+env:
+  VCPKG_ROOT_DIR: ${{ github.workspace }}/vcpkg
+  # Tells vcpkg where binary packages are stored.
+  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg/bincache
+  # Let's use GitHub Action cache as storage for the vcpkg Binary Caching feature.
+  VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+
 jobs:
   lint:
     runs-on: ubuntu-22.04
@@ -48,13 +55,6 @@ jobs:
             triplet: x64-linux
           - os: macos-13
             triplet: x64-osx
-
-    env:
-      VCPKG_ROOT_DIR: ${{ github.workspace }}/vcpkg
-      # Tells vcpkg where binary packages are stored.
-      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg/bincache
-      # Let's use GitHub Action cache as storage for the vcpkg Binary Caching feature.
-      VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
 
     steps:
       - uses: actions/checkout@v2
