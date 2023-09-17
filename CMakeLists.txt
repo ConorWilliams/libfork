@@ -27,14 +27,8 @@ find_package(hwloc CONFIG)
 if(hwloc_FOUND)
   message(FATAL "hwloc has native cmake!")
 else()
-  find_package(HWLOC REQUIRED)
+  find_package(HWLOC)
 endif()
-
-find_package(mimalloc REQUIRED)
-
-# target_link_libraries(main PRIVATE mimalloc mimalloc-static)
-
-# find_package(mimalloc)
 
 # ---- Declare library ----
 
