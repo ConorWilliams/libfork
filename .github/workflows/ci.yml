@@ -38,11 +38,13 @@ jobs:
       if: always()
       run: cmake -P cmake/spell.cmake
 
-  job:
+  test:
     needs: [lint]
 
-    name: test-${{ matrix.os }}-${{ github.workflow }}-${{ matrix.build-type }}
+    name: test-${{ matrix.os }}-${{ matrix.build-type }}
+
     runs-on: ${{ matrix.os }}
+
     strategy:
       fail-fast: false
       matrix:
@@ -57,7 +59,7 @@ jobs:
             triplet: x64-osx
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - uses: ./.github/actions/setup
 
@@ -75,3 +77,34 @@ jobs:
         if: matrix.os != 'windows-latest' && matrix.build-type == 'Release'
         working-directory: build
         run: ctest --output-on-failure --no-tests=error -C ${{ matrix.build-type }} -j 2
+
+  sanitize:
+    needs: [test]
+
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - uses: ./.github/actions/setup
+
+    - name: Get a newer clang
+      run: sudo apt update && sudo apt install clang-15 -y
+
+    - name: Configure
+      env: { CXX: clang++-15 }
+      run: cmake --preset=ci-sanitize
+
+    - name: Build
+      run: cmake --build build/sanitize -j 2
+
+    - name: Test
+      working-directory: build/sanitize
+      env:
+        ASAN_OPTIONS: "strict_string_checks=1:\
+          detect_stack_use_after_return=1:\
+          check_initialization_order=1:\
+          strict_init_order=1:\
+          detect_leaks=1"
+        UBSAN_OPTIONS: print_stacktrace=1
+      run: ctest --output-on-failure --no-tests=error -j 2
