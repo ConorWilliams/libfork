@@ -174,7 +174,6 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
 #elif defined(_MSC_VER) || defined(__ICC)
   #define LF_ASSUME(expr) __assume(bool(expr))
 #else
-  #warning "No LF_ASSUME() implementation for this compiler."
   #define LF_ASSUME(expr)                                                                                                   \
     do {                                                                                                                    \
     } while (false)

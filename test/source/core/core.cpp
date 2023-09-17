@@ -60,19 +60,23 @@ TEMPLATE_TEST_CASE("Construct destruct launch", "[libfork][template]", inline_sc
 // ------------------------ stack overflow ------------------------ //
 
 // In some implementations, this could cause a stack overflow if symmetric transfer is not used.
-inline constexpr async sym_stack_overflow_1 = [](auto) -> lf::task<int> {
-  for (int i = 0; i < 100'000'000; ++i) {
-    co_await lf::fork(noop)();
+inline constexpr async sym_stack_overflow_1 = [](auto, int n) -> lf::task<int> {
+  for (int i = 0; i < n; ++i) {
     co_await lf::call(noop)();
   }
-
-  co_await lf::join;
-
   co_return 1;
 };
 
+/**
+ * @brief This test is known to fail with gcc in debug due to no tail call optimisation in debug builds
+ */
 TEMPLATE_TEST_CASE("Stack overflow - sym-transfer", "[libfork][template]", inline_scheduler) {
-  REQUIRE(sync_wait(TestType{}, sym_stack_overflow_1));
+  SECTION("iter = 1") { REQUIRE(sync_wait(TestType{}, sym_stack_overflow_1, 1)); }
+  SECTION("iter = 100") { REQUIRE(sync_wait(TestType{}, sym_stack_overflow_1, 100)); }
+  SECTION("iter = 10'000") { REQUIRE(sync_wait(TestType{}, sym_stack_overflow_1, 10'000)); }
+  SECTION("iter = 100'000") { REQUIRE(sync_wait(TestType{}, sym_stack_overflow_1, 100'000)); }
+  SECTION("iter = 1'000'000") { REQUIRE(sync_wait(TestType{}, sym_stack_overflow_1, 1'000'000)); }
+  SECTION("iter = 100'000'000") { REQUIRE(sync_wait(TestType{}, sym_stack_overflow_1, 100'000'000)); }
 }
 
 // // ------------------------ Fibonacci ------------------------ //

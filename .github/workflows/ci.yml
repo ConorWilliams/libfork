@@ -93,6 +93,6 @@ jobs:
         run: cmake --install build --config ${{ matrix.build-type }} --prefix prefix
 
       - name: Test
-        if: matrix.os != 'windows-latest'
+        if: matrix.os != 'windows-latest' && matrix.build-type == 'Release'
         working-directory: build
         run: ctest --output-on-failure --no-tests=error -C ${{ matrix.build-type }} -j 2

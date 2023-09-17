@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.14)
 include(cmake/prelude.cmake)
 include(cmake/read_version.cmake)
 
+message(STATUS "CMAKE_BUILD_TYPE is set to '${CMAKE_BUILD_TYPE}'")
+
 read_version(${CMAKE_CURRENT_SOURCE_DIR}/include/libfork/macro.hpp)
 
 project(
@@ -17,8 +19,6 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 include(cmake/project-is-top-level.cmake)
 include(cmake/variables.cmake)
-
-message(STATUS "CMAKE_BUILD_TYPE is set to '${CMAKE_BUILD_TYPE}'")
 
 # ---- Dependencies ----
 
