@@ -131,7 +131,7 @@ inline constexpr async search = [](auto search, tree const &root, int val, auto 
 
 TEMPLATE_TEST_CASE("tree search", "[tree][template]", unit_pool) {
 
-  int n = 100;
+  int n = 1000;
 
   std::unique_ptr root = build_tree(n, 0.5);
 
@@ -210,3 +210,5 @@ TEMPLATE_TEST_CASE("tree transfer", "[tree][template]", unit_pool) {
     return tree;
   };
 }
+
+// NOLINTEND
