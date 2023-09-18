@@ -1646,6 +1646,8 @@ inline void frame_block::resume_external() noexcept {
   coro().resume();
 
   LF_ASSERT(impl::tls::asp);
+  LF_ASSERT(impl::tls::ctx<Context>);
+  LF_ASSERT(!impl::tls::ctx<Context>->task_pop());
 }
 
 } // namespace ext
@@ -2816,7 +2818,7 @@ inline namespace ext {
 template <typename Sch>
 concept scheduler = requires(Sch &&sch, intrusive_node<frame_block *> *ext) {
   typename context_of<Sch>;
-  std::forward<Sch>(sch).submit(ext);
+  std::forward<Sch>(sch).schedule(ext);
 };
 
 } // namespace ext
@@ -2872,7 +2874,7 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
 
   LF_LOG("Submitting root");
 
-  std::forward<Sch>(sch).submit(&link);
+  std::forward<Sch>(sch).schedule(&link);
 
   LF_LOG("Acquire semaphore");
 
@@ -2985,7 +2987,7 @@ class unit_pool : impl::immovable<unit_pool> {
 
   static_assert(thread_context<context_type>);
 
-  static void submit(intrusive_node<frame_block *> *ptr) { context_type::submit(ptr); }
+  static void schedule(intrusive_node<frame_block *> *ptr) { context_type::submit(ptr); }
 
   unit_pool() { worker_init(&m_context); }
 

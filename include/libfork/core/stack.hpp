@@ -332,6 +332,8 @@ inline void frame_block::resume_external() noexcept {
   coro().resume();
 
   LF_ASSERT(impl::tls::asp);
+  LF_ASSERT(impl::tls::ctx<Context>);
+  LF_ASSERT(!impl::tls::ctx<Context>->task_pop());
 }
 
 } // namespace ext

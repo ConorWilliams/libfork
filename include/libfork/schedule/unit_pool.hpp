@@ -87,7 +87,7 @@ class unit_pool : impl::immovable<unit_pool> {
 
   static_assert(thread_context<context_type>);
 
-  static void submit(intrusive_node<frame_block *> *ptr) { context_type::submit(ptr); }
+  static void schedule(intrusive_node<frame_block *> *ptr) { context_type::submit(ptr); }
 
   unit_pool() { worker_init(&m_context); }
 
