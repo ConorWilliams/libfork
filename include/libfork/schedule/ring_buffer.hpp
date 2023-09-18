@@ -1,9 +1,13 @@
 #ifndef C0E5463D_72D1_43C1_9458_9797E2F9C033
 #define C0E5463D_72D1_43C1_9458_9797E2F9C033
 
+#include <array>
 #include <bit>
 #include <concepts>
+#include <cstdint>
+#include <functional>
 #include <optional>
+#include <utility>
 
 #include "libfork/macro.hpp"
 #include "libfork/utility.hpp"
