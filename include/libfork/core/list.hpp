@@ -74,8 +74,12 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
 
     node *last = m_head.exchange(nullptr, std::memory_order_consume);
 
-    for (node *walk = last; walk; walk = walk->m_next) {
+    for (node *walk = last; walk;) {
+      // Have to be very careful here, we can't deference `walk` after
+      // we've called `func` as `func` could destroy the node.
+      auto next = walk->m_next;
       std::invoke(func, walk->m_data);
+      walk = next;
     }
 
     return last != nullptr;

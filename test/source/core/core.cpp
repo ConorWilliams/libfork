@@ -25,9 +25,11 @@
 
 // #define LF_PROPAGATE_EXCEPTIONS
 // #undef LF_LOG
-// #define LF_LOGGING
+// #define LF_DEFAULT_LOGGING
 
 #include "libfork/core.hpp"
+
+#include "libfork/schedule/busy_pool.hpp"
 #include "libfork/schedule/unit_pool.hpp"
 
 // NOLINTBEGIN No linting in tests
@@ -41,7 +43,7 @@ inline constexpr async noop = [](auto) -> task<> {
   co_return;
 };
 
-TEMPLATE_TEST_CASE("Construct destruct launch", "[libfork][template]", unit_pool) {
+TEMPLATE_TEST_CASE("Construct destruct launch", "[core][template]", unit_pool, busy_pool) {
 
   for (int i = 0; i < 1000; ++i) {
     TestType tmp{};
@@ -108,12 +110,13 @@ inline constexpr async r_fib = [](auto fib, int n) -> lf::task<int> {
   co_return a + b;
 };
 
-TEMPLATE_TEST_CASE("Fibonacci - returning", "[libfork][template]", unit_pool) {
+TEMPLATE_TEST_CASE("Fibonacci - returning", "[core][template]", unit_pool, busy_pool) {
+  for (int j = 0; j < 10; ++j) {
+    TestType schedule{};
 
-  TestType schedule{};
-
-  for (int i = 0; i < 25; ++i) {
-    REQUIRE(fib(i) == sync_wait(schedule, r_fib, i));
+    for (int i = 0; i < 20; ++i) {
+      REQUIRE(fib(i) == sync_wait(schedule, r_fib, i));
+    }
   }
 }
 
@@ -130,7 +133,7 @@ inline constexpr async inline_fib = [](auto fib, int n) -> lf::task<int> {
   co_return a + b;
 };
 
-TEMPLATE_TEST_CASE("Fibonacci - inline", "[libfork][template]", unit_pool) {
+TEMPLATE_TEST_CASE("Fibonacci - inline", "[core][template]", unit_pool, busy_pool) {
 
   TestType schedule{};
 
@@ -163,7 +166,7 @@ inline constexpr async v_fib = [](auto fib, int &ret, int n) -> lf::task<void> {
   ret = a + b;
 };
 
-TEMPLATE_TEST_CASE("Fibonacci - void", "[libfork][template]", unit_pool) {
+TEMPLATE_TEST_CASE("Fibonacci - void", "[core][template]", unit_pool, busy_pool) {
 
   TestType schedule{};
 
@@ -201,7 +204,7 @@ inline constexpr async v_fib_ignore = [](auto fib, int &ret, int n) -> lf::task<
   co_return a + b;
 };
 
-TEMPLATE_TEST_CASE("Fibonacci - ignored", "[libfork][template]", unit_pool) {
+TEMPLATE_TEST_CASE("Fibonacci - ignored", "[core][template]", unit_pool, busy_pool) {
 
   TestType schedule{};
 
@@ -232,7 +235,9 @@ class ref_test {
   static constexpr async get_2 = [](auto, auto &&self) -> lf::task<int &> { co_return self.m_private; };
 };
 
-TEMPLATE_TEST_CASE("Reference test", "[libfork][template]", unit_pool) {
+TEMPLATE_TEST_CASE("Reference test", "[core][template]", unit_pool, busy_pool) {
+
+  LF_LOG("pre-init");
 
   TestType schedule{};
 

@@ -9,42 +9,45 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include <algorithm>
+#include <atomic>
 #include <bit>
+#include <memory>
 #include <random>
 #include <thread>
 
-#include "libfork/core.hpp"
-#include "libfork/deque.hpp"
-#include "libfork/event_count.hpp"
+#include "libfork/core/list.hpp"
+#include "libfork/core/stack.hpp"
 #include "libfork/macro.hpp"
-#include "libfork/random.hpp"
-#include "libfork/schedule/thread_local.hpp"
+#include "libfork/utility.hpp"
+
+#include "libfork/core.hpp"
+
+#include "libfork/schedule/deque.hpp"
+#include "libfork/schedule/random.hpp"
+#include "libfork/schedule/ring_buffer.hpp"
 
 /**
  * @file busy.hpp
  *
- * @brief A work-stealing threadpool where all the threads spin when idle.
+ * @brief A work-stealing thread pool where all the threads spin when idle.
  */
 
 namespace lf {
 
 namespace detail {
 
-// TODO: make unordered, move to its own file, make it just a ring_buffer
-
-// template <is_virtual_stack Stack, typename Steal>
+// template <typename Steal>
 //   requires requires(Steal steal) {
 //     { std::invoke(steal) } -> std::convertible_to<std::optional<typename Stack::handle>>;
 //   }
 // class stack_controller {
-// public:
+//  public:
 //   using handle_t = typename Stack::handle;
 
 //   explicit constexpr stack_controller(Steal const &steal) : m_steal{steal} {}
 
-//   auto stack_top() -> handle_t {
-//     return m_stacks.peek();
-//   }
+//   auto stack_top() -> handle_t { return m_stacks.peek(); }
 
 //   void stack_pop() {
 //     LF_LOG("stack_pop()");
@@ -74,7 +77,7 @@ namespace detail {
 //     m_stacks.push(handle);
 //   }
 
-// private:
+//  private:
 //   using stack_block = typename Stack::unique_arr_ptr_t;
 
 //   static constexpr std::size_t k_buff = 16;
@@ -99,6 +102,131 @@ namespace detail {
 
 } // namespace detail
 
+inline namespace ext {
+
+/**
+ * @brief The context type for the busy_pools threads.
+ *
+ * This object does not manage worker_init/worker_finalize as it is intended
+ * to be constructed/destructed by the master thread.
+ */
+class worker_context : impl::immovable<worker_context> {
+
+  static constexpr std::size_t k_buff = 16;
+  static constexpr std::size_t k_steal_attempts = 64;
+
+  deque<frame_block *> m_tasks;                ///< Our public task queue, all non-null.
+  deque<async_stack *> m_stacks;               ///< Our public stack queue, all non-null.
+  intrusive_list<frame_block *> m_submit;      ///< The public submission queue, all non-null.
+  ring_buffer<async_stack *, k_buff> m_buffer; ///< Our private stack buffer, all non-null.
+
+  xoshiro m_rng;                           ///< Our personal PRNG.
+  std::vector<worker_context *> m_friends; ///< Other contexts in the pool, all non-null.
+
+  template <typename T>
+  static constexpr auto null_for = []() LF_STATIC_CONST noexcept -> T * { return nullptr; };
+
+ public:
+  worker_context() {
+    for (auto *elem : m_friends) {
+      LF_ASSERT(elem);
+    }
+    for (std::size_t i = 0; i < k_buff / 2; ++i) {
+      m_buffer.push(new async_stack);
+    }
+  }
+
+  ~worker_context() noexcept {
+    //
+    LF_ASSERT(m_tasks.empty());
+
+    while (auto *stack = m_buffer.pop(null_for<async_stack>)) {
+      delete stack;
+    }
+
+    while (auto *stack = m_stacks.pop(null_for<async_stack>)) {
+      delete stack;
+    }
+  }
+
+  void set_rng(xoshiro const &rng) noexcept { m_rng = rng; }
+
+  void add_friend(worker_context *a_friend) noexcept { m_friends.push_back(impl::non_null(a_friend)); }
+
+  auto max_threads() const noexcept -> std::size_t { return m_friends.size() + 1; }
+
+  auto submit(intrusive_node<frame_block *> *node) noexcept -> void { m_submit.push(impl::non_null(node)); }
+
+  auto resume_submitted() noexcept -> bool {
+    return m_submit.consume([](frame_block *submitted) LF_STATIC_CALL noexcept {
+      submitted->resume_external<worker_context>();
+      //
+    });
+  }
+
+  auto steal_and_resume() -> bool {
+    for (std::size_t i = 0; i < k_steal_attempts; ++i) {
+
+      std::shuffle(m_friends.begin(), m_friends.end(), m_rng);
+
+      for (worker_context *context : m_friends) {
+        if (auto task = context->m_tasks.steal()) {
+          LF_LOG("Stole task from {}", (void *)context);
+          (*task)->resume_stolen();
+          LF_ASSERT(m_tasks.empty());
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  auto stack_pop() -> async_stack * {
+    if (auto *stack = m_buffer.pop(null_for<async_stack>)) {
+      LF_LOG("Using local-buffered stack");
+      return stack;
+    }
+    if (auto *stack = m_stacks.pop(null_for<async_stack>)) {
+      LF_LOG("Using public-buffered stack}");
+      return stack;
+    }
+
+    std::shuffle(m_friends.begin(), m_friends.end(), m_rng);
+
+    for (worker_context *context : m_friends) {
+    retry:
+      auto [err, stack] = context->m_stacks.steal();
+
+      switch (err) {
+        case lf::err::none:
+          LF_LOG("Stole stack from {}", (void *)context);
+          return stack;
+        case lf::err::lost:
+          goto retry;
+        case lf::err::empty:
+          break;
+        default:
+          LF_ASSERT(false);
+      }
+    }
+
+    return new async_stack;
+  }
+
+  void stack_push(async_stack *stack) {
+    m_buffer.push(impl::non_null(stack), [&](async_stack *stack) noexcept {
+      LF_LOG("Local stack buffer overflows");
+      m_stacks.push(stack);
+    });
+  }
+
+  auto task_pop() noexcept -> frame_block * { return m_tasks.pop(null_for<frame_block>); }
+
+  void task_push(frame_block *task) { m_tasks.push(impl::non_null(task)); }
+};
+
+static_assert(thread_context<worker_context>);
+
 /**
  * @brief A scheduler based on a traditional work-stealing thread pool.
  *
@@ -106,219 +234,89 @@ namespace detail {
  * waste CPU cycles if sufficient work is not available. This is a good choice if the number
  * of threads is equal to the number of hardware cores and the multiplexer has no other load.
  */
-class busy_pool : detail::immovable {
+class busy_pool {
  public:
-  /**
-   * @brief The context type for the busy_pools threads.
-   */
-  class context_type : thread_local_ptr<context_type> {
-   public:
-    context_type() { alloc_stacks(); }
+  using context_type = worker_context;
 
-    static auto context() -> context_type & { return get(); }
+ private:
+  xoshiro m_rng{seed, std::random_device{}};
 
-    auto max_threads() const noexcept -> std::size_t { return m_pool->m_workers.size(); }
+  std::vector<context_type> m_contexts;
+  std::vector<std::thread> m_workers;
+  std::unique_ptr<std::atomic_flag> m_stop = std::make_unique<std::atomic_flag>();
 
-    auto stack_top() -> virtual_stack::handle {
-      LF_ASSERT(&context() == this);
-      return m_stacks.peek();
+  // Request all threads to stop, wake them up and then call join.
+  auto clean_up() noexcept -> void {
+
+    LF_LOG("Requesting a stop");
+    // Set conditions for workers to stop
+    m_stop->test_and_set(std::memory_order_release);
+
+    for (auto &worker : m_workers) {
+      worker.join();
     }
+  }
 
-    void stack_pop() {
-      LF_ASSERT(&context() == this);
-      LF_ASSERT(!m_stacks.empty());
+  static auto work(context_type *my_context, std::atomic_flag const &stop_requested) {
 
-      LF_LOG("Pop stack");
+    worker_init(my_context);
 
-      m_stacks.pop();
+    while (!stop_requested.test(std::memory_order_acquire)) {
+      my_context->resume_submitted();
+      my_context->steal_and_resume();
+    };
 
-      if (!m_stacks.empty()) {
-        return;
-      }
+    worker_finalize(my_context);
+  }
 
-      LF_LOG("No stack, stealing from other threads");
-
-      auto n = max_threads();
-
-      std::uniform_int_distribution<std::size_t> dist(0, n - 1);
-
-      for (std::size_t attempts = 0; attempts < 2 * n;) {
-
-        auto steal_at = dist(m_rng);
-
-        if (steal_at == m_id) {
-          continue;
-        }
-
-        if (auto handle = m_pool->m_contexts[steal_at].m_stacks.steal()) {
-          LF_LOG("Stole stack from thread {}", steal_at);
-          LF_ASSERT(m_stacks.empty());
-          m_stacks.push(*handle);
-          return;
-        }
-
-        ++attempts;
-      }
-
-      LF_LOG("No stacks found, allocating new stacks");
-      alloc_stacks();
-    }
-
-    void stack_push(virtual_stack::handle handle) {
-      LF_ASSERT(&context() == this);
-      LF_ASSERT(stack_top()->empty());
-
-      LF_LOG("Pushing stack to private deque");
-
-      m_stacks.push(handle);
-    }
-
-    auto task_steal() -> typename deque<task_handle>::steal_t { return m_tasks.steal(); }
-
-    auto task_pop() -> std::optional<task_handle> {
-      LF_ASSERT(&context() == this);
-      return m_tasks.pop();
-    }
-
-    void task_push(task_handle task) {
-      LF_ASSERT(&context() == this);
-      m_tasks.push(task);
-    }
-
-   private:
-    static constexpr std::size_t block_size = 16;
-
-    using stack_block = typename virtual_stack::unique_arr_ptr_t;
-    using stack_handle = typename virtual_stack::handle;
-
-    friend class busy_pool;
-
-    busy_pool *m_pool = nullptr; ///< To the pool this context belongs to.
-    std::size_t m_id = 0;        ///< Index in the pool.
-    xoshiro m_rng;               ///< Our personal PRNG.
-
-    detail::ring_buffer<stack_handle, block_size> m_stacks; ///< Our (stealable) stack deque.
-    deque<task_handle> m_tasks;                             ///< Our (stealable) task deque.
-
-    std::vector<stack_block> m_stack_storage; ///< Controls ownership of the stacks.
-
-    // Alloc k new stacks and insert them into our private deque.
-    void alloc_stacks() {
-
-      LF_ASSERT(m_stacks.empty());
-
-      stack_block stacks = virtual_stack::make_unique(block_size);
-
-      for (std::size_t i = 0; i < block_size; ++i) {
-        m_stacks.push(stack_handle{stacks.get() + i});
-      }
-
-      m_stack_storage.push_back(std::move(stacks));
-    }
-  };
-
-  static_assert(thread_context<context_type>);
-
+ public:
   /**
    * @brief Construct a new busy_pool object.
    *
    * @param n The number of worker threads to create, defaults to the number of hardware threads.
    */
   explicit busy_pool(std::size_t n = std::thread::hardware_concurrency()) : m_contexts(n) {
-    // Initialize the random number generator.
-    xoshiro rng(std::random_device{});
 
-    std::size_t count = 0;
-
-    for (auto &ctx : m_contexts) {
-      ctx.m_pool = this;
-      ctx.m_rng = rng;
-      rng.long_jump();
-      ctx.m_id = count++;
+    for (auto &context : m_contexts) {
+      context.set_rng(m_rng);
+      m_rng.long_jump();
     }
 
-#if LF_COMPILER_EXCEPTIONS
-    try {
-#endif
-      for (std::size_t i = 0; i < n; ++i) {
-        m_workers.emplace_back([this, i]() {
-          // Get a reference to the threads context.
-          context_type &my_context = m_contexts[i];
-
-          // Set the thread local context.
-          context_type::set(my_context);
-
-          std::uniform_int_distribution<std::size_t> dist(0, m_contexts.size() - 1);
-
-          while (!m_stop_requested.test(std::memory_order_acquire)) {
-
-            for (int attempt = 0; attempt < k_steal_attempts; ++attempt) {
-
-              std::size_t steal_at = dist(my_context.m_rng);
-
-              if (steal_at == i) {
-                if (auto root = m_submit.steal()) {
-                  LF_LOG("resuming root task");
-                  root->resume();
-                }
-              } else if (auto work = m_contexts[steal_at].task_steal()) {
-                attempt = 0;
-                LF_LOG("Stole work from {}", steal_at);
-                work->resume();
-                LF_LOG("worker resumes thieving");
-                LF_ASSUME(my_context.m_tasks.empty());
-              }
-            }
-          };
-
-          LF_LOG("Worker {} stopping", i);
-        });
+    for (std::size_t i = 0; i < n; ++i) {
+      for (std::size_t j = 0; j < n; ++j) {
+        if (i != j) {
+          m_contexts[i].add_friend(&m_contexts[j]);
+        }
       }
-#if LF_COMPILER_EXCEPTIONS
-    } catch (...) {
-      // Need to stop the threads
-      clean_up();
-      throw;
     }
-#endif
+
+    LF_ASSERT(!m_stop->test(std::memory_order_relaxed));
+
+    LF_TRY {
+      for (auto &context : m_contexts) {
+        m_workers.emplace_back(work, &context, std::cref(*m_stop));
+      }
+    }
+    LF_CATCH_ALL {
+      clean_up();
+      LF_RETHROW;
+    }
   }
+
+  ~busy_pool() noexcept { clean_up(); }
 
   /**
    * @brief Schedule a task for execution.
    */
-  auto schedule(stdx::coroutine_handle<> root) noexcept { m_submit.push(root); }
-
-  ~busy_pool() noexcept { clean_up(); }
-
- private:
-  // Request all threads to stop, wake them up and then call join.
-  auto clean_up() noexcept -> void {
-
-    LF_LOG("Request stop");
-
-    LF_ASSERT(m_submit.empty());
-
-    // Set conditions for workers to stop
-    m_stop_requested.test_and_set(std::memory_order_release);
-
-    // Join workers
-    for (auto &worker : m_workers) {
-      LF_ASSUME(worker.joinable());
-      worker.join();
-    }
+  auto schedule(intrusive_node<frame_block *> *node) noexcept {
+    std::uniform_int_distribution<std::size_t> dist(0, m_contexts.size() - 1);
+    m_contexts[dist(m_rng)].submit(node);
   }
-
-  static constexpr int k_steal_attempts = 1024;
-
-  deque<stdx::coroutine_handle<>> m_submit;
-
-  std::atomic_flag m_stop_requested = ATOMIC_FLAG_INIT;
-
-  std::vector<context_type> m_contexts;
-  std::vector<std::thread> m_workers; // After m_context so threads are destroyed before the dequeues.
 };
 
 static_assert(scheduler<busy_pool>);
+
+} // namespace ext
 
 } // namespace lf
 

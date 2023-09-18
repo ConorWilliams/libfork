@@ -16,8 +16,9 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "libfork/core.hpp"
-
 #include "libfork/macro.hpp"
+
+#include "libfork/schedule/busy_pool.hpp"
 #include "libfork/schedule/random.hpp"
 #include "libfork/schedule/unit_pool.hpp"
 
@@ -111,6 +112,7 @@ inline constexpr async search = [](auto search, tree const &root, int val, auto 
 
   if (context && root.val % 10 == 0) {
     co_await context;
+    LF_ASSERT(search.context() == context);
   }
 
   bool left = false;
@@ -121,7 +123,7 @@ inline constexpr async search = [](auto search, tree const &root, int val, auto 
   }
 
   if (root.right) {
-    co_await lf::call(right, search)(*root.right, val, context);
+    co_await lf::fork(right, search)(*root.right, val, context);
   }
 
   co_await lf::join;
@@ -129,7 +131,7 @@ inline constexpr async search = [](auto search, tree const &root, int val, auto 
   co_return left || right;
 };
 
-TEMPLATE_TEST_CASE("tree search", "[tree][template]", unit_pool) {
+TEMPLATE_TEST_CASE("tree search", "[tree][template]", unit_pool, busy_pool) {
 
   int n = 1000;
 
@@ -146,11 +148,9 @@ TEMPLATE_TEST_CASE("tree search", "[tree][template]", unit_pool) {
   }
 }
 
-TEMPLATE_TEST_CASE("tree bench", "[tree][benchmark][template]", unit_pool) {
+TEMPLATE_TEST_CASE("tree bench", "[tree][benchmark][template]", unit_pool, busy_pool) {
 
-  TestType sch{};
-
-  int n = 1000;
+  int n = 100;
 
   auto iota = std::ranges::views::iota(0, 2 * n);
   std::vector<int> vals = {iota.begin(), iota.end()};
@@ -169,6 +169,8 @@ TEMPLATE_TEST_CASE("tree bench", "[tree][benchmark][template]", unit_pool) {
       return count;
     };
   }
+
+  TestType sch{};
 
   context_of<TestType> *context = nullptr;
 
@@ -190,7 +192,7 @@ inline constexpr async transfer = [](auto self, tree const &root, int val) -> ta
   co_return co_await search(root, val, self.context());
 };
 
-TEMPLATE_TEST_CASE("tree transfer", "[tree][template]", unit_pool) {
+TEMPLATE_TEST_CASE("tree transfer", "[tree][template]", unit_pool, busy_pool) {
   TestType sch{};
 
   int n = 100;
