@@ -2,13 +2,15 @@
 
 #include "libfork/core.hpp"
 #include "libfork/schedule/busy.hpp"
-#include "libfork/schedule/inline.hpp"
+#include "libfork/schedule/unit_pool.hpp"
 
 namespace lf::detail {
 
 struct make_fn_impl {
   template <stateless Fn>
-  [[nodiscard]] consteval auto operator+([[maybe_unused]] Fn invocable_which_returns_a_task) const -> async_fn<Fn> { return {}; }
+  [[nodiscard]] consteval auto operator+([[maybe_unused]] Fn invocable_which_returns_a_task) const -> async_fn<Fn> {
+    return {};
+  }
 };
 
 inline constexpr make_fn_impl make_fn;
@@ -96,18 +98,13 @@ auto main() -> int {
   for (std::size_t i = 1; i <= 4; ++i) {
     lf::busy_pool i_sch{i};
 
-    bench.run("async busy pool n=" + std::to_string(i), [&] {
-      ankerl::nanobench::doNotOptimizeAway(lf::sync_wait(i_sch, c_fib, in));
-    });
+    bench.run("async busy pool n=" + std::to_string(i),
+              [&] { ankerl::nanobench::doNotOptimizeAway(lf::sync_wait(i_sch, c_fib, in)); });
   }
 
-  bench.run("function no register", [&] {
-    ankerl::nanobench::doNotOptimizeAway(fib_no_reg({in}));
-  });
+  bench.run("function no register", [&] { ankerl::nanobench::doNotOptimizeAway(fib_no_reg({in})); });
 
-  bench.run("function", [&] {
-    ankerl::nanobench::doNotOptimizeAway(fib(in));
-  });
+  bench.run("function", [&] { ankerl::nanobench::doNotOptimizeAway(fib(in)); });
 
   return 0;
 }

@@ -28,7 +28,7 @@
 // #define LF_LOGGING
 
 #include "libfork/core.hpp"
-#include "libfork/schedule/inline.hpp"
+#include "libfork/schedule/unit_pool.hpp"
 
 // NOLINTBEGIN No linting in tests
 
@@ -41,7 +41,7 @@ inline constexpr async noop = [](auto) -> task<> {
   co_return;
 };
 
-TEMPLATE_TEST_CASE("Construct destruct launch", "[libfork][template]", inline_scheduler) {
+TEMPLATE_TEST_CASE("Construct destruct launch", "[libfork][template]", unit_pool) {
 
   for (int i = 0; i < 1000; ++i) {
     TestType tmp{};
@@ -70,7 +70,7 @@ inline constexpr async sym_stack_overflow_1 = [](auto, int n) -> lf::task<int> {
 /**
  * @brief This test is known to fail with gcc in debug due to no tail call optimization in debug builds
  */
-TEMPLATE_TEST_CASE("Stack overflow - sym-transfer", "[libfork][template]", inline_scheduler) {
+TEMPLATE_TEST_CASE("Stack overflow - sym-transfer", "[libfork][template]", unit_pool) {
   SECTION("iter = 1") { REQUIRE(sync_wait(TestType{}, sym_stack_overflow_1, 1)); }
   SECTION("iter = 100") { REQUIRE(sync_wait(TestType{}, sym_stack_overflow_1, 100)); }
   SECTION("iter = 10'000") { REQUIRE(sync_wait(TestType{}, sym_stack_overflow_1, 10'000)); }
@@ -107,7 +107,7 @@ inline constexpr async r_fib = [](auto fib, int n) -> lf::task<int> {
   co_return a + b;
 };
 
-TEMPLATE_TEST_CASE("Fibonacci - returning", "[libfork][template]", inline_scheduler) {
+TEMPLATE_TEST_CASE("Fibonacci - returning", "[libfork][template]", unit_pool) {
 
   TestType schedule{};
 
@@ -129,7 +129,7 @@ inline constexpr async inline_fib = [](auto fib, int n) -> lf::task<int> {
   co_return a + b;
 };
 
-TEMPLATE_TEST_CASE("Fibonacci - inline", "[libfork][template]", inline_scheduler) {
+TEMPLATE_TEST_CASE("Fibonacci - inline", "[libfork][template]", unit_pool) {
 
   TestType schedule{};
 
@@ -162,7 +162,7 @@ inline constexpr async v_fib = [](auto fib, int &ret, int n) -> lf::task<void> {
   ret = a + b;
 };
 
-TEMPLATE_TEST_CASE("Fibonacci - void", "[libfork][template]", inline_scheduler) {
+TEMPLATE_TEST_CASE("Fibonacci - void", "[libfork][template]", unit_pool) {
 
   TestType schedule{};
 
@@ -200,7 +200,7 @@ inline constexpr async v_fib_ignore = [](auto fib, int &ret, int n) -> lf::task<
   co_return a + b;
 };
 
-TEMPLATE_TEST_CASE("Fibonacci - ignored", "[libfork][template]", inline_scheduler) {
+TEMPLATE_TEST_CASE("Fibonacci - ignored", "[libfork][template]", unit_pool) {
 
   TestType schedule{};
 
@@ -231,7 +231,7 @@ class ref_test {
   static constexpr async get_2 = [](auto, auto &&self) -> lf::task<int &> { co_return self.m_private; };
 };
 
-TEMPLATE_TEST_CASE("Reference test", "[libfork][template]", inline_scheduler) {
+TEMPLATE_TEST_CASE("Reference test", "[libfork][template]", unit_pool) {
 
   TestType schedule{};
 

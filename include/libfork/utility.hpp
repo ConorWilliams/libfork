@@ -46,7 +46,7 @@ inline namespace core {}
  * @brief An inline namespace that wraps extension functionality.
  *
  * This namespace is part of ``libfork``s public API but is intended for advanced users writing schedulers, It exposes the
- * scheduler/context API's alongside some implementation details (such as lock-free queues, and other synchronization
+ * scheduler/context API's alongside some implementation details (such as lock-free deques, and other synchronization
  * primitives) that could be useful when implementing custom schedulers.
  */
 inline namespace ext {}

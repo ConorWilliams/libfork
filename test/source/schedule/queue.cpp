@@ -12,28 +12,28 @@
 
 #include <thread>
 
-#include "libfork/schedule/queue.hpp"
+#include "libfork/schedule/deque.hpp"
 
 auto example() -> int {
-  // Work-stealing queue of ints
-  lf::queue<int> queue;
+  // Work-stealing deque of ints
+  lf::deque<int> deque;
 
   constexpr int num_items = 10000;
 
   // One thread can push and pop items from one end (like a stack)
   std::thread owner([&]() {
     for (int i = 0; i < num_items; ++i) {
-      queue.push(i);
+      deque.push(i);
     }
-    while (std::optional item = queue.pop()) {
+    while (std::optional item = deque.pop()) {
       // Do something with items...
     }
   });
 
   // While multiple (any) threads can steal items from the other end
   std::thread thief([&]() {
-    while (!queue.empty()) {
-      if (auto item = queue.steal()) {
+    while (!deque.empty()) {
+      if (auto item = deque.steal()) {
         // Do something with item...
       }
     }
@@ -49,29 +49,29 @@ auto example() -> int {
 
 // NOLINTBEGIN No linting in tests
 
-TEST_CASE("Example", "[queue]") { REQUIRE(!example()); }
+TEST_CASE("Example", "[deque]") { REQUIRE(!example()); }
 
-TEST_CASE("Single thread as stack", "[queue]") {
-  lf::queue<int> queue;
+TEST_CASE("Single thread as stack", "[deque]") {
+  lf::deque<int> deque;
 
-  REQUIRE(queue.empty());
+  REQUIRE(deque.empty());
 
   for (int i = 0; i < 10; ++i) {
-    queue.push(i);
-    REQUIRE(queue.ssize() == i + 1);
+    deque.push(i);
+    REQUIRE(deque.ssize() == i + 1);
   }
 
   for (int i = 9; i >= 0; --i) {
-    auto item = queue.pop();
+    auto item = deque.pop();
     REQUIRE(item);
     REQUIRE(*item == i);
   }
 
-  REQUIRE(queue.empty());
+  REQUIRE(deque.empty());
 }
 
-TEST_CASE("Single producer, single consumer", "[queue]") {
-  lf::queue<int> queue;
+TEST_CASE("Single producer, single consumer", "[deque]") {
+  lf::deque<int> deque;
 
   constexpr int tot = 100;
 
@@ -80,7 +80,7 @@ TEST_CASE("Single producer, single consumer", "[queue]") {
     int count = 0;
 
     while (count < tot) {
-      if (auto [err, item] = queue.steal(); err == lf::err::none) {
+      if (auto [err, item] = deque.steal(); err == lf::err::none) {
         REQUIRE(item == count++);
       } else {
         REQUIRE(err == lf::err::empty);
@@ -89,19 +89,19 @@ TEST_CASE("Single producer, single consumer", "[queue]") {
   });
 
   for (int i = 0; i < tot; ++i) {
-    queue.push(i);
+    deque.push(i);
   }
 
   thief.join();
 
-  REQUIRE(queue.empty());
+  REQUIRE(deque.empty());
 }
 
-TEST_CASE("Single producer, multiple consumer", "[queue]") {
-  lf::queue<int> queue;
+TEST_CASE("Single producer, multiple consumer", "[deque]") {
+  lf::deque<int> deque;
 
-  auto &worker = queue;
-  auto &stealer = queue;
+  auto &worker = deque;
+  auto &stealer = deque;
 
   constexpr auto max = 100000;
   unsigned int nthreads = std::thread::hardware_concurrency();
@@ -131,11 +131,11 @@ TEST_CASE("Single producer, multiple consumer", "[queue]") {
   REQUIRE(remaining == 0);
 }
 
-TEST_CASE("Single producer + pop(), multiple consumer", "[queue]") {
-  lf::queue<int> queue;
+TEST_CASE("Single producer + pop(), multiple consumer", "[deque]") {
+  lf::deque<int> deque;
 
-  auto &worker = queue;
-  auto &stealer = queue;
+  auto &worker = deque;
+  auto &stealer = deque;
 
   constexpr auto max = 100000;
   unsigned int nthreads = std::thread::hardware_concurrency();

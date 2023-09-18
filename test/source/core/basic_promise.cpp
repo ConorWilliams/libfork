@@ -18,7 +18,7 @@
 #include "libfork/core/result.hpp"
 #include "libfork/core/stack.hpp"
 #include "libfork/core/task.hpp"
-#include "libfork/schedule/inline.hpp"
+#include "libfork/schedule/unit_pool.hpp"
 
 // NOLINTBEGIN No linting in tests
 
@@ -35,11 +35,11 @@ inline constexpr auto count = [](auto count, int &var) -> task<void, "count"> {
   co_return;
 };
 
-TEST_CASE("basic counting", "[inline_scheduler]") {
+TEST_CASE("basic counting", "[unit_pool]") {
 
   root_result<void> block;
 
-  using C = inline_scheduler::context_type;
+  using C = unit_pool::context_type;
 
   using base = basic_first_arg<root_result<void>, tag::root, decltype(count)>;
 
@@ -103,7 +103,7 @@ inline constexpr auto fib = [](auto fib, int n) -> task<int> {
 TEST_CASE("fib", "[promise]") {
   //
 
-  using C = inline_scheduler::context_type;
+  using C = unit_pool::context_type;
 
   C ctx;
 

@@ -1,15 +1,14 @@
-// The contents of this file are from: https://github.com/taskflow/work-stealing-queue
+// The contents of this file are from: https://github.com/taskflow/work-stealing-deque
 
 #include <atomic>
 #include <deque>
-#include <queue>
 #include <random>
 #include <set>
 #include <thread>
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "libfork/schedule/queue.hpp"
+#include "libfork/schedule/deque.hpp"
 
 // NOLINTBEGIN No linting in tests
 
@@ -19,46 +18,46 @@ using namespace lf;
 void wsq_test_owner() {
   int64_t cap = 2;
 
-  queue<int> queue(cap);
+  deque<int> deque(cap);
   std::deque<int> gold;
 
-  REQUIRE(queue.capacity() == 2);
-  REQUIRE(queue.empty());
+  REQUIRE(deque.capacity() == 2);
+  REQUIRE(deque.empty());
 
   for (int i = 2; i <= (1 << 16); i <<= 1) {
-    REQUIRE(queue.empty());
+    REQUIRE(deque.empty());
 
     for (int j = 0; j < i; ++j) {
-      queue.push(j);
+      deque.push(j);
     }
 
     for (int j = 0; j < i; ++j) {
-      auto item = queue.pop();
+      auto item = deque.pop();
       REQUIRE((item && *item == i - j - 1));
     }
-    REQUIRE(!queue.pop());
+    REQUIRE(!deque.pop());
 
-    REQUIRE(queue.empty());
+    REQUIRE(deque.empty());
     for (int j = 0; j < i; ++j) {
-      queue.push(j);
+      deque.push(j);
     }
 
     for (int j = 0; j < i; ++j) {
-      auto item = queue.steal();
+      auto item = deque.steal();
       REQUIRE((item && *item == j));
     }
-    REQUIRE(!queue.pop());
+    REQUIRE(!deque.pop());
 
-    REQUIRE(queue.empty());
+    REQUIRE(deque.empty());
 
     for (int j = 0; j < i; ++j) {
-      // enqueue
+      // endeque
       if (auto dice = ::rand() % 3; dice == 0) {
-        queue.push(j);
+        deque.push(j);
         gold.push_back(j);
 
       } else if (dice == 1) {
-        auto item = queue.pop();
+        auto item = deque.pop();
         if (gold.empty()) {
           REQUIRE(!item);
         } else {
@@ -66,7 +65,7 @@ void wsq_test_owner() {
           gold.pop_back();
         }
       } else {
-        auto item = queue.steal();
+        auto item = deque.steal();
         if (gold.empty()) {
           REQUIRE(!item);
         } else {
@@ -75,18 +74,18 @@ void wsq_test_owner() {
         }
       }
 
-      REQUIRE((queue.size() == gold.size()));
+      REQUIRE((deque.size() == gold.size()));
     }
 
-    while (!queue.empty()) {
-      auto item = queue.pop();
+    while (!deque.empty()) {
+      auto item = deque.pop();
       REQUIRE((item && *item == gold.back()));
       gold.pop_back();
     }
 
     REQUIRE(gold.empty());
 
-    REQUIRE(queue.capacity() == i);
+    REQUIRE(deque.capacity() == i);
   }
 }
 
@@ -94,13 +93,13 @@ void wsq_test_owner() {
 void wsq_test_n_thieves(int N) {
   int64_t cap = 2;
 
-  queue<int> queue(cap);
+  deque<int> deque(cap);
 
-  REQUIRE(queue.capacity() == 2);
-  REQUIRE(queue.empty());
+  REQUIRE(deque.capacity() == 2);
+  REQUIRE(deque.empty());
 
   for (int i = 2; i <= (1 << 16); i <<= 1) {
-    REQUIRE(queue.empty());
+    REQUIRE(deque.empty());
 
     int p = 0;
 
@@ -120,7 +119,7 @@ void wsq_test_n_thieves(int N) {
       consumers.emplace_back([&, n]() {
         while (num_stolen() + (int)pdeq.size() != i) {
           if (auto dice = ::rand() % 4; dice == 0) {
-            if (auto item = queue.steal(); item) {
+            if (auto item = deque.steal(); item) {
               cdeqs[n].push_back(*item);
             }
           }
@@ -131,9 +130,9 @@ void wsq_test_n_thieves(int N) {
     std::thread producer([&]() {
       while (p < i) {
         if (auto dice = ::rand() % 4; dice == 0) {
-          queue.push(p++);
+          deque.push(p++);
         } else if (dice == 1) {
-          if (auto item = queue.pop(); item) {
+          if (auto item = deque.pop(); item) {
             pdeq.push_back(*item);
           }
         }
@@ -146,8 +145,8 @@ void wsq_test_n_thieves(int N) {
       c.join();
     }
 
-    REQUIRE(queue.empty());
-    REQUIRE(queue.capacity() <= i);
+    REQUIRE(deque.empty());
+    REQUIRE(deque.capacity() <= i);
 
     std::set<int> set;
 

@@ -306,7 +306,7 @@ inline namespace core {}
  * @brief An inline namespace that wraps extension functionality.
  *
  * This namespace is part of ``libfork``s public API but is intended for advanced users writing schedulers, It exposes the
- * scheduler/context API's alongside some implementation details (such as lock-free queues, and other synchronization
+ * scheduler/context API's alongside some implementation details (such as lock-free deques, and other synchronization
  * primitives) that could be useful when implementing custom schedulers.
  */
 inline namespace ext {}
@@ -2755,7 +2755,7 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
 
 
 /**
- * @file inline.hpp
+ * @file unit_pool.hpp
  *
  * @brief A scheduler that runs all tasks inline on the current thread.
  */
@@ -2765,7 +2765,7 @@ namespace lf {
 /**
  * @brief A scheduler that runs all tasks inline on the current thread.
  */
-class inline_scheduler : impl::immovable<inline_scheduler> {
+class unit_pool : impl::immovable<unit_pool> {
  public:
   /**
    * @brief The context type for the scheduler.
@@ -2824,9 +2824,9 @@ class inline_scheduler : impl::immovable<inline_scheduler> {
 
   static void submit(frame_block *ptr) { context_type::submit(ptr); }
 
-  inline_scheduler() { worker_init(&m_context); }
+  unit_pool() { worker_init(&m_context); }
 
-  ~inline_scheduler() { worker_finalize(&m_context); }
+  ~unit_pool() { worker_finalize(&m_context); }
 
  private:
   context_type m_context;

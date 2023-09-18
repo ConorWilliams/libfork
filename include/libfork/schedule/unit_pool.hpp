@@ -17,7 +17,7 @@
 #include "libfork/core.hpp"
 
 /**
- * @file inline.hpp
+ * @file unit_pool.hpp
  *
  * @brief A scheduler that runs all tasks inline on the current thread.
  */
@@ -27,7 +27,7 @@ namespace lf {
 /**
  * @brief A scheduler that runs all tasks inline on the current thread.
  */
-class inline_scheduler : impl::immovable<inline_scheduler> {
+class unit_pool : impl::immovable<unit_pool> {
  public:
   /**
    * @brief The context type for the scheduler.
@@ -86,9 +86,9 @@ class inline_scheduler : impl::immovable<inline_scheduler> {
 
   static void submit(frame_block *ptr) { context_type::submit(ptr); }
 
-  inline_scheduler() { worker_init(&m_context); }
+  unit_pool() { worker_init(&m_context); }
 
-  ~inline_scheduler() { worker_finalize(&m_context); }
+  ~unit_pool() { worker_finalize(&m_context); }
 
  private:
   context_type m_context;

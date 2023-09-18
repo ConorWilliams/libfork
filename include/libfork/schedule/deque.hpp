@@ -24,17 +24,16 @@
 #include "libfork/utility.hpp"
 
 /**
- * @file queue.hpp
+ * @file deque.hpp
  *
  * @brief A stand-alone, production-quality implementation of the Chase-Lev lock-free
- * single-producer multiple-consumer queue.
+ * single-producer multiple-consumer deque.
  *
  * \rst
  *
- * Implements the queue described in the papers, `"Dynamic Circular Work-Stealing Queue"
+ * Implements the Chase-Lev deque described in the papers, `"Dynamic Circular Work-Stealing deque"
  * <https://doi.org/10.1145/1073970.1073974>`_ and `"Correct and Efficient Work-Stealing for Weak
- * Memory Models" <https://doi.org/10.1145/2442516.2442524>`_. Both are available in `reference/
- * <https://github.com/ConorWilliams/libfork/tree/main/reference>`_.
+ * Memory Models" <https://doi.org/10.1145/2442516.2442524>`_.
  *
  * \endrst
  */
@@ -44,7 +43,7 @@ namespace lf {
 inline namespace ext {
 
 /**
- * @brief A concept that verifies a type is suitable for use in a queue.
+ * @brief A concept that verifies a type is trivially semi-regular and lock-free.
  */
 template <typename T>
 concept simple =
@@ -58,18 +57,18 @@ namespace impl {
  * @brief A basic wrapper around a c-style array that provides modulo load/stores.
  *
  * This class is designed for internal use only. It provides a c-style API that is
- * used efficiently by queue for low level atomic operations.
+ * used efficiently by deque for low level atomic operations.
  *
  * @tparam T The type of the elements in the array.
  */
 template <simple T>
-struct ring_buf {
+struct atomic_ring_buf {
   /**
    * @brief Construct a new ring buff object
    *
    * @param cap The capacity of the buffer, MUST be a power of 2.
    */
-  constexpr explicit ring_buf(std::ptrdiff_t cap) : m_cap{cap}, m_mask{cap - 1} {
+  constexpr explicit atomic_ring_buf(std::ptrdiff_t cap) : m_cap{cap}, m_mask{cap - 1} {
     LF_ASSERT(cap > 0 && std::has_single_bit(static_cast<std::size_t>(cap)));
   }
   /**
@@ -99,8 +98,8 @@ struct ring_buf {
    * @param bottom The bottom of the range to copy from (inclusive).
    * @param top The top of the range to copy from (exclusive).
    */
-  [[nodiscard]] constexpr auto resize(std::ptrdiff_t bottom, std::ptrdiff_t top) const -> ring_buf<T> * { // NOLINT
-    auto *ptr = new ring_buf{2 * m_cap};                                                                  // NOLINT
+  [[nodiscard]] constexpr auto resize(std::ptrdiff_t bottom, std::ptrdiff_t top) const -> atomic_ring_buf<T> * { // NOLINT
+    auto *ptr = new atomic_ring_buf{2 * m_cap};                                                                  // NOLINT
     for (std::ptrdiff_t i = top; i != bottom; ++i) {
       ptr->store(i, load(i));
     }
@@ -125,16 +124,16 @@ struct ring_buf {
 inline namespace ext {
 
 /**
- * @brief Error codes for ``queue`` 's ``steal()`` operation.
+ * @brief Error codes for ``deque`` 's ``steal()`` operation.
  */
 enum class err : int {
   none = 0, ///< The ``steal()`` operation succeeded.
   lost,     ///< Lost the ``steal()`` race hence, the ``steal()`` operation failed.
-  empty,    ///< The queue is empty and hence, the ``steal()`` operation failed.
+  empty,    ///< The deque is empty and hence, the ``steal()`` operation failed.
 };
 
 /**
- * @brief A concept that verifies a type is suitable for use as the return type of ``queue::pop()``.
+ * @brief A concept that verifies a type is suitable for use as the return type of ``deque::pop()``.
  *
  * Ideally this has the semantic implication that ``Optional`` is a ``std::optional``-like type.
  */
@@ -142,78 +141,82 @@ template <typename Optional, typename T>
 concept optional_for = std::is_default_constructible_v<Optional> && std::constructible_from<Optional, T>;
 
 /**
- * @brief An unbounded lock-free single-producer multiple-consumer queue.
+ * @brief An unbounded lock-free single-producer multiple-consumer work-stealing deque.
  *
- * Only the queue owner can perform ``pop()`` and ``push()`` operations where the queue behaves
- * like a LIFO stack. Others can (only) ``steal()`` data from the queue, they see a FIFO queue.
- * All threads must have finished using the queue before it is destructed.
+ * Implements the "Chase-Lev" deque described in the papers, `"Dynamic Circular Work-Stealing deque"
+ * <https://doi.org/10.1145/1073970.1073974>`_ and `"Correct and Efficient Work-Stealing for Weak
+ * Memory Models" <https://doi.org/10.1145/2442516.2442524>`_.
+ *
+ * Only the deque owner can perform ``pop()`` and ``push()`` operations where the deque behaves
+ * like a LIFO stack. Others can (only) ``steal()`` data from the deque, they see a FIFO deque.
+ * All threads must have finished using the deque before it is destructed.
  *
  * \rst
  *
  * Example:
  *
- * .. include:: ../../test/source/schedule/queue.cpp
+ * .. include:: ../../test/source/schedule/deque.cpp
  *    :code:
  *    :start-after: // !BEGIN-EXAMPLE
  *    :end-before: // !END-EXAMPLE
  *
  * \endrst
  *
- * @tparam T The type of the elements in the queue.
+ * @tparam T The type of the elements in the deque.
  * @tparam Optional The type returned by ``pop()``.
  */
 template <simple T, optional_for<T> Optional = std::optional<T>>
-class queue : impl::immovable<queue<T>> {
+class deque : impl::immovable<deque<T>> {
 
   static constexpr std::ptrdiff_t k_default_capacity = 1024;
   static constexpr std::size_t k_garbage_reserve = 32;
 
  public:
   /**
-   * @brief The type of the elements in the queue.
+   * @brief The type of the elements in the deque.
    */
   using value_type = T;
   /**
-   * @brief Construct a new empty queue object.
+   * @brief Construct a new empty deque object.
    */
-  constexpr queue() : queue(k_default_capacity) {}
+  constexpr deque() : deque(k_default_capacity) {}
   /**
-   * @brief Construct a new empty queue object.
+   * @brief Construct a new empty deque object.
    *
-   * @param cap The capacity of the queue (must be a power of 2).
+   * @param cap The capacity of the deque (must be a power of 2).
    */
-  constexpr explicit queue(std::ptrdiff_t cap);
+  constexpr explicit deque(std::ptrdiff_t cap);
   /**
-   * @brief Get the number of elements in the queue.
+   * @brief Get the number of elements in the deque.
    */
   [[nodiscard]] constexpr auto size() const noexcept -> std::size_t;
   /**
-   * @brief Get the number of elements in the queue as a signed integer.
+   * @brief Get the number of elements in the deque as a signed integer.
    */
   [[nodiscard]] constexpr auto ssize() const noexcept -> ptrdiff_t;
   /**
-   * @brief Get the capacity of the queue.
+   * @brief Get the capacity of the deque.
    */
   [[nodiscard]] constexpr auto capacity() const noexcept -> ptrdiff_t;
   /**
-   * @brief Check if the queue is empty.
+   * @brief Check if the deque is empty.
    */
   [[nodiscard]] constexpr auto empty() const noexcept -> bool;
   /**
-   * @brief Push an item into the queue.
+   * @brief Push an item into the deque.
    *
-   * Only the owner thread can insert an item into the queue.
-   * This operation can trigger the queue to resize if more space is required.
+   * Only the owner thread can insert an item into the deque.
+   * This operation can trigger the deque to resize if more space is required.
    *
-   * @param val Value to add to the queue.
+   * @param val Value to add to the deque.
    */
   constexpr void push(T const &val) noexcept;
   /**
-   * @brief Pop an item from the queue.
+   * @brief Pop an item from the deque.
    *
-   * Only the owner thread can pop out an item from the queue.
+   * Only the owner thread can pop out an item from the deque.
    *
-   * @return A default-constructed ``Optional`` if  this operation fails (i.e. the queue is empty).
+   * @return A default-constructed ``Optional`` if  this operation fails (i.e. the deque is empty).
    */
   constexpr auto pop() noexcept -> Optional;
   /**
@@ -265,28 +268,28 @@ class queue : impl::immovable<queue<T>> {
     }
 
     err code; ///< The error code of the ``steal()`` operation.
-    T val;    ///< The value stolen from the queue, Only valid if ``code == err::stolen``.
+    T val;    ///< The value stolen from the deque, Only valid if ``code == err::stolen``.
   };
 
   /**
-   * @brief Steal an item from the queue.
+   * @brief Steal an item from the deque.
    *
-   * Any threads can try to steal an item from the queue. This operation can fail if the queue is
-   * empty or if another thread simultaneously stole an item from the queue.
+   * Any threads can try to steal an item from the deque. This operation can fail if the deque is
+   * empty or if another thread simultaneously stole an item from the deque.
    */
   constexpr auto steal() noexcept -> steal_t;
   /**
-   * @brief Destroy the queue object.
+   * @brief Destroy the deque object.
    *
-   * All threads must have finished using the queue before it is destructed.
+   * All threads must have finished using the deque before it is destructed.
    */
-  constexpr ~queue() noexcept;
+  constexpr ~deque() noexcept;
 
  private:
   alignas(impl::k_cache_line) std::atomic<std::ptrdiff_t> m_top;
   alignas(impl::k_cache_line) std::atomic<std::ptrdiff_t> m_bottom;
-  alignas(impl::k_cache_line) std::atomic<impl::ring_buf<T> *> m_buf;
-  alignas(impl::k_cache_line) std::vector<std::unique_ptr<impl::ring_buf<T>>> m_garbage; // Store old buffers here.
+  alignas(impl::k_cache_line) std::atomic<impl::atomic_ring_buf<T> *> m_buf;
+  alignas(impl::k_cache_line) std::vector<std::unique_ptr<impl::atomic_ring_buf<T>>> m_garbage; // Store old buffers here.
 
   // Convenience aliases.
   static constexpr std::memory_order relaxed = std::memory_order_relaxed;
@@ -297,44 +300,44 @@ class queue : impl::immovable<queue<T>> {
 };
 
 template <simple T, optional_for<T> Optional>
-constexpr queue<T, Optional>::queue(std::ptrdiff_t cap) : m_top(0),
+constexpr deque<T, Optional>::deque(std::ptrdiff_t cap) : m_top(0),
                                                           m_bottom(0),
-                                                          m_buf(new impl::ring_buf<T>{cap}) {
+                                                          m_buf(new impl::atomic_ring_buf<T>{cap}) {
   m_garbage.reserve(k_garbage_reserve);
 }
 
 template <simple T, optional_for<T> Optional>
-constexpr auto queue<T, Optional>::size() const noexcept -> std::size_t {
+constexpr auto deque<T, Optional>::size() const noexcept -> std::size_t {
   return static_cast<std::size_t>(ssize());
 }
 
 template <simple T, optional_for<T> Optional>
-constexpr auto queue<T, Optional>::ssize() const noexcept -> std::ptrdiff_t {
+constexpr auto deque<T, Optional>::ssize() const noexcept -> std::ptrdiff_t {
   ptrdiff_t const bottom = m_bottom.load(relaxed);
   ptrdiff_t const top = m_top.load(relaxed);
   return std::max(bottom - top, ptrdiff_t{0});
 }
 
 template <simple T, optional_for<T> Optional>
-constexpr auto queue<T, Optional>::capacity() const noexcept -> ptrdiff_t {
+constexpr auto deque<T, Optional>::capacity() const noexcept -> ptrdiff_t {
   return m_buf.load(relaxed)->capacity();
 }
 
 template <simple T, optional_for<T> Optional>
-constexpr auto queue<T, Optional>::empty() const noexcept -> bool {
+constexpr auto deque<T, Optional>::empty() const noexcept -> bool {
   ptrdiff_t const bottom = m_bottom.load(relaxed);
   ptrdiff_t const top = m_top.load(relaxed);
   return top >= bottom;
 }
 
 template <simple T, optional_for<T> Optional>
-constexpr auto queue<T, Optional>::push(T const &val) noexcept -> void {
+constexpr auto deque<T, Optional>::push(T const &val) noexcept -> void {
   std::ptrdiff_t const bottom = m_bottom.load(relaxed);
   std::ptrdiff_t const top = m_top.load(acquire);
-  impl::ring_buf<T> *buf = m_buf.load(relaxed);
+  impl::atomic_ring_buf<T> *buf = m_buf.load(relaxed);
 
   if (buf->capacity() < (bottom - top) + 1) {
-    // Queue is full, build a new one.
+    // deque is full, build a new one.
     m_garbage.emplace_back(std::exchange(buf, buf->resize(bottom, top)));
     m_buf.store(buf, relaxed);
   }
@@ -348,9 +351,9 @@ constexpr auto queue<T, Optional>::push(T const &val) noexcept -> void {
 }
 
 template <simple T, optional_for<T> Optional>
-constexpr auto queue<T, Optional>::pop() noexcept -> Optional {
+constexpr auto deque<T, Optional>::pop() noexcept -> Optional {
   std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1;
-  impl::ring_buf<T> *buf = m_buf.load(relaxed);
+  impl::atomic_ring_buf<T> *buf = m_buf.load(relaxed);
 
   m_bottom.store(bottom, relaxed); // Stealers can no longer steal.
 
@@ -358,7 +361,7 @@ constexpr auto queue<T, Optional>::pop() noexcept -> Optional {
   std::ptrdiff_t top = m_top.load(relaxed);
 
   if (top <= bottom) {
-    // Non-empty queue
+    // Non-empty deque
     if (top == bottom) {
       // The last item could get stolen, by a stealer that loaded bottom before our write above.
       if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
@@ -377,7 +380,7 @@ constexpr auto queue<T, Optional>::pop() noexcept -> Optional {
 }
 
 template <simple T, optional_for<T> Optional>
-constexpr auto queue<T, Optional>::steal() noexcept -> steal_t {
+constexpr auto deque<T, Optional>::steal() noexcept -> steal_t {
   std::ptrdiff_t top = m_top.load(acquire);
   std::atomic_thread_fence(seq_cst);
   std::ptrdiff_t const bottom = m_bottom.load(acquire);
@@ -401,7 +404,7 @@ constexpr auto queue<T, Optional>::steal() noexcept -> steal_t {
 }
 
 template <simple T, optional_for<T> Optional>
-constexpr queue<T, Optional>::~queue() noexcept {
+constexpr deque<T, Optional>::~deque() noexcept {
   delete m_buf.load(); // NOLINT
 }
 

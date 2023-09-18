@@ -146,7 +146,7 @@ concept context = requires(T context, work_handle<T> task) {
 ```
 An execution-context models a FILO stack. Tasks hold a pointer to their executor's context and push/pop tasks onto it. Whilst an executor is running a task, other executors can steal from the top of the stack in a FIFO manner. 
 
-It is recommended that custom schedulers use lock-free stacks for their execution contexts such as the one provided in [libfork](include/libfork/queue.hpp)
+It is recommended that custom schedulers use lock-free stacks for their execution contexts such as the one provided in [libfork](include/libfork/deque.hpp)
 
 ## Reference
 
