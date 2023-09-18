@@ -1,6 +1,14 @@
 #ifndef BC7496D2_E762_43A4_92A3_F2AD10690569
 #define BC7496D2_E762_43A4_92A3_F2AD10690569
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <atomic>
 #include <concepts>
 #include <type_traits>

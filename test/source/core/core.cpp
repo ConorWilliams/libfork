@@ -68,7 +68,8 @@ inline constexpr async sym_stack_overflow_1 = [](auto, int n) -> lf::task<int> {
 };
 
 /**
- * @brief This test is known to fail with gcc in debug due to no tail call optimization in debug builds
+ * This test is known to fail with gcc in debug due to no tail call optimization in debug builds,
+ * if this test fails then probably others will as well.
  */
 TEMPLATE_TEST_CASE("Stack overflow - sym-transfer", "[libfork][template]", unit_pool) {
   SECTION("iter = 1") { REQUIRE(sync_wait(TestType{}, sym_stack_overflow_1, 1)); }

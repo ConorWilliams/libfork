@@ -36,6 +36,21 @@ namespace detail {
 // -------------------------------------------------------------------------- //
 
 template <thread_context Context>
+struct switch_awaitable {
+
+  auto await_ready() const noexcept { return tls::ctx<Context> == dest; }
+
+  void await_suspend(stdx::coroutine_handle<>) noexcept { dest->submit(&self); }
+
+  void await_resume() const noexcept {}
+
+  frame_node self;
+  Context *dest;
+};
+
+// -------------------------------------------------------------------------- //
+
+template <thread_context Context>
 struct fork_awaitable : stdx::suspend_always {
   auto await_suspend(stdx::coroutine_handle<>) const noexcept -> stdx::coroutine_handle<> {
     LF_LOG("Forking, push parent to context");
@@ -320,6 +335,11 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
     return final_awaitable{};
   }
+
+  /**
+   * @brief Transform a context pointer into a context switch awaitable.
+   */
+  auto await_transform(Context *dest) -> detail::switch_awaitable<Context> { return {frame_node{this}, dest}; }
 
   /**
    * @brief Transform a fork packet into a fork awaitable.

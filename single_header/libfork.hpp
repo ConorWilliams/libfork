@@ -1248,6 +1248,14 @@ namespace stdx = std::experimental;
 #ifndef BC7496D2_E762_43A4_92A3_F2AD10690569
 #define BC7496D2_E762_43A4_92A3_F2AD10690569
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <atomic>
 #include <concepts>
 #include <type_traits>
@@ -2374,6 +2382,21 @@ namespace detail {
 // -------------------------------------------------------------------------- //
 
 template <thread_context Context>
+struct switch_awaitable {
+
+  auto await_ready() const noexcept { return tls::ctx<Context> == dest; }
+
+  void await_suspend(stdx::coroutine_handle<>) noexcept { dest->submit(&self); }
+
+  void await_resume() const noexcept {}
+
+  frame_node self;
+  Context *dest;
+};
+
+// -------------------------------------------------------------------------- //
+
+template <thread_context Context>
 struct fork_awaitable : stdx::suspend_always {
   auto await_suspend(stdx::coroutine_handle<>) const noexcept -> stdx::coroutine_handle<> {
     LF_LOG("Forking, push parent to context");
@@ -2658,6 +2681,11 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
     return final_awaitable{};
   }
+
+  /**
+   * @brief Transform a context pointer into a context switch awaitable.
+   */
+  auto await_transform(Context *dest) -> detail::switch_awaitable<Context> { return {frame_node{this}, dest}; }
 
   /**
    * @brief Transform a fork packet into a fork awaitable.
