@@ -117,8 +117,19 @@ inline constexpr auto fib_call = [](auto fib_call, int n) -> task<int> {
   co_return a + b;
 };
 
-TEST_CASE("fib", "[promise]") {
+TEST_CASE("fib-bench", "[promise]") {
   //
+
+  volatile int in = 20;
+
+  int trivial = 0;
+
+  inline_fiber(trivial, in);
+
+  BENCHMARK("inline") {
+    inline_fiber(trivial, in);
+    return trivial;
+  };
 
   using C = unit_pool::context_type;
 
@@ -126,41 +137,39 @@ TEST_CASE("fib", "[promise]") {
 
   worker_init(&ctx);
 
-  using base = basic_first_arg<root_result<int>, tag::root, decltype(fib)>;
+  {
 
-  using Head = patched<C, base>;
+    using head = patched<C, basic_first_arg<root_result<int>, tag::root, decltype(fib_call)>>;
 
-  volatile int in = 30;
+    int x = -1;
 
-  int x = 0;
-  int y = 1;
+    BENCHMARK("coroutine call") {
+      root_result<int> block;
+      auto root = fib_call(head{{block}}, int(in));
+      ctx.submit(root.frame());
+      x = *std::move(block);
+      return x;
+    };
 
-  BENCHMARK("inline") {
-    inline_fiber(y, in);
-    return y;
-  };
+    REQUIRE(x == trivial);
+  }
 
-  BENCHMARK("coroutine call") {
-    root_result<int> block;
-    auto root = fib_call(Head{base{block}}, int(in));
-    ctx.submit(root.frame());
+  {
 
-    x = *std::move(block);
+    using head = patched<C, basic_first_arg<root_result<int>, tag::root, decltype(fib)>>;
 
-    return x;
-  };
+    int x = -1;
 
-  BENCHMARK("coroutine fork") {
-    root_result<int> block;
-    auto root = fib(Head{base{block}}, int(in));
-    ctx.submit(root.frame());
+    BENCHMARK("coroutine fork") {
+      root_result<int> block;
+      auto root = fib(head{{block}}, int(in));
+      ctx.submit(root.frame());
+      x = *std::move(block);
+      return x;
+    };
 
-    x = *std::move(block);
-
-    return x;
-  };
-
-  REQUIRE(x == y);
+    REQUIRE(x == trivial);
+  }
 
   worker_finalize(&ctx);
 }

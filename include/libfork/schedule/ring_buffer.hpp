@@ -19,8 +19,8 @@ inline namespace ext {
 /**
  * @brief A fixed capacity, power-of-two FILO ring-buffer with customizable behavior on overflow/underflow.
  */
-template <typename T, std::size_t N>
-  requires std::constructible_from<T> && (std::has_single_bit(N))
+template <std::default_initializable T, std::size_t N>
+  requires(std::has_single_bit(N))
 class ring_buffer {
 
   struct discard {
