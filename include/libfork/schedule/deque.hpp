@@ -165,11 +165,15 @@ concept optional_for = std::is_default_constructible_v<Optional> && std::constru
  * @tparam T The type of the elements in the deque.
  * @tparam Optional The type returned by ``pop()``.
  */
-template <simple T, optional_for<T> Optional = std::optional<T>>
+template <simple T>
 class deque : impl::immovable<deque<T>> {
 
   static constexpr std::ptrdiff_t k_default_capacity = 1024;
   static constexpr std::size_t k_garbage_reserve = 32;
+
+  struct return_nullopt {
+    LF_STATIC_CALL constexpr auto operator()() LF_STATIC_CONST noexcept -> std::optional<T> { return {}; }
+  };
 
  public:
   /**
@@ -214,11 +218,13 @@ class deque : impl::immovable<deque<T>> {
   /**
    * @brief Pop an item from the deque.
    *
-   * Only the owner thread can pop out an item from the deque.
-   *
-   * @return A default-constructed ``Optional`` if  this operation fails (i.e. the deque is empty).
+   * Only the owner thread can pop out an item from the deque. If the buffer is empty calls `when_empty` and returns the
+   * result. By default, `when_empty` is a no-op that returns a null `std::optional<T>`.
    */
-  constexpr auto pop() noexcept -> Optional;
+  template <std::invocable F = return_nullopt>
+    requires std::convertible_to<T, std::invoke_result_t<F>>
+  constexpr auto pop(F &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<F>) -> std::invoke_result_t<F>;
+
   /**
    * @brief The return type of the ``steal()`` operation.
    *
@@ -299,39 +305,39 @@ class deque : impl::immovable<deque<T>> {
   static constexpr std::memory_order seq_cst = std::memory_order_seq_cst;
 };
 
-template <simple T, optional_for<T> Optional>
-constexpr deque<T, Optional>::deque(std::ptrdiff_t cap) : m_top(0),
-                                                          m_bottom(0),
-                                                          m_buf(new impl::atomic_ring_buf<T>{cap}) {
+template <simple T>
+constexpr deque<T>::deque(std::ptrdiff_t cap) : m_top(0),
+                                                m_bottom(0),
+                                                m_buf(new impl::atomic_ring_buf<T>{cap}) {
   m_garbage.reserve(k_garbage_reserve);
 }
 
-template <simple T, optional_for<T> Optional>
-constexpr auto deque<T, Optional>::size() const noexcept -> std::size_t {
+template <simple T>
+constexpr auto deque<T>::size() const noexcept -> std::size_t {
   return static_cast<std::size_t>(ssize());
 }
 
-template <simple T, optional_for<T> Optional>
-constexpr auto deque<T, Optional>::ssize() const noexcept -> std::ptrdiff_t {
+template <simple T>
+constexpr auto deque<T>::ssize() const noexcept -> std::ptrdiff_t {
   ptrdiff_t const bottom = m_bottom.load(relaxed);
   ptrdiff_t const top = m_top.load(relaxed);
   return std::max(bottom - top, ptrdiff_t{0});
 }
 
-template <simple T, optional_for<T> Optional>
-constexpr auto deque<T, Optional>::capacity() const noexcept -> ptrdiff_t {
+template <simple T>
+constexpr auto deque<T>::capacity() const noexcept -> ptrdiff_t {
   return m_buf.load(relaxed)->capacity();
 }
 
-template <simple T, optional_for<T> Optional>
-constexpr auto deque<T, Optional>::empty() const noexcept -> bool {
+template <simple T>
+constexpr auto deque<T>::empty() const noexcept -> bool {
   ptrdiff_t const bottom = m_bottom.load(relaxed);
   ptrdiff_t const top = m_top.load(relaxed);
   return top >= bottom;
 }
 
-template <simple T, optional_for<T> Optional>
-constexpr auto deque<T, Optional>::push(T const &val) noexcept -> void {
+template <simple T>
+constexpr auto deque<T>::push(T const &val) noexcept -> void {
   std::ptrdiff_t const bottom = m_bottom.load(relaxed);
   std::ptrdiff_t const top = m_top.load(acquire);
   impl::atomic_ring_buf<T> *buf = m_buf.load(relaxed);
@@ -350,12 +356,14 @@ constexpr auto deque<T, Optional>::push(T const &val) noexcept -> void {
   m_bottom.store(bottom + 1, relaxed);
 }
 
-template <simple T, optional_for<T> Optional>
-constexpr auto deque<T, Optional>::pop() noexcept -> Optional {
-  std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1;
-  impl::atomic_ring_buf<T> *buf = m_buf.load(relaxed);
+template <simple T>
+template <std::invocable F>
+  requires std::convertible_to<T, std::invoke_result_t<F>>
+constexpr auto deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_v<F>) -> std::invoke_result_t<F> {
 
-  m_bottom.store(bottom, relaxed); // Stealers can no longer steal.
+  std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1; //
+  impl::atomic_ring_buf<T> *buf = m_buf.load(relaxed);      //
+  m_bottom.store(bottom, relaxed);                          // Stealers can no longer steal.
 
   std::atomic_thread_fence(seq_cst);
   std::ptrdiff_t top = m_top.load(relaxed);
@@ -367,7 +375,7 @@ constexpr auto deque<T, Optional>::pop() noexcept -> Optional {
       if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
         // Failed race, thief got the last item.
         m_bottom.store(bottom + 1, relaxed);
-        return {};
+        return std::invoke(std::forward<F>(when_empty));
       }
       m_bottom.store(bottom + 1, relaxed);
     }
@@ -376,11 +384,11 @@ constexpr auto deque<T, Optional>::pop() noexcept -> Optional {
     return buf->load(bottom);
   }
   m_bottom.store(bottom + 1, relaxed);
-  return {};
+  return std::invoke(std::forward<F>(when_empty));
 }
 
-template <simple T, optional_for<T> Optional>
-constexpr auto deque<T, Optional>::steal() noexcept -> steal_t {
+template <simple T>
+constexpr auto deque<T>::steal() noexcept -> steal_t {
   std::ptrdiff_t top = m_top.load(acquire);
   std::atomic_thread_fence(seq_cst);
   std::ptrdiff_t const bottom = m_bottom.load(acquire);
@@ -403,8 +411,8 @@ constexpr auto deque<T, Optional>::steal() noexcept -> steal_t {
   return {.code = err::empty, .val = {}};
 }
 
-template <simple T, optional_for<T> Optional>
-constexpr deque<T, Optional>::~deque() noexcept {
+template <simple T>
+constexpr deque<T>::~deque() noexcept {
   delete m_buf.load(); // NOLINT
 }
 

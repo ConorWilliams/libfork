@@ -2450,7 +2450,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
   static_assert(Tag != tag::root || is_root_result_v<R>);
 
   struct final_awaitable : stdx::suspend_always {
-    auto await_suspend(stdx::coroutine_handle<promise_type> child) const noexcept -> stdx::coroutine_handle<> {
+    static auto await_suspend(stdx::coroutine_handle<promise_type> child) noexcept -> stdx::coroutine_handle<> {
 
       if constexpr (Tag == tag::root) {
         LF_LOG("Root task at final suspend, releases semaphore");

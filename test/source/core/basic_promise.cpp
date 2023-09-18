@@ -100,6 +100,23 @@ inline constexpr auto fib = [](auto fib, int n) -> task<int> {
   co_return a + b;
 };
 
+inline constexpr auto fib_call = [](auto fib_call, int n) -> task<int> {
+  //
+  if (n <= 1) {
+    co_return n;
+  }
+
+  int a;
+  int b;
+
+  co_await lf::call(a, fib_call)(n - 1);
+  co_await lf::call(b, fib_call)(n - 2);
+
+  co_await lf::join;
+
+  co_return a + b;
+};
+
 TEST_CASE("fib", "[promise]") {
   //
 
@@ -113,7 +130,7 @@ TEST_CASE("fib", "[promise]") {
 
   using Head = patched<C, base>;
 
-  volatile int in = 20;
+  volatile int in = 30;
 
   int x = 0;
   int y = 1;
@@ -123,7 +140,17 @@ TEST_CASE("fib", "[promise]") {
     return y;
   };
 
-  BENCHMARK("coroutine") {
+  BENCHMARK("coroutine call") {
+    root_result<int> block;
+    auto root = fib_call(Head{base{block}}, int(in));
+    ctx.submit(root.frame());
+
+    x = *std::move(block);
+
+    return x;
+  };
+
+  BENCHMARK("coroutine fork") {
     root_result<int> block;
     auto root = fib(Head{base{block}}, int(in));
     ctx.submit(root.frame());

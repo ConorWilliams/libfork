@@ -14,9 +14,9 @@
 #include <thread>
 
 #include "libfork/core.hpp"
+#include "libfork/deque.hpp"
 #include "libfork/event_count.hpp"
 #include "libfork/macro.hpp"
-#include "libfork/queue.hpp"
 #include "libfork/random.hpp"
 #include "libfork/schedule/thread_local.hpp"
 
@@ -31,67 +31,6 @@ namespace lf {
 namespace detail {
 
 // TODO: make unordered, move to its own file, make it just a ring_buffer
-
-template <simple T, std::size_t N>
-  requires(std::has_single_bit(N))
-class buffered_queue {
-public:
-  [[nodiscard]] auto empty() const noexcept -> bool { return m_top == m_bottom; }
-
-  // See what would be popped
-  [[nodiscard]] auto peek() -> T & {
-    LF_ASSERT(!empty());
-    return load(m_bottom - 1);
-  }
-
-  // TODO: add on_fail call_back
-
-  auto push(T const &val) noexcept -> void {
-    if (buff_full()) {
-      m_queue.push(load(m_top++));
-    }
-    store(m_bottom++, val);
-  }
-
-  auto pop() noexcept -> std::optional<T> {
-
-    if (empty()) {
-      return std::nullopt;
-    }
-
-    bool was_full = buff_full();
-
-    T val = load(--m_bottom);
-
-    if (was_full) {
-      if (auto opt = m_queue.pop()) {
-        store(--m_top, *opt);
-      }
-    }
-
-    return val;
-  }
-
-  auto steal() noexcept -> typename queue<T>::steal_t { return m_queue.steal(); }
-
-private:
-  [[nodiscard]] auto buff_full() const noexcept -> bool { return m_bottom - m_top == N; }
-
-  auto store(std::size_t index, T const &val) noexcept -> void {
-    m_buff[index & mask] = val; // NOLINT
-  }
-
-  [[nodiscard]] auto load(std::size_t index) noexcept -> T & {
-    return m_buff[(index & mask)]; // NOLINT
-  }
-
-  static constexpr std::size_t mask = N - 1;
-
-  std::size_t m_top = 0;
-  std::size_t m_bottom = 0;
-  std::array<T, N> m_buff;
-  queue<T> m_queue;
-};
 
 // template <is_virtual_stack Stack, typename Steal>
 //   requires requires(Steal steal) {
@@ -130,7 +69,7 @@ private:
 //   }
 
 //   void stack_push(handle_t handle) {
-//     LF_LOG("Pushing stack to private queue");
+//     LF_LOG("Pushing stack to private deque");
 //     LF_ASSERT(stack_top()->empty());
 //     m_stacks.push(handle);
 //   }
@@ -141,7 +80,7 @@ private:
 //   static constexpr std::size_t k_buff = 16;
 
 //   Steal m_steal;
-//   buffered_queue<typename Stack::handle, k_buff> m_stacks;
+//   ring_buffer<typename Stack::handle, k_buff> m_stacks;
 //   std::vector<stack_block> m_stack_storage;
 
 //   void alloc_stacks() {
@@ -168,12 +107,12 @@ private:
  * of threads is equal to the number of hardware cores and the multiplexer has no other load.
  */
 class busy_pool : detail::immovable {
-public:
+ public:
   /**
    * @brief The context type for the busy_pools threads.
    */
   class context_type : thread_local_ptr<context_type> {
-  public:
+   public:
     context_type() { alloc_stacks(); }
 
     static auto context() -> context_type & { return get(); }
@@ -229,12 +168,12 @@ public:
       LF_ASSERT(&context() == this);
       LF_ASSERT(stack_top()->empty());
 
-      LF_LOG("Pushing stack to private queue");
+      LF_LOG("Pushing stack to private deque");
 
       m_stacks.push(handle);
     }
 
-    auto task_steal() -> typename queue<task_handle>::steal_t { return m_tasks.steal(); }
+    auto task_steal() -> typename deque<task_handle>::steal_t { return m_tasks.steal(); }
 
     auto task_pop() -> std::optional<task_handle> {
       LF_ASSERT(&context() == this);
@@ -246,7 +185,7 @@ public:
       m_tasks.push(task);
     }
 
-  private:
+   private:
     static constexpr std::size_t block_size = 16;
 
     using stack_block = typename virtual_stack::unique_arr_ptr_t;
@@ -258,12 +197,12 @@ public:
     std::size_t m_id = 0;        ///< Index in the pool.
     xoshiro m_rng;               ///< Our personal PRNG.
 
-    detail::buffered_queue<stack_handle, block_size> m_stacks; ///< Our (stealable) stack queue.
-    queue<task_handle> m_tasks;                                ///< Our (stealable) task queue.
+    detail::ring_buffer<stack_handle, block_size> m_stacks; ///< Our (stealable) stack deque.
+    deque<task_handle> m_tasks;                             ///< Our (stealable) task deque.
 
     std::vector<stack_block> m_stack_storage; ///< Controls ownership of the stacks.
 
-    // Alloc k new stacks and insert them into our private queue.
+    // Alloc k new stacks and insert them into our private deque.
     void alloc_stacks() {
 
       LF_ASSERT(m_stacks.empty());
@@ -351,7 +290,7 @@ public:
 
   ~busy_pool() noexcept { clean_up(); }
 
-private:
+ private:
   // Request all threads to stop, wake them up and then call join.
   auto clean_up() noexcept -> void {
 
@@ -371,12 +310,12 @@ private:
 
   static constexpr int k_steal_attempts = 1024;
 
-  queue<stdx::coroutine_handle<>> m_submit;
+  deque<stdx::coroutine_handle<>> m_submit;
 
   std::atomic_flag m_stop_requested = ATOMIC_FLAG_INIT;
 
   std::vector<context_type> m_contexts;
-  std::vector<std::thread> m_workers; // After m_context so threads are destroyed before the queues.
+  std::vector<std::thread> m_workers; // After m_context so threads are destroyed before the deques.
 };
 
 static_assert(scheduler<busy_pool>);
