@@ -1245,6 +1245,87 @@ namespace stdx = std::experimental;
 // NOLINTEND
 
 #endif /* FE9C96B0_5DDD_4438_A3B0_E77BD54F8673 */
+#ifndef BC7496D2_E762_43A4_92A3_F2AD10690569
+#define BC7496D2_E762_43A4_92A3_F2AD10690569
+
+#include <atomic>
+#include <concepts>
+#include <type_traits>
+#include <utility>
+
+
+namespace lf {
+
+inline namespace ext {
+
+/**
+ * @brief A multi-producer, single-consumer intrusive list.
+ *
+ * This implementation is lock-free, allocates no memory and is optimized for weak memory models.
+ */
+template <typename T>
+class intrusive_list : impl::immovable<intrusive_list<T>> {
+ public:
+  class node : impl::immovable<node> {
+   public:
+    explicit constexpr node(T const &data) : m_data(data) {}
+
+    constexpr auto get() noexcept -> T & { return m_data; }
+
+   private:
+    // friend class intrusive_queue;
+
+    T m_data;
+    node *m_next;
+  };
+
+  /**
+   * @brief Push a new node, this can be called concurrently from any number of threads.
+   */
+  constexpr void push(node *new_node) noexcept {
+
+    LF_ASSERT(new_node);
+
+    node *stale_head = m_head.load(std::memory_order_relaxed);
+
+    for (;;) {
+      new_node->m_next = stale_head;
+
+      if (m_head.compare_exchange_weak(stale_head, new_node, std::memory_order_release)) {
+        return;
+      }
+    }
+  }
+
+  /**
+   * @brief Pop all the nodes from the list and call `func` on each of them.
+   *
+   * Only the owner (thread) of the list can call this function. The nodes will be processed in FILO order.
+   *
+   * @return `false` if the list was empty, `true` otherwise.
+   */
+  template <typename F>
+    requires std::is_nothrow_invocable_v<F, T &>
+  constexpr auto consume(F &&func) noexcept -> bool {
+
+    node *last = m_head.exchange(nullptr, std::memory_order_consume);
+
+    for (node *walk = last; walk; walk = walk->m_next) {
+      std::invoke(func, walk->m_data);
+    }
+
+    return last != nullptr;
+  }
+
+ private:
+  std::atomic<node *> m_head = nullptr;
+};
+
+} // namespace ext
+
+} // namespace lf
+
+#endif /* BC7496D2_E762_43A4_92A3_F2AD10690569 */
 
 
 /**
@@ -1316,6 +1397,11 @@ inline namespace ext {
 struct frame_block;
 
 /**
+ * @brief An intrusive list of `frame_block`s.
+ */
+using frame_node = intrusive_list<frame_block *>::node;
+
+/**
  * @brief A concept which defines the context interface.
  *
  * A context owns a LIFO stack of ``lf::async_stack``s and a LIFO stack of
@@ -1323,7 +1409,7 @@ struct frame_block;
  * should always be able to return an empty ``lf::async_stack``.
  */
 template <typename Context>
-concept thread_context = requires(Context ctx, async_stack *stack, frame_block *ext, frame_block *task) {
+concept thread_context = requires(Context ctx, async_stack *stack, frame_node *ext, frame_block *task) {
   { ctx.max_threads() } -> std::same_as<std::size_t>;        // The maximum number of threads.
   { ctx.submit(ext) };                                       // Submit an external task to the context.
   { ctx.task_pop() } -> std::convertible_to<frame_block *>;  // If the stack is empty, return a null pointer.
@@ -2059,7 +2145,7 @@ namespace impl {
  */
 struct dummy_context {
   auto max_threads() -> std::size_t;      ///< Unimplemented.
-  auto submit(frame_block *) -> void;     ///< Unimplemented.
+  auto submit(frame_node *) -> void;      ///< Unimplemented.
   auto task_pop() -> frame_block *;       ///< Unimplemented.
   auto task_push(frame_block *) -> void;  ///< Unimplemented.
   auto stack_pop() -> async_stack *;      ///< Unimplemented.
@@ -2699,7 +2785,7 @@ inline namespace ext {
  * @brief A concept that schedulers must satisfy.
  */
 template <typename Sch>
-concept scheduler = requires(Sch &&sch, frame_block *ext) {
+concept scheduler = requires(Sch &&sch, frame_node *ext) {
   typename context_of<Sch>;
   std::forward<Sch>(sch).submit(ext);
 };
@@ -2753,11 +2839,11 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
 
   detail::packet_t<Sch, F, Args...> packet{{{root_block}}, std::forward<Args>(args)...};
 
-  frame_block *ext = std::move(packet).invoke();
+  frame_node link{std::move(packet).invoke()};
 
   LF_LOG("Submitting root");
 
-  std::forward<Sch>(sch).submit(ext);
+  std::forward<Sch>(sch).submit(&link);
 
   LF_LOG("Acquire semaphore");
 
@@ -2819,7 +2905,10 @@ class unit_pool : impl::immovable<unit_pool> {
    public:
     context_type() { m_tasks.reserve(1024); }
 
-    static void submit(frame_block *ptr) { ptr->resume_external<context_type>(); }
+    static void submit(frame_node *ptr) {
+      LF_ASSERT(ptr);
+      ptr->get()->resume_external<context_type>();
+    }
 
     /**
      * @brief Returns one as this runs all tasks inline.
@@ -2867,7 +2956,7 @@ class unit_pool : impl::immovable<unit_pool> {
 
   static_assert(thread_context<context_type>);
 
-  static void submit(frame_block *ptr) { context_type::submit(ptr); }
+  static void submit(frame_node *ptr) { context_type::submit(ptr); }
 
   unit_pool() { worker_init(&m_context); }
 
@@ -2876,6 +2965,8 @@ class unit_pool : impl::immovable<unit_pool> {
  private:
   context_type m_context;
 };
+
+static_assert(scheduler<unit_pool>);
 
 } // namespace lf
 

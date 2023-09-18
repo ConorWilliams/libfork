@@ -36,7 +36,10 @@ class unit_pool : impl::immovable<unit_pool> {
    public:
     context_type() { m_tasks.reserve(1024); }
 
-    static void submit(frame_block *ptr) { ptr->resume_external<context_type>(); }
+    static void submit(frame_node *ptr) {
+      LF_ASSERT(ptr);
+      ptr->get()->resume_external<context_type>();
+    }
 
     /**
      * @brief Returns one as this runs all tasks inline.
@@ -84,7 +87,7 @@ class unit_pool : impl::immovable<unit_pool> {
 
   static_assert(thread_context<context_type>);
 
-  static void submit(frame_block *ptr) { context_type::submit(ptr); }
+  static void submit(frame_node *ptr) { context_type::submit(ptr); }
 
   unit_pool() { worker_init(&m_context); }
 
@@ -93,6 +96,8 @@ class unit_pool : impl::immovable<unit_pool> {
  private:
   context_type m_context;
 };
+
+static_assert(scheduler<unit_pool>);
 
 } // namespace lf
 

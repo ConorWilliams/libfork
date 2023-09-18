@@ -59,7 +59,9 @@ TEST_CASE("basic counting", "[unit_pool]") {
 
   REQUIRE(x == 10);
 
-  ctx.submit(root.frame());
+  frame_node link{root.frame()};
+
+  ctx.submit(&link);
 
   block.semaphore.acquire();
 
@@ -120,7 +122,7 @@ inline constexpr auto fib_call = [](auto fib_call, int n) -> task<int> {
 TEST_CASE("fib-bench", "[promise]") {
   //
 
-  volatile int in = 20;
+  volatile int in = 30;
 
   int trivial = 0;
 
@@ -145,8 +147,8 @@ TEST_CASE("fib-bench", "[promise]") {
 
     BENCHMARK("coroutine call") {
       root_result<int> block;
-      auto root = fib_call(head{{block}}, int(in));
-      ctx.submit(root.frame());
+      frame_node root{fib_call(head{{block}}, int(in)).frame()};
+      ctx.submit(&root);
       x = *std::move(block);
       return x;
     };
@@ -162,8 +164,8 @@ TEST_CASE("fib-bench", "[promise]") {
 
     BENCHMARK("coroutine fork") {
       root_result<int> block;
-      auto root = fib(head{{block}}, int(in));
-      ctx.submit(root.frame());
+      frame_node root{fib(head{{block}}, int(in)).frame()};
+      ctx.submit(&root);
       x = *std::move(block);
       return x;
     };

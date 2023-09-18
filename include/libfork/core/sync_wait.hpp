@@ -35,7 +35,7 @@ inline namespace ext {
  * @brief A concept that schedulers must satisfy.
  */
 template <typename Sch>
-concept scheduler = requires(Sch &&sch, frame_block *ext) {
+concept scheduler = requires(Sch &&sch, frame_node *ext) {
   typename context_of<Sch>;
   std::forward<Sch>(sch).submit(ext);
 };
@@ -89,11 +89,11 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
 
   detail::packet_t<Sch, F, Args...> packet{{{root_block}}, std::forward<Args>(args)...};
 
-  frame_block *ext = std::move(packet).invoke();
+  frame_node link{std::move(packet).invoke()};
 
   LF_LOG("Submitting root");
 
-  std::forward<Sch>(sch).submit(ext);
+  std::forward<Sch>(sch).submit(&link);
 
   LF_LOG("Acquire semaphore");
 

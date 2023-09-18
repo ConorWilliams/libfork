@@ -30,6 +30,9 @@ TEST_CASE("Eventually, trivial types", "[eventually]") {
 
   eventually<float> b;
   b.emplace(9);
+
+  REQUIRE(*a == 2);
+  REQUIRE(*b == 9);
 }
 
 TEST_CASE("Eventually, non-trivial types", "[eventually]") {
@@ -42,6 +45,8 @@ TEST_CASE("Eventually, non-trivial types", "[eventually]") {
   std::vector<float> c = *std::move(a);
 
   b.emplace(c.begin(), c.end());
+
+  REQUIRE(c == *b);
 }
 
 // NOLINTEND

@@ -24,6 +24,7 @@
 #include "libfork/utility.hpp"
 
 #include "libfork/core/coroutine.hpp"
+#include "libfork/core/list.hpp"
 
 /**
  * @file stack.hpp
@@ -94,6 +95,11 @@ inline namespace ext {
 struct frame_block;
 
 /**
+ * @brief An intrusive list of `frame_block`s.
+ */
+using frame_node = intrusive_list<frame_block *>::node;
+
+/**
  * @brief A concept which defines the context interface.
  *
  * A context owns a LIFO stack of ``lf::async_stack``s and a LIFO stack of
@@ -101,7 +107,7 @@ struct frame_block;
  * should always be able to return an empty ``lf::async_stack``.
  */
 template <typename Context>
-concept thread_context = requires(Context ctx, async_stack *stack, frame_block *ext, frame_block *task) {
+concept thread_context = requires(Context ctx, async_stack *stack, frame_node *ext, frame_block *task) {
   { ctx.max_threads() } -> std::same_as<std::size_t>;        // The maximum number of threads.
   { ctx.submit(ext) };                                       // Submit an external task to the context.
   { ctx.task_pop() } -> std::convertible_to<frame_block *>;  // If the stack is empty, return a null pointer.
