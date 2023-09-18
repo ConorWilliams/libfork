@@ -313,6 +313,7 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
 #include <functional>
 #include <limits>
 #include <new>
+#include <optional>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -401,6 +402,13 @@ inline constexpr std::size_t k_kibibyte = 1024;
 struct empty {};
 
 static_assert(std::is_empty_v<empty>);
+
+// -------------------------------- //
+
+template <typename T>
+struct return_nullopt {
+  LF_STATIC_CALL constexpr auto operator()() LF_STATIC_CONST noexcept -> std::optional<T> { return {}; }
+};
 
 // -------------------------------- //
 
