@@ -315,7 +315,7 @@ class busy_pool : detail::immovable {
   std::atomic_flag m_stop_requested = ATOMIC_FLAG_INIT;
 
   std::vector<context_type> m_contexts;
-  std::vector<std::thread> m_workers; // After m_context so threads are destroyed before the deques.
+  std::vector<std::thread> m_workers; // After m_context so threads are destroyed before the dequeues.
 };
 
 static_assert(scheduler<busy_pool>);
