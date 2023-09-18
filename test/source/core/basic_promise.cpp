@@ -70,7 +70,7 @@ TEST_CASE("basic counting", "[unit_pool]") {
   worker_finalize(&ctx);
 }
 
-void inline_fiber(int &res, int n) {
+LF_NOINLINE void inline_fiber(int &res, int n) {
   if (n <= 1) {
     res = n;
   } else {

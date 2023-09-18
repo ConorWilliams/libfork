@@ -219,6 +219,43 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
 #endif
 
 /**
+ * @brief Macro to prevent a function to be inlined.
+ */
+#if !defined(LF_NOINLINE)
+  #if defined(_MSC_VER)
+    #define LF_NOINLINE __declspec(noinline)
+  #elif defined(__GNUC__) && __GNUC__ > 3
+    // Clang also defines __GNUC__ (as 4)
+    #if defined(__CUDACC__)
+      // nvcc doesn't always parse __noinline__,
+      // see: https://svn.boost.org/trac/boost/ticket/9392
+      #define LF_NOINLINE __attribute__((noinline))
+    #elif defined(__HIP__)
+      // See https://github.com/boostorg/config/issues/392
+      #define LF_NOINLINE __attribute__((noinline))
+    #else
+      #define LF_NOINLINE __attribute__((__noinline__))
+    #endif
+  #else
+    #define LF_NOINLINE
+  #endif
+#endif
+
+/**
+ * @brief Macro to use in place of 'inline' to force a function to be inline
+ */
+#if !defined(LF_FORCEINLINE)
+  #if defined(_MSC_VER)
+    #define LF_FORCEINLINE __forceinline
+  #elif defined(__GNUC__) && __GNUC__ > 3
+    // Clang also defines __GNUC__ (as 4)
+    #define LF_FORCEINLINE inline __attribute__((__always_inline__))
+  #else
+    #define LF_FORCEINLINE inline
+  #endif
+#endif
+
+/**
  * @brief __[public]__ A customizable logging macro.
  *
  * By default this is a no-op. Defining ``LF_DEFAULT_LOGGING`` will enable a default
