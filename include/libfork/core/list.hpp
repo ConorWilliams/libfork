@@ -29,6 +29,9 @@ inline namespace ext {
 template <typename T>
 class intrusive_list : impl::immovable<intrusive_list<T>> {
  public:
+  /**
+   * @brief An intruded
+   */
   class node : impl::immovable<node> {
    public:
     explicit constexpr node(T const &data) : m_data(data) {}
@@ -36,7 +39,7 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
     constexpr auto get() noexcept -> T & { return m_data; }
 
    private:
-    // friend class intrusive_queue;
+    friend class intrusive_list;
 
     T m_data;
     node *m_next;
@@ -47,12 +50,10 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
    */
   constexpr void push(node *new_node) noexcept {
 
-    LF_ASSERT(new_node);
-
     node *stale_head = m_head.load(std::memory_order_relaxed);
 
     for (;;) {
-      new_node->m_next = stale_head;
+      non_null(new_node)->m_next = stale_head;
 
       if (m_head.compare_exchange_weak(stale_head, new_node, std::memory_order_release)) {
         return;
@@ -83,6 +84,9 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
  private:
   std::atomic<node *> m_head = nullptr;
 };
+
+template <typename T>
+using intrusive_node = typename intrusive_list<T>::node;
 
 } // namespace ext
 

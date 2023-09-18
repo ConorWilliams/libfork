@@ -425,12 +425,12 @@ namespace impl {
  * unimplemented as it is only used in unevaluated contexts.
  */
 struct dummy_context {
-  auto max_threads() -> std::size_t;      ///< Unimplemented.
-  auto submit(frame_node *) -> void;      ///< Unimplemented.
-  auto task_pop() -> frame_block *;       ///< Unimplemented.
-  auto task_push(frame_block *) -> void;  ///< Unimplemented.
-  auto stack_pop() -> async_stack *;      ///< Unimplemented.
-  auto stack_push(async_stack *) -> void; ///< Unimplemented.
+  auto max_threads() -> std::size_t;                    ///< Unimplemented.
+  auto submit(intrusive_node<frame_block *> *) -> void; ///< Unimplemented.
+  auto task_pop() -> frame_block *;                     ///< Unimplemented.
+  auto task_push(frame_block *) -> void;                ///< Unimplemented.
+  auto stack_pop() -> async_stack *;                    ///< Unimplemented.
+  auto stack_push(async_stack *) -> void;               ///< Unimplemented.
 };
 
 static_assert(thread_context<dummy_context>, "dummy_context is not a thread_context");

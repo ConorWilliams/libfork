@@ -36,7 +36,7 @@ class unit_pool : impl::immovable<unit_pool> {
    public:
     context_type() { m_tasks.reserve(1024); }
 
-    static void submit(frame_node *ptr) {
+    static void submit(intrusive_node<frame_block *> *ptr) {
       LF_ASSERT(ptr);
       ptr->get()->resume_external<context_type>();
     }
@@ -87,7 +87,7 @@ class unit_pool : impl::immovable<unit_pool> {
 
   static_assert(thread_context<context_type>);
 
-  static void submit(frame_node *ptr) { context_type::submit(ptr); }
+  static void submit(intrusive_node<frame_block *> *ptr) { context_type::submit(ptr); }
 
   unit_pool() { worker_init(&m_context); }
 

@@ -59,7 +59,7 @@ TEST_CASE("basic counting", "[unit_pool]") {
 
   REQUIRE(x == 10);
 
-  frame_node link{root.frame()};
+  intrusive_node<frame_block *> link{root.frame()};
 
   ctx.submit(&link);
 
@@ -147,7 +147,7 @@ TEST_CASE("fib-bench", "[promise]") {
 
     BENCHMARK("coroutine call") {
       root_result<int> block;
-      frame_node root{fib_call(head{{block}}, int(in)).frame()};
+      intrusive_node<frame_block *> root{fib_call(head{{block}}, int(in)).frame()};
       ctx.submit(&root);
       x = *std::move(block);
       return x;
@@ -164,7 +164,7 @@ TEST_CASE("fib-bench", "[promise]") {
 
     BENCHMARK("coroutine fork") {
       root_result<int> block;
-      frame_node root{fib(head{{block}}, int(in)).frame()};
+      intrusive_node<frame_block *> root{fib(head{{block}}, int(in)).frame()};
       ctx.submit(&root);
       x = *std::move(block);
       return x;

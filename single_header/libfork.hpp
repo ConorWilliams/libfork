@@ -1274,6 +1274,9 @@ inline namespace ext {
 template <typename T>
 class intrusive_list : impl::immovable<intrusive_list<T>> {
  public:
+  /**
+   * @brief An intruded
+   */
   class node : impl::immovable<node> {
    public:
     explicit constexpr node(T const &data) : m_data(data) {}
@@ -1281,7 +1284,7 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
     constexpr auto get() noexcept -> T & { return m_data; }
 
    private:
-    // friend class intrusive_queue;
+    friend class intrusive_list;
 
     T m_data;
     node *m_next;
@@ -1292,12 +1295,10 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
    */
   constexpr void push(node *new_node) noexcept {
 
-    LF_ASSERT(new_node);
-
     node *stale_head = m_head.load(std::memory_order_relaxed);
 
     for (;;) {
-      new_node->m_next = stale_head;
+      non_null(new_node)->m_next = stale_head;
 
       if (m_head.compare_exchange_weak(stale_head, new_node, std::memory_order_release)) {
         return;
@@ -1328,6 +1329,9 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
  private:
   std::atomic<node *> m_head = nullptr;
 };
+
+template <typename T>
+using intrusive_node = typename intrusive_list<T>::node;
 
 } // namespace ext
 
@@ -1405,11 +1409,6 @@ inline namespace ext {
 struct frame_block;
 
 /**
- * @brief An intrusive list of `frame_block`s.
- */
-using frame_node = intrusive_list<frame_block *>::node;
-
-/**
  * @brief A concept which defines the context interface.
  *
  * A context owns a LIFO stack of ``lf::async_stack``s and a LIFO stack of
@@ -1417,7 +1416,7 @@ using frame_node = intrusive_list<frame_block *>::node;
  * should always be able to return an empty ``lf::async_stack``.
  */
 template <typename Context>
-concept thread_context = requires(Context ctx, async_stack *stack, frame_node *ext, frame_block *task) {
+concept thread_context = requires(Context ctx, async_stack *stack, intrusive_node<frame_block *> *ext, frame_block *task) {
   { ctx.max_threads() } -> std::same_as<std::size_t>;        // The maximum number of threads.
   { ctx.submit(ext) };                                       // Submit an external task to the context.
   { ctx.task_pop() } -> std::convertible_to<frame_block *>;  // If the stack is empty, return a null pointer.
@@ -2152,12 +2151,12 @@ namespace impl {
  * unimplemented as it is only used in unevaluated contexts.
  */
 struct dummy_context {
-  auto max_threads() -> std::size_t;      ///< Unimplemented.
-  auto submit(frame_node *) -> void;      ///< Unimplemented.
-  auto task_pop() -> frame_block *;       ///< Unimplemented.
-  auto task_push(frame_block *) -> void;  ///< Unimplemented.
-  auto stack_pop() -> async_stack *;      ///< Unimplemented.
-  auto stack_push(async_stack *) -> void; ///< Unimplemented.
+  auto max_threads() -> std::size_t;                    ///< Unimplemented.
+  auto submit(intrusive_node<frame_block *> *) -> void; ///< Unimplemented.
+  auto task_pop() -> frame_block *;                     ///< Unimplemented.
+  auto task_push(frame_block *) -> void;                ///< Unimplemented.
+  auto stack_pop() -> async_stack *;                    ///< Unimplemented.
+  auto stack_push(async_stack *) -> void;               ///< Unimplemented.
 };
 
 static_assert(thread_context<dummy_context>, "dummy_context is not a thread_context");
@@ -2390,7 +2389,7 @@ struct switch_awaitable {
 
   void await_resume() const noexcept {}
 
-  frame_node self;
+  intrusive_node<frame_block *> self;
   Context *dest;
 };
 
@@ -2685,7 +2684,9 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
   /**
    * @brief Transform a context pointer into a context switch awaitable.
    */
-  auto await_transform(Context *dest) -> detail::switch_awaitable<Context> { return {frame_node{this}, dest}; }
+  auto await_transform(Context *dest) -> detail::switch_awaitable<Context> {
+    return {intrusive_node<frame_block *>{this}, dest};
+  }
 
   /**
    * @brief Transform a fork packet into a fork awaitable.
@@ -2813,7 +2814,7 @@ inline namespace ext {
  * @brief A concept that schedulers must satisfy.
  */
 template <typename Sch>
-concept scheduler = requires(Sch &&sch, frame_node *ext) {
+concept scheduler = requires(Sch &&sch, intrusive_node<frame_block *> *ext) {
   typename context_of<Sch>;
   std::forward<Sch>(sch).submit(ext);
 };
@@ -2867,7 +2868,7 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
 
   detail::packet_t<Sch, F, Args...> packet{{{root_block}}, std::forward<Args>(args)...};
 
-  frame_node link{std::move(packet).invoke()};
+  intrusive_node<frame_block *> link{std::move(packet).invoke()};
 
   LF_LOG("Submitting root");
 
@@ -2933,7 +2934,7 @@ class unit_pool : impl::immovable<unit_pool> {
    public:
     context_type() { m_tasks.reserve(1024); }
 
-    static void submit(frame_node *ptr) {
+    static void submit(intrusive_node<frame_block *> *ptr) {
       LF_ASSERT(ptr);
       ptr->get()->resume_external<context_type>();
     }
@@ -2984,7 +2985,7 @@ class unit_pool : impl::immovable<unit_pool> {
 
   static_assert(thread_context<context_type>);
 
-  static void submit(frame_node *ptr) { context_type::submit(ptr); }
+  static void submit(intrusive_node<frame_block *> *ptr) { context_type::submit(ptr); }
 
   unit_pool() { worker_init(&m_context); }
 

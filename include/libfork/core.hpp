@@ -12,6 +12,7 @@
 #include "libfork/core/call.hpp"
 #include "libfork/core/coroutine.hpp"
 #include "libfork/core/eventually.hpp"
+#include "libfork/core/list.hpp"
 #include "libfork/core/promise.hpp"
 #include "libfork/core/result.hpp"
 #include "libfork/core/stack.hpp"

@@ -44,7 +44,7 @@ struct switch_awaitable {
 
   void await_resume() const noexcept {}
 
-  frame_node self;
+  intrusive_node<frame_block *> self;
   Context *dest;
 };
 
@@ -339,7 +339,9 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
   /**
    * @brief Transform a context pointer into a context switch awaitable.
    */
-  auto await_transform(Context *dest) -> detail::switch_awaitable<Context> { return {frame_node{this}, dest}; }
+  auto await_transform(Context *dest) -> detail::switch_awaitable<Context> {
+    return {intrusive_node<frame_block *>{this}, dest};
+  }
 
   /**
    * @brief Transform a fork packet into a fork awaitable.

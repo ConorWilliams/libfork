@@ -41,14 +41,14 @@ class ring_buffer {
   /**
    * @brief Pushes a value to the ring-buffer.
    *
-   * If the buffer is full then calls `when_full` with the value and returns the result, otherwise returns true.
-   * By default, `when_full` is a no-op that returns false.
+   * If the buffer is full then calls `when_full` with the value and returns false, otherwise returns true.
+   * By default, `when_full` is a no-op.
    */
-  template <typename F = discard>
-    requires std::is_invocable_r_v<bool, F, T const &>
+  template <std::invocable<T const &> F = discard>
   constexpr auto push(T const &val, F &&when_full = {}) noexcept(std::is_nothrow_invocable_v<F, T const &>) -> bool {
     if (full()) {
-      return std::invoke(std::forward<F>(when_full), val);
+      std::invoke(std::forward<F>(when_full), val);
+      return false;
     }
     store(m_bottom++, val);
     return true;
