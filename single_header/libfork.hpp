@@ -454,6 +454,42 @@ struct move_only {
 
 static_assert(std::is_empty_v<immovable<void>>);
 
+/**
+ * @brief Basic implementation of a Golang like defer.
+ *
+ * Use like:
+ *
+ * .. code::
+ *
+ *    auto * ptr = c_api_init();
+ *
+ *    defer _ = [&ptr] () noexcept {
+ *      c_api_clean_up(ptr);
+ *    };
+ *
+ *    // Code that may throw
+ *
+ */
+template <class F>
+  requires std::is_nothrow_invocable_v<F>
+class [[nodiscard("An instance of defer will execute immediately unless bound to a name!")]] defer : immovable<defer<F>> {
+ public:
+  /**
+   * @brief Construct a new Defer object.
+   *
+   * @param f Nullary invocable forwarded into object and invoked by destructor.
+   */
+  constexpr defer(F &&f) noexcept(std::is_nothrow_constructible_v<F, F &&>) : m_f(std::forward<F>(f)) {}
+
+  /**
+   * @brief Call the invocable.
+   */
+  constexpr ~defer() noexcept { std::invoke(std::forward<F>(m_f)); }
+
+ private:
+  [[no_unique_address]] F m_f;
+};
+
 // ---------------- Meta programming ---------------- //
 
 /**

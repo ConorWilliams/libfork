@@ -25,7 +25,7 @@
       - [ ] `noexcept`.
 
 5. Core features + tests for them:
-      - [ ] `co_await resume_on(...)`.
+      - [x] `co_await resume_on(...)`.
       - [ ] `lf::tail`.
 
 6. Schedulers:
@@ -37,6 +37,7 @@
       - [ ] Compiling.
       - [ ] TaskFlow.
       - [ ] Graphs.
+      - [ ] Review 30% branch miss-predict.
 
 8. Documentation:
       - [ ] Add vcpkg to hacking/building.

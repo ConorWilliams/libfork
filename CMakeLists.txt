@@ -24,7 +24,7 @@ include(cmake/variables.cmake)
 
 find_package(Threads REQUIRED)
 
-find_package(hwloc CONFIG)
+find_package(hwloc)
 
 if(hwloc_FOUND)
   message(FATAL "hwloc has native cmake!")
@@ -49,6 +49,8 @@ target_compile_features(libfork_libfork INTERFACE cxx_std_23)
 
 if(HWLOC_FOUND)
   target_compile_definitions(libfork_libfork INTERFACE LF_HAS_HWLOC)
+  target_include_directories(libfork_libfork SYSTEM INTERFACE ${HWLOC_INCLUDE_DIRS})
+  target_link_libraries(libfork_libfork INTERFACE ${HWLOC_LIBRARIES})
 else()
   message(WARNING "Disabling libfork's hwloc support because we couldn't find it")
 endif()

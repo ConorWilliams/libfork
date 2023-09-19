@@ -51,13 +51,12 @@ inline constexpr lf::async fib = [](auto fib, int n) LF_STATIC_CALL -> lf::task<
   co_return a + b;
 };
 
-// inline constexpr auto c_fib_invoke = ASYNC(int n) -> lf::task<int> {
-//   if (n < 2) {
-//     co_return n;
-//   }
-
-//   co_return co_await self(n - 1) + co_await self(n - 2);
-// };
+inline constexpr lf::async invoke_fib = [](auto invoke_fib, int n) LF_STATIC_CALL -> lf::task<int> {
+  if (n < 2) {
+    co_return n;
+  }
+  co_return co_await invoke_fib(n - 1) + co_await invoke_fib(n - 2);
+};
 
 auto main() -> int {
   //
@@ -79,6 +78,12 @@ auto main() -> int {
       ankerl::nanobench::doNotOptimizeAway(lf::sync_wait(sch, fib, in));
     });
   }
+
+  lf::busy_pool sch{1};
+
+  bench.run("async invoke", [&] {
+    ankerl::nanobench::doNotOptimizeAway(lf::sync_wait(sch, invoke_fib, in));
+  });
 
   bench.run("ref inline", [&] {
     ankerl::nanobench::doNotOptimizeAway(fib_ref(in));

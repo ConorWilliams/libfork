@@ -82,7 +82,23 @@ auto build_tree(int n, double skew) -> std::unique_ptr<tree> {
 }
 
 LF_NOINLINE auto find(tree const &root, int val) -> bool {
-  return root.val == val || (root.left && find(*root.left, val)) || (root.right && find(*root.right, val));
+
+  if (root.val == val) {
+    return true;
+  }
+
+  bool left = false;
+  bool right = false;
+
+  if (root.left) {
+    left = find(*root.left, val);
+  }
+
+  if (root.right) {
+    right = find(*root.right, val);
+  }
+
+  return left || right;
 }
 
 TEST_CASE("tree checks", "[tree]") {
