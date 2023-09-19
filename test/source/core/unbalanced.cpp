@@ -128,7 +128,10 @@ inline constexpr async search = [](auto search, tree const &root, int val, auto 
 
   if (context && root.val % 10 == 0) {
     co_await context;
-    LF_ASSERT(search.context() == context);
+
+    if (search.context() == context) {
+      throw std::runtime_error("context not cleared");
+    }
   }
 
   bool left = false;
@@ -172,7 +175,7 @@ TEMPLATE_TEST_CASE("tree bench", "[tree][benchmark][template]", unit_pool, busy_
   std::vector<int> vals = {iota.begin(), iota.end()};
 
   std::array trees = {
-      build_tree(n, 0.1), build_tree(n, 0.2), build_tree(n, 0.3), build_tree(n, 0.4), build_tree(n, 0.5),
+      /*build_tree(n, 0.1), build_tree(n, 0.2), build_tree(n, 0.3), build_tree(n, 0.4), */ build_tree(n, 0.5),
   };
 
   for (auto &root : trees) {

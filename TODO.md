@@ -7,6 +7,7 @@
       - [x] Update licenses at top of files.
       - [x] Touch up `std::` includes.
       - [x] Redo name spacing (rm `DEPENDANT_ABI`, `user`, `detail`, `impl`, and `schedule`).
+      - [ ] A test that stresses stack stealing?
 
 2. Get the docs building and looking good again.
       - [x] Rename `DOXYGEN_SHOULD_SKIP_THIS` to `DOXYGEN_PROCESSOR`.
@@ -23,21 +24,24 @@
 4. Review: 
       - [x] `constexpr`.
       - [ ] `noexcept`.
+      - [ ] `std::` includes in schedule/root.
 
 5. Core features + tests for them:
       - [x] `co_await resume_on(...)`.
       - [ ] `lf::tail`.
 
 6. Schedulers:
-      - [ ] Stack stealing.
+      - [x] Stack stealing.
+      - [x] busy_pool.
       - [ ] Sleepy scheduler.
       - [ ] NUMA aware.
 
 7. Benchmarks 
-      - [ ] Compiling.
+      - [x] Compiling.
       - [ ] TaskFlow.
       - [ ] Graphs.
-      - [ ] Review 30% branch miss-predict.
+      - [ ] More heterogenous workload (UT3, unbalanced tree reduce)
+      - [ ] Review 30% branch miss-predict, seems to be related to spinning workers?
 
 8. Documentation:
       - [ ] Add vcpkg to hacking/building.
@@ -56,7 +60,7 @@
       - [ ] `scan`.
 
 11. Stretch:
-      - [ ] Module `support`.
+      - [ ] Modules (cpp20) `support`.
 
 
 

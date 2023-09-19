@@ -5,28 +5,6 @@
 
 #ifndef EDCA974A_808F_4B62_95D5_4D84E31B8911
 #define EDCA974A_808F_4B62_95D5_4D84E31B8911
-#ifndef A6BE090F_9077_40E8_9B57_9BAFD9620469
-#define A6BE090F_9077_40E8_9B57_9BAFD9620469
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-#ifndef E8D38B49_7170_41BC_90E9_6D6389714304
-#define E8D38B49_7170_41BC_90E9_6D6389714304
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <utility>
 #ifndef C5DCA647_8269_46C2_B76F_5FA68738AEDA
 #define C5DCA647_8269_46C2_B76F_5FA68738AEDA
 
@@ -71,7 +49,7 @@
  *
  * Changes when functionality is added in an API backward compatible manner.
  */
-#define LF_VERSION_MINOR 1
+#define LF_VERSION_MINOR 2
 /**
  * @brief __[public]__ The patch version of libfork.
  *
@@ -222,7 +200,9 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
  * @brief Macro to prevent a function to be inlined.
  */
 #if !defined(LF_NOINLINE)
-  #if defined(_MSC_VER)
+  #ifdef LF_DOXYGEN_SHOULD_SKIP_THIS
+    #define LF_NOINLINE
+  #elif defined(_MSC_VER)
     #define LF_NOINLINE __declspec(noinline)
   #elif defined(__GNUC__) && __GNUC__ > 3
     // Clang also defines __GNUC__ (as 4)
@@ -245,7 +225,9 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
  * @brief Macro to use in place of 'inline' to force a function to be inline
  */
 #if !defined(LF_FORCEINLINE)
-  #if defined(_MSC_VER)
+  #ifdef LF_DOXYGEN_SHOULD_SKIP_THIS
+    #define LF_FORCEINLINE inline
+  #elif defined(_MSC_VER)
     #define LF_FORCEINLINE __forceinline
   #elif defined(__GNUC__) && __GNUC__ > 3
     // Clang also defines __GNUC__ (as 4)
@@ -296,6 +278,29 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
 // NOLINTEND
 
 #endif /* C5DCA647_8269_46C2_B76F_5FA68738AEDA */
+
+#ifndef A6BE090F_9077_40E8_9B57_9BAFD9620469
+#define A6BE090F_9077_40E8_9B57_9BAFD9620469
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#ifndef E8D38B49_7170_41BC_90E9_6D6389714304
+#define E8D38B49_7170_41BC_90E9_6D6389714304
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <utility>
 #ifndef DF63D333_F8C0_4BBA_97E1_32A78466B8B7
 #define DF63D333_F8C0_4BBA_97E1_32A78466B8B7
 
@@ -1755,7 +1760,7 @@ struct promise_alloc_stack : frame_block {
    *
    * This will update `tls::asp` to point to the top of the new async stack.
    */
-  [[nodiscard]] static auto operator new(std::size_t size) -> void * {
+  [[nodiscard]] LF_FORCEINLINE static auto operator new(std::size_t size) -> void * {
     LF_ASSERT(tls::asp);
     tls::asp -= (size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
     LF_LOG("Allocating {} bytes on stack from {}", size, (void *)tls::asp);
@@ -1765,7 +1770,7 @@ struct promise_alloc_stack : frame_block {
   /**
    * @brief Deallocate the coroutine on the current `async_stack`.
    */
-  static void operator delete(void *ptr, std::size_t size) {
+  LF_FORCEINLINE static void operator delete(void *ptr, std::size_t size) {
     LF_ASSERT(ptr == tls::asp);
     tls::asp += (size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
     LF_LOG("Deallocating {} bytes on stack to {}", size, (void *)tls::asp);
@@ -1783,7 +1788,7 @@ inline namespace ext {
  *    These should be cleaned up with `worker_finalize(...)`.
  */
 template <thread_context Context>
-void worker_init(Context *context) {
+LF_NOINLINE void worker_init(Context *context) {
 
   LF_LOG("Initializing worker");
 
@@ -1802,7 +1807,7 @@ void worker_init(Context *context) {
  *    These must be initialized with `worker_init(...)`.
  */
 template <thread_context Context>
-void worker_finalize(Context *context) {
+LF_NOINLINE void worker_finalize(Context *context) {
 
   LF_LOG("Finalizing worker");
 
@@ -2977,6 +2982,7 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
  */
 
 #endif /* A6BE090F_9077_40E8_9B57_9BAFD9620469 */
+
 #ifndef C8EE9A0A_3B9F_4FFE_8FF5_910645E0C7CC
 #define C8EE9A0A_3B9F_4FFE_8FF5_910645E0C7CC
 

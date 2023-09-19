@@ -399,7 +399,7 @@ struct promise_alloc_stack : frame_block {
    *
    * This will update `tls::asp` to point to the top of the new async stack.
    */
-  [[nodiscard]] static auto operator new(std::size_t size) -> void * {
+  [[nodiscard]] LF_FORCEINLINE static auto operator new(std::size_t size) -> void * {
     LF_ASSERT(tls::asp);
     tls::asp -= (size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
     LF_LOG("Allocating {} bytes on stack from {}", size, (void *)tls::asp);
@@ -409,7 +409,7 @@ struct promise_alloc_stack : frame_block {
   /**
    * @brief Deallocate the coroutine on the current `async_stack`.
    */
-  static void operator delete(void *ptr, std::size_t size) {
+  LF_FORCEINLINE static void operator delete(void *ptr, std::size_t size) {
     LF_ASSERT(ptr == tls::asp);
     tls::asp += (size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
     LF_LOG("Deallocating {} bytes on stack to {}", size, (void *)tls::asp);
@@ -427,7 +427,7 @@ inline namespace ext {
  *    These should be cleaned up with `worker_finalize(...)`.
  */
 template <thread_context Context>
-void worker_init(Context *context) {
+LF_NOINLINE void worker_init(Context *context) {
 
   LF_LOG("Initializing worker");
 
@@ -446,7 +446,7 @@ void worker_init(Context *context) {
  *    These must be initialized with `worker_init(...)`.
  */
 template <thread_context Context>
-void worker_finalize(Context *context) {
+LF_NOINLINE void worker_finalize(Context *context) {
 
   LF_LOG("Finalizing worker");
 

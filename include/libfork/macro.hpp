@@ -42,7 +42,7 @@
  *
  * Changes when functionality is added in an API backward compatible manner.
  */
-#define LF_VERSION_MINOR 1
+#define LF_VERSION_MINOR 2
 /**
  * @brief __[public]__ The patch version of libfork.
  *
@@ -193,7 +193,9 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
  * @brief Macro to prevent a function to be inlined.
  */
 #if !defined(LF_NOINLINE)
-  #if defined(_MSC_VER)
+  #ifdef LF_DOXYGEN_SHOULD_SKIP_THIS
+    #define LF_NOINLINE
+  #elif defined(_MSC_VER)
     #define LF_NOINLINE __declspec(noinline)
   #elif defined(__GNUC__) && __GNUC__ > 3
     // Clang also defines __GNUC__ (as 4)
@@ -216,7 +218,9 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
  * @brief Macro to use in place of 'inline' to force a function to be inline
  */
 #if !defined(LF_FORCEINLINE)
-  #if defined(_MSC_VER)
+  #ifdef LF_DOXYGEN_SHOULD_SKIP_THIS
+    #define LF_FORCEINLINE inline
+  #elif defined(_MSC_VER)
     #define LF_FORCEINLINE __forceinline
   #elif defined(__GNUC__) && __GNUC__ > 3
     // Clang also defines __GNUC__ (as 4)

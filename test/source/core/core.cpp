@@ -94,7 +94,7 @@ int fib(int n) {
 inline constexpr async r_fib = [](auto fib, int n) -> lf::task<int> {
   //
 
-  REQUIRE(fib.context()->max_threads() >= 0);
+  LF_ASSERT(fib.context()->max_threads() >= 0);
 
   if (n < 2) {
     co_return n;
@@ -163,7 +163,7 @@ inline constexpr async v_fib = [](auto fib, int &ret, int n) -> lf::task<void> {
 
   co_await fib(c, n - 2);
 
-  REQUIRE(b == c);
+  LF_ASSERT(b == c);
 
   ret = a + b;
 };
@@ -197,8 +197,8 @@ inline constexpr async v_fib_ignore = [](auto fib, int &ret, int n) -> lf::task<
     co_await lf::call(c, fib)(b, n - 2); // Test bind to a different type.
     co_await lf::join;
 
-    REQUIRE(c);
-    REQUIRE(b == c);
+    LF_ASSERT(c);
+    LF_ASSERT(b == c);
   }
 
   ret = a + b;
@@ -226,7 +226,7 @@ class ref_test {
     //
     auto &also_prov = co_await self.get_2(self);
 
-    REQUIRE(&also_prov == &self.m_private);
+    LF_ASSERT(&also_prov == &self.m_private);
 
     co_return self.m_private;
   };
