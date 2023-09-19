@@ -8,8 +8,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <hwloc/bitmap.h>
+#include <errno.h>
 #include <stdexcept>
+#include <stdio.h>
+#include <string.h>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -17,11 +19,7 @@
 
 #ifdef LF_HAS_HWLOC
 
-  #include <errno.h>
   #include <hwloc.h>
-  #include <stdio.h>
-
-  #include <string.h>
 
 // struct hwloc_tree {
 //     int depth

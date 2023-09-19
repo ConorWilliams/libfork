@@ -40,7 +40,7 @@
       - [x] Compiling.
       - [ ] TaskFlow.
       - [ ] Graphs.
-      - [ ] More heterogenous workload (UT3, unbalanced tree reduce)
+      - [ ] More heterogeneous workload (UT3, unbalanced tree reduce)
       - [ ] Review 30% branch miss-predict, seems to be related to spinning workers?
 
 8. Documentation:

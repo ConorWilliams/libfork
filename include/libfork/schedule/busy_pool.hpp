@@ -263,12 +263,14 @@ class busy_pool {
 
     worker_init(my_context);
 
+    impl::defer at_exit = [&]() noexcept {
+      worker_finalize(my_context);
+    };
+
     while (!stop_requested.test(std::memory_order_acquire)) {
       my_context->resume_submitted();
       my_context->steal_and_resume();
     };
-
-    worker_finalize(my_context);
   }
 
  public:
