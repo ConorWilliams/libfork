@@ -1,66 +1,65 @@
 # The todo list
 
-1. Complete Core:
-      - [x] Complete test suit for core.
-      - [x] Tidy up propagate exception macros.
-      - [x] Where we can use `LF_HOF_RETURNS`
-      - [x] Update licenses at top of files.
-      - [x] Touch up `std::` includes.
-      - [x] Redo name spacing (rm `DEPENDANT_ABI`, `user`, `detail`, `impl`, and `schedule`).
-      - [ ] A test that stresses stack stealing?
+#### Missing features
 
-2. Get the docs building and looking good again.
-      - [x] Rename `DOXYGEN_SHOULD_SKIP_THIS` to `DOXYGEN_PROCESSOR`.
-      - [x] Document macros.
+- [ ] `lf::tail`.
+- [ ] `lazy_pool` 
+- [ ] `numa_pool` (will need to iterate on this once we have heterogenous workloads).
+- [ ] Stack-tracing: Logging at call-site (`std::source_location`).
+- [ ] Stack-tracing: Walk stack function.
+- [ ] Stack-tracing: Signal handler.
+   
+#### Post feature complete
 
-3. Get it compiling on CI:
-      - [x] Remove CPM.cmake
-      - [x] Try core test suit on compiler explorer, fix constexpr requirements in i.e. `byte_cast`.
-      - [x] vcpkg for tests.
-      - [x] Get CI working.
-      - [ ] `-fno-exceptions` test.
-      - [ ] check `single_header.hpp` is up to date.
+- [ ] benchmark: need some heterogeneous workloads (UT3, unbalanced tree reduce, see NOWA)
+- [ ] benchmark: A test/benchmark that stresses stack stealing?
+- [ ] benchmark: C++ library comparisons (TaskFlow, ...).
+- [ ] Review 30% branch miss-predict, seems to be related to spinning workers?
+- [ ] Iterate `numa_pool`
+- [ ] Graphs/analysis.
+     
+#### Before release
 
-4. Review: 
-      - [x] `constexpr`.
-      - [ ] `noexcept`.
-      - [ ] `std::` includes in schedule/root.
+- [ ] review: `constexpr`.
+- [ ] review: `noexcept`.
+- [ ] review: `std::` includes in schedule/root.
+- [ ] docs: Add vcpkg to hacking/building.
+- [ ] docs: Add recursive clone to hacking/building.
+- [ ] docs: Catalog deps for compilation (i.e pkg-config) (fresh ubuntu wsl).
+- [ ] docs: Update readme.
+- [ ] docs: Add `single_header.hpp` to readme + link to compiler explorer.
+- [ ] docs: Release notes/changes.
 
-5. Core features + tests for them:
-      - [x] `co_await resume_on(...)`.
-      - [ ] `lf::tail`.
+#### Stretch
 
-6. Schedulers:
-      - [x] Stack stealing.
-      - [x] busy_pool.
-      - [ ] Sleepy scheduler.
-      - [ ] NUMA aware.
+- [ ] CI: `-fno-exceptions` test.
+- [ ] CI: check `single_header.hpp` is up to date.
 
-7. Benchmarks 
-      - [x] Compiling.
-      - [ ] TaskFlow.
-      - [ ] Graphs.
-      - [ ] More heterogeneous workload (UT3, unbalanced tree reduce)
-      - [ ] Review 30% branch miss-predict, seems to be related to spinning workers?
+#### Future
 
-8. Documentation:
-      - [ ] Add vcpkg to hacking/building.
-      - [ ] Add recursive clone to hacking/building.
-      - [ ] Catalog deps for compilation (i.e pkg-config) (fresh ubuntu wsl).
-      - [ ] Update readme.
+Algorithms: 
+- [ ] `for_each`.
+- [ ] `reduce`.
+- [ ] `scan`. 
 
-9. Stack-tracing api:
-      - [ ] Logging at call-site (`std::source_location`).
-      - [ ] Walk stack function.
-      - [ ] Signal handler.
+Modules (cpp20) support.
 
-10. Algorithms: 
-      - [ ] `for_each`.
-      - [ ] `reduce`.
-      - [ ] `scan`.
+#### Done :)
 
-11. Stretch:
-      - [ ] Modules (cpp20) `support`.
+- [x] Complete test suit for core.
+- [x] Tidy up propagate exception macros.
+- [x] Where we can use `LF_HOF_RETURNS`
+- [x] Update licenses at top of files.
+- [x] Touch up `std::` includes.
+- [x] Redo name spacing (rm `DEPENDANT_ABI`, `user`, `detail`, `impl`, and `schedule`).
+- [x] Document macros.
+- [x] Remove CPM.cmake
+- [x] Try core test suit on compiler explorer, fix constexpr requirements in i.e. `byte_cast`.
+- [x] vcpkg for tests.
+- [x] Get CI working.
+- [x] `co_await resume_on(...)`.
+- [x] Stack stealing.
+- [x] busy_pool.
 
 
 
