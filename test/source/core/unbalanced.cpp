@@ -58,9 +58,9 @@ auto build_tree(int n, double skew) -> std::unique_ptr<tree> {
 
   for (auto val : vals) {
     if (dist(rng) < skew) {
-      root = std::make_unique<tree>(val, std::move(root), nullptr);
+      root = std::make_unique<tree>(tree{val, std::move(root), nullptr});
     } else {
-      root = std::make_unique<tree>(val, nullptr, std::move(root));
+      root = std::make_unique<tree>(tree{val, nullptr, std::move(root)});
     }
   }
 
