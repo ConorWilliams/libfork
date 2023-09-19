@@ -4,7 +4,6 @@ project(libforkTools LANGUAGES CXX)
 
 include(../cmake/project-is-top-level.cmake)
 include(../cmake/folders.cmake)
-include(../cmake/windows-set-path.cmake)
 
 if(PROJECT_IS_TOP_LEVEL)
   find_package(libfork REQUIRED)
