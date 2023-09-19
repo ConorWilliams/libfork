@@ -63,14 +63,14 @@ auto main() -> int {
   ankerl::nanobench::Bench bench;
 
   bench.title("Fibonacci");
-  bench.warmup(100);
+  bench.warmup(10);
   bench.relative(true);
   bench.performanceCounters(true);
-  // bench.minEpochIterations(10);
+  bench.minEpochIterations(10);
 
   volatile int in = 30;
 
-  for (std::size_t i = 1; i <= std::thread::hardware_concurrency(); ++i) {
+  for (std::size_t i = 1; i <= std::thread::hardware_concurrency() / 2; ++i) {
 
     lf::busy_pool sch{i};
 
@@ -79,17 +79,35 @@ auto main() -> int {
     });
   }
 
-  lf::busy_pool sch{1};
+  {
+    lf::busy_pool sch{1};
 
-  bench.run("async invoke", [&] {
-    ankerl::nanobench::doNotOptimizeAway(lf::sync_wait(sch, invoke_fib, in));
-  });
+    bench.run("async invoke only", [&] {
+      ankerl::nanobench::doNotOptimizeAway(lf::sync_wait(sch, invoke_fib, in));
+    });
+  }
 
-  bench.run("ref inline", [&] {
+  // --------------------------------- //
+
+  {
+    lf::unit_pool sch;
+
+    bench.run("unit_pool invoke only", [&] {
+      ankerl::nanobench::doNotOptimizeAway(lf::sync_wait(sch, invoke_fib, in));
+    });
+
+    bench.run("unit_pool forking", [&] {
+      ankerl::nanobench::doNotOptimizeAway(lf::sync_wait(sch, fib, in));
+    });
+  }
+
+  // --------------------------------- //
+
+  bench.run("reference inline", [&] {
     ankerl::nanobench::doNotOptimizeAway(fib_ref(in));
   });
 
-  bench.run("ret inline", [&] {
+  bench.run("returning inline", [&] {
     ankerl::nanobench::doNotOptimizeAway(fib_returns(in));
   });
 

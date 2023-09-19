@@ -41,6 +41,7 @@
 
 8. Documentation:
       - [ ] Add vcpkg to hacking/building.
+      - [ ] Add recursive clone to hacking/building.
       - [ ] Catalog deps for compilation (i.e pkg-config) (fresh ubuntu wsl).
       - [ ] Update readme.
 

@@ -279,7 +279,10 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
       if constexpr (Tag == tag::call) {
         LF_LOG("Inline task resumes parent");
-        // Inline task's parent cannot have been stolen, no need to reset control block.
+        // Inline task's parent cannot have been stolen as its continuation was not pushed to a queue,
+        // Hence, no need to reset control block.
+
+        // We do not attempt to eat the stack because stack eats only occur at a snyc point.
         return parent->coro();
       }
       return detail::final_await_suspend<Context>(parent);
