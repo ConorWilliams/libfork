@@ -4,7 +4,7 @@
 
 - [ ] `lf::tail`.
 - [ ] `lazy_pool` 
-- [ ] `numa_pool` (will need to iterate on this once we have heterogenous workloads).
+- [ ] `numa_pool` (will need to iterate on this once we have heterogeneous workloads).
 - [ ] Stack-tracing: Logging at call-site (`std::source_location`).
 - [ ] Stack-tracing: Walk stack function.
 - [ ] Stack-tracing: Signal handler.
