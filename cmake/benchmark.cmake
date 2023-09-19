@@ -12,9 +12,9 @@ add_subdirectory(benchmark/overhead)
 
 add_subdirectory(benchmark/serial)
 
-add_subdirectory(benchmark/libfork)
+# add_subdirectory(benchmark/libfork)
 
-find_package(OpenMP QUIET)
+find_package(OpenMP)
 
 if(OpenMP_CXX_FOUND)
   add_subdirectory(benchmark/omp)
@@ -22,7 +22,7 @@ else()
   message(WARNING "OpenMP not found; OpenMP benchmarks will not be built.")
 endif()
 
-find_package(TBB QUIET)
+find_package(TBB)
 
 if(TBB_FOUND)
   add_subdirectory(benchmark/tbb)

@@ -14,16 +14,16 @@ find_package(nanobench REQUIRED)
 
 # ---- Benchmarks ----
 add_executable(lf_fib.bench fib.cpp)
-target_link_libraries(lf_fib.bench PRIVATE libfork::libfork nanobench)
+target_link_libraries(lf_fib.bench PRIVATE libfork::libfork nanobench::nanobench)
 
 add_executable(lf_reduce.bench reduce.cpp)
-target_link_libraries(lf_reduce.bench PRIVATE libfork::libfork nanobench)
+target_link_libraries(lf_reduce.bench PRIVATE libfork::libfork nanobench::nanobench)
 
 add_executable(lf_matmul.bench matmul.cpp)
-target_link_libraries(lf_matmul.bench PRIVATE libfork::libfork nanobench)
+target_link_libraries(lf_matmul.bench PRIVATE libfork::libfork nanobench::nanobench)
 
 add_executable(lf_dfs.bench dfs.cpp)
-target_link_libraries(lf_dfs.bench PRIVATE libfork::libfork nanobench)
+target_link_libraries(lf_dfs.bench PRIVATE libfork::libfork nanobench::nanobench)
 
 # ---- End-of-file commands ----
 add_folders(benchmarks)

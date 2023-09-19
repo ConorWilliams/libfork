@@ -16,16 +16,24 @@ find_package(OpenMP REQUIRED)
 
 # ---- Benchmarks ----
 add_executable(opm_fib.bench fib.cpp)
-target_link_libraries(opm_fib.bench PRIVATE libfork::libfork nanobench OpenMP::OpenMP_CXX)
+target_link_libraries(
+  opm_fib.bench PRIVATE libfork::libfork nanobench::nanobench OpenMP::OpenMP_CXX
+)
 
 add_executable(opm_reduce.bench reduce.cpp)
-target_link_libraries(opm_reduce.bench PRIVATE libfork::libfork nanobench OpenMP::OpenMP_CXX)
+target_link_libraries(
+  opm_reduce.bench PRIVATE libfork::libfork nanobench::nanobench OpenMP::OpenMP_CXX
+)
 
 add_executable(opm_matmul.bench matmul.cpp)
-target_link_libraries(opm_matmul.bench PRIVATE libfork::libfork nanobench OpenMP::OpenMP_CXX)
+target_link_libraries(
+  opm_matmul.bench PRIVATE libfork::libfork nanobench::nanobench OpenMP::OpenMP_CXX
+)
 
 add_executable(opm_dfs.bench dfs.cpp)
-target_link_libraries(opm_dfs.bench PRIVATE libfork::libfork nanobench OpenMP::OpenMP_CXX)
+target_link_libraries(
+  opm_dfs.bench PRIVATE libfork::libfork nanobench::nanobench OpenMP::OpenMP_CXX
+)
 
 # ---- End-of-file commands ----
 add_folders(benchmarks)

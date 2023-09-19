@@ -16,7 +16,7 @@ find_package(nanobench REQUIRED)
 # ---- Benchmarks ----
 
 add_executable(overhead.out overhead.cpp)
-target_link_libraries(overhead.out PRIVATE libfork::libfork nanobench)
+target_link_libraries(overhead.out PRIVATE libfork::libfork nanobench::nanobench)
 
 # ---- End-of-file commands ----
 

@@ -16,16 +16,16 @@ find_package(TBB REQUIRED)
 
 # ---- Benchmarks ----
 add_executable(tbb_fib.bench fib.cpp)
-target_link_libraries(tbb_fib.bench PRIVATE libfork::libfork nanobench TBB::tbb)
+target_link_libraries(tbb_fib.bench PRIVATE libfork::libfork nanobench::nanobench TBB::tbb)
 
 add_executable(tbb_reduce.bench reduce.cpp)
-target_link_libraries(tbb_reduce.bench PRIVATE libfork::libfork nanobench TBB::tbb)
+target_link_libraries(tbb_reduce.bench PRIVATE libfork::libfork nanobench::nanobench TBB::tbb)
 
 add_executable(tbb_matmul.bench matmul.cpp)
-target_link_libraries(tbb_matmul.bench PRIVATE libfork::libfork nanobench TBB::tbb)
+target_link_libraries(tbb_matmul.bench PRIVATE libfork::libfork nanobench::nanobench TBB::tbb)
 
 add_executable(tbb_dfs.bench dfs.cpp)
-target_link_libraries(tbb_dfs.bench PRIVATE libfork::libfork nanobench TBB::tbb)
+target_link_libraries(tbb_dfs.bench PRIVATE libfork::libfork nanobench::nanobench TBB::tbb)
 
 # ---- End-of-file commands ----
 add_folders(benchmarks)

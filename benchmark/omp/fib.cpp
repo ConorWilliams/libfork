@@ -18,7 +18,7 @@ auto fib(int n) -> int {
 }
 
 void run(std::string name, int x) {
-  benchmark(name, [&](std::size_t n, auto&& bench) {
+  benchmark(name, [&](std::size_t n, auto &&bench) {
     int answer = 0;
 
 #pragma omp parallel num_threads(n) shared(answer, x)

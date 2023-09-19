@@ -32,19 +32,19 @@ inline auto xorshift_rand() -> uint32_t {
   return x;
 }
 
-void zero(elem_t* A, size_t n) {
+void zero(elem_t *A, size_t n) {
   for (size_t i = 0; i < n; ++i)
     for (size_t j = 0; j < n; ++j)
       A[i * n + j] = 0.0;
 }
 
-void fill(elem_t* A, size_t n) {
+void fill(elem_t *A, size_t n) {
   for (size_t i = 0; i < n; ++i)
     for (size_t j = 0; j < n; ++j)
       A[i * n + j] = xorshift_rand() % n;
 }
 
-bool check(elem_t* A, elem_t* B, elem_t* C, size_t n) {
+bool check(elem_t *A, elem_t *B, elem_t *C, size_t n) {
   elem_t tr_C = 0;
   elem_t tr_AB = 0;
   for (size_t i = 0; i < n; ++i) {
@@ -56,7 +56,7 @@ bool check(elem_t* A, elem_t* B, elem_t* C, size_t n) {
   return fabs(tr_AB - tr_C) < 1e-3;
 }
 
-void matmul(elem_t* A, elem_t* B, elem_t* C, size_t m, size_t n, size_t p, size_t ld, bool add) {
+void matmul(elem_t *A, elem_t *B, elem_t *C, size_t m, size_t n, size_t p, size_t ld, bool add) {
   if ((m + n + p) <= 64) {
     if (add) {
       for (size_t i = 0; i < m; ++i) {
@@ -102,14 +102,10 @@ void matmul(elem_t* A, elem_t* B, elem_t* C, size_t m, size_t n, size_t p, size_
   }
 }
 
-void test(elem_t* A, elem_t* B, elem_t* C, size_t n) {
-#pragma serial task untied shared(A, B, C, n)
-  matmul(A, B, C, n, n, n, n, 0);
-#pragma serial taskwait
-}
+void test(elem_t *A, elem_t *B, elem_t *C, size_t n) { matmul(A, B, C, n, n, n, n, 0); }
 
 void run(std::string name, size_t n) {
-  benchmark(name, [&](std::size_t num_threads, auto&& bench) {
+  benchmark(name, [&](std::size_t num_threads, auto &&bench) {
     // Set up
     elem_t *A, *B, *C;
 
@@ -121,8 +117,6 @@ void run(std::string name, size_t n) {
     fill(B, n);
     zero(C, n);
 
-#pragma serial parallel num_threads(num_threads)
-#pragma serial single nowait
     bench([&] {
       test(A, B, C, n);
     });
@@ -137,7 +131,7 @@ void run(std::string name, size_t n) {
   });
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
   run("serial-matmul-n=8", 8);
   run("serial-matmul-n=32", 32);
   run("serial-matmul-n=64", 64);
