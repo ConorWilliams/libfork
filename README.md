@@ -57,7 +57,17 @@ See the [benchmark's README](benchmark/README.md) for a comparison of `libfork` 
 
 See the [BUILDING](BUILDING.md) document for full details on compilation, installation and optional dependencies.
 
-Note, `libfork` is currently tested on GCC (13) and Clang (16). At the moment Clang seems to do a much better job at optimizing coroutines. When Microsoft fixes [this bug](https://developercommunity.visualstudio.com/t/Incorrect-code-generation-for-symmetric/1659260?scope=follow) `libfork` should build on MSVC.
+#### ⚠️ COMPILER PROBLEMS ⚠️
+
+A few known niggles:
+
+- __gcc__ `libfork` is tested on versions 11.x-13.x however gcc [does not perform a guaranteed tail call](https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100897) for coroutine's symmetric transfer unless compiling with optimization greater than `-O1` and sanitizers are not in use. This will result in stack overflows for some programs in un-optimized builds. 
+
+- __clang__ `libfork` compiles on versions 15.x-17.x however for versions 16.x and below bugs [#63022](https://github.com/llvm/llvm-project/issues/63022) and [#47179](https://github.com/llvm/llvm-project/issues/47179) will cause `libfork` to crash for optimized builds in multithreaded programs. This is known to be patched 
+
+- __msvc__ `libfork` compiles on versions 19.35-19.37 however due to [this bug](https://developercommunity.visualstudio.com/t/Incorrect-code-generation-for-symmetric/1659260?scope=follow) it will always seg-fault due to an erroneous double delete.
+
+Note, `libfork` is currently tested on GCC (13) and Clang (16). At the moment Clang seems to do a much better job at optimizing coroutines. When Microsoft fixes `libfork` should build on MSVC.
 
 ## Contributing
 
