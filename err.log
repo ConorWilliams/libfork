@@ -1,0 +1,76 @@
+sync
+
+140570105255872: Submitting root
+140570105255872: Acquire semaphore
+
+140570024212032: Using local-buffered stack
+140569987462720: Using local-buffered stack
+140570007426624: Using local-buffered stack
+140570015819328: Using local-buffered stack
+
+140570015819328: Call to resume on external task
+140570015819328: External was root
+140570015819328: Allocating {} bytes on stack from {}
+140570015819328: Forking, push parent to context
+140570015819328: At final suspend call
+140570015819328: Task reaches final suspend
+140570015819328: Deallocating {} bytes on stack to {}
+140570015819328: Task's parent was stolen
+140570015819328: Task is not last to join
+
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  null from: std::byte *lf::frame_block::top() const
+
+
+
+Filters: "Fibonacci - returning - busy_pool"
+Randomness seeded to: 3870526811
+140512587655104:
+sync
+
+140512506672704: Using local-buffered stack
+140512587655104: Submitting root
+140512587655104: Acquire semaphore
+140512498280000: Using local-buffered stack
+140512469923392: Using local-buffered stack
+140512489887296: Using local-buffered stack
+140512489887296: Call to resume on external task
+140512489887296: External was root
+140512489887296: Allocating {} bytes on stack from {}
+140512489887296: Forking, push parent to context
+140512506672704: Stole task from {}
+140512489887296: At final suspend call
+140512489887296: Task reaches final suspend
+140512489887296: Deallocating {} bytes on stack to {}
+140512506672704: Call to resume on stolen task
+140512489887296: Task's parent was stolen
+140512489887296: Task is not last to join
+140512506672704: Allocating {} bytes on stack from {}
+140512506672704: Calling
+140512506672704: At final suspend call
+140512506672704: Task reaches final suspend
+140512506672704: Deallocating {} bytes on stack to {}
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  null from: std::byte *lf::frame_block::top() const
+140512506672704: Inline task resumes parent
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+libfork_test is a Catch2 v3.4.0 host application.
+Run with -? for options
+
+-------------------------------------------------------------------------------
+Fibonacci - returning - busy_pool
+-------------------------------------------------------------------------------
+/home/cj/libfork/test/source/core/core.cpp:113
+...............................................................................
+
+/home/cj/libfork/test/source/core/core.cpp:113: FAILED:
+  {Unknown expression after the reported line}
+due to a fatal error condition:
+  SIGABRT - Abort (abnormal termination) signal
+
+===============================================================================
+test cases: 1 | 1 failed
+assertions: 4 | 3 passed | 1 failed
+
+fish: Job 1, './build/dev/test/libfork_test "…' terminated by signal SIGABRT (Abort)

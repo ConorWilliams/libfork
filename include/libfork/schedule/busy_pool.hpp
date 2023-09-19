@@ -187,7 +187,7 @@ class worker_context : impl::immovable<worker_context> {
       return stack;
     }
     if (auto *stack = m_stacks.pop(null_for<async_stack>)) {
-      LF_LOG("Using public-buffered stack}");
+      LF_LOG("Using public-buffered stack");
       return stack;
     }
 

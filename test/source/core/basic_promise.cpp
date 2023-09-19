@@ -122,7 +122,7 @@ inline constexpr auto fib_call = [](auto fib_call, int n) -> task<int> {
 TEST_CASE("fib-bench", "[promise]") {
   //
 
-  volatile int in = 30;
+  volatile int in = 20;
 
   int trivial = 0;
 

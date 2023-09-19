@@ -1536,13 +1536,35 @@ struct frame_block : private impl::immovable<frame_block>, impl::debug_block {
 
   /**
    * @brief Get a pointer to the parent frame.
+   *
+   * Only valid if this is not a root frame.
    */
-  [[nodiscard]] auto parent() const noexcept -> frame_block * { return impl::non_null(m_parent); }
+  [[nodiscard]] auto parent() const noexcept -> frame_block * {
+    LF_ASSERT(!is_root());
+    return impl::non_null(m_parent);
+  }
 
   /**
    * @brief Get a pointer to the top of the top of the async-stack this frame was allocated on.
+   *
+   * Only valid if this is not a root frame.
    */
-  [[nodiscard]] auto top() const noexcept -> std::byte * { return impl::non_null(m_top); }
+  [[nodiscard]] auto top() const noexcept -> std::byte * {
+    LF_ASSERT(!is_root());
+    return impl::non_null(m_top);
+  }
+
+  struct local_t {
+    bool is_root;
+    std::byte *top;
+  };
+
+  /**
+   * @brief Like `is_root()` and `top()` but valid for root frames.
+   *
+   * Note that if this is a root frame then the pointer to the top of the async-stack has an undefined value.
+   */
+  [[nodiscard]] auto locale() const noexcept -> local_t { return {is_root(), m_top}; }
 
   /**
    * @brief Get the coroutine handle for this frames coroutine.
@@ -1725,6 +1747,8 @@ inline namespace ext {
 template <thread_context Context>
 void worker_init(Context *context) {
 
+  LF_LOG("Initializing worker");
+
   LF_ASSERT(context);
   LF_ASSERT(!impl::tls::ctx<Context>);
   LF_ASSERT(!impl::tls::asp);
@@ -1741,6 +1765,9 @@ void worker_init(Context *context) {
  */
 template <thread_context Context>
 void worker_finalize(Context *context) {
+
+  LF_LOG("Finalizing worker");
+
   LF_ASSERT(context == impl::tls::ctx<Context>);
   LF_ASSERT(impl::tls::asp);
 
@@ -2481,20 +2508,16 @@ struct join_awaitable {
 
     if (steals == k_u32_max - joined) {
       // We set joins after all children had completed therefore we can resume the task.
-
       // Need to acquire to ensure we see all writes by other threads to the result.
       std::atomic_thread_fence(std::memory_order_acquire);
       LF_LOG("Wins join race");
       take_stack_reset_control();
       return task;
     }
-
-    // Someone else is responsible for running this task and we have run out of work.
     LF_LOG("Looses join race");
-    // We cannot currently own this stack.
-    if constexpr (!IsRoot) {
-      LF_ASSERT(self->top() != tls::asp);
-    }
+    // Someone else is responsible for running this task and we have run out of work.
+    // We cannot touch *this or deference self as someone may have resumed already!
+    // We cannot currently own this stack (checking would violate above).
     return stdx::noop_coroutine();
   }
 
@@ -2547,7 +2570,11 @@ auto final_await_suspend(frame_block *parent) noexcept -> std::coroutine_handle<
 
   LF_LOG("Task's parent was stolen");
 
+  // Need to copy these onto stack for else branch later.
+  auto [is_root, top] = parent->locale();
+
   // Register with parent we have completed this child task.
+  // If we are not the last we cannot deference the parent pointer as frame may now be freed.
   if (parent->fetch_sub_joins(1, std::memory_order_release) == 1) {
     // Acquire all writes before resuming.
     std::atomic_thread_fence(std::memory_order_acquire);
@@ -2557,9 +2584,9 @@ auto final_await_suspend(frame_block *parent) noexcept -> std::coroutine_handle<
 
     LF_LOG("Task is last child to join, resumes parent");
 
-    if (!parent->is_root()) [[likely]] {
-      if (parent->top() != tls::asp) {
-        tls::eat<Context>(parent->top());
+    if (!is_root) [[likely]] {
+      if (top != tls::asp) {
+        tls::eat<Context>(top);
       }
     }
 
@@ -2574,11 +2601,13 @@ auto final_await_suspend(frame_block *parent) noexcept -> std::coroutine_handle<
 
   LF_LOG("Task is not last to join");
 
-  if (parent->top() == tls::asp) {
-    // We are unable to resume the parent, as the resuming thread will take
-    // ownership of the parent's stack we must give it up.
-    LF_LOG("Thread releases control of parent's stack");
-    tls::asp = stack_as_bytes(context->stack_pop());
+  if (!is_root) [[likely]] {
+    if (top == tls::asp) {
+      // We are unable to resume the parent, as the resuming thread will take
+      // ownership of the parent's stack we must give it up.
+      LF_LOG("Thread releases control of parent's stack");
+      tls::asp = stack_as_bytes(context->stack_pop());
+    }
   }
 
   return stdx::noop_coroutine();

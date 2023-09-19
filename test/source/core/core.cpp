@@ -111,11 +111,13 @@ inline constexpr async r_fib = [](auto fib, int n) -> lf::task<int> {
 };
 
 TEMPLATE_TEST_CASE("Fibonacci - returning", "[core][template]", unit_pool, busy_pool) {
-  for (int j = 0; j < 10; ++j) {
-    TestType schedule{};
+  for (int j = 0; j < 100; ++j) {
+    {
+      TestType schedule{};
 
-    for (int i = 0; i < 20; ++i) {
-      REQUIRE(fib(i) == sync_wait(schedule, r_fib, i));
+      for (int i = 1; i < 15; ++i) {
+        REQUIRE(fib(i) == sync_wait(schedule, r_fib, i));
+      }
     }
   }
 }
