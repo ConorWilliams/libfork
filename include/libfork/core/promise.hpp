@@ -319,7 +319,9 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
    * @brief Terminates the program.
    */
   static void unhandled_exception() noexcept {
-    noexcept_invoke([] { LF_RETHROW; });
+    noexcept_invoke([] {
+      LF_RETHROW;
+    });
   }
 
   /**

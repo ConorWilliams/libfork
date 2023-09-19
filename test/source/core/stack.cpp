@@ -46,7 +46,9 @@ TEST_CASE("Root task", "[virtual_stack]") {
 
   int x = 0;
 
-  root_task t = root([&] { ++x; });
+  root_task t = root([&] {
+    ++x;
+  });
 
   REQUIRE(x == 0);
 

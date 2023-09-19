@@ -124,7 +124,9 @@ class worker_context : impl::immovable<worker_context> {
   std::vector<worker_context *> m_friends; ///< Other contexts in the pool, all non-null.
 
   template <typename T>
-  static constexpr auto null_for = []() LF_STATIC_CONST noexcept -> T * { return nullptr; };
+  static constexpr auto null_for = []() LF_STATIC_CONST noexcept -> T * {
+    return nullptr;
+  };
 
  public:
   worker_context() {

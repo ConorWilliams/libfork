@@ -234,7 +234,9 @@ class ref_test {
   int m_private = 99;
 
  private:
-  static constexpr async get_2 = [](auto, auto &&self) -> lf::task<int &> { co_return self.m_private; };
+  static constexpr async get_2 = [](auto, auto &&self) -> lf::task<int &> {
+    co_return self.m_private;
+  };
 };
 
 TEMPLATE_TEST_CASE("Reference test", "[core][template]", unit_pool, busy_pool) {

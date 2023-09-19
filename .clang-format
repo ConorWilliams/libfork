@@ -6,4 +6,5 @@ AlwaysBreakTemplateDeclarations : true
 PackConstructorInitializers : CurrentLine
 AccessModifierOffset: -1
 IndentCaseLabels : true
+AllowShortLambdasOnASingleLine  : Empty 
 ...

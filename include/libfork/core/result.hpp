@@ -277,7 +277,9 @@ struct promise_result : protected impl::maybe_ptr<R> {
       if constexpr (std::is_assignable_v<R &, U &&>) {
         *(this->address()) = std::forward<U>(value);
       } else {
-        *(this->address()) = [&]() -> T { return std::forward<U>(value); }();
+        *(this->address()) = [&]() -> T {
+          return std::forward<U>(value);
+        }();
       }
     }
   }
