@@ -2020,7 +2020,7 @@ inline namespace core {
  * \endrst
  */
 template <typename Arg>
-concept first_arg = impl::unqualified<Arg> && requires(Arg arg) {
+concept first_arg = impl::unqualified<Arg> && requires (Arg arg) {
   //
 
   requires std::is_trivially_copyable_v<Arg>;
@@ -2048,8 +2048,17 @@ namespace impl {
 
 // ----------------------------------------------- //
 
+/**
+ * @brief The negation of `first_arg`.
+ */
 template <typename T>
 concept not_first_arg = !first_arg<T>;
+
+/**
+ * @brief Check if a type is a `first_arg` with a specific tag.
+ */
+template <typename Arg, tag Tag>
+concept first_arg_tagged = first_arg<Arg> && tag_of<Arg> == Tag;
 
 // ----------------------------------------------- //
 
@@ -2117,7 +2126,7 @@ class [[nodiscard("packets must be co_awaited")]] packet : move_only<packet<Head
   /**
    * @brief Call the underlying async function with args.
    */
-  auto invoke(frame_block *parent) && -> frame_block *requires(tag_of<Head> != tag::root) {
+  auto invoke(frame_block *parent) && -> frame_block *requires (tag_of<Head> != tag::root) {
     auto tsk = std::apply(function_of<Head>{}, std::move(m_args));
     tsk.frame()->set_parent(parent);
     return tsk.frame();
@@ -2126,7 +2135,7 @@ class [[nodiscard("packets must be co_awaited")]] packet : move_only<packet<Head
   /**
    * @brief Call the underlying async function with args.
    */
-  auto invoke() && -> frame_block *requires(tag_of<Head> == tag::root) {
+  auto invoke() && -> frame_block *requires (tag_of<Head> == tag::root) {
     return std::apply(function_of<Head>{}, std::move(m_args)).frame();
   }
 
@@ -2148,6 +2157,33 @@ class [[nodiscard("packets must be co_awaited")]] packet : move_only<packet<Head
  private:
   [[no_unique_address]] std::tuple<Head, Tail &&...> m_args;
 };
+
+namespace detail {
+
+template <typename Packet>
+struct repack {};
+
+template <typename Head, typename... Args>
+using swap_head = basic_first_arg<eventually<value_of<packet<Head, Args...>>>, tag::call, function_of<Head>>;
+
+template <first_arg_tagged<tag::invoke> Head, typename... Args>
+  requires valid_packet<swap_head<Head, Args...>, Args...>
+struct repack<packet<Head, Args...>> : std::type_identity<packet<swap_head<Head, Args...>, Args...>> {
+  static_assert(std::is_void_v<return_of<Head>>, "Only void packets are expected to be repacked");
+};
+
+} // namespace detail
+
+template <typename Packet>
+using repack_t = typename detail::repack<Packet>::type;
+
+/**
+ * @brief Check if a void invoke packet with `value_type` `X` can be converted to a call packet with `return_type`
+ * `eventually<X>` without changing the `value_type` of the new packet.
+ */
+template <typename Packet>
+concept repackable = non_void<value_of<Packet>> && requires { typename detail::repack<Packet>::type; } &&
+                     std::same_as<value_of<Packet>, value_of<repack_t<Packet>>>;
 
 } // namespace impl
 
@@ -2196,6 +2232,7 @@ struct [[nodiscard("async functions must be called")]] async {
    * @brief Wrap the arguments into an awaitable (in an ``lf::task``) that triggers an invoke.
    */
   template <typename... Args>
+    requires impl::repackable<invoke_packet<Args...>>
   LF_STATIC_CALL constexpr auto operator()(Args &&...args) LF_STATIC_CONST noexcept -> invoke_packet<Args...> {
     return {{}, std::forward<Args>(args)...};
   }
@@ -2497,6 +2534,32 @@ struct call_awaitable : stdx::suspend_always {
 
 // -------------------------------------------------------------------------- //
 
+template <thread_context Context, repackable Packet>
+struct invoke_awaitable : stdx::suspend_always {
+ private:
+  using repack = repack_t<Packet>;
+
+ public:
+  auto await_suspend(stdx::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
+
+    LF_LOG("Invoking");
+
+    repack new_packet = std::move(m_packet).apply([&](auto, auto &&...args) -> repack {
+      return {{m_res}, std::forward<decltype(args)>(args)...};
+    });
+
+    return std::move(new_packet).template patch_with<Context>().invoke(parent)->coro();
+  }
+
+  [[nodiscard]] auto await_resume() -> value_of<repack> { return *std::move(m_res); }
+
+  frame_block *parent;
+  Packet m_packet;
+  eventually<value_of<repack>> m_res;
+};
+
+// -------------------------------------------------------------------------- //
+
 template <thread_context Context, bool IsRoot>
 struct join_awaitable {
  private:
@@ -2660,9 +2723,6 @@ auto final_await_suspend(frame_block *parent) noexcept -> std::coroutine_handle<
 
 } // namespace detail
 
-template <typename Arg, tag Tag>
-concept first_arg_tagged = first_arg<Arg> && tag_of<Arg> == Tag;
-
 /**
  * @brief Use to change a `first_arg` s tag to `tag::call`.
  */
@@ -2820,36 +2880,11 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
   constexpr auto await_transform(join_type) noexcept -> detail::join_awaitable<Context, Tag == tag::root> { return {this}; }
 
   /**
-   * @brief Transform an invoke packet into a call awaitable.
+   * @brief Transform an invoke packet into an invoke_awaitable.
    */
-  template <typename F, typename... Args>
-  constexpr auto await_transform(packet<basic_first_arg<void, tag::invoke, F>, Args...> &&packet) noexcept {
-
-    using old_packet_t = impl::packet<basic_first_arg<void, tag::invoke, F>, Args...>;
-    static_assert(non_void<value_of<old_packet_t>>, "async's call op should prevent this");
-    using new_packet_t = impl::packet<basic_first_arg<eventually<value_of<old_packet_t>>, tag::call, F>, Args...>;
-    static_assert(std::same_as<value_of<old_packet_t>, value_of<new_packet_t>>, "value_type dependent on first arg!");
-
-    struct awaitable : stdx::suspend_always {
-      auto await_suspend(stdx::coroutine_handle<>) noexcept -> stdx::coroutine_handle<> {
-
-        LF_LOG("Invoking");
-
-        new_packet_t new_packet = std::move(m_packet).apply([&](auto, Args &&...args) -> new_packet_t {
-          return {{m_res}, std::forward<Args>(args)...};
-        });
-
-        return std::move(new_packet).template patch_with<Context>().invoke(parent)->coro();
-      }
-
-      [[nodiscard]] auto await_resume() -> value_of<old_packet_t> { return *std::move(m_res); }
-
-      frame_block *parent;
-      old_packet_t m_packet;
-      eventually<value_of<old_packet_t>> m_res;
-    };
-
-    return awaitable{{}, this, std::move(packet), {}};
+  template <impl::non_reference Packet>
+  constexpr auto await_transform(Packet &&pack) noexcept -> detail::invoke_awaitable<Context, Packet> {
+    return {{}, this, std::forward<Packet>(pack), {}};
   }
 };
 
