@@ -14,7 +14,8 @@
 #include "libfork/macro.hpp"
 #include "libfork/utility.hpp"
 
-#include "libfork/core/task.hpp"
+#include "libfork/core/async.hpp"
+#include "libfork/core/meta.hpp"
 
 /**
  * @file call.hpp

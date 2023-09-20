@@ -140,7 +140,7 @@ class event_count : impl::immovable<event_count> {
    */
   template <typename Pred>
     requires std::is_invocable_r_v<bool, Pred const &>
-  void await(Pred const &condition);
+  void await(Pred const &condition) noexcept(std::is_nothrow_invocable_r_v<bool, Pred const &>);
 
  private:
   auto epoch() noexcept -> std::atomic<std::uint32_t> * {
@@ -212,7 +212,7 @@ inline void event_count::wait(key in_key) noexcept {
 
 template <class Pred>
   requires std::is_invocable_r_v<bool, Pred const &>
-void event_count::await(Pred const &condition) {
+void event_count::await(Pred const &condition) noexcept(std::is_nothrow_invocable_r_v<bool, Pred const &>) {
   //
   if (std::invoke(condition)) {
     return;

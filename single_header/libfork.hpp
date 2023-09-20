@@ -289,8 +289,8 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
-#ifndef E8D38B49_7170_41BC_90E9_6D6389714304
-#define E8D38B49_7170_41BC_90E9_6D6389714304
+#ifndef E91EA187_42EF_436C_A3FF_A86DE54BCDBE
+#define E91EA187_42EF_436C_A3FF_A86DE54BCDBE
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
 
@@ -300,6 +300,14 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include <array>
+#include <concepts>
+#include <functional>
+#include <memory>
+#include <source_location>
+#include <stdexcept>
+#include <tuple>
+#include <type_traits>
 #include <utility>
 #ifndef DF63D333_F8C0_4BBA_97E1_32A78466B8B7
 #define DF63D333_F8C0_4BBA_97E1_32A78466B8B7
@@ -665,8 +673,8 @@ constexpr auto apply_to(Tuple &&tup, F &&func) LF_HOF_RETURNS(std::apply(std::fo
 
 #endif /* DF63D333_F8C0_4BBA_97E1_32A78466B8B7 */
 
-#ifndef E91EA187_42EF_436C_A3FF_A86DE54BCDBE
-#define E91EA187_42EF_436C_A3FF_A86DE54BCDBE
+#ifndef D66BBECE_E467_4EB6_B74A_AAA2E7256E02
+#define D66BBECE_E467_4EB6_B74A_AAA2E7256E02
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
 
@@ -676,16 +684,825 @@ constexpr auto apply_to(Tuple &&tup, F &&func) LF_HOF_RETURNS(std::apply(std::fo
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <array>
+#ifndef BC7496D2_E762_43A4_92A3_F2AD10690569
+#define BC7496D2_E762_43A4_92A3_F2AD10690569
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <atomic>
 #include <concepts>
-#include <functional>
-#include <memory>
-#include <source_location>
-#include <stdexcept>
-#include <tuple>
 #include <type_traits>
 #include <utility>
 
+
+namespace lf {
+
+inline namespace ext {
+
+/**
+ * @brief A multi-producer, single-consumer intrusive list.
+ *
+ * This implementation is lock-free, allocates no memory and is optimized for weak memory models.
+ */
+template <typename T>
+class intrusive_list : impl::immovable<intrusive_list<T>> {
+ public:
+  /**
+   * @brief An intruded
+   */
+  class node : impl::immovable<node> {
+   public:
+    explicit constexpr node(T const &data) : m_data(data) {}
+
+    /**
+     * @brief Access the value stored in a node of the list.
+     */
+    friend auto unwrap(node *ptr) noexcept -> T & { return non_null(ptr)->m_data; }
+
+    /**
+     * @brief Call `func` on each unwrapped node linked in the list.
+     *
+     * The nodes will be processed in FILO order. This is a noop if `root` is `nullptr`.
+     */
+    template <std::invocable<T &> F>
+    friend constexpr void for_each(node *root, F &&func) noexcept(std::is_nothrow_invocable_v<F, T &>) {
+      for (; root;) {
+        // Have to be very careful here, we can't deference `walk` after
+        // we've called `func` as `func` could destroy the node.
+        auto next = root->m_next;
+        std::invoke(func, root->m_data);
+        root = next;
+      }
+    }
+
+   private:
+    friend class intrusive_list;
+
+    T m_data;
+    node *m_next;
+  };
+
+  /**
+   * @brief Push a new node, this can be called concurrently from any number of threads.
+   */
+  constexpr void push(node *new_node) noexcept {
+
+    node *stale_head = m_head.load(std::memory_order_relaxed);
+
+    for (;;) {
+      non_null(new_node)->m_next = stale_head;
+
+      if (m_head.compare_exchange_weak(stale_head, new_node, std::memory_order_release)) {
+        return;
+      }
+    }
+  }
+
+  /**
+   * @brief Pop all the nodes from the list and return a pointer to the root (`nullptr` if empty).
+   *
+   * Only the owner (thread) of the list can call this function.
+   */
+  constexpr auto try_pop_all() noexcept -> node * { return m_head.exchange(nullptr, std::memory_order_consume); }
+
+ private:
+  std::atomic<node *> m_head = nullptr;
+};
+
+template <typename T>
+using intrusive_node = typename intrusive_list<T>::node;
+
+} // namespace ext
+
+} // namespace lf
+
+#endif /* BC7496D2_E762_43A4_92A3_F2AD10690569 */
+#ifndef C5C3AA77_D533_4A89_8D33_99BD819C1B4C
+#define C5C3AA77_D533_4A89_8D33_99BD819C1B4C
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <atomic>
+#include <bit>
+#include <concepts>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <memory>
+#include <new>
+#include <type_traits>
+#include <utility>
+
+#ifndef FE9C96B0_5DDD_4438_A3B0_E77BD54F8673
+#define FE9C96B0_5DDD_4438_A3B0_E77BD54F8673
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <version>
+
+/**
+ * @file coroutine.hpp
+ *
+ * @brief Includes \<coroutine\> or \<experimental/coroutine\> depending on the compiler.
+ */
+
+#ifndef __has_include
+  #error "Missing __has_include macro!"
+#endif
+
+// NOLINTBEGIN
+
+#if __has_include(<coroutine>) // Check for a standard library
+  #include <coroutine>
+namespace lf {
+namespace stdx = std;
+}
+#elif __has_include(<experimental/coroutine>) // Check for an experimental version.
+  #include <experimental/coroutine>
+namespace lf {
+namespace stdx = std::experimental;
+}
+#else
+  #error "Missing <coroutine> header!"
+#endif
+
+// NOLINTEND
+
+#endif /* FE9C96B0_5DDD_4438_A3B0_E77BD54F8673 */
+
+
+/**
+ * @file stack.hpp
+ *
+ * @brief Provides the core elements of the async cactus-stack an thread-local memory.
+ *
+ * This is almost entirely an implementation detail, the `frame_block *` interface is unsafe.
+ */
+
+namespace lf {
+
+// -------------------- async stack -------------------- //
+
+inline namespace ext {
+
+class async_stack;
+
+} // namespace ext
+
+namespace impl {
+
+static constexpr std::size_t k_stack_size = 4 * k_kibibyte * LF_ASYNC_STACK_SIZE;
+
+/**
+ * @brief Get a pointer to the end of a stack's buffer.
+ */
+auto stack_as_bytes(async_stack *stack) noexcept -> std::byte *;
+/**
+ * @brief Convert a pointer to a stack's sentinel `frame_block` to a pointer to the stack.
+ */
+auto bytes_to_stack(std::byte *bytes) noexcept -> async_stack *;
+
+} // namespace impl
+
+inline namespace ext {
+
+/**
+ * @brief A fraction of a thread's cactus stack.
+ */
+class async_stack : impl::immovable<async_stack> {
+  alignas(impl::k_new_align) std::byte m_buf[impl::k_stack_size]; // NOLINT
+
+  friend auto impl::stack_as_bytes(async_stack *stack) noexcept -> std::byte *;
+
+  friend auto impl::bytes_to_stack(std::byte *bytes) noexcept -> async_stack *;
+};
+
+static_assert(std::is_standard_layout_v<async_stack>);
+static_assert(sizeof(async_stack) == impl::k_stack_size, "Spurious padding in async_stack!");
+
+} // namespace ext
+
+namespace impl {
+
+inline auto stack_as_bytes(async_stack *stack) noexcept -> std::byte * { return std::launder(stack->m_buf + k_stack_size); }
+
+inline auto bytes_to_stack(std::byte *bytes) noexcept -> async_stack * {
+#ifdef __cpp_lib_is_pointer_interconvertible
+  static_assert(std::is_pointer_interconvertible_with_class(&async_stack::m_buf));
+#endif
+  return std::launder(std::bit_cast<async_stack *>(bytes - k_stack_size));
+}
+
+// ----------------------------------------------- //
+
+/**
+ * @brief This namespace contains `inline thread_local constinit` variables and functions to manipulate them.
+ */
+namespace tls {
+
+template <typename Context>
+constinit inline thread_local Context *ctx = nullptr;
+
+constinit inline thread_local std::byte *asp = nullptr;
+
+/**
+ * @brief Set `tls::asp` to point at `frame`.
+ *
+ * It must currently be pointing at a sentinel.
+ */
+template <typename Context>
+inline void eat(std::byte *top) {
+  LF_LOG("Thread eats a stack");
+  LF_ASSERT(tls::asp);
+  std::byte *prev = std::exchange(tls::asp, top);
+  LF_ASSERT(prev != top);
+  async_stack *stack = bytes_to_stack(prev);
+  ctx<Context>->stack_push(stack);
+}
+
+} // namespace tls
+
+// ----------------------------------------------- //
+
+/**
+ * @brief A base class that (compile-time) conditionally adds debugging information.
+ */
+struct debug_block {
+  // Increase the debug counter
+  constexpr void debug_inc() noexcept {
+#ifndef NDEBUG
+    ++m_count;
+#endif
+  }
+
+  // Fetch the debug count
+  [[nodiscard]] constexpr auto debug_count() const noexcept -> std::int32_t {
+#ifndef NDEBUG
+    return m_count;
+#else
+    return 0;
+#endif
+  }
+
+  // Reset the debug counter
+  constexpr void debug_reset() noexcept {
+#ifndef NDEBUG
+    m_count = 0;
+#endif
+  }
+
+#ifndef NDEBUG
+ private:
+  std::int32_t m_count = 0; ///< Number of forks/calls (debug).
+#endif
+};
+
+static_assert(std::is_trivially_destructible_v<debug_block>);
+
+// ----------------------------------------------- //
+
+/**
+ * @brief A small bookkeeping struct which is a member of each task's promise.
+ */
+struct frame_block : private impl::immovable<frame_block>, impl::debug_block {
+  /**
+   * @brief Resume a stolen task.
+   *
+   * When this function returns this worker will have run out of tasks.
+   */
+  void resume_stolen() noexcept {
+    LF_LOG("Call to resume on stolen task");
+    LF_ASSERT(impl::tls::asp);
+    m_steal += 1;
+    coro().resume();
+  }
+  /**
+   * @brief Resume an external task.
+   *
+   * When this function returns this worker will have run out of tasks
+   * and their asp will be pointing at a sentinel.
+   */
+  template <typename Context>
+  inline void resume_external() noexcept {
+
+    LF_LOG("Call to resume on external task");
+
+    LF_ASSERT(impl::tls::asp);
+
+    if (!is_root()) {
+      impl::tls::eat<Context>(top());
+    } else {
+      LF_LOG("External was root");
+    }
+
+    coro().resume();
+
+    LF_ASSERT(impl::tls::asp);
+    LF_ASSERT(impl::tls::ctx<Context>);
+    LF_ASSERT(!impl::tls::ctx<Context>->task_pop());
+  }
+
+// protected:
+/**
+ * @brief Construct a frame block.
+ *
+ * Pass ``top == nullptr`` if this is on the heap. Non-root tasks will need to call ``set_parent(...)``.
+ */
+#ifndef LF_COROUTINE_OFFSET
+  frame_block(stdx::coroutine_handle<> coro, std::byte *top) : m_coro{coro}, m_top(top) { LF_ASSERT(coro); }
+#else
+  frame_block(stdx::coroutine_handle<>, std::byte *top) : m_top(top) {}
+#endif
+
+  /**
+   * @brief Set the pointer to the parent frame.
+   */
+  void set_parent(frame_block *parent) noexcept {
+    LF_ASSERT(!m_parent);
+    m_parent = impl::non_null(parent);
+  }
+
+  /**
+   * @brief Get a pointer to the parent frame.
+   *
+   * Only valid if this is not a root frame.
+   */
+  [[nodiscard]] auto parent() const noexcept -> frame_block * {
+    LF_ASSERT(!is_root());
+    return impl::non_null(m_parent);
+  }
+
+  /**
+   * @brief Get a pointer to the top of the top of the async-stack this frame was allocated on.
+   *
+   * Only valid if this is not a root frame.
+   */
+  [[nodiscard]] auto top() const noexcept -> std::byte * {
+    LF_ASSERT(!is_root());
+    return impl::non_null(m_top);
+  }
+
+  struct local_t {
+    bool is_root;
+    std::byte *top;
+  };
+
+  /**
+   * @brief Like `is_root()` and `top()` but valid for root frames.
+   *
+   * Note that if this is a root frame then the pointer to the top of the async-stack has an undefined value.
+   */
+  [[nodiscard]] auto locale() const noexcept -> local_t { return {is_root(), m_top}; }
+
+  /**
+   * @brief Get the coroutine handle for this frames coroutine.
+   */
+  [[nodiscard]] auto coro() noexcept -> stdx::coroutine_handle<> {
+#ifndef LF_COROUTINE_OFFSET
+    return m_coro;
+#else
+    return stdx::coroutine_handle<>::from_address(byte_cast(this) - LF_COROUTINE_OFFSET);
+#endif
+  }
+
+  /**
+   * @brief Perform a `.load(order)` on the atomic join counter.
+   */
+  [[nodiscard]] auto load_joins(std::memory_order order) const noexcept -> std::uint32_t { return m_join.load(order); }
+
+  /**
+   * @brief Perform a `.fetch_sub(val, order)` on the atomic join counter.
+   */
+  auto fetch_sub_joins(std::uint32_t val, std::memory_order order) noexcept -> std::uint32_t {
+    return m_join.fetch_sub(val, order);
+  }
+
+  /**
+   * @brief Get the number of times this frame has been stolen.
+   */
+  [[nodiscard]] auto steals() const noexcept -> std::uint32_t { return m_steal; }
+
+  /**
+   * @brief Check if this is a root frame.
+   */
+  [[nodiscard]] auto is_root() const noexcept -> bool { return m_parent == nullptr; }
+
+  /**
+   * @brief Reset the join and steal counters, must be outside a fork-join region.
+   */
+  void reset() noexcept {
+
+    LF_ASSERT(m_steal != 0); // Reset not needed if steal is zero.
+
+    m_steal = 0;
+
+    static_assert(std::is_trivially_destructible_v<decltype(m_join)>);
+    // Use construct_at(...) to set non-atomically as we know we are the
+    // only thread who can touch this control block until a steal which
+    // would provide the required memory synchronization.
+    std::construct_at(&m_join, impl::k_u32_max);
+  }
+
+ private:
+#ifndef LF_COROUTINE_OFFSET
+  stdx::coroutine_handle<> m_coro;
+#endif
+
+  std::byte *m_top;                              ///< Needs to be separate in-case allocation elided.
+  frame_block *m_parent = nullptr;               ///< Same ^
+  std::atomic_uint32_t m_join = impl::k_u32_max; ///< Number of children joined (with offset).
+  std::uint32_t m_steal = 0;                     ///< Number of steals.
+};
+
+static_assert(alignof(frame_block) <= impl::k_new_align, "Will be allocated above a coroutine-frame");
+static_assert(std::is_trivially_destructible_v<frame_block>);
+
+} // namespace impl
+
+// ----------------------------------------------- //
+
+namespace impl::tls {} // namespace impl::tls
+
+// ----------------------------------------------- //
+
+namespace impl {
+
+// ----------------------------------------------- //
+
+/**
+ * @brief A base class for promises that allocates on the heap.
+ */
+struct promise_alloc_heap : frame_block {
+ protected:
+  explicit promise_alloc_heap(stdx::coroutine_handle<> self) noexcept : frame_block{self, nullptr} {}
+};
+
+// ----------------------------------------------- //
+
+/**
+ * @brief A base class for promises that allocates on an `async_stack`.
+ *
+ * When a promise deriving from this class is constructed 'tls::asp' will be set and when it is destroyed 'tls::asp'
+ * will be returned to the previous frame.
+ */
+struct promise_alloc_stack : frame_block {
+
+  // Convert an alignment to a std::uintptr_t, ensure its is a power of two and >= k_new_align.
+  //  static auto unwrap(std::align_val_t al) noexcept -> std::uintptr_t {
+  //   auto align = static_cast<std::underlying_type_t<std::align_val_t>>(al);
+  //   LF_ASSERT(std::has_single_bit(align));
+  //   LF_ASSERT(align > 0);
+  //   return std::max(align, impl::k_new_align);
+  // }
+
+ protected:
+  explicit promise_alloc_stack(stdx::coroutine_handle<> self) noexcept : frame_block{self, tls::asp} {}
+
+ public:
+  /**
+   * @brief Allocate the coroutine on the current `async_stack`.
+   *
+   * This will update `tls::asp` to point to the top of the new async stack.
+   */
+  [[nodiscard]] LF_FORCEINLINE static auto operator new(std::size_t size) -> void * {
+    LF_ASSERT(tls::asp);
+    tls::asp -= (size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
+    LF_LOG("Allocating {} bytes on stack from {}", size, (void *)tls::asp);
+    return tls::asp;
+  }
+
+  /**
+   * @brief Deallocate the coroutine on the current `async_stack`.
+   */
+  LF_FORCEINLINE static void operator delete(void *ptr, std::size_t size) {
+    LF_ASSERT(ptr == tls::asp);
+    tls::asp += (size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
+    LF_LOG("Deallocating {} bytes on stack to {}", size, (void *)tls::asp);
+  }
+};
+
+} // namespace impl
+
+inline namespace ext {
+
+/**
+ * @brief A type safe wrapper around a handle to a stealable coroutine.
+ *
+ * \rst
+ *
+ * .. warning::
+ *
+ *    A pointer to an `task_h` must never be dereferenced, only ever passed to `resume()`.
+ *
+ * \endrst
+ */
+template <typename Context>
+struct task_h {
+  /**
+   * @brief Only a worker who has called `worker_init(Context *)` can resume this task.
+   */
+  friend void resume(task_h *ptr) noexcept {
+    LF_ASSERT(impl::tls::ctx<Context>);
+    LF_ASSERT(impl::tls::asp);
+    std::bit_cast<impl::frame_block *>(ptr)->resume_stolen();
+  }
+};
+
+/**
+ * @brief A type safe wrapper around a handle to a coroutine that is at a submission point.
+ *
+ * \rst
+ *
+ * .. warning::
+ *
+ *    A pointer to an `submit_h` must never be dereferenced, only ever passed to `resume()`.
+ *
+ * \endrst
+ */
+template <typename Context>
+struct submit_h {
+  /**
+   * @brief Only a worker who has called `worker_init(Context *)` can resume this task.
+   */
+  friend void resume(submit_h *ptr) noexcept {
+    LF_ASSERT(impl::tls::ctx<Context>);
+    LF_ASSERT(impl::tls::asp);
+    std::bit_cast<impl::frame_block *>(ptr)->template resume_external<Context>();
+  }
+};
+
+// --------------------------------------------------------- //
+
+/**
+ * @brief Initialize thread-local variables before a worker can resume submitted tasks.
+ *
+ * .. warning::
+ *    These should be cleaned up with `worker_finalize(...)`.
+ */
+template <typename Context>
+LF_NOINLINE void worker_init(Context *context) {
+
+  LF_LOG("Initializing worker");
+
+  LF_ASSERT(context);
+  LF_ASSERT(!impl::tls::ctx<Context>);
+  LF_ASSERT(!impl::tls::asp);
+
+  impl::tls::ctx<Context> = context;
+  impl::tls::asp = impl::stack_as_bytes(context->stack_pop());
+}
+
+/**
+ * @brief Clean-up thread-local variable before destructing a worker's context.
+ *
+ * .. warning::
+ *    These must be initialized with `worker_init(...)`.
+ */
+template <typename Context>
+LF_NOINLINE void worker_finalize(Context *context) {
+
+  LF_LOG("Finalizing worker");
+
+  LF_ASSERT(context == impl::tls::ctx<Context>);
+  LF_ASSERT(impl::tls::asp);
+
+  context->stack_push(impl::bytes_to_stack(impl::tls::asp));
+
+  impl::tls::asp = nullptr;
+  impl::tls::ctx<Context> = nullptr;
+}
+
+// ------------------------------------------------- //
+
+} // namespace ext
+
+} // namespace lf
+
+#endif /* C5C3AA77_D533_4A89_8D33_99BD819C1B4C */
+
+
+/**
+ * @file meta.hpp
+ *
+ * @brief Provides interfaces and meta programming utilities.
+ */
+
+namespace lf {
+
+inline namespace ext {
+
+// ----------------------------------------------------- //
+
+/**
+ * @brief An alias for a `submit_h<Context> *` stored in a linked list.
+ */
+template <typename Context>
+using intruded_h = intrusive_node<submit_h<Context> *>;
+
+// ------------------------------------------------------ //
+
+/**
+ * @brief A concept which defines the context interface.
+ *
+ * A context owns a LIFO stack of ``lf::async_stack``s and a LIFO stack of
+ * tasks. The stack of ``lf::async_stack``s is expected to never be empty, it
+ * should always be able to return an empty ``lf::async_stack``.
+ */
+template <typename Context>
+concept thread_context = requires (Context ctx, async_stack *stack, intruded_h<Context> *ext, task_h<Context> *task) {
+  { ctx.max_threads() } -> std::same_as<std::size_t>;           // The maximum number of threads.
+  { ctx.submit(ext) };                                          // Submit an external task to the context.
+  { ctx.task_pop() } -> std::convertible_to<task_h<Context> *>; // If the stack is empty, return a null pointer.
+  { ctx.task_push(task) };                                      // Push a non-null pointer.
+  { ctx.stack_pop() } -> std::convertible_to<async_stack *>;    // Return a non-null pointer
+  { ctx.stack_push(stack) };                                    // Push a non-null pointer
+};
+
+namespace detail {
+
+// clang-format off
+
+template <thread_context Context>
+static consteval auto always_single_threaded() -> bool {
+  if constexpr (requires { Context::max_threads(); }) {
+    if constexpr (impl::constexpr_callable<[] { Context::max_threads(); }>) {
+      return Context::max_threads() == 1;
+    }
+  }
+  return false;
+}
+
+// clang-format on
+
+} // namespace detail
+
+template <typename Context>
+concept single_thread_context = thread_context<Context> && detail::always_single_threaded<Context>();
+
+} // namespace ext
+
+inline namespace core {
+
+// ----------------------------------------------- //
+
+/**
+ * @brief An enumeration that determines the behavior of a coroutine's promise.
+ *
+ * You can inspect the first arg of an async function to determine the tag.
+ */
+enum class tag {
+  root,   ///< This coroutine is a root task (allocated on heap) from an ``lf::sync_wait``.
+  call,   ///< Non root task (on a virtual stack) from an ``lf::call``, completes synchronously.
+  fork,   ///< Non root task (on a virtual stack) from an ``lf::fork``, completes asynchronously.
+  invoke, ///< Equivalent to ``lf::call`` but caches the return (extra move required).
+  tail,   ///< Force a [tail-call](https://en.wikipedia.org/wiki/Tail_call) optimization.
+};
+
+// ------------------------ Helpers ----------------------- //
+
+/**
+ * @brief A helper to fetch `typename std::remove_cvref_t<T>::context_type`.
+ */
+template <typename T>
+  requires requires { requires thread_context<typename std::remove_cvref_t<T>::context_type>; }
+using context_of = typename std::remove_cvref_t<T>::context_type;
+
+/**
+ * @brief A helper to fetch `typename std::remove_cvref_t<T>::return_type`.
+ */
+template <typename T>
+  requires requires { typename std::remove_cvref_t<T>::return_type; }
+using return_of = typename std::remove_cvref_t<T>::return_type;
+
+/**
+ * @brief A helper to fetch `typename std::remove_cvref_t<T>::function_type`.
+ */
+template <typename T>
+  requires requires { typename std::remove_cvref_t<T>::function_type; }
+using function_of = typename std::remove_cvref_t<T>::function_type;
+
+/**
+ * @brief A helper to fetch `std::remove_cvref_t<T>::tag_value`.
+ */
+template <typename T>
+  requires requires {
+    { std::remove_cvref_t<T>::tag_value } -> std::convertible_to<tag>;
+  }
+inline constexpr tag tag_of = std::remove_cvref_t<T>::tag_value;
+
+/**
+ * @brief A helper to fetch `typename std::remove_cvref_t<T>::value_type`.
+ */
+template <typename T>
+  requires requires { typename std::remove_cvref_t<T>::value_type; }
+using value_of = typename std::remove_cvref_t<T>::value_type;
+
+// -------------------------- Forward declaration -------------------------- //
+
+/**
+ * @brief Check if an invocable is suitable for use as an `lf::async` function.
+ */
+template <typename T>
+concept stateless = std::is_class_v<T> && std::is_trivial_v<T> && std::is_empty_v<T>;
+
+// See "async.hpp" for the definition.
+
+template <stateless Fn>
+struct [[nodiscard("async functions must be called")]] async;
+
+// -------------------------- First arg static interface -------------------------- //
+
+} // namespace core
+
+namespace impl {
+
+/**
+ * @brief Detect what kind of async function a type can be cast to.
+ */
+template <typename T>
+consteval auto implicit_cast_to_async(async<T>) -> T;
+
+} // namespace impl
+
+inline namespace core {
+
+/**
+ * @brief The API of the first argument passed to an async function.
+ *
+ * All async functions must have a templated first arguments, this argument will be generated by the compiler and encodes
+ * many useful/queryable properties. A full specification is give below:
+ *
+ * \rst
+ *
+ * .. include:: ../../include/libfork/core/task.hpp
+ *    :code:
+ *    :start-line: 220
+ *    :end-line: 241
+ *
+ * \endrst
+ */
+template <typename Arg>
+concept first_arg = impl::unqualified<Arg> && requires (Arg arg) {
+  //
+
+  requires std::is_trivially_copyable_v<Arg>;
+
+  tag_of<Arg>;
+
+  typename context_of<Arg>;
+  typename return_of<Arg>;
+  typename function_of<Arg>;
+
+  requires !std::is_reference_v<return_of<Arg>>;
+
+  { std::remove_cvref_t<Arg>::context() } -> std::same_as<context_of<Arg> *>;
+
+  requires impl::is_void<return_of<Arg>> || requires {
+    { arg.address() } -> std::convertible_to<return_of<Arg> *>;
+  };
+
+  { impl::implicit_cast_to_async(arg) } -> std::same_as<function_of<Arg>>;
+};
+
+} // namespace core
+
+namespace impl {
+
+/**
+ * @brief The negation of `first_arg`.
+ */
+template <typename T>
+concept not_first_arg = !first_arg<T>;
+
+/**
+ * @brief Check if a type is a `first_arg` with a specific tag.
+ */
+template <typename Arg, tag Tag>
+concept first_arg_tagged = first_arg<Arg> && tag_of<Arg> == Tag;
+
+} // namespace impl
+
+} // namespace lf
+
+#endif /* D66BBECE_E467_4EB6_B74A_AAA2E7256E02 */
 #ifndef EE6A2701_7559_44C9_B708_474B1AE823B2
 #define EE6A2701_7559_44C9_B708_474B1AE823B2
 
@@ -1269,634 +2086,12 @@ struct promise_result : protected impl::maybe_ptr<R> {
 } // namespace lf
 
 #endif /* EE6A2701_7559_44C9_B708_474B1AE823B2 */
-#ifndef C5C3AA77_D533_4A89_8D33_99BD819C1B4C
-#define C5C3AA77_D533_4A89_8D33_99BD819C1B4C
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <atomic>
-#include <bit>
-#include <concepts>
-#include <cstddef>
-#include <cstdint>
-#include <limits>
-#include <memory>
-#include <new>
-#include <type_traits>
-#include <utility>
-
-#ifndef FE9C96B0_5DDD_4438_A3B0_E77BD54F8673
-#define FE9C96B0_5DDD_4438_A3B0_E77BD54F8673
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <version>
-
-/**
- * @file coroutine.hpp
- *
- * @brief Includes \<coroutine\> or \<experimental/coroutine\> depending on the compiler.
- */
-
-#ifndef __has_include
-  #error "Missing __has_include macro!"
-#endif
-
-// NOLINTBEGIN
-
-#if __has_include(<coroutine>) // Check for a standard library
-  #include <coroutine>
-namespace lf {
-namespace stdx = std;
-}
-#elif __has_include(<experimental/coroutine>) // Check for an experimental version.
-  #include <experimental/coroutine>
-namespace lf {
-namespace stdx = std::experimental;
-}
-#else
-  #error "Missing <coroutine> header!"
-#endif
-
-// NOLINTEND
-
-#endif /* FE9C96B0_5DDD_4438_A3B0_E77BD54F8673 */
-#ifndef BC7496D2_E762_43A4_92A3_F2AD10690569
-#define BC7496D2_E762_43A4_92A3_F2AD10690569
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <atomic>
-#include <concepts>
-#include <type_traits>
-#include <utility>
-
-
-namespace lf {
-
-inline namespace ext {
-
-/**
- * @brief A multi-producer, single-consumer intrusive list.
- *
- * This implementation is lock-free, allocates no memory and is optimized for weak memory models.
- */
-template <typename T>
-class intrusive_list : impl::immovable<intrusive_list<T>> {
- public:
-  /**
-   * @brief An intruded
-   */
-  class node : impl::immovable<node> {
-   public:
-    explicit constexpr node(T const &data) : m_data(data) {}
-
-    constexpr auto get() noexcept -> T & { return m_data; }
-
-   private:
-    friend class intrusive_list;
-
-    T m_data;
-    node *m_next;
-  };
-
-  /**
-   * @brief Push a new node, this can be called concurrently from any number of threads.
-   */
-  constexpr void push(node *new_node) noexcept {
-
-    node *stale_head = m_head.load(std::memory_order_relaxed);
-
-    for (;;) {
-      non_null(new_node)->m_next = stale_head;
-
-      if (m_head.compare_exchange_weak(stale_head, new_node, std::memory_order_release)) {
-        return;
-      }
-    }
-  }
-
-  /**
-   * @brief Pop all the nodes from the list and call `func` on each of them.
-   *
-   * Only the owner (thread) of the list can call this function. The nodes will be processed in FILO order.
-   *
-   * @return `false` if the list was empty, `true` otherwise.
-   */
-  template <typename F>
-    requires std::is_nothrow_invocable_v<F, T &>
-  constexpr auto consume(F &&func) noexcept -> bool {
-
-    node *last = m_head.exchange(nullptr, std::memory_order_consume);
-
-    for (node *walk = last; walk;) {
-      // Have to be very careful here, we can't deference `walk` after
-      // we've called `func` as `func` could destroy the node.
-      auto next = walk->m_next;
-      std::invoke(func, walk->m_data);
-      walk = next;
-    }
-
-    return last != nullptr;
-  }
-
- private:
-  std::atomic<node *> m_head = nullptr;
-};
-
-template <typename T>
-using intrusive_node = typename intrusive_list<T>::node;
-
-} // namespace ext
-
-} // namespace lf
-
-#endif /* BC7496D2_E762_43A4_92A3_F2AD10690569 */
-
-
-/**
- * @file stack.hpp
- *
- * @brief Provides an async cactus-stack, control blocks and memory management utilities.
- */
-
-namespace lf {
-
-// -------------------- async stack -------------------- //
-
-inline namespace ext {
-
-class async_stack;
-
-} // namespace ext
-
-namespace impl {
-
-static constexpr std::size_t k_stack_size = 4 * k_kibibyte * LF_ASYNC_STACK_SIZE;
-
-/**
- * @brief Get a pointer to the end of a stack's buffer.
- */
-auto stack_as_bytes(async_stack *stack) noexcept -> std::byte *;
-/**
- * @brief Convert a pointer to a stack's sentinel `frame_block` to a pointer to the stack.
- */
-auto bytes_to_stack(std::byte *bytes) noexcept -> async_stack *;
-
-} // namespace impl
-
-inline namespace ext {
-
-/**
- * @brief A fraction of a thread's cactus stack.
- */
-class async_stack : impl::immovable<async_stack> {
-  alignas(impl::k_new_align) std::byte m_buf[impl::k_stack_size]; // NOLINT
-
-  friend auto impl::stack_as_bytes(async_stack *stack) noexcept -> std::byte *;
-
-  friend auto impl::bytes_to_stack(std::byte *bytes) noexcept -> async_stack *;
-};
-
-static_assert(std::is_standard_layout_v<async_stack>);
-static_assert(sizeof(async_stack) == impl::k_stack_size, "Spurious padding in async_stack!");
-
-} // namespace ext
-
-namespace impl {
-
-inline auto stack_as_bytes(async_stack *stack) noexcept -> std::byte * { return std::launder(stack->m_buf + k_stack_size); }
-
-inline auto bytes_to_stack(std::byte *bytes) noexcept -> async_stack * {
-#ifdef __cpp_lib_is_pointer_interconvertible
-  static_assert(std::is_pointer_interconvertible_with_class(&async_stack::m_buf));
-#endif
-  return std::launder(std::bit_cast<async_stack *>(bytes - k_stack_size));
-}
-
-} // namespace impl
-
-// ---------------------------------------- //
-
-inline namespace ext {
-
-struct frame_block;
-
-/**
- * @brief A concept which defines the context interface.
- *
- * A context owns a LIFO stack of ``lf::async_stack``s and a LIFO stack of
- * tasks. The stack of ``lf::async_stack``s is expected to never be empty, it
- * should always be able to return an empty ``lf::async_stack``.
- */
-template <typename Context>
-concept thread_context = requires (Context ctx, async_stack *stack, intrusive_node<frame_block *> *ext, frame_block *task) {
-  { ctx.max_threads() } -> std::same_as<std::size_t>;        // The maximum number of threads.
-  { ctx.submit(ext) };                                       // Submit an external task to the context.
-  { ctx.task_pop() } -> std::convertible_to<frame_block *>;  // If the stack is empty, return a null pointer.
-  { ctx.task_push(task) };                                   // Push a non-null pointer.
-  { ctx.stack_pop() } -> std::convertible_to<async_stack *>; // Return a non-null pointer
-  { ctx.stack_push(stack) };                                 // Push a non-null pointer
-};
-
-namespace detail {
-
-// clang-format off
-
-template <thread_context Context>
-static consteval auto always_single_threaded() -> bool {
-  if constexpr (requires { Context::max_threads(); }) {
-    if constexpr (impl::constexpr_callable<[] { Context::max_threads(); }>) {
-      return Context::max_threads() == 1;
-    }
-  }
-  return false;
-}
-
-// clang-format on
-
-} // namespace detail
-
-template <typename Context>
-concept single_thread_context = thread_context<Context> && detail::always_single_threaded<Context>();
-
-} // namespace ext
-
-// ----------------------------------------------- //
-
-/**
- * @brief This namespace contains `inline thread_local constinit` variables and functions to manipulate them.
- */
-namespace impl::tls {
-
-template <thread_context Context>
-constinit inline thread_local Context *ctx = nullptr;
-
-constinit inline thread_local std::byte *asp = nullptr;
-
-} // namespace impl::tls
-
-// ----------------------------------------------- //
-
-namespace impl {
-
-/**
- * @brief A base class that (compile-time) conditionally adds debugging information.
- */
-struct debug_block {
-  // Increase the debug counter
-  constexpr void debug_inc() noexcept {
-#ifndef NDEBUG
-    ++m_count;
-#endif
-  }
-
-  // Fetch the debug count
-  [[nodiscard]] constexpr auto debug_count() const noexcept -> std::int32_t {
-#ifndef NDEBUG
-    return m_count;
-#else
-    return 0;
-#endif
-  }
-
-  // Reset the debug counter
-  constexpr void debug_reset() noexcept {
-#ifndef NDEBUG
-    m_count = 0;
-#endif
-  }
-
-#ifndef NDEBUG
- private:
-  std::int32_t m_count = 0; ///< Number of forks/calls (debug).
-#endif
-};
-
-static_assert(std::is_trivially_destructible_v<debug_block>);
-
-} // namespace impl
-
-// ----------------------------------------------- //
-
-inline namespace ext {
-
-/**
- * @brief A small bookkeeping struct which is a member of each task's promise.
- */
-struct frame_block : private impl::immovable<frame_block>, impl::debug_block {
-  /**
-   * @brief Resume a stolen task.
-   *
-   * When this function returns this worker will have run out of tasks.
-   */
-  void resume_stolen() noexcept {
-    LF_LOG("Call to resume on stolen task");
-    LF_ASSERT(impl::tls::asp);
-    m_steal += 1;
-    coro().resume();
-  }
-  /**
-   * @brief Resume an external task.
-   *
-   * When this function returns this worker will have run out of tasks
-   * and their asp will be pointing at a sentinel.
-   */
-  template <thread_context Context>
-  inline void resume_external() noexcept;
-
-// protected:
-/**
- * @brief Construct a frame block.
- *
- * Pass ``top == nullptr`` if this is on the heap. Non-root tasks will need to call ``set_parent(...)``.
- */
-#ifndef LF_COROUTINE_OFFSET
-  frame_block(stdx::coroutine_handle<> coro, std::byte *top) : m_coro{coro}, m_top(top) { LF_ASSERT(coro); }
-#else
-  frame_block(stdx::coroutine_handle<>, std::byte *top) : m_top(top) {}
-#endif
-
-  /**
-   * @brief Set the pointer to the parent frame.
-   */
-  void set_parent(frame_block *parent) noexcept {
-    LF_ASSERT(!m_parent);
-    m_parent = impl::non_null(parent);
-  }
-
-  /**
-   * @brief Get a pointer to the parent frame.
-   *
-   * Only valid if this is not a root frame.
-   */
-  [[nodiscard]] auto parent() const noexcept -> frame_block * {
-    LF_ASSERT(!is_root());
-    return impl::non_null(m_parent);
-  }
-
-  /**
-   * @brief Get a pointer to the top of the top of the async-stack this frame was allocated on.
-   *
-   * Only valid if this is not a root frame.
-   */
-  [[nodiscard]] auto top() const noexcept -> std::byte * {
-    LF_ASSERT(!is_root());
-    return impl::non_null(m_top);
-  }
-
-  struct local_t {
-    bool is_root;
-    std::byte *top;
-  };
-
-  /**
-   * @brief Like `is_root()` and `top()` but valid for root frames.
-   *
-   * Note that if this is a root frame then the pointer to the top of the async-stack has an undefined value.
-   */
-  [[nodiscard]] auto locale() const noexcept -> local_t { return {is_root(), m_top}; }
-
-  /**
-   * @brief Get the coroutine handle for this frames coroutine.
-   */
-  [[nodiscard]] auto coro() noexcept -> stdx::coroutine_handle<> {
-#ifndef LF_COROUTINE_OFFSET
-    return m_coro;
-#else
-    return stdx::coroutine_handle<>::from_address(byte_cast(this) - LF_COROUTINE_OFFSET);
-#endif
-  }
-
-  /**
-   * @brief Perform a `.load(order)` on the atomic join counter.
-   */
-  [[nodiscard]] auto load_joins(std::memory_order order) const noexcept -> std::uint32_t { return m_join.load(order); }
-
-  /**
-   * @brief Perform a `.fetch_sub(val, order)` on the atomic join counter.
-   */
-  auto fetch_sub_joins(std::uint32_t val, std::memory_order order) noexcept -> std::uint32_t {
-    return m_join.fetch_sub(val, order);
-  }
-
-  /**
-   * @brief Get the number of times this frame has been stolen.
-   */
-  [[nodiscard]] auto steals() const noexcept -> std::uint32_t { return m_steal; }
-
-  /**
-   * @brief Check if this is a root frame.
-   */
-  [[nodiscard]] auto is_root() const noexcept -> bool { return m_parent == nullptr; }
-
-  /**
-   * @brief Reset the join and steal counters, must be outside a fork-join region.
-   */
-  void reset() noexcept {
-
-    LF_ASSERT(m_steal != 0); // Reset not needed if steal is zero.
-
-    m_steal = 0;
-
-    static_assert(std::is_trivially_destructible_v<decltype(m_join)>);
-    // Use construct_at(...) to set non-atomically as we know we are the
-    // only thread who can touch this control block until a steal which
-    // would provide the required memory synchronization.
-    std::construct_at(&m_join, impl::k_u32_max);
-  }
-
- private:
-#ifndef LF_COROUTINE_OFFSET
-  stdx::coroutine_handle<> m_coro;
-#endif
-
-  std::byte *m_top;                              ///< Needs to be separate in-case allocation elided.
-  frame_block *m_parent = nullptr;               ///< Same ^
-  std::atomic_uint32_t m_join = impl::k_u32_max; ///< Number of children joined (with offset).
-  std::uint32_t m_steal = 0;                     ///< Number of steals.
-};
-
-static_assert(alignof(frame_block) <= impl::k_new_align, "Will be allocated above a coroutine-frame");
-static_assert(std::is_trivially_destructible_v<frame_block>);
-
-} // namespace ext
-
-// ----------------------------------------------- //
-
-namespace impl::tls {
-
-/**
- * @brief Set `tls::asp` to point at `frame`.
- *
- * It must currently be pointing at a sentinel.
- */
-template <thread_context Context>
-inline void eat(std::byte *top) {
-  LF_LOG("Thread eats a stack");
-  LF_ASSERT(tls::asp);
-  std::byte *prev = std::exchange(tls::asp, top);
-  LF_ASSERT(prev != top);
-  async_stack *stack = bytes_to_stack(prev);
-  ctx<Context>->stack_push(stack);
-}
-
-} // namespace impl::tls
-
-// ----------------------------------------------- //
-
-inline namespace ext {
-
-template <thread_context Context>
-inline void frame_block::resume_external() noexcept {
-
-  LF_LOG("Call to resume on external task");
-
-  LF_ASSERT(impl::tls::asp);
-
-  if (!is_root()) {
-    impl::tls::eat<Context>(top());
-  } else {
-    LF_LOG("External was root");
-  }
-
-  coro().resume();
-
-  LF_ASSERT(impl::tls::asp);
-  LF_ASSERT(impl::tls::ctx<Context>);
-  LF_ASSERT(!impl::tls::ctx<Context>->task_pop());
-}
-
-} // namespace ext
-
-namespace impl {
-
-// ----------------------------------------------- //
-
-/**
- * @brief A base class for promises that allocates on the heap.
- */
-struct promise_alloc_heap : frame_block {
- protected:
-  explicit promise_alloc_heap(stdx::coroutine_handle<> self) noexcept : frame_block{self, nullptr} {}
-};
-
-// ----------------------------------------------- //
-
-/**
- * @brief A base class for promises that allocates on an `async_stack`.
- *
- * When a promise deriving from this class is constructed 'tls::asp' will be set and when it is destroyed 'tls::asp'
- * will be returned to the previous frame.
- */
-struct promise_alloc_stack : frame_block {
-
-  // Convert an alignment to a std::uintptr_t, ensure its is a power of two and >= k_new_align.
-  //  static auto unwrap(std::align_val_t al) noexcept -> std::uintptr_t {
-  //   auto align = static_cast<std::underlying_type_t<std::align_val_t>>(al);
-  //   LF_ASSERT(std::has_single_bit(align));
-  //   LF_ASSERT(align > 0);
-  //   return std::max(align, impl::k_new_align);
-  // }
-
- protected:
-  explicit promise_alloc_stack(stdx::coroutine_handle<> self) noexcept : frame_block{self, tls::asp} {}
-
- public:
-  /**
-   * @brief Allocate the coroutine on the current `async_stack`.
-   *
-   * This will update `tls::asp` to point to the top of the new async stack.
-   */
-  [[nodiscard]] LF_FORCEINLINE static auto operator new(std::size_t size) -> void * {
-    LF_ASSERT(tls::asp);
-    tls::asp -= (size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
-    LF_LOG("Allocating {} bytes on stack from {}", size, (void *)tls::asp);
-    return tls::asp;
-  }
-
-  /**
-   * @brief Deallocate the coroutine on the current `async_stack`.
-   */
-  LF_FORCEINLINE static void operator delete(void *ptr, std::size_t size) {
-    LF_ASSERT(ptr == tls::asp);
-    tls::asp += (size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
-    LF_LOG("Deallocating {} bytes on stack to {}", size, (void *)tls::asp);
-  }
-};
-
-} // namespace impl
-
-inline namespace ext {
-
-/**
- * @brief Initialize thread-local variables before a worker can resume submitted tasks.
- *
- * .. warning::
- *    These should be cleaned up with `worker_finalize(...)`.
- */
-template <thread_context Context>
-LF_NOINLINE void worker_init(Context *context) {
-
-  LF_LOG("Initializing worker");
-
-  LF_ASSERT(context);
-  LF_ASSERT(!impl::tls::ctx<Context>);
-  LF_ASSERT(!impl::tls::asp);
-
-  impl::tls::ctx<Context> = context;
-  impl::tls::asp = impl::stack_as_bytes(context->stack_pop());
-}
-
-/**
- * @brief Clean-up thread-local variable before destructing a worker's context.
- *
- * .. warning::
- *    These must be initialized with `worker_init(...)`.
- */
-template <thread_context Context>
-LF_NOINLINE void worker_finalize(Context *context) {
-
-  LF_LOG("Finalizing worker");
-
-  LF_ASSERT(context == impl::tls::ctx<Context>);
-  LF_ASSERT(impl::tls::asp);
-
-  context->stack_push(impl::bytes_to_stack(impl::tls::asp));
-
-  impl::tls::asp = nullptr;
-  impl::tls::ctx<Context> = nullptr;
-}
-
-} // namespace ext
-
-} // namespace lf
-
-#endif /* C5C3AA77_D533_4A89_8D33_99BD819C1B4C */
 
 
 /**
  * @file task.hpp
  *
- * @brief Implementation of the core ``lf::task`` and `lf::async` types and `lf::first_arg` machinery.
+ * @brief Implementation of the core ``lf::task`` and `lf::async` types.
  */
 
 namespace lf {
@@ -1947,6 +2142,11 @@ inline namespace core {
  *
  * \rst
  *
+ * .. note::
+ *
+ *    No consumer of this library should ever touch an instance of this type, it is used for specifying the
+ *    return type of an `async` function only.
+ *
  * .. warning::
  *    The value type ``T`` of a coroutine should never be a function of its context or return address type.
  *
@@ -1954,22 +2154,23 @@ inline namespace core {
  */
 template <typename T = void, tracked_fixed_string Name = "">
 struct task {
+
   using value_type = T; ///< The type of the value returned by the coroutine.
 
   /**
-   * @brief Construct a new task object.
+   * @brief __Not__ part of the public API.
    *
    * This should only be called by the compiler.
    */
-  constexpr task(frame_block *frame) : m_frame{non_null(frame)} {}
+  constexpr task(impl::frame_block *frame) : m_frame{non_null(frame)} {}
 
   /**
    * @brief __Not__ part of the public API.
    */
-  [[nodiscard]] constexpr auto frame() const noexcept -> frame_block * { return m_frame; }
+  [[nodiscard]] constexpr auto frame() const noexcept -> impl::frame_block * { return m_frame; }
 
  private:
-  frame_block *m_frame; ///< The frame block for the coroutine.
+  impl::frame_block *m_frame; ///< The frame block for the coroutine.
 };
 
 } // namespace core
@@ -1987,144 +2188,7 @@ concept is_task = is_task_impl<T>::value;
 
 } // namespace impl
 
-inline namespace core {
-
-// ----------------------------------------------- //
-
-/**
- * @brief An enumeration that determines the behavior of a coroutine's promise.
- *
- * You can inspect the first arg of an async function to determine the tag.
- */
-enum class tag {
-  root,   ///< This coroutine is a root task (allocated on heap) from an ``lf::sync_wait``.
-  call,   ///< Non root task (on a virtual stack) from an ``lf::call``, completes synchronously.
-  fork,   ///< Non root task (on a virtual stack) from an ``lf::fork``, completes asynchronously.
-  invoke, ///< Equivalent to ``lf::call`` but caches the return (extra move required).
-  tail,   ///< Force a [tail-call](https://en.wikipedia.org/wiki/Tail_call) optimization.
-};
-
-// ----------------------------------------------- //
-
-/**
- * @brief A helper to fetch `typename std::remove_cvref_t<T>::context_type`.
- */
-template <typename T>
-  requires requires { requires thread_context<typename std::remove_cvref_t<T>::context_type>; }
-using context_of = typename std::remove_cvref_t<T>::context_type;
-
-/**
- * @brief A helper to fetch `typename std::remove_cvref_t<T>::return_type`.
- */
-template <typename T>
-  requires requires { typename std::remove_cvref_t<T>::return_type; }
-using return_of = typename std::remove_cvref_t<T>::return_type;
-
-/**
- * @brief A helper to fetch `typename std::remove_cvref_t<T>::function_type`.
- */
-template <typename T>
-  requires requires { typename std::remove_cvref_t<T>::function_type; }
-using function_of = typename std::remove_cvref_t<T>::function_type;
-
-/**
- * @brief A helper to fetch `std::remove_cvref_t<T>::tag_value`.
- */
-template <typename T>
-  requires requires {
-    { std::remove_cvref_t<T>::tag_value } -> std::convertible_to<tag>;
-  }
-inline constexpr tag tag_of = std::remove_cvref_t<T>::tag_value;
-
-/**
- * @brief A helper to fetch `typename std::remove_cvref_t<T>::value_type`.
- */
-template <typename T>
-  requires requires { typename std::remove_cvref_t<T>::value_type; }
-using value_of = typename std::remove_cvref_t<T>::value_type;
-
-// ----------------------------------------------- //
-
-/**
- * @brief Check if an invocable is suitable for use as an `lf::async` function.
- */
-template <typename T>
-concept stateless = std::is_class_v<T> && std::is_trivial_v<T> && std::is_empty_v<T>;
-
-// ----------------------------------------------- //
-
-template <stateless Fn>
-struct [[nodiscard("async functions must be called")]] async;
-
-} // namespace core
-
 namespace impl {
-
-/**
- * @brief Detect what kind of async function a type can be cast to.
- */
-template <typename T>
-consteval auto implicit_cast_to_async(async<T>) -> T;
-
-} // namespace impl
-
-inline namespace core {
-
-/**
- * @brief The API of the first argument passed to an async function.
- *
- * All async functions must have a templated first arguments, this argument will be generated by the compiler and encodes
- * many useful/queryable properties. A full specification is give below:
- *
- * \rst
- *
- * .. include:: ../../include/libfork/core/task.hpp
- *    :code:
- *    :start-line: 220
- *    :end-line: 241
- *
- * \endrst
- */
-template <typename Arg>
-concept first_arg = impl::unqualified<Arg> && requires (Arg arg) {
-  //
-
-  requires std::is_trivially_copyable_v<Arg>;
-
-  tag_of<Arg>;
-
-  typename context_of<Arg>;
-  typename return_of<Arg>;
-  typename function_of<Arg>;
-
-  requires !std::is_reference_v<return_of<Arg>>;
-
-  { std::remove_cvref_t<Arg>::context() } -> std::same_as<context_of<Arg> *>;
-
-  requires impl::is_void<return_of<Arg>> || requires {
-    { arg.address() } -> std::convertible_to<return_of<Arg> *>;
-  };
-
-  { impl::implicit_cast_to_async(arg) } -> std::same_as<function_of<Arg>>;
-};
-
-} // namespace core
-
-namespace impl {
-
-// ----------------------------------------------- //
-
-/**
- * @brief The negation of `first_arg`.
- */
-template <typename T>
-concept not_first_arg = !first_arg<T>;
-
-/**
- * @brief Check if a type is a `first_arg` with a specific tag.
- */
-template <typename Arg, tag Tag>
-concept first_arg_tagged = first_arg<Arg> && tag_of<Arg> == Tag;
 
 // ----------------------------------------------- //
 
@@ -2330,12 +2394,12 @@ namespace impl {
  * unimplemented as it is only used in unevaluated contexts.
  */
 struct dummy_context {
-  auto max_threads() -> std::size_t;                    ///< Unimplemented.
-  auto submit(intrusive_node<frame_block *> *) -> void; ///< Unimplemented.
-  auto task_pop() -> frame_block *;                     ///< Unimplemented.
-  auto task_push(frame_block *) -> void;                ///< Unimplemented.
-  auto stack_pop() -> async_stack *;                    ///< Unimplemented.
-  auto stack_push(async_stack *) -> void;               ///< Unimplemented.
+  auto max_threads() -> std::size_t;                ///< Unimplemented.
+  auto submit(intruded_h<dummy_context> *) -> void; ///< Unimplemented.
+  auto task_pop() -> task_h<dummy_context> *;       ///< Unimplemented.
+  auto task_push(task_h<dummy_context> *) -> void;  ///< Unimplemented.
+  auto stack_pop() -> async_stack *;                ///< Unimplemented.
+  auto stack_push(async_stack *) -> void;           ///< Unimplemented.
 };
 
 static_assert(thread_context<dummy_context>, "dummy_context is not a thread_context");
@@ -2380,6 +2444,19 @@ static_assert(first_arg<basic_first_arg<int, tag::root, decltype([] {})>>);
 } // namespace lf
 
 #endif /* E91EA187_42EF_436C_A3FF_A86DE54BCDBE */
+#ifndef E8D38B49_7170_41BC_90E9_6D6389714304
+#define E8D38B49_7170_41BC_90E9_6D6389714304
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <utility>
+
 
 
 /**
@@ -2562,13 +2639,13 @@ namespace detail {
 template <thread_context Context>
 struct switch_awaitable {
 
-  auto await_ready() const noexcept { return tls::ctx<Context> == dest; }
+  auto await_ready() const noexcept { return tls::ctx<Context> == non_null(dest); }
 
-  void await_suspend(stdx::coroutine_handle<>) noexcept { dest->submit(&self); }
+  void await_suspend(stdx::coroutine_handle<>) noexcept { non_null(dest)->submit(&self); }
 
   void await_resume() const noexcept {}
 
-  intrusive_node<frame_block *> self;
+  intruded_h<Context> self;
   Context *dest;
 };
 
@@ -2581,7 +2658,7 @@ struct fork_awaitable : stdx::suspend_always {
     m_parent->debug_inc();
     // Need it here (on real stack) in case *this is destructed after push.
     stdx::coroutine_handle child = m_child->coro();
-    tls::ctx<Context>->task_push(m_parent);
+    tls::ctx<Context>->task_push(std::bit_cast<task_h<Context> *>(m_parent));
     return child;
   }
   frame_block *m_parent;
@@ -2716,10 +2793,10 @@ auto final_await_suspend(frame_block *parent) noexcept -> std::coroutine_handle<
 
   Context *context = non_null(tls::ctx<Context>);
 
-  if (frame_block *parent_task = context->task_pop()) {
+  if (task_h<Context> *parent_task = context->task_pop()) {
     // No-one stole continuation, we are the exclusive owner of parent, just keep ripping!
     LF_LOG("Parent not stolen, keeps ripping");
-    LF_ASSERT(parent_task == parent);
+    LF_ASSERT(byte_cast(parent_task) == byte_cast(parent));
     // This must be the same thread that created the parent so it already owns the stack.
     // No steals have occurred so we do not need to call reset().;
     return parent->coro();
@@ -2905,7 +2982,11 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
    * @brief Transform a context pointer into a context switch awaitable.
    */
   auto await_transform(Context *dest) -> detail::switch_awaitable<Context> {
-    return {intrusive_node<frame_block *>{this}, dest};
+
+    auto *fb = static_cast<frame_block *>(this);
+    auto *sh = std::bit_cast<submit_h<Context> *>(fb);
+
+    return {intruded_h<Context>{sh}, dest};
   }
 
   /**
@@ -3020,10 +3101,7 @@ inline namespace core {
  * @brief A concept that schedulers must satisfy.
  */
 template <typename Sch>
-concept scheduler = requires (Sch &&sch, intrusive_node<frame_block *> *ext) {
-  typename context_of<Sch>;
-  std::forward<Sch>(sch).schedule(ext);
-};
+concept scheduler = requires (Sch &&sch, intruded_h<context_of<Sch>> *ext) { std::forward<Sch>(sch).schedule(ext); };
 
 namespace detail {
 
@@ -3070,7 +3148,9 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
 
   detail::packet_t<Sch, F, Args...> packet{{{root_block}}, std::forward<Args>(args)...};
 
-  intrusive_node<frame_block *> link{std::move(packet).invoke()};
+  impl::frame_block *frame = std::move(packet).invoke();
+
+  intruded_h<context_of<Sch>> link{std::bit_cast<submit_h<context_of<Sch>> *>(frame)};
 
   LF_LOG("Submitting root");
 
@@ -3863,7 +3943,7 @@ namespace lf::impl {
 template <typename CRTP>
 struct immediate_base {
 
-  static void submit(intrusive_node<frame_block *> *ptr) { non_null(ptr)->get()->resume_external<CRTP>(); }
+  static void submit(intruded_h<CRTP> *ptr) { resume(unwrap(non_null(ptr))); }
 
   static void stack_push(async_stack *stack) {
     LF_LOG("stack_push");
@@ -3900,7 +3980,7 @@ class immediate_context : public immediate_base<immediate_context> {
   /**
    * @brief This should never be called due to the above.
    */
-  auto task_pop() -> frame_block * {
+  auto task_pop() -> task_h<immediate_context> * {
     LF_ASSERT("false");
     return nullptr;
   }
@@ -3908,7 +3988,7 @@ class immediate_context : public immediate_base<immediate_context> {
   /**
    * @brief This should never be called due to the above.
    */
-  void task_push(frame_block *) { LF_ASSERT("false"); }
+  void task_push(task_h<immediate_context> *) { LF_ASSERT("false"); }
 };
 
 static_assert(single_thread_context<immediate_context>);
@@ -3930,13 +4010,13 @@ class test_immediate_context : public immediate_base<test_immediate_context> {
   /**
    * @brief Pops a task from the task queue.
    */
-  auto task_pop() -> frame_block * {
+  auto task_pop() -> task_h<test_immediate_context> * {
 
     if (m_tasks.empty()) {
       return nullptr;
     }
 
-    frame_block *last = m_tasks.back();
+    auto *last = m_tasks.back();
     m_tasks.pop_back();
     return last;
   }
@@ -3944,10 +4024,10 @@ class test_immediate_context : public immediate_base<test_immediate_context> {
   /**
    * @brief Pushes a task to the task queue.
    */
-  void task_push(frame_block *task) { m_tasks.push_back(non_null(task)); }
+  void task_push(task_h<test_immediate_context> *task) { m_tasks.push_back(non_null(task)); }
 
  private:
-  std::vector<frame_block *> m_tasks; // All non-null.
+  std::vector<task_h<test_immediate_context> *> m_tasks; // All non-null.
 };
 
 static_assert(thread_context<test_immediate_context>);
@@ -3965,9 +4045,12 @@ class worker_context : immovable<worker_context> {
   static constexpr std::size_t k_buff = 16;
   static constexpr std::size_t k_steal_attempts = 64;
 
-  deque<frame_block *> m_tasks;                ///< Our public task queue, all non-null.
+  using task_t = task_h<worker_context>;
+  using submit_t = submit_h<worker_context>;
+
+  deque<task_t *> m_tasks;                     ///< Our public task queue, all non-null.
   deque<async_stack *> m_stacks;               ///< Our public stack queue, all non-null.
-  intrusive_list<frame_block *> m_submit;      ///< The public submission queue, all non-null.
+  intrusive_list<submit_t *> m_submit;         ///< The public submission queue, all non-null.
   ring_buffer<async_stack *, k_buff> m_buffer; ///< Our private stack buffer, all non-null.
 
   xoshiro m_rng{seed, std::random_device{}}; ///< Our personal PRNG.
@@ -3993,19 +4076,16 @@ class worker_context : immovable<worker_context> {
   void add_friend(worker_context *a_friend) noexcept { m_friends.push_back(non_null(a_friend)); }
 
   /**
-   * @brief Call `resume_external` on all the submitted tasks, returns `false` if the queue was empty.
+   * @brief Fetch a linked-list of the submitted tasks.
    */
-  auto try_resume_submitted() noexcept -> bool {
-    return m_submit.consume([](frame_block *submitted) LF_STATIC_CALL noexcept {
-      submitted->resume_external<worker_context>();
-      //
-    });
-  }
+  auto try_get_submitted() noexcept -> intruded_h<worker_context> * { return m_submit.try_pop_all(); }
 
   /**
-   * @brief Try to steal a task from one of our friends and call `resume_stolen` on it, returns `false` if we failed.
+   * @brief Try to steal a task from one of our friends, returns `nullptr` if we failed.
+   *
+   * Call `resume_stolen` on it if we succeeded.
    */
-  auto try_steal_and_resume() -> bool {
+  auto try_steal() -> task_t * {
     for (std::size_t i = 0; i < k_steal_attempts; ++i) {
 
       std::shuffle(m_friends.begin(), m_friends.end(), m_rng);
@@ -4017,9 +4097,7 @@ class worker_context : immovable<worker_context> {
         switch (err) {
           case lf::err::none:
             LF_LOG("Stole task from {}", (void *)context);
-            task->resume_stolen();
-            LF_ASSERT(m_tasks.empty());
-            return true;
+            return task;
 
           case lf::err::lost:
             // We don't retry here as we don't want to cause contention
@@ -4032,7 +4110,7 @@ class worker_context : immovable<worker_context> {
         }
       }
     }
-    return false;
+    return nullptr;
   }
 
   ~worker_context() noexcept {
@@ -4052,7 +4130,7 @@ class worker_context : immovable<worker_context> {
 
   auto max_threads() const noexcept -> std::size_t { return m_friends.size() + 1; }
 
-  auto submit(intrusive_node<frame_block *> *node) noexcept -> void { m_submit.push(non_null(node)); }
+  auto submit(intruded_h<worker_context> *node) noexcept -> void { m_submit.push(non_null(node)); }
 
   auto stack_pop() -> async_stack * {
 
@@ -4097,9 +4175,9 @@ class worker_context : immovable<worker_context> {
     });
   }
 
-  auto task_pop() noexcept -> frame_block * { return m_tasks.pop(null_for<frame_block>); }
+  auto task_pop() noexcept -> task_t * { return m_tasks.pop(null_for<task_t>); }
 
-  void task_push(frame_block *task) { m_tasks.push(non_null(task)); }
+  void task_push(task_t *task) { m_tasks.push(non_null(task)); }
 };
 
 static_assert(thread_context<worker_context>);
@@ -4125,7 +4203,7 @@ class unit_pool_impl : impl::immovable<unit_pool_impl<Context>> {
  public:
   using context_type = Context;
 
-  static void schedule(intrusive_node<frame_block *> *ptr) { context_type::submit(ptr); }
+  static void schedule(intruded_h<context_type> *ptr) { context_type::submit(ptr); }
 
   unit_pool_impl() { worker_init(&m_context); }
 

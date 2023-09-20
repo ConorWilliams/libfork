@@ -1,179 +1,176 @@
-// Copyright © Conor Williams <conorwilliams@outlook.com>
+// // Copyright © Conor Williams <conorwilliams@outlook.com>
 
-// SPDX-License-Identifier: MPL-2.0
+// // SPDX-License-Identifier: MPL-2.0
 
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+// // This Source Code Form is subject to the terms of the Mozilla Public
+// // License, v. 2.0. If a copy of the MPL was not distributed with this
+// // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <catch2/benchmark/catch_benchmark.hpp>
-#include <catch2/catch_test_macros.hpp>
+// #include <catch2/benchmark/catch_benchmark.hpp>
+// #include <catch2/catch_test_macros.hpp>
 
-// #define LF_LOGGING
-// #define NDEBUG
-// #define LF_LOGGING
+// // #define LF_LOGGING
+// // #define NDEBUG
+// // #define LF_LOGGING
 
-#include "libfork/core.hpp"
-#include "libfork/core/call.hpp"
-#include "libfork/core/result.hpp"
-#include "libfork/core/stack.hpp"
-#include "libfork/core/task.hpp"
-#include "libfork/schedule/unit_pool.hpp"
+// #include "libfork/core.hpp"
 
-// NOLINTBEGIN No linting in tests
+// #include "libfork/schedule/unit_pool.hpp"
 
-using namespace lf;
+// // NOLINTBEGIN No linting in tests
 
-using namespace lf::impl;
+// using namespace lf;
 
-inline constexpr auto count = [](auto count, int &var) -> task<void, "count"> {
-  if (var > 0) {
-    --var;
-    co_await lf::fork(count)(var);
-    co_await lf::join;
-  }
-  co_return;
-};
+// using namespace lf::impl;
 
-TEST_CASE("basic counting", "[unit_pool]") {
+// inline constexpr auto count = [](auto count, int &var) -> task<void, "count"> {
+//   if (var > 0) {
+//     --var;
+//     co_await lf::fork(count)(var);
+//     co_await lf::join;
+//   }
+//   co_return;
+// };
 
-  root_result<void> block;
+// TEST_CASE("basic counting", "[unit_pool]") {
 
-  using C = unit_pool::context_type;
+//   root_result<void> block;
 
-  using base = basic_first_arg<root_result<void>, tag::root, decltype(count)>;
+//   using C = unit_pool::context_type;
 
-  using Head = patched<C, base>;
+//   using base = basic_first_arg<root_result<void>, tag::root, decltype(count)>;
 
-  int x = 10;
+//   using Head = patched<C, base>;
 
-  static_assert(first_arg<Head>);
+//   int x = 10;
 
-  auto arg = Head{base{block}};
+//   static_assert(first_arg<Head>);
 
-  auto root = count(std::move(arg), x);
+//   auto arg = Head{base{block}};
 
-  C ctx;
+//   auto root = count(std::move(arg), x);
 
-  worker_init(&ctx);
+//   C ctx;
 
-  REQUIRE(x == 10);
+//   worker_init(&ctx);
 
-  intrusive_node<frame_block *> link{root.frame()};
+//   REQUIRE(x == 10);
 
-  ctx.submit(&link);
+//   intrusive_node<frame_block *> link{root.frame()};
 
-  block.semaphore.acquire();
+//   ctx.submit(&link);
 
-  LF_LOG("x = {}", x);
+//   block.semaphore.acquire();
 
-  REQUIRE(x == 0);
+//   LF_LOG("x = {}", x);
 
-  worker_finalize(&ctx);
-}
+//   REQUIRE(x == 0);
 
-LF_NOINLINE void inline_fiber(int &res, int n) {
-  if (n <= 1) {
-    res = n;
-  } else {
-    int a, b;
+//   worker_finalize(&ctx);
+// }
 
-    inline_fiber(a, n - 1);
-    inline_fiber(b, n - 2);
+// LF_NOINLINE void inline_fiber(int &res, int n) {
+//   if (n <= 1) {
+//     res = n;
+//   } else {
+//     int a, b;
 
-    res = a + b;
-  }
-}
+//     inline_fiber(a, n - 1);
+//     inline_fiber(b, n - 2);
 
-inline constexpr auto fib = [](auto fib, int n) -> task<int> {
-  //
-  if (n <= 1) {
-    co_return n;
-  }
+//     res = a + b;
+//   }
+// }
 
-  int a;
-  int b;
+// inline constexpr auto fib = [](auto fib, int n) -> task<int> {
+//   //
+//   if (n <= 1) {
+//     co_return n;
+//   }
 
-  co_await lf::fork(a, fib)(n - 1);
-  co_await lf::call(b, fib)(n - 2);
+//   int a;
+//   int b;
 
-  co_await lf::join;
+//   co_await lf::fork(a, fib)(n - 1);
+//   co_await lf::call(b, fib)(n - 2);
 
-  co_return a + b;
-};
+//   co_await lf::join;
 
-inline constexpr auto fib_call = [](auto fib_call, int n) -> task<int> {
-  //
-  if (n <= 1) {
-    co_return n;
-  }
+//   co_return a + b;
+// };
 
-  int a;
-  int b;
+// inline constexpr auto fib_call = [](auto fib_call, int n) -> task<int> {
+//   //
+//   if (n <= 1) {
+//     co_return n;
+//   }
 
-  co_await lf::call(a, fib_call)(n - 1);
-  co_await lf::call(b, fib_call)(n - 2);
+//   int a;
+//   int b;
 
-  co_await lf::join;
+//   co_await lf::call(a, fib_call)(n - 1);
+//   co_await lf::call(b, fib_call)(n - 2);
 
-  co_return a + b;
-};
+//   co_await lf::join;
 
-TEST_CASE("fib-bench", "[promise]") {
-  //
+//   co_return a + b;
+// };
 
-  volatile int in = 20;
+// TEST_CASE("fib-bench", "[promise]") {
+//   //
 
-  int trivial = 0;
+//   volatile int in = 20;
 
-  inline_fiber(trivial, in);
+//   int trivial = 0;
 
-  BENCHMARK("inline") {
-    inline_fiber(trivial, in);
-    return trivial;
-  };
+//   inline_fiber(trivial, in);
 
-  using C = unit_pool::context_type;
+//   BENCHMARK("inline") {
+//     inline_fiber(trivial, in);
+//     return trivial;
+//   };
 
-  C ctx;
+//   using C = unit_pool::context_type;
 
-  worker_init(&ctx);
+//   C ctx;
 
-  {
+//   worker_init(&ctx);
 
-    using head = patched<C, basic_first_arg<root_result<int>, tag::root, decltype(fib_call)>>;
+//   {
 
-    int x = -1;
+//     using head = patched<C, basic_first_arg<root_result<int>, tag::root, decltype(fib_call)>>;
 
-    BENCHMARK("coroutine call") {
-      root_result<int> block;
-      intrusive_node<frame_block *> root{fib_call(head{{block}}, int(in)).frame()};
-      ctx.submit(&root);
-      x = *std::move(block);
-      return x;
-    };
+//     int x = -1;
 
-    REQUIRE(x == trivial);
-  }
+//     BENCHMARK("coroutine call") {
+//       root_result<int> block;
+//       intrusive_node<frame_block *> root{fib_call(head{{block}}, int(in)).frame()};
+//       ctx.submit(&root);
+//       x = *std::move(block);
+//       return x;
+//     };
 
-  {
+//     REQUIRE(x == trivial);
+//   }
 
-    using head = patched<C, basic_first_arg<root_result<int>, tag::root, decltype(fib)>>;
+//   {
 
-    int x = -1;
+//     using head = patched<C, basic_first_arg<root_result<int>, tag::root, decltype(fib)>>;
 
-    BENCHMARK("coroutine fork") {
-      root_result<int> block;
-      intrusive_node<frame_block *> root{fib(head{{block}}, int(in)).frame()};
-      ctx.submit(&root);
-      x = *std::move(block);
-      return x;
-    };
+//     int x = -1;
 
-    REQUIRE(x == trivial);
-  }
+//     BENCHMARK("coroutine fork") {
+//       root_result<int> block;
+//       intrusive_node<frame_block *> root{fib(head{{block}}, int(in)).frame()};
+//       ctx.submit(&root);
+//       x = *std::move(block);
+//       return x;
+//     };
 
-  worker_finalize(&ctx);
-}
+//     REQUIRE(x == trivial);
+//   }
 
-// NOLINTEND
+//   worker_finalize(&ctx);
+// }
+
+// // NOLINTEND

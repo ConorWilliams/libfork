@@ -9,15 +9,16 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include "libfork/core/async.hpp"
 #include "libfork/core/call.hpp"
 #include "libfork/core/coroutine.hpp"
 #include "libfork/core/eventually.hpp"
 #include "libfork/core/list.hpp"
+#include "libfork/core/meta.hpp"
 #include "libfork/core/promise.hpp"
 #include "libfork/core/result.hpp"
 #include "libfork/core/stack.hpp"
 #include "libfork/core/sync_wait.hpp"
-#include "libfork/core/task.hpp"
 
 /**
  * @file core.hpp

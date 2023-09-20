@@ -36,7 +36,26 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
    public:
     explicit constexpr node(T const &data) : m_data(data) {}
 
-    constexpr auto get() noexcept -> T & { return m_data; }
+    /**
+     * @brief Access the value stored in a node of the list.
+     */
+    friend auto unwrap(node *ptr) noexcept -> T & { return non_null(ptr)->m_data; }
+
+    /**
+     * @brief Call `func` on each unwrapped node linked in the list.
+     *
+     * The nodes will be processed in FILO order. This is a noop if `root` is `nullptr`.
+     */
+    template <std::invocable<T &> F>
+    friend constexpr void for_each(node *root, F &&func) noexcept(std::is_nothrow_invocable_v<F, T &>) {
+      for (; root;) {
+        // Have to be very careful here, we can't deference `walk` after
+        // we've called `func` as `func` could destroy the node.
+        auto next = root->m_next;
+        std::invoke(func, root->m_data);
+        root = next;
+      }
+    }
 
    private:
     friend class intrusive_list;
@@ -62,28 +81,11 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
   }
 
   /**
-   * @brief Pop all the nodes from the list and call `func` on each of them.
+   * @brief Pop all the nodes from the list and return a pointer to the root (`nullptr` if empty).
    *
-   * Only the owner (thread) of the list can call this function. The nodes will be processed in FILO order.
-   *
-   * @return `false` if the list was empty, `true` otherwise.
+   * Only the owner (thread) of the list can call this function.
    */
-  template <typename F>
-    requires std::is_nothrow_invocable_v<F, T &>
-  constexpr auto consume(F &&func) noexcept -> bool {
-
-    node *last = m_head.exchange(nullptr, std::memory_order_consume);
-
-    for (node *walk = last; walk;) {
-      // Have to be very careful here, we can't deference `walk` after
-      // we've called `func` as `func` could destroy the node.
-      auto next = walk->m_next;
-      std::invoke(func, walk->m_data);
-      walk = next;
-    }
-
-    return last != nullptr;
-  }
+  constexpr auto try_pop_all() noexcept -> node * { return m_head.exchange(nullptr, std::memory_order_consume); }
 
  private:
   std::atomic<node *> m_head = nullptr;

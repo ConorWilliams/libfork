@@ -35,7 +35,7 @@ namespace lf::impl {
 template <typename CRTP>
 struct immediate_base {
 
-  static void submit(intrusive_node<frame_block *> *ptr) { non_null(ptr)->get()->resume_external<CRTP>(); }
+  static void submit(intruded_h<CRTP> *ptr) { resume(unwrap(non_null(ptr))); }
 
   static void stack_push(async_stack *stack) {
     LF_LOG("stack_push");
@@ -72,7 +72,7 @@ class immediate_context : public immediate_base<immediate_context> {
   /**
    * @brief This should never be called due to the above.
    */
-  auto task_pop() -> frame_block * {
+  auto task_pop() -> task_h<immediate_context> * {
     LF_ASSERT("false");
     return nullptr;
   }
@@ -80,7 +80,7 @@ class immediate_context : public immediate_base<immediate_context> {
   /**
    * @brief This should never be called due to the above.
    */
-  void task_push(frame_block *) { LF_ASSERT("false"); }
+  void task_push(task_h<immediate_context> *) { LF_ASSERT("false"); }
 };
 
 static_assert(single_thread_context<immediate_context>);
@@ -102,13 +102,13 @@ class test_immediate_context : public immediate_base<test_immediate_context> {
   /**
    * @brief Pops a task from the task queue.
    */
-  auto task_pop() -> frame_block * {
+  auto task_pop() -> task_h<test_immediate_context> * {
 
     if (m_tasks.empty()) {
       return nullptr;
     }
 
-    frame_block *last = m_tasks.back();
+    auto *last = m_tasks.back();
     m_tasks.pop_back();
     return last;
   }
@@ -116,10 +116,10 @@ class test_immediate_context : public immediate_base<test_immediate_context> {
   /**
    * @brief Pushes a task to the task queue.
    */
-  void task_push(frame_block *task) { m_tasks.push_back(non_null(task)); }
+  void task_push(task_h<test_immediate_context> *task) { m_tasks.push_back(non_null(task)); }
 
  private:
-  std::vector<frame_block *> m_tasks; // All non-null.
+  std::vector<task_h<test_immediate_context> *> m_tasks; // All non-null.
 };
 
 static_assert(thread_context<test_immediate_context>);
@@ -137,9 +137,12 @@ class worker_context : immovable<worker_context> {
   static constexpr std::size_t k_buff = 16;
   static constexpr std::size_t k_steal_attempts = 64;
 
-  deque<frame_block *> m_tasks;                ///< Our public task queue, all non-null.
+  using task_t = task_h<worker_context>;
+  using submit_t = submit_h<worker_context>;
+
+  deque<task_t *> m_tasks;                     ///< Our public task queue, all non-null.
   deque<async_stack *> m_stacks;               ///< Our public stack queue, all non-null.
-  intrusive_list<frame_block *> m_submit;      ///< The public submission queue, all non-null.
+  intrusive_list<submit_t *> m_submit;         ///< The public submission queue, all non-null.
   ring_buffer<async_stack *, k_buff> m_buffer; ///< Our private stack buffer, all non-null.
 
   xoshiro m_rng{seed, std::random_device{}}; ///< Our personal PRNG.
@@ -165,19 +168,16 @@ class worker_context : immovable<worker_context> {
   void add_friend(worker_context *a_friend) noexcept { m_friends.push_back(non_null(a_friend)); }
 
   /**
-   * @brief Call `resume_external` on all the submitted tasks, returns `false` if the queue was empty.
+   * @brief Fetch a linked-list of the submitted tasks.
    */
-  auto try_resume_submitted() noexcept -> bool {
-    return m_submit.consume([](frame_block *submitted) LF_STATIC_CALL noexcept {
-      submitted->resume_external<worker_context>();
-      //
-    });
-  }
+  auto try_get_submitted() noexcept -> intruded_h<worker_context> * { return m_submit.try_pop_all(); }
 
   /**
-   * @brief Try to steal a task from one of our friends and call `resume_stolen` on it, returns `false` if we failed.
+   * @brief Try to steal a task from one of our friends, returns `nullptr` if we failed.
+   *
+   * Call `resume_stolen` on it if we succeeded.
    */
-  auto try_steal_and_resume() -> bool {
+  auto try_steal() -> task_t * {
     for (std::size_t i = 0; i < k_steal_attempts; ++i) {
 
       std::shuffle(m_friends.begin(), m_friends.end(), m_rng);
@@ -189,9 +189,7 @@ class worker_context : immovable<worker_context> {
         switch (err) {
           case lf::err::none:
             LF_LOG("Stole task from {}", (void *)context);
-            task->resume_stolen();
-            LF_ASSERT(m_tasks.empty());
-            return true;
+            return task;
 
           case lf::err::lost:
             // We don't retry here as we don't want to cause contention
@@ -204,7 +202,7 @@ class worker_context : immovable<worker_context> {
         }
       }
     }
-    return false;
+    return nullptr;
   }
 
   ~worker_context() noexcept {
@@ -224,7 +222,7 @@ class worker_context : immovable<worker_context> {
 
   auto max_threads() const noexcept -> std::size_t { return m_friends.size() + 1; }
 
-  auto submit(intrusive_node<frame_block *> *node) noexcept -> void { m_submit.push(non_null(node)); }
+  auto submit(intruded_h<worker_context> *node) noexcept -> void { m_submit.push(non_null(node)); }
 
   auto stack_pop() -> async_stack * {
 
@@ -269,9 +267,9 @@ class worker_context : immovable<worker_context> {
     });
   }
 
-  auto task_pop() noexcept -> frame_block * { return m_tasks.pop(null_for<frame_block>); }
+  auto task_pop() noexcept -> task_t * { return m_tasks.pop(null_for<task_t>); }
 
-  void task_push(frame_block *task) { m_tasks.push(non_null(task)); }
+  void task_push(task_t *task) { m_tasks.push(non_null(task)); }
 };
 
 static_assert(thread_context<worker_context>);

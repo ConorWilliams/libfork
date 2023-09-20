@@ -24,12 +24,13 @@
 #include "libfork/utility.hpp"
 
 #include "libfork/core/coroutine.hpp"
-#include "libfork/core/list.hpp"
 
 /**
  * @file stack.hpp
  *
- * @brief Provides an async cactus-stack, control blocks and memory management utilities.
+ * @brief Provides the core elements of the async cactus-stack an thread-local memory.
+ *
+ * This is almost entirely an implementation detail, the `frame_block *` interface is unsafe.
  */
 
 namespace lf {
@@ -86,71 +87,36 @@ inline auto bytes_to_stack(std::byte *bytes) noexcept -> async_stack * {
   return std::launder(std::bit_cast<async_stack *>(bytes - k_stack_size));
 }
 
-} // namespace impl
-
-// ---------------------------------------- //
-
-inline namespace ext {
-
-struct frame_block;
-
-/**
- * @brief A concept which defines the context interface.
- *
- * A context owns a LIFO stack of ``lf::async_stack``s and a LIFO stack of
- * tasks. The stack of ``lf::async_stack``s is expected to never be empty, it
- * should always be able to return an empty ``lf::async_stack``.
- */
-template <typename Context>
-concept thread_context = requires (Context ctx, async_stack *stack, intrusive_node<frame_block *> *ext, frame_block *task) {
-  { ctx.max_threads() } -> std::same_as<std::size_t>;        // The maximum number of threads.
-  { ctx.submit(ext) };                                       // Submit an external task to the context.
-  { ctx.task_pop() } -> std::convertible_to<frame_block *>;  // If the stack is empty, return a null pointer.
-  { ctx.task_push(task) };                                   // Push a non-null pointer.
-  { ctx.stack_pop() } -> std::convertible_to<async_stack *>; // Return a non-null pointer
-  { ctx.stack_push(stack) };                                 // Push a non-null pointer
-};
-
-namespace detail {
-
-// clang-format off
-
-template <thread_context Context>
-static consteval auto always_single_threaded() -> bool {
-  if constexpr (requires { Context::max_threads(); }) {
-    if constexpr (impl::constexpr_callable<[] { Context::max_threads(); }>) {
-      return Context::max_threads() == 1;
-    }
-  }
-  return false;
-}
-
-// clang-format on
-
-} // namespace detail
-
-template <typename Context>
-concept single_thread_context = thread_context<Context> && detail::always_single_threaded<Context>();
-
-} // namespace ext
-
 // ----------------------------------------------- //
 
 /**
  * @brief This namespace contains `inline thread_local constinit` variables and functions to manipulate them.
  */
-namespace impl::tls {
+namespace tls {
 
-template <thread_context Context>
+template <typename Context>
 constinit inline thread_local Context *ctx = nullptr;
 
 constinit inline thread_local std::byte *asp = nullptr;
 
-} // namespace impl::tls
+/**
+ * @brief Set `tls::asp` to point at `frame`.
+ *
+ * It must currently be pointing at a sentinel.
+ */
+template <typename Context>
+inline void eat(std::byte *top) {
+  LF_LOG("Thread eats a stack");
+  LF_ASSERT(tls::asp);
+  std::byte *prev = std::exchange(tls::asp, top);
+  LF_ASSERT(prev != top);
+  async_stack *stack = bytes_to_stack(prev);
+  ctx<Context>->stack_push(stack);
+}
+
+} // namespace tls
 
 // ----------------------------------------------- //
-
-namespace impl {
 
 /**
  * @brief A base class that (compile-time) conditionally adds debugging information.
@@ -187,11 +153,7 @@ struct debug_block {
 
 static_assert(std::is_trivially_destructible_v<debug_block>);
 
-} // namespace impl
-
 // ----------------------------------------------- //
-
-inline namespace ext {
 
 /**
  * @brief A small bookkeeping struct which is a member of each task's promise.
@@ -214,8 +176,25 @@ struct frame_block : private impl::immovable<frame_block>, impl::debug_block {
    * When this function returns this worker will have run out of tasks
    * and their asp will be pointing at a sentinel.
    */
-  template <thread_context Context>
-  inline void resume_external() noexcept;
+  template <typename Context>
+  inline void resume_external() noexcept {
+
+    LF_LOG("Call to resume on external task");
+
+    LF_ASSERT(impl::tls::asp);
+
+    if (!is_root()) {
+      impl::tls::eat<Context>(top());
+    } else {
+      LF_LOG("External was root");
+    }
+
+    coro().resume();
+
+    LF_ASSERT(impl::tls::asp);
+    LF_ASSERT(impl::tls::ctx<Context>);
+    LF_ASSERT(!impl::tls::ctx<Context>->task_pop());
+  }
 
 // protected:
 /**
@@ -332,54 +311,13 @@ struct frame_block : private impl::immovable<frame_block>, impl::debug_block {
 static_assert(alignof(frame_block) <= impl::k_new_align, "Will be allocated above a coroutine-frame");
 static_assert(std::is_trivially_destructible_v<frame_block>);
 
-} // namespace ext
+} // namespace impl
 
 // ----------------------------------------------- //
 
-namespace impl::tls {
-
-/**
- * @brief Set `tls::asp` to point at `frame`.
- *
- * It must currently be pointing at a sentinel.
- */
-template <thread_context Context>
-inline void eat(std::byte *top) {
-  LF_LOG("Thread eats a stack");
-  LF_ASSERT(tls::asp);
-  std::byte *prev = std::exchange(tls::asp, top);
-  LF_ASSERT(prev != top);
-  async_stack *stack = bytes_to_stack(prev);
-  ctx<Context>->stack_push(stack);
-}
-
-} // namespace impl::tls
+namespace impl::tls {} // namespace impl::tls
 
 // ----------------------------------------------- //
-
-inline namespace ext {
-
-template <thread_context Context>
-inline void frame_block::resume_external() noexcept {
-
-  LF_LOG("Call to resume on external task");
-
-  LF_ASSERT(impl::tls::asp);
-
-  if (!is_root()) {
-    impl::tls::eat<Context>(top());
-  } else {
-    LF_LOG("External was root");
-  }
-
-  coro().resume();
-
-  LF_ASSERT(impl::tls::asp);
-  LF_ASSERT(impl::tls::ctx<Context>);
-  LF_ASSERT(!impl::tls::ctx<Context>->task_pop());
-}
-
-} // namespace ext
 
 namespace impl {
 
@@ -442,12 +380,60 @@ struct promise_alloc_stack : frame_block {
 inline namespace ext {
 
 /**
+ * @brief A type safe wrapper around a handle to a stealable coroutine.
+ *
+ * \rst
+ *
+ * .. warning::
+ *
+ *    A pointer to an `task_h` must never be dereferenced, only ever passed to `resume()`.
+ *
+ * \endrst
+ */
+template <typename Context>
+struct task_h {
+  /**
+   * @brief Only a worker who has called `worker_init(Context *)` can resume this task.
+   */
+  friend void resume(task_h *ptr) noexcept {
+    LF_ASSERT(impl::tls::ctx<Context>);
+    LF_ASSERT(impl::tls::asp);
+    std::bit_cast<impl::frame_block *>(ptr)->resume_stolen();
+  }
+};
+
+/**
+ * @brief A type safe wrapper around a handle to a coroutine that is at a submission point.
+ *
+ * \rst
+ *
+ * .. warning::
+ *
+ *    A pointer to an `submit_h` must never be dereferenced, only ever passed to `resume()`.
+ *
+ * \endrst
+ */
+template <typename Context>
+struct submit_h {
+  /**
+   * @brief Only a worker who has called `worker_init(Context *)` can resume this task.
+   */
+  friend void resume(submit_h *ptr) noexcept {
+    LF_ASSERT(impl::tls::ctx<Context>);
+    LF_ASSERT(impl::tls::asp);
+    std::bit_cast<impl::frame_block *>(ptr)->template resume_external<Context>();
+  }
+};
+
+// --------------------------------------------------------- //
+
+/**
  * @brief Initialize thread-local variables before a worker can resume submitted tasks.
  *
  * .. warning::
  *    These should be cleaned up with `worker_finalize(...)`.
  */
-template <thread_context Context>
+template <typename Context>
 LF_NOINLINE void worker_init(Context *context) {
 
   LF_LOG("Initializing worker");
@@ -466,7 +452,7 @@ LF_NOINLINE void worker_init(Context *context) {
  * .. warning::
  *    These must be initialized with `worker_init(...)`.
  */
-template <thread_context Context>
+template <typename Context>
 LF_NOINLINE void worker_finalize(Context *context) {
 
   LF_LOG("Finalizing worker");
@@ -479,6 +465,8 @@ LF_NOINLINE void worker_finalize(Context *context) {
   impl::tls::asp = nullptr;
   impl::tls::ctx<Context> = nullptr;
 }
+
+// ------------------------------------------------- //
 
 } // namespace ext
 

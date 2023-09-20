@@ -17,11 +17,12 @@
 #include "libfork/macro.hpp"
 #include "libfork/utility.hpp"
 
+#include "libfork/core/async.hpp"
 #include "libfork/core/call.hpp"
 #include "libfork/core/coroutine.hpp"
+#include "libfork/core/meta.hpp"
 #include "libfork/core/result.hpp"
 #include "libfork/core/stack.hpp"
-#include "libfork/core/task.hpp"
 
 /**
  * @file promise.hpp
@@ -38,13 +39,13 @@ namespace detail {
 template <thread_context Context>
 struct switch_awaitable {
 
-  auto await_ready() const noexcept { return tls::ctx<Context> == dest; }
+  auto await_ready() const noexcept { return tls::ctx<Context> == non_null(dest); }
 
-  void await_suspend(stdx::coroutine_handle<>) noexcept { dest->submit(&self); }
+  void await_suspend(stdx::coroutine_handle<>) noexcept { non_null(dest)->submit(&self); }
 
   void await_resume() const noexcept {}
 
-  intrusive_node<frame_block *> self;
+  intruded_h<Context> self;
   Context *dest;
 };
 
@@ -57,7 +58,7 @@ struct fork_awaitable : stdx::suspend_always {
     m_parent->debug_inc();
     // Need it here (on real stack) in case *this is destructed after push.
     stdx::coroutine_handle child = m_child->coro();
-    tls::ctx<Context>->task_push(m_parent);
+    tls::ctx<Context>->task_push(std::bit_cast<task_h<Context> *>(m_parent));
     return child;
   }
   frame_block *m_parent;
@@ -192,10 +193,10 @@ auto final_await_suspend(frame_block *parent) noexcept -> std::coroutine_handle<
 
   Context *context = non_null(tls::ctx<Context>);
 
-  if (frame_block *parent_task = context->task_pop()) {
+  if (task_h<Context> *parent_task = context->task_pop()) {
     // No-one stole continuation, we are the exclusive owner of parent, just keep ripping!
     LF_LOG("Parent not stolen, keeps ripping");
-    LF_ASSERT(parent_task == parent);
+    LF_ASSERT(byte_cast(parent_task) == byte_cast(parent));
     // This must be the same thread that created the parent so it already owns the stack.
     // No steals have occurred so we do not need to call reset().;
     return parent->coro();
@@ -381,7 +382,11 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
    * @brief Transform a context pointer into a context switch awaitable.
    */
   auto await_transform(Context *dest) -> detail::switch_awaitable<Context> {
-    return {intrusive_node<frame_block *>{this}, dest};
+
+    auto *fb = static_cast<frame_block *>(this);
+    auto *sh = std::bit_cast<submit_h<Context> *>(fb);
+
+    return {intruded_h<Context>{sh}, dest};
   }
 
   /**

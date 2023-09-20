@@ -16,8 +16,6 @@
 #include <random>
 #include <thread>
 
-#include "libfork/core/list.hpp"
-#include "libfork/core/stack.hpp"
 #include "libfork/macro.hpp"
 #include "libfork/utility.hpp"
 
@@ -75,8 +73,14 @@ class busy_pool {
     };
 
     while (!stop_requested.test(std::memory_order_acquire)) {
-      my_context->try_resume_submitted();
-      my_context->try_steal_and_resume();
+
+      for_each(my_context->try_get_submitted(), [](submit_h<context_type> *submitted) LF_STATIC_CALL noexcept {
+        resume(submitted);
+      });
+
+      if (auto *task = my_context->try_steal()) {
+        resume(task);
+      }
     };
   }
 
@@ -119,7 +123,7 @@ class busy_pool {
   /**
    * @brief Schedule a task for execution.
    */
-  auto schedule(intrusive_node<frame_block *> *node) noexcept {
+  auto schedule(intruded_h<context_type> *node) noexcept {
     std::uniform_int_distribution<std::size_t> dist(0, m_contexts.size() - 1);
     m_contexts[dist(m_rng)].submit(node);
   }

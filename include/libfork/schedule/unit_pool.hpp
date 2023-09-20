@@ -32,7 +32,7 @@ class unit_pool_impl : impl::immovable<unit_pool_impl<Context>> {
  public:
   using context_type = Context;
 
-  static void schedule(intrusive_node<frame_block *> *ptr) { context_type::submit(ptr); }
+  static void schedule(intruded_h<context_type> *ptr) { context_type::submit(ptr); }
 
   unit_pool_impl() { worker_init(&m_context); }
 

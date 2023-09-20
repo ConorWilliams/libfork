@@ -17,9 +17,10 @@
 #include "libfork/macro.hpp"
 #include "libfork/utility.hpp"
 
+#include "libfork/core/async.hpp"
+#include "libfork/core/meta.hpp"
 #include "libfork/core/result.hpp"
 #include "libfork/core/stack.hpp"
-#include "libfork/core/task.hpp"
 
 /**
  * @file sync_wait.hpp
@@ -35,10 +36,7 @@ inline namespace core {
  * @brief A concept that schedulers must satisfy.
  */
 template <typename Sch>
-concept scheduler = requires (Sch &&sch, intrusive_node<frame_block *> *ext) {
-  typename context_of<Sch>;
-  std::forward<Sch>(sch).schedule(ext);
-};
+concept scheduler = requires (Sch &&sch, intruded_h<context_of<Sch>> *ext) { std::forward<Sch>(sch).schedule(ext); };
 
 namespace detail {
 
@@ -85,7 +83,9 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
 
   detail::packet_t<Sch, F, Args...> packet{{{root_block}}, std::forward<Args>(args)...};
 
-  intrusive_node<frame_block *> link{std::move(packet).invoke()};
+  impl::frame_block *frame = std::move(packet).invoke();
+
+  intruded_h<context_of<Sch>> link{std::bit_cast<submit_h<context_of<Sch>> *>(frame)};
 
   LF_LOG("Submitting root");
 
