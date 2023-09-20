@@ -12,6 +12,8 @@
 
 ### Meta  -->
 
+`HWLOC_COMPONENTS=-opencl,-gl hwloc-bind pu:0 pu:2 pu:4 pu:6 pu:8 pu:10 pu:12 pu:14 pu:16 pu:18 pu:20 pu:22 pu:24 pu:26 pu:28 pu:30 -v ./build/dev/benchmark/overhead/overhead.out`
+
 | relative |               ns/op |                op/s |    err% | Fibonacci |      ----------   | relative |               ns/op |                op/s |    err% | Fibonacci
 |---------:|--------------------:|--------------------:|--------:|-----------: |---|---------:|--------------------:|--------------------:|--------:|:----------
 |   100.0% |       73,174,822.00 |               13.67 |    0.5% | `old 1` |   |   100.0% |       44,535,653.58 |               22.45 |    0.1% | `new 1`

@@ -23,6 +23,7 @@
 - [ ] review: `constexpr`.
 - [ ] review: `noexcept`.
 - [ ] review: `std::` includes in schedule/root.
+- [ ] review: `libfork/` includes
 - [ ] docs: Add vcpkg to hacking/building.
 - [ ] docs: Add recursive clone to hacking/building.
 - [ ] docs: Catalog deps for compilation (i.e pkg-config) (fresh ubuntu wsl).
@@ -62,7 +63,8 @@ Modules (cpp20) support.
 - [x] busy_pool.
 - [x] optimize single-threaded contexts
 - [x] separate invoke awaitable from promise.
-
+- [x] remove `frame_block` from public api's
+- [x] works-around https://github.com/llvm/llvm-project/issues/63022
 
 
 Naming:
