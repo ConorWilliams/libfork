@@ -215,19 +215,29 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
 #endif
 
 /**
- * @brief Macro to use in place of 'inline' to force a function to be inline
+ * @brief Macro to use next to 'inline' to force a function to be inlined.
  */
 #if !defined(LF_FORCEINLINE)
   #ifdef LF_DOXYGEN_SHOULD_SKIP_THIS
-    #define LF_FORCEINLINE inline
+    #define LF_FORCEINLINE
   #elif defined(_MSC_VER)
     #define LF_FORCEINLINE __forceinline
   #elif defined(__GNUC__) && __GNUC__ > 3
     // Clang also defines __GNUC__ (as 4)
-    #define LF_FORCEINLINE inline __attribute__((__always_inline__))
+    #define LF_FORCEINLINE __attribute__((__always_inline__))
   #else
     #define LF_FORCEINLINE inline
   #endif
+#endif
+
+/**
+ * @brief This works-around https://github.com/llvm/llvm-project/issues/63022
+ *
+ */
+#if defined(__clang__) && __clang_major__ <= 16
+  #define LF_TLS_CLANG_INLINE LF_NOINLINE
+#else
+  #define LF_TLS_CLANG_INLINE LF_FORCEINLINE
 #endif
 
 /**

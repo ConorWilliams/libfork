@@ -112,7 +112,7 @@ TEST_CASE("fib on stack", "[virtual_stack]") {
     //
     auto *s = new async_stack{};
 
-    tls::asp = stack_as_bytes(s);
+    tls::set_asp(stack_as_bytes(s));
 
     volatile int p = 20;
 
@@ -132,7 +132,7 @@ TEST_CASE("fib on stack", "[virtual_stack]") {
 
     REQUIRE(x == y);
 
-    auto *f = bytes_to_stack(tls::asp);
+    auto *f = bytes_to_stack(tls::get_asp());
 
     REQUIRE(s == f);
 

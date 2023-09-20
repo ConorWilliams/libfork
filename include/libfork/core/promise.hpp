@@ -39,7 +39,7 @@ namespace detail {
 template <thread_context Context>
 struct switch_awaitable {
 
-  auto await_ready() const noexcept { return tls::ctx<Context> == non_null(dest); }
+  auto await_ready() const noexcept { return tls::get_ctx<Context>() == non_null(dest); }
 
   void await_suspend(stdx::coroutine_handle<>) noexcept { non_null(dest)->submit(&self); }
 
@@ -58,7 +58,7 @@ struct fork_awaitable : stdx::suspend_always {
     m_parent->debug_inc();
     // Need it here (on real stack) in case *this is destructed after push.
     stdx::coroutine_handle child = m_child->coro();
-    tls::ctx<Context>->task_push(std::bit_cast<task_h<Context> *>(m_parent));
+    tls::get_ctx<Context>()->task_push(std::bit_cast<task_h<Context> *>(m_parent));
     return child;
   }
   frame_block *m_parent;
@@ -111,7 +111,7 @@ struct join_awaitable {
     LF_ASSERT(self->steals() != 0);
 
     if constexpr (!IsRoot) {
-      tls::eat<Context>(self->top());
+      tls::push_asp<Context>(self->top());
     }
     // Some steals have happened, need to reset the control block.
     self->reset();
@@ -179,7 +179,7 @@ struct join_awaitable {
     self->debug_reset();
 
     if constexpr (!IsRoot) {
-      LF_ASSERT(self->top() == tls::asp);
+      LF_ASSERT(self->top() == tls::get_asp());
     }
   }
 
@@ -191,7 +191,7 @@ struct join_awaitable {
 template <thread_context Context>
 auto final_await_suspend(frame_block *parent) noexcept -> std::coroutine_handle<> {
 
-  Context *context = non_null(tls::ctx<Context>);
+  Context *context = non_null(tls::get_ctx<Context>());
 
   if (task_h<Context> *parent_task = context->task_pop()) {
     // No-one stole continuation, we are the exclusive owner of parent, just keep ripping!
@@ -234,8 +234,8 @@ auto final_await_suspend(frame_block *parent) noexcept -> std::coroutine_handle<
     LF_LOG("Task is last child to join, resumes parent");
 
     if (!is_root) [[likely]] {
-      if (top != tls::asp) {
-        tls::eat<Context>(top);
+      if (top != tls::get_asp()) {
+        tls::push_asp<Context>(top);
       }
     }
 
@@ -251,11 +251,12 @@ auto final_await_suspend(frame_block *parent) noexcept -> std::coroutine_handle<
   LF_LOG("Task is not last to join");
 
   if (!is_root) [[likely]] {
-    if (top == tls::asp) {
+    if (top == tls::get_asp()) {
       // We are unable to resume the parent, as the resuming thread will take
       // ownership of the parent's stack we must give it up.
       LF_LOG("Thread releases control of parent's stack");
-      tls::asp = stack_as_bytes(context->stack_pop());
+
+      tls::set_asp(stack_as_bytes(context->stack_pop()));
     }
   }
 
@@ -317,7 +318,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
         // Inline task's parent cannot have been stolen as its continuation was not pushed to a queue,
         // Hence, no need to reset control block.
 
-        // We do not attempt to eat the stack because stack eats only occur at a sync point.
+        // We do not attempt to push_asp the stack because stack eats only occur at a sync point.
         return parent->coro();
       }
       return detail::final_await_suspend<Context>(parent);

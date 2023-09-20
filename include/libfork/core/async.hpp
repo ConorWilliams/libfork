@@ -169,7 +169,7 @@ struct patched : Head {
    *
    * \endrst
    */
-  [[nodiscard]] static auto context() -> Context * { return non_null(tls::ctx<Context>); }
+  [[nodiscard]] static auto context() -> Context * { return non_null(tls::get_ctx<Context>()); }
 };
 
 /**

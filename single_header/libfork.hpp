@@ -1033,8 +1033,7 @@ struct frame_block : private immovable<frame_block>, debug_block {
     coro().resume();
 
     LF_ASSERT(tls::get_asp());
-    LF_ASSERT(tls::get_ctx<Context>());
-    LF_ASSERT(!tls::get_ctx<Context>()->task_pop());
+    LF_ASSERT(!non_null(tls::get_ctx<Context>())->task_pop());
   }
 
 // protected:
