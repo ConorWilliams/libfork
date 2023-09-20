@@ -239,6 +239,17 @@ auto final_await_suspend(frame_block *parent) noexcept -> std::coroutine_handle<
 
 } // namespace detail
 
+template <typename Arg, tag Tag>
+concept first_arg_tagged = first_arg<Arg> && tag_of<Arg> == Tag;
+
+/**
+ * @brief Use to change a `first_arg` s tag to `tag::call`.
+ */
+template <first_arg Head>
+struct rewrite_tag : Head {
+  static constexpr tag tag_value = tag::call; ///< The tag value.
+};
+
 /**
  * @brief Selects the allocator used by `promise_type` depending on tag.
  */
@@ -353,8 +364,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
   /**
    * @brief Transform a fork packet into a fork awaitable.
    */
-  template <first_arg Head, typename... Args>
-    requires(tag_of<Head> == tag::fork)
+  template <first_arg_tagged<tag::fork> Head, typename... Args>
   constexpr auto await_transform(packet<Head, Args...> &&packet) noexcept -> detail::fork_awaitable<Context> {
     return {{}, this, std::move(packet).template patch_with<Context>().invoke(this)};
   }
@@ -362,10 +372,25 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
   /**
    * @brief Transform a call packet into a call awaitable.
    */
-  template <first_arg Head, typename... Args>
-    requires(tag_of<Head> == tag::call)
+  template <first_arg_tagged<tag::call> Head, typename... Args>
   constexpr auto await_transform(packet<Head, Args...> &&packet) noexcept -> detail::call_awaitable {
     return {{}, std::move(packet).template patch_with<Context>().invoke(this)};
+  }
+
+  /**
+   * @brief Transform a fork packet into a call awaitable.
+   *
+   * This subsumes the above `await_transform()` for forked packets if `Context::max_threads() == 1` is true.
+   */
+  template <first_arg_tagged<tag::fork> Head, typename... Args>
+    requires valid_packet<rewrite_tag<Head>, Args...> && requires {
+      requires Context::max_threads() == 1;
+      //
+    }
+  constexpr auto await_transform(packet<Head, Args...> &&pack) noexcept -> detail::call_awaitable {
+    return await_transform(std::move(pack).apply([](Head head, Args &&...args) -> packet<rewrite_tag<Head>, Args...> {
+      return {{std::move(head)}, std::forward<Args>(args)...};
+    }));
   }
 
   /**
