@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include <nanobench.h>
 
 #include "libfork/core.hpp"
@@ -11,6 +13,11 @@ LF_NOINLINE auto fib_returns(int n) -> int {
   if (n < 2) {
     return n;
   }
+
+  // volatile char a[8 * 4 * 10];
+
+  // a[0] = 0;
+  // a[8 * 4 * 10 - 1] = 0;
 
   return fib_returns(n - 1) + fib_returns(n - 2);
 }
@@ -70,21 +77,42 @@ auto main() -> int {
 
   volatile int in = 30;
 
+  volatile int ret = 0;
+
+  // lf::unit_pool sch;
+
+  // for (int i = 0; i < 100; ++i) {
+  //   // ret = fib_ref(in);
+  //   ret = lf::sync_wait(sch, fib, in);
+  // }
+
+  // return 0;
+
   for (std::size_t i = 1; i <= std::thread::hardware_concurrency() / 2; ++i) {
 
     lf::busy_pool sch{i};
 
     bench.run("async busy pool n=" + std::to_string(i), [&] {
-      ankerl::nanobench::doNotOptimizeAway(lf::sync_wait(sch, fib, in));
+      ret = lf::sync_wait(sch, fib, in);
     });
+
+    if (ret != fib_ref(in)) {
+      std::cerr << "Error: " << ret << std::endl;
+      return 1;
+    }
   }
 
   {
     lf::busy_pool sch{1};
 
     bench.run("async invoke only", [&] {
-      ankerl::nanobench::doNotOptimizeAway(lf::sync_wait(sch, invoke_fib, in));
+      ret = lf::sync_wait(sch, invoke_fib, in);
     });
+
+    if (ret != fib_ref(in)) {
+      std::cerr << "Error: " << ret << std::endl;
+      return 1;
+    }
   }
 
   // --------------------------------- //
@@ -93,12 +121,22 @@ auto main() -> int {
     lf::unit_pool sch;
 
     bench.run("unit_pool invoke only", [&] {
-      ankerl::nanobench::doNotOptimizeAway(lf::sync_wait(sch, invoke_fib, in));
+      ret = lf::sync_wait(sch, invoke_fib, in);
     });
 
+    if (ret != fib_ref(in)) {
+      std::cerr << "Error: " << ret << std::endl;
+      return 1;
+    }
+
     bench.run("unit_pool forking", [&] {
-      ankerl::nanobench::doNotOptimizeAway(lf::sync_wait(sch, fib, in));
+      ret = lf::sync_wait(sch, fib, in);
     });
+
+    if (ret != fib_ref(in)) {
+      std::cerr << "Error: " << ret << std::endl;
+      return 1;
+    }
   }
 
   // --------------------------------- //
