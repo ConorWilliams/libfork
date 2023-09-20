@@ -81,7 +81,7 @@ class xoshiro {
    * @brief Construct and seed the PRNG from some other generator.
    */
   template <typename PRNG>
-    requires requires(PRNG &&device) {
+    requires requires (PRNG &&device) {
       { std::invoke(device) } -> std::unsigned_integral;
     }
   constexpr xoshiro(impl::seed_t, PRNG &&device) : xoshiro({scale(device), scale(device), scale(device), scale(device)}) {}
@@ -165,7 +165,7 @@ class xoshiro {
    * @brief Utility function to upscale prng's result_type to xoshiro's result_type.
    */
   template <typename PRNG>
-    requires requires(PRNG &&device) {
+    requires requires (PRNG &&device) {
       { std::invoke(device) } -> std::unsigned_integral;
     }
   [[nodiscard]] static constexpr auto scale(PRNG &&device) -> result_type {

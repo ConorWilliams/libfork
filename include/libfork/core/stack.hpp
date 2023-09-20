@@ -102,7 +102,7 @@ struct frame_block;
  * should always be able to return an empty ``lf::async_stack``.
  */
 template <typename Context>
-concept thread_context = requires(Context ctx, async_stack *stack, intrusive_node<frame_block *> *ext, frame_block *task) {
+concept thread_context = requires (Context ctx, async_stack *stack, intrusive_node<frame_block *> *ext, frame_block *task) {
   { ctx.max_threads() } -> std::same_as<std::size_t>;        // The maximum number of threads.
   { ctx.submit(ext) };                                       // Submit an external task to the context.
   { ctx.task_pop() } -> std::convertible_to<frame_block *>;  // If the stack is empty, return a null pointer.

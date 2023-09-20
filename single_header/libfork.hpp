@@ -837,7 +837,7 @@ class eventually : impl::immovable<eventually<T>> {
    */
   template <typename U>
   constexpr auto operator=(U &&expr) noexcept(noexcept(emplace(std::forward<U>(expr)))) -> eventually &
-    requires requires(eventually self) { self.emplace(std::forward<U>(expr)); }
+    requires requires (eventually self) { self.emplace(std::forward<U>(expr)); }
   {
     emplace(std::forward<U>(expr));
     return *this;
@@ -1463,7 +1463,7 @@ struct frame_block;
  * should always be able to return an empty ``lf::async_stack``.
  */
 template <typename Context>
-concept thread_context = requires(Context ctx, async_stack *stack, intrusive_node<frame_block *> *ext, frame_block *task) {
+concept thread_context = requires (Context ctx, async_stack *stack, intrusive_node<frame_block *> *ext, frame_block *task) {
   { ctx.max_threads() } -> std::same_as<std::size_t>;        // The maximum number of threads.
   { ctx.submit(ext) };                                       // Submit an external task to the context.
   { ctx.task_pop() } -> std::convertible_to<frame_block *>;  // If the stack is empty, return a null pointer.
@@ -2343,7 +2343,7 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename R, typename F>
-    requires(Tag != tag::tail)
+    requires (Tag != tag::tail)
   LF_DEPRECATE [[nodiscard("HOF needs to be called")]] LF_STATIC_CALL constexpr auto
   operator()(R &ret, [[maybe_unused]] async<F> async) LF_STATIC_CONST noexcept {
     return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...> {
@@ -2370,7 +2370,7 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename R, typename F>
-    requires(Tag != tag::tail)
+    requires (Tag != tag::tail)
   [[nodiscard("HOF needs to be called")]] static constexpr auto operator[](R &ret,
                                                                            [[maybe_unused]] async<F> async) noexcept {
     return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...> {
@@ -2957,7 +2957,7 @@ inline namespace ext {
  * @brief A concept that schedulers must satisfy.
  */
 template <typename Sch>
-concept scheduler = requires(Sch &&sch, intrusive_node<frame_block *> *ext) {
+concept scheduler = requires (Sch &&sch, intrusive_node<frame_block *> *ext) {
   typename context_of<Sch>;
   std::forward<Sch>(sch).schedule(ext);
 };

@@ -43,7 +43,7 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename R, typename F>
-    requires(Tag != tag::tail)
+    requires (Tag != tag::tail)
   LF_DEPRECATE [[nodiscard("HOF needs to be called")]] LF_STATIC_CALL constexpr auto
   operator()(R &ret, [[maybe_unused]] async<F> async) LF_STATIC_CONST noexcept {
     return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...> {
@@ -70,7 +70,7 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename R, typename F>
-    requires(Tag != tag::tail)
+    requires (Tag != tag::tail)
   [[nodiscard("HOF needs to be called")]] static constexpr auto operator[](R &ret,
                                                                            [[maybe_unused]] async<F> async) noexcept {
     return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...> {

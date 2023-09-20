@@ -35,7 +35,7 @@ inline namespace ext {
  * @brief A concept that schedulers must satisfy.
  */
 template <typename Sch>
-concept scheduler = requires(Sch &&sch, intrusive_node<frame_block *> *ext) {
+concept scheduler = requires (Sch &&sch, intrusive_node<frame_block *> *ext) {
   typename context_of<Sch>;
   std::forward<Sch>(sch).schedule(ext);
 };

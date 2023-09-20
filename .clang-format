@@ -6,5 +6,11 @@ AlwaysBreakTemplateDeclarations : true
 PackConstructorInitializers : CurrentLine
 AccessModifierOffset: -1
 IndentCaseLabels : true
-AllowShortLambdasOnASingleLine  : Empty 
+AllowShortLambdasOnASingleLine: Empty
+RequiresExpressionIndentation: OuterScope
+
+SpaceBeforeParens: Custom
+SpaceBeforeParensOptions:
+    AfterRequiresInClause: true
+    AfterRequiresInExpression : true
 ...
