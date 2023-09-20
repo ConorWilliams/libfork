@@ -29,7 +29,7 @@
 
 namespace lf {
 
-inline namespace ext {
+inline namespace core {
 
 /**
  * @brief A concept that schedulers must satisfy.
@@ -39,10 +39,6 @@ concept scheduler = requires (Sch &&sch, intrusive_node<frame_block *> *ext) {
   typename context_of<Sch>;
   std::forward<Sch>(sch).schedule(ext);
 };
-
-} // namespace ext
-
-inline namespace core {
 
 namespace detail {
 

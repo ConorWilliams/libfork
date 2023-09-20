@@ -111,6 +111,27 @@ concept thread_context = requires (Context ctx, async_stack *stack, intrusive_no
   { ctx.stack_push(stack) };                                 // Push a non-null pointer
 };
 
+namespace detail {
+
+// clang-format off
+
+template <thread_context Context>
+static consteval auto always_single_threaded() -> bool {
+  if constexpr (requires { Context::max_threads(); }) {
+    if constexpr (impl::constexpr_callable<[] { Context::max_threads(); }>) {
+      return Context::max_threads() == 1;
+    }
+  }
+  return false;
+}
+
+// clang-format on
+
+} // namespace detail
+
+template <typename Context>
+concept single_thread_context = thread_context<Context> && detail::always_single_threaded<Context>();
+
 } // namespace ext
 
 // ----------------------------------------------- //

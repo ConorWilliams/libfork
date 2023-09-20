@@ -497,6 +497,51 @@ class [[nodiscard("An instance of defer will execute immediately unless bound to
 
 // ---------------- Meta programming ---------------- //
 
+namespace detail {
+
+template <class Lambda, int = (((void)Lambda{}()), 0)>
+consteval auto constexpr_callable_help(Lambda) -> bool {
+  return true;
+}
+
+consteval auto constexpr_callable_help(auto &&...) -> bool { return false; }
+
+} // namespace detail
+
+/**
+ * @brief Detect if a function is constexpr-callable.
+ *
+ * \rst
+ *
+ * Use like:
+ *
+ * .. code::
+ *
+ *    if constexpr (is_constexpr<[]{ function_to_test() }>){
+ *      // ...
+ *    }
+ *
+ * \endrst
+ */
+template <auto Lambda>
+concept constexpr_callable = detail::constexpr_callable_help(Lambda);
+
+namespace detail::static_test {
+
+inline void foo() {}
+
+static_assert(constexpr_callable<[] {}>);
+
+static_assert(constexpr_callable<[] {
+  std::has_single_bit(1U);
+}>);
+
+static_assert(!constexpr_callable<[] {
+  foo();
+}>);
+
+} // namespace detail::static_test
+
 /**
  * @brief Forwards to ``std::is_reference_v<T>``.
  */
@@ -1471,6 +1516,27 @@ concept thread_context = requires (Context ctx, async_stack *stack, intrusive_no
   { ctx.stack_pop() } -> std::convertible_to<async_stack *>; // Return a non-null pointer
   { ctx.stack_push(stack) };                                 // Push a non-null pointer
 };
+
+namespace detail {
+
+// clang-format off
+
+template <thread_context Context>
+static consteval auto always_single_threaded() -> bool {
+  if constexpr (requires { Context::max_threads(); }) {
+    if constexpr (impl::constexpr_callable<[] { Context::max_threads(); }>) {
+      return Context::max_threads() == 1;
+    }
+  }
+  return false;
+}
+
+// clang-format on
+
+} // namespace detail
+
+template <typename Context>
+concept single_thread_context = thread_context<Context> && detail::always_single_threaded<Context>();
 
 } // namespace ext
 
@@ -2864,10 +2930,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
    * This subsumes the above `await_transform()` for forked packets if `Context::max_threads() == 1` is true.
    */
   template <first_arg_tagged<tag::fork> Head, typename... Args>
-    requires valid_packet<rewrite_tag<Head>, Args...> && requires {
-      requires Context::max_threads() == 1;
-      //
-    }
+    requires single_thread_context<Context> && valid_packet<rewrite_tag<Head>, Args...>
   constexpr auto await_transform(packet<Head, Args...> &&pack) noexcept -> detail::call_awaitable {
     return await_transform(std::move(pack).apply([](Head head, Args &&...args) -> packet<rewrite_tag<Head>, Args...> {
       return {{std::move(head)}, std::forward<Args>(args)...};
@@ -2951,7 +3014,7 @@ struct lf::stdx::coroutine_traits<Task, This, Head, Args...> : lf::stdx::corouti
 
 namespace lf {
 
-inline namespace ext {
+inline namespace core {
 
 /**
  * @brief A concept that schedulers must satisfy.
@@ -2961,10 +3024,6 @@ concept scheduler = requires (Sch &&sch, intrusive_node<frame_block *> *ext) {
   typename context_of<Sch>;
   std::forward<Sch>(sch).schedule(ext);
 };
-
-} // namespace ext
-
-inline namespace core {
 
 namespace detail {
 
@@ -3056,6 +3115,999 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
 
 #include <vector>
 
+#ifndef C1B42944_8E33_4F6B_BAD6_5FB687F6C737
+#define C1B42944_8E33_4F6B_BAD6_5FB687F6C737
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <algorithm>
+#include <atomic>
+#include <bit>
+#include <memory>
+#include <random>
+#include <vector>
+
+#ifndef C9703881_3D9C_41A5_A7A2_44615C4CFA6A
+#define C9703881_3D9C_41A5_A7A2_44615C4CFA6A
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <atomic>
+#include <bit>
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <new>
+#include <optional>
+#include <type_traits>
+#include <utility>
+#include <vector>
+
+
+/**
+ * @file deque.hpp
+ *
+ * @brief A stand-alone, production-quality implementation of the Chase-Lev lock-free
+ * single-producer multiple-consumer deque.
+ *
+ * \rst
+ *
+ * Implements the Chase-Lev deque described in the papers, `"Dynamic Circular Work-Stealing deque"
+ * <https://doi.org/10.1145/1073970.1073974>`_ and `"Correct and Efficient Work-Stealing for Weak
+ * Memory Models" <https://doi.org/10.1145/2442516.2442524>`_.
+ *
+ * \endrst
+ */
+
+namespace lf {
+
+inline namespace ext {
+
+/**
+ * @brief A concept that verifies a type is trivially semi-regular and lock-free.
+ */
+template <typename T>
+concept simple =
+    std::is_default_constructible_v<T> && std::is_trivially_copyable_v<T> && std::atomic<T>::is_always_lock_free;
+
+} // namespace ext
+
+namespace impl {
+
+/**
+ * @brief A basic wrapper around a c-style array that provides modulo load/stores.
+ *
+ * This class is designed for internal use only. It provides a c-style API that is
+ * used efficiently by deque for low level atomic operations.
+ *
+ * @tparam T The type of the elements in the array.
+ */
+template <simple T>
+struct atomic_ring_buf {
+  /**
+   * @brief Construct a new ring buff object
+   *
+   * @param cap The capacity of the buffer, MUST be a power of 2.
+   */
+  constexpr explicit atomic_ring_buf(std::ptrdiff_t cap) : m_cap{cap}, m_mask{cap - 1} {
+    LF_ASSERT(cap > 0 && std::has_single_bit(static_cast<std::size_t>(cap)));
+  }
+  /**
+   * @brief Get the capacity of the buffer.
+   */
+  [[nodiscard]] constexpr auto capacity() const noexcept -> std::ptrdiff_t { return m_cap; }
+  /**
+   * @brief Store ``val`` at ``index % this->capacity()``.
+   */
+  constexpr auto store(std::ptrdiff_t index, T const &val) noexcept -> void {
+    LF_ASSERT(index >= 0);
+    (m_buf.get() + (index & m_mask))->store(val, std::memory_order_relaxed); // NOLINT Avoid cast to std::size_t.
+  }
+  /**
+   * @brief Load value at ``index % this->capacity()``.
+   */
+  [[nodiscard]] constexpr auto load(std::ptrdiff_t index) const noexcept -> T {
+    LF_ASSERT(index >= 0);
+    return (m_buf.get() + (index & m_mask))->load(std::memory_order_relaxed); // NOLINT Avoid cast to std::size_t.
+  }
+  /**
+   * @brief Copies elements in range ``[bottom, top)`` into a new ring buffer.
+   *
+   * This function allocates a new buffer and returns a pointer to it.
+   * The caller is responsible for deallocating the memory.
+   *
+   * @param bottom The bottom of the range to copy from (inclusive).
+   * @param top The top of the range to copy from (exclusive).
+   */
+  [[nodiscard]] constexpr auto resize(std::ptrdiff_t bottom, std::ptrdiff_t top) const -> atomic_ring_buf<T> * { // NOLINT
+    auto *ptr = new atomic_ring_buf{2 * m_cap};                                                                  // NOLINT
+    for (std::ptrdiff_t i = top; i != bottom; ++i) {
+      ptr->store(i, load(i));
+    }
+    return ptr;
+  }
+
+ private:
+  using array_t = std::atomic<T>[]; // NOLINT
+
+  std::ptrdiff_t m_cap;  ///< Capacity of the buffer
+  std::ptrdiff_t m_mask; ///< Bit mask to perform modulo capacity operations
+
+#ifdef __cpp_lib_smart_ptr_for_overwrite
+  std::unique_ptr<array_t> m_buf = std::make_unique_for_overwrite<array_t>(static_cast<std::size_t>(m_cap));
+#else
+  std::unique_ptr<array_t> m_buf = std::make_unique<array_t>(static_cast<std::size_t>(m_cap));
+#endif
+};
+
+} // namespace impl
+
+inline namespace ext {
+
+/**
+ * @brief Error codes for ``deque`` 's ``steal()`` operation.
+ */
+enum class err : int {
+  none = 0, ///< The ``steal()`` operation succeeded.
+  lost,     ///< Lost the ``steal()`` race hence, the ``steal()`` operation failed.
+  empty,    ///< The deque is empty and hence, the ``steal()`` operation failed.
+};
+
+/**
+ * @brief A concept that verifies a type is suitable for use as the return type of ``deque::pop()``.
+ *
+ * Ideally this has the semantic implication that ``Optional`` is a ``std::optional``-like type.
+ */
+template <typename Optional, typename T>
+concept optional_for = std::is_default_constructible_v<Optional> && std::constructible_from<Optional, T>;
+
+/**
+ * @brief An unbounded lock-free single-producer multiple-consumer work-stealing deque.
+ *
+ * Implements the "Chase-Lev" deque described in the papers, `"Dynamic Circular Work-Stealing deque"
+ * <https://doi.org/10.1145/1073970.1073974>`_ and `"Correct and Efficient Work-Stealing for Weak
+ * Memory Models" <https://doi.org/10.1145/2442516.2442524>`_.
+ *
+ * Only the deque owner can perform ``pop()`` and ``push()`` operations where the deque behaves
+ * like a LIFO stack. Others can (only) ``steal()`` data from the deque, they see a FIFO deque.
+ * All threads must have finished using the deque before it is destructed.
+ *
+ * \rst
+ *
+ * Example:
+ *
+ * .. include:: ../../test/source/schedule/deque.cpp
+ *    :code:
+ *    :start-after: // !BEGIN-EXAMPLE
+ *    :end-before: // !END-EXAMPLE
+ *
+ * \endrst
+ *
+ * @tparam T The type of the elements in the deque.
+ * @tparam Optional The type returned by ``pop()``.
+ */
+template <simple T>
+class deque : impl::immovable<deque<T>> {
+
+  static constexpr std::ptrdiff_t k_default_capacity = 1024;
+  static constexpr std::size_t k_garbage_reserve = 32;
+
+ public:
+  /**
+   * @brief The type of the elements in the deque.
+   */
+  using value_type = T;
+  /**
+   * @brief Construct a new empty deque object.
+   */
+  constexpr deque() : deque(k_default_capacity) {}
+  /**
+   * @brief Construct a new empty deque object.
+   *
+   * @param cap The capacity of the deque (must be a power of 2).
+   */
+  constexpr explicit deque(std::ptrdiff_t cap);
+  /**
+   * @brief Get the number of elements in the deque.
+   */
+  [[nodiscard]] constexpr auto size() const noexcept -> std::size_t;
+  /**
+   * @brief Get the number of elements in the deque as a signed integer.
+   */
+  [[nodiscard]] constexpr auto ssize() const noexcept -> ptrdiff_t;
+  /**
+   * @brief Get the capacity of the deque.
+   */
+  [[nodiscard]] constexpr auto capacity() const noexcept -> ptrdiff_t;
+  /**
+   * @brief Check if the deque is empty.
+   */
+  [[nodiscard]] constexpr auto empty() const noexcept -> bool;
+  /**
+   * @brief Push an item into the deque.
+   *
+   * Only the owner thread can insert an item into the deque.
+   * This operation can trigger the deque to resize if more space is required.
+   *
+   * @param val Value to add to the deque.
+   */
+  constexpr void push(T const &val) noexcept;
+  /**
+   * @brief Pop an item from the deque.
+   *
+   * Only the owner thread can pop out an item from the deque. If the buffer is empty calls `when_empty` and returns the
+   * result. By default, `when_empty` is a no-op that returns a null `std::optional<T>`.
+   */
+  template <std::invocable F = impl::return_nullopt<T>>
+    requires std::convertible_to<T, std::invoke_result_t<F>>
+  constexpr auto pop(F &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<F>) -> std::invoke_result_t<F>;
+
+  /**
+   * @brief The return type of the ``steal()`` operation.
+   *
+   * This type is suitable for structured bindings. We return a custom type instead of a
+   * ``std::optional`` to allow for more information to be returned as to why a steal may fail.
+   */
+  struct steal_t {
+    /**
+     * @brief Check if the operation succeeded.
+     */
+    [[nodiscard]] constexpr explicit operator bool() const noexcept { return code == err::none; }
+    /**
+     * @brief Get the value like ``std::optional``.
+     *
+     * Requires ``code == err::none`` .
+     */
+    [[nodiscard]] constexpr auto operator*() noexcept -> T & {
+      LF_ASSERT(code == err::none);
+      return val;
+    }
+    /**
+     * @brief Get the value like ``std::optional``.
+     *
+     * Requires ``code == err::none`` .
+     */
+    [[nodiscard]] constexpr auto operator*() const noexcept -> T const & {
+      LF_ASSERT(code == err::none);
+      return val;
+    }
+    /**
+     * @brief Get the value ``like std::optional``.
+     *
+     * Requires ``code == err::none`` .
+     */
+    constexpr auto operator->() noexcept -> T * {
+      LF_ASSERT(code == err::none);
+      return std::addressof(val);
+    }
+    /**
+     * @brief Get the value ``like std::optional``.
+     *
+     * Requires ``code == err::none`` .
+     */
+    constexpr auto operator->() const noexcept -> T const * {
+      LF_ASSERT(code == err::none);
+      return std::addressof(val);
+    }
+
+    err code; ///< The error code of the ``steal()`` operation.
+    T val;    ///< The value stolen from the deque, Only valid if ``code == err::stolen``.
+  };
+
+  /**
+   * @brief Steal an item from the deque.
+   *
+   * Any threads can try to steal an item from the deque. This operation can fail if the deque is
+   * empty or if another thread simultaneously stole an item from the deque.
+   */
+  constexpr auto steal() noexcept -> steal_t;
+  /**
+   * @brief Destroy the deque object.
+   *
+   * All threads must have finished using the deque before it is destructed.
+   */
+  constexpr ~deque() noexcept;
+
+ private:
+  alignas(impl::k_cache_line) std::atomic<std::ptrdiff_t> m_top;
+  alignas(impl::k_cache_line) std::atomic<std::ptrdiff_t> m_bottom;
+  alignas(impl::k_cache_line) std::atomic<impl::atomic_ring_buf<T> *> m_buf;
+  alignas(impl::k_cache_line) std::vector<std::unique_ptr<impl::atomic_ring_buf<T>>> m_garbage; // Store old buffers here.
+
+  // Convenience aliases.
+  static constexpr std::memory_order relaxed = std::memory_order_relaxed;
+  static constexpr std::memory_order consume = std::memory_order_consume;
+  static constexpr std::memory_order acquire = std::memory_order_acquire;
+  static constexpr std::memory_order release = std::memory_order_release;
+  static constexpr std::memory_order seq_cst = std::memory_order_seq_cst;
+};
+
+template <simple T>
+constexpr deque<T>::deque(std::ptrdiff_t cap) : m_top(0),
+                                                m_bottom(0),
+                                                m_buf(new impl::atomic_ring_buf<T>{cap}) {
+  m_garbage.reserve(k_garbage_reserve);
+}
+
+template <simple T>
+constexpr auto deque<T>::size() const noexcept -> std::size_t {
+  return static_cast<std::size_t>(ssize());
+}
+
+template <simple T>
+constexpr auto deque<T>::ssize() const noexcept -> std::ptrdiff_t {
+  ptrdiff_t const bottom = m_bottom.load(relaxed);
+  ptrdiff_t const top = m_top.load(relaxed);
+  return std::max(bottom - top, ptrdiff_t{0});
+}
+
+template <simple T>
+constexpr auto deque<T>::capacity() const noexcept -> ptrdiff_t {
+  return m_buf.load(relaxed)->capacity();
+}
+
+template <simple T>
+constexpr auto deque<T>::empty() const noexcept -> bool {
+  ptrdiff_t const bottom = m_bottom.load(relaxed);
+  ptrdiff_t const top = m_top.load(relaxed);
+  return top >= bottom;
+}
+
+template <simple T>
+constexpr auto deque<T>::push(T const &val) noexcept -> void {
+  std::ptrdiff_t const bottom = m_bottom.load(relaxed);
+  std::ptrdiff_t const top = m_top.load(acquire);
+  impl::atomic_ring_buf<T> *buf = m_buf.load(relaxed);
+
+  if (buf->capacity() < (bottom - top) + 1) {
+    // deque is full, build a new one.
+    m_garbage.emplace_back(std::exchange(buf, buf->resize(bottom, top)));
+    m_buf.store(buf, relaxed);
+  }
+
+  // Construct new object, this does not have to be atomic as no one can steal this item until
+  // after we store the new value of bottom, ordering is maintained by surrounding atomics.
+  buf->store(bottom, val);
+
+  std::atomic_thread_fence(release);
+  m_bottom.store(bottom + 1, relaxed);
+}
+
+template <simple T>
+template <std::invocable F>
+  requires std::convertible_to<T, std::invoke_result_t<F>>
+constexpr auto deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_v<F>) -> std::invoke_result_t<F> {
+
+  std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1; //
+  impl::atomic_ring_buf<T> *buf = m_buf.load(relaxed);      //
+  m_bottom.store(bottom, relaxed);                          // Stealers can no longer steal.
+
+  std::atomic_thread_fence(seq_cst);
+  std::ptrdiff_t top = m_top.load(relaxed);
+
+  if (top <= bottom) {
+    // Non-empty deque
+    if (top == bottom) {
+      // The last item could get stolen, by a stealer that loaded bottom before our write above.
+      if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
+        // Failed race, thief got the last item.
+        m_bottom.store(bottom + 1, relaxed);
+        return std::invoke(std::forward<F>(when_empty));
+      }
+      m_bottom.store(bottom + 1, relaxed);
+    }
+    // Can delay load until after acquiring slot as only this thread can push(),
+    // This load is not required to be atomic as we are the exclusive writer.
+    return buf->load(bottom);
+  }
+  m_bottom.store(bottom + 1, relaxed);
+  return std::invoke(std::forward<F>(when_empty));
+}
+
+template <simple T>
+constexpr auto deque<T>::steal() noexcept -> steal_t {
+  std::ptrdiff_t top = m_top.load(acquire);
+  std::atomic_thread_fence(seq_cst);
+  std::ptrdiff_t const bottom = m_bottom.load(acquire);
+
+  if (top < bottom) {
+    // Must load *before* acquiring the slot as slot may be overwritten immediately after
+    // acquiring. This load is NOT required to be atomic even-though it may race with an overwrite
+    // as we only return the value if we win the race below guaranteeing we had no race during our
+    // read. If we loose the race then 'x' could be corrupt due to read-during-write race but as T
+    // is trivially destructible this does not matter.
+    T tmp = m_buf.load(consume)->load(top);
+
+    static_assert(std::is_trivially_destructible_v<T>, "concept 'simple' should guarantee this already");
+
+    if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
+      return {.code = err::lost, .val = {}};
+    }
+    return {.code = err::none, .val = tmp};
+  }
+  return {.code = err::empty, .val = {}};
+}
+
+template <simple T>
+constexpr deque<T>::~deque() noexcept {
+  delete m_buf.load(); // NOLINT
+}
+
+} // namespace ext
+
+} // namespace lf
+
+#endif /* C9703881_3D9C_41A5_A7A2_44615C4CFA6A */
+#ifndef CA0BE1EA_88CD_4E63_9D89_37395E859565
+#define CA0BE1EA_88CD_4E63_9D89_37395E859565
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+// See <http://creativecommons.org/publicdomain/zero/1.0/>.
+
+#include <array>
+#include <climits>
+#include <concepts>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <utility>
+
+
+/**
+ * \file random.hpp
+ *
+ * @brief Pseudo random number generators (PRNG).
+ *
+ * This implementation has been adapted from ``http://prng.di.unimi.it/xoshiro256starstar.c``
+ */
+
+namespace lf {
+
+namespace impl {
+
+/**
+ * @brief A tag type to disambiguated seeding from other operations.
+ */
+struct seed_t {};
+
+} // namespace impl
+
+inline namespace ext {
+
+inline constexpr impl::seed_t seed = {}; ///< A tag to disambiguate seeding from other operations.
+
+/**
+ * @brief A \<random\> compatible implementation of the xoshiro256** 1.0 PRNG
+ *
+ * \rst
+ *
+ * From `the original <https://prng.di.unimi.it/>`_:
+ *
+ * This is xoshiro256** 1.0, one of our all-purpose, rock-solid generators. It has excellent
+ * (sub-ns) speed, a state (256 bits) that is large enough for any parallel application, and it
+ * passes all tests we are aware of.
+ *
+ * \endrst
+ */
+class xoshiro {
+ public:
+  using result_type = std::uint64_t; ///< Required by named requirement: UniformRandomBitGenerator
+
+  /**
+   * @brief Construct a new xoshiro with a fixed default-seed.
+   */
+  xoshiro() = default;
+
+  /**
+   * @brief Construct and seed the PRNG.
+   *
+   * @param seed The PRNG's seed, must not be everywhere zero.
+   */
+  explicit constexpr xoshiro(std::array<result_type, 4> const &my_seed) : m_state{my_seed} {
+    if (my_seed == std::array<result_type, 4>{0, 0, 0, 0}) {
+      LF_ASSERT(false);
+    }
+  }
+
+  /**
+   * @brief Construct and seed the PRNG from some other generator.
+   */
+  template <typename PRNG>
+    requires requires (PRNG &&device) {
+      { std::invoke(device) } -> std::unsigned_integral;
+    }
+  constexpr xoshiro(impl::seed_t, PRNG &&device) : xoshiro({scale(device), scale(device), scale(device), scale(device)}) {}
+
+  /**
+   * @brief Get the minimum value of the generator.
+   *
+   * @return The minimum value that ``xoshiro::operator()`` can return.
+   */
+  [[nodiscard]] static constexpr auto min() noexcept -> result_type { return std::numeric_limits<result_type>::lowest(); }
+
+  /**
+   * @brief Get the maximum value of the generator.
+   *
+   * @return The maximum value that ``xoshiro::operator()`` can return.
+   */
+  [[nodiscard]] static constexpr auto max() noexcept -> result_type { return std::numeric_limits<result_type>::max(); }
+
+  /**
+   * @brief Generate a random bit sequence and advance the state of the generator.
+   *
+   * @return A pseudo-random number.
+   */
+  [[nodiscard]] constexpr auto operator()() noexcept -> result_type {
+    result_type const result = rotl(m_state[1] * 5, 7) * 9;
+
+    result_type const temp = m_state[1] << 17; // NOLINT
+
+    m_state[2] ^= m_state[0];
+    m_state[3] ^= m_state[1];
+    m_state[1] ^= m_state[2];
+    m_state[0] ^= m_state[3];
+
+    m_state[2] ^= temp;
+
+    m_state[3] = rotl(m_state[3], 45); // NOLINT (magic-numbers)
+
+    return result;
+  }
+
+  /**
+   * @brief This is the jump function for the generator.
+   *
+   * It is equivalent to 2^128 calls to operator(); it can be used to generate 2^128 non-overlapping
+   * sub-sequences for parallel computations.
+   */
+  constexpr auto jump() noexcept -> void {
+    jump_impl({0x180ec6d33cfd0aba, 0xd5a61266f0c9392c, 0xa9582618e03fc9aa, 0x39abdc4529b1661c}); // NOLINT
+  }
+
+  /**
+   * @brief This is the long-jump function for the generator.
+   *
+   * It is equivalent to 2^192 calls to operator(); it can be used to generate 2^64 starting points,
+   * from each of which jump() will generate 2^64 non-overlapping sub-sequences for parallel
+   * distributed computations.
+   */
+  constexpr auto long_jump() noexcept -> void {
+    jump_impl({0x76e15d3efefdcbbf, 0xc5004e441c522fb3, 0x77710069854ee241, 0x39109bb02acbe635}); // NOLINT
+  }
+
+ private:
+  /**
+   * @brief The default seed for the PRNG.
+   */
+  std::array<result_type, 4> m_state = {
+      0x8D0B73B52EA17D89,
+      0x2AA426A407C2B04F,
+      0xF513614E4798928A,
+      0xA65E479EC5B49D41,
+  };
+
+  /**
+   * @brief Utility function.
+   */
+  [[nodiscard]] static constexpr auto rotl(result_type const val, int const bits) noexcept -> result_type {
+    return (val << bits) | (val >> (64 - bits)); // NOLINT
+  }
+
+  /**
+   * @brief Utility function to upscale prng's result_type to xoshiro's result_type.
+   */
+  template <typename PRNG>
+    requires requires (PRNG &&device) {
+      { std::invoke(device) } -> std::unsigned_integral;
+    }
+  [[nodiscard]] static constexpr auto scale(PRNG &&device) -> result_type {
+    //
+    constexpr std::size_t chars_in_prng = sizeof(std::invoke_result_t<PRNG>);
+
+    constexpr std::size_t chars_in_xoshiro = sizeof(result_type);
+
+    static_assert(chars_in_xoshiro < chars_in_prng || chars_in_xoshiro % chars_in_prng == 0);
+
+    result_type bits = std::invoke(device);
+
+    for (std::size_t i = 1; i < chars_in_xoshiro / chars_in_prng; i++) {
+      bits = (bits << CHAR_BIT * chars_in_prng) + std::invoke(device);
+    }
+
+    return bits;
+  }
+
+  constexpr void jump_impl(std::array<result_type, 4> const &jump_array) noexcept {
+    //
+    std::array<result_type, 4> s = {0, 0, 0, 0}; // NOLINT
+
+    for (result_type const jump : jump_array) {
+      for (int bit = 0; bit < 64; ++bit) {  // NOLINT
+        if (jump & result_type{1} << bit) { // NOLINT
+          s[0] ^= m_state[0];
+          s[1] ^= m_state[1];
+          s[2] ^= m_state[2];
+          s[3] ^= m_state[3];
+        }
+        std::invoke(*this);
+      }
+    }
+    m_state = s;
+  }
+};
+
+} // namespace ext
+
+} // namespace lf
+
+#endif /* CA0BE1EA_88CD_4E63_9D89_37395E859565 */
+#ifndef C0E5463D_72D1_43C1_9458_9797E2F9C033
+#define C0E5463D_72D1_43C1_9458_9797E2F9C033
+
+#include <array>
+#include <bit>
+#include <concepts>
+#include <cstdint>
+#include <functional>
+#include <optional>
+#include <utility>
+
+
+namespace lf {
+
+inline namespace ext {
+
+/**
+ * @brief A fixed capacity, power-of-two FILO ring-buffer with customizable behavior on overflow/underflow.
+ */
+template <std::default_initializable T, std::size_t N>
+  requires (std::has_single_bit(N))
+class ring_buffer {
+
+  struct discard {
+    LF_STATIC_CALL constexpr auto operator()(T const &) LF_STATIC_CONST noexcept -> bool { return false; }
+  };
+
+ public:
+  /**
+   * @brief Test whether the ring-buffer is empty.
+   */
+  [[nodiscard]] constexpr auto empty() const noexcept -> bool { return m_top == m_bottom; }
+
+  /**
+   * @brief Test whether the ring-buffer is full.
+   */
+  [[nodiscard]] constexpr auto full() const noexcept -> bool { return m_bottom - m_top == N; }
+
+  /**
+   * @brief Pushes a value to the ring-buffer.
+   *
+   * If the buffer is full then calls `when_full` with the value and returns false, otherwise returns true.
+   * By default, `when_full` is a no-op.
+   */
+  template <std::invocable<T const &> F = discard>
+  constexpr auto push(T const &val, F &&when_full = {}) noexcept(std::is_nothrow_invocable_v<F, T const &>) -> bool {
+    if (full()) {
+      std::invoke(std::forward<F>(when_full), val);
+      return false;
+    }
+    store(m_bottom++, val);
+    return true;
+  }
+
+  /**
+   * @brief Pops (removes and returns) the last value pushed into the ring-buffer.
+   *
+   * If the buffer is empty calls `when_empty` and returns the result. By default, `when_empty` is a no-op that returns
+   * a null `std::optional<T>`.
+   */
+  template <std::invocable F = impl::return_nullopt<T>>
+    requires std::convertible_to<T &, std::invoke_result_t<F>>
+  constexpr auto pop(F &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<F>) -> std::invoke_result_t<F> {
+    if (empty()) {
+      return std::invoke(std::forward<F>(when_empty));
+    }
+    return load(--m_bottom);
+  }
+
+ private:
+  auto store(std::size_t index, T const &val) noexcept -> void {
+    m_buff[index & mask] = val; // NOLINT
+  }
+
+  [[nodiscard]] auto load(std::size_t index) noexcept -> T & {
+    return m_buff[(index & mask)]; // NOLINT
+  }
+
+  static constexpr std::size_t mask = N - 1;
+
+  std::size_t m_top = 0;
+  std::size_t m_bottom = 0;
+  std::array<T, N> m_buff;
+};
+
+} // namespace ext
+
+} // namespace lf
+
+#endif /* C0E5463D_72D1_43C1_9458_9797E2F9C033 */
+
+
+/**
+ * @file contexts.hpp
+ *
+ * @brief A collection of `thread_context` implementations for different purposes.
+ */
+
+namespace lf::impl {
+
+template <typename CRTP>
+struct immediate_base {
+
+  static void submit(intrusive_node<frame_block *> *ptr) { non_null(ptr)->get()->resume_external<CRTP>(); }
+
+  static void stack_push(async_stack *stack) {
+    LF_LOG("stack_push");
+    LF_ASSERT(stack);
+    delete stack;
+  }
+
+  static auto stack_pop() -> async_stack * {
+    LF_LOG("stack_pop");
+    return new async_stack;
+  }
+};
+
+// --------------------------------------------------------------------- //
+
+/**
+ * @brief The context type for the scheduler.
+ */
+class immediate_context : public immediate_base<immediate_context> {
+ public:
+  /**
+   * @brief Returns `1` as this runs all tasks inline.
+   *
+   * \rst
+   *
+   * .. note::
+   *
+   *    As this is a static constexpr function the promise will transform all `fork -> call`.
+   *
+   * \endrst
+   */
+  static constexpr auto max_threads() noexcept -> std::size_t { return 1; }
+
+  /**
+   * @brief This should never be called due to the above.
+   */
+  auto task_pop() -> frame_block * {
+    LF_ASSERT("false");
+    return nullptr;
+  }
+
+  /**
+   * @brief This should never be called due to the above.
+   */
+  void task_push(frame_block *) { LF_ASSERT("false"); }
+};
+
+static_assert(single_thread_context<immediate_context>);
+
+// --------------------------------------------------------------------- //
+
+/**
+ * @brief An internal context type for testing purposes.
+ *
+ * This is essentially an immediate context with a task queue.
+ */
+class test_immediate_context : public immediate_base<test_immediate_context> {
+ public:
+  test_immediate_context() { m_tasks.reserve(1024); }
+
+  // Deliberately not constexpr such that the promise will not transform all `fork -> call`.
+  static auto max_threads() noexcept -> std::size_t { return 1; }
+
+  /**
+   * @brief Pops a task from the task queue.
+   */
+  auto task_pop() -> frame_block * {
+
+    if (m_tasks.empty()) {
+      return nullptr;
+    }
+
+    frame_block *last = m_tasks.back();
+    m_tasks.pop_back();
+    return last;
+  }
+
+  /**
+   * @brief Pushes a task to the task queue.
+   */
+  void task_push(frame_block *task) { m_tasks.push_back(non_null(task)); }
+
+ private:
+  std::vector<frame_block *> m_tasks; // All non-null.
+};
+
+static_assert(thread_context<test_immediate_context>);
+static_assert(!single_thread_context<test_immediate_context>);
+
+// --------------------------------------------------------------------- //
+
+/**
+ * @brief A generic `thread_context` suitable for all `libforks` multi-threaded schedulers.
+ *
+ * This object does not manage worker_init/worker_finalize as it is intended
+ * to be constructed/destructed by the master thread.
+ */
+class worker_context : immovable<worker_context> {
+  static constexpr std::size_t k_buff = 16;
+  static constexpr std::size_t k_steal_attempts = 64;
+
+  deque<frame_block *> m_tasks;                ///< Our public task queue, all non-null.
+  deque<async_stack *> m_stacks;               ///< Our public stack queue, all non-null.
+  intrusive_list<frame_block *> m_submit;      ///< The public submission queue, all non-null.
+  ring_buffer<async_stack *, k_buff> m_buffer; ///< Our private stack buffer, all non-null.
+
+  xoshiro m_rng{seed, std::random_device{}}; ///< Our personal PRNG.
+  std::vector<worker_context *> m_friends;   ///< Other contexts in the pool, all non-null.
+
+  template <typename T>
+  static constexpr auto null_for = []() LF_STATIC_CALL noexcept -> T * {
+    return nullptr;
+  };
+
+ public:
+  worker_context() {
+    for (auto *elem : m_friends) {
+      LF_ASSERT(elem);
+    }
+    for (std::size_t i = 0; i < k_buff / 2; ++i) {
+      m_buffer.push(new async_stack);
+    }
+  }
+
+  void set_rng(xoshiro const &rng) noexcept { m_rng = rng; }
+
+  void add_friend(worker_context *a_friend) noexcept { m_friends.push_back(non_null(a_friend)); }
+
+  /**
+   * @brief Call `resume_external` on all the submitted tasks, returns `false` if the queue was empty.
+   */
+  auto try_resume_submitted() noexcept -> bool {
+    return m_submit.consume([](frame_block *submitted) LF_STATIC_CALL noexcept {
+      submitted->resume_external<worker_context>();
+      //
+    });
+  }
+
+  /**
+   * @brief Try to steal a task from one of our friends and call `resume_stolen` on it, returns `false` if we failed.
+   */
+  auto try_steal_and_resume() -> bool {
+    for (std::size_t i = 0; i < k_steal_attempts; ++i) {
+
+      std::shuffle(m_friends.begin(), m_friends.end(), m_rng);
+
+      for (worker_context *context : m_friends) {
+
+        auto [err, task] = context->m_tasks.steal();
+
+        switch (err) {
+          case lf::err::none:
+            LF_LOG("Stole task from {}", (void *)context);
+            task->resume_stolen();
+            LF_ASSERT(m_tasks.empty());
+            return true;
+
+          case lf::err::lost:
+            // We don't retry here as we don't want to cause contention
+            // and we have multiple steal attempts anyway.
+          case lf::err::empty:
+            continue;
+
+          default:
+            LF_ASSERT(false);
+        }
+      }
+    }
+    return false;
+  }
+
+  ~worker_context() noexcept {
+    //
+    LF_ASSERT(m_tasks.empty());
+
+    while (auto *stack = m_buffer.pop(null_for<async_stack>)) {
+      delete stack;
+    }
+
+    while (auto *stack = m_stacks.pop(null_for<async_stack>)) {
+      delete stack;
+    }
+  }
+
+  // ------------- To satisfy `thread_context` ------------- //
+
+  auto max_threads() const noexcept -> std::size_t { return m_friends.size() + 1; }
+
+  auto submit(intrusive_node<frame_block *> *node) noexcept -> void { m_submit.push(non_null(node)); }
+
+  auto stack_pop() -> async_stack * {
+
+    if (auto *stack = m_buffer.pop(null_for<async_stack>)) {
+      LF_LOG("Using local-buffered stack");
+      return stack;
+    }
+
+    if (auto *stack = m_stacks.pop(null_for<async_stack>)) {
+      LF_LOG("Using public-buffered stack");
+      return stack;
+    }
+
+    std::shuffle(m_friends.begin(), m_friends.end(), m_rng);
+
+    for (worker_context *context : m_friends) {
+
+    retry:
+      auto [err, stack] = context->m_stacks.steal();
+
+      switch (err) {
+        case lf::err::none:
+          LF_LOG("Stole stack from {}", (void *)context);
+          return stack;
+        case lf::err::lost:
+          // We retry (even if it may cause contention) to try and avoid allocating.
+          goto retry;
+        case lf::err::empty:
+          break;
+        default:
+          LF_ASSERT(false);
+      }
+    }
+
+    return new async_stack;
+  }
+
+  void stack_push(async_stack *stack) {
+    m_buffer.push(non_null(stack), [&](async_stack *stack) noexcept {
+      LF_LOG("Local stack buffer overflows");
+      m_stacks.push(stack);
+    });
+  }
+
+  auto task_pop() noexcept -> frame_block * { return m_tasks.pop(null_for<frame_block>); }
+
+  void task_push(frame_block *task) { m_tasks.push(non_null(task)); }
+};
+
+static_assert(thread_context<worker_context>);
+static_assert(!single_thread_context<worker_context>);
+
+} // namespace lf::impl
+
+#endif /* C1B42944_8E33_4F6B_BAD6_5FB687F6C737 */
 
 
 /**
@@ -3066,80 +4118,47 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
 
 namespace lf {
 
-/**
- * @brief A scheduler that runs all tasks inline on the current thread.
- */
-class unit_pool : impl::immovable<unit_pool> {
+namespace impl {
+
+template <thread_context Context>
+class unit_pool_impl : impl::immovable<unit_pool_impl<Context>> {
  public:
-  /**
-   * @brief The context type for the scheduler.
-   */
-  class context_type {
-   public:
-    context_type() { m_tasks.reserve(1024); }
-
-    static void submit(intrusive_node<frame_block *> *ptr) {
-      LF_ASSERT(ptr);
-      ptr->get()->resume_external<context_type>();
-    }
-
-    /**
-     * @brief Returns one as this runs all tasks inline.
-     */
-    static constexpr auto max_threads() noexcept -> std::size_t { return 1; }
-
-    /**
-     * @brief Pops a task from the task queue.
-     */
-    auto task_pop() -> frame_block * {
-      LF_LOG("task_pop");
-
-      if (m_tasks.empty()) {
-        return nullptr;
-      }
-
-      frame_block *last = m_tasks.back();
-      m_tasks.pop_back();
-      return last;
-    }
-
-    /**
-     * @brief Pushes a task to the task queue.
-     */
-    void task_push(frame_block *task) {
-      LF_LOG("task_push");
-      LF_ASSERT(task);
-      m_tasks.push_back(task);
-    }
-
-    static void stack_push(async_stack *stack) {
-      LF_LOG("stack_push");
-      LF_ASSERT(stack);
-      delete stack;
-    }
-
-    static auto stack_pop() -> async_stack * {
-      LF_LOG("stack_pop");
-      return new async_stack;
-    }
-
-   private:
-    std::vector<frame_block *> m_tasks;
-  };
-
-  static_assert(thread_context<context_type>);
+  using context_type = Context;
 
   static void schedule(intrusive_node<frame_block *> *ptr) { context_type::submit(ptr); }
 
-  unit_pool() { worker_init(&m_context); }
+  unit_pool_impl() { worker_init(&m_context); }
 
-  ~unit_pool() { worker_finalize(&m_context); }
+  ~unit_pool_impl() { worker_finalize(&m_context); }
 
  private:
-  context_type m_context;
+  [[no_unique_address]] context_type m_context;
 };
 
+} // namespace impl
+
+inline namespace ext {
+/**
+ * @brief A scheduler that runs all tasks inline on the current thread and keeps an internal stack.
+ *
+ * This is exposed/intended for testing.
+ */
+using test_unit_pool = impl::unit_pool_impl<impl::test_immediate_context>;
+
+static_assert(scheduler<test_unit_pool>);
+
+} // namespace ext
+
+inline namespace core {
+
+/**
+ * @brief A scheduler that runs all tasks inline on the current thread.
+ */
+using unit_pool = impl::unit_pool_impl<impl::immediate_context>;
+
 static_assert(scheduler<unit_pool>);
+
+} // namespace core
 
 } // namespace lf
 

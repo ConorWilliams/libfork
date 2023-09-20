@@ -150,7 +150,7 @@ inline constexpr async search = [](auto search, tree const &root, int val, auto 
   co_return left || right;
 };
 
-TEMPLATE_TEST_CASE("tree search", "[tree][template]", unit_pool, busy_pool) {
+TEMPLATE_TEST_CASE("tree search", "[tree][template]", unit_pool, test_unit_pool, busy_pool) {
 
   int n = 1000;
 
@@ -167,7 +167,7 @@ TEMPLATE_TEST_CASE("tree search", "[tree][template]", unit_pool, busy_pool) {
   }
 }
 
-TEMPLATE_TEST_CASE("tree bench", "[tree][benchmark][template]", unit_pool, busy_pool) {
+TEMPLATE_TEST_CASE("tree bench", "[tree][benchmark][template]", unit_pool, test_unit_pool, busy_pool) {
 
   int n = 100;
 
@@ -211,7 +211,7 @@ inline constexpr async transfer = [](auto self, tree const &root, int val) -> ta
   co_return co_await search(root, val, self.context());
 };
 
-TEMPLATE_TEST_CASE("tree transfer", "[tree][template]", unit_pool, busy_pool) {
+TEMPLATE_TEST_CASE("tree transfer", "[tree][template]", unit_pool, test_unit_pool, busy_pool) {
   TestType sch{};
 
   int n = 100;

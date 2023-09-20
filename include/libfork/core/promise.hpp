@@ -406,10 +406,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
    * This subsumes the above `await_transform()` for forked packets if `Context::max_threads() == 1` is true.
    */
   template <first_arg_tagged<tag::fork> Head, typename... Args>
-    requires valid_packet<rewrite_tag<Head>, Args...> && requires {
-      requires Context::max_threads() == 1;
-      //
-    }
+    requires single_thread_context<Context> && valid_packet<rewrite_tag<Head>, Args...>
   constexpr auto await_transform(packet<Head, Args...> &&pack) noexcept -> detail::call_awaitable {
     return await_transform(std::move(pack).apply([](Head head, Args &&...args) -> packet<rewrite_tag<Head>, Args...> {
       return {{std::move(head)}, std::forward<Args>(args)...};

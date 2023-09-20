@@ -60,6 +60,8 @@ Modules (cpp20) support.
 - [x] `co_await resume_on(...)`.
 - [x] Stack stealing.
 - [x] busy_pool.
+- [x] optimize single-threaded contexts
+- [x] separate invoke awaitable from promise.
 
 
 

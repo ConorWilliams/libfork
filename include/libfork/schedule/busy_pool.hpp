@@ -23,8 +23,8 @@
 
 #include "libfork/core.hpp"
 
+#include "libfork/schedule/contexts.hpp"
 #include "libfork/schedule/random.hpp"
-#include "libfork/schedule/worker_context.hpp"
 
 /**
  * @file busy.hpp
@@ -34,7 +34,7 @@
 
 namespace lf {
 
-inline namespace ext {
+inline namespace core {
 
 /**
  * @brief A scheduler based on a traditional work-stealing thread pool.
@@ -45,7 +45,7 @@ inline namespace ext {
  */
 class busy_pool {
  public:
-  using context_type = worker_context;
+  using context_type = impl::worker_context;
 
  private:
   xoshiro m_rng{seed, std::random_device{}};
@@ -127,7 +127,7 @@ class busy_pool {
 
 static_assert(scheduler<busy_pool>);
 
-} // namespace ext
+} // namespace core
 
 } // namespace lf
 

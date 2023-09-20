@@ -21,18 +21,31 @@ These function-like objects are used to control the flow of execution while buil
 Concepts
 ------------
 
+.. doxygenconcept:: lf::core::scheduler
+
 .. doxygenconcept:: lf::core::stateless
 
 .. doxygenconcept:: lf::core::first_arg
 
-Classes
+Schedulers
+--------------
+
+
+
+
+Other classes
 ------------
 
 .. toctree::
    :glob: 
    :maxdepth: 2
 
-   core/*
+   core/async.rst
+   core/eventually.rst
+   core/task.rst
+   core/fixed.rst
+   core/result.rst
+   core/in_place.rst
 
 
 

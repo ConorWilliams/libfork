@@ -14,6 +14,7 @@
 #include <bit>
 #include <memory>
 #include <random>
+#include <vector>
 
 #include "libfork/core.hpp"
 #include "libfork/macro.hpp"
@@ -24,23 +25,115 @@
 #include "libfork/schedule/ring_buffer.hpp"
 
 /**
- * @file worker_context.hpp
+ * @file contexts.hpp
  *
- * @brief A generic `thread_context` suitable for all `libforks` internal multi-threaded schedulers.
+ * @brief A collection of `thread_context` implementations for different purposes.
  */
 
-namespace lf {
+namespace lf::impl {
 
-inline namespace ext {
+template <typename CRTP>
+struct immediate_base {
+
+  static void submit(intrusive_node<frame_block *> *ptr) { non_null(ptr)->get()->resume_external<CRTP>(); }
+
+  static void stack_push(async_stack *stack) {
+    LF_LOG("stack_push");
+    LF_ASSERT(stack);
+    delete stack;
+  }
+
+  static auto stack_pop() -> async_stack * {
+    LF_LOG("stack_pop");
+    return new async_stack;
+  }
+};
+
+// --------------------------------------------------------------------- //
 
 /**
- * @brief The context type for the busy_pools threads.
+ * @brief The context type for the scheduler.
+ */
+class immediate_context : public immediate_base<immediate_context> {
+ public:
+  /**
+   * @brief Returns `1` as this runs all tasks inline.
+   *
+   * \rst
+   *
+   * .. note::
+   *
+   *    As this is a static constexpr function the promise will transform all `fork -> call`.
+   *
+   * \endrst
+   */
+  static constexpr auto max_threads() noexcept -> std::size_t { return 1; }
+
+  /**
+   * @brief This should never be called due to the above.
+   */
+  auto task_pop() -> frame_block * {
+    LF_ASSERT("false");
+    return nullptr;
+  }
+
+  /**
+   * @brief This should never be called due to the above.
+   */
+  void task_push(frame_block *) { LF_ASSERT("false"); }
+};
+
+static_assert(single_thread_context<immediate_context>);
+
+// --------------------------------------------------------------------- //
+
+/**
+ * @brief An internal context type for testing purposes.
+ *
+ * This is essentially an immediate context with a task queue.
+ */
+class test_immediate_context : public immediate_base<test_immediate_context> {
+ public:
+  test_immediate_context() { m_tasks.reserve(1024); }
+
+  // Deliberately not constexpr such that the promise will not transform all `fork -> call`.
+  static auto max_threads() noexcept -> std::size_t { return 1; }
+
+  /**
+   * @brief Pops a task from the task queue.
+   */
+  auto task_pop() -> frame_block * {
+
+    if (m_tasks.empty()) {
+      return nullptr;
+    }
+
+    frame_block *last = m_tasks.back();
+    m_tasks.pop_back();
+    return last;
+  }
+
+  /**
+   * @brief Pushes a task to the task queue.
+   */
+  void task_push(frame_block *task) { m_tasks.push_back(non_null(task)); }
+
+ private:
+  std::vector<frame_block *> m_tasks; // All non-null.
+};
+
+static_assert(thread_context<test_immediate_context>);
+static_assert(!single_thread_context<test_immediate_context>);
+
+// --------------------------------------------------------------------- //
+
+/**
+ * @brief A generic `thread_context` suitable for all `libforks` multi-threaded schedulers.
  *
  * This object does not manage worker_init/worker_finalize as it is intended
  * to be constructed/destructed by the master thread.
  */
-class worker_context : impl::immovable<worker_context> {
-
+class worker_context : immovable<worker_context> {
   static constexpr std::size_t k_buff = 16;
   static constexpr std::size_t k_steal_attempts = 64;
 
@@ -69,7 +162,7 @@ class worker_context : impl::immovable<worker_context> {
 
   void set_rng(xoshiro const &rng) noexcept { m_rng = rng; }
 
-  void add_friend(worker_context *a_friend) noexcept { m_friends.push_back(impl::non_null(a_friend)); }
+  void add_friend(worker_context *a_friend) noexcept { m_friends.push_back(non_null(a_friend)); }
 
   /**
    * @brief Call `resume_external` on all the submitted tasks, returns `false` if the queue was empty.
@@ -131,7 +224,7 @@ class worker_context : impl::immovable<worker_context> {
 
   auto max_threads() const noexcept -> std::size_t { return m_friends.size() + 1; }
 
-  auto submit(intrusive_node<frame_block *> *node) noexcept -> void { m_submit.push(impl::non_null(node)); }
+  auto submit(intrusive_node<frame_block *> *node) noexcept -> void { m_submit.push(non_null(node)); }
 
   auto stack_pop() -> async_stack * {
 
@@ -170,7 +263,7 @@ class worker_context : impl::immovable<worker_context> {
   }
 
   void stack_push(async_stack *stack) {
-    m_buffer.push(impl::non_null(stack), [&](async_stack *stack) noexcept {
+    m_buffer.push(non_null(stack), [&](async_stack *stack) noexcept {
       LF_LOG("Local stack buffer overflows");
       m_stacks.push(stack);
     });
@@ -178,13 +271,12 @@ class worker_context : impl::immovable<worker_context> {
 
   auto task_pop() noexcept -> frame_block * { return m_tasks.pop(null_for<frame_block>); }
 
-  void task_push(frame_block *task) { m_tasks.push(impl::non_null(task)); }
+  void task_push(frame_block *task) { m_tasks.push(non_null(task)); }
 };
 
 static_assert(thread_context<worker_context>);
+static_assert(!single_thread_context<worker_context>);
 
-} // namespace ext
-
-} // namespace lf
+} // namespace lf::impl
 
 #endif /* C1B42944_8E33_4F6B_BAD6_5FB687F6C737 */

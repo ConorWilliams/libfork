@@ -43,7 +43,7 @@ inline constexpr async noop = [](auto) -> task<> {
   co_return;
 };
 
-TEMPLATE_TEST_CASE("Construct destruct launch", "[core][template]", unit_pool, busy_pool) {
+TEMPLATE_TEST_CASE("Construct destruct launch", "[core][template]", unit_pool, test_unit_pool, busy_pool) {
 
   for (int i = 0; i < 1000; ++i) {
     TestType tmp{};
@@ -110,7 +110,7 @@ inline constexpr async r_fib = [](auto fib, int n) -> lf::task<int> {
   co_return a + b;
 };
 
-TEMPLATE_TEST_CASE("Fibonacci - returning", "[core][template]", unit_pool, busy_pool) {
+TEMPLATE_TEST_CASE("Fibonacci - returning", "[core][template]", unit_pool, test_unit_pool, busy_pool) {
   for (int j = 0; j < 100; ++j) {
     {
       TestType schedule{};
@@ -135,7 +135,7 @@ inline constexpr async inline_fib = [](auto fib, int n) -> lf::task<int> {
   co_return a + b;
 };
 
-TEMPLATE_TEST_CASE("Fibonacci - inline", "[core][template]", unit_pool, busy_pool) {
+TEMPLATE_TEST_CASE("Fibonacci - inline", "[core][template]", unit_pool, test_unit_pool, busy_pool) {
 
   TestType schedule{};
 
@@ -168,7 +168,7 @@ inline constexpr async v_fib = [](auto fib, int &ret, int n) -> lf::task<void> {
   ret = a + b;
 };
 
-TEMPLATE_TEST_CASE("Fibonacci - void", "[core][template]", unit_pool, busy_pool) {
+TEMPLATE_TEST_CASE("Fibonacci - void", "[core][template]", unit_pool, test_unit_pool, busy_pool) {
 
   TestType schedule{};
 
@@ -206,7 +206,7 @@ inline constexpr async v_fib_ignore = [](auto fib, int &ret, int n) -> lf::task<
   co_return a + b;
 };
 
-TEMPLATE_TEST_CASE("Fibonacci - ignored", "[core][template]", unit_pool, busy_pool) {
+TEMPLATE_TEST_CASE("Fibonacci - ignored", "[core][template]", unit_pool, test_unit_pool, busy_pool) {
 
   TestType schedule{};
 
@@ -239,7 +239,7 @@ class ref_test {
   };
 };
 
-TEMPLATE_TEST_CASE("Reference test", "[core][template]", unit_pool, busy_pool) {
+TEMPLATE_TEST_CASE("Reference test", "[core][template]", unit_pool, test_unit_pool, busy_pool) {
 
   LF_LOG("pre-init");
 

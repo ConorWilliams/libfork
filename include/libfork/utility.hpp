@@ -195,6 +195,51 @@ class [[nodiscard("An instance of defer will execute immediately unless bound to
 
 // ---------------- Meta programming ---------------- //
 
+namespace detail {
+
+template <class Lambda, int = (((void)Lambda{}()), 0)>
+consteval auto constexpr_callable_help(Lambda) -> bool {
+  return true;
+}
+
+consteval auto constexpr_callable_help(auto &&...) -> bool { return false; }
+
+} // namespace detail
+
+/**
+ * @brief Detect if a function is constexpr-callable.
+ *
+ * \rst
+ *
+ * Use like:
+ *
+ * .. code::
+ *
+ *    if constexpr (is_constexpr<[]{ function_to_test() }>){
+ *      // ...
+ *    }
+ *
+ * \endrst
+ */
+template <auto Lambda>
+concept constexpr_callable = detail::constexpr_callable_help(Lambda);
+
+namespace detail::static_test {
+
+inline void foo() {}
+
+static_assert(constexpr_callable<[] {}>);
+
+static_assert(constexpr_callable<[] {
+  std::has_single_bit(1U);
+}>);
+
+static_assert(!constexpr_callable<[] {
+  foo();
+}>);
+
+} // namespace detail::static_test
+
 /**
  * @brief Forwards to ``std::is_reference_v<T>``.
  */
