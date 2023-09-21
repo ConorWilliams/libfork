@@ -430,7 +430,7 @@ struct submit_h {
  *    These should be cleaned up with `worker_finalize(...)`.
  */
 template <typename Context>
-LF_NOINLINE void worker_init(Context *context) {
+LF_NOINLINE void worker_init(Context *context) noexcept {
 
   LF_LOG("Initializing worker");
 

@@ -43,7 +43,7 @@ inline namespace core {
  */
 class busy_pool {
  public:
-  using context_type = impl::worker_context;
+  struct context_type : impl::worker_context<context_type> {};
 
  private:
   xoshiro m_rng{seed, std::random_device{}};
