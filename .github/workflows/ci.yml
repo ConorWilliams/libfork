@@ -57,6 +57,9 @@ jobs:
             triplet: x64-linux
           - os: macos-13
             triplet: x64-osx
+        exclude:
+          - os: windows-latest
+            build-type: Release
 
     steps:
       - uses: actions/checkout@v3
