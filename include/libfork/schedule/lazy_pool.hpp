@@ -199,11 +199,6 @@ class lazy_context : public worker_context<lazy_context> {
       context->m_atomics->notifier.cancel_wait();
       // We leave a "ghost thief" here e.g. don't bother to reduce the counter,
       // This is fine because no-one can sleep now that the stop flag is set.
-
-      // In theory we don't have to do this because we are going to exit anyway.
-      // context->m_atomics->notifier.notify_all();
-      // context->m_atomics->dual_count.fetch_sub(k_thieve, release);
-
       return;
     }
 
