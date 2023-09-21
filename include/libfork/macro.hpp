@@ -216,6 +216,15 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
 
 /**
  * @brief Macro to use next to 'inline' to force a function to be inlined.
+ *
+ * \rst
+ *
+ * .. note::
+ *
+ *    This does not imply the c++'s `inline` keyword which also has an effect on linkage.
+ *
+ *
+ * \endrst
  */
 #if !defined(LF_FORCEINLINE)
   #ifdef LF_DOXYGEN_SHOULD_SKIP_THIS
@@ -226,13 +235,12 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
     // Clang also defines __GNUC__ (as 4)
     #define LF_FORCEINLINE __attribute__((__always_inline__))
   #else
-    #define LF_FORCEINLINE inline
+    #define LF_FORCEINLINE
   #endif
 #endif
 
 /**
  * @brief This works-around https://github.com/llvm/llvm-project/issues/63022
- *
  */
 #if defined(__clang__) && __clang_major__ <= 16
   #define LF_TLS_CLANG_INLINE LF_NOINLINE
