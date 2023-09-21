@@ -118,17 +118,11 @@ TEST_CASE("fib on stack", "[virtual_stack]") {
 
     int y = 0;
 
-    BENCHMARK("Fibonacci " + std::to_string(p) + " function") {
-      inline_fib(y, p);
-      return y;
-    };
+    inline_fib(y, p);
 
     int x = 1;
 
-    BENCHMARK("Fibonacci " + std::to_string(p) + " coroutine") {
-      fib(x, p).frame->coro().resume();
-      return x;
-    };
+    fib(x, p).frame->coro().resume();
 
     REQUIRE(x == y);
 

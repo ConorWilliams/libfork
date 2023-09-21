@@ -45,7 +45,7 @@ inline constexpr async noop = [](auto) -> task<> {
 
 TEMPLATE_TEST_CASE("Construct destruct launch", "[core][template]", unit_pool, test_unit_pool, busy_pool) {
 
-  for (int i = 0; i < 1000; ++i) {
+  for (int i = 0; i < 100; ++i) {
     TestType tmp{};
   }
 

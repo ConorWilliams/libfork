@@ -9,7 +9,6 @@
 #include <algorithm>
 #include <memory>
 #include <random>
-#include <ranges>
 
 #include <catch2/benchmark/catch_benchmark.hpp>
 #include <catch2/catch_template_test_macros.hpp>
@@ -47,9 +46,11 @@ auto build_tree(int n, double skew) -> std::unique_ptr<tree> {
 
   xoshiro rng{seed, std::random_device{}};
 
-  auto iota = std::ranges::views::iota(0, n);
+  std::vector<int> vals;
 
-  std::vector<int> vals = {iota.begin(), iota.end()};
+  for (int i = 0; i < n; ++i) {
+    vals.push_back(i);
+  }
 
   std::shuffle(vals.begin(), vals.end(), rng);
 
@@ -109,12 +110,12 @@ TEST_CASE("tree checks", "[tree]") {
 
   REQUIRE(root);
 
-  for (int val : std::ranges::views::iota(0, n)) {
-    REQUIRE(find(*root, val));
+  for (int i = 0; i < n; ++i) {
+    REQUIRE(find(*root, i));
   }
 
-  for (int val : std::ranges::views::iota(n, 2 * n)) {
-    REQUIRE(!find(*root, val));
+  for (int i = 0; i < 2 * n; ++i) {
+    REQUIRE(!find(*root, i));
   }
 }
 
@@ -162,46 +163,45 @@ TEMPLATE_TEST_CASE("tree search", "[tree][template]", unit_pool, test_unit_pool,
 
   context_of<TestType> *context = nullptr;
 
-  for (int val : std::ranges::views::iota(0, n)) {
-    REQUIRE(sync_wait(sch, search, *root, val, context));
+  for (int i = 0; i < n; ++i) {
+    REQUIRE(sync_wait(sch, search, *root, i, context));
   }
 }
 
-TEMPLATE_TEST_CASE("tree bench", "[tree][benchmark][template]", unit_pool, test_unit_pool, busy_pool) {
+TEMPLATE_TEST_CASE("tree bench", "[tree][template]", unit_pool, test_unit_pool, busy_pool) {
 
   int n = 100;
 
-  auto iota = std::ranges::views::iota(0, 2 * n);
-  std::vector<int> vals = {iota.begin(), iota.end()};
+  std::vector<int> vals;
+
+  for (int i = 0; i < 2 * n; ++i) {
+    vals.push_back(i);
+  }
 
   std::array trees = {
-      /*build_tree(n, 0.1), build_tree(n, 0.2), build_tree(n, 0.3), build_tree(n, 0.4), */ build_tree(n, 0.5),
+      build_tree(n, 0.1), build_tree(n, 0.2), build_tree(n, 0.3), build_tree(n, 0.4), build_tree(n, 0.5),
   };
 
   for (auto &root : trees) {
-    BENCHMARK("single-threaded") {
-      int count = 0;
-      for (int val : vals) {
-        count += find(*root, val);
-      }
-      REQUIRE(count == n);
-      return count;
-    };
+    int count = 0;
+    for (int val : vals) {
+      count += find(*root, val);
+    }
+    REQUIRE(count == n);
   }
 
   TestType sch{};
 
   context_of<TestType> *context = nullptr;
 
-  for (auto &root : trees) {
-    BENCHMARK("async skew") {
+  for (int i = 0; i < 10; ++i) {
+    for (auto &root : trees) {
       int count = 0;
       for (int val : vals) {
         count += sync_wait(sch, search, *root, val, context);
       }
       REQUIRE(count == n);
-      return count;
-    };
+    }
   }
 }
 
@@ -212,23 +212,24 @@ inline constexpr async transfer = [](auto self, tree const &root, int val) -> ta
 };
 
 TEMPLATE_TEST_CASE("tree transfer", "[tree][template]", unit_pool, test_unit_pool, busy_pool) {
+
   TestType sch{};
 
   int n = 100;
 
-  auto iota = std::ranges::views::iota(0, n);
+  std::vector<int> vals;
 
-  std::vector<int> vals = {iota.begin(), iota.end()};
+  for (int i = 0; i < n; ++i) {
+    vals.push_back(i);
+  }
 
-  BENCHMARK("transfer") {
+  for (int i = 0; i < 10; ++i) {
 
     auto tree = build_tree(n, 0.5);
 
     for (int val : vals) {
       REQUIRE(sync_wait(sch, transfer, *build_tree(n, 0.5), val));
     }
-
-    return tree;
   };
 }
 
