@@ -76,7 +76,7 @@ jobs:
       - name: Test
         if: matrix.os != 'windows-latest'
         working-directory: build
-        run: ctest --output-on-failure --no-tests=error -C ${{ matrix.build-type }} -j 2
+        run: ctest --output-on-failure --no-tests=error -C ${{ matrix.build-type }}
 
   sanitize:
     needs: [lint]
@@ -107,7 +107,7 @@ jobs:
           strict_init_order=1:\
           detect_leaks=1"
         UBSAN_OPTIONS: print_stacktrace=1
-      run: ctest --output-on-failure --no-tests=error -j 2
+      run: ctest --output-on-failure --no-tests=error
 
   coverage:
     needs: [lint]
@@ -133,7 +133,7 @@ jobs:
 
     - name: Test
       working-directory: build/coverage
-      run: ctest --output-on-failure --no-tests=error -j 2
+      run: ctest --output-on-failure --no-tests=error
 
     - name: Process coverage info
       run: cmake --build build/coverage -t coverage

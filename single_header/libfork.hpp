@@ -1287,7 +1287,7 @@ struct submit_h {
  *    These should be cleaned up with `worker_finalize(...)`.
  */
 template <typename Context>
-LF_NOINLINE void worker_init(Context *context) {
+LF_NOINLINE void worker_init(Context *context) noexcept {
 
   LF_LOG("Initializing worker");
 
@@ -4071,12 +4071,14 @@ static_assert(!single_thread_context<test_immediate_context>);
  * This object does not manage worker_init/worker_finalize as it is intended
  * to be constructed/destructed by the master thread.
  */
-class worker_context : immovable<worker_context> {
+template <typename CRTP>
+class worker_context : immovable<worker_context<CRTP>> {
   static constexpr std::size_t k_buff = 16;
   static constexpr std::size_t k_steal_attempts = 64;
 
-  using task_t = task_h<worker_context>;
-  using submit_t = submit_h<worker_context>;
+  using task_t = task_h<CRTP>;
+  using submit_t = submit_h<CRTP>;
+  using intruded_t = intruded_h<CRTP>;
 
   deque<task_t *> m_tasks;                     ///< Our public task queue, all non-null.
   deque<async_stack *> m_stacks;               ///< Our public stack queue, all non-null.
@@ -4084,7 +4086,7 @@ class worker_context : immovable<worker_context> {
   ring_buffer<async_stack *, k_buff> m_buffer; ///< Our private stack buffer, all non-null.
 
   xoshiro m_rng{seed, std::random_device{}}; ///< Our personal PRNG.
-  std::vector<worker_context *> m_friends;   ///< Other contexts in the pool, all non-null.
+  std::vector<CRTP *> m_friends;             ///< Other contexts in the pool, all non-null.
 
   template <typename T>
   static constexpr auto null_for = []() LF_STATIC_CALL noexcept -> T * {
@@ -4103,24 +4105,24 @@ class worker_context : immovable<worker_context> {
 
   void set_rng(xoshiro const &rng) noexcept { m_rng = rng; }
 
-  void add_friend(worker_context *a_friend) noexcept { m_friends.push_back(non_null(a_friend)); }
+  void add_friend(CRTP *a_friend) noexcept { m_friends.push_back(non_null(a_friend)); }
 
   /**
    * @brief Fetch a linked-list of the submitted tasks.
    */
-  auto try_get_submitted() noexcept -> intruded_h<worker_context> * { return m_submit.try_pop_all(); }
+  auto try_get_submitted() noexcept -> intruded_t * { return m_submit.try_pop_all(); }
 
   /**
    * @brief Try to steal a task from one of our friends, returns `nullptr` if we failed.
    *
    * Call `resume_stolen` on it if we succeeded.
    */
-  auto try_steal() -> task_t * {
+  auto try_steal() noexcept -> task_t * {
     for (std::size_t i = 0; i < k_steal_attempts; ++i) {
 
       std::shuffle(m_friends.begin(), m_friends.end(), m_rng);
 
-      for (worker_context *context : m_friends) {
+      for (CRTP *context : m_friends) {
 
         auto [err, task] = context->m_tasks.steal();
 
@@ -4160,30 +4162,30 @@ class worker_context : immovable<worker_context> {
 
   auto max_threads() const noexcept -> std::size_t { return m_friends.size() + 1; }
 
-  auto submit(intruded_h<worker_context> *node) noexcept -> void { m_submit.push(non_null(node)); }
+  auto submit(intruded_t *node) noexcept -> void { m_submit.push(non_null(node)); }
 
   auto stack_pop() -> async_stack * {
 
     if (auto *stack = m_buffer.pop(null_for<async_stack>)) {
-      LF_LOG("Using local-buffered stack");
+      LF_LOG("stack_pop() using local-buffered stack");
       return stack;
     }
 
     if (auto *stack = m_stacks.pop(null_for<async_stack>)) {
-      LF_LOG("Using public-buffered stack");
+      LF_LOG("stack_pop() using public-buffered stack");
       return stack;
     }
 
     std::shuffle(m_friends.begin(), m_friends.end(), m_rng);
 
-    for (worker_context *context : m_friends) {
+    for (CRTP *context : m_friends) {
 
     retry:
       auto [err, stack] = context->m_stacks.steal();
 
       switch (err) {
         case lf::err::none:
-          LF_LOG("Stole stack from {}", (void *)context);
+          LF_LOG("stack_pop() stole from {}", (void *)context);
           return stack;
         case lf::err::lost:
           // We retry (even if it may cause contention) to try and avoid allocating.
@@ -4195,6 +4197,7 @@ class worker_context : immovable<worker_context> {
       }
     }
 
+    LF_LOG("stack_pop() allocating");
     return new async_stack;
   }
 
@@ -4210,8 +4213,14 @@ class worker_context : immovable<worker_context> {
   void task_push(task_t *task) { m_tasks.push(non_null(task)); }
 };
 
-static_assert(thread_context<worker_context>);
-static_assert(!single_thread_context<worker_context>);
+namespace detail::static_test {
+
+struct test_context : worker_context<test_context> {};
+
+static_assert(thread_context<test_context>);
+static_assert(!single_thread_context<test_context>);
+
+} // namespace detail::static_test
 
 } // namespace lf::impl
 
