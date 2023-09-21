@@ -233,11 +233,6 @@ struct frame_block : private immovable<frame_block>, debug_block {
   }
 
   /**
-   * @brief Get a pointer to the parent frame (null for root frames)
-   */
-  [[nodiscard]] auto unsafe_parent() const noexcept -> frame_block * { return m_parent; }
-
-  /**
    * @brief Get a pointer to the top of the top of the async-stack this frame was allocated on.
    *
    * Only valid if this is not a root frame.

@@ -281,19 +281,6 @@ struct rewrite_tag : Head {
 template <tag Tag>
 using allocator = std::conditional_t<Tag == tag::root, promise_alloc_heap, promise_alloc_stack>;
 
-template <typename P>
-#if defined(_MSC_VER)
-LF_NOINLINE
-#else
-LF_FORCEINLINE
-#endif
-    inline auto
-    destroy(stdx::coroutine_handle<P> child) -> frame_block * {
-  frame_block *parent = child.promise().unsafe_parent();
-  child.destroy();
-  return parent;
-}
-
 /**
  * @brief The promise type for all tasks/coroutines.
  *
@@ -312,17 +299,19 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
     static auto await_suspend(stdx::coroutine_handle<promise_type> child) noexcept -> stdx::coroutine_handle<> {
 
       if constexpr (Tag == tag::root) {
-        LF_LOG("Root task at final suspend, releases semaphore");
+        LF_LOG("Root task at final suspend, releases semaphore and yields");
+
         // Finishing a root task implies our stack is empty and should have no exceptions.
         child.promise().address()->semaphore.release();
-        destroy(child);
-        LF_LOG("Root task yields to executor");
+        child.destroy();
+
         return stdx::noop_coroutine();
       }
 
-      LF_LOG("Task reaches final suspend");
+      LF_LOG("Task reaches final suspend, destroying child");
 
-      frame_block *parent = destroy(child);
+      frame_block *parent = child.promise().parent();
+      child.destroy();
 
       if constexpr (Tag == tag::call) {
         LF_LOG("Inline task resumes parent");
