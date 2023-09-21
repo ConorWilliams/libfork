@@ -192,9 +192,9 @@ class lazy_context : public worker_context<lazy_context> {
     }
 
     if (context->m_atomics->stop.test(acquire)) {
-      // A stop has been requested, we will honour it under the assumption
+      // A stop has been requested, we will honor it under the assumption
       // that the requester has ensured that everyone is done. We cannot check
-      // this i.e it is possible a thread that just signalled the master thread
+      // this i.e it is possible a thread that just signaled the master thread
       // is still `active` but act stalled.
       context->m_atomics->notifier.cancel_wait();
       // We leave a "ghost thief" here e.g. don't bother to reduce the counter,
