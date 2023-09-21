@@ -289,7 +289,7 @@ LF_FORCEINLINE
 #endif
     inline auto
     destroy(stdx::coroutine_handle<P> child) -> frame_block * {
-  frame_block *parent = child.promise().parent();
+  frame_block *parent = child.promise().unsafe_parent();
   child.destroy();
   return parent;
 }

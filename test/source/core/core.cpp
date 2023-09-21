@@ -25,6 +25,7 @@
 
 // #define LF_PROPAGATE_EXCEPTIONS
 // #undef LF_LOG
+
 // #define LF_DEFAULT_LOGGING
 
 #include "libfork/core.hpp"
