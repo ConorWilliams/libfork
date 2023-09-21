@@ -57,9 +57,6 @@ jobs:
             triplet: x64-linux
           - os: macos-13
             triplet: x64-osx
-        exclude:
-          - os: windows-latest
-            build-type: Release
 
     steps:
       - uses: actions/checkout@v3
@@ -77,6 +74,7 @@ jobs:
         run: cmake --install build --config ${{ matrix.build-type }} --prefix prefix
 
       - name: Test
+        if: matrix.os != 'windows-latest'
         working-directory: build
         run: ctest --output-on-failure --no-tests=error -C ${{ matrix.build-type }} -j 2
 
