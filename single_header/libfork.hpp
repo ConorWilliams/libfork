@@ -249,10 +249,12 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
 /**
  * @brief This works-around https://github.com/llvm/llvm-project/issues/63022
  */
-#if defined(__clang__) && __clang_major__ <= 16
-  #define LF_TLS_CLANG_INLINE LF_NOINLINE
-#else
-  #define LF_TLS_CLANG_INLINE LF_FORCEINLINE
+#if defined(__clang__)
+  #if defined(__apple_build_version__) || __clang_major__ <= 16
+    #define LF_TLS_CLANG_INLINE LF_NOINLINE
+  #else
+    #define LF_TLS_CLANG_INLINE LF_FORCEINLINE
+  #endif
 #endif
 
 /**

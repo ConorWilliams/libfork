@@ -114,7 +114,7 @@ TEST_CASE("tree checks", "[tree]") {
     REQUIRE(find(*root, i));
   }
 
-  for (int i = 0; i < 2 * n; ++i) {
+  for (int i = n; i < 2 * n; ++i) {
     REQUIRE(!find(*root, i));
   }
 }
