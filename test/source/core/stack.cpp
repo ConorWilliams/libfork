@@ -20,6 +20,8 @@ using namespace lf;
 
 using namespace lf::impl;
 
+namespace {
+
 struct root_task {
   struct promise_type : promise_alloc_heap {
 
@@ -42,6 +44,8 @@ struct root_task {
 
 auto root(auto fun) -> root_task { co_return fun(); }
 
+} // namespace
+
 TEST_CASE("Root task", "[virtual_stack]") {
 
   int x = 0;
@@ -56,6 +60,8 @@ TEST_CASE("Root task", "[virtual_stack]") {
 
   REQUIRE(x == 1);
 }
+
+namespace {
 
 struct non_root_task {
   struct promise_type : promise_alloc_stack {
@@ -105,6 +111,8 @@ void inline_fib(int &res, int n) {
     res = a + b;
   }
 }
+
+} // namespace
 
 TEST_CASE("fib on stack", "[virtual_stack]") {
 

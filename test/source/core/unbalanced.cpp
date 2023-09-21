@@ -14,16 +14,31 @@
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+// #define LF_DEFAULT_LOGGING.
+
 #include "libfork/core.hpp"
+#include "libfork/core/stack.hpp"
 #include "libfork/macro.hpp"
 
 #include "libfork/schedule/busy_pool.hpp"
+#include "libfork/schedule/lazy_pool.hpp"
 #include "libfork/schedule/random.hpp"
 #include "libfork/schedule/unit_pool.hpp"
 
 // NOLINTBEGIN No linting in tests
 
 using namespace lf;
+
+namespace {
+
+template <typename T>
+auto make_scheduler() -> T {
+  if constexpr (std::constructible_from<T, std::size_t>) {
+    return T{std::min(4U, std::thread::hardware_concurrency())};
+  } else {
+    return T{};
+  }
+}
 
 struct tree {
   int val;
@@ -102,6 +117,8 @@ LF_NOINLINE auto find(tree const &root, int val) -> bool {
   return left || right;
 }
 
+} // namespace
+
 TEST_CASE("tree checks", "[tree]") {
 
   int n = 100;
@@ -120,6 +137,8 @@ TEST_CASE("tree checks", "[tree]") {
 }
 
 // --------------------------------------------------------------- //
+
+namespace {
 
 inline constexpr async search = [](auto search, tree const &root, int val, auto *context) -> task<bool> {
   //
@@ -151,13 +170,15 @@ inline constexpr async search = [](auto search, tree const &root, int val, auto 
   co_return left || right;
 };
 
-TEMPLATE_TEST_CASE("tree search", "[tree][template]", unit_pool, test_unit_pool, busy_pool) {
+}
+
+TEMPLATE_TEST_CASE("tree search", "[tree][template]", unit_pool, test_unit_pool, busy_pool, lazy_pool) {
 
   int n = 1000;
 
   std::unique_ptr root = build_tree(n, 0.5);
 
-  TestType sch{};
+  auto sch = make_scheduler<TestType>();
 
   // auto val
 
@@ -168,7 +189,7 @@ TEMPLATE_TEST_CASE("tree search", "[tree][template]", unit_pool, test_unit_pool,
   }
 }
 
-TEMPLATE_TEST_CASE("tree bench", "[tree][template]", unit_pool, test_unit_pool, busy_pool) {
+TEMPLATE_TEST_CASE("tree bench", "[tree][template]", unit_pool, test_unit_pool, busy_pool, lazy_pool) {
 
   int n = 100;
 
@@ -190,7 +211,7 @@ TEMPLATE_TEST_CASE("tree bench", "[tree][template]", unit_pool, test_unit_pool, 
     REQUIRE(count == n);
   }
 
-  TestType sch{};
+  auto sch = make_scheduler<TestType>();
 
   context_of<TestType> *context = nullptr;
 
@@ -207,13 +228,17 @@ TEMPLATE_TEST_CASE("tree bench", "[tree][template]", unit_pool, test_unit_pool, 
 
 // --------------------------------------------------------------- //
 
+namespace {
+
 inline constexpr async transfer = [](auto self, tree const &root, int val) -> task<bool> {
   co_return co_await search(root, val, self.context());
 };
 
-TEMPLATE_TEST_CASE("tree transfer", "[tree][template]", unit_pool, test_unit_pool, busy_pool) {
+}
 
-  TestType sch{};
+TEMPLATE_TEST_CASE("tree transfer", "[tree][template]", unit_pool, test_unit_pool, busy_pool, lazy_pool) {
+
+  auto sch = make_scheduler<TestType>();
 
   int n = 100;
 

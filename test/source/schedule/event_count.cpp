@@ -29,6 +29,8 @@
 
 // NOLINTBEGIN No need to check the tests for style.
 
+namespace {
+
 template <class T, class Random>
 void randomPartition(Random &random, T key, int n, std::vector<std::pair<T, int>> &out) {
   while (n != 0) {
@@ -70,6 +72,8 @@ class semaphore {
   std::atomic<int> value_;
   lf::event_count ec_;
 };
+
+} // namespace
 
 TEST_CASE("event count, deadlocking (folly)", "[event_count]") {
   // We're basically testing for no deadlock.

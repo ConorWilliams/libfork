@@ -13,6 +13,7 @@
 #include <optional>
 #include <semaphore>
 #include <stack>
+#include <thread>
 #include <type_traits>
 #include <utility>
 
@@ -31,6 +32,7 @@
 #include "libfork/core.hpp"
 
 #include "libfork/schedule/busy_pool.hpp"
+#include "libfork/schedule/lazy_pool.hpp"
 #include "libfork/schedule/unit_pool.hpp"
 
 // NOLINTBEGIN No linting in tests
@@ -39,20 +41,33 @@ using namespace lf;
 
 // ------------------------ Construct destruct ------------------------ //
 
+namespace {
+
+template <typename T>
+auto make_scheduler() -> T {
+  if constexpr (std::constructible_from<T, std::size_t>) {
+    return T{std::min(4U, std::thread::hardware_concurrency())};
+  } else {
+    return T{};
+  }
+}
+
 inline constexpr async noop = [](auto) -> task<> {
   LF_LOG("nooop");
   co_return;
 };
 
-TEMPLATE_TEST_CASE("Construct destruct launch", "[core][template]", unit_pool, test_unit_pool, busy_pool) {
+} // namespace
+
+TEMPLATE_TEST_CASE("Construct destruct launch", "[core][template]", unit_pool, test_unit_pool, busy_pool, lazy_pool) {
 
   for (int i = 0; i < 100; ++i) {
-    TestType tmp{};
+    auto schedule = make_scheduler<TestType>();
   }
 
   for (int i = 0; i < 100; ++i) {
 
-    TestType schedule{};
+    auto schedule = make_scheduler<TestType>();
 
     for (int j = 0; j < 100; ++j) {
       sync_wait(schedule, noop);
@@ -62,6 +77,8 @@ TEMPLATE_TEST_CASE("Construct destruct launch", "[core][template]", unit_pool, t
 
 // ------------------------ stack overflow ------------------------ //
 
+namespace {
+
 // In some implementations, this could cause a stack overflow if symmetric transfer is not used.
 inline constexpr async sym_stack_overflow_1 = [](auto, int n) -> lf::task<int> {
   for (int i = 0; i < n; ++i) {
@@ -70,20 +87,24 @@ inline constexpr async sym_stack_overflow_1 = [](auto, int n) -> lf::task<int> {
   co_return 1;
 };
 
+} // namespace
+
 /**
  * This test is known to fail with gcc in debug due to no tail call optimization in debug builds,
  * if this test fails then probably others will as well.
  */
-TEMPLATE_TEST_CASE("Stack overflow - sym-transfer", "[libfork][template]", unit_pool) {
-  SECTION("iter = 1") { REQUIRE(sync_wait(TestType{}, sym_stack_overflow_1, 1)); }
-  SECTION("iter = 100") { REQUIRE(sync_wait(TestType{}, sym_stack_overflow_1, 100)); }
-  SECTION("iter = 10'000") { REQUIRE(sync_wait(TestType{}, sym_stack_overflow_1, 10'000)); }
-  SECTION("iter = 100'000") { REQUIRE(sync_wait(TestType{}, sym_stack_overflow_1, 100'000)); }
-  SECTION("iter = 1'000'000") { REQUIRE(sync_wait(TestType{}, sym_stack_overflow_1, 1'000'000)); }
-  SECTION("iter = 100'000'000") { REQUIRE(sync_wait(TestType{}, sym_stack_overflow_1, 100'000'000)); }
+TEST_CASE("Stack overflow - sym-transfer", "[libfork]") {
+  SECTION("iter = 1") { REQUIRE(sync_wait(unit_pool{}, sym_stack_overflow_1, 1)); }
+  SECTION("iter = 100") { REQUIRE(sync_wait(unit_pool{}, sym_stack_overflow_1, 100)); }
+  SECTION("iter = 10'000") { REQUIRE(sync_wait(unit_pool{}, sym_stack_overflow_1, 10'000)); }
+  SECTION("iter = 100'000") { REQUIRE(sync_wait(unit_pool{}, sym_stack_overflow_1, 100'000)); }
+  SECTION("iter = 1'000'000") { REQUIRE(sync_wait(unit_pool{}, sym_stack_overflow_1, 1'000'000)); }
+  SECTION("iter = 100'000'000") { REQUIRE(sync_wait(unit_pool{}, sym_stack_overflow_1, 100'000'000)); }
 }
 
 // // ------------------------ Fibonacci ------------------------ //
+
+namespace {
 
 int fib(int n) {
   if (n < 2) {
@@ -111,17 +132,23 @@ inline constexpr async r_fib = [](auto fib, int n) -> lf::task<int> {
   co_return a + b;
 };
 
-TEMPLATE_TEST_CASE("Fibonacci - returning", "[core][template]", unit_pool, test_unit_pool, busy_pool) {
+} // namespace
+
+TEMPLATE_TEST_CASE("Fibonacci - returning", "[core][template]", unit_pool, test_unit_pool, busy_pool, lazy_pool) {
   for (int j = 0; j < 100; ++j) {
     {
-      TestType schedule{};
+      auto schedule = make_scheduler<TestType>();
 
-      for (int i = 1; i < 15; ++i) {
+      for (int i = 1; i < 20; ++i) {
         REQUIRE(fib(i) == sync_wait(schedule, r_fib, i));
       }
     }
   }
 }
+
+namespace {
+
+// tree search unit pool
 
 inline constexpr async inline_fib = [](auto fib, int n) -> lf::task<int> {
   //
@@ -136,14 +163,18 @@ inline constexpr async inline_fib = [](auto fib, int n) -> lf::task<int> {
   co_return a + b;
 };
 
-TEMPLATE_TEST_CASE("Fibonacci - inline", "[core][template]", unit_pool, test_unit_pool, busy_pool) {
+} // namespace
 
-  TestType schedule{};
+TEMPLATE_TEST_CASE("Fibonacci - inline", "[core][template]", unit_pool, test_unit_pool, busy_pool, lazy_pool) {
+
+  auto schedule = make_scheduler<TestType>();
 
   for (int i = 0; i < 25; ++i) {
     REQUIRE(fib(i) == sync_wait(schedule, inline_fib, i));
   }
 }
+
+namespace {
 
 inline constexpr async v_fib = [](auto fib, int &ret, int n) -> lf::task<void> {
   //
@@ -169,9 +200,11 @@ inline constexpr async v_fib = [](auto fib, int &ret, int n) -> lf::task<void> {
   ret = a + b;
 };
 
-TEMPLATE_TEST_CASE("Fibonacci - void", "[core][template]", unit_pool, test_unit_pool, busy_pool) {
+}
 
-  TestType schedule{};
+TEMPLATE_TEST_CASE("Fibonacci - void", "[core][template]", unit_pool, test_unit_pool, busy_pool, lazy_pool) {
+
+  auto schedule = make_scheduler<TestType>();
 
   for (int i = 0; i < 15; ++i) {
     int res;
@@ -181,6 +214,8 @@ TEMPLATE_TEST_CASE("Fibonacci - void", "[core][template]", unit_pool, test_unit_
 }
 
 // ------------------------ differing return types ------------------------ //
+
+namespace {
 
 inline constexpr async v_fib_ignore = [](auto fib, int &ret, int n) -> lf::task<int> {
   //
@@ -207,9 +242,11 @@ inline constexpr async v_fib_ignore = [](auto fib, int &ret, int n) -> lf::task<
   co_return a + b;
 };
 
-TEMPLATE_TEST_CASE("Fibonacci - ignored", "[core][template]", unit_pool, test_unit_pool, busy_pool) {
+}
 
-  TestType schedule{};
+TEMPLATE_TEST_CASE("Fibonacci - ignored", "[core][template]", unit_pool, test_unit_pool, busy_pool, lazy_pool) {
+
+  auto schedule = make_scheduler<TestType>();
 
   for (int i = 0; i < 15; ++i) {
     int res;
@@ -220,6 +257,8 @@ TEMPLATE_TEST_CASE("Fibonacci - ignored", "[core][template]", unit_pool, test_un
 }
 
 // ------------------------ References and member functions ------------------------ //
+
+namespace {
 
 class ref_test {
  public:
@@ -240,11 +279,13 @@ class ref_test {
   };
 };
 
-TEMPLATE_TEST_CASE("Reference test", "[core][template]", unit_pool, test_unit_pool, busy_pool) {
+} // namespace
+
+TEMPLATE_TEST_CASE("Reference test", "[core][template]", unit_pool, test_unit_pool, busy_pool, lazy_pool) {
 
   LF_LOG("pre-init");
 
-  TestType schedule{};
+  auto schedule = make_scheduler<TestType>();
 
   ref_test a;
 

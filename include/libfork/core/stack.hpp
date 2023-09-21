@@ -435,8 +435,6 @@ LF_NOINLINE void worker_init(Context *context) noexcept {
   LF_LOG("Initializing worker");
 
   LF_ASSERT(context);
-  LF_ASSERT(!impl::tls::ctx<Context>);
-  LF_ASSERT(!impl::tls::asp);
 
   impl::tls::ctx<Context> = context;
   impl::tls::asp = impl::stack_as_bytes(context->stack_pop());
@@ -457,9 +455,6 @@ LF_NOINLINE void worker_finalize(Context *context) {
   LF_ASSERT(impl::tls::asp);
 
   context->stack_push(impl::bytes_to_stack(impl::tls::asp));
-
-  impl::tls::asp = nullptr;
-  impl::tls::ctx<Context> = nullptr;
 }
 
 // ------------------------------------------------- //

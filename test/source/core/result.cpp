@@ -25,6 +25,8 @@ using namespace lf;
 
 using namespace lf::impl;
 
+namespace {
+
 template <typename R, typename T>
 struct coro {
   struct promise_type : promise_result<R, T> {
@@ -57,7 +59,7 @@ auto test2() -> coro<root_result<void>, void> { co_return; }
 // T = non-reference
 
 #define trivial(name, type)                                                                                                 \
-  auto trivial_##name() -> coro<type, int> {                                                                                \
+  auto trivial_##name()->coro<type, int> {                                                                                  \
     int x = 23;                                                                                                             \
     co_return 23;                                                                                                           \
     co_return x;                                                                                                            \
@@ -75,7 +77,7 @@ trivial(double, double);
 trivial(root, root_result<int>);
 
 #define vector(name, type)                                                                                                  \
-  auto vector_##name() -> coro<type, std::vector<int>> {                                                                    \
+  auto vector_##name()->coro<type, std::vector<int>> {                                                                      \
     std::vector<int> x;                                                                                                     \
     co_return x;                                                                                                            \
     co_return std::vector<int>{};                                                                                           \
@@ -116,10 +118,10 @@ auto test_immovable() -> coro<eventually<I>, I> {
 int x = 23;
 
 #define reference(name, type)                                                                                               \
-  auto reference_##name() -> coro<type, int &> { co_return x; }
+  auto reference_##name()->coro<type, int &> { co_return x; }
 
 #define rreference(name, type)                                                                                              \
-  auto rreference_##name() -> coro<type, int &&> {                                                                          \
+  auto rreference_##name()->coro<type, int &&> {                                                                            \
     co_return 23;                                                                                                           \
     co_return std::move(x);                                                                                                 \
   }
@@ -131,5 +133,7 @@ reference(root, root_result<int>);
 rreference(void, void);
 rreference(int, int);
 rreference(root, root_result<int>);
+
+} // namespace
 
 // NOLINTEND
