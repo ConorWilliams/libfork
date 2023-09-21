@@ -282,7 +282,13 @@ template <tag Tag>
 using allocator = std::conditional_t<Tag == tag::root, promise_alloc_heap, promise_alloc_stack>;
 
 template <typename P>
-LF_NOINLINE auto destroy(stdx::coroutine_handle<P> child) -> frame_block * {
+#if defined(_MSC_VER)
+LF_NOINLINE
+#else
+LF_FORCEINLINE
+#endif
+    inline auto
+    destroy(stdx::coroutine_handle<P> child) -> frame_block * {
   frame_block *parent = child.promise().parent();
   child.destroy();
   return parent;

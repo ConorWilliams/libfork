@@ -261,9 +261,9 @@ class worker_context : immovable<worker_context> {
   }
 
   void stack_push(async_stack *stack) {
-    m_buffer.push(non_null(stack), [&](async_stack *stack) noexcept {
+    m_buffer.push(non_null(stack), [&](async_stack *extra_stack) noexcept {
       LF_LOG("Local stack buffer overflows");
-      m_stacks.push(stack);
+      m_stacks.push(extra_stack);
     });
   }
 

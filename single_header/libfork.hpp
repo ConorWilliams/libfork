@@ -2077,10 +2077,10 @@ struct promise_result : protected impl::maybe_ptr<R> {
     requires std::constructible_from<T, Args...>
   constexpr void return_value(in_place<Args...> args) const {
 
-#define LF_FWD_ARGS std::forward<strip_rvalue_ref_t<Args>>(args)...
+#define LF_FWD_ARGS std::forward<strip_rvalue_ref_t<Args>>(margs)...
 
     if constexpr (impl::non_void<R>) {
-      impl::apply_to(static_cast<std::tuple<Args...> &&>(args), [ret = this->address()](Args... args) {
+      impl::apply_to(static_cast<std::tuple<Args...> &&>(args), [ret = this->address()](Args... margs) {
         if constexpr (requires { ret->emplace(LF_FWD_ARGS); }) {
           ret->emplace(LF_FWD_ARGS);
         } else {
@@ -2896,7 +2896,13 @@ template <tag Tag>
 using allocator = std::conditional_t<Tag == tag::root, promise_alloc_heap, promise_alloc_stack>;
 
 template <typename P>
-LF_NOINLINE auto destroy(stdx::coroutine_handle<P> child) -> frame_block * {
+#if defined(_MSC_VER)
+LF_NOINLINE
+#else
+LF_FORCEINLINE
+#endif
+    inline auto
+    destroy(stdx::coroutine_handle<P> child) -> frame_block * {
   frame_block *parent = child.promise().parent();
   child.destroy();
   return parent;
@@ -4189,9 +4195,9 @@ class worker_context : immovable<worker_context> {
   }
 
   void stack_push(async_stack *stack) {
-    m_buffer.push(non_null(stack), [&](async_stack *stack) noexcept {
+    m_buffer.push(non_null(stack), [&](async_stack *extra_stack) noexcept {
       LF_LOG("Local stack buffer overflows");
-      m_stacks.push(stack);
+      m_stacks.push(extra_stack);
     });
   }
 

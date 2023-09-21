@@ -299,10 +299,10 @@ struct promise_result : protected impl::maybe_ptr<R> {
     requires std::constructible_from<T, Args...>
   constexpr void return_value(in_place<Args...> args) const {
 
-#define LF_FWD_ARGS std::forward<strip_rvalue_ref_t<Args>>(args)...
+#define LF_FWD_ARGS std::forward<strip_rvalue_ref_t<Args>>(margs)...
 
     if constexpr (impl::non_void<R>) {
-      impl::apply_to(static_cast<std::tuple<Args...> &&>(args), [ret = this->address()](Args... args) {
+      impl::apply_to(static_cast<std::tuple<Args...> &&>(args), [ret = this->address()](Args... margs) {
         if constexpr (requires { ret->emplace(LF_FWD_ARGS); }) {
           ret->emplace(LF_FWD_ARGS);
         } else {
