@@ -187,6 +187,17 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
 #endif
 
 /**
+ * @brief If ``NDEBUG`` is defined then ``LF_ASSERT(expr)`` is  `` `` otherwise ``assert(expr)``.
+ *
+ * This is for expressions with side-effects.
+ */
+#ifndef NDEBUG
+  #define LF_ASSERT_NO_ASSUME(expr) assert(expr)
+#else
+  #define LF_ASSERT_NO_ASSUME(expr)
+#endif
+
+/**
  * @brief If ``NDEBUG`` is defined then ``LF_ASSERT(expr)`` is  ``LF_ASSUME(expr)`` otherwise
  * ``assert(expr)``.
  */
@@ -2792,7 +2803,7 @@ struct join_awaitable {
     LF_LOG("join resumes");
     // Check we have been reset.
     LF_ASSERT(self->steals() == 0);
-    LF_ASSERT(self->load_joins(std::memory_order_relaxed) == k_u32_max);
+    LF_ASSERT_NO_ASSUME(self->load_joins(std::memory_order_acquire) == k_u32_max);
 
     self->debug_reset();
 
@@ -2991,8 +3002,8 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
     // Completing a non-root task means we currently own the async_stack this child is on
 
     LF_ASSERT(this->debug_count() == 0);
-    LF_ASSERT(this->steals() == 0);                                      // Fork without join.
-    LF_ASSERT(this->load_joins(std::memory_order_relaxed) == k_u32_max); // Destroyed in invalid state.
+    LF_ASSERT(this->steals() == 0);                                                // Fork without join.
+    LF_ASSERT_NO_ASSUME(this->load_joins(std::memory_order_acquire) == k_u32_max); // Destroyed in invalid state.
 
     return final_awaitable{};
   }
@@ -4134,7 +4145,7 @@ class worker_context : immovable<worker_context> {
 
   ~worker_context() noexcept {
     //
-    LF_ASSERT(m_tasks.empty());
+    LF_ASSERT_NO_ASSUME(m_tasks.empty());
 
     while (auto *stack = m_buffer.pop(null_for<async_stack>)) {
       delete stack;

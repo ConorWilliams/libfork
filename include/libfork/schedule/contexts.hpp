@@ -207,7 +207,7 @@ class worker_context : immovable<worker_context> {
 
   ~worker_context() noexcept {
     //
-    LF_ASSERT(m_tasks.empty());
+    LF_ASSERT_NO_ASSUME(m_tasks.empty());
 
     while (auto *stack = m_buffer.pop(null_for<async_stack>)) {
       delete stack;

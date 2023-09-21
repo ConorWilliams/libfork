@@ -174,7 +174,7 @@ struct join_awaitable {
     LF_LOG("join resumes");
     // Check we have been reset.
     LF_ASSERT(self->steals() == 0);
-    LF_ASSERT(self->load_joins(std::memory_order_relaxed) == k_u32_max);
+    LF_ASSERT_NO_ASSUME(self->load_joins(std::memory_order_acquire) == k_u32_max);
 
     self->debug_reset();
 
@@ -373,8 +373,8 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
     // Completing a non-root task means we currently own the async_stack this child is on
 
     LF_ASSERT(this->debug_count() == 0);
-    LF_ASSERT(this->steals() == 0);                                      // Fork without join.
-    LF_ASSERT(this->load_joins(std::memory_order_relaxed) == k_u32_max); // Destroyed in invalid state.
+    LF_ASSERT(this->steals() == 0);                                                // Fork without join.
+    LF_ASSERT_NO_ASSUME(this->load_joins(std::memory_order_acquire) == k_u32_max); // Destroyed in invalid state.
 
     return final_awaitable{};
   }

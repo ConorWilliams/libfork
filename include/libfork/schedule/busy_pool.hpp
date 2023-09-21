@@ -105,7 +105,7 @@ class busy_pool {
       }
     }
 
-    LF_ASSERT(!m_stop->test(std::memory_order_relaxed));
+    LF_ASSERT_NO_ASSUME(!m_stop->test(std::memory_order_acquire));
 
     LF_TRY {
       for (auto &context : m_contexts) {

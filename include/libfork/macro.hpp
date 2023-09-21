@@ -180,6 +180,17 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
 #endif
 
 /**
+ * @brief If ``NDEBUG`` is defined then ``LF_ASSERT(expr)`` is  `` `` otherwise ``assert(expr)``.
+ *
+ * This is for expressions with side-effects.
+ */
+#ifndef NDEBUG
+  #define LF_ASSERT_NO_ASSUME(expr) assert(expr)
+#else
+  #define LF_ASSERT_NO_ASSUME(expr)
+#endif
+
+/**
  * @brief If ``NDEBUG`` is defined then ``LF_ASSERT(expr)`` is  ``LF_ASSUME(expr)`` otherwise
  * ``assert(expr)``.
  */
