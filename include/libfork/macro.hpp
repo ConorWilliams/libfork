@@ -248,6 +248,8 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
   #else
     #define LF_TLS_CLANG_INLINE LF_FORCEINLINE
   #endif
+#else
+  #define LF_TLS_CLANG_INLINE LF_FORCEINLINE
 #endif
 
 /**
