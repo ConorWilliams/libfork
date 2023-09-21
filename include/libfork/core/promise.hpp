@@ -281,6 +281,13 @@ struct rewrite_tag : Head {
 template <tag Tag>
 using allocator = std::conditional_t<Tag == tag::root, promise_alloc_heap, promise_alloc_stack>;
 
+template <typename P>
+LF_NOINLINE auto destroy(stdx::coroutine_handle<P> child) -> frame_block * {
+  frame_block *parent = child.promise().parent();
+  child.destroy();
+  return parent;
+}
+
 /**
  * @brief The promise type for all tasks/coroutines.
  *
@@ -302,16 +309,14 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
         LF_LOG("Root task at final suspend, releases semaphore");
         // Finishing a root task implies our stack is empty and should have no exceptions.
         child.promise().address()->semaphore.release();
-        child.destroy();
+        destroy(child);
         LF_LOG("Root task yields to executor");
         return stdx::noop_coroutine();
       }
 
       LF_LOG("Task reaches final suspend");
 
-      frame_block *parent = child.promise().parent();
-
-      child.destroy();
+      frame_block *parent = destroy(child);
 
       if constexpr (Tag == tag::call) {
         LF_LOG("Inline task resumes parent");
