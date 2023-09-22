@@ -37,7 +37,7 @@ auto fib(int n) -> int {
 
 inline constexpr async do_n_jobs = [](auto, int n, int size) -> task<> {
   for (int i = 0; i < n; ++i) {
-    co_await lf::fork[LF_LIFT2(fib)](size);
+    co_await lf::fork(LF_LIFT2(fib))(size);
   }
   co_await lf::join;
 };
