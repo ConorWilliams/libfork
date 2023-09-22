@@ -91,14 +91,6 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
 // clang-format on
 
 /**
- * @brief Lift an overload-set/template into a constrained lambda.
- *
- * This is useful for passing overloaded/template functions to higher order functions like `lf::fork`, `lf::call` etc.
- */
-#define LF_LIFT(overload_set)                                                                                               \
-  [](auto &&...args) LF_STATIC_CALL LF_HOF_RETURNS(overload_set(std::forward<decltype(args)>(args)...))
-
-/**
  * @brief __[public]__ Detects if the compiler has exceptions enabled.
  *
  * Overridable by defining ``LF_COMPILER_EXCEPTIONS``.

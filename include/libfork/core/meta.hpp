@@ -9,6 +9,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include <concepts>
+
 #include "libfork/macro.hpp"
 #include "libfork/utility.hpp"
 
@@ -137,7 +139,7 @@ using value_of = typename std::remove_cvref_t<T>::value_type;
  * @brief Check if an invocable is suitable for use as an `lf::async` function.
  */
 template <typename T>
-concept stateless = std::is_class_v<T> && std::is_trivial_v<T> && std::is_empty_v<T>;
+concept stateless = std::is_class_v<T> && std::is_trivial_v<T> && std::is_empty_v<T> && std::default_initializable<T>;
 
 // See "async.hpp" for the definition.
 

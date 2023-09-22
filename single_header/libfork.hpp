@@ -98,14 +98,6 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
 // clang-format on
 
 /**
- * @brief Lift an overload-set/template into a constrained lambda.
- *
- * This is useful for passing overloaded/template functions to higher order functions like `lf::fork`, `lf::call` etc.
- */
-#define LF_LIFT(overload_set)                                                                                               \
-  [](auto &&...args) LF_STATIC_CALL LF_HOF_RETURNS(overload_set(std::forward<decltype(args)>(args)...))
-
-/**
  * @brief __[public]__ Detects if the compiler has exceptions enabled.
  *
  * Overridable by defining ``LF_COMPILER_EXCEPTIONS``.
@@ -716,6 +708,8 @@ constexpr auto apply_to(Tuple &&tup, F &&func) LF_HOF_RETURNS(std::apply(std::fo
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>
 
 #ifndef BC7496D2_E762_43A4_92A3_F2AD10690569
 #define BC7496D2_E762_43A4_92A3_F2AD10690569
@@ -1445,7 +1439,7 @@ using value_of = typename std::remove_cvref_t<T>::value_type;
  * @brief Check if an invocable is suitable for use as an `lf::async` function.
  */
 template <typename T>
-concept stateless = std::is_class_v<T> && std::is_trivial_v<T> && std::is_empty_v<T>;
+concept stateless = std::is_class_v<T> && std::is_trivial_v<T> && std::is_empty_v<T> && std::default_initializable<T>;
 
 // See "async.hpp" for the definition.
 
