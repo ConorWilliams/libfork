@@ -1,0 +1,49 @@
+name: macos
+on:
+  push:
+    
+  pull_request:
+    branches: 
+    - main
+  
+  workflow_dispatch:
+  schedule:
+  - cron: '0 1 * * *'
+
+env:
+  VCPKG_ROOT_DIR: ${{ github.workspace }}/vcpkg
+  # Tells vcpkg where binary packages are stored.
+  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg/bincache
+  # Let's use GitHub Action cache as storage for the vcpkg Binary Caching feature.
+  VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+
+jobs:
+  test:
+    name: ${{ matrix.os }}-test-${{ matrix.build-type }}
+
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        build-type: [Debug, Release]
+        os: [macos-13, macos-13-xl]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: ./.github/actions/setup
+
+      - name: Restore from cache the dependencies and generate project files
+        shell: pwsh
+        run: cmake "--preset=ci-macos -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} 
+
+      - name: Build
+        run: cmake --build build --config ${{ matrix.build-type }} -j 2
+
+      - name: Install
+        run: cmake --install build --config ${{ matrix.build-type }} --prefix prefix
+
+      - name: Test
+        working-directory: build
+        run: ctest --output-on-failure --no-tests=error -C ${{ matrix.build-type }}

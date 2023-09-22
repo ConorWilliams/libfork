@@ -4980,6 +4980,9 @@ static_assert(scheduler<unit_pool>);
  * @file libfork.hpp
  *
  * @brief Meta header which includes all of ``libfork``.
+ *
+ * Users who need all of libfork can use this header, it also serves as the entry-point
+ * for the single header generation tool.
  */
 
 #endif /* EDCA974A_808F_4B62_95D5_4D84E31B8911 */
