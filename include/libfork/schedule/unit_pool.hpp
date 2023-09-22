@@ -12,8 +12,6 @@
 #include <vector>
 
 #include "libfork/core.hpp"
-#include "libfork/macro.hpp"
-#include "libfork/utility.hpp"
 
 #include "libfork/schedule/contexts.hpp"
 
@@ -56,16 +54,12 @@ static_assert(scheduler<test_unit_pool>);
 
 } // namespace ext
 
-inline namespace core {
-
 /**
  * @brief A scheduler that runs all tasks inline on the current thread.
  */
 using unit_pool = impl::unit_pool_impl<impl::immediate_context>;
 
 static_assert(scheduler<unit_pool>);
-
-} // namespace core
 
 } // namespace lf
 

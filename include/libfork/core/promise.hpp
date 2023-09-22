@@ -14,15 +14,14 @@
 #include <type_traits>
 #include <utility>
 
-#include "libfork/macro.hpp"
-#include "libfork/utility.hpp"
-
 #include "libfork/core/async.hpp"
 #include "libfork/core/call.hpp"
 #include "libfork/core/coroutine.hpp"
+#include "libfork/core/macro.hpp"
 #include "libfork/core/meta.hpp"
 #include "libfork/core/result.hpp"
 #include "libfork/core/stack.hpp"
+#include "libfork/core/utility.hpp"
 
 /**
  * @file promise.hpp

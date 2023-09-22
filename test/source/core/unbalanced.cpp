@@ -17,8 +17,8 @@
 // #define LF_DEFAULT_LOGGING.
 
 #include "libfork/core.hpp"
+#include "libfork/core/macro.hpp"
 #include "libfork/core/stack.hpp"
-#include "libfork/macro.hpp"
 
 #include "libfork/schedule/busy_pool.hpp"
 #include "libfork/schedule/lazy_pool.hpp"

@@ -5,6 +5,44 @@
 
 #ifndef EDCA974A_808F_4B62_95D5_4D84E31B8911
 #define EDCA974A_808F_4B62_95D5_4D84E31B8911
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#ifndef A6BE090F_9077_40E8_9B57_9BAFD9620469
+#define A6BE090F_9077_40E8_9B57_9BAFD9620469
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#ifndef E91EA187_42EF_436C_A3FF_A86DE54BCDBE
+#define E91EA187_42EF_436C_A3FF_A86DE54BCDBE
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <array>
+#include <concepts>
+#include <functional>
+#include <memory>
+#include <source_location>
+#include <stdexcept>
+#include <tuple>
+#include <type_traits>
+#include <utility>
 #ifndef C5DCA647_8269_46C2_B76F_5FA68738AEDA
 #define C5DCA647_8269_46C2_B76F_5FA68738AEDA
 
@@ -303,19 +341,8 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
 // NOLINTEND
 
 #endif /* C5DCA647_8269_46C2_B76F_5FA68738AEDA */
-
-#ifndef A6BE090F_9077_40E8_9B57_9BAFD9620469
-#define A6BE090F_9077_40E8_9B57_9BAFD9620469
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-#ifndef E91EA187_42EF_436C_A3FF_A86DE54BCDBE
-#define E91EA187_42EF_436C_A3FF_A86DE54BCDBE
+#ifndef D66BBECE_E467_4EB6_B74A_AAA2E7256E02
+#define D66BBECE_E467_4EB6_B74A_AAA2E7256E02
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
 
@@ -325,13 +352,20 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <array>
 #include <concepts>
-#include <functional>
-#include <memory>
-#include <source_location>
-#include <stdexcept>
-#include <tuple>
+#ifndef BC7496D2_E762_43A4_92A3_F2AD10690569
+#define BC7496D2_E762_43A4_92A3_F2AD10690569
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <atomic>
+#include <concepts>
 #include <type_traits>
 #include <utility>
 #ifndef DF63D333_F8C0_4BBA_97E1_32A78466B8B7
@@ -698,35 +732,6 @@ constexpr auto apply_to(Tuple &&tup, F &&func) LF_HOF_RETURNS(std::apply(std::fo
 
 #endif /* DF63D333_F8C0_4BBA_97E1_32A78466B8B7 */
 
-#ifndef D66BBECE_E467_4EB6_B74A_AAA2E7256E02
-#define D66BBECE_E467_4EB6_B74A_AAA2E7256E02
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>
-
-#ifndef BC7496D2_E762_43A4_92A3_F2AD10690569
-#define BC7496D2_E762_43A4_92A3_F2AD10690569
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <atomic>
-#include <concepts>
-#include <type_traits>
-#include <utility>
-
 
 namespace lf {
 
@@ -831,7 +836,6 @@ using intrusive_node = typename intrusive_list<T>::node;
 #include <new>
 #include <type_traits>
 #include <utility>
-
 #ifndef FE9C96B0_5DDD_4438_A3B0_E77BD54F8673
 #define FE9C96B0_5DDD_4438_A3B0_E77BD54F8673
 
@@ -1537,7 +1541,6 @@ concept first_arg_tagged = first_arg<Arg> && tag_of<Arg> == Tag;
 #include <tuple>
 #include <type_traits>
 #include <utility>
-
 #ifndef B7972761_4CBF_4B86_B195_F754295372BF
 #define B7972761_4CBF_4B86_B195_F754295372BF
 
@@ -2114,7 +2117,7 @@ struct promise_result : protected impl::maybe_ptr<R> {
 
 namespace lf {
 
-inline namespace core {
+namespace impl {
 
 /**
  * @brief A fixed string type for template parameters that tracks its source location.
@@ -2147,7 +2150,7 @@ struct tracked_fixed_string {
   std::uint_least32_t column;        ///< The column number where `this` was constructed.
 };
 
-} // namespace core
+} // namespace impl
 
 // ----------------------------------------------- //
 
@@ -2170,7 +2173,7 @@ inline namespace core {
  *
  * \endrst
  */
-template <typename T = void, tracked_fixed_string Name = "">
+template <typename T = void, impl::tracked_fixed_string Name = "">
 struct task {
 
   using value_type = T; ///< The type of the value returned by the coroutine.
@@ -2476,7 +2479,6 @@ static_assert(first_arg<basic_first_arg<int, tag::root, decltype([] {})>>);
 #include <utility>
 
 
-
 /**
  * @file call.hpp
  *
@@ -2639,7 +2641,6 @@ inline constexpr impl::bind_task<tag::tail> tail = {};
 #include <concepts>
 #include <type_traits>
 #include <utility>
-
 
 
 /**
@@ -3105,7 +3106,6 @@ struct lf::stdx::coroutine_traits<Task, This, Head, Args...> : lf::stdx::corouti
 #include <utility>
 
 
-
 /**
  * @file sync_wait.hpp
  *
@@ -3197,22 +3197,40 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
  * @file core.hpp
  *
  * @brief Meta header which includes all the headers in ``libfork/core``.
+ *
+ * This header is a single include which provides the minimal set of headers required
+ * for using `libfork` s "core" API. If you are writing your own schedulers and not using any
+ * of `libfork` s "extension" API then this is all you need.
  */
 
 #endif /* A6BE090F_9077_40E8_9B57_9BAFD9620469 */
-
-#ifndef C8EE9A0A_3B9F_4FFE_8FF5_910645E0C7CC
-#define C8EE9A0A_3B9F_4FFE_8FF5_910645E0C7CC
+#ifndef A616E976_A92A_4CE4_B807_936EF8C5FBC4
+#define A616E976_A92A_4CE4_B807_936EF8C5FBC4
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
 
 // SPDX-License-Identifier: MPL-2.0
 
-// Self Source Code Form is subject to the terms of the Mozilla Public
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#ifndef B5AE1829_6F8A_4118_AB15_FE73F851271F
+#define B5AE1829_6F8A_4118_AB15_FE73F851271F
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <vector>
+#include <algorithm>
+#include <atomic>
+#include <bit>
+#include <memory>
+#include <random>
+#include <thread>
 
 #ifndef C1B42944_8E33_4F6B_BAD6_5FB687F6C737
 #define C1B42944_8E33_4F6B_BAD6_5FB687F6C737
@@ -4217,6 +4235,686 @@ static_assert(!single_thread_context<test_context>);
 
 
 /**
+ * @file busy.hpp
+ *
+ * @brief A work-stealing thread pool where all the threads spin when idle.
+ */
+
+namespace lf {
+
+/**
+ * @brief A scheduler based on a traditional work-stealing thread pool.
+ *
+ * Worker threads continuously try to steal tasks from other worker threads hence, they
+ * waste CPU cycles if sufficient work is not available. This is a good choice if the number
+ * of threads is equal to the number of hardware cores and the multiplexer has no other load.
+ */
+class busy_pool {
+ public:
+  struct context_type : impl::worker_context<context_type> {};
+
+ private:
+  xoshiro m_rng{seed, std::random_device{}};
+
+  std::vector<context_type> m_contexts;
+  std::vector<std::thread> m_workers;
+  std::unique_ptr<std::atomic_flag> m_stop = std::make_unique<std::atomic_flag>();
+
+  // Request all threads to stop, wake them up and then call join.
+  auto clean_up() noexcept -> void {
+
+    LF_LOG("Requesting a stop");
+    // Set conditions for workers to stop
+    m_stop->test_and_set(std::memory_order_release);
+
+    for (auto &worker : m_workers) {
+      worker.join();
+    }
+  }
+
+  static auto work(context_type *my_context, std::atomic_flag const &stop_requested) {
+
+    worker_init(my_context);
+
+    impl::defer at_exit = [&]() noexcept {
+      worker_finalize(my_context);
+    };
+
+    while (!stop_requested.test(std::memory_order_acquire)) {
+
+      for_each(my_context->try_get_submitted(), [](submit_h<context_type> *submitted) LF_STATIC_CALL noexcept {
+        resume(submitted);
+      });
+
+      if (auto *task = my_context->try_steal()) {
+        resume(task);
+      }
+    };
+  }
+
+ public:
+  /**
+   * @brief Construct a new busy_pool object.
+   *
+   * @param n The number of worker threads to create, defaults to the number of hardware threads.
+   */
+  explicit busy_pool(std::size_t n = std::thread::hardware_concurrency()) : m_contexts(n) {
+
+    for (auto &context : m_contexts) {
+      context.set_rng(m_rng);
+      m_rng.long_jump();
+    }
+
+    for (std::size_t i = 0; i < n; ++i) {
+      for (std::size_t j = 0; j < n; ++j) {
+        if (i != j) {
+          m_contexts[i].add_friend(&m_contexts[j]);
+        }
+      }
+    }
+
+    LF_ASSERT_NO_ASSUME(!m_stop->test(std::memory_order_acquire));
+
+    LF_TRY {
+      for (auto &context : m_contexts) {
+        m_workers.emplace_back(work, &context, std::cref(*m_stop));
+      }
+    }
+    LF_CATCH_ALL {
+      clean_up();
+      LF_RETHROW;
+    }
+  }
+
+  ~busy_pool() noexcept { clean_up(); }
+
+  /**
+   * @brief Schedule a task for execution.
+   */
+  auto schedule(intruded_h<context_type> *node) noexcept {
+    std::uniform_int_distribution<std::size_t> dist(0, m_contexts.size() - 1);
+    m_contexts[dist(m_rng)].submit(node);
+  }
+};
+
+static_assert(scheduler<busy_pool>);
+
+} // namespace lf
+
+#endif /* B5AE1829_6F8A_4118_AB15_FE73F851271F */
+#ifndef C1BED09D_40CC_4EA1_B687_38A5BCC31907
+#define C1BED09D_40CC_4EA1_B687_38A5BCC31907
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <algorithm>
+#include <atomic>
+#include <bit>
+#include <limits>
+#include <memory>
+#include <optional>
+#include <random>
+#include <stdexcept>
+#include <thread>
+
+#pragma once
+
+// Copyright (c) Conor Williams, Meta Platforms, Inc. and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include <atomic>
+#include <bit>
+#include <cstdint>
+#include <functional>
+#include <thread>
+#include <type_traits>
+
+
+/**
+ * @file event_count.hpp
+ *
+ * @brief A standalone adaptation of ``folly::EventCount`` utilizing C++20's atomic wait facilities.
+ *
+ * This file has been adapted from: ``https://github.com/facebook/folly/blob/main/folly/experimental/EventCount.h``
+ */
+
+namespace lf {
+
+inline namespace ext {
+
+/**
+ * @brief A condition variable for lock free algorithms.
+ *
+ * \rst
+ *
+ * See http://www.1024cores.net/home/lock-free-algorithms/eventcounts for details.
+ *
+ * Event counts allow you to convert a non-blocking lock-free / wait-free
+ * algorithm into a blocking one, by isolating the blocking logic.  You call
+ * prepare_wait() before checking your condition and then either cancel_wait()
+ * or wait() depending on whether the condition was true.  When another
+ * thread makes the condition true, it must call notify() / notify_all() just
+ * like a regular condition variable.
+ *
+ * If "<" denotes the happens-before relationship, consider 2 threads (T1 and
+ * T2) and 3 events:
+ *
+ * * E1: T1 returns from prepare_wait.
+ * * E2: T1 calls wait (obviously E1 < E2, intra-thread).
+ * * E3: T2 calls ``notify_all()``.
+ *
+ * If E1 < E3, then E2's wait will complete (and T1 will either wake up,
+ * or not block at all)
+ *
+ * This means that you can use an event_count in the following manner:
+ *
+ * Waiter:
+ *
+ * .. code::
+ *
+ *    if (!condition()) {  // handle fast path first
+ *      for (;;) {
+ *
+ *        auto key = eventCount.prepare_wait();
+ *
+ *        if (condition()) {
+ *          eventCount.cancel_wait();
+ *          break;
+ *        } else {
+ *          eventCount.wait(key);
+ *        }
+ *      }
+ *    }
+ *
+ * (This pattern is encapsulated in the ``await()`` method.)
+ *
+ * Poster:
+ *
+ * .. code::
+ *
+ *    make_condition_true();
+ *    eventCount.notify_all();
+ *
+ * .. note::
+ *
+ *    Just like with regular condition variables, the waiter needs to
+ *    be tolerant of spurious wakeups and needs to recheck the condition after
+ *    being woken up.  Also, as there is no mutual exclusion implied, "checking"
+ *    the condition likely means attempting an operation on an underlying
+ *    data structure (push into a lock-free queue, etc) and returning true on
+ *    success and false on failure.
+ *
+ * \endrst
+ */
+class event_count : impl::immovable<event_count> {
+ public:
+  /**
+   * @brief The return type of ``prepare_wait()``.
+   */
+  class key {
+    friend class event_count;
+    explicit key(uint32_t epoch) noexcept : m_epoch(epoch) {}
+    std::uint32_t m_epoch;
+  };
+  /**
+   * @brief Wake up one waiter.
+   */
+  auto notify_one() noexcept -> void;
+  /**
+   * @brief Wake up all waiters.
+   */
+  auto notify_all() noexcept -> void;
+  /**
+   * @brief Prepare to wait.
+   *
+   * Once this has been called, you must either call ``wait()`` with the key or ``cancel_wait()``.
+   */
+  [[nodiscard]] auto prepare_wait() noexcept -> key;
+  /**
+   * @brief Cancel a wait that was prepared with ``prepare_wait()``.
+   */
+  auto cancel_wait() noexcept -> void;
+  /**
+   * @brief Wait for a notification, this blocks the current thread.
+   */
+  auto wait(key in_key) noexcept -> void;
+
+  /**
+   * Wait for ``condition()`` to become true.
+   *
+   * Cleans up appropriately if ``condition()`` throws, and then rethrow.
+   */
+  template <typename Pred>
+    requires std::is_invocable_r_v<bool, Pred const &>
+  void await(Pred const &condition) noexcept(std::is_nothrow_invocable_r_v<bool, Pred const &>);
+
+ private:
+  auto epoch() noexcept -> std::atomic<std::uint32_t> * {
+    return reinterpret_cast<std::atomic<std::uint32_t> *>(&m_val) + k_epoch_offset; // NOLINT
+  }
+
+  // This requires 64-bit
+  static_assert(sizeof(std::uint32_t) == 4, "bad platform, need 32 bit ints");
+  static_assert(sizeof(std::uint64_t) == 8, "bad platform, need 64 bit ints");
+
+  static_assert(sizeof(std::atomic<std::uint32_t>) == 4, "bad platform, need 32 bit atomic ints");
+  static_assert(sizeof(std::atomic<std::uint64_t>) == 8, "bad platform, need 64 bit atomic ints");
+
+  static constexpr bool k_is_little_endian = std::endian::native == std::endian::little;
+  static constexpr bool k_is_big_endian = std::endian::native == std::endian::big;
+
+  static_assert(k_is_little_endian || k_is_big_endian, "bad platform, mixed endian");
+
+  static constexpr size_t k_epoch_offset = k_is_little_endian ? 1 : 0;
+
+  static constexpr std::uint64_t k_add_waiter = 1;
+  static constexpr std::uint64_t k_sub_waiter = static_cast<std::uint64_t>(-1);
+  static constexpr std::uint64_t k_epoch_shift = 32;
+  static constexpr std::uint64_t k_add_epoch = static_cast<std::uint64_t>(1) << k_epoch_shift;
+  static constexpr std::uint64_t k_waiter_mask = k_add_epoch - 1;
+
+  // Stores the epoch in the most significant 32 bits and the waiter count in the least significant 32 bits.
+  std::atomic<std::uint64_t> m_val = 0;
+};
+
+inline void event_count::notify_one() noexcept {
+  if (m_val.fetch_add(k_add_epoch, std::memory_order_acq_rel) & k_waiter_mask) [[unlikely]] { // NOLINT
+    epoch()->notify_one();
+  }
+}
+
+inline void event_count::notify_all() noexcept {
+  if (m_val.fetch_add(k_add_epoch, std::memory_order_acq_rel) & k_waiter_mask) [[unlikely]] { // NOLINT
+    epoch()->notify_all();
+  }
+}
+
+[[nodiscard]] inline auto event_count::prepare_wait() noexcept -> event_count::key {
+  auto prev = m_val.fetch_add(k_add_waiter, std::memory_order_acq_rel);
+  // Cast is safe because we're only using the lower 32 bits.
+  return key(static_cast<std::uint32_t>(prev >> k_epoch_shift));
+}
+
+inline void event_count::cancel_wait() noexcept {
+  // memory_order_relaxed would suffice for correctness, but the faster
+  // #waiters gets to 0, the less likely it is that we'll do spurious wakeups
+  // (and thus system calls).
+  auto prev = m_val.fetch_add(k_sub_waiter, std::memory_order_seq_cst);
+
+  LF_ASSERT((prev & k_waiter_mask) != 0);
+}
+
+inline void event_count::wait(key in_key) noexcept {
+  // Use C++20 atomic wait guarantees
+  epoch()->wait(in_key.m_epoch, std::memory_order_acquire);
+
+  // memory_order_relaxed would suffice for correctness, but the faster
+  // #waiters gets to 0, the less likely it is that we'll do spurious wakeups
+  // (and thus system calls)
+  auto prev = m_val.fetch_add(k_sub_waiter, std::memory_order_seq_cst);
+
+  LF_ASSERT((prev & k_waiter_mask) != 0);
+}
+
+template <class Pred>
+  requires std::is_invocable_r_v<bool, Pred const &>
+void event_count::await(Pred const &condition) noexcept(std::is_nothrow_invocable_r_v<bool, Pred const &>) {
+  //
+  if (std::invoke(condition)) {
+    return;
+  }
+  // std::invoke(condition) is the only thing that may throw, everything else is
+  // noexcept, so we can hoist the try/catch block outside of the loop
+
+  LF_TRY {
+    for (;;) {
+      auto my_key = prepare_wait();
+      if (std::invoke(condition)) {
+        cancel_wait();
+        break;
+      }
+      wait(my_key);
+    }
+  }
+  LF_CATCH_ALL {
+    cancel_wait();
+    LF_RETHROW;
+  }
+}
+
+} // namespace ext
+
+} // namespace lf
+
+/**
+ * @file busy.hpp
+ *
+ * @brief A work-stealing thread pool where all the threads spin when idle.
+ */
+
+namespace lf {
+
+namespace impl {
+
+static constexpr std::memory_order acquire = std::memory_order_acquire;
+static constexpr std::memory_order acq_rel = std::memory_order_acq_rel;
+static constexpr std::memory_order release = std::memory_order_release;
+
+static constexpr std::uint64_t k_thieve = 1;
+static constexpr std::uint64_t k_active = k_thieve << 32U;
+
+static constexpr std::uint64_t k_thieve_mask = (k_active - 1);
+static constexpr std::uint64_t k_active_mask = ~k_thieve_mask;
+
+/**
+ * @brief Need to overload submit to add notifications.
+ */
+class lazy_context : public worker_context<lazy_context> {
+ public:
+  struct remote_atomics {
+    /**
+     * Effect:
+     *
+     * T <- T - 1
+     * S <- S
+     * A <- A + 1
+     *
+     * A is now guaranteed to be greater than 0, if we were the last thief we try to wake someone.
+     *
+     * Then we do the task.
+     *
+     * Once we are done we perform:
+     *
+     * T <- T + 1
+     * S <- S
+     * A <- A - 1
+     *
+     * This never invalidates the invariant.
+     *
+     *
+     * Overall effect: thief->active, do the work, active->thief.
+     */
+    template <typename Handle>
+      requires std::same_as<Handle, task_h<lazy_context>> || std::same_as<Handle, intruded_h<lazy_context>>
+    void thief_round_trip(Handle *handle) noexcept {
+
+      auto prev_thieves = dual_count.fetch_add(k_active - k_thieve, acq_rel) & k_thieve_mask;
+
+      if (prev_thieves == 1) {
+        LF_LOG("The last thief wakes someone up");
+        notifier.notify_one();
+      }
+
+      if constexpr (std::same_as<Handle, intruded_h<lazy_context>>) {
+        for_each(handle, [](submit_h<lazy_context> *submitted) LF_STATIC_CALL noexcept {
+          resume(submitted);
+        });
+      } else {
+        resume(handle);
+      }
+
+      dual_count.fetch_sub(k_active - k_thieve, acq_rel);
+    }
+
+    alignas(k_cache_line) std::atomic_uint64_t dual_count = 0;
+    alignas(k_cache_line) std::atomic_flag stop;
+    alignas(k_cache_line) event_count notifier;
+  };
+
+  // ---------------------------------------------------------------------- //
+
+  /**
+   * @brief Submissions to the `lazy_pool` are very noisy (everyone wakes up).
+   */
+  auto submit(intruded_h<lazy_context> *node) noexcept -> void {
+    worker_context::submit(node);
+    m_atomics->notifier.notify_all();
+  }
+
+  // ---------------------------------------------------------------------- //
+
+  void set_atomics(std::shared_ptr<remote_atomics> atomics) noexcept { m_atomics = std::move(atomics); }
+
+  static auto work(lazy_context *context) {
+
+    // ---- Initialization ---- //
+
+    LF_ASSERT(context);
+
+    worker_init(context);
+
+    impl::defer at_exit = [&]() noexcept {
+      worker_finalize(context);
+    };
+
+    /**
+     * Invariant we want to uphold:
+     *
+     *  If there is an active task their is always: [a thief] OR [no sleeping].
+     *
+     * Let:
+     *  T = number of thieves
+     *  S = number of sleeping threads
+     *  A = number of active threads
+     *
+     * Invariant: *** if (A > 0) then (T >= 1 OR S == 0) ***
+     *
+     * Lemma 1: Promoting an S -> T guarantees that the invariant is upheld.
+     *
+     * Proof 1:
+     *  Case S != 0, then T -> T + 1, hence T > 0 hence invariant maintained.
+     *  Case S == 0, then invariant is already maintained.
+     */
+
+  wake_up:
+    /**
+     * Invariant maintained by Lemma 1 regardless if this is a wake up (S <- S - 1) or join (S <- S).
+     */
+    context->m_atomics->dual_count.fetch_add(k_thieve, release);
+
+  continue_as_thief:
+    /**
+     * First we handle the fast path (work to do) before touching the notifier.
+     */
+    if (auto *submission = context->try_get_submitted()) {
+      context->m_atomics->thief_round_trip(submission);
+      goto continue_as_thief;
+    }
+    if (auto *stolen = context->try_steal()) {
+      context->m_atomics->thief_round_trip(stolen);
+      goto continue_as_thief;
+    }
+
+    /**
+     * Now we are going to try and sleep if the conditions are correct.
+     *
+     * Event count pattern:
+     *
+     *    key <- prepare_wait()
+     *
+     *    Check condition for sleep:
+     *      - We have no private work.
+     *      - We are not the watch dog.
+     *      - The scheduler has not stopped.
+     *
+     *    Commit/cancel wait on key.
+     */
+
+    auto key = context->m_atomics->notifier.prepare_wait();
+
+    if (auto *submission = context->try_get_submitted()) {
+      // Check our private **before** `stop`.
+      context->m_atomics->notifier.cancel_wait();
+      context->m_atomics->thief_round_trip(submission);
+      goto continue_as_thief;
+    }
+
+    if (context->m_atomics->stop.test(acquire)) {
+      // A stop has been requested, we will honor it under the assumption
+      // that the requester has ensured that everyone is done. We cannot check
+      // this i.e it is possible a thread that just signaled the master thread
+      // is still `active` but act stalled.
+      context->m_atomics->notifier.cancel_wait();
+      // We leave a "ghost thief" here e.g. don't bother to reduce the counter,
+      // This is fine because no-one can sleep now that the stop flag is set.
+      return;
+    }
+
+    /**
+     * Try:
+     *
+     * T <- T - 1
+     * S <- S + 1
+     * A <- A
+     *
+     * If new T == 0 and A > 0 then wake self immediately i.e:
+     *
+     * T <- T + 1
+     * S <- S - 1
+     * A <- A
+     *
+     * If we return true then we are safe to sleep, otherwise we must stay awake.
+     */
+
+    auto prev_dual = context->m_atomics->dual_count.fetch_sub(k_thieve, acq_rel);
+
+    // We are now registered as a sleeping thread and may have broken the invariant.
+
+    auto prev_thieves = prev_dual & k_thieve_mask;
+    auto prev_actives = prev_dual & k_active_mask; // Again only need 0 or non-zero.
+
+    if (prev_thieves == 1 && prev_actives != 0) {
+      // Restore the invariant.
+      goto wake_up;
+    }
+
+    LF_LOG("Goes to sleep");
+
+    // We are safe to sleep.
+    context->m_atomics->notifier.wait(key);
+    // Note, this could be a spurious wakeup, that doesn't matter because we will just loop around.
+    goto wake_up;
+  }
+
+ private:
+  std::shared_ptr<remote_atomics> m_atomics;
+};
+
+} // namespace impl
+
+/**
+ * @brief A scheduler based on a traditional work-stealing thread pool.
+ *
+ * This pool sleeps workers which cannot find any work.
+ */
+class lazy_pool {
+ public:
+  using context_type = impl::lazy_context;
+
+ private:
+  using remote = typename context_type::remote_atomics;
+
+  std::shared_ptr<remote> m_atomics = std::make_shared<remote>();
+  xoshiro m_rng{seed, std::random_device{}};
+  std::uniform_int_distribution<std::size_t> m_dist;
+  std::vector<context_type> m_contexts;
+  std::vector<std::thread> m_workers;
+
+  // Request all threads to stop, wake them up and then call join.
+  auto clean_up() noexcept -> void {
+    LF_LOG("Requesting a stop");
+
+    // Set conditions for workers to stop.
+    m_atomics->stop.test_and_set(std::memory_order_release);
+    m_atomics->notifier.notify_all();
+
+    for (auto &worker : m_workers) {
+      worker.join();
+    }
+  }
+
+ public:
+  /**
+   * @brief Schedule a task for execution.
+   */
+  auto schedule(intruded_h<context_type> *node) noexcept { m_contexts[m_dist(m_rng)].submit(node); }
+
+  /**
+   * @brief Construct a new lazy_pool object.
+   *
+   * @param n The number of worker threads to create, defaults to the number of hardware threads.
+   */
+  explicit lazy_pool(std::size_t n = std::thread::hardware_concurrency()) : m_dist{0, n - 1}, m_contexts(n) {
+
+    for (auto &context : m_contexts) {
+      context.set_atomics(m_atomics);
+      context.set_rng(m_rng);
+      m_rng.long_jump();
+    }
+
+    for (std::size_t i = 0; i < n; ++i) {
+      for (std::size_t j = 0; j < n; ++j) {
+        if (i != j) {
+          m_contexts[i].add_friend(&m_contexts[j]);
+        }
+      }
+    }
+
+    // clang-format off
+
+    LF_TRY {
+      for (auto &context : m_contexts) {
+        m_workers.emplace_back(context_type::work, &context);
+      }
+    } LF_CATCH_ALL {
+      clean_up();
+      LF_RETHROW;
+    }
+
+    // clang-format on
+  }
+
+  ~lazy_pool() noexcept { clean_up(); }
+};
+
+static_assert(scheduler<lazy_pool>);
+
+} // namespace lf
+
+#endif /* C1BED09D_40CC_4EA1_B687_38A5BCC31907 */
+#ifndef C8EE9A0A_3B9F_4FFE_8FF5_910645E0C7CC
+#define C8EE9A0A_3B9F_4FFE_8FF5_910645E0C7CC
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// Self Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <vector>
+
+
+
+/**
  * @file unit_pool.hpp
  *
  * @brief A scheduler that runs all tasks inline on the current thread.
@@ -4255,8 +4953,6 @@ static_assert(scheduler<test_unit_pool>);
 
 } // namespace ext
 
-inline namespace core {
-
 /**
  * @brief A scheduler that runs all tasks inline on the current thread.
  */
@@ -4264,11 +4960,26 @@ using unit_pool = impl::unit_pool_impl<impl::immediate_context>;
 
 static_assert(scheduler<unit_pool>);
 
-} // namespace core
-
 } // namespace lf
 
 #endif /* C8EE9A0A_3B9F_4FFE_8FF5_910645E0C7CC */
 
+
+/**
+ * @file schedule.hpp
+ *
+ * @brief Meta header which includes all the schedulers in ``libfork/schedule``.
+ *
+ * Most users of `libfork` will want to use one of the schedulers provided in this header.
+ */
+
+#endif /* A616E976_A92A_4CE4_B807_936EF8C5FBC4 */
+
+
+/**
+ * @file libfork.hpp
+ *
+ * @brief Meta header which includes all of ``libfork``.
+ */
 
 #endif /* EDCA974A_808F_4B62_95D5_4D84E31B8911 */

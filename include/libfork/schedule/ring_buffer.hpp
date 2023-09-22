@@ -9,8 +9,8 @@
 #include <optional>
 #include <utility>
 
-#include "libfork/macro.hpp"
-#include "libfork/utility.hpp"
+#include "libfork/core/macro.hpp"
+#include "libfork/core/utility.hpp"
 
 namespace lf {
 

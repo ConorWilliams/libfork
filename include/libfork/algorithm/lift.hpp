@@ -14,7 +14,6 @@
 #include <type_traits>
 
 #include "libfork/core.hpp"
-#include "libfork/core/async.hpp"
 
 namespace lf {
 
@@ -41,8 +40,6 @@ struct lifted {
 };
 
 } // namespace impl
-
-inline namespace alg {
 
 /**
  * @brief A higher-order function that lifts a function into an ``async`` function.
@@ -92,8 +89,6 @@ consteval auto lift(F) -> async<impl::lifted<F>> {
  * @brief Lift an overload-set/template into an async function, equivalent to `lf::lift(LF_LIFT(overload_set))`.
  */
 #define LF_LIFT2(overload_set) ::lf::lift(LF_LIFT(overload_set))
-
-} // namespace alg
 
 } // namespace lf
 

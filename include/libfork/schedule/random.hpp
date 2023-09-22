@@ -19,7 +19,7 @@
 #include <limits>
 #include <utility>
 
-#include "libfork/macro.hpp"
+#include "libfork/core/macro.hpp"
 
 /**
  * \file random.hpp

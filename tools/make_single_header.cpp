@@ -4,7 +4,7 @@
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
-#include "libfork/macro.hpp"
+#include "libfork/core/macro.hpp"
 #include <algorithm>
 #include <deque>
 #include <filesystem>
@@ -34,7 +34,7 @@ struct include_processor {
     return include_processor{std::move(start_path)}.process_one(start_file);
   }
 
-private:
+ private:
   struct replacement {
     std::ptrdiff_t pos;
     std::ptrdiff_t len;
@@ -76,7 +76,9 @@ private:
 
   static void process_replacements(std::string &str, std::deque<replacement> &replacements) {
 
-    std::sort(replacements.begin(), replacements.end(), [](const auto &lhs, const auto &rhs) { return lhs.pos < rhs.pos; });
+    std::sort(replacements.begin(), replacements.end(), [](const auto &lhs, const auto &rhs) {
+      return lhs.pos < rhs.pos;
+    });
 
     while (!replacements.empty()) {
 

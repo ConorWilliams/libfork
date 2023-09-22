@@ -21,7 +21,7 @@
 #include <utility>
 #include <version>
 
-#include "libfork/macro.hpp"
+#include "libfork/core/macro.hpp"
 
 /**
  * @file utility.hpp

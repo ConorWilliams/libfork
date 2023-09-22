@@ -19,12 +19,11 @@
 #include <type_traits>
 #include <utility>
 
-#include "libfork/macro.hpp"
-#include "libfork/utility.hpp"
-
+#include "libfork/core/macro.hpp"
 #include "libfork/core/meta.hpp"
 #include "libfork/core/result.hpp"
 #include "libfork/core/stack.hpp"
+#include "libfork/core/utility.hpp"
 
 /**
  * @file task.hpp
@@ -34,7 +33,7 @@
 
 namespace lf {
 
-inline namespace core {
+namespace impl {
 
 /**
  * @brief A fixed string type for template parameters that tracks its source location.
@@ -67,7 +66,7 @@ struct tracked_fixed_string {
   std::uint_least32_t column;        ///< The column number where `this` was constructed.
 };
 
-} // namespace core
+} // namespace impl
 
 // ----------------------------------------------- //
 
@@ -90,7 +89,7 @@ inline namespace core {
  *
  * \endrst
  */
-template <typename T = void, tracked_fixed_string Name = "">
+template <typename T = void, impl::tracked_fixed_string Name = "">
 struct task {
 
   using value_type = T; ///< The type of the value returned by the coroutine.

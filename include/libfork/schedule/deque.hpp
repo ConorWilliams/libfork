@@ -20,8 +20,8 @@
 #include <utility>
 #include <vector>
 
-#include "libfork/macro.hpp"
-#include "libfork/utility.hpp"
+#include "libfork/core/macro.hpp"
+#include "libfork/core/utility.hpp"
 
 /**
  * @file deque.hpp

@@ -5,7 +5,7 @@ include(cmake/read_version.cmake)
 
 message(STATUS "CMAKE_BUILD_TYPE is set to '${CMAKE_BUILD_TYPE}'")
 
-read_version(${CMAKE_CURRENT_SOURCE_DIR}/include/libfork/macro.hpp)
+read_version(${CMAKE_CURRENT_SOURCE_DIR}/include/libfork/core/macro.hpp)
 
 project(
   libfork

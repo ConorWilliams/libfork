@@ -16,9 +16,6 @@
 #include <random>
 #include <thread>
 
-#include "libfork/macro.hpp"
-#include "libfork/utility.hpp"
-
 #include "libfork/core.hpp"
 
 #include "libfork/schedule/contexts.hpp"
@@ -31,8 +28,6 @@
  */
 
 namespace lf {
-
-inline namespace core {
 
 /**
  * @brief A scheduler based on a traditional work-stealing thread pool.
@@ -130,8 +125,6 @@ class busy_pool {
 };
 
 static_assert(scheduler<busy_pool>);
-
-} // namespace core
 
 } // namespace lf
 

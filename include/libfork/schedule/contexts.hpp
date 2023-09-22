@@ -17,8 +17,6 @@
 #include <vector>
 
 #include "libfork/core.hpp"
-#include "libfork/macro.hpp"
-#include "libfork/utility.hpp"
 
 #include "libfork/schedule/deque.hpp"
 #include "libfork/schedule/random.hpp"

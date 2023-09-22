@@ -36,7 +36,7 @@ Extension API
 Macros in ``libfork``
 ---------------------------
 
-.. doxygenfile:: libfork/macro.hpp
+.. doxygenfile:: libfork/core/macro.hpp
 
 
 Internal documentation

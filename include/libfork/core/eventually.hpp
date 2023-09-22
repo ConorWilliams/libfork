@@ -14,8 +14,8 @@
 #include <type_traits>
 #include <utility>
 
-#include "libfork/macro.hpp"
-#include "libfork/utility.hpp"
+#include "libfork/core/macro.hpp"
+#include "libfork/core/utility.hpp"
 
 /**
  * @file eventually.hpp

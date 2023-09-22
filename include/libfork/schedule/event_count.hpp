@@ -21,8 +21,8 @@
 #include <thread>
 #include <type_traits>
 
-#include "libfork/macro.hpp"
-#include "libfork/utility.hpp"
+#include "libfork/core/macro.hpp"
+#include "libfork/core/utility.hpp"
 
 /**
  * @file event_count.hpp

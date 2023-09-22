@@ -11,11 +11,10 @@
 
 #include <concepts>
 
-#include "libfork/macro.hpp"
-#include "libfork/utility.hpp"
-
 #include "libfork/core/list.hpp"
+#include "libfork/core/macro.hpp"
 #include "libfork/core/stack.hpp"
+#include "libfork/core/utility.hpp"
 
 /**
  * @file meta.hpp

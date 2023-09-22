@@ -19,9 +19,6 @@
 #include <stdexcept>
 #include <thread>
 
-#include "libfork/macro.hpp"
-#include "libfork/utility.hpp"
-
 #include "libfork/core.hpp"
 
 #include "libfork/schedule/contexts.hpp"
@@ -244,8 +241,6 @@ class lazy_context : public worker_context<lazy_context> {
 
 } // namespace impl
 
-inline namespace core {
-
 /**
  * @brief A scheduler based on a traditional work-stealing thread pool.
  *
@@ -322,8 +317,6 @@ class lazy_pool {
 };
 
 static_assert(scheduler<lazy_pool>);
-
-} // namespace core
 
 } // namespace lf
 
