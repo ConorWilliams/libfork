@@ -5,6 +5,7 @@
 #include "libfork/core.hpp"
 
 #include "libfork/schedule/busy_pool.hpp"
+#include "libfork/schedule/lazy_pool.hpp"
 #include "libfork/schedule/unit_pool.hpp"
 
 // NOLINTBEGIN
@@ -93,6 +94,20 @@ auto main() -> int {
     lf::busy_pool sch{i};
 
     bench.run("async busy pool n=" + std::to_string(i), [&] {
+      ret = lf::sync_wait(sch, fib, in);
+    });
+
+    if (ret != fib_ref(in)) {
+      std::cerr << "Error: " << ret << std::endl;
+      return 1;
+    }
+  }
+
+  for (std::size_t i = 1; i <= std::thread::hardware_concurrency() / 2; ++i) {
+
+    lf::lazy_pool sch{i};
+
+    bench.run("async lazy pool n=" + std::to_string(i), [&] {
       ret = lf::sync_wait(sch, fib, in);
     });
 

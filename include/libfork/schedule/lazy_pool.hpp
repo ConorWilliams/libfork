@@ -119,7 +119,7 @@ class lazy_context : public worker_context<lazy_context> {
 
   static auto work(lazy_context *context) {
 
-    // Initialization
+    // ---- Initialization ---- //
 
     LF_ASSERT(context);
 

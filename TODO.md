@@ -3,7 +3,7 @@
 #### Missing features
 
 - [ ] `lf::tail`.
-- [ ] `lazy_pool` 
+- [x] `lazy_pool` 
 - [ ] `numa_pool` (will need to iterate on this once we have heterogeneous workloads).
 - [ ] Stack-tracing: Logging at call-site (`std::source_location`).
 - [ ] Stack-tracing: Walk stack function.
@@ -11,6 +11,7 @@
    
 #### Post feature complete
 
+- [ ] Bit-cast to reinterpret_cast
 - [ ] benchmark: need some heterogeneous workloads (UT3, unbalanced tree reduce, see NOWA)
 - [ ] benchmark: A test/benchmark that stresses stack stealing?
 - [ ] benchmark: C++ library comparisons (TaskFlow, ...).
