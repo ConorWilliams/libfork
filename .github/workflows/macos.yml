@@ -19,19 +19,23 @@ env:
 
 jobs:
   test:
-    name: ${{ matrix.os }}-test-${{ matrix.build-type }}
+    name: macos-test-${{ matrix.build-type }}
 
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-13
 
     strategy:
       fail-fast: false
       matrix:
         build-type: [Debug, Release]
-        os: [macos-13, macos-13-xl]
 
     steps:
       - uses: actions/checkout@v3
 
+      - name: Install the real clang
+        shell: pwsh
+        run: |
+          brew install llvm
+  
       - uses: ./.github/actions/setup
 
       - name: Restore from cache the dependencies and generate project files

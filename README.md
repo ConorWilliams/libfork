@@ -4,10 +4,15 @@
 
 <h1 align="center"> Welcome to <tt>libfork</tt> 🍴 </h1>
 
-
 <p align="center">
-<a href="https://github.com/ConorWilliams/libfork/actions/workflows/ci.yml">
-    <img src="https://github.com/ConorWilliams/libfork/actions/workflows/ci.yml/badge.svg">
+<a href="https://github.com/ConorWilliams/libfork/actions/workflows/linux.yml">
+    <img src="https://github.com/ConorWilliams/libfork/actions/workflows/linux.yml/badge.svg">
+</a>
+<a href="https://github.com/ConorWilliams/libfork/actions/workflows/windows.yml">
+    <img src="https://github.com/ConorWilliams/libfork/actions/workflows/windows.yml/badge.svg">
+</a>
+<a href="https://github.com/ConorWilliams/libfork/actions/workflows/macos.yml">
+    <img src="https://github.com/ConorWilliams/libfork/actions/workflows/macos.yml/badge.svg">
 </a>
 <a href="https://github.com/ConorWilliams/openFLY/actions/workflows/pages/pages-build-deployment">
     <img src="https://github.com/ConorWilliams/openFLY/actions/workflows/pages/pages-build-deployment/badge.svg">
@@ -16,6 +21,7 @@
     <img src="https://codecov.io/gh/ConorWilliams/libfork/branch/main/graph/badge.svg?token=89MTSXI85F)">
 </a>
 </p>
+
 <p align="center">
   A bleeding edge, lock-free, wait-free, continuation-stealing coroutine-tasking library.
 </p>
