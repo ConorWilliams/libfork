@@ -2129,6 +2129,14 @@ struct tracked_fixed_string {
   static constexpr std::size_t file_name_max_size = 127;
 
  public:
+#if !defined(LF_DOXYGEN_SHOULD_SKIP_THIS) && defined(__clang__) && __clang_major__ == 17
+  // See: https://github.com/llvm/llvm-project/issues/67134
+  consteval tracked_fixed_string(Char const (&str)[N]) noexcept : line{0}, column{0} {
+    for (std::size_t i = 0; i < N; ++i) {
+      function_name[i] = str[i];
+    }
+  }
+#else
   /**
    * @brief Construct a tracked fixed string from a string literal.
    */
@@ -2138,9 +2146,8 @@ struct tracked_fixed_string {
     for (std::size_t i = 0; i < N; ++i) {
       function_name[i] = str[i];
     }
-
-    // std::size_t count = 0 loc.while
   }
+#endif
 
   // std::array<char, file_name_max_size + 1> file_name_buf;
   // std::size_t file_name_size;
