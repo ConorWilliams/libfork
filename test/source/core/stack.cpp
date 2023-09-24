@@ -46,7 +46,7 @@ auto root(auto fun) -> root_task { co_return fun(); }
 
 } // namespace
 
-TEST_CASE("Root task", "[virtual_stack]") {
+TEST_CASE("Root task", "[stack]") {
 
   int x = 0;
 
@@ -114,7 +114,7 @@ void inline_fib(int &res, int n) {
 
 } // namespace
 
-TEST_CASE("fib on stack", "[virtual_stack]") {
+TEST_CASE("fib on stack", "[stack]") {
 
   root([&] {
     //

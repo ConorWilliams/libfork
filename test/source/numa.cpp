@@ -29,7 +29,7 @@ using namespace lf;
 
 using namespace impl;
 
-TEST_CASE("make_topology", "[hwloc]") {
+TEST_CASE("make_topology", "[numa]") {
   for (int i = 0; i < 10; i++) {
     numa_topology topo = {};
 
@@ -53,7 +53,7 @@ struct comp {
 
 } // namespace
 
-TEST_CASE("split", "[hwloc]") {
+TEST_CASE("split", "[numa]") {
 
   numa_topology topo;
 
@@ -95,7 +95,7 @@ void print_distances(lf::ext::detail::distance_matrix const &dist) {
 
 } // namespace
 
-TEST_CASE("distances", "[hwloc]") {
+TEST_CASE("distances", "[numa]") {
 
   numa_topology topo;
 
@@ -123,7 +123,7 @@ TEST_CASE("distances", "[hwloc]") {
 
 #endif
 
-TEST_CASE("distribute", "[hwloc]") {
+TEST_CASE("distribute", "[numa]") {
 
   for (unsigned int i = 1; i <= 2 * std::thread::hardware_concurrency(); i++) {
 
