@@ -189,7 +189,7 @@ inline void numa_topology::numa_handle::bind() const {
   }
 }
 
-auto numa_topology::split(std::size_t n) const -> std::vector<numa_handle> {
+inline auto numa_topology::split(std::size_t n) const -> std::vector<numa_handle> {
 
   if (n < 1) {
     LF_THROW(hwloc_error{"hwloc cannot distribute over less than one singlet"});
@@ -287,7 +287,7 @@ class distance_matrix {
 } // namespace detail
 
 template <typename T>
-auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data) -> std::vector<numa_node<T>> {
+inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data) -> std::vector<numa_node<T>> {
 
   std::vector handles = split(data.size());
 
@@ -339,10 +339,10 @@ inline void numa_topology::numa_handle::bind() const {
   LF_ASSERT(!cpup);
 }
 
-auto numa_topology::split(std::size_t n) const -> std::vector<numa_handle> { return std::vector<numa_handle>(n); }
+inline auto numa_topology::split(std::size_t n) const -> std::vector<numa_handle> { return std::vector<numa_handle>(n); }
 
 template <typename T>
-auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data) -> std::vector<numa_node<T>> {
+inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data) -> std::vector<numa_node<T>> {
 
   std::vector<numa_handle> handles = split(objects.size());
 

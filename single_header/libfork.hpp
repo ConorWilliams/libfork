@@ -3288,6 +3288,7 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
 #include <algorithm>
 #include <atomic>
 #include <bit>
+#include <cstddef>
 #include <memory>
 #include <random>
 #include <vector>
@@ -3709,6 +3710,383 @@ constexpr deque<T>::~deque() noexcept {
 } // namespace lf
 
 #endif /* C9703881_3D9C_41A5_A7A2_44615C4CFA6A */
+#ifndef D8877F11_1F66_4AD0_B949_C0DFF390C2DB
+#define D8877F11_1F66_4AD0_B949_C0DFF390C2DB
+
+#include <cerrno>
+#include <climits>
+#include <cstddef>
+#include <memory>
+#include <set>
+#include <vector>
+
+
+#ifdef LF_HAS_HWLOC
+  #include <hwloc.h>
+#endif
+
+/**
+ * @brief An opaque description of a set of processing units.
+ *
+ * \rst
+ *
+ * .. note::
+ *
+ *    If your system is missing `hwloc` then this type will be incomplete.
+ *
+ * \endrst
+ */
+struct hwloc_bitmap_s;
+
+/**
+ * @brief An opaque description of a computers topology.
+ *
+ * \rst
+ *
+ * .. note::
+ *
+ *    If your system is missing `hwloc` then this type will be incomplete.
+ *
+ * \endrst
+ */
+struct hwloc_topology;
+
+namespace lf {
+
+inline namespace ext {
+
+// ------------- hwloc can go wrong in a lot of ways... ------------- //
+
+/**
+ * @brief An exception thrown when hwloc fails.
+ */
+struct hwloc_error : std::runtime_error {
+  using std::runtime_error::runtime_error;
+};
+
+// ------------------------------ Topology decl ------------------------------ //
+
+/**
+ * @brief A shared description of a computers topology.
+ *
+ * Objects of this type have shared-pointer semantics.
+ */
+class numa_topology {
+
+  struct bitmap_deleter {
+    LF_STATIC_CALL void operator()(hwloc_bitmap_s *ptr) LF_STATIC_CONST noexcept {
+#ifdef LF_HAS_HWLOC
+      hwloc_bitmap_free(ptr);
+#else
+      LF_ASSERT(!ptr);
+#endif
+    }
+  };
+
+  using unique_cpup = std::unique_ptr<hwloc_bitmap_s, bitmap_deleter>;
+
+  using shared_topo = std::shared_ptr<hwloc_topology>;
+
+ public:
+  /**
+   * @brief Construct a topology.
+   *
+   * If hwloc is not installed this topology is empty.
+   */
+  numa_topology();
+
+  /**
+   * @brief Test if this topology is empty.
+   */
+  explicit operator bool() const noexcept { return m_topology != nullptr; }
+
+  /**
+   * A handle to a single processing unit in a NUMA computer.
+   */
+  class numa_handle {
+   public:
+    /**
+     * @brief Bind the calling thread to the set of processing units in this `cpuset`.
+     *
+     * If hwloc is not installed this is a noop.
+     */
+    void bind() const;
+
+    shared_topo topo = nullptr; ///< A shared handle to topology this handle belongs to.
+    unique_cpup cpup = nullptr; ///< A unique handle to processing units in `topo` that this handle represents.
+  };
+
+  /**
+   * @brief Split a topology into `n` uniformly distributed handles to single processing units.
+   *
+   * Here "uniformly" means they each have as much cache as possible. If this topology is empty then
+   * this function returns a vector of `n` empty handles.
+   */
+  auto split(std::size_t n) const -> std::vector<numa_handle>;
+
+  /**
+   * @brief A single-threads hierarchical view of a set of objects.
+   *
+   * This is a `numa_handle` augmented with  list of neighbors-lists each neighbors-list has
+   * equidistant neighbors. The first neighbors-list always exists and contains only one element, the
+   * one "owned" by the thread. Each subsequent neighbors-list has elements that are topologically more
+   * distant from the element in the first neighbour-list.
+   */
+  template <typename T>
+  struct numa_node : numa_handle {
+    std::vector<std::vector<std::shared_ptr<T>>> neighbors; ///< A list of neighbors-lists.
+  };
+
+  /**
+   * @brief Distribute a vector of objects over this topology.
+   *
+   * This function returns a vector of `numa_node`s. Each `numa_node` contains a hierarchical view of
+   * the elements in `objects` in to.
+   */
+  template <typename T>
+  auto distribute(std::vector<std::shared_ptr<T>> const &data) -> std::vector<numa_node<T>>;
+
+ private:
+  shared_topo m_topology = nullptr;
+};
+
+// ------------------------------ Topology implementation ------------------------------ //
+
+#ifdef LF_HAS_HWLOC
+
+inline numa_topology::numa_topology() {
+
+  struct topology_deleter {
+    LF_STATIC_CALL void operator()(hwloc_topology *ptr) LF_STATIC_CONST noexcept {
+      if (ptr != nullptr) {
+        hwloc_topology_destroy(ptr);
+      }
+    }
+  };
+
+  hwloc_topology *tmp = nullptr;
+
+  if (hwloc_topology_init(&tmp) != 0) {
+    LF_THROW(hwloc_error{"failed to initialize a topology"});
+  }
+
+  m_topology = {tmp, topology_deleter{}};
+
+  if (hwloc_topology_load(m_topology.get()) != 0) {
+    LF_THROW(hwloc_error{"failed to load a topology"});
+  }
+}
+
+inline void numa_topology::numa_handle::bind() const {
+
+  LF_ASSERT(topo);
+  LF_ASSERT(cpup);
+
+  switch (hwloc_set_cpubind(topo.get(), cpup.get(), HWLOC_CPUBIND_THREAD)) {
+    case 0:
+      return;
+    case -1:
+      switch (errno) {
+        case ENOSYS:
+          LF_THROW(hwloc_error{"hwloc's cpu binding is not supported on this system"});
+        case EXDEV:
+          LF_THROW(hwloc_error{"hwloc cannot enforce the requested binding"});
+        default:
+          LF_THROW(hwloc_error{"hwloc cpu bind reported an unknown error"});
+      };
+    default:
+      LF_THROW(hwloc_error{"hwloc cpu bind returned un unexpected value"});
+  }
+}
+
+inline auto numa_topology::split(std::size_t n) const -> std::vector<numa_handle> {
+
+  if (n < 1) {
+    LF_THROW(hwloc_error{"hwloc cannot distribute over less than one singlet"});
+  }
+
+  std::vector<hwloc_bitmap_s *> sets(n, nullptr);
+
+  hwloc_obj_t root = impl::non_null(hwloc_get_root_obj(m_topology.get()));
+
+  // hwloc_distrib gives us owning pointers (not in the docs, but it does!).
+
+  if (hwloc_distrib(m_topology.get(), &root, 1, sets.data(), n, INT_MAX, 0) != 0) {
+    LF_THROW(hwloc_error{"unknown hwloc error when distributing over a topology"});
+  }
+
+  // Need ownership before map for exception safety.
+  std::vector<unique_cpup> singlets{sets.begin(), sets.end()};
+
+  return impl::map(std::move(singlets), [&](unique_cpup &&singlet) -> numa_handle {
+    //
+    if (!singlet) {
+      LF_THROW(hwloc_error{"hwloc_distrib returned a nullptr"});
+    }
+
+    if (hwloc_bitmap_singlify(singlet.get()) != 0) {
+      LF_THROW(hwloc_error{"unknown hwloc error when singlify a bitmap"});
+    }
+
+    return {m_topology, std::move(singlet)};
+  });
+}
+
+namespace detail {
+
+class distance_matrix {
+
+  using numa_handle = numa_topology::numa_handle;
+
+ public:
+  /**
+   * @brief Compute the topological distance between all pairs of objects in `obj`.
+   */
+  explicit distance_matrix(std::vector<numa_handle> const &handles) : m_size{handles.size()}, m_matrix(m_size * m_size) {
+
+    // Transform into hwloc's internal representation of nodes in the topology tree.
+
+    std::vector obj = impl::map(handles, [](numa_handle const &handle) -> hwloc_obj_t {
+      return hwloc_get_obj_covering_cpuset(handle.topo.get(), handle.cpup.get());
+    });
+
+    for (auto *elem : obj) {
+      if (elem == nullptr) {
+        LF_THROW(hwloc_error{"failed to find an object covering a handle"});
+      }
+    }
+
+    // Build the matrix.
+
+    for (std::size_t i = 0; i < obj.size(); i++) {
+      for (std::size_t j = 0; j < obj.size(); j++) {
+
+        auto *topo_1 = handles[i].topo.get();
+        auto *topo_2 = handles[j].topo.get();
+
+        if (topo_1 != topo_2) {
+          LF_THROW(hwloc_error{"numa_handles are in different topologies"});
+        }
+
+        hwloc_obj_t ancestor = hwloc_get_common_ancestor_obj(topo_1, obj[i], obj[j]);
+
+        if (ancestor == nullptr) {
+          LF_THROW(hwloc_error{"failed to find a common ancestor"});
+        }
+
+        int dist_1 = obj[i]->depth - ancestor->depth;
+        int dist_2 = obj[j]->depth - ancestor->depth;
+
+        LF_ASSERT(dist_1 >= 0);
+        LF_ASSERT(dist_2 >= 0);
+
+        m_matrix[i * m_size + j] = std::max(dist_1, dist_2);
+      }
+    }
+  }
+
+  auto operator()(std::size_t i, std::size_t j) const noexcept -> int { return m_matrix[i * m_size + j]; }
+
+  auto size() const noexcept -> std::size_t { return m_size; }
+
+ private:
+  std::size_t m_size;
+  std::vector<int> m_matrix;
+};
+
+} // namespace detail
+
+template <typename T>
+inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data) -> std::vector<numa_node<T>> {
+
+  std::vector handles = split(data.size());
+
+  // Compute the topological distance between all pairs of objects.
+
+  detail::distance_matrix dist{handles};
+
+  std::vector<numa_node<T>> nodes = impl::map(std::move(handles), [](numa_handle &&handle) -> numa_node<T> {
+    return {std::move(handle), {}};
+  });
+
+  // Compute the neighbors-lists.
+
+  for (std::size_t i = 0; i < nodes.size(); i++) {
+
+    std::set<int> uniques;
+
+    for (std::size_t j = 0; j < nodes.size(); j++) {
+      if (i != j) {
+        uniques.insert(dist(i, j));
+      }
+    }
+
+    nodes[i].neighbors.resize(1 + uniques.size());
+
+    for (std::size_t j = 0; j < nodes.size(); j++) {
+      if (i == j) {
+        nodes[i].neighbors[0].push_back(data[j]);
+      } else {
+        auto idx = std::distance(uniques.begin(), uniques.find(dist(i, j)));
+        LF_ASSERT(idx >= 0);
+        nodes[i].neighbors[1 + idx].push_back(data[j]);
+      }
+    }
+  }
+
+  return nodes;
+}
+
+#else
+
+inline numa_topology::numa_topology()
+    : m_topology{nullptr, [](hwloc_topology *ptr) {
+                   LF_ASSERT(!ptr);
+                 }} {}
+
+inline void numa_topology::numa_handle::bind() const {
+  LF_ASSERT(!topo);
+  LF_ASSERT(!cpup);
+}
+
+inline auto numa_topology::split(std::size_t n) const -> std::vector<numa_handle> { return std::vector<numa_handle>(n); }
+
+template <typename T>
+inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data) -> std::vector<numa_node<T>> {
+
+  std::vector<numa_handle> handles = split(objects.size());
+
+  std::vector<numa_node<T>> views;
+
+  for (std::size_t i = 0; i < objects.size(); i++) {
+
+    numa_node<T> node{
+        std::move(handles[i]), {{objects[i]}}, // The first neighbors-list contains only the object itself.
+    };
+
+    if (objects.size() > 1) {
+      node.neighbors.push_back({});
+    }
+
+    for (auto const &neigh : objects) {
+      if (neigh != objects[i]) {
+        node.neighbors[1].push_back(neigh);
+      }
+    }
+
+    views.push_back(std::move(node));
+  }
+
+  return views;
+}
+
+#endif
+
+} // namespace ext
+
+} // namespace lf
+
+#endif /* D8877F11_1F66_4AD0_B949_C0DFF390C2DB */
 #ifndef CA0BE1EA_88CD_4E63_9D89_37395E859565
 #define CA0BE1EA_88CD_4E63_9D89_37395E859565
 
@@ -4121,9 +4499,10 @@ static_assert(!single_thread_context<test_immediate_context>);
  * to be constructed/destructed by the master thread.
  */
 template <typename CRTP>
-class worker_context : immovable<worker_context<CRTP>> {
+class numa_worker_context : immovable<numa_worker_context<CRTP>> {
+
   static constexpr std::size_t k_buff = 16;
-  static constexpr std::size_t k_steal_attempts = 64;
+  static constexpr std::size_t k_steal_attempts = 32; ///< Attempts per target.
 
   using task_t = task_h<CRTP>;
   using submit_t = submit_h<CRTP>;
@@ -4134,8 +4513,9 @@ class worker_context : immovable<worker_context<CRTP>> {
   intrusive_list<submit_t *> m_submit;         ///< The public submission queue, all non-null.
   ring_buffer<async_stack *, k_buff> m_buffer; ///< Our private stack buffer, all non-null.
 
-  xoshiro m_rng{seed, std::random_device{}}; ///< Our personal PRNG.
-  std::vector<CRTP *> m_friends;             ///< Other contexts in the pool, all non-null.
+  xoshiro m_rng;                            ///< Our personal PRNG.
+  std::size_t m_max_threads;                ///< The total max parallelism available.
+  std::vector<std::vector<CRTP *>> m_neigh; ///< Our view of the NUMA topology.
 
   template <typename T>
   static constexpr auto null_for = []() LF_STATIC_CALL noexcept -> T * {
@@ -4143,18 +4523,35 @@ class worker_context : immovable<worker_context<CRTP>> {
   };
 
  public:
-  worker_context() {
-    for (auto *elem : m_friends) {
-      LF_ASSERT(elem);
-    }
+  numa_worker_context(std::size_t n, xoshiro const &rng) : m_rng(rng), m_max_threads(n) {
     for (std::size_t i = 0; i < k_buff / 2; ++i) {
       m_buffer.push(new async_stack);
     }
   }
 
-  void set_rng(xoshiro const &rng) noexcept { m_rng = rng; }
+  /**
+   * @brief Initialize the context with the given topology and bind it to a thread.
+   *
+   * This is separate from construction as the master thread will need to construct
+   * the contexts before they can form a reference to them, this must be called by the
+   * worker thread.
+   *
+   * The context will store __raw__ pointers to the other contexts in the topology, this is
+   * to ensure no circular references are formed.
+   */
+  void init_numa_and_bind(numa_topology::numa_node<CRTP> const &topo) {
 
-  void add_friend(CRTP *a_friend) noexcept { m_friends.push_back(non_null(a_friend)); }
+    LF_ASSERT(topo.neighbors.front().front().get() == this);
+    topo.bind();
+
+    // Skip the first one as it is just us.
+    for (std::size_t i = 1; i < topo.neighbors.size(); ++i) {
+      m_neigh.push_back(map(topo.neighbors[i], [](std::shared_ptr<CRTP> const &context) {
+        // We must use regular pointers to avoid circular references.
+        return context.get();
+      }));
+    }
+  }
 
   /**
    * @brief Fetch a linked-list of the submitted tasks.
@@ -4163,38 +4560,41 @@ class worker_context : immovable<worker_context<CRTP>> {
 
   /**
    * @brief Try to steal a task from one of our friends, returns `nullptr` if we failed.
-   *
-   * Call `resume_stolen` on it if we succeeded.
    */
   auto try_steal() noexcept -> task_t * {
-    for (std::size_t i = 0; i < k_steal_attempts; ++i) {
 
-      std::shuffle(m_friends.begin(), m_friends.end(), m_rng);
+    for (auto &&friends : m_neigh) {
 
-      for (CRTP *context : m_friends) {
+      for (std::size_t i = 0; i < k_steal_attempts; ++i) {
 
-        auto [err, task] = context->m_tasks.steal();
+        std::shuffle(friends.begin(), friends.end(), m_rng);
 
-        switch (err) {
-          case lf::err::none:
-            LF_LOG("Stole task from {}", (void *)context);
-            return task;
+        for (CRTP *context : friends) {
 
-          case lf::err::lost:
-            // We don't retry here as we don't want to cause contention
-            // and we have multiple steal attempts anyway.
-          case lf::err::empty:
-            continue;
+          auto [err, task] = context->m_tasks.steal();
 
-          default:
-            LF_ASSERT(false);
+          switch (err) {
+            case lf::err::none:
+              LF_LOG("Stole task from {}", (void *)context);
+              return task;
+
+            case lf::err::lost:
+              // We don't retry here as we don't want to cause contention
+              // and we have multiple steal attempts anyway.
+            case lf::err::empty:
+              continue;
+
+            default:
+              LF_ASSERT(false);
+          }
         }
       }
     }
+
     return nullptr;
   }
 
-  ~worker_context() noexcept {
+  ~numa_worker_context() noexcept {
     //
     LF_ASSERT_NO_ASSUME(m_tasks.empty());
 
@@ -4209,7 +4609,7 @@ class worker_context : immovable<worker_context<CRTP>> {
 
   // ------------- To satisfy `thread_context` ------------- //
 
-  auto max_threads() const noexcept -> std::size_t { return m_friends.size() + 1; }
+  auto max_threads() const noexcept -> std::size_t { return m_max_threads; }
 
   auto submit(intruded_t *node) noexcept -> void { m_submit.push(non_null(node)); }
 
@@ -4225,28 +4625,32 @@ class worker_context : immovable<worker_context<CRTP>> {
       return stack;
     }
 
-    std::shuffle(m_friends.begin(), m_friends.end(), m_rng);
+    for (auto &&friends : m_neigh) {
 
-    for (CRTP *context : m_friends) {
+      std::shuffle(friends.begin(), friends.end(), m_rng);
 
-    retry:
-      auto [err, stack] = context->m_stacks.steal();
+      for (CRTP *context : friends) {
 
-      switch (err) {
-        case lf::err::none:
-          LF_LOG("stack_pop() stole from {}", (void *)context);
-          return stack;
-        case lf::err::lost:
-          // We retry (even if it may cause contention) to try and avoid allocating.
-          goto retry;
-        case lf::err::empty:
-          break;
-        default:
-          LF_ASSERT(false);
+      retry:
+        auto [err, stack] = context->m_stacks.steal();
+
+        switch (err) {
+          case lf::err::none:
+            LF_LOG("stack_pop() stole from {}", (void *)context);
+            return stack;
+          case lf::err::lost:
+            // We retry (even if it may cause contention) to try and avoid allocating.
+            goto retry;
+          case lf::err::empty:
+            break;
+          default:
+            LF_ASSERT(false);
+        }
       }
     }
 
     LF_LOG("stack_pop() allocating");
+
     return new async_stack;
   }
 
@@ -4264,7 +4668,7 @@ class worker_context : immovable<worker_context<CRTP>> {
 
 namespace detail::static_test {
 
-struct test_context : worker_context<test_context> {};
+struct test_context : numa_worker_context<test_context> {};
 
 static_assert(thread_context<test_context>);
 static_assert(!single_thread_context<test_context>);
@@ -4293,12 +4697,14 @@ namespace lf {
  */
 class busy_pool {
  public:
-  struct context_type : impl::worker_context<context_type> {};
+  struct context_type : impl::numa_worker_context<context_type> {
+    using impl::numa_worker_context<context_type>::numa_worker_context;
+  };
 
  private:
   xoshiro m_rng{seed, std::random_device{}};
 
-  std::vector<context_type> m_contexts;
+  std::vector<std::shared_ptr<context_type>> m_contexts;
   std::vector<std::thread> m_workers;
   std::unique_ptr<std::atomic_flag> m_stop = std::make_unique<std::atomic_flag>();
 
@@ -4314,13 +4720,17 @@ class busy_pool {
     }
   }
 
-  static auto work(context_type *my_context, std::atomic_flag const &stop_requested) {
+  static auto work(numa_topology::numa_node<context_type> node, std::atomic_flag const &stop_requested) {
 
-    worker_init(my_context);
+    std::shared_ptr my_context = node.neighbors.front().front();
+
+    worker_init(my_context.get());
 
     impl::defer at_exit = [&]() noexcept {
-      worker_finalize(my_context);
+      worker_finalize(my_context.get());
     };
+
+    my_context->init_numa_and_bind(node);
 
     while (!stop_requested.test(std::memory_order_acquire)) {
 
@@ -4340,32 +4750,29 @@ class busy_pool {
    *
    * @param n The number of worker threads to create, defaults to the number of hardware threads.
    */
-  explicit busy_pool(std::size_t n = std::thread::hardware_concurrency()) : m_contexts(n) {
-
-    for (auto &context : m_contexts) {
-      context.set_rng(m_rng);
-      m_rng.long_jump();
-    }
+  explicit busy_pool(std::size_t n = std::thread::hardware_concurrency()) {
 
     for (std::size_t i = 0; i < n; ++i) {
-      for (std::size_t j = 0; j < n; ++j) {
-        if (i != j) {
-          m_contexts[i].add_friend(&m_contexts[j]);
-        }
-      }
+      m_contexts.push_back(std::make_shared<context_type>(n, m_rng));
+      m_rng.long_jump();
     }
 
     LF_ASSERT_NO_ASSUME(!m_stop->test(std::memory_order_acquire));
 
+    std::vector nodes = numa_topology{}.distribute(m_contexts);
+
+    // clang-format off
+
     LF_TRY {
-      for (auto &context : m_contexts) {
-        m_workers.emplace_back(work, &context, std::cref(*m_stop));
+      for (auto &&node : nodes) {
+        m_workers.emplace_back(work, std::move(node), std::cref(*m_stop));
       }
-    }
-    LF_CATCH_ALL {
+    } LF_CATCH_ALL {
       clean_up();
       LF_RETHROW;
     }
+
+    // clang-format on
   }
 
   ~busy_pool() noexcept { clean_up(); }
@@ -4375,7 +4782,7 @@ class busy_pool {
    */
   auto schedule(intruded_h<context_type> *node) noexcept {
     std::uniform_int_distribution<std::size_t> dist(0, m_contexts.size() - 1);
-    m_contexts[dist(m_rng)].submit(node);
+    m_contexts[dist(m_rng)]->submit(node);
   }
 };
 
@@ -4652,6 +5059,10 @@ void event_count::await(Pred const &condition) noexcept(std::is_nothrow_invocabl
  */
 
 namespace lf {
+
+using lazy_pool = busy_pool;
+
+#if false 
 
 namespace impl {
 
@@ -4937,6 +5348,8 @@ class lazy_pool {
 };
 
 static_assert(scheduler<lazy_pool>);
+
+#endif
 
 } // namespace lf
 
