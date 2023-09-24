@@ -2392,7 +2392,10 @@ INCLUDE_FILE_PATTERNS  =
 
 PREDEFINED             = LF_DOXYGEN_SHOULD_SKIP_THIS \
                          LF_STATIC_CONST= \
-                         LF_STATIC_CALL=static
+                         LF_STATIC_CALL=static\
+                         LF_TLS_CLANG_INLINE=\ 
+                         LF_NOINLINE=\
+                         LF_FORCEINLINE=
 
 # If the MACRO_EXPANSION and EXPAND_ONLY_PREDEF tags are set to YES then this
 # tag can be used to specify a list of macro names that should be expanded. The

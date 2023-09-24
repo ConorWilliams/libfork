@@ -44,7 +44,7 @@ jobs:
   test:
     needs: [lint]
 
-    name: ubuntu-test-${{ matrix.build-type }}
+    name: ubuntu-test-${{ matrix.build-type }}{${{ matrix.exceptions }}-hwloc=${{ matrix.hwloc }}
 
     runs-on: ubuntu-22.04
 
