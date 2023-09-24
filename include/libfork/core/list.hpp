@@ -48,7 +48,7 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
      */
     template <std::invocable<T &> F>
     friend constexpr void for_each(node *root, F &&func) noexcept(std::is_nothrow_invocable_v<F, T &>) {
-      for (; root;) {
+      while (root) {
         // Have to be very careful here, we can't deference `walk` after
         // we've called `func` as `func` could destroy the node.
         auto next = root->m_next;
@@ -60,7 +60,7 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
    private:
     friend class intrusive_list;
 
-    T m_data;
+    [[no_unique_address]] T m_data;
     node *m_next;
   };
 

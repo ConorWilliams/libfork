@@ -703,6 +703,36 @@ constexpr auto noexcept_invoke(Fn &&fun, Args &&...args) noexcept -> std::invoke
 
 // -------------------------------- //
 
+template <typename T, typename F>
+auto map(std::vector<T> const &from, F &&func) -> std::vector<std::invoke_result_t<F &, T const &>> {
+
+  std::vector<std::invoke_result_t<F &, T const &>> out;
+
+  out.reserve(from.size());
+
+  for (auto &&item : from) {
+    out.emplace_back(std::invoke(func, item));
+  }
+
+  return out;
+}
+
+template <typename T, typename F>
+auto map(std::vector<T> &&from, F &&func) -> std::vector<std::invoke_result_t<F &, T>> {
+
+  std::vector<std::invoke_result_t<F &, T>> out;
+
+  out.reserve(from.size());
+
+  for (auto &&item : from) {
+    out.emplace_back(std::invoke(func, std::move(item)));
+  }
+
+  return out;
+}
+
+// -------------------------------- //
+
 /**
  * @brief Returns ``ptr`` and asserts it is non-null
  */
@@ -764,7 +794,7 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
      */
     template <std::invocable<T &> F>
     friend constexpr void for_each(node *root, F &&func) noexcept(std::is_nothrow_invocable_v<F, T &>) {
-      for (; root;) {
+      while (root) {
         // Have to be very careful here, we can't deference `walk` after
         // we've called `func` as `func` could destroy the node.
         auto next = root->m_next;
@@ -776,7 +806,7 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
    private:
     friend class intrusive_list;
 
-    T m_data;
+    [[no_unique_address]] T m_data;
     node *m_next;
   };
 
@@ -855,24 +885,27 @@ using intrusive_node = typename intrusive_list<T>::node;
  * @brief Includes \<coroutine\> or \<experimental/coroutine\> depending on the compiler.
  */
 
-#ifndef __has_include
-  #error "Missing __has_include macro!"
-#endif
-
 // NOLINTBEGIN
 
-#if __has_include(<coroutine>) // Check for a standard library
+#ifdef __has_include
+  #if __has_include(<coroutine>) // Check for a standard library
+    #include <coroutine>
+namespace lf {
+namespace stdx = std;
+}
+  #elif __has_include(<experimental/coroutine>) // Check for an experimental version.
+    #include <experimental/coroutine>
+namespace lf {
+namespace stdx = std::experimental;
+}
+  #else
+    #error "Missing <coroutine> header!"
+  #endif
+#else
   #include <coroutine>
 namespace lf {
 namespace stdx = std;
 }
-#elif __has_include(<experimental/coroutine>) // Check for an experimental version.
-  #include <experimental/coroutine>
-namespace lf {
-namespace stdx = std::experimental;
-}
-#else
-  #error "Missing <coroutine> header!"
 #endif
 
 // NOLINTEND
@@ -1326,7 +1359,6 @@ LF_NOINLINE void worker_finalize(Context *context) {
  *
  * @brief Provides interfaces and meta programming utilities.
  */
-
 namespace lf {
 
 inline namespace ext {
@@ -2514,8 +2546,8 @@ struct bind_task {
    */
   template <typename R, typename F>
     requires (Tag != tag::tail)
-  LF_DEPRECATE [[nodiscard("HOF needs to be called")]] LF_STATIC_CALL constexpr auto
-  operator()(R &ret, [[maybe_unused]] async<F> async) LF_STATIC_CONST noexcept {
+  LF_DEPRECATE [[nodiscard("A HOF needs to be called")]] LF_STATIC_CALL constexpr auto
+  operator()(R &ret, async<F>) LF_STATIC_CONST noexcept {
     return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...> {
       return {{ret}, std::forward<Args>(args)...};
     };
@@ -2526,9 +2558,9 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename F>
-  LF_DEPRECATE [[nodiscard("HOF needs to be called")]] LF_STATIC_CALL constexpr auto
-  operator()([[maybe_unused]] async<F> async) LF_STATIC_CONST noexcept {
-    return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
+  LF_DEPRECATE [[nodiscard("A HOF needs to be called")]] LF_STATIC_CALL constexpr auto
+  operator()(async<F>) LF_STATIC_CONST noexcept {
+    return []<typename... Args>(Args &&...args) LF_STATIC_CALL noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
       return {{}, std::forward<Args>(args)...};
     };
   }
@@ -2541,9 +2573,8 @@ struct bind_task {
    */
   template <typename R, typename F>
     requires (Tag != tag::tail)
-  [[nodiscard("HOF needs to be called")]] static constexpr auto operator[](R &ret,
-                                                                           [[maybe_unused]] async<F> async) noexcept {
-    return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...> {
+  [[nodiscard("A HOF needs to be called")]] static constexpr auto operator[](R &ret, async<F>) noexcept {
+    return [&ret]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...> {
       return {{ret}, std::forward<Args>(args)...};
     };
   }
@@ -2553,8 +2584,8 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename F>
-  [[nodiscard("HOF needs to be called")]] static constexpr auto operator[]([[maybe_unused]] async<F> async) noexcept {
-    return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
+  [[nodiscard("A HOF needs to be called")]] static constexpr auto operator[](async<F>) noexcept {
+    return []<typename... Args>(Args &&...args) LF_STATIC_CALL noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
       return {{}, std::forward<Args>(args)...};
     };
   }
@@ -2581,7 +2612,8 @@ inline namespace core {
  *
  * .. note::
  *
- *    There is no relationship between the thread that executes the ``lf::join`` and the thread that resumes the coroutine.
+ *    There is no relationship between the thread that executes the ``lf::join``
+ *    and the thread that resumes the coroutine.
  *
  * \endrst
  */
@@ -2590,15 +2622,17 @@ inline constexpr impl::join_type join = {};
 /**
  * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a fork.
  *
- * Conceptually the forked/child task can be executed anywhere at anytime and and in parallel with its continuation.
+ * Conceptually the forked/child task can be executed anywhere at anytime and
+ * and in parallel with its continuation.
  *
  * \rst
  *
  * .. note::
  *
- *    There is no guaranteed relationship between the thread that executes the ``lf::fork`` and the thread(s) that execute
- *    the continuation/child. However, currently ``libfork`` uses continuation stealing so the thread that calls ``lf::fork``
- *    will immediately begin executing the child.
+ *    There is no guaranteed relationship between the thread that executes the ``lf::fork``
+ *    and the thread(s) that execute the continuation/child. However, currently ``libfork``
+ *    uses continuation stealing so the thread that calls ``lf::fork`` will immediately begin
+ *    executing the child.
  *
  * \endrst
  */
@@ -2607,16 +2641,17 @@ inline constexpr impl::bind_task<tag::fork> fork = {};
 /**
  * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a call.
  *
- * Conceptually the called/child task can be executed anywhere at anytime but, its continuation is guaranteed to be sequenced
- * after the child returns.
+ * Conceptually the called/child task can be executed anywhere at anytime but, its
+ * continuation is guaranteed to be sequenced after the child returns.
  *
  * \rst
  *
  * .. note::
  *
- *    There is no relationship between the thread that executes the ``lf::call`` and the thread(s) that execute the
- *    continuation/child. However, currently ``libfork`` uses continuation stealing so the thread that calls ``lf::call``
- *    will immediately begin executing the child.
+ *    There is no relationship between the thread that executes the ``lf::call`` and
+ *    the thread(s) that execute the continuation/child. However, currently ``libfork``
+ *    uses continuation stealing so the thread that calls ``lf::call`` will immediately
+ *    begin executing the child.
  *
  * \endrst
  */

@@ -21,7 +21,6 @@
  *
  * @brief Provides interfaces and meta programming utilities.
  */
-
 namespace lf {
 
 inline namespace ext {

@@ -17,24 +17,27 @@
  * @brief Includes \<coroutine\> or \<experimental/coroutine\> depending on the compiler.
  */
 
-#ifndef __has_include
-  #error "Missing __has_include macro!"
-#endif
-
 // NOLINTBEGIN
 
-#if __has_include(<coroutine>) // Check for a standard library
+#ifdef __has_include
+  #if __has_include(<coroutine>) // Check for a standard library
+    #include <coroutine>
+namespace lf {
+namespace stdx = std;
+}
+  #elif __has_include(<experimental/coroutine>) // Check for an experimental version.
+    #include <experimental/coroutine>
+namespace lf {
+namespace stdx = std::experimental;
+}
+  #else
+    #error "Missing <coroutine> header!"
+  #endif
+#else
   #include <coroutine>
 namespace lf {
 namespace stdx = std;
 }
-#elif __has_include(<experimental/coroutine>) // Check for an experimental version.
-  #include <experimental/coroutine>
-namespace lf {
-namespace stdx = std::experimental;
-}
-#else
-  #error "Missing <coroutine> header!"
 #endif
 
 // NOLINTEND

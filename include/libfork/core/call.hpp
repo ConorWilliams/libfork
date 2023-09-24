@@ -44,8 +44,8 @@ struct bind_task {
    */
   template <typename R, typename F>
     requires (Tag != tag::tail)
-  LF_DEPRECATE [[nodiscard("HOF needs to be called")]] LF_STATIC_CALL constexpr auto
-  operator()(R &ret, [[maybe_unused]] async<F> async) LF_STATIC_CONST noexcept {
+  LF_DEPRECATE [[nodiscard("A HOF needs to be called")]] LF_STATIC_CALL constexpr auto
+  operator()(R &ret, async<F>) LF_STATIC_CONST noexcept {
     return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...> {
       return {{ret}, std::forward<Args>(args)...};
     };
@@ -56,9 +56,9 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename F>
-  LF_DEPRECATE [[nodiscard("HOF needs to be called")]] LF_STATIC_CALL constexpr auto
-  operator()([[maybe_unused]] async<F> async) LF_STATIC_CONST noexcept {
-    return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
+  LF_DEPRECATE [[nodiscard("A HOF needs to be called")]] LF_STATIC_CALL constexpr auto
+  operator()(async<F>) LF_STATIC_CONST noexcept {
+    return []<typename... Args>(Args &&...args) LF_STATIC_CALL noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
       return {{}, std::forward<Args>(args)...};
     };
   }
@@ -71,9 +71,8 @@ struct bind_task {
    */
   template <typename R, typename F>
     requires (Tag != tag::tail)
-  [[nodiscard("HOF needs to be called")]] static constexpr auto operator[](R &ret,
-                                                                           [[maybe_unused]] async<F> async) noexcept {
-    return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...> {
+  [[nodiscard("A HOF needs to be called")]] static constexpr auto operator[](R &ret, async<F>) noexcept {
+    return [&ret]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...> {
       return {{ret}, std::forward<Args>(args)...};
     };
   }
@@ -83,8 +82,8 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename F>
-  [[nodiscard("HOF needs to be called")]] static constexpr auto operator[]([[maybe_unused]] async<F> async) noexcept {
-    return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
+  [[nodiscard("A HOF needs to be called")]] static constexpr auto operator[](async<F>) noexcept {
+    return []<typename... Args>(Args &&...args) LF_STATIC_CALL noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
       return {{}, std::forward<Args>(args)...};
     };
   }
@@ -111,7 +110,8 @@ inline namespace core {
  *
  * .. note::
  *
- *    There is no relationship between the thread that executes the ``lf::join`` and the thread that resumes the coroutine.
+ *    There is no relationship between the thread that executes the ``lf::join``
+ *    and the thread that resumes the coroutine.
  *
  * \endrst
  */
@@ -120,15 +120,17 @@ inline constexpr impl::join_type join = {};
 /**
  * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a fork.
  *
- * Conceptually the forked/child task can be executed anywhere at anytime and and in parallel with its continuation.
+ * Conceptually the forked/child task can be executed anywhere at anytime and
+ * and in parallel with its continuation.
  *
  * \rst
  *
  * .. note::
  *
- *    There is no guaranteed relationship between the thread that executes the ``lf::fork`` and the thread(s) that execute
- *    the continuation/child. However, currently ``libfork`` uses continuation stealing so the thread that calls ``lf::fork``
- *    will immediately begin executing the child.
+ *    There is no guaranteed relationship between the thread that executes the ``lf::fork``
+ *    and the thread(s) that execute the continuation/child. However, currently ``libfork``
+ *    uses continuation stealing so the thread that calls ``lf::fork`` will immediately begin
+ *    executing the child.
  *
  * \endrst
  */
@@ -137,16 +139,17 @@ inline constexpr impl::bind_task<tag::fork> fork = {};
 /**
  * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a call.
  *
- * Conceptually the called/child task can be executed anywhere at anytime but, its continuation is guaranteed to be sequenced
- * after the child returns.
+ * Conceptually the called/child task can be executed anywhere at anytime but, its
+ * continuation is guaranteed to be sequenced after the child returns.
  *
  * \rst
  *
  * .. note::
  *
- *    There is no relationship between the thread that executes the ``lf::call`` and the thread(s) that execute the
- *    continuation/child. However, currently ``libfork`` uses continuation stealing so the thread that calls ``lf::call``
- *    will immediately begin executing the child.
+ *    There is no relationship between the thread that executes the ``lf::call`` and
+ *    the thread(s) that execute the continuation/child. However, currently ``libfork``
+ *    uses continuation stealing so the thread that calls ``lf::call`` will immediately
+ *    begin executing the child.
  *
  * \endrst
  */
