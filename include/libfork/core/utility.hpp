@@ -334,6 +334,36 @@ constexpr auto noexcept_invoke(Fn &&fun, Args &&...args) noexcept -> std::invoke
 
 // -------------------------------- //
 
+template <typename T, typename F>
+auto map(std::vector<T> const &from, F &&func) -> std::vector<std::invoke_result_t<F &, T const &>> {
+
+  std::vector<std::invoke_result_t<F &, T const &>> out;
+
+  out.reserve(from.size());
+
+  for (auto &&item : from) {
+    out.emplace_back(std::invoke(func, item));
+  }
+
+  return out;
+}
+
+template <typename T, typename F>
+auto map(std::vector<T> &&from, F &&func) -> std::vector<std::invoke_result_t<F &, T>> {
+
+  std::vector<std::invoke_result_t<F &, T>> out;
+
+  out.reserve(from.size());
+
+  for (auto &&item : from) {
+    out.emplace_back(std::invoke(func, std::move(item)));
+  }
+
+  return out;
+}
+
+// -------------------------------- //
+
 /**
  * @brief Returns ``ptr`` and asserts it is non-null
  */
