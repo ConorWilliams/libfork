@@ -150,7 +150,7 @@ inline constexpr async search = [](auto search, tree const &root, int val, auto 
     co_await context;
 
     if (search.context() != context) {
-      throw std::runtime_error("context not cleared");
+      LF_THROW(std::runtime_error("context not cleared"));
     }
   }
 

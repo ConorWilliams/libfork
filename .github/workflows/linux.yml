@@ -52,11 +52,21 @@ jobs:
       fail-fast: false
       matrix:
         build-type: [Debug, Release]
+        hwloc: [ON, OFF]
+        exceptions: ["-fno-exceptions", "-fexceptions"]
+
+    env:
+      CXXFLAGS: ${{ matrix.exceptions }}
 
     steps:
       - uses: actions/checkout@v3
 
       - uses: ./.github/actions/setup
+
+      - name: Install hwloc
+        if: matrix.hwloc == 'ON'
+        shell: pwsh
+        run: sudo apt-get update && sudo apt-get install libhwloc-dev -y
 
       - name: Restore from cache the dependencies and generate project files
         shell: pwsh
