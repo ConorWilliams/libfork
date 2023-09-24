@@ -40,7 +40,7 @@ namespace lf {
 class busy_pool {
  public:
   struct context_type : impl::numa_worker_context<context_type> {
-    using impl::numa_worker_context<context_type>::numa_worker_context;
+    using numa_worker_context::numa_worker_context;
   };
 
  private:
