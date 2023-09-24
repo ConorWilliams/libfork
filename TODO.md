@@ -1,14 +1,18 @@
 # The todo list
 
+#### Misc
+
+- [ ] valgrind the tests
+
 #### Missing features
 
 - [ ] `lf::tail`.
-- [x] `lazy_pool` 
+- [x] `lazy_pool`
 - [ ] `numa_pool` (will need to iterate on this once we have heterogeneous workloads).
 - [ ] Stack-tracing: Logging at call-site (`std::source_location`).
 - [ ] Stack-tracing: Walk stack function.
 - [ ] Stack-tracing: Signal handler.
-   
+
 #### Post feature complete
 
 - [ ] Bit-cast to reinterpret_cast
@@ -18,7 +22,7 @@
 - [ ] Review 30% branch miss-predict, seems to be related to spinning workers?
 - [ ] Iterate `numa_pool`
 - [ ] Graphs/analysis.
-     
+
 #### Before release
 
 - [ ] review: `constexpr`.
@@ -39,10 +43,11 @@
 
 #### Future
 
-Algorithms: 
+Algorithms:
+
 - [ ] `for_each`.
 - [ ] `reduce`.
-- [ ] `scan`. 
+- [ ] `scan`.
 
 Modules (cpp20) support.
 
@@ -65,30 +70,14 @@ Modules (cpp20) support.
 - [x] optimize single-threaded contexts
 - [x] separate invoke awaitable from promise.
 - [x] remove `frame_block` from public api's
-- [x] works-around https://github.com/llvm/llvm-project/issues/63022
-
+- [x] works-around <https://github.com/llvm/llvm-project/issues/63022>
 
 Naming:
 
 silk -> cilk
 wool
-weave 
+weave
 lace
 fibril
 nowa
-taskflow 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+taskflow
