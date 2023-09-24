@@ -8,12 +8,6 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-// #undef LF_HAS_HWLOC
-
-#ifndef LF_HAS_HWLOC
-  #define LF_HAS_HWLOC
-#endif
-
 #include <iostream>
 #include <memory>
 #include <set>
@@ -32,7 +26,6 @@ using namespace impl;
 TEST_CASE("make_topology", "[numa]") {
   for (int i = 0; i < 10; i++) {
     numa_topology topo = {};
-
 #ifdef LF_HAS_HWLOC
     REQUIRE(topo);
 #else

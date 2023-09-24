@@ -344,22 +344,22 @@ inline auto numa_topology::split(std::size_t n) const -> std::vector<numa_handle
 template <typename T>
 inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data) -> std::vector<numa_node<T>> {
 
-  std::vector<numa_handle> handles = split(objects.size());
+  std::vector<numa_handle> handles = split(data.size());
 
   std::vector<numa_node<T>> views;
 
-  for (std::size_t i = 0; i < objects.size(); i++) {
+  for (std::size_t i = 0; i < data.size(); i++) {
 
     numa_node<T> node{
-        std::move(handles[i]), {{objects[i]}}, // The first neighbors-list contains only the object itself.
+        std::move(handles[i]), {{data[i]}}, // The first neighbors-list contains only the object itself.
     };
 
-    if (objects.size() > 1) {
+    if (data.size() > 1) {
       node.neighbors.push_back({});
     }
 
-    for (auto const &neigh : objects) {
-      if (neigh != objects[i]) {
+    for (auto const &neigh : data) {
+      if (neigh != data[i]) {
         node.neighbors[1].push_back(neigh);
       }
     }
