@@ -132,7 +132,12 @@ TEST_CASE("Single producer, multiple consumer", "[deque]") {
 }
 
 TEST_CASE("Single producer + pop(), multiple consumer", "[deque]") {
+
   lf::deque<int> deque;
+
+  if (false) {
+    throw "oops";
+  }
 
   auto &worker = deque;
   auto &stealer = deque;
