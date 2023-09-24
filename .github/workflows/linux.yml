@@ -44,7 +44,7 @@ jobs:
   test:
     needs: [lint]
 
-    name: ubuntu-test-${{ matrix.build-type }}${{ matrix.exceptions }}-hwloc=${{ matrix.hwloc }}
+    name: ubuntu-test-${{ matrix.build-type }}-hwloc=${{ matrix.hwloc }}
 
     runs-on: ubuntu-22.04
 
@@ -53,7 +53,6 @@ jobs:
       matrix:
         build-type: [Debug, Release]
         hwloc: [ON, OFF]
-        exceptions: ["-fno-exceptions", "-fexceptions"]
 
     env:
       CXXFLAGS: ${{ matrix.exceptions }}
