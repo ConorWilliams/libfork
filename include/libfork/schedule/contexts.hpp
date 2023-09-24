@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <atomic>
 #include <bit>
+#include <cstddef>
 #include <memory>
 #include <random>
 #include <vector>
@@ -19,6 +20,7 @@
 #include "libfork/core.hpp"
 
 #include "libfork/schedule/deque.hpp"
+#include "libfork/schedule/numa.hpp"
 #include "libfork/schedule/random.hpp"
 #include "libfork/schedule/ring_buffer.hpp"
 
@@ -132,9 +134,10 @@ static_assert(!single_thread_context<test_immediate_context>);
  * to be constructed/destructed by the master thread.
  */
 template <typename CRTP>
-class worker_context : immovable<worker_context<CRTP>> {
+class numa_worker_context : immovable<numa_worker_context<CRTP>> {
+
   static constexpr std::size_t k_buff = 16;
-  static constexpr std::size_t k_steal_attempts = 64;
+  static constexpr std::size_t k_steal_attempts = 32; ///< Attempts per target.
 
   using task_t = task_h<CRTP>;
   using submit_t = submit_h<CRTP>;
@@ -145,8 +148,9 @@ class worker_context : immovable<worker_context<CRTP>> {
   intrusive_list<submit_t *> m_submit;         ///< The public submission queue, all non-null.
   ring_buffer<async_stack *, k_buff> m_buffer; ///< Our private stack buffer, all non-null.
 
-  xoshiro m_rng{seed, std::random_device{}}; ///< Our personal PRNG.
-  std::vector<CRTP *> m_friends;             ///< Other contexts in the pool, all non-null.
+  xoshiro m_rng;                            ///< Our personal PRNG.
+  std::size_t m_max_threads;                ///< The total max parallelism available.
+  std::vector<std::vector<CRTP *>> m_neigh; ///< Our view of the NUMA topology.
 
   template <typename T>
   static constexpr auto null_for = []() LF_STATIC_CALL noexcept -> T * {
@@ -154,18 +158,35 @@ class worker_context : immovable<worker_context<CRTP>> {
   };
 
  public:
-  worker_context() {
-    for (auto *elem : m_friends) {
-      LF_ASSERT(elem);
-    }
+  numa_worker_context(std::size_t n, xoshiro const &rng) : m_rng(rng), m_max_threads(n) {
     for (std::size_t i = 0; i < k_buff / 2; ++i) {
       m_buffer.push(new async_stack);
     }
   }
 
-  void set_rng(xoshiro const &rng) noexcept { m_rng = rng; }
+  /**
+   * @brief Initialize the context with the given topology and bind it to a thread.
+   *
+   * This is separate from construction as the master thread will need to construct
+   * the contexts before they can form a reference to them, this must be called by the
+   * worker thread.
+   *
+   * The context will store __raw__ pointers to the other contexts in the topology, this is
+   * to ensure no circular references are formed.
+   */
+  void init_numa_and_bind(numa_topology::numa_node<CRTP> const &topo) {
 
-  void add_friend(CRTP *a_friend) noexcept { m_friends.push_back(non_null(a_friend)); }
+    LF_ASSERT(topo.neighbors.front().front().get() == this);
+    topo.bind();
+
+    // Skip the first one as it is just us.
+    for (std::size_t i = 1; i < topo.neighbors.size(); ++i) {
+      m_neigh.push_back(map(topo.neighbors[i], [](std::shared_ptr<CRTP> const &context) {
+        // We must use regular pointers to avoid circular references.
+        return context.get();
+      }));
+    }
+  }
 
   /**
    * @brief Fetch a linked-list of the submitted tasks.
@@ -174,38 +195,41 @@ class worker_context : immovable<worker_context<CRTP>> {
 
   /**
    * @brief Try to steal a task from one of our friends, returns `nullptr` if we failed.
-   *
-   * Call `resume_stolen` on it if we succeeded.
    */
   auto try_steal() noexcept -> task_t * {
-    for (std::size_t i = 0; i < k_steal_attempts; ++i) {
 
-      std::shuffle(m_friends.begin(), m_friends.end(), m_rng);
+    for (auto &&friends : m_neigh) {
 
-      for (CRTP *context : m_friends) {
+      for (std::size_t i = 0; i < k_steal_attempts; ++i) {
 
-        auto [err, task] = context->m_tasks.steal();
+        std::shuffle(friends.begin(), friends.end(), m_rng);
 
-        switch (err) {
-          case lf::err::none:
-            LF_LOG("Stole task from {}", (void *)context);
-            return task;
+        for (CRTP *context : friends) {
 
-          case lf::err::lost:
-            // We don't retry here as we don't want to cause contention
-            // and we have multiple steal attempts anyway.
-          case lf::err::empty:
-            continue;
+          auto [err, task] = context->m_tasks.steal();
 
-          default:
-            LF_ASSERT(false);
+          switch (err) {
+            case lf::err::none:
+              LF_LOG("Stole task from {}", (void *)context);
+              return task;
+
+            case lf::err::lost:
+              // We don't retry here as we don't want to cause contention
+              // and we have multiple steal attempts anyway.
+            case lf::err::empty:
+              continue;
+
+            default:
+              LF_ASSERT(false);
+          }
         }
       }
     }
+
     return nullptr;
   }
 
-  ~worker_context() noexcept {
+  ~numa_worker_context() noexcept {
     //
     LF_ASSERT_NO_ASSUME(m_tasks.empty());
 
@@ -220,7 +244,7 @@ class worker_context : immovable<worker_context<CRTP>> {
 
   // ------------- To satisfy `thread_context` ------------- //
 
-  auto max_threads() const noexcept -> std::size_t { return m_friends.size() + 1; }
+  auto max_threads() const noexcept -> std::size_t { return m_max_threads; }
 
   auto submit(intruded_t *node) noexcept -> void { m_submit.push(non_null(node)); }
 
@@ -236,28 +260,32 @@ class worker_context : immovable<worker_context<CRTP>> {
       return stack;
     }
 
-    std::shuffle(m_friends.begin(), m_friends.end(), m_rng);
+    for (auto &&friends : m_neigh) {
 
-    for (CRTP *context : m_friends) {
+      std::shuffle(friends.begin(), friends.end(), m_rng);
 
-    retry:
-      auto [err, stack] = context->m_stacks.steal();
+      for (CRTP *context : friends) {
 
-      switch (err) {
-        case lf::err::none:
-          LF_LOG("stack_pop() stole from {}", (void *)context);
-          return stack;
-        case lf::err::lost:
-          // We retry (even if it may cause contention) to try and avoid allocating.
-          goto retry;
-        case lf::err::empty:
-          break;
-        default:
-          LF_ASSERT(false);
+      retry:
+        auto [err, stack] = context->m_stacks.steal();
+
+        switch (err) {
+          case lf::err::none:
+            LF_LOG("stack_pop() stole from {}", (void *)context);
+            return stack;
+          case lf::err::lost:
+            // We retry (even if it may cause contention) to try and avoid allocating.
+            goto retry;
+          case lf::err::empty:
+            break;
+          default:
+            LF_ASSERT(false);
+        }
       }
     }
 
     LF_LOG("stack_pop() allocating");
+
     return new async_stack;
   }
 
@@ -275,7 +303,7 @@ class worker_context : immovable<worker_context<CRTP>> {
 
 namespace detail::static_test {
 
-struct test_context : worker_context<test_context> {};
+struct test_context : numa_worker_context<test_context> {};
 
 static_assert(thread_context<test_context>);
 static_assert(!single_thread_context<test_context>);

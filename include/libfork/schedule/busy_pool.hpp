@@ -19,6 +19,7 @@
 #include "libfork/core.hpp"
 
 #include "libfork/schedule/contexts.hpp"
+#include "libfork/schedule/numa.hpp"
 #include "libfork/schedule/random.hpp"
 
 /**
@@ -38,12 +39,14 @@ namespace lf {
  */
 class busy_pool {
  public:
-  struct context_type : impl::worker_context<context_type> {};
+  struct context_type : impl::numa_worker_context<context_type> {
+    using impl::numa_worker_context<context_type>::numa_worker_context;
+  };
 
  private:
   xoshiro m_rng{seed, std::random_device{}};
 
-  std::vector<context_type> m_contexts;
+  std::vector<std::shared_ptr<context_type>> m_contexts;
   std::vector<std::thread> m_workers;
   std::unique_ptr<std::atomic_flag> m_stop = std::make_unique<std::atomic_flag>();
 
@@ -59,13 +62,17 @@ class busy_pool {
     }
   }
 
-  static auto work(context_type *my_context, std::atomic_flag const &stop_requested) {
+  static auto work(numa_topology::numa_node<context_type> node, std::atomic_flag const &stop_requested) {
 
-    worker_init(my_context);
+    std::shared_ptr my_context = node.neighbors.front().front();
+
+    worker_init(my_context.get());
 
     impl::defer at_exit = [&]() noexcept {
-      worker_finalize(my_context);
+      worker_finalize(my_context.get());
     };
+
+    my_context->init_numa_and_bind(node);
 
     while (!stop_requested.test(std::memory_order_acquire)) {
 
@@ -85,32 +92,29 @@ class busy_pool {
    *
    * @param n The number of worker threads to create, defaults to the number of hardware threads.
    */
-  explicit busy_pool(std::size_t n = std::thread::hardware_concurrency()) : m_contexts(n) {
-
-    for (auto &context : m_contexts) {
-      context.set_rng(m_rng);
-      m_rng.long_jump();
-    }
+  explicit busy_pool(std::size_t n = std::thread::hardware_concurrency()) {
 
     for (std::size_t i = 0; i < n; ++i) {
-      for (std::size_t j = 0; j < n; ++j) {
-        if (i != j) {
-          m_contexts[i].add_friend(&m_contexts[j]);
-        }
-      }
+      m_contexts.push_back(std::make_shared<context_type>(n, m_rng));
+      m_rng.long_jump();
     }
 
     LF_ASSERT_NO_ASSUME(!m_stop->test(std::memory_order_acquire));
 
+    std::vector nodes = numa_topology{}.distribute(m_contexts);
+
+    // clang-format off
+
     LF_TRY {
-      for (auto &context : m_contexts) {
-        m_workers.emplace_back(work, &context, std::cref(*m_stop));
+      for (auto &&node : nodes) {
+        m_workers.emplace_back(work, std::move(node), std::cref(*m_stop));
       }
-    }
-    LF_CATCH_ALL {
+    } LF_CATCH_ALL {
       clean_up();
       LF_RETHROW;
     }
+
+    // clang-format on
   }
 
   ~busy_pool() noexcept { clean_up(); }
@@ -120,7 +124,7 @@ class busy_pool {
    */
   auto schedule(intruded_h<context_type> *node) noexcept {
     std::uniform_int_distribution<std::size_t> dist(0, m_contexts.size() - 1);
-    m_contexts[dist(m_rng)].submit(node);
+    m_contexts[dist(m_rng)]->submit(node);
   }
 };
 

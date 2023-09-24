@@ -21,6 +21,7 @@
 
 #include "libfork/core.hpp"
 
+#include "libfork/schedule/busy_pool.hpp"
 #include "libfork/schedule/contexts.hpp"
 #include "libfork/schedule/event_count.hpp"
 #include "libfork/schedule/random.hpp"
@@ -32,6 +33,10 @@
  */
 
 namespace lf {
+
+using lazy_pool = busy_pool;
+
+#if false 
 
 namespace impl {
 
@@ -317,6 +322,8 @@ class lazy_pool {
 };
 
 static_assert(scheduler<lazy_pool>);
+
+#endif
 
 } // namespace lf
 

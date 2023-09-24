@@ -1,13 +1,33 @@
 # The todo list
 
-#### Misc
+#### Done :)
 
-- [ ] valgrind the tests
+- [x] Complete test suit for core.
+- [x] Tidy up propagate exception macros.
+- [x] Where we can use `LF_HOF_RETURNS`
+- [x] Update licenses at top of files.
+- [x] Touch up `std::` includes.
+- [x] Redo name spacing (rm `DEPENDANT_ABI`, `user`, `detail`, `impl`, and `schedule`).
+- [x] Document macros.
+- [x] Remove CPM.cmake
+- [x] Try core test suit on compiler explorer, fix constexpr requirements in i.e. `byte_cast`.
+- [x] vcpkg for tests.
+- [x] Get CI working.
+- [x] `co_await resume_on(...)`.
+- [x] Stack stealing.
+- [x] `busy_pool.
+- [x] Optimize single-threaded contexts
+- [x] Separate invoke awaitable from promise.
+- [x] Remove `frame_block` from public api's
+- [x] Works-around <https://github.com/llvm/llvm-project/issues/63022>
+- [x] Numa primitives (hwloc).
+- [x] `lazy_pool`
+
+#### Misc
 
 #### Missing features
 
 - [ ] `lf::tail`.
-- [x] `lazy_pool`
 - [ ] `numa_pool` (will need to iterate on this once we have heterogeneous workloads).
 - [ ] Stack-tracing: Logging at call-site (`std::source_location`).
 - [ ] Stack-tracing: Walk stack function.
@@ -19,6 +39,7 @@
 - [ ] benchmark: need some heterogeneous workloads (UT3, unbalanced tree reduce, see NOWA)
 - [ ] benchmark: A test/benchmark that stresses stack stealing?
 - [ ] benchmark: C++ library comparisons (TaskFlow, ...).
+- [ ] benchmark: Memory allocations of our stack stealing.
 - [ ] Review 30% branch miss-predict, seems to be related to spinning workers?
 - [ ] Iterate `numa_pool`
 - [ ] Graphs/analysis.
@@ -50,27 +71,6 @@ Algorithms:
 - [ ] `scan`.
 
 Modules (cpp20) support.
-
-#### Done :)
-
-- [x] Complete test suit for core.
-- [x] Tidy up propagate exception macros.
-- [x] Where we can use `LF_HOF_RETURNS`
-- [x] Update licenses at top of files.
-- [x] Touch up `std::` includes.
-- [x] Redo name spacing (rm `DEPENDANT_ABI`, `user`, `detail`, `impl`, and `schedule`).
-- [x] Document macros.
-- [x] Remove CPM.cmake
-- [x] Try core test suit on compiler explorer, fix constexpr requirements in i.e. `byte_cast`.
-- [x] vcpkg for tests.
-- [x] Get CI working.
-- [x] `co_await resume_on(...)`.
-- [x] Stack stealing.
-- [x] busy_pool.
-- [x] optimize single-threaded contexts
-- [x] separate invoke awaitable from promise.
-- [x] remove `frame_block` from public api's
-- [x] works-around <https://github.com/llvm/llvm-project/issues/63022>
 
 Naming:
 
