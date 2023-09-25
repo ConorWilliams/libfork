@@ -1,6 +1,8 @@
 {
     "dependencies": [
         "catch2",
-        "nanobench"
+        "benchmark",
+        "taskflow",
+        "tbb"
     ]
 }
