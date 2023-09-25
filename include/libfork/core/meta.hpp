@@ -149,7 +149,7 @@ using value_of = typename std::remove_cvref_t<T>::value_type;
  * This requires `T` to be:
  *
  * - A class type.
- * - Trivially copyable.
+ * - Trivially copiable.
  * - Default initializable.
  * - Empty.
  */

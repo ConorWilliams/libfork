@@ -49,7 +49,7 @@ inline namespace ext {
  *
  * This is exposed/intended for testing, using this thread pool is equivalent to
  * using a `busy_pool` with a single thread. It is different from `unit_pool` in that
- * it explicitly disables the `fork` -> `call` optimisation.
+ * it explicitly disables the `fork` -> `call` optimization.
  */
 using debug_pool = impl::unit_pool_impl<impl::test_immediate_context>;
 
