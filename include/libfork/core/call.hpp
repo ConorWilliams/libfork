@@ -43,7 +43,6 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename R, typename F>
-    requires (Tag != tag::tail)
   LF_DEPRECATE [[nodiscard("A HOF needs to be called")]] LF_STATIC_CALL constexpr auto
   operator()(R &ret, async<F>) LF_STATIC_CONST noexcept {
     return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...> {
@@ -70,7 +69,6 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename R, typename F>
-    requires (Tag != tag::tail)
   [[nodiscard("A HOF needs to be called")]] static constexpr auto operator[](R &ret, async<F>) noexcept {
     return [&ret]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...> {
       return {{ret}, std::forward<Args>(args)...};
@@ -154,12 +152,6 @@ inline constexpr impl::bind_task<tag::fork> fork = {};
  * \endrst
  */
 inline constexpr impl::bind_task<tag::call> call = {};
-
-/**
- * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a
- * [tail-call](https://en.wikipedia.org/wiki/Tail_call).
- */
-inline constexpr impl::bind_task<tag::tail> tail = {};
 
 } // namespace core
 

@@ -785,12 +785,12 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
     /**
      * @brief Access the value stored in a node of the list.
      */
-    friend auto unwrap(node *ptr) noexcept -> T & { return non_null(ptr)->m_data; }
+    friend constexpr auto unwrap(node *ptr) noexcept -> T & { return non_null(ptr)->m_data; }
 
     /**
      * @brief Call `func` on each unwrapped node linked in the list.
      *
-     * The nodes will be processed in FILO order. This is a noop if `root` is `nullptr`.
+     * This is a noop if `root` is `nullptr`.
      */
     template <std::invocable<T &> F>
     friend constexpr void for_each(node *root, F &&func) noexcept(std::is_nothrow_invocable_v<F, T &>) {
@@ -829,9 +829,23 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
   /**
    * @brief Pop all the nodes from the list and return a pointer to the root (`nullptr` if empty).
    *
-   * Only the owner (thread) of the list can call this function.
+   * Only the owner (thread) of the list can call this function, this will reverse the direction of the list
+   * such that `for_each` will operate if FIFO order.
    */
-  constexpr auto try_pop_all() noexcept -> node * { return m_head.exchange(nullptr, std::memory_order_consume); }
+  constexpr auto try_pop_all() noexcept -> node * {
+
+    node *last = m_head.exchange(nullptr, std::memory_order_consume);
+    node *first = nullptr;
+
+    while (last) {
+      node *tmp = last;
+      last = last->m_next;
+      tmp->m_next = first;
+      first = tmp;
+    }
+
+    return first;
+  }
 
  private:
   std::atomic<node *> m_head = nullptr;
@@ -1427,7 +1441,6 @@ enum class tag {
   call,   ///< Non root task (on a virtual stack) from an ``lf::call``, completes synchronously.
   fork,   ///< Non root task (on a virtual stack) from an ``lf::fork``, completes asynchronously.
   invoke, ///< Equivalent to ``lf::call`` but caches the return (extra move required).
-  tail,   ///< Force a [tail-call](https://en.wikipedia.org/wiki/Tail_call) optimization.
 };
 
 // ------------------------ Helpers ----------------------- //
@@ -1491,8 +1504,10 @@ namespace impl {
 /**
  * @brief Detect what kind of async function a type can be cast to.
  */
-template <typename T>
-consteval auto implicit_cast_to_async(async<T>) -> T;
+template <stateless T>
+consteval auto implicit_cast_to_async(async<T>) -> T {
+  return {};
+}
 
 } // namespace impl
 
@@ -1508,8 +1523,8 @@ inline namespace core {
  *
  * .. include:: ../../include/libfork/core/task.hpp
  *    :code:
- *    :start-line: 220
- *    :end-line: 241
+ *    :start-line: 180
+ *    :end-line: 203
  *
  * \endrst
  */
@@ -2149,50 +2164,6 @@ struct promise_result : protected impl::maybe_ptr<R> {
 
 namespace lf {
 
-namespace impl {
-
-/**
- * @brief A fixed string type for template parameters that tracks its source location.
- */
-template <typename Char, std::size_t N>
-struct tracked_fixed_string {
- private:
-  using sloc = std::source_location;
-  static constexpr std::size_t file_name_max_size = 127;
-
- public:
-#if !defined(LF_DOXYGEN_SHOULD_SKIP_THIS) && defined(__clang__) && __clang_major__ == 17
-  // See: https://github.com/llvm/llvm-project/issues/67134
-  consteval tracked_fixed_string(Char const (&str)[N]) noexcept : line{0}, column{0} {
-    for (std::size_t i = 0; i < N; ++i) {
-      function_name[i] = str[i];
-    }
-  }
-#else
-  /**
-   * @brief Construct a tracked fixed string from a string literal.
-   */
-  consteval tracked_fixed_string(Char const (&str)[N], sloc loc = sloc::current()) noexcept
-      : line{loc.line()},
-        column{loc.column()} {
-    for (std::size_t i = 0; i < N; ++i) {
-      function_name[i] = str[i];
-    }
-  }
-#endif
-
-  // std::array<char, file_name_max_size + 1> file_name_buf;
-  // std::size_t file_name_size;
-
-  std::array<Char, N> function_name; ///< The given name of the function.
-  std::uint_least32_t line;          ///< The line number where `this` was constructed.
-  std::uint_least32_t column;        ///< The column number where `this` was constructed.
-};
-
-} // namespace impl
-
-// ----------------------------------------------- //
-
 inline namespace core {
 
 /**
@@ -2212,7 +2183,7 @@ inline namespace core {
  *
  * \endrst
  */
-template <typename T = void, impl::tracked_fixed_string Name = "">
+template <typename T = void>
 struct task {
 
   using value_type = T; ///< The type of the value returned by the coroutine.
@@ -2222,7 +2193,7 @@ struct task {
    *
    * This should only be called by the compiler.
    */
-  constexpr task(impl::frame_block *frame) : m_frame{non_null(frame)} {}
+  constexpr task(impl::frame_block *frame) noexcept : m_frame{non_null(frame)} {}
 
   /**
    * @brief __Not__ part of the public API.
@@ -2240,8 +2211,8 @@ namespace impl {
 template <typename>
 struct is_task_impl : std::false_type {};
 
-template <typename T, auto Name>
-struct is_task_impl<task<T, Name>> : std::true_type {};
+template <typename T>
+struct is_task_impl<task<T>> : std::true_type {};
 
 template <typename T>
 concept is_task = is_task_impl<T>::value;
@@ -2291,7 +2262,7 @@ struct patched : Head {
    *
    * \endrst
    */
-  [[nodiscard]] static auto context() -> Context * { return non_null(tls::get_ctx<Context>()); }
+  [[nodiscard]] static auto context() noexcept -> Context * { return non_null(tls::get_ctx<Context>()); }
 };
 
 /**
@@ -2317,7 +2288,7 @@ class [[nodiscard("packets must be co_awaited")]] packet : move_only<packet<Head
    * @brief Call the underlying async function with args.
    */
   auto invoke(frame_block *parent) && -> frame_block *requires (tag_of<Head> != tag::root) {
-    auto tsk = std::apply(function_of<Head>{}, std::move(m_args));
+    task_type tsk = std::apply(function_of<Head>{}, std::move(m_args));
     tsk.frame()->set_parent(parent);
     return tsk.frame();
   }
@@ -2477,7 +2448,7 @@ struct basic_first_arg<void, Tag, F> : async<F>, private move_only<basic_first_a
   /**
    * @brief Unimplemented - to satisfy the ``thread_context`` concept.
    */
-  [[nodiscard]] static auto context() -> context_type * { LF_THROW(std::runtime_error{"Should never be called!"}); }
+  [[nodiscard]] static auto context() noexcept -> context_type *;
 };
 
 /**
@@ -2488,7 +2459,7 @@ struct basic_first_arg : basic_first_arg<void, Tag, F> {
 
   using return_type = R; ///< The type of the return address.
 
-  constexpr basic_first_arg(return_type &ret) : m_ret{std::addressof(ret)} {}
+  constexpr basic_first_arg(return_type &ret) noexcept : m_ret{std::addressof(ret)} {}
 
   [[nodiscard]] constexpr auto address() const noexcept -> return_type * { return m_ret; }
 
@@ -2545,7 +2516,6 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename R, typename F>
-    requires (Tag != tag::tail)
   LF_DEPRECATE [[nodiscard("A HOF needs to be called")]] LF_STATIC_CALL constexpr auto
   operator()(R &ret, async<F>) LF_STATIC_CONST noexcept {
     return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...> {
@@ -2572,7 +2542,6 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <typename R, typename F>
-    requires (Tag != tag::tail)
   [[nodiscard("A HOF needs to be called")]] static constexpr auto operator[](R &ret, async<F>) noexcept {
     return [&ret]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...> {
       return {{ret}, std::forward<Args>(args)...};
@@ -2656,12 +2625,6 @@ inline constexpr impl::bind_task<tag::fork> fork = {};
  * \endrst
  */
 inline constexpr impl::bind_task<tag::call> call = {};
-
-/**
- * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a
- * [tail-call](https://en.wikipedia.org/wiki/Tail_call).
- */
-inline constexpr impl::bind_task<tag::tail> tail = {};
 
 } // namespace core
 
@@ -3055,7 +3018,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
    * @brief Transform a fork packet into a fork awaitable.
    */
   template <first_arg_tagged<tag::fork> Head, typename... Args>
-  constexpr auto await_transform(packet<Head, Args...> &&packet) noexcept -> detail::fork_awaitable<Context> {
+  auto await_transform(packet<Head, Args...> &&packet) noexcept -> detail::fork_awaitable<Context> {
     return {{}, this, std::move(packet).template patch_with<Context>().invoke(this)};
   }
 
@@ -3063,7 +3026,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
    * @brief Transform a call packet into a call awaitable.
    */
   template <first_arg_tagged<tag::call> Head, typename... Args>
-  constexpr auto await_transform(packet<Head, Args...> &&packet) noexcept -> detail::call_awaitable {
+  auto await_transform(packet<Head, Args...> &&packet) noexcept -> detail::call_awaitable {
     return {{}, std::move(packet).template patch_with<Context>().invoke(this)};
   }
 
@@ -3074,7 +3037,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
    */
   template <first_arg_tagged<tag::fork> Head, typename... Args>
     requires single_thread_context<Context> && valid_packet<rewrite_tag<Head>, Args...>
-  constexpr auto await_transform(packet<Head, Args...> &&pack) noexcept -> detail::call_awaitable {
+  auto await_transform(packet<Head, Args...> &&pack) noexcept -> detail::call_awaitable {
     return await_transform(std::move(pack).apply([](Head head, Args &&...args) -> packet<rewrite_tag<Head>, Args...> {
       return {{std::move(head)}, std::forward<Args>(args)...};
     }));
@@ -3083,13 +3046,13 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
   /**
    * @brief Get a join awaitable.
    */
-  constexpr auto await_transform(join_type) noexcept -> detail::join_awaitable<Context, Tag == tag::root> { return {this}; }
+  auto await_transform(join_type) noexcept -> detail::join_awaitable<Context, Tag == tag::root> { return {this}; }
 
   /**
    * @brief Transform an invoke packet into an invoke_awaitable.
    */
   template <impl::non_reference Packet>
-  constexpr auto await_transform(Packet &&pack) noexcept -> detail::invoke_awaitable<Context, Packet> {
+  auto await_transform(Packet &&pack) noexcept -> detail::invoke_awaitable<Context, Packet> {
     return {{}, this, std::forward<Packet>(pack), {}};
   }
 };
@@ -3808,7 +3771,7 @@ class numa_topology {
     /**
      * @brief Bind the calling thread to the set of processing units in this `cpuset`.
      *
-     * If hwloc is not installed this is a noop.
+     * If hwloc is not installed both handles are null and this is a noop.
      */
     void bind() const;
 
@@ -4152,14 +4115,14 @@ class xoshiro {
   /**
    * @brief Construct a new xoshiro with a fixed default-seed.
    */
-  xoshiro() = default;
+  constexpr xoshiro() = default;
 
   /**
    * @brief Construct and seed the PRNG.
    *
    * @param seed The PRNG's seed, must not be everywhere zero.
    */
-  explicit constexpr xoshiro(std::array<result_type, 4> const &my_seed) : m_state{my_seed} {
+  explicit constexpr xoshiro(std::array<result_type, 4> const &my_seed) noexcept : m_state{my_seed} {
     if (my_seed == std::array<result_type, 4>{0, 0, 0, 0}) {
       LF_ASSERT(false);
     }
@@ -4172,7 +4135,7 @@ class xoshiro {
     requires requires (PRNG &&device) {
       { std::invoke(device) } -> std::unsigned_integral;
     }
-  constexpr xoshiro(impl::seed_t, PRNG &&device) : xoshiro({scale(device), scale(device), scale(device), scale(device)}) {}
+  constexpr xoshiro(impl::seed_t, PRNG &&dev) noexcept : xoshiro({scale(dev), scale(dev), scale(dev), scale(dev)}) {}
 
   /**
    * @brief Get the minimum value of the generator.
@@ -4194,8 +4157,8 @@ class xoshiro {
    * @return A pseudo-random number.
    */
   [[nodiscard]] constexpr auto operator()() noexcept -> result_type {
-    result_type const result = rotl(m_state[1] * 5, 7) * 9;
 
+    result_type const result = rotl(m_state[1] * 5, 7) * 9;
     result_type const temp = m_state[1] << 17; // NOLINT
 
     m_state[2] ^= m_state[0];
@@ -4256,7 +4219,7 @@ class xoshiro {
     requires requires (PRNG &&device) {
       { std::invoke(device) } -> std::unsigned_integral;
     }
-  [[nodiscard]] static constexpr auto scale(PRNG &&device) -> result_type {
+  [[nodiscard]] static constexpr auto scale(PRNG &&device) noexcept -> result_type {
     //
     constexpr std::size_t chars_in_prng = sizeof(std::invoke_result_t<PRNG>);
 

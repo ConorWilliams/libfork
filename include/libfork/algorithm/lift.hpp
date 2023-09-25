@@ -21,20 +21,15 @@ namespace impl {
 
 template <typename F>
 struct lifted {
- private:
-  template <typename... Args>
-  using task_t = task<std::invoke_result_t<F, Args...>, "lf::lift">;
-
- public:
   template <first_arg Head, typename... Args>
     requires (tag_of<Head> != tag::fork && std::invocable<F, Args...>)
-  LF_STATIC_CALL auto operator()(Head, Args &&...args) LF_STATIC_CONST->task_t<Args...> {
+  LF_STATIC_CALL auto operator()(Head, Args &&...args) LF_STATIC_CONST->task<std::invoke_result_t<F, Args...>> {
     co_return std::invoke(F{}, std::forward<Args>(args)...);
   }
 
   template <typename Head, typename... Args>
     requires (tag_of<Head> == tag::fork && std::invocable<F, Args...>)
-  LF_STATIC_CALL auto operator()(Head, Args... args) LF_STATIC_CONST->task_t<Args...> {
+  LF_STATIC_CALL auto operator()(Head, Args... args) LF_STATIC_CONST->task<std::invoke_result_t<F, Args...>> {
     co_return std::invoke(F{}, std::move(args)...);
   }
 };
@@ -73,7 +68,7 @@ struct lifted {
  * \endrst
  */
 template <stateless F>
-consteval auto lift(F) -> async<impl::lifted<F>> {
+consteval auto lift(F) noexcept -> async<impl::lifted<F>> {
   return {};
 }
 

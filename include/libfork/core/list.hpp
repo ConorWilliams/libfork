@@ -39,12 +39,12 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
     /**
      * @brief Access the value stored in a node of the list.
      */
-    friend auto unwrap(node *ptr) noexcept -> T & { return non_null(ptr)->m_data; }
+    friend constexpr auto unwrap(node *ptr) noexcept -> T & { return non_null(ptr)->m_data; }
 
     /**
      * @brief Call `func` on each unwrapped node linked in the list.
      *
-     * The nodes will be processed in FILO order. This is a noop if `root` is `nullptr`.
+     * This is a noop if `root` is `nullptr`.
      */
     template <std::invocable<T &> F>
     friend constexpr void for_each(node *root, F &&func) noexcept(std::is_nothrow_invocable_v<F, T &>) {
@@ -83,9 +83,23 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
   /**
    * @brief Pop all the nodes from the list and return a pointer to the root (`nullptr` if empty).
    *
-   * Only the owner (thread) of the list can call this function.
+   * Only the owner (thread) of the list can call this function, this will reverse the direction of the list
+   * such that `for_each` will operate if FIFO order.
    */
-  constexpr auto try_pop_all() noexcept -> node * { return m_head.exchange(nullptr, std::memory_order_consume); }
+  constexpr auto try_pop_all() noexcept -> node * {
+
+    node *last = m_head.exchange(nullptr, std::memory_order_consume);
+    node *first = nullptr;
+
+    while (last) {
+      node *tmp = last;
+      last = last->m_next;
+      tmp->m_next = first;
+      first = tmp;
+    }
+
+    return first;
+  }
 
  private:
   std::atomic<node *> m_head = nullptr;

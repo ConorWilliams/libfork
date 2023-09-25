@@ -33,50 +33,6 @@
 
 namespace lf {
 
-namespace impl {
-
-/**
- * @brief A fixed string type for template parameters that tracks its source location.
- */
-template <typename Char, std::size_t N>
-struct tracked_fixed_string {
- private:
-  using sloc = std::source_location;
-  static constexpr std::size_t file_name_max_size = 127;
-
- public:
-#if !defined(LF_DOXYGEN_SHOULD_SKIP_THIS) && defined(__clang__) && __clang_major__ == 17
-  // See: https://github.com/llvm/llvm-project/issues/67134
-  consteval tracked_fixed_string(Char const (&str)[N]) noexcept : line{0}, column{0} {
-    for (std::size_t i = 0; i < N; ++i) {
-      function_name[i] = str[i];
-    }
-  }
-#else
-  /**
-   * @brief Construct a tracked fixed string from a string literal.
-   */
-  consteval tracked_fixed_string(Char const (&str)[N], sloc loc = sloc::current()) noexcept
-      : line{loc.line()},
-        column{loc.column()} {
-    for (std::size_t i = 0; i < N; ++i) {
-      function_name[i] = str[i];
-    }
-  }
-#endif
-
-  // std::array<char, file_name_max_size + 1> file_name_buf;
-  // std::size_t file_name_size;
-
-  std::array<Char, N> function_name; ///< The given name of the function.
-  std::uint_least32_t line;          ///< The line number where `this` was constructed.
-  std::uint_least32_t column;        ///< The column number where `this` was constructed.
-};
-
-} // namespace impl
-
-// ----------------------------------------------- //
-
 inline namespace core {
 
 /**
@@ -96,7 +52,7 @@ inline namespace core {
  *
  * \endrst
  */
-template <typename T = void, impl::tracked_fixed_string Name = "">
+template <typename T = void>
 struct task {
 
   using value_type = T; ///< The type of the value returned by the coroutine.
@@ -106,7 +62,7 @@ struct task {
    *
    * This should only be called by the compiler.
    */
-  constexpr task(impl::frame_block *frame) : m_frame{non_null(frame)} {}
+  constexpr task(impl::frame_block *frame) noexcept : m_frame{non_null(frame)} {}
 
   /**
    * @brief __Not__ part of the public API.
@@ -124,8 +80,8 @@ namespace impl {
 template <typename>
 struct is_task_impl : std::false_type {};
 
-template <typename T, auto Name>
-struct is_task_impl<task<T, Name>> : std::true_type {};
+template <typename T>
+struct is_task_impl<task<T>> : std::true_type {};
 
 template <typename T>
 concept is_task = is_task_impl<T>::value;
@@ -175,7 +131,7 @@ struct patched : Head {
    *
    * \endrst
    */
-  [[nodiscard]] static auto context() -> Context * { return non_null(tls::get_ctx<Context>()); }
+  [[nodiscard]] static auto context() noexcept -> Context * { return non_null(tls::get_ctx<Context>()); }
 };
 
 /**
@@ -201,7 +157,7 @@ class [[nodiscard("packets must be co_awaited")]] packet : move_only<packet<Head
    * @brief Call the underlying async function with args.
    */
   auto invoke(frame_block *parent) && -> frame_block *requires (tag_of<Head> != tag::root) {
-    auto tsk = std::apply(function_of<Head>{}, std::move(m_args));
+    task_type tsk = std::apply(function_of<Head>{}, std::move(m_args));
     tsk.frame()->set_parent(parent);
     return tsk.frame();
   }
@@ -361,7 +317,7 @@ struct basic_first_arg<void, Tag, F> : async<F>, private move_only<basic_first_a
   /**
    * @brief Unimplemented - to satisfy the ``thread_context`` concept.
    */
-  [[nodiscard]] static auto context() -> context_type * { LF_THROW(std::runtime_error{"Should never be called!"}); }
+  [[nodiscard]] static auto context() noexcept -> context_type *;
 };
 
 /**
@@ -372,7 +328,7 @@ struct basic_first_arg : basic_first_arg<void, Tag, F> {
 
   using return_type = R; ///< The type of the return address.
 
-  constexpr basic_first_arg(return_type &ret) : m_ret{std::addressof(ret)} {}
+  constexpr basic_first_arg(return_type &ret) noexcept : m_ret{std::addressof(ret)} {}
 
   [[nodiscard]] constexpr auto address() const noexcept -> return_type * { return m_ret; }
 

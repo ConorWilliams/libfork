@@ -22,16 +22,9 @@
 - [x] Works-around <https://github.com/llvm/llvm-project/issues/63022>
 - [x] Numa primitives (hwloc).
 - [x] `lazy_pool`
+- [x] `numa_pool` (will need to iterate on this once we have heterogeneous workloads).
 
 #### Misc
-
-#### Missing features
-
-- [ ] `lf::tail`.
-- [ ] `numa_pool` (will need to iterate on this once we have heterogeneous workloads).
-- [ ] Stack-tracing: Logging at call-site (`std::source_location`).
-- [ ] Stack-tracing: Walk stack function.
-- [ ] Stack-tracing: Signal handler.
 
 #### Post feature complete
 
@@ -61,6 +54,10 @@
 
 - [ ] CI: `-fno-exceptions` test.
 - [ ] CI: check `single_header.hpp` is up to date.
+- [ ] `lf::tail`.
+- [ ] Stack-tracing: Logging at call-site (`std::source_location`).
+- [ ] Stack-tracing: Walk stack function.
+- [ ] Stack-tracing: Signal handler.
 
 #### Future
 

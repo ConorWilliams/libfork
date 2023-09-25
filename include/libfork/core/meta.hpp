@@ -89,7 +89,6 @@ enum class tag {
   call,   ///< Non root task (on a virtual stack) from an ``lf::call``, completes synchronously.
   fork,   ///< Non root task (on a virtual stack) from an ``lf::fork``, completes asynchronously.
   invoke, ///< Equivalent to ``lf::call`` but caches the return (extra move required).
-  tail,   ///< Force a [tail-call](https://en.wikipedia.org/wiki/Tail_call) optimization.
 };
 
 // ------------------------ Helpers ----------------------- //
@@ -153,8 +152,10 @@ namespace impl {
 /**
  * @brief Detect what kind of async function a type can be cast to.
  */
-template <typename T>
-consteval auto implicit_cast_to_async(async<T>) -> T;
+template <stateless T>
+consteval auto implicit_cast_to_async(async<T>) -> T {
+  return {};
+}
 
 } // namespace impl
 
@@ -170,8 +171,8 @@ inline namespace core {
  *
  * .. include:: ../../include/libfork/core/task.hpp
  *    :code:
- *    :start-line: 220
- *    :end-line: 241
+ *    :start-line: 180
+ *    :end-line: 203
  *
  * \endrst
  */

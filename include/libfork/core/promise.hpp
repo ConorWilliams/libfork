@@ -393,7 +393,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
    * @brief Transform a fork packet into a fork awaitable.
    */
   template <first_arg_tagged<tag::fork> Head, typename... Args>
-  constexpr auto await_transform(packet<Head, Args...> &&packet) noexcept -> detail::fork_awaitable<Context> {
+  auto await_transform(packet<Head, Args...> &&packet) noexcept -> detail::fork_awaitable<Context> {
     return {{}, this, std::move(packet).template patch_with<Context>().invoke(this)};
   }
 
@@ -401,7 +401,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
    * @brief Transform a call packet into a call awaitable.
    */
   template <first_arg_tagged<tag::call> Head, typename... Args>
-  constexpr auto await_transform(packet<Head, Args...> &&packet) noexcept -> detail::call_awaitable {
+  auto await_transform(packet<Head, Args...> &&packet) noexcept -> detail::call_awaitable {
     return {{}, std::move(packet).template patch_with<Context>().invoke(this)};
   }
 
@@ -412,7 +412,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
    */
   template <first_arg_tagged<tag::fork> Head, typename... Args>
     requires single_thread_context<Context> && valid_packet<rewrite_tag<Head>, Args...>
-  constexpr auto await_transform(packet<Head, Args...> &&pack) noexcept -> detail::call_awaitable {
+  auto await_transform(packet<Head, Args...> &&pack) noexcept -> detail::call_awaitable {
     return await_transform(std::move(pack).apply([](Head head, Args &&...args) -> packet<rewrite_tag<Head>, Args...> {
       return {{std::move(head)}, std::forward<Args>(args)...};
     }));
@@ -421,13 +421,13 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
   /**
    * @brief Get a join awaitable.
    */
-  constexpr auto await_transform(join_type) noexcept -> detail::join_awaitable<Context, Tag == tag::root> { return {this}; }
+  auto await_transform(join_type) noexcept -> detail::join_awaitable<Context, Tag == tag::root> { return {this}; }
 
   /**
    * @brief Transform an invoke packet into an invoke_awaitable.
    */
   template <impl::non_reference Packet>
-  constexpr auto await_transform(Packet &&pack) noexcept -> detail::invoke_awaitable<Context, Packet> {
+  auto await_transform(Packet &&pack) noexcept -> detail::invoke_awaitable<Context, Packet> {
     return {{}, this, std::forward<Packet>(pack), {}};
   }
 };

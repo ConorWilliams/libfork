@@ -98,7 +98,7 @@ class numa_topology {
     /**
      * @brief Bind the calling thread to the set of processing units in this `cpuset`.
      *
-     * If hwloc is not installed this is a noop.
+     * If hwloc is not installed both handles are null and this is a noop.
      */
     void bind() const;
 

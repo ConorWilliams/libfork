@@ -64,14 +64,14 @@ class xoshiro {
   /**
    * @brief Construct a new xoshiro with a fixed default-seed.
    */
-  xoshiro() = default;
+  constexpr xoshiro() = default;
 
   /**
    * @brief Construct and seed the PRNG.
    *
    * @param seed The PRNG's seed, must not be everywhere zero.
    */
-  explicit constexpr xoshiro(std::array<result_type, 4> const &my_seed) : m_state{my_seed} {
+  explicit constexpr xoshiro(std::array<result_type, 4> const &my_seed) noexcept : m_state{my_seed} {
     if (my_seed == std::array<result_type, 4>{0, 0, 0, 0}) {
       LF_ASSERT(false);
     }
@@ -84,7 +84,7 @@ class xoshiro {
     requires requires (PRNG &&device) {
       { std::invoke(device) } -> std::unsigned_integral;
     }
-  constexpr xoshiro(impl::seed_t, PRNG &&device) : xoshiro({scale(device), scale(device), scale(device), scale(device)}) {}
+  constexpr xoshiro(impl::seed_t, PRNG &&dev) noexcept : xoshiro({scale(dev), scale(dev), scale(dev), scale(dev)}) {}
 
   /**
    * @brief Get the minimum value of the generator.
@@ -106,8 +106,8 @@ class xoshiro {
    * @return A pseudo-random number.
    */
   [[nodiscard]] constexpr auto operator()() noexcept -> result_type {
-    result_type const result = rotl(m_state[1] * 5, 7) * 9;
 
+    result_type const result = rotl(m_state[1] * 5, 7) * 9;
     result_type const temp = m_state[1] << 17; // NOLINT
 
     m_state[2] ^= m_state[0];
@@ -168,7 +168,7 @@ class xoshiro {
     requires requires (PRNG &&device) {
       { std::invoke(device) } -> std::unsigned_integral;
     }
-  [[nodiscard]] static constexpr auto scale(PRNG &&device) -> result_type {
+  [[nodiscard]] static constexpr auto scale(PRNG &&device) noexcept -> result_type {
     //
     constexpr std::size_t chars_in_prng = sizeof(std::invoke_result_t<PRNG>);
 
