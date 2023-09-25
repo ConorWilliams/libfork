@@ -33,7 +33,6 @@
 - [ ] benchmark: C++ library comparisons (TaskFlow, ...).
 - [ ] benchmark: Memory allocations of our stack stealing.
 - [ ] Review 30% branch miss-predict, seems to be related to spinning workers?
-- [ ] Iterate `numa_pool`
 - [ ] Graphs/analysis.
 
 #### Before release
@@ -42,6 +41,7 @@
 - [x] review: `noexcept`.
 - [ ] review: `std::` includes in schedule/root.
 - [ ] review: `libfork/` includes
+- [x] docs: complete extension docs.
 - [ ] docs: Add vcpkg to hacking/building.
 - [ ] docs: Add recursive clone to hacking/building.
 - [ ] docs: Catalog deps for compilation (i.e pkg-config) (fresh ubuntu wsl).

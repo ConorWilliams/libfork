@@ -1,7 +1,4 @@
 
-
-
-
 <h1 align="center"> Welcome to <tt>libfork</tt> 🍴 </h1>
 
 <p align="center">
@@ -26,11 +23,12 @@
   A bleeding edge, lock-free, wait-free, continuation-stealing coroutine-tasking library.
 </p>
 
-<h3 align="center"> ** Now with 🌵 **  </h1>
+<h3 align="center"> **Now with 🌵**  </h1>
 
-`libfork` is primarily an abstraction for strict [fork-join parallelism](https://en.wikipedia.org/wiki/Fork%E2%80%93join_model). This is made possible without the use of any macros/inline assembly using C++20's coroutines. Ultra-fine grained parallelism (the ability to spawn tasks with near zero overhead) is enabled by an innovative implementation of a non-allocating [cactus-stack](https://en.wikipedia.org/wiki/Parent_pointer_tree) that utilizes _stack-stealing_.
+`libfork` is primarily an abstraction for strict [fork-join parallelism](https://en.wikipedia.org/wiki/Fork%E2%80%93join_model). This is made possible without the use of any macros/inline assembly using C++20's coroutines. Ultra-fine grained parallelism (the ability to spawn tasks with very low overhead) is enabled by an innovative implementation of a non-allocating [cactus-stack](https://en.wikipedia.org/wiki/Parent_pointer_tree) that utilizes _stack-stealing_.
 
 __TLDR:__
+
 ```c++
 
 inline constexpr async fib = [](auto fib, int n) -> lf::task<int> { 
@@ -50,14 +48,11 @@ inline constexpr async fib = [](auto fib, int n) -> lf::task<int> {
 };
 ```
 
-`libfork` presents a cross-platform API that decouples scheduling tasks (a customization point) from writing tasks and expressing their dependencies. Additionally, `libfork` provides performant NUMA-aware work-stealing schedulers for general use. 
-
-
-
+`libfork` presents a cross-platform API that decouples scheduling tasks (a customization point) from writing tasks and expressing their dependencies. Additionally, `libfork` provides performant NUMA-aware work-stealing schedulers for general use.
 
 ## Benchmarks
 
-See the [benchmark's README](benchmark/README.md) for a comparison of `libfork` to openMP and Intel's TBB, as well as some ARM/weak-memory-model benchmarks. 
+See the [benchmark's README](benchmark/README.md) for a comparison of `libfork` to openMP and Intel's TBB, as well as some ARM/weak-memory-model benchmarks.
 
 ## Building and installing
 
@@ -65,9 +60,13 @@ See the [BUILDING](BUILDING.md) document for full details on compilation, instal
 
 <h4 align="center"> ⚠️ COMPILER NIGGLES ⚠️ </h4>
 
-- __gcc__ `libfork` is tested on versions 11.x-13.x however gcc [does not perform a guaranteed tail call](https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100897) for coroutine's symmetric transfer unless compiling with optimization greater than or equal to `-O2` and sanitizers are not in use. This will result in stack overflows for some programs in un-optimized builds. 
+`libfork` is using C++ features that are very knew, most compilers have buggy implementations of coroutines, we do our best to work around known bugs:
+
+- __gcc__ `libfork` is tested on versions 11.x-13.x however gcc [does not perform a guaranteed tail call](https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100897) for coroutine's symmetric transfer unless compiling with optimization greater than or equal to `-O2` and sanitizers are not in use. This will result in stack overflows for some programs in un-optimized builds.
 
 - __clang__ `libfork` compiles on versions 15.x-17.x however for versions 16.x and below bugs [#63022](https://github.com/llvm/llvm-project/issues/63022) and [#47179](https://github.com/llvm/llvm-project/issues/47179) will cause crashes for optimized builds in multithreaded programs. We work around this in these versions by isolating access to `thread_local` storage in non-inlined functions however, this introduces around a 25% performance penalty vs GCC.
+
+- __Apple's clang__ `libfork` is compatible with the standard library that Apple ships with Xcode 2015 however Xcode 15 itself segfaults when compiling `libfork` and Xcode 14 is not supported.
 
 - __msvc__ `libfork` compiles on versions 19.35-19.37 however due to [this bug](https://developercommunity.visualstudio.com/t/Incorrect-code-generation-for-symmetric/1659260?scope=follow) (duplicate [here](https://developercommunity.visualstudio.com/t/Using-symmetric-transfer-and-coroutine_h/10251975?scope=follow&q=symmetric)) it will always seg-fault due to an erroneous double delete.
 
@@ -89,17 +88,17 @@ See the [ChangeLog](ChangeLog.md) document.
 
 <!-- This section provides some background and highlights the [consumer api](), for details on implementing your own schedulers on top of `libfork` see the [context api](). -->
 
-#### Contents:
+#### Contents
 
-- [Fork-join introduction](#Tasks-and-futures)
-   - [The cactus stack]()
-   - [What is that first argument? (y-combinators)](#y-combinator)
+- [Fork-join introduction](#tasks-and-futures)
+  - [The cactus stack]()
+  - [What is that first argument? (y-combinators)](#y-combinator)
 - [Core API:](#Features-of-the-consumer-API)
   - [Non default-constructible types and `eventually<T>`](#eventually)
   - [Exotic calls with `invoke`, `tail` and `ignore`](#Invoke-and-tail)
 - [Asynchronous stack-tracing]()
 - [Exception in `libfork`](#exceptions)
-- [Scheduling and contexts](#Schedulers)
+- [Scheduling and contexts](#schedulers)
 - [Algorithms and the high-level API]()
 
 ### Tasks and futures
@@ -127,18 +126,23 @@ inline constexpr auto fib = lf::async([](auto fib, int n) -> lf::task<int> {
   co_return a + b;                     // Safe to access after join
 });
 ```
+
 which can be launched on the ``busy_pool`` scheduler as follows:
+
 ```c++
 lf::busy thread_pool(num_threads);
 
 int fib_10 = lf::wait(thread_pool, fib, 10);
 ```
-Note:
-- Tasks **must** join **before** returning or dereferencing a future.
-- Futures **must** join in their parent task.
 
-The mental execution model here is: 
-1. At ``auto a = co_await fib(n - 1).fork()`` the parent/current task is suspended and a child task is spawned, ``a`` is of type ``basic_future<int, busy_pool::context>``. 
+Note:
+
+- Tasks __must__ join __before__ returning or dereferencing a future.
+- Futures __must__ join in their parent task.
+
+The mental execution model here is:
+
+1. At ``auto a = co_await fib(n - 1).fork()`` the parent/current task is suspended and a child task is spawned, ``a`` is of type ``basic_future<int, busy_pool::context>``.
 2. The current thread pushes the parent task's continuation onto its execution-context and starts executing the child task; the scheduler is free to hand the parent task's continuation to another thread.
 3. At ``auto b = co_await fib(n - 2)`` a new child task is spawned and the current thread immediately starts executing it. The continuation is not pushed onto the execution-context. This is preferred to ``.fork()`` as a thieving thread would have no work to do before the ``join()``.
 4. At ``co_await lf::join()``, if the children have not completed, the parent task is suspended.
@@ -149,6 +153,7 @@ Hence, at every ``co_await`` the thread executing the parent task may change! Th
 ## Schedulers
 
 A scheduler is responsible for distributing available work (tasks) to physical CPUs/executors. Each executor must own an execution-context object satisfying:
+
 ```c++
 template <typename T>
 concept context = requires(T context, work_handle<T> task) {
@@ -156,7 +161,8 @@ concept context = requires(T context, work_handle<T> task) {
     { context.pop() } -> std::convertible_to<std::optional<work_handle<T>>>;
 };
 ```
-An execution-context models a FILO stack. Tasks hold a pointer to their executor's context and push/pop tasks onto it. Whilst an executor is running a task, other executors can steal from the top of the stack in a FIFO manner. 
+
+An execution-context models a FILO stack. Tasks hold a pointer to their executor's context and push/pop tasks onto it. Whilst an executor is running a task, other executors can steal from the top of the stack in a FIFO manner.
 
 It is recommended that custom schedulers use lock-free stacks for their execution contexts such as the one provided in [libfork](include/libfork/deque.hpp)
 
@@ -215,4 +221,3 @@ This project builds on many of the ideas (available in [`reference/`](reference)
   url       = {https://doi.org/10.1145/1073970.1073974}
 }
 ```
-
