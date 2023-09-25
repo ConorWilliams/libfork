@@ -244,6 +244,9 @@ struct frame_block : private immovable<frame_block>, debug_block {
     return non_null(m_top);
   }
 
+  /**
+   * @brief Small return type suitable for structured binding.
+   */
   struct local_t {
     bool is_root;
     std::byte *top;

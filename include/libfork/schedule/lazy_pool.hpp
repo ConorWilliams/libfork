@@ -51,6 +51,9 @@ static constexpr std::uint64_t k_active_mask = ~k_thieve_mask;
  */
 class lazy_context : public numa_worker_context<lazy_context> {
  public:
+  /**
+   * @brief A collection of heap allocated atomic variables used for tracking the state of the scheduler.
+   */
   struct remote_atomics {
     /**
      * Effect:
@@ -257,6 +260,9 @@ class lazy_context : public numa_worker_context<lazy_context> {
  */
 class lazy_pool {
  public:
+  /**
+   * @brief The context type used by this scheduler.
+   */
   using context_type = impl::lazy_context;
 
  private:

@@ -26,7 +26,7 @@
 #include "libfork/core/utility.hpp"
 
 /**
- * @file task.hpp
+ * @file async.hpp
  *
  * @brief Implementation of the core ``lf::task`` and `lf::async` types.
  */

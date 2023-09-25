@@ -196,9 +196,7 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
  * @brief Macro to prevent a function to be inlined.
  */
 #if !defined(LF_NOINLINE)
-  #ifdef LF_DOXYGEN_SHOULD_SKIP_THIS
-    #define LF_NOINLINE
-  #elif defined(_MSC_VER)
+  #if defined(_MSC_VER)
     #define LF_NOINLINE __declspec(noinline)
   #elif defined(__GNUC__) && __GNUC__ > 3
     // Clang also defines __GNUC__ (as 4)
@@ -230,9 +228,7 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
  * \endrst
  */
 #if !defined(LF_FORCEINLINE)
-  #ifdef LF_DOXYGEN_SHOULD_SKIP_THIS
-    #define LF_FORCEINLINE
-  #elif defined(_MSC_VER)
+  #if defined(_MSC_VER)
     #define LF_FORCEINLINE __forceinline
   #elif defined(__GNUC__) && __GNUC__ > 3
     // Clang also defines __GNUC__ (as 4)
@@ -243,7 +239,7 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
 #endif
 
 /**
- * @brief This works-around https://github.com/llvm/llvm-project/issues/63022
+ * @brief This works-around https://github.com/llvm/llvm-project/issues/63022.
  */
 #if defined(__clang__)
   #if defined(__apple_build_version__) || __clang_major__ <= 16

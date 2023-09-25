@@ -69,7 +69,7 @@ class xoshiro {
   /**
    * @brief Construct and seed the PRNG.
    *
-   * @param seed The PRNG's seed, must not be everywhere zero.
+   * @param my_seed The PRNG's seed, must not be everywhere zero.
    */
   explicit constexpr xoshiro(std::array<result_type, 4> const &my_seed) noexcept : m_state{my_seed} {
     if (my_seed == std::array<result_type, 4>{0, 0, 0, 0}) {

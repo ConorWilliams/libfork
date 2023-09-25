@@ -140,7 +140,7 @@ enum class err : int {
  *
  * Example:
  *
- * .. include:: ../../test/source/schedule/deque.cpp
+ * .. include:: ../../../test/source/schedule/deque.cpp
  *    :code:
  *    :start-after: // !BEGIN-EXAMPLE
  *    :end-before: // !END-EXAMPLE

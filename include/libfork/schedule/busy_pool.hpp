@@ -23,7 +23,7 @@
 #include "libfork/schedule/random.hpp"
 
 /**
- * @file busy.hpp
+ * @file busy_pool.hpp
  *
  * @brief A work-stealing thread pool where all the threads spin when idle.
  */

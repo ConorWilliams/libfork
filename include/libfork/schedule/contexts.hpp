@@ -32,17 +32,29 @@
 
 namespace lf::impl {
 
+/**
+ * @brief A CRTP base type that provides always allocating stack push/pop
+ */
 template <typename CRTP>
 struct immediate_base {
 
+  /**
+   * @brief Immediately resumes the given task.
+   */
   static void submit(intruded_h<CRTP> *ptr) { resume(unwrap(non_null(ptr))); }
 
+  /**
+   * @brief Deallocates the stack.
+   */
   static void stack_push(async_stack *stack) {
     LF_LOG("stack_push");
     LF_ASSERT(stack);
     delete stack;
   }
 
+  /**
+   * @brief Allocates a new stack.
+   */
   static auto stack_pop() -> async_stack * {
     LF_LOG("stack_pop");
     return new async_stack;

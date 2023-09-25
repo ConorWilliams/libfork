@@ -19,6 +19,9 @@ namespace lf {
 
 namespace impl {
 
+/**
+ * @brief Implements the `lift` higher-order function for forked/non-forked functions.
+ */
 template <typename F>
 struct lifted {
   template <first_arg Head, typename... Args>

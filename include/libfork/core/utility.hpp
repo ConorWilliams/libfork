@@ -110,6 +110,9 @@ static_assert(std::is_empty_v<empty>);
 
 // -------------------------------- //
 
+/**
+ * @brief A functor that returns ``std::nullopt``.
+ */
 template <typename T>
 struct return_nullopt {
   LF_STATIC_CALL constexpr auto operator()() LF_STATIC_CONST noexcept -> std::optional<T> { return {}; }
@@ -336,6 +339,9 @@ constexpr auto noexcept_invoke(Fn &&fun, Args &&...args) noexcept -> std::invoke
 
 // -------------------------------- //
 
+/**
+ * @brief Transform `[a, b, c] -> [f(a), f(b), f(c)]`.
+ */
 template <typename T, typename F>
 auto map(std::vector<T> const &from, F &&func) -> std::vector<std::invoke_result_t<F &, T const &>> {
 
@@ -350,6 +356,9 @@ auto map(std::vector<T> const &from, F &&func) -> std::vector<std::invoke_result
   return out;
 }
 
+/**
+ * @brief Transform `[a, b, c] -> [f(a), f(b), f(c)]`.
+ */
 template <typename T, typename F>
 auto map(std::vector<T> &&from, F &&func) -> std::vector<std::invoke_result_t<F &, T>> {
 

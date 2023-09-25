@@ -30,10 +30,13 @@ template <typename T>
 class intrusive_list : impl::immovable<intrusive_list<T>> {
  public:
   /**
-   * @brief An intruded
+   * @brief An intruded node in the list.
    */
   class node : impl::immovable<node> {
    public:
+    /**
+     * @brief Construct a node storing a copy of `data`.
+     */
     explicit constexpr node(T const &data) : m_data(data) {}
 
     /**
@@ -105,6 +108,9 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
   std::atomic<node *> m_head = nullptr;
 };
 
+/**
+ * @brief A type alias for the node type of an intrusive list.
+ */
 template <typename T>
 using intrusive_node = typename intrusive_list<T>::node;
 

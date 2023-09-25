@@ -31,10 +31,14 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install the real clang
-        shell: pwsh
-        run: |
-          brew install llvm
+      # - name: Install the real clang
+      #   shell: pwsh
+      #   run: |
+      #     brew install llvm
+      
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
   
       - uses: ./.github/actions/setup
 

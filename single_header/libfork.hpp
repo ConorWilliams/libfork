@@ -241,9 +241,7 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
  * @brief Macro to prevent a function to be inlined.
  */
 #if !defined(LF_NOINLINE)
-  #ifdef LF_DOXYGEN_SHOULD_SKIP_THIS
-    #define LF_NOINLINE
-  #elif defined(_MSC_VER)
+  #if defined(_MSC_VER)
     #define LF_NOINLINE __declspec(noinline)
   #elif defined(__GNUC__) && __GNUC__ > 3
     // Clang also defines __GNUC__ (as 4)
@@ -275,9 +273,7 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
  * \endrst
  */
 #if !defined(LF_FORCEINLINE)
-  #ifdef LF_DOXYGEN_SHOULD_SKIP_THIS
-    #define LF_FORCEINLINE
-  #elif defined(_MSC_VER)
+  #if defined(_MSC_VER)
     #define LF_FORCEINLINE __forceinline
   #elif defined(__GNUC__) && __GNUC__ > 3
     // Clang also defines __GNUC__ (as 4)
@@ -288,7 +284,7 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
 #endif
 
 /**
- * @brief This works-around https://github.com/llvm/llvm-project/issues/63022
+ * @brief This works-around https://github.com/llvm/llvm-project/issues/63022.
  */
 #if defined(__clang__)
   #if defined(__apple_build_version__) || __clang_major__ <= 16
@@ -479,6 +475,9 @@ static_assert(std::is_empty_v<empty>);
 
 // -------------------------------- //
 
+/**
+ * @brief A functor that returns ``std::nullopt``.
+ */
 template <typename T>
 struct return_nullopt {
   LF_STATIC_CALL constexpr auto operator()() LF_STATIC_CONST noexcept -> std::optional<T> { return {}; }
@@ -705,6 +704,9 @@ constexpr auto noexcept_invoke(Fn &&fun, Args &&...args) noexcept -> std::invoke
 
 // -------------------------------- //
 
+/**
+ * @brief Transform `[a, b, c] -> [f(a), f(b), f(c)]`.
+ */
 template <typename T, typename F>
 auto map(std::vector<T> const &from, F &&func) -> std::vector<std::invoke_result_t<F &, T const &>> {
 
@@ -719,6 +721,9 @@ auto map(std::vector<T> const &from, F &&func) -> std::vector<std::invoke_result
   return out;
 }
 
+/**
+ * @brief Transform `[a, b, c] -> [f(a), f(b), f(c)]`.
+ */
 template <typename T, typename F>
 auto map(std::vector<T> &&from, F &&func) -> std::vector<std::invoke_result_t<F &, T>> {
 
@@ -778,10 +783,13 @@ template <typename T>
 class intrusive_list : impl::immovable<intrusive_list<T>> {
  public:
   /**
-   * @brief An intruded
+   * @brief An intruded node in the list.
    */
   class node : impl::immovable<node> {
    public:
+    /**
+     * @brief Construct a node storing a copy of `data`.
+     */
     explicit constexpr node(T const &data) : m_data(data) {}
 
     /**
@@ -853,6 +861,9 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
   std::atomic<node *> m_head = nullptr;
 };
 
+/**
+ * @brief A type alias for the node type of an intrusive list.
+ */
 template <typename T>
 using intrusive_node = typename intrusive_list<T>::node;
 
@@ -1149,6 +1160,9 @@ struct frame_block : private immovable<frame_block>, debug_block {
     return non_null(m_top);
   }
 
+  /**
+   * @brief Small return type suitable for structured binding.
+   */
   struct local_t {
     bool is_root;
     std::byte *top;
@@ -2193,7 +2207,7 @@ struct promise_result : protected impl::maybe_ptr<R> {
 
 
 /**
- * @file task.hpp
+ * @file async.hpp
  *
  * @brief Implementation of the core ``lf::task`` and `lf::async` types.
  */
@@ -3436,7 +3450,7 @@ enum class err : int {
  *
  * Example:
  *
- * .. include:: ../../test/source/schedule/deque.cpp
+ * .. include:: ../../../test/source/schedule/deque.cpp
  *    :code:
  *    :start-after: // !BEGIN-EXAMPLE
  *    :end-before: // !END-EXAMPLE
@@ -4159,7 +4173,7 @@ class xoshiro {
   /**
    * @brief Construct and seed the PRNG.
    *
-   * @param seed The PRNG's seed, must not be everywhere zero.
+   * @param my_seed The PRNG's seed, must not be everywhere zero.
    */
   explicit constexpr xoshiro(std::array<result_type, 4> const &my_seed) noexcept : m_state{my_seed} {
     if (my_seed == std::array<result_type, 4>{0, 0, 0, 0}) {
@@ -4413,17 +4427,29 @@ class ring_buffer {
 
 namespace lf::impl {
 
+/**
+ * @brief A CRTP base type that provides always allocating stack push/pop
+ */
 template <typename CRTP>
 struct immediate_base {
 
+  /**
+   * @brief Immediately resumes the given task.
+   */
   static void submit(intruded_h<CRTP> *ptr) { resume(unwrap(non_null(ptr))); }
 
+  /**
+   * @brief Deallocates the stack.
+   */
   static void stack_push(async_stack *stack) {
     LF_LOG("stack_push");
     LF_ASSERT(stack);
     delete stack;
   }
 
+  /**
+   * @brief Allocates a new stack.
+   */
   static auto stack_pop() -> async_stack * {
     LF_LOG("stack_pop");
     return new async_stack;
@@ -4697,7 +4723,7 @@ static_assert(!single_thread_context<test_context>);
 
 
 /**
- * @file busy.hpp
+ * @file busy_pool.hpp
  *
  * @brief A work-stealing thread pool where all the threads spin when idle.
  */
@@ -5096,6 +5122,9 @@ static constexpr std::uint64_t k_active_mask = ~k_thieve_mask;
  */
 class lazy_context : public numa_worker_context<lazy_context> {
  public:
+  /**
+   * @brief A collection of heap allocated atomic variables used for tracking the state of the scheduler.
+   */
   struct remote_atomics {
     /**
      * Effect:
@@ -5302,6 +5331,9 @@ class lazy_context : public numa_worker_context<lazy_context> {
  */
 class lazy_pool {
  public:
+  /**
+   * @brief The context type used by this scheduler.
+   */
   using context_type = impl::lazy_context;
 
  private:
