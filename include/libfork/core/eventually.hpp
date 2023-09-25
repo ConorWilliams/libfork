@@ -41,8 +41,9 @@ inline namespace core {
  *    for the reference specialization.
  *
  * .. warning::
- *    It is undefined behavior if the object is not constructed before it is used or if the lifetime of the
- *    ``lf::eventually`` ends before an object is constructed.
+ *    It is undefined behavior if the object inside an `eventually` is not constructed before it
+ *    is used or if the lifetime of the ``lf::eventually`` ends before an object is constructed.
+ *    If you are placing instances of `eventually` on the heap you need to be very careful about exceptions.
  *
  * \endrst
  */

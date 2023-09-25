@@ -27,9 +27,9 @@
 #include "libfork/schedule/random.hpp"
 
 /**
- * @file busy.hpp
+ * @file lazy_pool.hpp
  *
- * @brief A work-stealing thread pool where all the threads spin when idle.
+ * @brief A work-stealing thread pool where threads sleep when idle.
  */
 
 namespace lf {
@@ -249,9 +249,11 @@ class lazy_context : public numa_worker_context<lazy_context> {
 } // namespace impl
 
 /**
- * @brief A scheduler based on a traditional work-stealing thread pool.
+ * @brief A scheduler based on a [An Efficient Work-Stealing Scheduler for Task Dependency
+ * Graph](https://doi.org/10.1109/icpads51040.2020.00018)
  *
- * This pool sleeps workers which cannot find any work.
+ * This pool sleeps workers which cannot find any work, as such it should be the default choice for most
+ * use cases. Additionally (if an installation of `hwloc` was found) this pool is NUMA aware.
  */
 class lazy_pool {
  public:
@@ -286,7 +288,7 @@ class lazy_pool {
   auto schedule(intruded_h<context_type> *node) noexcept { m_contexts[m_dist(m_rng)]->submit(node); }
 
   /**
-   * @brief Construct a new lazy_pool object.
+   * @brief Construct a new lazy_pool object and `n` worker threads.
    *
    * @param n The number of worker threads to create, defaults to the number of hardware threads.
    */

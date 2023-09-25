@@ -39,16 +39,18 @@ namespace lf {
 /**
  * @brief An inline namespace that wraps core functionality.
  *
- * This is the namespace that contains the user-facing API of ``libfork``.
+ * This is the namespace that contains the minimal user-facing API of ``libfork``, notably
+ * this excludes schedulers and algorithms.
  */
 inline namespace core {}
 
 /**
  * @brief An inline namespace that wraps extension functionality.
  *
- * This namespace is part of ``libfork``s public API but is intended for advanced users writing schedulers, It exposes the
- * scheduler/context API's alongside some implementation details (such as lock-free dequeues, and other synchronization
- * primitives) that could be useful when implementing custom schedulers.
+ * This namespace is part of ``libfork``s public API but is intended for advanced users
+ * writing schedulers, It exposes the scheduler/context API's alongside some implementation
+ * details (such as lock-free dequeues, a `hwloc` abstraction, and synchronization primitives)
+ * that could be useful when implementing custom schedulers.
  */
 inline namespace ext {}
 

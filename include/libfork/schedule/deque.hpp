@@ -28,14 +28,6 @@
  *
  * @brief A stand-alone, production-quality implementation of the Chase-Lev lock-free
  * single-producer multiple-consumer deque.
- *
- * \rst
- *
- * Implements the Chase-Lev deque described in the papers, `"Dynamic Circular Work-Stealing deque"
- * <https://doi.org/10.1145/1073970.1073974>`_ and `"Correct and Efficient Work-Stealing for Weak
- * Memory Models" <https://doi.org/10.1145/2442516.2442524>`_.
- *
- * \endrst
  */
 
 namespace lf {
@@ -133,15 +125,9 @@ enum class err : int {
 };
 
 /**
- * @brief A concept that verifies a type is suitable for use as the return type of ``deque::pop()``.
- *
- * Ideally this has the semantic implication that ``Optional`` is a ``std::optional``-like type.
- */
-template <typename Optional, typename T>
-concept optional_for = std::is_default_constructible_v<Optional> && std::constructible_from<Optional, T>;
-
-/**
  * @brief An unbounded lock-free single-producer multiple-consumer work-stealing deque.
+ *
+ * \rst
  *
  * Implements the "Chase-Lev" deque described in the papers, `"Dynamic Circular Work-Stealing deque"
  * <https://doi.org/10.1145/1073970.1073974>`_ and `"Correct and Efficient Work-Stealing for Weak
@@ -151,7 +137,6 @@ concept optional_for = std::is_default_constructible_v<Optional> && std::constru
  * like a LIFO stack. Others can (only) ``steal()`` data from the deque, they see a FIFO deque.
  * All threads must have finished using the deque before it is destructed.
  *
- * \rst
  *
  * Example:
  *

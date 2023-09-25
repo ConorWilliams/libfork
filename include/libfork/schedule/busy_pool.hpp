@@ -36,6 +36,7 @@ namespace lf {
  * Worker threads continuously try to steal tasks from other worker threads hence, they
  * waste CPU cycles if sufficient work is not available. This is a good choice if the number
  * of threads is equal to the number of hardware cores and the multiplexer has no other load.
+ * Additionally (if an installation of `hwloc` was found) this pool is NUMA aware.
  */
 class busy_pool {
  public:

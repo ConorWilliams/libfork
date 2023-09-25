@@ -43,19 +43,24 @@ class unit_pool_impl : impl::immovable<unit_pool_impl<Context>> {
 } // namespace impl
 
 inline namespace ext {
+
 /**
  * @brief A scheduler that runs all tasks inline on the current thread and keeps an internal stack.
  *
- * This is exposed/intended for testing.
+ * This is exposed/intended for testing, using this thread pool is equivalent to
+ * using a `busy_pool` with a single thread. It is different from `unit_pool` in that
+ * it explicitly disables the `fork` -> `call` optimisation.
  */
-using test_unit_pool = impl::unit_pool_impl<impl::test_immediate_context>;
+using debug_pool = impl::unit_pool_impl<impl::test_immediate_context>;
 
-static_assert(scheduler<test_unit_pool>);
+static_assert(scheduler<debug_pool>);
 
 } // namespace ext
 
 /**
  * @brief A scheduler that runs all tasks inline on the current thread.
+ *
+ * This is useful for testing/debugging/benchmarking.
  */
 using unit_pool = impl::unit_pool_impl<impl::immediate_context>;
 

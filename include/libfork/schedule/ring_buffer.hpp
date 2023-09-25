@@ -1,6 +1,14 @@
 #ifndef C0E5463D_72D1_43C1_9458_9797E2F9C033
 #define C0E5463D_72D1_43C1_9458_9797E2F9C033
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <array>
 #include <bit>
 #include <concepts>
@@ -11,6 +19,12 @@
 
 #include "libfork/core/macro.hpp"
 #include "libfork/core/utility.hpp"
+
+/**
+ * \file ring_buffer.hpp
+ *
+ * @brief A simple ring-buffer with customizable behavior on overflow/underflow.
+ */
 
 namespace lf {
 

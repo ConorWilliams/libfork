@@ -1,6 +1,14 @@
 #ifndef D8877F11_1F66_4AD0_B949_C0DFF390C2DB
 #define D8877F11_1F66_4AD0_B949_C0DFF390C2DB
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <cerrno>
 #include <climits>
 #include <cstddef>
@@ -14,6 +22,12 @@
 #ifdef LF_HAS_HWLOC
   #include <hwloc.h>
 #endif
+
+/**
+ * @file numa.hpp
+ *
+ * @brief An abstraction over `hwloc`.
+ */
 
 /**
  * @brief An opaque description of a set of processing units.
@@ -48,7 +62,7 @@ inline namespace ext {
 // ------------- hwloc can go wrong in a lot of ways... ------------- //
 
 /**
- * @brief An exception thrown when hwloc fails.
+ * @brief An exception thrown when `hwloc` fails.
  */
 struct hwloc_error : std::runtime_error {
   using std::runtime_error::runtime_error;
@@ -81,7 +95,7 @@ class numa_topology {
   /**
    * @brief Construct a topology.
    *
-   * If hwloc is not installed this topology is empty.
+   * If `hwloc` is not installed this topology is empty.
    */
   numa_topology();
 
@@ -98,7 +112,7 @@ class numa_topology {
     /**
      * @brief Bind the calling thread to the set of processing units in this `cpuset`.
      *
-     * If hwloc is not installed both handles are null and this is a noop.
+     * If `hwloc` is not installed both handles are null and this is a noop.
      */
     void bind() const;
 
@@ -131,7 +145,7 @@ class numa_topology {
    * @brief Distribute a vector of objects over this topology.
    *
    * This function returns a vector of `numa_node`s. Each `numa_node` contains a hierarchical view of
-   * the elements in `objects` in to.
+   * the elements in `data`.
    */
   template <typename T>
   auto distribute(std::vector<std::shared_ptr<T>> const &data) -> std::vector<numa_node<T>>;

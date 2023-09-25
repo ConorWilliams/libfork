@@ -41,6 +41,17 @@ using intruded_h = intrusive_node<submit_h<Context> *>;
  * A context owns a LIFO stack of ``lf::async_stack``s and a LIFO stack of
  * tasks. The stack of ``lf::async_stack``s is expected to never be empty, it
  * should always be able to return an empty ``lf::async_stack``.
+ *
+ * Syntactically a `thread_context` requires:
+ *
+ * \rst
+ *
+ * .. include:: ../../include/libfork/core/meta.hpp
+ *    :code:
+ *    :start-line: 56
+ *    :end-line: 64
+ *
+ * \endrst
  */
 template <typename Context>
 concept thread_context = requires (Context ctx, async_stack *stack, intruded_h<Context> *ext, task_h<Context> *task) {
@@ -134,9 +145,17 @@ using value_of = typename std::remove_cvref_t<T>::value_type;
 
 /**
  * @brief Check if an invocable is suitable for use as an `lf::async` function.
+ *
+ * This requires `T` to be:
+ *
+ * - A class type.
+ * - Trivially copyable.
+ * - Default initializable.
+ * - Empty.
  */
 template <typename T>
-concept stateless = std::is_class_v<T> && std::is_trivial_v<T> && std::is_empty_v<T> && std::default_initializable<T>;
+concept stateless =
+    std::is_class_v<T> && std::is_trivially_copyable_v<T> && std::is_empty_v<T> && std::default_initializable<T>;
 
 // See "async.hpp" for the definition.
 
@@ -169,17 +188,16 @@ inline namespace core {
  *
  * \rst
  *
- * .. include:: ../../include/libfork/core/task.hpp
+ * .. include:: ../../include/libfork/core/meta.hpp
  *    :code:
- *    :start-line: 180
- *    :end-line: 203
+ *    :start-line: 198
+ *    :end-line: 218
  *
  * \endrst
  */
 template <typename Arg>
 concept first_arg = impl::unqualified<Arg> && requires (Arg arg) {
   //
-
   requires std::is_trivially_copyable_v<Arg>;
 
   tag_of<Arg>;

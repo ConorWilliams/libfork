@@ -1,7 +1,8 @@
 Core API
 ===================
 
-The ``core`` namespace contains the basic building blocks of the library. 
+The ``core`` namespace contains the basic building blocks of the library.  
+To include all of ``core`` use ``#include <libfork/core.hpp>``.
 
 Control flow
 --------------------------------
@@ -16,7 +17,6 @@ These function-like objects are used to control the flow of execution while buil
 
 .. doxygenvariable:: lf::core::join
 
-.. doxygenvariable:: lf::core::tail
 
 Concepts
 ------------
@@ -27,13 +27,8 @@ Concepts
 
 .. doxygenconcept:: lf::core::first_arg
 
-Schedulers
---------------
 
-
-
-
-Other classes
+Classes
 ------------
 
 .. toctree::
@@ -41,13 +36,7 @@ Other classes
    :maxdepth: 2
 
    core/async.rst
-   core/eventually.rst
-   core/task.rst
-   core/fixed.rst
    core/result.rst
-   core/in_place.rst
-
-
 
 Generated listing
 ---------------------

@@ -3,13 +3,8 @@ Welcome to ``libfork`` v3.2.0
 
 This is libfork's API documentation, for info on building and installing please see the `README.md <https://github.com/ConorWilliams/libfork>`_.  
 
-Namespaces in ``libfork``
----------------------------
-
-Below namespace ``lf`` this library is partitioned into disjoint namespaces.
-
 Core API
-~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------
 
 .. doxygennamespace:: lf::core
     :desc-only:
@@ -20,8 +15,30 @@ Core API
 
    api/core.rst
 
+Schedulers
+------------------------
+
+Schedulers are objects that map the computation graph to worker threads, ``libfork`` supplies a selection of useful defaults.
+
+.. toctree::
+   :maxdepth: 2
+
+   api/schedule.rst
+
+
+Algorithms
+------------------------
+
+Algorithms operate at a higher level of abstraction than pure fork-join, currently ``libfork`` does not have many but watch this space...
+
+.. toctree::
+   :maxdepth: 3
+
+   api/algorithm.rst
+
+
 Extension API
-~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------
 
 .. doxygennamespace:: lf::ext
     :desc-only:

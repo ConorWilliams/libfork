@@ -61,6 +61,9 @@ inline namespace ext {
 
 /**
  * @brief A fraction of a thread's cactus stack.
+ *
+ * These can be alloacted on the heap just like any other object when a `thread_context`
+ * needs them.
  */
 class async_stack : impl::immovable<async_stack> {
   alignas(impl::k_new_align) std::byte m_buf[impl::k_stack_size]; // NOLINT
@@ -377,11 +380,13 @@ inline namespace ext {
 /**
  * @brief A type safe wrapper around a handle to a stealable coroutine.
  *
+ * Instances of this type will be passed to a worker's `thread_context`.
+ *
  * \rst
  *
  * .. warning::
  *
- *    A pointer to an `task_h` must never be dereferenced, only ever passed to `resume()`.
+ *    A pointer to an ``task_h`` must never be dereferenced, only ever passed to ``resume()``.
  *
  * \endrst
  */
@@ -400,11 +405,13 @@ struct task_h {
 /**
  * @brief A type safe wrapper around a handle to a coroutine that is at a submission point.
  *
+ * Instances of this type (wrapped in an `lf::intrusive_list`s node) will be passed to a worker's `thread_context`.
+ *
  * \rst
  *
  * .. warning::
  *
- *    A pointer to an `submit_h` must never be dereferenced, only ever passed to `resume()`.
+ *    A pointer to an ``submit_h`` must never be dereferenced, only ever passed to ``resume()``.
  *
  * \endrst
  */
@@ -425,8 +432,12 @@ struct submit_h {
 /**
  * @brief Initialize thread-local variables before a worker can resume submitted tasks.
  *
+ * \rst
+ *
  * .. warning::
- *    These should be cleaned up with `worker_finalize(...)`.
+ *    These should be cleaned up with ``worker_finalize(...)``.
+ *
+ * \endrst
  */
 template <typename Context>
 LF_NOINLINE void worker_init(Context *context) noexcept {
@@ -442,8 +453,12 @@ LF_NOINLINE void worker_init(Context *context) noexcept {
 /**
  * @brief Clean-up thread-local variable before destructing a worker's context.
  *
+ * \rst
+ *
  * .. warning::
- *    These must be initialized with `worker_init(...)`.
+ *    These must be initialized with ``worker_init(...)``.
+ *
+ * \endrst
  */
 template <typename Context>
 LF_NOINLINE void worker_finalize(Context *context) {

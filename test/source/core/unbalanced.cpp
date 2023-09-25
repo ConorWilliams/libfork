@@ -172,7 +172,7 @@ inline constexpr async search = [](auto search, tree const &root, int val, auto 
 
 }
 
-TEMPLATE_TEST_CASE("tree search", "[tree][template]", unit_pool, test_unit_pool, busy_pool, lazy_pool) {
+TEMPLATE_TEST_CASE("tree search", "[tree][template]", unit_pool, debug_pool, busy_pool, lazy_pool) {
 
   int n = 1000;
 
@@ -189,7 +189,7 @@ TEMPLATE_TEST_CASE("tree search", "[tree][template]", unit_pool, test_unit_pool,
   }
 }
 
-TEMPLATE_TEST_CASE("tree bench", "[tree][template]", unit_pool, test_unit_pool, busy_pool, lazy_pool) {
+TEMPLATE_TEST_CASE("tree bench", "[tree][template]", unit_pool, debug_pool, busy_pool, lazy_pool) {
 
   int n = 100;
 
@@ -236,7 +236,7 @@ inline constexpr async transfer = [](auto self, tree const &root, int val) -> ta
 
 }
 
-TEMPLATE_TEST_CASE("tree transfer", "[tree][template]", unit_pool, test_unit_pool, busy_pool, lazy_pool) {
+TEMPLATE_TEST_CASE("tree transfer", "[tree][template]", unit_pool, debug_pool, busy_pool, lazy_pool) {
 
   auto sch = make_scheduler<TestType>();
 

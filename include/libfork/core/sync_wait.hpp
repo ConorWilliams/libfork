@@ -33,6 +33,8 @@ inline namespace core {
 
 /**
  * @brief A concept that schedulers must satisfy.
+ *
+ * This requires only a single method, `schedule` and a nested typedef `context_type`.
  */
 template <typename Sch>
 concept scheduler = requires (Sch &&sch, intruded_h<context_of<Sch>> *ext) { std::forward<Sch>(sch).schedule(ext); };
@@ -88,6 +90,7 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
 
   LF_LOG("Submitting root");
 
+  // If this throws we crash the program because we cannot know if the eventually in root_block was constructed.
   std::forward<Sch>(sch).schedule(&link);
 
   LF_LOG("Acquire semaphore");

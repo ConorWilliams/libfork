@@ -38,7 +38,7 @@ inline namespace core {
 /**
  * @brief The return type for libfork's async functions/coroutines.
  *
- * This predominantly exists to disambiguate `lf` coroutines from other coroutines.
+ * This predominantly exists to disambiguate `libfork`s coroutines from other coroutines.
  *
  * \rst
  *
@@ -224,7 +224,7 @@ inline namespace core {
 /**
  * @brief Wraps a stateless callable that returns an ``lf::task``.
  *
- * Use this type to define an synchronous function.
+ * Use this alongside `lf::task` to define an synchronous function.
  */
 template <stateless Fn>
 struct [[nodiscard("async functions must be called")]] async {
@@ -240,9 +240,10 @@ struct [[nodiscard("async functions must be called")]] async {
    * \rst
    *
    * This is to allow concise definitions from lambdas:
+   *
    * .. code::
    *
-   *    constexpr async fib = [](auto fib, ...) -> task<int, "fib"> {
+   *    constexpr async fib = [](auto fib, ...) -> task<int> {
    *        // ...
    *    };
    *

@@ -169,7 +169,7 @@ inline namespace core {
 /**
  * @brief A base class for promises that provides the ``return_[...]`` methods.
  *
- * This type is in the ``core`` namespace as return ``return_[...]`` methods are part of the public API.
+ * This type is in the ``core`` namespace as the ``return_[...]`` methods are part of the public API.
  *
  * \rst
  *

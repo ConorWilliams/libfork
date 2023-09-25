@@ -39,7 +39,7 @@ inline namespace ext {
 /**
  * @brief A condition variable for lock free algorithms.
  *
- * \rst
+ *
  *
  * See http://www.1024cores.net/home/lock-free-algorithms/eventcounts for details.
  *
@@ -61,6 +61,8 @@ inline namespace ext {
  * or not block at all)
  *
  * This means that you can use an event_count in the following manner:
+ *
+ * \rst
  *
  * Waiter:
  *

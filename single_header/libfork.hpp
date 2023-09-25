@@ -408,16 +408,18 @@ namespace lf {
 /**
  * @brief An inline namespace that wraps core functionality.
  *
- * This is the namespace that contains the user-facing API of ``libfork``.
+ * This is the namespace that contains the minimal user-facing API of ``libfork``, notably
+ * this excludes schedulers and algorithms.
  */
 inline namespace core {}
 
 /**
  * @brief An inline namespace that wraps extension functionality.
  *
- * This namespace is part of ``libfork``s public API but is intended for advanced users writing schedulers, It exposes the
- * scheduler/context API's alongside some implementation details (such as lock-free dequeues, and other synchronization
- * primitives) that could be useful when implementing custom schedulers.
+ * This namespace is part of ``libfork``s public API but is intended for advanced users
+ * writing schedulers, It exposes the scheduler/context API's alongside some implementation
+ * details (such as lock-free dequeues, a `hwloc` abstraction, and synchronization primitives)
+ * that could be useful when implementing custom schedulers.
  */
 inline namespace ext {}
 
@@ -964,6 +966,9 @@ inline namespace ext {
 
 /**
  * @brief A fraction of a thread's cactus stack.
+ *
+ * These can be alloacted on the heap just like any other object when a `thread_context`
+ * needs them.
  */
 class async_stack : impl::immovable<async_stack> {
   alignas(impl::k_new_align) std::byte m_buf[impl::k_stack_size]; // NOLINT
@@ -1280,11 +1285,13 @@ inline namespace ext {
 /**
  * @brief A type safe wrapper around a handle to a stealable coroutine.
  *
+ * Instances of this type will be passed to a worker's `thread_context`.
+ *
  * \rst
  *
  * .. warning::
  *
- *    A pointer to an `task_h` must never be dereferenced, only ever passed to `resume()`.
+ *    A pointer to an ``task_h`` must never be dereferenced, only ever passed to ``resume()``.
  *
  * \endrst
  */
@@ -1303,11 +1310,13 @@ struct task_h {
 /**
  * @brief A type safe wrapper around a handle to a coroutine that is at a submission point.
  *
+ * Instances of this type (wrapped in an `lf::intrusive_list`s node) will be passed to a worker's `thread_context`.
+ *
  * \rst
  *
  * .. warning::
  *
- *    A pointer to an `submit_h` must never be dereferenced, only ever passed to `resume()`.
+ *    A pointer to an ``submit_h`` must never be dereferenced, only ever passed to ``resume()``.
  *
  * \endrst
  */
@@ -1328,8 +1337,12 @@ struct submit_h {
 /**
  * @brief Initialize thread-local variables before a worker can resume submitted tasks.
  *
+ * \rst
+ *
  * .. warning::
- *    These should be cleaned up with `worker_finalize(...)`.
+ *    These should be cleaned up with ``worker_finalize(...)``.
+ *
+ * \endrst
  */
 template <typename Context>
 LF_NOINLINE void worker_init(Context *context) noexcept {
@@ -1345,8 +1358,12 @@ LF_NOINLINE void worker_init(Context *context) noexcept {
 /**
  * @brief Clean-up thread-local variable before destructing a worker's context.
  *
+ * \rst
+ *
  * .. warning::
- *    These must be initialized with `worker_init(...)`.
+ *    These must be initialized with ``worker_init(...)``.
+ *
+ * \endrst
  */
 template <typename Context>
 LF_NOINLINE void worker_finalize(Context *context) {
@@ -1393,6 +1410,17 @@ using intruded_h = intrusive_node<submit_h<Context> *>;
  * A context owns a LIFO stack of ``lf::async_stack``s and a LIFO stack of
  * tasks. The stack of ``lf::async_stack``s is expected to never be empty, it
  * should always be able to return an empty ``lf::async_stack``.
+ *
+ * Syntactically a `thread_context` requires:
+ *
+ * \rst
+ *
+ * .. include:: ../../include/libfork/core/meta.hpp
+ *    :code:
+ *    :start-line: 56
+ *    :end-line: 64
+ *
+ * \endrst
  */
 template <typename Context>
 concept thread_context = requires (Context ctx, async_stack *stack, intruded_h<Context> *ext, task_h<Context> *task) {
@@ -1486,9 +1514,17 @@ using value_of = typename std::remove_cvref_t<T>::value_type;
 
 /**
  * @brief Check if an invocable is suitable for use as an `lf::async` function.
+ *
+ * This requires `T` to be:
+ *
+ * - A class type.
+ * - Trivially copyable.
+ * - Default initializable.
+ * - Empty.
  */
 template <typename T>
-concept stateless = std::is_class_v<T> && std::is_trivial_v<T> && std::is_empty_v<T> && std::default_initializable<T>;
+concept stateless =
+    std::is_class_v<T> && std::is_trivially_copyable_v<T> && std::is_empty_v<T> && std::default_initializable<T>;
 
 // See "async.hpp" for the definition.
 
@@ -1521,17 +1557,16 @@ inline namespace core {
  *
  * \rst
  *
- * .. include:: ../../include/libfork/core/task.hpp
+ * .. include:: ../../include/libfork/core/meta.hpp
  *    :code:
- *    :start-line: 180
- *    :end-line: 203
+ *    :start-line: 198
+ *    :end-line: 218
  *
  * \endrst
  */
 template <typename Arg>
 concept first_arg = impl::unqualified<Arg> && requires (Arg arg) {
   //
-
   requires std::is_trivially_copyable_v<Arg>;
 
   tag_of<Arg>;
@@ -1629,8 +1664,9 @@ inline namespace core {
  *    for the reference specialization.
  *
  * .. warning::
- *    It is undefined behavior if the object is not constructed before it is used or if the lifetime of the
- *    ``lf::eventually`` ends before an object is constructed.
+ *    It is undefined behavior if the object inside an `eventually` is not constructed before it
+ *    is used or if the lifetime of the ``lf::eventually`` ends before an object is constructed.
+ *    If you are placing instances of `eventually` on the heap you need to be very careful about exceptions.
  *
  * \endrst
  */
@@ -2002,7 +2038,7 @@ inline namespace core {
 /**
  * @brief A base class for promises that provides the ``return_[...]`` methods.
  *
- * This type is in the ``core`` namespace as return ``return_[...]`` methods are part of the public API.
+ * This type is in the ``core`` namespace as the ``return_[...]`` methods are part of the public API.
  *
  * \rst
  *
@@ -2169,7 +2205,7 @@ inline namespace core {
 /**
  * @brief The return type for libfork's async functions/coroutines.
  *
- * This predominantly exists to disambiguate `lf` coroutines from other coroutines.
+ * This predominantly exists to disambiguate `libfork`s coroutines from other coroutines.
  *
  * \rst
  *
@@ -2355,7 +2391,7 @@ inline namespace core {
 /**
  * @brief Wraps a stateless callable that returns an ``lf::task``.
  *
- * Use this type to define an synchronous function.
+ * Use this alongside `lf::task` to define an synchronous function.
  */
 template <stateless Fn>
 struct [[nodiscard("async functions must be called")]] async {
@@ -2371,9 +2407,10 @@ struct [[nodiscard("async functions must be called")]] async {
    * \rst
    *
    * This is to allow concise definitions from lambdas:
+   *
    * .. code::
    *
-   *    constexpr async fib = [](auto fib, ...) -> task<int, "fib"> {
+   *    constexpr async fib = [](auto fib, ...) -> task<int> {
    *        // ...
    *    };
    *
@@ -3123,6 +3160,8 @@ inline namespace core {
 
 /**
  * @brief A concept that schedulers must satisfy.
+ *
+ * This requires only a single method, `schedule` and a nested typedef `context_type`.
  */
 template <typename Sch>
 concept scheduler = requires (Sch &&sch, intruded_h<context_of<Sch>> *ext) { std::forward<Sch>(sch).schedule(ext); };
@@ -3178,6 +3217,7 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
 
   LF_LOG("Submitting root");
 
+  // If this throws we crash the program because we cannot know if the eventually in root_block was constructed.
   std::forward<Sch>(sch).schedule(&link);
 
   LF_LOG("Acquire semaphore");
@@ -3284,14 +3324,6 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
  *
  * @brief A stand-alone, production-quality implementation of the Chase-Lev lock-free
  * single-producer multiple-consumer deque.
- *
- * \rst
- *
- * Implements the Chase-Lev deque described in the papers, `"Dynamic Circular Work-Stealing deque"
- * <https://doi.org/10.1145/1073970.1073974>`_ and `"Correct and Efficient Work-Stealing for Weak
- * Memory Models" <https://doi.org/10.1145/2442516.2442524>`_.
- *
- * \endrst
  */
 
 namespace lf {
@@ -3389,15 +3421,9 @@ enum class err : int {
 };
 
 /**
- * @brief A concept that verifies a type is suitable for use as the return type of ``deque::pop()``.
- *
- * Ideally this has the semantic implication that ``Optional`` is a ``std::optional``-like type.
- */
-template <typename Optional, typename T>
-concept optional_for = std::is_default_constructible_v<Optional> && std::constructible_from<Optional, T>;
-
-/**
  * @brief An unbounded lock-free single-producer multiple-consumer work-stealing deque.
+ *
+ * \rst
  *
  * Implements the "Chase-Lev" deque described in the papers, `"Dynamic Circular Work-Stealing deque"
  * <https://doi.org/10.1145/1073970.1073974>`_ and `"Correct and Efficient Work-Stealing for Weak
@@ -3407,7 +3433,6 @@ concept optional_for = std::is_default_constructible_v<Optional> && std::constru
  * like a LIFO stack. Others can (only) ``steal()`` data from the deque, they see a FIFO deque.
  * All threads must have finished using the deque before it is destructed.
  *
- * \rst
  *
  * Example:
  *
@@ -3676,6 +3701,14 @@ constexpr deque<T>::~deque() noexcept {
 #ifndef D8877F11_1F66_4AD0_B949_C0DFF390C2DB
 #define D8877F11_1F66_4AD0_B949_C0DFF390C2DB
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <cerrno>
 #include <climits>
 #include <cstddef>
@@ -3687,6 +3720,12 @@ constexpr deque<T>::~deque() noexcept {
 #ifdef LF_HAS_HWLOC
   #include <hwloc.h>
 #endif
+
+/**
+ * @file numa.hpp
+ *
+ * @brief An abstraction over `hwloc`.
+ */
 
 /**
  * @brief An opaque description of a set of processing units.
@@ -3721,7 +3760,7 @@ inline namespace ext {
 // ------------- hwloc can go wrong in a lot of ways... ------------- //
 
 /**
- * @brief An exception thrown when hwloc fails.
+ * @brief An exception thrown when `hwloc` fails.
  */
 struct hwloc_error : std::runtime_error {
   using std::runtime_error::runtime_error;
@@ -3754,7 +3793,7 @@ class numa_topology {
   /**
    * @brief Construct a topology.
    *
-   * If hwloc is not installed this topology is empty.
+   * If `hwloc` is not installed this topology is empty.
    */
   numa_topology();
 
@@ -3771,7 +3810,7 @@ class numa_topology {
     /**
      * @brief Bind the calling thread to the set of processing units in this `cpuset`.
      *
-     * If hwloc is not installed both handles are null and this is a noop.
+     * If `hwloc` is not installed both handles are null and this is a noop.
      */
     void bind() const;
 
@@ -3804,7 +3843,7 @@ class numa_topology {
    * @brief Distribute a vector of objects over this topology.
    *
    * This function returns a vector of `numa_node`s. Each `numa_node` contains a hierarchical view of
-   * the elements in `objects` in to.
+   * the elements in `data`.
    */
   template <typename T>
   auto distribute(std::vector<std::shared_ptr<T>> const &data) -> std::vector<numa_node<T>>;
@@ -4263,6 +4302,14 @@ class xoshiro {
 #ifndef C0E5463D_72D1_43C1_9458_9797E2F9C033
 #define C0E5463D_72D1_43C1_9458_9797E2F9C033
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <array>
 #include <bit>
 #include <concepts>
@@ -4271,6 +4318,12 @@ class xoshiro {
 #include <optional>
 #include <utility>
 
+
+/**
+ * \file ring_buffer.hpp
+ *
+ * @brief A simple ring-buffer with customizable behavior on overflow/underflow.
+ */
 
 namespace lf {
 
@@ -4657,6 +4710,7 @@ namespace lf {
  * Worker threads continuously try to steal tasks from other worker threads hence, they
  * waste CPU cycles if sufficient work is not available. This is a good choice if the number
  * of threads is equal to the number of hardware cores and the multiplexer has no other load.
+ * Additionally (if an installation of `hwloc` was found) this pool is NUMA aware.
  */
 class busy_pool {
  public:
@@ -4814,7 +4868,7 @@ inline namespace ext {
 /**
  * @brief A condition variable for lock free algorithms.
  *
- * \rst
+ *
  *
  * See http://www.1024cores.net/home/lock-free-algorithms/eventcounts for details.
  *
@@ -4836,6 +4890,8 @@ inline namespace ext {
  * or not block at all)
  *
  * This means that you can use an event_count in the following manner:
+ *
+ * \rst
  *
  * Waiter:
  *
@@ -5016,9 +5072,9 @@ void event_count::await(Pred const &condition) noexcept(std::is_nothrow_invocabl
 } // namespace lf
 
 /**
- * @file busy.hpp
+ * @file lazy_pool.hpp
  *
- * @brief A work-stealing thread pool where all the threads spin when idle.
+ * @brief A work-stealing thread pool where threads sleep when idle.
  */
 
 namespace lf {
@@ -5238,9 +5294,11 @@ class lazy_context : public numa_worker_context<lazy_context> {
 } // namespace impl
 
 /**
- * @brief A scheduler based on a traditional work-stealing thread pool.
+ * @brief A scheduler based on a [An Efficient Work-Stealing Scheduler for Task Dependency
+ * Graph](https://doi.org/10.1109/icpads51040.2020.00018)
  *
- * This pool sleeps workers which cannot find any work.
+ * This pool sleeps workers which cannot find any work, as such it should be the default choice for most
+ * use cases. Additionally (if an installation of `hwloc` was found) this pool is NUMA aware.
  */
 class lazy_pool {
  public:
@@ -5275,7 +5333,7 @@ class lazy_pool {
   auto schedule(intruded_h<context_type> *node) noexcept { m_contexts[m_dist(m_rng)]->submit(node); }
 
   /**
-   * @brief Construct a new lazy_pool object.
+   * @brief Construct a new lazy_pool object and `n` worker threads.
    *
    * @param n The number of worker threads to create, defaults to the number of hardware threads.
    */
@@ -5353,19 +5411,24 @@ class unit_pool_impl : impl::immovable<unit_pool_impl<Context>> {
 } // namespace impl
 
 inline namespace ext {
+
 /**
  * @brief A scheduler that runs all tasks inline on the current thread and keeps an internal stack.
  *
- * This is exposed/intended for testing.
+ * This is exposed/intended for testing, using this thread pool is equivalent to
+ * using a `busy_pool` with a single thread. It is different from `unit_pool` in that
+ * it explicitly disables the `fork` -> `call` optimisation.
  */
-using test_unit_pool = impl::unit_pool_impl<impl::test_immediate_context>;
+using debug_pool = impl::unit_pool_impl<impl::test_immediate_context>;
 
-static_assert(scheduler<test_unit_pool>);
+static_assert(scheduler<debug_pool>);
 
 } // namespace ext
 
 /**
  * @brief A scheduler that runs all tasks inline on the current thread.
+ *
+ * This is useful for testing/debugging/benchmarking.
  */
 using unit_pool = impl::unit_pool_impl<impl::immediate_context>;
 
