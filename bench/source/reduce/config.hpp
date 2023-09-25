@@ -8,7 +8,7 @@
 
 inline auto to_sum() -> std::vector<float> {
 
-  std::vector<float> data(100'000'000);
+  std::vector<float> data(500'000'000);
 
   lf::xoshiro rng{lf::seed, std::random_device{}};
 

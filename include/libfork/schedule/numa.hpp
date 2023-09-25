@@ -20,15 +20,16 @@
 #include "libfork/core.hpp"
 #include "libfork/core/macro.hpp"
 
-#ifdef LF_HAS_HWLOC
-  #include <hwloc.h>
-#endif
-
 /**
  * @file numa.hpp
  *
  * @brief An abstraction over `hwloc`.
  */
+
+#ifdef LF_HAS_HWLOC
+  #include <hwloc.h>
+#else
+#endif
 
 /**
  * @brief An opaque description of a set of processing units.
@@ -124,7 +125,8 @@ class numa_topology {
   /**
    * @brief Split a topology into `n` uniformly distributed handles to single processing units.
    *
-   * Here "uniformly" means they each have as much cache as possible. If this topology is empty then
+   * Here "uniformly" means we try to use the minimum number of numa nodes then divided each node
+   * such that each PU has as much cache as possible. If this topology is empty then
    * this function returns a vector of `n` empty handles.
    */
   auto split(std::size_t n) const -> std::vector<numa_handle>;
@@ -204,23 +206,53 @@ inline void numa_topology::numa_handle::bind() const {
   }
 }
 
+inline auto count_cores(hwloc_obj_t obj) -> unsigned int {
+
+  LF_ASSERT(obj);
+
+  if (obj->type == HWLOC_OBJ_CORE) {
+    return 1;
+  }
+
+  unsigned int num_cores = 0;
+
+  for (unsigned int i = 0; i < obj->arity; i++) {
+    num_cores += count_cores(obj->children[i]);
+  }
+
+  return num_cores;
+}
+
 inline auto numa_topology::split(std::size_t n) const -> std::vector<numa_handle> {
 
   if (n < 1) {
     LF_THROW(hwloc_error{"hwloc cannot distribute over less than one singlet"});
   }
 
+  // We are going to build up a list of numa packages until we have enough cores.
+
+  std::vector<hwloc_obj_t> roots;
+
+  hwloc_obj_t numa = nullptr;
+
+  for (unsigned int count = 0; count < n; count += count_cores(numa)) {
+
+    hwloc_obj_t next_numa = hwloc_get_next_obj_by_type(m_topology.get(), HWLOC_OBJ_PACKAGE, numa);
+
+    if (next_numa == nullptr) {
+      break;
+    }
+
+    roots.push_back(next_numa);
+    numa = next_numa;
+  }
+
+  // Now we distribute over the cores in each numa package, NOTE:  hwloc_distrib gives us
+  // owning pointers (not in the docs, but it does!).
+
   std::vector<hwloc_bitmap_s *> sets(n, nullptr);
 
-  hwloc_obj_t root = impl::non_null(hwloc_get_root_obj(m_topology.get()));
-
-  // hwloc_distrib gives us owning pointers (not in the docs, but it does!).
-
-  LF_ASSERT(n <= std::numeric_limits<unsigned int>::max());
-
-  auto tmp = static_cast<unsigned int>(n);
-
-  if (hwloc_distrib(m_topology.get(), &root, 1, sets.data(), tmp, INT_MAX, 0) != 0) {
+  if (hwloc_distrib(m_topology.get(), roots.data(), roots.size(), sets.data(), sets.size(), INT_MAX, 0) != 0) {
     LF_THROW(hwloc_error{"unknown hwloc error when distributing over a topology"});
   }
 
