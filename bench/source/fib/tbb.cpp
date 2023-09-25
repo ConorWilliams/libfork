@@ -3,6 +3,7 @@
 #include <tbb/task_arena.h>
 #include <tbb/task_group.h>
 
+#include "../util.hpp"
 #include "config.hpp"
 
 namespace {
@@ -44,4 +45,4 @@ void fib_tbb(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(fib_tbb)->DenseRange(1, std::thread::hardware_concurrency())->UseRealTime();
+BENCHMARK(fib_tbb)->DenseRange(1, num_threads())->UseRealTime();

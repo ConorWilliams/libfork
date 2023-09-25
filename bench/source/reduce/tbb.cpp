@@ -41,7 +41,7 @@ void reduce_tbb(benchmark::State &state) {
   std::size_t n = state.range(0);
   tbb::task_arena arena(n);
   std::vector data = to_sum();
-  auto grain_size = data.size() / (n);
+  auto grain_size = data.size() / (n * 10);
 
   volatile float output;
 

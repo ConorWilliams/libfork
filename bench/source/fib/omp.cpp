@@ -3,6 +3,7 @@
 
 #include <benchmark/benchmark.h>
 
+#include "../util.hpp"
 #include "config.hpp"
 
 namespace {
@@ -41,4 +42,4 @@ void fib_omp(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(fib_omp)->DenseRange(1, std::thread::hardware_concurrency())->UseRealTime();
+BENCHMARK(fib_omp)->DenseRange(1, num_threads())->UseRealTime();

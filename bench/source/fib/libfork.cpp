@@ -2,6 +2,7 @@
 
 #include <libfork.hpp>
 
+#include "../util.hpp"
 #include "config.hpp"
 
 namespace {
@@ -36,6 +37,6 @@ void fib_libfork(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(fib_libfork<lf::lazy_pool>)->DenseRange(1, std::thread::hardware_concurrency())->UseRealTime();
+BENCHMARK(fib_libfork<lf::lazy_pool>)->DenseRange(1, num_threads())->UseRealTime();
 
-BENCHMARK(fib_libfork<lf::busy_pool>)->DenseRange(1, std::thread::hardware_concurrency())->UseRealTime();
+BENCHMARK(fib_libfork<lf::busy_pool>)->DenseRange(1, num_threads())->UseRealTime();

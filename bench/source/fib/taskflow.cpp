@@ -2,6 +2,7 @@
 
 #include <taskflow/taskflow.hpp>
 
+#include "../util.hpp"
 #include "config.hpp"
 
 namespace {
@@ -51,4 +52,4 @@ void fib_taskflow(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(fib_taskflow)->DenseRange(1, std::thread::hardware_concurrency())->UseRealTime();
+BENCHMARK(fib_taskflow)->DenseRange(1, num_threads())->UseRealTime();

@@ -34,7 +34,7 @@ void reduce_libfork(benchmark::State &state) {
 
   std::size_t n = state.range(0);
   std::vector data = to_sum();
-  auto grain_size = data.size() / (n);
+  auto grain_size = data.size() / (n * 10);
   Sch sch(n);
 
   volatile float output;
