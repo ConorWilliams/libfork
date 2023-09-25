@@ -21,9 +21,10 @@ inline constexpr lf::async fib = [](auto fib, int n) LF_STATIC_CALL -> lf::task<
   co_return a + b;
 };
 
+template <lf::scheduler Sch>
 void fib_libfork(benchmark::State &state) {
 
-  lf::lazy_pool sch(state.range(0));
+  Sch sch(state.range(0));
 
   volatile int secret = work;
   volatile int output;
@@ -35,4 +36,6 @@ void fib_libfork(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(fib_libfork)->DenseRange(1, std::thread::hardware_concurrency())->UseRealTime();
+BENCHMARK(fib_libfork<lf::lazy_pool>)->DenseRange(1, std::thread::hardware_concurrency())->UseRealTime();
+
+BENCHMARK(fib_libfork<lf::busy_pool>)->DenseRange(1, std::thread::hardware_concurrency())->UseRealTime();

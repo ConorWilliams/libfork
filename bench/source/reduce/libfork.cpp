@@ -28,12 +28,13 @@ inline constexpr lf::async reduce = [](auto reduce, std::span<float> data, std::
   co_return a + b;
 };
 
+template <lf::scheduler Sch>
 void reduce_libfork(benchmark::State &state) {
 
   std::size_t n = state.range(0);
   std::vector data = to_sum();
   auto grain_size = data.size() / (10 * n);
-  lf::lazy_pool sch(n);
+  Sch sch(n);
 
   volatile float output;
 
@@ -44,4 +45,6 @@ void reduce_libfork(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(reduce_libfork)->DenseRange(1, std::thread::hardware_concurrency())->UseRealTime();
+BENCHMARK(reduce_libfork<lf::lazy_pool>)->DenseRange(1, std::thread::hardware_concurrency())->UseRealTime();
+
+BENCHMARK(reduce_libfork<lf::busy_pool>)->DenseRange(1, std::thread::hardware_concurrency())->UseRealTime();

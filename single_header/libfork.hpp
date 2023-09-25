@@ -3726,6 +3726,7 @@ constexpr deque<T>::~deque() noexcept {
 #include <cerrno>
 #include <climits>
 #include <cstddef>
+#include <limits>
 #include <memory>
 #include <set>
 #include <vector>
@@ -3927,7 +3928,11 @@ inline auto numa_topology::split(std::size_t n) const -> std::vector<numa_handle
 
   // hwloc_distrib gives us owning pointers (not in the docs, but it does!).
 
-  if (hwloc_distrib(m_topology.get(), &root, 1, sets.data(), n, INT_MAX, 0) != 0) {
+  LF_ASSERT(n <= std::numeric_limits<unsigned int>::max());
+
+  auto tmp = static_cast<unsigned int>(n);
+
+  if (hwloc_distrib(m_topology.get(), &root, 1, sets.data(), tmp, INT_MAX, 0) != 0) {
     LF_THROW(hwloc_error{"unknown hwloc error when distributing over a topology"});
   }
 
@@ -4045,7 +4050,7 @@ inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &dat
       } else {
         auto idx = std::distance(uniques.begin(), uniques.find(dist(i, j)));
         LF_ASSERT(idx >= 0);
-        nodes[i].neighbors[1 + idx].push_back(data[j]);
+        nodes[i].neighbors[1 + static_cast<std::size_t>(idx)].push_back(data[j]);
       }
     }
   }
