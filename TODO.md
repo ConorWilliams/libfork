@@ -28,7 +28,6 @@
 
 #### Post feature complete
 
-- [ ] Bit-cast to reinterpret_cast
 - [ ] benchmark: need some heterogeneous workloads (UT3, unbalanced tree reduce, see NOWA)
 - [ ] benchmark: A test/benchmark that stresses stack stealing?
 - [ ] benchmark: C++ library comparisons (TaskFlow, ...).
@@ -39,8 +38,8 @@
 
 #### Before release
 
-- [ ] review: `constexpr`.
-- [ ] review: `noexcept`.
+- [x] review: `constexpr`.
+- [x] review: `noexcept`.
 - [ ] review: `std::` includes in schedule/root.
 - [ ] review: `libfork/` includes
 - [ ] docs: Add vcpkg to hacking/building.

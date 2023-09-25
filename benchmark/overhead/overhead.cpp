@@ -43,8 +43,7 @@ LF_NOINLINE auto fib_ref(int n) -> int {
   return ret;
 }
 
-inline constexpr lf::async fib = [](auto fib, int n) LF_STATIC_CALL -> lf::task<int, "fib"> {
-
+inline constexpr lf::async fib = [](auto fib, int n) LF_STATIC_CALL -> lf::task<int> {
   if (n < 2) {
     co_return n;
   }
