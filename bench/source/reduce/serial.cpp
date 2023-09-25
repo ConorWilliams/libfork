@@ -6,6 +6,7 @@
 
 #include <libfork.hpp>
 
+#include "../util.hpp"
 #include "config.hpp"
 
 namespace {

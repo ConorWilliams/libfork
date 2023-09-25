@@ -4,6 +4,7 @@
 
 #include <benchmark/benchmark.h>
 
+#include "../util.hpp"
 #include "config.hpp"
 
 namespace {
@@ -33,7 +34,7 @@ void reduce_omp(benchmark::State &state) {
 
   std::size_t n = state.range(0);
   std::vector data = to_sum();
-  auto grain_size = data.size() / (10 * n);
+  auto grain_size = data.size() / (n);
 
   volatile float output;
 
@@ -46,4 +47,4 @@ void reduce_omp(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(reduce_omp)->DenseRange(1, std::thread::hardware_concurrency())->UseRealTime();
+BENCHMARK(reduce_omp)->DenseRange(1, num_threads())->UseRealTime();

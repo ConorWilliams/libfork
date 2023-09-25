@@ -6,6 +6,7 @@
 
 #include <taskflow/taskflow.hpp>
 
+#include "../util.hpp"
 #include "config.hpp"
 
 namespace {
@@ -40,7 +41,7 @@ void reduce_taskflow(benchmark::State &state) {
 
   std::size_t n = state.range(0);
   std::vector data = to_sum();
-  auto grain_size = data.size() / (10 * n);
+  auto grain_size = data.size() / (n);
   tf::Executor executor(n);
 
   volatile float output;
@@ -58,4 +59,4 @@ void reduce_taskflow(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(reduce_taskflow)->DenseRange(1, std::thread::hardware_concurrency())->UseRealTime();
+BENCHMARK(reduce_taskflow)->DenseRange(1, num_threads())->UseRealTime();

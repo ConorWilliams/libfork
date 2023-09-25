@@ -7,6 +7,7 @@
 #include <tbb/task_arena.h>
 #include <tbb/task_group.h>
 
+#include "../util.hpp"
 #include "config.hpp"
 
 namespace {
@@ -40,7 +41,7 @@ void reduce_tbb(benchmark::State &state) {
   std::size_t n = state.range(0);
   tbb::task_arena arena(n);
   std::vector data = to_sum();
-  auto grain_size = data.size() / (10 * n);
+  auto grain_size = data.size() / (n);
 
   volatile float output;
 
@@ -53,4 +54,4 @@ void reduce_tbb(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(reduce_tbb)->DenseRange(1, std::thread::hardware_concurrency())->UseRealTime();
+BENCHMARK(reduce_tbb)->DenseRange(1, num_threads())->UseRealTime();
