@@ -57,9 +57,10 @@ struct bind_task {
   template <typename F>
   LF_DEPRECATE [[nodiscard("A HOF needs to be called")]] LF_STATIC_CALL constexpr auto
   operator()(async<F>) LF_STATIC_CONST noexcept {
-    return []<typename... Args>(Args &&...args) LF_STATIC_CALL noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
-      return {{}, std::forward<Args>(args)...};
-    };
+    return []<typename... Args>(Args &&...args)
+               LF_STATIC_CALL noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
+                 return {{}, std::forward<Args>(args)...};
+               };
   }
 
 #if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
@@ -81,9 +82,10 @@ struct bind_task {
    */
   template <typename F>
   [[nodiscard("A HOF needs to be called")]] static constexpr auto operator[](async<F>) noexcept {
-    return []<typename... Args>(Args &&...args) LF_STATIC_CALL noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
-      return {{}, std::forward<Args>(args)...};
-    };
+    return []<typename... Args>(Args &&...args)
+               LF_STATIC_CALL noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
+                 return {{}, std::forward<Args>(args)...};
+               };
   }
 #endif
 };

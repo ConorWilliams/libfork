@@ -180,7 +180,8 @@ static_assert(std::is_empty_v<immovable<void>>);
  */
 template <class F>
   requires std::is_nothrow_invocable_v<F>
-class [[nodiscard("An instance of defer will execute immediately unless bound to a name!")]] defer : immovable<defer<F>> {
+class [[nodiscard("An instance of defer will execute immediately unless bound to a name!")]] defer
+    : immovable<defer<F>> {
  public:
   /**
    * @brief Construct a new Defer object.
@@ -390,7 +391,8 @@ constexpr auto non_null(T *ptr) noexcept -> T * {
  * @brief Like ``std::apply`` but reverses the argument order.
  */
 template <class F, class Tuple>
-constexpr auto apply_to(Tuple &&tup, F &&func) LF_HOF_RETURNS(std::apply(std::forward<F>(func), std::forward<Tuple>(tup)))
+constexpr auto apply_to(Tuple &&tup, F &&func)
+    LF_HOF_RETURNS(std::apply(std::forward<F>(func), std::forward<Tuple>(tup)))
 
     // -------------------------------- //
 

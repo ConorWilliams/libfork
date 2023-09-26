@@ -58,17 +58,17 @@ auto test2() -> coro<root_result<void>, void> { co_return; }
 
 // T = non-reference
 
-#define trivial(name, type)                                                                                                 \
-  auto trivial_##name() -> coro<type, int> {                                                                                \
-    int x = 23;                                                                                                             \
-    co_return 23;                                                                                                           \
-    co_return x;                                                                                                            \
-    co_return 34.;                                                                                                          \
-    co_return anything{};                                                                                                   \
-    co_return {};                                                                                                           \
-    co_return in_place{anything{}};                                                                                         \
-    co_return in_place{};                                                                                                   \
-    co_return in_place{78};                                                                                                 \
+#define trivial(name, type)                                                                                  \
+  auto trivial_##name() -> coro<type, int> {                                                                 \
+    int x = 23;                                                                                              \
+    co_return 23;                                                                                            \
+    co_return x;                                                                                             \
+    co_return 34.;                                                                                           \
+    co_return anything{};                                                                                    \
+    co_return {};                                                                                            \
+    co_return in_place{anything{}};                                                                          \
+    co_return in_place{};                                                                                    \
+    co_return in_place{78};                                                                                  \
   }
 
 trivial(void, void);
@@ -76,18 +76,18 @@ trivial(int, int);
 trivial(double, double);
 trivial(root, root_result<int>);
 
-#define vector(name, type)                                                                                                  \
-  auto vector_##name() -> coro<type, std::vector<int>> {                                                                    \
-    std::vector<int> x;                                                                                                     \
-    co_return x;                                                                                                            \
-    co_return std::vector<int>{};                                                                                           \
-    static std::vector<int> y;                                                                                              \
-    co_return y;                                                                                                            \
-    co_return {};                                                                                                           \
-    co_return {x.begin(), x.end()};                                                                                         \
-    co_return {1, 2, 3};                                                                                                    \
-    co_return in_place{};                                                                                                   \
-    co_return in_place{90};                                                                                                 \
+#define vector(name, type)                                                                                   \
+  auto vector_##name() -> coro<type, std::vector<int>> {                                                     \
+    std::vector<int> x;                                                                                      \
+    co_return x;                                                                                             \
+    co_return std::vector<int>{};                                                                            \
+    static std::vector<int> y;                                                                               \
+    co_return y;                                                                                             \
+    co_return {};                                                                                            \
+    co_return {x.begin(), x.end()};                                                                          \
+    co_return {1, 2, 3};                                                                                     \
+    co_return in_place{};                                                                                    \
+    co_return in_place{90};                                                                                  \
   }
 
 vector(void, void);
@@ -117,13 +117,13 @@ auto test_immovable() -> coro<eventually<I>, I> {
 
 int x = 23;
 
-#define reference(name, type)                                                                                               \
+#define reference(name, type)                                                                                \
   auto reference_##name() -> coro<type, int &> { co_return x; }
 
-#define rreference(name, type)                                                                                              \
-  auto rreference_##name() -> coro<type, int &&> {                                                                          \
-    co_return 23;                                                                                                           \
-    co_return std::move(x);                                                                                                 \
+#define rreference(name, type)                                                                               \
+  auto rreference_##name() -> coro<type, int &&> {                                                           \
+    co_return 23;                                                                                            \
+    co_return std::move(x);                                                                                  \
   }
 
 reference(void, void);

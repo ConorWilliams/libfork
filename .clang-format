@@ -8,8 +8,9 @@ AccessModifierOffset: -1
 IndentCaseLabels : true
 AllowShortLambdasOnASingleLine: Empty
 RequiresExpressionIndentation: OuterScope
-
-LambdaBodyIndentationKind : Signature
+BinPackArguments : false
+BinPackParameters : false
+LambdaBodyIndentation : Signature
 
 SpaceBeforeParens: Custom
 SpaceBeforeParensOptions:

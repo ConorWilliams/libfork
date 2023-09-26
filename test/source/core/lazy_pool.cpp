@@ -51,4 +51,6 @@ inline constexpr async cycle = [](auto, int n, int size) -> task<> {
 
 } // namespace
 
-TEST_CASE("lazy_pool, few jobs", "[observe]") { sync_wait(lazy_pool{}, cycle, std::thread::hardware_concurrency(), 40); }
+TEST_CASE("lazy_pool, few jobs", "[observe]") {
+  sync_wait(lazy_pool{}, cycle, std::thread::hardware_concurrency(), 40);
+}

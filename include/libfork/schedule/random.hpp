@@ -84,21 +84,26 @@ class xoshiro {
     requires requires (PRNG &&device) {
       { std::invoke(device) } -> std::unsigned_integral;
     }
-  constexpr xoshiro(impl::seed_t, PRNG &&dev) noexcept : xoshiro({scale(dev), scale(dev), scale(dev), scale(dev)}) {}
+  constexpr xoshiro(impl::seed_t, PRNG &&dev) noexcept
+      : xoshiro({scale(dev), scale(dev), scale(dev), scale(dev)}) {}
 
   /**
    * @brief Get the minimum value of the generator.
    *
    * @return The minimum value that ``xoshiro::operator()`` can return.
    */
-  [[nodiscard]] static constexpr auto min() noexcept -> result_type { return std::numeric_limits<result_type>::lowest(); }
+  [[nodiscard]] static constexpr auto min() noexcept -> result_type {
+    return std::numeric_limits<result_type>::lowest();
+  }
 
   /**
    * @brief Get the maximum value of the generator.
    *
    * @return The maximum value that ``xoshiro::operator()`` can return.
    */
-  [[nodiscard]] static constexpr auto max() noexcept -> result_type { return std::numeric_limits<result_type>::max(); }
+  [[nodiscard]] static constexpr auto max() noexcept -> result_type {
+    return std::numeric_limits<result_type>::max();
+  }
 
   /**
    * @brief Generate a random bit sequence and advance the state of the generator.

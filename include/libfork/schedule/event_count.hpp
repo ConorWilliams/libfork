@@ -29,7 +29,8 @@
  *
  * @brief A standalone adaptation of ``folly::EventCount`` utilizing C++20's atomic wait facilities.
  *
- * This file has been adapted from: ``https://github.com/facebook/folly/blob/main/folly/experimental/EventCount.h``
+ * This file has been adapted from:
+ * ``https://github.com/facebook/folly/blob/main/folly/experimental/EventCount.h``
  */
 
 namespace lf {

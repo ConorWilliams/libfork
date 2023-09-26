@@ -59,7 +59,8 @@ class ring_buffer {
    * By default, `when_full` is a no-op.
    */
   template <std::invocable<T const &> F = discard>
-  constexpr auto push(T const &val, F &&when_full = {}) noexcept(std::is_nothrow_invocable_v<F, T const &>) -> bool {
+  constexpr auto push(T const &val, F &&when_full = {}) noexcept(std::is_nothrow_invocable_v<F, T const &>)
+      -> bool {
     if (full()) {
       std::invoke(std::forward<F>(when_full), val);
       return false;
@@ -71,12 +72,13 @@ class ring_buffer {
   /**
    * @brief Pops (removes and returns) the last value pushed into the ring-buffer.
    *
-   * If the buffer is empty calls `when_empty` and returns the result. By default, `when_empty` is a no-op that returns
-   * a null `std::optional<T>`.
+   * If the buffer is empty calls `when_empty` and returns the result. By default, `when_empty` is a no-op
+   * that returns a null `std::optional<T>`.
    */
   template <std::invocable F = impl::return_nullopt<T>>
     requires std::convertible_to<T &, std::invoke_result_t<F>>
-  constexpr auto pop(F &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<F>) -> std::invoke_result_t<F> {
+  constexpr auto pop(F &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<F>)
+      -> std::invoke_result_t<F> {
     if (empty()) {
       return std::invoke(std::forward<F>(when_empty));
     }

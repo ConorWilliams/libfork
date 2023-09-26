@@ -121,17 +121,20 @@
 
 #ifndef LF_ASYNC_STACK_SIZE
   /**
-   * @brief __[public]__ A customizable stack size for ``async_stack``'s (in multiples of 4 kibibytes i.e. the page size).
+   * @brief __[public]__ A customizable stack size for ``async_stack``'s (in multiples of 4 kibibytes i.e. the
+   * page size).
    *
    * You can override this by defining ``LF_ASYNC_STACK_SIZE`` to a power of two.
    */
   #define LF_ASYNC_STACK_SIZE 256
 #endif
 
-static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZE - 1)), "Must be a power of 2");
+static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZE - 1)),
+              "Must be a power of 2");
 
 /**
- * @brief Use to conditionally decorate lambdas and ``operator()`` (alongside ``LF_STATIC_CONST``) with ``static``.
+ * @brief Use to conditionally decorate lambdas and ``operator()`` (alongside ``LF_STATIC_CONST``) with
+ * ``static``.
  */
 #ifdef __cpp_static_call_operator
   #define LF_STATIC_CALL static
@@ -227,16 +230,16 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
 #elif defined(__clang__)
   #define LF_ASSUME(expr) __builtin_assume(bool(expr))
 #elif defined(__GNUC__) && !defined(__ICC)
-  #define LF_ASSUME(expr)                                                                                                   \
-    if (bool(expr)) {                                                                                                       \
-    } else {                                                                                                                \
-      __builtin_unreachable();                                                                                              \
+  #define LF_ASSUME(expr)                                                                                    \
+    if (bool(expr)) {                                                                                        \
+    } else {                                                                                                 \
+      __builtin_unreachable();                                                                               \
     }
 #elif defined(_MSC_VER) || defined(__ICC)
   #define LF_ASSUME(expr) __assume(bool(expr))
 #else
-  #define LF_ASSUME(expr)                                                                                                   \
-    do {                                                                                                                    \
+  #define LF_ASSUME(expr)                                                                                    \
+    do {                                                                                                     \
     } while (false)
 #endif
 
@@ -347,11 +350,11 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
       #define LF_SYNC_COUT std::cout << std::this_thread::get_id()
     #endif
 
-    #define LF_LOG(message, ...)                                                                                            \
-      do {                                                                                                                  \
-        if (!std::is_constant_evaluated()) {                                                                                \
-          LF_SYNC_COUT << ": " << LF_FORMAT(message __VA_OPT__(, ) __VA_ARGS__) << '\n';                                    \
-        }                                                                                                                   \
+    #define LF_LOG(message, ...)                                                                             \
+      do {                                                                                                   \
+        if (!std::is_constant_evaluated()) {                                                                 \
+          LF_SYNC_COUT << ": " << LF_FORMAT(message __VA_OPT__(, ) __VA_ARGS__) << '\n';                     \
+        }                                                                                                    \
       } while (false)
   #else
     #define LF_LOG(head, ...)
@@ -569,7 +572,8 @@ static_assert(std::is_empty_v<immovable<void>>);
  */
 template <class F>
   requires std::is_nothrow_invocable_v<F>
-class [[nodiscard("An instance of defer will execute immediately unless bound to a name!")]] defer : immovable<defer<F>> {
+class [[nodiscard("An instance of defer will execute immediately unless bound to a name!")]] defer
+    : immovable<defer<F>> {
  public:
   /**
    * @brief Construct a new Defer object.
@@ -779,7 +783,8 @@ constexpr auto non_null(T *ptr) noexcept -> T * {
  * @brief Like ``std::apply`` but reverses the argument order.
  */
 template <class F, class Tuple>
-constexpr auto apply_to(Tuple &&tup, F &&func) LF_HOF_RETURNS(std::apply(std::forward<F>(func), std::forward<Tuple>(tup)))
+constexpr auto apply_to(Tuple &&tup, F &&func)
+    LF_HOF_RETURNS(std::apply(std::forward<F>(func), std::forward<Tuple>(tup)))
 
     // -------------------------------- //
 
@@ -1020,7 +1025,9 @@ static_assert(sizeof(async_stack) == impl::k_stack_size, "Spurious padding in as
 
 namespace impl {
 
-inline auto stack_as_bytes(async_stack *stack) noexcept -> std::byte * { return std::launder(stack->m_buf + k_stack_size); }
+inline auto stack_as_bytes(async_stack *stack) noexcept -> std::byte * {
+  return std::launder(stack->m_buf + k_stack_size);
+}
 
 inline auto bytes_to_stack(std::byte *bytes) noexcept -> async_stack * {
 #ifdef __cpp_lib_is_pointer_interconvertible
@@ -1213,7 +1220,9 @@ struct frame_block : private immovable<frame_block>, debug_block {
   /**
    * @brief Perform a `.load(order)` on the atomic join counter.
    */
-  [[nodiscard]] auto load_joins(std::memory_order order) const noexcept -> std::uint32_t { return m_join.load(order); }
+  [[nodiscard]] auto load_joins(std::memory_order order) const noexcept -> std::uint32_t {
+    return m_join.load(order);
+  }
 
   /**
    * @brief Perform a `.fetch_sub(val, order)` on the atomic join counter.
@@ -1277,8 +1286,8 @@ struct promise_alloc_heap : frame_block {
 /**
  * @brief A base class for promises that allocates on an `async_stack`.
  *
- * When a promise deriving from this class is constructed 'tls::asp' will be set and when it is destroyed 'tls::asp'
- * will be returned to the previous frame.
+ * When a promise deriving from this class is constructed 'tls::asp' will be set and when it is destroyed
+ * 'tls::asp' will be returned to the previous frame.
  */
 struct promise_alloc_stack : frame_block {
 
@@ -1348,7 +1357,8 @@ struct task_h {
 /**
  * @brief A type safe wrapper around a handle to a coroutine that is at a submission point.
  *
- * Instances of this type (wrapped in an `lf::intrusive_list`s node) will be passed to a worker's `thread_context`.
+ * Instances of this type (wrapped in an `lf::intrusive_list`s node) will be passed to a worker's
+ * `thread_context`.
  *
  * \rst
  *
@@ -1461,14 +1471,17 @@ using intruded_h = intrusive_node<submit_h<Context> *>;
  * \endrst
  */
 template <typename Context>
-concept thread_context = requires (Context ctx, async_stack *stack, intruded_h<Context> *ext, task_h<Context> *task) {
-  { ctx.max_threads() } -> std::same_as<std::size_t>;           // The maximum number of threads.
-  { ctx.submit(ext) };                                          // Submit an external task to the context.
-  { ctx.task_pop() } -> std::convertible_to<task_h<Context> *>; // If the stack is empty, return a null pointer.
-  { ctx.task_push(task) };                                      // Push a non-null pointer.
-  { ctx.stack_pop() } -> std::convertible_to<async_stack *>;    // Return a non-null pointer
-  { ctx.stack_push(stack) };                                    // Push a non-null pointer
-};
+concept thread_context =
+    requires (Context ctx, async_stack *stack, intruded_h<Context> *ext, task_h<Context> *task) {
+      { ctx.max_threads() } -> std::same_as<std::size_t>; // The maximum number of threads.
+      { ctx.submit(ext) };                                // Submit an external task to the context.
+      {
+        ctx.task_pop()
+      } -> std::convertible_to<task_h<Context> *>; // If the stack is empty, return a null pointer.
+      { ctx.task_push(task) };                     // Push a non-null pointer.
+      { ctx.stack_pop() } -> std::convertible_to<async_stack *>; // Return a non-null pointer
+      { ctx.stack_push(stack) };                                 // Push a non-null pointer
+    };
 
 namespace detail {
 
@@ -1561,8 +1574,8 @@ using value_of = typename std::remove_cvref_t<T>::value_type;
  * - Empty.
  */
 template <typename T>
-concept stateless =
-    std::is_class_v<T> && std::is_trivially_copyable_v<T> && std::is_empty_v<T> && std::default_initializable<T>;
+concept stateless = std::is_class_v<T> && std::is_trivially_copyable_v<T> && std::is_empty_v<T> &&
+                    std::default_initializable<T>;
 
 // See "async.hpp" for the definition.
 
@@ -1590,8 +1603,8 @@ inline namespace core {
 /**
  * @brief The API of the first argument passed to an async function.
  *
- * All async functions must have a templated first arguments, this argument will be generated by the compiler and encodes
- * many useful/queryable properties. A full specification is give below:
+ * All async functions must have a templated first arguments, this argument will be generated by the compiler
+ * and encodes many useful/queryable properties. A full specification is give below:
  *
  * \rst
  *
@@ -2080,8 +2093,8 @@ inline namespace core {
  *
  * \rst
  *
- * In general an async function is are trying to emulate the requirements/interface of a regular function that looks like
- * this:
+ * In general an async function is are trying to emulate the requirements/interface of a regular function that
+ * looks like this:
  *
  * .. code::
  *
@@ -2099,8 +2112,10 @@ inline namespace core {
  *
  *    val = foo()
  *
- * Hence in general we require that for ``co_await expr`` that ``expr`` is ``std::convertible_to`` ``T`` and that ``T`` is
- * ``std::is_assignable`` to ``R``. When possible we try to elide the intermediate ``T`` and assign directly to ``R``.
+ * Hence in general we require that for ``co_await expr`` that ``expr`` is ``std::convertible_to`` ``T`` and
+ * that ``T`` is
+ * ``std::is_assignable`` to ``R``. When possible we try to elide the intermediate ``T`` and assign directly
+ * to ``R``.
  *
  * .. note::
  *    This documentation is generated from the non-reference specialization, see the source
@@ -2604,9 +2619,10 @@ struct bind_task {
   template <typename F>
   LF_DEPRECATE [[nodiscard("A HOF needs to be called")]] LF_STATIC_CALL constexpr auto
   operator()(async<F>) LF_STATIC_CONST noexcept {
-    return []<typename... Args>(Args &&...args) LF_STATIC_CALL noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
-      return {{}, std::forward<Args>(args)...};
-    };
+    return []<typename... Args>(Args &&...args)
+               LF_STATIC_CALL noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
+                 return {{}, std::forward<Args>(args)...};
+               };
   }
 
 #if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
@@ -2628,9 +2644,10 @@ struct bind_task {
    */
   template <typename F>
   [[nodiscard("A HOF needs to be called")]] static constexpr auto operator[](async<F>) noexcept {
-    return []<typename... Args>(Args &&...args) LF_STATIC_CALL noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
-      return {{}, std::forward<Args>(args)...};
-    };
+    return []<typename... Args>(Args &&...args)
+               LF_STATIC_CALL noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
+                 return {{}, std::forward<Args>(args)...};
+               };
   }
 #endif
 };
@@ -3303,18 +3320,18 @@ namespace impl {
  * @brief Implements the `lift` higher-order function for forked/non-forked
  * functions.
  */
-template <typename F> struct lifted {
+template <typename F>
+struct lifted {
   template <first_arg Head, typename... Args>
-    requires(tag_of<Head> != tag::fork && std::invocable<F, Args...>)
-  LF_STATIC_CALL auto operator()(Head, Args &&...args)
-      LF_STATIC_CONST->task<std::invoke_result_t<F, Args...>> {
+    requires (tag_of<Head> != tag::fork && std::invocable<F, Args...>)
+  LF_STATIC_CALL auto operator()(Head,
+                                 Args &&...args) LF_STATIC_CONST->task<std::invoke_result_t<F, Args...>> {
     co_return std::invoke(F{}, std::forward<Args>(args)...);
   }
 
   template <typename Head, typename... Args>
-    requires(tag_of<Head> == tag::fork && std::invocable<F, Args...>)
-  LF_STATIC_CALL auto operator()(Head, Args... args)
-      LF_STATIC_CONST->task<std::invoke_result_t<F, Args...>> {
+    requires (tag_of<Head> == tag::fork && std::invocable<F, Args...>)
+  LF_STATIC_CALL auto operator()(Head, Args... args) LF_STATIC_CONST->task<std::invoke_result_t<F, Args...>> {
     co_return std::invoke(F{}, std::move(args)...);
   }
 };
@@ -3365,9 +3382,8 @@ consteval auto lift(F) noexcept -> async<impl::lifted<F>> {
  * This is useful for passing overloaded/template functions to higher order
  * functions like `lf::fork`, `lf::call` etc.
  */
-#define LF_LIFT(overload_set)                                                  \
-  [](auto &&...args) LF_STATIC_CALL LF_HOF_RETURNS(                            \
-      overload_set(std::forward<decltype(args)>(args)...))
+#define LF_LIFT(overload_set)                                                                                \
+  [](auto &&...args) LF_STATIC_CALL LF_HOF_RETURNS(overload_set(std::forward<decltype(args)>(args)...))
 
 /**
  * @brief Lift an overload-set/template into an async function, equivalent to
@@ -3472,8 +3488,8 @@ inline namespace ext {
  * @brief A concept that verifies a type is trivially semi-regular and lock-free.
  */
 template <typename T>
-concept simple =
-    std::is_default_constructible_v<T> && std::is_trivially_copyable_v<T> && std::atomic<T>::is_always_lock_free;
+concept simple = std::is_default_constructible_v<T> && std::is_trivially_copyable_v<T> &&
+                 std::atomic<T>::is_always_lock_free;
 
 } // namespace ext
 
@@ -3506,14 +3522,16 @@ struct atomic_ring_buf {
    */
   constexpr auto store(std::ptrdiff_t index, T const &val) noexcept -> void {
     LF_ASSERT(index >= 0);
-    (m_buf.get() + (index & m_mask))->store(val, std::memory_order_relaxed); // NOLINT Avoid cast to std::size_t.
+    (m_buf.get() + (index & m_mask))
+        ->store(val, std::memory_order_relaxed); // NOLINT Avoid cast to std::size_t.
   }
   /**
    * @brief Load value at ``index % this->capacity()``.
    */
   [[nodiscard]] constexpr auto load(std::ptrdiff_t index) const noexcept -> T {
     LF_ASSERT(index >= 0);
-    return (m_buf.get() + (index & m_mask))->load(std::memory_order_relaxed); // NOLINT Avoid cast to std::size_t.
+    return (m_buf.get() + (index & m_mask))
+        ->load(std::memory_order_relaxed); // NOLINT Avoid cast to std::size_t.
   }
   /**
    * @brief Copies elements in range ``[bottom, top)`` into a new ring buffer.
@@ -3524,8 +3542,9 @@ struct atomic_ring_buf {
    * @param bottom The bottom of the range to copy from (inclusive).
    * @param top The top of the range to copy from (exclusive).
    */
-  [[nodiscard]] constexpr auto resize(std::ptrdiff_t bottom, std::ptrdiff_t top) const -> atomic_ring_buf<T> * { // NOLINT
-    auto *ptr = new atomic_ring_buf{2 * m_cap};                                                                  // NOLINT
+  [[nodiscard]] constexpr auto resize(std::ptrdiff_t bottom, std::ptrdiff_t top) const
+      -> atomic_ring_buf<T> * {                 // NOLINT
+    auto *ptr = new atomic_ring_buf{2 * m_cap}; // NOLINT
     for (std::ptrdiff_t i = top; i != bottom; ++i) {
       ptr->store(i, load(i));
     }
@@ -3633,8 +3652,8 @@ class deque : impl::immovable<deque<T>> {
   /**
    * @brief Pop an item from the deque.
    *
-   * Only the owner thread can pop out an item from the deque. If the buffer is empty calls `when_empty` and returns the
-   * result. By default, `when_empty` is a no-op that returns a null `std::optional<T>`.
+   * Only the owner thread can pop out an item from the deque. If the buffer is empty calls `when_empty` and
+   * returns the result. By default, `when_empty` is a no-op that returns a null `std::optional<T>`.
    */
   template <std::invocable F = impl::return_nullopt<T>>
     requires std::convertible_to<T, std::invoke_result_t<F>>
@@ -3710,7 +3729,8 @@ class deque : impl::immovable<deque<T>> {
   alignas(impl::k_cache_line) std::atomic<std::ptrdiff_t> m_top;
   alignas(impl::k_cache_line) std::atomic<std::ptrdiff_t> m_bottom;
   alignas(impl::k_cache_line) std::atomic<impl::atomic_ring_buf<T> *> m_buf;
-  alignas(impl::k_cache_line) std::vector<std::unique_ptr<impl::atomic_ring_buf<T>>> m_garbage; // Store old buffers here.
+  alignas(impl::k_cache_line)
+      std::vector<std::unique_ptr<impl::atomic_ring_buf<T>>> m_garbage; // Store old buffers here.
 
   // Convenience aliases.
   static constexpr std::memory_order relaxed = std::memory_order_relaxed;
@@ -3721,9 +3741,10 @@ class deque : impl::immovable<deque<T>> {
 };
 
 template <simple T>
-constexpr deque<T>::deque(std::ptrdiff_t cap) : m_top(0),
-                                                m_bottom(0),
-                                                m_buf(new impl::atomic_ring_buf<T>{cap}) {
+constexpr deque<T>::deque(std::ptrdiff_t cap)
+    : m_top(0),
+      m_bottom(0),
+      m_buf(new impl::atomic_ring_buf<T>{cap}) {
   m_garbage.reserve(k_garbage_reserve);
 }
 
@@ -3774,7 +3795,8 @@ constexpr auto deque<T>::push(T const &val) noexcept -> void {
 template <simple T>
 template <std::invocable F>
   requires std::convertible_to<T, std::invoke_result_t<F>>
-constexpr auto deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_v<F>) -> std::invoke_result_t<F> {
+constexpr auto deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_v<F>)
+    -> std::invoke_result_t<F> {
 
   std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1; //
   impl::atomic_ring_buf<T> *buf = m_buf.load(relaxed);      //
@@ -3863,7 +3885,7 @@ constexpr deque<T>::~deque() noexcept {
  */
 
 #ifdef LF_HAS_HWLOC
-#include <hwloc.h>
+  #include <hwloc.h>
 #else
 #endif
 
@@ -3925,8 +3947,7 @@ enum class numa_strategy {
 class numa_topology {
 
   struct bitmap_deleter {
-    LF_STATIC_CALL void
-    operator()(hwloc_bitmap_s *ptr) LF_STATIC_CONST noexcept {
+    LF_STATIC_CALL void operator()(hwloc_bitmap_s *ptr) LF_STATIC_CONST noexcept {
 #ifdef LF_HAS_HWLOC
       hwloc_bitmap_free(ptr);
 #else
@@ -3939,7 +3960,7 @@ class numa_topology {
 
   using shared_topo = std::shared_ptr<hwloc_topology>;
 
-public:
+ public:
   /**
    * @brief Construct a topology.
    *
@@ -3956,7 +3977,7 @@ public:
    * A handle to a single processing unit in a NUMA computer.
    */
   class numa_handle {
-  public:
+   public:
     /**
      * @brief Bind the calling thread to the set of processing units in this
      * `cpuset`.
@@ -3965,8 +3986,7 @@ public:
      */
     void bind() const;
 
-    shared_topo topo =
-        nullptr; ///< A shared handle to topology this handle belongs to.
+    shared_topo topo = nullptr; ///< A shared handle to topology this handle belongs to.
     unique_cpup cpup = nullptr; ///< A unique handle to processing units in
                                 ///< `topo` that this handle represents.
   };
@@ -3979,8 +3999,7 @@ public:
    * divided each node such that each PU has as much cache as possible. If this
    * topology is empty then this function returns a vector of `n` empty handles.
    */
-  auto split(std::size_t n, numa_strategy strategy = numa_strategy::seq) const
-      -> std::vector<numa_handle>;
+  auto split(std::size_t n, numa_strategy strategy = numa_strategy::seq) const -> std::vector<numa_handle>;
 
   /**
    * @brief A single-threads hierarchical view of a set of objects.
@@ -3991,7 +4010,8 @@ public:
    * subsequent neighbors-list has elements that are topologically more distant
    * from the element in the first neighbour-list.
    */
-  template <typename T> struct numa_node : numa_handle {
+  template <typename T>
+  struct numa_node : numa_handle {
     /**
      * @brief A list of neighbors-lists.
      */
@@ -4005,11 +4025,10 @@ public:
    * hierarchical view of the elements in `data`.
    */
   template <typename T>
-  auto distribute(std::vector<std::shared_ptr<T>> const &data,
-                  numa_strategy strategy = numa_strategy::seq)
+  auto distribute(std::vector<std::shared_ptr<T>> const &data, numa_strategy strategy = numa_strategy::seq)
       -> std::vector<numa_node<T>>;
 
-private:
+ private:
   shared_topo m_topology = nullptr;
 };
 
@@ -4021,8 +4040,7 @@ private:
 inline numa_topology::numa_topology() {
 
   struct topology_deleter {
-    LF_STATIC_CALL void
-    operator()(hwloc_topology *ptr) LF_STATIC_CONST noexcept {
+    LF_STATIC_CALL void operator()(hwloc_topology *ptr) LF_STATIC_CONST noexcept {
       if (ptr != nullptr) {
         hwloc_topology_destroy(ptr);
       }
@@ -4048,20 +4066,19 @@ inline void numa_topology::numa_handle::bind() const {
   LF_ASSERT(cpup);
 
   switch (hwloc_set_cpubind(topo.get(), cpup.get(), HWLOC_CPUBIND_THREAD)) {
-  case 0:
-    return;
-  case -1:
-    switch (errno) {
-    case ENOSYS:
-      LF_THROW(
-          hwloc_error{"hwloc's cpu binding is not supported on this system"});
-    case EXDEV:
-      LF_THROW(hwloc_error{"hwloc cannot enforce the requested binding"});
+    case 0:
+      return;
+    case -1:
+      switch (errno) {
+        case ENOSYS:
+          LF_THROW(hwloc_error{"hwloc's cpu binding is not supported on this system"});
+        case EXDEV:
+          LF_THROW(hwloc_error{"hwloc cannot enforce the requested binding"});
+        default:
+          LF_THROW(hwloc_error{"hwloc cpu bind reported an unknown error"});
+      };
     default:
-      LF_THROW(hwloc_error{"hwloc cpu bind reported an unknown error"});
-    };
-  default:
-    LF_THROW(hwloc_error{"hwloc cpu bind returned un unexpected value"});
+      LF_THROW(hwloc_error{"hwloc cpu bind returned un unexpected value"});
   }
 }
 
@@ -4082,8 +4099,7 @@ inline auto count_cores(hwloc_obj_t obj) -> unsigned int {
   return num_cores;
 }
 
-inline auto numa_topology::split(std::size_t n, numa_strategy strategy) const
-    -> std::vector<numa_handle> {
+inline auto numa_topology::split(std::size_t n, numa_strategy strategy) const -> std::vector<numa_handle> {
 
   if (n < 1) {
     LF_THROW(hwloc_error{"hwloc cannot distribute over less than one singlet"});
@@ -4100,8 +4116,7 @@ inline auto numa_topology::split(std::size_t n, numa_strategy strategy) const
 
     for (unsigned int count = 0; count < n; count += count_cores(numa)) {
 
-      hwloc_obj_t next_numa =
-          hwloc_get_next_obj_by_type(m_topology.get(), HWLOC_OBJ_PACKAGE, numa);
+      hwloc_obj_t next_numa = hwloc_get_next_obj_by_type(m_topology.get(), HWLOC_OBJ_PACKAGE, numa);
 
       if (next_numa == nullptr) {
         break;
@@ -4119,28 +4134,26 @@ inline auto numa_topology::split(std::size_t n, numa_strategy strategy) const
 
   std::vector<hwloc_bitmap_s *> sets(n, nullptr);
 
-  if (hwloc_distrib(m_topology.get(), roots.data(), roots.size(), sets.data(),
-                    sets.size(), INT_MAX, 0) != 0) {
-    LF_THROW(
-        hwloc_error{"unknown hwloc error when distributing over a topology"});
+  if (hwloc_distrib(m_topology.get(), roots.data(), roots.size(), sets.data(), sets.size(), INT_MAX, 0) !=
+      0) {
+    LF_THROW(hwloc_error{"unknown hwloc error when distributing over a topology"});
   }
 
   // Need ownership before map for exception safety.
   std::vector<unique_cpup> singlets{sets.begin(), sets.end()};
 
-  return impl::map(
-      std::move(singlets), [&](unique_cpup &&singlet) -> numa_handle {
-        //
-        if (!singlet) {
-          LF_THROW(hwloc_error{"hwloc_distrib returned a nullptr"});
-        }
+  return impl::map(std::move(singlets), [&](unique_cpup &&singlet) -> numa_handle {
+    //
+    if (!singlet) {
+      LF_THROW(hwloc_error{"hwloc_distrib returned a nullptr"});
+    }
 
-        if (hwloc_bitmap_singlify(singlet.get()) != 0) {
-          LF_THROW(hwloc_error{"unknown hwloc error when singlify a bitmap"});
-        }
+    if (hwloc_bitmap_singlify(singlet.get()) != 0) {
+      LF_THROW(hwloc_error{"unknown hwloc error when singlify a bitmap"});
+    }
 
-        return {m_topology, std::move(singlet)};
-      });
+    return {m_topology, std::move(singlet)};
+  });
 }
 
 namespace detail {
@@ -4149,22 +4162,21 @@ class distance_matrix {
 
   using numa_handle = numa_topology::numa_handle;
 
-public:
+ public:
   /**
    * @brief Compute the topological distance between all pairs of objects in
    * `obj`.
    */
   explicit distance_matrix(std::vector<numa_handle> const &handles)
-      : m_size{handles.size()}, m_matrix(m_size * m_size) {
+      : m_size{handles.size()},
+        m_matrix(m_size * m_size) {
 
     // Transform into hwloc's internal representation of nodes in the topology
     // tree.
 
-    std::vector obj =
-        impl::map(handles, [](numa_handle const &handle) -> hwloc_obj_t {
-          return hwloc_get_obj_covering_cpuset(handle.topo.get(),
-                                               handle.cpup.get());
-        });
+    std::vector obj = impl::map(handles, [](numa_handle const &handle) -> hwloc_obj_t {
+      return hwloc_get_obj_covering_cpuset(handle.topo.get(), handle.cpup.get());
+    });
 
     for (auto *elem : obj) {
       if (elem == nullptr) {
@@ -4184,8 +4196,7 @@ public:
           LF_THROW(hwloc_error{"numa_handles are in different topologies"});
         }
 
-        hwloc_obj_t ancestor =
-            hwloc_get_common_ancestor_obj(topo_1, obj[i], obj[j]);
+        hwloc_obj_t ancestor = hwloc_get_common_ancestor_obj(topo_1, obj[i], obj[j]);
 
         if (ancestor == nullptr) {
           LF_THROW(hwloc_error{"failed to find a common ancestor"});
@@ -4202,13 +4213,11 @@ public:
     }
   }
 
-  auto operator()(std::size_t i, std::size_t j) const noexcept -> int {
-    return m_matrix[i * m_size + j];
-  }
+  auto operator()(std::size_t i, std::size_t j) const noexcept -> int { return m_matrix[i * m_size + j]; }
 
   auto size() const noexcept -> std::size_t { return m_size; }
 
-private:
+ private:
   std::size_t m_size;
   std::vector<int> m_matrix;
 };
@@ -4216,9 +4225,8 @@ private:
 } // namespace detail
 
 template <typename T>
-inline auto
-numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data,
-                          numa_strategy strategy) -> std::vector<numa_node<T>> {
+inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data, numa_strategy strategy)
+    -> std::vector<numa_node<T>> {
 
   std::vector handles = split(data.size(), strategy);
 
@@ -4226,10 +4234,9 @@ numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data,
 
   detail::distance_matrix dist{handles};
 
-  std::vector<numa_node<T>> nodes =
-      impl::map(std::move(handles), [](numa_handle &&handle) -> numa_node<T> {
-        return {std::move(handle), {}};
-      });
+  std::vector<numa_node<T>> nodes = impl::map(std::move(handles), [](numa_handle &&handle) -> numa_node<T> {
+    return {std::move(handle), {}};
+  });
 
   // Compute the neighbors-lists.
 
@@ -4251,8 +4258,7 @@ numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data,
       } else {
         auto idx = std::distance(uniques.begin(), uniques.find(dist(i, j)));
         LF_ASSERT(idx >= 0);
-        nodes[i].neighbors[1 + static_cast<std::size_t>(idx)].push_back(
-            data[j]);
+        nodes[i].neighbors[1 + static_cast<std::size_t>(idx)].push_back(data[j]);
       }
     }
   }
@@ -4263,23 +4269,23 @@ numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data,
 #else
 
 inline numa_topology::numa_topology()
-    : m_topology{nullptr, [](hwloc_topology *ptr) { LF_ASSERT(!ptr); }} {}
+    : m_topology{nullptr, [](hwloc_topology *ptr) {
+                   LF_ASSERT(!ptr);
+                 }} {}
 
 inline void numa_topology::numa_handle::bind() const {
   LF_ASSERT(!topo);
   LF_ASSERT(!cpup);
 }
 
-inline auto numa_topology::split(std::size_t n,
-                                 numa_strategy /* strategy */) const
+inline auto numa_topology::split(std::size_t n, numa_strategy /* strategy */) const
     -> std::vector<numa_handle> {
   return std::vector<numa_handle>(n);
 }
 
 template <typename T>
-inline auto
-numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data,
-                          numa_strategy strategy) -> std::vector<numa_node<T>> {
+inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data, numa_strategy strategy)
+    -> std::vector<numa_node<T>> {
 
   std::vector<numa_handle> handles = split(data.size(), strategy);
 
@@ -4400,21 +4406,26 @@ class xoshiro {
     requires requires (PRNG &&device) {
       { std::invoke(device) } -> std::unsigned_integral;
     }
-  constexpr xoshiro(impl::seed_t, PRNG &&dev) noexcept : xoshiro({scale(dev), scale(dev), scale(dev), scale(dev)}) {}
+  constexpr xoshiro(impl::seed_t, PRNG &&dev) noexcept
+      : xoshiro({scale(dev), scale(dev), scale(dev), scale(dev)}) {}
 
   /**
    * @brief Get the minimum value of the generator.
    *
    * @return The minimum value that ``xoshiro::operator()`` can return.
    */
-  [[nodiscard]] static constexpr auto min() noexcept -> result_type { return std::numeric_limits<result_type>::lowest(); }
+  [[nodiscard]] static constexpr auto min() noexcept -> result_type {
+    return std::numeric_limits<result_type>::lowest();
+  }
 
   /**
    * @brief Get the maximum value of the generator.
    *
    * @return The maximum value that ``xoshiro::operator()`` can return.
    */
-  [[nodiscard]] static constexpr auto max() noexcept -> result_type { return std::numeric_limits<result_type>::max(); }
+  [[nodiscard]] static constexpr auto max() noexcept -> result_type {
+    return std::numeric_limits<result_type>::max();
+  }
 
   /**
    * @brief Generate a random bit sequence and advance the state of the generator.
@@ -4584,7 +4595,8 @@ class ring_buffer {
    * By default, `when_full` is a no-op.
    */
   template <std::invocable<T const &> F = discard>
-  constexpr auto push(T const &val, F &&when_full = {}) noexcept(std::is_nothrow_invocable_v<F, T const &>) -> bool {
+  constexpr auto push(T const &val, F &&when_full = {}) noexcept(std::is_nothrow_invocable_v<F, T const &>)
+      -> bool {
     if (full()) {
       std::invoke(std::forward<F>(when_full), val);
       return false;
@@ -4596,12 +4608,13 @@ class ring_buffer {
   /**
    * @brief Pops (removes and returns) the last value pushed into the ring-buffer.
    *
-   * If the buffer is empty calls `when_empty` and returns the result. By default, `when_empty` is a no-op that returns
-   * a null `std::optional<T>`.
+   * If the buffer is empty calls `when_empty` and returns the result. By default, `when_empty` is a no-op
+   * that returns a null `std::optional<T>`.
    */
   template <std::invocable F = impl::return_nullopt<T>>
     requires std::convertible_to<T &, std::invoke_result_t<F>>
-  constexpr auto pop(F &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<F>) -> std::invoke_result_t<F> {
+  constexpr auto pop(F &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<F>)
+      -> std::invoke_result_t<F> {
     if (empty()) {
       return std::invoke(std::forward<F>(when_empty));
     }
@@ -5099,7 +5112,8 @@ static_assert(scheduler<busy_pool>);
  *
  * @brief A standalone adaptation of ``folly::EventCount`` utilizing C++20's atomic wait facilities.
  *
- * This file has been adapted from: ``https://github.com/facebook/folly/blob/main/folly/experimental/EventCount.h``
+ * This file has been adapted from:
+ * ``https://github.com/facebook/folly/blob/main/folly/experimental/EventCount.h``
  */
 
 namespace lf {

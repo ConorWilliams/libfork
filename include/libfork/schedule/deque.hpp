@@ -38,8 +38,8 @@ inline namespace ext {
  * @brief A concept that verifies a type is trivially semi-regular and lock-free.
  */
 template <typename T>
-concept simple =
-    std::is_default_constructible_v<T> && std::is_trivially_copyable_v<T> && std::atomic<T>::is_always_lock_free;
+concept simple = std::is_default_constructible_v<T> && std::is_trivially_copyable_v<T> &&
+                 std::atomic<T>::is_always_lock_free;
 
 } // namespace ext
 
@@ -72,14 +72,16 @@ struct atomic_ring_buf {
    */
   constexpr auto store(std::ptrdiff_t index, T const &val) noexcept -> void {
     LF_ASSERT(index >= 0);
-    (m_buf.get() + (index & m_mask))->store(val, std::memory_order_relaxed); // NOLINT Avoid cast to std::size_t.
+    (m_buf.get() + (index & m_mask))
+        ->store(val, std::memory_order_relaxed); // NOLINT Avoid cast to std::size_t.
   }
   /**
    * @brief Load value at ``index % this->capacity()``.
    */
   [[nodiscard]] constexpr auto load(std::ptrdiff_t index) const noexcept -> T {
     LF_ASSERT(index >= 0);
-    return (m_buf.get() + (index & m_mask))->load(std::memory_order_relaxed); // NOLINT Avoid cast to std::size_t.
+    return (m_buf.get() + (index & m_mask))
+        ->load(std::memory_order_relaxed); // NOLINT Avoid cast to std::size_t.
   }
   /**
    * @brief Copies elements in range ``[bottom, top)`` into a new ring buffer.
@@ -90,8 +92,9 @@ struct atomic_ring_buf {
    * @param bottom The bottom of the range to copy from (inclusive).
    * @param top The top of the range to copy from (exclusive).
    */
-  [[nodiscard]] constexpr auto resize(std::ptrdiff_t bottom, std::ptrdiff_t top) const -> atomic_ring_buf<T> * { // NOLINT
-    auto *ptr = new atomic_ring_buf{2 * m_cap};                                                                  // NOLINT
+  [[nodiscard]] constexpr auto resize(std::ptrdiff_t bottom, std::ptrdiff_t top) const
+      -> atomic_ring_buf<T> * {                 // NOLINT
+    auto *ptr = new atomic_ring_buf{2 * m_cap}; // NOLINT
     for (std::ptrdiff_t i = top; i != bottom; ++i) {
       ptr->store(i, load(i));
     }
@@ -199,8 +202,8 @@ class deque : impl::immovable<deque<T>> {
   /**
    * @brief Pop an item from the deque.
    *
-   * Only the owner thread can pop out an item from the deque. If the buffer is empty calls `when_empty` and returns the
-   * result. By default, `when_empty` is a no-op that returns a null `std::optional<T>`.
+   * Only the owner thread can pop out an item from the deque. If the buffer is empty calls `when_empty` and
+   * returns the result. By default, `when_empty` is a no-op that returns a null `std::optional<T>`.
    */
   template <std::invocable F = impl::return_nullopt<T>>
     requires std::convertible_to<T, std::invoke_result_t<F>>
@@ -276,7 +279,8 @@ class deque : impl::immovable<deque<T>> {
   alignas(impl::k_cache_line) std::atomic<std::ptrdiff_t> m_top;
   alignas(impl::k_cache_line) std::atomic<std::ptrdiff_t> m_bottom;
   alignas(impl::k_cache_line) std::atomic<impl::atomic_ring_buf<T> *> m_buf;
-  alignas(impl::k_cache_line) std::vector<std::unique_ptr<impl::atomic_ring_buf<T>>> m_garbage; // Store old buffers here.
+  alignas(impl::k_cache_line)
+      std::vector<std::unique_ptr<impl::atomic_ring_buf<T>>> m_garbage; // Store old buffers here.
 
   // Convenience aliases.
   static constexpr std::memory_order relaxed = std::memory_order_relaxed;
@@ -287,9 +291,10 @@ class deque : impl::immovable<deque<T>> {
 };
 
 template <simple T>
-constexpr deque<T>::deque(std::ptrdiff_t cap) : m_top(0),
-                                                m_bottom(0),
-                                                m_buf(new impl::atomic_ring_buf<T>{cap}) {
+constexpr deque<T>::deque(std::ptrdiff_t cap)
+    : m_top(0),
+      m_bottom(0),
+      m_buf(new impl::atomic_ring_buf<T>{cap}) {
   m_garbage.reserve(k_garbage_reserve);
 }
 
@@ -340,7 +345,8 @@ constexpr auto deque<T>::push(T const &val) noexcept -> void {
 template <simple T>
 template <std::invocable F>
   requires std::convertible_to<T, std::invoke_result_t<F>>
-constexpr auto deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_v<F>) -> std::invoke_result_t<F> {
+constexpr auto deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_v<F>)
+    -> std::invoke_result_t<F> {
 
   std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1; //
   impl::atomic_ring_buf<T> *buf = m_buf.load(relaxed);      //

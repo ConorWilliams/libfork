@@ -80,7 +80,9 @@ static_assert(sizeof(async_stack) == impl::k_stack_size, "Spurious padding in as
 
 namespace impl {
 
-inline auto stack_as_bytes(async_stack *stack) noexcept -> std::byte * { return std::launder(stack->m_buf + k_stack_size); }
+inline auto stack_as_bytes(async_stack *stack) noexcept -> std::byte * {
+  return std::launder(stack->m_buf + k_stack_size);
+}
 
 inline auto bytes_to_stack(std::byte *bytes) noexcept -> async_stack * {
 #ifdef __cpp_lib_is_pointer_interconvertible
@@ -273,7 +275,9 @@ struct frame_block : private immovable<frame_block>, debug_block {
   /**
    * @brief Perform a `.load(order)` on the atomic join counter.
    */
-  [[nodiscard]] auto load_joins(std::memory_order order) const noexcept -> std::uint32_t { return m_join.load(order); }
+  [[nodiscard]] auto load_joins(std::memory_order order) const noexcept -> std::uint32_t {
+    return m_join.load(order);
+  }
 
   /**
    * @brief Perform a `.fetch_sub(val, order)` on the atomic join counter.
@@ -337,8 +341,8 @@ struct promise_alloc_heap : frame_block {
 /**
  * @brief A base class for promises that allocates on an `async_stack`.
  *
- * When a promise deriving from this class is constructed 'tls::asp' will be set and when it is destroyed 'tls::asp'
- * will be returned to the previous frame.
+ * When a promise deriving from this class is constructed 'tls::asp' will be set and when it is destroyed
+ * 'tls::asp' will be returned to the previous frame.
  */
 struct promise_alloc_stack : frame_block {
 
@@ -408,7 +412,8 @@ struct task_h {
 /**
  * @brief A type safe wrapper around a handle to a coroutine that is at a submission point.
  *
- * Instances of this type (wrapped in an `lf::intrusive_list`s node) will be passed to a worker's `thread_context`.
+ * Instances of this type (wrapped in an `lf::intrusive_list`s node) will be passed to a worker's
+ * `thread_context`.
  *
  * \rst
  *

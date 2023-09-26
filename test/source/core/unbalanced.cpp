@@ -200,7 +200,11 @@ TEMPLATE_TEST_CASE("tree bench", "[tree][template]", unit_pool, debug_pool, busy
   }
 
   std::array trees = {
-      build_tree(n, 0.1), build_tree(n, 0.2), build_tree(n, 0.3), build_tree(n, 0.4), build_tree(n, 0.5),
+      build_tree(n, 0.1),
+      build_tree(n, 0.2),
+      build_tree(n, 0.3),
+      build_tree(n, 0.4),
+      build_tree(n, 0.5),
   };
 
   for (auto &root : trees) {

@@ -52,17 +52,20 @@
 
 #ifndef LF_ASYNC_STACK_SIZE
   /**
-   * @brief __[public]__ A customizable stack size for ``async_stack``'s (in multiples of 4 kibibytes i.e. the page size).
+   * @brief __[public]__ A customizable stack size for ``async_stack``'s (in multiples of 4 kibibytes i.e. the
+   * page size).
    *
    * You can override this by defining ``LF_ASYNC_STACK_SIZE`` to a power of two.
    */
   #define LF_ASYNC_STACK_SIZE 256
 #endif
 
-static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZE - 1)), "Must be a power of 2");
+static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZE - 1)),
+              "Must be a power of 2");
 
 /**
- * @brief Use to conditionally decorate lambdas and ``operator()`` (alongside ``LF_STATIC_CONST``) with ``static``.
+ * @brief Use to conditionally decorate lambdas and ``operator()`` (alongside ``LF_STATIC_CONST``) with
+ * ``static``.
  */
 #ifdef __cpp_static_call_operator
   #define LF_STATIC_CALL static
@@ -158,16 +161,16 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
 #elif defined(__clang__)
   #define LF_ASSUME(expr) __builtin_assume(bool(expr))
 #elif defined(__GNUC__) && !defined(__ICC)
-  #define LF_ASSUME(expr)                                                                                                   \
-    if (bool(expr)) {                                                                                                       \
-    } else {                                                                                                                \
-      __builtin_unreachable();                                                                                              \
+  #define LF_ASSUME(expr)                                                                                    \
+    if (bool(expr)) {                                                                                        \
+    } else {                                                                                                 \
+      __builtin_unreachable();                                                                               \
     }
 #elif defined(_MSC_VER) || defined(__ICC)
   #define LF_ASSUME(expr) __assume(bool(expr))
 #else
-  #define LF_ASSUME(expr)                                                                                                   \
-    do {                                                                                                                    \
+  #define LF_ASSUME(expr)                                                                                    \
+    do {                                                                                                     \
     } while (false)
 #endif
 
@@ -278,11 +281,11 @@ static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZ
       #define LF_SYNC_COUT std::cout << std::this_thread::get_id()
     #endif
 
-    #define LF_LOG(message, ...)                                                                                            \
-      do {                                                                                                                  \
-        if (!std::is_constant_evaluated()) {                                                                                \
-          LF_SYNC_COUT << ": " << LF_FORMAT(message __VA_OPT__(, ) __VA_ARGS__) << '\n';                                    \
-        }                                                                                                                   \
+    #define LF_LOG(message, ...)                                                                             \
+      do {                                                                                                   \
+        if (!std::is_constant_evaluated()) {                                                                 \
+          LF_SYNC_COUT << ": " << LF_FORMAT(message __VA_OPT__(, ) __VA_ARGS__) << '\n';                     \
+        }                                                                                                    \
       } while (false)
   #else
     #define LF_LOG(head, ...)

@@ -59,7 +59,8 @@ inline constexpr async noop = [](auto) -> task<> {
 
 } // namespace
 
-TEMPLATE_TEST_CASE("Construct destruct launch", "[core][template]", unit_pool, debug_pool, busy_pool, lazy_pool) {
+TEMPLATE_TEST_CASE(
+    "Construct destruct launch", "[core][template]", unit_pool, debug_pool, busy_pool, lazy_pool) {
 
   for (int i = 0; i < 100; ++i) {
     auto schedule = make_scheduler<TestType>();

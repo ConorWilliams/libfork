@@ -173,8 +173,8 @@ inline namespace core {
  *
  * \rst
  *
- * In general an async function is are trying to emulate the requirements/interface of a regular function that looks like
- * this:
+ * In general an async function is are trying to emulate the requirements/interface of a regular function that
+ * looks like this:
  *
  * .. code::
  *
@@ -192,8 +192,10 @@ inline namespace core {
  *
  *    val = foo()
  *
- * Hence in general we require that for ``co_await expr`` that ``expr`` is ``std::convertible_to`` ``T`` and that ``T`` is
- * ``std::is_assignable`` to ``R``. When possible we try to elide the intermediate ``T`` and assign directly to ``R``.
+ * Hence in general we require that for ``co_await expr`` that ``expr`` is ``std::convertible_to`` ``T`` and
+ * that ``T`` is
+ * ``std::is_assignable`` to ``R``. When possible we try to elide the intermediate ``T`` and assign directly
+ * to ``R``.
  *
  * .. note::
  *    This documentation is generated from the non-reference specialization, see the source
