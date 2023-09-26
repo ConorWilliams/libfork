@@ -3,5 +3,5 @@ builtin = clear,rare,en-GB_to_en-US,names,informal,code
 check-filenames =
 check-hidden =
 ignore-words-list = deque,warmup,stdio
-skip = */.git,*/build,*/prefix,*/vcpkg
+skip = */.git,*/build,*/prefix,*/vcpkg/_build
 quiet-level = 2
