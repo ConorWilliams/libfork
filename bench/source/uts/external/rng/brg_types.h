@@ -34,7 +34,7 @@
  'uint_32t'.  These are NOT the same as the 'C99 integer types' that are
  defined in the inttypes.h and stdint.h headers since attempts to use these
  types have shown that support for them is still highly variable.  However,
- since the latter are of the form uint<nn>_t, a regular expression search
+ since the latter are of the form unit<nn>_t, a regular expression search
  and replace (in VC++ search on 'uint_{:z}t' and replace with 'uint\1_t')
  can be used to convert the types used here to the C99 standard types.
 */
@@ -199,7 +199,7 @@ typedef unsigned long long uint_64t;
                                 multiple of size / 8)
 
     ptr_cast(x,size)            casts a pointer to a pointer to a
-                                varaiable of length 'size' bits
+                                variable of length 'size' bits
 */
 
 #define ui_type(size) uint_##size##t

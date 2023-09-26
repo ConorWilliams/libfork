@@ -397,7 +397,7 @@ void uts_parseParams(int argc, char *argv[]) {
 void uts_helpMessage() {
   printf("  UTS - Unbalanced Tree Search %s (%s)\n\n", UTS_VERSION, impl_getName());
   printf("    usage:  uts-bin [parameter value] ...\n\n");
-  printf("  parm type  description\n");
+  printf("  parameter type  description\n");
   printf("  ==== ====  =========================================\n");
   printf("\n  Benchmark Parameters:\n");
   printf("   -t  int   tree type (0: BIN, 1: GEO, 2: HYBRID, 3: BALANCED)\n");
