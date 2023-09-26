@@ -77,9 +77,10 @@ class busy_pool {
 
     while (!stop_requested.test(std::memory_order_acquire)) {
 
-      for_each(my_context->try_get_submitted(), [](submit_h<context_type> *submitted) LF_STATIC_CALL noexcept {
-        resume(submitted);
-      });
+      for_each(my_context->try_get_submitted(),
+               [](submit_h<context_type> *submitted) LF_STATIC_CALL noexcept {
+                 resume(submitted);
+               });
 
       if (auto *task = my_context->try_steal()) {
         resume(task);
@@ -92,8 +93,10 @@ class busy_pool {
    * @brief Construct a new busy_pool object.
    *
    * @param n The number of worker threads to create, defaults to the number of hardware threads.
+   * @param strategy The numa strategy for distributing workers.
    */
-  explicit busy_pool(std::size_t n = std::thread::hardware_concurrency()) {
+  explicit busy_pool(std::size_t n = std::thread::hardware_concurrency(),
+                     numa_strategy strategy = numa_strategy::seq) {
 
     for (std::size_t i = 0; i < n; ++i) {
       m_contexts.push_back(std::make_shared<context_type>(n, m_rng));
@@ -102,7 +105,7 @@ class busy_pool {
 
     LF_ASSERT_NO_ASSUME(!m_stop->test(std::memory_order_acquire));
 
-    std::vector nodes = numa_topology{}.distribute(m_contexts);
+    std::vector nodes = numa_topology{}.distribute(m_contexts, strategy);
 
     // clang-format off
 

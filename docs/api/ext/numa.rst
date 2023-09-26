@@ -6,6 +6,7 @@ Numa abstraction
 
 .. doxygenstruct:: lf::ext::hwloc_error
 
+.. doxygenenum:: numa_strategy
 
 .. doxygenclass:: lf::ext::numa_topology
     :members:

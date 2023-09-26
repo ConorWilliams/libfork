@@ -28,6 +28,7 @@
 
 #### Post feature complete
 
+- [ ] add numa mode control
 - [ ] benchmark: need some heterogeneous workloads (UT3, unbalanced tree reduce, see NOWA)
 - [ ] benchmark: A test/benchmark that stresses stack stealing?
 - [ ] benchmark: C++ library comparisons (TaskFlow, ...).

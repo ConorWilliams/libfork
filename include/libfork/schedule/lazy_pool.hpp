@@ -297,15 +297,18 @@ class lazy_pool {
    * @brief Construct a new lazy_pool object and `n` worker threads.
    *
    * @param n The number of worker threads to create, defaults to the number of hardware threads.
+   * @param strategy The numa strategy for distributing workers.
    */
-  explicit lazy_pool(std::size_t n = std::thread::hardware_concurrency()) : m_dist{0, n - 1} {
+  explicit lazy_pool(std::size_t n = std::thread::hardware_concurrency(),
+                     numa_strategy strategy = numa_strategy::seq)
+      : m_dist{0, n - 1} {
 
     for (std::size_t i = 0; i < n; ++i) {
       m_contexts.push_back(std::make_shared<context_type>(n, m_rng, m_atomics));
       m_rng.long_jump();
     }
 
-    std::vector nodes = numa_topology{}.distribute(m_contexts);
+    std::vector nodes = numa_topology{}.distribute(m_contexts, strategy);
 
     // clang-format off
 
