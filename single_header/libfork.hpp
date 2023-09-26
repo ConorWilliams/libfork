@@ -13,6 +13,30 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#ifndef B3512749_D678_438A_8E60_B1E880CF6C23
+#define B3512749_D678_438A_8E60_B1E880CF6C23
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#ifndef B13463FB_3CF9_46F1_AFAC_19CBCB99A23C
+#define B13463FB_3CF9_46F1_AFAC_19CBCB99A23C
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>
+#include <source_location>
+#include <type_traits>
 #ifndef A6BE090F_9077_40E8_9B57_9BAFD9620469
 #define A6BE090F_9077_40E8_9B57_9BAFD9620469
 
@@ -2267,10 +2291,6 @@ struct is_task_impl<task<T>> : std::true_type {};
 template <typename T>
 concept is_task = is_task_impl<T>::value;
 
-} // namespace impl
-
-namespace impl {
-
 // ----------------------------------------------- //
 
 template <typename Task, typename Head>
@@ -2280,7 +2300,8 @@ concept valid_return = is_task<Task> && valid_result<return_of<Head>, value_of<T
  * @brief Check that the async function encoded in `Head` is invocable with arguments in `Tail`.
  */
 template <typename Head, typename... Tail>
-concept valid_packet = first_arg<Head> && valid_return<std::invoke_result_t<function_of<Head>, Head, Tail...>, Head>;
+concept valid_packet =
+    first_arg<Head> && valid_return<std::invoke_result_t<function_of<Head>, Head, Tail...>, Head>;
 
 /**
  * @brief A base class for building the first argument to asynchronous functions.
@@ -2332,7 +2353,8 @@ class [[nodiscard("packets must be co_awaited")]] packet : move_only<packet<Head
    * repeat the type.
    *
    */
-  constexpr packet(Head head, Tail &&...tail) noexcept : m_args{std::move(head), std::forward<Tail>(tail)...} {}
+  constexpr packet(Head head, Tail &&...tail) noexcept
+      : m_args{std::move(head), std::forward<Tail>(tail)...} {}
 
   /**
    * @brief Call the underlying async function with args.
@@ -2389,8 +2411,8 @@ template <typename Packet>
 using repack_t = typename detail::repack<Packet>::type;
 
 /**
- * @brief Check if a void invoke packet with `value_type` `X` can be converted to a call packet with `return_type`
- * `eventually<X>` without changing the `value_type` of the new packet.
+ * @brief Check if a void invoke packet with `value_type` `X` can be converted to a call packet with
+ * `return_type` `eventually<X>` without changing the `value_type` of the new packet.
  */
 template <typename Packet>
 concept repackable = non_void<value_of<Packet>> && requires { typename detail::repack<Packet>::type; } &&
@@ -2445,7 +2467,8 @@ struct [[nodiscard("async functions must be called")]] async {
    */
   template <typename... Args>
     requires impl::repackable<invoke_packet<Args...>>
-  LF_STATIC_CALL constexpr auto operator()(Args &&...args) LF_STATIC_CONST noexcept -> invoke_packet<Args...> {
+  LF_STATIC_CALL constexpr auto operator()(Args &&...args) LF_STATIC_CONST noexcept
+      -> invoke_packet<Args...> {
     return {{}, std::forward<Args>(args)...};
   }
 
@@ -3178,7 +3201,8 @@ inline namespace core {
  * This requires only a single method, `schedule` and a nested typedef `context_type`.
  */
 template <typename Sch>
-concept scheduler = requires (Sch &&sch, intruded_h<context_of<Sch>> *ext) { std::forward<Sch>(sch).schedule(ext); };
+concept scheduler =
+    requires (Sch &&sch, intruded_h<context_of<Sch>> *ext) { std::forward<Sch>(sch).schedule(ext); };
 
 namespace detail {
 
@@ -3189,16 +3213,13 @@ struct sync_wait_impl {
   using first_arg_t = impl::patched<Context, impl::basic_first_arg<R, tag::root, F>>;
 
   using dummy_packet = impl::packet<first_arg_t<void>, Args...>;
-  using dummy_packet_value_type = value_of<std::invoke_result_t<F, dummy_packet, Args...>>;
+  using real_packet = impl::packet<first_arg_t<impl::root_result<value_of<dummy_packet>>>, Args...>;
 
-  using real_packet = impl::packet<first_arg_t<impl::root_result<dummy_packet_value_type>>, Args...>;
-  using real_packet_value_type = value_of<std::invoke_result_t<F, real_packet, Args...>>;
-
-  static_assert(std::same_as<dummy_packet_value_type, real_packet_value_type>, "Value type changes!");
+  static_assert(std::same_as<value_of<dummy_packet>, value_of<real_packet>>, "Value type changes!");
 };
 
 template <scheduler Sch, stateless F, typename... Args>
-using result_t = typename sync_wait_impl<context_of<Sch>, F, Args...>::real_packet_value_type;
+using result_t = value_of<typename sync_wait_impl<context_of<Sch>, F, Args...>::real_packet>;
 
 template <scheduler Sch, stateless F, typename... Args>
 using packet_t = typename sync_wait_impl<context_of<Sch>, F, Args...>::real_packet;
@@ -3219,7 +3240,8 @@ using packet_t = typename sync_wait_impl<context_of<Sch>, F, Args...>::real_pack
  * \endrst
  */
 template <scheduler Sch, stateless F, class... Args>
-auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcept -> detail::result_t<Sch, F, Args...> {
+auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcept
+    -> detail::result_t<Sch, F, Args...> {
 
   impl::root_result<detail::result_t<Sch, F, Args...>> root_block;
 
@@ -3231,7 +3253,8 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
 
   LF_LOG("Submitting root");
 
-  // If this throws we crash the program because we cannot know if the eventually in root_block was constructed.
+  // If this throws we crash the program because we cannot know if the eventually in root_block was
+  // constructed.
   std::forward<Sch>(sch).schedule(&link);
 
   LF_LOG("Acquire semaphore");
@@ -3263,6 +3286,96 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
  */
 
 #endif /* A6BE090F_9077_40E8_9B57_9BAFD9620469 */
+
+
+namespace lf {
+
+namespace impl {
+
+/**
+ * @brief Implements the `lift` higher-order function for forked/non-forked functions.
+ */
+template <typename F>
+struct lifted {
+  template <first_arg Head, typename... Args>
+    requires (tag_of<Head> != tag::fork && std::invocable<F, Args...>)
+  LF_STATIC_CALL auto operator()(Head,
+                                 Args &&...args) LF_STATIC_CONST->task<std::invoke_result_t<F, Args...>> {
+    co_return std::invoke(F{}, std::forward<Args>(args)...);
+  }
+
+  template <typename Head, typename... Args>
+    requires (tag_of<Head> == tag::fork && std::invocable<F, Args...>)
+  LF_STATIC_CALL auto operator()(Head, Args... args) LF_STATIC_CONST->task<std::invoke_result_t<F, Args...>> {
+    co_return std::invoke(F{}, std::move(args)...);
+  }
+};
+
+} // namespace impl
+
+/**
+ * @brief A higher-order function that lifts a function into an ``async`` function.
+ *
+ * \rst
+ *
+ * This is useful for when you want to fork a regular function:
+ *
+ * .. code::
+ *
+ *    auto work(int x) -> int;
+ *
+ * Then later in some async context you can do:
+ *
+ * .. code::
+ *
+ *    {
+ *      int a, b;
+ *
+ *      co_await fork[a, lift(work)](42);
+ *      co_await fork[b, lift(work)](007);
+ *
+ *      co_await join;
+ *    }
+ *
+ * .. note::
+ *
+ *    The lifted function will accept arguments by-value if it is forked and by forwarding reference
+ * otherwise. This is to prevent dangling, use ``std::ref`` if you actually want a reference.
+ *
+ * \endrst
+ */
+template <stateless F>
+consteval auto lift(F) noexcept -> async<impl::lifted<F>> {
+  return {};
+}
+
+/**
+ * @brief Lift an overload-set/template into a constrained lambda.
+ *
+ * This is useful for passing overloaded/template functions to higher order functions like `lf::fork`,
+ * `lf::call` etc.
+ */
+#define LF_LIFT(overload_set)                                                                                \
+  [](auto &&...args) LF_STATIC_CALL LF_HOF_RETURNS(overload_set(std::forward<decltype(args)>(args)...))
+
+/**
+ * @brief Lift an overload-set/template into an async function, equivalent to
+ * `lf::lift(LF_LIFT(overload_set))`.
+ */
+#define LF_LIFT2(overload_set) ::lf::lift(LF_LIFT(overload_set))
+
+} // namespace lf
+
+#endif /* B13463FB_3CF9_46F1_AFAC_19CBCB99A23C */
+
+
+/**
+ * @file algorithm.hpp
+ *
+ * @brief Meta header which includes all the algorithms in ``libfork/algorithm``.
+ */
+
+#endif /* B3512749_D678_438A_8E60_B1E880CF6C23 */
 #ifndef A616E976_A92A_4CE4_B807_936EF8C5FBC4
 #define A616E976_A92A_4CE4_B807_936EF8C5FBC4
 
@@ -3785,6 +3898,14 @@ struct hwloc_error : std::runtime_error {
 // ------------------------------ Topology decl ------------------------------ //
 
 /**
+ * @brief Enum to control distribution strategy of workers among numa nodes.
+ */
+enum class numa_strategy {
+  fan, // Put workers as far away from each other as possible (maximize cache.)
+  seq, // Fill up each numa node sequentially (ignoring SMT).
+};
+
+/**
  * @brief A shared description of a computers topology.
  *
  * Objects of this type have shared-pointer semantics.
@@ -3841,7 +3962,7 @@ class numa_topology {
    * such that each PU has as much cache as possible. If this topology is empty then
    * this function returns a vector of `n` empty handles.
    */
-  auto split(std::size_t n) const -> std::vector<numa_handle>;
+  auto split(std::size_t n, numa_strategy strategy = numa_strategy::seq) const -> std::vector<numa_handle>;
 
   /**
    * @brief A single-threads hierarchical view of a set of objects.
@@ -3863,7 +3984,8 @@ class numa_topology {
    * the elements in `data`.
    */
   template <typename T>
-  auto distribute(std::vector<std::shared_ptr<T>> const &data) -> std::vector<numa_node<T>>;
+  auto distribute(std::vector<std::shared_ptr<T>> const &data, numa_strategy strategy = numa_strategy::seq)
+      -> std::vector<numa_node<T>>;
 
  private:
   shared_topo m_topology = nullptr;
@@ -3935,7 +4057,7 @@ inline auto count_cores(hwloc_obj_t obj) -> unsigned int {
   return num_cores;
 }
 
-inline auto numa_topology::split(std::size_t n) const -> std::vector<numa_handle> {
+inline auto numa_topology::split(std::size_t n, numa_strategy strategy) const -> std::vector<numa_handle> {
 
   if (n < 1) {
     LF_THROW(hwloc_error{"hwloc cannot distribute over less than one singlet"});
@@ -3945,18 +4067,23 @@ inline auto numa_topology::split(std::size_t n) const -> std::vector<numa_handle
 
   std::vector<hwloc_obj_t> roots;
 
-  hwloc_obj_t numa = nullptr;
+  if (strategy == numa_strategy::seq) {
 
-  for (unsigned int count = 0; count < n; count += count_cores(numa)) {
+    hwloc_obj_t numa = nullptr;
 
-    hwloc_obj_t next_numa = hwloc_get_next_obj_by_type(m_topology.get(), HWLOC_OBJ_PACKAGE, numa);
+    for (unsigned int count = 0; count < n; count += count_cores(numa)) {
 
-    if (next_numa == nullptr) {
-      break;
+      hwloc_obj_t next_numa = hwloc_get_next_obj_by_type(m_topology.get(), HWLOC_OBJ_PACKAGE, numa);
+
+      if (next_numa == nullptr) {
+        break;
+      }
+
+      roots.push_back(next_numa);
+      numa = next_numa;
     }
-
-    roots.push_back(next_numa);
-    numa = next_numa;
+  } else {
+    roots.push_back(hwloc_get_root_obj(m_topology.get()));
   }
 
   // Now we distribute over the cores in each numa package, NOTE:  hwloc_distrib gives us
@@ -4050,9 +4177,10 @@ class distance_matrix {
 } // namespace detail
 
 template <typename T>
-inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data) -> std::vector<numa_node<T>> {
+inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data, numa_strategy strategy)
+    -> std::vector<numa_node<T>> {
 
-  std::vector handles = split(data.size());
+  std::vector handles = split(data.size(), strategy);
 
   // Compute the topological distance between all pairs of objects.
 
@@ -4102,10 +4230,13 @@ inline void numa_topology::numa_handle::bind() const {
   LF_ASSERT(!cpup);
 }
 
-inline auto numa_topology::split(std::size_t n) const -> std::vector<numa_handle> { return std::vector<numa_handle>(n); }
+inline auto numa_topology::split(std::size_t n, numa_strategy /* strategy */) const -> std::vector<numa_handle> {
+  return std::vector<numa_handle>(n);
+}
 
 template <typename T>
-inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data) -> std::vector<numa_node<T>> {
+inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data, numa_strategy /* strategy */)
+    -> std::vector<numa_node<T>> {
 
   std::vector<numa_handle> handles = split(data.size());
 
@@ -4814,9 +4945,10 @@ class busy_pool {
 
     while (!stop_requested.test(std::memory_order_acquire)) {
 
-      for_each(my_context->try_get_submitted(), [](submit_h<context_type> *submitted) LF_STATIC_CALL noexcept {
-        resume(submitted);
-      });
+      for_each(my_context->try_get_submitted(),
+               [](submit_h<context_type> *submitted) LF_STATIC_CALL noexcept {
+                 resume(submitted);
+               });
 
       if (auto *task = my_context->try_steal()) {
         resume(task);
@@ -4829,8 +4961,10 @@ class busy_pool {
    * @brief Construct a new busy_pool object.
    *
    * @param n The number of worker threads to create, defaults to the number of hardware threads.
+   * @param strategy The numa strategy for distributing workers.
    */
-  explicit busy_pool(std::size_t n = std::thread::hardware_concurrency()) {
+  explicit busy_pool(std::size_t n = std::thread::hardware_concurrency(),
+                     numa_strategy strategy = numa_strategy::seq) {
 
     for (std::size_t i = 0; i < n; ++i) {
       m_contexts.push_back(std::make_shared<context_type>(n, m_rng));
@@ -4839,7 +4973,7 @@ class busy_pool {
 
     LF_ASSERT_NO_ASSUME(!m_stop->test(std::memory_order_acquire));
 
-    std::vector nodes = numa_topology{}.distribute(m_contexts);
+    std::vector nodes = numa_topology{}.distribute(m_contexts, strategy);
 
     // clang-format off
 
@@ -5405,15 +5539,18 @@ class lazy_pool {
    * @brief Construct a new lazy_pool object and `n` worker threads.
    *
    * @param n The number of worker threads to create, defaults to the number of hardware threads.
+   * @param strategy The numa strategy for distributing workers.
    */
-  explicit lazy_pool(std::size_t n = std::thread::hardware_concurrency()) : m_dist{0, n - 1} {
+  explicit lazy_pool(std::size_t n = std::thread::hardware_concurrency(),
+                     numa_strategy strategy = numa_strategy::seq)
+      : m_dist{0, n - 1} {
 
     for (std::size_t i = 0; i < n; ++i) {
       m_contexts.push_back(std::make_shared<context_type>(n, m_rng, m_atomics));
       m_rng.long_jump();
     }
 
-    std::vector nodes = numa_topology{}.distribute(m_contexts);
+    std::vector nodes = numa_topology{}.distribute(m_contexts, strategy);
 
     // clang-format off
 

@@ -37,7 +37,8 @@ inline namespace core {
  * This requires only a single method, `schedule` and a nested typedef `context_type`.
  */
 template <typename Sch>
-concept scheduler = requires (Sch &&sch, intruded_h<context_of<Sch>> *ext) { std::forward<Sch>(sch).schedule(ext); };
+concept scheduler =
+    requires (Sch &&sch, intruded_h<context_of<Sch>> *ext) { std::forward<Sch>(sch).schedule(ext); };
 
 namespace detail {
 
@@ -48,16 +49,13 @@ struct sync_wait_impl {
   using first_arg_t = impl::patched<Context, impl::basic_first_arg<R, tag::root, F>>;
 
   using dummy_packet = impl::packet<first_arg_t<void>, Args...>;
-  using dummy_packet_value_type = value_of<std::invoke_result_t<F, dummy_packet, Args...>>;
+  using real_packet = impl::packet<first_arg_t<impl::root_result<value_of<dummy_packet>>>, Args...>;
 
-  using real_packet = impl::packet<first_arg_t<impl::root_result<dummy_packet_value_type>>, Args...>;
-  using real_packet_value_type = value_of<std::invoke_result_t<F, real_packet, Args...>>;
-
-  static_assert(std::same_as<dummy_packet_value_type, real_packet_value_type>, "Value type changes!");
+  static_assert(std::same_as<value_of<dummy_packet>, value_of<real_packet>>, "Value type changes!");
 };
 
 template <scheduler Sch, stateless F, typename... Args>
-using result_t = typename sync_wait_impl<context_of<Sch>, F, Args...>::real_packet_value_type;
+using result_t = value_of<typename sync_wait_impl<context_of<Sch>, F, Args...>::real_packet>;
 
 template <scheduler Sch, stateless F, typename... Args>
 using packet_t = typename sync_wait_impl<context_of<Sch>, F, Args...>::real_packet;
@@ -78,7 +76,8 @@ using packet_t = typename sync_wait_impl<context_of<Sch>, F, Args...>::real_pack
  * \endrst
  */
 template <scheduler Sch, stateless F, class... Args>
-auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcept -> detail::result_t<Sch, F, Args...> {
+auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcept
+    -> detail::result_t<Sch, F, Args...> {
 
   impl::root_result<detail::result_t<Sch, F, Args...>> root_block;
 
@@ -90,7 +89,8 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
 
   LF_LOG("Submitting root");
 
-  // If this throws we crash the program because we cannot know if the eventually in root_block was constructed.
+  // If this throws we crash the program because we cannot know if the eventually in root_block was
+  // constructed.
   std::forward<Sch>(sch).schedule(&link);
 
   LF_LOG("Acquire semaphore");
