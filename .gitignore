@@ -4,6 +4,7 @@
 .cache/
 
 build/
+_build/
 cmake-build-*/
 prefix/
 old/

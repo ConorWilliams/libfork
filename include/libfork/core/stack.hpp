@@ -312,6 +312,31 @@ struct frame_block : private immovable<frame_block>, debug_block {
     std::construct_at(&m_join, k_u32_max);
   }
 
+  /**
+   * @brief Allocate `size` bytes on the current async-stack.
+   *
+   * This memory must be freed (in-order) before the current frame is destroyed.
+   * The memory will be aligned to `k_new_align`.
+   */
+  auto stalloc(std::size_t size) -> void * {
+    LF_ASSERT(!is_root());
+    LF_ASSERT(tls::asp);
+    LF_ASSERT(tls::asp == m_top);
+    LF_LOG("stalloc {} bytes", size);
+    return m_top = (tls::asp -= (size + k_new_align - 1) & ~(k_new_align - 1));
+  }
+
+  /**
+   * @brief Delete `size` bytes from the current async-stack.
+   */
+  void free(std::size_t size) {
+    LF_ASSERT(!is_root());
+    LF_ASSERT(tls::asp);
+    LF_ASSERT(tls::asp == m_top);
+    LF_LOG("free {} bytes", size);
+    m_top = (tls::asp += (size + k_new_align - 1) & ~(k_new_align - 1));
+  }
+
  private:
 #ifndef LF_COROUTINE_OFFSET
   stdx::coroutine_handle<> m_coro;
@@ -365,7 +390,7 @@ struct promise_alloc_stack : frame_block {
    */
   [[nodiscard]] LF_TLS_CLANG_INLINE static auto operator new(std::size_t size) -> void * {
     LF_ASSERT(tls::asp);
-    tls::asp -= (size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
+    tls::asp -= (size + k_new_align - 1) & ~(k_new_align - 1);
     LF_LOG("Allocating {} bytes on stack from {}", size, (void *)tls::asp);
     return tls::asp;
   }
@@ -375,12 +400,79 @@ struct promise_alloc_stack : frame_block {
    */
   LF_TLS_CLANG_INLINE static void operator delete(void *ptr, std::size_t size) {
     LF_ASSERT(ptr == tls::asp);
-    tls::asp += (size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
+    tls::asp += (size + k_new_align - 1) & ~(k_new_align - 1);
     LF_LOG("Deallocating {} bytes on stack to {}", size, (void *)tls::asp);
   }
 };
 
 } // namespace impl
+
+inline namespace core {
+
+namespace detail {
+
+template <typename>
+struct stack_allocable_impl : std::false_type {};
+
+template <std::default_initializable T>
+  requires (alignof(T) <= impl::k_new_align)
+struct stack_allocable_impl<T[]> : std::true_type {};
+
+} // namespace detail
+
+template <typename T>
+concept stack_allocatable = detail::stack_allocable_impl<T>::value;
+
+template <stack_allocatable T>
+class co_stack : impl::immovable<co_stack<T>> {
+
+  using value_type = std::remove_extent_t<T>;
+  using pointer_type = value_type *;
+
+ public:
+  [[nodiscard]] LF_TLS_CLANG_INLINE static auto alloc(std::size_t n) -> co_stack {
+    using impl::tls::asp;
+
+    LF_ASSERT(asp);
+    LF_ASSERT(n > 0);
+
+    std::size_t size = n * sizeof(value_type);
+    LF_LOG("Allocating (co_stack) {} bytes on stack from {}", size, (void *)asp);
+    asp -= (size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
+
+    return co_stack{new (static_cast<void *>(asp)) value_type[n], size};
+  }
+
+  static auto operator new(size_t) -> void * = delete;
+  static auto operator new[](size_t) -> void * = delete;
+  static void operator delete(void *) = delete;
+  static void operator delete[](void *) = delete;
+
+  [[nodiscard]] auto operator[](std::size_t i) noexcept -> value_type & { return m_data[i]; }
+  [[nodiscard]] auto operator[](std::size_t i) const noexcept -> value_type const & { return m_data[i]; }
+
+  LF_TLS_CLANG_INLINE ~co_stack() noexcept {
+    using impl::tls::asp;
+
+    LF_ASSERT(impl::byte_cast(m_data) == asp);
+
+    if constexpr (!std::is_trivially_destructible_v<value_type>) {
+      std::destroy(m_data, m_data + (m_size / sizeof(value_type)));
+    }
+
+    asp += (m_size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
+
+    LF_LOG("Deallocating {} bytes on stack to {}", m_size, (void *)asp);
+  }
+
+ private:
+  explicit co_stack(pointer_type data, std::size_t size) : m_data(data), m_size(size) {}
+
+  pointer_type m_data;
+  std::uint32_t m_size;
+};
+
+} // namespace core
 
 inline namespace ext {
 

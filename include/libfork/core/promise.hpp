@@ -29,6 +29,18 @@
  * @brief The `promise_type` for tasks.
  */
 
+namespace lf {
+
+inline namespace core {
+
+enum class stalloc : std::size_t {};
+
+enum class free : std::size_t {};
+
+} // namespace core
+
+} // namespace lf
+
 namespace lf::impl {
 
 namespace detail {
@@ -377,6 +389,26 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
     LF_ASSERT_NO_ASSUME(this->load_joins(std::memory_order_acquire) == k_u32_max); // Invalid state.
 
     return final_awaitable{};
+  }
+
+  auto await_transform(stalloc size) noexcept {
+
+    static_assert(Tag != tag::root, "Cannot allocate on root tasks");
+
+    void *data = this->stalloc(static_cast<std::size_t>(size));
+
+    struct awaitable : std::suspend_never {
+      [[nodiscard]] auto await_resume() const noexcept -> void * { return m_data; }
+      void *m_data;
+    };
+
+    return awaitable{{}, data};
+  }
+
+  auto await_transform(free size) noexcept -> std::suspend_never {
+    static_assert(Tag != tag::root, "Cannot allocate on root tasks");
+    this->free(static_cast<std::size_t>(size));
+    return {};
   }
 
   /**

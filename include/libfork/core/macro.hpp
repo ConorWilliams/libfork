@@ -55,9 +55,9 @@
    * @brief __[public]__ A customizable stack size for ``async_stack``'s (in multiples of 4 kibibytes i.e. the
    * page size).
    *
-   * You can override this by defining ``LF_ASYNC_STACK_SIZE`` to a power of two.
+   * You can override this by defining ``LF_ASYNC_STACK_SIZE`` to a power of two (default 8 MiB)
    */
-  #define LF_ASYNC_STACK_SIZE 256
+  #define LF_ASYNC_STACK_SIZE 2048
 #endif
 
 static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZE - 1)),

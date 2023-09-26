@@ -27,6 +27,8 @@
  * Recursive depth-first implementation                    *
  ***********************************************************/
 
+namespace {
+
 struct Result {
   counter_t maxdepth, size, leaves;
 };
@@ -75,6 +77,56 @@ auto parTreeSearch(int depth, Node *parent) -> Result {
   return r;
 }
 
+auto parTreeSearch_alloc(int depth, Node *parent) -> Result {
+  //
+  int numChildren, childType;
+  counter_t parentHeight = parent->height;
+
+  Result r(depth, 1, 0);
+
+  numChildren = uts_numChildren(parent);
+  childType = uts_childType(parent);
+
+  // record number of children in parent
+  parent->numChildren = numChildren;
+
+  std::vector<Result> cs(numChildren);
+
+  // Recurse on the children
+  if (numChildren > 0) {
+
+    int i, j;
+
+    for (i = 0; i < numChildren; i++) {
+      Node child;
+      child.type = childType;
+      child.height = parentHeight + 1;
+      child.numChildren = -1; // not yet determined
+
+      for (j = 0; j < computeGranularity; j++) {
+        rng_spawn(parent->state.state, child.state.state, i);
+      }
+
+      cs[i] = parTreeSearch(depth + 1, &child);
+    }
+
+    for (i = 0; i < numChildren; i++) {
+
+      if (cs[i].maxdepth > r.maxdepth) {
+        r.maxdepth = cs[i].maxdepth;
+      }
+
+      r.size += cs[i].size;
+      r.leaves += cs[i].leaves;
+    }
+
+  } else {
+    r.leaves = 1;
+  }
+
+  return r;
+}
+
 void uts_serial(benchmark::State &state) {
 
   Node root;
@@ -89,4 +141,21 @@ void uts_serial(benchmark::State &state) {
   }
 }
 
+void uts_serial_alloc(benchmark::State &state) {
+
+  Node root;
+
+  setup_uts();
+
+  volatile int depth = 0;
+
+  for (auto _ : state) {
+    uts_initRoot(&root, type);
+    volatile Result r = parTreeSearch_alloc(depth, &root);
+  }
+}
+
+} // namespace
+
 BENCHMARK(uts_serial)->UseRealTime();
+BENCHMARK(uts_serial_alloc)->UseRealTime();
