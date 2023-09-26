@@ -13,6 +13,8 @@ namespace {
 
 void reduce_serial(benchmark::State &state) {
 
+  lf::numa_topology{}.split(1).front().bind();
+
   std::vector data = to_sum();
 
   volatile float output;

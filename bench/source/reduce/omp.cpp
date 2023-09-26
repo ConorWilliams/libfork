@@ -33,15 +33,24 @@ auto reduce(std::span<float> x, std::size_t grain_size) -> float {
 void reduce_omp(benchmark::State &state) {
 
   std::size_t n = state.range(0);
-  std::vector data = to_sum();
-  auto grain_size = data.size() / (n * 10);
 
-  volatile float output;
-
-  for (auto _ : state) {
 #pragma omp parallel num_threads(n)
 #pragma omp single
-    output = reduce(data, grain_size);
+  {
+    std::vector<float> data;
+
+#pragma omp task shared(data) // No untied
+    data = to_sum();
+
+#pragma omp taskwait
+
+    auto grain_size = data.size() / (n * 10);
+
+    volatile float output;
+
+    for (auto _ : state) {
+      output = reduce(data, grain_size);
+    }
   }
 }
 

@@ -295,7 +295,8 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
   static_assert(Tag != tag::root || is_root_result_v<R>);
 
   struct final_awaitable : stdx::suspend_always {
-    static auto await_suspend(stdx::coroutine_handle<promise_type> child) noexcept -> stdx::coroutine_handle<> {
+    static auto await_suspend(stdx::coroutine_handle<promise_type> child) noexcept
+        -> stdx::coroutine_handle<> {
 
       if constexpr (Tag == tag::root) {
         LF_LOG("Root task at final suspend, releases semaphore and yields");
@@ -373,7 +374,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
     LF_ASSERT(this->debug_count() == 0);
     LF_ASSERT(this->steals() == 0);                                                // Fork without join.
-    LF_ASSERT_NO_ASSUME(this->load_joins(std::memory_order_acquire) == k_u32_max); // Destroyed in invalid state.
+    LF_ASSERT_NO_ASSUME(this->load_joins(std::memory_order_acquire) == k_u32_max); // Invalid state.
 
     return final_awaitable{};
   }
@@ -413,15 +414,18 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
   template <first_arg_tagged<tag::fork> Head, typename... Args>
     requires single_thread_context<Context> && valid_packet<rewrite_tag<Head>, Args...>
   auto await_transform(packet<Head, Args...> &&pack) noexcept -> detail::call_awaitable {
-    return await_transform(std::move(pack).apply([](Head head, Args &&...args) -> packet<rewrite_tag<Head>, Args...> {
-      return {{std::move(head)}, std::forward<Args>(args)...};
-    }));
+    return await_transform(
+        std::move(pack).apply([](Head head, Args &&...args) -> packet<rewrite_tag<Head>, Args...> {
+          return {{std::move(head)}, std::forward<Args>(args)...};
+        }));
   }
 
   /**
    * @brief Get a join awaitable.
    */
-  auto await_transform(join_type) noexcept -> detail::join_awaitable<Context, Tag == tag::root> { return {this}; }
+  auto await_transform(join_type) noexcept -> detail::join_awaitable<Context, Tag == tag::root> {
+    return {this};
+  }
 
   /**
    * @brief Transform an invoke packet into an invoke_awaitable.
@@ -464,8 +468,11 @@ struct lf::stdx::coroutine_traits<Task, Head, Args...> {
 /**
  * @brief Specialize coroutine_traits for task<...> from member functions.
  */
-template <lf::impl::is_task Task, lf::impl::not_first_arg This, lf::first_arg Head,
+template <lf::impl::is_task Task,
+          lf::impl::not_first_arg This,
+          lf::first_arg Head,
           lf::impl::no_dangling<lf::tag_of<Head>>... Args>
-struct lf::stdx::coroutine_traits<Task, This, Head, Args...> : lf::stdx::coroutine_traits<Task, Head, Args...> {};
+struct lf::stdx::coroutine_traits<Task, This, Head, Args...>
+    : lf::stdx::coroutine_traits<Task, Head, Args...> {};
 
 #endif /* FF9F3B2C_DC2B_44D2_A3C2_6E40F211C5B0 */

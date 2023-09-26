@@ -37,12 +37,27 @@ auto reduce(std::span<float> data, std::size_t n, tf::Subflow &sbf) -> float {
   return a + b;
 }
 
+auto alloc(tf::Subflow &sbf) -> std::vector<float> { return to_sum(); }
+
 void reduce_taskflow(benchmark::State &state) {
 
   std::size_t n = state.range(0);
-  std::vector data = to_sum();
-  auto grain_size = data.size() / (n * 10);
+
   tf::Executor executor(n);
+
+  std::vector<float> data;
+
+  {
+    tf::Taskflow alloca;
+
+    alloca.emplace([&data](tf::Subflow &sbf) {
+      data = alloc(sbf);
+    });
+
+    executor.run(alloca).wait();
+  }
+
+  auto grain_size = data.size() / (n * 10);
 
   volatile float output;
 

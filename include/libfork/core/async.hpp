@@ -86,10 +86,6 @@ struct is_task_impl<task<T>> : std::true_type {};
 template <typename T>
 concept is_task = is_task_impl<T>::value;
 
-} // namespace impl
-
-namespace impl {
-
 // ----------------------------------------------- //
 
 template <typename Task, typename Head>
@@ -99,7 +95,8 @@ concept valid_return = is_task<Task> && valid_result<return_of<Head>, value_of<T
  * @brief Check that the async function encoded in `Head` is invocable with arguments in `Tail`.
  */
 template <typename Head, typename... Tail>
-concept valid_packet = first_arg<Head> && valid_return<std::invoke_result_t<function_of<Head>, Head, Tail...>, Head>;
+concept valid_packet =
+    first_arg<Head> && valid_return<std::invoke_result_t<function_of<Head>, Head, Tail...>, Head>;
 
 /**
  * @brief A base class for building the first argument to asynchronous functions.
@@ -151,7 +148,8 @@ class [[nodiscard("packets must be co_awaited")]] packet : move_only<packet<Head
    * repeat the type.
    *
    */
-  constexpr packet(Head head, Tail &&...tail) noexcept : m_args{std::move(head), std::forward<Tail>(tail)...} {}
+  constexpr packet(Head head, Tail &&...tail) noexcept
+      : m_args{std::move(head), std::forward<Tail>(tail)...} {}
 
   /**
    * @brief Call the underlying async function with args.
@@ -208,8 +206,8 @@ template <typename Packet>
 using repack_t = typename detail::repack<Packet>::type;
 
 /**
- * @brief Check if a void invoke packet with `value_type` `X` can be converted to a call packet with `return_type`
- * `eventually<X>` without changing the `value_type` of the new packet.
+ * @brief Check if a void invoke packet with `value_type` `X` can be converted to a call packet with
+ * `return_type` `eventually<X>` without changing the `value_type` of the new packet.
  */
 template <typename Packet>
 concept repackable = non_void<value_of<Packet>> && requires { typename detail::repack<Packet>::type; } &&
@@ -264,7 +262,8 @@ struct [[nodiscard("async functions must be called")]] async {
    */
   template <typename... Args>
     requires impl::repackable<invoke_packet<Args...>>
-  LF_STATIC_CALL constexpr auto operator()(Args &&...args) LF_STATIC_CONST noexcept -> invoke_packet<Args...> {
+  LF_STATIC_CALL constexpr auto operator()(Args &&...args) LF_STATIC_CONST noexcept
+      -> invoke_packet<Args...> {
     return {{}, std::forward<Args>(args)...};
   }
 

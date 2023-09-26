@@ -11,7 +11,9 @@
 
 namespace {
 
-inline constexpr lf::async reduce = [](auto reduce, std::span<float> data, std::size_t n) -> lf::task<float> {
+inline constexpr lf::async reduce = [](lf::first_arg auto reduce,
+                                       std::span<float> data,
+                                       std::size_t n) -> lf::task<float> {
   if (data.size() <= n) {
     co_return std::reduce(data.begin(), data.end());
   }
@@ -29,13 +31,13 @@ inline constexpr lf::async reduce = [](auto reduce, std::span<float> data, std::
   co_return a + b;
 };
 
-template <lf::scheduler Sch>
+template <lf::scheduler Sch, lf::numa_strategy Strategy>
 void reduce_libfork(benchmark::State &state) {
 
   std::size_t n = state.range(0);
-  std::vector data = to_sum();
+  Sch sch(n, Strategy);
+  std::vector data = lf::sync_wait(sch, LF_LIFT2(to_sum));
   auto grain_size = data.size() / (n * 10);
-  Sch sch(n);
 
   volatile float output;
 
@@ -46,6 +48,20 @@ void reduce_libfork(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(reduce_libfork<lf::lazy_pool>)->DenseRange(1, num_threads())->UseRealTime();
+using namespace lf;
 
-BENCHMARK(reduce_libfork<lf::busy_pool>)->DenseRange(1, num_threads())->UseRealTime();
+BENCHMARK(reduce_libfork<lazy_pool, numa_strategy::seq>)
+    ->DenseRange(1, num_threads())
+    ->UseRealTime();
+
+BENCHMARK(reduce_libfork<lazy_pool, numa_strategy::fan>)
+    ->DenseRange(1, num_threads())
+    ->UseRealTime();
+
+BENCHMARK(reduce_libfork<busy_pool, numa_strategy::seq>)
+    ->DenseRange(1, num_threads())
+    ->UseRealTime();
+
+BENCHMARK(reduce_libfork<busy_pool, numa_strategy::fan>)
+    ->DenseRange(1, num_threads())
+    ->UseRealTime();

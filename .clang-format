@@ -1,6 +1,6 @@
 ---
 Language: Cpp
-ColumnLimit: 125
+ColumnLimit: 110
 IndentPPDirectives: BeforeHash
 AlwaysBreakTemplateDeclarations : true
 PackConstructorInitializers : CurrentLine
@@ -8,6 +8,8 @@ AccessModifierOffset: -1
 IndentCaseLabels : true
 AllowShortLambdasOnASingleLine: Empty
 RequiresExpressionIndentation: OuterScope
+
+LambdaBodyIndentationKind : Signature
 
 SpaceBeforeParens: Custom
 SpaceBeforeParensOptions:

@@ -9,7 +9,8 @@
 
 using namespace lf;
 
-inline constexpr lf::async_fn reduce = [](auto reduce, std::span<unsigned int const> x, std::size_t grain_size) -> task<unsigned int> {
+inline constexpr lf::async_fn reduce = [](auto reduce, std::span<unsigned int const> x,
+                                          std::size_t grain_size) -> task<unsigned int> {
   if (x.size() <= grain_size) {
     co_return std::reduce(x.begin(), x.end());
   }

@@ -20,19 +20,21 @@ namespace lf {
 namespace impl {
 
 /**
- * @brief Implements the `lift` higher-order function for forked/non-forked functions.
+ * @brief Implements the `lift` higher-order function for forked/non-forked
+ * functions.
  */
-template <typename F>
-struct lifted {
+template <typename F> struct lifted {
   template <first_arg Head, typename... Args>
-    requires (tag_of<Head> != tag::fork && std::invocable<F, Args...>)
-  LF_STATIC_CALL auto operator()(Head, Args &&...args) LF_STATIC_CONST->task<std::invoke_result_t<F, Args...>> {
+    requires(tag_of<Head> != tag::fork && std::invocable<F, Args...>)
+  LF_STATIC_CALL auto operator()(Head, Args &&...args)
+      LF_STATIC_CONST->task<std::invoke_result_t<F, Args...>> {
     co_return std::invoke(F{}, std::forward<Args>(args)...);
   }
 
   template <typename Head, typename... Args>
-    requires (tag_of<Head> == tag::fork && std::invocable<F, Args...>)
-  LF_STATIC_CALL auto operator()(Head, Args... args) LF_STATIC_CONST->task<std::invoke_result_t<F, Args...>> {
+    requires(tag_of<Head> == tag::fork && std::invocable<F, Args...>)
+  LF_STATIC_CALL auto operator()(Head, Args... args)
+      LF_STATIC_CONST->task<std::invoke_result_t<F, Args...>> {
     co_return std::invoke(F{}, std::move(args)...);
   }
 };
@@ -40,7 +42,8 @@ struct lifted {
 } // namespace impl
 
 /**
- * @brief A higher-order function that lifts a function into an ``async`` function.
+ * @brief A higher-order function that lifts a function into an ``async``
+ * function.
  *
  * \rst
  *
@@ -65,8 +68,9 @@ struct lifted {
  *
  * .. note::
  *
- *    The lifted function will accept arguments by-value if it is forked and by forwarding reference otherwise.
- *    This is to prevent dangling, use ``std::ref`` if you actually want a reference.
+ *    The lifted function will accept arguments by-value if it is forked and by
+ * forwarding reference otherwise. This is to prevent dangling, use ``std::ref``
+ * if you actually want a reference.
  *
  * \endrst
  */
@@ -78,13 +82,16 @@ consteval auto lift(F) noexcept -> async<impl::lifted<F>> {
 /**
  * @brief Lift an overload-set/template into a constrained lambda.
  *
- * This is useful for passing overloaded/template functions to higher order functions like `lf::fork`, `lf::call` etc.
+ * This is useful for passing overloaded/template functions to higher order
+ * functions like `lf::fork`, `lf::call` etc.
  */
-#define LF_LIFT(overload_set)                                                                                               \
-  [](auto &&...args) LF_STATIC_CALL LF_HOF_RETURNS(overload_set(std::forward<decltype(args)>(args)...))
+#define LF_LIFT(overload_set)                                                  \
+  [](auto &&...args) LF_STATIC_CALL LF_HOF_RETURNS(                            \
+      overload_set(std::forward<decltype(args)>(args)...))
 
 /**
- * @brief Lift an overload-set/template into an async function, equivalent to `lf::lift(LF_LIFT(overload_set))`.
+ * @brief Lift an overload-set/template into an async function, equivalent to
+ * `lf::lift(LF_LIFT(overload_set))`.
  */
 #define LF_LIFT2(overload_set) ::lf::lift(LF_LIFT(overload_set))
 
