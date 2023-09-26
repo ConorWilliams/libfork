@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 
-project(bench_libfork LANGUAGES CXX)
+project(bench_libfork LANGUAGES CXX C)
 
 include(../cmake/project-is-top-level.cmake)
 include(../cmake/folders.cmake)
@@ -19,9 +19,10 @@ find_package(OpenMP REQUIRED)
 
 # ---- Benchmarks ----
 
-file(GLOB_RECURSE BENCH_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/**/*.cpp")
+file(GLOB_RECURSE BENCH_C_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/**/*.c")
+file(GLOB_RECURSE BENCH_CXX_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/**/*.cpp")
 
-add_executable(benchmark ${BENCH_SOURCES})
+add_executable(benchmark ${BENCH_C_SOURCES} ${BENCH_CXX_SOURCES})
 
 target_link_libraries(benchmark 
     PRIVATE 
