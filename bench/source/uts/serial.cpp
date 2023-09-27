@@ -12,6 +12,7 @@
  *  State University.  See AUTHORS file for more information.
  *
  */
+#include <iostream>
 
 #include <benchmark/benchmark.h>
 
@@ -29,101 +30,40 @@
 
 namespace {
 
-struct Result {
-  counter_t maxdepth, size, leaves;
-};
+auto uts(int depth, Node *parent) -> result {
 
-auto parTreeSearch(int depth, Node *parent) -> Result {
-  //
-  int numChildren, childType;
-  counter_t parentHeight = parent->height;
+  result r(depth, 1, 0);
 
-  Result r(depth, 1, 0);
+  int num_children = uts_numChildren(parent);
+  int child_type = uts_childType(parent);
 
-  numChildren = uts_numChildren(parent);
-  childType = uts_childType(parent);
+  parent->numChildren = num_children;
 
-  // record number of children in parent
-  parent->numChildren = numChildren;
+  if (num_children > 0) {
 
-  // Recurse on the children
-  if (numChildren > 0) {
+    std::vector<pair> cs(num_children);
 
-    int i, j;
+    for (int i = 0; i < num_children; i++) {
 
-    for (i = 0; i < numChildren; i++) {
-      Node child;
-      child.type = childType;
-      child.height = parentHeight + 1;
-      child.numChildren = -1; // not yet determined
+      cs[i].child.type = child_type;
+      cs[i].child.height = parent->height + 1;
+      cs[i].child.numChildren = -1; // not yet determined
 
-      for (j = 0; j < computeGranularity; j++) {
-        rng_spawn(parent->state.state, child.state.state, i);
+      for (int j = 0; j < computeGranularity; j++) {
+        rng_spawn(parent->state.state, cs[i].child.state.state, i);
       }
 
-      Result c = parTreeSearch(depth + 1, &child);
+      uts(depth + 1, &cs[i].child);
+    }
 
-      if (c.maxdepth > r.maxdepth) {
-        r.maxdepth = c.maxdepth;
-      }
-
-      r.size += c.size;
-      r.leaves += c.leaves;
+    for (auto &&elem : cs) {
+      r.maxdepth = max(r.maxdepth, elem.res.maxdepth);
+      r.size += elem.res.size;
+      r.leaves += elem.res.leaves;
     }
   } else {
     r.leaves = 1;
   }
-
-  return r;
-}
-
-auto parTreeSearch_alloc(int depth, Node *parent) -> Result {
-  //
-  int numChildren, childType;
-  counter_t parentHeight = parent->height;
-
-  Result r(depth, 1, 0);
-
-  numChildren = uts_numChildren(parent);
-  childType = uts_childType(parent);
-
-  // record number of children in parent
-  parent->numChildren = numChildren;
-
-  std::vector<Result> cs(numChildren);
-
-  // Recurse on the children
-  if (numChildren > 0) {
-
-    int i, j;
-
-    for (i = 0; i < numChildren; i++) {
-      Node child;
-      child.type = childType;
-      child.height = parentHeight + 1;
-      child.numChildren = -1; // not yet determined
-
-      for (j = 0; j < computeGranularity; j++) {
-        rng_spawn(parent->state.state, child.state.state, i);
-      }
-
-      cs[i] = parTreeSearch(depth + 1, &child);
-    }
-
-    for (i = 0; i < numChildren; i++) {
-
-      if (cs[i].maxdepth > r.maxdepth) {
-        r.maxdepth = cs[i].maxdepth;
-      }
-
-      r.size += cs[i].size;
-      r.leaves += cs[i].leaves;
-    }
-
-  } else {
-    r.leaves = 1;
-  }
-
   return r;
 }
 
@@ -137,25 +77,10 @@ void uts_serial(benchmark::State &state) {
 
   for (auto _ : state) {
     uts_initRoot(&root, type);
-    volatile Result r = parTreeSearch(depth, &root);
-  }
-}
-
-void uts_serial_alloc(benchmark::State &state) {
-
-  Node root;
-
-  setup_uts();
-
-  volatile int depth = 0;
-
-  for (auto _ : state) {
-    uts_initRoot(&root, type);
-    volatile Result r = parTreeSearch_alloc(depth, &root);
+    volatile result r = uts(depth, &root);
   }
 }
 
 } // namespace
 
 BENCHMARK(uts_serial)->UseRealTime();
-BENCHMARK(uts_serial_alloc)->UseRealTime();

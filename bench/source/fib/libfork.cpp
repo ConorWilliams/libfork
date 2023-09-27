@@ -25,7 +25,13 @@ inline constexpr lf::async fib = [](auto fib, int n) LF_STATIC_CALL -> lf::task<
 template <lf::scheduler Sch, lf::numa_strategy Strategy>
 void fib_libfork(benchmark::State &state) {
 
-  Sch sch(state.range(0));
+  Sch sch = [&] {
+    if constexpr (std::constructible_from<Sch, int>) {
+      return Sch(state.range(0));
+    } else {
+      return Sch{};
+    }
+  }();
 
   volatile int secret = work;
   volatile int output;
@@ -38,6 +44,9 @@ void fib_libfork(benchmark::State &state) {
 } // namespace
 
 using namespace lf;
+
+BENCHMARK(fib_libfork<unit_pool, numa_strategy::seq>)->DenseRange(1, 1)->UseRealTime();
+BENCHMARK(fib_libfork<debug_pool, numa_strategy::seq>)->DenseRange(1, 1)->UseRealTime();
 
 BENCHMARK(fib_libfork<lazy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
 BENCHMARK(fib_libfork<lazy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();

@@ -183,8 +183,10 @@ class xoshiro {
 
     result_type bits = std::invoke(device);
 
-    for (std::size_t i = 1; i < chars_in_xoshiro / chars_in_prng; i++) {
-      bits = (bits << CHAR_BIT * chars_in_prng) + std::invoke(device);
+    if constexpr (chars_in_xoshiro < chars_in_prng) {
+      for (std::size_t i = 1; i < chars_in_xoshiro / chars_in_prng; i++) {
+        bits = (bits << CHAR_BIT * chars_in_prng) + std::invoke(device);
+      }
     }
 
     return bits;

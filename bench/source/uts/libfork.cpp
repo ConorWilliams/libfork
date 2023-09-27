@@ -13,6 +13,7 @@
  *
  */
 
+#include <algorithm>
 #include <iostream>
 
 #include <benchmark/benchmark.h>
@@ -27,125 +28,107 @@
 
 namespace {
 
-struct Result {
-  counter_t maxdepth, size, leaves;
-};
-
-inline constexpr lf::async uts_alloc = [](auto uts, int depth, Node *parent) -> lf::task<Result> {
+inline constexpr lf::async uts_alloc = [](auto uts, int depth, Node *parent) -> lf::task<result> {
   //
-  int numChildren, childType;
-  counter_t parentHeight = parent->height;
+  result r(depth, 1, 0);
 
-  Result r(depth, 1, 0);
+  int num_children = uts_numChildren(parent);
+  int child_type = uts_childType(parent);
 
-  numChildren = uts_numChildren(parent);
-  childType = uts_childType(parent);
+  parent->numChildren = num_children;
 
-  // record number of children in parent
-  parent->numChildren = numChildren;
+  if (num_children > 0) {
 
-  // Recurse on the children
-  if (numChildren > 0) {
+    std::vector<pair> cs(num_children);
 
-    int i, j;
+    for (int i = 0; i < num_children; i++) {
 
-    std::vector<Result> cs(numChildren);
+      cs[i].child.type = child_type;
+      cs[i].child.height = parent->height + 1;
+      cs[i].child.numChildren = -1; // not yet determined
 
-    for (i = 0; i < numChildren; i++) {
-      Node child;
-
-      child.type = childType;
-      child.height = parentHeight + 1;
-      child.numChildren = -1; // not yet determined
-
-      for (j = 0; j < computeGranularity; j++) {
-        rng_spawn(parent->state.state, child.state.state, i);
+      for (int j = 0; j < computeGranularity; j++) {
+        rng_spawn(parent->state.state, cs[i].child.state.state, i);
       }
 
-      Result c;
-
-      co_await lf::fork(cs[i], uts)(depth + 1, &child);
+      co_await lf::fork(cs[i].res, uts)(depth + 1, &cs[i].child);
     }
 
     co_await lf::join;
 
-    for (i = 0; i < numChildren; i++) {
-      if (cs[i].maxdepth > r.maxdepth) {
-        r.maxdepth = cs[i].maxdepth;
-      }
-      r.size += cs[i].size;
-      r.leaves += cs[i].leaves;
+    for (auto &&elem : cs) {
+      r.maxdepth = max(r.maxdepth, elem.res.maxdepth);
+      r.size += elem.res.size;
+      r.leaves += elem.res.leaves;
     }
-
   } else {
     r.leaves = 1;
   }
-
   co_return r;
 };
 
-inline constexpr lf::async uts = [](auto uts, int depth, Node *parent) -> lf::task<Result> {
-  //
-  int numChildren, childType;
-  counter_t parentHeight = parent->height;
+// inline constexpr lf::async uts = [](auto uts, int depth, Node *parent) -> lf::task<result> {
+//   //
+//   int numChildren, childType;
+//   counter_t parentHeight = parent->height;
 
-  Result r(depth, 1, 0);
+//   result r(depth, 1, 0);
 
-  numChildren = uts_numChildren(parent);
-  childType = uts_childType(parent);
+//   numChildren = uts_numChildren(parent);
+//   childType = uts_childType(parent);
 
-  // record number of children in parent
-  parent->numChildren = numChildren;
+//   // record number of children in parent
+//   parent->numChildren = numChildren;
 
-  // Recurse on the children
-  if (numChildren > 0) {
+//   // Recurse on the children
+//   if (numChildren > 0) {
 
-    int i, j;
+//     int i, j;
 
-    static_assert(lf::tag_of<decltype(uts)> != lf::tag::root);
+//     static_assert(lf::tag_of<decltype(uts)> != lf::tag::root);
 
-    // auto cs = lf::co_stack<Result[]>::alloc(numChildren);
+//     // auto cs = lf::co_stack<result[]>::alloc(numChildren);
 
-    auto *cs = static_cast<Result *>(co_await lf::stalloc{numChildren * sizeof(Result)});
+//     auto *cs = static_cast<result *>(co_await lf::stalloc{numChildren * sizeof(result)});
 
-    for (i = 0; i < numChildren; i++) {
-      Node child;
+//     for (i = 0; i < numChildren; i++) {
+//       Node child;
 
-      child.type = childType;
-      child.height = parentHeight + 1;
-      child.numChildren = -1; // not yet determined
+//       child.type = childType;
+//       child.height = parentHeight + 1;
+//       child.numChildren = -1; // not yet determined
 
-      for (j = 0; j < computeGranularity; j++) {
-        rng_spawn(parent->state.state, child.state.state, i);
-      }
+//       for (j = 0; j < computeGranularity; j++) {
+//         rng_spawn(parent->state.state, child.state.state, i);
+//       }
 
-      Result c;
+//       result c;
 
-      co_await lf::fork(cs[i], uts)(depth + 1, &child);
-    }
+//       co_await lf::fork(cs[i], uts)(depth + 1, &child);
+//     }
 
-    co_await lf::join;
+//     co_await lf::join;
 
-    for (i = 0; i < numChildren; i++) {
-      if (cs[i].maxdepth > r.maxdepth) {
-        r.maxdepth = cs[i].maxdepth;
-      }
-      r.size += cs[i].size;
-      r.leaves += cs[i].leaves;
-    }
+//     for (i = 0; i < numChildren; i++) {
+//       if (cs[i].maxdepth > r.maxdepth) {
+//         r.maxdepth = cs[i].maxdepth;
+//       }
+//       r.size += cs[i].size;
+//       r.leaves += cs[i].leaves;
+//     }
 
-    co_await lf::free{numChildren * sizeof(Result)};
+//     co_await lf::free{numChildren * sizeof(result)};
 
-  } else {
-    r.leaves = 1;
-  }
+//   } else {
+//     r.leaves = 1;
+//   }
 
-  co_return r;
-};
+//   co_return r;
+// };
 
-inline constexpr lf::async uts_shim = [](auto, int depth, Node *parent) -> lf::task<Result> {
-  co_return co_await uts(depth, parent);
-};
+// inline constexpr lf::async uts_shim = [](auto, int depth, Node *parent) -> lf::task<result> {
+//   co_return co_await uts(depth, parent);
+// };
 
 template <lf::scheduler Sch, lf::numa_strategy Strategy>
 void uts_libfork_alloc(benchmark::State &state) {
@@ -159,25 +142,26 @@ void uts_libfork_alloc(benchmark::State &state) {
 
   for (auto _ : state) {
     uts_initRoot(&root, type);
-    volatile Result res = sync_wait(sch, uts_alloc, depth, &root);
+    volatile result r = sync_wait(sch, uts_alloc, depth, &root);
+    // std::cout << "maxdepth: " << r.maxdepth << " size: " << r.size << " leaves: " << r.leaves << std::endl;
   }
 }
 
-template <lf::scheduler Sch, lf::numa_strategy Strategy>
-void uts_libfork(benchmark::State &state) {
+// template <lf::scheduler Sch, lf::numa_strategy Strategy>
+// void uts_libfork(benchmark::State &state) {
 
-  Sch sch(state.range(0));
+//   Sch sch(state.range(0));
 
-  setup_uts();
+//   setup_uts();
 
-  volatile int depth = 0;
-  Node root;
+//   volatile int depth = 0;
+//   Node root;
 
-  for (auto _ : state) {
-    uts_initRoot(&root, type);
-    volatile Result res = sync_wait(sch, uts_shim, depth, &root);
-  }
-}
+//   for (auto _ : state) {
+//     uts_initRoot(&root, type);
+//     volatile result res = sync_wait(sch, uts_shim, depth, &root);
+//   }
+// }
 
 } // namespace
 
@@ -189,8 +173,8 @@ BENCHMARK(uts_libfork_alloc<lazy_pool, numa_strategy::fan>)->DenseRange(1, num_t
 BENCHMARK(uts_libfork_alloc<busy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
 BENCHMARK(uts_libfork_alloc<busy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
 
-BENCHMARK(uts_libfork<lazy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
-BENCHMARK(uts_libfork<lazy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
+// BENCHMARK(uts_libfork<lazy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
+// BENCHMARK(uts_libfork<lazy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
 
-BENCHMARK(uts_libfork<busy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
-BENCHMARK(uts_libfork<busy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
+// BENCHMARK(uts_libfork<busy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
+// BENCHMARK(uts_libfork<busy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
