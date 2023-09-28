@@ -33,6 +33,18 @@ target_link_libraries(benchmark
         benchmark::benchmark_main
 )
 
+# ---- Benchmarks ----
+
+file(GLOB_RECURSE CORO_BENCH_CXX_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/coro/*.cpp")
+
+add_executable(coro_bench ${CORO_BENCH_CXX_SOURCES})
+
+target_link_libraries(coro_bench 
+    PRIVATE 
+        libfork::libfork 
+        benchmark::benchmark_main
+)
+
 
 
 # ---- End-of-file commands ----

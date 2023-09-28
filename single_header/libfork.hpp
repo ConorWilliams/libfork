@@ -4258,8 +4258,10 @@ inline auto numa_topology::split(std::size_t n, numa_strategy strategy) const ->
 
   std::vector<hwloc_bitmap_s *> sets(n, nullptr);
 
-  if (hwloc_distrib(m_topology.get(), roots.data(), roots.size(), sets.data(), sets.size(), INT_MAX, 0) !=
-      0) {
+  auto r_size = static_cast<unsigned int>(roots.size());
+  auto s_size = static_cast<unsigned int>(sets.size());
+
+  if (hwloc_distrib(m_topology.get(), roots.data(), r_size, sets.data(), s_size, INT_MAX, 0) != 0) {
     LF_THROW(hwloc_error{"unknown hwloc error when distributing over a topology"});
   }
 
