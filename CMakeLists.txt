@@ -51,6 +51,14 @@ else()
   message(WARNING "Disabling libfork's hwloc support because we couldn't find it")
 endif()
 
+# ---- Optional boost for clang acceleration ---- 
+
+find_package(Boost COMPONENTS atomic)
+
+if(Boost_FOUND)
+  target_link_libraries(libfork_libfork INTERFACE Boost::atomic)
+endif()
+
 # ---- Install rules ----
 
 if(NOT CMAKE_SKIP_INSTALL_RULES)

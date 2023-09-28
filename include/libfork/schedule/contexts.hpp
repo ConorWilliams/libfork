@@ -114,7 +114,7 @@ class test_immediate_context : public immediate_base<test_immediate_context> {
   /**
    * @brief Pops a task from the task queue.
    */
-  auto task_pop() -> task_h<test_immediate_context> * {
+  LF_FORCEINLINE auto task_pop() -> task_h<test_immediate_context> * {
 
     if (m_tasks.empty()) {
       return nullptr;
@@ -128,7 +128,7 @@ class test_immediate_context : public immediate_base<test_immediate_context> {
   /**
    * @brief Pushes a task to the task queue.
    */
-  void task_push(task_h<test_immediate_context> *task) { m_tasks.push_back(non_null(task)); }
+  LF_FORCEINLINE void task_push(task_h<test_immediate_context> *task) { m_tasks.push_back(non_null(task)); }
 
  private:
   std::vector<task_h<test_immediate_context> *> m_tasks; // All non-null.
@@ -308,9 +308,9 @@ class numa_worker_context : immovable<numa_worker_context<CRTP>> {
     });
   }
 
-  auto task_pop() noexcept -> task_t * { return m_tasks.pop(null_for<task_t>); }
+  LF_FORCEINLINE auto task_pop() noexcept -> task_t * { return m_tasks.pop(null_for<task_t>); }
 
-  void task_push(task_t *task) { m_tasks.push(non_null(task)); }
+  LF_FORCEINLINE void task_push(task_t *task) { m_tasks.push(non_null(task)); }
 };
 
 namespace detail::static_test {

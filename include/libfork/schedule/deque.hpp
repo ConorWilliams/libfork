@@ -30,6 +30,21 @@
  * single-producer multiple-consumer deque.
  */
 
+/**
+ * This is a workaround for clang generating bad codegen for ``std::atomic_thread_fence``.
+ */
+#if defined(__clang__) && defined(__has_include)
+  #if __has_include(<boost/atomic.hpp>)
+    #include <boost/atomic.hpp>
+    #define LF_ATOMIC_THREAD_FENCE_SEQ_CST boost::atomic_thread_fence(boost::memory_order_seq_cst)
+  #else
+    #warning "Boost.Atomic not found, falling back to std::atomic_thread_fence"
+    #define LF_ATOMIC_THREAD_FENCE_SEQ_CST std::atomic_thread_fence(std::memory_order_seq_cst)
+  #endif
+#else
+  #define LF_ATOMIC_THREAD_FENCE_SEQ_CST std::atomic_thread_fence(std::memory_order_seq_cst)
+#endif
+
 namespace lf {
 
 inline namespace ext {
@@ -198,7 +213,7 @@ class deque : impl::immovable<deque<T>> {
    *
    * @param val Value to add to the deque.
    */
-  constexpr void push(T const &val) noexcept;
+  LF_FORCEINLINE constexpr void push(T const &val) noexcept;
   /**
    * @brief Pop an item from the deque.
    *
@@ -207,7 +222,8 @@ class deque : impl::immovable<deque<T>> {
    */
   template <std::invocable F = impl::return_nullopt<T>>
     requires std::convertible_to<T, std::invoke_result_t<F>>
-  constexpr auto pop(F &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<F>) -> std::invoke_result_t<F>;
+  LF_FORCEINLINE constexpr auto pop(F &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<F>)
+      -> std::invoke_result_t<F>;
 
   /**
    * @brief The return type of the ``steal()`` operation.
@@ -323,7 +339,7 @@ constexpr auto deque<T>::empty() const noexcept -> bool {
 }
 
 template <simple T>
-constexpr auto deque<T>::push(T const &val) noexcept -> void {
+LF_FORCEINLINE constexpr auto deque<T>::push(T const &val) noexcept -> void {
   std::ptrdiff_t const bottom = m_bottom.load(relaxed);
   std::ptrdiff_t const top = m_top.load(acquire);
   impl::atomic_ring_buf<T> *buf = m_buf.load(relaxed);
@@ -345,14 +361,15 @@ constexpr auto deque<T>::push(T const &val) noexcept -> void {
 template <simple T>
 template <std::invocable F>
   requires std::convertible_to<T, std::invoke_result_t<F>>
-constexpr auto deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_v<F>)
+LF_FORCEINLINE constexpr auto deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_v<F>)
     -> std::invoke_result_t<F> {
 
   std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1; //
   impl::atomic_ring_buf<T> *buf = m_buf.load(relaxed);      //
   m_bottom.store(bottom, relaxed);                          // Stealers can no longer steal.
 
-  std::atomic_thread_fence(seq_cst);
+  LF_ATOMIC_THREAD_FENCE_SEQ_CST;
+
   std::ptrdiff_t top = m_top.load(relaxed);
 
   if (top <= bottom) {
@@ -377,7 +394,7 @@ constexpr auto deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_
 template <simple T>
 constexpr auto deque<T>::steal() noexcept -> steal_t {
   std::ptrdiff_t top = m_top.load(acquire);
-  std::atomic_thread_fence(seq_cst);
+  LF_ATOMIC_THREAD_FENCE_SEQ_CST;
   std::ptrdiff_t const bottom = m_bottom.load(acquire);
 
   if (top < bottom) {

@@ -3604,6 +3604,21 @@ consteval auto lift(F) noexcept -> async<impl::lifted<F>> {
  * single-producer multiple-consumer deque.
  */
 
+/**
+ * This is a workaround for clang generating bad codegen for ``std::atomic_thread_fence``.
+ */
+#if defined(__clang__) && defined(__has_include)
+  #if __has_include(<boost/atomic.hpp>)
+    #include <boost/atomic.hpp>
+    #define LF_ATOMIC_THREAD_FENCE_SEQ_CST boost::atomic_thread_fence(boost::memory_order_seq_cst)
+  #else
+    #warning "Boost.Atomic not found, falling back to std::atomic_thread_fence"
+    #define LF_ATOMIC_THREAD_FENCE_SEQ_CST std::atomic_thread_fence(std::memory_order_seq_cst)
+  #endif
+#else
+  #define LF_ATOMIC_THREAD_FENCE_SEQ_CST std::atomic_thread_fence(std::memory_order_seq_cst)
+#endif
+
 namespace lf {
 
 inline namespace ext {
@@ -3772,7 +3787,7 @@ class deque : impl::immovable<deque<T>> {
    *
    * @param val Value to add to the deque.
    */
-  constexpr void push(T const &val) noexcept;
+  LF_FORCEINLINE constexpr void push(T const &val) noexcept;
   /**
    * @brief Pop an item from the deque.
    *
@@ -3781,7 +3796,8 @@ class deque : impl::immovable<deque<T>> {
    */
   template <std::invocable F = impl::return_nullopt<T>>
     requires std::convertible_to<T, std::invoke_result_t<F>>
-  constexpr auto pop(F &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<F>) -> std::invoke_result_t<F>;
+  LF_FORCEINLINE constexpr auto pop(F &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<F>)
+      -> std::invoke_result_t<F>;
 
   /**
    * @brief The return type of the ``steal()`` operation.
@@ -3897,7 +3913,7 @@ constexpr auto deque<T>::empty() const noexcept -> bool {
 }
 
 template <simple T>
-constexpr auto deque<T>::push(T const &val) noexcept -> void {
+LF_FORCEINLINE constexpr auto deque<T>::push(T const &val) noexcept -> void {
   std::ptrdiff_t const bottom = m_bottom.load(relaxed);
   std::ptrdiff_t const top = m_top.load(acquire);
   impl::atomic_ring_buf<T> *buf = m_buf.load(relaxed);
@@ -3919,14 +3935,15 @@ constexpr auto deque<T>::push(T const &val) noexcept -> void {
 template <simple T>
 template <std::invocable F>
   requires std::convertible_to<T, std::invoke_result_t<F>>
-constexpr auto deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_v<F>)
+LF_FORCEINLINE constexpr auto deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_v<F>)
     -> std::invoke_result_t<F> {
 
   std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1; //
   impl::atomic_ring_buf<T> *buf = m_buf.load(relaxed);      //
   m_bottom.store(bottom, relaxed);                          // Stealers can no longer steal.
 
-  std::atomic_thread_fence(seq_cst);
+  LF_ATOMIC_THREAD_FENCE_SEQ_CST;
+
   std::ptrdiff_t top = m_top.load(relaxed);
 
   if (top <= bottom) {
@@ -3951,7 +3968,7 @@ constexpr auto deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_
 template <simple T>
 constexpr auto deque<T>::steal() noexcept -> steal_t {
   std::ptrdiff_t top = m_top.load(acquire);
-  std::atomic_thread_fence(seq_cst);
+  LF_ATOMIC_THREAD_FENCE_SEQ_CST;
   std::ptrdiff_t const bottom = m_bottom.load(acquire);
 
   if (top < bottom) {
@@ -4862,7 +4879,7 @@ class test_immediate_context : public immediate_base<test_immediate_context> {
   /**
    * @brief Pops a task from the task queue.
    */
-  auto task_pop() -> task_h<test_immediate_context> * {
+  LF_FORCEINLINE auto task_pop() -> task_h<test_immediate_context> * {
 
     if (m_tasks.empty()) {
       return nullptr;
@@ -4876,7 +4893,7 @@ class test_immediate_context : public immediate_base<test_immediate_context> {
   /**
    * @brief Pushes a task to the task queue.
    */
-  void task_push(task_h<test_immediate_context> *task) { m_tasks.push_back(non_null(task)); }
+  LF_FORCEINLINE void task_push(task_h<test_immediate_context> *task) { m_tasks.push_back(non_null(task)); }
 
  private:
   std::vector<task_h<test_immediate_context> *> m_tasks; // All non-null.
@@ -4884,6 +4901,39 @@ class test_immediate_context : public immediate_base<test_immediate_context> {
 
 static_assert(thread_context<test_immediate_context>);
 static_assert(!single_thread_context<test_immediate_context>);
+
+// --------------------------------------------------------------------- //
+
+/**
+ * @brief An internal context type for testing purposes.
+ *
+ * This is essentially an immediate context with a task queue.
+ */
+class test_immediate_context_deque : public immediate_base<test_immediate_context_deque> {
+ public:
+  // Deliberately not constexpr such that the promise will not transform all `fork -> call`.
+  static auto max_threads() noexcept -> std::size_t { return 1; }
+
+  /**
+   * @brief Pops a task from the task queue.
+   */
+  LF_FORCEINLINE auto task_pop() -> task_h<test_immediate_context_deque> * {
+    return m_tasks.pop([]() -> task_h<test_immediate_context_deque> * {
+      return nullptr;
+    });
+  }
+
+  /**
+   * @brief Pushes a task to the task queue.
+   */
+  LF_FORCEINLINE void task_push(task_h<test_immediate_context_deque> *task) { m_tasks.push(non_null(task)); }
+
+ private:
+  lf::deque<task_h<test_immediate_context_deque> *> m_tasks; // All non-null.
+};
+
+static_assert(thread_context<test_immediate_context_deque>);
+static_assert(!single_thread_context<test_immediate_context_deque>);
 
 // --------------------------------------------------------------------- //
 
@@ -5056,9 +5106,9 @@ class numa_worker_context : immovable<numa_worker_context<CRTP>> {
     });
   }
 
-  auto task_pop() noexcept -> task_t * { return m_tasks.pop(null_for<task_t>); }
+  LF_FORCEINLINE auto task_pop() noexcept -> task_t * { return m_tasks.pop(null_for<task_t>); }
 
-  void task_push(task_t *task) { m_tasks.push(non_null(task)); }
+  LF_FORCEINLINE void task_push(task_t *task) { m_tasks.push(non_null(task)); }
 };
 
 namespace detail::static_test {
@@ -5813,7 +5863,11 @@ inline namespace ext {
  */
 using debug_pool = impl::unit_pool_impl<impl::test_immediate_context>;
 
+using debug_pool_d = impl::unit_pool_impl<impl::test_immediate_context_deque>;
+
 static_assert(scheduler<debug_pool>);
+
+static_assert(scheduler<debug_pool_d>);
 
 } // namespace ext
 
