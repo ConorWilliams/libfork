@@ -148,13 +148,13 @@ class [[nodiscard("packets must be co_awaited")]] packet : move_only<packet<Head
    * repeat the type.
    *
    */
-  constexpr packet(Head head, Tail &&...tail) noexcept
+  LF_FORCEINLINE constexpr packet(Head head, Tail &&...tail) noexcept
       : m_args{std::move(head), std::forward<Tail>(tail)...} {}
 
   /**
    * @brief Call the underlying async function with args.
    */
-  auto invoke(frame_block *parent) && -> frame_block *requires (tag_of<Head> != tag::root) {
+  LF_FORCEINLINE auto invoke(frame_block *parent) && -> frame_block *requires (tag_of<Head> != tag::root) {
     task_type tsk = std::apply(function_of<Head>{}, std::move(m_args));
     tsk.frame()->set_parent(parent);
     return tsk.frame();
@@ -163,12 +163,12 @@ class [[nodiscard("packets must be co_awaited")]] packet : move_only<packet<Head
   /**
    * @brief Call the underlying async function with args.
    */
-  auto invoke() && -> frame_block *requires (tag_of<Head> == tag::root) {
+  LF_FORCEINLINE auto invoke() && -> frame_block *requires (tag_of<Head> == tag::root) {
     return std::apply(function_of<Head>{}, std::move(m_args)).frame();
   }
 
   template <typename F>
-  constexpr auto apply(F &&func) && -> decltype(auto) {
+  LF_FORCEINLINE constexpr auto apply(F &&func) && -> decltype(auto) {
     return std::apply(std::forward<F>(func), std::move(m_args));
   }
 
@@ -176,7 +176,7 @@ class [[nodiscard("packets must be co_awaited")]] packet : move_only<packet<Head
    * @brief Patch the `Head` type with `Context`
    */
   template <thread_context Context>
-  constexpr auto patch_with() && noexcept -> packet<patched<Context, Head>, Tail...> {
+  LF_FORCEINLINE constexpr auto patch_with() && noexcept -> packet<patched<Context, Head>, Tail...> {
     return std::move(*this).apply([](Head head, Tail &&...tail) -> packet<patched<Context, Head>, Tail...> {
       return {{std::move(head)}, std::forward<Tail>(tail)...};
     });
