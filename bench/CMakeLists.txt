@@ -20,9 +20,12 @@ find_package(OpenMP REQUIRED)
 # ---- Benchmarks ----
 
 file(GLOB_RECURSE BENCH_C_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/**/*.c")
-file(GLOB_RECURSE BENCH_CXX_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/**/*.cpp")
 
-add_executable(benchmark ${BENCH_C_SOURCES} ${BENCH_CXX_SOURCES})
+file(GLOB_RECURSE BENCH_CXX_FIB CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/fib/*.cpp")
+file(GLOB_RECURSE BENCH_CXX_REDUCE CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/reduce/*.cpp")
+file(GLOB_RECURSE BENCH_CXX_UTS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/uts/*.cpp")
+
+add_executable(benchmark ${BENCH_C_SOURCES} ${BENCH_CXX_FIB} ${BENCH_CXX_REDUCE} ${BENCH_CXX_UTS})
 
 target_link_libraries(benchmark 
     PRIVATE 
@@ -35,9 +38,7 @@ target_link_libraries(benchmark
 
 # ---- Benchmarks ----
 
-file(GLOB_RECURSE CORO_BENCH_CXX_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/coro/*.cpp")
-
-add_executable(coro_bench ${CORO_BENCH_CXX_SOURCES})
+add_executable(coro_bench ${CMAKE_CURRENT_SOURCE_DIR}/source/coroutine/incremental.cpp)
 
 target_link_libraries(coro_bench 
     PRIVATE 

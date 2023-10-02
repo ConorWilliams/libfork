@@ -8,13 +8,15 @@
 
 #include <libfork.hpp>
 
+#include <taskflow/taskflow.hpp>
+
 #include "../util.hpp"
 #include "config.hpp"
 #include "external/uts.h"
 
 namespace {
 
-auto uts(int depth, Node *parent) -> result {
+auto uts(int depth, Node *parent, tf::Subflow &sbf) -> result {
   //
   result r(depth, 1, 0);
 
@@ -37,15 +39,12 @@ auto uts(int depth, Node *parent) -> result {
         rng_spawn(parent->state.state, cs[i].child.state.state, i);
       }
 
-      if (i + 1 == num_children) {
-        cs[i].res = uts(depth + 1, &cs[i].child);
-      } else {
-#pragma omp task untied default(none) firstprivate(i) shared(cs, depth)
-        cs[i].res = uts(depth + 1, &cs[i].child);
-      }
+      sbf.emplace([&cs, depth, i](tf::Subflow &sbf) {
+        cs[i].res = uts(depth + 1, &cs[i].child, sbf);
+      });
     }
 
-#pragma omp taskwait
+    sbf.join();
 
     for (auto &&elem : cs) {
       r.maxdepth = max(r.maxdepth, elem.res.maxdepth);
@@ -58,21 +57,30 @@ auto uts(int depth, Node *parent) -> result {
   return r;
 };
 
-void uts_omp(benchmark::State &state, int tree) {
+void uts_taskflow(benchmark::State &state, int tree) {
 
   std::size_t n = state.range(0);
+  tf::Executor executor(n);
+  tf::Taskflow taskflow;
 
   setup_tree(tree);
 
   volatile int depth = 0;
   Node root;
 
+  result r;
+
+  auto h = taskflow.emplace([&](tf::Subflow &sbf) {
+    r = uts(depth, &root, sbf);
+    return 4;
+  });
+
   for (auto _ : state) {
     uts_initRoot(&root, type);
 
-#pragma omp parallel num_threads(n)
-#pragma omp single
-    volatile result r = uts(depth, &root);
+    executor.run(taskflow).wait();
+
+    volatile result res = r;
 
     // std::cout << "maxdepth: " << r.maxdepth << " size: " << r.size << " leaves: " << r.leaves << std::endl;
   }
@@ -80,6 +88,4 @@ void uts_omp(benchmark::State &state, int tree) {
 
 } // namespace
 
-using namespace lf;
-
-MAKE_UTS_FOR(uts_omp);
+MAKE_UTS_FOR(uts_taskflow);
