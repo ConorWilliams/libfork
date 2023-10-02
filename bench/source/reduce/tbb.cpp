@@ -25,7 +25,9 @@ auto reduce(std::span<float> x, std::size_t grain_size) -> float {
 
   tbb::task_group g;
 
-  g.run([&] { a = reduce(x.first(h), grain_size); });
+  g.run([&] {
+    a = reduce(x.first(h), grain_size);
+  });
 
   b = reduce(x.last(t), grain_size);
 
@@ -38,13 +40,17 @@ void reduce_tbb(benchmark::State &state) {
 
   std::size_t n = state.range(0);
   tbb::task_arena arena(n);
-  std::vector data = arena.execute([] { return to_sum(); });
+  std::vector data = arena.execute([] {
+    return to_sum();
+  });
   auto grain_size = data.size() / (n * 10);
 
   volatile float output;
 
   for (auto _ : state) {
-    output = arena.execute([&] { return reduce(data, grain_size); });
+    output = arena.execute([&] {
+      return reduce(data, grain_size);
+    });
   }
 }
 

@@ -45,7 +45,5 @@ target_link_libraries(coro_bench
         benchmark::benchmark_main
 )
 
-
-
 # ---- End-of-file commands ----
 add_folders(benchmarks)
