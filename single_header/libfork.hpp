@@ -484,7 +484,7 @@ static_assert(std::has_single_bit(k_new_align));
 /**
  * @brief Shorthand for `std::numeric_limits<std::unt32_t>::max()`.
  */
-static constexpr std::uint32_t k_u32_max = std::numeric_limits<std::uint32_t>::max();
+static constexpr std::uint16_t k_u16_max = std::numeric_limits<std::uint16_t>::max();
 
 /**
  * @brief Number of bytes in a kibibyte.
@@ -1218,21 +1218,21 @@ struct frame_block : private immovable<frame_block>, debug_block {
   /**
    * @brief Perform a `.load(order)` on the atomic join counter.
    */
-  [[nodiscard]] auto load_joins(std::memory_order order) const noexcept -> std::uint32_t {
+  [[nodiscard]] auto load_joins(std::memory_order order) const noexcept -> std::uint16_t {
     return m_join.load(order);
   }
 
   /**
    * @brief Perform a `.fetch_sub(val, order)` on the atomic join counter.
    */
-  auto fetch_sub_joins(std::uint32_t val, std::memory_order order) noexcept -> std::uint32_t {
+  auto fetch_sub_joins(std::uint16_t val, std::memory_order order) noexcept -> std::uint16_t {
     return m_join.fetch_sub(val, order);
   }
 
   /**
    * @brief Get the number of times this frame has been stolen.
    */
-  [[nodiscard]] auto steals() const noexcept -> std::uint32_t { return m_steal; }
+  [[nodiscard]] auto steals() const noexcept -> std::uint16_t { return m_steal; }
 
   /**
    * @brief Check if this is a root frame.
@@ -1252,7 +1252,7 @@ struct frame_block : private immovable<frame_block>, debug_block {
     // Use construct_at(...) to set non-atomically as we know we are the
     // only thread who can touch this control block until a steal which
     // would provide the required memory synchronization.
-    std::construct_at(&m_join, k_u32_max);
+    std::construct_at(&m_join, k_u16_max);
   }
 
   /**
@@ -1261,7 +1261,7 @@ struct frame_block : private immovable<frame_block>, debug_block {
    * This memory must be freed (in-order) before the current frame is destroyed.
    * The memory will be aligned to `k_new_align`.
    */
-  auto stalloc(std::size_t size) -> void * {
+  LF_TLS_CLANG_INLINE auto stalloc(std::size_t size) -> void * {
     LF_ASSERT(!is_root());
     LF_ASSERT(tls::asp);
     LF_ASSERT(tls::asp == m_top);
@@ -1278,7 +1278,7 @@ struct frame_block : private immovable<frame_block>, debug_block {
 
   std::byte *m_top;                        ///< Needs to be separate in-case allocation elided.
   frame_block *m_parent = nullptr;         ///< Same ^
-  std::atomic_uint16_t m_join = k_u32_max; ///< Number of children joined (with offset).
+  std::atomic_uint16_t m_join = k_u16_max; ///< Number of children joined (with offset).
   std::uint16_t m_steal = 0;               ///< Number of steals.
 };
 
@@ -1338,73 +1338,6 @@ struct promise_alloc_stack : frame_block {
 };
 
 } // namespace impl
-
-inline namespace core {
-
-namespace detail {
-
-template <typename>
-struct stack_allocable_impl : std::false_type {};
-
-template <std::default_initializable T>
-  requires (alignof(T) <= impl::k_new_align)
-struct stack_allocable_impl<T[]> : std::true_type {};
-
-} // namespace detail
-
-template <typename T>
-concept stack_allocatable = detail::stack_allocable_impl<T>::value;
-
-template <stack_allocatable T>
-class co_stack : impl::immovable<co_stack<T>> {
-
-  using value_type = std::remove_extent_t<T>;
-  using pointer_type = value_type *;
-
- public:
-  [[nodiscard]] LF_TLS_CLANG_INLINE static auto alloc(std::size_t n) -> co_stack {
-    using impl::tls::asp;
-
-    LF_ASSERT(asp);
-    LF_ASSERT(n > 0);
-
-    std::size_t size = n * sizeof(value_type);
-    LF_LOG("Allocating (co_stack) {} bytes on stack from {}", size, (void *)asp);
-    asp -= (size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
-
-    return co_stack{new (static_cast<void *>(asp)) value_type[n], size};
-  }
-
-  static auto operator new(size_t) -> void * = delete;
-  static auto operator new[](size_t) -> void * = delete;
-  static void operator delete(void *) = delete;
-  static void operator delete[](void *) = delete;
-
-  [[nodiscard]] auto operator[](std::size_t i) noexcept -> value_type & { return m_data[i]; }
-  [[nodiscard]] auto operator[](std::size_t i) const noexcept -> value_type const & { return m_data[i]; }
-
-  LF_TLS_CLANG_INLINE ~co_stack() noexcept {
-    using impl::tls::asp;
-
-    LF_ASSERT(impl::byte_cast(m_data) == asp);
-
-    if constexpr (!std::is_trivially_destructible_v<value_type>) {
-      std::destroy(m_data, m_data + (m_size / sizeof(value_type)));
-    }
-
-    asp += (m_size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
-
-    LF_LOG("Deallocating {} bytes on stack to {}", m_size, (void *)asp);
-  }
-
- private:
-  explicit co_stack(pointer_type data, std::size_t size) : m_data(data), m_size(size) {}
-
-  pointer_type m_data;
-  std::uint32_t m_size;
-};
-
-} // namespace core
 
 inline namespace ext {
 
@@ -2814,6 +2747,7 @@ inline constexpr impl::bind_task<tag::call> call = {};
 
 #include <atomic>
 #include <concepts>
+#include <span>
 #include <type_traits>
 #include <utility>
 
@@ -2828,9 +2762,11 @@ namespace lf {
 
 inline namespace core {
 
-enum class stalloc : std::size_t {};
-
-enum class free : std::size_t {};
+template <std::default_initializable T>
+  requires (alignof(T) <= impl::k_new_align)
+struct co_alloc {
+  std::size_t count;
+};
 
 } // namespace core
 
@@ -2931,14 +2867,14 @@ struct join_awaitable {
       // Therefore no need to reset the control block.
       return true;
     }
-    // Currently:            joins() = k_u32_max - num_joined
-    // Hence:       k_u32_max - joins() = num_joined
+    // Currently:            joins() = k_u16_max - num_joined
+    // Hence:       k_u16_max - joins() = num_joined
 
     // Could use (relaxed) + (fence(acquire) in truthy branch) but, it's
     // better if we see all the decrements to joins() and avoid suspending
     // the coroutine if possible. Cannot fetch_sub() here and write to frame
     // as coroutine must be suspended first.
-    auto joined = k_u32_max - self->load_joins(std::memory_order_acquire);
+    auto joined = k_u16_max - self->load_joins(std::memory_order_acquire);
 
     if (self->steals() == joined) {
       LF_LOG("Sync is ready");
@@ -2951,17 +2887,17 @@ struct join_awaitable {
   }
 
   auto await_suspend(stdx::coroutine_handle<> task) const noexcept -> stdx::coroutine_handle<> {
-    // Currently        joins  = k_u32_max  - num_joined
-    // We set           joins  = joins()    - (k_u32_max - num_steals)
+    // Currently        joins  = k_u16_max  - num_joined
+    // We set           joins  = joins()    - (k_u16_max - num_steals)
     //                         = num_steals - num_joined
 
-    // Hence               joined = k_u32_max - num_joined
-    //         k_u32_max - joined = num_joined
+    // Hence               joined = k_u16_max - num_joined
+    //         k_u16_max - joined = num_joined
 
     auto steals = self->steals();
-    auto joined = self->fetch_sub_joins(k_u32_max - steals, std::memory_order_release);
+    auto joined = self->fetch_sub_joins(k_u16_max - steals, std::memory_order_release);
 
-    if (steals == k_u32_max - joined) {
+    if (steals == k_u16_max - joined) {
       // We set joins after all children had completed therefore we can resume the task.
       // Need to acquire to ensure we see all writes by other threads to the result.
       std::atomic_thread_fence(std::memory_order_acquire);
@@ -2980,7 +2916,7 @@ struct join_awaitable {
     LF_LOG("join resumes");
     // Check we have been reset.
     LF_ASSERT(self->steals() == 0);
-    LF_ASSERT_NO_ASSUME(self->load_joins(std::memory_order_acquire) == k_u32_max);
+    LF_ASSERT_NO_ASSUME(self->load_joins(std::memory_order_acquire) == k_u16_max);
 
     self->debug_reset();
 
@@ -3181,29 +3117,28 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
     LF_ASSERT(this->debug_count() == 0);
     LF_ASSERT(this->steals() == 0);                                                // Fork without join.
-    LF_ASSERT_NO_ASSUME(this->load_joins(std::memory_order_acquire) == k_u32_max); // Invalid state.
+    LF_ASSERT_NO_ASSUME(this->load_joins(std::memory_order_acquire) == k_u16_max); // Invalid state.
 
     return final_awaitable{};
   }
 
-  auto await_transform(stalloc size) noexcept {
+  template <typename U>
+  auto await_transform(co_alloc<U> to_alloc) noexcept {
 
     static_assert(Tag != tag::root, "Cannot allocate on root tasks");
 
-    void *data = this->stalloc(static_cast<std::size_t>(size));
+    U *data = static_cast<U *>(this->stalloc(to_alloc.count * sizeof(U)));
+
+    for (std::size_t i = 0; i < to_alloc.count; ++i) {
+      std::construct_at(data + i);
+    }
 
     struct awaitable : std::suspend_never {
-      [[nodiscard]] auto await_resume() const noexcept -> void * { return m_data; }
-      void *m_data;
+      [[nodiscard]] auto await_resume() const noexcept -> std::span<U> { return allocated; }
+      std::span<U> allocated;
     };
 
-    return awaitable{{}, data};
-  }
-
-  auto await_transform(free size) noexcept -> std::suspend_never {
-    static_assert(Tag != tag::root, "Cannot allocate on root tasks");
-    this->free(static_cast<std::size_t>(size));
-    return {};
+    return awaitable{{}, {data, to_alloc.count}};
   }
 
   /**
@@ -4892,39 +4827,6 @@ static_assert(!single_thread_context<test_immediate_context>);
 // --------------------------------------------------------------------- //
 
 /**
- * @brief An internal context type for testing purposes.
- *
- * This is essentially an immediate context with a task queue.
- */
-class test_immediate_context_deque : public immediate_base<test_immediate_context_deque> {
- public:
-  // Deliberately not constexpr such that the promise will not transform all `fork -> call`.
-  static auto max_threads() noexcept -> std::size_t { return 1; }
-
-  /**
-   * @brief Pops a task from the task queue.
-   */
-  LF_FORCEINLINE auto task_pop() -> task_h<test_immediate_context_deque> * {
-    return m_tasks.pop([]() -> task_h<test_immediate_context_deque> * {
-      return nullptr;
-    });
-  }
-
-  /**
-   * @brief Pushes a task to the task queue.
-   */
-  LF_FORCEINLINE void task_push(task_h<test_immediate_context_deque> *task) { m_tasks.push(non_null(task)); }
-
- private:
-  lf::deque<task_h<test_immediate_context_deque> *> m_tasks; // All non-null.
-};
-
-static_assert(thread_context<test_immediate_context_deque>);
-static_assert(!single_thread_context<test_immediate_context_deque>);
-
-// --------------------------------------------------------------------- //
-
-/**
  * @brief A generic `thread_context` suitable for all `libforks` multi-threaded schedulers.
  *
  * This object does not manage worker_init/worker_finalize as it is intended
@@ -5850,11 +5752,7 @@ inline namespace ext {
  */
 using debug_pool = impl::unit_pool_impl<impl::test_immediate_context>;
 
-using debug_pool_d = impl::unit_pool_impl<impl::test_immediate_context_deque>;
-
 static_assert(scheduler<debug_pool>);
-
-static_assert(scheduler<debug_pool_d>);
 
 } // namespace ext
 

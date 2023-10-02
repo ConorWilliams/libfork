@@ -79,11 +79,7 @@ inline constexpr lf::async uts = [](auto uts, int depth, Node *parent) -> lf::ta
 
   if (num_children > 0) {
 
-    // std::vector<pair> cs(num_children);
-
-    auto *tmp = static_cast<pair *>(co_await lf::stalloc(num_children * sizeof(pair)));
-
-    std::span<pair> cs(tmp, num_children);
+    std::span cs = co_await lf::co_alloc<pair>(num_children);
 
     for (int i = 0; i < num_children; i++) {
 
@@ -105,9 +101,6 @@ inline constexpr lf::async uts = [](auto uts, int depth, Node *parent) -> lf::ta
       r.size += elem.res.size;
       r.leaves += elem.res.leaves;
     }
-
-    co_await lf::free(num_children * sizeof(pair));
-
   } else {
     r.leaves = 1;
   }
@@ -158,8 +151,8 @@ using namespace lf;
 BENCHMARK(uts_libfork<lazy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
 BENCHMARK(uts_libfork<lazy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
 
-// BENCHMARK(uts_libfork<busy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
-// BENCHMARK(uts_libfork<busy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
+BENCHMARK(uts_libfork<busy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
+BENCHMARK(uts_libfork<busy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
 
 BENCHMARK(uts_libfork_alloc<lazy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
 BENCHMARK(uts_libfork_alloc<lazy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();

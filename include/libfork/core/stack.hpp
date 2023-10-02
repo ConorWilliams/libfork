@@ -80,15 +80,13 @@ static_assert(sizeof(async_stack) == impl::k_stack_size, "Spurious padding in as
 
 namespace impl {
 
-inline auto stack_as_bytes(async_stack *stack) noexcept -> std::byte * {
-  return std::launder(stack->m_buf + k_stack_size);
-}
+inline auto stack_as_bytes(async_stack *stack) noexcept -> std::byte * { return std::launder(stack->m_buf); }
 
 inline auto bytes_to_stack(std::byte *bytes) noexcept -> async_stack * {
 #ifdef __cpp_lib_is_pointer_interconvertible
   static_assert(std::is_pointer_interconvertible_with_class(&async_stack::m_buf));
 #endif
-  return std::launder(std::bit_cast<async_stack *>(bytes - k_stack_size));
+  return std::launder(std::bit_cast<async_stack *>(bytes));
 }
 
 // ----------------------------------------------- //
@@ -275,21 +273,21 @@ struct frame_block : private immovable<frame_block>, debug_block {
   /**
    * @brief Perform a `.load(order)` on the atomic join counter.
    */
-  [[nodiscard]] auto load_joins(std::memory_order order) const noexcept -> std::uint32_t {
+  [[nodiscard]] auto load_joins(std::memory_order order) const noexcept -> std::uint16_t {
     return m_join.load(order);
   }
 
   /**
    * @brief Perform a `.fetch_sub(val, order)` on the atomic join counter.
    */
-  auto fetch_sub_joins(std::uint32_t val, std::memory_order order) noexcept -> std::uint32_t {
+  auto fetch_sub_joins(std::uint16_t val, std::memory_order order) noexcept -> std::uint16_t {
     return m_join.fetch_sub(val, order);
   }
 
   /**
    * @brief Get the number of times this frame has been stolen.
    */
-  [[nodiscard]] auto steals() const noexcept -> std::uint32_t { return m_steal; }
+  [[nodiscard]] auto steals() const noexcept -> std::uint16_t { return m_steal; }
 
   /**
    * @brief Check if this is a root frame.
@@ -309,7 +307,7 @@ struct frame_block : private immovable<frame_block>, debug_block {
     // Use construct_at(...) to set non-atomically as we know we are the
     // only thread who can touch this control block until a steal which
     // would provide the required memory synchronization.
-    std::construct_at(&m_join, k_u32_max);
+    std::construct_at(&m_join, k_u16_max);
   }
 
   /**
@@ -318,23 +316,14 @@ struct frame_block : private immovable<frame_block>, debug_block {
    * This memory must be freed (in-order) before the current frame is destroyed.
    * The memory will be aligned to `k_new_align`.
    */
-  auto stalloc(std::size_t size) -> void * {
+  LF_TLS_CLANG_INLINE auto stalloc(std::size_t size) -> void * {
     LF_ASSERT(!is_root());
     LF_ASSERT(tls::asp);
     LF_ASSERT(tls::asp == m_top);
     LF_LOG("stalloc {} bytes", size);
-    return m_top = (tls::asp -= (size + k_new_align - 1) & ~(k_new_align - 1));
-  }
-
-  /**
-   * @brief Delete `size` bytes from the current async-stack.
-   */
-  void free(std::size_t size) {
-    LF_ASSERT(!is_root());
-    LF_ASSERT(tls::asp);
-    LF_ASSERT(tls::asp == m_top);
-    LF_LOG("free {} bytes", size);
+    auto *tmp = m_top;
     m_top = (tls::asp += (size + k_new_align - 1) & ~(k_new_align - 1));
+    return tmp;
   }
 
  private:
@@ -344,12 +333,9 @@ struct frame_block : private immovable<frame_block>, debug_block {
 
   std::byte *m_top;                        ///< Needs to be separate in-case allocation elided.
   frame_block *m_parent = nullptr;         ///< Same ^
-  std::atomic_uint32_t m_join = k_u32_max; ///< Number of children joined (with offset).
-  std::uint32_t m_steal = 0;               ///< Number of steals.
+  std::atomic_uint16_t m_join = k_u16_max; ///< Number of children joined (with offset).
+  std::uint16_t m_steal = 0;               ///< Number of steals.
 };
-
-static_assert(alignof(frame_block) <= k_new_align, "Will be allocated above a coroutine-frame");
-static_assert(std::is_trivially_destructible_v<frame_block>);
 
 // ----------------------------------------------- //
 
@@ -390,89 +376,23 @@ struct promise_alloc_stack : frame_block {
    */
   [[nodiscard]] LF_TLS_CLANG_INLINE static auto operator new(std::size_t size) -> void * {
     LF_ASSERT(tls::asp);
-    tls::asp -= (size + k_new_align - 1) & ~(k_new_align - 1);
+    auto prev = tls::asp;
+    tls::asp += (size + k_new_align - 1) & ~(k_new_align - 1);
     LF_LOG("Allocating {} bytes on stack from {}", size, (void *)tls::asp);
-    return tls::asp;
+    return prev;
   }
 
   /**
    * @brief Deallocate the coroutine on the current `async_stack`.
    */
   LF_TLS_CLANG_INLINE static void operator delete(void *ptr, std::size_t size) {
-    LF_ASSERT(ptr == tls::asp);
-    tls::asp += (size + k_new_align - 1) & ~(k_new_align - 1);
+    LF_ASSERT(ptr == tls::asp - ((size + k_new_align - 1) & ~(k_new_align - 1)));
+    tls::asp = byte_cast(ptr);
     LF_LOG("Deallocating {} bytes on stack to {}", size, (void *)tls::asp);
   }
 };
 
 } // namespace impl
-
-inline namespace core {
-
-namespace detail {
-
-template <typename>
-struct stack_allocable_impl : std::false_type {};
-
-template <std::default_initializable T>
-  requires (alignof(T) <= impl::k_new_align)
-struct stack_allocable_impl<T[]> : std::true_type {};
-
-} // namespace detail
-
-template <typename T>
-concept stack_allocatable = detail::stack_allocable_impl<T>::value;
-
-template <stack_allocatable T>
-class co_stack : impl::immovable<co_stack<T>> {
-
-  using value_type = std::remove_extent_t<T>;
-  using pointer_type = value_type *;
-
- public:
-  [[nodiscard]] LF_TLS_CLANG_INLINE static auto alloc(std::size_t n) -> co_stack {
-    using impl::tls::asp;
-
-    LF_ASSERT(asp);
-    LF_ASSERT(n > 0);
-
-    std::size_t size = n * sizeof(value_type);
-    LF_LOG("Allocating (co_stack) {} bytes on stack from {}", size, (void *)asp);
-    asp -= (size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
-
-    return co_stack{new (static_cast<void *>(asp)) value_type[n], size};
-  }
-
-  static auto operator new(size_t) -> void * = delete;
-  static auto operator new[](size_t) -> void * = delete;
-  static void operator delete(void *) = delete;
-  static void operator delete[](void *) = delete;
-
-  [[nodiscard]] auto operator[](std::size_t i) noexcept -> value_type & { return m_data[i]; }
-  [[nodiscard]] auto operator[](std::size_t i) const noexcept -> value_type const & { return m_data[i]; }
-
-  LF_TLS_CLANG_INLINE ~co_stack() noexcept {
-    using impl::tls::asp;
-
-    LF_ASSERT(impl::byte_cast(m_data) == asp);
-
-    if constexpr (!std::is_trivially_destructible_v<value_type>) {
-      std::destroy(m_data, m_data + (m_size / sizeof(value_type)));
-    }
-
-    asp += (m_size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
-
-    LF_LOG("Deallocating {} bytes on stack to {}", m_size, (void *)asp);
-  }
-
- private:
-  explicit co_stack(pointer_type data, std::size_t size) : m_data(data), m_size(size) {}
-
-  pointer_type m_data;
-  std::uint32_t m_size;
-};
-
-} // namespace core
 
 inline namespace ext {
 

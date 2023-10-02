@@ -11,6 +11,7 @@
 
 #include <atomic>
 #include <concepts>
+#include <span>
 #include <type_traits>
 #include <utility>
 
@@ -33,9 +34,11 @@ namespace lf {
 
 inline namespace core {
 
-enum class stalloc : std::size_t {};
-
-enum class free : std::size_t {};
+template <std::default_initializable T>
+  requires (alignof(T) <= impl::k_new_align)
+struct co_alloc {
+  std::size_t count;
+};
 
 } // namespace core
 
@@ -136,14 +139,14 @@ struct join_awaitable {
       // Therefore no need to reset the control block.
       return true;
     }
-    // Currently:            joins() = k_u32_max - num_joined
-    // Hence:       k_u32_max - joins() = num_joined
+    // Currently:            joins() = k_u16_max - num_joined
+    // Hence:       k_u16_max - joins() = num_joined
 
     // Could use (relaxed) + (fence(acquire) in truthy branch) but, it's
     // better if we see all the decrements to joins() and avoid suspending
     // the coroutine if possible. Cannot fetch_sub() here and write to frame
     // as coroutine must be suspended first.
-    auto joined = k_u32_max - self->load_joins(std::memory_order_acquire);
+    auto joined = k_u16_max - self->load_joins(std::memory_order_acquire);
 
     if (self->steals() == joined) {
       LF_LOG("Sync is ready");
@@ -156,17 +159,17 @@ struct join_awaitable {
   }
 
   auto await_suspend(stdx::coroutine_handle<> task) const noexcept -> stdx::coroutine_handle<> {
-    // Currently        joins  = k_u32_max  - num_joined
-    // We set           joins  = joins()    - (k_u32_max - num_steals)
+    // Currently        joins  = k_u16_max  - num_joined
+    // We set           joins  = joins()    - (k_u16_max - num_steals)
     //                         = num_steals - num_joined
 
-    // Hence               joined = k_u32_max - num_joined
-    //         k_u32_max - joined = num_joined
+    // Hence               joined = k_u16_max - num_joined
+    //         k_u16_max - joined = num_joined
 
     auto steals = self->steals();
-    auto joined = self->fetch_sub_joins(k_u32_max - steals, std::memory_order_release);
+    auto joined = self->fetch_sub_joins(k_u16_max - steals, std::memory_order_release);
 
-    if (steals == k_u32_max - joined) {
+    if (steals == k_u16_max - joined) {
       // We set joins after all children had completed therefore we can resume the task.
       // Need to acquire to ensure we see all writes by other threads to the result.
       std::atomic_thread_fence(std::memory_order_acquire);
@@ -185,7 +188,7 @@ struct join_awaitable {
     LF_LOG("join resumes");
     // Check we have been reset.
     LF_ASSERT(self->steals() == 0);
-    LF_ASSERT_NO_ASSUME(self->load_joins(std::memory_order_acquire) == k_u32_max);
+    LF_ASSERT_NO_ASSUME(self->load_joins(std::memory_order_acquire) == k_u16_max);
 
     self->debug_reset();
 
@@ -386,29 +389,28 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
     LF_ASSERT(this->debug_count() == 0);
     LF_ASSERT(this->steals() == 0);                                                // Fork without join.
-    LF_ASSERT_NO_ASSUME(this->load_joins(std::memory_order_acquire) == k_u32_max); // Invalid state.
+    LF_ASSERT_NO_ASSUME(this->load_joins(std::memory_order_acquire) == k_u16_max); // Invalid state.
 
     return final_awaitable{};
   }
 
-  auto await_transform(stalloc size) noexcept {
+  template <typename U>
+  auto await_transform(co_alloc<U> to_alloc) noexcept {
 
     static_assert(Tag != tag::root, "Cannot allocate on root tasks");
 
-    void *data = this->stalloc(static_cast<std::size_t>(size));
+    U *data = static_cast<U *>(this->stalloc(to_alloc.count * sizeof(U)));
+
+    for (std::size_t i = 0; i < to_alloc.count; ++i) {
+      std::construct_at(data + i);
+    }
 
     struct awaitable : std::suspend_never {
-      [[nodiscard]] auto await_resume() const noexcept -> void * { return m_data; }
-      void *m_data;
+      [[nodiscard]] auto await_resume() const noexcept -> std::span<U> { return allocated; }
+      std::span<U> allocated;
     };
 
-    return awaitable{{}, data};
-  }
-
-  auto await_transform(free size) noexcept -> std::suspend_never {
-    static_assert(Tag != tag::root, "Cannot allocate on root tasks");
-    this->free(static_cast<std::size_t>(size));
-    return {};
+    return awaitable{{}, {data, to_alloc.count}};
   }
 
   /**

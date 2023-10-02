@@ -92,7 +92,7 @@ static_assert(std::has_single_bit(k_new_align));
 /**
  * @brief Shorthand for `std::numeric_limits<std::unt32_t>::max()`.
  */
-static constexpr std::uint32_t k_u32_max = std::numeric_limits<std::uint32_t>::max();
+static constexpr std::uint16_t k_u16_max = std::numeric_limits<std::uint16_t>::max();
 
 /**
  * @brief Number of bytes in a kibibyte.
