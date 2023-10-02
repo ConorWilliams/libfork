@@ -91,7 +91,11 @@ inline constexpr lf::async uts = [](auto uts, int depth, Node *parent) -> lf::ta
         rng_spawn(parent->state.state, cs[i].child.state.state, i);
       }
 
-      co_await lf::fork(cs[i].res, uts)(depth + 1, &cs[i].child);
+      if (i + 1 == num_children) {
+        co_await lf::call(cs[i].res, uts)(depth + 1, &cs[i].child);
+      } else {
+        co_await lf::fork(cs[i].res, uts)(depth + 1, &cs[i].child);
+      }
     }
 
     co_await lf::join;
@@ -160,9 +164,32 @@ void uts_libfork_busy_fan(benchmark::State &state, int tree) {
   uts_libfork<lf::busy_pool, lf::numa_strategy::fan>(state, tree);
 }
 
+// Allocating
+
+void uts_libfork_alloc_lazy_seq(benchmark::State &state, int tree) {
+  uts_libfork_alloc<lf::lazy_pool, lf::numa_strategy::seq>(state, tree);
+}
+
+void uts_libfork_alloc_lazy_fan(benchmark::State &state, int tree) {
+  uts_libfork_alloc<lf::lazy_pool, lf::numa_strategy::fan>(state, tree);
+}
+
+void uts_libfork_alloc_busy_seq(benchmark::State &state, int tree) {
+  uts_libfork_alloc<lf::busy_pool, lf::numa_strategy::seq>(state, tree);
+}
+
+void uts_libfork_alloc_busy_fan(benchmark::State &state, int tree) {
+  uts_libfork_alloc<lf::busy_pool, lf::numa_strategy::fan>(state, tree);
+}
+
 } // namespace
 
 using namespace lf;
+
+MAKE_UTS_FOR(uts_libfork_alloc_lazy_seq);
+MAKE_UTS_FOR(uts_libfork_alloc_lazy_fan);
+MAKE_UTS_FOR(uts_libfork_alloc_busy_seq);
+MAKE_UTS_FOR(uts_libfork_alloc_busy_fan);
 
 MAKE_UTS_FOR(uts_libfork_lazy_seq);
 MAKE_UTS_FOR(uts_libfork_lazy_fan);

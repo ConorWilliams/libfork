@@ -28,10 +28,10 @@
 
 #### Post feature complete
 
-- [ ] add numa mode control
+- [x] add numa mode control
 - [ ] benchmark: need some heterogeneous workloads (UT3, unbalanced tree reduce, see NOWA)
 - [ ] benchmark: A test/benchmark that stresses stack stealing?
-- [ ] benchmark: C++ library comparisons (TaskFlow, ...).
+- [x] benchmark: C++ library comparisons (TaskFlow, ...).
 - [ ] benchmark: Memory allocations of our stack stealing.
 - [ ] Review 30% branch miss-predict, seems to be related to spinning workers?
 - [ ] Graphs/analysis.
