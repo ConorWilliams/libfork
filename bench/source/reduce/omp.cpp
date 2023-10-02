@@ -20,7 +20,7 @@ auto reduce(std::span<float> x, std::size_t grain_size) -> float {
 
   float a, b;
 
-#pragma omp task untied shared(a, x, grain_size)
+#pragma omp task untied shared(a, x, grain_size, h) default(none)
   a = reduce(x.first(h), grain_size);
 
   b = reduce(x.last(t), grain_size);

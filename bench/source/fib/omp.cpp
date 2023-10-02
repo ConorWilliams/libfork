@@ -16,7 +16,7 @@ auto fib(int n) -> int {
 
   int x, y;
 
-#pragma omp task untied shared(x)
+#pragma omp task untied shared(x) firstprivate(n) default(none)
   x = fib(n - 1);
 
   y = fib(n - 2);

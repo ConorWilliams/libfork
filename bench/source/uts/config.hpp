@@ -126,6 +126,18 @@ inline void setup_t3l() {
   rootId = 7;
 }
 
+// # (T3XXL) Binomial ------------- Tree size = 2793220501
+// export T3XXL="-t 0 -b 2000 -q 0.499995 -m 2 -r 316"
+inline void setup_t3xxl() {
+  reset_uts();
+
+  type = (tree_t)0;
+  b_0 = 2000;
+  nonLeafBF = 2;
+  nonLeafProb = 0.499995;
+  rootId = 316;
+}
+
 inline void setup_tree(int i) {
   switch (i) {
     case 1:
@@ -151,6 +163,9 @@ inline void setup_tree(int i) {
       break;
     case 8:
       setup_t3l();
+      break;
+    case 9:
+      setup_t3xxl();
       break;
     default:
       throw std::runtime_error("Invalid tree id");

@@ -1,18 +1,3 @@
-/*
- *         ---- The Unbalanced Tree Search (UTS) Benchmark ----
- *
- *  Copyright (c) 2010 See AUTHORS file for copyright holders
- *
- *  This file is part of the unbalanced tree search benchmark.  This
- *  project is licensed under the MIT Open Source license.  See the LICENSE
- *  file for copyright and licensing information.
- *
- *  UTS is a collaborative project between researchers at the University of
- *  Maryland, the University of North Carolina at Chapel Hill, and the Ohio
- *  State University.  See AUTHORS file for more information.
- *
- */
-
 #include <algorithm>
 #include <iostream>
 #include <span>
@@ -52,7 +37,11 @@ inline constexpr lf::async uts_alloc = [](auto uts, int depth, Node *parent) -> 
         rng_spawn(parent->state.state, cs[i].child.state.state, i);
       }
 
-      co_await lf::fork(cs[i].res, uts)(depth + 1, &cs[i].child);
+      if (i + 1 == num_children) {
+        co_await lf::call(cs[i].res, uts)(depth + 1, &cs[i].child);
+      } else {
+        co_await lf::fork(cs[i].res, uts)(depth + 1, &cs[i].child);
+      }
     }
 
     co_await lf::join;
