@@ -52,7 +52,7 @@ endif()
 
 # ---- Optional boost for clang acceleration ---- 
 
-find_package(Boost COMPONENTS atomic)
+find_package(Boost 1.83.0 COMPONENTS atomic)
 
 if(Boost_FOUND)
   target_link_libraries(libfork_libfork INTERFACE Boost::atomic)

@@ -12,6 +12,12 @@
                 "taskflow",
                 "tbb"
             ]
+        },
+        "boost": {
+            "description": "This fetches a modern boost-atomic to make up for clang",
+            "dependencies": [
+                "boost-atomic"
+            ]
         }
     }
 }
