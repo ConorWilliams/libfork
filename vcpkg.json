@@ -1,8 +1,17 @@
 {
+    "name": "libfork-tests",
+    "description": "These are libfork's test-suite dependencies.",
     "dependencies": [
-        "catch2",
-        "benchmark",
-        "taskflow",
-        "tbb"
-    ]
+        "catch2"
+    ],
+    "features": {
+        "benchmark": {
+            "description": "These are libfork's benchmarking dependencies.",
+            "dependencies": [
+                "benchmark",
+                "taskflow",
+                "tbb"
+            ]
+        }
+    }
 }

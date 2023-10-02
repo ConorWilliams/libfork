@@ -1271,18 +1271,6 @@ struct frame_block : private immovable<frame_block>, debug_block {
     return tmp;
   }
 
-  /**
-   * @brief Delete `size` bytes from the current async-stack.
-   */
-  void free(std::size_t size) {
-    LF_ASSERT(!is_root());
-    LF_ASSERT(tls::asp);
-    LF_ASSERT(tls::asp == m_top);
-    LF_LOG("free {} bytes", size);
-    throw std::runtime_error{"fix me"};
-    // m_top = (tls::asp = ptr);
-  }
-
  private:
 #ifndef LF_COROUTINE_OFFSET
   stdx::coroutine_handle<> m_coro;
