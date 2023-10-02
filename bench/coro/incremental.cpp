@@ -44,6 +44,43 @@ void fib(benchmark::State &state) {
 
 BENCHMARK(serial::fib);
 
+// ----------------------- Baseline ----------------------- //
+
+lf::deque<int *> qu;
+
+namespace serial_queue {
+
+LF_NOINLINE constexpr auto fib_impl(int &ret, int n) -> void {
+  if (n < 2) {
+    ret = n;
+    return;
+  }
+
+  int a, b;
+
+  qu.push(&a);
+
+  fib_impl(a, n - 1);
+  fib_impl(b, n - 2);
+
+  qu.pop();
+
+  ret = a + b;
+};
+
+void fib(benchmark::State &state) {
+
+  for (auto _ : state) {
+    int tmp;
+    fib_impl(tmp, work);
+    output = tmp;
+  }
+}
+
+} // namespace serial_queue
+
+BENCHMARK(serial_queue::fib);
+
 // ----------------------- Zero coro ----------------------- //
 
 namespace heap {
@@ -107,13 +144,19 @@ struct op {
   static constexpr auto align = 2 * sizeof(void *);
 
   [[nodiscard]] LF_TLS_CLANG_INLINE static auto operator new(std::size_t size) -> void * {
-    return asp += (size + align - 1) & ~(align - 1);
+    auto prev = asp;
+    asp += (size + align - 1) & ~(align - 1);
+    return prev;
   }
 
   LF_TLS_CLANG_INLINE static void operator delete(void *ptr) { asp = static_cast<std::byte *>(ptr); }
 };
 
-struct promise : op {
+struct promise : /*lf::impl::frame_block, */ op {
+
+  // double f[40]{};
+
+  /*promise() : lf::impl::frame_block(coroutine::from_promise(*this), nullptr) {}*/
 
   auto get_return_object() -> coroutine { return {coroutine::from_promise(*this)}; }
   static auto initial_suspend() noexcept -> lf::stdx::suspend_always { return {}; }
@@ -298,6 +341,48 @@ void fib(benchmark::State &state) {
 
 BENCHMARK(transfer::fib);
 
+// ----------------------- libfork void ----------------------- //
+
+namespace void_fork {
+
+inline constexpr lf::async fib_impl = [](auto fib, int &res, int n) LF_STATIC_CALL -> lf::task<void> {
+  if (n < 2) {
+    res = n;
+    co_return;
+  }
+
+  int a, b;
+
+  co_await lf::call(fib)(a, n - 1);
+  co_await lf::call(fib)(b, n - 2);
+
+  co_await lf::join;
+
+  res = a + b;
+};
+
+template <typename Sch>
+void fib(benchmark::State &state) {
+
+  Sch sch = [&] {
+    if constexpr (std::constructible_from<Sch, int>) {
+      return Sch(1);
+    } else {
+      return Sch{};
+    }
+  }();
+
+  for (auto _ : state) {
+    int tmp;
+    lf::sync_wait(sch, fib_impl, tmp, work);
+    output = tmp;
+  }
+}
+
+} // namespace void_fork
+
+BENCHMARK(void_fork::fib<lf::unit_pool>)->UseRealTime();
+
 // ----------------------- libfork ----------------------- //
 
 namespace libfork {
@@ -333,17 +418,64 @@ void fib(benchmark::State &state) {
   }
 }
 
+using namespace lf;
+using namespace lf::impl;
+
+// --------------------------------------------------------------------- //
+
+/**
+ * @brief An internal context type for testing purposes.
+ *
+ * This is essentially an immediate context with a task queue.
+ */
+class test_immediate_context_deque : public immediate_base<test_immediate_context_deque> {
+ public:
+  // Deliberately not constexpr such that the promise will not transform all `fork -> call`.
+  static auto max_threads() noexcept -> std::size_t { return 1; }
+
+  /**
+   * @brief Pops a task from the task queue.
+   */
+  LF_FORCEINLINE auto task_pop() -> task_h<test_immediate_context_deque> * {
+    return m_tasks.pop([]() -> task_h<test_immediate_context_deque> * {
+      return nullptr;
+    });
+  }
+
+  /**
+   * @brief Pushes a task to the task queue.
+   */
+  LF_FORCEINLINE void task_push(task_h<test_immediate_context_deque> *task) { m_tasks.push(non_null(task)); }
+
+ private:
+  lf::deque<task_h<test_immediate_context_deque> *> m_tasks; // All non-null.
+};
+
+static_assert(thread_context<test_immediate_context_deque>);
+static_assert(!single_thread_context<test_immediate_context_deque>);
+
+using debug_pool_d = impl::unit_pool_impl<test_immediate_context_deque>;
+
+static_assert(scheduler<debug_pool_d>);
+
 } // namespace libfork
+
+namespace lf {
+
+using libfork::debug_pool_d;
+
+}
 
 BENCHMARK(libfork::fib<lf::unit_pool>)->UseRealTime();
 BENCHMARK(libfork::fib<lf::debug_pool>)->UseRealTime();
+BENCHMARK(libfork::fib<lf::debug_pool_d>)->UseRealTime();
 BENCHMARK(libfork::fib<lf::busy_pool>)->UseRealTime();
 
 void deque(benchmark::State &state) {
 
   lf::deque<void *> data;
 
-  volatile int range = 2000;
+  volatile int range = 20000;
 
   for (auto _ : state) {
 
@@ -359,3 +491,25 @@ void deque(benchmark::State &state) {
 }
 
 BENCHMARK(deque);
+
+void vec(benchmark::State &state) {
+
+  std::vector<void *> data;
+
+  volatile int range = 20000;
+
+  for (auto _ : state) {
+
+    int lim = range;
+
+    for (int i = 0; i < lim; ++i) {
+      data.push_back(&data);
+    }
+
+    while (!data.empty()) {
+      data.pop_back();
+    }
+  }
+}
+
+BENCHMARK(vec);
