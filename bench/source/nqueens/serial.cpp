@@ -1,0 +1,53 @@
+#include "array"
+#include <algorithm>
+#include <exception>
+#include <iostream>
+
+#include <benchmark/benchmark.h>
+
+#include "../util.hpp"
+#include "config.hpp"
+
+namespace {
+
+template <std::size_t N>
+auto nqueens(int j, std::array<char, N> const &a) -> long {
+
+  if (N == j) {
+    return 1;
+  }
+
+  long res = 0L;
+
+  for (int i = 0; i < N; i++) {
+
+    std::array<char, N> b;
+
+    for (int k = 0; k < j; k++) {
+      b[k] = a[k];
+    }
+
+    b[j] = i;
+
+    if (queens_ok(j + 1, b.data())) {
+      res += nqueens(j + 1, b);
+    }
+  }
+
+  return res;
+}
+
+void nqueens_serial(benchmark::State &state) {
+
+  volatile int output;
+
+  std::array<char, 13> buf{};
+
+  for (auto _ : state) {
+    output = nqueens(0, buf);
+  }
+}
+
+} // namespace
+
+BENCHMARK(nqueens_serial)->UseRealTime();
