@@ -112,11 +112,11 @@ inline constexpr lf::async uts_shim = [](auto, int depth, Node *parent) -> lf::t
 };
 
 template <lf::scheduler Sch, lf::numa_strategy Strategy>
-void uts_libfork_alloc(benchmark::State &state) {
+void uts_libfork_alloc(benchmark::State &state, int tree) {
 
   Sch sch(state.range(0));
 
-  setup_uts();
+  setup_tree(tree);
 
   volatile int depth = 0;
   Node root;
@@ -129,11 +129,11 @@ void uts_libfork_alloc(benchmark::State &state) {
 }
 
 template <lf::scheduler Sch, lf::numa_strategy Strategy>
-void uts_libfork(benchmark::State &state) {
+void uts_libfork(benchmark::State &state, int tree) {
 
   Sch sch(state.range(0));
 
-  setup_uts();
+  setup_tree(tree);
 
   volatile int depth = 0;
   Node root;
@@ -144,18 +144,27 @@ void uts_libfork(benchmark::State &state) {
   }
 }
 
+void uts_libfork_lazy_seq(benchmark::State &state, int tree) {
+  uts_libfork<lf::lazy_pool, lf::numa_strategy::seq>(state, tree);
+}
+
+void uts_libfork_lazy_fan(benchmark::State &state, int tree) {
+  uts_libfork<lf::lazy_pool, lf::numa_strategy::fan>(state, tree);
+}
+
+void uts_libfork_busy_seq(benchmark::State &state, int tree) {
+  uts_libfork<lf::busy_pool, lf::numa_strategy::seq>(state, tree);
+}
+
+void uts_libfork_busy_fan(benchmark::State &state, int tree) {
+  uts_libfork<lf::busy_pool, lf::numa_strategy::fan>(state, tree);
+}
+
 } // namespace
 
 using namespace lf;
 
-BENCHMARK(uts_libfork<lazy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
-BENCHMARK(uts_libfork<lazy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
-
-BENCHMARK(uts_libfork<busy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
-BENCHMARK(uts_libfork<busy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
-
-BENCHMARK(uts_libfork_alloc<lazy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
-BENCHMARK(uts_libfork_alloc<lazy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
-
-BENCHMARK(uts_libfork_alloc<busy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
-BENCHMARK(uts_libfork_alloc<busy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
+MAKE_UTS_FOR(uts_libfork_lazy_seq);
+MAKE_UTS_FOR(uts_libfork_lazy_fan);
+MAKE_UTS_FOR(uts_libfork_busy_seq);
+MAKE_UTS_FOR(uts_libfork_busy_fan);

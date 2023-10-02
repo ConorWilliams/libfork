@@ -67,11 +67,11 @@ auto uts(int depth, Node *parent) -> result {
   return r;
 }
 
-void uts_serial(benchmark::State &state) {
+void uts_serial(benchmark::State &state, int tree) {
 
   Node root;
 
-  setup_uts();
+  setup_tree(tree);
 
   volatile int depth = 0;
 
@@ -83,4 +83,12 @@ void uts_serial(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(uts_serial)->UseRealTime();
+BENCHMARK_CAPTURE(uts_serial, "T1 Geo fixed ", 1)->UseRealTime();
+BENCHMARK_CAPTURE(uts_serial, "T2 Geo cycle ", 2)->UseRealTime();
+BENCHMARK_CAPTURE(uts_serial, "T3 Binomial  ", 3)->UseRealTime();
+BENCHMARK_CAPTURE(uts_serial, "T4 Hybrid    ", 4)->UseRealTime();
+BENCHMARK_CAPTURE(uts_serial, "T5 Geo linear", 5)->UseRealTime();
+
+BENCHMARK_CAPTURE(uts_serial, "T1L Geo fixed ", 6)->UseRealTime();
+BENCHMARK_CAPTURE(uts_serial, "T2L Geo cyclic", 7)->UseRealTime();
+BENCHMARK_CAPTURE(uts_serial, "T3L Binomial  ", 8)->UseRealTime();
