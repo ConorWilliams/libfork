@@ -15,8 +15,9 @@
 
 namespace {
 
-constexpr lf::async nqueens =
-    []<std::size_t N>(auto nqueens, int j, std::array<char, N> const &a) -> lf::task<long> {
+using namespace lf;
+
+constexpr async nqueens = []<std::size_t N>(auto nqueens, int j, std::array<char, N> const &a) -> task<long> {
   if (N == j) {
     co_return 1;
   }

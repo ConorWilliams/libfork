@@ -1,6 +1,6 @@
 #ifndef CCFF3C63_F96E_4159_92DE_84921182174B
 #define CCFF3C63_F96E_4159_92DE_84921182174B
 
-inline constexpr int work = 32;
+inline constexpr int work = 36;
 
 #endif /* CCFF3C63_F96E_4159_92DE_84921182174B */

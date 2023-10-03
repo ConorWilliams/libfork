@@ -39,6 +39,7 @@
 
 #### Before release
 
+- [ ] benchmarks: add verifications...
 - [x] review: `constexpr`.
 - [x] review: `noexcept`.
 - [ ] review: `std::` includes in schedule/root.
