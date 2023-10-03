@@ -1,6 +1,7 @@
 #ifndef BE9FE4D3_1849_4309_A6E6_249FEE36A894
 #define BE9FE4D3_1849_4309_A6E6_249FEE36A894
 
+#include <atomic>
 #include <iostream>
 #include <memory>
 #include <random>
@@ -25,7 +26,7 @@ inline void init(double *A, int n) {
 
   lf::xoshiro rng{lf::seed, std::random_device{}};
 
-  std::uniform_real_distribution<float> dist{0, 1};
+  std::uniform_real_distribution<double> dist{0, 1};
 
   for (i = 0; i < n; i++) {
     for (j = 0; j < n; j++) {
@@ -97,5 +98,19 @@ inline auto matmul_init(int n) -> matmul_args {
 
   return args;
 }
+
+inline void multiply(double const *A, double const *B, double *C, int m, int n, int p, int ld) {
+  for (int i = 0; i < m; i++) {
+    for (int k = 0; k < p; k++) {
+      double c = 0.0;
+      for (int j = 0; j < n; j++) {
+        c += A[i * ld + j] * B[j * ld + k];
+      }
+      std::atomic_ref{C[i * ld + k]}.fetch_add(c, std::memory_order_relaxed);
+    }
+  }
+}
+
+inline constexpr int matmul_work = 1024;
 
 #endif /* BE9FE4D3_1849_4309_A6E6_249FEE36A894 */
