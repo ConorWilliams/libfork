@@ -39,6 +39,10 @@ void fib_libfork(benchmark::State &state) {
   for (auto _ : state) {
     output = lf::sync_wait(sch, fib, secret);
   }
+
+  if (output != sfib(work)) {
+    std::cout << "error" << std::endl;
+  }
 }
 
 } // namespace

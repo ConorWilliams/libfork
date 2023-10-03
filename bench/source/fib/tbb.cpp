@@ -41,6 +41,10 @@ void fib_tbb(benchmark::State &state) {
       return fib(secret);
     });
   }
+
+  if (output != sfib(work)) {
+    std::cout << "error" << std::endl;
+  }
 }
 
 } // namespace

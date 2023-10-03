@@ -48,6 +48,10 @@ void fib_taskflow(benchmark::State &state) {
   for (auto _ : state) {
     executor.run(taskflow).wait();
   }
+
+  if (output != sfib(work)) {
+    std::cout << "error" << std::endl;
+  }
 }
 
 } // namespace

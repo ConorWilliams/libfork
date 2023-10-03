@@ -38,6 +38,10 @@ void fib_omp(benchmark::State &state) {
 #pragma omp single
     output = fib(secret);
   }
+
+  if (output != sfib(work)) {
+    std::cout << "error" << std::endl;
+  }
 }
 
 } // namespace
