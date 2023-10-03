@@ -12,7 +12,7 @@
 namespace {
 
 void rec_matmul(double const *A, double const *B, double *C, int m, int n, int p, int ld) {
-  if ((m + n + p) <= 64) {
+  if ((m + n + p) <= matmul_grain) {
     multiply(A, B, C, m, n, p, ld);
   } else if (m >= n && n >= p) {
     int m1 = m >> 1;

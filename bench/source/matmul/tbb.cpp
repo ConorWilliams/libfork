@@ -30,7 +30,7 @@ auto fib(int n) -> int {
 
 void rec_matmul(double const *A, double const *B, double *C, int m, int n, int p, int ld) {
 
-  if ((m + n + p) <= 64) {
+  if ((m + n + p) <= matmul_grain) {
     return multiply(A, B, C, m, n, p, ld);
   }
 

@@ -8,33 +8,32 @@
 namespace {
 
 void rec_matmul(double const *A, double const *B, double *C, int m, int n, int p, int ld, tf::Subflow &sbf) {
-  if ((m + n + p) <= 64) {
-
+  if ((m + n + p) <= matmul_grain) {
     return multiply(A, B, C, m, n, p, ld);
   }
 
   if (m >= n && n >= p) {
     int m1 = m >> 1;
-    sbf.emplace([=](tf::Subflow &sbf) {
+    sbf.emplace([&, m1](tf::Subflow &sbf) {
       rec_matmul(A, B, C, m1, n, p, ld, sbf);
     });
-    sbf.emplace([=](tf::Subflow &sbf) {
+    sbf.emplace([&, m1](tf::Subflow &sbf) {
       rec_matmul(A + m1 * ld, B, C + m1 * ld, m - m1, n, p, ld, sbf);
     });
   } else if (n >= m && n >= p) {
     int n1 = n >> 1;
-    sbf.emplace([=](tf::Subflow &sbf) {
+    sbf.emplace([&, n1](tf::Subflow &sbf) {
       rec_matmul(A, B, C, m, n1, p, ld, sbf);
     });
-    sbf.emplace([=](tf::Subflow &sbf) {
+    sbf.emplace([&, n1](tf::Subflow &sbf) {
       rec_matmul(A + n1, B + n1 * ld, C, m, n - n1, p, ld, sbf);
     });
   } else {
     int p1 = p >> 1;
-    sbf.emplace([=](tf::Subflow &sbf) {
+    sbf.emplace([&, p1](tf::Subflow &sbf) {
       rec_matmul(A, B, C, m, n, p1, ld, sbf);
     });
-    sbf.emplace([=](tf::Subflow &sbf) {
+    sbf.emplace([&, p1](tf::Subflow &sbf) {
       rec_matmul(A, B + p1, C + p1, m, n, p - p1, ld, sbf);
     });
   }
@@ -67,7 +66,7 @@ void matmul_taskflow(benchmark::State &state) {
 
   tf::Taskflow taskflow;
 
-  taskflow.emplace([=](tf::Subflow &sbf) {
+  taskflow.emplace([&](tf::Subflow &sbf) {
     rec_matmul(A, B, C1, n, n, n, n, sbf);
   });
 

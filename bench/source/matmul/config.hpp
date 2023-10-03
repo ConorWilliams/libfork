@@ -1,6 +1,7 @@
 #ifndef BE9FE4D3_1849_4309_A6E6_249FEE36A894
 #define BE9FE4D3_1849_4309_A6E6_249FEE36A894
 
+#include <atomic>
 #include <iostream>
 #include <memory>
 #include <random>
@@ -105,11 +106,12 @@ inline void multiply(double const *A, double const *B, double *C, int m, int n, 
       for (int j = 0; j < n; j++) {
         c += A[i * ld + j] * B[j * ld + k];
       }
-      C[i * ld + k] += c;
+      std::atomic_ref{C[i * ld + k]}.fetch_add(c, std::memory_order_relaxed);
     }
   }
 }
 
 inline constexpr int matmul_work = 1024;
+inline constexpr int matmul_grain = 8 * 3;
 
 #endif /* BE9FE4D3_1849_4309_A6E6_249FEE36A894 */

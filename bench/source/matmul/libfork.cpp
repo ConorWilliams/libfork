@@ -11,7 +11,7 @@ using namespace lf;
 
 constexpr async rec_matmul =
     [](auto rec_matmul, double const *A, double const *B, double *C, int m, int n, int p, int ld) -> task<> {
-  if ((m + n + p) <= 64) {
+  if ((m + n + p) <= matmul_grain) {
     co_return multiply(A, B, C, m, n, p, ld);
   }
 
