@@ -45,8 +45,8 @@ void fib_libfork(benchmark::State &state) {
 
 using namespace lf;
 
-BENCHMARK(fib_libfork<unit_pool, numa_strategy::seq>)->DenseRange(1, 1)->UseRealTime();
-BENCHMARK(fib_libfork<debug_pool, numa_strategy::seq>)->DenseRange(1, 1)->UseRealTime();
+// BENCHMARK(fib_libfork<unit_pool, numa_strategy::seq>)->DenseRange(1, 1)->UseRealTime();
+// BENCHMARK(fib_libfork<debug_pool, numa_strategy::seq>)->DenseRange(1, 1)->UseRealTime();
 
 BENCHMARK(fib_libfork<lazy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
 BENCHMARK(fib_libfork<lazy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();

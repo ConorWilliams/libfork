@@ -60,7 +60,7 @@ void nqueens_libfork(benchmark::State &state) {
 
   volatile int output;
 
-  std::array<char, 13> buf{};
+  std::array<char, nqueens_work> buf{};
 
   for (auto _ : state) {
     output = lf::sync_wait(sch, nqueens, 0, buf);

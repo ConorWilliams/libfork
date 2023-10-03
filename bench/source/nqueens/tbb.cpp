@@ -1,0 +1,67 @@
+#include <numeric>
+
+#include <benchmark/benchmark.h>
+
+#include <tbb/task_arena.h>
+#include <tbb/task_group.h>
+
+#include "../util.hpp"
+#include "config.hpp"
+
+namespace {
+
+template <std::size_t N>
+auto nqueens(int j, std::array<char, N> const &a) -> long {
+
+  if (N == j) {
+    return 1;
+  }
+
+  long res = 0L;
+
+  std::array<std::array<char, N>, N> buf;
+  std::array<long, N> parts;
+
+  tbb::task_group g;
+
+  for (int i = 0; i < N; i++) {
+
+    for (int k = 0; k < j; k++) {
+      buf[i][k] = a[k];
+    }
+
+    buf[i][j] = i;
+
+    if (queens_ok(j + 1, buf[i].data())) {
+      g.run([&parts, &buf, i, j] {
+        parts[i] = nqueens(j + 1, buf[i]);
+      });
+    } else {
+      parts[i] = 0;
+    }
+  }
+
+  g.wait();
+
+  return std::accumulate(parts.begin(), parts.end(), 0L);
+}
+
+void nqueens_tbb(benchmark::State &state) {
+
+  std::size_t n = state.range(0);
+  tbb::task_arena arena(n);
+
+  volatile int output;
+
+  std::array<char, nqueens_work> buf{};
+
+  for (auto _ : state) {
+    output = arena.execute([&] {
+      return nqueens(0, buf);
+    });
+  }
+}
+
+} // namespace
+
+BENCHMARK(nqueens_tbb)->DenseRange(1, num_threads())->UseRealTime();

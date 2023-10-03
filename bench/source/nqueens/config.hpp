@@ -19,6 +19,6 @@ inline auto queens_ok(int n, char *a) -> bool {
   return true;
 }
 
-inline constexpr int nqueens_work = 14;
+inline constexpr int nqueens_work = 13;
 
 #endif /* FDBA8577_F021_4F7A_AB8B_91807F8F7688 */
