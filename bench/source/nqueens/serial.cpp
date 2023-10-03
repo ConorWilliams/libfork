@@ -1,7 +1,8 @@
-#include "array"
 #include <algorithm>
+#include <array>
 #include <exception>
 #include <iostream>
+#include <numeric>
 
 #include <benchmark/benchmark.h>
 
