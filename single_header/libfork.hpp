@@ -4897,9 +4897,15 @@ class numa_worker_context : immovable<numa_worker_context<CRTP>> {
    */
   auto try_steal() noexcept -> task_t * {
 
+    std::size_t multiplier = 1 + m_neigh.size();
+
     for (auto &&friends : m_neigh) {
 
-      for (std::size_t i = 0; i < k_steal_attempts; ++i) {
+      multiplier -= 1;
+
+      LF_ASSERT(multiplier > 0);
+
+      for (std::size_t i = 0; i < k_steal_attempts * multiplier; ++i) {
 
         std::shuffle(friends.begin(), friends.end(), m_rng);
 
