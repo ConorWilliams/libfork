@@ -9,26 +9,45 @@ namespace {
 
 using namespace lf;
 
-constexpr async rec_matmul =
-    [](auto rec_matmul, double const *A, double const *B, double *C, int m, int n, int p, int ld) -> task<> {
-  if ((m + n + p) <= matmul_grain) {
-    co_return multiply(A, B, C, m, n, p, ld);
+using mat = double *;
+
+/**
+ * @brief Recursive divide-and-conquer matrix multiplication, powers of 2, only.
+ *
+ * a00 a01            =  a00 * b00 + a01 * b10,   a00 * b01 + a01 * b11
+ * a10 a11            =  a10 * b00 + a11 * b10,   a10 * b01 + a11 * b11
+ *           b00 b01
+ *           b10 b11
+ */
+constexpr async matmul = [](auto matmul, mat A, mat B, mat R, unsigned n, unsigned s, auto add) -> task<> {
+  //
+  if (n * sizeof(double) <= lf::impl::k_cache_line) {
+    co_return multiply(A, B, R, n, s, add);
   }
 
-  if (m >= n && n >= p) {
-    int m1 = m >> 1;
-    co_await lf::fork(rec_matmul)(A, B, C, m1, n, p, ld);
-    co_await lf::call(rec_matmul)(A + m1 * ld, B, C + m1 * ld, m - m1, n, p, ld);
-  } else if (n >= m && n >= p) {
-    int n1 = n >> 1;
-    co_await lf::fork(rec_matmul)(A, B, C, m, n1, p, ld);
-    co_await lf::call(rec_matmul)(A + n1, B + n1 * ld, C, m, n - n1, p, ld);
-  } else {
-    int p1 = p >> 1;
-    co_await lf::fork(rec_matmul)(A, B, C, m, n, p1, ld);
-    co_await lf::call(rec_matmul)(A, B + p1, C + p1, m, n, p - p1, ld);
-  }
-  co_await lf::join;
+  LF_ASSERT(std::has_single_bit(n));
+  LF_ASSERT(std::has_single_bit(s));
+
+  unsigned m = n / 2;
+
+  unsigned o00 = 0;
+  unsigned o01 = m;
+  unsigned o10 = m * s;
+  unsigned o11 = m * s + m;
+
+  co_await lf::fork(matmul)(A + o00, B + o00, R + o00, m, s, add);
+  co_await lf::fork(matmul)(A + o00, B + o01, R + o01, m, s, add);
+  co_await lf::fork(matmul)(A + o10, B + o00, R + o10, m, s, add);
+  co_await lf::call(matmul)(A + o10, B + o01, R + o11, m, s, add);
+
+  co_await join;
+
+  co_await lf::fork(matmul)(A + o01, B + o10, R + o00, m, s, std::true_type{});
+  co_await lf::fork(matmul)(A + o01, B + o11, R + o01, m, s, std::true_type{});
+  co_await lf::fork(matmul)(A + o11, B + o10, R + o10, m, s, std::true_type{});
+  co_await lf::call(matmul)(A + o11, B + o11, R + o11, m, s, std::true_type{});
+
+  co_await join;
 };
 
 template <lf::scheduler Sch, lf::numa_strategy Strategy>
@@ -45,12 +64,7 @@ void matmul_libfork(benchmark::State &state) {
   auto [A, B, C1, C2, n] = lf::sync_wait(sch, LF_LIFT2(matmul_init), matmul_work);
 
   for (auto _ : state) {
-
-    state.PauseTiming();
-    zero(C1.get(), n);
-    state.ResumeTiming();
-
-    lf::sync_wait(sch, rec_matmul, A.get(), B.get(), C1.get(), n, n, n, n);
+    lf::sync_wait(sch, matmul, A.get(), B.get(), C1.get(), n, n, std::false_type{});
   }
 
   iter_matmul(A.get(), B.get(), C2.get(), n);
@@ -71,4 +85,4 @@ using namespace lf;
 // BENCHMARK(matmul_libfork<lazy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
 
 BENCHMARK(matmul_libfork<busy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
-// BENCHMARK(matmul_libfork<busy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
+BENCHMARK(matmul_libfork<busy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();

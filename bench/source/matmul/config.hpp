@@ -2,6 +2,7 @@
 #define BE9FE4D3_1849_4309_A6E6_249FEE36A894
 
 #include <atomic>
+#include <bit>
 #include <iostream>
 #include <memory>
 #include <random>
@@ -99,19 +100,26 @@ inline auto matmul_init(int n) -> matmul_args {
   return args;
 }
 
-inline void multiply(double const *A, double const *B, double *C, int m, int n, int p, int ld) {
-  for (int i = 0; i < m; i++) {
-    for (int k = 0; k < p; k++) {
-      double c = 0.0;
-      for (int j = 0; j < n; j++) {
-        c += A[i * ld + j] * B[j * ld + k];
+// --------------------------------------------- //
+
+inline constexpr unsigned int matmul_work = 1024;
+
+static_assert(std::has_single_bit(matmul_work));
+
+inline void multiply(double *A, double *B, double *R, unsigned n, unsigned s, auto add) {
+  for (unsigned i = 0; i < n; ++i) {
+    for (unsigned j = 0; j < n; ++j) {
+      double sum = 0;
+      for (unsigned k = 0; k < n; ++k) {
+        sum += A[i * s + k] * B[k * s + j];
       }
-      std::atomic_ref{C[i * ld + k]}.fetch_add(c, std::memory_order_relaxed);
+      if constexpr (add) {
+        R[i * s + j] += sum;
+      } else {
+        R[i * s + j] = sum;
+      }
     }
   }
 }
-
-inline constexpr int matmul_work = 1024;
-inline constexpr int matmul_grain = 8 * 3;
 
 #endif /* BE9FE4D3_1849_4309_A6E6_249FEE36A894 */

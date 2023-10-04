@@ -8,55 +8,57 @@
 
 namespace {
 
-auto fib(int n) -> int {
-  if (n < 2) {
-    return n;
+/**
+ * @brief Recursive divide-and-conquer matrix multiplication, powers of 2, only.
+ *
+ * a00 a01            =  a00 * b00 + a01 * b10,   a00 * b01 + a01 * b11
+ * a10 a11            =  a10 * b00 + a11 * b10,   a10 * b01 + a11 * b11
+ *           b00 b01
+ *           b10 b11
+ */
+template <typename Add = std::false_type>
+void matmul(double *A, double *B, double *R, unsigned n, unsigned s, Add add = {}) {
+  //
+  if (n * sizeof(double) <= lf::impl::k_cache_line) {
+    return multiply(A, B, R, n, s, add);
   }
 
-  int a, b;
+  LF_ASSERT(std::has_single_bit(n));
+  LF_ASSERT(std::has_single_bit(s));
+
+  unsigned m = n / 2;
+
+  unsigned o00 = 0;
+  unsigned o01 = m;
+  unsigned o10 = m * s;
+  unsigned o11 = m * s + m;
 
   tbb::task_group g;
 
-  g.run([&] {
-    a = fib(n - 1);
+  g.run([=]() {
+    matmul(A + o00, B + o00, R + o00, m, s, add);
   });
-
-  b = fib(n - 2);
+  g.run([=]() {
+    matmul(A + o00, B + o01, R + o01, m, s, add);
+  });
+  g.run([=]() {
+    matmul(A + o10, B + o00, R + o10, m, s, add);
+  });
+  matmul(A + o10, B + o01, R + o11, m, s, add);
 
   g.wait();
 
-  return a + b;
-}
+  g.run([=]() {
+    matmul(A + o01, B + o10, R + o00, m, s, std::true_type{});
+  });
+  g.run([=]() {
+    matmul(A + o01, B + o11, R + o01, m, s, std::true_type{});
+  });
+  g.run([=]() {
+    matmul(A + o11, B + o10, R + o10, m, s, std::true_type{});
+  });
+  matmul(A + o11, B + o11, R + o11, m, s, std::true_type{});
 
-void rec_matmul(double const *A, double const *B, double *C, int m, int n, int p, int ld) {
-
-  if ((m + n + p) <= matmul_grain) {
-    return multiply(A, B, C, m, n, p, ld);
-  }
-
-  tbb::task_group g;
-
-  if (m >= n && n >= p) {
-    int m1 = m >> 1;
-    g.run([=]() {
-      rec_matmul(A, B, C, m1, n, p, ld);
-    });
-    rec_matmul(A + m1 * ld, B, C + m1 * ld, m - m1, n, p, ld);
-
-  } else if (n >= m && n >= p) {
-    int n1 = n >> 1;
-    g.run([=]() {
-      rec_matmul(A, B, C, m, n1, p, ld);
-    });
-    rec_matmul(A + n1, B + n1 * ld, C, m, n - n1, p, ld);
-
-  } else {
-    int p1 = p >> 1;
-    g.run([=]() {
-      rec_matmul(A, B, C, m, n, p1, ld);
-    });
-    rec_matmul(A, B + p1, C + p1, m, n, p - p1, ld);
-  }
   g.wait();
 }
 
@@ -71,12 +73,8 @@ void matmul_tbb(benchmark::State &state) {
   });
 
   for (auto _ : state) {
-    state.PauseTiming();
-    zero(args.C1.get(), args.n);
-    state.ResumeTiming();
-
     arena.execute([&] {
-      rec_matmul(args.A.get(), args.B.get(), args.C1.get(), args.n, args.n, args.n, args.n);
+      matmul(args.A.get(), args.B.get(), args.C1.get(), args.n, args.n);
     });
   }
 
