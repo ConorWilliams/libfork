@@ -41,7 +41,7 @@ void matmul(double *A, double *B, double *R, unsigned n, unsigned s, Add add, tf
   sbf.emplace([=](tf::Subflow &sbf) {
     matmul(A + o10, B + o00, R + o10, m, s, add, sbf);
   });
-  sbf.corun([=](tf::Subflow &sbf) {
+  sbf.emplace([=](tf::Subflow &sbf) {
     matmul(A + o10, B + o01, R + o11, m, s, add, sbf);
   });
 
@@ -58,7 +58,7 @@ void matmul(double *A, double *B, double *R, unsigned n, unsigned s, Add add, tf
   sbf.emplace([=](tf::Subflow &sbf) {
     matmul(A + o11, B + o10, R + o10, m, s, std::true_type{}, sbf);
   });
-  sbf.corun([=](tf::Subflow &sbf) {
+  sbf.emplace([=](tf::Subflow &sbf) {
     matmul(A + o11, B + o11, R + o11, m, s, std::true_type{}, sbf);
   });
 

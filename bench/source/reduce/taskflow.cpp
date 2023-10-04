@@ -28,7 +28,7 @@ auto reduce(std::span<float> data, std::size_t n, tf::Subflow &sbf) -> float {
     a = reduce(data.first(h), n, sbf);
   });
 
-  sbf.corun([&](tf::Subflow &sbf) {
+  sbf.emplace([&](tf::Subflow &sbf) {
     b = reduce(data.last(t), n, sbf);
   });
 
