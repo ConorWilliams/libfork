@@ -67,14 +67,20 @@ void uts_omp(benchmark::State &state, int tree) {
   volatile int depth = 0;
   Node root;
 
+  result r;
+
   for (auto _ : state) {
     uts_initRoot(&root, type);
 
 #pragma omp parallel num_threads(n)
 #pragma omp single
-    volatile result r = uts(depth, &root);
+    r = uts(depth, &root);
 
     // std::cout << "maxdepth: " << r.maxdepth << " size: " << r.size << " leaves: " << r.leaves << std::endl;
+  }
+
+  if (r != result_tree(tree)) {
+    std::cerr << "omp uts " << tree << " failed" << std::endl;
   }
 }
 

@@ -7,6 +7,7 @@
 
 struct result {
   counter_t maxdepth, size, leaves;
+  auto operator<=>(const result &) const = default;
 };
 
 struct pair {
@@ -167,6 +168,32 @@ inline void setup_tree(int i) {
     case 9:
       setup_t3xxl();
       break;
+    default:
+      throw std::runtime_error("Invalid tree id");
+      break;
+  }
+}
+
+inline auto result_tree(int i) -> result {
+  switch (i) {
+    case 1:
+      return {10, 4130071, 3305118};
+    case 2:
+      return {81, 4117769, 2342762};
+    case 3:
+      return {1572, 4112897, 3599034};
+    case 4:
+      return {134, 4132453, 3108986};
+    case 5:
+      return {20, 4147582, 2181318};
+    case 6:
+      return {13, 102181082, 81746377};
+    case 7:
+      return {67, 96793510, 53791152};
+    case 8:
+      return {17844, 111345631, 89076904};
+    case 9:
+      throw std::runtime_error("unknown");
     default:
       throw std::runtime_error("Invalid tree id");
       break;

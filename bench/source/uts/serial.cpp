@@ -53,7 +53,7 @@ auto uts(int depth, Node *parent) -> result {
         rng_spawn(parent->state.state, cs[i].child.state.state, i);
       }
 
-      uts(depth + 1, &cs[i].child);
+      cs[i].res = uts(depth + 1, &cs[i].child);
     }
 
     for (auto &&elem : cs) {
@@ -64,6 +64,9 @@ auto uts(int depth, Node *parent) -> result {
   } else {
     r.leaves = 1;
   }
+
+  // std::cout << "maxdepth: " << r.maxdepth << " size: " << r.size << " leaves: " << r.leaves << std::endl;
+
   return r;
 }
 
@@ -75,9 +78,16 @@ void uts_serial(benchmark::State &state, int tree) {
 
   volatile int depth = 0;
 
+  result r;
+
   for (auto _ : state) {
     uts_initRoot(&root, type);
-    volatile result r = uts(depth, &root);
+    r = uts(depth, &root);
+    // std::cout << "maxdepth: " << r.maxdepth << " size: " << r.size << " leaves: " << r.leaves << std::endl;
+  }
+
+  if (r != result_tree(tree)) {
+    std::cerr << "serial uts " << tree << " failed" << std::endl;
   }
 }
 

@@ -114,10 +114,15 @@ void uts_libfork_alloc(benchmark::State &state, int tree) {
   volatile int depth = 0;
   Node root;
 
+  result r;
+
   for (auto _ : state) {
     uts_initRoot(&root, type);
-    volatile result r = sync_wait(sch, uts_alloc, depth, &root);
-    // std::cout << "maxdepth: " << r.maxdepth << " size: " << r.size << " leaves: " << r.leaves << std::endl;
+    r = sync_wait(sch, uts_alloc, depth, &root);
+  }
+
+  if (r != result_tree(tree)) {
+    std::cerr << "lf uts " << tree << " failed" << std::endl;
   }
 }
 
@@ -131,9 +136,16 @@ void uts_libfork(benchmark::State &state, int tree) {
   volatile int depth = 0;
   Node root;
 
+  result r;
+
   for (auto _ : state) {
     uts_initRoot(&root, type);
-    volatile result res = sync_wait(sch, uts_shim, depth, &root);
+    r = sync_wait(sch, uts_shim, depth, &root);
+    // std::cout << "maxdepth: " << r.maxdepth << " size: " << r.size << " leaves: " << r.leaves << std::endl;
+  }
+
+  if (r != result_tree(tree)) {
+    std::cerr << "lf uts " << tree << " failed" << std::endl;
   }
 }
 

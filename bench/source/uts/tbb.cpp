@@ -73,14 +73,20 @@ void uts_tbb(benchmark::State &state, int tree) {
   volatile int depth = 0;
   Node root;
 
+  result r;
+
   for (auto _ : state) {
     uts_initRoot(&root, type);
 
-    volatile result r = arena.execute([&] {
+    r = arena.execute([&] {
       return uts(depth, &root);
     });
 
     // std::cout << "maxdepth: " << r.maxdepth << " size: " << r.size << " leaves: " << r.leaves << std::endl;
+  }
+
+  if (r != result_tree(tree)) {
+    std::cerr << "tbb uts " << tree << " failed" << std::endl;
   }
 }
 

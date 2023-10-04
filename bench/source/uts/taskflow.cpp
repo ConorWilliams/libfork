@@ -80,9 +80,11 @@ void uts_taskflow(benchmark::State &state, int tree) {
 
     executor.run(taskflow).wait();
 
-    volatile result res = r;
-
     // std::cout << "maxdepth: " << r.maxdepth << " size: " << r.size << " leaves: " << r.leaves << std::endl;
+  }
+
+  if (r != result_tree(tree)) {
+    std::cerr << "serial uts " << tree << " failed" << std::endl;
   }
 }
 
