@@ -71,8 +71,8 @@ void reduce_taskflow(benchmark::State &state) {
     executor.run(taskflow).wait();
   }
 
-  if (auto ans = std::reduce(data.begin(), data.end()); !is_close(output, ans)) {
-    std::cerr << "taskflow wrong result: " << output << " != " << ans << std::endl;
+  if (auto exp = std::reduce(data.begin(), data.end()); !is_close(output, exp)) {
+    std::cerr << "taskflow wrong result: " << output << " != " << exp << std::endl;
   }
 }
 

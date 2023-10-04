@@ -52,8 +52,8 @@ void reduce_omp(benchmark::State &state) {
       output = reduce(data, grain_size);
     }
 
-    if (auto ans = std::reduce(data.begin(), data.end()); !is_close(output, ans)) {
-      std::cerr << "omp wrong result: " << output << " != " << ans << std::endl;
+    if (auto exp = std::reduce(data.begin(), data.end()); !is_close(output, exp)) {
+      std::cerr << "omp wrong result: " << output << " != " << exp << std::endl;
     }
   }
 }
