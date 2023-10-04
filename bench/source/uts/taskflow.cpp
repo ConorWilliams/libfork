@@ -39,9 +39,15 @@ auto uts(int depth, Node *parent, tf::Subflow &sbf) -> result {
         rng_spawn(parent->state.state, cs[i].child.state.state, i);
       }
 
-      sbf.emplace([&cs, depth, i](tf::Subflow &sbf) {
-        cs[i].res = uts(depth + 1, &cs[i].child, sbf);
-      });
+      if (i + 1 == num_children) {
+        sbf.corun([&cs, depth, i](tf::Subflow &sbf) {
+          cs[i].res = uts(depth + 1, &cs[i].child, sbf);
+        });
+      } else {
+        sbf.emplace([&cs, depth, i](tf::Subflow &sbf) {
+          cs[i].res = uts(depth + 1, &cs[i].child, sbf);
+        });
+      }
     }
 
     sbf.join();

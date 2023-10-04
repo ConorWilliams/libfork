@@ -21,8 +21,7 @@ auto fib(int n, tf::Subflow &sbf) -> int {
     res1 = fib(n - 1, sbf);
   });
 
-  // Note: I cannot seem to get this to execute on the current flow.
-  sbf.emplace([&res2, n](tf::Subflow &sbf) {
+  sbf.corun([&res2, n](tf::Subflow &sbf) {
     res2 = fib(n - 2, sbf);
   });
 
