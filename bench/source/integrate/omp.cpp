@@ -36,7 +36,7 @@ void integrate_omp(benchmark::State &state) {
   volatile double out;
 
   for (auto _ : state) {
-#pragma omp parallel num_threads(n)
+#pragma omp parallel num_threads(state.range(0))
 #pragma omp single
     out = integrate(0, fn(0), n, fn(n), 0);
   }
