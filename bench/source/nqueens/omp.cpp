@@ -77,6 +77,10 @@ void nqueens_omp(benchmark::State &state) {
 #pragma omp single
     output = nqueens(0, buf);
   }
+
+  if (output != answers[nqueens_work]) {
+    std::cerr << "omp wrong answer: " << output << " != " << answers[nqueens_work] << std::endl;
+  }
 }
 
 } // namespace

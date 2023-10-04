@@ -65,6 +65,10 @@ void nqueens_taskflow(benchmark::State &state) {
   for (auto _ : state) {
     executor.run(taskflow).wait();
   }
+
+  if (output != answers[nqueens_work]) {
+    std::cerr << "taskflow wrong answer: " << output << " != " << answers[nqueens_work] << std::endl;
+  }
 }
 
 } // namespace

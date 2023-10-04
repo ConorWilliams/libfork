@@ -65,6 +65,10 @@ void nqueens_libfork(benchmark::State &state) {
   for (auto _ : state) {
     output = lf::sync_wait(sch, nqueens, 0, buf);
   }
+
+  if (output != answers[nqueens_work]) {
+    std::cerr << "lf wrong answer: " << output << " != " << answers[nqueens_work] << std::endl;
+  }
 }
 
 } // namespace

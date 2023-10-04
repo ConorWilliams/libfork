@@ -64,6 +64,10 @@ void nqueens_tbb(benchmark::State &state) {
       return nqueens(0, buf);
     });
   }
+
+  if (output != answers[nqueens_work]) {
+    std::cerr << "tbb wrong answer: " << output << " != " << answers[nqueens_work] << std::endl;
+  }
 }
 
 } // namespace

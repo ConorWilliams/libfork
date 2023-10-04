@@ -47,6 +47,10 @@ void nqueens_serial(benchmark::State &state) {
   for (auto _ : state) {
     output = nqueens(0, buf);
   }
+
+  if (output != answers[nqueens_work]) {
+    std::cerr << "serial wrong answer: " << output << " != " << answers[nqueens_work] << std::endl;
+  }
 }
 
 } // namespace
