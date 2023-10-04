@@ -38,6 +38,9 @@ add_executable(benchmark
   ${BENCH_CXX_INTEGRATE}
 )
 
+#  UTS needs a recursion depth of 18'000 frames!
+target_compile_definitions(benchmark PRIVATE LF_ASYNC_STACK_SIZE=2048)
+
 target_link_libraries(benchmark 
     PRIVATE 
         libfork::libfork 
