@@ -40,7 +40,6 @@ The following benchmarks were performed on an Intel(R) Xeon(R) CPU E5-2670 0 @ 2
 
 [^1]: Built from commit SHA ``561d9cd6f457827bb81fcd036343ad14ec70f89c``
 
-
 ## Fibonacci (fib)
 
 ![Fibonacci results](./figs/fibonacci.svg)
@@ -55,7 +54,7 @@ Here with a 7 by 7 tree (7 branches per node, leaf nodes are 7 branches from the
 
 ## Cache oblivious matrix multiplication (matmul)
 
-![Matrix multipication results](./figs/matmul.svg)
+![Matrix multiplication results](./figs/matmul.svg)
 
 For this benchmark computing the product of two 1024x1024 matrices, we see the schedulers perform similarly as expected for a higher workload. Note the TBB tests segfaults here, I have no idea why? We see the speed-up with the number of threads tails, perhaps the algorithm is not perfectly parallelisable ($p < 1$) or maybe we are beginning to saturate the memory bandwidth.
 
@@ -71,4 +70,4 @@ As expected, the schedulers perform very similarly over the range 1-4 threads ho
 
 ![ARM results](./figs/arm.svg)
 
-These results highlight libfork's strong performance on weak memory models, obtaining near perfect speedup across the range of compute-limited benchmarks. 
+These results highlight libfork's strong performance on weak memory models, obtaining near perfect speedup across the range of compute-limited benchmarks.

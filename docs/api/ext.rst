@@ -49,7 +49,7 @@ Submission lists
 Exposed internals
 --------------------
 
-These classes are used to build ``libfork``s schedulers. They are exposed for re-use.
+These classes are used to build ``libfork``s schedulers. They are exposed for reuse.
 
 .. toctree::
    :glob: 
