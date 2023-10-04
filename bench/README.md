@@ -1,5 +1,28 @@
 # Benchmarks
 
+## Contents
+
+- [Compiling](#tasks-and-futures)
+- [Overview](#Features-of-the-consumer-API)
+- [Intel benchmarks](#Features-of-the-consumer-API)
+  - [Fibonacci (fib)](#Features-of-the-consumer-API)
+  - [Depth first search (dfs)](#Features-of-the-consumer-API)
+- [ARM benchmarks (v2.1)](#Features-of-the-consumer-API)
+
+## Compiling
+
+To compile the benchmarks have a look at [building libfork in developer mode](../HACKING.md) (and make sure you have the [dependencies](../vcpkg.json) installed).
+
+Once you have compiled the `benchmark` executable you can generate results that can be plotted with the `plot.py` script.
+
+For example:
+
+```bash
+./benchmark --benchmark_out_format=json --benchmark_out=results.json
+```
+
+## Overview
+
 Benchmarking is hard! The result depend fairly strongly on the compiler + machine. Especially as compiler optimization of coroutines in C++ is relatively unpredictable with HALO. Furthermore, extra caution is needed when linking to external libraries (e.g. Intel's TBB) that may be compiled with different compilers and flags. As an example, based on my testing with GCC-12, it seems that GCC currently uses a single job queue for openMP tasking which rapidly becomes a bottleneck causing the Fibonacci and dfs benchmarks to slow down as the number of threads increases. Additionally, with GCC, during the matmul and reduce benchmarks, libfork generated ~100% more cache-misses than TBB and OMP. I have no idea why!
 
 The optimal parallel execution, $T(n)$, time according to [Amdahl's law](https://en.wikipedia.org/wiki/Amdahl%27s_law) is:

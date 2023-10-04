@@ -14,7 +14,7 @@
             ]
         },
         "boost": {
-            "description": "This fetches a modern boost-atomic to make up for clang",
+            "description": "This fetches a modern boost-atomic to make up for clangs bad std::atomic codegen.",
             "dependencies": [
                 "boost-atomic"
             ]
