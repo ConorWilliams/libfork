@@ -70,6 +70,10 @@ void reduce_taskflow(benchmark::State &state) {
   for (auto _ : state) {
     executor.run(taskflow).wait();
   }
+
+  if (auto ans = std::reduce(data.begin(), data.end()); !is_close(output, ans)) {
+    std::cerr << "taskflow wrong result: " << output << " != " << ans << std::endl;
+  }
 }
 
 } // namespace

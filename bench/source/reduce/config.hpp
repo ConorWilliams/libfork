@@ -1,6 +1,8 @@
 #ifndef ADCDC097_184F_4172_B06E_215CC5B75A2B
 #define ADCDC097_184F_4172_B06E_215CC5B75A2B
 
+#include <cmath>
+#include <iostream>
 #include <random>
 #include <vector>
 
@@ -20,5 +22,7 @@ inline auto to_sum() -> std::vector<float> {
 
   return data;
 }
+
+inline auto is_close(double a, double b) { return std::abs((a - b) / b) < 0.001; }
 
 #endif /* ADCDC097_184F_4172_B06E_215CC5B75A2B */

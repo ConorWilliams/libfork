@@ -52,6 +52,10 @@ void reduce_tbb(benchmark::State &state) {
       return reduce(data, grain_size);
     });
   }
+
+  if (auto ans = std::reduce(data.begin(), data.end()); !is_close(output, ans)) {
+    std::cerr << "tbb wrong result: " << output << " != " << ans << std::endl;
+  }
 }
 
 } // namespace

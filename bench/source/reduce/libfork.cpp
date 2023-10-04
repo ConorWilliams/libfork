@@ -43,6 +43,10 @@ void reduce_libfork(benchmark::State &state) {
   for (auto _ : state) {
     output = lf::sync_wait(sch, reduce, data, grain_size);
   }
+
+  if (auto ans = std::reduce(data.begin(), data.end()); !is_close(output, ans)) {
+    std::cerr << "lf wrong result: " << output << " != " << ans << std::endl;
+  }
 }
 
 } // namespace
