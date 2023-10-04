@@ -65,19 +65,6 @@ void matmul_serial(benchmark::State &state) {
   }
 }
 
-void matmul_serial_no_recur(benchmark::State &state) {
-
-  lf::numa_topology{}.split(1).front().bind();
-
-  auto [A, B, C1, C2, n] = matmul_init(matmul_work);
-
-  for (auto _ : state) {
-    iter_matmul(A.get(), B.get(), C1.get(), n);
-  }
-}
-
 } // namespace
 
 BENCHMARK(matmul_serial)->UseRealTime();
-
-BENCHMARK(matmul_serial_no_recur)->UseRealTime();
