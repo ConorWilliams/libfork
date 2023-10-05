@@ -81,8 +81,8 @@ using namespace lf;
 // BENCHMARK(matmul_libfork<unit_pool, numa_strategy::seq>)->DenseRange(1, 1)->UseRealTime();
 // BENCHMARK(matmul_libfork<debug_pool, numa_strategy::seq>)->DenseRange(1, 1)->UseRealTime();
 
-// BENCHMARK(matmul_libfork<lazy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
-// BENCHMARK(matmul_libfork<lazy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
+BENCHMARK(matmul_libfork<lazy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
+BENCHMARK(matmul_libfork<lazy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
 
 BENCHMARK(matmul_libfork<busy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
 BENCHMARK(matmul_libfork<busy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();

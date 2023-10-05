@@ -44,7 +44,6 @@ void integrate_libfork(benchmark::State &state) {
     }
   }();
 
-  volatile double in = n;
   volatile double out;
 
   for (auto _ : state) {

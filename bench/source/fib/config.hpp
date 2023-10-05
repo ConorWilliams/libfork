@@ -5,7 +5,7 @@
 
 #include <libfork.hpp>
 
-inline constexpr int work = 32;
+inline constexpr int work = 38;
 
 inline constexpr auto sfib(int n) -> int {
   if (n < 2) {

@@ -28,7 +28,6 @@ auto integrate(double x1, double y1, double x2, double y2, double area) -> doubl
 
 void integrate_serial(benchmark::State &state) {
 
-  volatile double in = n;
   volatile double out;
 
   for (auto _ : state) {

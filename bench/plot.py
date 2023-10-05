@@ -6,6 +6,13 @@ import re
 from statistics import mean, stdev
 
 
+'''
+
+cmake --build --preset=rel && ./build/rel/bench/benchmark  --benchmark_time_unit=ms --benchmark_filter="matmul" --benchmark_out_format=json --benchmark_out=bench/data/laptop/matmul.json --benchmark_repetitions=5
+
+'''
+
+
 def stat(x):
     # Take the mean and standard deviation of the best 80% of the data
     x.sort()
@@ -87,7 +94,7 @@ for k, v in benchmarks.items():
 
     ferr = err / y
 
-    y = y[0] / y
+    y = 1000 / y
     err = y * ferr
 
     ax.errorbar(x, y, yerr=err, label=label.capitalize(), capsize=2)
@@ -95,7 +102,7 @@ for k, v in benchmarks.items():
 fig.legend()
 
 ax.set_xlabel("Number of threads")
-ax.set_ylabel("Time/ms")
+ax.set_ylabel("Bandwidth (ops per second)")
 
 fig.tight_layout()
 

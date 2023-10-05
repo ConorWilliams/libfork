@@ -201,6 +201,8 @@ MAKE_UTS_FOR(uts_libfork_busy_fan);
 
 #else
 
+MAKE_UTS_FOR(uts_libfork_lazy_seq);
+
 MAKE_UTS_FOR(uts_libfork_busy_seq);
 
 #endif

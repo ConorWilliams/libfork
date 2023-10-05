@@ -36,7 +36,6 @@ auto integrate(double x1, double y1, double x2, double y2, double area, tf::Subf
 
 void integrate_taskflow(benchmark::State &state) {
 
-  volatile double in = n;
   volatile double out;
 
   tf::Executor executor(state.range(0));

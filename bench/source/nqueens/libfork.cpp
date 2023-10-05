@@ -75,4 +75,6 @@ void nqueens_libfork(benchmark::State &state) {
 
 using namespace lf;
 
+BENCHMARK(nqueens_libfork<lazy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
+
 BENCHMARK(nqueens_libfork<busy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();

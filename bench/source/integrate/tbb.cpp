@@ -39,7 +39,6 @@ void integrate_tbb(benchmark::State &state) {
 
   tbb::task_arena arena(state.range(0));
 
-  volatile double in = n;
   volatile double out;
 
   for (auto _ : state) {
