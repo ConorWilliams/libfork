@@ -72,9 +72,9 @@ void nqueens_omp(benchmark::State &state) {
 
   volatile int output;
 
-  for (auto _ : state) {
 #pragma omp parallel num_threads(n)
 #pragma omp single
+  for (auto _ : state) {
     output = nqueens(0, buf);
   }
 

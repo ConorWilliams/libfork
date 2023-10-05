@@ -33,9 +33,9 @@ void fib_omp(benchmark::State &state) {
   volatile int secret = work;
   volatile int output;
 
-  for (auto _ : state) {
 #pragma omp parallel num_threads(n)
 #pragma omp single
+  for (auto _ : state) {
     output = fib(secret);
   }
 

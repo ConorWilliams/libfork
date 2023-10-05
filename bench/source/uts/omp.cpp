@@ -69,11 +69,11 @@ void uts_omp(benchmark::State &state, int tree) {
 
   result r;
 
+#pragma omp parallel num_threads(n)
+#pragma omp single
   for (auto _ : state) {
     uts_initRoot(&root, type);
 
-#pragma omp parallel num_threads(n)
-#pragma omp single
     r = uts(depth, &root);
 
     // std::cout << "maxdepth: " << r.maxdepth << " size: " << r.size << " leaves: " << r.leaves << std::endl;

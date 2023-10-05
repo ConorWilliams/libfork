@@ -39,10 +39,7 @@ void reduce_omp(benchmark::State &state) {
   {
     std::vector<double> data;
 
-#pragma omp task shared(data) // No untied
     data = to_sum();
-
-#pragma omp taskwait
 
     auto grain_size = data.size() / (n * 10);
 
