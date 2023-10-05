@@ -10,6 +10,9 @@ prefix/
 old/
 Testing/
 
+bench/data/
+*.svg
+
 gmon.out
 out.png
 output.png

@@ -16,8 +16,8 @@ cmake --build --preset=rel && ./build/rel/bench/benchmark  --benchmark_time_unit
 def stat(x):
     # Take the mean and standard deviation of the best 80% of the data
     x.sort()
-    # n = len(x)
-    # x = x[:2]
+    n = len(x)
+    x = x[:8]
     # assert(len(x) >= 3)
     return median(x), stdev(x)
 
@@ -66,6 +66,7 @@ for bench in data["benchmarks"]:
 
 # find the serial benchmark
 
+tS = 1
 
 for k, v in benchmarks.items():
     if ("serial" in k):
@@ -76,9 +77,7 @@ for k, v in benchmarks.items():
 
 # Plot the results
 
-fig, ax = plt.subplots()
-
-
+fig, (bx, ax) = plt.subplots(2, 1)
 
 for k, v in benchmarks.items():
 
@@ -100,27 +99,33 @@ for k, v in benchmarks.items():
     m, c = np.polyfit(x, y[0] / y, 1)
     print(f"{label}: {m}")
 
+    bx.plot(x, 1000 / y, label=label.capitalize())
+
     ferr = err / y
-    y = 1000 / y
-    err = y * ferr
+
+    y = y[0] / y
+
+    err = y * np.sqrt((ferr)**2 + (ferr[0])**2)
 
     ax.errorbar(x, y, yerr=err, label=label.capitalize(), capsize=2)
     
     
+ax.plot(range(1,32), range(1, 32), color="black", linestyle="dashed", label="Ideal")
 
-
-ax.hlines(1000/tS, 1, 32, label="Serial", color="black", linestyle="dashed")
+bx.hlines(1000/tS, 1, 32, label="Serial", color="black", linestyle="dashed")
 
 
 # Set log y axis
-# ax.set_yscale('log')
+bx.set_yscale('log')
 # ax.set_xscale('log')
 
 ax.legend(loc="best")
 
 ax.set_xlabel("Number of threads")
-ax.set_ylabel("Bandwidth (ops per second)")
+bx.set_ylabel("Bandwidth (ops per second)")
+ax.set_ylabel("Speedup")
 ax.set_xlim(0, 33)
+bx.set_xlim(0, 33)
 
 fig.tight_layout()
 
