@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 import argparse
 import json
 import re
-from statistics import mean, stdev
+from statistics import mean, stdev, median
 
 
 '''
@@ -16,10 +16,10 @@ cmake --build --preset=rel && ./build/rel/bench/benchmark  --benchmark_time_unit
 def stat(x):
     # Take the mean and standard deviation of the best 80% of the data
     x.sort()
-    n = len(x)
-    x = x[0:int(n*0.8)]
-    assert(len(x) > 3)
-    return mean(x), stdev(x)
+    # n = len(x)
+    # x = x[:2]
+    # assert(len(x) >= 3)
+    return median(x), stdev(x)
 
 
 
@@ -78,12 +78,17 @@ for k, v in benchmarks.items():
 
 fig, ax = plt.subplots()
 
+
+
 for k, v in benchmarks.items():
 
     label = "_".join(k.split("_")[1:])
 
     if (label.startswith("serial")):
         continue;
+    
+    if label.startswith("lib"):
+        label = f"{label[8:8+4]}:{label[-4:-1]}"
 
     x = [t for t in v.keys()]
     y, err = zip(*[stat(d) for d in v.values()])
@@ -92,17 +97,30 @@ for k, v in benchmarks.items():
     y = np.asarray(y)
     err = np.asarray(err)
 
-    ferr = err / y
+    m, c = np.polyfit(x, y[0] / y, 1)
+    print(f"{label}: {m}")
 
+    ferr = err / y
     y = 1000 / y
     err = y * ferr
 
     ax.errorbar(x, y, yerr=err, label=label.capitalize(), capsize=2)
+    
+    
 
-fig.legend()
+
+ax.hlines(1000/tS, 1, 32, label="Serial", color="black", linestyle="dashed")
+
+
+# Set log y axis
+# ax.set_yscale('log')
+# ax.set_xscale('log')
+
+ax.legend(loc="best")
 
 ax.set_xlabel("Number of threads")
 ax.set_ylabel("Bandwidth (ops per second)")
+ax.set_xlim(0, 33)
 
 fig.tight_layout()
 
