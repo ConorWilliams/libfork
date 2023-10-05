@@ -10,7 +10,7 @@
 
 inline auto to_sum() -> std::vector<double> {
 
-  std::vector<double> data(100'000'000);
+  std::vector<double> data(1024 * 1024 * 1024 / sizeof(double) * 4);
 
   lf::xoshiro rng{lf::seed, std::random_device{}};
 
@@ -21,6 +21,14 @@ inline auto to_sum() -> std::vector<double> {
   }
 
   return data;
+}
+
+inline auto get_data() -> std::pair<std::span<double>, double> {
+
+  static auto data = to_sum();
+  static auto sum = std::reduce(data.begin(), data.end());
+
+  return {data, sum};
 }
 
 inline auto is_close(double a, double b) { return std::abs((a - b) / b) < 0.001; }

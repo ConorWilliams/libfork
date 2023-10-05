@@ -34,24 +34,22 @@ void reduce_omp(benchmark::State &state) {
 
   std::size_t n = state.range(0);
 
+  auto tmp = get_data();
+  auto data = tmp.first;
+  auto exp = tmp.second;
+
+  auto grain_size = data.size() / (n * 10);
+
+  volatile double output;
+
 #pragma omp parallel num_threads(n)
 #pragma omp single
-  {
-    std::vector<double> data;
+  for (auto _ : state) {
+    output = reduce(data, grain_size);
+  }
 
-    data = to_sum();
-
-    auto grain_size = data.size() / (n * 10);
-
-    volatile double output;
-
-    for (auto _ : state) {
-      output = reduce(data, grain_size);
-    }
-
-    if (auto exp = std::reduce(data.begin(), data.end()); !is_close(output, exp)) {
-      std::cerr << "omp wrong result: " << output << " != " << exp << std::endl;
-    }
+  if (!is_close(output, exp)) {
+    std::cerr << "omp wrong result: " << output << " != " << exp << std::endl;
   }
 }
 

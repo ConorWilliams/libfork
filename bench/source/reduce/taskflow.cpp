@@ -43,17 +43,9 @@ void reduce_taskflow(benchmark::State &state) {
 
   tf::Executor executor(n);
 
-  std::vector<double> data;
-
-  {
-    tf::Taskflow alloca;
-
-    alloca.emplace([&data](tf::Subflow &sbf) {
-      data = alloc(sbf);
-    });
-
-    executor.run(alloca).wait();
-  }
+  auto tmp = get_data();
+  auto data = tmp.first;
+  auto exp = tmp.second;
 
   auto grain_size = data.size() / (n * 10);
 
@@ -69,7 +61,7 @@ void reduce_taskflow(benchmark::State &state) {
     executor.run(taskflow).wait();
   }
 
-  if (auto exp = std::reduce(data.begin(), data.end()); !is_close(output, exp)) {
+  if (!is_close(output, exp)) {
     std::cerr << "taskflow wrong result: " << output << " != " << exp << std::endl;
   }
 }

@@ -40,9 +40,9 @@ void reduce_tbb(benchmark::State &state) {
 
   std::size_t n = state.range(0);
   tbb::task_arena arena(n);
-  std::vector data = arena.execute([] {
-    return to_sum();
-  });
+  auto tmp = get_data();
+  auto data = tmp.first;
+  auto exp = tmp.second;
   auto grain_size = data.size() / (n * 10);
 
   volatile double output;
@@ -53,7 +53,7 @@ void reduce_tbb(benchmark::State &state) {
     });
   }
 
-  if (auto exp = std::reduce(data.begin(), data.end()); !is_close(output, exp)) {
+  if (!is_close(output, exp)) {
     std::cerr << "tbb wrong result: " << output << " != " << exp << std::endl;
   }
 }

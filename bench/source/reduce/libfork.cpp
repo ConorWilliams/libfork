@@ -35,7 +35,9 @@ void reduce_libfork(benchmark::State &state) {
 
   std::size_t n = state.range(0);
   Sch sch(n, Strategy);
-  std::vector data = lf::sync_wait(sch, LF_LIFT2(to_sum));
+
+  auto [data, exp] = get_data();
+
   auto grain_size = data.size() / (n * 10);
 
   volatile double output;
@@ -44,7 +46,7 @@ void reduce_libfork(benchmark::State &state) {
     output = lf::sync_wait(sch, reduce, data, grain_size);
   }
 
-  if (auto exp = std::reduce(data.begin(), data.end()); !is_close(output, exp)) {
+  if (!is_close(output, exp)) {
     std::cerr << "lf wrong result: " << output << " != " << exp << std::endl;
   }
 }
