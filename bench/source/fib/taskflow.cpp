@@ -38,18 +38,13 @@ void fib_taskflow(benchmark::State &state) {
   volatile int secret = work;
   volatile int output;
 
+  tf::Taskflow taskflow;
+
+  taskflow.emplace([&output, secret](tf::Subflow &sbf) {
+    output = fib(secret, sbf);
+  });
+
   for (auto _ : state) {
-
-    state.PauseTiming();
-
-    tf::Taskflow taskflow;
-
-    taskflow.emplace([&output, secret](tf::Subflow &sbf) {
-      output = fib(secret, sbf);
-    });
-
-    state.ResumeTiming();
-
     executor.run(taskflow).wait();
   }
 
