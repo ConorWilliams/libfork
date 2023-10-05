@@ -13,9 +13,7 @@ namespace {
 
 void reduce_serial(benchmark::State &state) {
 
-  lf::numa_topology{}.split(1).front().bind();
-
-  std::vector data = to_sum();
+  auto [data, exp] = get_data();
 
   volatile double output;
 
