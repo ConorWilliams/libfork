@@ -54,9 +54,6 @@ void reduce_libfork(benchmark::State &state) {
 using namespace lf;
 
 BENCHMARK(reduce_libfork<lazy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
-
 BENCHMARK(reduce_libfork<lazy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
-
 BENCHMARK(reduce_libfork<busy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
-
 BENCHMARK(reduce_libfork<busy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
