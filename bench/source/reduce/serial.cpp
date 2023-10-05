@@ -17,7 +17,7 @@ void reduce_serial(benchmark::State &state) {
 
   std::vector data = to_sum();
 
-  volatile float output;
+  volatile double output;
 
   for (auto _ : state) {
     output = std::reduce(data.begin(), data.end());

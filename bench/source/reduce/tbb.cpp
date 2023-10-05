@@ -12,7 +12,7 @@
 
 namespace {
 
-auto reduce(std::span<float> x, std::size_t grain_size) -> float {
+auto reduce(std::span<double> x, std::size_t grain_size) -> double {
   //
   if (x.size() <= grain_size) {
     return std::reduce(x.begin(), x.end());
@@ -21,7 +21,7 @@ auto reduce(std::span<float> x, std::size_t grain_size) -> float {
   auto h = x.size() / 2;
   auto t = x.size() - h;
 
-  float a, b;
+  double a, b;
 
   tbb::task_group g;
 
@@ -45,7 +45,7 @@ void reduce_tbb(benchmark::State &state) {
   });
   auto grain_size = data.size() / (n * 10);
 
-  volatile float output;
+  volatile double output;
 
   for (auto _ : state) {
     output = arena.execute([&] {

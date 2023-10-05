@@ -12,7 +12,7 @@
 namespace {
 
 inline constexpr lf::async reduce =
-    [](lf::first_arg auto reduce, std::span<float> data, std::size_t n) -> lf::task<float> {
+    [](lf::first_arg auto reduce, std::span<double> data, std::size_t n) -> lf::task<double> {
   if (data.size() <= n) {
     co_return std::reduce(data.begin(), data.end());
   }
@@ -20,7 +20,7 @@ inline constexpr lf::async reduce =
   auto h = data.size() / 2;
   auto t = data.size() - h;
 
-  float a, b;
+  double a, b;
 
   co_await lf::fork(a, reduce)(data.first(h), n);
   co_await lf::call(b, reduce)(data.last(t), n);
@@ -38,7 +38,7 @@ void reduce_libfork(benchmark::State &state) {
   std::vector data = lf::sync_wait(sch, LF_LIFT2(to_sum));
   auto grain_size = data.size() / (n * 10);
 
-  volatile float output;
+  volatile double output;
 
   for (auto _ : state) {
     output = lf::sync_wait(sch, reduce, data, grain_size);

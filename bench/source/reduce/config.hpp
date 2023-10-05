@@ -8,13 +8,13 @@
 
 #include <libfork.hpp>
 
-inline auto to_sum() -> std::vector<float> {
+inline auto to_sum() -> std::vector<double> {
 
-  std::vector<float> data(100'000'000);
+  std::vector<double> data(100'000'000);
 
   lf::xoshiro rng{lf::seed, std::random_device{}};
 
-  std::uniform_real_distribution<float> dist{0, 1};
+  std::uniform_real_distribution<double> dist{0, 1};
 
   for (auto &&elem : data) {
     elem = dist(rng);

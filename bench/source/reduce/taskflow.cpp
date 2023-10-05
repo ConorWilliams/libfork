@@ -11,9 +11,7 @@
 
 namespace {
 
-// https://taskflow.github.io/taskflow/fibonacci.html
-
-auto reduce(std::span<float> data, std::size_t n, tf::Subflow &sbf) -> float {
+auto reduce(std::span<double> data, std::size_t n, tf::Subflow &sbf) -> double {
 
   if (data.size() <= n) {
     return std::reduce(data.begin(), data.end());
@@ -22,7 +20,7 @@ auto reduce(std::span<float> data, std::size_t n, tf::Subflow &sbf) -> float {
   auto h = data.size() / 2;
   auto t = data.size() - h;
 
-  float a, b;
+  double a, b;
 
   sbf.emplace([&](tf::Subflow &sbf) {
     a = reduce(data.first(h), n, sbf);
@@ -37,7 +35,7 @@ auto reduce(std::span<float> data, std::size_t n, tf::Subflow &sbf) -> float {
   return a + b;
 }
 
-auto alloc(tf::Subflow &sbf) -> std::vector<float> { return to_sum(); }
+auto alloc(tf::Subflow &sbf) -> std::vector<double> { return to_sum(); }
 
 void reduce_taskflow(benchmark::State &state) {
 
@@ -45,7 +43,7 @@ void reduce_taskflow(benchmark::State &state) {
 
   tf::Executor executor(n);
 
-  std::vector<float> data;
+  std::vector<double> data;
 
   {
     tf::Taskflow alloca;
@@ -59,7 +57,7 @@ void reduce_taskflow(benchmark::State &state) {
 
   auto grain_size = data.size() / (n * 10);
 
-  volatile float output;
+  volatile double output;
 
   tf::Taskflow taskflow;
 
