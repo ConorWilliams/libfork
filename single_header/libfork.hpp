@@ -5094,7 +5094,7 @@ class busy_pool {
    * @param strategy The numa strategy for distributing workers.
    */
   explicit busy_pool(std::size_t n = std::thread::hardware_concurrency(),
-                     numa_strategy strategy = numa_strategy::seq) {
+                     numa_strategy strategy = numa_strategy::fan) {
 
     for (std::size_t i = 0; i < n; ++i) {
       m_contexts.push_back(std::make_shared<context_type>(n, m_rng));
@@ -5673,7 +5673,7 @@ class lazy_pool {
    * @param strategy The numa strategy for distributing workers.
    */
   explicit lazy_pool(std::size_t n = std::thread::hardware_concurrency(),
-                     numa_strategy strategy = numa_strategy::seq)
+                     numa_strategy strategy = numa_strategy::fan)
       : m_dist{0, n - 1} {
 
     for (std::size_t i = 0; i < n; ++i) {
