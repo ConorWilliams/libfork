@@ -11,7 +11,8 @@ using namespace lf;
 
 using dbl = double;
 
-constexpr async integrate = [](auto integrate, dbl x1, dbl y1, dbl x2, dbl y2, dbl area) -> task<dbl> {
+constexpr async integrate = [](auto integrate, dbl x1, dbl y1, dbl x2, dbl y2, dbl area)
+                                LF_STATIC_CALL -> task<dbl> {
   //
   double half = (x2 - x1) / 2;
   double x0 = x1 + half;

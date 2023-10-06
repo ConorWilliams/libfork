@@ -22,6 +22,25 @@ inline constexpr lf::async fib = [](auto fib, int n) LF_STATIC_CALL -> lf::task<
   co_return a + b;
 };
 
+inline constexpr lf::async root_fib = [](auto, int n, auto *n1, auto *n2) -> lf::task<int> {
+  //
+  if (n < 2) {
+    co_return n;
+  }
+
+  int a, b;
+
+  co_await n1;
+  co_await lf::fork(a, fib)(n - 1);
+
+  co_await n2;
+  co_await lf::call(b, fib)(n - 2);
+
+  co_await lf::join;
+
+  co_return a + b;
+};
+
 template <lf::scheduler Sch, lf::numa_strategy Strategy>
 void fib_libfork(benchmark::State &state) {
 
@@ -35,6 +54,8 @@ void fib_libfork(benchmark::State &state) {
       return Sch{};
     }
   }();
+
+  auto *n1 = sch.numa(0).front().front().get();
 
   volatile int secret = work;
   volatile int output;
@@ -60,5 +81,5 @@ using namespace lf;
 BENCHMARK(fib_libfork<lazy_pool, numa_strategy::seq>)->Apply(targs)->UseRealTime();
 BENCHMARK(fib_libfork<lazy_pool, numa_strategy::fan>)->Apply(targs)->UseRealTime();
 
-BENCHMARK(fib_libfork<busy_pool, numa_strategy::seq>)->Apply(targs)->UseRealTime();
-BENCHMARK(fib_libfork<busy_pool, numa_strategy::fan>)->Apply(targs)->UseRealTime();
+// BENCHMARK(fib_libfork<busy_pool, numa_strategy::seq>)->Apply(targs)->UseRealTime();
+// BENCHMARK(fib_libfork<busy_pool, numa_strategy::fan>)->Apply(targs)->UseRealTime();

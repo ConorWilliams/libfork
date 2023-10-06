@@ -19,7 +19,8 @@ using mat = double *;
  *           b00 b01
  *           b10 b11
  */
-constexpr async matmul = [](auto matmul, mat A, mat B, mat R, unsigned n, unsigned s, auto add) -> task<> {
+constexpr async matmul = [](auto matmul, mat A, mat B, mat R, unsigned n, unsigned s, auto add)
+                             LF_STATIC_CALL -> task<> {
   //
   if (n * sizeof(double) <= lf::impl::k_cache_line) {
     co_return multiply(A, B, R, n, s, add);

@@ -3,6 +3,7 @@
 
 #include <stdexcept>
 
+#include "../config.hpp"
 #include "external/uts.h"
 
 struct result {
@@ -201,13 +202,13 @@ inline auto result_tree(int i) -> result {
 }
 
 #define MAKE_UTS_FOR(some_type)                                                                              \
-  BENCHMARK_CAPTURE(some_type, "T1  Geo fixed ", 1)->DenseRange(1, num_threads())->UseRealTime();            \
-  BENCHMARK_CAPTURE(some_type, "T2  Geo cycle ", 2)->DenseRange(1, num_threads())->UseRealTime();            \
-  BENCHMARK_CAPTURE(some_type, "T3  Binomial  ", 3)->DenseRange(1, num_threads())->UseRealTime();            \
-  BENCHMARK_CAPTURE(some_type, "T4  Hybrid    ", 4)->DenseRange(1, num_threads())->UseRealTime();            \
-  BENCHMARK_CAPTURE(some_type, "T5  Geo linear", 5)->DenseRange(1, num_threads())->UseRealTime();            \
-  BENCHMARK_CAPTURE(some_type, "T1L Geo fixed ", 6)->DenseRange(1, num_threads())->UseRealTime();            \
-  BENCHMARK_CAPTURE(some_type, "T2L Geo cyclic", 7)->DenseRange(1, num_threads())->UseRealTime();            \
-  BENCHMARK_CAPTURE(some_type, "T3L Binomial  ", 8)->DenseRange(1, num_threads())->UseRealTime()
+  BENCHMARK_CAPTURE(some_type, "T1  Geo fixed ", 1)->Apply(targs)->UseRealTime();                            \
+  BENCHMARK_CAPTURE(some_type, "T2  Geo cycle ", 2)->Apply(targs)->UseRealTime();                            \
+  BENCHMARK_CAPTURE(some_type, "T3  Binomial  ", 3)->Apply(targs)->UseRealTime();                            \
+  BENCHMARK_CAPTURE(some_type, "T4  Hybrid    ", 4)->Apply(targs)->UseRealTime();                            \
+  BENCHMARK_CAPTURE(some_type, "T5  Geo linear", 5)->Apply(targs)->UseRealTime();                            \
+  BENCHMARK_CAPTURE(some_type, "T1L Geo fixed ", 6)->Apply(targs)->UseRealTime();                            \
+  BENCHMARK_CAPTURE(some_type, "T2L Geo cyclic", 7)->Apply(targs)->UseRealTime();                            \
+  BENCHMARK_CAPTURE(some_type, "T3L Binomial  ", 8)->Apply(targs)->UseRealTime()
 
 #endif /* DD1EB460_E250_4A8C_B35B_C99A803E5301 */

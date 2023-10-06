@@ -14,7 +14,8 @@
 
 namespace {
 
-inline constexpr lf::async uts_alloc = [](auto uts, int depth, Node *parent) -> lf::task<result> {
+inline constexpr lf::async uts_alloc = [](auto uts, int depth, Node *parent)
+                                           LF_STATIC_CALL -> lf::task<result> {
   //
   result r(depth, 1, 0);
 
@@ -57,7 +58,7 @@ inline constexpr lf::async uts_alloc = [](auto uts, int depth, Node *parent) -> 
   co_return r;
 };
 
-inline constexpr lf::async uts = [](auto uts, int depth, Node *parent) -> lf::task<result> {
+inline constexpr lf::async uts = [](auto uts, int depth, Node *parent) LF_STATIC_CALL -> lf::task<result> {
   //
   result r(depth, 1, 0);
 
@@ -100,7 +101,7 @@ inline constexpr lf::async uts = [](auto uts, int depth, Node *parent) -> lf::ta
   co_return r;
 };
 
-inline constexpr lf::async uts_shim = [](auto, int depth, Node *parent) -> lf::task<result> {
+inline constexpr lf::async uts_shim = [](auto, int depth, Node *parent) LF_STATIC_CALL -> lf::task<result> {
   co_return co_await uts(depth, parent);
 };
 

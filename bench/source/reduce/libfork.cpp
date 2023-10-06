@@ -11,8 +11,8 @@
 
 namespace {
 
-inline constexpr lf::async reduce =
-    [](lf::first_arg auto reduce, std::span<double> data, std::size_t n) -> lf::task<double> {
+inline constexpr lf::async reduce = [](lf::first_arg auto reduce, std::span<double> data, std::size_t n)
+                                        LF_STATIC_CALL -> lf::task<double> {
   if (data.size() <= n) {
     co_return std::reduce(data.begin(), data.end());
   }

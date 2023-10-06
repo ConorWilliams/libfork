@@ -17,7 +17,8 @@ namespace {
 
 using namespace lf;
 
-constexpr async nqueens = []<std::size_t N>(auto nqueens, int j, std::array<char, N> const &a) -> task<long> {
+constexpr async nqueens = []<std::size_t N>(auto nqueens, int j, std::array<char, N> const &a)
+                              LF_STATIC_CALL -> task<long> {
   if (N == j) {
     co_return 1;
   }
