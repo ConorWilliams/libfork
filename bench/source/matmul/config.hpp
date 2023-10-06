@@ -102,7 +102,7 @@ inline auto matmul_init(int n) -> matmul_args {
 
 // --------------------------------------------- //
 
-inline constexpr unsigned int matmul_work = 1024;
+inline constexpr unsigned int matmul_work = 2048;
 
 static_assert(std::has_single_bit(matmul_work));
 
