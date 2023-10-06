@@ -11,7 +11,7 @@
 #include <libfork.hpp>
 
 inline constexpr int n = 10000;
-inline constexpr double epsilon = 1.0e-7;
+inline constexpr double epsilon = 1.0e-9;
 
 inline constexpr auto fn(double x) -> double { return (x * x + 1.0) * x; }
 
