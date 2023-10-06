@@ -9,7 +9,7 @@ inline auto num_threads() noexcept -> int { return static_cast<int>(std::thread:
 
 inline void targs(benchmark::internal::Benchmark *bench) {
 
-  for (auto &&elem : {1, 2, 4, 8, 16, 24, 32, 48, 56, 64}) {
+  for (auto &&elem : {1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64}) {
     if (elem > num_threads()) {
       return;
     }

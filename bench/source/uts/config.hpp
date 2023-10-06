@@ -3,7 +3,7 @@
 
 #include <stdexcept>
 
-#include "../config.hpp"
+#include "../util.hpp"
 #include "external/uts.h"
 
 struct result {
