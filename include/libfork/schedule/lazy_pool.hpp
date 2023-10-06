@@ -274,6 +274,10 @@ class lazy_pool {
   std::vector<std::shared_ptr<context_type>> m_contexts;
   std::vector<std::thread> m_workers;
 
+  using neigh_list = std::vector<std::vector<std::shared_ptr<context_type>>>;
+
+  std::vector<neigh_list> m_higherachy;
+
   // Request all threads to stop, wake them up and then call join.
   auto clean_up() noexcept -> void {
     LF_LOG("Requesting a stop");
@@ -292,6 +296,10 @@ class lazy_pool {
    * @brief Schedule a task for execution.
    */
   auto schedule(intruded_h<context_type> *node) noexcept { m_contexts[m_dist(m_rng)]->submit(node); }
+
+  auto numa(std::size_t index) const -> neigh_list const & { return m_higherachy[index]; }
+
+  auto size() -> std::size_t { return m_contexts.size(); }
 
   /**
    * @brief Construct a new lazy_pool object and `n` worker threads.
@@ -314,6 +322,7 @@ class lazy_pool {
 
     LF_TRY {
       for (auto &&node : nodes) {
+        m_higherachy.push_back(node.neighbors);
         m_workers.emplace_back(context_type::work, std::move(node));
       }
     } LF_CATCH_ALL {

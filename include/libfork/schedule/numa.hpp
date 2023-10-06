@@ -174,8 +174,7 @@ class numa_topology {
   shared_topo m_topology = nullptr;
 };
 
-// ------------------------------ Topology implementation
-// ------------------------------ //
+// ---------------------------- Topology implementation ---------------------------- //
 
 #ifdef LF_HAS_HWLOC
 
