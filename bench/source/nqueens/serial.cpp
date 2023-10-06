@@ -40,6 +40,9 @@ auto nqueens(int j, std::array<char, N> const &a) -> long {
 
 void nqueens_serial(benchmark::State &state) {
 
+  state.counters["green_threads"] = 1;
+  state.counters["nqueens(n)"] = nqueens_work;
+
   volatile int output;
 
   std::array<char, 13> buf{};

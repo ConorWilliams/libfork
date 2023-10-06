@@ -36,6 +36,10 @@ constexpr async integrate = [](auto integrate, dbl x1, dbl y1, dbl x2, dbl y2, d
 template <lf::scheduler Sch, lf::numa_strategy Strategy>
 void integrate_libfork(benchmark::State &state) {
 
+  state.counters["green_threads"] = state.range(0);
+  state.counters["integrate_n"] = n;
+  state.counters["integrate_epsilon"] = epsilon;
+
   Sch sch = [&] {
     if constexpr (std::constructible_from<Sch, int>) {
       return Sch(state.range(0));
@@ -63,7 +67,7 @@ void integrate_libfork(benchmark::State &state) {
 
 using namespace lf;
 
-BENCHMARK(integrate_libfork<lazy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
-BENCHMARK(integrate_libfork<busy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
-BENCHMARK(integrate_libfork<lazy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
-BENCHMARK(integrate_libfork<busy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
+BENCHMARK(integrate_libfork<lazy_pool, numa_strategy::seq>)->Apply(targs)->UseRealTime();
+BENCHMARK(integrate_libfork<busy_pool, numa_strategy::seq>)->Apply(targs)->UseRealTime();
+BENCHMARK(integrate_libfork<lazy_pool, numa_strategy::fan>)->Apply(targs)->UseRealTime();
+BENCHMARK(integrate_libfork<busy_pool, numa_strategy::fan>)->Apply(targs)->UseRealTime();

@@ -52,6 +52,9 @@ auto nqueens(int j, std::array<char, N> const &a) -> long {
 
 void nqueens_tbb(benchmark::State &state) {
 
+  state.counters["green_threads"] = state.range(0);
+  state.counters["nqueens(n)"] = nqueens_work;
+
   std::size_t n = state.range(0);
   tbb::task_arena arena(n);
 
@@ -72,4 +75,4 @@ void nqueens_tbb(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(nqueens_tbb)->DenseRange(1, num_threads())->UseRealTime();
+BENCHMARK(nqueens_tbb)->Apply(targs)->UseRealTime();

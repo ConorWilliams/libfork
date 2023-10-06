@@ -33,12 +33,15 @@ inline constexpr lf::async reduce =
 template <lf::scheduler Sch, lf::numa_strategy Strategy>
 void reduce_libfork(benchmark::State &state) {
 
+  state.counters["green_threads"] = state.range(0);
+
   std::size_t n = state.range(0);
   Sch sch(n, Strategy);
 
   auto [data, exp] = get_data();
-
   auto grain_size = data.size() / (n * 10);
+
+  state.counters["|reduce|"] = data.size();
 
   volatile double output;
 
@@ -55,7 +58,7 @@ void reduce_libfork(benchmark::State &state) {
 
 using namespace lf;
 
-BENCHMARK(reduce_libfork<lazy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
-BENCHMARK(reduce_libfork<lazy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
-BENCHMARK(reduce_libfork<busy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
-BENCHMARK(reduce_libfork<busy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
+BENCHMARK(reduce_libfork<lazy_pool, numa_strategy::seq>)->Apply(targs)->UseRealTime();
+BENCHMARK(reduce_libfork<lazy_pool, numa_strategy::fan>)->Apply(targs)->UseRealTime();
+BENCHMARK(reduce_libfork<busy_pool, numa_strategy::seq>)->Apply(targs)->UseRealTime();
+BENCHMARK(reduce_libfork<busy_pool, numa_strategy::fan>)->Apply(targs)->UseRealTime();

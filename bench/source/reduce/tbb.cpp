@@ -38,12 +38,16 @@ auto reduce(std::span<double> x, std::size_t grain_size) -> double {
 
 void reduce_tbb(benchmark::State &state) {
 
+  state.counters["green_threads"] = state.range(0);
+
   std::size_t n = state.range(0);
   tbb::task_arena arena(n);
   auto tmp = get_data();
   auto data = tmp.first;
   auto exp = tmp.second;
   auto grain_size = data.size() / (n * 10);
+
+  state.counters["|reduce|"] = data.size();
 
   volatile double output;
 
@@ -60,4 +64,4 @@ void reduce_tbb(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(reduce_tbb)->DenseRange(1, num_threads())->UseRealTime();
+BENCHMARK(reduce_tbb)->Apply(targs)->UseRealTime();

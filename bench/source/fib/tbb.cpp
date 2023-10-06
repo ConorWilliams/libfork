@@ -30,6 +30,9 @@ auto fib(int n) -> int {
 
 void fib_tbb(benchmark::State &state) {
 
+  state.counters["green_threads"] = state.range(0);
+  state.counters["fib(n)"] = work;
+
   std::size_t n = state.range(0);
   tbb::task_arena arena(n);
 
@@ -51,4 +54,4 @@ void fib_tbb(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(fib_tbb)->DenseRange(1, num_threads())->UseRealTime();
+BENCHMARK(fib_tbb)->Apply(targs)->UseRealTime();

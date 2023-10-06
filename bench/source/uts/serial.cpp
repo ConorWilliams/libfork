@@ -72,6 +72,8 @@ auto uts(int depth, Node *parent) -> result {
 
 void uts_serial(benchmark::State &state, int tree) {
 
+  state.counters["green_threads"] = 1;
+
   Node root;
 
   setup_tree(tree);

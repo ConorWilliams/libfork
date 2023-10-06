@@ -32,6 +32,8 @@ auto reduce(std::span<double> x, std::size_t grain_size) -> double {
 
 void reduce_omp(benchmark::State &state) {
 
+  state.counters["green_threads"] = state.range(0);
+
   std::size_t n = state.range(0);
 
   auto tmp = get_data();
@@ -39,6 +41,8 @@ void reduce_omp(benchmark::State &state) {
   auto exp = tmp.second;
 
   auto grain_size = data.size() / (n * 10);
+
+  state.counters["|reduce|"] = data.size();
 
   volatile double output;
 
@@ -55,4 +59,4 @@ void reduce_omp(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(reduce_omp)->DenseRange(1, num_threads())->UseRealTime();
+BENCHMARK(reduce_omp)->Apply(targs)->UseRealTime();

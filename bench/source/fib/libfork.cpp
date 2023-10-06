@@ -25,6 +25,9 @@ inline constexpr lf::async fib = [](auto fib, int n) LF_STATIC_CALL -> lf::task<
 template <lf::scheduler Sch, lf::numa_strategy Strategy>
 void fib_libfork(benchmark::State &state) {
 
+  state.counters["green_threads"] = state.range(0);
+  state.counters["fib(n)"] = work;
+
   Sch sch = [&] {
     if constexpr (std::constructible_from<Sch, int>) {
       return Sch(state.range(0));
@@ -54,8 +57,8 @@ using namespace lf;
 // BENCHMARK(fib_libfork<unit_pool, numa_strategy::seq>)->DenseRange(1, 1)->UseRealTime();
 // BENCHMARK(fib_libfork<debug_pool, numa_strategy::seq>)->DenseRange(1, 1)->UseRealTime();
 
-BENCHMARK(fib_libfork<lazy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
-BENCHMARK(fib_libfork<lazy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
+BENCHMARK(fib_libfork<lazy_pool, numa_strategy::seq>)->Apply(targs)->UseRealTime();
+BENCHMARK(fib_libfork<lazy_pool, numa_strategy::fan>)->Apply(targs)->UseRealTime();
 
-BENCHMARK(fib_libfork<busy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
-BENCHMARK(fib_libfork<busy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
+BENCHMARK(fib_libfork<busy_pool, numa_strategy::seq>)->Apply(targs)->UseRealTime();
+BENCHMARK(fib_libfork<busy_pool, numa_strategy::fan>)->Apply(targs)->UseRealTime();

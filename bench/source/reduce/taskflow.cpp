@@ -39,6 +39,8 @@ auto alloc(tf::Subflow &sbf) -> std::vector<double> { return to_sum(); }
 
 void reduce_taskflow(benchmark::State &state) {
 
+  state.counters["green_threads"] = state.range(0);
+
   std::size_t n = state.range(0);
 
   tf::Executor executor(n);
@@ -48,6 +50,8 @@ void reduce_taskflow(benchmark::State &state) {
   auto exp = tmp.second;
 
   auto grain_size = data.size() / (n * 10);
+
+  state.counters["|reduce|"] = data.size();
 
   volatile double output;
 
@@ -68,4 +72,4 @@ void reduce_taskflow(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(reduce_taskflow)->DenseRange(1, num_threads())->UseRealTime();
+BENCHMARK(reduce_taskflow)->Apply(targs)->UseRealTime();

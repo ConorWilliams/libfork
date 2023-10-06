@@ -50,6 +50,9 @@ constexpr async nqueens = []<std::size_t N>(auto nqueens, int j, std::array<char
 template <lf::scheduler Sch, lf::numa_strategy Strategy>
 void nqueens_libfork(benchmark::State &state) {
 
+  state.counters["green_threads"] = state.range(0);
+  state.counters["nqueens(n)"] = nqueens_work;
+
   Sch sch = [&] {
     if constexpr (std::constructible_from<Sch, int>) {
       return Sch(state.range(0));
@@ -75,7 +78,7 @@ void nqueens_libfork(benchmark::State &state) {
 
 using namespace lf;
 
-BENCHMARK(nqueens_libfork<lazy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
-BENCHMARK(nqueens_libfork<busy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
-BENCHMARK(nqueens_libfork<lazy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
-BENCHMARK(nqueens_libfork<busy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
+BENCHMARK(nqueens_libfork<lazy_pool, numa_strategy::seq>)->Apply(targs)->UseRealTime();
+BENCHMARK(nqueens_libfork<busy_pool, numa_strategy::seq>)->Apply(targs)->UseRealTime();
+BENCHMARK(nqueens_libfork<lazy_pool, numa_strategy::fan>)->Apply(targs)->UseRealTime();
+BENCHMARK(nqueens_libfork<busy_pool, numa_strategy::fan>)->Apply(targs)->UseRealTime();

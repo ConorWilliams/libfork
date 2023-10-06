@@ -66,6 +66,9 @@ auto nqueens(int j, std::array<char, N> const &a) -> long {
 
 void nqueens_omp(benchmark::State &state) {
 
+  state.counters["green_threads"] = state.range(0);
+  state.counters["nqueens(n)"] = nqueens_work;
+
   std::size_t n = state.range(0);
 
   std::array<char, nqueens_work> buf{};
@@ -85,4 +88,4 @@ void nqueens_omp(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(nqueens_omp)->DenseRange(1, num_threads())->UseRealTime();
+BENCHMARK(nqueens_omp)->Apply(targs)->UseRealTime();

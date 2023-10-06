@@ -37,6 +37,10 @@ auto integrate(double x1, double y1, double x2, double y2, double area) -> doubl
 
 void integrate_tbb(benchmark::State &state) {
 
+  state.counters["green_threads"] = state.range(0);
+  state.counters["integrate_n"] = n;
+  state.counters["integrate_epsilon"] = epsilon;
+
   tbb::task_arena arena(state.range(0));
 
   volatile double out;
@@ -58,4 +62,4 @@ void integrate_tbb(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(integrate_tbb)->DenseRange(1, num_threads())->UseRealTime();
+BENCHMARK(integrate_tbb)->Apply(targs)->UseRealTime();

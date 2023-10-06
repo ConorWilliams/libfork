@@ -50,6 +50,9 @@ void matmul(double *A, double *B, double *R, unsigned n, unsigned s, Add add = {
 
 void matmul_serial(benchmark::State &state) {
 
+  state.counters["green_threads"] = 1;
+  state.counters["mat NxN"] = matmul_work;
+
   lf::numa_topology{}.split(1).front().bind();
 
   auto [A, B, C1, C2, n] = matmul_init(matmul_work);

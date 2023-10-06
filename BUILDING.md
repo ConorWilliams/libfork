@@ -8,6 +8,8 @@ things simple.
 Here are the steps for building in release mode with a single-configuration
 generator, like the Unix Makefiles one:
 
+TODO: rework hacking/building into a unified guide for consumers/benchmarkers and mention recursive clone + vcpkg!!
+
 ```sh
 cmake -S . -B build -D CMAKE_BUILD_TYPE=Release
 cmake --build build

@@ -65,6 +65,8 @@ auto uts(int depth, Node *parent) -> result {
 
 void uts_tbb(benchmark::State &state, int tree) {
 
+  state.counters["green_threads"] = state.range(0);
+
   std::size_t n = state.range(0);
   tbb::task_arena arena(n);
 

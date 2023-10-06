@@ -36,6 +36,10 @@ auto integrate(double x1, double y1, double x2, double y2, double area, tf::Subf
 
 void integrate_taskflow(benchmark::State &state) {
 
+  state.counters["green_threads"] = state.range(0);
+  state.counters["integrate_n"] = n;
+  state.counters["integrate_epsilon"] = epsilon;
+
   volatile double out;
 
   tf::Executor executor(state.range(0));
@@ -61,4 +65,4 @@ void integrate_taskflow(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(integrate_taskflow)->DenseRange(1, num_threads())->UseRealTime();
+BENCHMARK(integrate_taskflow)->Apply(targs)->UseRealTime();

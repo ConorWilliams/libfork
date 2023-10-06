@@ -28,6 +28,9 @@ auto fib(int n) -> int {
 
 void fib_omp(benchmark::State &state) {
 
+  state.counters["green_threads"] = state.range(0);
+  state.counters["fib(n)"] = work;
+
   std::size_t n = state.range(0);
 
   volatile int secret = work;
@@ -48,4 +51,4 @@ void fib_omp(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(fib_omp)->DenseRange(1, num_threads())->UseRealTime();
+BENCHMARK(fib_omp)->Apply(targs)->UseRealTime();

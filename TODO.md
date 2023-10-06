@@ -26,6 +26,10 @@
 
 #### Misc
 
+Understand reduce's reproducibility.
+Tweak numa stealing repeat attempts for matmul/fib.
+Understand the dip at numa boundary in fib.
+
 #### Post feature complete
 
 - [ ] Detect stack overflows

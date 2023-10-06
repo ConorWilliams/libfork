@@ -55,6 +55,9 @@ void matmul(double *A, double *B, double *R, unsigned n, unsigned s, Add add = {
 
 void matmul_omp(benchmark::State &state) {
 
+  state.counters["green_threads"] = state.range(0);
+  state.counters["mat NxN"] = matmul_work;
+
   std::size_t n_thr = state.range(0);
 
   matmul_args args;
@@ -86,4 +89,4 @@ void matmul_omp(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(matmul_omp)->DenseRange(1, num_threads())->UseRealTime();
+BENCHMARK(matmul_omp)->Apply(targs)->UseRealTime();

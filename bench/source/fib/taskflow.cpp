@@ -32,6 +32,9 @@ auto fib(int n, tf::Subflow &sbf) -> int {
 
 void fib_taskflow(benchmark::State &state) {
 
+  state.counters["green_threads"] = state.range(0);
+  state.counters["fib(n)"] = work;
+
   std::size_t n = state.range(0);
   tf::Executor executor(n);
 
@@ -57,4 +60,4 @@ void fib_taskflow(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(fib_taskflow)->DenseRange(1, num_threads())->UseRealTime();
+BENCHMARK(fib_taskflow)->Apply(targs)->UseRealTime();

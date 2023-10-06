@@ -67,6 +67,9 @@ void matmul(double *A, double *B, double *R, unsigned n, unsigned s, Add add, tf
 
 void matmul_taskflow(benchmark::State &state) {
 
+  state.counters["green_threads"] = state.range(0);
+  state.counters["mat NxN"] = matmul_work;
+
   tf::Executor executor(state.range(0));
 
   matmul_args args;
@@ -112,4 +115,4 @@ void matmul_taskflow(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(matmul_taskflow)->DenseRange(1, num_threads())->UseRealTime();
+BENCHMARK(matmul_taskflow)->Apply(targs)->UseRealTime();

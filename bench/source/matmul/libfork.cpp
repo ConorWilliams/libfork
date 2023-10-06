@@ -53,6 +53,9 @@ constexpr async matmul = [](auto matmul, mat A, mat B, mat R, unsigned n, unsign
 template <lf::scheduler Sch, lf::numa_strategy Strategy>
 void matmul_libfork(benchmark::State &state) {
 
+  state.counters["green_threads"] = state.range(0);
+  state.counters["mat NxN"] = matmul_work;
+
   Sch sch = [&] {
     if constexpr (std::constructible_from<Sch, int>) {
       return Sch(state.range(0));
@@ -83,8 +86,8 @@ using namespace lf;
 // BENCHMARK(matmul_libfork<unit_pool, numa_strategy::seq>)->DenseRange(1, 1)->UseRealTime();
 // BENCHMARK(matmul_libfork<debug_pool, numa_strategy::seq>)->DenseRange(1, 1)->UseRealTime();
 
-BENCHMARK(matmul_libfork<lazy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
-BENCHMARK(matmul_libfork<lazy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
+BENCHMARK(matmul_libfork<lazy_pool, numa_strategy::seq>)->Apply(targs)->UseRealTime();
+BENCHMARK(matmul_libfork<lazy_pool, numa_strategy::fan>)->Apply(targs)->UseRealTime();
 
-BENCHMARK(matmul_libfork<busy_pool, numa_strategy::seq>)->DenseRange(1, num_threads())->UseRealTime();
-BENCHMARK(matmul_libfork<busy_pool, numa_strategy::fan>)->DenseRange(1, num_threads())->UseRealTime();
+BENCHMARK(matmul_libfork<busy_pool, numa_strategy::seq>)->Apply(targs)->UseRealTime();
+BENCHMARK(matmul_libfork<busy_pool, numa_strategy::fan>)->Apply(targs)->UseRealTime();

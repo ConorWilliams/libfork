@@ -107,6 +107,8 @@ inline constexpr lf::async uts_shim = [](auto, int depth, Node *parent) -> lf::t
 template <lf::scheduler Sch, lf::numa_strategy Strategy>
 void uts_libfork_alloc(benchmark::State &state, int tree) {
 
+  state.counters["green_threads"] = state.range(0);
+
   Sch sch(state.range(0));
 
   setup_tree(tree);
@@ -128,6 +130,8 @@ void uts_libfork_alloc(benchmark::State &state, int tree) {
 
 template <lf::scheduler Sch, lf::numa_strategy Strategy>
 void uts_libfork(benchmark::State &state, int tree) {
+
+  state.counters["green_threads"] = state.range(0);
 
   Sch sch(state.range(0));
 

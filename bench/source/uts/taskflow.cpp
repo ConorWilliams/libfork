@@ -59,6 +59,8 @@ auto uts(int depth, Node *parent, tf::Subflow &sbf) -> result {
 
 void uts_taskflow(benchmark::State &state, int tree) {
 
+  state.counters["green_threads"] = state.range(0);
+
   std::size_t n = state.range(0);
   tf::Executor executor(n);
   tf::Taskflow taskflow;

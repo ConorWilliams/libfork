@@ -28,6 +28,10 @@ auto integrate(double x1, double y1, double x2, double y2, double area) -> doubl
 
 void integrate_serial(benchmark::State &state) {
 
+  state.counters["green_threads"] = 1;
+  state.counters["integrate_n"] = n;
+  state.counters["integrate_epsilon"] = epsilon;
+
   volatile double out;
 
   for (auto _ : state) {
