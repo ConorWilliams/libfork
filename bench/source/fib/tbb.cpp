@@ -42,9 +42,11 @@ void fib_tbb(benchmark::State &state) {
     });
   }
 
+#ifndef LF_NO_CHECK
   if (output != sfib(work)) {
     std::cout << "error" << std::endl;
   }
+#endif
 }
 
 } // namespace

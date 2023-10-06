@@ -48,9 +48,11 @@ void fib_taskflow(benchmark::State &state) {
     executor.run(taskflow).wait();
   }
 
+#ifndef LF_NO_CHECK
   if (output != sfib(work)) {
     std::cout << "error" << std::endl;
   }
+#endif
 }
 
 } // namespace

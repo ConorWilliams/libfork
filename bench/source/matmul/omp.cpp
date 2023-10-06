@@ -74,11 +74,13 @@ void matmul_omp(benchmark::State &state) {
       matmul(A, B, C1, n, n);
     }
 
+#ifndef LF_NO_CHECK
     iter_matmul(A, B, C2, n);
 
     if (maxerror(C1, C2, n) > 1e-6) {
       std::cout << "omp maxerror: " << maxerror(C1, C2, n) << std::endl;
     }
+#endif
   }
 }
 

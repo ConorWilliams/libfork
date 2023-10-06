@@ -58,11 +58,13 @@ void matmul_serial(benchmark::State &state) {
     matmul(A.get(), B.get(), C1.get(), n, n);
   }
 
+#ifndef LF_NO_CHECK
   iter_matmul(A.get(), B.get(), C2.get(), n);
 
   if (maxerror(C1.get(), C2.get(), n) > 1e-6) {
     std::cout << "maxerror: " << maxerror(C1.get(), C2.get(), n) << std::endl;
   }
+#endif
 }
 
 } // namespace

@@ -78,6 +78,8 @@ void matmul_tbb(benchmark::State &state) {
     });
   }
 
+#ifndef LF_NO_CHECK
+
   auto &[A, B, C1, C2, n] = args;
 
   iter_matmul(A.get(), B.get(), C2.get(), n);
@@ -85,6 +87,7 @@ void matmul_tbb(benchmark::State &state) {
   if (maxerror(C1.get(), C2.get(), n) > 1e-6) {
     std::cout << "tbb maxerror: " << maxerror(C1.get(), C2.get(), n) << std::endl;
   }
+#endif
 }
 
 } // namespace

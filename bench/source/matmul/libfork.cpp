@@ -67,11 +67,13 @@ void matmul_libfork(benchmark::State &state) {
     lf::sync_wait(sch, matmul, A.get(), B.get(), C1.get(), n, n, std::false_type{});
   }
 
+#ifndef LF_NO_CHECK
   iter_matmul(A.get(), B.get(), C2.get(), n);
 
   if (maxerror(C1.get(), C2.get(), n) > 1e-6) {
     std::cout << "lf maxerror: " << maxerror(C1.get(), C2.get(), n) << std::endl;
   }
+#endif
 }
 
 } // namespace

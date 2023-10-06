@@ -40,9 +40,11 @@ void fib_libfork(benchmark::State &state) {
     output = lf::sync_wait(sch, fib, secret);
   }
 
+#ifndef LF_NO_CHECK
   if (output != sfib(work)) {
     std::cout << "error" << std::endl;
   }
+#endif
 }
 
 } // namespace

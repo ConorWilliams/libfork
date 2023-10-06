@@ -39,9 +39,11 @@ void fib_omp(benchmark::State &state) {
     output = fib(secret);
   }
 
+#ifndef LF_NO_CHECK
   if (output != sfib(work)) {
     std::cout << "error" << std::endl;
   }
+#endif
 }
 
 } // namespace
