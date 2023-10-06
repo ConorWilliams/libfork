@@ -47,8 +47,10 @@ void nqueens_serial(benchmark::State &state) {
 
   std::array<char, 13> buf{};
 
+  volatile int zero = 0;
+
   for (auto _ : state) {
-    output = nqueens(0, buf);
+    output = nqueens(zero, buf);
   }
 
   if (output != answers[nqueens_work]) {

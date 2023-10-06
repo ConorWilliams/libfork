@@ -57,8 +57,10 @@ void matmul_serial(benchmark::State &state) {
 
   auto [A, B, C1, C2, n] = matmul_init(matmul_work);
 
+  volatile int m = n;
+
   for (auto _ : state) {
-    matmul(A.get(), B.get(), C1.get(), n, n);
+    matmul(A.get(), B.get(), C1.get(), m, m);
   }
 
 #ifndef LF_NO_CHECK

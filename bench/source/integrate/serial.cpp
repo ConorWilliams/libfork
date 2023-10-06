@@ -32,10 +32,11 @@ void integrate_serial(benchmark::State &state) {
   state.counters["integrate_n"] = n;
   state.counters["integrate_epsilon"] = epsilon;
 
+  volatile int confuse = n;
   volatile double out;
 
   for (auto _ : state) {
-    out = integrate(0, fn(0), n, fn(n), 0);
+    out = integrate(0, fn(0), confuse, fn(confuse), 0);
   }
 
   double expect = integral_fn(0, n);
