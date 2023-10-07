@@ -194,7 +194,7 @@ inline auto result_tree(int i) -> result {
     case 8:
       return {17844, 111345631, 89076904};
     case 9:
-      throw std::runtime_error("unknown");
+      return {0, 0, 0};
     default:
       throw std::runtime_error("Invalid tree id");
       break;
