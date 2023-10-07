@@ -45,7 +45,7 @@ void nqueens_serial(benchmark::State &state) {
 
   volatile int output;
 
-  std::array<char, 13> buf{};
+  std::array<char, nqueens_work> buf{};
 
   volatile int zero = 0;
 
