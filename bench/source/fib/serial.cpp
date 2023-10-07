@@ -20,8 +20,6 @@ LF_NOINLINE constexpr auto fib(int &ret, int n) -> void {
   ret = a + b;
 };
 
-int set = false;
-
 void fib_serial(benchmark::State &state) {
 
   state.counters["green_threads"] = 1;

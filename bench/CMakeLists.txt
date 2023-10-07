@@ -50,7 +50,18 @@ target_link_libraries(benchmark
         benchmark::benchmark_main
 )
 
-# ---- Benchmarks ----
+# ---- Nowa ---- #
+
+option(NOWA_ROOT "Location of nowa build dir" OFF)
+
+if(NOT NOWA_ROOT)
+    message(FATAL_ERROR "Please specify the location of the nowa build dir with -DNOWA_ROOT=<path>")
+endif()
+
+target_include_directories(benchmark SYSTEM PRIVATE ${NOWA_ROOT}/include)
+target_link_libraries(benchmark PRIVATE ${NOWA_ROOT}/lib/libfibril.so)
+
+# ---- Coro benchmarks ----
 
 add_executable(coro_bench ${CMAKE_CURRENT_SOURCE_DIR}/source/coroutine/incremental.cpp)
 
