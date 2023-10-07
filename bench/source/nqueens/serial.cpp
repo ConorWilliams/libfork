@@ -12,13 +12,13 @@
 namespace {
 
 template <std::size_t N>
-auto nqueens(int j, std::array<char, N> const &a) -> long {
+auto nqueens(int j, std::array<char, N> const &a) -> int {
 
   if (N == j) {
     return 1;
   }
 
-  long res = 0L;
+  int res = 0L;
 
   for (int i = 0; i < N; i++) {
 

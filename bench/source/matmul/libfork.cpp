@@ -9,7 +9,7 @@ namespace {
 
 using namespace lf;
 
-using mat = double *;
+using mat = float *;
 
 /**
  * @brief Recursive divide-and-conquer matrix multiplication, powers of 2, only.
@@ -22,7 +22,7 @@ using mat = double *;
 constexpr async matmul = [](auto matmul, mat A, mat B, mat R, unsigned n, unsigned s, auto add)
                              LF_STATIC_CALL -> task<> {
   //
-  if (n * sizeof(double) <= lf::impl::k_cache_line) {
+  if (n * sizeof(float) <= lf::impl::k_cache_line) {
     co_return multiply(A, B, R, n, s, add);
   }
 

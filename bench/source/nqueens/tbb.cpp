@@ -15,16 +15,16 @@
 namespace {
 
 template <std::size_t N>
-auto nqueens(int j, std::array<char, N> const &a) -> long {
+auto nqueens(int j, std::array<char, N> const &a) -> int {
 
   if (N == j) {
     return 1;
   }
 
-  long res = 0L;
+  int res = 0L;
 
   std::array<std::array<char, N>, N> buf;
-  std::array<long, N> parts;
+  std::array<int, N> parts;
 
   tbb::task_group g;
 

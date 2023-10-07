@@ -6,7 +6,7 @@
 
 namespace {
 
-auto integrate(double x1, double y1, double x2, double y2, double area) -> double {
+LF_NOINLINE auto integrate(double x1, double y1, double x2, double y2, double area) -> double {
 
   double half = (x2 - x1) / 2;
   double x0 = x1 + half;

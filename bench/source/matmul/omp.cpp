@@ -14,9 +14,9 @@ namespace {
  *           b10 b11
  */
 template <typename Add = std::false_type>
-void matmul(double *A, double *B, double *R, unsigned n, unsigned s, Add add = {}) {
+void matmul(float *A, float *B, float *R, unsigned n, unsigned s, Add add = {}) {
   //
-  if (n * sizeof(double) <= lf::impl::k_cache_line) {
+  if (n * sizeof(float) <= lf::impl::k_cache_line) {
     return multiply(A, B, R, n, s, add);
   }
 

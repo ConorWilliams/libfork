@@ -14,16 +14,16 @@
 namespace {
 
 template <std::size_t N>
-auto nqueens(int j, std::array<char, N> const &a, tf::Subflow &sbf) -> long {
+auto nqueens(int j, std::array<char, N> const &a, tf::Subflow &sbf) -> int {
 
   if (N == j) {
     return 1;
   }
 
-  long res = 0L;
+  int res = 0L;
 
   std::array<std::array<char, N>, N> buf;
-  std::array<long, N> parts;
+  std::array<int, N> parts;
 
   for (int i = 0; i < N; i++) {
 

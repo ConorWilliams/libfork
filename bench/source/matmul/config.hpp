@@ -12,7 +12,7 @@
 
 #include <libfork.hpp>
 
-inline void zero(double *A, int n) {
+inline void zero(float *A, int n) {
   int i, j;
 
   for (i = 0; i < n; i++) {
@@ -22,12 +22,12 @@ inline void zero(double *A, int n) {
   }
 }
 
-inline void init(double *A, int n) {
+inline void init(float *A, int n) {
   int i, j;
 
   lf::xoshiro rng{lf::seed, std::random_device{}};
 
-  std::uniform_real_distribution<double> dist{0, 1};
+  std::uniform_real_distribution<float> dist{0, 1};
 
   for (i = 0; i < n; i++) {
     for (j = 0; j < n; j++) {
@@ -36,14 +36,14 @@ inline void init(double *A, int n) {
   }
 }
 
-inline auto maxerror(double *A, double *B, int n) -> double {
+inline auto maxerror(float *A, float *B, int n) -> float {
 
-  double error = 0.0;
+  float error = 0.0;
 
   for (int i = 0; i < n; i++) {
     for (int j = 0; j < n; j++) {
 
-      double diff = (A[i * n + j] - B[i * n + j]) / A[i * n + j];
+      float diff = (A[i * n + j] - B[i * n + j]) / A[i * n + j];
 
       if (diff < 0) {
         diff = -diff;
@@ -57,12 +57,12 @@ inline auto maxerror(double *A, double *B, int n) -> double {
   return error;
 }
 
-inline void iter_matmul(double *A, double *B, double *C, int n) {
+inline void iter_matmul(float *A, float *B, float *C, int n) {
 
   for (int i = 0; i < n; i++) {
     for (int k = 0; k < n; k++) {
 
-      double c = 0.0;
+      float c = 0.0;
 
       for (int j = 0; j < n; j++) {
         c += A[i * n + j] * B[j * n + k];
@@ -74,20 +74,20 @@ inline void iter_matmul(double *A, double *B, double *C, int n) {
 }
 
 struct matmul_args {
-  std::unique_ptr<double[]> A;
-  std::unique_ptr<double[]> B;
-  std::unique_ptr<double[]> C1;
-  std::unique_ptr<double[]> C2;
+  std::unique_ptr<float[]> A;
+  std::unique_ptr<float[]> B;
+  std::unique_ptr<float[]> C1;
+  std::unique_ptr<float[]> C2;
   int n;
 };
 
 inline auto matmul_init(int n) -> matmul_args {
   //
   matmul_args args{
-      std::make_unique<double[]>(n * n),
-      std::make_unique<double[]>(n * n),
-      std::make_unique<double[]>(n * n),
-      std::make_unique<double[]>(n * n),
+      std::make_unique<float[]>(n * n),
+      std::make_unique<float[]>(n * n),
+      std::make_unique<float[]>(n * n),
+      std::make_unique<float[]>(n * n),
       n,
   };
 
@@ -106,10 +106,10 @@ inline constexpr unsigned int matmul_work = 2048;
 
 static_assert(std::has_single_bit(matmul_work));
 
-inline void multiply(double *A, double *B, double *R, unsigned n, unsigned s, auto add) {
+inline void multiply(float *A, float *B, float *R, unsigned n, unsigned s, auto add) {
   for (unsigned i = 0; i < n; ++i) {
     for (unsigned j = 0; j < n; ++j) {
-      double sum = 0;
+      float sum = 0;
       for (unsigned k = 0; k < n; ++k) {
         sum += A[i * s + k] * B[k * s + j];
       }

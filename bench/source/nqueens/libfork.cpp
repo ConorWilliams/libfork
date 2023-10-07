@@ -18,15 +18,15 @@ namespace {
 using namespace lf;
 
 constexpr async nqueens = []<std::size_t N>(auto nqueens, int j, std::array<char, N> const &a)
-                              LF_STATIC_CALL -> task<long> {
+                              LF_STATIC_CALL -> task<int> {
   if (N == j) {
     co_return 1;
   }
 
-  long res = 0L;
+  int res = 0L;
 
   std::array<std::array<char, N>, N> buf;
-  std::array<long, N> parts;
+  std::array<int, N> parts;
 
   for (int i = 0; i < N; i++) {
 
