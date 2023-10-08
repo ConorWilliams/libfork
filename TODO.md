@@ -29,12 +29,13 @@
 Understand reduce's reproducibility.
 Tweak numa stealing repeat attempts for matmul/fib.
 Understand the dip at numa boundary in fib.
+Expose configutaion macros as cmake options.
 
 #### Post feature complete
 
 - [ ] Detect stack overflows
 - [x] add numa mode control
-- [ ] benchmark: need some heterogeneous workloads (UT3, unbalanced tree reduce, see NOWA)
+- [x] benchmark: need some heterogeneous workloads (UT3, unbalanced tree reduce, see NOWA)
 - [ ] benchmark: A test/benchmark that stresses stack stealing?
 - [x] benchmark: C++ library comparisons (TaskFlow, ...).
 - [ ] benchmark: Memory allocations of our stack stealing.
@@ -43,7 +44,7 @@ Understand the dip at numa boundary in fib.
 
 #### Before release
 
-- [ ] benchmarks: add verifications...
+- [x] benchmarks: add verifications...
 - [x] review: `constexpr`.
 - [x] review: `noexcept`.
 - [ ] review: `std::` includes in schedule/root.

@@ -11,6 +11,7 @@ old/
 Testing/
 
 bench/data/
+bench/*.pdf
 *.svg
 
 gmon.out

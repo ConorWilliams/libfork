@@ -38,6 +38,22 @@ target_include_directories(
 
 target_compile_features(libfork_libfork INTERFACE cxx_std_23)
 
+# ---- Compiler options ----- #
+
+option(LF_ASYNC_STACK_SIZE "The size of the async stack (in multiples 4kb pages)" OFF)
+
+if(LF_ASYNC_STACK_SIZE)
+  target_compile_definitions(libfork_libfork INTERFACE LF_ASYNC_STACK_SIZE=${LF_ASYNC_STACK_SIZE})
+endif()
+
+# If this is off then libfork will store a pointer to avoid any UB, enable only as an optimization
+# if you know the compiler and are sure it is safe.
+option(LF_COROUTINE_OFFSET "The ABI offset between a coroutine's promise and its resume member" OFF)
+
+if(LF_COROUTINE_OFFSET)
+  target_compile_definitions(libfork_libfork INTERFACE LF_COROUTINE_OFFSET=${LF_COROUTINE_OFFSET})
+endif()
+
 # ---- hwloc support ----
 
 find_package(HWLOC)
