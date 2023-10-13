@@ -123,7 +123,7 @@ ax.set_xticks(range(0, int(xmax + 1.5), 14))
 ax.legend(loc="best")
 
 ax.set_xlabel("Number of threads")
-ax.set_ylabel("Async-stacks per thread")
+ax.set_ylabel("Fibre-stacks per thread")
 
 
 fig.tight_layout()

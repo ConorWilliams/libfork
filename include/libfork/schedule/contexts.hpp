@@ -46,7 +46,7 @@ struct immediate_base {
   /**
    * @brief Deallocates the stack.
    */
-  static void stack_push(async_stack *stack) {
+  static void stack_push(fibre_stack *stack) {
     LF_LOG("stack_push");
     LF_ASSERT(stack);
     delete stack;
@@ -55,9 +55,9 @@ struct immediate_base {
   /**
    * @brief Allocates a new stack.
    */
-  static auto stack_pop() -> async_stack * {
+  static auto stack_pop() -> fibre_stack * {
     LF_LOG("stack_pop");
-    return new async_stack;
+    return new fibre_stack;
   }
 };
 
@@ -108,7 +108,9 @@ class test_immediate_context : public immediate_base<test_immediate_context> {
  public:
   test_immediate_context() { m_tasks.reserve(1024); }
 
-  // Deliberately not constexpr such that the promise will not transform all `fork -> call`.
+  /**
+   * @brief Deliberately not constexpr such that the promise will not transform all `fork -> call`.
+   */
   static auto max_threads() noexcept -> std::size_t { return 1; }
 
   /**
@@ -156,9 +158,9 @@ class numa_worker_context : immovable<numa_worker_context<CRTP>> {
   using intruded_t = intruded_h<CRTP>;
 
   deque<task_t *> m_tasks;                     ///< Our public task queue, all non-null.
-  deque<async_stack *> m_stacks;               ///< Our public stack queue, all non-null.
+  deque<fibre_stack *> m_stacks;               ///< Our public stack queue, all non-null.
   intrusive_list<submit_t *> m_submit;         ///< The public submission queue, all non-null.
-  ring_buffer<async_stack *, k_buff> m_buffer; ///< Our private stack buffer, all non-null.
+  ring_buffer<fibre_stack *, k_buff> m_buffer; ///< Our private stack buffer, all non-null.
 
   xoshiro m_rng;                            ///< Our personal PRNG.
   std::size_t m_max_threads;                ///< The total max parallelism available.
@@ -170,9 +172,15 @@ class numa_worker_context : immovable<numa_worker_context<CRTP>> {
   };
 
  public:
+  /**
+   * @brief Construct a new numa worker context object.
+   *
+   * @param n The maximum parallelism.
+   * @param rng This worker private pseudo random number generator.
+   */
   numa_worker_context(std::size_t n, xoshiro const &rng) : m_rng(rng), m_max_threads(n) {
     for (std::size_t i = 0; i < k_buff / 2; ++i) {
-      m_buffer.push(new async_stack);
+      m_buffer.push(new fibre_stack);
     }
   }
 
@@ -251,29 +259,40 @@ class numa_worker_context : immovable<numa_worker_context<CRTP>> {
     //
     LF_ASSERT_NO_ASSUME(m_tasks.empty());
 
-    while (auto *stack = m_buffer.pop(null_for<async_stack>)) {
+    while (auto *stack = m_buffer.pop(null_for<fibre_stack>)) {
       delete stack;
     }
 
-    while (auto *stack = m_stacks.pop(null_for<async_stack>)) {
+    while (auto *stack = m_stacks.pop(null_for<fibre_stack>)) {
       delete stack;
     }
   }
 
   // ------------- To satisfy `thread_context` ------------- //
 
+  /**
+   * @brief Get the maximum parallelism.
+   */
   auto max_threads() const noexcept -> std::size_t { return m_max_threads; }
 
+  /**
+   * @brief Submit a node for execution onto this workers private queue.
+   */
   auto submit(intruded_t *node) noexcept -> void { m_submit.push(non_null(node)); }
 
-  auto stack_pop() -> async_stack * {
+  /**
+   * @brief Get a new empty ``fiber_stack``.
+   *
+   * This will attempt to steal one before allocating.
+   */
+  auto stack_pop() -> fibre_stack * {
 
-    if (auto *stack = m_buffer.pop(null_for<async_stack>)) {
+    if (auto *stack = m_buffer.pop(null_for<fibre_stack>)) {
       LF_LOG("stack_pop() using local-buffered stack");
       return stack;
     }
 
-    if (auto *stack = m_stacks.pop(null_for<async_stack>)) {
+    if (auto *stack = m_stacks.pop(null_for<fibre_stack>)) {
       LF_LOG("stack_pop() using public-buffered stack");
       return stack;
     }
@@ -304,18 +323,27 @@ class numa_worker_context : immovable<numa_worker_context<CRTP>> {
 
     LF_LOG("stack_pop() allocating");
 
-    return new async_stack;
+    return new fibre_stack;
   }
 
-  void stack_push(async_stack *stack) {
-    m_buffer.push(non_null(stack), [&](async_stack *extra_stack) noexcept {
+  /**
+   * @brief Cache an empty fiber stack.
+   */
+  void stack_push(fibre_stack *stack) {
+    m_buffer.push(non_null(stack), [&](fibre_stack *extra_stack) noexcept {
       LF_LOG("Local stack buffer overflows");
       m_stacks.push(extra_stack);
     });
   }
 
+  /**
+   * @brief Pop a task from the public task queue.
+   */
   LF_FORCEINLINE auto task_pop() noexcept -> task_t * { return m_tasks.pop(null_for<task_t>); }
 
+  /**
+   * @brief Add a task to the public task queue.
+   */
   LF_FORCEINLINE void task_push(task_t *task) { m_tasks.push(non_null(task)); }
 };
 

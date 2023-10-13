@@ -118,7 +118,7 @@ TEST_CASE("fib on stack", "[stack]") {
 
   root([&] {
     //
-    auto *s = new async_stack{};
+    auto *s = new fibre_stack{};
 
     tls::set_asp(stack_as_bytes(s));
 

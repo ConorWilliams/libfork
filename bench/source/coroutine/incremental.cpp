@@ -297,7 +297,7 @@ auto fib_impl(int &ret, int n) -> coroutine {
 
 void fib(benchmark::State &state) {
 
-  auto *stack = new lf::async_stack;
+  auto *stack = new lf::fibre_stack;
 
   lf::impl::tls::set_asp(lf::impl::stack_as_bytes(stack));
 
@@ -387,7 +387,7 @@ auto fib_impl(int &ret, int n) -> coroutine {
 
 void fib(benchmark::State &state) {
 
-  auto *stack = new lf::async_stack;
+  auto *stack = new lf::fibre_stack;
 
   lf::impl::tls::set_asp(lf::impl::stack_as_bytes(stack));
 

@@ -25,6 +25,9 @@ namespace lf {
 
 namespace impl {
 
+/**
+ * @brief A wrapper which transforms a single-threaded context into a scheduler.
+ */
 template <thread_context Context>
 class unit_pool_impl : impl::immovable<unit_pool_impl<Context>> {
  public:

@@ -119,17 +119,17 @@
  */
 #define LF_VERSION_PATCH 0
 
-#ifndef LF_ASYNC_STACK_SIZE
+#ifndef LF_FIBRE_STACK_SIZE
   /**
-   * @brief __[public]__ A customizable stack size for ``async_stack``'s (in multiples of 4 kibibytes i.e. the
+   * @brief __[public]__ A customizable stack size for ``fibre_stack``'s (in multiples of 4 kibibytes i.e. the
    * page size).
    *
-   * You can override this by defining ``LF_ASYNC_STACK_SIZE`` to a power of two (default 1 MiB)
+   * You can override this by defining ``LF_FIBRE_STACK_SIZE`` to a power of two (default 1 MiB)
    */
-  #define LF_ASYNC_STACK_SIZE 256
+  #define LF_FIBRE_STACK_SIZE 256
 #endif
 
-static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZE - 1)),
+static_assert(LF_FIBRE_STACK_SIZE && !(LF_FIBRE_STACK_SIZE & (LF_FIBRE_STACK_SIZE - 1)),
               "Must be a power of 2");
 
 /**
@@ -979,26 +979,26 @@ namespace stdx = std;
 
 namespace lf {
 
-// -------------------- async stack -------------------- //
+// -------------------- fibre stack -------------------- //
 
 inline namespace ext {
 
-class async_stack;
+class fibre_stack;
 
 } // namespace ext
 
 namespace impl {
 
-static constexpr std::size_t k_stack_size = 4 * k_kibibyte * LF_ASYNC_STACK_SIZE;
+static constexpr std::size_t k_stack_size = 4 * k_kibibyte * LF_FIBRE_STACK_SIZE;
 
 /**
  * @brief Get a pointer to the end of a stack's buffer.
  */
-auto stack_as_bytes(async_stack *stack) noexcept -> std::byte *;
+auto stack_as_bytes(fibre_stack *stack) noexcept -> std::byte *;
 /**
  * @brief Convert a pointer to a stack's sentinel `frame_block` to a pointer to the stack.
  */
-auto bytes_to_stack(std::byte *bytes) noexcept -> async_stack *;
+auto bytes_to_stack(std::byte *bytes) noexcept -> fibre_stack *;
 
 } // namespace impl
 
@@ -1010,28 +1010,28 @@ inline namespace ext {
  * These can be alloacted on the heap just like any other object when a `thread_context`
  * needs them.
  */
-class async_stack : impl::immovable<async_stack> {
+class fibre_stack : impl::immovable<fibre_stack> {
   alignas(impl::k_new_align) std::byte m_buf[impl::k_stack_size]; // NOLINT
 
-  friend auto impl::stack_as_bytes(async_stack *stack) noexcept -> std::byte *;
+  friend auto impl::stack_as_bytes(fibre_stack *stack) noexcept -> std::byte *;
 
-  friend auto impl::bytes_to_stack(std::byte *bytes) noexcept -> async_stack *;
+  friend auto impl::bytes_to_stack(std::byte *bytes) noexcept -> fibre_stack *;
 };
 
-static_assert(std::is_standard_layout_v<async_stack>);
-static_assert(sizeof(async_stack) == impl::k_stack_size, "Spurious padding in async_stack!");
+static_assert(std::is_standard_layout_v<fibre_stack>);
+static_assert(sizeof(fibre_stack) == impl::k_stack_size, "Spurious padding in fibre_stack!");
 
 } // namespace ext
 
 namespace impl {
 
-inline auto stack_as_bytes(async_stack *stack) noexcept -> std::byte * { return std::launder(stack->m_buf); }
+inline auto stack_as_bytes(fibre_stack *stack) noexcept -> std::byte * { return std::launder(stack->m_buf); }
 
-inline auto bytes_to_stack(std::byte *bytes) noexcept -> async_stack * {
+inline auto bytes_to_stack(std::byte *bytes) noexcept -> fibre_stack * {
 #ifdef __cpp_lib_is_pointer_interconvertible
-  static_assert(std::is_pointer_interconvertible_with_class(&async_stack::m_buf));
+  static_assert(std::is_pointer_interconvertible_with_class(&fibre_stack::m_buf));
 #endif
-  return std::launder(std::bit_cast<async_stack *>(bytes));
+  return std::launder(std::bit_cast<fibre_stack *>(bytes));
 }
 
 // ----------------------------------------------- //
@@ -1064,7 +1064,7 @@ LF_TLS_CLANG_INLINE inline void push_asp(std::byte *top) {
   LF_ASSERT(tls::asp);
   std::byte *prev = std::exchange(tls::asp, top);
   LF_ASSERT(prev != top);
-  async_stack *stack = bytes_to_stack(prev);
+  fibre_stack *stack = bytes_to_stack(prev);
   tls::ctx<Context>->stack_push(stack);
 }
 
@@ -1180,7 +1180,7 @@ struct frame_block : private immovable<frame_block>, debug_block {
   }
 
   /**
-   * @brief Get a pointer to the top of the top of the async-stack this frame was allocated on.
+   * @brief Get a pointer to the top of the top of the fibre-stack this frame was allocated on.
    *
    * Only valid if this is not a root frame.
    */
@@ -1193,14 +1193,14 @@ struct frame_block : private immovable<frame_block>, debug_block {
    * @brief Small return type suitable for structured binding.
    */
   struct local_t {
-    bool is_root;
-    std::byte *top;
+    bool is_root;   ///< True if this was a root task.
+    std::byte *top; ///< A pointer to top of the fibre-stack (only valid for non-root tasks).
   };
 
   /**
    * @brief Like `is_root()` and `top()` but valid for root frames.
    *
-   * Note that if this is a root frame then the pointer to the top of the async-stack has an undefined value.
+   * Note that if this is a root frame then the pointer to the top of the fibre-stack has an undefined value.
    */
   [[nodiscard]] auto locale() const noexcept -> local_t { return {is_root(), m_top}; }
 
@@ -1256,7 +1256,7 @@ struct frame_block : private immovable<frame_block>, debug_block {
   }
 
   /**
-   * @brief Allocate `size` bytes on the current async-stack.
+   * @brief Allocate `size` bytes on the current fibre-stack.
    *
    * This memory must be freed (in-order) before the current frame is destroyed.
    * The memory will be aligned to `k_new_align`.
@@ -1295,7 +1295,7 @@ struct promise_alloc_heap : frame_block {
 // ----------------------------------------------- //
 
 /**
- * @brief A base class for promises that allocates on an `async_stack`.
+ * @brief A base class for promises that allocates on an `fibre_stack`.
  *
  * When a promise deriving from this class is constructed 'tls::asp' will be set and when it is destroyed
  * 'tls::asp' will be returned to the previous frame.
@@ -1315,9 +1315,9 @@ struct promise_alloc_stack : frame_block {
 
  public:
   /**
-   * @brief Allocate the coroutine on the current `async_stack`.
+   * @brief Allocate the coroutine on the current `fibre_stack`.
    *
-   * This will update `tls::asp` to point to the top of the new async stack.
+   * This will update `tls::asp` to point to the top of the new fibre stack.
    */
   [[nodiscard]] LF_TLS_CLANG_INLINE static auto operator new(std::size_t size) -> void * {
     LF_ASSERT(tls::asp);
@@ -1328,7 +1328,7 @@ struct promise_alloc_stack : frame_block {
   }
 
   /**
-   * @brief Deallocate the coroutine on the current `async_stack`.
+   * @brief Deallocate the coroutine on the current `fibre_stack`.
    */
   LF_TLS_CLANG_INLINE static void operator delete(void *ptr, std::size_t size) {
     LF_ASSERT(ptr == tls::asp - ((size + k_new_align - 1) & ~(k_new_align - 1)));
@@ -1467,9 +1467,9 @@ using intruded_h = intrusive_node<submit_h<Context> *>;
 /**
  * @brief A concept which defines the context interface.
  *
- * A context owns a LIFO stack of ``lf::async_stack``s and a LIFO stack of
- * tasks. The stack of ``lf::async_stack``s is expected to never be empty, it
- * should always be able to return an empty ``lf::async_stack``.
+ * A context owns a LIFO stack of ``lf::fibre_stack``s and a LIFO stack of
+ * tasks. The stack of ``lf::fibre_stack``s is expected to never be empty, it
+ * should always be able to return an empty ``lf::fibre_stack``.
  *
  * Syntactically a `thread_context` requires:
  *
@@ -1484,14 +1484,14 @@ using intruded_h = intrusive_node<submit_h<Context> *>;
  */
 template <typename Context>
 concept thread_context =
-    requires (Context ctx, async_stack *stack, intruded_h<Context> *ext, task_h<Context> *task) {
+    requires (Context ctx, fibre_stack *stack, intruded_h<Context> *ext, task_h<Context> *task) {
       { ctx.max_threads() } -> std::same_as<std::size_t>; // The maximum number of threads.
       { ctx.submit(ext) };                                // Submit an external task to the context.
       {
         ctx.task_pop()
       } -> std::convertible_to<task_h<Context> *>; // If the stack is empty, return a null pointer.
       { ctx.task_push(task) };                     // Push a non-null pointer.
-      { ctx.stack_pop() } -> std::convertible_to<async_stack *>; // Return a non-null pointer
+      { ctx.stack_pop() } -> std::convertible_to<fibre_stack *>; // Return a non-null pointer
       { ctx.stack_push(stack) };                                 // Push a non-null pointer
     };
 
@@ -2530,8 +2530,8 @@ struct dummy_context {
   auto submit(intruded_h<dummy_context> *) -> void; ///< Unimplemented.
   auto task_pop() -> task_h<dummy_context> *;       ///< Unimplemented.
   auto task_push(task_h<dummy_context> *) -> void;  ///< Unimplemented.
-  auto stack_pop() -> async_stack *;                ///< Unimplemented.
-  auto stack_push(async_stack *) -> void;           ///< Unimplemented.
+  auto stack_pop() -> fibre_stack *;                ///< Unimplemented.
+  auto stack_push(fibre_stack *) -> void;           ///< Unimplemented.
 };
 
 static_assert(thread_context<dummy_context>, "dummy_context is not a thread_context");
@@ -2768,7 +2768,7 @@ namespace impl {
 template <std::default_initializable T>
   requires (alignof(T) <= impl::k_new_align)
 struct co_alloc_t {
-  std::size_t count;
+  std::size_t count; ///< The number of elements to allocate.
 };
 
 } // namespace impl
@@ -2780,10 +2780,12 @@ inline namespace core {
  * allocation.
  *
  * Upon ``co_await``ing the result of this function a ``std::span`` of default initialized `T`s will be
- * allocated on the ``async_stack``. This behaves like the memory returned from ``alloca`` e.g. will be freed
+ * allocated on the ``fibre_stack``. This behaves like the memory returned from ``alloca`` e.g. will be freed
  * at the end of the function scope.
  *
- * Furthermore as root tasks are heap allocated this may only be ``co_await``ed in a non-root task.
+ * This must not be called withing a fork-join scope.
+ *
+ * Furthermore, as root tasks are heap allocated this may only be ``co_await``ed in a non-root task.
  *
  * \rst
  *
@@ -3143,7 +3145,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
     LF_LOG("At final suspend call");
 
-    // Completing a non-root task means we currently own the async_stack this child is on
+    // Completing a non-root task means we currently own the fibre_stack this child is on
 
     LF_ASSERT(this->debug_count() == 0);
     LF_ASSERT(this->steals() == 0);                                                // Fork without join.
@@ -3152,6 +3154,9 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
     return final_awaitable{};
   }
 
+  /**
+   * @brief Allocate on this ``fibre_stack``.
+   */
   template <typename U>
   auto await_transform(co_alloc_t<U> to_alloc) noexcept {
 
@@ -3393,11 +3398,13 @@ namespace lf {
 namespace impl {
 
 /**
- * @brief Implements the `lift` higher-order function for forked/non-forked
- * functions.
+ * @brief Implements the `lift` higher-order function for forked/non-forked functions.
  */
 template <typename F>
 struct lifted {
+  /**
+   * @brief Lift a non-forked task.
+   */
   template <first_arg Head, typename... Args>
     requires (tag_of<Head> != tag::fork && std::invocable<F, Args...>)
   LF_STATIC_CALL auto operator()(Head,
@@ -3405,6 +3412,9 @@ struct lifted {
     co_return std::invoke(F{}, std::forward<Args>(args)...);
   }
 
+  /**
+   * @brief Lift a forked task.
+   */
   template <typename Head, typename... Args>
     requires (tag_of<Head> == tag::fork && std::invocable<F, Args...>)
   LF_STATIC_CALL auto operator()(Head, Args... args) LF_STATIC_CONST->task<std::invoke_result_t<F, Args...>> {
@@ -3415,8 +3425,7 @@ struct lifted {
 } // namespace impl
 
 /**
- * @brief A higher-order function that lifts a function into an ``async``
- * function.
+ * @brief A higher-order function that lifts a function into an ``async`` function.
  *
  * \rst
  *
@@ -3442,8 +3451,8 @@ struct lifted {
  * .. note::
  *
  *    The lifted function will accept arguments by-value if it is forked and by
- * forwarding reference otherwise. This is to prevent dangling, use ``std::ref``
- * if you actually want a reference.
+ *    forwarding reference otherwise. This is to prevent dangling, use ``std::ref``
+ *    if you actually want a reference.
  *
  * \endrst
  */
@@ -4762,7 +4771,7 @@ struct immediate_base {
   /**
    * @brief Deallocates the stack.
    */
-  static void stack_push(async_stack *stack) {
+  static void stack_push(fibre_stack *stack) {
     LF_LOG("stack_push");
     LF_ASSERT(stack);
     delete stack;
@@ -4771,9 +4780,9 @@ struct immediate_base {
   /**
    * @brief Allocates a new stack.
    */
-  static auto stack_pop() -> async_stack * {
+  static auto stack_pop() -> fibre_stack * {
     LF_LOG("stack_pop");
-    return new async_stack;
+    return new fibre_stack;
   }
 };
 
@@ -4824,7 +4833,9 @@ class test_immediate_context : public immediate_base<test_immediate_context> {
  public:
   test_immediate_context() { m_tasks.reserve(1024); }
 
-  // Deliberately not constexpr such that the promise will not transform all `fork -> call`.
+  /**
+   * @brief Deliberately not constexpr such that the promise will not transform all `fork -> call`.
+   */
   static auto max_threads() noexcept -> std::size_t { return 1; }
 
   /**
@@ -4872,9 +4883,9 @@ class numa_worker_context : immovable<numa_worker_context<CRTP>> {
   using intruded_t = intruded_h<CRTP>;
 
   deque<task_t *> m_tasks;                     ///< Our public task queue, all non-null.
-  deque<async_stack *> m_stacks;               ///< Our public stack queue, all non-null.
+  deque<fibre_stack *> m_stacks;               ///< Our public stack queue, all non-null.
   intrusive_list<submit_t *> m_submit;         ///< The public submission queue, all non-null.
-  ring_buffer<async_stack *, k_buff> m_buffer; ///< Our private stack buffer, all non-null.
+  ring_buffer<fibre_stack *, k_buff> m_buffer; ///< Our private stack buffer, all non-null.
 
   xoshiro m_rng;                            ///< Our personal PRNG.
   std::size_t m_max_threads;                ///< The total max parallelism available.
@@ -4886,9 +4897,15 @@ class numa_worker_context : immovable<numa_worker_context<CRTP>> {
   };
 
  public:
+  /**
+   * @brief Construct a new numa worker context object.
+   *
+   * @param n The maximum parallelism.
+   * @param rng This worker private pseudo random number generator.
+   */
   numa_worker_context(std::size_t n, xoshiro const &rng) : m_rng(rng), m_max_threads(n) {
     for (std::size_t i = 0; i < k_buff / 2; ++i) {
-      m_buffer.push(new async_stack);
+      m_buffer.push(new fibre_stack);
     }
   }
 
@@ -4967,29 +4984,40 @@ class numa_worker_context : immovable<numa_worker_context<CRTP>> {
     //
     LF_ASSERT_NO_ASSUME(m_tasks.empty());
 
-    while (auto *stack = m_buffer.pop(null_for<async_stack>)) {
+    while (auto *stack = m_buffer.pop(null_for<fibre_stack>)) {
       delete stack;
     }
 
-    while (auto *stack = m_stacks.pop(null_for<async_stack>)) {
+    while (auto *stack = m_stacks.pop(null_for<fibre_stack>)) {
       delete stack;
     }
   }
 
   // ------------- To satisfy `thread_context` ------------- //
 
+  /**
+   * @brief Get the maximum parallelism.
+   */
   auto max_threads() const noexcept -> std::size_t { return m_max_threads; }
 
+  /**
+   * @brief Submit a node for execution onto this workers private queue.
+   */
   auto submit(intruded_t *node) noexcept -> void { m_submit.push(non_null(node)); }
 
-  auto stack_pop() -> async_stack * {
+  /**
+   * @brief Get a new empty ``fiber_stack``.
+   *
+   * This will attempt to steal one before allocating.
+   */
+  auto stack_pop() -> fibre_stack * {
 
-    if (auto *stack = m_buffer.pop(null_for<async_stack>)) {
+    if (auto *stack = m_buffer.pop(null_for<fibre_stack>)) {
       LF_LOG("stack_pop() using local-buffered stack");
       return stack;
     }
 
-    if (auto *stack = m_stacks.pop(null_for<async_stack>)) {
+    if (auto *stack = m_stacks.pop(null_for<fibre_stack>)) {
       LF_LOG("stack_pop() using public-buffered stack");
       return stack;
     }
@@ -5020,18 +5048,27 @@ class numa_worker_context : immovable<numa_worker_context<CRTP>> {
 
     LF_LOG("stack_pop() allocating");
 
-    return new async_stack;
+    return new fibre_stack;
   }
 
-  void stack_push(async_stack *stack) {
-    m_buffer.push(non_null(stack), [&](async_stack *extra_stack) noexcept {
+  /**
+   * @brief Cache an empty fiber stack.
+   */
+  void stack_push(fibre_stack *stack) {
+    m_buffer.push(non_null(stack), [&](fibre_stack *extra_stack) noexcept {
       LF_LOG("Local stack buffer overflows");
       m_stacks.push(extra_stack);
     });
   }
 
+  /**
+   * @brief Pop a task from the public task queue.
+   */
   LF_FORCEINLINE auto task_pop() noexcept -> task_t * { return m_tasks.pop(null_for<task_t>); }
 
+  /**
+   * @brief Add a task to the public task queue.
+   */
   LF_FORCEINLINE void task_push(task_t *task) { m_tasks.push(non_null(task)); }
 };
 
@@ -5501,9 +5538,9 @@ class lazy_context : public numa_worker_context<lazy_context> {
       dual_count.fetch_sub(k_active - k_thieve, acq_rel);
     }
 
-    alignas(k_cache_line) std::atomic_uint64_t dual_count = 0;
-    alignas(k_cache_line) std::atomic_flag stop;
-    alignas(k_cache_line) event_count notifier;
+    alignas(k_cache_line) std::atomic_uint64_t dual_count = 0; ///< The worker + active counters
+    alignas(k_cache_line) std::atomic_flag stop;               ///< Stop flag
+    alignas(k_cache_line) event_count notifier;                ///< The pools notifier.
   };
 
   // ---------------------------------------------------------------------- //
@@ -5518,10 +5555,20 @@ class lazy_context : public numa_worker_context<lazy_context> {
 
   // ---------------------------------------------------------------------- //
 
+  /**
+   * @brief Construct a new context object.
+   *
+   * @param n The maximum parallelism.
+   * @param rng This worker private pseudo random number generator.
+   * @param atomics A pointer to the shared atomics used to communicate between the workers.
+   */
   lazy_context(std::size_t n, xoshiro &rng, std::shared_ptr<remote_atomics> atomics)
       : numa_worker_context{n, rng},
         m_atomics(std::move(atomics)) {}
 
+  /**
+   * @brief The function that workers run while the pool is alive.
+   */
   static auto work(numa_topology::numa_node<lazy_context> node) {
 
     // ---- Initialization ---- //
@@ -5667,6 +5714,11 @@ class lazy_pool {
    */
   using context_type = impl::lazy_context;
 
+  /**
+   * @brief An alias for the type of``lf::ext::numa_topology::numa_node`` ``neighbors`` member.
+   */
+  using neigh_list = std::vector<std::vector<std::shared_ptr<context_type>>>;
+
  private:
   using remote = typename context_type::remote_atomics;
 
@@ -5676,9 +5728,7 @@ class lazy_pool {
   std::vector<std::shared_ptr<context_type>> m_contexts;
   std::vector<std::thread> m_workers;
 
-  using neigh_list = std::vector<std::vector<std::shared_ptr<context_type>>>;
-
-  std::vector<neigh_list> m_higherachy;
+  std::vector<neigh_list> m_hierarchy;
 
   // Request all threads to stop, wake them up and then call join.
   auto clean_up() noexcept -> void {
@@ -5699,9 +5749,15 @@ class lazy_pool {
    */
   auto schedule(intruded_h<context_type> *node) noexcept { m_contexts[m_dist(m_rng)]->submit(node); }
 
-  auto numa(std::size_t index) const -> neigh_list const & { return m_higherachy[index]; }
+  /**
+   * @brief Get the list of neighbour-lists of the ``index``th worker.
+   */
+  auto numa(std::size_t index) const -> neigh_list const & { return m_hierarchy[index]; }
 
-  auto size() -> std::size_t { return m_contexts.size(); }
+  /**
+   * @brief Get the number of workers in this pool.
+   */
+  auto size() const -> std::size_t { return m_contexts.size(); }
 
   /**
    * @brief Construct a new lazy_pool object and `n` worker threads.
@@ -5724,7 +5780,7 @@ class lazy_pool {
 
     LF_TRY {
       for (auto &&node : nodes) {
-        m_higherachy.push_back(node.neighbors);
+        m_hierarchy.push_back(node.neighbors);
         m_workers.emplace_back(context_type::work, std::move(node));
       }
     } LF_CATCH_ALL {
@@ -5768,6 +5824,9 @@ namespace lf {
 
 namespace impl {
 
+/**
+ * @brief A wrapper which transforms a single-threaded context into a scheduler.
+ */
 template <thread_context Context>
 class unit_pool_impl : impl::immovable<unit_pool_impl<Context>> {
  public:

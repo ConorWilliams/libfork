@@ -20,11 +20,13 @@ namespace lf {
 namespace impl {
 
 /**
- * @brief Implements the `lift` higher-order function for forked/non-forked
- * functions.
+ * @brief Implements the `lift` higher-order function for forked/non-forked functions.
  */
 template <typename F>
 struct lifted {
+  /**
+   * @brief Lift a non-forked task.
+   */
   template <first_arg Head, typename... Args>
     requires (tag_of<Head> != tag::fork && std::invocable<F, Args...>)
   LF_STATIC_CALL auto operator()(Head,
@@ -32,6 +34,9 @@ struct lifted {
     co_return std::invoke(F{}, std::forward<Args>(args)...);
   }
 
+  /**
+   * @brief Lift a forked task.
+   */
   template <typename Head, typename... Args>
     requires (tag_of<Head> == tag::fork && std::invocable<F, Args...>)
   LF_STATIC_CALL auto operator()(Head, Args... args) LF_STATIC_CONST->task<std::invoke_result_t<F, Args...>> {
@@ -42,8 +47,7 @@ struct lifted {
 } // namespace impl
 
 /**
- * @brief A higher-order function that lifts a function into an ``async``
- * function.
+ * @brief A higher-order function that lifts a function into an ``async`` function.
  *
  * \rst
  *
@@ -69,8 +73,8 @@ struct lifted {
  * .. note::
  *
  *    The lifted function will accept arguments by-value if it is forked and by
- * forwarding reference otherwise. This is to prevent dangling, use ``std::ref``
- * if you actually want a reference.
+ *    forwarding reference otherwise. This is to prevent dangling, use ``std::ref``
+ *    if you actually want a reference.
  *
  * \endrst
  */

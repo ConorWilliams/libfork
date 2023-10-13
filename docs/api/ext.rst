@@ -33,7 +33,7 @@ Handle types
 The cactus stack
 ~~~~~~~~~~~~~~~~
 
-.. doxygenclass:: lf::ext::async_stack
+.. doxygenclass:: lf::ext::fibre_stack
     :members:
 
 Submission lists

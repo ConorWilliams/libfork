@@ -34,26 +34,26 @@
 
 namespace lf {
 
-// -------------------- async stack -------------------- //
+// -------------------- fibre stack -------------------- //
 
 inline namespace ext {
 
-class async_stack;
+class fibre_stack;
 
 } // namespace ext
 
 namespace impl {
 
-static constexpr std::size_t k_stack_size = 4 * k_kibibyte * LF_ASYNC_STACK_SIZE;
+static constexpr std::size_t k_stack_size = 4 * k_kibibyte * LF_FIBRE_STACK_SIZE;
 
 /**
  * @brief Get a pointer to the end of a stack's buffer.
  */
-auto stack_as_bytes(async_stack *stack) noexcept -> std::byte *;
+auto stack_as_bytes(fibre_stack *stack) noexcept -> std::byte *;
 /**
  * @brief Convert a pointer to a stack's sentinel `frame_block` to a pointer to the stack.
  */
-auto bytes_to_stack(std::byte *bytes) noexcept -> async_stack *;
+auto bytes_to_stack(std::byte *bytes) noexcept -> fibre_stack *;
 
 } // namespace impl
 
@@ -65,28 +65,28 @@ inline namespace ext {
  * These can be alloacted on the heap just like any other object when a `thread_context`
  * needs them.
  */
-class async_stack : impl::immovable<async_stack> {
+class fibre_stack : impl::immovable<fibre_stack> {
   alignas(impl::k_new_align) std::byte m_buf[impl::k_stack_size]; // NOLINT
 
-  friend auto impl::stack_as_bytes(async_stack *stack) noexcept -> std::byte *;
+  friend auto impl::stack_as_bytes(fibre_stack *stack) noexcept -> std::byte *;
 
-  friend auto impl::bytes_to_stack(std::byte *bytes) noexcept -> async_stack *;
+  friend auto impl::bytes_to_stack(std::byte *bytes) noexcept -> fibre_stack *;
 };
 
-static_assert(std::is_standard_layout_v<async_stack>);
-static_assert(sizeof(async_stack) == impl::k_stack_size, "Spurious padding in async_stack!");
+static_assert(std::is_standard_layout_v<fibre_stack>);
+static_assert(sizeof(fibre_stack) == impl::k_stack_size, "Spurious padding in fibre_stack!");
 
 } // namespace ext
 
 namespace impl {
 
-inline auto stack_as_bytes(async_stack *stack) noexcept -> std::byte * { return std::launder(stack->m_buf); }
+inline auto stack_as_bytes(fibre_stack *stack) noexcept -> std::byte * { return std::launder(stack->m_buf); }
 
-inline auto bytes_to_stack(std::byte *bytes) noexcept -> async_stack * {
+inline auto bytes_to_stack(std::byte *bytes) noexcept -> fibre_stack * {
 #ifdef __cpp_lib_is_pointer_interconvertible
-  static_assert(std::is_pointer_interconvertible_with_class(&async_stack::m_buf));
+  static_assert(std::is_pointer_interconvertible_with_class(&fibre_stack::m_buf));
 #endif
-  return std::launder(std::bit_cast<async_stack *>(bytes));
+  return std::launder(std::bit_cast<fibre_stack *>(bytes));
 }
 
 // ----------------------------------------------- //
@@ -119,7 +119,7 @@ LF_TLS_CLANG_INLINE inline void push_asp(std::byte *top) {
   LF_ASSERT(tls::asp);
   std::byte *prev = std::exchange(tls::asp, top);
   LF_ASSERT(prev != top);
-  async_stack *stack = bytes_to_stack(prev);
+  fibre_stack *stack = bytes_to_stack(prev);
   tls::ctx<Context>->stack_push(stack);
 }
 
@@ -235,7 +235,7 @@ struct frame_block : private immovable<frame_block>, debug_block {
   }
 
   /**
-   * @brief Get a pointer to the top of the top of the async-stack this frame was allocated on.
+   * @brief Get a pointer to the top of the top of the fibre-stack this frame was allocated on.
    *
    * Only valid if this is not a root frame.
    */
@@ -248,14 +248,14 @@ struct frame_block : private immovable<frame_block>, debug_block {
    * @brief Small return type suitable for structured binding.
    */
   struct local_t {
-    bool is_root;
-    std::byte *top;
+    bool is_root;   ///< True if this was a root task.
+    std::byte *top; ///< A pointer to top of the fibre-stack (only valid for non-root tasks).
   };
 
   /**
    * @brief Like `is_root()` and `top()` but valid for root frames.
    *
-   * Note that if this is a root frame then the pointer to the top of the async-stack has an undefined value.
+   * Note that if this is a root frame then the pointer to the top of the fibre-stack has an undefined value.
    */
   [[nodiscard]] auto locale() const noexcept -> local_t { return {is_root(), m_top}; }
 
@@ -311,7 +311,7 @@ struct frame_block : private immovable<frame_block>, debug_block {
   }
 
   /**
-   * @brief Allocate `size` bytes on the current async-stack.
+   * @brief Allocate `size` bytes on the current fibre-stack.
    *
    * This memory must be freed (in-order) before the current frame is destroyed.
    * The memory will be aligned to `k_new_align`.
@@ -350,7 +350,7 @@ struct promise_alloc_heap : frame_block {
 // ----------------------------------------------- //
 
 /**
- * @brief A base class for promises that allocates on an `async_stack`.
+ * @brief A base class for promises that allocates on an `fibre_stack`.
  *
  * When a promise deriving from this class is constructed 'tls::asp' will be set and when it is destroyed
  * 'tls::asp' will be returned to the previous frame.
@@ -370,9 +370,9 @@ struct promise_alloc_stack : frame_block {
 
  public:
   /**
-   * @brief Allocate the coroutine on the current `async_stack`.
+   * @brief Allocate the coroutine on the current `fibre_stack`.
    *
-   * This will update `tls::asp` to point to the top of the new async stack.
+   * This will update `tls::asp` to point to the top of the new fibre stack.
    */
   [[nodiscard]] LF_TLS_CLANG_INLINE static auto operator new(std::size_t size) -> void * {
     LF_ASSERT(tls::asp);
@@ -383,7 +383,7 @@ struct promise_alloc_stack : frame_block {
   }
 
   /**
-   * @brief Deallocate the coroutine on the current `async_stack`.
+   * @brief Deallocate the coroutine on the current `fibre_stack`.
    */
   LF_TLS_CLANG_INLINE static void operator delete(void *ptr, std::size_t size) {
     LF_ASSERT(ptr == tls::asp - ((size + k_new_align - 1) & ~(k_new_align - 1)));

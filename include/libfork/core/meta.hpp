@@ -38,9 +38,9 @@ using intruded_h = intrusive_node<submit_h<Context> *>;
 /**
  * @brief A concept which defines the context interface.
  *
- * A context owns a LIFO stack of ``lf::async_stack``s and a LIFO stack of
- * tasks. The stack of ``lf::async_stack``s is expected to never be empty, it
- * should always be able to return an empty ``lf::async_stack``.
+ * A context owns a LIFO stack of ``lf::fibre_stack``s and a LIFO stack of
+ * tasks. The stack of ``lf::fibre_stack``s is expected to never be empty, it
+ * should always be able to return an empty ``lf::fibre_stack``.
  *
  * Syntactically a `thread_context` requires:
  *
@@ -55,14 +55,14 @@ using intruded_h = intrusive_node<submit_h<Context> *>;
  */
 template <typename Context>
 concept thread_context =
-    requires (Context ctx, async_stack *stack, intruded_h<Context> *ext, task_h<Context> *task) {
+    requires (Context ctx, fibre_stack *stack, intruded_h<Context> *ext, task_h<Context> *task) {
       { ctx.max_threads() } -> std::same_as<std::size_t>; // The maximum number of threads.
       { ctx.submit(ext) };                                // Submit an external task to the context.
       {
         ctx.task_pop()
       } -> std::convertible_to<task_h<Context> *>; // If the stack is empty, return a null pointer.
       { ctx.task_push(task) };                     // Push a non-null pointer.
-      { ctx.stack_pop() } -> std::convertible_to<async_stack *>; // Return a non-null pointer
+      { ctx.stack_pop() } -> std::convertible_to<fibre_stack *>; // Return a non-null pointer
       { ctx.stack_push(stack) };                                 // Push a non-null pointer
     };
 

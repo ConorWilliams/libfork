@@ -50,17 +50,17 @@
  */
 #define LF_VERSION_PATCH 0
 
-#ifndef LF_ASYNC_STACK_SIZE
+#ifndef LF_FIBRE_STACK_SIZE
   /**
-   * @brief __[public]__ A customizable stack size for ``async_stack``'s (in multiples of 4 kibibytes i.e. the
+   * @brief __[public]__ A customizable stack size for ``fibre_stack``'s (in multiples of 4 kibibytes i.e. the
    * page size).
    *
-   * You can override this by defining ``LF_ASYNC_STACK_SIZE`` to a power of two (default 1 MiB)
+   * You can override this by defining ``LF_FIBRE_STACK_SIZE`` to a power of two (default 1 MiB)
    */
-  #define LF_ASYNC_STACK_SIZE 256
+  #define LF_FIBRE_STACK_SIZE 256
 #endif
 
-static_assert(LF_ASYNC_STACK_SIZE && !(LF_ASYNC_STACK_SIZE & (LF_ASYNC_STACK_SIZE - 1)),
+static_assert(LF_FIBRE_STACK_SIZE && !(LF_FIBRE_STACK_SIZE & (LF_FIBRE_STACK_SIZE - 1)),
               "Must be a power of 2");
 
 /**

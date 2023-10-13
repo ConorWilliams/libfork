@@ -298,8 +298,8 @@ struct dummy_context {
   auto submit(intruded_h<dummy_context> *) -> void; ///< Unimplemented.
   auto task_pop() -> task_h<dummy_context> *;       ///< Unimplemented.
   auto task_push(task_h<dummy_context> *) -> void;  ///< Unimplemented.
-  auto stack_pop() -> async_stack *;                ///< Unimplemented.
-  auto stack_push(async_stack *) -> void;           ///< Unimplemented.
+  auto stack_pop() -> fibre_stack *;                ///< Unimplemented.
+  auto stack_push(fibre_stack *) -> void;           ///< Unimplemented.
 };
 
 static_assert(thread_context<dummy_context>, "dummy_context is not a thread_context");

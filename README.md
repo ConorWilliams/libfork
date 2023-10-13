@@ -103,11 +103,11 @@ See the [ChangeLog](ChangeLog.md) document.
 
 ### Tasks and futures
 
-The tasking fork-join interface is designed to mirror Cilk and other fork-join frameworks. With libfork the canonical recursive-Fibonacci is a simple as:
+The tasking fork-join interface is designed to mirror Cilk and other fork-join frameworks. With `libfork` the canonical recursive-Fibonacci is a simple as:
 
 ```c++
-#include "libfork/libfork.hpp"
-#include "libfork/schedule/busy.hpp"
+#include "libfork/core.hpp"
+#include "libfork/schedule.hpp"
 
 /// Compute the n'th fibonacci number
 inline constexpr auto fib = lf::async([](auto fib, int n) -> lf::task<int> { 

@@ -99,9 +99,9 @@ class lazy_context : public numa_worker_context<lazy_context> {
       dual_count.fetch_sub(k_active - k_thieve, acq_rel);
     }
 
-    alignas(k_cache_line) std::atomic_uint64_t dual_count = 0;
-    alignas(k_cache_line) std::atomic_flag stop;
-    alignas(k_cache_line) event_count notifier;
+    alignas(k_cache_line) std::atomic_uint64_t dual_count = 0; ///< The worker + active counters
+    alignas(k_cache_line) std::atomic_flag stop;               ///< Stop flag
+    alignas(k_cache_line) event_count notifier;                ///< The pools notifier.
   };
 
   // ---------------------------------------------------------------------- //
@@ -116,10 +116,20 @@ class lazy_context : public numa_worker_context<lazy_context> {
 
   // ---------------------------------------------------------------------- //
 
+  /**
+   * @brief Construct a new context object.
+   *
+   * @param n The maximum parallelism.
+   * @param rng This worker private pseudo random number generator.
+   * @param atomics A pointer to the shared atomics used to communicate between the workers.
+   */
   lazy_context(std::size_t n, xoshiro &rng, std::shared_ptr<remote_atomics> atomics)
       : numa_worker_context{n, rng},
         m_atomics(std::move(atomics)) {}
 
+  /**
+   * @brief The function that workers run while the pool is alive.
+   */
   static auto work(numa_topology::numa_node<lazy_context> node) {
 
     // ---- Initialization ---- //
@@ -265,6 +275,11 @@ class lazy_pool {
    */
   using context_type = impl::lazy_context;
 
+  /**
+   * @brief An alias for the type of``lf::ext::numa_topology::numa_node`` ``neighbors`` member.
+   */
+  using neigh_list = std::vector<std::vector<std::shared_ptr<context_type>>>;
+
  private:
   using remote = typename context_type::remote_atomics;
 
@@ -274,9 +289,7 @@ class lazy_pool {
   std::vector<std::shared_ptr<context_type>> m_contexts;
   std::vector<std::thread> m_workers;
 
-  using neigh_list = std::vector<std::vector<std::shared_ptr<context_type>>>;
-
-  std::vector<neigh_list> m_higherachy;
+  std::vector<neigh_list> m_hierarchy;
 
   // Request all threads to stop, wake them up and then call join.
   auto clean_up() noexcept -> void {
@@ -297,9 +310,15 @@ class lazy_pool {
    */
   auto schedule(intruded_h<context_type> *node) noexcept { m_contexts[m_dist(m_rng)]->submit(node); }
 
-  auto numa(std::size_t index) const -> neigh_list const & { return m_higherachy[index]; }
+  /**
+   * @brief Get the list of neighbour-lists of the ``index``th worker.
+   */
+  auto numa(std::size_t index) const -> neigh_list const & { return m_hierarchy[index]; }
 
-  auto size() -> std::size_t { return m_contexts.size(); }
+  /**
+   * @brief Get the number of workers in this pool.
+   */
+  auto size() const -> std::size_t { return m_contexts.size(); }
 
   /**
    * @brief Construct a new lazy_pool object and `n` worker threads.
@@ -322,7 +341,7 @@ class lazy_pool {
 
     LF_TRY {
       for (auto &&node : nodes) {
-        m_higherachy.push_back(node.neighbors);
+        m_hierarchy.push_back(node.neighbors);
         m_workers.emplace_back(context_type::work, std::move(node));
       }
     } LF_CATCH_ALL {

@@ -40,7 +40,7 @@ namespace impl {
 template <std::default_initializable T>
   requires (alignof(T) <= impl::k_new_align)
 struct co_alloc_t {
-  std::size_t count;
+  std::size_t count; ///< The number of elements to allocate.
 };
 
 } // namespace impl
@@ -52,10 +52,12 @@ inline namespace core {
  * allocation.
  *
  * Upon ``co_await``ing the result of this function a ``std::span`` of default initialized `T`s will be
- * allocated on the ``async_stack``. This behaves like the memory returned from ``alloca`` e.g. will be freed
+ * allocated on the ``fibre_stack``. This behaves like the memory returned from ``alloca`` e.g. will be freed
  * at the end of the function scope.
  *
- * Furthermore as root tasks are heap allocated this may only be ``co_await``ed in a non-root task.
+ * This must not be called withing a fork-join scope.
+ *
+ * Furthermore, as root tasks are heap allocated this may only be ``co_await``ed in a non-root task.
  *
  * \rst
  *
@@ -415,7 +417,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
 
     LF_LOG("At final suspend call");
 
-    // Completing a non-root task means we currently own the async_stack this child is on
+    // Completing a non-root task means we currently own the fibre_stack this child is on
 
     LF_ASSERT(this->debug_count() == 0);
     LF_ASSERT(this->steals() == 0);                                                // Fork without join.
@@ -424,6 +426,9 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
     return final_awaitable{};
   }
 
+  /**
+   * @brief Allocate on this ``fibre_stack``.
+   */
   template <typename U>
   auto await_transform(co_alloc_t<U> to_alloc) noexcept {
 
