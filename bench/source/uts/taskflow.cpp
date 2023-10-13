@@ -72,7 +72,7 @@ void uts_taskflow(benchmark::State &state, int tree) {
 
   result r;
 
-  auto h = taskflow.emplace([&](tf::Subflow &sbf) {
+  taskflow.emplace([&](tf::Subflow &sbf) {
     r = uts(depth, &root, sbf);
     return 4;
   });
