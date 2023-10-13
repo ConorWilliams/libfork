@@ -32,13 +32,43 @@
 
 namespace lf {
 
-inline namespace core {
+namespace impl {
 
+/**
+ * @brief An awaitable (in the context of an ``lf::task``) which triggers stack allocation.
+ */
 template <std::default_initializable T>
   requires (alignof(T) <= impl::k_new_align)
-struct co_alloc {
+struct co_alloc_t {
   std::size_t count;
 };
+
+} // namespace impl
+
+inline namespace core {
+
+/**
+ * @brief A function which returns an awaitable (in the context of an ``lf::task``) which triggers stack
+ * allocation.
+ *
+ * Upon ``co_await``ing the result of this function a ``std::span`` of default initialized `T`s will be
+ * allocated on the ``async_stack``. This behaves like the memory returned from ``alloca`` e.g. will be freed
+ * at the end of the function scope.
+ *
+ * Furthermore as root tasks are heap allocated this may only be ``co_await``ed in a non-root task.
+ *
+ * \rst
+ *
+ * .. warning::
+ *    This is an expert only feature with many foot-guns attached.
+ *
+ * \endrst
+ *
+ */
+template <std::default_initializable T>
+constexpr auto co_alloc(std::size_t count) -> impl::co_alloc_t<T> {
+  return impl::co_alloc_t<T>{count};
+}
 
 } // namespace core
 
@@ -395,7 +425,7 @@ struct promise_type : allocator<Tag>, promise_result<R, T> {
   }
 
   template <typename U>
-  auto await_transform(co_alloc<U> to_alloc) noexcept {
+  auto await_transform(co_alloc_t<U> to_alloc) noexcept {
 
     static_assert(Tag != tag::root, "Cannot allocate on root tasks");
 

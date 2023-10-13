@@ -38,6 +38,11 @@ Classes
    core/async.rst
    core/result.rst
 
+Stack allocation
+------------------
+
+.. doxygenfunction:: lf::core::co_alloc
+
 Generated listing
 ---------------------
 

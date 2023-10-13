@@ -193,8 +193,8 @@ inline namespace core {
  *
  * .. include:: ../../include/libfork/core/meta.hpp
  *    :code:
- *    :start-line: 198
- *    :end-line: 218
+ *    :start-line: 201
+ *    :end-line: 221
  *
  * \endrst
  */
