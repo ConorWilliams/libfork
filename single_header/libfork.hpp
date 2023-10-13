@@ -2783,7 +2783,7 @@ inline namespace core {
  * allocated on the ``fibre_stack``. This behaves like the memory returned from ``alloca`` e.g. will be freed
  * at the end of the function scope.
  *
- * This must not be called withing a fork-join scope.
+ * This must not be called within a fork-join scope.
  *
  * Furthermore, as root tasks are heap allocated this may only be ``co_await``ed in a non-root task.
  *
