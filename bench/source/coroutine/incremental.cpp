@@ -10,7 +10,7 @@
 #include <libfork.hpp>
 #include <threads.h>
 
-inline constexpr int work = 32;
+inline constexpr int work = 5;
 volatile int output;
 
 // ----------------------- Baseline ----------------------- //
@@ -197,6 +197,69 @@ void fib(benchmark::State &state) {
 
 BENCHMARK(custom_stack::fib);
 
+// ----------------------- custom Stackfull coro ----------------------- //
+
+namespace custom_stack_non_term {
+
+struct promise;
+
+struct coroutine : lf::stdx::coroutine_handle<promise> {
+  using promise_type = struct promise;
+};
+
+struct promise : lf::impl::frame_block, custom_stack::op {
+
+  promise() : lf::impl::frame_block(coroutine::from_promise(*this), nullptr) {}
+
+  auto get_return_object() -> coroutine { return {coroutine::from_promise(*this)}; }
+  static auto initial_suspend() noexcept -> lf::stdx::suspend_always { return {}; }
+  static auto final_suspend() noexcept -> lf::stdx::suspend_always { return {}; }
+  static void return_void() {}
+  static void unhandled_exception() { LF_ASSERT(false); }
+};
+
+auto fib_impl(int &ret, int n) -> coroutine {
+  if (n < 2) {
+    ret = n;
+    co_return;
+  }
+
+  int a, b;
+
+  {
+    auto h = fib_impl(a, n - 1);
+    h.resume();
+    h.destroy();
+  }
+
+  {
+    auto h = fib_impl(b, n - 2);
+    h.resume();
+    h.destroy();
+  }
+
+  ret = a + b;
+};
+
+void fib(benchmark::State &state) {
+
+  std::vector<std::byte> stack(1024 * 1024);
+
+  custom_stack::asp = stack.data();
+
+  for (auto _ : state) {
+    int tmp;
+    auto h = fib_impl(tmp, work);
+    h.resume();
+    h.destroy();
+    output = tmp;
+  }
+}
+
+} // namespace custom_stack_non_term
+
+BENCHMARK(custom_stack::fib);
+
 // ----------------------- Stackfull coro ----------------------- //
 
 namespace stack_lf {
@@ -278,7 +341,7 @@ struct promise : lf::impl::promise_alloc_stack {
   static auto final_suspend() noexcept {
     struct awaitable : lf::stdx::suspend_always {
       auto await_suspend(lf::stdx::coroutine_handle<promise> self) noexcept -> lf::stdx::coroutine_handle<> {
-        if (self.promise().is_root()) {
+        if (self.promise().is_root()) [[unlikely]] {
           self.destroy();
           return lf::stdx::noop_coroutine();
         }

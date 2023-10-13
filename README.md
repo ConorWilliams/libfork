@@ -64,7 +64,7 @@ See the [BUILDING](BUILDING.md) document for full details on compilation, instal
 
 - __gcc__ `libfork` is tested on versions 11.x-13.x however gcc [does not perform a guaranteed tail call](https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100897) for coroutine's symmetric transfer unless compiling with optimization greater than or equal to `-O2` and sanitizers are not in use. This will result in stack overflows for some programs in un-optimized builds.
 
-- __clang__ `libfork` compiles on versions 15.x-17.x however for versions 16.x and below bugs [#63022](https://github.com/llvm/llvm-project/issues/63022) and [#47179](https://github.com/llvm/llvm-project/issues/47179) will cause crashes for optimized builds in multithreaded programs. We work around this in these versions by isolating access to `thread_local` storage in non-inlined functions however, this introduces around a 25% performance penalty vs GCC.
+- __clang__ `libfork` compiles on versions 15.x-17.x however for versions 16.x and below bugs [#63022](https://github.com/llvm/llvm-project/issues/63022) and [#47179](https://github.com/llvm/llvm-project/issues/47179) will cause crashes for optimized builds in multithreaded programs. We work around this in these versions by isolating access to `thread_local` storage in non-inlined functions however, this introduces a performance penalty.
 
 - __Apple's clang__ `libfork` is compatible with the standard library that Apple ships with Xcode 2015 however Xcode 15 itself segfaults when compiling `libfork` and Xcode 14 is not supported.
 
