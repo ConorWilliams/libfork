@@ -64,9 +64,7 @@ benchmarks = [(k, sorted(v.items())) for k, v in benchmarks.items()]
 
 benchmarks.sort()
 
-fig, axs = plt.subplots(
-    2, 2, figsize=(8, 7), sharex="col", sharey="row" if args.rel else False
-)
+fig, axs = plt.subplots(2, 2, figsize=(8, 7), sharex="col")
 
 count = 0
 
@@ -173,20 +171,20 @@ for (ax_abs), p in zip(axs.flatten(), patterns):
 
     ideal_abs = range(1, int(xmax + 1.5))
 
-    # if args.rel:
-    #     ax_abs.plot(
-    #         ideal_abs,
-    #         ideal_abs,
-    #         color="black",
-    #         linestyle="dashed",
-    #         label="Ideal" if count == 0 else None,
-    #     )
+    if args.rel:
+        # ax_abs.plot(
+        #     ideal_abs,
+        #     ideal_abs,
+        #     color="black",
+        #     linestyle="dashed",
+        #     label="Ideal" if count == 0 else None,
+        # )
 
-    #     ax_abs.set_ylim(top=112)
+        # ax_abs.set_ylim(top=112)
 
-    #     # ax_rel.plot(ideal_rel, ideal_rel, color="black", linestyle="dashed")
+        # ax_rel.plot(ideal_rel, ideal_rel, color="black", linestyle="dashed")
 
-    #     ax_abs.set_yticks(range(0, int(xmax + 1.5), 14))
+        ax_abs.set_ylim(top=1.0)
 
     ax_abs.set_title(f"\\textit{{{p}}}")
 
@@ -208,7 +206,11 @@ for (ax_abs), p in zip(axs.flatten(), patterns):
 # fig.set_
 
 fig.supxlabel("\\textbf{{Threads/cores}}")
-fig.supylabel("\\textbf{{Speedup $T_s / T_n$}}")
+
+if args.rel:
+    fig.supylabel("\\textbf{{Efficiency}}")
+else:
+    fig.supylabel("\\textbf{{Speedup}}")
 
 
 fig.legend(
