@@ -23,7 +23,7 @@ For example:
 
 ### Warning about overflows and RAM
 
-Some of the benchmarks (UTS!) require very deep recursion which can trigger stack overflows/OOM errors on machines without a lot of ram or small stacks. This is especially true when compiling with GCC which doesn't optimize the coroutine frame very efficiently (try increasing the [`LF_ASYNC_STACK_SIZE`](CMakeLists.txt)). Some of the taskflow benchmarks can require up to 120GB of RAM!
+Some of the benchmarks (UTS!) require very deep recursion which can trigger stack overflows/OOM errors on machines without a lot of ram or small stacks. This is especially true when compiling with GCC which doesn't optimize the coroutine frame very efficiently (try increasing the [`LF_FIBRE_STACK_SIZE`](CMakeLists.txt)). Some of the taskflow benchmarks can require up to 120GB of RAM!
 
 ## Overview
 

@@ -23,33 +23,32 @@
 - [x] Numa primitives (hwloc).
 - [x] `lazy_pool`
 - [x] `numa_pool` (will need to iterate on this once we have heterogeneous workloads).
+- [x] Expose configuration macros as cmake options.
+- [x] add numa mode control
+- [x] benchmark: need some heterogeneous workloads (UT3, unbalanced tree reduce, see NOWA)
+- [x] benchmark: C++ library comparisons (TaskFlow, ...).
+- [x] benchmark: Memory allocations of our stack stealing.
+- [x] Review 30% branch miss-predict, seems to be related to spinning workers?
+- [x] Graphs/analysis.
+- [x] benchmarks: add verifications...
+- [x] review: `constexpr`.
+- [x] review: `noexcept`.
+- [x] docs: complete extension docs.
 
 #### Misc
 
 Understand reduce's reproducibility.
 Tweak numa stealing repeat attempts for matmul/fib.
 Understand the dip at numa boundary in fib.
-Expose configutaion macros as cmake options.
 
 #### Post feature complete
 
 - [ ] Detect stack overflows
-- [x] add numa mode control
-- [x] benchmark: need some heterogeneous workloads (UT3, unbalanced tree reduce, see NOWA)
-- [ ] benchmark: A test/benchmark that stresses stack stealing?
-- [x] benchmark: C++ library comparisons (TaskFlow, ...).
-- [ ] benchmark: Memory allocations of our stack stealing.
-- [ ] Review 30% branch miss-predict, seems to be related to spinning workers?
-- [ ] Graphs/analysis.
 
 #### Before release
 
-- [x] benchmarks: add verifications...
-- [x] review: `constexpr`.
-- [x] review: `noexcept`.
 - [ ] review: `std::` includes in schedule/root.
 - [ ] review: `libfork/` includes
-- [x] docs: complete extension docs.
 - [ ] docs: Add vcpkg to hacking/building.
 - [ ] docs: Add recursive clone to hacking/building.
 - [ ] docs: Catalog deps for compilation (i.e pkg-config) (fresh ubuntu wsl).
@@ -73,15 +72,3 @@ Algorithms:
 - [ ] `for_each`.
 - [ ] `reduce`.
 - [ ] `scan`.
-
-Modules (cpp20) support.
-
-Naming:
-
-silk -> cilk
-wool
-weave
-lace
-fibril
-nowa
-taskflow
