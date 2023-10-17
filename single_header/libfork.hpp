@@ -832,7 +832,7 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
      * This is a noop if `root` is `nullptr`.
      */
     template <std::invocable<T &> F>
-    friend constexpr void for_each(node *root, F &&func) noexcept(std::is_nothrow_invocable_v<F, T &>) {
+    friend constexpr void for_each_elem(node *root, F &&func) noexcept(std::is_nothrow_invocable_v<F, T &>) {
       while (root) {
         // Have to be very careful here, we can't deference `walk` after
         // we've called `func` as `func` could destroy the node.
@@ -869,7 +869,7 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
    * @brief Pop all the nodes from the list and return a pointer to the root (`nullptr` if empty).
    *
    * Only the owner (thread) of the list can call this function, this will reverse the direction of the list
-   * such that `for_each` will operate if FIFO order.
+   * such that `for_each_elem` will operate if FIFO order.
    */
   constexpr auto try_pop_all() noexcept -> node * {
 
@@ -1478,21 +1478,19 @@ using intruded_h = intrusive_node<submit_h<Context> *>;
  * .. include:: ../../include/libfork/core/meta.hpp
  *    :code:
  *    :start-line: 56
- *    :end-line: 64
+ *    :end-line: 65
  *
  * \endrst
  */
 template <typename Context>
 concept thread_context =
     requires (Context ctx, fibre_stack *stack, intruded_h<Context> *ext, task_h<Context> *task) {
-      { ctx.max_threads() } -> std::same_as<std::size_t>; // The maximum number of threads.
-      { ctx.submit(ext) };                                // Submit an external task to the context.
-      {
-        ctx.task_pop()
-      } -> std::convertible_to<task_h<Context> *>; // If the stack is empty, return a null pointer.
-      { ctx.task_push(task) };                     // Push a non-null pointer.
-      { ctx.stack_pop() } -> std::convertible_to<fibre_stack *>; // Return a non-null pointer
-      { ctx.stack_push(stack) };                                 // Push a non-null pointer
+      { ctx.max_threads() } -> std::same_as<std::size_t>;           // The maximum number of threads.
+      { ctx.submit(ext) };                                          // Submit an external task to the context.
+      { ctx.task_pop() } -> std::convertible_to<task_h<Context> *>; // If empty, return a null pointer.
+      { ctx.task_push(task) };                                      // Push a non-null pointer.
+      { ctx.stack_pop() } -> std::convertible_to<fibre_stack *>;    // Return a non-null pointer
+      { ctx.stack_push(stack) };                                    // Push a non-null pointer
     };
 
 namespace detail {
@@ -1622,8 +1620,8 @@ inline namespace core {
  *
  * .. include:: ../../include/libfork/core/meta.hpp
  *    :code:
- *    :start-line: 201
- *    :end-line: 221
+ *    :start-line: 199
+ *    :end-line: 219
  *
  * \endrst
  */
@@ -1682,6 +1680,7 @@ concept first_arg_tagged = first_arg<Arg> && tag_of<Arg> == Tag;
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <concepts>
+#include <optional>
 #include <semaphore>
 #include <tuple>
 #include <type_traits>
@@ -2052,6 +2051,10 @@ struct valid_result_help<impl::root_result<T>, T> : std::true_type {};
 template <typename T>
 struct valid_result_help<eventually<T>, T> : std::true_type {};
 
+// Optional special case (as optional has .emplace())
+template <typename T>
+struct valid_result_help<std::optional<T>, T> : std::true_type {};
+
 template <typename R, typename T>
   requires std::is_assignable_v<R &, T>
 struct valid_result_help<R, T> : std::true_type {};
@@ -2125,9 +2128,8 @@ inline namespace core {
  *    val = foo()
  *
  * Hence in general we require that for ``co_await expr`` that ``expr`` is ``std::convertible_to`` ``T`` and
- * that ``T`` is
- * ``std::is_assignable`` to ``R``. When possible we try to elide the intermediate ``T`` and assign directly
- * to ``R``.
+ * that ``T`` is ``std::is_assignable`` to ``R``. When possible we try to elide the intermediate ``T`` and
+ * assign directly to ``R``.
  *
  * .. note::
  *    This documentation is generated from the non-reference specialization, see the source
@@ -2139,7 +2141,7 @@ inline namespace core {
  * @tparam T The type of the return value, i.e. the `T` in `lf::task<T>`.
  */
 template <typename R, typename T>
-  requires valid_result<R, T>
+// requires valid_result<R, T>
 struct promise_result;
 
 #ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
@@ -2166,7 +2168,7 @@ struct promise_result<impl::root_result<void>, void> : protected impl::maybe_ptr
 // ------------------------------ general case ------------------------------ //
 
 template <typename R, typename T>
-  requires valid_result<R, T>
+// requires valid_result<R, T>
 struct promise_result : protected impl::maybe_ptr<R> {
  protected:
   using impl::maybe_ptr<R>::maybe_ptr;
@@ -2512,6 +2514,22 @@ struct [[nodiscard("async functions must be called")]] async {
 
 #endif
 };
+
+namespace detail {
+
+template <typename>
+struct is_async_impl : std::false_type {};
+
+template <stateless Fn>
+struct is_async_impl<async<Fn>> : std::true_type {};
+
+} // namespace detail
+
+/**
+ * @brief Check if a type is a specialization of ``lf::async``.
+ */
+template <typename T>
+concept async_fn = detail::is_async_impl<T>::value;
 
 } // namespace core
 
@@ -3393,6 +3411,12 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
 #endif /* A6BE090F_9077_40E8_9B57_9BAFD9620469 */
 
 
+/**
+ * @file lift.hpp
+ *
+ * @brief Higher-order functions for lifting functions into async functions.
+ */
+
 namespace lf {
 
 namespace impl {
@@ -3400,7 +3424,7 @@ namespace impl {
 /**
  * @brief Implements the `lift` higher-order function for forked/non-forked functions.
  */
-template <typename F>
+template <stateless F>
 struct lifted {
   /**
    * @brief Lift a non-forked task.
@@ -5141,10 +5165,10 @@ class busy_pool {
 
     while (!stop_requested.test(std::memory_order_acquire)) {
 
-      for_each(my_context->try_get_submitted(),
-               [](submit_h<context_type> *submitted) LF_STATIC_CALL noexcept {
-                 resume(submitted);
-               });
+      for_each_elem(my_context->try_get_submitted(),
+                    [](submit_h<context_type> *submitted) LF_STATIC_CALL noexcept {
+                      resume(submitted);
+                    });
 
       if (auto *task = my_context->try_steal()) {
         resume(task);
@@ -5528,7 +5552,7 @@ class lazy_context : public numa_worker_context<lazy_context> {
       }
 
       if constexpr (std::same_as<Handle, intruded_h<lazy_context>>) {
-        for_each(handle, [](submit_h<lazy_context> *submitted) LF_STATIC_CALL noexcept {
+        for_each_elem(handle, [](submit_h<lazy_context> *submitted) LF_STATIC_CALL noexcept {
           resume(submitted);
         });
       } else {

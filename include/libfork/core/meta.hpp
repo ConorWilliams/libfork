@@ -49,21 +49,19 @@ using intruded_h = intrusive_node<submit_h<Context> *>;
  * .. include:: ../../include/libfork/core/meta.hpp
  *    :code:
  *    :start-line: 56
- *    :end-line: 64
+ *    :end-line: 65
  *
  * \endrst
  */
 template <typename Context>
 concept thread_context =
     requires (Context ctx, fibre_stack *stack, intruded_h<Context> *ext, task_h<Context> *task) {
-      { ctx.max_threads() } -> std::same_as<std::size_t>; // The maximum number of threads.
-      { ctx.submit(ext) };                                // Submit an external task to the context.
-      {
-        ctx.task_pop()
-      } -> std::convertible_to<task_h<Context> *>; // If the stack is empty, return a null pointer.
-      { ctx.task_push(task) };                     // Push a non-null pointer.
-      { ctx.stack_pop() } -> std::convertible_to<fibre_stack *>; // Return a non-null pointer
-      { ctx.stack_push(stack) };                                 // Push a non-null pointer
+      { ctx.max_threads() } -> std::same_as<std::size_t>;           // The maximum number of threads.
+      { ctx.submit(ext) };                                          // Submit an external task to the context.
+      { ctx.task_pop() } -> std::convertible_to<task_h<Context> *>; // If empty, return a null pointer.
+      { ctx.task_push(task) };                                      // Push a non-null pointer.
+      { ctx.stack_pop() } -> std::convertible_to<fibre_stack *>;    // Return a non-null pointer
+      { ctx.stack_push(stack) };                                    // Push a non-null pointer
     };
 
 namespace detail {
@@ -193,8 +191,8 @@ inline namespace core {
  *
  * .. include:: ../../include/libfork/core/meta.hpp
  *    :code:
- *    :start-line: 201
- *    :end-line: 221
+ *    :start-line: 199
+ *    :end-line: 219
  *
  * \endrst
  */

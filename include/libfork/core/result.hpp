@@ -10,6 +10,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <concepts>
+#include <optional>
 #include <semaphore>
 #include <tuple>
 #include <type_traits>
@@ -120,6 +121,10 @@ struct valid_result_help<impl::root_result<T>, T> : std::true_type {};
 template <typename T>
 struct valid_result_help<eventually<T>, T> : std::true_type {};
 
+// Optional special case (as optional has .emplace())
+template <typename T>
+struct valid_result_help<std::optional<T>, T> : std::true_type {};
+
 template <typename R, typename T>
   requires std::is_assignable_v<R &, T>
 struct valid_result_help<R, T> : std::true_type {};
@@ -193,9 +198,8 @@ inline namespace core {
  *    val = foo()
  *
  * Hence in general we require that for ``co_await expr`` that ``expr`` is ``std::convertible_to`` ``T`` and
- * that ``T`` is
- * ``std::is_assignable`` to ``R``. When possible we try to elide the intermediate ``T`` and assign directly
- * to ``R``.
+ * that ``T`` is ``std::is_assignable`` to ``R``. When possible we try to elide the intermediate ``T`` and
+ * assign directly to ``R``.
  *
  * .. note::
  *    This documentation is generated from the non-reference specialization, see the source
@@ -207,7 +211,7 @@ inline namespace core {
  * @tparam T The type of the return value, i.e. the `T` in `lf::task<T>`.
  */
 template <typename R, typename T>
-  requires valid_result<R, T>
+// requires valid_result<R, T>
 struct promise_result;
 
 #ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
@@ -234,7 +238,7 @@ struct promise_result<impl::root_result<void>, void> : protected impl::maybe_ptr
 // ------------------------------ general case ------------------------------ //
 
 template <typename R, typename T>
-  requires valid_result<R, T>
+// requires valid_result<R, T>
 struct promise_result : protected impl::maybe_ptr<R> {
  protected:
   using impl::maybe_ptr<R>::maybe_ptr;

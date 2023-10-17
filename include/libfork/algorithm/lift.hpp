@@ -15,6 +15,12 @@
 
 #include "libfork/core.hpp"
 
+/**
+ * @file lift.hpp
+ *
+ * @brief Higher-order functions for lifting functions into async functions.
+ */
+
 namespace lf {
 
 namespace impl {
@@ -22,7 +28,7 @@ namespace impl {
 /**
  * @brief Implements the `lift` higher-order function for forked/non-forked functions.
  */
-template <typename F>
+template <stateless F>
 struct lifted {
   /**
    * @brief Lift a non-forked task.

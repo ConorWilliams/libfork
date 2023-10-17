@@ -47,6 +47,7 @@ Understand the dip at numa boundary in fib.
 
 #### Before release
 
+- [ ] check comments for broken formatting
 - [ ] review: `std::` includes in schedule/root.
 - [ ] review: `libfork/` includes
 - [ ] docs: Add vcpkg to hacking/building.
