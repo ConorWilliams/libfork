@@ -50,7 +50,7 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
      * This is a noop if `root` is `nullptr`.
      */
     template <std::invocable<T &> F>
-    friend constexpr void for_each(node *root, F &&func) noexcept(std::is_nothrow_invocable_v<F, T &>) {
+    friend constexpr void for_each_elem(node *root, F &&func) noexcept(std::is_nothrow_invocable_v<F, T &>) {
       while (root) {
         // Have to be very careful here, we can't deference `walk` after
         // we've called `func` as `func` could destroy the node.
@@ -87,7 +87,7 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
    * @brief Pop all the nodes from the list and return a pointer to the root (`nullptr` if empty).
    *
    * Only the owner (thread) of the list can call this function, this will reverse the direction of the list
-   * such that `for_each` will operate if FIFO order.
+   * such that `for_each_elem` will operate if FIFO order.
    */
   constexpr auto try_pop_all() noexcept -> node * {
 

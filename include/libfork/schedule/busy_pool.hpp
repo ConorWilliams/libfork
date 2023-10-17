@@ -77,10 +77,10 @@ class busy_pool {
 
     while (!stop_requested.test(std::memory_order_acquire)) {
 
-      for_each(my_context->try_get_submitted(),
-               [](submit_h<context_type> *submitted) LF_STATIC_CALL noexcept {
-                 resume(submitted);
-               });
+      for_each_elem(my_context->try_get_submitted(),
+                    [](submit_h<context_type> *submitted) LF_STATIC_CALL noexcept {
+                      resume(submitted);
+                    });
 
       if (auto *task = my_context->try_steal()) {
         resume(task);

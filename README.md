@@ -30,7 +30,6 @@
 __TLDR:__
 
 ```c++
-
 inline constexpr lf::async fib = [](auto fib, int n) -> lf::task<int> { 
   
   if (n < 2) {
@@ -86,12 +85,12 @@ See the [ChangeLog](ChangeLog.md) document.
 
 ## A tour of `libfork`
 
-This section provides some background and highlights the `core` API, for details on implementing your own schedulers on-top of `libfork` see the [extension documentation]().
+This section provides some background and highlights the `core` API, for details on implementing your own schedulers on-top of `libfork` see the [extension documentation](https://conorwilliams.github.io/libfork/).
 
 ### Contents
 
 - [Fork-join introduction](#fork-join-introduction)
-  - [The cactus stack](#the-cactus-stack)
+- [The cactus stack](#the-cactus-stack)
 - [Non default-constructible types and `eventually<T>`](#delaying-construction)
 - [Invoking async functions](#directly-invoking-async-functions)
 - [Exception in `libfork`](#exceptions)
@@ -137,22 +136,25 @@ If your compiler does not support `lf::fork[a, fib]` syntax then you can use `lf
 8| }
 ```
 
-The call to `sync_wait` will block the main thread until the pool has completed execution of the task.
+The call to `sync_wait` will block the _main_ (i.e. the thread that calls `main()`) thread until the pool has completed execution of the task.
 
 __NOTE:__ `libfork` implements _strict_ fork-join which means:
 
 - Tasks can only wait on their children.
-- All children __must__ be joined __before__ a task can return.
+- All children __must__ be joined __before__ a task returns.
+
+These restrictions give some nice mathematical properties to the underlying directed acyclic graph (DAG) of tasks that enables many optimizations.
 
 #### Step by step
 
 Lets break down what is going on line by line:
 
-- __Line 3:__ First we define an async function (an instance of `lf::async`). An async function must have a templated first argument, this is used by the library to pass context from parent to child, additionally it acts as a y-combinator allowing the lambda to be recursive. An async function can be constructed from any stateless callable (like a non-capturing lambda) that returns an `lf::task<T>` where `T` specifies the type of the return value.
+- __Line 3:__ First we define an async function (an instance of `lf::async`). An async function must have a templated first argument, this is used by the library to pass static and dynamic context from parent to child (like the type of the underlying scheduler), additionally it acts as a [y-combinator](https://en.wikipedia.org/wiki/Fixed-point_combinator) allowing the lambda to be recursive. An async function can be constructed from any stateless callable (like a non-capturing lambda) that returns an `lf::task<T>` where `T` specifies the type of the return value.
 - __Line 9:__ Next we construct the variables that will be bound to the return values of following forks/calls.
-- __Line 11:__ This is the first call to `lf::fork` which marks the beginning of an _async scope_. `lf::fork[a, fib]` binds the the return address of the function `fib` to the integer `a` this bound function is then invoked with the argument `n - 1`. The semantics of all of this is: the execution of the forked function (in this case `fib`) can continue concurrently with the execution of the next line of code i.e. the _continuation_. As `libfork` is a continuation stealing library the worker/thread that performed the fork will immediately begin executing the forked function while another thread may _steal_ the continuation.
+- __Line 11:__ This is the first call to `lf::fork` which marks the beginning of an _async scope_. `lf::fork[a, fib]` binds the the return address of the function `fib` to the integer `a`, Internally the child coroutine will store a pointer to return variable variable. The bound function is then invoked with the argument `n - 1`. The semantics of all of this is: the execution of the forked function (in this case `fib`) can continue concurrently with the execution of the next line of code i.e. the _continuation_. As `libfork` is a continuation stealing library the worker/thread that performed the fork will immediately begin executing the forked function while another thread may _steal_ the continuation.
 - __Line 12:__ An `lf::call` binds arguments and return address in the same way as `lf::fork` however, it has the semantics of a serial function call. This is done instead of an `lf::fork` as there is no further work to do in the current task so stealing it would be a waste of resources.
 - __Line 13:__ Execution cannot continue past a join until all child tasks have completed. After this point it is safe to access the results (`a` and `b`) of the child task. Only a single worker will continue execution after the join. This marks the end of the async scope that began at the `fork`.
+- __Line 16:__ Finally we return the result of the to a parent task, this has similar semantics to a regular return however, behind the scenes an assignment of the return value to the parent's return address is performed. This is the end of the async function. The worker will attempt to resume the parent task (if it has not already been stolen) just as a regular function would resume execution of the caller.
 
 __Note:__ that at every ``co_await`` the OS-thread executing the task may change!
 
@@ -164,9 +166,25 @@ Normally each call to a coroutine would allocate on the heap. However, `libfork`
 
 Sometimes you may want to invoke an async function directly instead of having to bind a result with `lf::call`. For example if you are using one of the parallel algorithms:
 
+```c++
+inline constexpr lf::async modify_vec = [](auto, std::vector<int> & numbers) -> lf::task<int> { 
+  co_await lf::for_each(numbers, modify)
+};
+```
+
+Where `modify` is a regular or async function that modifies a single element of the vector such as:
+
+```c++
+inline constexpr lf::async modify = [](auto, int &n) -> lf::task<void> { 
+  // ... Some expensive modifying operation on n ...
+};
+```
+
+If `lf::for_each` returned a value then so would the `co_await` expression. Invoking and awaiting an async function directly has the same semantics as `lf::call` however, it will automatically bind the return value to a temporary variable.
+
 ### Delaying construction
 
-Some types are expensive or impossible to default construct, for these instances `libfork` provides the `lf::eventually` type which functions like `std::optional` but with the semantics of guaranteed construction. Code speaks a thousands words; here is an example, lets say you have an immovable and non-default-constructible type `difficult`:
+Some types are expensive or impossible to default construct, for these instances `libfork` provides the `lf::eventually` type which functions like `std::optional` but with the semantics of guaranteed construction. For example, if you have an immovable and non-default-constructible type `difficult`:
 
 ```c++
 struct difficult : lf::impl::immovable<difficult> {
@@ -183,10 +201,9 @@ void use_difficult(difficult const &) {
 }
 ```
 
-You want to write an async function that returns a `difficult`:
+You can write an async function that returns a `difficult`:
 
 ```c++
-
 inline constexpr lf::async make_difficult = [](auto, bool opt) -> lf::task<difficult> {
   if (opt) {
     co_return 34;
@@ -220,7 +237,7 @@ We could have used `std::optional` here (and maybe that is the safer thing to do
 
 ### Exceptions
 
-In libfork exceptions are not allowed to escape a coroutine. If they do the program will terminate. This is because exceptions are very unergenomic in fork-join as any exceptions in an async scope could bypass a join. Requiring the user to call `co_await lf::join` in a catch block would be very error prone, especially as the join would have to propagate exceptions from child tasks. If C++ adds the ability to `co_await` in a destructor then this position will be re-evaluated.
+In libfork exceptions are not allowed to escape a coroutine. If they do the program will terminate. This is because exceptions are very unergenomic in fork-join (without language support) as any exceptions in an async scope could bypass a join. Requiring the user to call `co_await lf::join` in a catch block would be very error prone, especially as the join would have to propagate exceptions from child tasks. If C++ adds the ability to `co_await` in a destructor then this position will be re-evaluated.
 
 ### Contexts and schedulers
 

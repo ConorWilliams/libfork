@@ -89,7 +89,7 @@ class lazy_context : public numa_worker_context<lazy_context> {
       }
 
       if constexpr (std::same_as<Handle, intruded_h<lazy_context>>) {
-        for_each(handle, [](submit_h<lazy_context> *submitted) LF_STATIC_CALL noexcept {
+        for_each_elem(handle, [](submit_h<lazy_context> *submitted) LF_STATIC_CALL noexcept {
           resume(submitted);
         });
       } else {

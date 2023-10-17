@@ -281,6 +281,22 @@ struct [[nodiscard("async functions must be called")]] async {
 #endif
 };
 
+namespace detail {
+
+template <typename>
+struct is_async_impl : std::false_type {};
+
+template <stateless Fn>
+struct is_async_impl<async<Fn>> : std::true_type {};
+
+} // namespace detail
+
+/**
+ * @brief Check if a type is a specialization of ``lf::async``.
+ */
+template <typename T>
+concept async_fn = detail::is_async_impl<T>::value;
+
 } // namespace core
 
 // ----------------------------------------------- //
