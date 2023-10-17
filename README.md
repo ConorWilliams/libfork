@@ -272,5 +272,5 @@ We have already encountered a scheduler in the [fork-join introduction](#fork-jo
 Three schedulers are provided by `libfork`:
 
 - [`lf::lazy_pool`](https://conorwilliams.github.io/libfork/api/schedule.html#lazy-pool) is a NUMA-aware work-stealing scheduler that is suitable for general use. This should be the default choice for most applications.
-- [`lf::busy_pool`](https://conorwilliams.github.io/libfork/api/schedule.html#busy-pool) is also a NUMA-aware work-stealing scheduler however workers will busy-wait for work instead of sleeping. This often gains very little performance over `lf::lazy_pool` and should only be prefered if you have an otherwise idle machine and you are willing to sacrifice a lot of power consumption for very little performance.
+- [`lf::busy_pool`](https://conorwilliams.github.io/libfork/api/schedule.html#busy-pool) is also a NUMA-aware work-stealing scheduler however workers will busy-wait for work instead of sleeping. This often gains very little performance over `lf::lazy_pool` and should only be preferred if you have an otherwise idle machine and you are willing to sacrifice a lot of power consumption for very little performance.
 - [`lf::unit_pool`](https://conorwilliams.github.io/libfork/api/schedule.html#lazy-pool) is single threaded scheduler that is suitable for testing and debugging.

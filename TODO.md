@@ -19,6 +19,7 @@ Main README:
 - [ ] README.md: explicit scheduling.
 - [ ] README.md: `co_await resume_on(...)`.
 - [ ] README.md: compiler explorer with `single_header.hpp`
+- [ ] README.md: fix links to docs
 
 Other:
 
