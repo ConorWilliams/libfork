@@ -91,12 +91,13 @@ This section provides some background and highlights the `core` API, for details
 
 - [Fork-join introduction](#fork-join-introduction)
 - [The cactus stack](#the-cactus-stack)
-- [Non default-constructible types and `eventually<T>`](#delaying-construction)
-- [Invoking async functions](#directly-invoking-async-functions)
+- [Details on the first argument](#details-on-the-first-argument)
+- [Restrictions on references](#restrictions-on-references)
+- [Directly invoking async functions](#directly-invoking-async-functions)
 - [Exception in `libfork`](#exceptions)
-- [Scheduling and contexts](#schedulers)
-  - [Explicit scheduling]()
-- [Algorithms and the high-level API]()
+- [Delaying construction with `lf::eventually<T>`](#delaying-construction)
+- [Contexts and schedulers](#schedulers)
+- [Explicit scheduling]()
 
 ### Fork-join introduction
 
@@ -158,9 +159,34 @@ Lets break down what is going on line by line:
 
 __Note:__ that at every ``co_await`` the OS-thread executing the task may change!
 
+#### Ignoring a result
+
+If you wanted to ignore the result of a fork/call (i.e. if you wanted the side effect only) you can simply omit return address from lines 11 and 12 e.g.:
+
+```c++
+co_await lf::fork[fib](n - 1);    
+co_await lf::call[fib](n - 2); 
+```
+
 ### The cactus-stack
 
 Normally each call to a coroutine would allocate on the heap. However, `libfork` implements a cactus-stack supported by stack-staling which allows each coroutine to be allocated on a fragment of linear stack, this has the same overhead as allocating on the real stack. This means the overhead of a fork/call in `libfork` is very low compared to most traditional library-based implementations (about 8x the overhead of a bare function call).
+
+### Details on the first argument
+
+Quite a lot of additional information is passed in the first argument to an async function which is part of the API, have a look at the [full docs](https://conorwilliams.github.io/libfork/api/core.html#_CPPv4I0EN2lf4core9first_argE) once you've finished with this README.
+
+### Restrictions on references
+
+References as inputs to coroutines can be error prone, for example:
+
+```c++
+co_await lf::fork[process_string](std::string("32")); 
+```
+
+This would dangle if `process_string` accepted arguments by reference. Specifically `std::string &` would not compile by the standard reference semantics while `std::string const &` and `std::string &&` would compile but would dangle. To avoid this `libfork` coroutines ban r-value references as inputs for forked async-functions, as passing a temporary is always an error. If you want to move a value into a forked coroutine then pass by value.
+
+__Note:__ This does not stop you from dangling with `std::string const &`...
 
 ### Directly invoking async functions
 
@@ -181,6 +207,10 @@ inline constexpr lf::async modify = [](auto, int &n) -> lf::task<void> {
 ```
 
 If `lf::for_each` returned a value then so would the `co_await` expression. Invoking and awaiting an async function directly has the same semantics as `lf::call` however, it will automatically bind the return value to a temporary variable.
+
+### Exceptions
+
+In libfork exceptions are not allowed to escape a coroutine. If they do the program will terminate. This is because exceptions are very unergenomic in fork-join (without language support) as any exceptions in an async scope could bypass a join. Requiring the user to call `co_await lf::join` in a catch block would be very error prone, especially as the join would have to propagate exceptions from child tasks. If C++ adds the ability to `co_await` in a destructor then this position will be re-evaluated.
 
 ### Delaying construction
 
@@ -221,8 +251,8 @@ inline constexpr lf::async eventually_example = [](auto) -> lf::task<> {
   lf::eventually<difficult> a, b;
 
   // Make two difficult objects (in parallel):
-  co_await lf::fork(a, make_difficult)(true);
-  co_await lf::call(b, make_difficult)(false);
+  co_await lf::fork[a, make_difficult](true);
+  co_await lf::call[b, make_difficult](false);
 
   // Wait for both to complete:
   co_await lf::join;
@@ -235,24 +265,12 @@ inline constexpr lf::async eventually_example = [](auto) -> lf::task<> {
 
 We could have used `std::optional` here (and maybe that is the safer thing to do as it is UB to destroy an `lf::eventually` without first assigning to it) however, `lf::eventually` is slightly more efficient (no checks in the destructor/assignment).
 
-### Exceptions
-
-In libfork exceptions are not allowed to escape a coroutine. If they do the program will terminate. This is because exceptions are very unergenomic in fork-join (without language support) as any exceptions in an async scope could bypass a join. Requiring the user to call `co_await lf::join` in a catch block would be very error prone, especially as the join would have to propagate exceptions from child tasks. If C++ adds the ability to `co_await` in a destructor then this position will be re-evaluated.
-
 ### Contexts and schedulers
 
-We have already encountered a scheduler ...
+We have already encountered a scheduler in the [fork-join introduction](#fork-join-introduction) however, we have not yet discussed what a scheduler is or how to implement one. A scheduler is a type that implements the `lf::scheduler` concept, this is a customization point that allows you to implement your own scheduling strategy. This makes a type suitable for use with `lf::sync_wait` The `lf::scheduler` concept requires a type to define a nested `context_type` and a `schedule` member function. Have a look at the [extensions api]() for further details.
 
-A scheduler is responsible for distributing available work (tasks) to physical CPUs/executors. Each executor must own an execution-context object satisfying:
+Three schedulers are provided by `libfork`:
 
-```c++
-template <typename T>
-concept context = requires(T context, work_handle<T> task) {
-    { context.push(task) } -> std::same_as<void>;
-    { context.pop() } -> std::convertible_to<std::optional<work_handle<T>>>;
-};
-```
-
-An execution-context models a FILO stack. Tasks hold a pointer to their executor's context and push/pop tasks onto it. Whilst an executor is running a task, other executors can steal from the top of the stack in a FIFO manner.
-
-It is recommended that custom schedulers use lock-free stacks for their execution contexts such as the one provided in [libfork](include/libfork/deque.hpp)
+- [`lf::lazy_pool`](https://conorwilliams.github.io/libfork/api/schedule.html#lazy-pool) is a NUMA-aware work-stealing scheduler that is suitable for general use. This should be the default choice for most applications.
+- [`lf::busy_pool`](https://conorwilliams.github.io/libfork/api/schedule.html#busy-pool) is also a NUMA-aware work-stealing scheduler however workers will busy-wait for work instead of sleeping. This often gains very little performance over `lf::lazy_pool` and should only be prefered if you have an otherwise idle machine and you are willing to sacrifice a lot of power consumption for very little performance.
+- [`lf::unit_pool`](https://conorwilliams.github.io/libfork/api/schedule.html#lazy-pool) is single threaded scheduler that is suitable for testing and debugging.
