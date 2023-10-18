@@ -30,7 +30,7 @@ void check(T const &v, int k) {
   }
 }
 
-TEMPLATE_TEST_CASE("for each", "[algorithm][template]", std::vector<int>, std::list<int>) {
+TEMPLATE_TEST_CASE("for each", "[algorithm][template]", std::vector<int>) {
 
   int count = 0;
 
@@ -43,6 +43,10 @@ TEMPLATE_TEST_CASE("for each", "[algorithm][template]", std::vector<int>, std::l
   check(v, count++);
 
   lf::lazy_pool pool{};
+
+  auto address = [](int &i) -> int * {
+    return &i;
+  };
 
   // --------------- First regular function --------------- //
 
@@ -68,6 +72,18 @@ TEMPLATE_TEST_CASE("for each", "[algorithm][template]", std::vector<int>, std::l
 
     // Check grain > size case:
     lf::sync_wait(pool, lf::for_each, v, 20'000, fun);
+    check(v, count++);
+
+    // ----- With projection ---- //
+
+    auto inc = [](int *i) {
+      (*i)++;
+    };
+
+    lf::sync_wait(pool, lf::for_each, v, inc, address);
+    check(v, count++);
+
+    lf::sync_wait(pool, lf::for_each, v, 300, inc, address);
     check(v, count++);
   }
 
@@ -96,6 +112,16 @@ TEMPLATE_TEST_CASE("for each", "[algorithm][template]", std::vector<int>, std::l
 
     // Check grain > size case:
     lf::sync_wait(pool, lf::for_each, v, 20'000, fun);
+    check(v, count++);
+
+    // ----- With projection ---- //
+
+    async inc = [](auto, int *i) -> task<> {
+      (*i)++;
+      co_return;
+    };
+
+    lf::sync_wait(pool, lf::for_each, v, fun);
     check(v, count++);
   }
 }

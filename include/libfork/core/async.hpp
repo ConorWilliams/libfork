@@ -202,6 +202,10 @@ struct repack<packet<Head, Args...>> : std::type_identity<packet<swap_head<Head,
 
 } // namespace detail
 
+/**
+ * @brief Convert a void-returning invoke packet with `value_type` `X` to a call packet with `return_type`
+ * `eventually<X>`.
+ */
 template <typename Packet>
 using repack_t = typename detail::repack<Packet>::type;
 

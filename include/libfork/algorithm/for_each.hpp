@@ -10,10 +10,12 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <algorithm>
+#include <bits/ranges_base.h>
 #include <concepts>
 #include <functional>
 #include <iterator>
 #include <ranges>
+#include <type_traits>
 
 #include "libfork/core.hpp"
 
@@ -36,114 +38,62 @@ struct for_each_overload {
    */
   template <std::random_access_iterator I,
             std::sized_sentinel_for<I> S,
-            std::indirectly_unary_invocable<I> Fun>
+            typename Proj = std::identity,
+            std::indirectly_unary_invocable<std::projected<I, Proj>> Fun>
   LF_STATIC_CALL auto
-  operator()(auto, I head, S tail, std::iter_difference_t<I> grain, Fun fun) LF_STATIC_CONST->lf::task<> {
+  operator()(auto for_each, I head, S tail, std::iter_difference_t<I> n, Fun fun, Proj proj = {})
+      LF_STATIC_CONST->lf::task<> {
 
-    LF_ASSERT(grain > 0);
+    LF_ASSERT(n > 0);
 
     std::iter_difference_t<I> len = tail - head;
 
-    if (len <= grain) {
+    if (len <= n) {
       for (; head != tail; ++head) {
         if constexpr (async_fn<Fun>) {
-          co_await lf::call(fun)(*head);
+          co_await lf::call(fun)(std::invoke(proj, *head));
         } else {
-          std::invoke(fun, *head);
+          std::invoke(fun, std::invoke(proj, *head));
         }
       }
       co_return;
     }
 
-    constexpr async for_each = for_each_overload{};
-
     auto mid = head + (len / 2);
 
-    co_await lf::fork(for_each)(head, mid, grain, fun);
-    co_await lf::call(for_each)(mid, tail, grain, fun);
+    co_await lf::fork(for_each)(head, mid, n, fun, proj);
+    co_await lf::call(for_each)(mid, tail, n, fun, proj);
 
     co_await lf::join;
   }
 
   /**
-   * @brief Divide and conquer grain=1 version.
+   * @brief Divide and conquer n=1 version.
    *
    * This is an efficient implementation for sized random access ranges.
    */
   template <std::random_access_iterator I,
             std::sized_sentinel_for<I> S,
-            std::indirectly_unary_invocable<I> Fun>
-  LF_STATIC_CALL auto operator()(auto, I head, S tail, Fun fun) LF_STATIC_CONST->lf::task<> {
+            typename Proj = std::identity,
+            std::indirectly_unary_invocable<std::projected<I, Proj>> Fun>
+  LF_STATIC_CALL auto
+  operator()(auto for_each, I head, S tail, Fun fun, Proj proj = {}) LF_STATIC_CONST->lf::task<> {
 
     std::iter_difference_t<I> len = tail - head;
 
     if (len <= 1) {
       if constexpr (async_fn<Fun>) {
-        co_await lf::call(fun)(*head);
+        co_await lf::call(fun)(std::invoke(proj, *head));
       } else {
-        std::invoke(fun, *head);
+        std::invoke(fun, std::invoke(proj, *head));
       }
       co_return;
     }
-
-    constexpr async for_each = for_each_overload{};
 
     auto mid = head + (len / 2);
 
-    co_await lf::fork(for_each)(head, mid, fun);
-    co_await lf::call(for_each)(mid, tail, fun);
-
-    co_await lf::join;
-  }
-
-  /**
-   * @brief This is a less-efficient implementation for forward iterators.
-   */
-  template <std::forward_iterator I, std::sentinel_for<I> S, std::indirectly_unary_invocable<I> Fun>
-  LF_STATIC_CALL auto
-  operator()(auto, I head, S tail, std::iter_difference_t<I> grain, Fun fun) LF_STATIC_CONST->lf::task<> {
-
-    LF_ASSERT(grain > 0);
-
-    constexpr async for_each = [](auto, I begin, I end, Fun fun) LF_STATIC_CALL -> lf::task<> {
-      for (; begin != end; ++begin) {
-        if constexpr (async_fn<Fun>) {
-          co_await lf::call(fun)(*begin);
-        } else {
-          std::invoke(fun, *begin);
-        }
-      }
-    };
-
-    while (head != tail) {
-      I end = std::ranges::next(head, grain, tail);
-      co_await lf::fork(for_each)(head, end, fun);
-      head = end;
-    }
-
-    co_await lf::join;
-  }
-
-  /**
-   * @brief Grain=1 version for forward iterators.
-   *
-   * This is a less-efficient implementation for forward iterators.
-   */
-  template <std::forward_iterator I, std::sentinel_for<I> S, std::indirectly_unary_invocable<I> Fun>
-  LF_STATIC_CALL auto operator()(auto, I head, S tail, Fun fun) LF_STATIC_CONST->lf::task<> {
-
-    constexpr async invoke_fn = [](auto, I iter, Fun fun) LF_STATIC_CALL -> lf::task<> {
-      std::invoke(fun, *iter);
-      co_return;
-    };
-
-    for (; head != tail; ++head) {
-      if constexpr (async_fn<Fun>) {
-        co_await lf::fork(fun)(*head);
-      } else {
-        co_await lf::fork(invoke_fn)(head, fun);
-      }
-    }
+    co_await lf::fork(for_each)(head, mid, fun, proj);
+    co_await lf::call(for_each)(mid, tail, fun, proj);
 
     co_await lf::join;
   }
@@ -151,27 +101,46 @@ struct for_each_overload {
   /**
    * @brief Range version, dispatches to the iterator version.
    */
-  template <std::ranges::forward_range Range,
-            std::indirectly_unary_invocable<std::ranges::iterator_t<Range>> Fun>
-  LF_STATIC_CALL auto operator()(auto, Range &&range, std::ranges::range_difference_t<Range> grain, Fun fun)
-      LF_STATIC_CONST->lf::task<> {
-    co_await lf::async<for_each_overload>{}(std::ranges::begin(range), std::ranges::end(range), grain, fun);
+  template <std::ranges::random_access_range Range,
+            typename Proj = std::identity,
+            std::indirectly_unary_invocable<std::projected<std::ranges::iterator_t<Range>, Proj>> Fun>
+    requires std::ranges::sized_range<Range>
+  LF_STATIC_CALL auto operator()(auto for_each,
+                                 Range &&range,
+                                 std::ranges::range_difference_t<Range> n,
+                                 Fun fun,
+                                 Proj proj = {}) LF_STATIC_CONST->lf::task<> {
+    co_await for_each(std::ranges::begin(range), std::ranges::end(range), n, fun, proj);
   };
 
   /**
-   * @brief Range grain=1, version, dispatches to the iterator version.
+   * @brief Range n=1, version, dispatches to the iterator version.
    */
-  template <std::ranges::forward_range Range,
-            std::indirectly_unary_invocable<std::ranges::iterator_t<Range>> Fun>
-  LF_STATIC_CALL auto operator()(auto, Range &&range, Fun fun) LF_STATIC_CONST->lf::task<> {
-    co_await lf::async<for_each_overload>{}(std::ranges::begin(range), std::ranges::end(range), fun);
+  template <std::ranges::random_access_range Range,
+            typename Proj = std::identity,
+            std::indirectly_unary_invocable<std::projected<std::ranges::iterator_t<Range>, Proj>> Fun>
+    requires std::ranges::sized_range<Range>
+  LF_STATIC_CALL auto
+  operator()(auto for_each, Range &&range, Fun fun, Proj proj = {}) LF_STATIC_CONST->lf::task<> {
+    co_await for_each(std::ranges::begin(range), std::ranges::end(range), fun, proj);
   };
+
+  // template <std::ranges::random_access_range Range, typename Proj = std::identity, typename Fun>
+  // auto operator()(auto for_each, Range &&range, Fun fun, Proj proj = {}) -> lf::task<> {
+
+  //   // using T = std::projected<std::ranges::iterator_t<Range>, Proj>::type;
+
+  //   static_assert(std::indirectly_unary_invocable<Fun, std::projected<std::ranges::iterator_t<Range>,
+  //   Proj>>);
+
+  //   // co_await for_each(std::ranges::begin(range), std::ranges::end(range), fun, proj);
+  // };
 };
 
 } // namespace impl
 
 /**
- * @brief A parallel implementation of `std::for_each`.
+ * @brief A parallel implementation of `std::ranges::for_each`.
  *
  * \rst
  *
@@ -185,15 +154,12 @@ struct for_each_overload {
  *
  * \endrst
  *
- * This will set each element of `v` to `0` in parallel using a grain size of ``10``. The grain size is the
- * number of elements each task will process, the grain size can be omitted and defaults to ``1``.
+ * This will set each element of `v` to `0` in parallel using a n size of ``10``. The n size is the
+ * number of elements each task will process, the n size can be omitted and defaults to ``1``.
  *
  * If the function handed to `for_each` is an ``async`` function, then the function will be called
- * asynchronously, this allows you to launch further tasks recursively.
- *
- * This function has overloads for `forward_ranges` and sized `random_access_range` with the latter being more
- * efficient.
- *
+ * asynchronously, this allows you to launch further tasks recursively. The projection is required
+ * to be a regular function.
  */
 inline constexpr async for_each = impl::for_each_overload{};
 
