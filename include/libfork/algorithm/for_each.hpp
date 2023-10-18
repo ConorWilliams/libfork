@@ -10,7 +10,6 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <algorithm>
-#include <bits/ranges_base.h>
 #include <concepts>
 #include <functional>
 #include <iterator>
@@ -18,6 +17,8 @@
 #include <type_traits>
 
 #include "libfork/core.hpp"
+
+#include "libfork/algorithm/concepts.hpp"
 
 /**
  * @file for_each.hpp
@@ -39,7 +40,7 @@ struct for_each_overload {
   template <std::random_access_iterator I,
             std::sized_sentinel_for<I> S,
             typename Proj = std::identity,
-            std::indirectly_unary_invocable<std::projected<I, Proj>> Fun>
+            indirectly_unary_invocable<std::projected<I, Proj>> Fun>
   LF_STATIC_CALL auto
   operator()(auto for_each, I head, S tail, std::iter_difference_t<I> n, Fun fun, Proj proj = {})
       LF_STATIC_CONST->lf::task<> {
@@ -75,7 +76,7 @@ struct for_each_overload {
   template <std::random_access_iterator I,
             std::sized_sentinel_for<I> S,
             typename Proj = std::identity,
-            std::indirectly_unary_invocable<std::projected<I, Proj>> Fun>
+            indirectly_unary_invocable<std::projected<I, Proj>> Fun>
   LF_STATIC_CALL auto
   operator()(auto for_each, I head, S tail, Fun fun, Proj proj = {}) LF_STATIC_CONST->lf::task<> {
 
@@ -103,7 +104,7 @@ struct for_each_overload {
    */
   template <std::ranges::random_access_range Range,
             typename Proj = std::identity,
-            std::indirectly_unary_invocable<std::projected<std::ranges::iterator_t<Range>, Proj>> Fun>
+            indirectly_unary_invocable<std::projected<std::ranges::iterator_t<Range>, Proj>> Fun>
     requires std::ranges::sized_range<Range>
   LF_STATIC_CALL auto operator()(auto for_each,
                                  Range &&range,
@@ -114,27 +115,16 @@ struct for_each_overload {
   };
 
   /**
-   * @brief Range n=1, version, dispatches to the iterator version.
+   * @brief Range n = 1, version, dispatches to the iterator version.
    */
   template <std::ranges::random_access_range Range,
             typename Proj = std::identity,
-            std::indirectly_unary_invocable<std::projected<std::ranges::iterator_t<Range>, Proj>> Fun>
+            indirectly_unary_invocable<std::projected<std::ranges::iterator_t<Range>, Proj>> Fun>
     requires std::ranges::sized_range<Range>
   LF_STATIC_CALL auto
   operator()(auto for_each, Range &&range, Fun fun, Proj proj = {}) LF_STATIC_CONST->lf::task<> {
     co_await for_each(std::ranges::begin(range), std::ranges::end(range), fun, proj);
   };
-
-  // template <std::ranges::random_access_range Range, typename Proj = std::identity, typename Fun>
-  // auto operator()(auto for_each, Range &&range, Fun fun, Proj proj = {}) -> lf::task<> {
-
-  //   // using T = std::projected<std::ranges::iterator_t<Range>, Proj>::type;
-
-  //   static_assert(std::indirectly_unary_invocable<Fun, std::projected<std::ranges::iterator_t<Range>,
-  //   Proj>>);
-
-  //   // co_await for_each(std::ranges::begin(range), std::ranges::end(range), fun, proj);
-  // };
 };
 
 } // namespace impl
@@ -160,6 +150,10 @@ struct for_each_overload {
  * If the function handed to `for_each` is an ``async`` function, then the function will be called
  * asynchronously, this allows you to launch further tasks recursively. The projection is required
  * to be a regular function.
+ *
+ * Unlike `std::ranges::for_each`, this function will make an implementation defined number of copies
+ * of the function objects and may invoke these copies concurrently. Hence, it is assumed function
+ * objects are cheap to copy.
  */
 inline constexpr async for_each = impl::for_each_overload{};
 

@@ -2530,10 +2530,10 @@ struct is_async_impl<async<Fn>> : std::true_type {};
 } // namespace detail
 
 /**
- * @brief Check if a type is a specialization of ``lf::async``.
+ * @brief Check if a (possibly `cvref` qualified) type is a specialization of ``lf::async``.
  */
 template <typename T>
-concept async_fn = detail::is_async_impl<T>::value;
+concept async_fn = detail::is_async_impl<std::remove_cvref_t<T>>::value;
 
 } // namespace core
 

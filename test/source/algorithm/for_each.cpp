@@ -121,9 +121,29 @@ TEMPLATE_TEST_CASE("for each", "[algorithm][template]", std::vector<int>) {
       co_return;
     };
 
-    lf::sync_wait(pool, lf::for_each, v, fun);
+    lf::sync_wait(pool, lf::for_each, v, inc, address);
+    check(v, count++);
+
+    lf::sync_wait(pool, lf::for_each, v, 300, inc, address);
     check(v, count++);
   }
 }
+
+// std::common_reference<>
+
+// : because 'common_reference_with<
+//   invoke_result_t<async<(lambda at for_each.cpp:119:17)> &, iter_value_t<projected<__normal_iterator<int *,
+//   vector<int, allocator<int> > >, (lambda at /home/cj/libfork/test/source/algorithm/for_each.cpp:47:18)> >
+//   &>, invoke_result_t<async<(lambda at for_each.cpp:119:17)> &,
+//   iter_reference_t<projected<__normal_iterator<int *, vector<int, allocator<int> > >, (lambda at
+//   /home/cj/libfork/test/source/algorithm/for_each.cpp:47:18)> > >
+// >' evaluated to false
+
+// : because substituted constraint expression is ill-formed: no type named 'type' in
+
+// 'std::common_reference<
+//   lf::packet<lf::basic_first_arg<void, lf::tag::call, (lambda at for_each.cpp:119:17)>, int *&>,
+//   lf::packet<lf::basic_first_arg<void, lf::tag::call, (lambda at for_each.cpp:119:17)>, int * >
+//   >'
 
 // NOLINTEND
