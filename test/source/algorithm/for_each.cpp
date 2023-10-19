@@ -71,6 +71,7 @@ TEMPLATE_TEST_CASE("for each", "[algorithm][template]", std::vector<int>) {
     check(v, count++);
 
     // Check grain > size case:
+    REQUIRE(v.size() < 20'000);
     lf::sync_wait(pool, lf::for_each, v, 20'000, fun);
     check(v, count++);
 
@@ -111,6 +112,7 @@ TEMPLATE_TEST_CASE("for each", "[algorithm][template]", std::vector<int>) {
     check(v, count++);
 
     // Check grain > size case:
+    REQUIRE(v.size() < 20'000);
     lf::sync_wait(pool, lf::for_each, v, 20'000, fun);
     check(v, count++);
 
@@ -127,23 +129,50 @@ TEMPLATE_TEST_CASE("for each", "[algorithm][template]", std::vector<int>) {
     lf::sync_wait(pool, lf::for_each, v, 300, inc, address);
     check(v, count++);
   }
+
+  // ----------- Now with small inputs ----------- //
+
+  std::vector<int> small = {0, 0, 0};
+
+  auto add = [](int &i) {
+    i++;
+  };
+
+  lf::sync_wait(pool, lf::for_each, std::span(small.data(), 3), add);
+
+  REQUIRE(small == std::vector<int>{1, 1, 1});
+
+  lf::sync_wait(pool, lf::for_each, std::span(small.data(), 2), add);
+
+  REQUIRE(small == std::vector<int>{2, 2, 1});
+
+  lf::sync_wait(pool, lf::for_each, std::span(small.data(), 1), add);
+
+  REQUIRE(small == std::vector<int>{3, 2, 1});
+
+  lf::sync_wait(pool, lf::for_each, std::span(small.data(), 0), add);
+
+  REQUIRE(small == std::vector<int>{3, 2, 1});
+
+  // ------------------ with large n ------------------ //
+
+  small = {0, 0, 0};
+
+  lf::sync_wait(pool, lf::for_each, std::span(small.data(), 3), 2, add);
+
+  REQUIRE(small == std::vector<int>{1, 1, 1});
+
+  lf::sync_wait(pool, lf::for_each, std::span(small.data(), 2), 2, add);
+
+  REQUIRE(small == std::vector<int>{2, 2, 1});
+
+  lf::sync_wait(pool, lf::for_each, std::span(small.data(), 1), 2, add);
+
+  REQUIRE(small == std::vector<int>{3, 2, 1});
+
+  lf::sync_wait(pool, lf::for_each, std::span(small.data(), 0), 2, add);
+
+  REQUIRE(small == std::vector<int>{3, 2, 1});
 }
-
-// std::common_reference<>
-
-// : because 'common_reference_with<
-//   invoke_result_t<async<(lambda at for_each.cpp:119:17)> &, iter_value_t<projected<__normal_iterator<int *,
-//   vector<int, allocator<int> > >, (lambda at /home/cj/libfork/test/source/algorithm/for_each.cpp:47:18)> >
-//   &>, invoke_result_t<async<(lambda at for_each.cpp:119:17)> &,
-//   iter_reference_t<projected<__normal_iterator<int *, vector<int, allocator<int> > >, (lambda at
-//   /home/cj/libfork/test/source/algorithm/for_each.cpp:47:18)> > >
-// >' evaluated to false
-
-// : because substituted constraint expression is ill-formed: no type named 'type' in
-
-// 'std::common_reference<
-//   lf::packet<lf::basic_first_arg<void, lf::tag::call, (lambda at for_each.cpp:119:17)>, int *&>,
-//   lf::packet<lf::basic_first_arg<void, lf::tag::call, (lambda at for_each.cpp:119:17)>, int * >
-//   >'
 
 // NOLINTEND
