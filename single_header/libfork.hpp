@@ -1602,7 +1602,7 @@ namespace impl {
  * @brief Detect what kind of async function a type can be cast to.
  */
 template <stateless T>
-consteval auto implicit_cast_to_async(async<T>) -> T {
+consteval auto implicit_cast_to_async(async<T>) -> async<T> {
   return {};
 }
 
@@ -1644,7 +1644,7 @@ concept first_arg = impl::unqualified<Arg> && requires (Arg arg) {
     { arg.address() } -> std::convertible_to<return_of<Arg> *>;
   };
 
-  { impl::implicit_cast_to_async(arg) } -> std::same_as<function_of<Arg>>;
+  { impl::implicit_cast_to_async(arg) } -> std::same_as<async<function_of<Arg>>>;
 };
 
 } // namespace core
@@ -2311,14 +2311,18 @@ struct task {
 
 namespace impl {
 
+namespace detail {
+
 template <typename>
 struct is_task_impl : std::false_type {};
 
 template <typename T>
 struct is_task_impl<task<T>> : std::true_type {};
 
+} // namespace detail
+
 template <typename T>
-concept is_task = is_task_impl<T>::value;
+concept is_task = detail::is_task_impl<T>::value;
 
 // ----------------------------------------------- //
 
@@ -2343,6 +2347,21 @@ concept valid_packet =
  */
 template <typename R, tag Tag, stateless F>
 struct basic_first_arg;
+
+namespace detail {
+
+template <tag Tag, typename F>
+using dummy_first_arg_t = basic_first_arg<void, tag::call, F>;
+
+} // namespace detail
+
+/**
+ * @brief Test if an function is a coroutine that returns an `lf::task`.
+ */
+template <typename F, tag Tag, typename... Args>
+concept async_invocable = stateless<F> &&                                                               //
+                          std::invocable<F, detail::dummy_first_arg_t<Tag, F>, Args...> &&              //
+                          is_task<std::invoke_result_t<F, detail::dummy_first_arg_t<Tag, F>, Args...>>; //
 
 /**
  * @brief A helper to statically attach a new `context_type` to a `first_arg`.
@@ -2499,7 +2518,7 @@ struct [[nodiscard("async functions must be called")]] async {
    * @brief Wrap the arguments into an awaitable (in an ``lf::task``) that triggers an invoke.
    */
   template <typename... Args>
-    requires impl::repackable<invoke_packet<Args...>>
+    requires impl::async_invocable<Fn, tag::call, Args...> && impl::repackable<invoke_packet<Args...>>
   LF_STATIC_CALL constexpr auto operator()(Args &&...args) LF_STATIC_CONST noexcept
       -> invoke_packet<Args...> {
     return {{}, std::forward<Args>(args)...};
@@ -2511,7 +2530,7 @@ struct [[nodiscard("async functions must be called")]] async {
    * @brief Wrap the arguments into an awaitable (in an ``lf::task``) that triggers an invoke.
    */
   template <typename... Args>
-    requires impl::is_void<value_of<invoke_packet<Args...>>>
+    requires impl::async_invocable<Fn, tag::call, Args...> && impl::is_void<value_of<invoke_packet<Args...>>>
   LF_STATIC_CALL constexpr auto operator()(Args &&...args) LF_STATIC_CONST noexcept -> call_packet<Args...> {
     return {{}, std::forward<Args>(args)...};
   }
@@ -2638,10 +2657,12 @@ struct bind_task {
    *
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
-  template <typename R, typename F>
+  template <typename R, stateless F>
   LF_DEPRECATE [[nodiscard("A HOF needs to be called")]] LF_STATIC_CALL constexpr auto
   operator()(R &ret, async<F>) LF_STATIC_CONST noexcept {
-    return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...> {
+    return [&]<typename... Args>(Args && ...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...>
+             requires async_invocable<F, Tag, Args...>
+    {
       return {{ret}, std::forward<Args>(args)...};
     };
   }
@@ -2650,13 +2671,15 @@ struct bind_task {
    *
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
-  template <typename F>
+  template <stateless F>
   LF_DEPRECATE [[nodiscard("A HOF needs to be called")]] LF_STATIC_CALL constexpr auto
   operator()(async<F>) LF_STATIC_CONST noexcept {
-    return []<typename... Args>(Args &&...args)
-               LF_STATIC_CALL noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
-                 return {{}, std::forward<Args>(args)...};
-               };
+    return []<typename... Args>(Args && ...args)
+               LF_STATIC_CALL noexcept -> packet<basic_first_arg<void, Tag, F>, Args...>
+             requires async_invocable<F, Tag, Args...>
+    {
+      return {{}, std::forward<Args>(args)...};
+    };
   }
 
 #if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
@@ -2665,9 +2688,11 @@ struct bind_task {
    *
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
-  template <typename R, typename F>
+  template <typename R, stateless F>
   [[nodiscard("A HOF needs to be called")]] static constexpr auto operator[](R &ret, async<F>) noexcept {
-    return [&ret]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...> {
+    return [&ret]<typename... Args>(Args && ...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...>
+             requires async_invocable<F, Tag, Args...>
+    {
       return {{ret}, std::forward<Args>(args)...};
     };
   }
@@ -2676,12 +2701,14 @@ struct bind_task {
    *
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
-  template <typename F>
+  template <stateless F>
   [[nodiscard("A HOF needs to be called")]] static constexpr auto operator[](async<F>) noexcept {
-    return []<typename... Args>(Args &&...args)
-               LF_STATIC_CALL noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
-                 return {{}, std::forward<Args>(args)...};
-               };
+    return []<typename... Args>(Args && ...args)
+               LF_STATIC_CALL noexcept -> packet<basic_first_arg<void, Tag, F>, Args...>
+             requires async_invocable<F, Tag, Args...>
+    {
+      return {{}, std::forward<Args>(args)...};
+    };
   }
 #endif
 };
@@ -3346,10 +3373,10 @@ struct sync_wait_impl {
 };
 
 template <scheduler Sch, stateless F, typename... Args>
-using result_t = value_of<typename sync_wait_impl<context_of<Sch>, F, Args...>::real_packet>;
+using root_result_t = value_of<typename sync_wait_impl<context_of<Sch>, F, Args...>::real_packet>;
 
 template <scheduler Sch, stateless F, typename... Args>
-using packet_t = typename sync_wait_impl<context_of<Sch>, F, Args...>::real_packet;
+using root_packet_t = typename sync_wait_impl<context_of<Sch>, F, Args...>::real_packet;
 
 } // namespace detail
 
@@ -3367,12 +3394,13 @@ using packet_t = typename sync_wait_impl<context_of<Sch>, F, Args...>::real_pack
  * \endrst
  */
 template <scheduler Sch, stateless F, class... Args>
+  requires impl::async_invocable<F, tag::root, Args...>
 auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcept
-    -> detail::result_t<Sch, F, Args...> {
+    -> detail::root_result_t<Sch, F, Args...> {
 
-  impl::root_result<detail::result_t<Sch, F, Args...>> root_block;
+  impl::root_result<detail::root_result_t<Sch, F, Args...>> root_block;
 
-  detail::packet_t<Sch, F, Args...> packet{{{root_block}}, std::forward<Args>(args)...};
+  detail::root_packet_t<Sch, F, Args...> packet{{{root_block}}, std::forward<Args>(args)...};
 
   impl::frame_block *frame = std::move(packet).invoke();
 
@@ -3390,7 +3418,7 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
 
   LF_LOG("Semaphore acquired");
 
-  if constexpr (impl::non_void<detail::result_t<Sch, F, Args...>>) {
+  if constexpr (impl::non_void<detail::root_result_t<Sch, F, Args...>>) {
     return *std::move(root_block);
   }
 }

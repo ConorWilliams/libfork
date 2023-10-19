@@ -77,14 +77,18 @@ struct task {
 
 namespace impl {
 
+namespace detail {
+
 template <typename>
 struct is_task_impl : std::false_type {};
 
 template <typename T>
 struct is_task_impl<task<T>> : std::true_type {};
 
+} // namespace detail
+
 template <typename T>
-concept is_task = is_task_impl<T>::value;
+concept is_task = detail::is_task_impl<T>::value;
 
 // ----------------------------------------------- //
 
@@ -109,6 +113,21 @@ concept valid_packet =
  */
 template <typename R, tag Tag, stateless F>
 struct basic_first_arg;
+
+namespace detail {
+
+template <tag Tag, typename F>
+using dummy_first_arg_t = basic_first_arg<void, tag::call, F>;
+
+} // namespace detail
+
+/**
+ * @brief Test if an function is a coroutine that returns an `lf::task`.
+ */
+template <typename F, tag Tag, typename... Args>
+concept async_invocable = stateless<F> &&                                                               //
+                          std::invocable<F, detail::dummy_first_arg_t<Tag, F>, Args...> &&              //
+                          is_task<std::invoke_result_t<F, detail::dummy_first_arg_t<Tag, F>, Args...>>; //
 
 /**
  * @brief A helper to statically attach a new `context_type` to a `first_arg`.
@@ -265,7 +284,7 @@ struct [[nodiscard("async functions must be called")]] async {
    * @brief Wrap the arguments into an awaitable (in an ``lf::task``) that triggers an invoke.
    */
   template <typename... Args>
-    requires impl::repackable<invoke_packet<Args...>>
+    requires impl::async_invocable<Fn, tag::call, Args...> && impl::repackable<invoke_packet<Args...>>
   LF_STATIC_CALL constexpr auto operator()(Args &&...args) LF_STATIC_CONST noexcept
       -> invoke_packet<Args...> {
     return {{}, std::forward<Args>(args)...};
@@ -277,7 +296,7 @@ struct [[nodiscard("async functions must be called")]] async {
    * @brief Wrap the arguments into an awaitable (in an ``lf::task``) that triggers an invoke.
    */
   template <typename... Args>
-    requires impl::is_void<value_of<invoke_packet<Args...>>>
+    requires impl::async_invocable<Fn, tag::call, Args...> && impl::is_void<value_of<invoke_packet<Args...>>>
   LF_STATIC_CALL constexpr auto operator()(Args &&...args) LF_STATIC_CONST noexcept -> call_packet<Args...> {
     return {{}, std::forward<Args>(args)...};
   }

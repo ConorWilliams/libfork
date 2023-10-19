@@ -55,10 +55,10 @@ struct sync_wait_impl {
 };
 
 template <scheduler Sch, stateless F, typename... Args>
-using result_t = value_of<typename sync_wait_impl<context_of<Sch>, F, Args...>::real_packet>;
+using root_result_t = value_of<typename sync_wait_impl<context_of<Sch>, F, Args...>::real_packet>;
 
 template <scheduler Sch, stateless F, typename... Args>
-using packet_t = typename sync_wait_impl<context_of<Sch>, F, Args...>::real_packet;
+using root_packet_t = typename sync_wait_impl<context_of<Sch>, F, Args...>::real_packet;
 
 } // namespace detail
 
@@ -76,12 +76,13 @@ using packet_t = typename sync_wait_impl<context_of<Sch>, F, Args...>::real_pack
  * \endrst
  */
 template <scheduler Sch, stateless F, class... Args>
+  requires impl::async_invocable<F, tag::root, Args...>
 auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcept
-    -> detail::result_t<Sch, F, Args...> {
+    -> detail::root_result_t<Sch, F, Args...> {
 
-  impl::root_result<detail::result_t<Sch, F, Args...>> root_block;
+  impl::root_result<detail::root_result_t<Sch, F, Args...>> root_block;
 
-  detail::packet_t<Sch, F, Args...> packet{{{root_block}}, std::forward<Args>(args)...};
+  detail::root_packet_t<Sch, F, Args...> packet{{{root_block}}, std::forward<Args>(args)...};
 
   impl::frame_block *frame = std::move(packet).invoke();
 
@@ -99,7 +100,7 @@ auto sync_wait(Sch &&sch, [[maybe_unused]] async<F> fun, Args &&...args) noexcep
 
   LF_LOG("Semaphore acquired");
 
-  if constexpr (impl::non_void<detail::result_t<Sch, F, Args...>>) {
+  if constexpr (impl::non_void<detail::root_result_t<Sch, F, Args...>>) {
     return *std::move(root_block);
   }
 }

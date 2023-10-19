@@ -42,10 +42,12 @@ struct bind_task {
    *
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
-  template <typename R, typename F>
+  template <typename R, stateless F>
   LF_DEPRECATE [[nodiscard("A HOF needs to be called")]] LF_STATIC_CALL constexpr auto
   operator()(R &ret, async<F>) LF_STATIC_CONST noexcept {
-    return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...> {
+    return [&]<typename... Args>(Args && ...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...>
+             requires async_invocable<F, Tag, Args...>
+    {
       return {{ret}, std::forward<Args>(args)...};
     };
   }
@@ -54,13 +56,15 @@ struct bind_task {
    *
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
-  template <typename F>
+  template <stateless F>
   LF_DEPRECATE [[nodiscard("A HOF needs to be called")]] LF_STATIC_CALL constexpr auto
   operator()(async<F>) LF_STATIC_CONST noexcept {
-    return []<typename... Args>(Args &&...args)
-               LF_STATIC_CALL noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
-                 return {{}, std::forward<Args>(args)...};
-               };
+    return []<typename... Args>(Args && ...args)
+               LF_STATIC_CALL noexcept -> packet<basic_first_arg<void, Tag, F>, Args...>
+             requires async_invocable<F, Tag, Args...>
+    {
+      return {{}, std::forward<Args>(args)...};
+    };
   }
 
 #if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
@@ -69,9 +73,11 @@ struct bind_task {
    *
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
-  template <typename R, typename F>
+  template <typename R, stateless F>
   [[nodiscard("A HOF needs to be called")]] static constexpr auto operator[](R &ret, async<F>) noexcept {
-    return [&ret]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...> {
+    return [&ret]<typename... Args>(Args && ...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...>
+             requires async_invocable<F, Tag, Args...>
+    {
       return {{ret}, std::forward<Args>(args)...};
     };
   }
@@ -80,12 +86,14 @@ struct bind_task {
    *
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
-  template <typename F>
+  template <stateless F>
   [[nodiscard("A HOF needs to be called")]] static constexpr auto operator[](async<F>) noexcept {
-    return []<typename... Args>(Args &&...args)
-               LF_STATIC_CALL noexcept -> packet<basic_first_arg<void, Tag, F>, Args...> {
-                 return {{}, std::forward<Args>(args)...};
-               };
+    return []<typename... Args>(Args && ...args)
+               LF_STATIC_CALL noexcept -> packet<basic_first_arg<void, Tag, F>, Args...>
+             requires async_invocable<F, Tag, Args...>
+    {
+      return {{}, std::forward<Args>(args)...};
+    };
   }
 #endif
 };

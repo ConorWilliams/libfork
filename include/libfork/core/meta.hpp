@@ -173,7 +173,7 @@ namespace impl {
  * @brief Detect what kind of async function a type can be cast to.
  */
 template <stateless T>
-consteval auto implicit_cast_to_async(async<T>) -> T {
+consteval auto implicit_cast_to_async(async<T>) -> async<T> {
   return {};
 }
 
@@ -215,7 +215,7 @@ concept first_arg = impl::unqualified<Arg> && requires (Arg arg) {
     { arg.address() } -> std::convertible_to<return_of<Arg> *>;
   };
 
-  { impl::implicit_cast_to_async(arg) } -> std::same_as<function_of<Arg>>;
+  { impl::implicit_cast_to_async(arg) } -> std::same_as<async<function_of<Arg>>>;
 };
 
 } // namespace core
