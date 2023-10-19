@@ -49,6 +49,12 @@ struct for_each_overload {
 
     std::iter_difference_t<I> len = tail - head;
 
+    LF_ASSERT(len >= 0);
+
+    if (len == 0) [[unlikely]] {
+      co_return;
+    }
+
     if (len <= n) {
       for (; head != tail; ++head) {
         if constexpr (async_fn<Fun>) {
@@ -69,7 +75,7 @@ struct for_each_overload {
   }
 
   /**
-   * @brief Divide and conquer n=1 version.
+   * @brief Divide and conquer n = 1 version.
    *
    * This is an efficient implementation for sized random access ranges.
    */
@@ -81,6 +87,12 @@ struct for_each_overload {
   operator()(auto for_each, I head, S tail, Fun fun, Proj proj = {}) LF_STATIC_CONST->lf::task<> {
 
     std::iter_difference_t<I> len = tail - head;
+
+    LF_ASSERT(len >= 0);
+
+    if (len == 0) [[unlikely]] {
+      co_return;
+    }
 
     if (len <= 1) {
       if constexpr (async_fn<Fun>) {
@@ -101,6 +113,8 @@ struct for_each_overload {
 
   /**
    * @brief Range version, dispatches to the iterator version.
+   *
+   * This will dispatch to `n = 1` specialization if `n = 1`
    */
   template <std::ranges::random_access_range Range,
             typename Proj = std::identity,
@@ -111,7 +125,14 @@ struct for_each_overload {
                                  std::ranges::range_difference_t<Range> n,
                                  Fun fun,
                                  Proj proj = {}) LF_STATIC_CONST->lf::task<> {
-    co_await for_each(std::ranges::begin(range), std::ranges::end(range), n, fun, proj);
+
+    LF_ASSERT(n > 0);
+
+    if (n == 1) {
+      co_await for_each(std::ranges::begin(range), std::ranges::end(range), fun, proj);
+    } else {
+      co_await for_each(std::ranges::begin(range), std::ranges::end(range), n, fun, proj);
+    }
   };
 
   /**
