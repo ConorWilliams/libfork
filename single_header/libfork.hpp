@@ -2660,7 +2660,7 @@ struct bind_task {
   template <typename R, stateless F>
   LF_DEPRECATE [[nodiscard("A HOF needs to be called")]] LF_STATIC_CALL constexpr auto
   operator()(R &ret, async<F>) LF_STATIC_CONST noexcept {
-    return [&]<typename... Args>(Args && ...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...>
+    return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...>
              requires async_invocable<F, Tag, Args...>
     {
       return {{ret}, std::forward<Args>(args)...};
@@ -2674,7 +2674,7 @@ struct bind_task {
   template <stateless F>
   LF_DEPRECATE [[nodiscard("A HOF needs to be called")]] LF_STATIC_CALL constexpr auto
   operator()(async<F>) LF_STATIC_CONST noexcept {
-    return []<typename... Args>(Args && ...args)
+    return []<typename... Args>(Args &&...args)
                LF_STATIC_CALL noexcept -> packet<basic_first_arg<void, Tag, F>, Args...>
              requires async_invocable<F, Tag, Args...>
     {
@@ -2690,7 +2690,7 @@ struct bind_task {
    */
   template <typename R, stateless F>
   [[nodiscard("A HOF needs to be called")]] static constexpr auto operator[](R &ret, async<F>) noexcept {
-    return [&ret]<typename... Args>(Args && ...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...>
+    return [&ret]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...>
              requires async_invocable<F, Tag, Args...>
     {
       return {{ret}, std::forward<Args>(args)...};
@@ -2703,7 +2703,7 @@ struct bind_task {
    */
   template <stateless F>
   [[nodiscard("A HOF needs to be called")]] static constexpr auto operator[](async<F>) noexcept {
-    return []<typename... Args>(Args && ...args)
+    return []<typename... Args>(Args &&...args)
                LF_STATIC_CALL noexcept -> packet<basic_first_arg<void, Tag, F>, Args...>
              requires async_invocable<F, Tag, Args...>
     {
