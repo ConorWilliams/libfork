@@ -52,7 +52,7 @@ using invoke_result_t = typename impl::detail::task_result<F, Args...>::type;
 // ------------------------------------ indirectly_result_t ------------------------------------ //
 
 /**
- * @brief A`std::indirect_result_t` that uses `lf::invoke_result_t` instead of the `std` version.
+ * @brief A version of `std::indirect_result_t` that uses `lf::invoke_result_t` instead of the `std` version.
  */
 template <class F, class... Is>
   requires (std::indirectly_readable<Is> && ...) && std::invocable<F, std::iter_reference_t<Is>...>
@@ -61,7 +61,8 @@ using indirect_result_t = invoke_result_t<F, std::iter_reference_t<Is>...>;
 // ------------------------------- indirectly_unary_invocable ------------------------------- //
 
 /**
- * @brief A `std::indirectly_unary_invocable` that uses `lf::invoke_result_t` instead of the `std` version.
+ * @brief A version of `std::indirectly_unary_invocable` that uses `lf::invoke_result_t` instead of the `std`
+ * version.
  */
 template <class F, class I>
 concept indirectly_unary_invocable = std::indirectly_readable<I> &&                          //
@@ -143,7 +144,8 @@ concept semigroup_help = mixed_invocable_to<R, Bop, T, R>;
  *
  * Additionally, the expressions must return the same type, `R`.
  *
- * Hence the `S` is the set of the values in `R` and the values in `T` _represent_ a subset of `S`.
+ * Hence the `S` is the set of the values in `R`, to align with the mathematical definition of a semigroup
+ * we say that `T` _represents_ `S`.
  *
  * __Note:__ A semigroup requires all invocations to be regular. This is a semantic requirement only.
  */
@@ -177,7 +179,8 @@ concept dual_semigroup = semigroup<Bop, T> &&                                   
 } // namespace impl
 
 /**
- * @brief An indirect semigroup is like a semigroup but applying the operator to the types that `I` reference.
+ * @brief An indirect semigroup is like a `lf::semigroup` but applying the operator to the types that `I`
+ * references.
  */
 template <class Bop, class I>
 concept indirect_semigroup =
@@ -213,7 +216,7 @@ static_assert(!semigroup<bad_plus, int>);
  * @brief Test if a binary operation supports a fold operation over a type.
  *
  * This means a collection of one or more values of type `T` can be folded to a single value
- * of type `R = invoke_result_t<Bop, T, T>` using `bop`, an operator of type `Bop`.
+ * of type `R` equal to `lf::invoke_result_t<Bop, T, T>` using `bop`, an operator of type `Bop`.
  *
  * For example using the infix notation `a · b` to mean `bop(a, b)`:
  *
@@ -233,9 +236,8 @@ concept foldable = semigroup<Bop, T> &&                                //
                    std::convertible_to<T, invoke_result_t<Bop, T, T>>; //
 
 /**
- * @brief Test if a binary operation supports a fold operation over an iterator.
- *
- * See `lf::foldable` for details.
+ * @brief An indirect foldable is like a `lf::foldable` but applying the operator to the types that `I`
+ * references.
  */
 template <class Bop, class I>
 concept indirectly_foldable = indirect_semigroup<Bop, I> &&                     //
