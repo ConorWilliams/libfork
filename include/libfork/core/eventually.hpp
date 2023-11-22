@@ -15,7 +15,9 @@
 #include <utility>
 
 #include "libfork/core/macro.hpp"
-#include "libfork/core/utility.hpp"
+#include "libfork/core/task.hpp"
+
+#include "libfork/core/impl/utility.hpp"
 
 /**
  * @file eventually.hpp
@@ -24,8 +26,6 @@
  */
 
 namespace lf {
-
-inline namespace core {
 
 // ------------------------------------------------------------------------ //
 
@@ -52,7 +52,25 @@ class eventually;
 
 // ------------------------------------------------------------------------ //
 
-#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
+// TODO: stop references binding to temporaries
+
+// ----- //
+
+template <typename To, typename From>
+struct safe_ref_bind_impl : std::false_type {};
+
+// All reference types can bind to a non-dangling reference of the same kind without dangling.
+
+template <typename T>
+struct safe_ref_bind_impl<T, T> : std::true_type {};
+
+// T const X can additionally bind to U X without dangling//
+
+template <typename To, typename From>
+struct safe_ref_bind_impl<To const &, From &> : std::true_type {};
+
+template <typename To, typename From>
+struct safe_ref_bind_impl<To const &&, From &&> : std::true_type {};
 
 template <impl::non_void T>
   requires impl::reference<T>
@@ -91,55 +109,10 @@ class eventually<T> : impl::immovable<eventually<T>> {
   }
 
  private:
-  #ifndef NDEBUG
   std::remove_reference_t<T> *m_value = nullptr;
-  #else
-  std::remove_reference_t<T> *m_value;
-  #endif
 };
 
-#endif
-
 // ------------------------------------------------------------------------ //
-
-namespace detail::static_test {
-
-template <typename T>
-using def_t = decltype(*std::declval<T>());
-
-static_assert(std::is_assignable_v<eventually<int &>, int &>);
-static_assert(not std::is_assignable_v<eventually<int &>, int &&>);
-static_assert(not std::is_assignable_v<eventually<int &>, int const &>);
-static_assert(not std::is_assignable_v<eventually<int &>, int const &&>);
-
-static_assert(std::is_assignable_v<eventually<int const &>, int &>);
-static_assert(not std::is_assignable_v<eventually<int const &>, int &&>);
-static_assert(std::is_assignable_v<eventually<int const &>, int const &>);
-static_assert(not std::is_assignable_v<eventually<int const &>, int const &&>);
-
-static_assert(not std::is_assignable_v<eventually<int &&>, int &>);
-static_assert(std::is_assignable_v<eventually<int &&>, int &&>);
-static_assert(not std::is_assignable_v<eventually<int &&>, int const &>);
-static_assert(not std::is_assignable_v<eventually<int &&>, int const &&>);
-
-static_assert(not std::is_assignable_v<eventually<int const &&>, int &>);
-static_assert(std::is_assignable_v<eventually<int const &&>, int &&>);
-static_assert(not std::is_assignable_v<eventually<int const &&>, int const &>);
-static_assert(std::is_assignable_v<eventually<int const &&>, int const &&>);
-
-// ---------------------------------- //
-
-static_assert(std::same_as<def_t<eventually<int &> &>, int &>);
-static_assert(std::same_as<def_t<eventually<int &&> &>, int &>);
-static_assert(std::same_as<def_t<eventually<int const &> &>, int const &>);
-static_assert(std::same_as<def_t<eventually<int const &&> &>, int const &>);
-
-static_assert(std::same_as<def_t<eventually<int &>>, int &>);
-static_assert(std::same_as<def_t<eventually<int &&>>, int &&>);
-static_assert(std::same_as<def_t<eventually<int const &>>, int const &>);
-static_assert(std::same_as<def_t<eventually<int const &&>>, int const &&>);
-
-} // namespace detail::static_test
 
 // ------------------------------------------------------------------------ //
 
@@ -236,29 +209,6 @@ class eventually : impl::immovable<eventually<T>> {
   bool m_constructed = false;
 #endif
 };
-
-// ------------------------------------------------------------------------ //
-
-namespace detail::static_test {
-
-static_assert(std::is_assignable_v<eventually<int>, int &>);
-static_assert(std::is_assignable_v<eventually<int>, int &&>);
-static_assert(std::is_assignable_v<eventually<int>, int const &>);
-static_assert(std::is_assignable_v<eventually<int>, int const &&>);
-
-static_assert(std::is_assignable_v<eventually<int>, float &>);
-static_assert(std::is_assignable_v<eventually<int>, float &&>);
-static_assert(std::is_assignable_v<eventually<int>, float const &>);
-static_assert(std::is_assignable_v<eventually<int>, float const &&>);
-
-// ---------------------------------- //
-
-static_assert(std::same_as<def_t<eventually<int> &>, int &>);
-static_assert(std::same_as<def_t<eventually<int> &&>, int>);
-
-} // namespace detail::static_test
-
-} // namespace core
 
 } // namespace lf
 

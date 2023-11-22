@@ -9,6 +9,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include <array>
 #include <bit>
 #include <cstddef>
 #include <cstdint>
@@ -199,6 +200,74 @@ class [[nodiscard("An instance of defer will execute immediately unless bound to
   [[no_unique_address]] F m_f;
 };
 
+/**
+ * @brief Provides storage for a single object of type ``T``.
+ *
+ * Every instance of manual_lifetime is trivially constructible/destructible.
+ */
+template <typename T>
+class manual_lifetime : immovable<manual_lifetime<T>> {
+ public:
+  /**
+   * @brief Start lifetime of object.
+   */
+  template <typename... Args>
+    requires std::constructible_from<T, Args...>
+  auto construct(Args &&...args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> T * {
+    return ::new (static_cast<void *>(m_buf.data())) T(std::forward<Args>(args)...);
+  }
+
+  /**
+   * @brief Destroy the contained object, must have been constructed first.
+   */
+  void destroy() noexcept { std::destroy_at(data()); }
+
+  /**
+   * @brief Get a pointer to the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto data() noexcept -> T * { return std::launder(reinterpret_cast<T *>(m_buf.data())); }
+
+  /**
+   * @brief Get a pointer to the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto data() const noexcept -> T * {
+    return std::launder(reinterpret_cast<T const *>(m_buf.data()));
+  }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator->() noexcept -> T * { return data(); }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator->() const noexcept -> T const * { return data(); }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() & noexcept -> T & { return *data(); }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() const & noexcept -> T const & { return *data(); }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() && noexcept -> T && { return std::move(*data()); }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() const && noexcept -> T const && { return std::move(*data()); }
+
+ private:
+  alignas(T) std::array<std::byte, sizeof(T)> m_buf;
+};
+
 // ---------------- Meta programming ---------------- //
 
 namespace detail {
@@ -326,7 +395,15 @@ using constify_ref_t = typename detail::constify_ref<T>::type;
  * This is useful for preventing ''T &&'' constructor/assignment from replacing the defaults.
  */
 template <typename T, typename U>
-concept converting = !std::same_as<std::remove_cvref_t<U>, std::remove_cvref_t<T>>;
+concept non_converting = !std::same_as<std::remove_cvref_t<U>, std::remove_cvref_t<T>>;
+
+/**
+ * @brief True if the unqualified ``T`` and ``U`` refer to different types.
+ *
+ * This is useful for preventing ''T &&'' constructor/assignment from replacing the defaults.
+ */
+template <typename T, typename U>
+concept different_from = !std::same_as<std::remove_cvref_t<U>, std::remove_cvref_t<T>>;
 
 // ---------------- Small functions ---------------- //
 
@@ -384,6 +461,8 @@ constexpr auto non_null(T *ptr) noexcept -> T * {
   LF_ASSERT(ptr != nullptr);
   return ptr;
 }
+
+// --------------------------------- //
 
 // -------------------------------- //
 

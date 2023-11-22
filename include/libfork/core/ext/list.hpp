@@ -15,7 +15,8 @@
 #include <utility>
 
 #include "libfork/core/macro.hpp"
-#include "libfork/core/utility.hpp"
+
+#include "libfork/core/impl/utility.hpp"
 
 namespace lf {
 
@@ -52,8 +53,9 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
     template <std::invocable<T &> F>
     friend constexpr void for_each_elem(node *root, F &&func) noexcept(std::is_nothrow_invocable_v<F, T &>) {
       while (root) {
-        // Have to be very careful here, we can't deference `walk` after
-        // we've called `func` as `func` could destroy the node.
+        // Have to be very careful here, we can't deference `root` after
+        // we've called `func` as `func` could destroy the node so, we have
+        // to cache the next pointer before the function call.
         auto next = root->m_next;
         std::invoke(func, root->m_data);
         root = next;
@@ -112,7 +114,7 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
  * @brief A type alias for the node type of an intrusive list.
  */
 template <typename T>
-using intrusive_node = typename intrusive_list<T>::node;
+using intruded_list = typename intrusive_list<T>::node *;
 
 } // namespace ext
 

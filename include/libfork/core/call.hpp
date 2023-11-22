@@ -1,3 +1,4 @@
+
 #ifndef E8D38B49_7170_41BC_90E9_6D6389714304
 #define E8D38B49_7170_41BC_90E9_6D6389714304
 
@@ -11,10 +12,8 @@
 
 #include <utility>
 
-#include "libfork/core/async.hpp"
-#include "libfork/core/macro.hpp"
-#include "libfork/core/meta.hpp"
-#include "libfork/core/utility.hpp"
+#include "libfork/core/invocable.hpp"
+#include "libfork/core/tag.hpp"
 
 /**
  * @file call.hpp
@@ -27,7 +26,7 @@ namespace lf {
 namespace impl {
 
 #if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
-  #define LF_DEPRECATE [[deprecated("Use operator[] instead")]]
+  #define LF_DEPRECATE [[deprecated("Use operator[] instead of operator()")]]
 #else
   #define LF_DEPRECATE
 #endif
@@ -42,29 +41,19 @@ struct bind_task {
    *
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
-  template <typename R, stateless F>
-  LF_DEPRECATE [[nodiscard("A HOF needs to be called")]] LF_STATIC_CALL constexpr auto
-  operator()(R &ret, async<F>) LF_STATIC_CONST noexcept {
-    return [&]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...>
-             requires async_invocable<F, Tag, Args...>
-    {
-      return {{ret}, std::forward<Args>(args)...};
-    };
+  template <quasi_pointer I, async_function_object F>
+  LF_DEPRECATE [[nodiscard]] LF_STATIC_CALL auto operator()(I ret, F fun) LF_STATIC_CONST {
+    return combinate<Tag>(std::move(ret), std::move(fun));
   }
+
   /**
    * @brief Set a void return address for an asynchronous function.
    *
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
-  template <stateless F>
-  LF_DEPRECATE [[nodiscard("A HOF needs to be called")]] LF_STATIC_CALL constexpr auto
-  operator()(async<F>) LF_STATIC_CONST noexcept {
-    return []<typename... Args>(Args &&...args)
-               LF_STATIC_CALL noexcept -> packet<basic_first_arg<void, Tag, F>, Args...>
-             requires async_invocable<F, Tag, Args...>
-    {
-      return {{}, std::forward<Args>(args)...};
-    };
+  template <quasi_pointer I, async_function_object F>
+  LF_DEPRECATE [[nodiscard]] LF_STATIC_CALL auto operator()(F fun) LF_STATIC_CONST {
+    return combinate<Tag>(discard_t{}, std::move(fun));
   }
 
 #if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
@@ -73,27 +62,19 @@ struct bind_task {
    *
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
-  template <typename R, stateless F>
-  [[nodiscard("A HOF needs to be called")]] static constexpr auto operator[](R &ret, async<F>) noexcept {
-    return [&ret]<typename... Args>(Args &&...args) noexcept -> packet<basic_first_arg<R, Tag, F>, Args...>
-             requires async_invocable<F, Tag, Args...>
-    {
-      return {{ret}, std::forward<Args>(args)...};
-    };
+  template <quasi_pointer I, async_function_object F>
+  [[nodiscard]] LF_STATIC_CALL auto operator[](I ret, F fun) LF_STATIC_CONST {
+    return combinate<Tag>(std::move(ret), std::move(fun));
   }
+
   /**
    * @brief Set a void return address for an asynchronous function.
    *
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
-  template <stateless F>
-  [[nodiscard("A HOF needs to be called")]] static constexpr auto operator[](async<F>) noexcept {
-    return []<typename... Args>(Args &&...args)
-               LF_STATIC_CALL noexcept -> packet<basic_first_arg<void, Tag, F>, Args...>
-             requires async_invocable<F, Tag, Args...>
-    {
-      return {{}, std::forward<Args>(args)...};
-    };
+  template <quasi_pointer I, async_function_object F>
+  [[nodiscard]] LF_STATIC_CALL auto operator[](F fun) LF_STATIC_CONST {
+    return combinate<Tag>(discard_t{}, std::move(fun));
   }
 #endif
 };
@@ -106,8 +87,6 @@ struct bind_task {
 struct join_type {};
 
 } // namespace impl
-
-inline namespace core {
 
 /**
  * @brief An awaitable (in a `lf::task`) that triggers a join.
@@ -162,8 +141,6 @@ inline constexpr impl::bind_task<tag::fork> fork = {};
  * \endrst
  */
 inline constexpr impl::bind_task<tag::call> call = {};
-
-} // namespace core
 
 } // namespace lf
 

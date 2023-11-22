@@ -242,19 +242,6 @@ static_assert(LF_FIBRE_STACK_SIZE && !(LF_FIBRE_STACK_SIZE & (LF_FIBRE_STACK_SIZ
 #endif
 
 /**
- * @brief This works-around https://github.com/llvm/llvm-project/issues/63022.
- */
-#if defined(__clang__)
-  #if defined(__apple_build_version__) || __clang_major__ <= 16
-    #define LF_TLS_CLANG_INLINE LF_NOINLINE
-  #else
-    #define LF_TLS_CLANG_INLINE LF_FORCEINLINE
-  #endif
-#else
-  #define LF_TLS_CLANG_INLINE LF_FORCEINLINE
-#endif
-
-/**
  * @brief __[public]__ A customizable logging macro.
  *
  * By default this is a no-op. Defining ``LF_DEFAULT_LOGGING`` will enable a default
