@@ -188,6 +188,94 @@ This would dangle if `process_string` accepted arguments by reference. Specifica
 
 __Note:__ This does not stop you from dangling with `std::string const &`...
 
+### Cancellation support
+
+Task can support sibling-wise cooperative cancellation:
+
+```c++
+auto request_on = [](auto async, auto stop ...) -> task<T, true> {
+
+  defer _ = [] { async.cancel_siblings(); }
+
+  while (not async.cancelled()) {
+   
+    // Do some work ...
+
+    if (/* Some condition */) { 
+      return /* Value */;
+    }
+  }
+
+  return std::nullopt;
+}
+```
+
+Which could be used like:
+
+```c++
+auto eager_work = []() -> cancellable_task<T> {
+
+  std::vector<std::optional<T>> results;
+
+  lf::stop stop;
+
+  while(results.size() < 10){
+
+    if(stop.requested()){
+      return {};
+    }
+
+    lf::fork[&res.emplace_back({}), request_on](stop, ...);
+  }
+} 
+```
+
+### Async functions
+
+Lets study the requirements for calling a regular function and its async counterpart, first the regular function:
+
+```c++
+auto regular = []() -> T {
+  return expr;
+}
+```
+
+Then the async counterpart:
+
+```c++
+auto async = [](auto fun) -> task<T> {
+  return expr;
+}
+```
+
+Which we can call the regular function like:
+
+```c++
+R val = std::invoke(regular);
+```
+
+While we can call the async counterpart outside an async context like:
+
+```cpp
+R val1 = lf::sync_wait(async);
+```
+
+From inside an async-function we can call it in several-ways:
+
+```cpp
+R val2 = co_await async_invoke(async);
+
+R val3;
+
+co_await call[&val3, async](); 
+
+co_await fork[&val3, async]();
+```
+
+This requires to be [`std::invoke_r<R>(fun, args...)`](https://en.cppreference.com/w/cpp/utility/functional/invoke) to be valid, the summary for this is `fun` must be callable with `args...` and return a value implicitly convertible to `R`.
+
+`libfork` async functions have the same requirements however, they must also be callable with a first argument of type `lf::core::first_arg` (or a reference to it). This is used to pass static and dynamic context from parent to child. Additionally, it acts as a [y-combinator](https://en.wikipedia.org/wiki/Fixed-point_combinator) allowing the lambda to be recursive.
+
 ### Directly invoking async functions
 
 Sometimes you may want to invoke an async function directly instead of having to bind a result with `lf::call`. For example if you are using one of the parallel algorithms:

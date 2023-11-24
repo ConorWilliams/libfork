@@ -38,7 +38,7 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
     /**
      * @brief Construct a node storing a copy of `data`.
      */
-    explicit constexpr node(T const &data) : m_data(data) {}
+    explicit constexpr node(T const &data) noexcept(std::is_nothrow_copy_constructible_v<T>) : m_data(data) {}
 
     /**
      * @brief Access the value stored in a node of the list.

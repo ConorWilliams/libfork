@@ -13,12 +13,22 @@ namespace lf::impl {
 
 // ---------------------------- //
 
-template <typename R, quasi_pointer I, tag Tag>
-struct promise_type;
+template <returnable R, return_address_for<R> I, tag Tag>
+struct promise;
+
+// -------------------------------------------------------- //
+
+/**
+ * @brief Awaitable in the context of an `lf::task` coroutine.
+ */
+template <returnable R, return_address_for<R> I, tag Tag>
+struct [[nodiscard("A quasi_awaitable MUST be immediately co_awaited!")]] quasi_awaitable {
+  promise<R, I, Tag> *promise; ///< The parent/semaphore needs to be set!
+};
 
 // ---------------------------- //
 
-template <tag Tag, quasi_pointer I, async_function_object F>
+template <quasi_pointer I, tag Tag, async_function_object F>
 struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combinate {
 
   [[no_unique_address]] I ret; ///< The return address.
@@ -29,19 +39,22 @@ struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combin
    */
   template <typename... Args>
     requires async_invocable<I, Tag, F, Args...>
-  auto operator()(auto &&...args) -> quasi_awaitable {
+  auto operator()(Args &&...args) && -> quasi_awaitable<async_result_t<F, Args...>, I, Tag> {
 
     task task = std::invoke(                                             //
         std::move(fun),                                                  //
         first_arg_t<I, Tag, std::remove_cvref_t<F>>(std::as_const(fun)), //
         std::forward<Args>(args)...                                      //
-    );                                                                   //
+    );
 
-    using value_type = unsafe_result_t<I, Tag, F, Args...>;
+    using R = async_result_t<F, Args...>;
+    using P = promise<R, I, Tag>;
 
-    auto *prom = static_cast<promise_type<value_type, I, Tag> *>(task.promise);
+    auto *prom = static_cast<P *>(task.promise);
 
-    prom->set_return(std::move(ret));
+    if constexpr (!std::is_void_v<R>) {
+      prom->set_return(std::move(ret));
+    }
 
     return {prom};
   }
@@ -50,7 +63,7 @@ struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combin
 // // ---------------------------- //
 
 template <tag Tag, quasi_pointer I, async_function_object F>
-auto combinate(I ret, F fun) -> y_combinate<Tag, I, F> {
+auto combinate(I ret, F fun) -> y_combinate<I, Tag, F> {
   return {std::move(ret), std::move(fun)};
 }
 
@@ -58,7 +71,7 @@ auto combinate(I ret, F fun) -> y_combinate<Tag, I, F> {
  * @brief Prevent each layer wrapping the function in another `first_arg_t`.
  */
 template <tag Tag, tag OtherTag, quasi_pointer I, quasi_pointer OtherI, async_function_object F>
-auto combinate(I ret, first_arg_t<OtherI, OtherTag, F> arg) -> y_combinate<Tag, I, F> {
+auto combinate(I ret, first_arg_t<OtherI, OtherTag, F> arg) -> y_combinate<I, Tag, F> {
   return {std::move(ret), unwrap(std::move(arg))};
 }
 

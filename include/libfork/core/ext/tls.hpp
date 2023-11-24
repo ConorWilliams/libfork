@@ -1,11 +1,12 @@
 #ifndef CF97E524_27A6_4CD9_8967_39F1B1BE97B6
 #define CF97E524_27A6_4CD9_8967_39F1B1BE97B6
 
+#include <stdexcept>
+
 #include "libfork/core/context.hpp"
 
 #include "libfork/core/impl/fibre.hpp"
 #include <libfork/core/macro.hpp>
-#include <stdexcept>
 
 namespace lf {
 
@@ -97,11 +98,6 @@ inline void finalize(worker_context *worker) {
 }
 
 } // namespace ext
-
-// /**
-//  * @brief Fetch the current worker's context from its thread-local storage.
-//  */
-// [[nodiscard]] inline auto context() -> worker_context & { return impl::tls::context(); }
 
 } // namespace lf
 

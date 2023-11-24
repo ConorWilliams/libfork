@@ -14,17 +14,16 @@
  * limitations under the License.
  */
 
-#include <libfork/core/async.hpp>
-#include <libfork/core/utility.hpp>
-#include <libfork/schedule/lazy_pool.hpp>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
 
 #include "libfork/core.hpp"
-#include "libfork/schedule.hpp"
-
 #include "libfork/core/eventually.hpp"
+#include "libfork/schedule.hpp"
+#include <libfork/core/async.hpp>
+#include <libfork/core/utility.hpp>
+#include <libfork/schedule/lazy_pool.hpp>
 
 // NOLINTBEGIN No need to check the tests for style.
 

@@ -5,6 +5,7 @@
 - [ ] Make lazy pool accept some additional-context type.
 - [ ] Make busy pool API same as lazy pool.
 - [ ] reduce algorithm.
+- [ ] Make `thread_context` -> `worker_context` ?
 
 ## Misc
 

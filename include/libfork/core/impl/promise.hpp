@@ -3,16 +3,23 @@
 
 #include <concepts>
 
-#include <libfork/core/invocable.hpp>
+#include <libfork/core/first_arg.hpp>
 #include <type_traits>
 #include <utility>
 
 #include <libfork/core/context.hpp>
+#include <libfork/core/control_flow.hpp>
+#include <libfork/core/invocable.hpp>
 #include <libfork/core/tag.hpp>
-#include <libfork/core/tls.hpp>
+#include <libfork/core/task.hpp>
 
+#include <libfork/core/ext/handles.hpp>
+#include <libfork/core/ext/tls.hpp>
+
+#include <libfork/core/impl/awaitables.hpp>
 #include <libfork/core/impl/combinate.hpp>
 #include <libfork/core/impl/frame.hpp>
+#include <libfork/core/impl/return.hpp>
 #include <libfork/core/impl/utility.hpp>
 
 namespace lf::impl {
@@ -111,24 +118,88 @@ inline auto final_await_suspend(frame *parent) noexcept -> std::coroutine_handle
 } // namespace detail
 
 /**
- * sync wait:
- *
- * if worker:
- *
- *  tmp = move(fibre);
- *  frame * = func(args...);
- *  fibre.release();
- *  fibre = move(tmp);
- *  frame->resume();
- *
- * else
- *
- *  fibre.construct();
- *  frame * = func(args...);
- *  fibre.release();
- *  fibre.destruct();
- *  frame->resume();
+ * @brief Type independent bits
  */
+struct promise_base : frame {
+
+  using frame::frame;
+
+  /**
+   * @brief Allocate the coroutine on a new fibre.
+   */
+  static auto operator new(std::size_t size) -> void * { return tls::fibre()->allocate(size); }
+
+  /**
+   * @brief Deallocate the coroutine from current `fibre`s stack.
+   */
+  static void operator delete(void *ptr) noexcept { tls::fibre()->deallocate(ptr); }
+
+  static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
+
+  /**
+   * @brief Terminates the program.
+   */
+  static void unhandled_exception() noexcept {
+    noexcept_invoke([] {
+      LF_RETHROW;
+    });
+  }
+
+  /**
+   * @brief Get a join awaitable.
+   */
+  auto await_transform(join_type) noexcept -> join_awaitable { return {this}; }
+
+  /**
+   * @brief Transform a context pointer into a context-switch awaitable.
+   */
+  auto await_transform(context *dest) -> switch_awaitable {
+
+    auto *submit = std::bit_cast<submit_handle>(static_cast<frame *>(this));
+
+    return {{}, typename intrusive_list<submit_handle>::node{submit}, dest};
+  }
+
+  /**
+   * @brief Transform a call packet into a call awaitable.
+   */
+  template <returnable R2, return_address_for<R2> I2, tag Tg>
+    requires (Tg == tag::call || Tg == tag::fork)
+  auto await_transform(quasi_awaitable<R2, I2, Tg> awaitable) noexcept {
+
+    awaitable.promise->set_parent(this);
+
+    if constexpr (Tg == tag::call) {
+      return call_awaitable{{}, awaitable.promise};
+    }
+
+    if constexpr (Tg == tag::fork) {
+      return fork_awaitable{{}, awaitable.promise, this};
+    }
+  }
+
+  /**
+   * @brief Allocate on this ``fibre_stack``.
+   */
+  // template <typename U>
+  // auto await_transform(co_alloc_t<U> to_alloc) noexcept {
+
+  //   static_assert(Tag != tag::root, "Cannot allocate on root tasks");
+
+  //   U *data = static_cast<U *>(this->stalloc(to_alloc.count * sizeof(U)));
+
+  //   for (std::size_t i = 0; i < to_alloc.count; ++i) {
+  //     std::construct_at(data + i);
+  //   }
+
+  //   struct awaitable : std::suspend_never {
+  //     [[nodiscard]] auto await_resume() const noexcept -> std::span<U> { return allocated; }
+  //     std::span<U> allocated;
+  //   };
+
+  //   return awaitable{{}, {data, to_alloc.count}};
+  // }
+};
 
 /**
  * @brief The promise type for all tasks/coroutines.
@@ -138,21 +209,32 @@ inline auto final_await_suspend(frame *parent) noexcept -> std::coroutine_handle
  * @tparam Context The type of the context this coroutine is running on.
  * @tparam Tag The dispatch tag of the coroutine.
  */
-template <typename R, quasi_pointer I, tag Tag>
-struct promise_type : frame {
-  /**
-   * @brief Allocate the coroutine on a new fibre.
-   */
-  static auto operator new(std::size_t size) -> void * { return tls::fibre()->allocate(size); }
+template <returnable R, return_address_for<R> I, tag Tag>
+struct promise : promise_base, return_result<R, I> {
+
+  promise() noexcept
+      : promise_base{std::coroutine_handle<promise>::from_promise(*this), tls::fibre()->top()} {}
+
+  auto get_return_object() noexcept -> task<R> { return {{}, static_cast<void *>(this)}; }
 
   /**
-   * @brief Deallocate the coroutine from current `fibre`s stack.
+   * @brief Try to resume the parent.
    */
-  static void operator delete(void *ptr) { tls::fibre()->deallocate(ptr); }
+  auto final_suspend() const noexcept {
+
+    LF_LOG("At final suspend call");
+
+    // Completing a non-root task means we currently own the fibre_stack this child is on
+
+    LF_ASSERT(this->load_steals() == 0);                                           // Fork without join.
+    LF_ASSERT_NO_ASSUME(this->load_joins(std::memory_order_acquire) == k_u16_max); // Invalid state.
+
+    return final_awaitable{};
+  }
 
  private:
   struct final_awaitable : std::suspend_always {
-    static auto await_suspend(std::coroutine_handle<promise_type> child) noexcept -> std::coroutine_handle<> {
+    static auto await_suspend(std::coroutine_handle<promise> child) noexcept -> std::coroutine_handle<> {
 
       if constexpr (Tag == tag::root) {
 
@@ -183,119 +265,51 @@ struct promise_type : frame {
       return detail::final_await_suspend(parent);
     }
   };
-
- public:
-  promise_type() noexcept
-      : frame(std::coroutine_handle<promise_type>::from_promise(*this), tls::fibre()->top()) {}
-
-  auto get_return_object() noexcept -> frame * { return this; }
-
-  static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
-
-  /**
-   * @brief Terminates the program.
-   */
-  static void unhandled_exception() noexcept {
-    noexcept_invoke([] {
-      LF_RETHROW;
-    });
-  }
-
-  /**
-   * @brief Try to resume the parent.
-   */
-  auto final_suspend() const noexcept -> final_awaitable {
-
-    LF_LOG("At final suspend call");
-
-    // Completing a non-root task means we currently own the fibre_stack this child is on
-
-    LF_ASSERT(this->debug_count() == 0);
-    LF_ASSERT(this->steals() == 0);                                                // Fork without join.
-    LF_ASSERT_NO_ASSUME(this->load_joins(std::memory_order_acquire) == k_u16_max); // Invalid state.
-
-    return final_awaitable{};
-  }
-
-  /**
-   * @brief Allocate on this ``fibre_stack``.
-   */
-  // template <typename U>
-  // auto await_transform(co_alloc_t<U> to_alloc) noexcept {
-
-  //   static_assert(Tag != tag::root, "Cannot allocate on root tasks");
-
-  //   U *data = static_cast<U *>(this->stalloc(to_alloc.count * sizeof(U)));
-
-  //   for (std::size_t i = 0; i < to_alloc.count; ++i) {
-  //     std::construct_at(data + i);
-  //   }
-
-  //   struct awaitable : std::suspend_never {
-  //     [[nodiscard]] auto await_resume() const noexcept -> std::span<U> { return allocated; }
-  //     std::span<U> allocated;
-  //   };
-
-  //   return awaitable{{}, {data, to_alloc.count}};
-  // }
-
-  /**
-   * @brief Transform a context pointer into a context-switch awaitable.
-   */
-  auto await_transform(Context *dest) -> detail::switch_awaitable<Context> {
-
-    auto *fb = static_cast<frame *>(this);
-    auto *sh = std::bit_cast<submit_h<Context> *>(fb);
-
-    return {intruded_h<Context>{sh}, dest};
-  }
-
-  /**
-   * @brief Transform a fork packet into a fork awaitable.
-   */
-  template <first_arg_tagged<tag::fork> Head, typename... Args>
-  auto await_transform(packet<Head, Args...> &&packet) noexcept -> detail::fork_awaitable<Context> {
-    return {{}, this, std::move(packet).template patch_with<Context>().invoke(this)};
-  }
-
-  /**
-   * @brief Transform a call packet into a call awaitable.
-   */
-  template <first_arg_tagged<tag::call> Head, typename... Args>
-  auto await_transform(packet<Head, Args...> &&packet) noexcept -> detail::call_awaitable {
-    return {{}, std::move(packet).template patch_with<Context>().invoke(this)};
-  }
-
-  /**
-   * @brief Transform a fork packet into a call awaitable.
-   *
-   * This subsumes the above `await_transform()` for forked packets if `Context::max_threads() == 1` is true.
-   */
-  template <first_arg_tagged<tag::fork> Head, typename... Args>
-    requires single_thread_context<Context> && valid_packet<rewrite_tag<Head>, Args...>
-  auto await_transform(packet<Head, Args...> &&pack) noexcept -> detail::call_awaitable {
-    return await_transform(
-        std::move(pack).apply([](Head head, Args &&...args) -> packet<rewrite_tag<Head>, Args...> {
-          return {{std::move(head)}, std::forward<Args>(args)...};
-        }));
-  }
-
-  /**
-   * @brief Get a join awaitable.
-   */
-  auto await_transform(join_type) noexcept -> detail::join_awaitable<Context, Tag == tag::root> {
-    return {this};
-  }
-
-  /**
-   * @brief Transform an invoke packet into an invoke_awaitable.
-   */
-  template <impl::non_reference Packet>
-  auto await_transform(Packet &&pack) noexcept -> detail::invoke_awaitable<Context, Packet> {
-    return {{}, this, std::forward<Packet>(pack), {}};
-  }
 };
 
+/**
+ * @brief Disable rvalue references for T&& template types if an async function is forked.
+ *
+ * This is to prevent the user from accidentally passing a temporary object to
+ * an async function that will then destructed in the parent task before the
+ * child task returns.
+ */
+template <tag Tag, typename... Args>
+inline constexpr bool no_forked_rvalues = Tag != tag::fork || !(std::is_rvalue_reference_v<Args> || ...);
+
 } // namespace lf::impl
+
+/**
+ * @brief Specialize coroutine_traits for task<...> from functions.
+ */
+template <lf::returnable R,
+          lf::impl::return_address_for<R> I,
+          lf::tag Tag,
+          lf::async_function_object F,
+          typename... Args>
+struct std::coroutine_traits<lf::task<R>, lf::impl::first_arg_t<I, Tag, F>, Args...> {
+
+  static_assert(lf::impl::no_forked_rvalues<Tag, Args...>, "Forked temporaries may dangle!");
+
+  using promise_type = lf::impl::promise<R, I, Tag>;
+};
+
+/**
+ * @brief Specialize coroutine_traits for task<...> from member functions.
+ */
+template <lf::returnable R,
+          typename This,
+          lf::impl::return_address_for<R> I,
+          lf::tag Tag,
+          lf::async_function_object F,
+          typename... Args>
+struct std::coroutine_traits<lf::task<R>, This, lf::impl::first_arg_t<I, Tag, F>, Args...> {
+
+  static_assert(lf::impl::no_forked_rvalues<Tag, This, Args...>, "Forked temporaries may dangle!");
+
+  using promise_type = lf::impl::promise<R, I, Tag>;
+};
+
+// TODO: test if disallowing r-values for forked coroutines at the top level breaks concepts.
 
 #endif /* C854CDE9_1125_46E1_9E2A_0B0006BFC135 */

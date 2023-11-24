@@ -13,17 +13,11 @@
 namespace lf {
 
 /**
- * @brief Test if we can form a reference to an instance of type T.
- */
-template <typename T>
-concept can_reference = requires () { typename std::type_identity_t<T &>; };
-
-/**
  * @brief Test if the expression `*std::declval<T&>()` is valid and has a referenceable type.
  */
 template <typename I>
 concept dereferenceable = requires (I val) {
-  { *val } -> can_reference;
+  { *val } -> impl::can_reference;
 };
 
 /**
@@ -32,7 +26,7 @@ concept dereferenceable = requires (I val) {
  * A quasi-pointer is assumed to be cheap-to-move like an iterator/legacy-pointer.
  */
 template <typename I>
-concept quasi_pointer = std::movable<I> && dereferenceable<I>;
+concept quasi_pointer = std::default_initializable<I> && std::movable<I> && dereferenceable<I>;
 
 /**
  * @brief A concept that requires a type be a copyable [function

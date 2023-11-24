@@ -16,7 +16,7 @@ inline namespace ext {
 
 class fibre {
 
-  static constexpr std::size_t k_init_size = 128;
+  static constexpr std::size_t k_init_size = 256;
 
  public:
   /**
@@ -99,18 +99,18 @@ class fibre {
       : m_top(fibril::next_fibril(k_init_size, nullptr)),
         m_lo(m_top->m_lo),
         m_sp(m_top->m_sp),
-        m_hi(m_top->m_hi) {}
+        m_hi(m_top->m_hi) {
+    LF_LOG("Constructing fibre");
+  }
 
   /**
    * @brief Construct a new fibre object taking ownership of the fibre that `frag` is a part of.
    *
    * This requires that `frag` is part of a fibre chain that has called `release()`.
    */
-  explicit fibre(fibril *frag)
-      : m_top(frag->top()),
-        m_lo(m_top->m_lo),
-        m_sp(m_top->m_sp),
-        m_hi(m_top->m_hi) {}
+  explicit fibre(fibril *frag) : m_top(frag->top()), m_lo(m_top->m_lo), m_sp(m_top->m_sp), m_hi(m_top->m_hi) {
+    LF_LOG("Constructing fibre from fibril");
+  }
 
   fibre(fibre const &) = delete;
 
@@ -123,7 +123,7 @@ class fibre {
     return *this;
   }
 
-  friend void swap(fibre &lhs, fibre &rhs) noexcept {
+  inline friend void swap(fibre &lhs, fibre &rhs) noexcept {
     using std::swap;
     swap(lhs.m_top, rhs.m_top);
     swap(lhs.m_lo, rhs.m_lo);
@@ -146,6 +146,8 @@ class fibre {
    */
   void squash() {
 
+    LF_LOG("Squashing fibre");
+
     LF_ASSERT(m_top);
     LF_ASSERT(m_sp == m_lo);
 
@@ -161,6 +163,8 @@ class fibre {
    * A new fibre can be constructed from the fibril to continue the released fibre.
    */
   [[nodiscard]] auto release() -> fibril * {
+
+    LF_LOG("Releasing fibre");
 
     LF_ASSERT(m_top);
 
@@ -204,6 +208,8 @@ class fibre {
       grow(size);
     }
 
+    LF_LOG("Allocating {} bytes {}-{}", size, (void *)m_sp, (void *)(m_sp + ext_size));
+
     return std::exchange(m_sp, m_sp + ext_size);
   }
 
@@ -214,6 +220,9 @@ class fibre {
    */
   constexpr void deallocate(void *ptr) noexcept {
     // Should compile to a conditional move.
+
+    LF_LOG("Deallocating {} skipped={}", ptr, m_sp == m_lo);
+
     m_sp = m_sp == m_lo ? m_sp : static_cast<std::byte *>(ptr);
   }
 
@@ -235,6 +244,8 @@ class fibre {
    * @brief Allocate a new fibril and attach it to the current fibre.
    */
   void grow(std::size_t space) {
+
+    LF_LOG("Growing fibre");
 
     // Round size to a power of 2 greater than `space`, min size and double the prev capacity.
     m_top = fibril::next_fibril(std::max(2 * capacity(), space), std::move(m_top));

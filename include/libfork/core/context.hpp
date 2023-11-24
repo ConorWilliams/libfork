@@ -74,7 +74,7 @@ class context : impl::immovable<context> {
  private:
   static constexpr std::size_t k_buff = 8;
 
-  friend class worker_context;
+  friend class ext::worker_context;
   friend class impl::full_context;
 
   deque<task_handle> m_tasks;             ///< All non-null.

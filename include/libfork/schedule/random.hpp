@@ -79,6 +79,8 @@ class xoshiro {
 
   /**
    * @brief Construct and seed the PRNG from some other generator.
+   *
+   * TODO: use std::uniform_random_bit_generator and check that the generators
    */
   template <typename PRNG>
     requires requires (PRNG &&device) {

@@ -18,10 +18,34 @@
 /**
  * @file call.hpp
  *
- * @brief Meta header which includes all ``lf::task``, ``lf::fork``, ``lf::call``, ``lf::join`` machinery.
+ * @brief Meta header which includes ``lf::fork``, ``lf::call``, ``lf::join`` machinery.
  */
 
 namespace lf {
+
+namespace impl {
+/**
+ * @brief A empty tag type used to disambiguate a join.
+ */
+struct join_type {};
+
+} // namespace impl
+
+/**
+ * @brief An awaitable (in a `lf::task`) that triggers a join.
+ *
+ * After a join is resumed it is guaranteed that all forked child tasks will have completed.
+ *
+ * \rst
+ *
+ * .. note::
+ *
+ *    There is no relationship between the thread that executes the ``lf::join``
+ *    and the thread that resumes the coroutine.
+ *
+ * \endrst
+ */
+inline constexpr impl::join_type join = {};
 
 namespace impl {
 
@@ -81,28 +105,7 @@ struct bind_task {
 
 #undef LF_DEPRECATE
 
-/**
- * @brief A empty tag type used to disambiguate a join.
- */
-struct join_type {};
-
 } // namespace impl
-
-/**
- * @brief An awaitable (in a `lf::task`) that triggers a join.
- *
- * After a join is resumed it is guaranteed that all forked child tasks will have completed.
- *
- * \rst
- *
- * .. note::
- *
- *    There is no relationship between the thread that executes the ``lf::join``
- *    and the thread that resumes the coroutine.
- *
- * \endrst
- */
-inline constexpr impl::join_type join = {};
 
 /**
  * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a fork.

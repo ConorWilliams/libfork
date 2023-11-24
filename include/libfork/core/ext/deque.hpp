@@ -123,12 +123,14 @@ struct atomic_ring_buf {
    * @param bottom The bottom of the range to copy from (inclusive).
    * @param top The top of the range to copy from (exclusive).
    */
-  [[nodiscard]] constexpr auto resize(std::ptrdiff_t bottom, std::ptrdiff_t top) const
-      -> atomic_ring_buf<T> * {
+  [[nodiscard]] constexpr auto resize(std::ptrdiff_t bot, std::ptrdiff_t top) const -> atomic_ring_buf<T> * {
+
     auto *ptr = new atomic_ring_buf{2 * m_cap}; // NOLINT
-    for (std::ptrdiff_t i = top; i != bottom; ++i) {
+
+    for (std::ptrdiff_t i = top; i != bot; ++i) {
       ptr->store(i, load(i));
     }
+
     return ptr;
   }
 

@@ -60,19 +60,45 @@ using indirect_result_t = invoke_result_t<F, std::iter_reference_t<Is>...>;
 
 // ------------------------------- indirectly_unary_invocable ------------------------------- //
 
+namespace detail {
+
+template <typename I>
+struct indirect_value_impl {
+  using type = std::iter_value_t<I> &;
+};
+
+template <typename Iter, typename Proj>
+struct indirect_value_impl<std::projected<Iter, Proj>> {
+  using type = invoke_result_t<Proj &, std::iter_value_t<Iter> &>;
+};
+
+/**
+ * @brief From [P2609R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2609r3.html) this relaxes
+ * some constraints a little.
+ *
+ * Specifically: `indirect_value_t<I>` must be `std::iter_value_t<I> &` for an iterator and
+ * `invoke_result_t<Proj &, indirect_value_t<Iter>>` for `std::projected<Proj, Iter>`.
+ */
+template <std::indirectly_readable I>
+using indirect_value_t = typename indirect_value_impl<I>::type;
+
+} // namespace detail
+
 /**
  * @brief A version of `std::indirectly_unary_invocable` that uses `lf::invoke_result_t` instead of the `std`
  * version.
+ *
+ * This uses the relaxed version from
+ * [P2997R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2997r0.html#ref-LWG3859)
  */
 template <class F, class I>
-concept indirectly_unary_invocable = std::indirectly_readable<I> &&                          //
-                                     std::copy_constructible<F> &&                           //
-                                     std::invocable<F &, std::iter_value_t<I> &> &&          //
-                                     std::invocable<F &, std::iter_reference_t<I>> &&        //
-                                     std::invocable<F &, std::iter_common_reference_t<I>> && //
-                                     std::common_reference_with<                             //
-                                         invoke_result_t<F &, std::iter_value_t<I> &>,       //
-                                         invoke_result_t<F &, std::iter_reference_t<I>>      //
+concept indirectly_unary_invocable = std::indirectly_readable<I> &&                     //
+                                     std::copy_constructible<F> &&                      //
+                                     std::invocable<F &, std::iter_value_t<I> &> &&     //
+                                     std::invocable<F &, std::iter_reference_t<I>> &&   //
+                                     std::common_reference_with<                        //
+                                         invoke_result_t<F &, std::iter_value_t<I> &>,  //
+                                         invoke_result_t<F &, std::iter_reference_t<I>> //
                                          >;
 
 // ---------------------------------- Semigroup  helpers ---------------------------------- //

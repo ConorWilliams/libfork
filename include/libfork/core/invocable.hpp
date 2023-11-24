@@ -37,7 +37,7 @@ struct discard_t {
 
 // ------------ Bare-bones inconsistent invocable ------------ //
 
-template <typename I, typename R>
+template <typename I, typename Task>
 struct valid_return : std::false_type {};
 
 template <>
@@ -45,6 +45,12 @@ struct valid_return<discard_t, task<void>> : std::true_type {};
 
 template <typename R, std::indirectly_writable<R> I>
 struct valid_return<I, task<R>> : std::true_type {};
+
+template <typename I, typename R>
+concept return_address_for =         //
+    quasi_pointer<I> &&              //
+    returnable<R> &&                 //
+    valid_return<I, task<R>>::value; //
 
 /**
  * @brief Verify `F` is async `Tag` invocable with `Args...` and returns a task who's result type is

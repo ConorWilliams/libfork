@@ -181,8 +181,7 @@ static_assert(std::is_empty_v<immovable<void>>);
  */
 template <class F>
   requires std::is_nothrow_invocable_v<F>
-class [[nodiscard("An instance of defer will execute immediately unless bound to a name!")]] defer
-    : immovable<defer<F>> {
+class [[nodiscard("Defer will execute immediately unless bound to a name!")]] defer : immovable<defer<F>> {
  public:
   /**
    * @brief Construct a new Defer object.
@@ -199,6 +198,8 @@ class [[nodiscard("An instance of defer will execute immediately unless bound to
  private:
   [[no_unique_address]] F m_f;
 };
+
+// TODO: we could make manual_lifetime<T> empty if T is empty?
 
 /**
  * @brief Provides storage for a single object of type ``T``.
@@ -218,9 +219,26 @@ class manual_lifetime : immovable<manual_lifetime<T>> {
   }
 
   /**
-   * @brief Destroy the contained object, must have been constructed first.
+   * @brief Start lifetime of object.
    */
-  void destroy() noexcept { std::destroy_at(data()); }
+  template <typename U>
+    requires std::constructible_from<T, U>
+  void operator=(U &&expr) noexcept(std::is_nothrow_constructible_v<T, U>) {
+    this->construct(std::forward<U>(expr));
+  }
+
+  /**
+   * @brief Destroy the contained object, must have been constructed first.
+   *
+   * A noop if ``T`` is trivially destructible.
+   */
+  void destroy() noexcept(std::is_nothrow_destructible_v<T>)
+    requires std::is_destructible_v<T>
+  {
+    if constexpr (!std::is_trivially_destructible_v<T>) {
+      std::destroy_at(data());
+    }
+  }
 
   /**
    * @brief Get a pointer to the contained object, must have been constructed first.
@@ -265,10 +283,53 @@ class manual_lifetime : immovable<manual_lifetime<T>> {
   [[nodiscard]] auto operator*() const && noexcept -> T const && { return std::move(*data()); }
 
  private:
-  alignas(T) std::array<std::byte, sizeof(T)> m_buf;
+  [[no_unique_address]] alignas(T) std::array<std::byte, sizeof(T)> m_buf;
 };
 
 // ---------------- Meta programming ---------------- //
+
+/**
+ * @brief Test if we can form a reference to an instance of type T.
+ */
+template <typename T>
+concept can_reference = requires () { typename std::type_identity_t<T &>; };
+
+// Ban constructs like (T && -> T const &) which would dangle.
+
+namespace detail {
+
+template <typename To, typename From>
+struct safe_ref_bind_impl : std::false_type {};
+
+// All reference types can bind to a non-dangling reference of the same kind without dangling.
+
+template <typename T>
+struct safe_ref_bind_impl<T, T> : std::true_type {};
+
+// `T const X` can additionally bind to `T X` without dangling//
+
+template <typename To, typename From>
+  requires (!std::same_as<To const &, From &>)
+struct safe_ref_bind_impl<To const &, From &> : std::true_type {};
+
+template <typename To, typename From>
+  requires (!std::same_as<To const &&, From &&>)
+struct safe_ref_bind_impl<To const &&, From &&> : std::true_type {};
+
+} // namespace detail
+
+/**
+ * @brief Verify that ``To expr = From`` is valid and does not dangle.
+ *
+ * This requires that ``To`` and ``From`` are both the same reference type or that ``To`` is a
+ * const qualified version of ``From``. This explicitly bans conversions like ``T && -> T const &``
+ * which would dangle.
+ */
+template <typename From, typename To>
+concept safe_ref_bind_to =                          //
+    std::is_reference_v<To> &&                      //
+    can_reference<From> &&                          //
+    detail::safe_ref_bind_impl<To, From &&>::value; //
 
 namespace detail {
 

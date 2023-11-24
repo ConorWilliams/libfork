@@ -43,7 +43,8 @@ namespace lf {
  * .. warning::
  *    It is undefined behavior if the object inside an `eventually` is not constructed before it
  *    is used or if the lifetime of the ``lf::eventually`` ends before an object is constructed.
- *    If you are placing instances of `eventually` on the heap you need to be very careful about exceptions.
+ *    If you are placing instances of `eventually` on the heap you need to be very careful about
+ * exceptions.
  *
  * \endrst
  */
@@ -52,26 +53,12 @@ class eventually;
 
 // ------------------------------------------------------------------------ //
 
-// TODO: stop references binding to temporaries
-
-// ----- //
-
-template <typename To, typename From>
-struct safe_ref_bind_impl : std::false_type {};
-
-// All reference types can bind to a non-dangling reference of the same kind without dangling.
-
-template <typename T>
-struct safe_ref_bind_impl<T, T> : std::true_type {};
-
-// T const X can additionally bind to U X without dangling//
-
-template <typename To, typename From>
-struct safe_ref_bind_impl<To const &, From &> : std::true_type {};
-
-template <typename To, typename From>
-struct safe_ref_bind_impl<To const &&, From &&> : std::true_type {};
-
+/**
+ * @brief Has pointer semantics.
+ *
+ *
+ * `eventually<T &> val` should behave like `T & val` except assignment rebinds.
+ */
 template <impl::non_void T>
   requires impl::reference<T>
 class eventually<T> : impl::immovable<eventually<T>> {
@@ -79,85 +66,48 @@ class eventually<T> : impl::immovable<eventually<T>> {
   /**
    * @brief Construct an object inside the eventually from ``expr``.
    */
-  template <typename U>
-    requires std::same_as<T, U &&> || std::same_as<T, impl::constify_ref_t<U &&>>
-  constexpr auto operator=(U &&expr) noexcept -> eventually & {
+  template <impl::safe_ref_bind_to<T> U>
+  void operator=(U &&expr) noexcept {
     m_value = std::addressof(expr);
-    return *this;
   }
 
   /**
-   * @brief Access the wrapped object.
-   *
-   * This will decay T&& to T& just like a regular T&& function parameter.
+   * @brief Access the wrapped reference.
    */
-  [[nodiscard]] constexpr auto operator*() const & noexcept -> std::remove_reference_t<T> & {
-    return *impl::non_null(m_value);
-  }
+  [[nodiscard]] auto operator->() const noexcept -> std::remove_reference_t<T> * { return m_value; }
 
   /**
-   * @brief Access the wrapped object as is.
+   * @brief Deference the wrapped pointer.
+   *
+   * This will decay `T&&` to `T&` just like using a `T &&` reference would.
+   */
+  [[nodiscard]] auto operator*() const & noexcept -> std::remove_reference_t<T> & { return *m_value; }
+
+  /**
+   * @brief Forward the wrapped reference.
    *
    * This will not decay T&& to T&, nor will it promote T& to T&&.
    */
-  [[nodiscard]] constexpr auto operator*() const && noexcept -> T {
+  [[nodiscard]] auto operator*() const && noexcept -> T {
     if constexpr (std::is_rvalue_reference_v<T>) {
-      return std::move(*impl::non_null(m_value));
+      return std::move(*m_value);
     } else {
-      return *impl::non_null(m_value);
+      return *m_value;
     }
   }
 
  private:
-  std::remove_reference_t<T> *m_value = nullptr;
+  std::remove_reference_t<T> *m_value;
 };
 
 // ------------------------------------------------------------------------ //
 
-// ------------------------------------------------------------------------ //
-
 template <impl::non_void T>
-class eventually : impl::immovable<eventually<T>> {
+class eventually : impl::manual_lifetime<T> {
  public:
-  // clang-format off
-
-  /**
-   * @brief Construct an empty eventually.
-   */
-  constexpr eventually() noexcept requires std::is_trivially_constructible_v<T> = default;
-
-  // clang-format on
-
-#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
-  constexpr eventually() noexcept : m_init{} {}
-#endif
-
-  /**
-   * @brief Construct an object inside the eventually as if by ``T(args...)``.
-   */
-  template <typename... Args>
-    requires std::constructible_from<T, Args...>
-  constexpr void emplace(Args &&...args) noexcept(std::is_nothrow_constructible_v<T, Args...>) {
-    LF_LOG("Constructing an eventually");
-#ifndef NDEBUG
-    LF_ASSERT(!m_constructed);
-#endif
-    std::construct_at(std::addressof(m_value), std::forward<Args>(args)...);
-#ifndef NDEBUG
-    m_constructed = true;
-#endif
-  }
-
-  /**
-   * @brief Construct an object inside the eventually from ``expr``.
-   */
-  template <typename U>
-  constexpr auto operator=(U &&expr) noexcept(noexcept(emplace(std::forward<U>(expr)))) -> eventually &
-    requires requires (eventually self) { self.emplace(std::forward<U>(expr)); }
-  {
-    emplace(std::forward<U>(expr));
-    return *this;
-  }
+  using impl::manual_lifetime<T>::operator=;
+  using impl::manual_lifetime<T>::operator->;
+  using impl::manual_lifetime<T>::operator*;
 
   // clang-format off
 
@@ -168,46 +118,7 @@ class eventually : impl::immovable<eventually<T>> {
 
   // clang-format on
 
-#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
-
-  constexpr ~eventually() noexcept(std::is_nothrow_destructible_v<T>) {
-  #ifndef NDEBUG
-    LF_ASSUME(m_constructed);
-  #endif
-    std::destroy_at(std::addressof(m_value));
-  }
-
-#endif
-
-  /**
-   * @brief Access the wrapped object.
-   */
-  [[nodiscard]] constexpr auto operator*() & noexcept -> T & {
-#ifndef NDEBUG
-    LF_ASSUME(m_constructed);
-#endif
-    return m_value;
-  }
-
-  /**
-   * @brief Access the wrapped object.
-   */
-  [[nodiscard]] constexpr auto operator*() && noexcept(std::is_nothrow_move_constructible_v<T>) -> T {
-#ifndef NDEBUG
-    LF_ASSUME(m_constructed);
-#endif
-    return std::move(m_value);
-  }
-
- private:
-  union {
-    impl::empty m_init;
-    T m_value;
-  };
-
-#ifndef NDEBUG
-  bool m_constructed = false;
-#endif
+  constexpr ~eventually() noexcept(std::is_nothrow_destructible_v<T>) { this->destroy(); }
 };
 
 } // namespace lf
