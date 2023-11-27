@@ -9,11 +9,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <vector>
-
 #include "libfork/core.hpp"
-
-#include "libfork/schedule/contexts.hpp"
 
 /**
  * @file unit_pool.hpp
@@ -23,51 +19,25 @@
 
 namespace lf {
 
-namespace impl {
-
-/**
- * @brief A wrapper which transforms a single-threaded context into a scheduler.
- */
-template <thread_context Context>
-class unit_pool_impl : impl::immovable<unit_pool_impl<Context>> {
- public:
-  using context_type = Context;
-
-  static void schedule(intruded_h<context_type> *ptr) { context_type::submit(ptr); }
-
-  unit_pool_impl() { worker_init(&m_context); }
-
-  ~unit_pool_impl() { worker_finalize(&m_context); }
-
- private:
-  [[no_unique_address]] context_type m_context;
-};
-
-} // namespace impl
-
-inline namespace ext {
-
-/**
- * @brief A scheduler that runs all tasks inline on the current thread and keeps an internal stack.
- *
- * This is exposed/intended for testing, using this thread pool is equivalent to
- * using a `busy_pool` with a single thread. It is different from `unit_pool` in that
- * it explicitly disables the `fork` -> `call` optimization.
- */
-using debug_pool = impl::unit_pool_impl<impl::test_immediate_context>;
-
-static_assert(scheduler<debug_pool>);
-
-} // namespace ext
-
 /**
  * @brief A scheduler that runs all tasks inline on the current thread.
  *
  * This is useful for testing/debugging/benchmarking.
  */
-using unit_pool = impl::unit_pool_impl<impl::immediate_context>;
+class unit_pool : impl::immovable<unit_pool> {
+ public:
+  static void schedule(lf::intruded_list<lf::submit_handle> jobs) {
 
-static_assert(scheduler<unit_pool>);
+    for_each_elem(jobs, [](lf::submit_handle hand) {
+      resume(hand);
+    });
+  }
+
+  ~unit_pool() noexcept { lf::finalize(m_context); }
+
+ private:
+  lf::worker_context *m_context = lf::worker_init(1);
+};
 
 } // namespace lf
 

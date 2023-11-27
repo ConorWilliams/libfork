@@ -18,7 +18,6 @@
 #include <vector>
 
 #include "libfork/core.hpp"
-#include "libfork/core/macro.hpp"
 
 /**
  * @file numa.hpp

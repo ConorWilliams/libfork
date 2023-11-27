@@ -28,7 +28,7 @@ find_package(Catch2 REQUIRED)
 
 # ---- Tests ----
 
-file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/core/true_core.cpp")
+file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/core/core.cpp")
 
 add_executable(libfork_test ${TEST_SOURCES})
 target_link_libraries(libfork_test PRIVATE libfork::libfork Catch2::Catch2WithMain)

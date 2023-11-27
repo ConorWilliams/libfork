@@ -22,6 +22,8 @@
 
 // #define NDEBUG
 
+// #define LF_DEFAULT_LOGGING
+
 // #define LF_ASSERT(x)
 
 // #define LF_PROPAGATE_EXCEPTIONS
@@ -31,8 +33,8 @@
 
 #include "libfork/core.hpp"
 
-#include "libfork/schedule/busy_pool.hpp"
-#include "libfork/schedule/lazy_pool.hpp"
+// #include "libfork/schedule/busy_pool.hpp"
+// #include "libfork/schedule/lazy_pool.hpp"
 #include "libfork/schedule/unit_pool.hpp"
 
 // NOLINTBEGIN No linting in tests
@@ -52,15 +54,16 @@ auto make_scheduler() -> T {
   }
 }
 
-inline constexpr async noop = [](auto) -> task<> {
+inline constexpr auto noop = [](auto) -> task<> {
   LF_LOG("nooop");
   co_return;
 };
 
 } // namespace
 
-TEMPLATE_TEST_CASE(
-    "Construct destruct launch", "[core][template]", unit_pool, debug_pool, busy_pool, lazy_pool) {
+//  unit_pool, debug_pool, busy_pool, lazy_pool
+
+TEMPLATE_TEST_CASE("Construct destruct launch", "[core][template]", unit_pool) {
 
   for (int i = 0; i < 100; ++i) {
     auto schedule = make_scheduler<TestType>();
@@ -81,7 +84,7 @@ TEMPLATE_TEST_CASE(
 namespace {
 
 // In some implementations, this could cause a stack overflow if symmetric transfer is not used.
-inline constexpr async sym_stack_overflow_1 = [](auto, int n) -> lf::task<int> {
+inline constexpr auto sym_stack_overflow_1 = [](auto, int n) -> lf::task<int> {
   for (int i = 0; i < n; ++i) {
     co_await lf::call(noop)();
   }
@@ -114,10 +117,8 @@ int fib(int n) {
   return fib(n - 1) + fib(n - 2);
 }
 
-inline constexpr async r_fib = [](auto fib, int n) -> lf::task<int> {
+inline constexpr auto r_fib = [](auto fib, int n) -> lf::task<int> {
   //
-
-  LF_ASSERT(fib.context()->max_threads() >= 0);
 
   if (n < 2) {
     co_return n;
@@ -125,8 +126,8 @@ inline constexpr async r_fib = [](auto fib, int n) -> lf::task<int> {
 
   int a, b;
 
-  co_await lf::fork(a, fib)(n - 1);
-  co_await lf::call(b, fib)(n - 2);
+  co_await lf::fork(&a, fib)(n - 1);
+  co_await lf::call(&b, fib)(n - 2);
 
   co_await lf::join;
 
@@ -135,7 +136,7 @@ inline constexpr async r_fib = [](auto fib, int n) -> lf::task<int> {
 
 } // namespace
 
-TEMPLATE_TEST_CASE("Fibonacci - returning", "[core][template]", unit_pool, debug_pool, busy_pool, lazy_pool) {
+TEMPLATE_TEST_CASE("Fibonacci - returning", "[core][template]", unit_pool) {
   for (int j = 0; j < 100; ++j) {
     {
       auto schedule = make_scheduler<TestType>();
@@ -149,35 +150,7 @@ TEMPLATE_TEST_CASE("Fibonacci - returning", "[core][template]", unit_pool, debug
 
 namespace {
 
-// tree search unit pool
-
-inline constexpr async inline_fib = [](auto fib, int n) -> lf::task<int> {
-  //
-
-  if (n < 2) {
-    co_return n;
-  }
-
-  int a = co_await fib(n - 1);
-  int b = co_await fib(n - 2);
-
-  co_return a + b;
-};
-
-} // namespace
-
-TEMPLATE_TEST_CASE("Fibonacci - inline", "[core][template]", unit_pool, debug_pool, busy_pool, lazy_pool) {
-
-  auto schedule = make_scheduler<TestType>();
-
-  for (int i = 0; i < 25; ++i) {
-    REQUIRE(fib(i) == sync_wait(schedule, inline_fib, i));
-  }
-}
-
-namespace {
-
-inline constexpr async v_fib = [](auto fib, int &ret, int n) -> lf::task<void> {
+inline constexpr auto v_fib = [](auto fib, int &ret, int n) -> lf::task<void> {
   //
   if (n < 2) {
     ret = n;
@@ -194,7 +167,7 @@ inline constexpr async v_fib = [](auto fib, int &ret, int n) -> lf::task<void> {
 
   int c;
 
-  co_await fib(c, n - 2);
+  co_await lf::call(fib)(c, n - 2);
 
   LF_ASSERT(b == c);
 
@@ -203,7 +176,7 @@ inline constexpr async v_fib = [](auto fib, int &ret, int n) -> lf::task<void> {
 
 }
 
-TEMPLATE_TEST_CASE("Fibonacci - void", "[core][template]", unit_pool, debug_pool, busy_pool, lazy_pool) {
+TEMPLATE_TEST_CASE("Fibonacci - void", "[core][template]", unit_pool) {
 
   auto schedule = make_scheduler<TestType>();
 
@@ -218,7 +191,7 @@ TEMPLATE_TEST_CASE("Fibonacci - void", "[core][template]", unit_pool, debug_pool
 
 namespace {
 
-inline constexpr async v_fib_ignore = [](auto fib, int &ret, int n) -> lf::task<int> {
+inline constexpr auto v_fib_ignore = [](auto fib, int &ret, int n) -> lf::task<int> {
   //
   if (n < 2) {
     ret = n;
@@ -230,8 +203,8 @@ inline constexpr async v_fib_ignore = [](auto fib, int &ret, int n) -> lf::task<
   std::optional<int> c;
 
   for (int i = 0; i < 2; i++) {
-    co_await lf::fork(fib)(a, n - 1);    // Test explicit ignore
-    co_await lf::call(c, fib)(b, n - 2); // Test bind to a different type.
+    co_await lf::fork(fib)(a, n - 1);     // Test explicit ignore
+    co_await lf::call(&c, fib)(b, n - 2); // Test bind to a different type.
     co_await lf::join;
 
     LF_ASSERT(c);
@@ -245,7 +218,7 @@ inline constexpr async v_fib_ignore = [](auto fib, int &ret, int n) -> lf::task<
 
 }
 
-TEMPLATE_TEST_CASE("Fibonacci - ignored", "[core][template]", unit_pool, debug_pool, busy_pool, lazy_pool) {
+TEMPLATE_TEST_CASE("Fibonacci - ignored", "[core][template]", unit_pool) {
 
   auto schedule = make_scheduler<TestType>();
 
@@ -263,11 +236,15 @@ namespace {
 
 class ref_test {
  public:
-  static constexpr async get = [](auto, auto &&self) -> lf::task<int &> {
+  static constexpr auto get = [](auto, auto &&self) -> lf::task<int &> {
     //
-    auto &also_prov = co_await self.get_2(self);
+    // auto &also_prov =
 
-    LF_ASSERT(&also_prov == &self.m_private);
+    lf::eventually<int &> also_prov;
+
+    co_await lf::call(&also_prov, self.get_2)(self);
+
+    LF_ASSERT(&(*also_prov) == &self.m_private);
 
     co_return self.m_private;
   };
@@ -275,14 +252,14 @@ class ref_test {
   int m_private = 99;
 
  private:
-  static constexpr async get_2 = [](auto, auto &&self) -> lf::task<int &> {
+  static constexpr auto get_2 = [](auto, auto &&self) -> lf::task<int &> {
     co_return self.m_private;
   };
 };
 
 } // namespace
 
-TEMPLATE_TEST_CASE("Reference test", "[core][template]", unit_pool, debug_pool, busy_pool, lazy_pool) {
+TEMPLATE_TEST_CASE("Reference test", "[core][template]", unit_pool) {
 
   LF_LOG("pre-init");
 

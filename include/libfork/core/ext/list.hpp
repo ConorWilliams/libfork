@@ -66,7 +66,7 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
     friend class intrusive_list;
 
     [[no_unique_address]] T m_data;
-    node *m_next;
+    node *m_next = nullptr;
   };
 
   /**

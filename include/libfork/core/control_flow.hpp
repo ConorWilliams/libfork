@@ -75,7 +75,7 @@ struct bind_task {
    *
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
-  template <quasi_pointer I, async_function_object F>
+  template <async_function_object F>
   LF_DEPRECATE [[nodiscard]] LF_STATIC_CALL auto operator()(F fun) LF_STATIC_CONST {
     return combinate<Tag>(discard_t{}, std::move(fun));
   }
@@ -96,7 +96,7 @@ struct bind_task {
    *
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
-  template <quasi_pointer I, async_function_object F>
+  template <async_function_object F>
   [[nodiscard]] LF_STATIC_CALL auto operator[](F fun) LF_STATIC_CONST {
     return combinate<Tag>(discard_t{}, std::move(fun));
   }

@@ -179,17 +179,6 @@ class fibre {
     return top;
   }
 
-  // /**
-  //  * @brief
-  //  *
-  //  * @return fibril*
-  //  */
-  // [[nodiscard]] auto release_and_destroy() && -> fibril * {
-  //   LF_ASSERT(m_top);
-  //   m_top->m_sp = m_sp;
-  //   return m_top.release();
-  // }
-
   /**
    * @brief Allocate `count` bytes of memory on a fibril in the bundle.
    *

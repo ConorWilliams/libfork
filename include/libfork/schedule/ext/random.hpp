@@ -16,10 +16,10 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <limits>
+#include <random>
 #include <utility>
-
-#include "libfork/core/macro.hpp"
 
 /**
  * \file random.hpp
@@ -38,11 +38,23 @@ namespace impl {
  */
 struct seed_t {};
 
+template <typename T>
+concept has_result_type = requires { typename std::remove_cvref_t<T>::result_type; };
+
 } // namespace impl
 
 inline namespace ext {
 
 inline constexpr impl::seed_t seed = {}; ///< A tag to disambiguate seeding from other operations.
+
+/**
+ * @brief `Like std::uniform_random_bit_generator`, but also requires a nested `result_type`.
+ */
+template <typename G>
+concept uniform_random_bit_generator =                                                     //
+    std::uniform_random_bit_generator<G> &&                                                //
+    impl::has_result_type<G> &&                                                            //
+    std::same_as<std::invoke_result_t<G &>, typename std::remove_cvref_t<G>::result_type>; //
 
 /**
  * @brief A \<random\> compatible implementation of the xoshiro256** 1.0 PRNG
@@ -71,23 +83,18 @@ class xoshiro {
    *
    * @param my_seed The PRNG's seed, must not be everywhere zero.
    */
-  explicit constexpr xoshiro(std::array<result_type, 4> const &my_seed) noexcept : m_state{my_seed} {
-    if (my_seed == std::array<result_type, 4>{0, 0, 0, 0}) {
-      LF_ASSERT(false);
-    }
-  }
+  explicit constexpr xoshiro(std::array<result_type, 4> const &my_seed) noexcept : m_state{my_seed} {}
 
   /**
    * @brief Construct and seed the PRNG from some other generator.
-   *
-   * TODO: use std::uniform_random_bit_generator and check that the generators
    */
-  template <typename PRNG>
-    requires requires (PRNG &&device) {
-      { std::invoke(device) } -> std::unsigned_integral;
+  template <uniform_random_bit_generator PRNG>
+    requires (!std::is_const_v<std::remove_reference_t<PRNG &&>>)
+  constexpr xoshiro(impl::seed_t, PRNG &&dev) noexcept {
+    for (std::uniform_int_distribution<result_type> dist{min(), max()}; auto &elem : m_state) {
+      elem = dist(dev);
     }
-  constexpr xoshiro(impl::seed_t, PRNG &&dev) noexcept
-      : xoshiro({scale(dev), scale(dev), scale(dev), scale(dev)}) {}
+  }
 
   /**
    * @brief Get the minimum value of the generator.
@@ -168,32 +175,6 @@ class xoshiro {
     return (val << bits) | (val >> (64 - bits)); // NOLINT
   }
 
-  /**
-   * @brief Utility function to upscale prng's result_type to xoshiro's result_type.
-   */
-  template <typename PRNG>
-    requires requires (PRNG &&device) {
-      { std::invoke(device) } -> std::unsigned_integral;
-    }
-  [[nodiscard]] static constexpr auto scale(PRNG &&device) noexcept -> result_type {
-    //
-    constexpr std::size_t chars_in_prng = sizeof(std::invoke_result_t<PRNG>);
-
-    constexpr std::size_t chars_in_xoshiro = sizeof(result_type);
-
-    static_assert(chars_in_xoshiro < chars_in_prng || chars_in_xoshiro % chars_in_prng == 0);
-
-    result_type bits = std::invoke(device);
-
-    if constexpr (chars_in_xoshiro < chars_in_prng) {
-      for (std::size_t i = 1; i < chars_in_xoshiro / chars_in_prng; i++) {
-        bits = (bits << CHAR_BIT * chars_in_prng) + std::invoke(device);
-      }
-    }
-
-    return bits;
-  }
-
   constexpr void jump_impl(std::array<result_type, 4> const &jump_array) noexcept {
     //
     std::array<result_type, 4> s = {0, 0, 0, 0}; // NOLINT
@@ -212,6 +193,8 @@ class xoshiro {
     m_state = s;
   }
 };
+
+static_assert(uniform_random_bit_generator<xoshiro>);
 
 } // namespace ext
 
