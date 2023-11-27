@@ -33,7 +33,7 @@ class fibre {
     /**
      * @brief Get the top fibril in the chain.
      */
-    [[nodiscard]] auto top() const noexcept -> fibril * { return m_link->m_link; }
+    [[nodiscard]] auto top() const noexcept -> fibril * { return m_root->m_top; }
 
    private:
     friend class fibre;
@@ -68,10 +68,9 @@ class fibre {
       frag->m_sp = frag->m_lo;
       frag->m_hi = impl::byte_cast(ptr) + sizeof(fibril) + size;
 
-      frag->m_link = prev ? prev->m_link : frag.get();
+      frag->m_root = prev ? prev->m_root : frag.get();
       frag->m_prev = prev.release();
-
-      frag->m_link->m_link = frag.get(); // Set root to point at new top.
+      frag->m_root->m_top = frag.get(); // Set root to point at new top.
 
       return frag;
     }
@@ -80,10 +79,9 @@ class fibre {
     std::byte *m_sp; ///< The current position of the stack pointer in the stack.
     std::byte *m_hi; ///< The one-past-the-end address of the stack.
 
-    fibril *m_link; ///< A non-owning pointer to root/top fibril if this is the other/root fibril.
+    fibril *m_top;  ///< A non-owning pointer to top fibril if this is the root fibril.
+    fibril *m_root; ///< A non-owning pointer to the root fibril.
     fibril *m_prev; ///< A linked list of fibrils.
-
-    [[maybe_unused]] void *m_pad; ///< Ensure the stack is aligned.
   };
 
   // Keep stack aligned.
@@ -153,8 +151,9 @@ class fibre {
 
     fibril::unique_ptr prev{m_top->m_prev}; // Takes ownership
 
+    m_top->m_root = m_top.get();
     m_top->m_prev = nullptr;
-    m_top->m_link = m_top.get();
+    m_top->m_top = m_top.get();
   }
 
   /**
