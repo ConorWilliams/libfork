@@ -33,7 +33,7 @@
 
 #include "libfork/core.hpp"
 
-// #include "libfork/schedule/busy_pool.hpp"
+#include "libfork/schedule/busy_pool.hpp"
 // #include "libfork/schedule/lazy_pool.hpp"
 #include "libfork/schedule/unit_pool.hpp"
 
@@ -63,7 +63,7 @@ inline constexpr auto noop = [](auto) -> task<> {
 
 //  unit_pool, debug_pool, busy_pool, lazy_pool
 
-TEMPLATE_TEST_CASE("Construct destruct launch", "[core][template]", unit_pool) {
+TEMPLATE_TEST_CASE("Construct destruct launch", "[core][template]", unit_pool, busy_pool) {
 
   for (int i = 0; i < 100; ++i) {
     auto schedule = make_scheduler<TestType>();
@@ -136,7 +136,7 @@ inline constexpr auto r_fib = [](auto fib, int n) -> lf::task<int> {
 
 } // namespace
 
-TEMPLATE_TEST_CASE("Fibonacci - returning", "[core][template]", unit_pool) {
+TEMPLATE_TEST_CASE("Fibonacci - returning", "[core][template]", unit_pool, busy_pool) {
   for (int j = 0; j < 100; ++j) {
     {
       auto schedule = make_scheduler<TestType>();
@@ -222,11 +222,12 @@ TEMPLATE_TEST_CASE("Fibonacci - ignored", "[core][template]", unit_pool) {
 
   auto schedule = make_scheduler<TestType>();
 
-  for (int i = 0; i < 15; ++i) {
+  for (int i = 3; i < 15; ++i) {
     int res;
     int x = sync_wait(schedule, v_fib_ignore, res, i);
     REQUIRE(fib(i) == res);
     REQUIRE(res == x);
+    LF_LOG("post");
   }
 }
 

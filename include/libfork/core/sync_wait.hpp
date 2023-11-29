@@ -38,11 +38,14 @@ auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
 
   bool worker = tls::has_fibre;
 
-  std::optional<fibre> prev;
+  std::optional<fibre> prev = std::nullopt;
 
   if (!worker) {
+    LF_LOG("Sync wait from non-worker thread");
     tls::thread_fibre.construct();
+    tls::has_fibre = true;
   } else {
+    LF_LOG("Sync wait from worker thread");
     prev.emplace();
     swap(*prev, *tls::thread_fibre);
   }
@@ -55,10 +58,11 @@ auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
     }
   }();
 
-  ignore_t{} = tls::thread_fibre->release();
+  ignore_t{} = tls::thread_fibre->commit_release(tls::thread_fibre->pre_release());
 
   if (!worker) {
     tls::thread_fibre.destroy();
+    tls::has_fibre = false;
   } else {
     swap(*prev, *tls::thread_fibre);
   }

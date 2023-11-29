@@ -156,18 +156,29 @@ class fibre {
     m_top->m_top = m_top.get();
   }
 
+  struct key : impl::immovable<key> {
+    key() = default;
+  };
+
+  auto pre_release() noexcept -> key {
+    LF_LOG("Pre-releasing fibre");
+    LF_ASSERT(m_top);
+    m_top->m_sp = m_sp;
+    return {};
+  }
+
   /**
    * @brief Release the underlying storage of the current fibre and re-initialize this one.
    *
+   * The fibre must have been primed for released with `pre_release`.
+   *
    * A new fibre can be constructed from the fibril to continue the released fibre.
    */
-  [[nodiscard]] auto release() -> fibril * {
+  [[nodiscard]] auto commit_release([[maybe_unused]] key key) -> fibril * {
 
     LF_LOG("Releasing fibre");
 
-    LF_ASSERT(m_top);
-
-    m_top->m_sp = m_sp; // Cache the stack pointer for future resumption.
+    LF_ASSERT(m_top->m_sp == m_sp); // Check that the fibre has been pre-released.
 
     fibril *top = std::exchange(m_top, fibril::next_fibril(k_init_size, nullptr)).release();
 

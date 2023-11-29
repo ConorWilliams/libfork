@@ -13,16 +13,15 @@
 #include <atomic>
 #include <bit>
 #include <cstddef>
+#include <libfork/core/context.hpp>
 #include <memory>
 #include <random>
 #include <vector>
 
 #include "libfork/core.hpp"
 
-#include "libfork/schedule/deque.hpp"
-#include "libfork/schedule/numa.hpp"
-#include "libfork/schedule/random.hpp"
-#include "libfork/schedule/ring_buffer.hpp"
+#include "libfork/schedule/ext/numa.hpp"
+#include "libfork/schedule/ext/random.hpp"
 
 /**
  * @file contexts.hpp
@@ -32,144 +31,28 @@
 
 namespace lf::impl {
 
-/**
- * @brief A CRTP base type that provides always allocating stack push/pop
- */
-template <typename CRTP>
-struct immediate_base {
-
-  /**
-   * @brief Immediately resumes the given task.
-   */
-  static void submit(intruded_h<CRTP> *ptr) { resume(unwrap(non_null(ptr))); }
-
-  /**
-   * @brief Deallocates the stack.
-   */
-  static void stack_push(fibre_stack *stack) {
-    LF_LOG("stack_push");
-    LF_ASSERT(stack);
-    delete stack;
-  }
-
-  /**
-   * @brief Allocates a new stack.
-   */
-  static auto stack_pop() -> fibre_stack * {
-    LF_LOG("stack_pop");
-    return new fibre_stack;
-  }
-};
-
 // --------------------------------------------------------------------- //
 
 /**
- * @brief The context type for the scheduler.
- */
-class immediate_context : public immediate_base<immediate_context> {
- public:
-  /**
-   * @brief Returns `1` as this runs all tasks inline.
-   *
-   * \rst
-   *
-   * .. note::
-   *
-   *    As this is a static constexpr function the promise will transform all `fork -> call`.
-   *
-   * \endrst
-   */
-  static constexpr auto max_threads() noexcept -> std::size_t { return 1; }
-
-  /**
-   * @brief This should never be called due to the above.
-   */
-  auto task_pop() -> task_h<immediate_context> * {
-    LF_ASSERT("false");
-    return nullptr;
-  }
-
-  /**
-   * @brief This should never be called due to the above.
-   */
-  void task_push(task_h<immediate_context> *) { LF_ASSERT("false"); }
-};
-
-static_assert(single_thread_context<immediate_context>);
-
-// --------------------------------------------------------------------- //
-
-/**
- * @brief An internal context type for testing purposes.
- *
- * This is essentially an immediate context with a task queue.
- */
-class test_immediate_context : public immediate_base<test_immediate_context> {
- public:
-  test_immediate_context() { m_tasks.reserve(1024); }
-
-  /**
-   * @brief Deliberately not constexpr such that the promise will not transform all `fork -> call`.
-   */
-  static auto max_threads() noexcept -> std::size_t { return 1; }
-
-  /**
-   * @brief Pops a task from the task queue.
-   */
-  LF_FORCEINLINE auto task_pop() -> task_h<test_immediate_context> * {
-
-    if (m_tasks.empty()) {
-      return nullptr;
-    }
-
-    auto *last = m_tasks.back();
-    m_tasks.pop_back();
-    return last;
-  }
-
-  /**
-   * @brief Pushes a task to the task queue.
-   */
-  LF_FORCEINLINE void task_push(task_h<test_immediate_context> *task) { m_tasks.push_back(non_null(task)); }
-
- private:
-  std::vector<task_h<test_immediate_context> *> m_tasks; // All non-null.
-};
-
-static_assert(thread_context<test_immediate_context>);
-static_assert(!single_thread_context<test_immediate_context>);
-
-// --------------------------------------------------------------------- //
-
-/**
- * @brief A generic `thread_context` suitable for all `libforks` multi-threaded schedulers.
+ * @brief A generic `thread_context` suitable for all `libfork`s multi-threaded schedulers.
  *
  * This object does not manage worker_init/worker_finalize as it is intended
  * to be constructed/destructed by the master thread.
  */
-template <typename CRTP>
-class numa_worker_context : immovable<numa_worker_context<CRTP>> {
+class numa_worker_context : immovable<numa_worker_context> {
 
   static constexpr std::size_t k_buff = 16;
   static constexpr std::size_t k_steal_attempts = 32; ///< Attempts per target.
 
-  using task_t = task_h<CRTP>;
-  using submit_t = submit_h<CRTP>;
-  using intruded_t = intruded_h<CRTP>;
+  xoshiro m_rng;                                      ///< Our personal PRNG.
+  std::size_t m_max_threads;                          ///< The total max parallelism available.
+  worker_context m_context;                           ///< Our context.
+  std::vector<std::vector<worker_context *>> m_neigh; ///< Our view of the NUMA topology.
 
-  deque<task_t *> m_tasks;                     ///< Our public task queue, all non-null.
-  deque<fibre_stack *> m_stacks;               ///< Our public stack queue, all non-null.
-  intrusive_list<submit_t *> m_submit;         ///< The public submission queue, all non-null.
-  ring_buffer<fibre_stack *, k_buff> m_buffer; ///< Our private stack buffer, all non-null.
-
-  xoshiro m_rng;                            ///< Our personal PRNG.
-  std::size_t m_max_threads;                ///< The total max parallelism available.
-  std::vector<std::vector<CRTP *>> m_neigh; ///< Our view of the NUMA topology.
-
-  template <typename T>
-  static constexpr auto null_for = []() LF_STATIC_CALL noexcept -> T * {
-    return nullptr;
-  };
+  // template <typename T>
+  // static constexpr auto null_for = []() LF_STATIC_CALL noexcept -> T * {
+  //   return nullptr;
+  // };
 
  public:
   /**

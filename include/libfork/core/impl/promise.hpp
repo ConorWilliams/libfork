@@ -65,8 +65,15 @@ inline auto final_await_suspend(frame *parent) noexcept -> std::coroutine_handle
 
   fibre *tls_fibre = tls::fibre();
 
-  // Need to copy this onto stack for else-branch later.
-  fibre::fibril *parents_fibril = parent->fibril();
+  bool same_fibre = parent->fibril()->top() == tls_fibre->top();
+
+  auto *parents_fibril = parent->fibril();
+
+  // if (own_parents_fibre) {
+  // }
+
+  // Before we register with the parent that must pre_release the parent's fibre in case some
+  // other thread continues it.
 
   // Register with parent we have completed this child task.
   if (parent->fetch_sub_joins(1, std::memory_order_release) == 1) {
@@ -105,7 +112,7 @@ inline auto final_await_suspend(frame *parent) noexcept -> std::coroutine_handle
     // thread will take ownership of the parent's we must give it up.
     LF_LOG("Thread releases control of parent's stack");
 
-    ignore_t{} = tls_fibre->release();
+    ignore_t{} = tls_fibre->commit_release(tls_fibre->pre_release());
 
   } else {
     // Case (2) the tls_fibre has no allocations on it, it may be used later.
