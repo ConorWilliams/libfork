@@ -33,44 +33,37 @@ class fibre {
     /**
      * @brief Get the top fibril in the chain.
      */
-    [[nodiscard]] auto top() const noexcept -> fibril * { return m_root->m_top; }
+    [[nodiscard]] auto root() const noexcept -> fibril * { return m_root; }
 
    private:
     friend class fibre;
 
-    struct deleter {
-      void operator()(fibril *ptr) const noexcept {
-        while (ptr != nullptr) {
-          std::free(std::exchange(ptr, ptr->m_prev)); // NOLINT
-        }
-      }
-    };
-
-    /**
-     * @brief A unique pointer to a fibril with a custom deleter.
-     */
-    using unique_ptr = std::unique_ptr<fibril, deleter>;
+    // struct deleter {
+    //   void operator()(fibril *ptr) const noexcept {
+    //     while (ptr != nullptr) {
+    //       std::free(std::exchange(ptr, ptr->m_prev)); // NOLINT
+    //     }
+    //   }
+    // };
 
     /**
      * @brief Allocate a new fibril with a stack of size `size` and attach it to the given fibril chain.
      */
-    [[nodiscard]] static auto next_fibril(std::size_t size, unique_ptr &&prev) -> unique_ptr {
+    [[nodiscard]] static auto next_fibril(std::size_t size, fibril *prev) -> fibril * {
 
-      void *ptr = std::malloc(sizeof(fibril) + size); // NOLINT
+      fibril *frag = static_cast<fibril *>(std::malloc(sizeof(fibril) + size)); // NOLINT
 
-      if (ptr == nullptr) {
+      if (frag == nullptr) {
         throw std::bad_alloc();
       }
 
-      unique_ptr frag{static_cast<fibril *>(ptr)};
-
-      frag->m_lo = impl::byte_cast(ptr) + sizeof(fibril);
+      frag->m_lo = impl::byte_cast(frag) + sizeof(fibril);
       frag->m_sp = frag->m_lo;
-      frag->m_hi = impl::byte_cast(ptr) + sizeof(fibril) + size;
+      frag->m_hi = impl::byte_cast(frag) + sizeof(fibril) + size;
 
-      frag->m_root = prev ? prev->m_root : frag.get();
-      frag->m_prev = prev.release();
-      frag->m_root->m_top = frag.get(); // Set root to point at new top.
+      frag->m_root = prev == nullptr ? frag : prev->m_root;
+      frag->m_prev = prev;
+      frag->m_trail = prev;
 
       return frag;
     }
@@ -79,9 +72,10 @@ class fibre {
     std::byte *m_sp; ///< The current position of the stack pointer in the stack.
     std::byte *m_hi; ///< The one-past-the-end address of the stack.
 
-    fibril *m_top;  ///< A non-owning pointer to top fibril if this is the root fibril.
     fibril *m_root; ///< A non-owning pointer to the root fibril.
     fibril *m_prev; ///< A linked list of fibrils.
+
+    fibril *m_trail; ///< The trailing delete pointer.
   };
 
   // Keep stack aligned.
@@ -98,7 +92,7 @@ class fibre {
         m_lo(m_top->m_lo),
         m_sp(m_top->m_sp),
         m_hi(m_top->m_hi) {
-    LF_LOG("Constructing fibre");
+    LF_LOG("Constructing a fibre");
   }
 
   /**
@@ -106,7 +100,7 @@ class fibre {
    *
    * This requires that `frag` is part of a fibre chain that has called `release()`.
    */
-  explicit fibre(fibril *frag) : m_top(frag->top()), m_lo(m_top->m_lo), m_sp(m_top->m_sp), m_hi(m_top->m_hi) {
+  explicit fibre(fibril *frag) : m_top(frag), m_lo(frag->m_lo), m_sp(frag->m_sp), m_hi(frag->m_hi) {
     LF_LOG("Constructing fibre from fibril");
   }
 
@@ -129,7 +123,11 @@ class fibre {
     swap(lhs.m_hi, rhs.m_hi);
   }
 
-  ~fibre() noexcept = default;
+  ~fibre() noexcept {
+    while (m_top != nullptr) {
+      std::free(std::exchange(m_top, m_top->m_prev)); // NOLINT
+    }
+  }
 
   /**
    * @brief Size of the current fibre's stack.
@@ -144,24 +142,39 @@ class fibre {
    */
   void squash() {
 
-    LF_LOG("Squashing fibre");
+    // LF_LOG("Squashing fibre");
 
-    LF_ASSERT(m_top);
-    LF_ASSERT(m_sp == m_lo);
+    // LF_ASSERT(m_top);
+    // LF_ASSERT(m_sp == m_lo);
 
-    fibril::unique_ptr prev{m_top->m_prev}; // Takes ownership
+    // fibril::unique_ptr prev{m_top->m_prev}; // Takes ownership
 
-    m_top->m_root = m_top.get();
-    m_top->m_prev = nullptr;
-    m_top->m_top = m_top.get();
+    // m_top->m_root = m_top.get();
+    // m_top->m_prev = nullptr;
+    // m_top->m_top = m_top.get();
   }
 
   struct key : impl::immovable<key> {
-    key() = default;
+    bool
   };
 
-  auto pre_release() noexcept -> key {
+  auto prime_release(fibril *top) noexcept -> key {
+
     LF_LOG("Pre-releasing fibre");
+    LF_ASSERT(m_top);
+
+    // After a pre-release the fibril at top must be valid for a resume(top)
+    // Hence SP on top must be valid
+
+    /**
+     * Let fibrils chain be: A <- B <- C <- D
+     *
+     * m_top points to D
+     *
+     * If
+     *
+     */
+
     LF_ASSERT(m_top);
     m_top->m_sp = m_sp;
     return {};
@@ -218,12 +231,38 @@ class fibre {
    * This must be called in FILO order with `allocate`.
    */
   constexpr void deallocate(void *ptr) noexcept {
-    // Should compile to a conditional move.
 
     LF_LOG("Deallocating {} skipped={}", ptr, m_sp == m_lo);
 
-    m_sp = m_sp == m_lo ? m_sp : static_cast<std::byte *>(ptr);
+    if (m_sp == m_lo) {
+
+      LF_ASSERT(m_top);
+
+      fibril *trailing = m_top->m_trail;
+
+      LF_ASSERT(trailing);
+      LF_ASSERT(trailing->m_sp != trailing->m_lo);
+
+      trailing->m_sp = static_cast<std::byte *>(ptr);
+
+      if (trailing->m_sp == trailing->m_lo) {
+        m_top->m_trail = trailing->m_prev;
+      }
+
+    } else {
+      m_sp = static_cast<std::byte *>(ptr);
+    }
   }
+
+  fibril *trail;
+
+  std::byte *trail_lo;
+  std::byte *trail_sp;
+
+  fibril *lead;
+
+  std::byte *load_lo std::byte *load_sp;
+  std::byte *load_hi;
 
   /**
    * @brief Get the fibril that the last allocation was on, this is non-null.
@@ -233,8 +272,7 @@ class fibre {
  private:
   // A null state occurs when m_control = nullptr, in this case m_lo == m_sp == m_hi == nullptr.
 
-  fibril::unique_ptr m_top; ///< The heap-allocated object that manages the fibre.
-
+  fibril *m_top;   ///< The top fibril in the chain.
   std::byte *m_lo; ///< Mirror of the top fibril's `m_lo` member.
   std::byte *m_sp; ///< Position of stack pointer in the top fibril.
   std::byte *m_hi; ///< Mirror of the top fibril's `m_sp` member.

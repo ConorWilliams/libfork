@@ -55,6 +55,8 @@ struct task : std::type_identity<T> {
   void *promise; ///< An opaque handle to the coroutine promise.
 };
 
+// TODO [[clang::coro_only_destroy_when_complete]] [[clang::coro_return_type]]
+
 namespace impl {
 
 namespace detail {

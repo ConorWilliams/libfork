@@ -2,13 +2,12 @@
 #define C854CDE9_1125_46E1_9E2A_0B0006BFC135
 
 #include <concepts>
-
-#include <libfork/core/first_arg.hpp>
 #include <type_traits>
 #include <utility>
 
 #include <libfork/core/context.hpp>
 #include <libfork/core/control_flow.hpp>
+#include <libfork/core/first_arg.hpp>
 #include <libfork/core/invocable.hpp>
 #include <libfork/core/tag.hpp>
 #include <libfork/core/task.hpp>
