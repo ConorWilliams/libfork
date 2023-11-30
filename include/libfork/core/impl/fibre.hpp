@@ -8,6 +8,8 @@
 #include <type_traits>
 #include <utility>
 
+#include "libfork/core/macro.hpp"
+
 #include "libfork/core/impl/utility.hpp"
 
 namespace lf {
@@ -29,53 +31,73 @@ class fibre {
    */
   class fibril : impl::immovable<fibril> {
 
-   public:
-    /**
-     * @brief Get the top fibril in the chain.
-     */
-    [[nodiscard]] auto root() const noexcept -> fibril * { return m_root; }
-
-   private:
     friend class fibre;
 
-    // struct deleter {
-    //   void operator()(fibril *ptr) const noexcept {
-    //     while (ptr != nullptr) {
-    //       std::free(std::exchange(ptr, ptr->m_prev)); // NOLINT
-    //     }
-    //   }
-    // };
+    /**
+     * @brief Capacity of the current fibril's stack.
+     */
+    [[nodiscard]] auto capacity() const noexcept -> std::size_t {
+      LF_ASSERT(m_hi - m_lo >= 0);
+      return m_hi - m_lo;
+    }
+
+    /**
+     * @brief Unused space on the current fibril's stack.
+     */
+    [[nodiscard]] auto unused() const noexcept -> std::size_t {
+      LF_ASSERT(m_hi - m_sp >= 0);
+      return m_hi - m_sp;
+    }
+
+    /**
+     * @brief Check if fibril's stack is empty.
+     */
+    [[nodiscard]] auto empty() const noexcept -> bool { return m_sp == m_lo; }
+
+    /**
+     * @brief Release the memory of the next fibril in the chain if one exists.
+     */
+    void set_next(fibril *new_next) noexcept {
+      LF_ASSERT(!m_next || m_next->m_next == nullptr);
+      LF_ASSERT(!m_next || m_next->empty());
+      std::free(std::exchange(m_next, new_next)); // NOLINT
+    }
 
     /**
      * @brief Allocate a new fibril with a stack of size `size` and attach it to the given fibril chain.
      */
-    [[nodiscard]] static auto next_fibril(std::size_t size, fibril *prev) -> fibril * {
+    [[nodiscard]] LF_NOINLINE static auto next_fibril(std::size_t size, fibril *prev) -> fibril * {
 
-      fibril *frag = static_cast<fibril *>(std::malloc(sizeof(fibril) + size)); // NOLINT
+      LF_LOG("allocating a new fibril");
 
-      if (frag == nullptr) {
+      fibril *next = static_cast<fibril *>(std::malloc(sizeof(fibril) + size)); // NOLINT
+
+      if (next == nullptr) {
         throw std::bad_alloc();
       }
 
-      frag->m_lo = impl::byte_cast(frag) + sizeof(fibril);
-      frag->m_sp = frag->m_lo;
-      frag->m_hi = impl::byte_cast(frag) + sizeof(fibril) + size;
+      if (prev != nullptr) { // Tidy up other next
+        prev->set_next(next);
+      }
 
-      frag->m_root = prev == nullptr ? frag : prev->m_root;
-      frag->m_prev = prev;
-      frag->m_trail = prev;
+      next->m_lo = impl::byte_cast(next) + sizeof(fibril);
+      next->m_sp = next->m_lo;
+      next->m_hi = impl::byte_cast(next) + sizeof(fibril) + size;
 
-      return frag;
+      next->m_prev = prev;
+      next->m_next = nullptr;
+
+      return next;
     }
 
     std::byte *m_lo; ///< This fibril's stack.
     std::byte *m_sp; ///< The current position of the stack pointer in the stack.
     std::byte *m_hi; ///< The one-past-the-end address of the stack.
 
-    fibril *m_root; ///< A non-owning pointer to the root fibril.
-    fibril *m_prev; ///< A linked list of fibrils.
+    fibril *m_prev; ///< Doubly linked list (past).
+    fibril *m_next; ///< Doubly linked list (future).
 
-    fibril *m_trail; ///< The trailing delete pointer.
+    void *m_pad;
   };
 
   // Keep stack aligned.
@@ -87,22 +109,14 @@ class fibre {
   /**
    * @brief Construct a fibre with a small stack.
    */
-  fibre()
-      : m_top(fibril::next_fibril(k_init_size, nullptr)),
-        m_lo(m_top->m_lo),
-        m_sp(m_top->m_sp),
-        m_hi(m_top->m_hi) {
-    LF_LOG("Constructing a fibre");
-  }
+  fibre() : m_fib(fibril::next_fibril(k_init_size, nullptr)) { LF_LOG("Constructing a fibre"); }
 
   /**
    * @brief Construct a new fibre object taking ownership of the fibre that `frag` is a part of.
    *
-   * This requires that `frag` is part of a fibre chain that has called `release()`.
+   * `frag` must be the fibril containing the top stack frame.
    */
-  explicit fibre(fibril *frag) : m_top(frag), m_lo(frag->m_lo), m_sp(frag->m_sp), m_hi(frag->m_hi) {
-    LF_LOG("Constructing fibre from fibril");
-  }
+  explicit fibre(fibril *frag) : m_fib(frag) { LF_LOG("Constructing fibre from fibril"); }
 
   fibre(fibre const &) = delete;
 
@@ -117,89 +131,27 @@ class fibre {
 
   inline friend void swap(fibre &lhs, fibre &rhs) noexcept {
     using std::swap;
-    swap(lhs.m_top, rhs.m_top);
-    swap(lhs.m_lo, rhs.m_lo);
-    swap(lhs.m_sp, rhs.m_sp);
-    swap(lhs.m_hi, rhs.m_hi);
+    swap(lhs.m_fib, rhs.m_fib);
   }
 
   ~fibre() noexcept {
-    while (m_top != nullptr) {
-      std::free(std::exchange(m_top, m_top->m_prev)); // NOLINT
-    }
-  }
+    LF_ASSERT(m_fib);
+    LF_ASSERT(!m_fib->m_prev); // Should only be destructed at the root.
 
-  /**
-   * @brief Size of the current fibre's stack.
-   */
-  [[nodiscard]] auto capacity() const noexcept -> std::size_t { return m_hi - m_lo; }
+    m_fib->set_next(nullptr);
 
-  /**
-   * @brief Release unused/unusable underlying storage.
-   *
-   * This does not reduce the capacity of the fibre. It requires that all allocations on
-   * the current fibre have been deallocated.
-   */
-  void squash() {
-
-    // LF_LOG("Squashing fibre");
-
-    // LF_ASSERT(m_top);
-    // LF_ASSERT(m_sp == m_lo);
-
-    // fibril::unique_ptr prev{m_top->m_prev}; // Takes ownership
-
-    // m_top->m_root = m_top.get();
-    // m_top->m_prev = nullptr;
-    // m_top->m_top = m_top.get();
-  }
-
-  struct key : impl::immovable<key> {
-    bool
-  };
-
-  auto prime_release(fibril *top) noexcept -> key {
-
-    LF_LOG("Pre-releasing fibre");
-    LF_ASSERT(m_top);
-
-    // After a pre-release the fibril at top must be valid for a resume(top)
-    // Hence SP on top must be valid
-
-    /**
-     * Let fibrils chain be: A <- B <- C <- D
-     *
-     * m_top points to D
-     *
-     * If
-     *
-     */
-
-    LF_ASSERT(m_top);
-    m_top->m_sp = m_sp;
-    return {};
+    std::free(m_fib);
   }
 
   /**
    * @brief Release the underlying storage of the current fibre and re-initialize this one.
    *
-   * The fibre must have been primed for released with `pre_release`.
-   *
    * A new fibre can be constructed from the fibril to continue the released fibre.
    */
-  [[nodiscard]] auto commit_release([[maybe_unused]] key key) -> fibril * {
-
+  [[nodiscard]] auto release() -> fibril * {
     LF_LOG("Releasing fibre");
-
-    LF_ASSERT(m_top->m_sp == m_sp); // Check that the fibre has been pre-released.
-
-    fibril *top = std::exchange(m_top, fibril::next_fibril(k_init_size, nullptr)).release();
-
-    m_lo = m_top->m_lo;
-    m_sp = m_top->m_sp;
-    m_hi = m_top->m_hi;
-
-    return top;
+    LF_ASSERT(m_fib);
+    return std::exchange(m_fib, fibril::next_fibril(k_init_size, nullptr));
   }
 
   /**
@@ -209,20 +161,24 @@ class fibre {
    *
    * Deallocate the memory with `deallocate` in a FILO manor.
    */
-  [[nodiscard]] auto allocate(std::size_t size) -> void * {
+  [[nodiscard]] LF_FORCEINLINE auto allocate(std::size_t size) -> void * {
     //
-    LF_ASSERT(m_top);
+    LF_ASSERT(m_fib);
 
     // Round up to the next multiple of the alignment.
     std::size_t ext_size = (size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
 
-    if (m_hi - m_sp < ext_size) [[unlikely]] {
-      grow(size);
+    if (m_fib->unused() < ext_size) {
+      if (m_fib->m_next != nullptr && m_fib->m_next->capacity() >= ext_size) {
+        m_fib = m_fib->m_next;
+      } else {
+        m_fib = fibril::next_fibril(std::max(2 * m_fib->capacity(), ext_size), m_fib);
+      }
     }
 
-    LF_LOG("Allocating {} bytes {}-{}", size, (void *)m_sp, (void *)(m_sp + ext_size));
+    LF_LOG("Allocating {} bytes {}-{}", size, (void *)m_fib->m_sp, (void *)(m_fib->m_sp + ext_size));
 
-    return std::exchange(m_sp, m_sp + ext_size);
+    return std::exchange(m_fib->m_sp, m_fib->m_sp + ext_size);
   }
 
   /**
@@ -230,68 +186,28 @@ class fibre {
    *
    * This must be called in FILO order with `allocate`.
    */
-  constexpr void deallocate(void *ptr) noexcept {
+  LF_FORCEINLINE constexpr void deallocate(void *ptr) noexcept {
 
-    LF_LOG("Deallocating {} skipped={}", ptr, m_sp == m_lo);
+    LF_ASSERT(m_fib);
 
-    if (m_sp == m_lo) {
+    LF_LOG("Deallocating {} skipped={}", m_fib->ptr, m_fib->m_sp == m_fib->m_lo);
 
-      LF_ASSERT(m_top);
-
-      fibril *trailing = m_top->m_trail;
-
-      LF_ASSERT(trailing);
-      LF_ASSERT(trailing->m_sp != trailing->m_lo);
-
-      trailing->m_sp = static_cast<std::byte *>(ptr);
-
-      if (trailing->m_sp == trailing->m_lo) {
-        m_top->m_trail = trailing->m_prev;
-      }
-
-    } else {
-      m_sp = static_cast<std::byte *>(ptr);
+    if (m_fib->empty()) {
+      m_fib->set_next(nullptr);
+      m_fib = m_fib->m_prev;
+      LF_ASSERT(m_fib);
     }
+
+    m_fib->m_sp = static_cast<std::byte *>(ptr);
   }
-
-  fibril *trail;
-
-  std::byte *trail_lo;
-  std::byte *trail_sp;
-
-  fibril *lead;
-
-  std::byte *load_lo std::byte *load_sp;
-  std::byte *load_hi;
 
   /**
    * @brief Get the fibril that the last allocation was on, this is non-null.
    */
-  [[nodiscard]] constexpr auto top() -> fibril * { return m_top.get(); }
+  [[nodiscard]] constexpr auto top() -> fibril * { return m_fib; }
 
  private:
-  // A null state occurs when m_control = nullptr, in this case m_lo == m_sp == m_hi == nullptr.
-
-  fibril *m_top;   ///< The top fibril in the chain.
-  std::byte *m_lo; ///< Mirror of the top fibril's `m_lo` member.
-  std::byte *m_sp; ///< Position of stack pointer in the top fibril.
-  std::byte *m_hi; ///< Mirror of the top fibril's `m_sp` member.
-
-  /**
-   * @brief Allocate a new fibril and attach it to the current fibre.
-   */
-  void grow(std::size_t space) {
-
-    LF_LOG("Growing fibre");
-
-    // Round size to a power of 2 greater than `space`, min size and double the prev capacity.
-    m_top = fibril::next_fibril(std::max(2 * capacity(), space), std::move(m_top));
-
-    // Update mirrors.
-    m_lo = m_top->m_lo;
-    m_sp = m_top->m_sp;
-    m_hi = m_top->m_hi;
-  }
+  fibril *m_fib; ///< The allocation fibril.
 };
 
 } // namespace ext

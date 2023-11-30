@@ -117,7 +117,7 @@ struct join_awaitable {
     // Check we have been reset.
     LF_ASSERT(self->load_steals() == 0);
     LF_ASSERT_NO_ASSUME(self->load_joins(std::memory_order_acquire) == k_u16_max);
-    LF_ASSERT(self->fibril()->top() == tls::fibre()->top());
+    LF_ASSERT(self->fibril() == tls::fibre()->top());
   }
 
   frame *self;

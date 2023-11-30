@@ -3,7 +3,7 @@
 #include <catch2/benchmark/catch_benchmark_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-// #define LF_DEFAULT_LOGGING
+#define LF_DEFAULT_LOGGING
 
 #include "libfork/core.hpp"
 

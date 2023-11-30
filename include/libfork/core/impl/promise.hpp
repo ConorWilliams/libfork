@@ -64,7 +64,7 @@ inline auto final_await_suspend(frame *parent) noexcept -> std::coroutine_handle
 
   fibre *tls_fibre = tls::fibre();
 
-  bool same_fibre = parent->fibril()->top() == tls_fibre->top();
+  bool same_fibre = parent->fibril() == tls_fibre->top();
 
   auto *parents_fibril = parent->fibril();
 
@@ -84,7 +84,7 @@ inline auto final_await_suspend(frame *parent) noexcept -> std::coroutine_handle
 
     LF_LOG("Task is last child to join, resumes parent");
 
-    if (parents_fibril->top() != tls_fibre->top()) {
+    if (parents_fibril != tls_fibre->top()) {
       // Case (2), the tls_fibre has no allocations on it.
 
       // TODO: fibre.splice()? Here the old fibre is empty and thrown away, if it is larger
@@ -106,16 +106,15 @@ inline auto final_await_suspend(frame *parent) noexcept -> std::coroutine_handle
 
   LF_LOG("Task is not last to join");
 
-  if (parents_fibril->top() == tls_fibre->top()) {
+  if (parents_fibril == tls_fibre->top()) {
     // We are unable to resume the parent and where its owner, as the resuming
     // thread will take ownership of the parent's we must give it up.
     LF_LOG("Thread releases control of parent's stack");
 
-    ignore_t{} = tls_fibre->commit_release(tls_fibre->pre_release());
+    ignore_t{} = tls_fibre->release();
 
   } else {
     // Case (2) the tls_fibre has no allocations on it, it may be used later.
-    tls_fibre->squash();
   }
 
   return std::noop_coroutine();
@@ -133,12 +132,12 @@ struct promise_base : frame {
   /**
    * @brief Allocate the coroutine on a new fibre.
    */
-  static auto operator new(std::size_t size) -> void * { return tls::fibre()->allocate(size); }
+  LF_FORCEINLINE static auto operator new(std::size_t size) -> void * { return tls::fibre()->allocate(size); }
 
   /**
    * @brief Deallocate the coroutine from current `fibre`s stack.
    */
-  static void operator delete(void *ptr) noexcept { tls::fibre()->deallocate(ptr); }
+  LF_FORCEINLINE static void operator delete(void *ptr) noexcept { tls::fibre()->deallocate(ptr); }
 
   static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
 
@@ -250,7 +249,6 @@ struct promise : promise_base, return_result<R, I> {
         child.destroy();
 
         // A root task is always the first on a fibre, now it has been completed the fibre is empty.
-        tls::fibre()->squash();
 
         return std::noop_coroutine();
       }
