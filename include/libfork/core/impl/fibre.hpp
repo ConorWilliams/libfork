@@ -137,10 +137,8 @@ class fibre {
   ~fibre() noexcept {
     LF_ASSERT(m_fib);
     LF_ASSERT(!m_fib->m_prev); // Should only be destructed at the root.
-
-    m_fib->set_next(nullptr);
-
-    std::free(m_fib);
+    m_fib->set_next(nullptr);  //
+    std::free(m_fib);          // NOLINT
   }
 
   /**
@@ -176,6 +174,8 @@ class fibre {
       }
     }
 
+    LF_ASSERT(m_fib);
+
     LF_LOG("Allocating {} bytes {}-{}", size, (void *)m_fib->m_sp, (void *)(m_fib->m_sp + ext_size));
 
     return std::exchange(m_fib->m_sp, m_fib->m_sp + ext_size);
@@ -190,15 +190,16 @@ class fibre {
 
     LF_ASSERT(m_fib);
 
-    LF_LOG("Deallocating {} skipped={}", m_fib->ptr, m_fib->m_sp == m_fib->m_lo);
+    LF_LOG("Deallocating {}", ptr);
+
+    m_fib->m_sp = static_cast<std::byte *>(ptr);
 
     if (m_fib->empty()) {
       m_fib->set_next(nullptr);
-      m_fib = m_fib->m_prev;
-      LF_ASSERT(m_fib);
+      m_fib = m_fib->m_prev == nullptr ? m_fib : m_fib->m_prev;
     }
 
-    m_fib->m_sp = static_cast<std::byte *>(ptr);
+    LF_ASSERT(m_fib);
   }
 
   /**

@@ -17,13 +17,12 @@
 // #define LF_DEFAULT_LOGGING.
 
 #include "libfork/core.hpp"
-#include "libfork/core/macro.hpp"
-#include "libfork/core/stack.hpp"
 
 #include "libfork/schedule/busy_pool.hpp"
-#include "libfork/schedule/lazy_pool.hpp"
-#include "libfork/schedule/random.hpp"
+// #include "libfork/schedule/lazy_pool.hpp"
 #include "libfork/schedule/unit_pool.hpp"
+
+#include "libfork/schedule/ext/random.hpp"
 
 // NOLINTBEGIN No linting in tests
 
@@ -140,13 +139,14 @@ TEST_CASE("tree checks", "[tree]") {
 
 namespace {
 
-inline constexpr async search = [](auto search, tree const &root, int val, auto *context) -> task<bool> {
+inline constexpr auto search = [](auto search, tree const &root, int val, context *context) -> task<bool> {
   //
   if (root.val == val) {
     co_return true;
   }
 
   if (context && root.val % 10 == 0) {
+    //
     co_await context;
 
     if (search.context() != context) {
@@ -158,11 +158,11 @@ inline constexpr async search = [](auto search, tree const &root, int val, auto 
   bool right = false;
 
   if (root.left) {
-    co_await lf::fork(left, search)(*root.left, val, context);
+    co_await lf::fork(&left, search)(*root.left, val, context);
   }
 
   if (root.right) {
-    co_await lf::fork(right, search)(*root.right, val, context);
+    co_await lf::fork(&right, search)(*root.right, val, context);
   }
 
   co_await lf::join;
@@ -172,7 +172,7 @@ inline constexpr async search = [](auto search, tree const &root, int val, auto 
 
 }
 
-TEMPLATE_TEST_CASE("tree search", "[tree][template]", unit_pool, debug_pool, busy_pool, lazy_pool) {
+TEMPLATE_TEST_CASE("tree search", "[tree][template]", unit_pool, busy_pool) {
 
   int n = 1000;
 
@@ -182,14 +182,12 @@ TEMPLATE_TEST_CASE("tree search", "[tree][template]", unit_pool, debug_pool, bus
 
   // auto val
 
-  context_of<TestType> *context = nullptr;
-
   for (int i = 0; i < n; ++i) {
-    REQUIRE(sync_wait(sch, search, *root, i, context));
+    REQUIRE(sync_wait(sch, search, *root, i, nullptr));
   }
 }
 
-TEMPLATE_TEST_CASE("tree bench", "[tree][template]", unit_pool, debug_pool, busy_pool, lazy_pool) {
+TEMPLATE_TEST_CASE("tree bench", "[tree][template]", unit_pool, busy_pool) {
 
   int n = 100;
 
@@ -217,13 +215,11 @@ TEMPLATE_TEST_CASE("tree bench", "[tree][template]", unit_pool, debug_pool, busy
 
   auto sch = make_scheduler<TestType>();
 
-  context_of<TestType> *context = nullptr;
-
   for (int i = 0; i < 10; ++i) {
     for (auto &root : trees) {
       int count = 0;
       for (int val : vals) {
-        count += sync_wait(sch, search, *root, val, context);
+        count += sync_wait(sch, search, *root, val, nullptr);
       }
       REQUIRE(count == n);
     }
@@ -234,13 +230,15 @@ TEMPLATE_TEST_CASE("tree bench", "[tree][template]", unit_pool, debug_pool, busy
 
 namespace {
 
-inline constexpr async transfer = [](auto self, tree const &root, int val) -> task<bool> {
-  co_return co_await search(root, val, self.context());
+inline constexpr auto transfer = [](auto self, tree const &root, int val) -> task<bool> {
+  bool res;
+  co_await lf::call(&res, search)(root, val, self.context());
+  co_return res;
 };
 
 }
 
-TEMPLATE_TEST_CASE("tree transfer", "[tree][template]", unit_pool, debug_pool, busy_pool, lazy_pool) {
+TEMPLATE_TEST_CASE("tree transfer", "[tree][template]", unit_pool, busy_pool) {
 
   auto sch = make_scheduler<TestType>();
 

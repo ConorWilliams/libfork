@@ -6,7 +6,10 @@
 #include <type_traits>
 #include <utility>
 
+#include <libfork/core/context.hpp>
 #include <libfork/core/tag.hpp>
+
+#include <libfork/core/ext/tls.hpp>
 
 #include <libfork/core/impl/utility.hpp>
 
@@ -51,8 +54,9 @@ concept async_function_object = std::is_object_v<F> && std::copy_constructible<F
  * An async functions invocability and return type must be independent of their first argument.
  */
 template <typename T>
-concept first_arg = async_function_object<T> && requires {
+concept first_arg = async_function_object<T> && requires (T arg) {
   { T::tag } -> std::convertible_to<tag>;
+  { T::context() } -> std::same_as<context *>;
 };
 
 namespace impl {
@@ -72,6 +76,8 @@ class first_arg_t {
   static constexpr tag tag = Tag; ///< The way this async function was called.
 
   first_arg_t() = default;
+
+  static auto context() -> context * { return tls::context(); }
 
   template <different_from<first_arg_t> T>
     requires std::constructible_from<F, T>

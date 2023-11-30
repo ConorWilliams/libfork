@@ -141,10 +141,11 @@ class busy_pool {
 
   struct shared_vars {
 
-    explicit shared_vars(std::size_t n) : max_parallel(n), latch(n + 1) {}
+    explicit shared_vars(std::size_t n) : max_parallel(n), latch_start(n + 1), latch_stop(n + 1) {}
 
     std::size_t max_parallel;
-    std::latch latch;
+    std::latch latch_start;
+    std::latch latch_stop;
     std::atomic_flag stop;
   };
 
@@ -160,6 +161,8 @@ class busy_pool {
     LF_LOG("Requesting a stop");
     // Set conditions for workers to stop
     m_share->stop.test_and_set(std::memory_order_release);
+
+    m_share->latch_stop.arrive_and_wait();
 
     for (auto &worker : m_threads) {
       worker.join();
@@ -177,13 +180,9 @@ class busy_pool {
 
     worker_context *my_context = worker_init(vars->max_parallel);
 
-    impl::defer at_exit = [my_context]() noexcept {
-      finalize(my_context);
-    };
-
     my_vars->init_numa_and_bind(my_context, node);
 
-    vars->latch.arrive_and_wait(); // Wait for everyone to have set up their numa_vars.
+    vars->latch_start.arrive_and_wait(); // Wait for everyone to have set up their numa_vars.
 
     // -------
 
@@ -197,6 +196,10 @@ class busy_pool {
         resume(task);
       }
     };
+
+    vars->latch_stop.arrive_and_wait(); // Wait for everyone to have stopped before destroying the context.
+
+    finalize(my_context);
   }
 
  public:
@@ -233,7 +236,7 @@ class busy_pool {
 
     // clang-format on
 
-    m_share->latch.arrive_and_wait(); // Wait for everyone to have set up their numa_vars.
+    m_share->latch_start.arrive_and_wait(); // Wait for everyone to have set up their numa_vars.
   }
 
   ~busy_pool() noexcept { clean_up(); }

@@ -176,7 +176,7 @@ inline constexpr auto v_fib = [](auto fib, int &ret, int n) -> lf::task<void> {
 
 }
 
-TEMPLATE_TEST_CASE("Fibonacci - void", "[core][template]", unit_pool) {
+TEMPLATE_TEST_CASE("Fibonacci - void", "[core][template]", unit_pool, busy_pool) {
 
   auto schedule = make_scheduler<TestType>();
 
@@ -218,7 +218,7 @@ inline constexpr auto v_fib_ignore = [](auto fib, int &ret, int n) -> lf::task<i
 
 }
 
-TEMPLATE_TEST_CASE("Fibonacci - ignored", "[core][template]", unit_pool) {
+TEMPLATE_TEST_CASE("Fibonacci - ignored", "[core][template]", unit_pool, busy_pool) {
 
   auto schedule = make_scheduler<TestType>();
 
@@ -260,7 +260,7 @@ class ref_test {
 
 } // namespace
 
-TEMPLATE_TEST_CASE("Reference test", "[core][template]", unit_pool) {
+TEMPLATE_TEST_CASE("Reference test", "[core][template]", unit_pool, busy_pool) {
 
   LF_LOG("pre-init");
 
@@ -277,4 +277,4 @@ TEMPLATE_TEST_CASE("Reference test", "[core][template]", unit_pool) {
   REQUIRE(a.m_private == 100);
 }
 
-// // NOLINTEND
+// NOLINTEND

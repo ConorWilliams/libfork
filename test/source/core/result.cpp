@@ -15,9 +15,9 @@
  */
 
 #include <catch2/catch_test_macros.hpp>
+#include <libfork/core/invocable.hpp>
 
-#include "libfork/core/coroutine.hpp"
-#include "libfork/core/result.hpp"
+#include "libfork/core.hpp"
 
 // NOLINTBEGIN No need to check the tests for style.
 
@@ -27,23 +27,6 @@ using namespace lf::impl;
 
 namespace {
 
-template <typename R, typename T>
-struct coro {
-  struct promise_type : promise_result<R, T> {
-    // clang-format off
-    promise_type() : promise_result<R, T>{nullptr} {}
-    promise_type() requires is_void<R> = default;
-    // clang-format on
-
-    auto get_return_object() noexcept -> coro { return {}; }
-    auto initial_suspend() noexcept -> stdx::suspend_always { return {}; }
-    auto final_suspend() noexcept -> stdx::suspend_always { return {}; }
-    void unhandled_exception() noexcept {}
-  };
-};
-
-// root/non-root, R = void/non-void, T = void/non-void
-
 struct anything {
   template <typename T>
   operator T() const {
@@ -51,33 +34,48 @@ struct anything {
   }
 };
 
+template <typename R, typename I>
+struct coro {
+  struct promise_type : return_result<R, I> {
+    // clang-format off
+    promise_type() : return_result<R, I>{anything{}} {}
+    promise_type() requires std::is_void_v<R> = default;
+
+    // clang-format on
+
+    auto get_return_object() noexcept -> coro { return {}; }
+    auto initial_suspend() noexcept -> std::suspend_always { return {}; }
+    auto final_suspend() noexcept -> std::suspend_always { return {}; }
+    void unhandled_exception() noexcept {}
+  };
+};
+
+// root/non-root, R = void/non-void, T = void/non-void
+
 // T = void
 
-auto test1() -> coro<void, void> { co_return; }
-auto test2() -> coro<root_result<void>, void> { co_return; }
+auto test1() -> coro<void, discard_t> { co_return; }
 
 // T = non-reference
 
 #define trivial(name, type)                                                                                  \
-  auto trivial_##name() -> coro<type, int> {                                                                 \
+  auto name##_name()->coro<int, type> {                                                                      \
     int x = 23;                                                                                              \
     co_return 23;                                                                                            \
     co_return x;                                                                                             \
     co_return 34.;                                                                                           \
     co_return anything{};                                                                                    \
     co_return {};                                                                                            \
-    co_return in_place{anything{}};                                                                          \
-    co_return in_place{};                                                                                    \
-    co_return in_place{78};                                                                                  \
   }
 
-trivial(void, void);
-trivial(int, int);
-trivial(double, double);
-trivial(root, root_result<int>);
+trivial(discard_t, discard_t);
+trivial(int, int *);
+trivial(double, double *);
+trivial(int_o, std::optional<int> *);
+trivial(int_e, eventually<int> *);
 
 #define vector(name, type)                                                                                   \
-  auto vector_##name() -> coro<type, std::vector<int>> {                                                     \
+  auto vector_##name()->coro<std::vector<int>, type> {                                                       \
     std::vector<int> x;                                                                                      \
     co_return x;                                                                                             \
     co_return std::vector<int>{};                                                                            \
@@ -86,53 +84,31 @@ trivial(root, root_result<int>);
     co_return {};                                                                                            \
     co_return {x.begin(), x.end()};                                                                          \
     co_return {1, 2, 3};                                                                                     \
-    co_return in_place{};                                                                                    \
-    co_return in_place{90};                                                                                  \
   }
 
-vector(void, void);
-vector(vec, std::vector<int>);
-vector(root, root_result<std::vector<int>>);
-
-// ------------------------------------------- //
-
-#if !defined(_MSC_VER) || _MSC_VER >= 1936
-
-struct I : lf::impl::immovable<I> {
-  I() = default;
-  I(int) {}
-  I(int, int){};
-};
-
-auto test_immovable() -> coro<eventually<I>, I> {
-  co_return {};
-  co_return 1;
-  co_return in_place{1, 2};
-  co_return in_place{};
-}
-
-#endif
+vector(void, discard_t);
+vector(vec, std::vector<int> *);
+vector(vec_o, std::optional<std::vector<int>> *);
+vector(vec_e, eventually<std::vector<int>> *);
 
 // ------------------------------------------- //
 
 int x = 23;
 
 #define reference(name, type)                                                                                \
-  auto reference_##name() -> coro<type, int &> { co_return x; }
+  auto reference_##name()->coro<int &, type> { co_return x; }
 
 #define rreference(name, type)                                                                               \
-  auto rreference_##name() -> coro<type, int &&> {                                                           \
+  auto rreference_##name()->coro<int &&, type> {                                                             \
     co_return 23;                                                                                            \
     co_return std::move(x);                                                                                  \
   }
 
-reference(void, void);
-reference(int, int);
-reference(root, root_result<int>);
+reference(void, discard_t);
+reference(int, eventually<int &> *);
 
-rreference(void, void);
-rreference(int, int);
-rreference(root, root_result<int>);
+rreference(void, discard_t);
+rreference(int, eventually<int &&> *);
 
 } // namespace
 

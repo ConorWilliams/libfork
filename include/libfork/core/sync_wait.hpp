@@ -59,7 +59,6 @@ auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
   }();
 
   ignore_t{} = tls::thread_fibre->release();
-  // commit_release(tls::thread_fibre->pre_release());
 
   if (!worker) {
     tls::thread_fibre.destroy();

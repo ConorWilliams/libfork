@@ -67,27 +67,27 @@ LF_NOINLINE constexpr auto sfib(int &ret, int n) -> void {
   ret = a + b;
 };
 
-TEST_CASE("Core nooper", "[core]") {
+// TEST_CASE("Core nooper", "[core][benchmark]") {
 
-  scheduler sch{};
+//   scheduler sch{};
 
-  for (int i = 1; i < 30 + 1; ++i) {
+//   for (int i = 1; i < 30 + 1; ++i) {
 
-    int val = lf::sync_wait(sch, fib, i);
+//     int val = lf::sync_wait(sch, fib, i);
 
-    std::cout << "fib " << i << " = " << val << std::endl;
-  }
+//     std::cout << "fib " << i << " = " << val << std::endl;
+//   }
 
-  volatile int in = 32;
+//   volatile int in = 32;
 
-  BENCHMARK("Fibonacci serial") {
-    int out;
-    sfib(out, in);
-    return out;
-  };
+//   BENCHMARK("Fibonacci serial") {
+//     int out;
+//     sfib(out, in);
+//     return out;
+//   };
 
-  BENCHMARK("Fibonacci parall") {
-    //
-    return lf::sync_wait(sch, fib, in);
-  };
-}
+//   BENCHMARK("Fibonacci parall") {
+//     //
+//     return lf::sync_wait(sch, fib, in);
+//   };
+// }

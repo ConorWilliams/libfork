@@ -15,6 +15,8 @@
 #include "libfork/core/invocable.hpp"
 #include "libfork/core/tag.hpp"
 
+#include "libfork/core/impl/combinate.hpp"
+
 /**
  * @file call.hpp
  *
