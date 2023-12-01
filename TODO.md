@@ -1,11 +1,23 @@
 # The todo list
 
+- Get lazy pool working.
+- Full test suite working.
+- co_alloc working -> std:optional<std::span<>>
+  - Which needs lf::or_alloc
+
+- non_null macro
+
+- Includes for std:: and lf:: need tidying
+- Needs headers in the files
+- Docs need updating
+- Readme needs updating
+
+- Benchmarks working, run benchmarks on CSD3 with mimalloc
+
 ## Features
 
-- [ ] Make lazy pool accept some additional-context type.
 - [ ] Make busy pool API same as lazy pool.
 - [ ] reduce algorithm.
-- [ ] Make `thread_context` -> `worker_context` ?
 
 ## Misc
 

@@ -69,7 +69,7 @@ class context : impl::immovable<context> {
   /**
    * @brief Submit pending/suspended tasks to the context.
    */
-  void submit(intruded_list<submit_handle> jobs) noexcept { m_submit.push(jobs); }
+  void submit(intruded_list<submit_handle> jobs) noexcept { m_submit.push(non_null(jobs)); }
 
  private:
   static constexpr std::size_t k_buff = 8;

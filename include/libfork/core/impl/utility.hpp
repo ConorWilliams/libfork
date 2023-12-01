@@ -13,10 +13,12 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <functional>
 #include <limits>
 #include <new>
 #include <optional>
+#include <source_location>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -515,15 +517,23 @@ auto map(std::vector<T> &&from, F &&func) -> std::vector<std::invoke_result_t<F 
 // -------------------------------- //
 
 /**
- * @brief Returns ``ptr`` and asserts it is non-null
+ * @brief Returns ``ptr`` and asserts it is non-null in debug builds.
  */
 template <typename T>
-constexpr auto non_null(T *ptr) noexcept -> T * {
-  LF_ASSERT(ptr != nullptr);
-  return ptr;
+  requires requires (T &&ptr) {
+    { ptr == nullptr } -> std::convertible_to<bool>;
+  }
+constexpr auto non_null(T &&ptr, std::source_location loc = std::source_location::current()) noexcept
+    -> T && {
+#ifndef NDEBUG
+  if (ptr == nullptr) {
+    // NOLINTNEXTLINE
+    std::fprintf(stderr, "%s:%d: Null check failed: %s\n", loc.file_name(), loc.line(), loc.function_name());
+    std::terminate();
+  }
+#endif
+  return std::forward<T>(ptr);
 }
-
-// --------------------------------- //
 
 // -------------------------------- //
 

@@ -8,7 +8,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "libfork/schedule/deque.hpp"
+#include "libfork/core/ext/deque.hpp"
 
 // NOLINTBEGIN No linting in tests
 

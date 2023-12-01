@@ -13,7 +13,9 @@
 #include <atomic>
 #include <bit>
 #include <cstddef>
+#include <exception>
 #include <latch>
+#include <libfork/core/ext/tls.hpp>
 #include <memory>
 #include <numeric>
 #include <random>
@@ -23,6 +25,8 @@
 
 #include "libfork/schedule/ext/numa.hpp"
 #include "libfork/schedule/ext/random.hpp"
+
+#include "libfork/schedule/impl/contexts.hpp"
 
 // #include "libfork/schedule/impl/contexts.hpp"
 
@@ -36,96 +40,52 @@ namespace lf {
 
 namespace impl {
 
-struct numa_vars {
- private:
-  static constexpr std::size_t k_buff = 16;
-  static constexpr std::size_t k_steal_attempts = 32; ///< Attempts per target.
+struct busy_vars {
 
-  xoshiro m_rng;
-  worker_context *m_context = nullptr;
-  std::vector<std::vector<numa_vars *>> m_neigh;
+  explicit busy_vars(std::size_t n) : latch_start(n + 1), latch_stop(n) { LF_ASSERT(n > 0); }
 
- public:
-  explicit numa_vars(xoshiro const &rng) : m_rng(rng) {}
-
-  void submit(lf::intruded_list<lf::submit_handle> jobs) {
-    LF_ASSERT(m_context);
-    m_context->submit(jobs);
-  }
-
-  /**
-   * @brief Initialize the context with the given topology and bind it to a thread.
-   *
-   * This is separate from construction as the master thread will need to construct
-   * the contexts before they can form a reference to them, this must be called by the
-   * worker thread.
-   *
-   * The context will store __raw__ pointers to the other contexts in the topology, this is
-   * to ensure no circular references are formed.
-   */
-  void init_numa_and_bind(worker_context *context, numa_topology::numa_node<numa_vars> const &topo) {
-
-    LF_ASSERT(!topo.neighbors.empty());
-    LF_ASSERT(!topo.neighbors.front().empty());
-    LF_ASSERT(topo.neighbors.front().front().get() == this);
-
-    m_context = context;
-
-    topo.bind();
-
-    // Skip the first one as it is just us.
-    for (std::size_t i = 1; i < topo.neighbors.size(); ++i) {
-      m_neigh.push_back(map(topo.neighbors[i], [](std::shared_ptr<numa_vars> const &context) {
-        // We must use regular pointers to avoid circular references.
-        return context.get();
-      }));
-    }
-  }
-
-  /**
-   * @brief Try to steal a task from one of our friends, returns `nullptr` if we failed.
-   */
-  auto try_steal() noexcept -> task_handle {
-
-    std::size_t multiplier = 1 + m_neigh.size();
-
-    for (auto &&friends : m_neigh) {
-
-      multiplier -= 1;
-
-      LF_ASSERT(multiplier > 0);
-
-      for (std::size_t i = 0; i < k_steal_attempts * multiplier; ++i) {
-
-        std::shuffle(friends.begin(), friends.end(), m_rng);
-
-        for (numa_vars *context : friends) {
-
-          LF_ASSERT(context->m_context);
-
-          auto [err, task] = context->m_context->try_steal();
-
-          switch (err) {
-            case lf::err::none:
-              LF_LOG("Stole task from {}", (void *)context);
-              return task;
-
-            case lf::err::lost:
-              // We don't retry here as we don't want to cause contention
-              // and we have multiple steal attempts anyway.
-            case lf::err::empty:
-              continue;
-
-            default:
-              LF_ASSERT(false);
-          }
-        }
-      }
-    }
-
-    return nullptr;
-  }
+  alignas(k_cache_line) std::latch latch_start;
+  alignas(k_cache_line) std::latch latch_stop;
+  alignas(k_cache_line) std::atomic_flag stop;
 };
+
+inline void busy_work(numa_topology::numa_node<impl::numa_context<busy_vars>> node) noexcept {
+
+  LF_ASSERT(!node.neighbors.empty());
+  LF_ASSERT(!node.neighbors.front().empty());
+
+  // ------- Initialize my numa variables
+
+  std::shared_ptr my_context = node.neighbors.front().front();
+
+  my_context->init_worker_and_bind(node);
+
+  // Wait for everyone to have set up their numa_vars. If this throws an exception then
+  // program terminates due to the noexcept marker.
+  my_context->shared().latch_start.arrive_and_wait();
+
+  lf::impl::defer on_exit = [&]() noexcept {
+    // Wait for everyone to have stopped before destroying the context (which others could be observing).
+    my_context->shared().stop.test_and_set(std::memory_order_release);
+    my_context->shared().latch_stop.arrive_and_wait();
+    my_context->finalize_worker();
+  };
+
+  // -------
+
+  while (!my_context->shared().stop.test(std::memory_order_acquire)) {
+
+    intruded_list<submit_handle> submissions = my_context->worker_context().try_pop_all();
+
+    for_each_elem(submissions, [](lf::submit_handle submitted) LF_STATIC_CALL noexcept {
+      resume(submitted);
+    });
+
+    if (task_handle task = my_context->try_steal()) {
+      resume(task);
+    }
+  };
+}
 
 } // namespace impl
 
@@ -139,68 +99,14 @@ struct numa_vars {
  */
 class busy_pool {
 
-  struct shared_vars {
-
-    explicit shared_vars(std::size_t n) : max_parallel(n), latch_start(n + 1), latch_stop(n + 1) {}
-
-    std::size_t max_parallel;
-    std::latch latch_start;
-    std::latch latch_stop;
-    std::atomic_flag stop;
-  };
-
+  std::size_t m_num_threads;
+  std::uniform_int_distribution<std::size_t> m_dist{0, m_num_threads - 1};
   xoshiro m_rng{seed, std::random_device{}};
+  std::shared_ptr<impl::busy_vars> m_share = std::make_shared<impl::busy_vars>(m_num_threads);
+  std::vector<std::shared_ptr<impl::numa_context<impl::busy_vars>>> m_worker = {};
+  std::vector<std::thread> m_threads = {};
 
-  std::shared_ptr<shared_vars> m_share;
-  std::vector<std::shared_ptr<impl::numa_vars>> m_worker;
-  std::vector<std::thread> m_threads;
-
-  // Request all threads to stop, wake them up and then call join.
-  auto clean_up() noexcept -> void {
-
-    LF_LOG("Requesting a stop");
-    // Set conditions for workers to stop
-    m_share->stop.test_and_set(std::memory_order_release);
-
-    m_share->latch_stop.arrive_and_wait();
-
-    for (auto &worker : m_threads) {
-      worker.join();
-    }
-  }
-
-  static auto work(numa_topology::numa_node<impl::numa_vars> node, std::shared_ptr<shared_vars> vars) {
-
-    LF_ASSERT(!node.neighbors.empty());
-    LF_ASSERT(!node.neighbors.front().empty());
-
-    // ------- Initialize my numa variables
-
-    std::shared_ptr my_vars = node.neighbors.front().front();
-
-    worker_context *my_context = worker_init(vars->max_parallel);
-
-    my_vars->init_numa_and_bind(my_context, node);
-
-    vars->latch_start.arrive_and_wait(); // Wait for everyone to have set up their numa_vars.
-
-    // -------
-
-    while (!vars->stop.test(std::memory_order_acquire)) {
-
-      for_each_elem(my_context->try_pop_all(), [](lf::submit_handle submitted) LF_STATIC_CALL noexcept {
-        resume(submitted);
-      });
-
-      if (task_handle task = my_vars->try_steal()) {
-        resume(task);
-      }
-    };
-
-    vars->latch_stop.arrive_and_wait(); // Wait for everyone to have stopped before destroying the context.
-
-    finalize(my_context);
-  }
+  using strategy = numa_strategy;
 
  public:
   /**
@@ -209,13 +115,11 @@ class busy_pool {
    * @param n The number of worker threads to create, defaults to the number of hardware threads.
    * @param strategy The numa strategy for distributing workers.
    */
-  explicit busy_pool(std::size_t n = std::thread::hardware_concurrency(),
-                     numa_strategy strategy = numa_strategy::fan)
-
-      : m_share(std::make_shared<shared_vars>(n)) {
+  explicit busy_pool(std::size_t n = std::thread::hardware_concurrency(), strategy strategy = strategy::fan)
+      : m_num_threads(n) {
 
     for (std::size_t i = 0; i < n; ++i) {
-      m_worker.push_back(std::make_shared<impl::numa_vars>(m_rng));
+      m_worker.push_back(std::make_shared<impl::numa_context<impl::busy_vars>>(n, m_rng, m_share));
       m_rng.long_jump();
     }
 
@@ -223,30 +127,34 @@ class busy_pool {
 
     std::vector nodes = numa_topology{}.distribute(m_worker, strategy);
 
-    // clang-format off
-
-    LF_TRY {
+    [&]() noexcept {
+      // All workers must be created, if we fail to create them all then we must terminate else
+      // the workers will hang on the latch.
       for (auto &&node : nodes) {
-        m_threads.emplace_back(work, std::move(node), m_share);
+        m_threads.emplace_back(impl::busy_work, std::move(node));
       }
-    } LF_CATCH_ALL {
-      clean_up();
-      LF_RETHROW;
-    }
 
-    // clang-format on
-
-    m_share->latch_start.arrive_and_wait(); // Wait for everyone to have set up their numa_vars.
+      // Wait for everyone to have set up their numa_vars before submitting. This
+      // must be noexcept as if we fail the countdown then the workers will hang.
+      m_share->latch_start.arrive_and_wait();
+    }();
   }
-
-  ~busy_pool() noexcept { clean_up(); }
 
   /**
    * @brief Schedule a task for execution.
    */
   void schedule(lf::intruded_list<lf::submit_handle> jobs) {
-    std::uniform_int_distribution<std::size_t> dist(0, m_threads.size() - 1);
-    m_worker[dist(m_rng)]->submit(jobs);
+    m_worker[m_dist(m_rng)]->worker_context().submit(jobs);
+  }
+
+  ~busy_pool() noexcept {
+    LF_LOG("Requesting a stop");
+    // Set conditions for workers to stop
+    m_share->stop.test_and_set(std::memory_order_release);
+
+    for (auto &worker : m_threads) {
+      worker.join();
+    }
   }
 };
 

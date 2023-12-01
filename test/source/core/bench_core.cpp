@@ -67,6 +67,8 @@ LF_NOINLINE constexpr auto sfib(int &ret, int n) -> void {
   ret = a + b;
 };
 
+auto test() -> lf::task<> { return {}; }
+
 // TEST_CASE("Core nooper", "[core][benchmark]") {
 
 //   scheduler sch{};

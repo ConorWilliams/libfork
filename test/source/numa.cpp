@@ -17,7 +17,7 @@
 
 #include "libfork/core.hpp"
 
-#include "libfork/schedule/numa.hpp"
+#include "libfork/schedule/ext/numa.hpp"
 
 using namespace lf;
 

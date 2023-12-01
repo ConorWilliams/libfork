@@ -116,13 +116,13 @@ class fibre {
    *
    * `frag` must be the fibril containing the top stack frame.
    */
-  explicit fibre(fibril *frag) : m_fib(frag) { LF_LOG("Constructing fibre from fibril"); }
+  explicit fibre(fibril *frag) noexcept : m_fib(frag) { LF_LOG("Constructing fibre from fibril"); }
 
   fibre(fibre const &) = delete;
 
   auto operator=(fibre const &) -> fibre & = delete;
 
-  fibre(fibre &&other) noexcept : fibre() { swap(*this, other); }
+  fibre(fibre &&other) : fibre() { swap(*this, other); }
 
   auto operator=(fibre &&other) noexcept -> fibre & {
     swap(*this, other);

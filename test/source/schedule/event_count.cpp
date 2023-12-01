@@ -24,8 +24,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "libfork/schedule/event_count.hpp"
-#include "libfork/schedule/random.hpp"
+#include "libfork/schedule/ext/event_count.hpp"
+#include "libfork/schedule/ext/random.hpp"
 
 // NOLINTBEGIN No need to check the tests for style.
 

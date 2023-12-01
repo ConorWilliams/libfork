@@ -442,4 +442,6 @@ constexpr deque<T>::~deque() noexcept {
 
 } // namespace lf
 
+#undef LF_ATOMIC_THREAD_FENCE_SEQ_CST
+
 #endif /* C9703881_3D9C_41A5_A7A2_44615C4CFA6A */

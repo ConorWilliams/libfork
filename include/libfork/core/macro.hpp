@@ -52,8 +52,8 @@
 
 #ifndef LF_FIBRE_STACK_SIZE
   /**
-   * @brief __[public]__ A customizable stack size for ``fibre_stack``'s (in multiples of 4 kibibytes i.e. the
-   * page size).
+   * @brief __[public]__ A customizable stack size for ``fibre_stack``'s (in multiples of 4 kibibytes i.e.
+   * the page size).
    *
    * You can override this by defining ``LF_FIBRE_STACK_SIZE`` to a power of two (default 1 MiB)
    */

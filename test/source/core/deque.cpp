@@ -12,7 +12,7 @@
 
 #include <thread>
 
-#include "libfork/schedule/deque.hpp"
+#include "libfork/core/ext/deque.hpp"
 
 auto example() -> int {
   // Work-stealing deque of ints

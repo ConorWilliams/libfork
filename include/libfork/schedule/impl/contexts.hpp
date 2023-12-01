@@ -13,7 +13,6 @@
 #include <atomic>
 #include <bit>
 #include <cstddef>
-#include <libfork/core/context.hpp>
 #include <memory>
 #include <random>
 #include <vector>
@@ -29,77 +28,74 @@
  * @brief A collection of `thread_context` implementations for different purposes.
  */
 
+// --------------------------------------------------------------------- //
 namespace lf::impl {
 
-// --------------------------------------------------------------------- //
-
-/**
- * @brief A generic `thread_context` suitable for all `libfork`s multi-threaded schedulers.
- *
- * This object does not manage worker_init/worker_finalize as it is intended
- * to be constructed/destructed by the master thread.
- */
-class numa_worker_context : immovable<numa_worker_context> {
-
-  static constexpr std::size_t k_buff = 16;
+template <typename Shared>
+struct numa_context {
+ private:
   static constexpr std::size_t k_steal_attempts = 32; ///< Attempts per target.
 
-  xoshiro m_rng;                                      ///< Our personal PRNG.
-  std::size_t m_max_threads;                          ///< The total max parallelism available.
-  worker_context m_context;                           ///< Our context.
-  std::vector<std::vector<worker_context *>> m_neigh; ///< Our view of the NUMA topology.
-
-  // template <typename T>
-  // static constexpr auto null_for = []() LF_STATIC_CALL noexcept -> T * {
-  //   return nullptr;
-  // };
+  std::size_t m_max_parallel;                       ///< The maximum number of parallel tasks.
+  xoshiro m_rng;                                    ///< Thread-local RNG.
+  worker_context *m_context = nullptr;              ///< The worker context we are associated with.
+  std::vector<std::vector<numa_context *>> m_neigh; ///< Our neighbors (excluding ourselves).
+  std::shared_ptr<Shared> m_shared;                 ///< Shared variables between all numa_contexts.
 
  public:
-  /**
-   * @brief Construct a new numa worker context object.
-   *
-   * @param n The maximum parallelism.
-   * @param rng This worker private pseudo random number generator.
-   */
-  numa_worker_context(std::size_t n, xoshiro const &rng) : m_rng(rng), m_max_threads(n) {
-    for (std::size_t i = 0; i < k_buff / 2; ++i) {
-      m_buffer.push(new fibre_stack);
-    }
-  }
+  numa_context(std::size_t max_parallel, xoshiro const &rng, std::shared_ptr<Shared> shared)
+      : m_max_parallel(max_parallel),
+        m_rng(rng),
+        m_shared{std::move(non_null(shared))} {}
+
+  auto shared() const noexcept -> Shared & { return *non_null(m_shared); }
+
+  auto worker_context() const noexcept -> worker_context & { return *non_null(m_context); }
 
   /**
-   * @brief Initialize the context with the given topology and bind it to a thread.
+   * @brief Initialize the context and worker with the given topology and bind it to a hardware core.
    *
    * This is separate from construction as the master thread will need to construct
    * the contexts before they can form a reference to them, this must be called by the
-   * worker thread.
+   * worker thread which should eventually call `finalize`.
    *
    * The context will store __raw__ pointers to the other contexts in the topology, this is
    * to ensure no circular references are formed.
+   *
+   * The lifetime of the `context` and `topo` neighbors must outlive all use of this object (excluding
+   * destruction).
    */
-  void init_numa_and_bind(numa_topology::numa_node<CRTP> const &topo) {
+  void init_worker_and_bind(numa_topology::numa_node<numa_context> const &topo) {
 
+    LF_ASSERT(!topo.neighbors.empty());
+    LF_ASSERT(!topo.neighbors.front().empty());
     LF_ASSERT(topo.neighbors.front().front().get() == this);
+
     topo.bind();
+
+    m_neigh.clear();
 
     // Skip the first one as it is just us.
     for (std::size_t i = 1; i < topo.neighbors.size(); ++i) {
-      m_neigh.push_back(map(topo.neighbors[i], [](std::shared_ptr<CRTP> const &context) {
-        // We must use regular pointers to avoid circular references.
+      m_neigh.push_back(map(topo.neighbors[i], [](std::shared_ptr<numa_context> const &context) {
+        // We must use regular pointers to avoid circular deps.
         return context.get();
       }));
     }
+
+    // Last thing in-case method throws.
+
+    LF_ASSERT(!m_context);
+
+    m_context = worker_init(m_max_parallel);
   }
 
-  /**
-   * @brief Fetch a linked-list of the submitted tasks.
-   */
-  auto try_get_submitted() noexcept -> intruded_t * { return m_submit.try_pop_all(); }
+  void finalize_worker() { finalize(std::exchange(m_context, nullptr)); }
 
   /**
    * @brief Try to steal a task from one of our friends, returns `nullptr` if we failed.
    */
-  auto try_steal() noexcept -> task_t * {
+  auto try_steal() noexcept -> task_handle {
 
     std::size_t multiplier = 1 + m_neigh.size();
 
@@ -113,9 +109,11 @@ class numa_worker_context : immovable<numa_worker_context> {
 
         std::shuffle(friends.begin(), friends.end(), m_rng);
 
-        for (CRTP *context : friends) {
+        for (numa_context *context : friends) {
 
-          auto [err, task] = context->m_tasks.steal();
+          LF_ASSERT(context->m_context);
+
+          auto [err, task] = context->m_context->try_steal();
 
           switch (err) {
             case lf::err::none:
@@ -137,107 +135,7 @@ class numa_worker_context : immovable<numa_worker_context> {
 
     return nullptr;
   }
-
-  ~numa_worker_context() noexcept {
-    //
-    LF_ASSERT_NO_ASSUME(m_tasks.empty());
-
-    while (auto *stack = m_buffer.pop(null_for<fibre_stack>)) {
-      delete stack;
-    }
-
-    while (auto *stack = m_stacks.pop(null_for<fibre_stack>)) {
-      delete stack;
-    }
-  }
-
-  // ------------- To satisfy `thread_context` ------------- //
-
-  /**
-   * @brief Get the maximum parallelism.
-   */
-  auto max_threads() const noexcept -> std::size_t { return m_max_threads; }
-
-  /**
-   * @brief Submit a node for execution onto this workers private queue.
-   */
-  auto submit(intruded_t *node) noexcept -> void { m_submit.push(non_null(node)); }
-
-  /**
-   * @brief Get a new empty ``fiber_stack``.
-   *
-   * This will attempt to steal one before allocating.
-   */
-  auto stack_pop() -> fibre_stack * {
-
-    if (auto *stack = m_buffer.pop(null_for<fibre_stack>)) {
-      LF_LOG("stack_pop() using local-buffered stack");
-      return stack;
-    }
-
-    if (auto *stack = m_stacks.pop(null_for<fibre_stack>)) {
-      LF_LOG("stack_pop() using public-buffered stack");
-      return stack;
-    }
-
-    for (auto &&friends : m_neigh) {
-
-      std::shuffle(friends.begin(), friends.end(), m_rng);
-
-      for (CRTP *context : friends) {
-
-      retry:
-        auto [err, stack] = context->m_stacks.steal();
-
-        switch (err) {
-          case lf::err::none:
-            LF_LOG("stack_pop() stole from {}", (void *)context);
-            return stack;
-          case lf::err::lost:
-            // We retry (even if it may cause contention) to try and avoid allocating.
-            goto retry;
-          case lf::err::empty:
-            break;
-          default:
-            LF_ASSERT(false);
-        }
-      }
-    }
-
-    LF_LOG("stack_pop() allocating");
-
-    return new fibre_stack;
-  }
-
-  /**
-   * @brief Cache an empty fiber stack.
-   */
-  void stack_push(fibre_stack *stack) {
-    m_buffer.push(non_null(stack), [&](fibre_stack *extra_stack) noexcept {
-      LF_LOG("Local stack buffer overflows");
-      m_stacks.push(extra_stack);
-    });
-  }
-
-  /**
-   * @brief Pop a task from the public task queue.
-   */
-  LF_FORCEINLINE auto task_pop() noexcept -> task_t * { return m_tasks.pop(null_for<task_t>); }
-
-  /**
-   * @brief Add a task to the public task queue.
-   */
-  LF_FORCEINLINE void task_push(task_t *task) { m_tasks.push(non_null(task)); }
 };
-
-namespace detail::static_test {
-
-struct test_context : numa_worker_context<test_context> {};
-
-static_assert(thread_context<test_context>);
-static_assert(!single_thread_context<test_context>);
-
-} // namespace detail::static_test
 
 } // namespace lf::impl
 

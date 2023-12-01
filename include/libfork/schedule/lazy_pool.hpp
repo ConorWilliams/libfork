@@ -12,6 +12,8 @@
 #include <algorithm>
 #include <atomic>
 #include <bit>
+#include <latch>
+
 #include <limits>
 #include <memory>
 #include <optional>
@@ -21,10 +23,13 @@
 
 #include "libfork/core.hpp"
 
-#include "libfork/schedule/contexts.hpp"
-#include "libfork/schedule/event_count.hpp"
-#include "libfork/schedule/numa.hpp"
-#include "libfork/schedule/random.hpp"
+#include <libfork/schedule/busy_pool.hpp>
+
+#include "libfork/schedule/ext/event_count.hpp"
+#include "libfork/schedule/ext/numa.hpp"
+#include "libfork/schedule/ext/random.hpp"
+
+#include "libfork/schedule/impl/contexts.hpp"
 
 /**
  * @file lazy_pool.hpp
@@ -47,217 +52,194 @@ static constexpr std::uint64_t k_thieve_mask = (k_active - 1);
 static constexpr std::uint64_t k_active_mask = ~k_thieve_mask;
 
 /**
- * @brief Need to overload submit to add notifications.
+ * @brief A collection of heap allocated atomic variables used for tracking the state of the scheduler.
  */
-class lazy_context : public numa_worker_context<lazy_context> {
- public:
+struct lazy_vars : busy_vars {
+
+  using busy_vars::busy_vars;
+
+  alignas(k_cache_line) std::atomic_uint64_t dual_count = 0; ///< The worker + active counters
+  alignas(k_cache_line) event_count notifier;                ///< The pools notifier.
+
   /**
-   * @brief A collection of heap allocated atomic variables used for tracking the state of the scheduler.
+   * Effect:
+   *
+   * T <- T - 1
+   * S <- S
+   * A <- A + 1
+   *
+   * A is now guaranteed to be greater than 0, if we were the last thief we try to wake someone.
+   *
+   * Then we do the task.
+   *
+   * Once we are done we perform:
+   *
+   * T <- T + 1
+   * S <- S
+   * A <- A - 1
+   *
+   * This never invalidates the invariant.
+   *
+   * Overall effect: thief->active, do the work, active->thief.
    */
-  struct remote_atomics {
-    /**
-     * Effect:
-     *
-     * T <- T - 1
-     * S <- S
-     * A <- A + 1
-     *
-     * A is now guaranteed to be greater than 0, if we were the last thief we try to wake someone.
-     *
-     * Then we do the task.
-     *
-     * Once we are done we perform:
-     *
-     * T <- T + 1
-     * S <- S
-     * A <- A - 1
-     *
-     * This never invalidates the invariant.
-     *
-     *
-     * Overall effect: thief->active, do the work, active->thief.
-     */
-    template <typename Handle>
-      requires std::same_as<Handle, task_h<lazy_context>> || std::same_as<Handle, intruded_h<lazy_context>>
-    void thief_round_trip(Handle *handle) noexcept {
+  template <typename Handle>
+    requires std::same_as<Handle, task_handle> || std::same_as<Handle, intruded_list<submit_handle>>
+  void thief_round_trip(Handle handle) noexcept {
 
-      auto prev_thieves = dual_count.fetch_add(k_active - k_thieve, acq_rel) & k_thieve_mask;
+    auto prev_thieves = dual_count.fetch_add(k_active - k_thieve, acq_rel) & k_thieve_mask;
 
-      if (prev_thieves == 1) {
-        LF_LOG("The last thief wakes someone up");
-        notifier.notify_one();
-      }
-
-      if constexpr (std::same_as<Handle, intruded_h<lazy_context>>) {
-        for_each_elem(handle, [](submit_h<lazy_context> *submitted) LF_STATIC_CALL noexcept {
-          resume(submitted);
-        });
-      } else {
-        resume(handle);
-      }
-
-      dual_count.fetch_sub(k_active - k_thieve, acq_rel);
+    if (prev_thieves == 1) {
+      LF_LOG("The last thief wakes someone up");
+      notifier.notify_one();
     }
 
-    alignas(k_cache_line) std::atomic_uint64_t dual_count = 0; ///< The worker + active counters
-    alignas(k_cache_line) std::atomic_flag stop;               ///< Stop flag
-    alignas(k_cache_line) event_count notifier;                ///< The pools notifier.
+    if constexpr (std::same_as<Handle, intruded_list<submit_handle>>) {
+      for_each_elem(handle, [](submit_handle submitted) LF_STATIC_CALL noexcept {
+        resume(submitted);
+      });
+    } else {
+      resume(handle);
+    }
+
+    dual_count.fetch_sub(k_active - k_thieve, acq_rel);
+  }
+};
+
+/**
+ * @brief The function that workers run while the pool is alive.
+ */
+inline auto lazy_work(numa_topology::numa_node<numa_context<lazy_vars>> node) noexcept {
+
+  LF_ASSERT(!node.neighbors.empty());
+  LF_ASSERT(!node.neighbors.front().empty());
+
+  // ---- Initialization ---- //
+
+  std::shared_ptr my_context = node.neighbors.front().front();
+
+  my_context->init_worker_and_bind(node);
+
+  // Wait for everyone to have set up their numa_vars. If this throws an exception then
+  // program terminates due to the noexcept marker.
+  my_context->shared().latch_start.arrive_and_wait();
+
+  lf::impl::defer on_exit = [&]() noexcept {
+    // Wait for everyone to have stopped before destroying the context (which others could be observing).
+    my_context->shared().stop.test_and_set(std::memory_order_release);
+    my_context->shared().latch_stop.arrive_and_wait();
+    my_context->finalize_worker();
   };
 
-  // ---------------------------------------------------------------------- //
+  // ----------------------------------- //
 
   /**
-   * @brief Submissions to the `lazy_pool` are very noisy (everyone wakes up).
+   * Invariant we want to uphold:
+   *
+   *  If there is an active task there is always: [at least one thief] OR [no sleeping].
+   *
+   * Let:
+   *  T = number of thieves
+   *  S = number of sleeping threads
+   *  A = number of active threads
+   *
+   * Invariant: *** if (A > 0) then (T >= 1 OR S == 0) ***
+   *
+   * Lemma 1: Promoting an S -> T guarantees that the invariant is upheld.
+   *
+   * Proof 1:
+   *  Case S != 0, then T -> T + 1, hence T > 0 hence invariant maintained.
+   *  Case S == 0, then invariant is already maintained.
    */
-  auto submit(intruded_h<lazy_context> *node) noexcept -> void {
-    numa_worker_context::submit(node);
-    m_atomics->notifier.notify_all();
+
+wake_up:
+  /**
+   * Invariant maintained by Lemma 1 regardless if this is a wake up (S <- S - 1) or join (S <- S).
+   */
+  my_context->shared().dual_count.fetch_add(k_thieve, release);
+
+continue_as_thief:
+  /**
+   * First we handle the fast path (work to do) before touching the notifier.
+   */
+  if (auto *submission = my_context->worker_context().try_pop_all()) {
+    my_context->shared().thief_round_trip(submission);
+    goto continue_as_thief;
+  }
+  if (auto *stolen = my_context->try_steal()) {
+    my_context->shared().thief_round_trip(stolen);
+    goto continue_as_thief;
   }
 
-  // ---------------------------------------------------------------------- //
-
   /**
-   * @brief Construct a new context object.
+   * Now we are going to try and sleep if the conditions are correct.
    *
-   * @param n The maximum parallelism.
-   * @param rng This worker private pseudo random number generator.
-   * @param atomics A pointer to the shared atomics used to communicate between the workers.
+   * Event count pattern:
+   *
+   *    key <- prepare_wait()
+   *
+   *    Check condition for sleep:
+   *      - We have no private work.
+   *      - We are not the watch dog.
+   *      - The scheduler has not stopped.
+   *
+   *    Commit/cancel wait on key.
    */
-  lazy_context(std::size_t n, xoshiro &rng, std::shared_ptr<remote_atomics> atomics)
-      : numa_worker_context{n, rng},
-        m_atomics(std::move(atomics)) {}
+
+  auto key = my_context->shared().notifier.prepare_wait();
+
+  if (auto *submission = my_context->worker_context().try_pop_all()) {
+    // Check our private **before** `stop`.
+    my_context->shared().notifier.cancel_wait();
+    my_context->shared().thief_round_trip(submission);
+    goto continue_as_thief;
+  }
+
+  if (my_context->shared().stop.test(acquire)) {
+    // A stop has been requested, we will honor it under the assumption
+    // that the requester has ensured that everyone is done. We cannot check
+    // this i.e it is possible a thread that just signaled the master thread
+    // is still `active` but act stalled.
+    my_context->shared().notifier.cancel_wait();
+    // We leave a "ghost thief" here e.g. don't bother to reduce the counter,
+    // This is fine because no-one can sleep now that the stop flag is set.
+    return;
+  }
 
   /**
-   * @brief The function that workers run while the pool is alive.
+   * Try:
+   *
+   * T <- T - 1
+   * S <- S + 1
+   * A <- A
+   *
+   * If new T == 0 and A > 0 then wake self immediately i.e:
+   *
+   * T <- T + 1
+   * S <- S - 1
+   * A <- A
+   *
+   * If we return true then we are safe to sleep, otherwise we must stay awake.
    */
-  static auto work(numa_topology::numa_node<lazy_context> node) {
 
-    // ---- Initialization ---- //
+  auto prev_dual = my_context->shared().dual_count.fetch_sub(k_thieve, acq_rel);
 
-    std::shared_ptr my_context = node.neighbors.front().front();
+  // We are now registered as a sleeping thread and may have broken the invariant.
 
-    LF_ASSERT(my_context.get());
+  auto prev_thieves = prev_dual & k_thieve_mask;
+  auto prev_actives = prev_dual & k_active_mask; // Again only need 0 or non-zero.
 
-    worker_init(my_context.get());
-
-    impl::defer at_exit = [&]() noexcept {
-      worker_finalize(my_context.get());
-    };
-
-    my_context->init_numa_and_bind(node);
-
-    /**
-     * Invariant we want to uphold:
-     *
-     *  If there is an active task their is always: [a thief] OR [no sleeping].
-     *
-     * Let:
-     *  T = number of thieves
-     *  S = number of sleeping threads
-     *  A = number of active threads
-     *
-     * Invariant: *** if (A > 0) then (T >= 1 OR S == 0) ***
-     *
-     * Lemma 1: Promoting an S -> T guarantees that the invariant is upheld.
-     *
-     * Proof 1:
-     *  Case S != 0, then T -> T + 1, hence T > 0 hence invariant maintained.
-     *  Case S == 0, then invariant is already maintained.
-     */
-
-  wake_up:
-    /**
-     * Invariant maintained by Lemma 1 regardless if this is a wake up (S <- S - 1) or join (S <- S).
-     */
-    my_context->m_atomics->dual_count.fetch_add(k_thieve, release);
-
-  continue_as_thief:
-    /**
-     * First we handle the fast path (work to do) before touching the notifier.
-     */
-    if (auto *submission = my_context->try_get_submitted()) {
-      my_context->m_atomics->thief_round_trip(submission);
-      goto continue_as_thief;
-    }
-    if (auto *stolen = my_context->try_steal()) {
-      my_context->m_atomics->thief_round_trip(stolen);
-      goto continue_as_thief;
-    }
-
-    /**
-     * Now we are going to try and sleep if the conditions are correct.
-     *
-     * Event count pattern:
-     *
-     *    key <- prepare_wait()
-     *
-     *    Check condition for sleep:
-     *      - We have no private work.
-     *      - We are not the watch dog.
-     *      - The scheduler has not stopped.
-     *
-     *    Commit/cancel wait on key.
-     */
-
-    auto key = my_context->m_atomics->notifier.prepare_wait();
-
-    if (auto *submission = my_context->try_get_submitted()) {
-      // Check our private **before** `stop`.
-      my_context->m_atomics->notifier.cancel_wait();
-      my_context->m_atomics->thief_round_trip(submission);
-      goto continue_as_thief;
-    }
-
-    if (my_context->m_atomics->stop.test(acquire)) {
-      // A stop has been requested, we will honor it under the assumption
-      // that the requester has ensured that everyone is done. We cannot check
-      // this i.e it is possible a thread that just signaled the master thread
-      // is still `active` but act stalled.
-      my_context->m_atomics->notifier.cancel_wait();
-      // We leave a "ghost thief" here e.g. don't bother to reduce the counter,
-      // This is fine because no-one can sleep now that the stop flag is set.
-      return;
-    }
-
-    /**
-     * Try:
-     *
-     * T <- T - 1
-     * S <- S + 1
-     * A <- A
-     *
-     * If new T == 0 and A > 0 then wake self immediately i.e:
-     *
-     * T <- T + 1
-     * S <- S - 1
-     * A <- A
-     *
-     * If we return true then we are safe to sleep, otherwise we must stay awake.
-     */
-
-    auto prev_dual = my_context->m_atomics->dual_count.fetch_sub(k_thieve, acq_rel);
-
-    // We are now registered as a sleeping thread and may have broken the invariant.
-
-    auto prev_thieves = prev_dual & k_thieve_mask;
-    auto prev_actives = prev_dual & k_active_mask; // Again only need 0 or non-zero.
-
-    if (prev_thieves == 1 && prev_actives != 0) {
-      // Restore the invariant.
-      goto wake_up;
-    }
-
-    LF_LOG("Goes to sleep");
-
-    // We are safe to sleep.
-    my_context->m_atomics->notifier.wait(key);
-    // Note, this could be a spurious wakeup, that doesn't matter because we will just loop around.
+  if (prev_thieves == 1 && prev_actives != 0) {
+    // Restore the invariant.
     goto wake_up;
   }
 
- private:
-  std::shared_ptr<remote_atomics> m_atomics;
-};
+  LF_LOG("Goes to sleep");
+
+  // We are safe to sleep.
+  my_context->shared().notifier.wait(key);
+  // Note, this could be a spurious wakeup, that doesn't matter because we will just loop around.
+  goto wake_up;
+}
 
 } // namespace impl
 
@@ -269,90 +251,64 @@ class lazy_context : public numa_worker_context<lazy_context> {
  * use cases. Additionally (if an installation of `hwloc` was found) this pool is NUMA aware.
  */
 class lazy_pool {
- public:
-  /**
-   * @brief The context type used by this scheduler.
-   */
-  using context_type = impl::lazy_context;
 
-  /**
-   * @brief An alias for the type of``lf::ext::numa_topology::numa_node`` ``neighbors`` member.
-   */
-  using neigh_list = std::vector<std::vector<std::shared_ptr<context_type>>>;
-
- private:
-  using remote = typename context_type::remote_atomics;
-
-  std::shared_ptr<remote> m_atomics = std::make_shared<remote>();
+  std::size_t m_num_threads;
+  std::uniform_int_distribution<std::size_t> m_dist{0, m_num_threads - 1};
   xoshiro m_rng{seed, std::random_device{}};
-  std::uniform_int_distribution<std::size_t> m_dist;
-  std::vector<std::shared_ptr<context_type>> m_contexts;
-  std::vector<std::thread> m_workers;
+  std::shared_ptr<impl::lazy_vars> m_share = std::make_shared<impl::lazy_vars>(m_num_threads);
+  std::vector<std::shared_ptr<impl::numa_context<impl::lazy_vars>>> m_worker = {};
+  std::vector<std::thread> m_threads = {};
 
-  std::vector<neigh_list> m_hierarchy;
-
-  // Request all threads to stop, wake them up and then call join.
-  auto clean_up() noexcept -> void {
-    LF_LOG("Requesting a stop");
-
-    // Set conditions for workers to stop.
-    m_atomics->stop.test_and_set(std::memory_order_release);
-    m_atomics->notifier.notify_all();
-
-    for (auto &worker : m_workers) {
-      worker.join();
-    }
-  }
+  using strategy = numa_strategy;
 
  public:
-  /**
-   * @brief Schedule a task for execution.
-   */
-  auto schedule(intruded_h<context_type> *node) noexcept { m_contexts[m_dist(m_rng)]->submit(node); }
-
-  /**
-   * @brief Get the list of neighbour-lists of the ``index``th worker.
-   */
-  auto numa(std::size_t index) const -> neigh_list const & { return m_hierarchy[index]; }
-
-  /**
-   * @brief Get the number of workers in this pool.
-   */
-  auto size() const -> std::size_t { return m_contexts.size(); }
-
   /**
    * @brief Construct a new lazy_pool object and `n` worker threads.
    *
    * @param n The number of worker threads to create, defaults to the number of hardware threads.
    * @param strategy The numa strategy for distributing workers.
    */
-  explicit lazy_pool(std::size_t n = std::thread::hardware_concurrency(),
-                     numa_strategy strategy = numa_strategy::fan)
-      : m_dist{0, n - 1} {
+  explicit lazy_pool(std::size_t n = std::thread::hardware_concurrency(), strategy strategy = strategy::fan)
+      : m_num_threads(n) {
 
     for (std::size_t i = 0; i < n; ++i) {
-      m_contexts.push_back(std::make_shared<context_type>(n, m_rng, m_atomics));
+      m_worker.push_back(std::make_shared<impl::numa_context<impl::lazy_vars>>(n, m_rng, m_share));
       m_rng.long_jump();
     }
 
-    std::vector nodes = numa_topology{}.distribute(m_contexts, strategy);
+    LF_ASSERT_NO_ASSUME(!m_share->stop.test(std::memory_order_acquire));
 
-    // clang-format off
+    std::vector nodes = numa_topology{}.distribute(m_worker, strategy);
 
-    LF_TRY {
+    [&]() noexcept {
+      // All workers must be created, if we fail to create them all then we must terminate else
+      // the workers will hang on the latch.
       for (auto &&node : nodes) {
-        m_hierarchy.push_back(node.neighbors);
-        m_workers.emplace_back(context_type::work, std::move(node));
+        m_threads.emplace_back(impl::lazy_work, std::move(node));
       }
-    } LF_CATCH_ALL {
-      clean_up();
-      LF_RETHROW;
-    }
 
-    // clang-format on
+      // Wait for everyone to have set up their numa_vars before submitting. This
+      // must be noexcept as if we fail the countdown then the workers will hang.
+      m_share->latch_start.arrive_and_wait();
+    }();
   }
 
-  ~lazy_pool() noexcept { clean_up(); }
+  void schedule(lf::intruded_list<lf::submit_handle> jobs) {
+    m_worker[m_dist(m_rng)]->worker_context().submit(jobs);
+    m_share->notifier.notify_all();
+  }
+
+  ~lazy_pool() noexcept {
+    LF_LOG("Requesting a stop");
+
+    // Set conditions for workers to stop.
+    m_share->stop.test_and_set(std::memory_order_release);
+    m_share->notifier.notify_all();
+
+    for (auto &worker : m_threads) {
+      worker.join();
+    }
+  }
 };
 
 static_assert(scheduler<lazy_pool>);

@@ -34,7 +34,7 @@
 #include "libfork/core.hpp"
 
 #include "libfork/schedule/busy_pool.hpp"
-// #include "libfork/schedule/lazy_pool.hpp"
+#include "libfork/schedule/lazy_pool.hpp"
 #include "libfork/schedule/unit_pool.hpp"
 
 // NOLINTBEGIN No linting in tests
@@ -63,7 +63,7 @@ inline constexpr auto noop = [](auto) -> task<> {
 
 //  unit_pool, debug_pool, busy_pool, lazy_pool
 
-TEMPLATE_TEST_CASE("Construct destruct launch", "[core][template]", unit_pool, busy_pool) {
+TEMPLATE_TEST_CASE("Construct destruct launch", "[core][template]", unit_pool, busy_pool, lazy_pool) {
 
   for (int i = 0; i < 100; ++i) {
     auto schedule = make_scheduler<TestType>();
@@ -136,7 +136,7 @@ inline constexpr auto r_fib = [](auto fib, int n) -> lf::task<int> {
 
 } // namespace
 
-TEMPLATE_TEST_CASE("Fibonacci - returning", "[core][template]", unit_pool, busy_pool) {
+TEMPLATE_TEST_CASE("Fibonacci - returning", "[core][template]", unit_pool, busy_pool, lazy_pool) {
   for (int j = 0; j < 100; ++j) {
     {
       auto schedule = make_scheduler<TestType>();
@@ -176,7 +176,7 @@ inline constexpr auto v_fib = [](auto fib, int &ret, int n) -> lf::task<void> {
 
 }
 
-TEMPLATE_TEST_CASE("Fibonacci - void", "[core][template]", unit_pool, busy_pool) {
+TEMPLATE_TEST_CASE("Fibonacci - void", "[core][template]", unit_pool, busy_pool, lazy_pool) {
 
   auto schedule = make_scheduler<TestType>();
 
@@ -218,7 +218,7 @@ inline constexpr auto v_fib_ignore = [](auto fib, int &ret, int n) -> lf::task<i
 
 }
 
-TEMPLATE_TEST_CASE("Fibonacci - ignored", "[core][template]", unit_pool, busy_pool) {
+TEMPLATE_TEST_CASE("Fibonacci - ignored", "[core][template]", unit_pool, busy_pool, lazy_pool) {
 
   auto schedule = make_scheduler<TestType>();
 
@@ -260,7 +260,7 @@ class ref_test {
 
 } // namespace
 
-TEMPLATE_TEST_CASE("Reference test", "[core][template]", unit_pool, busy_pool) {
+TEMPLATE_TEST_CASE("Reference test", "[core][template]", unit_pool, busy_pool, lazy_pool) {
 
   LF_LOG("pre-init");
 

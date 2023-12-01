@@ -108,7 +108,6 @@ class eventually : impl::manual_lifetime<T> {
   using impl::manual_lifetime<T>::operator=;
   using impl::manual_lifetime<T>::operator->;
   using impl::manual_lifetime<T>::operator*;
-
   using impl::manual_lifetime<T>::construct;
 
   // clang-format off

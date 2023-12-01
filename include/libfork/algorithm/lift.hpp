@@ -23,35 +23,6 @@
 
 namespace lf {
 
-namespace impl {
-
-/**
- * @brief Implements the `lift` higher-order function for forked/non-forked functions.
- */
-template <stateless F>
-struct lifted {
-  /**
-   * @brief Lift a non-forked task.
-   */
-  template <first_arg Head, typename... Args>
-    requires (tag_of<Head> != tag::fork && std::invocable<F, Args...>)
-  LF_STATIC_CALL auto operator()(Head,
-                                 Args &&...args) LF_STATIC_CONST->task<std::invoke_result_t<F, Args...>> {
-    co_return std::invoke(F{}, std::forward<Args>(args)...);
-  }
-
-  /**
-   * @brief Lift a forked task.
-   */
-  template <typename Head, typename... Args>
-    requires (tag_of<Head> == tag::fork && std::invocable<F, Args...>)
-  LF_STATIC_CALL auto operator()(Head, Args... args) LF_STATIC_CONST->task<std::invoke_result_t<F, Args...>> {
-    co_return std::invoke(F{}, std::move(args)...);
-  }
-};
-
-} // namespace impl
-
 /**
  * @brief A higher-order function that lifts a function into an ``async`` function.
  *
@@ -78,15 +49,18 @@ struct lifted {
  *
  * .. note::
  *
- *    The lifted function will accept arguments by-value if it is forked and by
- *    forwarding reference otherwise. This is to prevent dangling, use ``std::ref``
- *    if you actually want a reference.
+ *    The lifted function will accept arguments by forwarding reference.
  *
  * \endrst
  */
-template <stateless F>
-consteval auto lift(F) noexcept -> async<impl::lifted<F>> {
-  return {};
+template <std::copy_constructible F>
+consteval auto lift(F func) noexcept {
+  return [f = std::move(func)]<typename... Args>(
+             auto, Args &&...args) -> task<std::invoke_result_t<F const &, Args...>>
+           requires std::invocable<F const &, Args...>
+  {
+    co_return std::invoke(f, std::forward<Args>(args)...);
+  };
 }
 
 /**
