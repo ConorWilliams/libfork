@@ -9,10 +9,8 @@ namespace {
 
 using namespace lf;
 
-using dbl = double;
-
-constexpr async integrate = [](auto integrate, dbl x1, dbl y1, dbl x2, dbl y2, dbl area)
-                                LF_STATIC_CALL -> task<dbl> {
+constexpr auto integrate = [](auto integrate, double x1, double y1, double x2, double y2, double area)
+                               LF_STATIC_CALL -> task<double> {
   //
   double half = (x2 - x1) / 2;
   double x0 = x1 + half;
@@ -26,8 +24,8 @@ constexpr async integrate = [](auto integrate, dbl x1, dbl y1, dbl x2, dbl y2, d
     co_return area_x1x2;
   }
 
-  co_await lf::fork(area_x1x0, integrate)(x1, y1, x0, y0, area_x1x0);
-  co_await lf::call(area_x0x2, integrate)(x0, y0, x2, y2, area_x0x2);
+  co_await lf::fork(&area_x1x0, integrate)(x1, y1, x0, y0, area_x1x0);
+  co_await lf::call(&area_x0x2, integrate)(x0, y0, x2, y2, area_x0x2);
 
   co_await lf::join;
 

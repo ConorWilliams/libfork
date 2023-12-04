@@ -12,6 +12,7 @@
 #include <concepts>
 #include <type_traits>
 
+#include "libfork/core/macro.hpp"
 #include "libfork/core/tag.hpp"
 
 /**
@@ -32,16 +33,6 @@ namespace lf {
 template <typename T>
 concept returnable = std::is_void_v<T> || std::is_reference_v<T> || std::movable<T>;
 
-#if defined(__clang__) && defined(__has_attribute)
-  #if __has_attribute(coro_return_type) && __has_attribute(coro_only_destroy_when_complete)
-    #define LF_CLANG_ATTRIBUTES [[clang::coro_only_destroy_when_complete]] [[clang::coro_return_type]]
-  #else
-    #define LF_CLANG_ATTRIBUTES
-  #endif
-#else
-  #define LF_CLANG_ATTRIBUTES
-#endif
-
 /**
  * @brief The return type for libfork's async functions/coroutines.
  *
@@ -61,11 +52,9 @@ concept returnable = std::is_void_v<T> || std::is_reference_v<T> || std::movable
  * \endrst
  */
 template <returnable T = void>
-struct LF_CLANG_ATTRIBUTES task : std::type_identity<T> {
+struct LF_CORO_ATTRIBUTES task : std::type_identity<T> {
   void *promise; ///< An opaque handle to the coroutine promise.
 };
-
-#undef LF_CLANG_ATTRIBUTES
 
 namespace impl {
 

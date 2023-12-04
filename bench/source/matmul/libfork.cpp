@@ -19,8 +19,8 @@ using mat = float *;
  *           b00 b01
  *           b10 b11
  */
-constexpr async matmul = [](auto matmul, mat A, mat B, mat R, unsigned n, unsigned s, auto add)
-                             LF_STATIC_CALL -> task<> {
+inline constexpr auto matmul = [](auto matmul, mat A, mat B, mat R, unsigned n, unsigned s, auto add)
+                                   LF_STATIC_CALL -> task<> {
   //
   if (n * sizeof(float) <= lf::impl::k_cache_line) {
     co_return multiply(A, B, R, n, s, add);
@@ -65,7 +65,7 @@ void matmul_libfork(benchmark::State &state) {
     }
   }();
 
-  auto [A, B, C1, C2, n] = lf::sync_wait(sch, LF_LIFT2(matmul_init), matmul_work);
+  auto [A, B, C1, C2, n] = lf::sync_wait(sch, lf::lift(matmul_init), matmul_work);
 
   for (auto _ : state) {
     lf::sync_wait(sch, matmul, A.get(), B.get(), C1.get(), n, n, std::false_type{});

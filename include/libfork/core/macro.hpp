@@ -242,6 +242,19 @@ static_assert(LF_FIBRE_STACK_SIZE && !(LF_FIBRE_STACK_SIZE & (LF_FIBRE_STACK_SIZ
 #endif
 
 /**
+ * @brief Compiler specific attributes libfork uses for its coroutine types.
+ */
+#if defined(__clang__) && defined(__has_attribute)
+  #if __has_attribute(coro_return_type) && __has_attribute(coro_only_destroy_when_complete)
+    #define LF_CORO_ATTRIBUTES [[clang::coro_only_destroy_when_complete]] [[clang::coro_return_type]]
+  #else
+    #define LF_CORO_ATTRIBUTES
+  #endif
+#else
+  #define LF_CORO_ATTRIBUTES
+#endif
+
+/**
  * @brief __[public]__ A customizable logging macro.
  *
  * By default this is a no-op. Defining ``LF_DEFAULT_LOGGING`` will enable a default

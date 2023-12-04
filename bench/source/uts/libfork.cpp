@@ -14,8 +14,7 @@
 
 namespace {
 
-inline constexpr lf::async uts_alloc = [](auto uts, int depth, Node *parent)
-                                           LF_STATIC_CALL -> lf::task<result> {
+constexpr auto uts_alloc = [](auto uts, int depth, Node *parent) LF_STATIC_CALL -> lf::task<result> {
   //
   result r(depth, 1, 0);
 
@@ -39,9 +38,9 @@ inline constexpr lf::async uts_alloc = [](auto uts, int depth, Node *parent)
       }
 
       if (i + 1 == num_children) {
-        co_await lf::call(cs[i].res, uts)(depth + 1, &cs[i].child);
+        co_await lf::call(&cs[i].res, uts)(depth + 1, &cs[i].child);
       } else {
-        co_await lf::fork(cs[i].res, uts)(depth + 1, &cs[i].child);
+        co_await lf::fork(&cs[i].res, uts)(depth + 1, &cs[i].child);
       }
     }
 
@@ -58,7 +57,7 @@ inline constexpr lf::async uts_alloc = [](auto uts, int depth, Node *parent)
   co_return r;
 };
 
-inline constexpr lf::async uts = [](auto uts, int depth, Node *parent) LF_STATIC_CALL -> lf::task<result> {
+inline constexpr auto uts = [](auto uts, int depth, Node *parent) LF_STATIC_CALL -> lf::task<result> {
   //
   result r(depth, 1, 0);
 
@@ -69,7 +68,7 @@ inline constexpr lf::async uts = [](auto uts, int depth, Node *parent) LF_STATIC
 
   if (num_children > 0) {
 
-    std::span cs = co_await lf::co_alloc<pair>(num_children);
+    std::span cs = co_await lf::co_new<pair>(num_children);
 
     for (int i = 0; i < num_children; i++) {
 
@@ -82,9 +81,9 @@ inline constexpr lf::async uts = [](auto uts, int depth, Node *parent) LF_STATIC
       }
 
       if (i + 1 == num_children) {
-        co_await lf::call(cs[i].res, uts)(depth + 1, &cs[i].child);
+        co_await lf::call(&cs[i].res, uts)(depth + 1, &cs[i].child);
       } else {
-        co_await lf::fork(cs[i].res, uts)(depth + 1, &cs[i].child);
+        co_await lf::fork(&cs[i].res, uts)(depth + 1, &cs[i].child);
       }
     }
 
@@ -95,14 +94,13 @@ inline constexpr lf::async uts = [](auto uts, int depth, Node *parent) LF_STATIC
       r.size += elem.res.size;
       r.leaves += elem.res.leaves;
     }
+
+    co_await lf::co_delete(cs);
+
   } else {
     r.leaves = 1;
   }
   co_return r;
-};
-
-inline constexpr lf::async uts_shim = [](auto, int depth, Node *parent) LF_STATIC_CALL -> lf::task<result> {
-  co_return co_await uts(depth, parent);
 };
 
 template <lf::scheduler Sch, lf::numa_strategy Strategy>
@@ -145,7 +143,7 @@ void uts_libfork(benchmark::State &state, int tree) {
 
   for (auto _ : state) {
     uts_initRoot(&root, type);
-    r = sync_wait(sch, uts_shim, depth, &root);
+    r = sync_wait(sch, uts, depth, &root);
     // std::cout << "maxdepth: " << r.maxdepth << " size: " << r.size << " leaves: " << r.leaves << std::endl;
   }
 

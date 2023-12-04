@@ -7,15 +7,15 @@
 
 namespace {
 
-inline constexpr lf::async fib = [](auto fib, int n) LF_STATIC_CALL -> lf::task<int> {
+constexpr auto fib = [](auto fib, int n) LF_STATIC_CALL -> lf::task<int> {
   if (n < 2) {
     co_return n;
   }
 
   int a, b;
 
-  co_await lf::fork(a, fib)(n - 1);
-  co_await lf::call(b, fib)(n - 2);
+  co_await lf::fork(&a, fib)(n - 1);
+  co_await lf::call(&b, fib)(n - 2);
 
   co_await lf::join;
 

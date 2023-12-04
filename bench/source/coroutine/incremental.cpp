@@ -8,12 +8,37 @@
 #include <benchmark/benchmark.h>
 
 #include <libfork.hpp>
-#include <threads.h>
+#include <libfork/core/ext/tls.hpp>
+#include <libfork/core/impl/promise.hpp>
 
-inline constexpr int work = 5;
+inline constexpr volatile int work = 16;
 volatile int output;
 
 // ----------------------- Baseline ----------------------- //
+
+// Fibonacci as fast as possible single threaded.
+
+namespace return_serial {
+
+LF_NOINLINE constexpr auto fib_impl(int n) -> int {
+  if (n < 2) {
+    return n;
+  }
+  return fib_impl(n - 1) + fib_impl(n - 2);
+};
+
+void fib(benchmark::State &state) {
+  for (auto _ : state) {
+    output = fib_impl(work);
+  }
+}
+
+} // namespace return_serial
+
+BENCHMARK(return_serial::fib);
+
+// Fibonacci single threaded with out of line return to emulate fastest possible
+// when not returning via a register.
 
 namespace serial {
 
@@ -45,6 +70,10 @@ void fib(benchmark::State &state) {
 BENCHMARK(serial::fib);
 
 // ----------------------- Baseline ----------------------- //
+
+// Repeat serial but with fictitious push/pop to lock free queue
+// This is the lower-bound of performance for fork-join if we manage to get the
+// coroutine overhead to zero.
 
 lf::deque<int *> qu;
 
@@ -83,18 +112,22 @@ BENCHMARK(serial_queue::fib);
 
 // ----------------------- Zero coro ----------------------- //
 
-namespace heap {
+// This is bare minimal coroutine that allocates on the heap.
+// When compared with serial::fib this included heap allocation
+// + coroutine cost.
+
+namespace heap_alloc_coro {
 
 struct promise;
 
-struct coroutine : lf::stdx::coroutine_handle<promise> {
-  using promise_type = heap::promise;
+struct LF_CORO_ATTRIBUTES coroutine : std::coroutine_handle<promise> {
+  using promise_type = heap_alloc_coro::promise;
 };
 
 struct promise {
   auto get_return_object() -> coroutine { return {coroutine::from_promise(*this)}; }
-  static auto initial_suspend() noexcept -> lf::stdx::suspend_always { return {}; }
-  static auto final_suspend() noexcept -> lf::stdx::suspend_never { return {}; }
+  static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
+  static auto final_suspend() noexcept -> std::suspend_never { return {}; }
   static void return_void() {}
   static void unhandled_exception() { LF_ASSERT(false); }
 };
@@ -123,33 +156,36 @@ void fib(benchmark::State &state) {
   }
 }
 
-} // namespace heap
+} // namespace heap_alloc_coro
 
-BENCHMARK(heap::fib);
+BENCHMARK(heap_alloc_coro::fib);
 
 // ----------------------- custom Stackfull coro ----------------------- //
 
-namespace custom_stack {
+// This is bare minimal coroutine that allocates single fixed stack.
+// When compared with serial::fib this minimal coroutine cost.
+
+namespace fixed_stack_coro {
 
 thread_local std::byte *asp;
 
 struct promise;
 
-struct coroutine : lf::stdx::coroutine_handle<promise> {
-  using promise_type = custom_stack::promise;
+struct LF_CORO_ATTRIBUTES coroutine : std::coroutine_handle<promise> {
+  using promise_type = fixed_stack_coro::promise;
 };
 
 struct op {
 
   static constexpr auto align = 2 * sizeof(void *);
 
-  [[nodiscard]] LF_TLS_CLANG_INLINE static auto operator new(std::size_t size) -> void * {
-    auto prev = asp;
+  [[nodiscard]] static auto operator new(std::size_t size) -> void * {
+    auto *prev = asp;
     asp += (size + align - 1) & ~(align - 1);
     return prev;
   }
 
-  LF_TLS_CLANG_INLINE static void operator delete(void *ptr) { asp = static_cast<std::byte *>(ptr); }
+  static void operator delete(void *ptr) { asp = static_cast<std::byte *>(ptr); }
 };
 
 struct promise : /*lf::impl::frame_block, */ op {
@@ -159,8 +195,8 @@ struct promise : /*lf::impl::frame_block, */ op {
   /*promise() : lf::impl::frame_block(coroutine::from_promise(*this), nullptr) {}*/
 
   auto get_return_object() -> coroutine { return {coroutine::from_promise(*this)}; }
-  static auto initial_suspend() noexcept -> lf::stdx::suspend_always { return {}; }
-  static auto final_suspend() noexcept -> lf::stdx::suspend_never { return {}; }
+  static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
+  static auto final_suspend() noexcept -> std::suspend_never { return {}; }
   static void return_void() {}
   static void unhandled_exception() { LF_ASSERT(false); }
 };
@@ -193,27 +229,151 @@ void fib(benchmark::State &state) {
   }
 }
 
-} // namespace custom_stack
+} // namespace fixed_stack_coro
 
-BENCHMARK(custom_stack::fib);
+BENCHMARK(fixed_stack_coro::fib);
 
 // ----------------------- custom Stackfull coro ----------------------- //
 
-namespace custom_stack_non_term {
+// This is bare minimal coroutine that allocates single fixed stack and
+// includes a lf::impl::frame to emulate the cost of a fork-join with
+// worse cache locality than a single threaded version.
+
+namespace fixed_stack_coro_with_frame {
 
 struct promise;
 
-struct coroutine : lf::stdx::coroutine_handle<promise> {
+struct LF_CORO_ATTRIBUTES coroutine : std::coroutine_handle<promise> {
+  using promise_type = fixed_stack_coro_with_frame::promise;
+};
+
+struct promise : lf::impl::frame, fixed_stack_coro::op {
+
+  // double f[40]{};
+
+  promise() : lf::impl::frame(coroutine::from_promise(*this), nullptr) {}
+
+  auto get_return_object() -> coroutine { return {coroutine::from_promise(*this)}; }
+  static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
+  static auto final_suspend() noexcept -> std::suspend_never { return {}; }
+  static void return_void() {}
+  static void unhandled_exception() { LF_ASSERT(false); }
+};
+
+auto fib_impl(int &ret, int n) -> coroutine {
+  if (n < 2) {
+    ret = n;
+    co_return;
+  }
+
+  int a, b;
+
+  fib_impl(a, n - 1).resume();
+  fib_impl(b, n - 2).resume();
+
+  ret = a + b;
+};
+
+void fib(benchmark::State &state) {
+
+  std::vector<std::byte> stack(1024 * 1024);
+
+  fixed_stack_coro::asp = stack.data();
+
+  for (auto _ : state) {
+    int tmp;
+    auto h = fib_impl(tmp, work);
+    h.resume();
+    output = tmp;
+  }
+}
+
+} // namespace fixed_stack_coro_with_frame
+
+BENCHMARK(fixed_stack_coro_with_frame::fib);
+
+// ----------------------- custom Stackfull coro ----------------------- //
+
+// A variation fixed_stack_coro_with_frame but makes a TLS call to get fibre.
+
+namespace fixed_stack_coro_with_frame_tls {
+
+struct promise;
+
+struct LF_CORO_ATTRIBUTES coroutine : std::coroutine_handle<promise> {
+  using promise_type = fixed_stack_coro_with_frame_tls::promise;
+};
+
+struct promise : lf::impl::frame, fixed_stack_coro::op {
+
+  // double f[40]{};
+
+  promise() : lf::impl::frame(coroutine::from_promise(*this), lf::impl::tls::fibre()->top()) {}
+
+  auto get_return_object() -> coroutine { return {coroutine::from_promise(*this)}; }
+  static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
+  static auto final_suspend() noexcept -> std::suspend_never { return {}; }
+  static void return_void() {}
+  static void unhandled_exception() { LF_ASSERT(false); }
+};
+
+auto fib_impl(int &ret, int n) -> coroutine {
+  if (n < 2) {
+    ret = n;
+    co_return;
+  }
+
+  int a, b;
+
+  fib_impl(a, n - 1).resume();
+  fib_impl(b, n - 2).resume();
+
+  ret = a + b;
+};
+
+void fib(benchmark::State &state) {
+
+  std::vector<std::byte> stack(1024 * 1024);
+
+  auto *ctx = lf::worker_init(1);
+
+  fixed_stack_coro::asp = stack.data();
+
+  for (auto _ : state) {
+    int tmp;
+    auto h = fib_impl(tmp, work);
+    h.resume();
+    output = tmp;
+  }
+
+  lf::finalize(ctx);
+}
+
+} // namespace fixed_stack_coro_with_frame_tls
+
+BENCHMARK(fixed_stack_coro_with_frame_tls::fib);
+
+// ----------------------- custom Stackfull coro ----------------------- //
+
+// This is bare minimal coroutine that allocates a single fixed stack and
+// includes a lf::impl::frame in the promise, this uses suspend_always
+// at final suspend and calls destroy manually at the coroutine call site.
+
+namespace fixed_stack_coro_with_frame_no_term {
+
+struct promise;
+
+struct LF_CORO_ATTRIBUTES coroutine : std::coroutine_handle<promise> {
   using promise_type = struct promise;
 };
 
-struct promise : lf::impl::frame_block, custom_stack::op {
+struct promise : lf::impl::frame, fixed_stack_coro::op {
 
-  promise() : lf::impl::frame_block(coroutine::from_promise(*this), nullptr) {}
+  promise() : lf::impl::frame(coroutine::from_promise(*this), nullptr) {}
 
   auto get_return_object() -> coroutine { return {coroutine::from_promise(*this)}; }
-  static auto initial_suspend() noexcept -> lf::stdx::suspend_always { return {}; }
-  static auto final_suspend() noexcept -> lf::stdx::suspend_always { return {}; }
+  static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
+  static auto final_suspend() noexcept -> std::suspend_always { return {}; }
   static void return_void() {}
   static void unhandled_exception() { LF_ASSERT(false); }
 };
@@ -245,7 +405,7 @@ void fib(benchmark::State &state) {
 
   std::vector<std::byte> stack(1024 * 1024);
 
-  custom_stack::asp = stack.data();
+  fixed_stack_coro::asp = stack.data();
 
   for (auto _ : state) {
     int tmp;
@@ -256,27 +416,30 @@ void fib(benchmark::State &state) {
   }
 }
 
-} // namespace custom_stack_non_term
+} // namespace fixed_stack_coro_with_frame_no_term
 
-BENCHMARK(custom_stack::fib);
+BENCHMARK(fixed_stack_coro_with_frame_no_term::fib);
 
 // ----------------------- Stackfull coro ----------------------- //
 
-namespace stack_lf {
+// This is bare minimal coroutine that uses a dynamic stack and includes a
+// lf::impl::frame in the promise.
+
+namespace segmented_stack {
 
 struct promise;
 
-struct coroutine : lf::stdx::coroutine_handle<promise> {
-  using promise_type = stack_lf::promise;
+struct LF_CORO_ATTRIBUTES coroutine : std::coroutine_handle<promise> {
+  using promise_type = segmented_stack::promise;
 };
 
-struct promise : lf::impl::promise_alloc_stack {
+struct promise : lf::impl::promise_base {
 
-  promise() : promise_alloc_stack(coroutine::from_promise(*this)) {}
+  promise() : lf::impl::promise_base(coroutine::from_promise(*this), lf::impl::tls::fibre()->top()) {}
 
   auto get_return_object() -> coroutine { return {coroutine::from_promise(*this)}; }
-  static auto initial_suspend() noexcept -> lf::stdx::suspend_always { return {}; }
-  static auto final_suspend() noexcept -> lf::stdx::suspend_never { return {}; }
+  static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
+  static auto final_suspend() noexcept -> std::suspend_never { return {}; }
   static void return_void() {}
   static void unhandled_exception() { LF_ASSERT(false); }
 };
@@ -297,9 +460,7 @@ auto fib_impl(int &ret, int n) -> coroutine {
 
 void fib(benchmark::State &state) {
 
-  auto *stack = new lf::fibre_stack;
-
-  lf::impl::tls::set_asp(lf::impl::stack_as_bytes(stack));
+  auto *ctx = lf::worker_init(1);
 
   for (auto _ : state) {
     int tmp;
@@ -308,46 +469,47 @@ void fib(benchmark::State &state) {
     output = tmp;
   }
 
-  if (lf::impl::tls::asp != lf::impl::stack_as_bytes(stack)) {
-    LF_THROW("stack leak");
-  }
-
-  delete stack;
+  lf::finalize(ctx);
 }
 
-} // namespace stack_lf
+} // namespace segmented_stack
 
-BENCHMARK(stack_lf::fib);
+BENCHMARK(segmented_stack::fib);
 
 // ----------------------- Stackfull coro ----------------------- //
 
-namespace transfer {
+// Dynamic stack + co_await to symmetric transfer into children.
+
+namespace segmented_stack_co_await {
 
 struct promise;
 
-struct coroutine {
-  using promise_type = transfer::promise;
-  lf::impl::frame_block *prom;
+struct LF_CORO_ATTRIBUTES coroutine {
+  using promise_type = segmented_stack_co_await::promise;
+  lf::impl::frame *prom;
 };
 
-struct promise : lf::impl::promise_alloc_stack {
+struct promise : lf::impl::promise_base {
 
-  promise() : promise_alloc_stack(lf::stdx::coroutine_handle<promise>::from_promise(*this)) {}
+  promise()
+      : lf::impl::promise_base(std::coroutine_handle<promise>::from_promise(*this),
+                               lf::impl::tls::fibre()->top()) {}
 
   auto get_return_object() -> coroutine { return coroutine{this}; }
 
-  static auto initial_suspend() noexcept { return lf::stdx::suspend_always{}; }
+  static auto initial_suspend() noexcept { return std::suspend_always{}; }
 
   static auto final_suspend() noexcept {
-    struct awaitable : lf::stdx::suspend_always {
-      auto await_suspend(lf::stdx::coroutine_handle<promise> self) noexcept -> lf::stdx::coroutine_handle<> {
-        if (self.promise().is_root()) [[unlikely]] {
-          self.destroy();
-          return lf::stdx::noop_coroutine();
-        }
-        frame_block *parent = self.promise().parent();
+    struct awaitable : std::suspend_always {
+      auto await_suspend(std::coroutine_handle<promise> self) noexcept -> std::coroutine_handle<> {
+
+        frame *parent = self.promise().parent();
         self.destroy();
-        return parent->coro();
+
+        if (parent) {
+          return parent->self();
+        }
+        return std::noop_coroutine();
       }
     };
 
@@ -360,11 +522,11 @@ struct promise : lf::impl::promise_alloc_stack {
 
     child.prom->set_parent(this);
 
-    struct awaitable : lf::stdx::suspend_always {
+    struct awaitable : std::suspend_always {
 
-      auto await_suspend(lf::stdx::coroutine_handle<promise>) { return child->coro(); }
+      auto await_suspend(std::coroutine_handle<promise>) { return child->self(); }
 
-      frame_block *child;
+      frame *child;
     };
 
     return awaitable{{}, child.prom};
@@ -387,28 +549,61 @@ auto fib_impl(int &ret, int n) -> coroutine {
 
 void fib(benchmark::State &state) {
 
-  auto *stack = new lf::fibre_stack;
-
-  lf::impl::tls::set_asp(lf::impl::stack_as_bytes(stack));
+  auto *ctx = lf::worker_init(1);
 
   for (auto _ : state) {
     int tmp;
-    fib_impl(tmp, work).prom->coro().resume();
+
+    lf::impl::frame *root = fib_impl(tmp, work).prom;
+    root->set_parent(nullptr);
+    root->self().resume();
+
     output = tmp;
   }
 
-  delete stack;
+  lf::finalize(ctx);
 }
 
-} // namespace transfer
+} // namespace segmented_stack_co_await
 
-BENCHMARK(transfer::fib);
+BENCHMARK(segmented_stack_co_await::fib);
+
+// ----------------------- segmented_stack_libfork ----------------------- //
+
+// Libfork all co_awaits are on lf::call
+
+namespace segmented_stack_libfork {
+
+inline constexpr auto fib_impl = [](auto fib, int n) LF_STATIC_CALL -> lf::task<int> {
+  if (n < 2) {
+    co_return n;
+  }
+
+  int a, b;
+
+  co_await lf::call(&a, fib)(n - 1);
+  co_await lf::call(&b, fib)(n - 2);
+
+  co_await lf::join;
+
+  co_return a + b;
+};
+
+void fib(benchmark::State &state) {
+  for (auto _ : state) {
+    output = lf::sync_wait(lf::unit_pool{}, fib_impl, work);
+  }
+}
+
+} // namespace segmented_stack_libfork
+
+BENCHMARK(segmented_stack_libfork::fib);
 
 // ----------------------- libfork void ----------------------- //
 
-namespace void_fork {
+namespace libfork_forking_return_void {
 
-inline constexpr lf::async fib_impl = [](auto fib, int &res, int n) LF_STATIC_CALL -> lf::task<void> {
+inline constexpr auto fib_impl = [](auto fib, int &res, int n) LF_STATIC_CALL -> lf::task<void> {
   if (n < 2) {
     res = n;
     co_return;
@@ -416,7 +611,7 @@ inline constexpr lf::async fib_impl = [](auto fib, int &res, int n) LF_STATIC_CA
 
   int a, b;
 
-  co_await lf::call(fib)(a, n - 1);
+  co_await lf::fork(fib)(a, n - 1);
   co_await lf::call(fib)(b, n - 2);
 
   co_await lf::join;
@@ -424,41 +619,31 @@ inline constexpr lf::async fib_impl = [](auto fib, int &res, int n) LF_STATIC_CA
   res = a + b;
 };
 
-template <typename Sch>
 void fib(benchmark::State &state) {
-
-  Sch sch = [&] {
-    if constexpr (std::constructible_from<Sch, int>) {
-      return Sch(1);
-    } else {
-      return Sch{};
-    }
-  }();
-
   for (auto _ : state) {
     int tmp;
-    lf::sync_wait(sch, fib_impl, tmp, work);
+    lf::sync_wait(lf::unit_pool{}, fib_impl, tmp, work);
     output = tmp;
   }
 }
 
-} // namespace void_fork
+} // namespace libfork_forking_return_void
 
-BENCHMARK(void_fork::fib<lf::unit_pool>)->UseRealTime();
+BENCHMARK(libfork_forking_return_void::fib);
 
 // ----------------------- libfork ----------------------- //
 
-namespace libfork {
+namespace libfork_forking_return_int {
 
-inline constexpr lf::async fib_impl = [](auto fib, int n) LF_STATIC_CALL -> lf::task<int> {
+inline constexpr auto fib_impl = [](auto fib, int n) LF_STATIC_CALL -> lf::task<int> {
   if (n < 2) {
     co_return n;
   }
 
   int a, b;
 
-  co_await lf::fork(a, fib)(n - 1);
-  co_await lf::call(b, fib)(n - 2);
+  co_await lf::fork(&a, fib)(n - 1);
+  co_await lf::call(&b, fib)(n - 2);
 
   co_await lf::join;
 
@@ -481,58 +666,10 @@ void fib(benchmark::State &state) {
   }
 }
 
-using namespace lf;
-using namespace lf::impl;
+} // namespace libfork_forking_return_int
 
-// --------------------------------------------------------------------- //
-
-/**
- * @brief An internal context type for testing purposes.
- *
- * This is essentially an immediate context with a task queue.
- */
-class test_immediate_context_deque : public immediate_base<test_immediate_context_deque> {
- public:
-  // Deliberately not constexpr such that the promise will not transform all `fork -> call`.
-  static auto max_threads() noexcept -> std::size_t { return 1; }
-
-  /**
-   * @brief Pops a task from the task queue.
-   */
-  LF_FORCEINLINE auto task_pop() -> task_h<test_immediate_context_deque> * {
-    return m_tasks.pop([]() -> task_h<test_immediate_context_deque> * {
-      return nullptr;
-    });
-  }
-
-  /**
-   * @brief Pushes a task to the task queue.
-   */
-  LF_FORCEINLINE void task_push(task_h<test_immediate_context_deque> *task) { m_tasks.push(non_null(task)); }
-
- private:
-  lf::deque<task_h<test_immediate_context_deque> *> m_tasks; // All non-null.
-};
-
-static_assert(thread_context<test_immediate_context_deque>);
-static_assert(!single_thread_context<test_immediate_context_deque>);
-
-using debug_pool_d = impl::unit_pool_impl<test_immediate_context_deque>;
-
-static_assert(scheduler<debug_pool_d>);
-
-} // namespace libfork
-
-namespace lf {
-
-using libfork::debug_pool_d;
-
-}
-
-BENCHMARK(libfork::fib<lf::unit_pool>)->UseRealTime();
-BENCHMARK(libfork::fib<lf::debug_pool>)->UseRealTime();
-BENCHMARK(libfork::fib<lf::debug_pool_d>)->UseRealTime();
-BENCHMARK(libfork::fib<lf::busy_pool>)->UseRealTime();
+BENCHMARK(libfork_forking_return_int::fib<lf::unit_pool>)->UseRealTime();
+BENCHMARK(libfork_forking_return_int::fib<lf::lazy_pool>)->UseRealTime();
 
 void deque(benchmark::State &state) {
 

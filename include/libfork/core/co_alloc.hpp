@@ -53,7 +53,7 @@ struct [[nodiscard("This object should be co_awaited")]] co_delete_t : std::span
  * \endrst
  *
  */
-template <co_allocable T, std::size_t Extent>
+template <co_allocable T, std::size_t Extent = std::dynamic_extent>
   requires (Extent == std::dynamic_extent)
 inline auto co_new(std::size_t count) -> impl::co_new_t<T, std::dynamic_extent> {
   return impl::co_new_t<T, std::dynamic_extent>{count};
