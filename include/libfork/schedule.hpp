@@ -13,6 +13,12 @@
 #include "libfork/schedule/lazy_pool.hpp"
 #include "libfork/schedule/unit_pool.hpp"
 
+#include "libfork/schedule/ext/event_count.hpp"
+#include "libfork/schedule/ext/numa.hpp"
+#include "libfork/schedule/ext/random.hpp"
+
+#include "libfork/schedule/impl/contexts.hpp"
+
 /**
  * @file schedule.hpp
  *

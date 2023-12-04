@@ -41,10 +41,10 @@ struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combin
     requires async_invocable<I, Tag, F, Args...>
   auto operator()(Args &&...args) && -> quasi_awaitable<async_result_t<F, Args...>, I, Tag> {
 
-    task task = std::invoke(                                             //
-        std::move(fun),                                                  //
-        first_arg_t<I, Tag, std::remove_cvref_t<F>>(std::as_const(fun)), //
-        std::forward<Args>(args)...                                      //
+    task task = std::invoke(                                    //
+        std::move(fun),                                         //
+        first_arg_t<I, Tag, F, Args &&...>(std::as_const(fun)), //
+        std::forward<Args>(args)...                             //
     );
 
     using R = async_result_t<F, Args...>;
@@ -70,8 +70,13 @@ auto combinate(I ret, F fun) -> y_combinate<I, Tag, F> {
 /**
  * @brief Prevent each layer wrapping the function in another `first_arg_t`.
  */
-template <tag Tag, tag OtherTag, quasi_pointer I, quasi_pointer OtherI, async_function_object F>
-auto combinate(I ret, first_arg_t<OtherI, OtherTag, F> arg) -> y_combinate<I, Tag, F> {
+template <tag Tag,
+          tag OtherTag,
+          quasi_pointer I,
+          quasi_pointer OtherI,
+          async_function_object F,
+          typename... Args>
+auto combinate(I ret, first_arg_t<OtherI, OtherTag, F, Args...> arg) -> y_combinate<I, Tag, F> {
   return {std::move(ret), unwrap(std::move(arg))};
 }
 

@@ -54,6 +54,11 @@ class frame {
   void set_semaphore(std::binary_semaphore *sem) noexcept { m_sem = non_null(sem); }
 
   /**
+   * @brief Set the fibril object.
+   */
+  void set_fibril(fibre::fibril *fibril) noexcept { m_fibril = non_null(fibril); }
+
+  /**
    * @brief Get a pointer to the parent frame.
    *
    * Only valid if this is not a root frame.

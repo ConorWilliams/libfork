@@ -205,7 +205,7 @@ class fibre {
   /**
    * @brief Get the fibril that the last allocation was on, this is non-null.
    */
-  [[nodiscard]] constexpr auto top() -> fibril * { return m_fib; }
+  [[nodiscard]] constexpr auto top() noexcept -> fibril * { return non_null(m_fib); }
 
  private:
   fibril *m_fib; ///< The allocation fibril.

@@ -46,11 +46,14 @@ struct valid_return<discard_t, task<void>> : std::true_type {};
 template <typename R, std::indirectly_writable<R> I>
 struct valid_return<I, task<R>> : std::true_type {};
 
+template <typename I, typename Task>
+inline constexpr bool valid_return_v = valid_return<I, Task>::value;
+
 template <typename I, typename R>
-concept return_address_for =         //
-    quasi_pointer<I> &&              //
-    returnable<R> &&                 //
-    valid_return<I, task<R>>::value; //
+concept return_address_for =    //
+    quasi_pointer<I> &&         //
+    returnable<R> &&            //
+    valid_return_v<I, task<R>>; //
 
 /**
  * @brief Verify `F` is async `Tag` invocable with `Args...` and returns a task who's result type is
@@ -58,14 +61,14 @@ concept return_address_for =         //
  */
 template <typename I, tag Tag, typename F, typename... Args>
 concept async_invocable_to_task =
-    quasi_pointer<I> &&                                                                             //
-    async_function_object<F> &&                                                                     //
-    std::invocable<F, impl::first_arg_t<I, Tag, F>, Args...> &&                                     //
-    valid_return<I, std::invoke_result_t<F, impl::first_arg_t<discard_t, Tag, F>, Args...>>::value; //
+    quasi_pointer<I> &&                                                                                    //
+    async_function_object<F> &&                                                                            //
+    std::invocable<F, impl::first_arg_t<I, Tag, F, Args &&...>, Args...> &&                                //
+    valid_return_v<I, std::invoke_result_t<F, impl::first_arg_t<discard_t, Tag, F, Args &&...>, Args...>>; //
 
 template <typename I, tag Tag, typename F, typename... Args>
   requires async_invocable_to_task<I, Tag, F, Args...>
-using unsafe_result_t = std::invoke_result_t<F, impl::first_arg_t<I, Tag, F>, Args...>::type;
+using unsafe_result_t = std::invoke_result_t<F, impl::first_arg_t<I, Tag, F, Args &&...>, Args...>::type;
 
 // --------------------- //
 

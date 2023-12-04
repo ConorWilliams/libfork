@@ -15,7 +15,6 @@
 #include <cstddef>
 #include <exception>
 #include <latch>
-#include <libfork/core/ext/tls.hpp>
 #include <memory>
 #include <numeric>
 #include <random>
@@ -64,7 +63,7 @@ inline void busy_work(numa_topology::numa_node<impl::numa_context<busy_vars>> no
   // program terminates due to the noexcept marker.
   my_context->shared().latch_start.arrive_and_wait();
 
-  lf::impl::defer on_exit = [&]() noexcept {
+  LF_DEFER {
     // Wait for everyone to have stopped before destroying the context (which others could be observing).
     my_context->shared().stop.test_and_set(std::memory_order_release);
     my_context->shared().latch_stop.arrive_and_wait();
@@ -129,7 +128,7 @@ class busy_pool {
 
     [&]() noexcept {
       // All workers must be created, if we fail to create them all then we must terminate else
-      // the workers will hang on the latch.
+      // the workers will hang on the start latch.
       for (auto &&node : nodes) {
         m_threads.emplace_back(impl::busy_work, std::move(node));
       }

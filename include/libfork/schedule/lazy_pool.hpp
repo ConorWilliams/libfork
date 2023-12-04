@@ -123,7 +123,7 @@ inline auto lazy_work(numa_topology::numa_node<numa_context<lazy_vars>> node) no
   // program terminates due to the noexcept marker.
   my_context->shared().latch_start.arrive_and_wait();
 
-  lf::impl::defer on_exit = [&]() noexcept {
+  LF_DEFER {
     // Wait for everyone to have stopped before destroying the context (which others could be observing).
     my_context->shared().stop.test_and_set(std::memory_order_release);
     my_context->shared().latch_stop.arrive_and_wait();

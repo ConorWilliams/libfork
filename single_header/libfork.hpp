@@ -47,6 +47,16 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#ifndef A951FB73_0FCF_4B7C_A997_42B7E87D21CB
+#define A951FB73_0FCF_4B7C_A997_42B7E87D21CB
+
+#include <concepts>
+#include <memory>
+#include <span>
+#ifndef CF97E524_27A6_4CD9_8967_39F1B1BE97B6
+#define CF97E524_27A6_4CD9_8967_39F1B1BE97B6
+
+#include <stdexcept>
 #ifndef D66BBECE_E467_4EB6_B74A_AAA2E7256E02
 #define D66BBECE_E467_4EB6_B74A_AAA2E7256E02
 
@@ -570,129 +580,6 @@ struct move_only {
 };
 
 static_assert(std::is_empty_v<immovable<void>>);
-
-/**
- * @brief Basic implementation of a Golang like defer.
- *
- * Use like:
- *
- * .. code::
- *
- *    auto * ptr = c_api_init();
- *
- *    defer _ = [&ptr] () noexcept {
- *      c_api_clean_up(ptr);
- *    };
- *
- *    // Code that may throw
- *
- */
-template <class F>
-  requires std::is_nothrow_invocable_v<F>
-class [[nodiscard("Defer will execute immediately unless bound to a name!")]] defer : immovable<defer<F>> {
- public:
-  /**
-   * @brief Construct a new Defer object.
-   *
-   * @param f Nullary invocable forwarded into object and invoked by destructor.
-   */
-  constexpr defer(F &&f) noexcept(std::is_nothrow_constructible_v<F, F &&>) : m_f(std::forward<F>(f)) {}
-
-  /**
-   * @brief Call the invocable.
-   */
-  constexpr ~defer() noexcept { std::invoke(std::forward<F>(m_f)); }
-
- private:
-  [[no_unique_address]] F m_f;
-};
-
-// TODO: we could make manual_lifetime<T> empty if T is empty?
-
-/**
- * @brief Provides storage for a single object of type ``T``.
- *
- * Every instance of manual_lifetime is trivially constructible/destructible.
- */
-template <typename T>
-class manual_lifetime : immovable<manual_lifetime<T>> {
- public:
-  /**
-   * @brief Start lifetime of object.
-   */
-  template <typename... Args>
-    requires std::constructible_from<T, Args...>
-  auto construct(Args &&...args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> T * {
-    return ::new (static_cast<void *>(m_buf.data())) T(std::forward<Args>(args)...);
-  }
-
-  /**
-   * @brief Start lifetime of object.
-   */
-  template <typename U>
-    requires std::constructible_from<T, U>
-  void operator=(U &&expr) noexcept(std::is_nothrow_constructible_v<T, U>) {
-    this->construct(std::forward<U>(expr));
-  }
-
-  /**
-   * @brief Destroy the contained object, must have been constructed first.
-   *
-   * A noop if ``T`` is trivially destructible.
-   */
-  void destroy() noexcept(std::is_nothrow_destructible_v<T>)
-    requires std::is_destructible_v<T>
-  {
-    if constexpr (!std::is_trivially_destructible_v<T>) {
-      std::destroy_at(data());
-    }
-  }
-
-  /**
-   * @brief Get a pointer to the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto data() noexcept -> T * { return std::launder(reinterpret_cast<T *>(m_buf.data())); }
-
-  /**
-   * @brief Get a pointer to the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto data() const noexcept -> T * {
-    return std::launder(reinterpret_cast<T const *>(m_buf.data()));
-  }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator->() noexcept -> T * { return data(); }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator->() const noexcept -> T const * { return data(); }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator*() & noexcept -> T & { return *data(); }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator*() const & noexcept -> T const & { return *data(); }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator*() && noexcept -> T && { return std::move(*data()); }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator*() const && noexcept -> T const && { return std::move(*data()); }
-
- private:
-  [[no_unique_address]] alignas(T) std::array<std::byte, sizeof(T)> m_buf;
-};
 
 // ---------------- Meta programming ---------------- //
 
@@ -1599,7 +1486,7 @@ class fibre {
   /**
    * @brief Get the fibril that the last allocation was on, this is non-null.
    */
-  [[nodiscard]] constexpr auto top() -> fibril * { return m_fib; }
+  [[nodiscard]] constexpr auto top() noexcept -> fibril * { return non_null(m_fib); }
 
  private:
   fibril *m_fib; ///< The allocation fibril.
@@ -1656,6 +1543,11 @@ class frame {
    * @brief Set the pointer to the semaphore.
    */
   void set_semaphore(std::binary_semaphore *sem) noexcept { m_sem = non_null(sem); }
+
+  /**
+   * @brief Set the fibril object.
+   */
+  void set_fibril(fibre::fibril *fibril) noexcept { m_fibril = non_null(fibril); }
 
   /**
    * @brief Get a pointer to the parent frame.
@@ -2023,6 +1915,287 @@ class full_context : public worker_context {
 
 #endif /* D66BBECE_E467_4EB6_B74A_AAA2E7256E02 */
 
+#ifndef F51F8998_9E69_458E_95E1_8592A49FA76C
+#define F51F8998_9E69_458E_95E1_8592A49FA76C
+
+#include <memory>
+#include <new>
+
+
+namespace lf::impl {
+
+// TODO: we could make manual_lifetime<T> empty if T is empty?
+
+/**
+ * @brief Provides storage for a single object of type ``T``.
+ *
+ * Every instance of manual_lifetime is trivially constructible/destructible.
+ */
+template <typename T>
+class manual_lifetime : immovable<manual_lifetime<T>> {
+ public:
+  /**
+   * @brief Start lifetime of object.
+   */
+  template <typename... Args>
+    requires std::constructible_from<T, Args...>
+  auto construct(Args &&...args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> T * {
+    return ::new (static_cast<void *>(m_buf.data())) T(std::forward<Args>(args)...);
+  }
+
+  /**
+   * @brief Start lifetime of object.
+   */
+  template <typename U>
+    requires std::constructible_from<T, U>
+  void operator=(U &&expr) noexcept(std::is_nothrow_constructible_v<T, U>) {
+    this->construct(std::forward<U>(expr));
+  }
+
+  /**
+   * @brief Destroy the contained object, must have been constructed first.
+   *
+   * A noop if ``T`` is trivially destructible.
+   */
+  void destroy() noexcept(std::is_nothrow_destructible_v<T>)
+    requires std::is_destructible_v<T>
+  {
+    if constexpr (!std::is_trivially_destructible_v<T>) {
+      std::destroy_at(data());
+    }
+  }
+
+  /**
+   * @brief Get a pointer to the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto data() noexcept -> T * { return std::launder(reinterpret_cast<T *>(m_buf.data())); }
+
+  /**
+   * @brief Get a pointer to the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto data() const noexcept -> T * {
+    return std::launder(reinterpret_cast<T const *>(m_buf.data()));
+  }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator->() noexcept -> T * { return data(); }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator->() const noexcept -> T const * { return data(); }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() & noexcept -> T & { return *data(); }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() const & noexcept -> T const & { return *data(); }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() && noexcept -> T && { return std::move(*data()); }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() const && noexcept -> T const && { return std::move(*data()); }
+
+ private:
+  [[no_unique_address]] alignas(T) std::array<std::byte, sizeof(T)> m_buf;
+};
+
+} // namespace lf::impl
+
+#endif /* F51F8998_9E69_458E_95E1_8592A49FA76C */
+
+
+namespace lf {
+
+namespace impl::tls {
+
+constinit inline thread_local bool has_fibre = false;
+constinit inline thread_local manual_lifetime<fibre> thread_fibre = {};
+
+constinit inline thread_local bool has_context = false;
+constinit inline thread_local manual_lifetime<full_context> thread_context = {};
+
+[[nodiscard]] inline auto fibre() -> fibre * {
+  LF_ASSERT(has_fibre);
+  return thread_fibre.data();
+}
+
+[[nodiscard]] inline auto context() -> full_context * {
+  LF_ASSERT(has_context);
+  return thread_context.data();
+}
+
+} // namespace impl::tls
+
+inline namespace ext {
+
+/**
+ * @brief Initialize thread-local variables before a worker can resume submitted tasks.
+ *
+ * \rst
+ *
+ * .. warning::
+ *    These should be cleaned up with ``worker_finalize(...)``.
+ *
+ * \endrst
+ */
+[[nodiscard]] inline auto worker_init(std::size_t max_parallelism) -> worker_context * {
+
+  LF_LOG("Initializing worker");
+
+  if (impl::tls::has_context && impl::tls::has_fibre) {
+    LF_THROW(std::runtime_error("Worker already initialized"));
+  }
+
+  worker_context *context = impl::tls::thread_context.construct(max_parallelism);
+
+  // clang-format off
+
+  LF_TRY {
+    impl::tls::thread_fibre.construct();
+  } LF_CATCH_ALL {
+    impl::tls::thread_context.destroy();
+  }
+
+  impl::tls::has_fibre = true;
+  impl::tls::has_context = true;
+
+  // clang-format on
+
+  return context;
+}
+
+/**
+ * @brief Clean-up thread-local variable before destructing a worker's context.
+ *
+ * \rst
+ *
+ * .. warning::
+ *    These must be initialized with ``worker_init(...)``.
+ *
+ * \endrst
+ */
+inline void finalize(worker_context *worker) {
+
+  LF_LOG("Finalizing worker");
+
+  if (worker != impl::tls::thread_context.data()) {
+    LF_THROW(std::runtime_error("Finalize called on wrong thread"));
+  }
+
+  if (!impl::tls::has_context || !impl::tls::has_fibre) {
+    LF_THROW(std::runtime_error("Finalize called before initialization or after finalization"));
+  }
+
+  impl::tls::thread_context.destroy();
+  impl::tls::thread_fibre.destroy();
+
+  impl::tls::has_fibre = false;
+  impl::tls::has_context = false;
+}
+
+} // namespace ext
+
+} // namespace lf
+
+#endif /* CF97E524_27A6_4CD9_8967_39F1B1BE97B6 */
+
+
+
+namespace lf {
+
+template <typename T>
+concept co_allocable = std::default_initializable<T> && alignof(T) <= impl::k_new_align;
+
+namespace impl {
+
+/**
+ * @brief An awaitable (in the context of an ``lf::task``) which triggers stack allocation.
+ */
+template <co_allocable T, std::size_t Extent>
+struct [[nodiscard("This object should be co_awaited")]] co_new_t {
+  static constexpr std::size_t count = Extent; ///< The number of elements to allocate.
+};
+
+template <co_allocable T>
+struct [[nodiscard("This object should be co_awaited")]] co_new_t<T, std::dynamic_extent> {
+  std::size_t count; ///< The number of elements to allocate.
+};
+
+template <co_allocable T, std::size_t Extent>
+struct [[nodiscard("This object should be co_awaited")]] co_delete_t : std::span<T, Extent> {};
+
+} // namespace impl
+
+/**
+ * @brief A function which returns an awaitable (in the context of an ``lf::task``) which triggers allocation
+ * on a fibre's stack.
+ *
+ * Upon ``co_await``ing the result of this function a pointer or ``std::span`` representing the allocated
+ * memory is returned. The memory is deleted with a matched call to ``co_delete``, This must be performed in a
+ * FILO order (i.e destroyed in the reverse order they were allocated) with any other ``co_new``ed calls. The
+ * lifetime of `co_new`ed memory must strictly nest within the lifetime of the task/co-routine it is allocated
+ * within. Finally all calls to ``co_new``/``co_delete`` must occur __outside__ of a fork-join scope.
+ *
+ * \rst
+ *
+ * .. warning::
+ *    This is an expert only feature with many foot-guns attached.
+ *
+ * \endrst
+ *
+ */
+template <co_allocable T, std::size_t Extent>
+  requires (Extent == std::dynamic_extent)
+inline auto co_new(std::size_t count) -> impl::co_new_t<T, std::dynamic_extent> {
+  return impl::co_new_t<T, std::dynamic_extent>{count};
+}
+
+/**
+ * @brief A function which returns an awaitable (in the context of an ``lf::task``) which triggers allocation
+ * on a fibre's stack.
+ *
+ * See the documentation for the dynamic version, ``lf::co_new(std::size_t)``, for a full description.
+ */
+template <co_allocable T, std::size_t Extent = 1>
+  requires (Extent != std::dynamic_extent)
+inline auto co_new() -> impl::co_new_t<T, Extent> {
+  return {};
+}
+
+/**
+ * @brief Free the memory allocated by a call to ``co_new``.
+ */
+template <co_allocable T, std::size_t Extent = 1>
+  requires (Extent >= 2)
+inline auto co_delete(std::span<T, Extent> span) -> impl::co_delete_t<T, Extent> {
+  return impl::co_delete_t<T, Extent>{span};
+}
+
+/**
+ * @brief Free the memory allocated by a call to ``co_new``.
+ */
+template <co_allocable T, std::size_t Extent = 1>
+  requires (Extent == 1)
+inline auto co_delete(T *ptr) -> impl::co_delete_t<T, Extent> {
+  return impl::co_delete_t<T, Extent>{std::span<T, 1>{ptr, 1}};
+}
+
+} // namespace lf
+
+#endif /* A951FB73_0FCF_4B7C_A997_42B7E87D21CB */
+
 #ifndef E8D38B49_7170_41BC_90E9_6D6389714304
 #define E8D38B49_7170_41BC_90E9_6D6389714304
 
@@ -2083,11 +2256,14 @@ struct valid_return<discard_t, task<void>> : std::true_type {};
 template <typename R, std::indirectly_writable<R> I>
 struct valid_return<I, task<R>> : std::true_type {};
 
+template <typename I, typename Task>
+inline constexpr bool valid_return_v = valid_return<I, Task>::value;
+
 template <typename I, typename R>
-concept return_address_for =         //
-    quasi_pointer<I> &&              //
-    returnable<R> &&                 //
-    valid_return<I, task<R>>::value; //
+concept return_address_for =    //
+    quasi_pointer<I> &&         //
+    returnable<R> &&            //
+    valid_return_v<I, task<R>>; //
 
 /**
  * @brief Verify `F` is async `Tag` invocable with `Args...` and returns a task who's result type is
@@ -2095,14 +2271,14 @@ concept return_address_for =         //
  */
 template <typename I, tag Tag, typename F, typename... Args>
 concept async_invocable_to_task =
-    quasi_pointer<I> &&                                                                             //
-    async_function_object<F> &&                                                                     //
-    std::invocable<F, impl::first_arg_t<I, Tag, F>, Args...> &&                                     //
-    valid_return<I, std::invoke_result_t<F, impl::first_arg_t<discard_t, Tag, F>, Args...>>::value; //
+    quasi_pointer<I> &&                                                                                    //
+    async_function_object<F> &&                                                                            //
+    std::invocable<F, impl::first_arg_t<I, Tag, F, Args &&...>, Args...> &&                                //
+    valid_return_v<I, std::invoke_result_t<F, impl::first_arg_t<discard_t, Tag, F, Args &&...>, Args...>>; //
 
 template <typename I, tag Tag, typename F, typename... Args>
   requires async_invocable_to_task<I, Tag, F, Args...>
-using unsafe_result_t = std::invoke_result_t<F, impl::first_arg_t<I, Tag, F>, Args...>::type;
+using unsafe_result_t = std::invoke_result_t<F, impl::first_arg_t<I, Tag, F, Args &&...>, Args...>::type;
 
 // --------------------- //
 
@@ -2290,7 +2466,7 @@ namespace impl {
  * - Statically inform the return pointer type.
  * - Statically provide the tag.
  */
-template <quasi_pointer I, tag Tag, async_function_object F>
+template <quasi_pointer I, tag Tag, async_function_object F, typename... Cargs>
 class first_arg_t {
  public:
   static constexpr tag tag = Tag; ///< The way this async function was called.
@@ -2349,108 +2525,6 @@ class first_arg_t {
 
 #ifndef CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
 #define CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
-#ifndef CF97E524_27A6_4CD9_8967_39F1B1BE97B6
-#define CF97E524_27A6_4CD9_8967_39F1B1BE97B6
-
-#include <stdexcept>
-
-
-#include <libfork/core/macro.hpp>
-
-namespace lf {
-
-namespace impl::tls {
-
-constinit inline thread_local bool has_fibre = false;
-constinit inline thread_local manual_lifetime<fibre> thread_fibre = {};
-
-constinit inline thread_local bool has_context = false;
-constinit inline thread_local manual_lifetime<full_context> thread_context = {};
-
-[[nodiscard]] inline auto fibre() -> fibre * {
-  LF_ASSERT(has_fibre);
-  return thread_fibre.data();
-}
-
-[[nodiscard]] inline auto context() -> full_context * {
-  LF_ASSERT(has_context);
-  return thread_context.data();
-}
-
-} // namespace impl::tls
-
-inline namespace ext {
-
-/**
- * @brief Initialize thread-local variables before a worker can resume submitted tasks.
- *
- * \rst
- *
- * .. warning::
- *    These should be cleaned up with ``worker_finalize(...)``.
- *
- * \endrst
- */
-[[nodiscard]] inline auto worker_init(std::size_t max_parallelism) -> worker_context * {
-
-  LF_LOG("Initializing worker");
-
-  if (impl::tls::has_context && impl::tls::has_fibre) {
-    LF_THROW(std::runtime_error("Worker already initialized"));
-  }
-
-  worker_context *context = impl::tls::thread_context.construct(max_parallelism);
-
-  // clang-format off
-
-  LF_TRY {
-    impl::tls::thread_fibre.construct();
-  } LF_CATCH_ALL {
-    impl::tls::thread_context.destroy();
-  }
-
-  impl::tls::has_fibre = true;
-  impl::tls::has_context = true;
-
-  // clang-format on
-
-  return context;
-}
-
-/**
- * @brief Clean-up thread-local variable before destructing a worker's context.
- *
- * \rst
- *
- * .. warning::
- *    These must be initialized with ``worker_init(...)``.
- *
- * \endrst
- */
-inline void finalize(worker_context *worker) {
-
-  LF_LOG("Finalizing worker");
-
-  if (worker != impl::tls::thread_context.data()) {
-    LF_THROW(std::runtime_error("Finalize called on wrong thread"));
-  }
-
-  if (!impl::tls::has_context || !impl::tls::has_fibre) {
-    LF_THROW(std::runtime_error("Finalize called before initialization or after finalization"));
-  }
-
-  impl::tls::thread_context.destroy();
-  impl::tls::thread_fibre.destroy();
-
-  impl::tls::has_fibre = false;
-  impl::tls::has_context = false;
-}
-
-} // namespace ext
-
-} // namespace lf
-
-#endif /* CF97E524_27A6_4CD9_8967_39F1B1BE97B6 */
 
 
 
@@ -2607,10 +2681,10 @@ struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combin
     requires async_invocable<I, Tag, F, Args...>
   auto operator()(Args &&...args) && -> quasi_awaitable<async_result_t<F, Args...>, I, Tag> {
 
-    task task = std::invoke(                                             //
-        std::move(fun),                                                  //
-        first_arg_t<I, Tag, std::remove_cvref_t<F>>(std::as_const(fun)), //
-        std::forward<Args>(args)...                                      //
+    task task = std::invoke(                                    //
+        std::move(fun),                                         //
+        first_arg_t<I, Tag, F, Args &&...>(std::as_const(fun)), //
+        std::forward<Args>(args)...                             //
     );
 
     using R = async_result_t<F, Args...>;
@@ -2636,8 +2710,13 @@ auto combinate(I ret, F fun) -> y_combinate<I, Tag, F> {
 /**
  * @brief Prevent each layer wrapping the function in another `first_arg_t`.
  */
-template <tag Tag, tag OtherTag, quasi_pointer I, quasi_pointer OtherI, async_function_object F>
-auto combinate(I ret, first_arg_t<OtherI, OtherTag, F> arg) -> y_combinate<I, Tag, F> {
+template <tag Tag,
+          tag OtherTag,
+          quasi_pointer I,
+          quasi_pointer OtherI,
+          async_function_object F,
+          typename... Args>
+auto combinate(I ret, first_arg_t<OtherI, OtherTag, F, Args...> arg) -> y_combinate<I, Tag, F> {
   return {std::move(ret), unwrap(std::move(arg))};
 }
 
@@ -2778,6 +2857,71 @@ inline constexpr impl::bind_task<tag::call> call = {};
 } // namespace lf
 
 #endif /* E8D38B49_7170_41BC_90E9_6D6389714304 */
+#ifndef B4EE570B_F5CF_42CB_9AF3_7376F45FDACC
+#define B4EE570B_F5CF_42CB_9AF3_7376F45FDACC
+
+#include <concepts>
+#include <functional>
+#include <libfork/core/macro.hpp>
+#include <type_traits>
+#include <utility>
+
+
+namespace lf {
+
+/**
+ * @brief Basic implementation of a Golang like defer.
+ *
+ * \rst
+ *
+ * Use like:
+ *
+ * .. code::
+ *
+ *    auto * ptr = c_api_init();
+ *
+ *    defer _ = [&ptr] () noexcept {
+ *      c_api_clean_up(ptr);
+ *    };
+ *
+ *    // Code that may throw
+ *
+ * \endrst
+ *
+ * You can also use the ``LF_DEFER`` macro to create an automaticaly named defer object.
+ *
+ */
+template <class F>
+  requires std::is_nothrow_invocable_v<F>
+class [[nodiscard("Defer will execute unless bound to a name!")]] defer : impl::immovable<defer<F>> {
+ public:
+  /**
+   * @brief Construct a new Defer object.
+   *
+   * @param f Nullary invocable forwarded into object and invoked by destructor.
+   */
+  constexpr defer(F &&f) noexcept(std::is_nothrow_constructible_v<F, F &&>) : m_f(std::forward<F>(f)) {}
+
+  /**
+   * @brief Calls the invocable.
+   */
+  LF_FORCEINLINE constexpr ~defer() noexcept { std::invoke(std::forward<F>(m_f)); }
+
+ private:
+  [[no_unique_address]] F m_f;
+};
+
+#define LF_CONCAT_OUTER(a, b) LF_CONCAT_INNER(a, b)
+#define LF_CONCAT_INNER(a, b) a##b
+
+/**
+ * @brief A macro to create an automaticaly named defer object.
+ */
+#define LF_DEFER ::lf::defer LF_CONCAT_OUTER(at_exit_, __LINE__) = [&]() noexcept
+
+} // namespace lf
+
+#endif /* B4EE570B_F5CF_42CB_9AF3_7376F45FDACC */
 #ifndef B7972761_4CBF_4B86_B195_F754295372BF
 #define B7972761_4CBF_4B86_B195_F754295372BF
 
@@ -2919,7 +3063,24 @@ namespace lf {
  * \endrst
  */
 template <impl::non_void T>
-class eventually;
+class eventually : impl::manual_lifetime<T> {
+ public:
+  using impl::manual_lifetime<T>::construct;
+  using impl::manual_lifetime<T>::operator=;
+  using impl::manual_lifetime<T>::operator->;
+  using impl::manual_lifetime<T>::operator*;
+
+  // clang-format off
+
+  /**
+   * @brief Destroy the object which __must__ be inside the eventually.
+   */
+  constexpr ~eventually() noexcept requires std::is_trivially_destructible_v<T> = default;
+
+  // clang-format on
+
+  constexpr ~eventually() noexcept(std::is_nothrow_destructible_v<T>) { this->destroy(); }
+};
 
 // ------------------------------------------------------------------------ //
 
@@ -2933,6 +3094,14 @@ template <impl::non_void T>
   requires impl::reference<T>
 class eventually<T> : impl::immovable<eventually<T>> {
  public:
+  /**
+   * @brief Construct an object inside the eventually from ``expr``.
+   */
+  template <impl::safe_ref_bind_to<T> U>
+  void construct(U &&expr) noexcept {
+    m_value = std::addressof(expr);
+  }
+
   /**
    * @brief Construct an object inside the eventually from ``expr``.
    */
@@ -2972,24 +3141,33 @@ class eventually<T> : impl::immovable<eventually<T>> {
 
 // ------------------------------------------------------------------------ //
 
+/**
+ * @brief A `manual_eventually<T>` is an `eventually<T>` which does not call destroy on destruction.
+ *
+ * This is useful for writing exception safe fork-join code and should be considered an expert-only feature.
+ */
 template <impl::non_void T>
-class eventually : impl::manual_lifetime<T> {
+class manual_eventually : impl::manual_lifetime<T> {
+
  public:
+  using impl::manual_lifetime<T>::construct;
   using impl::manual_lifetime<T>::operator=;
   using impl::manual_lifetime<T>::operator->;
   using impl::manual_lifetime<T>::operator*;
-  using impl::manual_lifetime<T>::construct;
+  using impl::manual_lifetime<T>::destroy;
+};
 
-  // clang-format off
+template <impl::non_void T>
+  requires impl::reference<T>
+class manual_eventually<T> : eventually<T> {
 
-  /**
-   * @brief Destroy the object which __must__ be inside the eventually.
-   */
-  constexpr ~eventually() noexcept requires std::is_trivially_destructible_v<T> = default;
+ public:
+  using eventually<T>::construct;
+  using eventually<T>::operator=;
+  using eventually<T>::operator->;
+  using eventually<T>::operator*;
 
-  // clang-format on
-
-  constexpr ~eventually() noexcept(std::is_nothrow_destructible_v<T>) { this->destroy(); }
+  void destroy() noexcept {};
 };
 
 } // namespace lf
@@ -3133,9 +3311,11 @@ inline void resume(task_handle ptr) noexcept {
 #define C854CDE9_1125_46E1_9E2A_0B0006BFC135
 
 #include <concepts>
+#include <new>
 #include <type_traits>
 #include <utility>
 
+#include <libfork/core/co_alloc.hpp>
 #include <libfork/core/context.hpp>
 #include <libfork/core/control_flow.hpp>
 #include <libfork/core/first_arg.hpp>
@@ -3195,15 +3375,7 @@ inline auto final_await_suspend(frame *parent) noexcept -> std::coroutine_handle
 
   fibre *tls_fibre = tls::fibre();
 
-  bool same_fibre = parent->fibril() == tls_fibre->top();
-
   auto *parents_fibril = parent->fibril();
-
-  // if (own_parents_fibre) {
-  // }
-
-  // Before we register with the parent that must pre_release the parent's fibre in case some
-  // other thread continues it.
 
   // Register with parent we have completed this child task.
   if (parent->fetch_sub_joins(1, std::memory_order_release) == 1) {
@@ -3281,6 +3453,48 @@ struct promise_base : frame {
     });
   }
 
+  template <co_allocable T, std::size_t E>
+  auto await_transform(co_new_t<T, E> await) {
+
+    auto *fibre = tls::fibre();
+
+    T *ptr = static_cast<T *>(fibre->allocate(await.count * sizeof(T)));
+
+    // clang-format off
+
+    LF_TRY {
+      std::ranges::uninitialized_default_construct_n(ptr, await.count);
+    } LF_CATCH_ALL {
+      fibre->deallocate(ptr);
+      LF_RETHROW;
+    }
+
+    // clang-format on
+
+    this->set_fibril(fibre->top());
+
+    struct awaitable : std::suspend_never, std::span<T, E> {
+      [[nodiscard]] auto await_resume() const noexcept -> std::conditional_t<E == 1, T *, std::span<T, E>> {
+        if constexpr (E == 1) {
+          return this->data();
+        } else {
+          return *this;
+        }
+      }
+    };
+
+    return awaitable{{}, std::span<T, E>{ptr, await.count}};
+  }
+
+  template <co_allocable T, std::size_t E>
+  auto await_transform(co_delete_t<T, E> await) noexcept -> std::suspend_never {
+    std::ranges::destroy(await);
+    auto *fibre = impl::tls::fibre();
+    fibre->deallocate(await.data());
+    this->set_fibril(fibre->top());
+    return {};
+  }
+
   /**
    * @brief Get a join awaitable.
    */
@@ -3313,28 +3527,6 @@ struct promise_base : frame {
       return fork_awaitable{{}, awaitable.promise, this};
     }
   }
-
-  /**
-   * @brief Allocate on this ``fibre_stack``.
-   */
-  // template <typename U>
-  // auto await_transform(co_alloc_t<U> to_alloc) noexcept {
-
-  //   static_assert(Tag != tag::root, "Cannot allocate on root tasks");
-
-  //   U *data = static_cast<U *>(this->stalloc(to_alloc.count * sizeof(U)));
-
-  //   for (std::size_t i = 0; i < to_alloc.count; ++i) {
-  //     std::construct_at(data + i);
-  //   }
-
-  //   struct awaitable : std::suspend_never {
-  //     [[nodiscard]] auto await_resume() const noexcept -> std::span<U> { return allocated; }
-  //     std::span<U> allocated;
-  //   };
-
-  //   return awaitable{{}, {data, to_alloc.count}};
-  // }
 };
 
 /**
@@ -3402,15 +3594,35 @@ struct promise : promise_base, return_result<R, I> {
   };
 };
 
+// -------------------------------------------------- //
+
+template <typename...>
+inline constexpr bool always_false = false;
+
 /**
- * @brief Disable rvalue references for T&& template types if an async function is forked.
- *
- * This is to prevent the user from accidentally passing a temporary object to
- * an async function that will then destructed in the parent task before the
- * child task returns.
+ * @brief All non-reference destinations are safe for most types.
  */
-template <tag Tag, typename... Args>
-inline constexpr bool no_forked_rvalues = Tag != tag::fork || !(std::is_rvalue_reference_v<Args> || ...);
+template <tag Tag, typename, typename To>
+struct safe_fork_t : std::true_type {};
+
+/**
+ * @brief Rvalue to const-lvalue promotions are unsafe.
+ */
+template <typename From, typename To>
+struct safe_fork_t<tag::fork, From &&, To const &> : std::false_type {
+  static_assert(always_false<From &&, To const &>, "Unsafe r-value to const l-value conversion may dangle!");
+};
+
+/**
+ * @brief All r-value destinations are always unsafe.
+ */
+template <typename From, typename To>
+struct safe_fork_t<tag::fork, From, To &&> : std::false_type {
+  static_assert(always_false<From, To &&>, "Forked r-value may dangle!");
+};
+
+template <tag Tag, typename From, typename To>
+inline constexpr bool safe_fork_v = safe_fork_t<Tag, From, To>::value;
 
 } // namespace lf::impl
 
@@ -3421,10 +3633,11 @@ template <lf::returnable R,
           lf::impl::return_address_for<R> I,
           lf::tag Tag,
           lf::async_function_object F,
+          typename... Crgs,
           typename... Args>
-struct std::coroutine_traits<lf::task<R>, lf::impl::first_arg_t<I, Tag, F>, Args...> {
-
-  static_assert(lf::impl::no_forked_rvalues<Tag, Args...>, "Forked temporaries may dangle!");
+struct std::coroutine_traits<lf::task<R>, lf::impl::first_arg_t<I, Tag, F, Crgs...>, Args...> {
+  // This will trigger an inner static assert if an unsafe reference is forked.
+  static_assert((lf::impl::safe_fork_v<Tag, Crgs, Args> && ...));
 
   using promise_type = lf::impl::promise<R, I, Tag>;
 };
@@ -3437,10 +3650,12 @@ template <lf::returnable R,
           lf::impl::return_address_for<R> I,
           lf::tag Tag,
           lf::async_function_object F,
+          typename... Crgs,
           typename... Args>
-struct std::coroutine_traits<lf::task<R>, This, lf::impl::first_arg_t<I, Tag, F>, Args...> {
-
-  static_assert(lf::impl::no_forked_rvalues<Tag, This, Args...>, "Forked temporaries may dangle!");
+struct std::coroutine_traits<lf::task<R>, This, lf::impl::first_arg_t<I, Tag, F, Crgs...>, Args...> {
+  // This will trigger an inner static assert if an unsafe reference is forked.
+  static_assert((lf::impl::safe_fork_v<Tag, Crgs, Args> && ...));
+  static_assert((lf::impl::safe_fork_v<Tag, This, This>), "Object parameter will dangle!");
 
   using promise_type = lf::impl::promise<R, I, Tag>;
 };
@@ -3585,17 +3800,30 @@ consteval auto lift(F func) noexcept {
 /**
  * @brief Lift an overload-set/template into a constrained lambda.
  *
- * This is useful for passing overloaded/template functions to higher order
- * functions like `lf::fork`, `lf::call` etc.
+ * This is useful for passing overloaded/template names to higher order functions like `lf::fork`/`lf::call`.
  */
-#define LF_LIFT(overload_set)                                                                                \
-  [](auto &&...args) LF_STATIC_CALL LF_HOF_RETURNS(overload_set(std::forward<decltype(args)>(args)...))
+#define LF_LOFT(name)                                                                                        \
+  [](auto &&...args) LF_STATIC_CALL LF_HOF_RETURNS(name(::std::forward<decltype(args)>(args)...))
 
 /**
- * @brief Lift an overload-set/template into an async function, equivalent to
- * `lf::lift(LF_LIFT(overload_set))`.
+ * @brief Lift a lofted overload set.
  */
-#define LF_LIFT2(overload_set) ::lf::lift(LF_LIFT(overload_set))
+#define LF_LLOFT(name) ::lf::lift(LF_LOFT(name))
+
+/**
+ * @brief Lift an overload-set/template into a constrained capturing lambda.
+ *
+ * The variadic arguments are used as the lambda's capture.
+ *
+ * This is useful for passing overloaded/template names to higher order functions like `lf::fork`/`lf::call`.
+ */
+#define LF_CLOFT(name, ...)                                                                                  \
+  [__VA_ARGS__](auto &&...args) LF_HOF_RETURNS(name(::std::forward<decltype(args)>(args)...))
+
+/**
+ * @brief Lift a capturing lofted overload set.
+ */
+#define LF_LCLOFT(name, ...) ::lf::lift(LF_CLOFT(name, __VA_ARGS__))
 
 } // namespace lf
 
@@ -3636,7 +3864,6 @@ consteval auto lift(F func) noexcept {
 #include <cstddef>
 #include <exception>
 #include <latch>
-#include <libfork/core/ext/tls.hpp>
 #include <memory>
 #include <numeric>
 #include <random>
@@ -4485,7 +4712,7 @@ inline void busy_work(numa_topology::numa_node<impl::numa_context<busy_vars>> no
   // program terminates due to the noexcept marker.
   my_context->shared().latch_start.arrive_and_wait();
 
-  lf::impl::defer on_exit = [&]() noexcept {
+  LF_DEFER {
     // Wait for everyone to have stopped before destroying the context (which others could be observing).
     my_context->shared().stop.test_and_set(std::memory_order_release);
     my_context->shared().latch_stop.arrive_and_wait();
@@ -4550,7 +4777,7 @@ class busy_pool {
 
     [&]() noexcept {
       // All workers must be created, if we fail to create them all then we must terminate else
-      // the workers will hang on the latch.
+      // the workers will hang on the start latch.
       for (auto &&node : nodes) {
         m_threads.emplace_back(impl::busy_work, std::move(node));
       }
@@ -4945,7 +5172,7 @@ inline auto lazy_work(numa_topology::numa_node<numa_context<lazy_vars>> node) no
   // program terminates due to the noexcept marker.
   my_context->shared().latch_start.arrive_and_wait();
 
-  lf::impl::defer on_exit = [&]() noexcept {
+  LF_DEFER {
     // Wait for everyone to have stopped before destroying the context (which others could be observing).
     my_context->shared().stop.test_and_set(std::memory_order_release);
     my_context->shared().latch_stop.arrive_and_wait();

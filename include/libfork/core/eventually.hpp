@@ -17,6 +17,7 @@
 #include "libfork/core/macro.hpp"
 #include "libfork/core/task.hpp"
 
+#include "libfork/core/impl/manual_lifetime.hpp"
 #include "libfork/core/impl/utility.hpp"
 
 /**
@@ -49,7 +50,24 @@ namespace lf {
  * \endrst
  */
 template <impl::non_void T>
-class eventually;
+class eventually : impl::manual_lifetime<T> {
+ public:
+  using impl::manual_lifetime<T>::construct;
+  using impl::manual_lifetime<T>::operator=;
+  using impl::manual_lifetime<T>::operator->;
+  using impl::manual_lifetime<T>::operator*;
+
+  // clang-format off
+
+  /**
+   * @brief Destroy the object which __must__ be inside the eventually.
+   */
+  constexpr ~eventually() noexcept requires std::is_trivially_destructible_v<T> = default;
+
+  // clang-format on
+
+  constexpr ~eventually() noexcept(std::is_nothrow_destructible_v<T>) { this->destroy(); }
+};
 
 // ------------------------------------------------------------------------ //
 
@@ -63,6 +81,14 @@ template <impl::non_void T>
   requires impl::reference<T>
 class eventually<T> : impl::immovable<eventually<T>> {
  public:
+  /**
+   * @brief Construct an object inside the eventually from ``expr``.
+   */
+  template <impl::safe_ref_bind_to<T> U>
+  void construct(U &&expr) noexcept {
+    m_value = std::addressof(expr);
+  }
+
   /**
    * @brief Construct an object inside the eventually from ``expr``.
    */
@@ -102,24 +128,33 @@ class eventually<T> : impl::immovable<eventually<T>> {
 
 // ------------------------------------------------------------------------ //
 
+/**
+ * @brief A `manual_eventually<T>` is an `eventually<T>` which does not call destroy on destruction.
+ *
+ * This is useful for writing exception safe fork-join code and should be considered an expert-only feature.
+ */
 template <impl::non_void T>
-class eventually : impl::manual_lifetime<T> {
+class manual_eventually : impl::manual_lifetime<T> {
+
  public:
+  using impl::manual_lifetime<T>::construct;
   using impl::manual_lifetime<T>::operator=;
   using impl::manual_lifetime<T>::operator->;
   using impl::manual_lifetime<T>::operator*;
-  using impl::manual_lifetime<T>::construct;
+  using impl::manual_lifetime<T>::destroy;
+};
 
-  // clang-format off
+template <impl::non_void T>
+  requires impl::reference<T>
+class manual_eventually<T> : eventually<T> {
 
-  /**
-   * @brief Destroy the object which __must__ be inside the eventually.
-   */
-  constexpr ~eventually() noexcept requires std::is_trivially_destructible_v<T> = default;
+ public:
+  using eventually<T>::construct;
+  using eventually<T>::operator=;
+  using eventually<T>::operator->;
+  using eventually<T>::operator*;
 
-  // clang-format on
-
-  constexpr ~eventually() noexcept(std::is_nothrow_destructible_v<T>) { this->destroy(); }
+  void destroy() noexcept {};
 };
 
 } // namespace lf

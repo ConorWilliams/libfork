@@ -1,9 +1,6 @@
 # The todo list
 
-- Get lazy pool working.
-- Full test suite working.
-- co_alloc working -> std:optional<std::span<>>
-  - Which needs lf::or_alloc
+- Benchmarks working, run benchmarks on CSD3 with mimalloc
 
 - non_null macro
 
@@ -11,8 +8,6 @@
 - Needs headers in the files
 - Docs need updating
 - Readme needs updating
-
-- Benchmarks working, run benchmarks on CSD3 with mimalloc
 
 ## Features
 

@@ -7,6 +7,8 @@
 
 #include "libfork/core.hpp"
 
+namespace {
+
 inline constexpr auto noop = [](lf::first_arg auto noop) -> lf::task<> {
   co_return;
 };
@@ -34,6 +36,25 @@ inline constexpr auto fib = [](auto fib, int n) -> lf::task<int> {
   co_await lf::call(&b, fib)(n - 2);
 
   co_return a + b;
+};
+
+inline constexpr auto co_fib = [](auto co_fib, int n) -> lf::task<int> {
+  if (n < 2) {
+    co_return n;
+  }
+
+  std::span r = co_await lf::co_new<int, 2>();
+
+  co_await lf::fork(&r[0], co_fib)(n - 1);
+  co_await lf::call(&r[1], co_fib)(n - 2);
+
+  co_await lf::join;
+
+  int res = r[1] + r[0];
+
+  co_await lf::co_delete(r);
+
+  co_return res;
 };
 
 struct scheduler : lf::impl::immovable<scheduler> {
@@ -69,6 +90,8 @@ LF_NOINLINE constexpr auto sfib(int &ret, int n) -> void {
 
 auto test() -> lf::task<> { return {}; }
 
+} // namespace
+
 // TEST_CASE("Core nooper", "[core][benchmark]") {
 
 //   scheduler sch{};
@@ -91,5 +114,10 @@ auto test() -> lf::task<> { return {}; }
 //   BENCHMARK("Fibonacci parall") {
 //     //
 //     return lf::sync_wait(sch, fib, in);
+//   };
+
+//   BENCHMARK("Fibonacci parall co_alloc") {
+//     //
+//     return lf::sync_wait(sch, co_fib, in);
 //   };
 // }

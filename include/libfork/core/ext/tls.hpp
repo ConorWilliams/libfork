@@ -4,9 +4,10 @@
 #include <stdexcept>
 
 #include "libfork/core/context.hpp"
+#include "libfork/core/macro.hpp"
 
 #include "libfork/core/impl/fibre.hpp"
-#include <libfork/core/macro.hpp>
+#include "libfork/core/impl/manual_lifetime.hpp"
 
 namespace lf {
 

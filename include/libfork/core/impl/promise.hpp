@@ -2,9 +2,11 @@
 #define C854CDE9_1125_46E1_9E2A_0B0006BFC135
 
 #include <concepts>
+#include <new>
 #include <type_traits>
 #include <utility>
 
+#include <libfork/core/co_alloc.hpp>
 #include <libfork/core/context.hpp>
 #include <libfork/core/control_flow.hpp>
 #include <libfork/core/first_arg.hpp>
@@ -64,15 +66,7 @@ inline auto final_await_suspend(frame *parent) noexcept -> std::coroutine_handle
 
   fibre *tls_fibre = tls::fibre();
 
-  bool same_fibre = parent->fibril() == tls_fibre->top();
-
   auto *parents_fibril = parent->fibril();
-
-  // if (own_parents_fibre) {
-  // }
-
-  // Before we register with the parent that must pre_release the parent's fibre in case some
-  // other thread continues it.
 
   // Register with parent we have completed this child task.
   if (parent->fetch_sub_joins(1, std::memory_order_release) == 1) {
@@ -150,6 +144,48 @@ struct promise_base : frame {
     });
   }
 
+  template <co_allocable T, std::size_t E>
+  auto await_transform(co_new_t<T, E> await) {
+
+    auto *fibre = tls::fibre();
+
+    T *ptr = static_cast<T *>(fibre->allocate(await.count * sizeof(T)));
+
+    // clang-format off
+
+    LF_TRY {
+      std::ranges::uninitialized_default_construct_n(ptr, await.count);
+    } LF_CATCH_ALL {
+      fibre->deallocate(ptr);
+      LF_RETHROW;
+    }
+
+    // clang-format on
+
+    this->set_fibril(fibre->top());
+
+    struct awaitable : std::suspend_never, std::span<T, E> {
+      [[nodiscard]] auto await_resume() const noexcept -> std::conditional_t<E == 1, T *, std::span<T, E>> {
+        if constexpr (E == 1) {
+          return this->data();
+        } else {
+          return *this;
+        }
+      }
+    };
+
+    return awaitable{{}, std::span<T, E>{ptr, await.count}};
+  }
+
+  template <co_allocable T, std::size_t E>
+  auto await_transform(co_delete_t<T, E> await) noexcept -> std::suspend_never {
+    std::ranges::destroy(await);
+    auto *fibre = impl::tls::fibre();
+    fibre->deallocate(await.data());
+    this->set_fibril(fibre->top());
+    return {};
+  }
+
   /**
    * @brief Get a join awaitable.
    */
@@ -182,28 +218,6 @@ struct promise_base : frame {
       return fork_awaitable{{}, awaitable.promise, this};
     }
   }
-
-  /**
-   * @brief Allocate on this ``fibre_stack``.
-   */
-  // template <typename U>
-  // auto await_transform(co_alloc_t<U> to_alloc) noexcept {
-
-  //   static_assert(Tag != tag::root, "Cannot allocate on root tasks");
-
-  //   U *data = static_cast<U *>(this->stalloc(to_alloc.count * sizeof(U)));
-
-  //   for (std::size_t i = 0; i < to_alloc.count; ++i) {
-  //     std::construct_at(data + i);
-  //   }
-
-  //   struct awaitable : std::suspend_never {
-  //     [[nodiscard]] auto await_resume() const noexcept -> std::span<U> { return allocated; }
-  //     std::span<U> allocated;
-  //   };
-
-  //   return awaitable{{}, {data, to_alloc.count}};
-  // }
 };
 
 /**
@@ -271,15 +285,35 @@ struct promise : promise_base, return_result<R, I> {
   };
 };
 
+// -------------------------------------------------- //
+
+template <typename...>
+inline constexpr bool always_false = false;
+
 /**
- * @brief Disable rvalue references for T&& template types if an async function is forked.
- *
- * This is to prevent the user from accidentally passing a temporary object to
- * an async function that will then destructed in the parent task before the
- * child task returns.
+ * @brief All non-reference destinations are safe for most types.
  */
-template <tag Tag, typename... Args>
-inline constexpr bool no_forked_rvalues = Tag != tag::fork || !(std::is_rvalue_reference_v<Args> || ...);
+template <tag Tag, typename, typename To>
+struct safe_fork_t : std::true_type {};
+
+/**
+ * @brief Rvalue to const-lvalue promotions are unsafe.
+ */
+template <typename From, typename To>
+struct safe_fork_t<tag::fork, From &&, To const &> : std::false_type {
+  static_assert(always_false<From &&, To const &>, "Unsafe r-value to const l-value conversion may dangle!");
+};
+
+/**
+ * @brief All r-value destinations are always unsafe.
+ */
+template <typename From, typename To>
+struct safe_fork_t<tag::fork, From, To &&> : std::false_type {
+  static_assert(always_false<From, To &&>, "Forked r-value may dangle!");
+};
+
+template <tag Tag, typename From, typename To>
+inline constexpr bool safe_fork_v = safe_fork_t<Tag, From, To>::value;
 
 } // namespace lf::impl
 
@@ -290,10 +324,11 @@ template <lf::returnable R,
           lf::impl::return_address_for<R> I,
           lf::tag Tag,
           lf::async_function_object F,
+          typename... Crgs,
           typename... Args>
-struct std::coroutine_traits<lf::task<R>, lf::impl::first_arg_t<I, Tag, F>, Args...> {
-
-  static_assert(lf::impl::no_forked_rvalues<Tag, Args...>, "Forked temporaries may dangle!");
+struct std::coroutine_traits<lf::task<R>, lf::impl::first_arg_t<I, Tag, F, Crgs...>, Args...> {
+  // This will trigger an inner static assert if an unsafe reference is forked.
+  static_assert((lf::impl::safe_fork_v<Tag, Crgs, Args> && ...));
 
   using promise_type = lf::impl::promise<R, I, Tag>;
 };
@@ -306,10 +341,12 @@ template <lf::returnable R,
           lf::impl::return_address_for<R> I,
           lf::tag Tag,
           lf::async_function_object F,
+          typename... Crgs,
           typename... Args>
-struct std::coroutine_traits<lf::task<R>, This, lf::impl::first_arg_t<I, Tag, F>, Args...> {
-
-  static_assert(lf::impl::no_forked_rvalues<Tag, This, Args...>, "Forked temporaries may dangle!");
+struct std::coroutine_traits<lf::task<R>, This, lf::impl::first_arg_t<I, Tag, F, Crgs...>, Args...> {
+  // This will trigger an inner static assert if an unsafe reference is forked.
+  static_assert((lf::impl::safe_fork_v<Tag, Crgs, Args> && ...));
+  static_assert((lf::impl::safe_fork_v<Tag, This, This>), "Object parameter will dangle!");
 
   using promise_type = lf::impl::promise<R, I, Tag>;
 };

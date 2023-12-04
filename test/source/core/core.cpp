@@ -37,6 +37,8 @@
 #include "libfork/schedule/lazy_pool.hpp"
 #include "libfork/schedule/unit_pool.hpp"
 
+#include "libfork/algorithm/lift.hpp"
+
 // NOLINTBEGIN No linting in tests
 
 using namespace lf;
@@ -275,6 +277,46 @@ TEMPLATE_TEST_CASE("Reference test", "[core][template]", unit_pool, busy_pool, l
   r = 100;
 
   REQUIRE(a.m_private == 100);
+}
+
+// ------------------------- CO ALLOC ------------------------- //
+
+namespace {
+
+inline constexpr auto co_fib = [](auto co_fib, int n) -> lf::task<int> {
+  if (n < 2) {
+    co_return n;
+  }
+
+  int *a = co_await lf::co_new<int>();
+  int *b = co_await lf::co_new<int>();
+
+  co_await lf::fork(a, co_fib)(n - 1);
+  co_await lf::call(b, co_fib)(n - 2);
+
+  co_await lf::join;
+
+  int res = *a + *b;
+
+  co_await lf::co_delete(b);
+  co_await lf::co_delete(a);
+
+  co_return res;
+};
+
+} // namespace
+
+TEMPLATE_TEST_CASE("Fibonacci - co_alloc", "[core][template]", unit_pool, busy_pool, lazy_pool) {
+
+  for (int j = 0; j < 100; ++j) {
+    {
+      auto schedule = make_scheduler<TestType>();
+
+      for (int i = 1; i < 20; ++i) {
+        REQUIRE(fib(i) == sync_wait(schedule, co_fib, i));
+      }
+    }
+  }
 }
 
 // NOLINTEND

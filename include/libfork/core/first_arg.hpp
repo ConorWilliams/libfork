@@ -70,7 +70,7 @@ namespace impl {
  * - Statically inform the return pointer type.
  * - Statically provide the tag.
  */
-template <quasi_pointer I, tag Tag, async_function_object F>
+template <quasi_pointer I, tag Tag, async_function_object F, typename... Cargs>
 class first_arg_t {
  public:
   static constexpr tag tag = Tag; ///< The way this async function was called.

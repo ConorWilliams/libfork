@@ -66,17 +66,30 @@ consteval auto lift(F func) noexcept {
 /**
  * @brief Lift an overload-set/template into a constrained lambda.
  *
- * This is useful for passing overloaded/template functions to higher order
- * functions like `lf::fork`, `lf::call` etc.
+ * This is useful for passing overloaded/template names to higher order functions like `lf::fork`/`lf::call`.
  */
-#define LF_LIFT(overload_set)                                                                                \
-  [](auto &&...args) LF_STATIC_CALL LF_HOF_RETURNS(overload_set(std::forward<decltype(args)>(args)...))
+#define LF_LOFT(name)                                                                                        \
+  [](auto &&...args) LF_STATIC_CALL LF_HOF_RETURNS(name(::std::forward<decltype(args)>(args)...))
 
 /**
- * @brief Lift an overload-set/template into an async function, equivalent to
- * `lf::lift(LF_LIFT(overload_set))`.
+ * @brief Lift a lofted overload set.
  */
-#define LF_LIFT2(overload_set) ::lf::lift(LF_LIFT(overload_set))
+#define LF_LLOFT(name) ::lf::lift(LF_LOFT(name))
+
+/**
+ * @brief Lift an overload-set/template into a constrained capturing lambda.
+ *
+ * The variadic arguments are used as the lambda's capture.
+ *
+ * This is useful for passing overloaded/template names to higher order functions like `lf::fork`/`lf::call`.
+ */
+#define LF_CLOFT(name, ...)                                                                                  \
+  [__VA_ARGS__](auto &&...args) LF_HOF_RETURNS(name(::std::forward<decltype(args)>(args)...))
+
+/**
+ * @brief Lift a capturing lofted overload set.
+ */
+#define LF_LCLOFT(name, ...) ::lf::lift(LF_CLOFT(name, __VA_ARGS__))
 
 } // namespace lf
 
