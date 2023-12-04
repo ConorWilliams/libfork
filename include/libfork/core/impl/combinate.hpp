@@ -41,10 +41,9 @@ struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combin
     requires async_invocable<I, Tag, F, Args...>
   auto operator()(Args &&...args) && -> quasi_awaitable<async_result_t<F, Args...>, I, Tag> {
 
-    task task = std::invoke(                                    //
-        std::move(fun),                                         //
-        first_arg_t<I, Tag, F, Args &&...>(std::as_const(fun)), //
-        std::forward<Args>(args)...                             //
+    task task = std::move(fun)(                                  //                                   
+        first_arg_t<I, Tag, F, Args &&...>(std::as_const(fun)),  // 
+        std::forward<Args>(args)...                              //
     );
 
     using R = async_result_t<F, Args...>;
