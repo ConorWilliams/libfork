@@ -2888,7 +2888,7 @@ namespace lf {
  *
  * \endrst
  *
- * You can also use the ``LF_DEFER`` macro to create an automaticaly named defer object.
+ * You can also use the ``LF_DEFER`` macro to create an automatically named defer object.
  *
  */
 template <class F>

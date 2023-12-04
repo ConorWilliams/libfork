@@ -197,7 +197,7 @@ auto request_on = [](auto async, auto stop ...) -> task<T, true> {
 
   defer _ = [] { async.cancel_siblings(); }
 
-  while (not async.cancelled()) {
+  while (not async.canceled()) {
    
     // Do some work ...
 
