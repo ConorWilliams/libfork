@@ -73,7 +73,7 @@ class fibre {
       fibril *next = static_cast<fibril *>(std::malloc(sizeof(fibril) + size)); // NOLINT
 
       if (next == nullptr) {
-        throw std::bad_alloc();
+        LF_THROW(std::bad_alloc());
       }
 
       if (prev != nullptr) { // Tidy up other next
@@ -186,7 +186,7 @@ class fibre {
    *
    * This must be called in FILO order with `allocate`.
    */
-  LF_FORCEINLINE constexpr void deallocate(void *ptr) noexcept {
+  LF_FORCEINLINE void deallocate(void *ptr) noexcept {
 
     LF_ASSERT(m_fib);
 
@@ -205,7 +205,7 @@ class fibre {
   /**
    * @brief Get the fibril that the last allocation was on, this is non-null.
    */
-  [[nodiscard]] constexpr auto top() noexcept -> fibril * { return non_null(m_fib); }
+  [[nodiscard]] auto top() noexcept -> fibril * { return non_null(m_fib); }
 
  private:
   fibril *m_fib; ///< The allocation fibril.
