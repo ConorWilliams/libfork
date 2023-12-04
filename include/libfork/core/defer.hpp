@@ -57,7 +57,7 @@ class [[nodiscard("Defer will execute unless bound to a name!")]] defer : impl::
 #define LF_CONCAT_INNER(a, b) a##b
 
 /**
- * @brief A macro to create an automaticaly named defer object.
+ * @brief A macro to create an automatically named defer object.
  */
 #define LF_DEFER ::lf::defer LF_CONCAT_OUTER(at_exit_, __LINE__) = [&]() noexcept
 

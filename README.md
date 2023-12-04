@@ -202,11 +202,11 @@ auto request_on = [](auto async, auto stop ...) -> task<T, true> {
     // Do some work ...
 
     if (/* Some condition */) { 
-      return /* Value */;
+      co_return /* Value */;
     }
   }
 
-  return std::nullopt;
+  co_return /* Null - value */;
 }
 ```
 

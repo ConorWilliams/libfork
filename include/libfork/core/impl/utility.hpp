@@ -124,7 +124,7 @@ struct return_nullopt {
 // -------------------------------- //
 
 /**
- * @brief An empty base class that is not copiable or movable.
+ * @brief An empty base class that is not copyable or movable.
  *
  * The template parameter prevents multiple empty bases when inheriting multiple classes.
  */

@@ -540,7 +540,7 @@ struct return_nullopt {
 // -------------------------------- //
 
 /**
- * @brief An empty base class that is not copiable or movable.
+ * @brief An empty base class that is not copyable or movable.
  *
  * The template parameter prevents multiple empty bases when inheriting multiple classes.
  */
@@ -2915,7 +2915,7 @@ class [[nodiscard("Defer will execute unless bound to a name!")]] defer : impl::
 #define LF_CONCAT_INNER(a, b) a##b
 
 /**
- * @brief A macro to create an automaticaly named defer object.
+ * @brief A macro to create an automatically named defer object.
  */
 #define LF_DEFER ::lf::defer LF_CONCAT_OUTER(at_exit_, __LINE__) = [&]() noexcept
 
