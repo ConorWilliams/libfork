@@ -190,10 +190,10 @@ void uts_libfork_alloc_busy_fan(benchmark::State &state, int tree) {
 
 using namespace lf;
 
-MAKE_UTS_FOR(uts_libfork_alloc_lazy_seq);
-MAKE_UTS_FOR(uts_libfork_alloc_lazy_fan);
-MAKE_UTS_FOR(uts_libfork_alloc_busy_seq);
-MAKE_UTS_FOR(uts_libfork_alloc_busy_fan);
+// MAKE_UTS_FOR(uts_libfork_alloc_lazy_seq);
+// MAKE_UTS_FOR(uts_libfork_alloc_lazy_fan);
+// MAKE_UTS_FOR(uts_libfork_alloc_busy_seq);
+// MAKE_UTS_FOR(uts_libfork_alloc_busy_fan);
 
 MAKE_UTS_FOR(uts_libfork_lazy_seq);
 MAKE_UTS_FOR(uts_libfork_lazy_fan);

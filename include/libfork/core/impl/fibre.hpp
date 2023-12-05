@@ -18,7 +18,10 @@ inline namespace ext {
 
 class fibre {
 
-  static constexpr std::size_t k_init_size = 1024;
+  // Want underlying malloc to allocate one-page for the first fibril.
+  static constexpr std::size_t malloc_block_est = 64;
+  static constexpr std::size_t fibril_size = 6 * sizeof(void *);
+  static constexpr std::size_t k_init_size = 4 * impl::k_kibibyte - fibril_size - malloc_block_est;
 
  public:
   /**
@@ -101,6 +104,7 @@ class fibre {
   };
 
   // Keep stack aligned.
+  static_assert(sizeof(fibril) == fibril_size);
   static_assert(sizeof(fibril) >= impl::k_new_align && sizeof(fibril) % impl::k_new_align == 0);
   // Implicit lifetime
   static_assert(std::is_trivially_default_constructible_v<fibril>);

@@ -14,6 +14,7 @@ bench/data/
 *.svg
 
 
+mem.log
 gmon.out
 out.png
 output.png

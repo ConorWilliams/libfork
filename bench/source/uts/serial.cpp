@@ -95,12 +95,8 @@ void uts_serial(benchmark::State &state, int tree) {
 
 } // namespace
 
-BENCHMARK_CAPTURE(uts_serial, "T1 Geo fixed ", 1)->UseRealTime();
-BENCHMARK_CAPTURE(uts_serial, "T2 Geo cycle ", 2)->UseRealTime();
-BENCHMARK_CAPTURE(uts_serial, "T3 Binomial  ", 3)->UseRealTime();
-BENCHMARK_CAPTURE(uts_serial, "T4 Hybrid    ", 4)->UseRealTime();
-BENCHMARK_CAPTURE(uts_serial, "T5 Geo linear", 5)->UseRealTime();
-
-BENCHMARK_CAPTURE(uts_serial, "T1L Geo fixed ", 6)->UseRealTime();
-BENCHMARK_CAPTURE(uts_serial, "T2L Geo cyclic", 7)->UseRealTime();
-BENCHMARK_CAPTURE(uts_serial, "T3L Binomial  ", 8)->UseRealTime();
+BENCHMARK_CAPTURE(uts_serial, "T1 Geo fixed   ", 11)->UseRealTime();
+BENCHMARK_CAPTURE(uts_serial, "T1L Geo fixed  ", 12)->UseRealTime();
+BENCHMARK_CAPTURE(uts_serial, "T1XXL Geo fixed", 13)->UseRealTime();
+BENCHMARK_CAPTURE(uts_serial, "T3 Binomial    ", 31)->UseRealTime();
+BENCHMARK_CAPTURE(uts_serial, "T3XXL Binomial ", 33)->UseRealTime();
