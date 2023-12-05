@@ -199,5 +199,3 @@ MAKE_UTS_FOR(uts_libfork_lazy_seq);
 MAKE_UTS_FOR(uts_libfork_lazy_fan);
 MAKE_UTS_FOR(uts_libfork_busy_seq);
 MAKE_UTS_FOR(uts_libfork_busy_fan);
-
-BENCHMARK_CAPTURE(uts_libfork_lazy_seq, "T3XXL Binomial  ", 9)->Apply(targs)->UseRealTime();

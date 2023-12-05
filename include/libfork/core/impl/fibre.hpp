@@ -18,7 +18,7 @@ inline namespace ext {
 
 class fibre {
 
-  static constexpr std::size_t k_init_size = 256;
+  static constexpr std::size_t k_init_size = 1024;
 
  public:
   /**
