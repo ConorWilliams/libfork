@@ -16,6 +16,7 @@ bench/data/
 
 mem.log
 memory.csv
+memory.*.csv
 test.pdf
 gmon.out
 out.png

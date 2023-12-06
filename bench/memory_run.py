@@ -20,27 +20,37 @@ parser.add_argument("cores", type=int, help="max number of cores")
 
 args = parser.parse_args()
 
-if not args.bench.startswith("T"):
-    libfork = ["libfork.*lazy.*fan", "libfork.*busy.*fan", "libfork.*lazy.*seq", "libfork.*busy.*seq"]
+bench = args.bench
+
+if not bench.startswith("T"):
+    libfork = [
+        "libfork.*lazy.*fan",
+        "libfork.*busy.*fan",
+        "libfork.*lazy.*seq",
+        "libfork.*busy.*seq",
+    ]
 else:
     libfork = [
-        "libfork.*_alloc_.*lazy.*fan", "libfork.*_alloc_.*busy.*fan", "libfork.*_alloc_.*lazy.*seq", "libfork.*_alloc_.*busy.*seq",
-        "libfork.*_coalloc_.*lazy.*fan", "libfork.*_coalloc_.*busy.*fan", "libfork.*_coalloc_.*lazy.*seq", "libfork.*_coalloc_.*busy.*seq"
+        "libfork.*_alloc_.*lazy.*fan",
+        "libfork.*_alloc_.*busy.*fan",
+        "libfork.*_alloc_.*lazy.*seq",
+        "libfork.*_alloc_.*busy.*seq",
+        "libfork.*_coalloc_.*lazy.*fan",
+        "libfork.*_coalloc_.*busy.*fan",
+        "libfork.*_coalloc_.*lazy.*seq",
+        "libfork.*_coalloc_.*busy.*seq",
     ]
-    
 
-with open("memory.csv", "w") as file:
-    
+
+with open(f"memory.{bench.strip()}.csv", "w") as file:
     for kind in [
         "calibrate",
         "serial",
         *libfork,
         "omp",
-        "taskflow",
         "tbb",
+        "taskflow",
     ]:
-        bench = args.bench
-
         print(f"Running {kind} {bench.strip()}")
 
         for i in [1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112]:
@@ -58,25 +68,27 @@ with open("memory.csv", "w") as file:
             elif i > 1:
                 break
 
-            if kind ==  "calibrate" and i > 1:
+            if kind == "calibrate" and i > 1:
                 break
 
             mem = []
 
             for r in range(5):
-    
                 command = f'/usr/bin/time -f"MEMORY=%M"  -- {args.binary} --benchmark_filter="{reg}" --benchmark_time_unit=ms'
 
-                output = subprocess.run(command, shell=True, check=True, stderr=subprocess.PIPE).stderr
+                output = subprocess.run(
+                    command, shell=True, check=True, stderr=subprocess.PIPE
+                ).stderr
 
-                if  match := re.search('.*MEMORY=([1-9][0-9]*)', str(output)):
+                if match := re.search(".*MEMORY=([1-9][0-9]*)", str(output)):
                     val = int(match.group(1))
                     mem.append(val)
-                else: 
+                else:
                     raise "No memory found"
 
             print(f"mems={mem}")
 
-            file.write(f"{kind},{bench.strip()},{i},{median(mem)},{round(stdev(mem))}\n")
+            file.write(
+                f"{kind},{bench.strip()},{i},{median(mem)},{round(stdev(mem))}\n"
+            )
             file.flush()
-  

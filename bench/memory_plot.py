@@ -9,9 +9,7 @@ from matplotlib import pyplot as plt
 
 # Parse location of benchmark and regex base.
 
-parser = argparse.ArgumentParser(
-    description="Plot memory"
-)
+parser = argparse.ArgumentParser(description="Plot memory")
 
 parser.add_argument("data_file", type=str, help="Input csv")
 
@@ -19,15 +17,14 @@ args = parser.parse_args()
 
 data = {}
 
-with open(args.data_file, "r") as file: 
-
+with open(args.data_file, "r") as file:
     for line in file:
-        # 
+        #
         name, _, threads, med, dev = line.split(",")
 
         if name not in data:
             data[name] = ([], [], [])
-        
+
         data[name][0].append(int(threads))
         data[name][1].append(int(med))
         data[name][2].append(int(dev))
@@ -37,17 +34,15 @@ y_zero = data["calibrate"][1][0]
 y_serial = data["serial"][1][0]
 
 
-
 for k, v in data.items():
-
-    if  k == "serial" or k == "calibrate" or k == "taskflow":
+    if k == "serial" or k == "calibrate" or k == "taskflow":
         continue
 
     print(k, v)
 
     x = np.asarray(v[0])
     y = np.asarray(v[1])
-    err =  np.asarray(v[2])
+    err = np.asarray(v[2])
 
     y = (y - y_zero) / (y_serial - y_zero)
     err = (err) / (y_serial - y_zero)
@@ -62,6 +57,7 @@ for k, v in data.items():
 def mem(n):
     return n * per_thread + stack(n)
 
+
 # plt.plot(x, x, label="bound")
 
 # plt.yscale("log")
@@ -73,13 +69,13 @@ plt.ylabel("Relative maximum RSS")
 plt.legend()
 
 plt.savefig("test.pdf")
-    
+
 # Memory looks like:
-# 
+#
 #   m = static + n * per_thread + stack(n)
-# 
+#
 # Hence:
-# 
+#
 #   (m - static) / n = per_thread + stack(n) / n
 
 #   (m(1) - static) = per_thread + stack(1)
