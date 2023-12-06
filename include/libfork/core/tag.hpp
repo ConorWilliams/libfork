@@ -12,7 +12,7 @@
 /**
  * @file tag.hpp
  *
- * @brief Some of the small public public interface types.
+ * @brief Libfork's dispatch tag types.
  */
 
 namespace lf {

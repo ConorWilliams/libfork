@@ -1,6 +1,14 @@
 #ifndef C854CDE9_1125_46E1_9E2A_0B0006BFC135
 #define C854CDE9_1125_46E1_9E2A_0B0006BFC135
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <concepts>
 #include <new>
 #include <type_traits>
@@ -22,6 +30,12 @@
 #include <libfork/core/impl/frame.hpp>
 #include <libfork/core/impl/return.hpp>
 #include <libfork/core/impl/utility.hpp>
+
+/**
+ * @file promise.hpp
+ *
+ * @brief The promise type for all tasks/coroutines.
+ */
 
 namespace lf::impl {
 

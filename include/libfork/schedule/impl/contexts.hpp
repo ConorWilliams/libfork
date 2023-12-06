@@ -25,7 +25,7 @@
 /**
  * @file contexts.hpp
  *
- * @brief A collection of `thread_context` implementations for different purposes.
+ * @brief An augmentation of the `worker_context` which tracks the topology of the numa nodes.
  */
 
 // --------------------------------------------------------------------- //

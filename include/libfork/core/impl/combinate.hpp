@@ -1,6 +1,14 @@
 #ifndef AD9A2908_3043_4CEC_9A2A_A57DE168DF19
 #define AD9A2908_3043_4CEC_9A2A_A57DE168DF19
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <type_traits>
 #include <utility>
 
@@ -8,6 +16,12 @@
 #include "libfork/core/invocable.hpp"
 
 #include "libfork/core/impl/awaitables.hpp"
+
+/**
+ * @file combinate.hpp
+ *
+ * @brief Utility for building a coroutine's first argument and invoking it.
+ */
 
 namespace lf::impl {
 

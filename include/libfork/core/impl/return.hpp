@@ -1,12 +1,26 @@
 #ifndef A896798B_7E3B_4854_9997_89EA5AE765EB
 #define A896798B_7E3B_4854_9997_89EA5AE765EB
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <concepts>
 #include <type_traits>
 
 #include "libfork/core/invocable.hpp"
 
 #include "libfork/core/impl/utility.hpp"
+
+/**
+ * @file return.hpp
+ *
+ * @brief A promise base class that provides the `return_value` method(s).
+ */
 
 namespace lf::impl {
 

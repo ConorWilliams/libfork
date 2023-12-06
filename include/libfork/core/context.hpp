@@ -21,10 +21,11 @@
 #include "libfork/core/impl/utility.hpp"
 
 /**
- * @file meta.hpp
+ * @file context.hpp
  *
- * @brief Provides the `thread_context` interface and meta programming utilities.
+ * @brief Provides the hierarchy of worker thread contexts.
  */
+
 namespace lf {
 
 // ------------------ Context ------------------- //

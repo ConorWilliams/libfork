@@ -1,5 +1,12 @@
 #ifndef A951FB73_0FCF_4B7C_A997_42B7E87D21CB
 #define A951FB73_0FCF_4B7C_A997_42B7E87D21CB
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <concepts>
 #include <memory>
@@ -9,6 +16,12 @@
 
 #include "libfork/core/impl/frame.hpp"
 #include "libfork/core/impl/utility.hpp"
+
+/**
+ * @file co_alloc.hpp
+ *
+ * @brief Expert-only utilities to interact with a coroutines fibre.
+ */
 
 namespace lf {
 

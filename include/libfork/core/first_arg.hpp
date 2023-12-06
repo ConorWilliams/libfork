@@ -1,6 +1,14 @@
 #ifndef DD0B4328_55BD_452B_A4A5_5A4670A6217B
 #define DD0B4328_55BD_452B_A4A5_5A4670A6217B
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <concepts>
 #include <functional>
 #include <type_traits>
@@ -12,6 +20,12 @@
 #include <libfork/core/ext/tls.hpp>
 
 #include <libfork/core/impl/utility.hpp>
+
+/**
+ * @file first_arg.hpp
+ *
+ * @brief Machinery for the (library-generated) first argument of async functions.
+ */
 
 namespace lf {
 
@@ -69,6 +83,7 @@ namespace impl {
  * - Act as a y-combinator (expose same invocability as F).
  * - Statically inform the return pointer type.
  * - Statically provide the tag.
+ * - Statically provide the calling argument types.
  */
 template <quasi_pointer I, tag Tag, async_function_object F, typename... Cargs>
 class first_arg_t {

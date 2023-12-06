@@ -18,6 +18,12 @@
 
 #include "libfork/core/impl/utility.hpp"
 
+/**
+ * @file list.hpp
+ *
+ * @brief Lock-free intrusive list for use when submitting tasks.
+ */
+
 namespace lf {
 
 inline namespace ext {

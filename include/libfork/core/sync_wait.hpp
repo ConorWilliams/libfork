@@ -1,6 +1,14 @@
 #ifndef AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A
 #define AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <semaphore>
 #include <type_traits>
 #include <utility>
@@ -13,6 +21,12 @@
 #include <libfork/core/ext/tls.hpp>
 
 #include <libfork/core/impl/combinate.hpp>
+
+/**
+ * @file sync_wait.hpp
+ *
+ * @brief Functionally to enter coroutines from a non-worker thread.
+ */
 
 namespace lf {
 

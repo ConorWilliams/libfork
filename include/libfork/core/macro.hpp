@@ -182,7 +182,9 @@ static_assert(LF_FIBRE_STACK_SIZE && !(LF_FIBRE_STACK_SIZE & (LF_FIBRE_STACK_SIZ
 #ifndef NDEBUG
   #define LF_ASSERT_NO_ASSUME(expr) assert(expr)
 #else
-  #define LF_ASSERT_NO_ASSUME(expr)
+  #define LF_ASSERT_NO_ASSUME(expr)                                                                          \
+    do {                                                                                                     \
+    } while (false)
 #endif
 
 /**

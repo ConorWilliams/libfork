@@ -1,6 +1,14 @@
 #ifndef A5349E86_5BAA_48EF_94E9_F0EBF630DE04
 #define A5349E86_5BAA_48EF_94E9_F0EBF630DE04
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <concepts>
 #include <functional>
 #include <type_traits>
@@ -12,6 +20,12 @@
 
 #include <libfork/core/impl/frame.hpp>
 #include <libfork/core/impl/utility.hpp>
+
+/**
+ * @file invocable.hpp
+ *
+ * @brief A collection concepts that extend ``std::invocable`` to async functions.
+ */
 
 namespace lf {
 

@@ -18,7 +18,7 @@
 #include "libfork/core/impl/combinate.hpp"
 
 /**
- * @file call.hpp
+ * @file control_flow.hpp
  *
  * @brief Meta header which includes ``lf::fork``, ``lf::call``, ``lf::join`` machinery.
  */

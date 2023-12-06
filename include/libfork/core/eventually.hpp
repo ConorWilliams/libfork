@@ -23,7 +23,7 @@
 /**
  * @file eventually.hpp
  *
- * @brief A class for delaying construction of an object.
+ * @brief Classes for delaying construction of an object.
  */
 
 namespace lf {

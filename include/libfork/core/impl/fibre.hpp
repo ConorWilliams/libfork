@@ -1,6 +1,14 @@
 #ifndef F7577AB3_0439_404D_9D98_072AB84FBCD0
 #define F7577AB3_0439_404D_9D98_072AB84FBCD0
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <algorithm>
 #include <bit>
 #include <cstdlib>
@@ -11,6 +19,12 @@
 #include "libfork/core/macro.hpp"
 
 #include "libfork/core/impl/utility.hpp"
+
+/**
+ * @file fibre.hpp
+ *
+ * @brief Implementation of libfork's segmented fibres.
+ */
 
 namespace lf {
 

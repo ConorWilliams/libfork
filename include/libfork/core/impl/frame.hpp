@@ -1,12 +1,26 @@
 #ifndef DD6F6C5C_C146_4C02_99B9_7D2D132C0844
 #define DD6F6C5C_C146_4C02_99B9_7D2D132C0844
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <atomic>
 #include <coroutine>
 #include <semaphore>
 #include <type_traits>
 
 #include "libfork/core/impl/fibre.hpp"
+
+/**
+ * @file frame.hpp
+ *
+ * @brief A small bookkeeping struct which is a member of each task's promise.
+ */
 
 namespace lf::impl {
 

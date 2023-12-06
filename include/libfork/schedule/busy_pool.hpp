@@ -27,8 +27,6 @@
 
 #include "libfork/schedule/impl/contexts.hpp"
 
-// #include "libfork/schedule/impl/contexts.hpp"
-
 /**
  * @file busy_pool.hpp
  *

@@ -49,12 +49,27 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #ifndef A951FB73_0FCF_4B7C_A997_42B7E87D21CB
 #define A951FB73_0FCF_4B7C_A997_42B7E87D21CB
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <concepts>
 #include <memory>
 #include <span>
 #ifndef CF97E524_27A6_4CD9_8967_39F1B1BE97B6
 #define CF97E524_27A6_4CD9_8967_39F1B1BE97B6
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <stdexcept>
 #ifndef D66BBECE_E467_4EB6_B74A_AAA2E7256E02
@@ -253,7 +268,9 @@ static_assert(LF_FIBRE_STACK_SIZE && !(LF_FIBRE_STACK_SIZE & (LF_FIBRE_STACK_SIZ
 #ifndef NDEBUG
   #define LF_ASSERT_NO_ASSUME(expr) assert(expr)
 #else
-  #define LF_ASSERT_NO_ASSUME(expr)
+  #define LF_ASSERT_NO_ASSUME(expr)                                                                          \
+    do {                                                                                                     \
+    } while (false)
 #endif
 
 /**
@@ -380,7 +397,7 @@ static_assert(LF_FIBRE_STACK_SIZE && !(LF_FIBRE_STACK_SIZE & (LF_FIBRE_STACK_SIZ
 /**
  * @file tag.hpp
  *
- * @brief Some of the small public public interface types.
+ * @brief Libfork's dispatch tag types.
  */
 
 namespace lf {
@@ -1285,10 +1302,26 @@ constexpr deque<T>::~deque() noexcept {
 #ifndef ACB944D8_08B6_4600_9302_602E847753FD
 #define ACB944D8_08B6_4600_9302_602E847753FD
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <type_traits>
 #include <version>
 #ifndef DD6F6C5C_C146_4C02_99B9_7D2D132C0844
 #define DD6F6C5C_C146_4C02_99B9_7D2D132C0844
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <atomic>
 #include <coroutine>
@@ -1296,6 +1329,14 @@ constexpr deque<T>::~deque() noexcept {
 #include <type_traits>
 #ifndef F7577AB3_0439_404D_9D98_072AB84FBCD0
 #define F7577AB3_0439_404D_9D98_072AB84FBCD0
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <algorithm>
 #include <bit>
@@ -1305,6 +1346,12 @@ constexpr deque<T>::~deque() noexcept {
 #include <utility>
 
 
+
+/**
+ * @file fibre.hpp
+ *
+ * @brief Implementation of libfork's segmented fibres.
+ */
 
 namespace lf {
 
@@ -1516,6 +1563,12 @@ class fibre {
 #endif /* F7577AB3_0439_404D_9D98_072AB84FBCD0 */
 
 
+/**
+ * @file frame.hpp
+ *
+ * @brief A small bookkeeping struct which is a member of each task's promise.
+ */
+
 namespace lf::impl {
 
 /**
@@ -1642,6 +1695,12 @@ static_assert(std::is_standard_layout_v<frame>);
 #endif /* DD6F6C5C_C146_4C02_99B9_7D2D132C0844 */
 
 
+/**
+ * @file handles.hpp
+ *
+ * @brief Definitions of `libfork`'s handle types.
+ */
+
 namespace lf {
 
 inline namespace ext {
@@ -1720,6 +1779,12 @@ using task_handle = task_t *;
 #include <utility>
 
 
+
+/**
+ * @file list.hpp
+ *
+ * @brief Lock-free intrusive list for use when submitting tasks.
+ */
 
 namespace lf {
 
@@ -1828,10 +1893,11 @@ using intruded_list = typename intrusive_list<T>::node *;
 
 
 /**
- * @file meta.hpp
+ * @file context.hpp
  *
- * @brief Provides the `thread_context` interface and meta programming utilities.
+ * @brief Provides the hierarchy of worker thread contexts.
  */
+
 namespace lf {
 
 // ------------------ Context ------------------- //
@@ -1935,9 +2001,23 @@ class full_context : public worker_context {
 #ifndef F51F8998_9E69_458E_95E1_8592A49FA76C
 #define F51F8998_9E69_458E_95E1_8592A49FA76C
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <memory>
 #include <new>
 
+
+/**
+ * @file manual_lifetime.hpp
+ *
+ * @brief A utility class for explicitly managing the lifetime of an object.
+ */
 
 namespace lf::impl {
 
@@ -2032,6 +2112,12 @@ class manual_lifetime : immovable<manual_lifetime<T>> {
 
 #endif /* F51F8998_9E69_458E_95E1_8592A49FA76C */
 
+
+/**
+ * @file tls.hpp
+ *
+ * @brief The thread local variables used by libfork.
+ */
 
 namespace lf {
 
@@ -2129,6 +2215,12 @@ inline void finalize(worker_context *worker) {
 #endif /* CF97E524_27A6_4CD9_8967_39F1B1BE97B6 */
 
 
+
+/**
+ * @file co_alloc.hpp
+ *
+ * @brief Expert-only utilities to interact with a coroutines fibre.
+ */
 
 namespace lf {
 
@@ -2228,6 +2320,14 @@ inline auto co_delete(T *ptr) -> impl::co_delete_t<T, Extent> {
 #ifndef A5349E86_5BAA_48EF_94E9_F0EBF630DE04
 #define A5349E86_5BAA_48EF_94E9_F0EBF630DE04
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <concepts>
 #include <functional>
 #include <type_traits>
@@ -2239,6 +2339,12 @@ inline auto co_delete(T *ptr) -> impl::co_delete_t<T, Extent> {
 
 #include <libfork/core/impl/frame.hpp>
 #include <libfork/core/impl/utility.hpp>
+
+/**
+ * @file invocable.hpp
+ *
+ * @brief A collection concepts that extend ``std::invocable`` to async functions.
+ */
 
 namespace lf {
 
@@ -2409,10 +2515,26 @@ using async_result_t = impl::unsafe_result_t<impl::discard_t, tag::call, F, Args
 #ifndef AD9A2908_3043_4CEC_9A2A_A57DE168DF19
 #define AD9A2908_3043_4CEC_9A2A_A57DE168DF19
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <type_traits>
 #include <utility>
 #ifndef DD0B4328_55BD_452B_A4A5_5A4670A6217B
 #define DD0B4328_55BD_452B_A4A5_5A4670A6217B
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <concepts>
 #include <functional>
@@ -2425,6 +2547,12 @@ using async_result_t = impl::unsafe_result_t<impl::discard_t, tag::call, F, Args
 #include <libfork/core/ext/tls.hpp>
 
 #include <libfork/core/impl/utility.hpp>
+
+/**
+ * @file first_arg.hpp
+ *
+ * @brief Machinery for the (library-generated) first argument of async functions.
+ */
 
 namespace lf {
 
@@ -2482,6 +2610,7 @@ namespace impl {
  * - Act as a y-combinator (expose same invocability as F).
  * - Statically inform the return pointer type.
  * - Statically provide the tag.
+ * - Statically provide the calling argument types.
  */
 template <quasi_pointer I, tag Tag, async_function_object F, typename... Cargs>
 class first_arg_t {
@@ -2543,7 +2672,21 @@ class first_arg_t {
 #ifndef CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
 #define CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
 
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+
+
+/**
+ * @file awaitables.hpp
+ *
+ * @brief Awaitables (in a `libfork` coroutine) that trigger a switch, fork, call or join.
+ */
 
 namespace lf::impl {
 
@@ -2666,6 +2809,12 @@ struct join_awaitable {
 #endif /* CF3E6AC4_246A_4131_BF7A_FE5CD641A19B */
 
 
+/**
+ * @file combinate.hpp
+ *
+ * @brief Utility for building a coroutine's first argument and invoking it.
+ */
+
 namespace lf::impl {
 
 // ---------------------------- //
@@ -2742,7 +2891,7 @@ auto combinate(I ret, first_arg_t<OtherI, OtherTag, F, Args...> arg) -> y_combin
 
 
 /**
- * @file call.hpp
+ * @file control_flow.hpp
  *
  * @brief Meta header which includes ``lf::fork``, ``lf::call``, ``lf::join`` machinery.
  */
@@ -2877,6 +3026,14 @@ inline constexpr impl::bind_task<tag::call> call = {};
 #ifndef B4EE570B_F5CF_42CB_9AF3_7376F45FDACC
 #define B4EE570B_F5CF_42CB_9AF3_7376F45FDACC
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <concepts>
 #include <functional>
 #include <libfork/core/macro.hpp>
@@ -2884,10 +3041,16 @@ inline constexpr impl::bind_task<tag::call> call = {};
 #include <utility>
 
 
+/**
+ * @file defer.hpp
+ *
+ * @brief A Golang-like defer implemented via destructor calls.
+ */
+
 namespace lf {
 
 /**
- * @brief Basic implementation of a Golang like defer.
+ * @brief Basic implementation of a Golang-like defer.
  *
  * \rst
  *
@@ -3041,7 +3204,7 @@ inline constexpr bool is_task_v = detail::is_task_impl<T>::value;
 /**
  * @file eventually.hpp
  *
- * @brief A class for delaying construction of an object.
+ * @brief Classes for delaying construction of an object.
  */
 
 namespace lf {
@@ -3181,6 +3344,14 @@ class manual_eventually<T> : eventually<T> {
 #ifndef AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A
 #define AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <semaphore>
 #include <type_traits>
 #include <utility>
@@ -3193,6 +3364,12 @@ class manual_eventually<T> : eventually<T> {
 #include <libfork/core/ext/tls.hpp>
 
 #include <libfork/core/impl/combinate.hpp>
+
+/**
+ * @file sync_wait.hpp
+ *
+ * @brief Functionally to enter coroutines from a non-worker thread.
+ */
 
 namespace lf {
 
@@ -3273,7 +3450,21 @@ auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
 #ifndef DE9399DB_593B_4C5C_A9D7_89B9F2FAB920
 #define DE9399DB_593B_4C5C_A9D7_89B9F2FAB920
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
 
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+
+
+/**
+ * @file resume.hpp
+ *
+ * @brief Functions to resume stolen and submitted task.
+ */
 
 namespace lf {
 
@@ -3316,6 +3507,14 @@ inline void resume(task_handle ptr) noexcept {
 #ifndef C854CDE9_1125_46E1_9E2A_0B0006BFC135
 #define C854CDE9_1125_46E1_9E2A_0B0006BFC135
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <concepts>
 #include <new>
 #include <type_traits>
@@ -3337,6 +3536,12 @@ inline void resume(task_handle ptr) noexcept {
 #include <libfork/core/impl/frame.hpp>
 #include <libfork/core/impl/return.hpp>
 #include <libfork/core/impl/utility.hpp>
+
+/**
+ * @file promise.hpp
+ *
+ * @brief The promise type for all tasks/coroutines.
+ */
 
 namespace lf::impl {
 
@@ -3672,10 +3877,24 @@ struct std::coroutine_traits<lf::task<R>, This, lf::impl::first_arg_t<I, Tag, F,
 #ifndef A896798B_7E3B_4854_9997_89EA5AE765EB
 #define A896798B_7E3B_4854_9997_89EA5AE765EB
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <concepts>
 #include <type_traits>
 
 
+
+/**
+ * @file return.hpp
+ *
+ * @brief A promise base class that provides the `return_value` method(s).
+ */
 
 namespace lf::impl {
 
@@ -4552,7 +4771,7 @@ static_assert(uniform_random_bit_generator<xoshiro>);
 /**
  * @file contexts.hpp
  *
- * @brief A collection of `thread_context` implementations for different purposes.
+ * @brief An augmentation of the `worker_context` which tracks the topology of the numa nodes.
  */
 
 // --------------------------------------------------------------------- //
@@ -4668,8 +4887,6 @@ struct numa_context {
 
 #endif /* C1B42944_8E33_4F6B_BAD6_5FB687F6C737 */
 
-
-// #include "libfork/schedule/impl/contexts.hpp"
 
 /**
  * @file busy_pool.hpp

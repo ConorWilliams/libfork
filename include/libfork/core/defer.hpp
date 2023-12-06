@@ -1,6 +1,14 @@
 #ifndef B4EE570B_F5CF_42CB_9AF3_7376F45FDACC
 #define B4EE570B_F5CF_42CB_9AF3_7376F45FDACC
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <concepts>
 #include <functional>
 #include <libfork/core/macro.hpp>
@@ -9,10 +17,16 @@
 
 #include "libfork/core/impl/utility.hpp"
 
+/**
+ * @file defer.hpp
+ *
+ * @brief A Golang-like defer implemented via destructor calls.
+ */
+
 namespace lf {
 
 /**
- * @brief Basic implementation of a Golang like defer.
+ * @brief Basic implementation of a Golang-like defer.
  *
  * \rst
  *

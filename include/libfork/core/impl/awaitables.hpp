@@ -1,11 +1,25 @@
 #ifndef CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
 #define CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include "libfork/core/ext/handles.hpp"
 #include "libfork/core/ext/tls.hpp"
 
 #include "libfork/core/impl/frame.hpp"
 #include "libfork/core/impl/utility.hpp"
+
+/**
+ * @file awaitables.hpp
+ *
+ * @brief Awaitables (in a `libfork` coroutine) that trigger a switch, fork, call or join.
+ */
 
 namespace lf::impl {
 

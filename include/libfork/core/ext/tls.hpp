@@ -1,6 +1,14 @@
 #ifndef CF97E524_27A6_4CD9_8967_39F1B1BE97B6
 #define CF97E524_27A6_4CD9_8967_39F1B1BE97B6
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #include <stdexcept>
 
 #include "libfork/core/context.hpp"
@@ -8,6 +16,12 @@
 
 #include "libfork/core/impl/fibre.hpp"
 #include "libfork/core/impl/manual_lifetime.hpp"
+
+/**
+ * @file tls.hpp
+ *
+ * @brief The thread local variables used by libfork.
+ */
 
 namespace lf {
 
