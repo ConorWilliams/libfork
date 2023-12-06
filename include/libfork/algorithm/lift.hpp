@@ -24,7 +24,7 @@
 namespace lf {
 
 /**
- * @brief A higher-order function that lifts a function into an asyncronous function.
+ * @brief A higher-order function that lifts a function into an asynchronous function.
  *
  * \rst
  *
@@ -54,7 +54,9 @@ namespace lf {
  * \endrst
  */
 inline constexpr auto lift = []<class F, class... Args>(auto, F &&func, Args &&...args)
-                                   LF_STATIC_CALL -> task<std::invoke_result_t<F, Args...>> requires std::invocable<F, Args...> {
+                                 LF_STATIC_CALL -> task<std::invoke_result_t<F, Args...>>
+  requires std::invocable<F, Args...>
+{
   co_return std::invoke(std::forward<F>(func), std::forward<Args>(args)...);
 };
 
@@ -66,8 +68,6 @@ inline constexpr auto lift = []<class F, class... Args>(auto, F &&func, Args &&.
 #define LF_LOFT(name)                                                                                        \
   [](auto &&...args) LF_STATIC_CALL LF_HOF_RETURNS(name(::std::forward<decltype(args)>(args)...))
 
-
-
 /**
  * @brief Lift an overload-set/template into a constrained capturing lambda.
  *
@@ -77,8 +77,6 @@ inline constexpr auto lift = []<class F, class... Args>(auto, F &&func, Args &&.
  */
 #define LF_CLOFT(name, ...)                                                                                  \
   [__VA_ARGS__](auto &&...args) LF_HOF_RETURNS(name(::std::forward<decltype(args)>(args)...))
-
-
 
 } // namespace lf
 
