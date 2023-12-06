@@ -1,5 +1,6 @@
 #include <benchmark/benchmark.h>
 
+#include <tbb/global_control.h>
 #include <tbb/task_arena.h>
 #include <tbb/task_group.h>
 
@@ -63,6 +64,9 @@ void matmul(float *A, float *B, float *R, unsigned n, unsigned s, Add add = {}) 
 }
 
 void matmul_tbb(benchmark::State &state) {
+
+  // TBB uses (2MB) stacks by default
+  tbb::global_control global_limit(tbb::global_control::thread_stack_size, 8 * 1024 * 1024);
 
   state.counters["green_threads"] = state.range(0);
   state.counters["mat NxN"] = matmul_work;

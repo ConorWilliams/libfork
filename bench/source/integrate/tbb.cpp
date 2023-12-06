@@ -1,5 +1,6 @@
 #include <benchmark/benchmark.h>
 
+#include <tbb/global_control.h>
 #include <tbb/task_arena.h>
 #include <tbb/task_group.h>
 
@@ -36,6 +37,9 @@ auto integrate(double x1, double y1, double x2, double y2, double area) -> doubl
 }
 
 void integrate_tbb(benchmark::State &state) {
+
+  // TBB uses (2MB) stacks by default
+  tbb::global_control global_limit(tbb::global_control::thread_stack_size, 8 * 1024 * 1024);
 
   state.counters["green_threads"] = state.range(0);
   state.counters["integrate_n"] = n;
