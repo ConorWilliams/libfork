@@ -80,7 +80,9 @@ with open(f"memory.{bench.strip()}.csv", "w") as file:
                     command, shell=True, check=True, stderr=subprocess.PIPE
                 ).stderr
 
-                if match := re.search(".*MEMORY=([1-9][0-9]*)", str(output)):
+                match = re.search(".*MEMORY=([1-9][0-9]*)", str(output))
+
+                if match:
                     val = int(match.group(1))
                     mem.append(val)
                 else:
