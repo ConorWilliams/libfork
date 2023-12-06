@@ -65,7 +65,7 @@ void matmul_libfork(benchmark::State &state) {
     }
   }();
 
-  auto [A, B, C1, C2, n] = lf::sync_wait(sch, lf::lift(matmul_init), matmul_work);
+  auto [A, B, C1, C2, n] = lf::sync_wait(sch, lf::lift, matmul_init, matmul_work);
 
   for (auto _ : state) {
     lf::sync_wait(sch, matmul, A.get(), B.get(), C1.get(), n, n, std::false_type{});

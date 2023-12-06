@@ -152,19 +152,19 @@ void uts_libfork(benchmark::State &state, int tree) {
   }
 }
 
-void uts_libfork_lazy_seq(benchmark::State &state, int tree) {
+void uts_libfork_coalloc_lazy_seq(benchmark::State &state, int tree) {
   uts_libfork<lf::lazy_pool, lf::numa_strategy::seq>(state, tree);
 }
 
-void uts_libfork_lazy_fan(benchmark::State &state, int tree) {
+void uts_libfork_coalloc_lazy_fan(benchmark::State &state, int tree) {
   uts_libfork<lf::lazy_pool, lf::numa_strategy::fan>(state, tree);
 }
 
-void uts_libfork_busy_seq(benchmark::State &state, int tree) {
+void uts_libfork_coalloc_busy_seq(benchmark::State &state, int tree) {
   uts_libfork<lf::busy_pool, lf::numa_strategy::seq>(state, tree);
 }
 
-void uts_libfork_busy_fan(benchmark::State &state, int tree) {
+void uts_libfork_coalloc_busy_fan(benchmark::State &state, int tree) {
   uts_libfork<lf::busy_pool, lf::numa_strategy::fan>(state, tree);
 }
 
@@ -190,12 +190,12 @@ void uts_libfork_alloc_busy_fan(benchmark::State &state, int tree) {
 
 using namespace lf;
 
-// MAKE_UTS_FOR(uts_libfork_alloc_lazy_seq);
-// MAKE_UTS_FOR(uts_libfork_alloc_lazy_fan);
-// MAKE_UTS_FOR(uts_libfork_alloc_busy_seq);
-// MAKE_UTS_FOR(uts_libfork_alloc_busy_fan);
+MAKE_UTS_FOR(uts_libfork_alloc_lazy_seq);
+MAKE_UTS_FOR(uts_libfork_alloc_lazy_fan);
+MAKE_UTS_FOR(uts_libfork_alloc_busy_seq);
+MAKE_UTS_FOR(uts_libfork_alloc_busy_fan);
 
-MAKE_UTS_FOR(uts_libfork_lazy_seq);
-MAKE_UTS_FOR(uts_libfork_lazy_fan);
-MAKE_UTS_FOR(uts_libfork_busy_seq);
-MAKE_UTS_FOR(uts_libfork_busy_fan);
+MAKE_UTS_FOR(uts_libfork_coalloc_lazy_seq);
+MAKE_UTS_FOR(uts_libfork_coalloc_lazy_fan);
+MAKE_UTS_FOR(uts_libfork_coalloc_busy_seq);
+MAKE_UTS_FOR(uts_libfork_coalloc_busy_fan);

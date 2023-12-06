@@ -24,7 +24,7 @@
 namespace lf {
 
 /**
- * @brief A higher-order function that lifts a function into an ``async`` function.
+ * @brief A higher-order function that lifts a function into an asyncronous function.
  *
  * \rst
  *
@@ -41,8 +41,8 @@ namespace lf {
  *    {
  *      int a, b;
  *
- *      co_await fork[a, lift(work)](42);
- *      co_await fork[b, lift(work)](007);
+ *      co_await fork[a, lift](work, 42);
+ *      co_await fork[b, lift](work, 007);
  *
  *      co_await join;
  *    }
@@ -53,15 +53,10 @@ namespace lf {
  *
  * \endrst
  */
-template <std::copy_constructible F>
-consteval auto lift(F func) noexcept {
-  return [f = std::move(func)]<typename... Args>(
-             auto, Args &&...args) -> task<std::invoke_result_t<F const &, Args...>>
-           requires std::invocable<F const &, Args...>
-  {
-    co_return std::invoke(f, std::forward<Args>(args)...);
-  };
-}
+inline constexpr auto lift = []<class F, class... Args>(auto, F &&func, Args &&...args)
+                                   LF_STATIC_CALL -> task<std::invoke_result_t<F, Args...>> requires std::invocable<F, Args...> {
+  co_return std::invoke(std::forward<F>(func), std::forward<Args>(args)...);
+};
 
 /**
  * @brief Lift an overload-set/template into a constrained lambda.
@@ -71,10 +66,7 @@ consteval auto lift(F func) noexcept {
 #define LF_LOFT(name)                                                                                        \
   [](auto &&...args) LF_STATIC_CALL LF_HOF_RETURNS(name(::std::forward<decltype(args)>(args)...))
 
-/**
- * @brief Lift a lofted overload set.
- */
-#define LF_LLOFT(name) ::lf::lift(LF_LOFT(name))
+
 
 /**
  * @brief Lift an overload-set/template into a constrained capturing lambda.
@@ -86,10 +78,7 @@ consteval auto lift(F func) noexcept {
 #define LF_CLOFT(name, ...)                                                                                  \
   [__VA_ARGS__](auto &&...args) LF_HOF_RETURNS(name(::std::forward<decltype(args)>(args)...))
 
-/**
- * @brief Lift a capturing lofted overload set.
- */
-#define LF_LCLOFT(name, ...) ::lf::lift(LF_CLOFT(name, __VA_ARGS__))
+
 
 } // namespace lf
 

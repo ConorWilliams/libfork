@@ -7,8 +7,10 @@
 // #define LF_DEFAULT_LOGGING
 
 #include <libfork.hpp>
+
 #include <tbb/task_arena.h>
 #include <tbb/task_group.h>
+#include <tbb/global_control.h>
 
 #include "../util.hpp"
 #include "config.hpp"
@@ -64,6 +66,9 @@ auto uts(int depth, Node *parent) -> result {
 };
 
 void uts_tbb(benchmark::State &state, int tree) {
+
+  tbb::global_control global_limit(tbb::global_control::thread_stack_size, 128 * 1024 * 1024);
+
 
   state.counters["green_threads"] = state.range(0);
 

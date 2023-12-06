@@ -34,6 +34,7 @@ auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
   using R = async_result_t<F, Args...>;
   constexpr bool is_void = std::is_void_v<R>;
 
+  // TODO make this a manual lifetime and clean up exception handling.
   eventually<std::conditional_t<is_void, empty, R>> result;
 
   bool worker = tls::has_fibre;
