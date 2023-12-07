@@ -2,16 +2,16 @@
 
 - Benchmarks working, run benchmarks on CSD3 with mimalloc
 
+- Fix github actions
 - non_null macro
-
+- Use manual_eventually in sync_wait
+- CTRL F for TODO
 - Includes for std:: and lf:: need tidying
-- Needs headers in the files
 - Docs need updating
 - Readme needs updating
 
 ## Features
 
-- [ ] Make busy pool API same as lazy pool.
 - [ ] reduce algorithm.
 
 ## Misc
