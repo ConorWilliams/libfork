@@ -13,6 +13,7 @@
 #include <climits>
 #include <cstddef>
 #include <limits>
+#include <map>
 #include <memory>
 #include <set>
 #include <vector>
@@ -27,7 +28,6 @@
 
 #ifdef LF_HAS_HWLOC
   #include <hwloc.h>
-#else
 #endif
 
 /**
@@ -120,27 +120,28 @@ class numa_topology {
   class numa_handle {
    public:
     /**
-     * @brief Bind the calling thread to the set of processing units in this
-     * `cpuset`.
+     * @brief Bind the calling thread to the set of processing units in this `cpuset`.
      *
      * If `hwloc` is not installed both handles are null and this is a noop.
      */
     void bind() const;
 
     shared_topo topo = nullptr; ///< A shared handle to topology this handle belongs to.
-    unique_cpup cpup = nullptr; ///< A unique handle to processing units in
-                                ///< `topo` that this handle represents.
+    unique_cpup cpup = nullptr; ///< A unique handle to processing units that this handle represents.
+    std::size_t numa = 0;       ///< The index of the numa node this handle belongs to, on [0, n).
   };
 
   /**
    * @brief Split a topology into `n` uniformly distributed handles to single
    * processing units.
    *
-   * Here "uniformly" means we try to use the minimum number of numa nodes then
-   * divided each node such that each PU has as much cache as possible. If this
-   * topology is empty then this function returns a vector of `n` empty handles.
+   * Here the definition of "uniformly" depends on `strategy`. If `strategy == numa_strategy::seq` we try
+   * to use the minimum number of numa nodes then divided each node such that each PU has as much cache as
+   * possible. If `strategy == numa_strategy::fan` we try and maximize the amount of cache each PI gets.
+   *
+   * If this topology is empty then this function returns a vector of `n` empty handles.
    */
-  auto split(std::size_t n, numa_strategy strategy = numa_strategy::seq) const -> std::vector<numa_handle>;
+  auto split(std::size_t n, numa_strategy strategy = numa_strategy::fan) const -> std::vector<numa_handle>;
 
   /**
    * @brief A single-threads hierarchical view of a set of objects.
@@ -166,7 +167,7 @@ class numa_topology {
    * hierarchical view of the elements in `data`.
    */
   template <typename T>
-  auto distribute(std::vector<std::shared_ptr<T>> const &data, numa_strategy strategy = numa_strategy::seq)
+  auto distribute(std::vector<std::shared_ptr<T>> const &data, numa_strategy strategy = numa_strategy::fan)
       -> std::vector<numa_node<T>>;
 
  private:
@@ -239,14 +240,35 @@ inline auto count_cores(hwloc_obj_t obj) -> unsigned int {
   return num_cores;
 }
 
+inline auto get_numa_index(hwloc_topology *topo, hwloc_bitmap_s *bitmap) -> hwloc_uint64_t {
+
+  LF_ASSERT(topo);
+  LF_ASSERT(bitmap);
+
+  hwloc_obj *obj = hwloc_get_obj_covering_cpuset(topo, bitmap);
+
+  if (obj == nullptr) {
+    LF_THROW(hwloc_error{"failed to find an object covering a bitmap"});
+  }
+
+  while (obj != nullptr && obj->memory_arity == 0) {
+    obj = obj->parent;
+  }
+
+  if (obj == nullptr) {
+    LF_THROW(hwloc_error{"failed to find a parent with memory"});
+  }
+
+  return obj->gp_index;
+}
+
 inline auto numa_topology::split(std::size_t n, numa_strategy strategy) const -> std::vector<numa_handle> {
 
   if (n < 1) {
     LF_THROW(hwloc_error{"hwloc cannot distribute over less than one singlet"});
   }
 
-  // We are going to build up a list of numa packages until we have enough
-  // cores.
+  // We are going to build up a list of numa packages until we have enough cores.
 
   std::vector<hwloc_obj_t> roots;
 
@@ -284,6 +306,8 @@ inline auto numa_topology::split(std::size_t n, numa_strategy strategy) const ->
   // Need ownership before map for exception safety.
   std::vector<unique_cpup> singlets{sets.begin(), sets.end()};
 
+  std::map<hwloc_uint64_t, std::size_t> numa_map;
+
   return impl::map(std::move(singlets), [&](unique_cpup &&singlet) -> numa_handle {
     //
     if (!singlet) {
@@ -294,7 +318,17 @@ inline auto numa_topology::split(std::size_t n, numa_strategy strategy) const ->
       LF_THROW(hwloc_error{"unknown hwloc error when singlify a bitmap"});
     }
 
-    return {m_topology, std::move(singlet)};
+    hwloc_uint64_t numa_index = get_numa_index(m_topology.get(), singlet.get());
+
+    if (!numa_map.contains(numa_index)) {
+      numa_map[numa_index] = numa_map.size();
+    }
+
+    return {
+        m_topology,
+        std::move(singlet),
+        numa_map[numa_index],
+    };
   });
 }
 
@@ -313,8 +347,7 @@ class distance_matrix {
       : m_size{handles.size()},
         m_matrix(m_size * m_size) {
 
-    // Transform into hwloc's internal representation of nodes in the topology
-    // tree.
+    // Transform into hwloc's internal representation of nodes in the topology tree.
 
     std::vector obj = impl::map(handles, [](numa_handle const &handle) -> hwloc_obj_t {
       return hwloc_get_obj_covering_cpuset(handle.topo.get(), handle.cpup.get());

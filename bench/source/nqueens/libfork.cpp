@@ -23,8 +23,6 @@ constexpr auto nqueens = []<std::size_t N>(auto nqueens, int j, std::array<char,
     co_return 1;
   }
 
-  int res = 0L;
-
   std::array<std::array<char, N>, N> buf;
   std::array<int, N> parts;
 
