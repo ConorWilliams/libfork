@@ -36,11 +36,13 @@ args = parser.parse_args()
 Benchmarks = []
 patterns = ["fib", "integ", "matmul", "nqueens"]
 
+patterns = ["fib"]
+
 for bm in patterns:
     benchmarks = {}
 
     # Read the input file as json
-    with open(f"./bench/data/sapphire/v3/csd3.{bm}.json") as f:
+    with open(f"./bench/data/sapphire/v4/csd3.{bm}.json") as f:
         data = json.load(f)
 
     for bench in data["benchmarks"]:

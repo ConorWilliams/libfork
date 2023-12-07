@@ -36,6 +36,7 @@ add_executable(benchmark
   ${BENCH_CXX_NQUEENS}
   ${BENCH_CXX_MATMUL}
   ${BENCH_CXX_INTEGRATE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/source/calibrate.cpp
 )
 
 target_link_libraries(benchmark 

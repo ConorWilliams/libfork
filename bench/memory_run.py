@@ -6,6 +6,7 @@ import argparse
 import subprocess
 import re
 from statistics import median, stdev
+from math import sqrt
 
 # Parse location of benchmark and regex base.
 
@@ -44,6 +45,7 @@ else:
 
 with open(f"memory.{bench.strip()}.csv", "w") as file:
     for kind in [
+        "NOTESTNAMEDTHIS",
         "calibrate",
         "serial",
         *libfork,
@@ -58,22 +60,24 @@ with open(f"memory.{bench.strip()}.csv", "w") as file:
             if i > args.cores:
                 break
 
-            if not bench.startswith("T"):
+            if kind == "calibrate":
+                reg = kind
+            elif not bench.startswith("T"):
                 reg = f"{bench}.*{kind}"
             else:
                 reg = f"uts.*{kind}.*{bench}"
 
-            if kind != "serial":
+            if kind != "serial" and kind != "calibrate":
                 reg += f".*/{i}/"
             elif i > 1:
                 break
 
-            if kind == "calibrate" and i > 1:
+            if kind == "NOTESTNAMEDTHIS" and i > 1:
                 break
 
             mem = []
 
-            for r in range(5):
+            for r in range(5 if kind != "serial" and kind != "calibrate" else 100):
                 command = f'/usr/bin/time -f"MEMORY=%M"  -- {args.binary} --benchmark_filter="{reg}" --benchmark_time_unit=ms'
 
                 output = subprocess.run(
@@ -88,9 +92,10 @@ with open(f"memory.{bench.strip()}.csv", "w") as file:
                 else:
                     raise "No memory found"
 
-            print(f"mems={mem}")
+            x = median(mem)
+            e = stdev(mem) / sqrt(len(mem))
 
-            file.write(
-                f"{kind},{bench.strip()},{i},{median(mem)},{round(stdev(mem))}\n"
-            )
+            print(f"mems={mem} -> {x}, {e}")
+
+            file.write(f"{kind},{bench.strip()},{i},{x},{e}\n")
             file.flush()

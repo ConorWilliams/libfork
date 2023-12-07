@@ -58,7 +58,7 @@ def mem(n):
     return n * per_thread + stack(n)
 
 
-# plt.plot(x, x, label="bound")
+plt.plot(x, x, "k--", label="bound")
 
 # plt.yscale("log")
 # plt.xscale("log")
