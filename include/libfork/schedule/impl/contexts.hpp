@@ -36,11 +36,12 @@ struct numa_context {
  private:
   static constexpr std::size_t k_steal_attempts = 32; ///< Attempts per target.
 
-  std::size_t m_max_parallel;                       ///< The maximum number of parallel tasks.
-  xoshiro m_rng;                                    ///< Thread-local RNG.
-  worker_context *m_context = nullptr;              ///< The worker context we are associated with.
-  std::vector<std::vector<numa_context *>> m_neigh; ///< Our neighbors (excluding ourselves).
-  std::shared_ptr<Shared> m_shared;                 ///< Shared variables between all numa_contexts.
+  std::size_t m_max_parallel;                     ///< The maximum number of parallel tasks.
+  xoshiro m_rng;                                  ///< Thread-local RNG.
+  std::shared_ptr<Shared> m_shared;               ///< Shared variables between all numa_contexts.
+  worker_context *m_context = nullptr;            ///< The worker context we are associated with.
+  std::discrete_distribution<std::size_t> m_dist; ///< The distribution for stealing.
+  std::vector<numa_context *> m_neigh;            ///< Our neighbors (excluding ourselves).
 
  public:
   numa_context(std::size_t max_parallel, xoshiro const &rng, std::shared_ptr<Shared> shared)
@@ -71,22 +72,27 @@ struct numa_context {
     LF_ASSERT(!topo.neighbors.front().empty());
     LF_ASSERT(topo.neighbors.front().front().get() == this);
 
+    LF_ASSERT(m_neigh.empty()); // Should only be called once.
+
     topo.bind();
 
-    m_neigh.clear();
+    std::vector<double> weights;
 
     // Skip the first one as it is just us.
     for (std::size_t i = 1; i < topo.neighbors.size(); ++i) {
-      m_neigh.push_back(map(topo.neighbors[i], [](std::shared_ptr<numa_context> const &context) {
-        // We must use regular pointers to avoid circular deps.
-        return context.get();
-      }));
+
+      double n = topo.neighbors[i].size();
+      double w = 1 / (n * i * i);
+
+      for (auto &&context : topo.neighbors[i]) {
+        weights.push_back(w);
+        m_neigh.push_back(context.get());
+      }
     }
 
+    m_dist = std::discrete_distribution<std::size_t>{weights.begin(), weights.end()};
+
     // Last thing in-case method throws.
-
-    LF_ASSERT(!m_context);
-
     m_context = worker_init(m_max_parallel);
   }
 
@@ -97,39 +103,27 @@ struct numa_context {
    */
   auto try_steal() noexcept -> task_handle {
 
-    std::size_t multiplier = 1 + m_neigh.size();
+    for (std::size_t i = 0; i < k_steal_attempts * m_neigh.size(); ++i) {
 
-    for (auto &&friends : m_neigh) {
+      numa_context *context = m_neigh[m_dist(m_rng)];
 
-      multiplier -= 1;
+      LF_ASSERT(context->m_context);
 
-      LF_ASSERT(multiplier > 0);
+      auto [err, task] = context->m_context->try_steal();
 
-      for (std::size_t i = 0; i < k_steal_attempts * multiplier; ++i) {
+      switch (err) {
+        case lf::err::none:
+          LF_LOG("Stole task from {}", (void *)context);
+          return task;
 
-        std::shuffle(friends.begin(), friends.end(), m_rng);
+        case lf::err::lost:
+          // We don't retry here as we don't want to cause contention
+          // and we have multiple steal attempts anyway.
+        case lf::err::empty:
+          continue;
 
-        for (numa_context *context : friends) {
-
-          LF_ASSERT(context->m_context);
-
-          auto [err, task] = context->m_context->try_steal();
-
-          switch (err) {
-            case lf::err::none:
-              LF_LOG("Stole task from {}", (void *)context);
-              return task;
-
-            case lf::err::lost:
-              // We don't retry here as we don't want to cause contention
-              // and we have multiple steal attempts anyway.
-            case lf::err::empty:
-              continue;
-
-            default:
-              LF_ASSERT(false);
-          }
-        }
+        default:
+          LF_ASSERT(false);
       }
     }
 
