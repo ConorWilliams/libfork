@@ -34,7 +34,8 @@ namespace lf::impl {
 template <typename Shared>
 struct numa_context {
  private:
-  static constexpr std::size_t k_steal_attempts = 32; ///< Attempts per target.
+  static constexpr std::size_t k_min_steal_attempts = 1024; 
+  static constexpr std::size_t k_steal_attempts_per_target = 32; 
 
   xoshiro m_rng;                                  ///< Thread-local RNG.
   std::shared_ptr<Shared> m_shared;               ///< Shared variables between all numa_contexts.
@@ -126,7 +127,13 @@ struct numa_context {
    */
   [[nodiscard]] auto try_steal() noexcept -> task_handle {
 
-    for (std::size_t i = 0; i < k_steal_attempts * m_neigh.size(); ++i) {
+    if (m_neigh.empty()){
+      return nullptr;
+    }
+
+    std::size_t attempts = k_min_steal_attempts + k_steal_attempts_per_target * m_neigh.size();
+
+    for (std::size_t i = 0; i < attempts; ++i) {
 
       numa_context *context = m_neigh[m_dist(m_rng)];
 

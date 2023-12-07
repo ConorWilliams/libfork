@@ -118,7 +118,9 @@ inline auto lazy_work(numa_topology::numa_node<numa_context<lazy_group>> node) n
 
   std::shared_ptr my_context = node.neighbors.front().front();
 
-  auto &my_lazy_vars = my_context->shared()[node.numa];
+  LF_ASSERT(!my_context->shared().empty());
+
+  auto &my_lazy_vars = my_context->shared()[0];
 
   lf::nullary_function_t notify{[&my_lazy_vars]() {
     my_lazy_vars.notifier.notify_all();
