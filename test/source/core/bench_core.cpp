@@ -71,7 +71,7 @@ struct scheduler : lf::impl::immovable<scheduler> {
   ~scheduler() { lf::finalize(context); }
 
  private:
-  lf::worker_context *context = lf::worker_init(1);
+  lf::worker_context *context = lf::worker_init(lf::nullary_function_t{[]() {}});
 };
 
 LF_NOINLINE constexpr auto sfib(int &ret, int n) -> void {

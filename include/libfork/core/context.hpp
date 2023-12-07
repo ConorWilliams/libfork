@@ -10,6 +10,8 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <concepts>
+#include <functional>
+#include <version>
 
 #include "libfork/core/macro.hpp"
 #include "libfork/core/tag.hpp"
@@ -42,7 +44,18 @@ namespace impl {
 
 class full_context; // Internal API
 
+struct switch_awaitable; // Forwadr decl for friend.
+
 } // namespace impl
+
+/**
+ * @brief A type-erased function object that takes no arguments.
+ */
+#ifdef __cpp_lib_move_only_function
+using nullary_function_t = std::move_only_function<void()>;
+#else
+using nullary_function_t = std::function<void()>;
+#endif
 
 /**
  * @brief Core-visible context for users to query and submit tasks to.
@@ -52,36 +65,30 @@ class context : impl::immovable<context> {
   /**
    * @brief Construct a context for a worker thread.
    *
-   * The lifetime of the stack source is expected to subsume the lifetime of the context.
-   *
-   * The `max_parallelism` is a user-interpreted hint for some algorithms. It is intended to represent
-   * the maximum concurrent execution of a task forked by the worker owning this context.
+   * Notify is a function that may be called concurrently by other workers to signal to the worker
+   * owning this context that a task has been submitted to a private queue.
    */
-  explicit context(std::size_t max_parallelism) noexcept : m_max_parallelism(max_parallelism) {}
+  explicit context(nullary_function_t notify) noexcept : m_notify(std::move(notify)) { LF_ASSERT(m_notify); }
 
-  /**
-   * @brief Fetch the maximum amount of parallelism available to the user.
-   *
-   * This is a user-interpreted hint for some algorithms. It is intended to represent
-   * the maximum concurrent execution of a task forked by the worker owning this context.
-   */
-  [[nodiscard]] constexpr auto max_parallelism() const noexcept -> std::size_t { return m_max_parallelism; }
+ private:
+  friend class ext::worker_context;
+  friend class impl::full_context;
+  friend struct impl::switch_awaitable;
 
   /**
    * @brief Submit pending/suspended tasks to the context.
+   *
+   * This is for use by implementor of the scheduler, this will trigger the notification function.
    */
-  void submit(intruded_list<submit_handle> jobs) noexcept { m_submit.push(non_null(jobs)); }
-
- private:
-  static constexpr std::size_t k_buff = 8;
-
-  friend class ext::worker_context;
-  friend class impl::full_context;
+  void submit(intruded_list<submit_handle> jobs) noexcept {
+    m_submit.push(non_null(jobs));
+    m_notify();
+  }
 
   deque<task_handle> m_tasks;             ///< All non-null.
   intrusive_list<submit_handle> m_submit; ///< All non-null.
 
-  std::size_t m_max_parallelism; ///< User interpreted hint for some algorithms.
+  nullary_function_t m_notify; ///< The user supplied notification function.
 };
 
 inline namespace ext {
@@ -89,6 +96,8 @@ inline namespace ext {
 class worker_context : public context {
  public:
   using context::context;
+
+  using context::submit;
 
   /**
    * @brief Fetch a linked-list of the submitted tasks.

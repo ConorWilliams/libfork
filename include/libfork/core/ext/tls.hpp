@@ -57,7 +57,7 @@ inline namespace ext {
  *
  * \endrst
  */
-[[nodiscard]] inline auto worker_init(std::size_t max_parallelism) -> worker_context * {
+[[nodiscard]] inline auto worker_init(nullary_function_t notify) -> worker_context * {
 
   LF_LOG("Initializing worker");
 
@@ -65,7 +65,7 @@ inline namespace ext {
     LF_THROW(std::runtime_error("Worker already initialized"));
   }
 
-  worker_context *context = impl::tls::thread_context.construct(max_parallelism);
+  worker_context *context = impl::tls::thread_context.construct(std::move(notify));
 
   // clang-format off
 

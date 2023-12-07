@@ -84,6 +84,8 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <concepts>
+#include <functional>
+#include <version>
 #ifndef C5DCA647_8269_46C2_B76F_5FA68738AEDA
 #define C5DCA647_8269_46C2_B76F_5FA68738AEDA
 
@@ -1914,7 +1916,18 @@ namespace impl {
 
 class full_context; // Internal API
 
+struct switch_awaitable; // Forwadr decl for friend.
+
 } // namespace impl
+
+/**
+ * @brief A type-erased function object that takes no arguments.
+ */
+#ifdef __cpp_lib_move_only_function
+using nullary_function_t = std::move_only_function<void()>;
+#else
+using nullary_function_t = std::function<void()>;
+#endif
 
 /**
  * @brief Core-visible context for users to query and submit tasks to.
@@ -1924,36 +1937,30 @@ class context : impl::immovable<context> {
   /**
    * @brief Construct a context for a worker thread.
    *
-   * The lifetime of the stack source is expected to subsume the lifetime of the context.
-   *
-   * The `max_parallelism` is a user-interpreted hint for some algorithms. It is intended to represent
-   * the maximum concurrent execution of a task forked by the worker owning this context.
+   * Notify is a function that may be called concurrently by other workers to signal to the worker
+   * owning this context that a task has been submitted to a private queue.
    */
-  explicit context(std::size_t max_parallelism) noexcept : m_max_parallelism(max_parallelism) {}
+  explicit context(nullary_function_t notify) noexcept : m_notify(std::move(notify)) { LF_ASSERT(m_notify); }
 
-  /**
-   * @brief Fetch the maximum amount of parallelism available to the user.
-   *
-   * This is a user-interpreted hint for some algorithms. It is intended to represent
-   * the maximum concurrent execution of a task forked by the worker owning this context.
-   */
-  [[nodiscard]] constexpr auto max_parallelism() const noexcept -> std::size_t { return m_max_parallelism; }
+ private:
+  friend class ext::worker_context;
+  friend class impl::full_context;
+  friend struct impl::switch_awaitable;
 
   /**
    * @brief Submit pending/suspended tasks to the context.
+   *
+   * This is for use by implementor of the scheduler, this will trigger the notification function.
    */
-  void submit(intruded_list<submit_handle> jobs) noexcept { m_submit.push(non_null(jobs)); }
-
- private:
-  static constexpr std::size_t k_buff = 8;
-
-  friend class ext::worker_context;
-  friend class impl::full_context;
+  void submit(intruded_list<submit_handle> jobs) noexcept {
+    m_submit.push(non_null(jobs));
+    m_notify();
+  }
 
   deque<task_handle> m_tasks;             ///< All non-null.
   intrusive_list<submit_handle> m_submit; ///< All non-null.
 
-  std::size_t m_max_parallelism; ///< User interpreted hint for some algorithms.
+  nullary_function_t m_notify; ///< The user supplied notification function.
 };
 
 inline namespace ext {
@@ -1961,6 +1968,8 @@ inline namespace ext {
 class worker_context : public context {
  public:
   using context::context;
+
+  using context::submit;
 
   /**
    * @brief Fetch a linked-list of the submitted tasks.
@@ -2153,7 +2162,7 @@ inline namespace ext {
  *
  * \endrst
  */
-[[nodiscard]] inline auto worker_init(std::size_t max_parallelism) -> worker_context * {
+[[nodiscard]] inline auto worker_init(nullary_function_t notify) -> worker_context * {
 
   LF_LOG("Initializing worker");
 
@@ -2161,7 +2170,7 @@ inline namespace ext {
     LF_THROW(std::runtime_error("Worker already initialized"));
   }
 
-  worker_context *context = impl::tls::thread_context.construct(max_parallelism);
+  worker_context *context = impl::tls::thread_context.construct(std::move(notify));
 
   // clang-format off
 
@@ -4815,7 +4824,6 @@ struct numa_context {
  private:
   static constexpr std::size_t k_steal_attempts = 32; ///< Attempts per target.
 
-  std::size_t m_max_parallel;                     ///< The maximum number of parallel tasks.
   xoshiro m_rng;                                  ///< Thread-local RNG.
   std::shared_ptr<Shared> m_shared;               ///< Shared variables between all numa_contexts.
   worker_context *m_context = nullptr;            ///< The worker context we are associated with.
@@ -4823,14 +4831,16 @@ struct numa_context {
   std::vector<numa_context *> m_neigh;            ///< Our neighbors (excluding ourselves).
 
  public:
-  numa_context(std::size_t max_parallel, xoshiro const &rng, std::shared_ptr<Shared> shared)
-      : m_max_parallel(max_parallel),
-        m_rng(rng),
+  numa_context(xoshiro const &rng, std::shared_ptr<Shared> shared)
+      : m_rng(rng),
         m_shared{std::move(non_null(shared))} {}
 
-  auto shared() const noexcept -> Shared & { return *non_null(m_shared); }
+  /**
+   * @brief Get access to the shared variables.
+   */
+  [[nodiscard]] auto shared() const noexcept -> Shared & { return *non_null(m_shared); }
 
-  auto worker_context() const noexcept -> worker_context & { return *non_null(m_context); }
+  using numa_node = numa_topology::numa_node<numa_context>;
 
   /**
    * @brief Initialize the context and worker with the given topology and bind it to a hardware core.
@@ -4845,7 +4855,7 @@ struct numa_context {
    * The lifetime of the `context` and `topo` neighbors must outlive all use of this object (excluding
    * destruction).
    */
-  void init_worker_and_bind(numa_topology::numa_node<numa_context> const &topo) {
+  void init_worker_and_bind(nullary_function_t notify, numa_node const &topo) {
 
     LF_ASSERT(!topo.neighbors.empty());
     LF_ASSERT(!topo.neighbors.front().empty());
@@ -4855,32 +4865,54 @@ struct numa_context {
 
     topo.bind();
 
+    m_context = worker_init(std::move(notify));
+
     std::vector<double> weights;
 
-    // Skip the first one as it is just us.
-    for (std::size_t i = 1; i < topo.neighbors.size(); ++i) {
+    // clang-format off
 
-      double n = topo.neighbors[i].size();
-      double w = 1 / (n * i * i);
+    LF_TRY {
 
-      for (auto &&context : topo.neighbors[i]) {
-        weights.push_back(w);
-        m_neigh.push_back(context.get());
+      // Skip the first one as it is just us.
+      for (std::size_t i = 1; i < topo.neighbors.size(); ++i) {
+
+        double n = topo.neighbors[i].size();
+        double w = 1 / (n * i * i);
+
+        for (auto &&context : topo.neighbors[i]) {
+          weights.push_back(w);
+          m_neigh.push_back(context.get());
+        }
       }
+
+      m_dist = std::discrete_distribution<std::size_t>{weights.begin(), weights.end()};
+
+    } LF_CATCH_ALL {
+      m_neigh.clear();
+      LF_RETHROW;
     }
-
-    m_dist = std::discrete_distribution<std::size_t>{weights.begin(), weights.end()};
-
-    // Last thing in-case method throws.
-    m_context = worker_init(m_max_parallel);
   }
 
   void finalize_worker() { finalize(std::exchange(m_context, nullptr)); }
 
+    /**
+   * @brief Submit a job to the owned worker context.
+   */
+  void submit(lf::intruded_list<lf::submit_handle> jobs) { non_null(m_context)->submit(jobs); }
+
+  /**
+   * @brief Fetch a linked-list of the submitted tasks.
+   *
+   * If there are no submitted tasks, then returned pointer will be null.
+   */
+  [[nodiscard]] auto try_pop_all() noexcept -> intruded_list<submit_handle> {
+    return non_null(m_context)->try_pop_all();
+  }
+
   /**
    * @brief Try to steal a task from one of our friends, returns `nullptr` if we failed.
    */
-  auto try_steal() noexcept -> task_handle {
+  [[nodiscard]] auto try_steal() noexcept -> task_handle {
 
     for (std::size_t i = 0; i < k_steal_attempts * m_neigh.size(); ++i) {
 
@@ -4943,7 +4975,7 @@ inline void busy_work(numa_topology::numa_node<impl::numa_context<busy_vars>> no
 
   std::shared_ptr my_context = node.neighbors.front().front();
 
-  my_context->init_worker_and_bind(node);
+  my_context->init_worker_and_bind(nullary_function_t{[]() {}}, node); // Notification is a no-op.
 
   // Wait for everyone to have set up their numa_vars. If this throws an exception then
   // program terminates due to the noexcept marker.
@@ -4960,7 +4992,7 @@ inline void busy_work(numa_topology::numa_node<impl::numa_context<busy_vars>> no
 
   while (!my_context->shared().stop.test(std::memory_order_acquire)) {
 
-    intruded_list<submit_handle> submissions = my_context->worker_context().try_pop_all();
+    intruded_list<submit_handle> submissions = my_context->try_pop_all();
 
     for_each_elem(submissions, [](lf::submit_handle submitted) LF_STATIC_CALL noexcept {
       resume(submitted);
@@ -5004,7 +5036,7 @@ class busy_pool {
       : m_num_threads(n) {
 
     for (std::size_t i = 0; i < n; ++i) {
-      m_worker.push_back(std::make_shared<impl::numa_context<impl::busy_vars>>(n, m_rng, m_share));
+      m_worker.push_back(std::make_shared<impl::numa_context<impl::busy_vars>>(m_rng, m_share));
       m_rng.long_jump();
     }
 
@@ -5028,9 +5060,7 @@ class busy_pool {
   /**
    * @brief Schedule a task for execution.
    */
-  void schedule(lf::intruded_list<lf::submit_handle> jobs) {
-    m_worker[m_dist(m_rng)]->worker_context().submit(jobs);
-  }
+  void schedule(lf::intruded_list<lf::submit_handle> jobs) { m_worker[m_dist(m_rng)]->submit(jobs); }
 
   ~busy_pool() noexcept {
     LF_LOG("Requesting a stop");
@@ -5063,7 +5093,6 @@ static_assert(scheduler<busy_pool>);
 #include <atomic>
 #include <bit>
 #include <latch>
-
 #include <limits>
 #include <memory>
 #include <optional>
@@ -5340,9 +5369,7 @@ static constexpr std::uint64_t k_active_mask = ~k_thieve_mask;
 /**
  * @brief A collection of heap allocated atomic variables used for tracking the state of the scheduler.
  */
-struct lazy_vars : busy_vars {
-
-  using busy_vars::busy_vars;
+struct lazy_vars {
 
   alignas(k_cache_line) std::atomic_uint64_t dual_count = 0; ///< The worker + active counters
   alignas(k_cache_line) event_count notifier;                ///< The pools notifier.
@@ -5391,10 +5418,14 @@ struct lazy_vars : busy_vars {
   }
 };
 
+struct lazy_group : busy_vars, std::vector<lazy_vars> {
+  explicit lazy_group(std::size_t n) : busy_vars(n) {}
+};
+
 /**
  * @brief The function that workers run while the pool is alive.
  */
-inline auto lazy_work(numa_topology::numa_node<numa_context<lazy_vars>> node) noexcept {
+inline auto lazy_work(numa_topology::numa_node<numa_context<lazy_group>> node) noexcept {
 
   LF_ASSERT(!node.neighbors.empty());
   LF_ASSERT(!node.neighbors.front().empty());
@@ -5403,7 +5434,13 @@ inline auto lazy_work(numa_topology::numa_node<numa_context<lazy_vars>> node) no
 
   std::shared_ptr my_context = node.neighbors.front().front();
 
-  my_context->init_worker_and_bind(node);
+  auto &my_lazy_vars = my_context->shared()[node.numa];
+
+  lf::nullary_function_t notify{[&my_lazy_vars]() {
+    my_lazy_vars.notifier.notify_all();
+  }};
+
+  my_context->init_worker_and_bind(std::move(notify), node);
 
   // Wait for everyone to have set up their numa_vars. If this throws an exception then
   // program terminates due to the noexcept marker.
@@ -5441,18 +5478,18 @@ wake_up:
   /**
    * Invariant maintained by Lemma 1 regardless if this is a wake up (S <- S - 1) or join (S <- S).
    */
-  my_context->shared().dual_count.fetch_add(k_thieve, release);
+  my_lazy_vars.dual_count.fetch_add(k_thieve, release);
 
 continue_as_thief:
   /**
    * First we handle the fast path (work to do) before touching the notifier.
    */
-  if (auto *submission = my_context->worker_context().try_pop_all()) {
-    my_context->shared().thief_round_trip(submission);
+  if (auto *submission = my_context->try_pop_all()) {
+    my_lazy_vars.thief_round_trip(submission);
     goto continue_as_thief;
   }
   if (auto *stolen = my_context->try_steal()) {
-    my_context->shared().thief_round_trip(stolen);
+    my_lazy_vars.thief_round_trip(stolen);
     goto continue_as_thief;
   }
 
@@ -5471,12 +5508,12 @@ continue_as_thief:
    *    Commit/cancel wait on key.
    */
 
-  auto key = my_context->shared().notifier.prepare_wait();
+  auto key = my_lazy_vars.notifier.prepare_wait();
 
-  if (auto *submission = my_context->worker_context().try_pop_all()) {
+  if (auto *submission = my_context->try_pop_all()) {
     // Check our private **before** `stop`.
-    my_context->shared().notifier.cancel_wait();
-    my_context->shared().thief_round_trip(submission);
+    my_lazy_vars.notifier.cancel_wait();
+    my_lazy_vars.thief_round_trip(submission);
     goto continue_as_thief;
   }
 
@@ -5485,7 +5522,7 @@ continue_as_thief:
     // that the requester has ensured that everyone is done. We cannot check
     // this i.e it is possible a thread that just signaled the master thread
     // is still `active` but act stalled.
-    my_context->shared().notifier.cancel_wait();
+    my_lazy_vars.notifier.cancel_wait();
     // We leave a "ghost thief" here e.g. don't bother to reduce the counter,
     // This is fine because no-one can sleep now that the stop flag is set.
     return;
@@ -5507,7 +5544,7 @@ continue_as_thief:
    * If we return true then we are safe to sleep, otherwise we must stay awake.
    */
 
-  auto prev_dual = my_context->shared().dual_count.fetch_sub(k_thieve, acq_rel);
+  auto prev_dual = my_lazy_vars.dual_count.fetch_sub(k_thieve, acq_rel);
 
   // We are now registered as a sleeping thread and may have broken the invariant.
 
@@ -5522,7 +5559,7 @@ continue_as_thief:
   LF_LOG("Goes to sleep");
 
   // We are safe to sleep.
-  my_context->shared().notifier.wait(key);
+  my_lazy_vars.notifier.wait(key);
   // Note, this could be a spurious wakeup, that doesn't matter because we will just loop around.
   goto wake_up;
 }
@@ -5541,8 +5578,8 @@ class lazy_pool {
   std::size_t m_num_threads;
   std::uniform_int_distribution<std::size_t> m_dist{0, m_num_threads - 1};
   xoshiro m_rng{seed, std::random_device{}};
-  std::shared_ptr<impl::lazy_vars> m_share = std::make_shared<impl::lazy_vars>(m_num_threads);
-  std::vector<std::shared_ptr<impl::numa_context<impl::lazy_vars>>> m_worker = {};
+  std::shared_ptr<impl::lazy_group> m_share = std::make_shared<impl::lazy_group>(m_num_threads);
+  std::vector<std::shared_ptr<impl::numa_context<impl::lazy_group>>> m_worker = {};
   std::vector<std::thread> m_threads = {};
 
   using strategy = numa_strategy;
@@ -5557,14 +5594,24 @@ class lazy_pool {
   explicit lazy_pool(std::size_t n = std::thread::hardware_concurrency(), strategy strategy = strategy::fan)
       : m_num_threads(n) {
 
+    LF_ASSERT_NO_ASSUME(!m_share->stop.test(std::memory_order_acquire));
+
     for (std::size_t i = 0; i < n; ++i) {
-      m_worker.push_back(std::make_shared<impl::numa_context<impl::lazy_vars>>(n, m_rng, m_share));
+      m_worker.push_back(std::make_shared<impl::numa_context<impl::lazy_group>>(m_rng, m_share));
       m_rng.long_jump();
     }
 
-    LF_ASSERT_NO_ASSUME(!m_share->stop.test(std::memory_order_acquire));
-
     std::vector nodes = numa_topology{}.distribute(m_worker, strategy);
+
+    LF_ASSERT(!nodes.empty());
+
+    std::size_t num_numa = 1 + std::ranges::max_element(nodes, {}, [](auto const &node) {
+                                 return node.numa;
+                               })->numa;
+
+    LF_LOG("Lazy pool has {} numa nodes", num_numa);
+
+    static_cast<std::vector<impl::lazy_vars> &>(*m_share) = std::vector<impl::lazy_vars>(num_numa);
 
     [&]() noexcept {
       // All workers must be created, if we fail to create them all then we must terminate else
@@ -5579,17 +5626,17 @@ class lazy_pool {
     }();
   }
 
-  void schedule(lf::intruded_list<lf::submit_handle> jobs) {
-    m_worker[m_dist(m_rng)]->worker_context().submit(jobs);
-    m_share->notifier.notify_all();
-  }
+  void schedule(lf::intruded_list<lf::submit_handle> jobs) { m_worker[m_dist(m_rng)]->submit(jobs); }
 
   ~lazy_pool() noexcept {
     LF_LOG("Requesting a stop");
 
     // Set conditions for workers to stop.
     m_share->stop.test_and_set(std::memory_order_release);
-    m_share->notifier.notify_all();
+
+    for (auto &&var : *m_share) {
+      var.notifier.notify_all();
+    }
 
     for (auto &worker : m_threads) {
       worker.join();
@@ -5638,7 +5685,7 @@ class unit_pool : impl::immovable<unit_pool> {
   ~unit_pool() noexcept { lf::finalize(m_context); }
 
  private:
-  lf::worker_context *m_context = lf::worker_init(1);
+  lf::worker_context *m_context = lf::worker_init(lf::nullary_function_t{[]() {}});
 };
 
 } // namespace lf

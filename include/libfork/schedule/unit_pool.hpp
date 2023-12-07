@@ -35,7 +35,7 @@ class unit_pool : impl::immovable<unit_pool> {
   ~unit_pool() noexcept { lf::finalize(m_context); }
 
  private:
-  lf::worker_context *m_context = lf::worker_init(1);
+  lf::worker_context *m_context = lf::worker_init(lf::nullary_function_t{[]() {}});
 };
 
 } // namespace lf

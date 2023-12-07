@@ -36,7 +36,6 @@ struct numa_context {
  private:
   static constexpr std::size_t k_steal_attempts = 32; ///< Attempts per target.
 
-  std::size_t m_max_parallel;                     ///< The maximum number of parallel tasks.
   xoshiro m_rng;                                  ///< Thread-local RNG.
   std::shared_ptr<Shared> m_shared;               ///< Shared variables between all numa_contexts.
   worker_context *m_context = nullptr;            ///< The worker context we are associated with.
@@ -44,14 +43,16 @@ struct numa_context {
   std::vector<numa_context *> m_neigh;            ///< Our neighbors (excluding ourselves).
 
  public:
-  numa_context(std::size_t max_parallel, xoshiro const &rng, std::shared_ptr<Shared> shared)
-      : m_max_parallel(max_parallel),
-        m_rng(rng),
+  numa_context(xoshiro const &rng, std::shared_ptr<Shared> shared)
+      : m_rng(rng),
         m_shared{std::move(non_null(shared))} {}
 
-  auto shared() const noexcept -> Shared & { return *non_null(m_shared); }
+  /**
+   * @brief Get access to the shared variables.
+   */
+  [[nodiscard]] auto shared() const noexcept -> Shared & { return *non_null(m_shared); }
 
-  auto worker_context() const noexcept -> worker_context & { return *non_null(m_context); }
+  using numa_node = numa_topology::numa_node<numa_context>;
 
   /**
    * @brief Initialize the context and worker with the given topology and bind it to a hardware core.
@@ -66,7 +67,7 @@ struct numa_context {
    * The lifetime of the `context` and `topo` neighbors must outlive all use of this object (excluding
    * destruction).
    */
-  void init_worker_and_bind(numa_topology::numa_node<numa_context> const &topo) {
+  void init_worker_and_bind(nullary_function_t notify, numa_node const &topo) {
 
     LF_ASSERT(!topo.neighbors.empty());
     LF_ASSERT(!topo.neighbors.front().empty());
@@ -76,32 +77,54 @@ struct numa_context {
 
     topo.bind();
 
+    m_context = worker_init(std::move(notify));
+
     std::vector<double> weights;
 
-    // Skip the first one as it is just us.
-    for (std::size_t i = 1; i < topo.neighbors.size(); ++i) {
+    // clang-format off
 
-      double n = topo.neighbors[i].size();
-      double w = 1 / (n * i * i);
+    LF_TRY {
 
-      for (auto &&context : topo.neighbors[i]) {
-        weights.push_back(w);
-        m_neigh.push_back(context.get());
+      // Skip the first one as it is just us.
+      for (std::size_t i = 1; i < topo.neighbors.size(); ++i) {
+
+        double n = topo.neighbors[i].size();
+        double w = 1 / (n * i * i);
+
+        for (auto &&context : topo.neighbors[i]) {
+          weights.push_back(w);
+          m_neigh.push_back(context.get());
+        }
       }
+
+      m_dist = std::discrete_distribution<std::size_t>{weights.begin(), weights.end()};
+
+    } LF_CATCH_ALL {
+      m_neigh.clear();
+      LF_RETHROW;
     }
-
-    m_dist = std::discrete_distribution<std::size_t>{weights.begin(), weights.end()};
-
-    // Last thing in-case method throws.
-    m_context = worker_init(m_max_parallel);
   }
 
   void finalize_worker() { finalize(std::exchange(m_context, nullptr)); }
 
+    /**
+   * @brief Submit a job to the owned worker context.
+   */
+  void submit(lf::intruded_list<lf::submit_handle> jobs) { non_null(m_context)->submit(jobs); }
+
+  /**
+   * @brief Fetch a linked-list of the submitted tasks.
+   *
+   * If there are no submitted tasks, then returned pointer will be null.
+   */
+  [[nodiscard]] auto try_pop_all() noexcept -> intruded_list<submit_handle> {
+    return non_null(m_context)->try_pop_all();
+  }
+
   /**
    * @brief Try to steal a task from one of our friends, returns `nullptr` if we failed.
    */
-  auto try_steal() noexcept -> task_handle {
+  [[nodiscard]] auto try_steal() noexcept -> task_handle {
 
     for (std::size_t i = 0; i < k_steal_attempts * m_neigh.size(); ++i) {
 

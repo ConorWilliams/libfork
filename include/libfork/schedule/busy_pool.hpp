@@ -55,7 +55,7 @@ inline void busy_work(numa_topology::numa_node<impl::numa_context<busy_vars>> no
 
   std::shared_ptr my_context = node.neighbors.front().front();
 
-  my_context->init_worker_and_bind(node);
+  my_context->init_worker_and_bind(nullary_function_t{[]() {}}, node); // Notification is a no-op.
 
   // Wait for everyone to have set up their numa_vars. If this throws an exception then
   // program terminates due to the noexcept marker.
@@ -72,7 +72,7 @@ inline void busy_work(numa_topology::numa_node<impl::numa_context<busy_vars>> no
 
   while (!my_context->shared().stop.test(std::memory_order_acquire)) {
 
-    intruded_list<submit_handle> submissions = my_context->worker_context().try_pop_all();
+    intruded_list<submit_handle> submissions = my_context->try_pop_all();
 
     for_each_elem(submissions, [](lf::submit_handle submitted) LF_STATIC_CALL noexcept {
       resume(submitted);
@@ -116,7 +116,7 @@ class busy_pool {
       : m_num_threads(n) {
 
     for (std::size_t i = 0; i < n; ++i) {
-      m_worker.push_back(std::make_shared<impl::numa_context<impl::busy_vars>>(n, m_rng, m_share));
+      m_worker.push_back(std::make_shared<impl::numa_context<impl::busy_vars>>(m_rng, m_share));
       m_rng.long_jump();
     }
 
@@ -140,9 +140,7 @@ class busy_pool {
   /**
    * @brief Schedule a task for execution.
    */
-  void schedule(lf::intruded_list<lf::submit_handle> jobs) {
-    m_worker[m_dist(m_rng)]->worker_context().submit(jobs);
-  }
+  void schedule(lf::intruded_list<lf::submit_handle> jobs) { m_worker[m_dist(m_rng)]->submit(jobs); }
 
   ~busy_pool() noexcept {
     LF_LOG("Requesting a stop");

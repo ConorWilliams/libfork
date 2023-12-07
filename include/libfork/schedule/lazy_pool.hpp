@@ -13,7 +13,6 @@
 #include <atomic>
 #include <bit>
 #include <latch>
-
 #include <limits>
 #include <memory>
 #include <optional>
@@ -54,9 +53,7 @@ static constexpr std::uint64_t k_active_mask = ~k_thieve_mask;
 /**
  * @brief A collection of heap allocated atomic variables used for tracking the state of the scheduler.
  */
-struct lazy_vars : busy_vars {
-
-  using busy_vars::busy_vars;
+struct lazy_vars {
 
   alignas(k_cache_line) std::atomic_uint64_t dual_count = 0; ///< The worker + active counters
   alignas(k_cache_line) event_count notifier;                ///< The pools notifier.
@@ -105,10 +102,14 @@ struct lazy_vars : busy_vars {
   }
 };
 
+struct lazy_group : busy_vars, std::vector<lazy_vars> {
+  explicit lazy_group(std::size_t n) : busy_vars(n) {}
+};
+
 /**
  * @brief The function that workers run while the pool is alive.
  */
-inline auto lazy_work(numa_topology::numa_node<numa_context<lazy_vars>> node) noexcept {
+inline auto lazy_work(numa_topology::numa_node<numa_context<lazy_group>> node) noexcept {
 
   LF_ASSERT(!node.neighbors.empty());
   LF_ASSERT(!node.neighbors.front().empty());
@@ -117,7 +118,13 @@ inline auto lazy_work(numa_topology::numa_node<numa_context<lazy_vars>> node) no
 
   std::shared_ptr my_context = node.neighbors.front().front();
 
-  my_context->init_worker_and_bind(node);
+  auto &my_lazy_vars = my_context->shared()[node.numa];
+
+  lf::nullary_function_t notify{[&my_lazy_vars]() {
+    my_lazy_vars.notifier.notify_all();
+  }};
+
+  my_context->init_worker_and_bind(std::move(notify), node);
 
   // Wait for everyone to have set up their numa_vars. If this throws an exception then
   // program terminates due to the noexcept marker.
@@ -155,18 +162,18 @@ wake_up:
   /**
    * Invariant maintained by Lemma 1 regardless if this is a wake up (S <- S - 1) or join (S <- S).
    */
-  my_context->shared().dual_count.fetch_add(k_thieve, release);
+  my_lazy_vars.dual_count.fetch_add(k_thieve, release);
 
 continue_as_thief:
   /**
    * First we handle the fast path (work to do) before touching the notifier.
    */
-  if (auto *submission = my_context->worker_context().try_pop_all()) {
-    my_context->shared().thief_round_trip(submission);
+  if (auto *submission = my_context->try_pop_all()) {
+    my_lazy_vars.thief_round_trip(submission);
     goto continue_as_thief;
   }
   if (auto *stolen = my_context->try_steal()) {
-    my_context->shared().thief_round_trip(stolen);
+    my_lazy_vars.thief_round_trip(stolen);
     goto continue_as_thief;
   }
 
@@ -185,12 +192,12 @@ continue_as_thief:
    *    Commit/cancel wait on key.
    */
 
-  auto key = my_context->shared().notifier.prepare_wait();
+  auto key = my_lazy_vars.notifier.prepare_wait();
 
-  if (auto *submission = my_context->worker_context().try_pop_all()) {
+  if (auto *submission = my_context->try_pop_all()) {
     // Check our private **before** `stop`.
-    my_context->shared().notifier.cancel_wait();
-    my_context->shared().thief_round_trip(submission);
+    my_lazy_vars.notifier.cancel_wait();
+    my_lazy_vars.thief_round_trip(submission);
     goto continue_as_thief;
   }
 
@@ -199,7 +206,7 @@ continue_as_thief:
     // that the requester has ensured that everyone is done. We cannot check
     // this i.e it is possible a thread that just signaled the master thread
     // is still `active` but act stalled.
-    my_context->shared().notifier.cancel_wait();
+    my_lazy_vars.notifier.cancel_wait();
     // We leave a "ghost thief" here e.g. don't bother to reduce the counter,
     // This is fine because no-one can sleep now that the stop flag is set.
     return;
@@ -221,7 +228,7 @@ continue_as_thief:
    * If we return true then we are safe to sleep, otherwise we must stay awake.
    */
 
-  auto prev_dual = my_context->shared().dual_count.fetch_sub(k_thieve, acq_rel);
+  auto prev_dual = my_lazy_vars.dual_count.fetch_sub(k_thieve, acq_rel);
 
   // We are now registered as a sleeping thread and may have broken the invariant.
 
@@ -236,7 +243,7 @@ continue_as_thief:
   LF_LOG("Goes to sleep");
 
   // We are safe to sleep.
-  my_context->shared().notifier.wait(key);
+  my_lazy_vars.notifier.wait(key);
   // Note, this could be a spurious wakeup, that doesn't matter because we will just loop around.
   goto wake_up;
 }
@@ -255,8 +262,8 @@ class lazy_pool {
   std::size_t m_num_threads;
   std::uniform_int_distribution<std::size_t> m_dist{0, m_num_threads - 1};
   xoshiro m_rng{seed, std::random_device{}};
-  std::shared_ptr<impl::lazy_vars> m_share = std::make_shared<impl::lazy_vars>(m_num_threads);
-  std::vector<std::shared_ptr<impl::numa_context<impl::lazy_vars>>> m_worker = {};
+  std::shared_ptr<impl::lazy_group> m_share = std::make_shared<impl::lazy_group>(m_num_threads);
+  std::vector<std::shared_ptr<impl::numa_context<impl::lazy_group>>> m_worker = {};
   std::vector<std::thread> m_threads = {};
 
   using strategy = numa_strategy;
@@ -271,14 +278,24 @@ class lazy_pool {
   explicit lazy_pool(std::size_t n = std::thread::hardware_concurrency(), strategy strategy = strategy::fan)
       : m_num_threads(n) {
 
+    LF_ASSERT_NO_ASSUME(!m_share->stop.test(std::memory_order_acquire));
+
     for (std::size_t i = 0; i < n; ++i) {
-      m_worker.push_back(std::make_shared<impl::numa_context<impl::lazy_vars>>(n, m_rng, m_share));
+      m_worker.push_back(std::make_shared<impl::numa_context<impl::lazy_group>>(m_rng, m_share));
       m_rng.long_jump();
     }
 
-    LF_ASSERT_NO_ASSUME(!m_share->stop.test(std::memory_order_acquire));
-
     std::vector nodes = numa_topology{}.distribute(m_worker, strategy);
+
+    LF_ASSERT(!nodes.empty());
+
+    std::size_t num_numa = 1 + std::ranges::max_element(nodes, {}, [](auto const &node) {
+                                 return node.numa;
+                               })->numa;
+
+    LF_LOG("Lazy pool has {} numa nodes", num_numa);
+
+    static_cast<std::vector<impl::lazy_vars> &>(*m_share) = std::vector<impl::lazy_vars>(num_numa);
 
     [&]() noexcept {
       // All workers must be created, if we fail to create them all then we must terminate else
@@ -293,17 +310,17 @@ class lazy_pool {
     }();
   }
 
-  void schedule(lf::intruded_list<lf::submit_handle> jobs) {
-    m_worker[m_dist(m_rng)]->worker_context().submit(jobs);
-    m_share->notifier.notify_all();
-  }
+  void schedule(lf::intruded_list<lf::submit_handle> jobs) { m_worker[m_dist(m_rng)]->submit(jobs); }
 
   ~lazy_pool() noexcept {
     LF_LOG("Requesting a stop");
 
     // Set conditions for workers to stop.
     m_share->stop.test_and_set(std::memory_order_release);
-    m_share->notifier.notify_all();
+
+    for (auto &&var : *m_share) {
+      var.notifier.notify_all();
+    }
 
     for (auto &worker : m_threads) {
       worker.join();

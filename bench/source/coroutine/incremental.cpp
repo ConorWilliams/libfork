@@ -335,7 +335,7 @@ void fib(benchmark::State &state) {
 
   std::vector<std::byte> stack(1024 * 1024);
 
-  auto *ctx = lf::worker_init(1);
+  auto *ctx = lf::worker_init(lf::nullary_function_t{[]() {}});
 
   fixed_stack_coro::asp = stack.data();
 
@@ -460,7 +460,7 @@ auto fib_impl(int &ret, int n) -> coroutine {
 
 void fib(benchmark::State &state) {
 
-  auto *ctx = lf::worker_init(1);
+  auto *ctx = lf::worker_init(lf::nullary_function_t{[]() {}});
 
   for (auto _ : state) {
     int tmp;
@@ -549,7 +549,7 @@ auto fib_impl(int &ret, int n) -> coroutine {
 
 void fib(benchmark::State &state) {
 
-  auto *ctx = lf::worker_init(1);
+  auto *ctx = lf::worker_init(lf::nullary_function_t{[]() {}});
 
   for (auto _ : state) {
     int tmp;
