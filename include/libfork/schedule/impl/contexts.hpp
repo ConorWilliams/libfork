@@ -41,6 +41,7 @@ struct numa_context {
   std::shared_ptr<Shared> m_shared;               ///< Shared variables between all numa_contexts.
   worker_context *m_context = nullptr;            ///< The worker context we are associated with.
   std::discrete_distribution<std::size_t> m_dist; ///< The distribution for stealing.
+  std::vector<numa_context *> m_close;            ///< First order neighbours.
   std::vector<numa_context *> m_neigh;            ///< Our neighbors (excluding ourselves).
 
  public:
@@ -86,6 +87,12 @@ struct numa_context {
 
     LF_TRY {
 
+      if (topo.neighbors.size() > 1){
+        m_close = impl::map(topo.neighbors[1], [](auto const & neigh) {
+          return neigh.get();
+        });
+      }
+
       // Skip the first one as it is just us.
       for (std::size_t i = 1; i < topo.neighbors.size(); ++i) {
 
@@ -101,6 +108,7 @@ struct numa_context {
       m_dist = std::discrete_distribution<std::size_t>{weights.begin(), weights.end()};
 
     } LF_CATCH_ALL {
+      m_close.clear();
       m_neigh.clear();
       LF_RETHROW;
     }
@@ -131,30 +139,40 @@ struct numa_context {
       return nullptr;
     }
 
+    #define LF_RETURN_OR_CONTINUE(expr) \
+      auto * context = expr;\
+      LF_ASSERT(context); \
+      LF_ASSERT(context->m_context);\
+      auto [err, task] = context->m_context->try_steal();\
+\
+      switch (err) {\
+        case lf::err::none:\
+          LF_LOG("Stole task from {}", (void *)context);\
+          return task;\
+\
+        case lf::err::lost:\
+          /* We don't retry here as we don't want to cause contention */ \
+          /* and we have multiple steal attempts anyway */ \
+        case lf::err::empty:\
+          continue;\
+\
+        default:\
+          LF_ASSERT(false);\
+      }
+
+
+    std::ranges::shuffle(m_close, m_rng);
+
+    // Check all of the closes numa domain.
+    for (auto * neigh : m_close) {
+      LF_RETURN_OR_CONTINUE(neigh);
+    }
+
     std::size_t attempts = k_min_steal_attempts + k_steal_attempts_per_target * m_neigh.size();
 
+    // Then work probabilistically.
     for (std::size_t i = 0; i < attempts; ++i) {
-
-      numa_context *context = m_neigh[m_dist(m_rng)];
-
-      LF_ASSERT(context->m_context);
-
-      auto [err, task] = context->m_context->try_steal();
-
-      switch (err) {
-        case lf::err::none:
-          LF_LOG("Stole task from {}", (void *)context);
-          return task;
-
-        case lf::err::lost:
-          // We don't retry here as we don't want to cause contention
-          // and we have multiple steal attempts anyway.
-        case lf::err::empty:
-          continue;
-
-        default:
-          LF_ASSERT(false);
-      }
+       LF_RETURN_OR_CONTINUE(m_neigh[m_dist(m_rng)]);
     }
 
     return nullptr;
