@@ -42,10 +42,9 @@ else:
         "libfork.*_coalloc_.*busy.*seq",
     ]
 
-
 with open(f"memory.{bench.strip()}.csv", "w") as file:
     for kind in [
-        "NOTESTNAMEDTHIS",
+        "zero",
         "calibrate",
         "serial",
         *libfork,
@@ -55,30 +54,35 @@ with open(f"memory.{bench.strip()}.csv", "w") as file:
     ]:
         print(f"Running {kind} {bench.strip()}")
 
+        is_serial = kind == "serial" or kind == "calibrate" or kind == "zero"
+
         for i in [1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112]:
             #
             if i > args.cores:
                 break
 
-            if kind == "calibrate":
-                reg = kind
-            elif not bench.startswith("T"):
-                reg = f"{bench}.*{kind}"
-            else:
+            if kind == "zero":
+                reg = "NONNAMEDTHIS"
+            elif kind == "calibrate":
+                reg = "calibrate"
+            elif bench.startswith("T"):
                 reg = f"uts.*{kind}.*{bench}"
+            else:
+                reg = f"{bench}.*{kind}"
 
-            if kind != "serial" and kind != "calibrate":
+            if not is_serial:
                 reg += f".*/{i}/"
             elif i > 1:
                 break
 
-            if kind == "NOTESTNAMEDTHIS" and i > 1:
-                break
-
+           
             mem = []
 
-            for r in range(5 if kind != "serial" and kind != "calibrate" else 100):
+            for r in range(25 if is_serial else 5):
+
                 command = f'/usr/bin/time -f"MEMORY=%M"  -- {args.binary} --benchmark_filter="{reg}" --benchmark_time_unit=ms'
+
+                # print(f"{command=}")
 
                 output = subprocess.run(
                     command, shell=True, check=True, stderr=subprocess.PIPE
@@ -97,5 +101,5 @@ with open(f"memory.{bench.strip()}.csv", "w") as file:
 
             print(f"mems={mem} -> {x}, {e}")
 
-            file.write(f"{kind},{bench.strip()},{i},{x},{e}\n")
+            file.write(f"{kind},{i},{x},{e}\n")
             file.flush()

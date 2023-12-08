@@ -20,22 +20,24 @@ data = {}
 with open(args.data_file, "r") as file:
     for line in file:
         #
-        name, _, threads, med, dev = line.split(",")
+        name, threads, med, dev = line.split(",")
 
         if name not in data:
             data[name] = ([], [], [])
 
         data[name][0].append(int(threads))
-        data[name][1].append(int(med))
-        data[name][2].append(int(dev))
+        data[name][1].append(float(med))
+        data[name][2].append(float(dev))
 
 
-y_zero = data["calibrate"][1][0]
+
+y_zero = data["zero"][1][0]
+y_calib = data["calibrate"][1][0]
 y_serial = data["serial"][1][0]
 
 
 for k, v in data.items():
-    if k == "serial" or k == "calibrate" or k == "taskflow":
+    if k == "zero" or k == "serial" or k == "calibrate" or k == "taskflow":
         continue
 
     print(k, v)
@@ -44,8 +46,9 @@ for k, v in data.items():
     y = np.asarray(v[1])
     err = np.asarray(v[2])
 
-    y = (y - y_zero) / (y_serial - y_zero)
-    err = (err) / (y_serial - y_zero)
+    err = (err) / (y_serial - y_calib) 
+    y = (y - y_serial) / (y_serial - y_calib) 
+    # 
 
     plt.errorbar(x, y, yerr=err, label=k, capsize=2)
 
@@ -58,7 +61,7 @@ def mem(n):
     return n * per_thread + stack(n)
 
 
-plt.plot(x, x, "k--", label="bound")
+# plt.plot(x, x, "k--", label="bound")
 
 # plt.yscale("log")
 # plt.xscale("log")
@@ -72,7 +75,7 @@ plt.savefig("test.pdf")
 
 # Memory looks like:
 #
-#   m = static + n * per_thread + stack(n)
+#   m = static + n * per_thread + n * stack(1)
 #
 # Hence:
 #
