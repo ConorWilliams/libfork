@@ -34,7 +34,7 @@ auto integrate(double x1, double y1, double x2, double y2, double area, tf::Subf
   return area_x1x0 + area_x0x2;
 }
 
-void integrate_taskflow(benchmark::State &state) {
+void integrate_ztaskflow(benchmark::State &state) {
 
   state.counters["green_threads"] = state.range(0);
   state.counters["integrate_n"] = n;
@@ -65,4 +65,4 @@ void integrate_taskflow(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(integrate_taskflow)->Apply(targs)->UseRealTime();
+BENCHMARK(integrate_ztaskflow)->Apply(targs)->UseRealTime();

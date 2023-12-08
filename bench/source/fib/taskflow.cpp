@@ -30,7 +30,7 @@ auto fib(int n, tf::Subflow &sbf) -> int {
   return res1 + res2;
 }
 
-void fib_taskflow(benchmark::State &state) {
+void fib_ztaskflow(benchmark::State &state) {
 
   state.counters["green_threads"] = state.range(0);
   state.counters["fib(n)"] = work;
@@ -60,4 +60,4 @@ void fib_taskflow(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(fib_taskflow)->Apply(targs)->UseRealTime();
+BENCHMARK(fib_ztaskflow)->Apply(targs)->UseRealTime();

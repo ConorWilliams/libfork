@@ -47,7 +47,7 @@ auto nqueens(int j, std::array<char, N> const &a, tf::Subflow &sbf) -> int {
   return std::accumulate(parts.begin(), parts.end(), 0L);
 }
 
-void nqueens_taskflow(benchmark::State &state) {
+void nqueens_ztaskflow(benchmark::State &state) {
 
   state.counters["green_threads"] = state.range(0);
   state.counters["nqueens(n)"] = nqueens_work;
@@ -76,4 +76,4 @@ void nqueens_taskflow(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(nqueens_taskflow)->Apply(targs)->UseRealTime();
+BENCHMARK(nqueens_ztaskflow)->Apply(targs)->UseRealTime();

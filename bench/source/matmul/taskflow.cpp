@@ -65,7 +65,7 @@ void matmul(float *A, float *B, float *R, unsigned n, unsigned s, Add add, tf::S
   sbf.join();
 }
 
-void matmul_taskflow(benchmark::State &state) {
+void matmul_ztaskflow(benchmark::State &state) {
 
   state.counters["green_threads"] = state.range(0);
   state.counters["mat NxN"] = matmul_work;
@@ -105,4 +105,4 @@ void matmul_taskflow(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(matmul_taskflow)->Apply(targs)->UseRealTime();
+BENCHMARK(matmul_ztaskflow)->Apply(targs)->UseRealTime();

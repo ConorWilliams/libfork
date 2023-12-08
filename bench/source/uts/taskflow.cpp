@@ -57,7 +57,7 @@ auto uts(int depth, Node *parent, tf::Subflow &sbf) -> result {
   return r;
 };
 
-void uts_taskflow(benchmark::State &state, int tree) {
+void uts_ztaskflow(benchmark::State &state, int tree) {
 
   state.counters["green_threads"] = state.range(0);
 
@@ -92,4 +92,4 @@ void uts_taskflow(benchmark::State &state, int tree) {
 
 } // namespace
 
-MAKE_UTS_FOR(uts_taskflow);
+MAKE_UTS_FOR(uts_ztaskflow);
