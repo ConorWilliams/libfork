@@ -30,7 +30,6 @@ with open(args.data_file, "r") as file:
         data[name][2].append(float(dev))
 
 
-
 y_zero = data["zero"][1][0]
 y_calib = data["calibrate"][1][0]
 y_serial = data["serial"][1][0]
@@ -46,9 +45,9 @@ for k, v in data.items():
     y = np.asarray(v[1])
     err = np.asarray(v[2])
 
-    err = (err) / (y_serial - y_calib) 
-    y = (y - y_serial) / (y_serial - y_calib) 
-    # 
+    err = (err) / (y_serial - y_calib)
+    y = (y - y_serial) / (y_serial - y_calib)
+    #
 
     plt.errorbar(x, y, yerr=err, label=k, capsize=2)
 

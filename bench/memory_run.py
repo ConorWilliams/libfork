@@ -75,11 +75,9 @@ with open(f"memory.{bench.strip()}.csv", "w") as file:
             elif i > 1:
                 break
 
-           
             mem = []
 
             for r in range(25 if is_serial else 5):
-
                 command = f'/usr/bin/time -f"MEMORY=%M"  -- {args.binary} --benchmark_filter="{reg}" --benchmark_time_unit=ms'
 
                 # print(f"{command=}")

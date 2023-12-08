@@ -4822,12 +4822,14 @@ namespace lf::impl {
 template <typename Shared>
 struct numa_context {
  private:
-  static constexpr std::size_t k_steal_attempts = 32; ///< Attempts per target.
+  static constexpr std::size_t k_min_steal_attempts = 1024;
+  static constexpr std::size_t k_steal_attempts_per_target = 32;
 
   xoshiro m_rng;                                  ///< Thread-local RNG.
   std::shared_ptr<Shared> m_shared;               ///< Shared variables between all numa_contexts.
   worker_context *m_context = nullptr;            ///< The worker context we are associated with.
   std::discrete_distribution<std::size_t> m_dist; ///< The distribution for stealing.
+  std::vector<numa_context *> m_close;            ///< First order neighbors.
   std::vector<numa_context *> m_neigh;            ///< Our neighbors (excluding ourselves).
 
  public:
@@ -4873,6 +4875,12 @@ struct numa_context {
 
     LF_TRY {
 
+      if (topo.neighbors.size() > 1){
+        m_close = impl::map(topo.neighbors[1], [](auto const & neigh) {
+          return neigh.get();
+        });
+      }
+
       // Skip the first one as it is just us.
       for (std::size_t i = 1; i < topo.neighbors.size(); ++i) {
 
@@ -4888,6 +4896,7 @@ struct numa_context {
       m_dist = std::discrete_distribution<std::size_t>{weights.begin(), weights.end()};
 
     } LF_CATCH_ALL {
+      m_close.clear();
       m_neigh.clear();
       LF_RETHROW;
     }
@@ -4914,28 +4923,44 @@ struct numa_context {
    */
   [[nodiscard]] auto try_steal() noexcept -> task_handle {
 
-    for (std::size_t i = 0; i < k_steal_attempts * m_neigh.size(); ++i) {
+    if (m_neigh.empty()){
+      return nullptr;
+    }
 
-      numa_context *context = m_neigh[m_dist(m_rng)];
-
-      LF_ASSERT(context->m_context);
-
-      auto [err, task] = context->m_context->try_steal();
-
-      switch (err) {
-        case lf::err::none:
-          LF_LOG("Stole task from {}", (void *)context);
-          return task;
-
-        case lf::err::lost:
-          // We don't retry here as we don't want to cause contention
-          // and we have multiple steal attempts anyway.
-        case lf::err::empty:
-          continue;
-
-        default:
-          LF_ASSERT(false);
+    #define LF_RETURN_OR_CONTINUE(expr) \
+      auto * context = expr;\
+      LF_ASSERT(context); \
+      LF_ASSERT(context->m_context);\
+      auto [err, task] = context->m_context->try_steal();\
+\
+      switch (err) {\
+        case lf::err::none:\
+          LF_LOG("Stole task from {}", (void *)context);\
+          return task;\
+\
+        case lf::err::lost:\
+          /* We don't retry here as we don't want to cause contention */ \
+          /* and we have multiple steal attempts anyway */ \
+        case lf::err::empty:\
+          continue;\
+\
+        default:\
+          LF_ASSERT(false);\
       }
+
+
+    std::ranges::shuffle(m_close, m_rng);
+
+    // Check all of the closes numa domain.
+    for (auto * neigh : m_close) {
+      LF_RETURN_OR_CONTINUE(neigh);
+    }
+
+    std::size_t attempts = k_min_steal_attempts + k_steal_attempts_per_target * m_neigh.size();
+
+    // Then work probabilistically.
+    for (std::size_t i = 0; i < attempts; ++i) {
+       LF_RETURN_OR_CONTINUE(m_neigh[m_dist(m_rng)]);
     }
 
     return nullptr;
@@ -5360,50 +5385,58 @@ static constexpr std::memory_order acquire = std::memory_order_acquire;
 static constexpr std::memory_order acq_rel = std::memory_order_acq_rel;
 static constexpr std::memory_order release = std::memory_order_release;
 
-static constexpr std::uint64_t k_thieve = 1;
-static constexpr std::uint64_t k_active = k_thieve << 32U;
-
-static constexpr std::uint64_t k_thieve_mask = (k_active - 1);
-static constexpr std::uint64_t k_active_mask = ~k_thieve_mask;
-
 /**
  * @brief A collection of heap allocated atomic variables used for tracking the state of the scheduler.
  */
-struct lazy_vars {
+struct lazy_vars : busy_vars {
 
-  alignas(k_cache_line) std::atomic_uint64_t dual_count = 0; ///< The worker + active counters
-  alignas(k_cache_line) event_count notifier;                ///< The pools notifier.
+  using busy_vars::busy_vars;
+
+  // Invariant: *** if (A > 0) then (T >= 1 OR S == 0) ***
+
+  struct fat_counters {
+    alignas(k_cache_line) std::atomic_uint64_t thief = 0; ///< Number of thieving workers.
+    alignas(k_cache_line) event_count notifier;           ///< Notifier for this numa pool.
+  };
+
+  alignas(k_cache_line) std::atomic_uint64_t active = 0;
+  alignas(k_cache_line) std::vector<fat_counters> numa;
 
   /**
-   * Effect:
-   *
-   * T <- T - 1
-   * S <- S
-   * A <- A + 1
-   *
-   * A is now guaranteed to be greater than 0, if we were the last thief we try to wake someone.
-   *
-   * Then we do the task.
-   *
-   * Once we are done we perform:
-   *
-   * T <- T + 1
-   * S <- S
-   * A <- A - 1
-   *
-   * This never invalidates the invariant.
-   *
-   * Overall effect: thief->active, do the work, active->thief.
+   * Called by a thief with work, effect: thief->active, do work, active->sleep.
    */
   template <typename Handle>
     requires std::same_as<Handle, task_handle> || std::same_as<Handle, intruded_list<submit_handle>>
-  void thief_round_trip(Handle handle) noexcept {
+  void thief_work_sleep(Handle handle, std::size_t tid) noexcept {
 
-    auto prev_thieves = dual_count.fetch_add(k_active - k_thieve, acq_rel) & k_thieve_mask;
+    // Invariant: *** if (A > 0) then (Ti >= 1 OR Si == 0) for all i***
 
-    if (prev_thieves == 1) {
-      LF_LOG("The last thief wakes someone up");
-      notifier.notify_one();
+    // First we transition from thief -> sleep:
+    //
+    // Ti <- Ti - 1
+    // Si <- Si + 1
+    //
+    // Invariant in numa j != i is uneffected.
+    //
+    // In numa i we guarantee that Ti >= 1 by waking somone else if we are the last thief as Si != 0.
+
+    if (numa[tid].thief.fetch_sub(1, acq_rel) == 1) {
+      numa[tid].notifier.notify_one();
+    }
+
+    // Then we transition from sleep -> active
+    //
+    // A <- A + 1
+    // Si <- Si - 1
+
+    // If we are the first active then we need to maintain the invariant across all numa domains.
+
+    if (active.fetch_add(1, acq_rel) == 0) {
+      for (auto &&domain : numa) {
+        if (domain.thief.load(acquire) == 0) {
+          domain.notifier.notify_one();
+        }
+      }
     }
 
     if constexpr (std::same_as<Handle, intruded_list<submit_handle>>) {
@@ -5414,18 +5447,15 @@ struct lazy_vars {
       resume(handle);
     }
 
-    dual_count.fetch_sub(k_active - k_thieve, acq_rel);
+    // Finally A <- A - 1 does not invalidate the invariant in any domain.
+    active.fetch_sub(1, release);
   }
-};
-
-struct lazy_group : busy_vars, std::vector<lazy_vars> {
-  explicit lazy_group(std::size_t n) : busy_vars(n) {}
 };
 
 /**
  * @brief The function that workers run while the pool is alive.
  */
-inline auto lazy_work(numa_topology::numa_node<numa_context<lazy_group>> node) noexcept {
+inline auto lazy_work(numa_topology::numa_node<numa_context<lazy_vars>> node) noexcept {
 
   LF_ASSERT(!node.neighbors.empty());
   LF_ASSERT(!node.neighbors.front().empty());
@@ -5434,10 +5464,14 @@ inline auto lazy_work(numa_topology::numa_node<numa_context<lazy_group>> node) n
 
   std::shared_ptr my_context = node.neighbors.front().front();
 
-  auto &my_lazy_vars = my_context->shared()[node.numa];
+  LF_ASSERT(!my_context->shared().numa.empty());
 
-  lf::nullary_function_t notify{[&my_lazy_vars]() {
-    my_lazy_vars.notifier.notify_all();
+  std::size_t numa_tid = node.numa;
+
+  auto &my_numa_vars = my_context->shared().numa[numa_tid]; // node.numa
+
+  lf::nullary_function_t notify{[&my_numa_vars]() {
+    my_numa_vars.notifier.notify_all();
   }};
 
   my_context->init_worker_and_bind(std::move(notify), node);
@@ -5458,39 +5492,41 @@ inline auto lazy_work(numa_topology::numa_node<numa_context<lazy_group>> node) n
   /**
    * Invariant we want to uphold:
    *
-   *  If there is an active task there is always: [at least one thief] OR [no sleeping].
+   *  If there is an active task there is always: [at least one thief] OR [no sleeping] in each numa.
    *
    * Let:
-   *  T = number of thieves
-   *  S = number of sleeping threads
-   *  A = number of active threads
+   *  Ti = number of thieves in numa i
+   *  Si = number of sleeping threads in numa i
+   *  A = number of active threads across all numa domains
    *
-   * Invariant: *** if (A > 0) then (T >= 1 OR S == 0) ***
-   *
-   * Lemma 1: Promoting an S -> T guarantees that the invariant is upheld.
+   * Invariant: *** if (A > 0) then (Ti >= 1 OR Si == 0) for all i***
+   */
+
+  /**
+   * Lemma 1: Promoting an Si -> Ti guarantees that the invariant is upheld.
    *
    * Proof 1:
-   *  Case S != 0, then T -> T + 1, hence T > 0 hence invariant maintained.
-   *  Case S == 0, then invariant is already maintained.
+   *  Ti -> Ti + 1, hence Ti > 0, hence invariant maintained in numa i.
+   *  In numa j != i invariant is uneffected.
+   *
    */
 
 wake_up:
   /**
-   * Invariant maintained by Lemma 1 regardless if this is a wake up (S <- S - 1) or join (S <- S).
+   * Invariant maintained by Lemma 1.
    */
-  my_lazy_vars.dual_count.fetch_add(k_thieve, release);
+  my_numa_vars.thief.fetch_add(1, release);
 
-continue_as_thief:
   /**
    * First we handle the fast path (work to do) before touching the notifier.
    */
   if (auto *submission = my_context->try_pop_all()) {
-    my_lazy_vars.thief_round_trip(submission);
-    goto continue_as_thief;
+    my_context->shared().thief_work_sleep(submission, numa_tid);
+    goto wake_up;
   }
   if (auto *stolen = my_context->try_steal()) {
-    my_lazy_vars.thief_round_trip(stolen);
-    goto continue_as_thief;
+    my_context->shared().thief_work_sleep(stolen, numa_tid);
+    goto wake_up;
   }
 
   /**
@@ -5508,13 +5544,13 @@ continue_as_thief:
    *    Commit/cancel wait on key.
    */
 
-  auto key = my_lazy_vars.notifier.prepare_wait();
+  auto key = my_numa_vars.notifier.prepare_wait();
 
   if (auto *submission = my_context->try_pop_all()) {
     // Check our private **before** `stop`.
-    my_lazy_vars.notifier.cancel_wait();
-    my_lazy_vars.thief_round_trip(submission);
-    goto continue_as_thief;
+    my_numa_vars.notifier.cancel_wait();
+    my_context->shared().thief_work_sleep(submission, numa_tid);
+    goto wake_up;
   }
 
   if (my_context->shared().stop.test(acquire)) {
@@ -5522,44 +5558,41 @@ continue_as_thief:
     // that the requester has ensured that everyone is done. We cannot check
     // this i.e it is possible a thread that just signaled the master thread
     // is still `active` but act stalled.
-    my_lazy_vars.notifier.cancel_wait();
-    // We leave a "ghost thief" here e.g. don't bother to reduce the counter,
-    // This is fine because no-one can sleep now that the stop flag is set.
+    my_numa_vars.notifier.cancel_wait();
+    my_numa_vars.notifier.notify_all();
+    my_numa_vars.thief.fetch_sub(1, release);
     return;
   }
 
   /**
    * Try:
    *
-   * T <- T - 1
-   * S <- S + 1
-   * A <- A
+   * Ti <- Ti - 1
+   * Si <- Si + 1
    *
-   * If new T == 0 and A > 0 then wake self immediately i.e:
+   * If new Ti == 0 then we check A, if A > 0 then wake self immediately i.e:
    *
-   * T <- T + 1
-   * S <- S - 1
-   * A <- A
+   * Ti <- Ti + 1
+   * Si <- Si - 1
    *
-   * If we return true then we are safe to sleep, otherwise we must stay awake.
+   * This maintains invariant in numa.
    */
 
-  auto prev_dual = my_lazy_vars.dual_count.fetch_sub(k_thieve, acq_rel);
+  if (my_numa_vars.thief.fetch_sub(1, acq_rel) == 1) {
 
-  // We are now registered as a sleeping thread and may have broken the invariant.
+    // If we are the last thief then invariant may be broken if A > 0 as S > 0 (because we are asleep).
 
-  auto prev_thieves = prev_dual & k_thieve_mask;
-  auto prev_actives = prev_dual & k_active_mask; // Again only need 0 or non-zero.
-
-  if (prev_thieves == 1 && prev_actives != 0) {
-    // Restore the invariant.
-    goto wake_up;
+    if (my_context->shared().active.load(acquire) > 0) {
+      // Restore the invariant if A > 0 by immediately waking self.
+      my_numa_vars.notifier.cancel_wait();
+      goto wake_up;
+    }
   }
 
   LF_LOG("Goes to sleep");
 
   // We are safe to sleep.
-  my_lazy_vars.notifier.wait(key);
+  my_numa_vars.notifier.wait(key);
   // Note, this could be a spurious wakeup, that doesn't matter because we will just loop around.
   goto wake_up;
 }
@@ -5578,8 +5611,8 @@ class lazy_pool {
   std::size_t m_num_threads;
   std::uniform_int_distribution<std::size_t> m_dist{0, m_num_threads - 1};
   xoshiro m_rng{seed, std::random_device{}};
-  std::shared_ptr<impl::lazy_group> m_share = std::make_shared<impl::lazy_group>(m_num_threads);
-  std::vector<std::shared_ptr<impl::numa_context<impl::lazy_group>>> m_worker = {};
+  std::shared_ptr<impl::lazy_vars> m_share = std::make_shared<impl::lazy_vars>(m_num_threads);
+  std::vector<std::shared_ptr<impl::numa_context<impl::lazy_vars>>> m_worker = {};
   std::vector<std::thread> m_threads = {};
 
   using strategy = numa_strategy;
@@ -5597,7 +5630,7 @@ class lazy_pool {
     LF_ASSERT_NO_ASSUME(!m_share->stop.test(std::memory_order_acquire));
 
     for (std::size_t i = 0; i < n; ++i) {
-      m_worker.push_back(std::make_shared<impl::numa_context<impl::lazy_group>>(m_rng, m_share));
+      m_worker.push_back(std::make_shared<impl::numa_context<impl::lazy_vars>>(m_rng, m_share));
       m_rng.long_jump();
     }
 
@@ -5611,7 +5644,7 @@ class lazy_pool {
 
     LF_LOG("Lazy pool has {} numa nodes", num_numa);
 
-    static_cast<std::vector<impl::lazy_vars> &>(*m_share) = std::vector<impl::lazy_vars>(num_numa);
+    m_share->numa = std::vector<impl::lazy_vars::fat_counters>(num_numa);
 
     [&]() noexcept {
       // All workers must be created, if we fail to create them all then we must terminate else
@@ -5634,7 +5667,7 @@ class lazy_pool {
     // Set conditions for workers to stop.
     m_share->stop.test_and_set(std::memory_order_release);
 
-    for (auto &&var : *m_share) {
+    for (auto &&var : m_share->numa) {
       var.notifier.notify_all();
     }
 

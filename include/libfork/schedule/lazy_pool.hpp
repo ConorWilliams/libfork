@@ -54,45 +54,44 @@ struct lazy_vars : busy_vars {
   // Invariant: *** if (A > 0) then (T >= 1 OR S == 0) ***
 
   struct fat_counters {
-    alignas(k_cache_line) std::atomic_uint64_t thief = 0;      ///< Number of thieving workers.
-    alignas(k_cache_line) event_count notifier;                ///< Notifier for this numa pool.
+    alignas(k_cache_line) std::atomic_uint64_t thief = 0; ///< Number of thieving workers.
+    alignas(k_cache_line) event_count notifier;           ///< Notifier for this numa pool.
   };
 
   alignas(k_cache_line) std::atomic_uint64_t active = 0;
   alignas(k_cache_line) std::vector<fat_counters> numa;
 
-  
   /**
-   * Called by a thief with work, effect: thief->active, do work, active->sleep. 
+   * Called by a thief with work, effect: thief->active, do work, active->sleep.
    */
   template <typename Handle>
     requires std::same_as<Handle, task_handle> || std::same_as<Handle, intruded_list<submit_handle>>
-  void thief_work_sleep(Handle handle,  std::size_t tid) noexcept {
+  void thief_work_sleep(Handle handle, std::size_t tid) noexcept {
 
     // Invariant: *** if (A > 0) then (Ti >= 1 OR Si == 0) for all i***
 
     // First we transition from thief -> sleep:
-    // 
+    //
     // Ti <- Ti - 1
     // Si <- Si + 1
     //
-    // Invarient in numa j != i is uneffected.
+    // Invariant in numa j != i is uneffected.
     //
-    // In numa i we garantee that Ti >= 1 by waking somone else if we are the last thief as Si != 0.
+    // In numa i we guarantee that Ti >= 1 by waking somone else if we are the last thief as Si != 0.
 
-    if (numa[tid].thief.fetch_sub(1, acq_rel) == 1){
+    if (numa[tid].thief.fetch_sub(1, acq_rel) == 1) {
       numa[tid].notifier.notify_one();
-    } 
+    }
 
     // Then we transition from sleep -> active
     //
     // A <- A + 1
     // Si <- Si - 1
 
-    // If we are the first active then we need to maintain the invarient across all numa domains.
+    // If we are the first active then we need to maintain the invariant across all numa domains.
 
-    if (active.fetch_add(1, acq_rel) == 0){
-      for (auto && domain : numa){
+    if (active.fetch_add(1, acq_rel) == 0) {
+      for (auto &&domain : numa) {
         if (domain.thief.load(acquire) == 0) {
           domain.notifier.notify_one();
         }
@@ -107,7 +106,7 @@ struct lazy_vars : busy_vars {
       resume(handle);
     }
 
-    // Finally A <- A - 1 does not invalidate the invarient in any domain.
+    // Finally A <- A - 1 does not invalidate the invariant in any domain.
     active.fetch_sub(1, release);
   }
 };
@@ -161,14 +160,14 @@ inline auto lazy_work(numa_topology::numa_node<numa_context<lazy_vars>> node) no
    *
    * Invariant: *** if (A > 0) then (Ti >= 1 OR Si == 0) for all i***
    */
-  
+
   /**
    * Lemma 1: Promoting an Si -> Ti guarantees that the invariant is upheld.
    *
    * Proof 1:
    *  Ti -> Ti + 1, hence Ti > 0, hence invariant maintained in numa i.
-   *  In numa j != i invarient is uneffected.
-   *  
+   *  In numa j != i invariant is uneffected.
+   *
    */
 
 wake_up:
@@ -185,7 +184,7 @@ wake_up:
     goto wake_up;
   }
   if (auto *stolen = my_context->try_steal()) {
-   my_context->shared().thief_work_sleep(stolen,numa_tid);
+    my_context->shared().thief_work_sleep(stolen, numa_tid);
     goto wake_up;
   }
 
@@ -235,18 +234,18 @@ wake_up:
    * Ti <- Ti + 1
    * Si <- Si - 1
    *
-   * This maintains invarient in numa.
+   * This maintains invariant in numa.
    */
 
   if (my_numa_vars.thief.fetch_sub(1, acq_rel) == 1) {
-    
-    // If we are the last thief then invarient may be broken if A > 0 as S > 0 (because we are asleep).
-    
+
+    // If we are the last thief then invariant may be broken if A > 0 as S > 0 (because we are asleep).
+
     if (my_context->shared().active.load(acquire) > 0) {
       // Restore the invariant if A > 0 by immediately waking self.
       my_numa_vars.notifier.cancel_wait();
       goto wake_up;
-    }    
+    }
   }
 
   LF_LOG("Goes to sleep");
@@ -319,9 +318,7 @@ class lazy_pool {
     }();
   }
 
-  void schedule(lf::intruded_list<lf::submit_handle> jobs) { 
-    m_worker[m_dist(m_rng)]->submit(jobs); 
-  }
+  void schedule(lf::intruded_list<lf::submit_handle> jobs) { m_worker[m_dist(m_rng)]->submit(jobs); }
 
   ~lazy_pool() noexcept {
     LF_LOG("Requesting a stop");

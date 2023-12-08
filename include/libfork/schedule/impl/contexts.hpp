@@ -34,14 +34,14 @@ namespace lf::impl {
 template <typename Shared>
 struct numa_context {
  private:
-  static constexpr std::size_t k_min_steal_attempts = 1024; 
-  static constexpr std::size_t k_steal_attempts_per_target = 32; 
+  static constexpr std::size_t k_min_steal_attempts = 1024;
+  static constexpr std::size_t k_steal_attempts_per_target = 32;
 
   xoshiro m_rng;                                  ///< Thread-local RNG.
   std::shared_ptr<Shared> m_shared;               ///< Shared variables between all numa_contexts.
   worker_context *m_context = nullptr;            ///< The worker context we are associated with.
   std::discrete_distribution<std::size_t> m_dist; ///< The distribution for stealing.
-  std::vector<numa_context *> m_close;            ///< First order neighbours.
+  std::vector<numa_context *> m_close;            ///< First order neighbors.
   std::vector<numa_context *> m_neigh;            ///< Our neighbors (excluding ourselves).
 
  public:
