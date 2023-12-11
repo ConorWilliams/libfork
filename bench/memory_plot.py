@@ -17,7 +17,18 @@ parser = argparse.ArgumentParser(description="Plot memory")
 args = parser.parse_args()
 
 Benchmarks = []
-patterns = ["T1", "T1L", "T1XXL", "T3", "T3L", "T3L"]
+
+patterns = [
+    "fib",
+    "integ",
+    "matmul",
+    "nqueens",
+    "T1",
+    "T3",
+    "T1L",
+    "T3L",
+    "T1XXL",
+]
 
 for bm in patterns:
     #
@@ -32,25 +43,29 @@ for bm in patterns:
                 data[name] = ([], [], [])
 
             data[name][0].append(int(threads))
-            data[name][1].append(float(med) / 1024)
-            data[name][2].append(float(dev) / 1024)
+            data[name][1].append(float(med) / 1024.0)
+            data[name][2].append(float(dev) / 1024.0)
 
     Benchmarks.append(data)
 
 
-fig, axs = plt.subplots(3, 2, figsize=(16, 7), sharex="col")
+fig, axs = plt.subplots(5, 2, figsize=(6, 10), sharex="col", sharey=None)
 
-patterns = ["T1", "T1L", "T1XXL", "T3", "T3L", "noop"]
-
-# Benchmarks = Benchmarks[:1]
+patterns = [
+    "fib",
+    "integrate",
+    "matmul",
+    "nqueens",
+    "T1 ",
+    "T3 ",
+    "T1L",
+    "T3L",
+    "T1XXL",
+    "T3XXL",
+]
 
 for (ax), p, data, i in zip(axs.flatten(), patterns, Benchmarks, range(1000)):
-    if p == "noop":
-        continue
-
     print(f"{p=}")
-
-    #
 
     y_zero = data["zero"][1][0]
     y_calib = data["calibrate"][1][0]
@@ -58,7 +73,7 @@ for (ax), p, data, i in zip(axs.flatten(), patterns, Benchmarks, range(1000)):
 
     for k, v in data.items():
         #
-        if "seq" in k or "busy" in k:
+        if "seq" in k or "coalloc" in k:
             continue
 
         if k == "zero" or k == "serial" or k == "calibrate":
@@ -68,21 +83,21 @@ for (ax), p, data, i in zip(axs.flatten(), patterns, Benchmarks, range(1000)):
         y = np.asarray(v[1])
         err = np.asarray(v[2])
 
-        err = err / (y[0] - y_calib)
-        y = (y - y_calib) / (y[0] - y_calib)
+        err = err
+        y = y
 
         def func(x, a, b, n):
-            return y_calib + (y_serial - y_calib) * (a + b * (x) ** n)
+            return a + b * x**n
 
         p0 = (y_serial, 100, 2)
         bounds = ([0, 0, 1], [np.inf, np.inf, 5])
         popt, pcov = curve_fit(func, x, y, p0=p0, bounds=bounds, maxfev=10000)
 
-        # a, b, n = popt
+        a, b, n = popt
 
-        # da, db, dn = np.sqrt(np.diag(pcov))
+        da, db, dn = np.sqrt(np.diag(pcov))
 
-        # print(f"{k:>30}: {a:>16.2f} + {b:>16.2f} * x^{n:>8.1f} +- {dn:<8.1f}")
+        print(f"{k:>30}: {a:>16.1f} + {b:>16.2f} * x^{n:>8.2f} +- {dn:<8.2f}")
 
         if k == "taskflow":
             pass
@@ -102,8 +117,8 @@ for (ax), p, data, i in zip(axs.flatten(), patterns, Benchmarks, range(1000)):
         ax.set_xlim(0, 112)
         # ax.set_ylim(bottom=0)
 
-        # ax.set_yscale("log", base=10)
-        # ax.set_xscale("log", base=2)
+        ax.set_yscale("log", base=10)
+        # ax.set_xscale("log", base=10)
 
 
 fig.supxlabel("\\textbf{{Threads/cores}}")

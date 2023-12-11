@@ -69,13 +69,13 @@ benchmarks = [(k, sorted(v.items())) for k, v in benchmarks.items()]
 
 benchmarks.sort()
 
-fig, axs = plt.subplots(3, 2, figsize=(8, 7), sharex=True, sharey=True)
+fig, axs = plt.subplots(2, 3, figsize=(10, 8), sharex=True, sharey=True)
 
 count = 0
 
 patterns = ["T1 ", "T1L", "T1XXL", "T3 ", "T3L", "T3XXL"]
 
-patterns = ["T1 ", "T3 ", "T1L", "T3L", "T1XXL", "T3XXL"]
+# patterns = ["T1 ", "T3 ", "T1L", "T3L", "T1XXL", "T3XXL"]
 
 for (ax_abs), p in zip(axs.flatten(), patterns):
     # find the serial benchmark

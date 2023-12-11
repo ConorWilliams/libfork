@@ -5,208 +5,253 @@ import json
 import re
 from statistics import mean, stdev, median, geometric_mean
 
+plt.rcParams["text.usetex"] = True
 
-'''
+"""
 
 cmake --build --preset=rel && ./build/rel/bench/benchmark  --benchmark_time_unit=ms --benchmark_filter="matmul" --benchmark_out_format=json --benchmark_out=bench/data/laptop/matmul.json --benchmark_repetitions=5
 
-'''
+"""
+
+
+# python3 ./bench/xplot.py -o ./bench/test2.pdf
 
 
 def stat(x):
-     
-     x = sorted(x)[:-1] # remove outliers
+    x = sorted(x)[:]
 
-     err = stdev(x) / np.sqrt(len(x)) if len(x) > 1 else 0
-
-     return geometric_mean(x), err, min(x)
+    err = stdev(x) / (np.sqrt(len(x)) if len(x) > 1 else 0)
+    #
+    return median(x), err, min(x)
 
 
 # Parse the input file and benchmark name and optional output file.
 parser = argparse.ArgumentParser()
-parser.add_argument("input_file", help="Input file")
-parser.add_argument("regex", help="regex to match benchmark names")
 parser.add_argument("-o", "--output_file", help="Output file")
 parser.add_argument("-n", "--nowa_root", help="nowa data root")
+parser.add_argument("-r", "--rel", help="plot relative speedup", action="store_true")
 args = parser.parse_args()
 
-# Compile the regex
-regex = re.compile(args.regex)
-
-# Read the input file as json
-with open(args.input_file) as f:
-    data = json.load(f)
-
 # Build a dictionary of benchmarks
-
 benchmarks = {}
 
-for bench in data["benchmarks"]:
 
-    if bench["run_type"] != "iteration":
-        continue
+patterns = [
+    "fib",
+    "integ",
+    "matmul",
+    "nqueens",
+    "uts_libfork_alloc",
+    "uts_flow",
+    "uts_omp",
+    "uts_tbb",
+]
 
-    name = bench["name"].split("/")
 
-    name = [n for n in name if n != "real_time" and not n.isnumeric()]
+for file in patterns:
+    # Read the input file as json
+    with open(f"./bench/data/sapphire/v5/csd3.{file}.json") as f:
+        #
+        data = json.load(f)
 
-    name = "".join(name)
+        for bench in data["benchmarks"]:
+            if bench["run_type"] != "iteration":
+                continue
 
-    # Check name matches regex
-    if(not regex.search(name)): 
-        continue
+            name = bench["name"].split("/")
 
-    if(name not in benchmarks):
-        benchmarks[name] = {}
+            name = [n for n in name if n != "real_time" and not n.isnumeric()]
 
-    num_threads = int(bench["green_threads"] + 0.5)
+            name = "".join(name)
 
-    if(num_threads not in benchmarks[name]):
-        benchmarks[name][num_threads] = []
+            name = name.replace("seq", "fan")
 
-    benchmarks[name][num_threads].append(bench["real_time"])
-
-# ----------Parse nowa ----------- #
- 
-if args.nowa_root is not None:
-    for name in ["fib", "integrate", "matmul", "nqueens"]:
-        
-        data = np.loadtxt(f"{args.nowa_root}/nowa/{name}.csv", skiprows=1)
-
-        if(not regex.search(name)): 
-            continue
-
-        name = f"{name}_nowa"
-
-        for row in data:
-            num_threads = int(row[0])
-            time = row[2]
-
-            if(name not in benchmarks):
+            if name not in benchmarks:
+                print("found", name)
                 benchmarks[name] = {}
 
-            if(num_threads not in benchmarks[name]):
+            num_threads = int(bench["green_threads"] + 0.5)
+
+            if num_threads not in benchmarks[name]:
                 benchmarks[name][num_threads] = []
 
-            benchmarks[name][num_threads].append(time*1000)
-
-        # print(data)
+            benchmarks[name][num_threads].append(bench["real_time"])
 
 benchmarks = [(k, sorted(v.items())) for k, v in benchmarks.items()]
 
-# print(benchmarks)
-      
 benchmarks.sort()
 
-    
-# find the serial benchmark
+fig, axs = plt.subplots(5, 2, figsize=(6, 10), sharex="col", sharey=None)
 
-tS = -1
-tSerr = -1
+count = 0
 
-for k, v in benchmarks:
-    if ("serial" in k):
-        tS, tSerr, _ = stat(v[0][1])
-        break
+patterns = [
+    "fib",
+    "integrate",
+    "matmul",
+    "nqueens",
+    "T1 ",
+    "T3 ",
+    "T1L",
+    "T3L",
+    "T1XXL",
+    "T3XXL",
+]
 
-# Plot the results
+for (ax_abs), p in zip(axs.flatten(), patterns):
+    # find the serial benchmark
 
-fig, (ax_rel, ax_abs) = plt.subplots(1, 2, figsize=(12, 6))
+    print(f"Plotting {p}")
 
-fig.suptitle(args.input_file)
+    tS = -1
+    tSerr = -1
 
-ymax = 0
-xmax = 0
+    for k, v in benchmarks:
+        #
+        if p not in k:
+            continue
 
-for k, v in benchmarks:
+        if "serial" in k:
+            tS, tSerr, _ = stat(v[0][1])
+            break
 
-    label = "_".join(k.split("_")[1:])
+    # Plot the results
 
-    if (label.startswith("serial")):
-        continue;
-    
-    # if label.startswith("lib"):
-    #     label = f"{label[8:8+4]}:{label[-4:-1]}"
+    # fig.suptitle(args.input_file)
 
-    x = np.asarray([t[0] for t in v])
-    y, err, mi = map(np.asarray, zip(*[stat(d[1]) for d in v]))
+    ymax = 0
+    xmax = 0
 
-    xmax = max(xmax, max(x))
+    ymin = 112
 
-    # --------------- #
+    for k, v in benchmarks:
+        if p not in k:
+            # print(f"skipping {k} wich does not contain {p}")
+            continue
 
-    m, c = np.polyfit(x, y[0] / mi, 1)
-    print(f"{label:>40}: {m}")
+        #
+        label = "_".join(k.split("_")[1:])
 
-    # --------------- #
+        if label.startswith("serial"):
+            continue
 
-    t =  y[0] / y
-    ferr = err / y
-    terr = t * np.sqrt((ferr ** 2 + ferr[0]**2))
+        if label.startswith("lib"):
+            label = f"libfork ({label[8:8+4]})"
 
-    ax_rel.errorbar(x, t, yerr=terr, label=label.capitalize(), capsize=2)
-    # ax_rel.plot(x, y[0] / mi, "kx")
+        x = np.asarray([t[0] for t in v])
+        y, err, mi = map(np.asarray, zip(*[stat(d[1]) for d in v]))
 
-    # --------------- #
+        xmax = max(xmax, max(x))
 
-    if tS < 0:
-        continue
+        m, c = np.polyfit(x[:10], y[0] / mi[:10], 1)
+        print(f"{label:>40}: pre: {m}")
 
-    Y, Yerr = (tS, tSerr) if tS > 0 else (1, 0)
+        m, c = np.polyfit(x[10:], y[0] / mi[10:], 1)
+        print(f"{label:>40}: ost: {m}")
 
-    t = Y / y
-    ferr = err / y
-    terr = t * np.sqrt((ferr ** 2 + (Yerr/ Y)**2))
-    terr[0] = 0
-   
-    ax_abs.errorbar(x, t, yerr=terr, label=label.capitalize(), capsize=2)
+        if label == "omp":
+            label = "OpenMP"
+        elif label == "tbb":
+            label = "OneTBB"
+        elif label == "ztaskflow":
+            label = "Taskflow"
+        else:
+            label = label.capitalize()
 
-    ymax = max(ymax, max(t))
+        # --------------- #
 
-print(f"ymax: {ymax}")
-print(f"xmax: {xmax}")
+        if tS < 0:
+            continue
 
-ideal_abs = range(1, int(xmax+1.5))
-ideal_rel = range(1, int(xmax+1.5))
-    
-ax_abs.plot(ideal_abs, ideal_abs, color="black", linestyle="dashed", label="Ideal")
-ax_rel.plot(ideal_rel, ideal_rel, color="black", linestyle="dashed", label="Ideal")
+        t = tS / y
 
-ax_rel.set_yticks(range(0, int(xmax+1.5), 14))
-ax_rel.set_xticks(range(0, int(xmax+1.5), 14))
+        f_yerr = err / y
+        f_yerr = tSerr / tS
+
+        terr = t * np.sqrt((f_yerr**2 + f_yerr**2))
+
+        if args.rel:
+            t /= x
+            terr /= x
+
+        if count == 0:
+            ax_abs.errorbar(x, t, yerr=terr, label=label, capsize=2)
+        else:
+            ax_abs.errorbar(x, t, yerr=terr, capsize=2)
+
+        ymax = max(ymax, max(t))
+        ymin = min(ymin, min(t))
+
+    # ax_abs.set_ylim(ymin, 112)
+
+    # print(f"ymax: {ymax}")
+    # print(f"xmax: {xmax}")
+
+    ideal_abs = range(1, int(xmax + 1.5))
+    # ideal_rel = range(1, int(xmax + 1.5))
+
+    # if args.rel:
+    #     ax_abs.plot(
+    #         ideal_abs,
+    #         ideal_abs,
+    #         color="black",
+    #         linestyle="dashed",
+    #         label="Ideal" if count == 0 else None,
+    #     )
+
+    #     ax_abs.set_ylim(top=112)
+
+    #     # ax_rel.plot(ideal_rel, ideal_rel, color="black", linestyle="dashed")
+
+    #     ax_abs.set_yticks(range(0, int(xmax + 1.5), 14))
+
+    ax_abs.set_xticks(range(0, int(xmax + 1.5), 14))
+
+    ax_abs.set_title(f"\\textit{{{p}}}")
+
+    # if count < 2:
+    # ax_abs.set_yscale("log", base=2)
+    # ax_abs.set_xscale("log", base=2)
+
+    # ax_abs.yaxis.set_label_position("right")
+
+    ax_abs.set_xlim(0, 112)
+
+    ax_abs.set_ylim(bottom=0)
+
+    if p.startswith("T"):
+        if args.rel:
+            ax_abs.set_ylim(0, 1)
+        else:
+            ax_abs.set_ylim(0, 80)
+
+    # ax_abs.set_xlim(0, 112)
+
+    # ax_abs.set_ylim(top=112)
+    # ax_rel.set_ylim(top=112)
+
+    count += 1
+
+# fig.legend()
+
+# fig.set_
+
+fig.supxlabel("\\textbf{{Cores}}")
+
+if args.rel:
+    fig.supylabel("\\textbf{{Efficiency}}")
+else:
+    fig.supylabel("\\textbf{{Speedup}}")
 
 
+fig.legend(
+    loc="upper center",
+    # bbox_to_anchor=(0, 0),
+    ncol=3,
+    frameon=False,
+)
 
-# Set log y axis
-# ax_abs.set_yscale('log')
-
-
-ax_rel.legend(loc="best")
-
-ax_abs.set_title("Absolute")
-ax_abs.set_xlabel("Number of threads")
-ax_abs.set_ylabel("Speedup (Ts / Tn)")
-ax_abs.set_yscale('log', base=2)
-ax_abs.set_xscale('log', base=2)
-
-# plt.gca().set_xscale('log', basex=2)
-
-ax_rel.set_title("Relative")
-ax_rel.set_xlabel("Number of threads")
-ax_rel.set_ylabel("Speedup (T1 / Tn)")
-
-# ax_abs.set_xlim(0, 33)
-# ax_rel.set_xlim(0, 33)
-
-fig.tight_layout()
+fig.tight_layout(rect=(0, 0, 0.95, 0.95))
 
 if args.output_file is not None:
     plt.savefig(args.output_file)
-
-
-
-
-
-
-
-
