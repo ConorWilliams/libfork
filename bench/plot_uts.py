@@ -36,7 +36,14 @@ args = parser.parse_args()
 
 benchmarks = {}
 
-for file in ["uts_libfork_alloc", "uts_flow", "uts_coalloc", "uts_omp", "uts_tbb"]:
+for file in [
+    "uts_libfork_alloc",
+    "uts_flow",
+    "uts_coalloc",
+    "uts_omp",
+    "uts_tbb",
+    "uts_tbb_t3xxl",
+]:
     # Read the input file as json
     with open(f"./bench/data/sapphire/v5/csd3.{file}.json") as f:
         #
@@ -69,7 +76,7 @@ benchmarks = [(k, sorted(v.items())) for k, v in benchmarks.items()]
 
 benchmarks.sort()
 
-fig, axs = plt.subplots(2, 3, figsize=(10, 8), sharex=True, sharey=True)
+fig, axs = plt.subplots(1, 6, figsize=(14, 3), sharex=True, sharey=True)
 
 count = 0
 
@@ -111,18 +118,6 @@ for (ax_abs), p in zip(axs.flatten(), patterns):
         if label.startswith("serial"):
             continue
 
-        # if "fan" in label:
-        #     continue
-
-        # if "busy" in label:
-        #     continue
-
-        # if "lib" in label and "alloc" not in label:
-        #     continue
-
-        # if label.startswith("lib"):
-        #     label = f"libfork-{label[8:8+4]}"
-
         x = np.asarray([t[0] for t in v])
         y, err, mi = map(np.asarray, zip(*[stat(d[1]) for d in v]))
 
@@ -140,25 +135,29 @@ for (ax_abs), p in zip(axs.flatten(), patterns):
 
         if "omp" in label:
             label = "OpenMP"
+            mark = "o"
         elif "tbb" in label:
             label = "OneTBB"
+            mark = "s"
         elif "taskflow" in label:
             label = "Taskflow"
+            mark = "d"
         elif "busy" in label and "co" in label:
-            label = "Libfork (busy*)"
+            label = "Busy-LF*"
+            mark = "<"
         elif "busy" in label:
-            label = "Libfork (busy)"
+            label = "Busy-LF"
+            mark = "v"
         elif "lazy" in label and "co" in label:
-            label = "Libfork (lazy*)"
+            label = "Lazy-LF*"
+            mark = ">"
         elif "lazy" in label:
-            label = "Libfork (lazy)"
+            label = "Lazy-LF"
+            mark = "^"
         else:
-            label = label.capitalize()
+            raise "error"
 
         # --------------- #
-
-        # if tS < 0:
-        #     continue
 
         t = tS / y
 
@@ -172,9 +171,11 @@ for (ax_abs), p in zip(axs.flatten(), patterns):
             terr /= x
 
         if count == 0:
-            ax_abs.errorbar(x, t, yerr=terr, label=label, capsize=2)
+            ax_abs.errorbar(
+                x, t, yerr=terr, label=label, capsize=2, marker=mark, markersize=4
+            )
         else:
-            ax_abs.errorbar(x, t, yerr=terr, capsize=2)
+            ax_abs.errorbar(x, t, yerr=terr, capsize=2, marker=mark, markersize=4)
 
         ymax = max(ymax, max(t))
         ymin = min(ymin, min(t))
@@ -184,30 +185,12 @@ for (ax_abs), p in zip(axs.flatten(), patterns):
 
     ideal_abs = range(1, int(xmax + 1.5))
 
-    if args.rel:
-        # ax_abs.plot(
-        #     ideal_abs,
-        #     ideal_abs,
-        #     color="black",
-        #     linestyle="dashed",
-        #     label="Ideal" if count == 0 else None,
-        # )
-
-        # ax_abs.set_ylim(top=112)
-
-        # ax_rel.plot(ideal_rel, ideal_rel, color="black", linestyle="dashed")
-
-        # ax_abs.set_ylim(top=ymax)
-        pass
-
     ax_abs.set_title(f"\\textit{{{p}}}")
 
-    ax_abs.set_xticks(range(0, int(xmax + 1.5), 14))
+    ax_abs.set_xticks(range(0, int(xmax + 1.5), 2 * 14))
 
     # ax_abs.set_yscale("log", base=2)
     # ax_abs.set_xscale("log", base=2)
-
-    # ax_abs.yaxis.set_label_position("right")
 
     ax_abs.set_xlim(0, 112)
 
@@ -232,7 +215,7 @@ fig.legend(
     frameon=False,
 )
 
-fig.tight_layout(rect=(0, 0, 0.95, 0.95))
+fig.tight_layout(rect=(0.01, 0, 1, 0.9))
 
 if args.output_file is not None:
     plt.savefig(args.output_file)

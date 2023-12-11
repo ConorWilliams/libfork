@@ -73,7 +73,7 @@ for (ax), p, data, i in zip(axs.flatten(), patterns, Benchmarks, range(1000)):
 
     for k, v in data.items():
         #
-        if "seq" in k or "coalloc" in k:
+        if "seq" in k:
             continue
 
         if k == "zero" or k == "serial" or k == "calibrate":

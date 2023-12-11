@@ -71,7 +71,7 @@ for bm in patterns:
 
     Benchmarks.append(benchmarks)
 
-fig, axs = plt.subplots(2, 2, figsize=(8, 7), sharex="col", sharey="row")
+fig, axs = plt.subplots(2, 2, figsize=(6, 5), sharex="col", sharey="row")
 
 count = 0
 
@@ -132,8 +132,12 @@ for (ax_abs), p, benchmarks in zip(axs.flatten(), patterns, Benchmarks):
             label = "OneTBB"
         elif label == "ztaskflow":
             label = "Taskflow"
+        elif "busy" in label:
+            label = "Busy-LF"
+        elif "lazy" in label:
+            label = "Lazy-LF"
         else:
-            label = label.capitalize()
+            print(f"skipping {label}")
 
         # --------------- #
 
@@ -151,10 +155,25 @@ for (ax_abs), p, benchmarks in zip(axs.flatten(), patterns, Benchmarks):
             t /= x
             terr /= x
 
-        if count == 0:
-            ax_abs.errorbar(x, t, yerr=terr, label=label, capsize=2)
+        if "MP" in label:
+            mark = "o"
+        elif "TBB" in label:
+            mark = "s"
+        elif "flow" in label:
+            mark = "d"
+        elif "Busy" in label:
+            mark = "v"
+        elif "Lazy" in label:
+            mark = "^"
         else:
-            ax_abs.errorbar(x, t, yerr=terr, capsize=2)
+            raise "error"
+
+        if count == 0:
+            ax_abs.errorbar(
+                x, t, yerr=terr, label=label, capsize=2, marker=mark, markersize=4
+            )
+        else:
+            ax_abs.errorbar(x, t, yerr=terr, capsize=2, marker=mark, markersize=4)
 
         ymax = max(ymax, max(t))
         ymin = min(ymin, min(t))
@@ -223,7 +242,7 @@ fig.legend(
     frameon=False,
 )
 
-fig.tight_layout(rect=(0, 0, 0.95, 0.95))
+fig.tight_layout(rect=(0, 0, 1, 0.95))
 
 if args.output_file is not None:
     plt.savefig(args.output_file)
