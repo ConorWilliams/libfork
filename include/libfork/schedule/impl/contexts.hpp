@@ -175,6 +175,8 @@ struct numa_context {
        LF_RETURN_OR_CONTINUE(m_neigh[m_dist(m_rng)]);
     }
 
+#undef LF_RETURN_OR_CONTINUE
+
     return nullptr;
   }
 };

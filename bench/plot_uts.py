@@ -18,11 +18,11 @@ cmake --build --preset=rel && ./build/rel/bench/benchmark  --benchmark_time_unit
 
 
 def stat(x):
-    x = sorted(x)[:-1]  # remove warmup
+    x = sorted(x)[:]
 
-    err = stdev(x) / np.sqrt(len(x)) if len(x) > 1 else 0
-
-    return geometric_mean(x), err, min(x)
+    err = stdev(x) / (np.sqrt(len(x)) if len(x) > 1 else 0)
+    #
+    return median(x), err, min(x)
 
 
 # Parse the input file and benchmark name and optional output file.
@@ -36,39 +36,46 @@ args = parser.parse_args()
 
 benchmarks = {}
 
-# Read the input file as json
-with open(f"./bench/data/sapphire/v3/csd3.uts.json") as f:
-    data = json.load(f)
+for file in ["uts_libfork_alloc", "uts_flow", "uts_coalloc", "uts_omp", "uts_tbb"]:
+    # Read the input file as json
+    with open(f"./bench/data/sapphire/v5/csd3.{file}.json") as f:
+        #
+        data = json.load(f)
 
-for bench in data["benchmarks"]:
-    if bench["run_type"] != "iteration":
-        continue
+        for bench in data["benchmarks"]:
+            if bench["run_type"] != "iteration":
+                continue
 
-    name = bench["name"].split("/")
+            name = bench["name"].split("/")
 
-    name = [n for n in name if n != "real_time" and not n.isnumeric()]
+            name = [n for n in name if n != "real_time" and not n.isnumeric()]
 
-    name = "".join(name)
+            name = "".join(name)
 
-    if name not in benchmarks:
-        benchmarks[name] = {}
+            name = name.replace("seq", "fan")
 
-    num_threads = int(bench["green_threads"] + 0.5)
+            if name not in benchmarks:
+                print("found", name)
+                benchmarks[name] = {}
 
-    if num_threads not in benchmarks[name]:
-        benchmarks[name][num_threads] = []
+            num_threads = int(bench["green_threads"] + 0.5)
 
-    benchmarks[name][num_threads].append(bench["real_time"])
+            if num_threads not in benchmarks[name]:
+                benchmarks[name][num_threads] = []
+
+            benchmarks[name][num_threads].append(bench["real_time"])
 
 benchmarks = [(k, sorted(v.items())) for k, v in benchmarks.items()]
 
 benchmarks.sort()
 
-fig, axs = plt.subplots(2, 2, figsize=(8, 7), sharex="col")
+fig, axs = plt.subplots(3, 2, figsize=(8, 7), sharex=True, sharey=True)
 
 count = 0
 
-patterns = ["T2 ", "T2L", "T3 ", "T3L"]
+patterns = ["T1 ", "T1L", "T1XXL", "T3 ", "T3L", "T3XXL"]
+
+patterns = ["T1 ", "T3 ", "T1L", "T3L", "T1XXL", "T3XXL"]
 
 for (ax_abs), p in zip(axs.flatten(), patterns):
     # find the serial benchmark
@@ -95,6 +102,7 @@ for (ax_abs), p in zip(axs.flatten(), patterns):
 
     for k, v in benchmarks:
         if p not in k:
+            # print(f"skipping {k} wich does not contain {p}")
             continue
 
         #
@@ -103,14 +111,14 @@ for (ax_abs), p in zip(axs.flatten(), patterns):
         if label.startswith("serial"):
             continue
 
-        if "seq" in label:
-            continue
+        # if "fan" in label:
+        #     continue
 
         # if "busy" in label:
         #     continue
 
-        if "lib" in label and "alloc" not in label:
-            continue
+        # if "lib" in label and "alloc" not in label:
+        #     continue
 
         # if label.startswith("lib"):
         #     label = f"libfork-{label[8:8+4]}"
@@ -123,10 +131,10 @@ for (ax_abs), p in zip(axs.flatten(), patterns):
         # --------------- #
 
         m, c = np.polyfit(x[:10], y[0] / mi[:10], 1)
-        print(f"{label:>40}: pre: {m}")
+        # print(f"{label:>40}: pre: {m}")
 
         m, c = np.polyfit(x[10:], y[0] / mi[10:], 1)
-        print(f"{label:>40}: ost: {m}")
+        # print(f"{label:>40}: ost: {m}")
 
         # --------------- #
 
@@ -136,27 +144,32 @@ for (ax_abs), p in zip(axs.flatten(), patterns):
             label = "OneTBB"
         elif "taskflow" in label:
             label = "Taskflow"
+        elif "busy" in label and "co" in label:
+            label = "Libfork (busy*)"
         elif "busy" in label:
-            label = "Libfork-busy"
+            label = "Libfork (busy)"
+        elif "lazy" in label and "co" in label:
+            label = "Libfork (lazy*)"
         elif "lazy" in label:
-            label = "Libfork-lazy"
+            label = "Libfork (lazy)"
         else:
             label = label.capitalize()
 
         # --------------- #
 
-        if tS < 0:
-            continue
+        # if tS < 0:
+        #     continue
 
-        Y, Yerr = (tS, tSerr) if tS > 0 else (1, 0)
+        t = tS / y
 
-        t = Y / y
+        f_yerr = err / y
+        f_yerr = tSerr / tS
+
+        terr = t * np.sqrt((f_yerr**2 + f_yerr**2))
 
         if args.rel:
             t /= x
-
-        ferr = err / y
-        terr = t * np.sqrt((ferr**2 + (Yerr / Y) ** 2))
+            terr /= x
 
         if count == 0:
             ax_abs.errorbar(x, t, yerr=terr, label=label, capsize=2)
@@ -184,7 +197,8 @@ for (ax_abs), p in zip(axs.flatten(), patterns):
 
         # ax_rel.plot(ideal_rel, ideal_rel, color="black", linestyle="dashed")
 
-        ax_abs.set_ylim(top=1.0)
+        # ax_abs.set_ylim(top=ymax)
+        pass
 
     ax_abs.set_title(f"\\textit{{{p}}}")
 
@@ -197,15 +211,13 @@ for (ax_abs), p in zip(axs.flatten(), patterns):
 
     ax_abs.set_xlim(0, 112)
 
-    # ax_abs.set_ylim(top=128)
-
     count += 1
 
 # fig.legend()
 
 # fig.set_
 
-fig.supxlabel("\\textbf{{Threads/cores}}")
+fig.supxlabel("\\textbf{{Cores}}")
 
 if args.rel:
     fig.supylabel("\\textbf{{Efficiency}}")
@@ -216,7 +228,7 @@ else:
 fig.legend(
     loc="upper center",
     # bbox_to_anchor=(0, 0),
-    ncol=6,
+    ncol=7,
     frameon=False,
 )
 

@@ -99,4 +99,5 @@ BENCHMARK_CAPTURE(uts_serial, "T1 Geo fixed   ", 11)->UseRealTime();
 BENCHMARK_CAPTURE(uts_serial, "T1L Geo fixed  ", 12)->UseRealTime();
 BENCHMARK_CAPTURE(uts_serial, "T1XXL Geo fixed", 13)->UseRealTime();
 BENCHMARK_CAPTURE(uts_serial, "T3 Binomial    ", 31)->UseRealTime();
+BENCHMARK_CAPTURE(uts_serial, "T3L Binomial   ", 32)->UseRealTime();
 BENCHMARK_CAPTURE(uts_serial, "T3XXL Binomial ", 33)->UseRealTime();

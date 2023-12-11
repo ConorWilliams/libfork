@@ -7,8 +7,6 @@
 #include <benchmark/benchmark.h>
 
 #include <libfork.hpp>
-#include <libfork/core/sync_wait.hpp>
-#include <numeric>
 
 #include "../util.hpp"
 #include "config.hpp"

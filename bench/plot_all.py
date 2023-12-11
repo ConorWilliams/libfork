@@ -18,10 +18,10 @@ cmake --build --preset=rel && ./build/rel/bench/benchmark  --benchmark_time_unit
 
 
 def stat(x):
-    x = sorted(x)[:-1]  # remove warmup
+    x = sorted(x)[:]
 
-    err = stdev(x) / np.sqrt(len(x)) if len(x) > 1 else 0
-
+    err = stdev(x) / (np.sqrt(len(x)) if len(x) > 1 else 0)
+    #
     return median(x), err, min(x)
 
 
@@ -36,13 +36,11 @@ args = parser.parse_args()
 Benchmarks = []
 patterns = ["fib", "integ", "matmul", "nqueens"]
 
-patterns = ["fib"]
-
 for bm in patterns:
     benchmarks = {}
 
     # Read the input file as json
-    with open(f"./bench/data/sapphire/v4/csd3.{bm}.json") as f:
+    with open(f"./bench/data/sapphire/v5/csd3.{bm}.json") as f:
         data = json.load(f)
 
     for bench in data["benchmarks"]:
@@ -54,6 +52,8 @@ for bm in patterns:
         name = [n for n in name if n != "real_time" and not n.isnumeric()]
 
         name = "".join(name)
+
+        name = name.replace("seq", "fan")
 
         if name not in benchmarks:
             benchmarks[name] = {}
@@ -71,7 +71,7 @@ for bm in patterns:
 
     Benchmarks.append(benchmarks)
 
-fig, axs = plt.subplots(2, 2, figsize=(8, 7), sharex="col")
+fig, axs = plt.subplots(2, 2, figsize=(8, 7), sharex="col", sharey="row")
 
 count = 0
 
@@ -105,11 +105,11 @@ for (ax_abs), p, benchmarks in zip(axs.flatten(), patterns, Benchmarks):
         if label.startswith("serial"):
             continue
 
-        if "seq" in label:
-            continue
+        # if "seq" in label:
+        #     continue
 
         if label.startswith("lib"):
-            label = f"libfork-{label[8:8+4]}"
+            label = f"libfork ({label[8:8+4]})"
 
         x = np.asarray([t[0] for t in v])
         y, err, mi = map(np.asarray, zip(*[stat(d[1]) for d in v]))
@@ -130,34 +130,26 @@ for (ax_abs), p, benchmarks in zip(axs.flatten(), patterns, Benchmarks):
             label = "OpenMP"
         elif label == "tbb":
             label = "OneTBB"
+        elif label == "ztaskflow":
+            label = "Taskflow"
         else:
             label = label.capitalize()
-
-        # if count == 0:
-        #     ax_rel.errorbar(x, t, yerr=terr, label=label, capsize=2)
-        # else:
-        #     ax_rel.errorbar(x, t, yerr=terr, capsize=2)
 
         # --------------- #
 
         if tS < 0:
             continue
 
-        Y, Yerr = (tS, tSerr) if tS > 0 else (1, 0)
+        t = tS / y
 
-        # if args.rel:
-        #     t = Y / y / x
-        #     ferr = err / y
-        #     terr = t * np.sqrt((ferr**2 + ferr[0] ** 2))
-        # else:
+        f_yerr = err / y
+        f_yerr = tSerr / tS
 
-        t = Y / y
+        terr = t * np.sqrt((f_yerr**2 + f_yerr**2))
 
         if args.rel:
             t /= x
-
-        ferr = err / y
-        terr = t * np.sqrt((ferr**2 + (Yerr / Y) ** 2))
+            terr /= x
 
         if count == 0:
             ax_abs.errorbar(x, t, yerr=terr, label=label, capsize=2)
@@ -216,7 +208,7 @@ for (ax_abs), p, benchmarks in zip(axs.flatten(), patterns, Benchmarks):
 
 # fig.set_
 
-fig.supxlabel("\\textbf{{Threads/cores}}")
+fig.supxlabel("\\textbf{{Cores}}")
 
 if args.rel:
     fig.supylabel("\\textbf{{Efficiency}}")
@@ -227,7 +219,7 @@ else:
 fig.legend(
     loc="upper center",
     # bbox_to_anchor=(0, 0),
-    ncol=6,
+    ncol=5,
     frameon=False,
 )
 
