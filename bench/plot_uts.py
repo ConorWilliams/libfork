@@ -76,13 +76,13 @@ benchmarks = [(k, sorted(v.items())) for k, v in benchmarks.items()]
 
 benchmarks.sort()
 
-fig, axs = plt.subplots(1, 6, figsize=(14, 3), sharex=True, sharey=True)
+fig, axs = plt.subplots(3, 2, figsize=(6, 7), sharex=True, sharey=True)
 
 count = 0
 
-patterns = ["T1 ", "T1L", "T1XXL", "T3 ", "T3L", "T3XXL"]
+# patterns = ["T1 ", "T1L", "T1XXL", "T3 ", "T3L", "T3XXL"]
 
-# patterns = ["T1 ", "T3 ", "T1L", "T3L", "T1XXL", "T3XXL"]
+patterns = ["T1 ", "T3 ", "T1L", "T3L", "T1XXL", "T3XXL"]
 
 for (ax_abs), p in zip(axs.flatten(), patterns):
     # find the serial benchmark
@@ -116,6 +116,9 @@ for (ax_abs), p in zip(axs.flatten(), patterns):
         label = "_".join(k.split("_")[1:])
 
         if label.startswith("serial"):
+            continue
+
+        if p == "T3L" and "flow" in label:
             continue
 
         x = np.asarray([t[0] for t in v])
@@ -183,11 +186,19 @@ for (ax_abs), p in zip(axs.flatten(), patterns):
     print(f"ymax: {ymax}")
     print(f"xmax: {xmax}")
 
-    ideal_abs = range(1, int(xmax + 1.5))
+    # ideal_abs = range(1, int(ymax + 1.5))
+
+    # ax_abs.plot(
+    #     ideal_abs,
+    #     ideal_abs if not args.rel else [1] * len(ideal_abs),
+    #     color="black",
+    #     linestyle="dashed",
+    #     label="Ideal" if count == 0 else None,
+    # )
 
     ax_abs.set_title(f"\\textit{{{p}}}")
 
-    ax_abs.set_xticks(range(0, int(xmax + 1.5), 2 * 14))
+    ax_abs.set_xticks(range(0, int(xmax + 1.5), 14))
 
     # ax_abs.set_yscale("log", base=2)
     # ax_abs.set_xscale("log", base=2)
@@ -211,11 +222,11 @@ else:
 fig.legend(
     loc="upper center",
     # bbox_to_anchor=(0, 0),
-    ncol=7,
+    ncol=4,
     frameon=False,
 )
 
-fig.tight_layout(rect=(0.01, 0, 1, 0.9))
+fig.tight_layout(rect=(0, 0, 1, 0.925))
 
 if args.output_file is not None:
-    plt.savefig(args.output_file)
+    plt.savefig(args.output_file, bbox_inches="tight")

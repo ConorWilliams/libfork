@@ -183,23 +183,15 @@ for (ax_abs), p, benchmarks in zip(axs.flatten(), patterns, Benchmarks):
     print(f"ymax: {ymax}")
     print(f"xmax: {xmax}")
 
-    ideal_abs = range(1, int(xmax + 1.5))
-    # ideal_rel = range(1, int(xmax + 1.5))
+    # ideal = range(1, int(ymax + 1.5)) if not args.rel else x
 
-    # if args.rel:
-    #     ax_abs.plot(
-    #         ideal_abs,
-    #         ideal_abs,
-    #         color="black",
-    #         linestyle="dashed",
-    #         label="Ideal" if count == 0 else None,
-    #     )
-
-    #     ax_abs.set_ylim(top=112)
-
-    #     # ax_rel.plot(ideal_rel, ideal_rel, color="black", linestyle="dashed")
-
-    #     ax_abs.set_yticks(range(0, int(xmax + 1.5), 14))
+    # ax_abs.plot(
+    #     ideal,
+    #     ideal if not args.rel else [1] * len(ideal),
+    #     color="black",
+    #     linestyle="dashed",
+    #     label="Ideal" if count == 0 else None,
+    # )
 
     ax_abs.set_xticks(range(0, int(xmax + 1.5), 14))
 
@@ -242,7 +234,7 @@ fig.legend(
     frameon=False,
 )
 
-fig.tight_layout(rect=(0, 0, 1, 0.95))
+fig.tight_layout(rect=(0, 0, 1, 0.90))
 
 if args.output_file is not None:
-    plt.savefig(args.output_file)
+    plt.savefig(args.output_file, bbox_inches="tight")

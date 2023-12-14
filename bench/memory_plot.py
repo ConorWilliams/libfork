@@ -6,6 +6,8 @@ import numpy as np
 
 from matplotlib import pyplot as plt
 
+from math import sqrt
+
 from scipy.optimize import curve_fit
 
 plt.rcParams["text.usetex"] = True
@@ -28,6 +30,7 @@ patterns = [
     "T1L",
     "T3L",
     "T1XXL",
+    "T3XXL",
 ]
 
 for bm in patterns:
@@ -49,7 +52,7 @@ for bm in patterns:
     Benchmarks.append(data)
 
 
-fig, axs = plt.subplots(5, 2, figsize=(6, 10), sharex="col", sharey=None)
+fig, axs = plt.subplots(5, 2, figsize=(6, 10), sharex="col", sharey=False)
 
 patterns = [
     "fib",
@@ -71,6 +74,8 @@ for (ax), p, data, i in zip(axs.flatten(), patterns, Benchmarks, range(1000)):
     y_calib = data["calibrate"][1][0]
     y_serial = data["serial"][1][0]
 
+    first = True
+
     for k, v in data.items():
         #
         if "seq" in k:
@@ -78,6 +83,9 @@ for (ax), p, data, i in zip(axs.flatten(), patterns, Benchmarks, range(1000)):
 
         if k == "zero" or k == "serial" or k == "calibrate":
             continue
+
+        # if "lib" not in k:
+        #     continue
 
         x = np.asarray(v[0])
         y = np.asarray(v[1])
@@ -87,34 +95,47 @@ for (ax), p, data, i in zip(axs.flatten(), patterns, Benchmarks, range(1000)):
         y = y
 
         def func(x, a, b, n):
-            return a + b * x**n
+            return y_calib + a + b * x**n
 
-        p0 = (y_serial, 100, 2)
-        bounds = ([0, 0, 1], [np.inf, np.inf, 5])
-        popt, pcov = curve_fit(func, x, y, p0=p0, bounds=bounds, maxfev=10000)
+        p0 = (y[0], 1, 1)
+        bounds = ([0, 0, 0], [np.inf, np.inf, np.inf])
+        popt, pcov = curve_fit(
+            func,
+            x,
+            y,
+            p0=p0,
+            bounds=bounds,
+            maxfev=10000,
+            # sigma=err,
+            # absolute_sigma=True,
+        )
 
         a, b, n = popt
 
         da, db, dn = np.sqrt(np.diag(pcov))
 
-        print(f"{k:>30}: {a:>16.1f} + {b:>16.2f} * x^{n:>8.2f} +- {dn:<8.2f}")
+        print(f"{k:>30}: {a:>16.1f} + {b:>16.4f} * x^{n:>8.2f} +- {dn:<8.2f}")
 
         if k == "taskflow":
             pass
             # continue
 
-        if i == 0:
-            ax.errorbar(x, y, yerr=err, label=k, capsize=2)
-        else:
-            ax.errorbar(x, y, yerr=err, capsize=2)
+        ax.plot(
+            x,
+            func(x, *popt) - y_calib,
+            "k--",
+            label="Ideal" if i == 0 and first else None,
+        )
 
-        ax.plot(x, func(x, *popt), "k--")
+        first = False
+
+        ax.errorbar(x, y - y_calib, yerr=err, label=k if i == 0 else None, capsize=2)
 
         ax.set_title(f"\\textit{{{p}}}")
 
         ax.set_xticks(range(0, int(112 + 1.5), 14))
 
-        ax.set_xlim(0, 112)
+        # ax.set_xlim(0, 112)
         # ax.set_ylim(bottom=0)
 
         ax.set_yscale("log", base=10)
@@ -122,13 +143,13 @@ for (ax), p, data, i in zip(axs.flatten(), patterns, Benchmarks, range(1000)):
 
 
 fig.supxlabel("\\textbf{{Threads/cores}}")
-fig.supylabel("\\textbf{{MRRS(x) - MRRS(serial) / MiB}}")
+fig.supylabel("\\textbf{{$\Delta$MRSS/MiB}}")
 
 
 fig.legend(
     loc="upper center",
     # bbox_to_anchor=(0, 0),
-    ncol=6,
+    ncol=3,
     frameon=False,
 )
 

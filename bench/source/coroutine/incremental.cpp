@@ -11,7 +11,7 @@
 #include <libfork/core/ext/tls.hpp>
 #include <libfork/core/impl/promise.hpp>
 
-inline constexpr volatile int work = 16;
+inline constexpr volatile int work = 24;
 volatile int output;
 
 // ----------------------- Baseline ----------------------- //
@@ -195,6 +195,63 @@ struct promise : /*lf::impl::frame_block, */ op {
   /*promise() : lf::impl::frame_block(coroutine::from_promise(*this), nullptr) {}*/
 
   auto get_return_object() -> coroutine { return {coroutine::from_promise(*this)}; }
+  static auto initial_suspend() noexcept -> std::suspend_never { return {}; }
+  static auto final_suspend() noexcept -> std::suspend_never { return {}; }
+  static void return_void() {}
+  static void unhandled_exception() { LF_ASSERT(false); }
+};
+
+auto fib_impl(int &ret, int n) -> coroutine {
+  if (n < 2) {
+    ret = n;
+    co_return;
+  }
+
+  int a, b;
+
+  fib_impl(a, n - 1);
+  fib_impl(b, n - 2);
+
+  ret = a + b;
+};
+
+void fib(benchmark::State &state) {
+
+  std::vector<std::byte> stack(1024 * 1024);
+
+  asp = stack.data();
+
+  for (auto _ : state) {
+    int tmp;
+    auto h = fib_impl(tmp, work);
+    output = tmp;
+  }
+}
+
+} // namespace fixed_stack_coro
+
+BENCHMARK(fixed_stack_coro::fib);
+
+// ----------------------- custom Stackfull coro ----------------------- //
+
+// This is bare minimal coroutine that allocates single fixed stack.
+// When compared with serial::fib this minimal coroutine cost.
+
+namespace fixed_stack_coro_lazy {
+
+struct promise;
+
+struct LF_CORO_ATTRIBUTES coroutine : std::coroutine_handle<promise> {
+  using promise_type = fixed_stack_coro_lazy::promise;
+};
+
+struct promise : /*lf::impl::frame_block, */ fixed_stack_coro::op {
+
+  // double f[40]{};
+
+  /*promise() : lf::impl::frame_block(coroutine::from_promise(*this), nullptr) {}*/
+
+  auto get_return_object() -> coroutine { return {coroutine::from_promise(*this)}; }
   static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
   static auto final_suspend() noexcept -> std::suspend_never { return {}; }
   static void return_void() {}
@@ -219,7 +276,7 @@ void fib(benchmark::State &state) {
 
   std::vector<std::byte> stack(1024 * 1024);
 
-  asp = stack.data();
+  fixed_stack_coro::asp = stack.data();
 
   for (auto _ : state) {
     int tmp;
@@ -229,9 +286,9 @@ void fib(benchmark::State &state) {
   }
 }
 
-} // namespace fixed_stack_coro
+} // namespace fixed_stack_coro_lazy
 
-BENCHMARK(fixed_stack_coro::fib);
+BENCHMARK(fixed_stack_coro_lazy::fib);
 
 // ----------------------- custom Stackfull coro ----------------------- //
 
@@ -670,6 +727,7 @@ void fib(benchmark::State &state) {
 
 BENCHMARK(libfork_forking_return_int::fib<lf::unit_pool>)->UseRealTime();
 BENCHMARK(libfork_forking_return_int::fib<lf::lazy_pool>)->UseRealTime();
+BENCHMARK(libfork_forking_return_int::fib<lf::busy_pool>)->UseRealTime();
 
 void deque(benchmark::State &state) {
 
