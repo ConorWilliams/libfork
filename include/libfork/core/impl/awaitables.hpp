@@ -9,6 +9,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include <coroutine>
+#include <span>
+#include <type_traits>
+
 #include "libfork/core/ext/handles.hpp"
 #include "libfork/core/ext/tls.hpp"
 
@@ -33,6 +37,19 @@ struct switch_awaitable : std::suspend_always {
 
   intrusive_list<submit_handle>::node self;
   context *dest;
+};
+
+// -------------------------------------------------------- //
+
+template <typename T, std::size_t E>
+struct alloc_awaitable : std::suspend_never, std::span<T, E> {
+  [[nodiscard]] auto await_resume() const noexcept -> std::conditional_t<E == 1, T *, std::span<T, E>> {
+    if constexpr (E == 1) {
+      return this->data();
+    } else {
+      return *this;
+    }
+  }
 };
 
 // -------------------------------------------------------- //

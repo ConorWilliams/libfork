@@ -2689,6 +2689,10 @@ class first_arg_t {
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include <coroutine>
+#include <span>
+#include <type_traits>
+
 
 
 /**
@@ -2709,6 +2713,19 @@ struct switch_awaitable : std::suspend_always {
 
   intrusive_list<submit_handle>::node self;
   context *dest;
+};
+
+// -------------------------------------------------------- //
+
+template <typename T, std::size_t E>
+struct alloc_awaitable : std::suspend_never, std::span<T, E> {
+  [[nodiscard]] auto await_resume() const noexcept -> std::conditional_t<E == 1, T *, std::span<T, E>> {
+    if constexpr (E == 1) {
+      return this->data();
+    } else {
+      return *this;
+    }
+  }
 };
 
 // -------------------------------------------------------- //
@@ -3673,6 +3690,8 @@ struct promise_base : frame {
     });
   }
 
+  // -------------------------------------------------------------- //
+
   template <co_allocable T, std::size_t E>
   auto await_transform(co_new_t<T, E> await) {
 
@@ -3693,17 +3712,7 @@ struct promise_base : frame {
 
     this->set_fibril(fibre->top());
 
-    struct awaitable : std::suspend_never, std::span<T, E> {
-      [[nodiscard]] auto await_resume() const noexcept -> std::conditional_t<E == 1, T *, std::span<T, E>> {
-        if constexpr (E == 1) {
-          return this->data();
-        } else {
-          return *this;
-        }
-      }
-    };
-
-    return awaitable{{}, std::span<T, E>{ptr, await.count}};
+    return alloc_awaitable<T, E>{{}, std::span<T, E>{ptr, await.count}};
   }
 
   template <co_allocable T, std::size_t E>
@@ -3715,10 +3724,7 @@ struct promise_base : frame {
     return {};
   }
 
-  /**
-   * @brief Get a join awaitable.
-   */
-  auto await_transform(join_type) noexcept -> join_awaitable { return {this}; }
+  // -------------------------------------------------------------- //
 
   /**
    * @brief Transform a context pointer into a context-switch awaitable.
@@ -3729,6 +3735,15 @@ struct promise_base : frame {
 
     return {{}, typename intrusive_list<submit_handle>::node{submit}, dest};
   }
+
+  // -------------------------------------------------------------- //
+
+  /**
+   * @brief Get a join awaitable.
+   */
+  auto await_transform(join_type) noexcept -> join_awaitable { return {this}; }
+
+  // -------------------------------------------------------------- //
 
   /**
    * @brief Transform a call packet into a call awaitable.
