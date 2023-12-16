@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <bit>
+#include <cstddef>
 #include <cstdlib>
 #include <memory>
 #include <type_traits>
@@ -23,13 +24,21 @@
 /**
  * @file fibre.hpp
  *
- * @brief Implementation of libfork's segmented fibres.
+ * @brief Implementation of libfork's geometric segmented fibres.
  */
 
 namespace lf {
 
 inline namespace ext {
 
+/**
+ * @brief A fibre is a user-space (geometric) segmented stack.
+ *
+ * A fibre stores the execution of a DAG from root (which may be a stolen task or true root) to suspend point.
+ * A fibre is composed of fibrils, each fibril is a contigious region of stack space stored in a double-linked
+ * list. A fibre tracks the top fibril, the top fibril contains the last allocation or the fibre is empty. The
+ * top fibril may have zero or one cached fibrils "ahead" of it.
+ */
 class fibre {
 
   // Want underlying malloc to allocate one-page for the first fibril.
@@ -42,11 +51,11 @@ class fibre {
    * @brief A fibril is a fibre fragment that contains a segment of the stack.
    *
    * A chain of fibrils looks like `R <- F1 <- F2 <- F3 <- ... <- Fn` where `R` is the root fibril.
-   * Each fibril has a pointer to the root fibril and the root fibril has a pointer to the top
-   * fibril, `Fn`.
    *
+   * A fibril is allocated as a contigious chunk of memory, the first bytes of the chunk contain the fibril
+   * object. Semantically, a fibril is a dynamically sized object.
    */
-  class fibril : impl::immovable<fibril> {
+  class alignas(impl::k_new_align) fibril : impl::immovable<fibril> {
 
     friend class fibre;
 
@@ -72,20 +81,37 @@ class fibre {
     [[nodiscard]] auto empty() const noexcept -> bool { return m_sp == m_lo; }
 
     /**
-     * @brief Release the memory of the next fibril in the chain if one exists.
+     * @brief Check is this fibril is the top of a fibre.
+     */
+    [[nodiscard]] auto is_top() const noexcept -> bool {
+      if (m_next != nullptr) {
+        // Accept a single cached fibril above the top.
+        return m_next->empty() && m_next->m_next == nullptr;
+      }
+      return true;
+    }
+
+    /**
+     * @brief Set the next fibril in the chain to 'new_next'.
+     *
+     * This requires that this is the top fibril. If there is a cached fibril ahead of the top fibril then it
+     * will be freed before being replaced with 'new_next'.
      */
     void set_next(fibril *new_next) noexcept {
-      LF_ASSERT(!m_next || m_next->m_next == nullptr);
-      LF_ASSERT(!m_next || m_next->empty());
+      LF_ASSERT(is_top());
       std::free(std::exchange(m_next, new_next)); // NOLINT
     }
 
     /**
      * @brief Allocate a new fibril with a stack of size `size` and attach it to the given fibril chain.
+     *
+     * Requires that `prev` must be the top fibril in a chain or `nullptr`.
      */
     [[nodiscard]] LF_NOINLINE static auto next_fibril(std::size_t size, fibril *prev) -> fibril * {
 
       LF_LOG("allocating a new fibril");
+
+      LF_ASSERT(prev == nullptr || prev->is_top());
 
       fibril *next = static_cast<fibril *>(std::malloc(sizeof(fibril) + size)); // NOLINT
 
@@ -93,7 +119,8 @@ class fibre {
         LF_THROW(std::bad_alloc());
       }
 
-      if (prev != nullptr) { // Tidy up other next
+      if (prev != nullptr) {
+        // Set next tidies up other next.
         prev->set_next(next);
       }
 
@@ -110,11 +137,8 @@ class fibre {
     std::byte *m_lo; ///< This fibril's stack.
     std::byte *m_sp; ///< The current position of the stack pointer in the stack.
     std::byte *m_hi; ///< The one-past-the-end address of the stack.
-
-    fibril *m_prev; ///< Doubly linked list (past).
-    fibril *m_next; ///< Doubly linked list (future).
-
-    void *m_pad;
+    fibril *m_prev;  ///< Doubly linked list (past).
+    fibril *m_next;  ///< Doubly linked list (future).
   };
 
   // Keep stack aligned.
@@ -125,28 +149,40 @@ class fibre {
   static_assert(std::is_trivially_destructible_v<fibril>);
 
   /**
-   * @brief Construct a fibre with a small stack.
+   * @brief Constructs a fibre with a small empty stack.
    */
   fibre() : m_fib(fibril::next_fibril(k_init_size, nullptr)) { LF_LOG("Constructing a fibre"); }
 
   /**
-   * @brief Construct a new fibre object taking ownership of the fibre that `frag` is a part of.
-   *
-   * `frag` must be the fibril containing the top stack frame.
+   * @brief Construct a new fibre object taking ownership of the fibre that `frag` is a top-of.
    */
-  explicit fibre(fibril *frag) noexcept : m_fib(frag) { LF_LOG("Constructing fibre from fibril"); }
+  explicit fibre(fibril *frag) noexcept : m_fib(frag) {
+    LF_LOG("Constructing fibre from fibril");
+    LF_ASSERT(frag && frag->is_top());
+  }
+
+  fibre(std::nullptr_t) = delete;
 
   fibre(fibre const &) = delete;
 
   auto operator=(fibre const &) -> fibre & = delete;
 
+  /**
+   * @brief Move-construct from `other` leaves `other` in the empty/default state.
+   */
   fibre(fibre &&other) : fibre() { swap(*this, other); }
 
+  /**
+   * @brief Swap this and `other`.
+   */
   auto operator=(fibre &&other) noexcept -> fibre & {
     swap(*this, other);
     return *this;
   }
 
+  /**
+   * @brief Swap `lhs` with `rhs.
+   */
   inline friend void swap(fibre &lhs, fibre &rhs) noexcept {
     using std::swap;
     swap(lhs.m_fib, rhs.m_fib);
@@ -179,7 +215,7 @@ class fibre {
    */
   [[nodiscard]] LF_FORCEINLINE auto allocate(std::size_t size) -> void * {
     //
-    LF_ASSERT(m_fib);
+    LF_ASSERT(m_fib && m_fib->is_top());
 
     // Round up to the next multiple of the alignment.
     std::size_t ext_size = (size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
@@ -192,7 +228,7 @@ class fibre {
       }
     }
 
-    LF_ASSERT(m_fib);
+    LF_ASSERT(m_fib && m_fib->is_top());
 
     LF_LOG("Allocating {} bytes {}-{}", size, (void *)m_fib->m_sp, (void *)(m_fib->m_sp + ext_size));
 
@@ -206,7 +242,7 @@ class fibre {
    */
   LF_FORCEINLINE void deallocate(void *ptr) noexcept {
 
-    LF_ASSERT(m_fib);
+    LF_ASSERT(m_fib && m_fib->is_top());
 
     LF_LOG("Deallocating {}", ptr);
 
@@ -217,13 +253,16 @@ class fibre {
       m_fib = m_fib->m_prev == nullptr ? m_fib : m_fib->m_prev;
     }
 
-    LF_ASSERT(m_fib);
+    LF_ASSERT(m_fib && m_fib->is_top());
   }
 
   /**
    * @brief Get the fibril that the last allocation was on, this is non-null.
    */
-  [[nodiscard]] auto top() noexcept -> fibril * { return non_null(m_fib); }
+  [[nodiscard]] auto top() noexcept -> fibril * {
+    LF_ASSERT(m_fib && m_fib->is_top());
+    return non_null(m_fib);
+  }
 
  private:
   fibril *m_fib; ///< The allocation fibril.
