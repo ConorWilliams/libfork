@@ -33,6 +33,8 @@ struct join_type {};
 
 } // namespace impl
 
+inline namespace core {
+
 /**
  * @brief An awaitable (in a `lf::task`) that triggers a join.
  *
@@ -48,6 +50,8 @@ struct join_type {};
  * \endrst
  */
 inline constexpr impl::join_type join = {};
+
+} // namespace core
 
 namespace impl {
 
@@ -109,6 +113,8 @@ struct bind_task {
 
 } // namespace impl
 
+inline namespace core {
+
 /**
  * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a fork.
  *
@@ -146,6 +152,8 @@ inline constexpr impl::bind_task<tag::fork> fork = {};
  * \endrst
  */
 inline constexpr impl::bind_task<tag::call> call = {};
+
+} // namespace core
 
 } // namespace lf
 

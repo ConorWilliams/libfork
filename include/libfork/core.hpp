@@ -10,7 +10,6 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include "libfork/core/co_alloc.hpp"
-#include "libfork/core/context.hpp"
 #include "libfork/core/control_flow.hpp"
 #include "libfork/core/defer.hpp"
 #include "libfork/core/eventually.hpp"
@@ -21,6 +20,7 @@
 #include "libfork/core/tag.hpp"
 #include "libfork/core/task.hpp"
 
+#include "libfork/core/ext/context.hpp"
 #include "libfork/core/ext/deque.hpp"
 #include "libfork/core/ext/handles.hpp"
 #include "libfork/core/ext/list.hpp"

@@ -23,10 +23,35 @@ Concepts
 
 .. doxygenconcept:: lf::core::scheduler
 
-.. doxygenconcept:: lf::core::stateless
+.. doxygenconcept:: lf::core::returnable
 
+.. doxygenconcept:: lf::core::dereferenceable
+
+.. doxygenconcept:: lf::core::quasi_pointer
+
+.. doxygenconcept:: lf::core::async_function_object
+   
 .. doxygenconcept:: lf::core::first_arg
 
+.. doxygenconcept:: lf::core::async_invocable
+
+.. doxygenconcept:: lf::core::invocable
+
+.. doxygenconcept:: lf::core::rootable
+
+.. doxygenconcept:: lf::core::forkable
+
+.. doxygenconcept:: lf::core::co_allocable
+
+
+Other
+----------------
+
+.. doxygenclass:: lf::core::defer
+    :members:
+    :undoc-members:
+
+.. doxygentypedef:: async_result_t
 
 Classes
 ------------
@@ -35,13 +60,19 @@ Classes
    :glob: 
    :maxdepth: 2
 
-   core/async.rst
-   core/result.rst
+   core/task.rst
+   core/eventually.rst
 
 Stack allocation
 ------------------
 
-.. doxygenfunction:: lf::core::co_alloc
+.. doxygenfunction:: lf::core::co_new()
+
+.. doxygenfunction:: lf::core::co_new(std::size_t count)
+
+.. doxygenfunction:: lf::core::co_delete(T *ptr)
+
+.. doxygenfunction:: lf::core::co_delete(std::span<T, Extent> span)
 
 Generated listing
 ---------------------

@@ -32,9 +32,9 @@ namespace lf {
 
 // ------------------ Context ------------------- //
 
-class context; // User facing, (for submitting tasks).
-
 inline namespace ext {
+
+class context; // Semi-User facing, (for submitting tasks).
 
 class worker_context; // API for worker threads.
 
@@ -47,6 +47,8 @@ class full_context; // Internal API
 struct switch_awaitable; // Forwadr decl for friend.
 
 } // namespace impl
+
+inline namespace ext {
 
 /**
  * @brief A type-erased function object that takes no arguments.
@@ -90,8 +92,6 @@ class context : impl::immovable<context> {
 
   nullary_function_t m_notify; ///< The user supplied notification function.
 };
-
-inline namespace ext {
 
 class worker_context : public context {
  public:

@@ -23,12 +23,16 @@
 
 namespace lf {
 
+inline namespace core {
+
 // --------------------------------- Task --------------------------------- //
 
 // TODO: private destructor such that tasks can only be created inside the library?
 
 /**
  * @brief A type returnable from libfork's async functions/coroutines.
+ *
+ * This requires that `T` is `void` a reference or a `std::movable` type.
  */
 template <typename T>
 concept returnable = std::is_void_v<T> || std::is_reference_v<T> || std::movable<T>;
@@ -56,27 +60,7 @@ struct LF_CORO_ATTRIBUTES task : std::type_identity<T> {
   void *promise; ///< An opaque handle to the coroutine promise.
 };
 
-namespace impl {
-
-namespace detail {
-
-template <typename>
-struct is_task_impl : std::false_type {};
-
-template <typename T>
-struct is_task_impl<task<T>> : std::true_type {};
-
-} // namespace detail
-
-/**
- * @brief Test if a type is a specialization of ``lf::task``.
- *
- * This does not accept cv-qualified or reference types.
- */
-template <typename T>
-inline constexpr bool is_task_v = detail::is_task_impl<T>::value;
-
-} // namespace impl
+} // namespace core
 
 } // namespace lf
 

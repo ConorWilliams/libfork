@@ -152,8 +152,11 @@ concept consistent_invocable =                                                  
 
 } // namespace impl
 
+inline namespace core {
+
 /**
- * @brief Check `F` is `Tag`-invocable with `Args...` and returns a task who's result is returnable via `I`.
+ * @brief Check `F` is `Tag`-invocable with `Args...` and returns an `lf::task` who's result is returnable via
+ * `I`.
  *
  * In the following description "invoking" or "async invoking" means to call `F` with `Args...` via the
  * appropriate libfork function i.e. `fork` corresponds to `lf::fork[r, f](args...)` and the library will
@@ -165,7 +168,7 @@ concept consistent_invocable =                                                  
  *  - The result of all of these calls is an instance of type `lf::task<R>`.
  *  - `I` is movable and dereferenceable.
  *  - `I` is indirectly writable from `R` or `R` is `void` while `I` is `discard_t`.
- *  - If `R` is non-void then `F` is `async_invocable` when `I` is `eventually<R> *`.
+ *  - If `R` is non-void then `F` is `lf::core::async_invocable` when `I` is `lf::eventually<R> *`.
  *
  * This concept is provided as a building block for higher-level concepts.
  */
@@ -174,12 +177,23 @@ concept async_invocable = impl::consistent_invocable<I, Tag, F, Args...>;
 
 // --------- //
 
+/**
+ * @brief Alias for `lf::core::async_invocable<lf::impl::discard_t, lf::core::tag::call, F, Args...>`.
+ */
 template <typename F, typename... Args>
 concept invocable = async_invocable<impl::discard_t, tag::call, F, Args...>;
 
+/**
+ * @brief Alias for `lf::core::async_invocable<lf::impl::discard_t, lf::core::tag::root, F, Args...>`,
+ * subsumes `lf::core::invocable`.
+ */
 template <typename F, typename... Args>
 concept rootable = invocable<F, Args...> && async_invocable<impl::discard_t, tag::root, F, Args...>;
 
+/**
+ * @brief Alias for `lf::core::async_invocable<lf::impl::discard_t, lf::core::tag::fork, F, Args...>`,
+ * subsumes `lf::core::invocable`.
+ */
 template <typename F, typename... Args>
 concept forkable = invocable<F, Args...> && async_invocable<impl::discard_t, tag::fork, F, Args...>;
 
@@ -188,6 +202,8 @@ concept forkable = invocable<F, Args...> && async_invocable<impl::discard_t, tag
 template <typename F, typename... Args>
   requires invocable<F, Args...>
 using async_result_t = impl::unsafe_result_t<impl::discard_t, tag::call, F, Args...>;
+
+} // namespace core
 
 } // namespace lf
 

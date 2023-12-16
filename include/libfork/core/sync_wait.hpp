@@ -30,16 +30,22 @@
 
 namespace lf {
 
+inline namespace core {
+
 /**
  * @brief A concept that schedulers must satisfy.
  *
- * This requires only a single method, `schedule`.
+ * This requires only a single method, `schedule` which accepts an `lf::intruded_list<submit_handle>` and
+ * promises to call `lf::resume()` on it.
  */
 template <typename Sch>
 concept scheduler = requires (Sch &&sch, intruded_list<submit_handle> handle) {
   std::forward<Sch>(sch).schedule(handle); //
 };
 
+/**
+ * @brief Schedule execution of `fun` on `sch` and block until the task is complete.
+ */
 template <scheduler Sch, async_function_object F, class... Args>
   requires rootable<F, Args...>
 auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
@@ -99,6 +105,8 @@ auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
     return *std::move(result);
   }
 }
+
+} // namespace core
 
 } // namespace lf
 

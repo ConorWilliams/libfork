@@ -15,13 +15,13 @@
 #include <utility>
 
 #include <libfork/core/co_alloc.hpp>
-#include <libfork/core/context.hpp>
 #include <libfork/core/control_flow.hpp>
 #include <libfork/core/first_arg.hpp>
 #include <libfork/core/invocable.hpp>
 #include <libfork/core/tag.hpp>
 #include <libfork/core/task.hpp>
 
+#include <libfork/core/ext/context.hpp>
 #include <libfork/core/ext/handles.hpp>
 #include <libfork/core/ext/tls.hpp>
 

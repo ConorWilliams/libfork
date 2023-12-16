@@ -72,20 +72,6 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <stdexcept>
-#ifndef D66BBECE_E467_4EB6_B74A_AAA2E7256E02
-#define D66BBECE_E467_4EB6_B74A_AAA2E7256E02
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>
-#include <functional>
-#include <version>
 #ifndef C5DCA647_8269_46C2_B76F_5FA68738AEDA
 #define C5DCA647_8269_46C2_B76F_5FA68738AEDA
 
@@ -385,6 +371,21 @@ static_assert(LF_FIBRE_STACK_SIZE && !(LF_FIBRE_STACK_SIZE & (LF_FIBRE_STACK_SIZ
 // NOLINTEND
 
 #endif /* C5DCA647_8269_46C2_B76F_5FA68738AEDA */
+
+#ifndef D66BBECE_E467_4EB6_B74A_AAA2E7256E02
+#define D66BBECE_E467_4EB6_B74A_AAA2E7256E02
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>
+#include <functional>
+#include <version>
 #ifndef A75DC3F0_D0C3_4669_A901_0B22556C873C
 #define A75DC3F0_D0C3_4669_A901_0B22556C873C
 
@@ -1943,9 +1944,9 @@ namespace lf {
 
 // ------------------ Context ------------------- //
 
-class context; // User facing, (for submitting tasks).
-
 inline namespace ext {
+
+class context; // Semi-User facing, (for submitting tasks).
 
 class worker_context; // API for worker threads.
 
@@ -1958,6 +1959,8 @@ class full_context; // Internal API
 struct switch_awaitable; // Forwadr decl for friend.
 
 } // namespace impl
+
+inline namespace ext {
 
 /**
  * @brief A type-erased function object that takes no arguments.
@@ -2001,8 +2004,6 @@ class context : impl::immovable<context> {
 
   nullary_function_t m_notify; ///< The user supplied notification function.
 };
-
-inline namespace ext {
 
 class worker_context : public context {
  public:
@@ -2272,8 +2273,15 @@ inline void finalize(worker_context *worker) {
 
 namespace lf {
 
+inline namespace core {
+
+/**
+ * @brief Check is a type is suitable for allocation on libfork's fibres.
+ */
 template <typename T>
 concept co_allocable = std::default_initializable<T> && alignof(T) <= impl::k_new_align;
+
+} // namespace core
 
 namespace impl {
 
@@ -2294,6 +2302,8 @@ template <co_allocable T, std::size_t Extent>
 struct [[nodiscard("This object should be co_awaited")]] co_delete_t : std::span<T, Extent> {};
 
 } // namespace impl
+
+inline namespace core {
 
 /**
  * @brief A function which returns an awaitable (in the context of an ``lf::task``) which triggers allocation
@@ -2348,6 +2358,8 @@ template <co_allocable T, std::size_t Extent = 1>
 inline auto co_delete(T *ptr) -> impl::co_delete_t<T, Extent> {
   return impl::co_delete_t<T, Extent>{std::span<T, 1>{ptr, 1}};
 }
+
+} // namespace core
 
 } // namespace lf
 
@@ -2519,8 +2531,11 @@ concept consistent_invocable =                                                  
 
 } // namespace impl
 
+inline namespace core {
+
 /**
- * @brief Check `F` is `Tag`-invocable with `Args...` and returns a task who's result is returnable via `I`.
+ * @brief Check `F` is `Tag`-invocable with `Args...` and returns an `lf::task` who's result is returnable via
+ * `I`.
  *
  * In the following description "invoking" or "async invoking" means to call `F` with `Args...` via the
  * appropriate libfork function i.e. `fork` corresponds to `lf::fork[r, f](args...)` and the library will
@@ -2532,7 +2547,7 @@ concept consistent_invocable =                                                  
  *  - The result of all of these calls is an instance of type `lf::task<R>`.
  *  - `I` is movable and dereferenceable.
  *  - `I` is indirectly writable from `R` or `R` is `void` while `I` is `discard_t`.
- *  - If `R` is non-void then `F` is `async_invocable` when `I` is `eventually<R> *`.
+ *  - If `R` is non-void then `F` is `lf::core::async_invocable` when `I` is `lf::eventually<R> *`.
  *
  * This concept is provided as a building block for higher-level concepts.
  */
@@ -2541,12 +2556,23 @@ concept async_invocable = impl::consistent_invocable<I, Tag, F, Args...>;
 
 // --------- //
 
+/**
+ * @brief Alias for `lf::core::async_invocable<lf::impl::discard_t, lf::core::tag::call, F, Args...>`.
+ */
 template <typename F, typename... Args>
 concept invocable = async_invocable<impl::discard_t, tag::call, F, Args...>;
 
+/**
+ * @brief Alias for `lf::core::async_invocable<lf::impl::discard_t, lf::core::tag::root, F, Args...>`,
+ * subsumes `lf::core::invocable`.
+ */
 template <typename F, typename... Args>
 concept rootable = invocable<F, Args...> && async_invocable<impl::discard_t, tag::root, F, Args...>;
 
+/**
+ * @brief Alias for `lf::core::async_invocable<lf::impl::discard_t, lf::core::tag::fork, F, Args...>`,
+ * subsumes `lf::core::invocable`.
+ */
 template <typename F, typename... Args>
 concept forkable = invocable<F, Args...> && async_invocable<impl::discard_t, tag::fork, F, Args...>;
 
@@ -2555,6 +2581,8 @@ concept forkable = invocable<F, Args...> && async_invocable<impl::discard_t, tag
 template <typename F, typename... Args>
   requires invocable<F, Args...>
 using async_result_t = impl::unsafe_result_t<impl::discard_t, tag::call, F, Args...>;
+
+} // namespace core
 
 } // namespace lf
 
@@ -2589,9 +2617,9 @@ using async_result_t = impl::unsafe_result_t<impl::discard_t, tag::call, F, Args
 #include <type_traits>
 #include <utility>
 
-#include <libfork/core/context.hpp>
 #include <libfork/core/tag.hpp>
 
+#include <libfork/core/ext/context.hpp>
 #include <libfork/core/ext/tls.hpp>
 
 #include <libfork/core/impl/utility.hpp>
@@ -2604,8 +2632,10 @@ using async_result_t = impl::unsafe_result_t<impl::discard_t, tag::call, F, Args
 
 namespace lf {
 
+inline namespace core {
+
 /**
- * @brief Test if the expression `*std::declval<T&>()` is valid and has a referenceable type.
+ * @brief Test if the expression `*std::declval<T&>()` is valid and has a referenceable type i.e. non-void.
  */
 template <typename I>
 concept dereferenceable = requires (I val) {
@@ -2613,7 +2643,8 @@ concept dereferenceable = requires (I val) {
 };
 
 /**
- * @brief A quasi-pointer if a movable type that can be dereferenced to a referenceable type.
+ * @brief A quasi-pointer if a movable type that can be dereferenced to a referenceable type type i.e.
+ * non-void.
  *
  * A quasi-pointer is assumed to be cheap-to-move like an iterator/legacy-pointer.
  */
@@ -2626,7 +2657,7 @@ concept quasi_pointer = std::default_initializable<I> && std::movable<I> && dere
  *
  * An async function object is a function object that returns an `lf::task` when `operator()` is called.
  * with appropriate arguments. The call to `operator()` must create a coroutine. The first argument
- * of an async function must accept a deduced templated type that satisfies the `first_arg` concept.
+ * of an async function must accept a deduced templated type that satisfies the `lf::core::first_arg` concept.
  * The return type and invocability of an async function must be independent of the first argument except
  * for its tag value.
  *
@@ -2640,13 +2671,15 @@ concept async_function_object = std::is_object_v<F> && std::copy_constructible<F
 /**
  * @brief This describes the public-API of the first argument passed to an async function.
  *
- * An async functions invocability and return type must be independent of their first argument.
+ * An async functions' invocability and return type must be independent of their first argument.
  */
 template <typename T>
 concept first_arg = async_function_object<T> && requires (T arg) {
   { T::tag } -> std::convertible_to<tag>;
   { T::context() } -> std::same_as<context *>;
 };
+
+} // namespace core
 
 namespace impl {
 
@@ -2971,6 +3004,8 @@ struct join_type {};
 
 } // namespace impl
 
+inline namespace core {
+
 /**
  * @brief An awaitable (in a `lf::task`) that triggers a join.
  *
@@ -2986,6 +3021,8 @@ struct join_type {};
  * \endrst
  */
 inline constexpr impl::join_type join = {};
+
+} // namespace core
 
 namespace impl {
 
@@ -3047,6 +3084,8 @@ struct bind_task {
 
 } // namespace impl
 
+inline namespace core {
+
 /**
  * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a fork.
  *
@@ -3085,6 +3124,8 @@ inline constexpr impl::bind_task<tag::fork> fork = {};
  */
 inline constexpr impl::bind_task<tag::call> call = {};
 
+} // namespace core
+
 } // namespace lf
 
 #endif /* E8D38B49_7170_41BC_90E9_6D6389714304 */
@@ -3113,6 +3154,8 @@ inline constexpr impl::bind_task<tag::call> call = {};
  */
 
 namespace lf {
+
+inline namespace core {
 
 /**
  * @brief Basic implementation of a Golang-like defer.
@@ -3164,6 +3207,8 @@ class [[nodiscard("Defer will execute unless bound to a name!")]] defer : impl::
  */
 #define LF_DEFER ::lf::defer LF_CONCAT_OUTER(at_exit_, __LINE__) = [&]() noexcept
 
+} // namespace core
+
 } // namespace lf
 
 #endif /* B4EE570B_F5CF_42CB_9AF3_7376F45FDACC */
@@ -3205,12 +3250,16 @@ class [[nodiscard("Defer will execute unless bound to a name!")]] defer : impl::
 
 namespace lf {
 
+inline namespace core {
+
 // --------------------------------- Task --------------------------------- //
 
 // TODO: private destructor such that tasks can only be created inside the library?
 
 /**
  * @brief A type returnable from libfork's async functions/coroutines.
+ *
+ * This requires that `T` is `void` a reference or a `std::movable` type.
  */
 template <typename T>
 concept returnable = std::is_void_v<T> || std::is_reference_v<T> || std::movable<T>;
@@ -3238,27 +3287,7 @@ struct LF_CORO_ATTRIBUTES task : std::type_identity<T> {
   void *promise; ///< An opaque handle to the coroutine promise.
 };
 
-namespace impl {
-
-namespace detail {
-
-template <typename>
-struct is_task_impl : std::false_type {};
-
-template <typename T>
-struct is_task_impl<task<T>> : std::true_type {};
-
-} // namespace detail
-
-/**
- * @brief Test if a type is a specialization of ``lf::task``.
- *
- * This does not accept cv-qualified or reference types.
- */
-template <typename T>
-inline constexpr bool is_task_v = detail::is_task_impl<T>::value;
-
-} // namespace impl
+} // namespace core
 
 } // namespace lf
 
@@ -3273,6 +3302,8 @@ inline constexpr bool is_task_v = detail::is_task_impl<T>::value;
  */
 
 namespace lf {
+
+inline namespace core {
 
 // ------------------------------------------------------------------------ //
 
@@ -3291,7 +3322,7 @@ namespace lf {
  *    It is undefined behavior if the object inside an `eventually` is not constructed before it
  *    is used or if the lifetime of the ``lf::eventually`` ends before an object is constructed.
  *    If you are placing instances of `eventually` on the heap you need to be very careful about
- * exceptions.
+ *    exceptions.
  *
  * \endrst
  */
@@ -3319,7 +3350,6 @@ class eventually : impl::manual_lifetime<T> {
 
 /**
  * @brief Has pointer semantics.
- *
  *
  * `eventually<T &> val` should behave like `T & val` except assignment rebinds.
  */
@@ -3403,6 +3433,8 @@ class manual_eventually<T> : eventually<T> {
   void destroy() noexcept {};
 };
 
+} // namespace core
+
 } // namespace lf
 
 #endif /* B7972761_4CBF_4B86_B195_F754295372BF */
@@ -3438,16 +3470,22 @@ class manual_eventually<T> : eventually<T> {
 
 namespace lf {
 
+inline namespace core {
+
 /**
  * @brief A concept that schedulers must satisfy.
  *
- * This requires only a single method, `schedule`.
+ * This requires only a single method, `schedule` which accepts an `lf::intruded_list<submit_handle>` and
+ * promises to call `lf::resume()` on it.
  */
 template <typename Sch>
 concept scheduler = requires (Sch &&sch, intruded_list<submit_handle> handle) {
   std::forward<Sch>(sch).schedule(handle); //
 };
 
+/**
+ * @brief Schedule execution of `fun` on `sch` and block until the task is complete.
+ */
 template <scheduler Sch, async_function_object F, class... Args>
   requires rootable<F, Args...>
 auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
@@ -3507,6 +3545,8 @@ auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
     return *std::move(result);
   }
 }
+
+} // namespace core
 
 } // namespace lf
 
@@ -3586,13 +3626,13 @@ inline void resume(task_handle ptr) noexcept {
 #include <utility>
 
 #include <libfork/core/co_alloc.hpp>
-#include <libfork/core/context.hpp>
 #include <libfork/core/control_flow.hpp>
 #include <libfork/core/first_arg.hpp>
 #include <libfork/core/invocable.hpp>
 #include <libfork/core/tag.hpp>
 #include <libfork/core/task.hpp>
 
+#include <libfork/core/ext/context.hpp>
 #include <libfork/core/ext/handles.hpp>
 #include <libfork/core/ext/tls.hpp>
 

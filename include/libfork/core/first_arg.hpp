@@ -14,9 +14,9 @@
 #include <type_traits>
 #include <utility>
 
-#include <libfork/core/context.hpp>
 #include <libfork/core/tag.hpp>
 
+#include <libfork/core/ext/context.hpp>
 #include <libfork/core/ext/tls.hpp>
 
 #include <libfork/core/impl/utility.hpp>
@@ -29,8 +29,10 @@
 
 namespace lf {
 
+inline namespace core {
+
 /**
- * @brief Test if the expression `*std::declval<T&>()` is valid and has a referenceable type.
+ * @brief Test if the expression `*std::declval<T&>()` is valid and has a referenceable type i.e. non-void.
  */
 template <typename I>
 concept dereferenceable = requires (I val) {
@@ -38,7 +40,8 @@ concept dereferenceable = requires (I val) {
 };
 
 /**
- * @brief A quasi-pointer if a movable type that can be dereferenced to a referenceable type.
+ * @brief A quasi-pointer if a movable type that can be dereferenced to a referenceable type type i.e.
+ * non-void.
  *
  * A quasi-pointer is assumed to be cheap-to-move like an iterator/legacy-pointer.
  */
@@ -51,7 +54,7 @@ concept quasi_pointer = std::default_initializable<I> && std::movable<I> && dere
  *
  * An async function object is a function object that returns an `lf::task` when `operator()` is called.
  * with appropriate arguments. The call to `operator()` must create a coroutine. The first argument
- * of an async function must accept a deduced templated type that satisfies the `first_arg` concept.
+ * of an async function must accept a deduced templated type that satisfies the `lf::core::first_arg` concept.
  * The return type and invocability of an async function must be independent of the first argument except
  * for its tag value.
  *
@@ -65,13 +68,15 @@ concept async_function_object = std::is_object_v<F> && std::copy_constructible<F
 /**
  * @brief This describes the public-API of the first argument passed to an async function.
  *
- * An async functions invocability and return type must be independent of their first argument.
+ * An async functions' invocability and return type must be independent of their first argument.
  */
 template <typename T>
 concept first_arg = async_function_object<T> && requires (T arg) {
   { T::tag } -> std::convertible_to<tag>;
   { T::context() } -> std::same_as<context *>;
 };
+
+} // namespace core
 
 namespace impl {
 

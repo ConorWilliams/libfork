@@ -28,6 +28,8 @@
 
 namespace lf {
 
+inline namespace core {
+
 // ------------------------------------------------------------------------ //
 
 /**
@@ -45,7 +47,7 @@ namespace lf {
  *    It is undefined behavior if the object inside an `eventually` is not constructed before it
  *    is used or if the lifetime of the ``lf::eventually`` ends before an object is constructed.
  *    If you are placing instances of `eventually` on the heap you need to be very careful about
- * exceptions.
+ *    exceptions.
  *
  * \endrst
  */
@@ -73,7 +75,6 @@ class eventually : impl::manual_lifetime<T> {
 
 /**
  * @brief Has pointer semantics.
- *
  *
  * `eventually<T &> val` should behave like `T & val` except assignment rebinds.
  */
@@ -156,6 +157,8 @@ class manual_eventually<T> : eventually<T> {
 
   void destroy() noexcept {};
 };
+
+} // namespace core
 
 } // namespace lf
 

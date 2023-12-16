@@ -25,6 +25,8 @@
 
 namespace lf {
 
+inline namespace core {
+
 /**
  * @brief Basic implementation of a Golang-like defer.
  *
@@ -74,6 +76,8 @@ class [[nodiscard("Defer will execute unless bound to a name!")]] defer : impl::
  * @brief A macro to create an automatically named defer object.
  */
 #define LF_DEFER ::lf::defer LF_CONCAT_OUTER(at_exit_, __LINE__) = [&]() noexcept
+
+} // namespace core
 
 } // namespace lf
 

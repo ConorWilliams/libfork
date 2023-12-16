@@ -25,8 +25,15 @@
 
 namespace lf {
 
+inline namespace core {
+
+/**
+ * @brief Check is a type is suitable for allocation on libfork's fibres.
+ */
 template <typename T>
 concept co_allocable = std::default_initializable<T> && alignof(T) <= impl::k_new_align;
+
+} // namespace core
 
 namespace impl {
 
@@ -47,6 +54,8 @@ template <co_allocable T, std::size_t Extent>
 struct [[nodiscard("This object should be co_awaited")]] co_delete_t : std::span<T, Extent> {};
 
 } // namespace impl
+
+inline namespace core {
 
 /**
  * @brief A function which returns an awaitable (in the context of an ``lf::task``) which triggers allocation
@@ -101,6 +110,8 @@ template <co_allocable T, std::size_t Extent = 1>
 inline auto co_delete(T *ptr) -> impl::co_delete_t<T, Extent> {
   return impl::co_delete_t<T, Extent>{std::span<T, 1>{ptr, 1}};
 }
+
+} // namespace core
 
 } // namespace lf
 
