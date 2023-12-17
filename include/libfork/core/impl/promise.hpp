@@ -96,6 +96,7 @@ inline auto final_await_suspend(frame *parent) noexcept -> std::coroutine_handle
     if (p_fibril != c_fibril) {
       // Case (2), the tls_fibre has no allocations on it.
 
+      LF_ASSERT(tls_fibre->empty());
 
       // TODO: fibre.splice()? Here the old fibre is empty and thrown away, if it is larger
       // then we could splice it onto the parents one? Or we could attempt to cache the old one.

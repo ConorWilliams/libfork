@@ -85,6 +85,7 @@ struct join_awaitable {
   void take_fibre_reset_frame() const noexcept {
     // Steals have happened so we cannot currently own this tasks stack.
     LF_ASSERT(self->load_steals() != 0);
+    LF_ASSERT(tls::fibre()->empty());
     *tls::fibre() = fibre{self->fibril()};
     // Some steals have happened, need to reset the control block.
     self->reset();

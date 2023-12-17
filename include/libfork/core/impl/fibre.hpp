@@ -195,6 +195,11 @@ class fibre {
     std::free(m_fib);          // NOLINT
   }
 
+  [[nodiscard]] auto empty() -> bool {
+    LF_ASSERT(m_fib && m_fib->is_top());
+    return m_fib->empty();
+  }
+
   /**
    * @brief Release the underlying storage of the current fibre and re-initialize this one.
    *
