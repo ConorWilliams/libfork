@@ -1525,6 +1525,11 @@ class fibre {
     std::free(m_fib);          // NOLINT
   }
 
+  [[nodiscard]] auto empty() -> bool {
+    LF_ASSERT(m_fib && m_fib->is_top());
+    return m_fib->empty();
+  }
+
   /**
    * @brief Release the underlying storage of the current fibre and re-initialize this one.
    *
@@ -2833,6 +2838,7 @@ struct join_awaitable {
   void take_fibre_reset_frame() const noexcept {
     // Steals have happened so we cannot currently own this tasks stack.
     LF_ASSERT(self->load_steals() != 0);
+    LF_ASSERT(tls::fibre()->empty());
     *tls::fibre() = fibre{self->fibril()};
     // Some steals have happened, need to reset the control block.
     self->reset();
@@ -3691,9 +3697,10 @@ inline auto final_await_suspend(frame *parent) noexcept -> std::coroutine_handle
 
   fibre *tls_fibre = tls::fibre();
 
-  auto *parents_fibril = parent->fibril();
+  fibre::fibril *p_fibril = parent->fibril(); //
+  fibre::fibril *c_fibril = tls_fibre->top(); // Need to call while we own tls_fibre.
 
-  // Register with parent we have completed this child task.
+  // Register with parent we have completed this child task, this may release ownership of our fibre.
   if (parent->fetch_sub_joins(1, std::memory_order_release) == 1) {
     // Acquire all writes before resuming.
     std::atomic_thread_fence(std::memory_order_acquire);
@@ -3703,12 +3710,14 @@ inline auto final_await_suspend(frame *parent) noexcept -> std::coroutine_handle
 
     LF_LOG("Task is last child to join, resumes parent");
 
-    if (parents_fibril != tls_fibre->top()) {
+    if (p_fibril != c_fibril) {
       // Case (2), the tls_fibre has no allocations on it.
+
+      LF_ASSERT(tls_fibre->empty());
 
       // TODO: fibre.splice()? Here the old fibre is empty and thrown away, if it is larger
       // then we could splice it onto the parents one? Or we could attempt to cache the old one.
-      *tls_fibre = fibre{parents_fibril};
+      *tls_fibre = fibre{p_fibril};
     }
 
     // Must reset parents control block before resuming parent.
@@ -3725,7 +3734,7 @@ inline auto final_await_suspend(frame *parent) noexcept -> std::coroutine_handle
 
   LF_LOG("Task is not last to join");
 
-  if (parents_fibril == tls_fibre->top()) {
+  if (p_fibril == c_fibril) {
     // We are unable to resume the parent and where its owner, as the resuming
     // thread will take ownership of the parent's we must give it up.
     LF_LOG("Thread releases control of parent's stack");
