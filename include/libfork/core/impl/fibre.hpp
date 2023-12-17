@@ -35,7 +35,7 @@ inline namespace ext {
  * @brief A fibre is a user-space (geometric) segmented stack.
  *
  * A fibre stores the execution of a DAG from root (which may be a stolen task or true root) to suspend point.
- * A fibre is composed of fibrils, each fibril is a contigious region of stack space stored in a double-linked
+ * A fibre is composed of fibrils, each fibril is a contiguous region of stack space stored in a double-linked
  * list. A fibre tracks the top fibril, the top fibril contains the last allocation or the fibre is empty. The
  * top fibril may have zero or one cached fibrils "ahead" of it.
  */
@@ -52,7 +52,7 @@ class fibre {
    *
    * A chain of fibrils looks like `R <- F1 <- F2 <- F3 <- ... <- Fn` where `R` is the root fibril.
    *
-   * A fibril is allocated as a contigious chunk of memory, the first bytes of the chunk contain the fibril
+   * A fibril is allocated as a contiguous chunk of memory, the first bytes of the chunk contain the fibril
    * object. Semantically, a fibril is a dynamically sized object.
    */
   class alignas(impl::k_new_align) fibril : impl::immovable<fibril> {
