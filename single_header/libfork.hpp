@@ -124,19 +124,6 @@
  */
 #define LF_VERSION_PATCH 0
 
-#ifndef LF_FIBRE_STACK_SIZE
-  /**
-   * @brief __[public]__ A customizable stack size for ``fibre_stack``'s (in multiples of 4 kibibytes i.e.
-   * the page size).
-   *
-   * You can override this by defining ``LF_FIBRE_STACK_SIZE`` to a power of two (default 1 MiB)
-   */
-  #define LF_FIBRE_STACK_SIZE 256
-#endif
-
-static_assert(LF_FIBRE_STACK_SIZE && !(LF_FIBRE_STACK_SIZE & (LF_FIBRE_STACK_SIZE - 1)),
-              "Must be a power of 2");
-
 /**
  * @brief Use to conditionally decorate lambdas and ``operator()`` (alongside ``LF_STATIC_CONST``) with
  * ``static``.
@@ -1352,45 +1339,75 @@ constexpr deque<T>::~deque() noexcept {
 
 
 /**
- * @file fibre.hpp
+ * @file stack.hpp
  *
- * @brief Implementation of libfork's geometric segmented fibres.
+ * @brief Implementation of libfork's geometric segmented stacks.
  */
 
 namespace lf {
 
+namespace impl {
+
+/**
+ * @brief Round size close to a multiple of the page_size.
+ */
+inline constexpr auto round_up_to_page_size(std::size_t size) noexcept -> std::size_t {
+
+  // Want calculate req such that:
+
+  // req + malloc_block_est is a multiple of the page size.
+  // req > size + stacklet_size
+
+  std::size_t constexpr page_size = 4096;           // 4 KiB on most systems.
+  std::size_t constexpr malloc_meta_data_size = 96; // An (over)estimate.
+
+  static_assert(std::has_single_bit(page_size));
+
+  std::size_t minimum = size + malloc_meta_data_size;
+  std::size_t rounded = (minimum + page_size - 1) & ~(page_size - 1);
+  std::size_t request = rounded - malloc_meta_data_size;
+
+  LF_ASSERT(minimum <= rounded);
+  LF_ASSERT(rounded % page_size == 0);
+  LF_ASSERT(request >= size);
+
+  return request;
+}
+
+} // namespace impl
+
 inline namespace ext {
 
 /**
- * @brief A fibre is a user-space (geometric) segmented stack.
+ * @brief A stack is a user-space (geometric) segmented program stack.
  *
- * A fibre stores the execution of a DAG from root (which may be a stolen task or true root) to suspend point.
- * A fibre is composed of fibrils, each fibril is a contiguous region of stack space stored in a double-linked
- * list. A fibre tracks the top fibril, the top fibril contains the last allocation or the fibre is empty. The
- * top fibril may have zero or one cached fibrils "ahead" of it.
+ * A stack stores the execution of a DAG from root (which may be a stolen task or true root) to suspend point.
+ * A stack is composed of stacklets, each stacklet is a contiguous region of stack space stored in a
+ * double-linked list. A stack tracks the top stacklet, the top stacklet contains the last allocation or the
+ * stack is empty. The top stacklet may have zero or one cached stacklets "ahead" of it.
  */
-class fibre {
+class stack {
 
-  // Want underlying malloc to allocate one-page for the first fibril.
-  static constexpr std::size_t malloc_block_est = 64;
-  static constexpr std::size_t fibril_size = 6 * sizeof(void *);
-  static constexpr std::size_t k_init_size = 4 * impl::k_kibibyte - fibril_size - malloc_block_est;
+  // Want underlying malloc to allocate one-page for the first stacklet.
+  // static constexpr std::size_t malloc_block_est = 64;
+  // static constexpr std::size_t stacklet_size = 6 * sizeof(void *);
+  // static constexpr std::size_t k_init_size = 4 * impl::k_kibibyte - stacklet_size - malloc_block_est;
 
  public:
   /**
-   * @brief A fibril is a fibre fragment that contains a segment of the stack.
+   * @brief A stacklet is a stack fragment that contains a segment of the stack.
    *
-   * A chain of fibrils looks like `R <- F1 <- F2 <- F3 <- ... <- Fn` where `R` is the root fibril.
+   * A chain of stacklets looks like `R <- F1 <- F2 <- F3 <- ... <- Fn` where `R` is the root stacklet.
    *
-   * A fibril is allocated as a contiguous chunk of memory, the first bytes of the chunk contain the fibril
-   * object. Semantically, a fibril is a dynamically sized object.
+   * A stacklet is allocated as a contiguous chunk of memory, the first bytes of the chunk contain the
+   * stacklet object. Semantically, a stacklet is a dynamically sized object.
    */
-  class alignas(impl::k_new_align) fibril : impl::immovable<fibril> {
+  class alignas(impl::k_new_align) stacklet : impl::immovable<stacklet> {
 
-    friend class fibre;
+    friend class stack;
 
     /**
-     * @brief Capacity of the current fibril's stack.
+     * @brief Capacity of the current stacklet's stack.
      */
     [[nodiscard]] auto capacity() const noexcept -> std::size_t {
       LF_ASSERT(m_hi - m_lo >= 0);
@@ -1398,7 +1415,7 @@ class fibre {
     }
 
     /**
-     * @brief Unused space on the current fibril's stack.
+     * @brief Unused space on the current stacklet's stack.
      */
     [[nodiscard]] auto unused() const noexcept -> std::size_t {
       LF_ASSERT(m_hi - m_sp >= 0);
@@ -1406,44 +1423,47 @@ class fibre {
     }
 
     /**
-     * @brief Check if fibril's stack is empty.
+     * @brief Check if stacklet's stack is empty.
      */
     [[nodiscard]] auto empty() const noexcept -> bool { return m_sp == m_lo; }
 
     /**
-     * @brief Check is this fibril is the top of a fibre.
+     * @brief Check is this stacklet is the top of a stack.
      */
     [[nodiscard]] auto is_top() const noexcept -> bool {
       if (m_next != nullptr) {
-        // Accept a single cached fibril above the top.
+        // Accept a single cached stacklet above the top.
         return m_next->empty() && m_next->m_next == nullptr;
       }
       return true;
     }
 
     /**
-     * @brief Set the next fibril in the chain to 'new_next'.
+     * @brief Set the next stacklet in the chain to 'new_next'.
      *
-     * This requires that this is the top fibril. If there is a cached fibril ahead of the top fibril then it
-     * will be freed before being replaced with 'new_next'.
+     * This requires that this is the top stacklet. If there is a cached stacklet ahead of the top stacklet
+     * then it will be freed before being replaced with 'new_next'.
      */
-    void set_next(fibril *new_next) noexcept {
+    void set_next(stacklet *new_next) noexcept {
       LF_ASSERT(is_top());
       std::free(std::exchange(m_next, new_next)); // NOLINT
     }
 
     /**
-     * @brief Allocate a new fibril with a stack of size `size` and attach it to the given fibril chain.
+     * @brief Allocate a new stacklet with a stack of size of at least`size` and attach it to the given
+     * stacklet chain.
      *
-     * Requires that `prev` must be the top fibril in a chain or `nullptr`.
+     * Requires that `prev` must be the top stacklet in a chain or `nullptr`.
      */
-    [[nodiscard]] LF_NOINLINE static auto next_fibril(std::size_t size, fibril *prev) -> fibril * {
+    [[nodiscard]] LF_NOINLINE static auto next_stacklet(std::size_t size, stacklet *prev) -> stacklet * {
 
-      LF_LOG("allocating a new fibril");
+      LF_LOG("allocating a new stacklet");
 
       LF_ASSERT(prev == nullptr || prev->is_top());
 
-      fibril *next = static_cast<fibril *>(std::malloc(sizeof(fibril) + size)); // NOLINT
+      std::size_t request = impl::round_up_to_page_size(size + sizeof(stacklet));
+
+      stacklet *next = static_cast<stacklet *>(std::malloc(request)); // NOLINT
 
       if (next == nullptr) {
         LF_THROW(std::bad_alloc());
@@ -1454,9 +1474,9 @@ class fibre {
         prev->set_next(next);
       }
 
-      next->m_lo = impl::byte_cast(next) + sizeof(fibril);
+      next->m_lo = impl::byte_cast(next) + sizeof(stacklet);
       next->m_sp = next->m_lo;
-      next->m_hi = impl::byte_cast(next) + sizeof(fibril) + size;
+      next->m_hi = impl::byte_cast(next) + sizeof(stacklet) + size;
 
       next->m_prev = prev;
       next->m_next = nullptr;
@@ -1464,48 +1484,53 @@ class fibre {
       return next;
     }
 
-    std::byte *m_lo; ///< This fibril's stack.
-    std::byte *m_sp; ///< The current position of the stack pointer in the stack.
-    std::byte *m_hi; ///< The one-past-the-end address of the stack.
-    fibril *m_prev;  ///< Doubly linked list (past).
-    fibril *m_next;  ///< Doubly linked list (future).
+    /**
+     * @brief Allocate an initial stacklet
+     */
+    [[nodiscard]] static auto next_stacklet() -> stacklet * { return stacklet::next_stacklet(1, nullptr); }
+
+    std::byte *m_lo;  ///< This stacklet's stack.
+    std::byte *m_sp;  ///< The current position of the stack pointer in the stack.
+    std::byte *m_hi;  ///< The one-past-the-end address of the stack.
+    stacklet *m_prev; ///< Doubly linked list (past).
+    stacklet *m_next; ///< Doubly linked list (future).
   };
 
   // Keep stack aligned.
-  static_assert(sizeof(fibril) == fibril_size);
-  static_assert(sizeof(fibril) >= impl::k_new_align && sizeof(fibril) % impl::k_new_align == 0);
-  // Implicit lifetime
-  static_assert(std::is_trivially_default_constructible_v<fibril>);
-  static_assert(std::is_trivially_destructible_v<fibril>);
+  static_assert(sizeof(stacklet) >= impl::k_new_align);
+  static_assert(sizeof(stacklet) % impl::k_new_align == 0);
+  // Stacklet is implicit lifetime type
+  static_assert(std::is_trivially_default_constructible_v<stacklet>);
+  static_assert(std::is_trivially_destructible_v<stacklet>);
 
   /**
-   * @brief Constructs a fibre with a small empty stack.
+   * @brief Constructs a stack with a small empty stack.
    */
-  fibre() : m_fib(fibril::next_fibril(k_init_size, nullptr)) { LF_LOG("Constructing a fibre"); }
+  stack() : m_fib(stacklet::next_stacklet()) { LF_LOG("Constructing a stack"); }
 
   /**
-   * @brief Construct a new fibre object taking ownership of the fibre that `frag` is a top-of.
+   * @brief Construct a new stack object taking ownership of the stack that `frag` is a top-of.
    */
-  explicit fibre(fibril *frag) noexcept : m_fib(frag) {
-    LF_LOG("Constructing fibre from fibril");
+  explicit stack(stacklet *frag) noexcept : m_fib(frag) {
+    LF_LOG("Constructing stack from stacklet");
     LF_ASSERT(frag && frag->is_top());
   }
 
-  fibre(std::nullptr_t) = delete;
+  stack(std::nullptr_t) = delete;
 
-  fibre(fibre const &) = delete;
+  stack(stack const &) = delete;
 
-  auto operator=(fibre const &) -> fibre & = delete;
+  auto operator=(stack const &) -> stack & = delete;
 
   /**
    * @brief Move-construct from `other` leaves `other` in the empty/default state.
    */
-  fibre(fibre &&other) : fibre() { swap(*this, other); }
+  stack(stack &&other) : stack() { swap(*this, other); }
 
   /**
    * @brief Swap this and `other`.
    */
-  auto operator=(fibre &&other) noexcept -> fibre & {
+  auto operator=(stack &&other) noexcept -> stack & {
     swap(*this, other);
     return *this;
   }
@@ -1513,12 +1538,12 @@ class fibre {
   /**
    * @brief Swap `lhs` with `rhs.
    */
-  inline friend void swap(fibre &lhs, fibre &rhs) noexcept {
+  inline friend void swap(stack &lhs, stack &rhs) noexcept {
     using std::swap;
     swap(lhs.m_fib, rhs.m_fib);
   }
 
-  ~fibre() noexcept {
+  ~stack() noexcept {
     LF_ASSERT(m_fib);
     LF_ASSERT(!m_fib->m_prev); // Should only be destructed at the root.
     m_fib->set_next(nullptr);  //
@@ -1531,18 +1556,18 @@ class fibre {
   }
 
   /**
-   * @brief Release the underlying storage of the current fibre and re-initialize this one.
+   * @brief Release the underlying storage of the current stack and re-initialize this one.
    *
-   * A new fibre can be constructed from the fibril to continue the released fibre.
+   * A new stack can be constructed from the stacklet to continue the released stack.
    */
-  [[nodiscard]] auto release() -> fibril * {
-    LF_LOG("Releasing fibre");
+  [[nodiscard]] auto release() -> stacklet * {
+    LF_LOG("Releasing stack");
     LF_ASSERT(m_fib);
-    return std::exchange(m_fib, fibril::next_fibril(k_init_size, nullptr));
+    return std::exchange(m_fib, stacklet::next_stacklet());
   }
 
   /**
-   * @brief Allocate `count` bytes of memory on a fibril in the bundle.
+   * @brief Allocate `count` bytes of memory on a stacklet in the bundle.
    *
    * The memory will be aligned to a multiple of `__STDCPP_DEFAULT_NEW_ALIGNMENT__`.
    *
@@ -1559,7 +1584,7 @@ class fibre {
       if (m_fib->m_next != nullptr && m_fib->m_next->capacity() >= ext_size) {
         m_fib = m_fib->m_next;
       } else {
-        m_fib = fibril::next_fibril(std::max(2 * m_fib->capacity(), ext_size), m_fib);
+        m_fib = stacklet::next_stacklet(std::max(2 * m_fib->capacity(), ext_size), m_fib);
       }
     }
 
@@ -1571,7 +1596,7 @@ class fibre {
   }
 
   /**
-   * @brief Deallocate `count` bytes of memory from the current fibre.
+   * @brief Deallocate `count` bytes of memory from the current stack.
    *
    * This must be called in FILO order with `allocate`.
    */
@@ -1592,15 +1617,15 @@ class fibre {
   }
 
   /**
-   * @brief Get the fibril that the last allocation was on, this is non-null.
+   * @brief Get the stacklet that the last allocation was on, this is non-null.
    */
-  [[nodiscard]] auto top() noexcept -> fibril * {
+  [[nodiscard]] auto top() noexcept -> stacklet * {
     LF_ASSERT(m_fib && m_fib->is_top());
     return non_null(m_fib);
   }
 
  private:
-  fibril *m_fib; ///< The allocation fibril.
+  stacklet *m_fib; ///< The allocation stacklet.
 };
 
 } // namespace ext
@@ -1627,7 +1652,7 @@ class frame {
   std::coroutine_handle<> m_this_coro; ///< Handle to this coroutine.
 #endif
 
-  fibre::fibril *m_fibril; ///< Needs to be in promise in case allocation elided (as does m_parent).
+  stack::stacklet *m_stacklet; ///< Needs to be in promise in case allocation elided (as does m_parent).
   union {
     frame *m_parent;              ///< Non-root tasks store a pointer to their parent.
     std::binary_semaphore *m_sem; ///< Root tasks store a pointer to a semaphore.
@@ -1642,13 +1667,13 @@ class frame {
    * Non-root tasks will need to call ``set_parent(...)``.
    */
 #ifndef LF_COROUTINE_OFFSET
-  frame(std::coroutine_handle<> coro, fibre::fibril *fibril) noexcept
+  frame(std::coroutine_handle<> coro, stack::stacklet *stacklet) noexcept
       : m_this_coro{coro},
-        m_fibril(non_null(fibril)) {
+        m_stacklet(non_null(stacklet)) {
     LF_ASSERT(coro);
   }
 #else
-  frame(std::coroutine_handle<>, fibre::fibril *fibril) noexcept : m_fibril(non_null(fibril)) {}
+  frame(std::coroutine_handle<>, stack::stacklet *stacklet) noexcept : m_stacklet(non_null(stacklet)) {}
 #endif
 
   /**
@@ -1662,9 +1687,9 @@ class frame {
   void set_semaphore(std::binary_semaphore *sem) noexcept { m_sem = non_null(sem); }
 
   /**
-   * @brief Set the fibril object.
+   * @brief Set the stacklet object.
    */
-  void set_fibril(fibre::fibril *fibril) noexcept { m_fibril = non_null(fibril); }
+  void set_stacklet(stack::stacklet *stacklet) noexcept { m_stacklet = non_null(stacklet); }
 
   /**
    * @brief Get a pointer to the parent frame.
@@ -1681,9 +1706,9 @@ class frame {
   [[nodiscard]] auto semaphore() const noexcept -> std::binary_semaphore * { return m_sem; }
 
   /**
-   * @brief Get a pointer to the top of the top of the fibre-stack this frame was allocated on.
+   * @brief Get a pointer to the top of the top of the stack-stack this frame was allocated on.
    */
-  [[nodiscard]] auto fibril() const noexcept -> fibre::fibril * { return non_null(m_fibril); }
+  [[nodiscard]] auto stacklet() const noexcept -> stack::stacklet * { return non_null(m_stacklet); }
 
   /**
    * @brief Get the coroutine handle for this frames coroutine.
@@ -2177,15 +2202,15 @@ namespace lf {
 
 namespace impl::tls {
 
-constinit inline thread_local bool has_fibre = false;
-constinit inline thread_local manual_lifetime<fibre> thread_fibre = {};
+constinit inline thread_local bool has_stack = false;
+constinit inline thread_local manual_lifetime<stack> thread_stack = {};
 
 constinit inline thread_local bool has_context = false;
 constinit inline thread_local manual_lifetime<full_context> thread_context = {};
 
-[[nodiscard]] inline auto fibre() -> fibre * {
-  LF_ASSERT(has_fibre);
-  return thread_fibre.data();
+[[nodiscard]] inline auto stack() -> stack * {
+  LF_ASSERT(has_stack);
+  return thread_stack.data();
 }
 
 [[nodiscard]] inline auto context() -> full_context * {
@@ -2211,7 +2236,7 @@ inline namespace ext {
 
   LF_LOG("Initializing worker");
 
-  if (impl::tls::has_context && impl::tls::has_fibre) {
+  if (impl::tls::has_context && impl::tls::has_stack) {
     LF_THROW(std::runtime_error("Worker already initialized"));
   }
 
@@ -2220,12 +2245,12 @@ inline namespace ext {
   // clang-format off
 
   LF_TRY {
-    impl::tls::thread_fibre.construct();
+    impl::tls::thread_stack.construct();
   } LF_CATCH_ALL {
     impl::tls::thread_context.destroy();
   }
 
-  impl::tls::has_fibre = true;
+  impl::tls::has_stack = true;
   impl::tls::has_context = true;
 
   // clang-format on
@@ -2251,14 +2276,14 @@ inline void finalize(worker_context *worker) {
     LF_THROW(std::runtime_error("Finalize called on wrong thread"));
   }
 
-  if (!impl::tls::has_context || !impl::tls::has_fibre) {
+  if (!impl::tls::has_context || !impl::tls::has_stack) {
     LF_THROW(std::runtime_error("Finalize called before initialization or after finalization"));
   }
 
   impl::tls::thread_context.destroy();
-  impl::tls::thread_fibre.destroy();
+  impl::tls::thread_stack.destroy();
 
-  impl::tls::has_fibre = false;
+  impl::tls::has_stack = false;
   impl::tls::has_context = false;
 }
 
@@ -2273,7 +2298,7 @@ inline void finalize(worker_context *worker) {
 /**
  * @file co_alloc.hpp
  *
- * @brief Expert-only utilities to interact with a coroutines fibre.
+ * @brief Expert-only utilities to interact with a coroutines stack.
  */
 
 namespace lf {
@@ -2281,7 +2306,7 @@ namespace lf {
 inline namespace core {
 
 /**
- * @brief Check is a type is suitable for allocation on libfork's fibres.
+ * @brief Check is a type is suitable for allocation on libfork's stacks.
  */
 template <typename T>
 concept co_allocable = std::default_initializable<T> && alignof(T) <= impl::k_new_align;
@@ -2312,7 +2337,7 @@ inline namespace core {
 
 /**
  * @brief A function which returns an awaitable (in the context of an ``lf::task``) which triggers allocation
- * on a fibre's stack.
+ * on a stack's stack.
  *
  * Upon ``co_await``ing the result of this function a pointer or ``std::span`` representing the allocated
  * memory is returned. The memory is deleted with a matched call to ``co_delete``, This must be performed in a
@@ -2336,7 +2361,7 @@ inline auto co_new(std::size_t count) -> impl::co_new_t<T, std::dynamic_extent> 
 
 /**
  * @brief A function which returns an awaitable (in the context of an ``lf::task``) which triggers allocation
- * on a fibre's stack.
+ * on a stack's stack.
  *
  * See the documentation for the dynamic version, ``lf::co_new(std::size_t)``, for a full description.
  */
@@ -2835,11 +2860,11 @@ struct call_awaitable : std::suspend_always {
 
 struct join_awaitable {
  private:
-  void take_fibre_reset_frame() const noexcept {
+  void take_stack_reset_frame() const noexcept {
     // Steals have happened so we cannot currently own this tasks stack.
     LF_ASSERT(self->load_steals() != 0);
-    LF_ASSERT(tls::fibre()->empty());
-    *tls::fibre() = fibre{self->fibril()};
+    LF_ASSERT(tls::stack()->empty());
+    *tls::stack() = stack{self->stacklet()};
     // Some steals have happened, need to reset the control block.
     self->reset();
   }
@@ -2863,7 +2888,7 @@ struct join_awaitable {
 
     if (self->load_steals() == joined) {
       LF_LOG("Sync is ready");
-      take_fibre_reset_frame();
+      take_stack_reset_frame();
       return true;
     }
 
@@ -2887,7 +2912,7 @@ struct join_awaitable {
       // Need to acquire to ensure we see all writes by other threads to the result.
       std::atomic_thread_fence(std::memory_order_acquire);
       LF_LOG("Wins join race");
-      take_fibre_reset_frame();
+      take_stack_reset_frame();
       return task;
     }
     LF_LOG("Looses join race");
@@ -2902,7 +2927,7 @@ struct join_awaitable {
     // Check we have been reset.
     LF_ASSERT(self->load_steals() == 0);
     LF_ASSERT_NO_ASSUME(self->load_joins(std::memory_order_acquire) == k_u16_max);
-    LF_ASSERT(self->fibril() == tls::fibre()->top());
+    LF_ASSERT(self->stacklet() == tls::stack()->top());
   }
 
   frame *self;
@@ -3503,18 +3528,18 @@ auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
   // TODO make this a manual lifetime and clean up exception handling.
   eventually<std::conditional_t<is_void, empty, R>> result;
 
-  bool worker = tls::has_fibre;
+  bool worker = tls::has_stack;
 
-  std::optional<fibre> prev = std::nullopt;
+  std::optional<stack> prev = std::nullopt;
 
   if (!worker) {
     LF_LOG("Sync wait from non-worker thread");
-    tls::thread_fibre.construct();
-    tls::has_fibre = true;
+    tls::thread_stack.construct();
+    tls::has_stack = true;
   } else {
     LF_LOG("Sync wait from worker thread");
     prev.emplace();
-    swap(*prev, *tls::thread_fibre);
+    swap(*prev, *tls::thread_stack);
   }
 
   quasi_awaitable await = [&]() noexcept(!std::is_trivially_destructible_v<R>) {
@@ -3525,13 +3550,13 @@ auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
     }
   }();
 
-  ignore_t{} = tls::thread_fibre->release();
+  ignore_t{} = tls::thread_stack->release();
 
   if (!worker) {
-    tls::thread_fibre.destroy();
-    tls::has_fibre = false;
+    tls::thread_stack.destroy();
+    tls::has_stack = false;
   } else {
-    swap(*prev, *tls::thread_fibre);
+    swap(*prev, *tls::thread_stack);
   }
 
   std::binary_semaphore sem{0};
@@ -3590,7 +3615,7 @@ inline void resume(submit_handle ptr) noexcept {
 
   auto *frame = std::bit_cast<impl::frame *>(ptr);
 
-  *impl::tls::fibre() = fibre{frame->fibril()};
+  *impl::tls::stack() = stack{frame->stacklet()};
 
   frame->self().resume();
 }
@@ -3666,7 +3691,7 @@ inline auto final_await_suspend(frame *parent) noexcept -> std::coroutine_handle
     // No-one stole continuation, we are the exclusive owner of parent, just keep ripping!
     LF_LOG("Parent not stolen, keeps ripping");
     LF_ASSERT(byte_cast(parent_task) == byte_cast(parent));
-    // This must be the same thread that created the parent so it already owns the fibre.
+    // This must be the same thread that created the parent so it already owns the stack.
     // No steals have occurred so we do not need to call reset().;
     return parent->self();
   }
@@ -3678,29 +3703,29 @@ inline auto final_await_suspend(frame *parent) noexcept -> std::coroutine_handle
    * - Had the task submitted to them.
    * - Won the task at a join.
    *
-   * An owner of a task owns the fibre the task is on.
+   * An owner of a task owns the stack the task is on.
    *
-   * As the worker who completed the child task this thread owns the fibre the child task was on.
+   * As the worker who completed the child task this thread owns the stack the child task was on.
    *
    * Either:
    *
-   * 1. The parent is on the same fibre as the child.
-   * 2. The parent is on a different fibre to the child.
+   * 1. The parent is on the same stack as the child.
+   * 2. The parent is on a different stack to the child.
    *
    * Case (1) implies: we owned the parent; forked the child task; then the parent was then stolen.
    * Case (2) implies: we stole the parent task; then forked the child; then the parent was stolen.
    *
-   * In case (2) the workers fibre has no allocations on it.
+   * In case (2) the workers stack has no allocations on it.
    */
 
   LF_LOG("Task's parent was stolen");
 
-  fibre *tls_fibre = tls::fibre();
+  stack *tls_stack = tls::stack();
 
-  fibre::fibril *p_fibril = parent->fibril(); //
-  fibre::fibril *c_fibril = tls_fibre->top(); // Need to call while we own tls_fibre.
+  stack::stacklet *p_stacklet = parent->stacklet(); //
+  stack::stacklet *c_stacklet = tls_stack->top();   // Need to call while we own tls_stack.
 
-  // Register with parent we have completed this child task, this may release ownership of our fibre.
+  // Register with parent we have completed this child task, this may release ownership of our stack.
   if (parent->fetch_sub_joins(1, std::memory_order_release) == 1) {
     // Acquire all writes before resuming.
     std::atomic_thread_fence(std::memory_order_acquire);
@@ -3710,14 +3735,14 @@ inline auto final_await_suspend(frame *parent) noexcept -> std::coroutine_handle
 
     LF_LOG("Task is last child to join, resumes parent");
 
-    if (p_fibril != c_fibril) {
-      // Case (2), the tls_fibre has no allocations on it.
+    if (p_stacklet != c_stacklet) {
+      // Case (2), the tls_stack has no allocations on it.
 
-      LF_ASSERT(tls_fibre->empty());
+      LF_ASSERT(tls_stack->empty());
 
-      // TODO: fibre.splice()? Here the old fibre is empty and thrown away, if it is larger
+      // TODO: stack.splice()? Here the old stack is empty and thrown away, if it is larger
       // then we could splice it onto the parents one? Or we could attempt to cache the old one.
-      *tls_fibre = fibre{p_fibril};
+      *tls_stack = stack{p_stacklet};
     }
 
     // Must reset parents control block before resuming parent.
@@ -3734,15 +3759,15 @@ inline auto final_await_suspend(frame *parent) noexcept -> std::coroutine_handle
 
   LF_LOG("Task is not last to join");
 
-  if (p_fibril == c_fibril) {
+  if (p_stacklet == c_stacklet) {
     // We are unable to resume the parent and where its owner, as the resuming
     // thread will take ownership of the parent's we must give it up.
     LF_LOG("Thread releases control of parent's stack");
 
-    ignore_t{} = tls_fibre->release();
+    ignore_t{} = tls_stack->release();
 
   } else {
-    // Case (2) the tls_fibre has no allocations on it, it may be used later.
+    // Case (2) the tls_stack has no allocations on it, it may be used later.
   }
 
   return std::noop_coroutine();
@@ -3758,14 +3783,14 @@ struct promise_base : frame {
   using frame::frame;
 
   /**
-   * @brief Allocate the coroutine on a new fibre.
+   * @brief Allocate the coroutine on a new stack.
    */
-  LF_FORCEINLINE static auto operator new(std::size_t size) -> void * { return tls::fibre()->allocate(size); }
+  LF_FORCEINLINE static auto operator new(std::size_t size) -> void * { return tls::stack()->allocate(size); }
 
   /**
-   * @brief Deallocate the coroutine from current `fibre`s stack.
+   * @brief Deallocate the coroutine from current `stack`s stack.
    */
-  LF_FORCEINLINE static void operator delete(void *ptr) noexcept { tls::fibre()->deallocate(ptr); }
+  LF_FORCEINLINE static void operator delete(void *ptr) noexcept { tls::stack()->deallocate(ptr); }
 
   static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
 
@@ -3783,22 +3808,22 @@ struct promise_base : frame {
   template <co_allocable T, std::size_t E>
   auto await_transform(co_new_t<T, E> await) {
 
-    auto *fibre = tls::fibre();
+    auto *stack = tls::stack();
 
-    T *ptr = static_cast<T *>(fibre->allocate(await.count * sizeof(T)));
+    T *ptr = static_cast<T *>(stack->allocate(await.count * sizeof(T)));
 
     // clang-format off
 
     LF_TRY {
       std::ranges::uninitialized_default_construct_n(ptr, await.count);
     } LF_CATCH_ALL {
-      fibre->deallocate(ptr);
+      stack->deallocate(ptr);
       LF_RETHROW;
     }
 
     // clang-format on
 
-    this->set_fibril(fibre->top());
+    this->set_stacklet(stack->top());
 
     return alloc_awaitable<T, E>{{}, std::span<T, E>{ptr, await.count}};
   }
@@ -3806,9 +3831,9 @@ struct promise_base : frame {
   template <co_allocable T, std::size_t E>
   auto await_transform(co_delete_t<T, E> await) noexcept -> std::suspend_never {
     std::ranges::destroy(await);
-    auto *fibre = impl::tls::fibre();
-    fibre->deallocate(await.data());
-    this->set_fibril(fibre->top());
+    auto *stack = impl::tls::stack();
+    stack->deallocate(await.data());
+    this->set_stacklet(stack->top());
     return {};
   }
 
@@ -3864,7 +3889,7 @@ template <returnable R, return_address_for<R> I, tag Tag>
 struct promise : promise_base, return_result<R, I> {
 
   promise() noexcept
-      : promise_base{std::coroutine_handle<promise>::from_promise(*this), tls::fibre()->top()} {}
+      : promise_base{std::coroutine_handle<promise>::from_promise(*this), tls::stack()->top()} {}
 
   auto get_return_object() noexcept -> task<R> { return {{}, static_cast<void *>(this)}; }
 
@@ -3875,7 +3900,7 @@ struct promise : promise_base, return_result<R, I> {
 
     LF_LOG("At final suspend call");
 
-    // Completing a non-root task means we currently own the fibre_stack this child is on
+    // Completing a non-root task means we currently own the stack_stack this child is on
 
     LF_ASSERT(this->load_steals() == 0);                                           // Fork without join.
     LF_ASSERT_NO_ASSUME(this->load_joins(std::memory_order_acquire) == k_u16_max); // Invalid state.
@@ -3894,7 +3919,7 @@ struct promise : promise_base, return_result<R, I> {
         child.promise().semaphore()->release();
         child.destroy();
 
-        // A root task is always the first on a fibre, now it has been completed the fibre is empty.
+        // A root task is always the first on a stack, now it has been completed the stack is empty.
 
         return std::noop_coroutine();
       }
@@ -3908,7 +3933,7 @@ struct promise : promise_base, return_result<R, I> {
         LF_LOG("Inline task resumes parent");
         // Inline task's parent cannot have been stolen as its continuation was not
         // pushed to a queue hence, no need to reset control block. We do not
-        // attempt to take the fibre because stack-eats only occur at a sync point.
+        // attempt to take the stack because stack-eats only occur at a sync point.
         return parent->self();
       }
 

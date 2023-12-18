@@ -15,8 +15,8 @@
 
 #include "libfork/core/ext/context.hpp"
 
-#include "libfork/core/impl/fibre.hpp"
 #include "libfork/core/impl/manual_lifetime.hpp"
+#include "libfork/core/impl/stack.hpp"
 
 /**
  * @file tls.hpp
@@ -28,15 +28,15 @@ namespace lf {
 
 namespace impl::tls {
 
-constinit inline thread_local bool has_fibre = false;
-constinit inline thread_local manual_lifetime<fibre> thread_fibre = {};
+constinit inline thread_local bool has_stack = false;
+constinit inline thread_local manual_lifetime<stack> thread_stack = {};
 
 constinit inline thread_local bool has_context = false;
 constinit inline thread_local manual_lifetime<full_context> thread_context = {};
 
-[[nodiscard]] inline auto fibre() -> fibre * {
-  LF_ASSERT(has_fibre);
-  return thread_fibre.data();
+[[nodiscard]] inline auto stack() -> stack * {
+  LF_ASSERT(has_stack);
+  return thread_stack.data();
 }
 
 [[nodiscard]] inline auto context() -> full_context * {
@@ -62,7 +62,7 @@ inline namespace ext {
 
   LF_LOG("Initializing worker");
 
-  if (impl::tls::has_context && impl::tls::has_fibre) {
+  if (impl::tls::has_context && impl::tls::has_stack) {
     LF_THROW(std::runtime_error("Worker already initialized"));
   }
 
@@ -71,12 +71,12 @@ inline namespace ext {
   // clang-format off
 
   LF_TRY {
-    impl::tls::thread_fibre.construct();
+    impl::tls::thread_stack.construct();
   } LF_CATCH_ALL {
     impl::tls::thread_context.destroy();
   }
 
-  impl::tls::has_fibre = true;
+  impl::tls::has_stack = true;
   impl::tls::has_context = true;
 
   // clang-format on
@@ -102,14 +102,14 @@ inline void finalize(worker_context *worker) {
     LF_THROW(std::runtime_error("Finalize called on wrong thread"));
   }
 
-  if (!impl::tls::has_context || !impl::tls::has_fibre) {
+  if (!impl::tls::has_context || !impl::tls::has_stack) {
     LF_THROW(std::runtime_error("Finalize called before initialization or after finalization"));
   }
 
   impl::tls::thread_context.destroy();
-  impl::tls::thread_fibre.destroy();
+  impl::tls::thread_stack.destroy();
 
-  impl::tls::has_fibre = false;
+  impl::tls::has_stack = false;
   impl::tls::has_context = false;
 }
 

@@ -351,7 +351,7 @@ BENCHMARK(fixed_stack_coro_with_frame::fib);
 
 // ----------------------- custom Stackfull coro ----------------------- //
 
-// A variation fixed_stack_coro_with_frame but makes a TLS call to get fibre.
+// A variation fixed_stack_coro_with_frame but makes a TLS call to get stack.
 
 namespace fixed_stack_coro_with_frame_tls {
 
@@ -365,7 +365,7 @@ struct promise : lf::impl::frame, fixed_stack_coro::op {
 
   // double f[40]{};
 
-  promise() : lf::impl::frame(coroutine::from_promise(*this), lf::impl::tls::fibre()->top()) {}
+  promise() : lf::impl::frame(coroutine::from_promise(*this), lf::impl::tls::stack()->top()) {}
 
   auto get_return_object() -> coroutine { return {coroutine::from_promise(*this)}; }
   static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
@@ -492,7 +492,7 @@ struct LF_CORO_ATTRIBUTES coroutine : std::coroutine_handle<promise> {
 
 struct promise : lf::impl::promise_base {
 
-  promise() : lf::impl::promise_base(coroutine::from_promise(*this), lf::impl::tls::fibre()->top()) {}
+  promise() : lf::impl::promise_base(coroutine::from_promise(*this), lf::impl::tls::stack()->top()) {}
 
   auto get_return_object() -> coroutine { return {coroutine::from_promise(*this)}; }
   static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
@@ -550,7 +550,7 @@ struct promise : lf::impl::promise_base {
 
   promise()
       : lf::impl::promise_base(std::coroutine_handle<promise>::from_promise(*this),
-                               lf::impl::tls::fibre()->top()) {}
+                               lf::impl::tls::stack()->top()) {}
 
   auto get_return_object() -> coroutine { return coroutine{this}; }
 

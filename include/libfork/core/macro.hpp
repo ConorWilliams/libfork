@@ -50,19 +50,6 @@
  */
 #define LF_VERSION_PATCH 0
 
-#ifndef LF_FIBRE_STACK_SIZE
-  /**
-   * @brief __[public]__ A customizable stack size for ``fibre_stack``'s (in multiples of 4 kibibytes i.e.
-   * the page size).
-   *
-   * You can override this by defining ``LF_FIBRE_STACK_SIZE`` to a power of two (default 1 MiB)
-   */
-  #define LF_FIBRE_STACK_SIZE 256
-#endif
-
-static_assert(LF_FIBRE_STACK_SIZE && !(LF_FIBRE_STACK_SIZE & (LF_FIBRE_STACK_SIZE - 1)),
-              "Must be a power of 2");
-
 /**
  * @brief Use to conditionally decorate lambdas and ``operator()`` (alongside ``LF_STATIC_CONST``) with
  * ``static``.

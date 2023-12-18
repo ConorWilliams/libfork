@@ -32,7 +32,7 @@ inline void resume(submit_handle ptr) noexcept {
 
   auto *frame = std::bit_cast<impl::frame *>(ptr);
 
-  *impl::tls::fibre() = fibre{frame->fibril()};
+  *impl::tls::stack() = stack{frame->stacklet()};
 
   frame->self().resume();
 }

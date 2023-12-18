@@ -14,7 +14,7 @@
 #include <semaphore>
 #include <type_traits>
 
-#include "libfork/core/impl/fibre.hpp"
+#include "libfork/core/impl/stack.hpp"
 
 /**
  * @file frame.hpp
@@ -33,7 +33,7 @@ class frame {
   std::coroutine_handle<> m_this_coro; ///< Handle to this coroutine.
 #endif
 
-  fibre::fibril *m_fibril; ///< Needs to be in promise in case allocation elided (as does m_parent).
+  stack::stacklet *m_stacklet; ///< Needs to be in promise in case allocation elided (as does m_parent).
   union {
     frame *m_parent;              ///< Non-root tasks store a pointer to their parent.
     std::binary_semaphore *m_sem; ///< Root tasks store a pointer to a semaphore.
@@ -48,13 +48,13 @@ class frame {
    * Non-root tasks will need to call ``set_parent(...)``.
    */
 #ifndef LF_COROUTINE_OFFSET
-  frame(std::coroutine_handle<> coro, fibre::fibril *fibril) noexcept
+  frame(std::coroutine_handle<> coro, stack::stacklet *stacklet) noexcept
       : m_this_coro{coro},
-        m_fibril(non_null(fibril)) {
+        m_stacklet(non_null(stacklet)) {
     LF_ASSERT(coro);
   }
 #else
-  frame(std::coroutine_handle<>, fibre::fibril *fibril) noexcept : m_fibril(non_null(fibril)) {}
+  frame(std::coroutine_handle<>, stack::stacklet *stacklet) noexcept : m_stacklet(non_null(stacklet)) {}
 #endif
 
   /**
@@ -68,9 +68,9 @@ class frame {
   void set_semaphore(std::binary_semaphore *sem) noexcept { m_sem = non_null(sem); }
 
   /**
-   * @brief Set the fibril object.
+   * @brief Set the stacklet object.
    */
-  void set_fibril(fibre::fibril *fibril) noexcept { m_fibril = non_null(fibril); }
+  void set_stacklet(stack::stacklet *stacklet) noexcept { m_stacklet = non_null(stacklet); }
 
   /**
    * @brief Get a pointer to the parent frame.
@@ -87,9 +87,9 @@ class frame {
   [[nodiscard]] auto semaphore() const noexcept -> std::binary_semaphore * { return m_sem; }
 
   /**
-   * @brief Get a pointer to the top of the top of the fibre-stack this frame was allocated on.
+   * @brief Get a pointer to the top of the top of the stack-stack this frame was allocated on.
    */
-  [[nodiscard]] auto fibril() const noexcept -> fibre::fibril * { return non_null(m_fibril); }
+  [[nodiscard]] auto stacklet() const noexcept -> stack::stacklet * { return non_null(m_stacklet); }
 
   /**
    * @brief Get the coroutine handle for this frames coroutine.

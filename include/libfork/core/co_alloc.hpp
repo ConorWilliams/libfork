@@ -20,7 +20,7 @@
 /**
  * @file co_alloc.hpp
  *
- * @brief Expert-only utilities to interact with a coroutines fibre.
+ * @brief Expert-only utilities to interact with a coroutines stack.
  */
 
 namespace lf {
@@ -28,7 +28,7 @@ namespace lf {
 inline namespace core {
 
 /**
- * @brief Check is a type is suitable for allocation on libfork's fibres.
+ * @brief Check is a type is suitable for allocation on libfork's stacks.
  */
 template <typename T>
 concept co_allocable = std::default_initializable<T> && alignof(T) <= impl::k_new_align;
@@ -59,7 +59,7 @@ inline namespace core {
 
 /**
  * @brief A function which returns an awaitable (in the context of an ``lf::task``) which triggers allocation
- * on a fibre's stack.
+ * on a stack's stack.
  *
  * Upon ``co_await``ing the result of this function a pointer or ``std::span`` representing the allocated
  * memory is returned. The memory is deleted with a matched call to ``co_delete``, This must be performed in a
@@ -83,7 +83,7 @@ inline auto co_new(std::size_t count) -> impl::co_new_t<T, std::dynamic_extent> 
 
 /**
  * @brief A function which returns an awaitable (in the context of an ``lf::task``) which triggers allocation
- * on a fibre's stack.
+ * on a stack's stack.
  *
  * See the documentation for the dynamic version, ``lf::co_new(std::size_t)``, for a full description.
  */

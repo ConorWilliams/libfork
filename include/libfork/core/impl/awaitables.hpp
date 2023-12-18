@@ -82,11 +82,11 @@ struct call_awaitable : std::suspend_always {
 
 struct join_awaitable {
  private:
-  void take_fibre_reset_frame() const noexcept {
+  void take_stack_reset_frame() const noexcept {
     // Steals have happened so we cannot currently own this tasks stack.
     LF_ASSERT(self->load_steals() != 0);
-    LF_ASSERT(tls::fibre()->empty());
-    *tls::fibre() = fibre{self->fibril()};
+    LF_ASSERT(tls::stack()->empty());
+    *tls::stack() = stack{self->stacklet()};
     // Some steals have happened, need to reset the control block.
     self->reset();
   }
@@ -110,7 +110,7 @@ struct join_awaitable {
 
     if (self->load_steals() == joined) {
       LF_LOG("Sync is ready");
-      take_fibre_reset_frame();
+      take_stack_reset_frame();
       return true;
     }
 
@@ -134,7 +134,7 @@ struct join_awaitable {
       // Need to acquire to ensure we see all writes by other threads to the result.
       std::atomic_thread_fence(std::memory_order_acquire);
       LF_LOG("Wins join race");
-      take_fibre_reset_frame();
+      take_stack_reset_frame();
       return task;
     }
     LF_LOG("Looses join race");
@@ -149,7 +149,7 @@ struct join_awaitable {
     // Check we have been reset.
     LF_ASSERT(self->load_steals() == 0);
     LF_ASSERT_NO_ASSUME(self->load_joins(std::memory_order_acquire) == k_u16_max);
-    LF_ASSERT(self->fibril() == tls::fibre()->top());
+    LF_ASSERT(self->stacklet() == tls::stack()->top());
   }
 
   frame *self;

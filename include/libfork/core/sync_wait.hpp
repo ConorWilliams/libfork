@@ -57,18 +57,18 @@ auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
   // TODO make this a manual lifetime and clean up exception handling.
   eventually<std::conditional_t<is_void, empty, R>> result;
 
-  bool worker = tls::has_fibre;
+  bool worker = tls::has_stack;
 
-  std::optional<fibre> prev = std::nullopt;
+  std::optional<stack> prev = std::nullopt;
 
   if (!worker) {
     LF_LOG("Sync wait from non-worker thread");
-    tls::thread_fibre.construct();
-    tls::has_fibre = true;
+    tls::thread_stack.construct();
+    tls::has_stack = true;
   } else {
     LF_LOG("Sync wait from worker thread");
     prev.emplace();
-    swap(*prev, *tls::thread_fibre);
+    swap(*prev, *tls::thread_stack);
   }
 
   quasi_awaitable await = [&]() noexcept(!std::is_trivially_destructible_v<R>) {
@@ -79,13 +79,13 @@ auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
     }
   }();
 
-  ignore_t{} = tls::thread_fibre->release();
+  ignore_t{} = tls::thread_stack->release();
 
   if (!worker) {
-    tls::thread_fibre.destroy();
-    tls::has_fibre = false;
+    tls::thread_stack.destroy();
+    tls::has_stack = false;
   } else {
-    swap(*prev, *tls::thread_fibre);
+    swap(*prev, *tls::thread_stack);
   }
 
   std::binary_semaphore sem{0};

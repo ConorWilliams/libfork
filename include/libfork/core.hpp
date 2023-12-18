@@ -29,11 +29,11 @@
 
 #include "libfork/core/impl/awaitables.hpp"
 #include "libfork/core/impl/combinate.hpp"
-#include "libfork/core/impl/fibre.hpp"
 #include "libfork/core/impl/frame.hpp"
 #include "libfork/core/impl/manual_lifetime.hpp"
 #include "libfork/core/impl/promise.hpp"
 #include "libfork/core/impl/return.hpp"
+#include "libfork/core/impl/stack.hpp"
 #include "libfork/core/impl/utility.hpp"
 
 /**

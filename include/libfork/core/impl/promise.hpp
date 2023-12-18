@@ -49,7 +49,7 @@ inline auto final_await_suspend(frame *parent) noexcept -> std::coroutine_handle
     // No-one stole continuation, we are the exclusive owner of parent, just keep ripping!
     LF_LOG("Parent not stolen, keeps ripping");
     LF_ASSERT(byte_cast(parent_task) == byte_cast(parent));
-    // This must be the same thread that created the parent so it already owns the fibre.
+    // This must be the same thread that created the parent so it already owns the stack.
     // No steals have occurred so we do not need to call reset().;
     return parent->self();
   }
@@ -61,29 +61,29 @@ inline auto final_await_suspend(frame *parent) noexcept -> std::coroutine_handle
    * - Had the task submitted to them.
    * - Won the task at a join.
    *
-   * An owner of a task owns the fibre the task is on.
+   * An owner of a task owns the stack the task is on.
    *
-   * As the worker who completed the child task this thread owns the fibre the child task was on.
+   * As the worker who completed the child task this thread owns the stack the child task was on.
    *
    * Either:
    *
-   * 1. The parent is on the same fibre as the child.
-   * 2. The parent is on a different fibre to the child.
+   * 1. The parent is on the same stack as the child.
+   * 2. The parent is on a different stack to the child.
    *
    * Case (1) implies: we owned the parent; forked the child task; then the parent was then stolen.
    * Case (2) implies: we stole the parent task; then forked the child; then the parent was stolen.
    *
-   * In case (2) the workers fibre has no allocations on it.
+   * In case (2) the workers stack has no allocations on it.
    */
 
   LF_LOG("Task's parent was stolen");
 
-  fibre *tls_fibre = tls::fibre();
+  stack *tls_stack = tls::stack();
 
-  fibre::fibril *p_fibril = parent->fibril(); //
-  fibre::fibril *c_fibril = tls_fibre->top(); // Need to call while we own tls_fibre.
+  stack::stacklet *p_stacklet = parent->stacklet(); //
+  stack::stacklet *c_stacklet = tls_stack->top();   // Need to call while we own tls_stack.
 
-  // Register with parent we have completed this child task, this may release ownership of our fibre.
+  // Register with parent we have completed this child task, this may release ownership of our stack.
   if (parent->fetch_sub_joins(1, std::memory_order_release) == 1) {
     // Acquire all writes before resuming.
     std::atomic_thread_fence(std::memory_order_acquire);
@@ -93,14 +93,14 @@ inline auto final_await_suspend(frame *parent) noexcept -> std::coroutine_handle
 
     LF_LOG("Task is last child to join, resumes parent");
 
-    if (p_fibril != c_fibril) {
-      // Case (2), the tls_fibre has no allocations on it.
+    if (p_stacklet != c_stacklet) {
+      // Case (2), the tls_stack has no allocations on it.
 
-      LF_ASSERT(tls_fibre->empty());
+      LF_ASSERT(tls_stack->empty());
 
-      // TODO: fibre.splice()? Here the old fibre is empty and thrown away, if it is larger
+      // TODO: stack.splice()? Here the old stack is empty and thrown away, if it is larger
       // then we could splice it onto the parents one? Or we could attempt to cache the old one.
-      *tls_fibre = fibre{p_fibril};
+      *tls_stack = stack{p_stacklet};
     }
 
     // Must reset parents control block before resuming parent.
@@ -117,15 +117,15 @@ inline auto final_await_suspend(frame *parent) noexcept -> std::coroutine_handle
 
   LF_LOG("Task is not last to join");
 
-  if (p_fibril == c_fibril) {
+  if (p_stacklet == c_stacklet) {
     // We are unable to resume the parent and where its owner, as the resuming
     // thread will take ownership of the parent's we must give it up.
     LF_LOG("Thread releases control of parent's stack");
 
-    ignore_t{} = tls_fibre->release();
+    ignore_t{} = tls_stack->release();
 
   } else {
-    // Case (2) the tls_fibre has no allocations on it, it may be used later.
+    // Case (2) the tls_stack has no allocations on it, it may be used later.
   }
 
   return std::noop_coroutine();
@@ -141,14 +141,14 @@ struct promise_base : frame {
   using frame::frame;
 
   /**
-   * @brief Allocate the coroutine on a new fibre.
+   * @brief Allocate the coroutine on a new stack.
    */
-  LF_FORCEINLINE static auto operator new(std::size_t size) -> void * { return tls::fibre()->allocate(size); }
+  LF_FORCEINLINE static auto operator new(std::size_t size) -> void * { return tls::stack()->allocate(size); }
 
   /**
-   * @brief Deallocate the coroutine from current `fibre`s stack.
+   * @brief Deallocate the coroutine from current `stack`s stack.
    */
-  LF_FORCEINLINE static void operator delete(void *ptr) noexcept { tls::fibre()->deallocate(ptr); }
+  LF_FORCEINLINE static void operator delete(void *ptr) noexcept { tls::stack()->deallocate(ptr); }
 
   static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
 
@@ -166,22 +166,22 @@ struct promise_base : frame {
   template <co_allocable T, std::size_t E>
   auto await_transform(co_new_t<T, E> await) {
 
-    auto *fibre = tls::fibre();
+    auto *stack = tls::stack();
 
-    T *ptr = static_cast<T *>(fibre->allocate(await.count * sizeof(T)));
+    T *ptr = static_cast<T *>(stack->allocate(await.count * sizeof(T)));
 
     // clang-format off
 
     LF_TRY {
       std::ranges::uninitialized_default_construct_n(ptr, await.count);
     } LF_CATCH_ALL {
-      fibre->deallocate(ptr);
+      stack->deallocate(ptr);
       LF_RETHROW;
     }
 
     // clang-format on
 
-    this->set_fibril(fibre->top());
+    this->set_stacklet(stack->top());
 
     return alloc_awaitable<T, E>{{}, std::span<T, E>{ptr, await.count}};
   }
@@ -189,9 +189,9 @@ struct promise_base : frame {
   template <co_allocable T, std::size_t E>
   auto await_transform(co_delete_t<T, E> await) noexcept -> std::suspend_never {
     std::ranges::destroy(await);
-    auto *fibre = impl::tls::fibre();
-    fibre->deallocate(await.data());
-    this->set_fibril(fibre->top());
+    auto *stack = impl::tls::stack();
+    stack->deallocate(await.data());
+    this->set_stacklet(stack->top());
     return {};
   }
 
@@ -247,7 +247,7 @@ template <returnable R, return_address_for<R> I, tag Tag>
 struct promise : promise_base, return_result<R, I> {
 
   promise() noexcept
-      : promise_base{std::coroutine_handle<promise>::from_promise(*this), tls::fibre()->top()} {}
+      : promise_base{std::coroutine_handle<promise>::from_promise(*this), tls::stack()->top()} {}
 
   auto get_return_object() noexcept -> task<R> { return {{}, static_cast<void *>(this)}; }
 
@@ -258,7 +258,7 @@ struct promise : promise_base, return_result<R, I> {
 
     LF_LOG("At final suspend call");
 
-    // Completing a non-root task means we currently own the fibre_stack this child is on
+    // Completing a non-root task means we currently own the stack_stack this child is on
 
     LF_ASSERT(this->load_steals() == 0);                                           // Fork without join.
     LF_ASSERT_NO_ASSUME(this->load_joins(std::memory_order_acquire) == k_u16_max); // Invalid state.
@@ -277,7 +277,7 @@ struct promise : promise_base, return_result<R, I> {
         child.promise().semaphore()->release();
         child.destroy();
 
-        // A root task is always the first on a fibre, now it has been completed the fibre is empty.
+        // A root task is always the first on a stack, now it has been completed the stack is empty.
 
         return std::noop_coroutine();
       }
@@ -291,7 +291,7 @@ struct promise : promise_base, return_result<R, I> {
         LF_LOG("Inline task resumes parent");
         // Inline task's parent cannot have been stolen as its continuation was not
         // pushed to a queue hence, no need to reset control block. We do not
-        // attempt to take the fibre because stack-eats only occur at a sync point.
+        // attempt to take the stack because stack-eats only occur at a sync point.
         return parent->self();
       }
 
