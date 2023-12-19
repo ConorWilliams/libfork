@@ -6,9 +6,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <libfork/core/co_alloc.hpp>
-#include <libfork/core/control_flow.hpp>
-#include <libfork/schedule/ext/random.hpp>
+#include <random>
 #include <stdexcept>
 #include <thread>
 
@@ -105,6 +103,61 @@ TEMPLATE_TEST_CASE("Explicit scheduling", "[explicit][template]", busy_pool, laz
   for (int i = 0; i < 100; ++i) {
     for (int j = 0; j < 5; ++j) {
       REQUIRE(sync_wait(sch, loop, j, contexts));
+    }
+  }
+}
+
+namespace {
+
+inline constexpr auto sfib = [](auto sfib, int n, std::span<context *> neigh, lf::xoshiro rng) -> task<int> {
+  //
+  if (n < 2) {
+    co_return n;
+  }
+
+  if (rng() % 2 == 0) {
+
+    std::uniform_int_distribution<std::size_t> dist{0, neigh.size() - 1};
+
+    context *target = neigh[dist(rng)];
+
+    co_await target;
+
+    if (sfib.context() != target) {
+      co_return -1;
+    }
+  }
+
+  int a, b;
+
+  co_await lf::fork(&a, sfib)(n - 1, neigh, lf::xoshiro{seed, rng});
+  co_await lf::call(&b, sfib)(n - 2, neigh, lf::xoshiro{seed, rng});
+
+  co_await lf::join;
+
+  if (a == -1 || b == -1) {
+    co_return -1;
+  }
+
+  co_return a + b;
+};
+
+auto fib(int n) -> int {
+  if (n < 2) {
+    return n;
+  }
+  return fib(n - 1) + fib(n - 2);
+}
+
+} // namespace
+
+TEMPLATE_TEST_CASE("Explicit fibonacci", "[explicit][template]", busy_pool, lazy_pool) {
+
+  TestType sch{std::min(4U, std::thread::hardware_concurrency())};
+
+  for (int i = 0; i < 100; ++i) {
+    for (int j = 1; j < 20; ++j) {
+      REQUIRE(sync_wait(sch, sfib, j, sch.contexts(), lf::xoshiro{seed, std::random_device{}}) == fib(j));
     }
   }
 }

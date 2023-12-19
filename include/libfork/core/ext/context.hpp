@@ -127,6 +127,8 @@ class full_context : public worker_context {
       return nullptr;
     });
   }
+
+  [[nodiscard]] auto empty() const noexcept -> bool { return m_tasks.empty(); }
 };
 
 } // namespace impl

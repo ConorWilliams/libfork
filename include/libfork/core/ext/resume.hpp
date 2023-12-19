@@ -9,9 +9,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include "libfork/core/ext/tls.hpp"
+#include "libfork/core/macro.hpp"
 
 #include "libfork/core/ext/handles.hpp"
+#include "libfork/core/ext/tls.hpp"
 
 /**
  * @file resume.hpp
@@ -34,7 +35,9 @@ inline void resume(submit_handle ptr) noexcept {
 
   *impl::tls::stack() = impl::stack{frame->stacklet()};
 
+  LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
   frame->self().resume();
+  LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
 }
 
 /**
@@ -48,7 +51,9 @@ inline void resume(task_handle ptr) noexcept {
 
   frame->fetch_add_steal();
 
+  LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
   frame->self().resume();
+  LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
 }
 
 } // namespace ext

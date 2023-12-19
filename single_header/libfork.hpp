@@ -2078,6 +2078,8 @@ class full_context : public worker_context {
       return nullptr;
     });
   }
+
+  [[nodiscard]] auto empty() const noexcept -> bool { return m_tasks.empty(); }
 };
 
 } // namespace impl
@@ -3668,7 +3670,9 @@ inline void resume(submit_handle ptr) noexcept {
 
   *impl::tls::stack() = impl::stack{frame->stacklet()};
 
+  LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
   frame->self().resume();
+  LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
 }
 
 /**
@@ -3682,7 +3686,9 @@ inline void resume(task_handle ptr) noexcept {
 
   frame->fetch_add_steal();
 
+  LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
   frame->self().resume();
+  LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
 }
 
 } // namespace ext
@@ -4807,6 +4813,12 @@ struct seed_t {};
 template <typename T>
 concept has_result_type = requires { typename std::remove_cvref_t<T>::result_type; };
 
+template <typename G>
+concept uniform_random_bit_generator_help =                           //
+    std::uniform_random_bit_generator<G> &&                           //
+    impl::has_result_type<G> &&                                       //
+    std::same_as<std::invoke_result_t<G &>, typename G::result_type>; //
+
 } // namespace impl
 
 inline namespace ext {
@@ -4817,10 +4829,7 @@ inline constexpr impl::seed_t seed = {}; ///< A tag to disambiguate seeding from
  * @brief `Like std::uniform_random_bit_generator`, but also requires a nested `result_type`.
  */
 template <typename G>
-concept uniform_random_bit_generator =                                                     //
-    std::uniform_random_bit_generator<G> &&                                                //
-    impl::has_result_type<G> &&                                                            //
-    std::same_as<std::invoke_result_t<G &>, typename std::remove_cvref_t<G>::result_type>; //
+concept uniform_random_bit_generator = impl::uniform_random_bit_generator_help<std::remove_cvref_t<G>>;
 
 /**
  * @brief A \<random\> compatible implementation of the xoshiro256** 1.0 PRNG
