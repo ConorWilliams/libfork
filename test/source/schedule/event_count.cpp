@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+// The contents of this file have been adapted from https://github.com/facebook/folly
+
 #include <algorithm>
 #include <atomic>
 #include <random>

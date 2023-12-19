@@ -2789,6 +2789,7 @@ class first_arg_t {
 
 
 
+
 /**
  * @file awaitables.hpp
  *
@@ -2803,7 +2804,16 @@ struct switch_awaitable : std::suspend_always {
 
   auto await_ready() const noexcept { return tls::context() == dest; }
 
-  void await_suspend(std::coroutine_handle<>) noexcept { dest->submit(&self); }
+  auto await_suspend(std::coroutine_handle<>) noexcept -> std::coroutine_handle<> {
+
+    dest->submit(&self);
+
+    if (task_handle task = tls::context()->pop()) {
+      LF_ASSERT(false);
+      return std::bit_cast<frame *>(task)->self();
+    }
+    return std::noop_coroutine();
+  }
 
   intrusive_list<submit_handle>::node self;
   context *dest;
@@ -2908,7 +2918,10 @@ struct join_awaitable {
       return task;
     }
     LF_LOG("Looses join race");
+
     // Someone else is responsible for running this task and we have run out of work.
+    // We must have run out of work as steals have occurred.
+    LF_ASSERT_NO_ASSUME(tls::context()->pop() == nullptr);
     // We cannot touch *this or deference self as someone may have resumed already!
     // We cannot currently own this stack (checking would violate above).
     return std::noop_coroutine();
@@ -5264,6 +5277,8 @@ static_assert(scheduler<busy_pool>);
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+// The contents of this file have been adapted from https://github.com/facebook/folly
 
 #include <atomic>
 #include <bit>
