@@ -51,7 +51,7 @@ auto test1() -> coro<void, discard_t> { co_return; }
 // T = non-reference
 
 #define trivial(name, type)                                                                                  \
-  auto name##_name()->coro<int, type> {                                                                      \
+  auto name##_name() -> coro<int, type> {                                                                    \
     int x = 23;                                                                                              \
     co_return 23;                                                                                            \
     co_return x;                                                                                             \
@@ -67,7 +67,7 @@ trivial(int_o, std::optional<int> *);
 trivial(int_e, eventually<int> *);
 
 #define vector(name, type)                                                                                   \
-  auto vector_##name()->coro<std::vector<int>, type> {                                                       \
+  auto vector_##name() -> coro<std::vector<int>, type> {                                                     \
     std::vector<int> x;                                                                                      \
     co_return x;                                                                                             \
     co_return std::vector<int>{};                                                                            \
@@ -88,10 +88,10 @@ vector(vec_e, eventually<std::vector<int>> *);
 int x = 23;
 
 #define reference(name, type)                                                                                \
-  auto reference_##name()->coro<int &, type> { co_return x; }
+  auto reference_##name() -> coro<int &, type> { co_return x; }
 
 #define rreference(name, type)                                                                               \
-  auto rreference_##name()->coro<int &&, type> {                                                             \
+  auto rreference_##name() -> coro<int &&, type> {                                                           \
     co_return 23;                                                                                            \
     co_return std::move(x);                                                                                  \
   }
