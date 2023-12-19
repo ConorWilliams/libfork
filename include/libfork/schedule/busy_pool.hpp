@@ -102,6 +102,7 @@ class busy_pool {
   std::shared_ptr<impl::busy_vars> m_share = std::make_shared<impl::busy_vars>(m_num_threads);
   std::vector<std::shared_ptr<impl::numa_context<impl::busy_vars>>> m_worker = {};
   std::vector<std::thread> m_threads = {};
+  std::vector<context *> m_contexts = {};
 
   using strategy = numa_strategy;
 
@@ -135,12 +136,22 @@ class busy_pool {
       // must be noexcept as if we fail the countdown then the workers will hang.
       m_share->latch_start.arrive_and_wait();
     }();
+
+    // All workers have set their contexts, we can read them now.
+    for (auto &&worker : m_worker) {
+      m_contexts.push_back(worker->get_underlying());
+    }
   }
 
   /**
    * @brief Schedule a task for execution.
    */
   void schedule(lf::intruded_list<lf::submit_handle> jobs) { m_worker[m_dist(m_rng)]->submit(jobs); }
+
+  /**
+   * @brief Get a view of the worker's contexts.
+   */
+  auto contexts() noexcept -> std::span<context *> { return m_contexts; }
 
   ~busy_pool() noexcept {
     LF_LOG("Requesting a stop");

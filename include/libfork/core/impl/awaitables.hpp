@@ -10,8 +10,12 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <coroutine>
+
 #include <span>
 #include <type_traits>
+
+#include "libfork/core/invocable.hpp"
+#include "libfork/core/macro.hpp"
 
 #include "libfork/core/ext/handles.hpp"
 #include "libfork/core/ext/tls.hpp"
@@ -33,7 +37,39 @@ struct switch_awaitable : std::suspend_always {
 
   auto await_ready() const noexcept { return tls::context() == dest; }
 
-  void await_suspend(std::coroutine_handle<>) noexcept { dest->submit(&self); }
+  auto await_suspend(std::coroutine_handle<>) noexcept -> std::coroutine_handle<> {
+
+    // Schedule this coro for execution on Dest.
+    dest->submit(&self);
+
+    // Dest will take this stack upon resumption hence, we must release it.
+    ignore_t{} = tls::stack()->release();
+
+    // Eventually dest will fail to pop() the ancestor task that we 'could' pop() here and
+    // then treat it as a task that was stolen from it.
+
+    // Now we have a number of tasks on our WSQ which we have "effectively stolen" from dest.
+    // All of them will eventually reach a join point.
+
+    // We can pop() the ancestor, mark it stolen and then resume it.
+
+    /**
+     * While running the ancestor several things can happen:
+     *  - We hit a join in the ancestor:
+     *    - Case Win join:
+     *      Take stack, OK to treat tasks on our WSQ as non-stolen.
+     *    - Case Loose join:
+     *      Must treat tasks on our WSQ as stolen.
+     * - We loose a join in a descendent of the ancestor:
+     *   Ok all task on WSQ must have been stole by other threads and handled as stolen appropriately.
+     */
+
+    if (auto *eff_stolen = std::bit_cast<frame *>(tls::context()->pop())) {
+      eff_stolen->fetch_add_steal();
+      return eff_stolen->self();
+    }
+    return std::noop_coroutine();
+  }
 
   intrusive_list<submit_handle>::node self;
   context *dest;
@@ -138,9 +174,17 @@ struct join_awaitable {
       return task;
     }
     LF_LOG("Looses join race");
-    // Someone else is responsible for running this task and we have run out of work.
+
+    // Someone else is responsible for running this task.
     // We cannot touch *this or deference self as someone may have resumed already!
     // We cannot currently own this stack (checking would violate above).
+
+    // If no explicit scheduling then we must have an empty WSQ as we stole this task.
+
+    if (auto *eff_stolen = std::bit_cast<frame *>(tls::context()->pop())) {
+      eff_stolen->fetch_add_steal();
+      return eff_stolen->self();
+    }
     return std::noop_coroutine();
   }
 

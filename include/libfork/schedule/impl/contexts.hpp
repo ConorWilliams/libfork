@@ -116,7 +116,12 @@ struct numa_context {
 
   void finalize_worker() { finalize(std::exchange(m_context, nullptr)); }
 
-    /**
+  /**
+   * @brief Fetch the `lf::context` a thread has associated with this object.
+   */
+  auto get_underlying() noexcept -> context * { return m_context; }
+
+  /**
    * @brief Submit a job to the owned worker context.
    */
   void submit(lf::intruded_list<lf::submit_handle> jobs) { non_null(m_context)->submit(jobs); }
@@ -163,7 +168,7 @@ struct numa_context {
 
     std::ranges::shuffle(m_close, m_rng);
 
-    // Check all of the closes numa domain.
+    // Check all of the closest numa domain.
     for (auto * neigh : m_close) {
       LF_RETURN_OR_CONTINUE(neigh);
     }

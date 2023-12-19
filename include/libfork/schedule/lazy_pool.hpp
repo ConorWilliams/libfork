@@ -273,6 +273,7 @@ class lazy_pool {
   std::shared_ptr<impl::lazy_vars> m_share = std::make_shared<impl::lazy_vars>(m_num_threads);
   std::vector<std::shared_ptr<impl::numa_context<impl::lazy_vars>>> m_worker = {};
   std::vector<std::thread> m_threads = {};
+  std::vector<context *> m_contexts = {};
 
   using strategy = numa_strategy;
 
@@ -316,9 +317,19 @@ class lazy_pool {
       // must be noexcept as if we fail the countdown then the workers will hang.
       m_share->latch_start.arrive_and_wait();
     }();
+
+    // All workers have set their contexts, we can read them now.
+    for (auto &&worker : m_worker) {
+      m_contexts.push_back(worker->get_underlying());
+    }
   }
 
   void schedule(lf::intruded_list<lf::submit_handle> jobs) { m_worker[m_dist(m_rng)]->submit(jobs); }
+
+  /**
+   * @brief Get a view of the worker's contexts.
+   */
+  auto contexts() noexcept -> std::span<context *> { return m_contexts; }
 
   ~lazy_pool() noexcept {
     LF_LOG("Requesting a stop");
