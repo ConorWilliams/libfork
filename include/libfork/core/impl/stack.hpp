@@ -27,9 +27,7 @@
  * @brief Implementation of libfork's geometric segmented stacks.
  */
 
-namespace lf {
-
-namespace impl {
+namespace lf::impl {
 
 /**
  * @brief Round size close to a multiple of the page_size.
@@ -56,10 +54,6 @@ inline constexpr auto round_up_to_page_size(std::size_t size) noexcept -> std::s
 
   return request;
 }
-
-} // namespace impl
-
-inline namespace ext {
 
 /**
  * @brief A stack is a user-space (geometric) segmented program stack.
@@ -311,8 +305,6 @@ class stack {
   stacklet *m_fib; ///< The allocation stacklet.
 };
 
-} // namespace ext
-
-} // namespace lf
+} // namespace lf::impl
 
 #endif /* F7577AB3_0439_404D_9D98_072AB84FBCD0 */
