@@ -1457,6 +1457,8 @@ class stack {
 
       std::size_t request = impl::round_up_to_page_size(size + sizeof(stacklet));
 
+      LF_ASSERT(request >= sizeof(stacklet) + size);
+
       stacklet *next = static_cast<stacklet *>(std::malloc(request)); // NOLINT
 
       if (next == nullptr) {
@@ -1470,7 +1472,7 @@ class stack {
 
       next->m_lo = impl::byte_cast(next) + sizeof(stacklet);
       next->m_sp = next->m_lo;
-      next->m_hi = impl::byte_cast(next) + sizeof(stacklet) + size;
+      next->m_hi = impl::byte_cast(next) + request;
 
       next->m_prev = prev;
       next->m_next = nullptr;
@@ -1603,8 +1605,23 @@ class stack {
     m_fib->m_sp = static_cast<std::byte *>(ptr);
 
     if (m_fib->empty()) {
-      m_fib->set_next(nullptr);
-      m_fib = m_fib->m_prev == nullptr ? m_fib : m_fib->m_prev;
+
+      if (m_fib->m_prev != nullptr) {
+        // Always free a second order cached stacklet if it exists.
+        m_fib->set_next(nullptr);
+        // Move to prev stacklet.
+        m_fib = m_fib->m_prev;
+      }
+
+      LF_ASSERT(m_fib);
+
+      // Guard against over-caching.
+      if (m_fib->m_next != nullptr) {
+        if (m_fib->m_next->capacity() > 8 * m_fib->capacity()) {
+          // Free oversized stacklet.
+          m_fib->set_next(nullptr);
+        }
+      }
     }
 
     LF_ASSERT(m_fib && m_fib->is_top());
@@ -2784,6 +2801,7 @@ class first_arg_t {
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <coroutine>
+
 #include <span>
 #include <type_traits>
 
@@ -2806,11 +2824,34 @@ struct switch_awaitable : std::suspend_always {
 
   auto await_suspend(std::coroutine_handle<>) noexcept -> std::coroutine_handle<> {
 
+    // Schedule this coro for execution on Dest.
     dest->submit(&self);
 
-    if (task_handle task = tls::context()->pop()) {
-      LF_ASSERT(false);
-      return std::bit_cast<frame *>(task)->self();
+    // Dest will take this stack upon resumption hence, we must release it.
+    ignore_t{} = tls::stack()->release();
+
+    // Eventually dest will fail to pop() the ancestor task that we 'could' pop() here and
+    // then treat it as a task that was stolen from it.
+
+    // Now we have a number of tasks on our WSQ which we have "effectively stolen" from dest.
+    // All of them will eventually reach a join point.
+
+    // We can pop() the ancestor, mark it stolen and then resume it.
+
+    /**
+     * While running the ancestor several things can happen:
+     *  - We hit a join in the ancestor:
+     *    - Case Win join:
+     *      Take stack, OK to treat tasks on our WSQ as non-stolen.
+     *    - Case Loose join:
+     *      Must treat tasks on our WSQ as stolen.
+     * - We loose a join in a descendent of the ancestor:
+     *   Ok all task on WSQ must have been stole by other threads and handled as stolen appropriately.
+     */
+
+    if (auto *eff_stolen = std::bit_cast<frame *>(tls::context()->pop())) {
+      eff_stolen->fetch_add_steal();
+      return eff_stolen->self();
     }
     return std::noop_coroutine();
   }
@@ -2919,11 +2960,16 @@ struct join_awaitable {
     }
     LF_LOG("Looses join race");
 
-    // Someone else is responsible for running this task and we have run out of work.
-    // We must have run out of work as steals have occurred.
-    LF_ASSERT_NO_ASSUME(tls::context()->pop() == nullptr);
+    // Someone else is responsible for running this task.
     // We cannot touch *this or deference self as someone may have resumed already!
     // We cannot currently own this stack (checking would violate above).
+
+    // If no explicit scheduling then we must have an empty WSQ as we stole this task.
+
+    if (auto *eff_stolen = std::bit_cast<frame *>(tls::context()->pop())) {
+      eff_stolen->fetch_add_steal();
+      return eff_stolen->self();
+    }
     return std::noop_coroutine();
   }
 
@@ -5037,7 +5083,12 @@ struct numa_context {
 
   void finalize_worker() { finalize(std::exchange(m_context, nullptr)); }
 
-    /**
+  /**
+   * @brief Fetch the `lf::context` a thread has associated with this object.
+   */
+  auto get_underlying() noexcept -> context * { return m_context; }
+
+  /**
    * @brief Submit a job to the owned worker context.
    */
   void submit(lf::intruded_list<lf::submit_handle> jobs) { non_null(m_context)->submit(jobs); }
@@ -5084,7 +5135,7 @@ struct numa_context {
 
     std::ranges::shuffle(m_close, m_rng);
 
-    // Check all of the closes numa domain.
+    // Check all of the closest numa domain.
     for (auto * neigh : m_close) {
       LF_RETURN_OR_CONTINUE(neigh);
     }
@@ -5182,6 +5233,7 @@ class busy_pool {
   std::shared_ptr<impl::busy_vars> m_share = std::make_shared<impl::busy_vars>(m_num_threads);
   std::vector<std::shared_ptr<impl::numa_context<impl::busy_vars>>> m_worker = {};
   std::vector<std::thread> m_threads = {};
+  std::vector<context *> m_contexts = {};
 
   using strategy = numa_strategy;
 
@@ -5215,12 +5267,22 @@ class busy_pool {
       // must be noexcept as if we fail the countdown then the workers will hang.
       m_share->latch_start.arrive_and_wait();
     }();
+
+    // All workers have set their contexts, we can read them now.
+    for (auto &&worker : m_worker) {
+      m_contexts.push_back(worker->get_underlying());
+    }
   }
 
   /**
    * @brief Schedule a task for execution.
    */
   void schedule(lf::intruded_list<lf::submit_handle> jobs) { m_worker[m_dist(m_rng)]->submit(jobs); }
+
+  /**
+   * @brief Get a view of the worker's contexts.
+   */
+  auto contexts() noexcept -> std::span<context *> { return m_contexts; }
 
   ~busy_pool() noexcept {
     LF_LOG("Requesting a stop");

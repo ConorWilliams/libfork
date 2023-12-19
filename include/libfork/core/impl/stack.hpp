@@ -140,6 +140,8 @@ class stack {
 
       std::size_t request = impl::round_up_to_page_size(size + sizeof(stacklet));
 
+      LF_ASSERT(request >= sizeof(stacklet) + size);
+
       stacklet *next = static_cast<stacklet *>(std::malloc(request)); // NOLINT
 
       if (next == nullptr) {
@@ -153,7 +155,7 @@ class stack {
 
       next->m_lo = impl::byte_cast(next) + sizeof(stacklet);
       next->m_sp = next->m_lo;
-      next->m_hi = impl::byte_cast(next) + sizeof(stacklet) + size;
+      next->m_hi = impl::byte_cast(next) + request;
 
       next->m_prev = prev;
       next->m_next = nullptr;
@@ -286,8 +288,23 @@ class stack {
     m_fib->m_sp = static_cast<std::byte *>(ptr);
 
     if (m_fib->empty()) {
-      m_fib->set_next(nullptr);
-      m_fib = m_fib->m_prev == nullptr ? m_fib : m_fib->m_prev;
+
+      if (m_fib->m_prev != nullptr) {
+        // Always free a second order cached stacklet if it exists.
+        m_fib->set_next(nullptr);
+        // Move to prev stacklet.
+        m_fib = m_fib->m_prev;
+      }
+
+      LF_ASSERT(m_fib);
+
+      // Guard against over-caching.
+      if (m_fib->m_next != nullptr) {
+        if (m_fib->m_next->capacity() > 8 * m_fib->capacity()) {
+          // Free oversized stacklet.
+          m_fib->set_next(nullptr);
+        }
+      }
     }
 
     LF_ASSERT(m_fib && m_fib->is_top());
