@@ -18,7 +18,7 @@ cmake --build --preset=rel && ./build/rel/bench/benchmark  --benchmark_time_unit
 
 
 def stat(x):
-    x = sorted(x)[:]
+    x = sorted(x)[:-1]
 
     err = stdev(x) / (np.sqrt(len(x)) if len(x) > 1 else 0)
     #
@@ -62,7 +62,7 @@ for file in [
             name = name.replace("seq", "fan")
 
             if name not in benchmarks:
-                print("found", name)
+                # print("found", name)
                 benchmarks[name] = {}
 
             num_threads = int(bench["green_threads"] + 0.5)
@@ -106,6 +106,8 @@ for (ax_abs), p in zip(axs.flatten(), patterns):
     xmax = 0
 
     ymin = 112
+
+    print(p)
 
     for k, v in benchmarks:
         if p not in k:
@@ -160,14 +162,16 @@ for (ax_abs), p in zip(axs.flatten(), patterns):
         else:
             raise "error"
 
+        print(f"{label:>20}: T_s/T_112 = {tS / y[-1]:.1f} T_s/T_1 = {tS / y[0]:.3f}")
+
         # --------------- #
 
         t = tS / y
 
         f_yerr = err / y
-        f_yerr = tSerr / tS
+        f_serr = tSerr / tS
 
-        terr = t * np.sqrt((f_yerr**2 + f_yerr**2))
+        terr = t * np.sqrt((f_yerr**2 + f_serr**2))
 
         if args.rel:
             t /= x
@@ -183,8 +187,8 @@ for (ax_abs), p in zip(axs.flatten(), patterns):
         ymax = max(ymax, max(t))
         ymin = min(ymin, min(t))
 
-    print(f"ymax: {ymax}")
-    print(f"xmax: {xmax}")
+    # print(f"ymax: {ymax}")
+    # print(f"xmax: {xmax}")
 
     # ideal_abs = range(1, int(ymax + 1.5))
 

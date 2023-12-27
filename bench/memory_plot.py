@@ -70,9 +70,11 @@ patterns = [
 for (ax), p, data, i in zip(axs.flatten(), patterns, Benchmarks, range(1000)):
     print(f"{p=}")
 
-    y_zero = data["zero"][1][0]
+    # y_zero = data["zero"][1][0]
+
     y_calib = data["calibrate"][1][0]
-    y_serial = data["serial"][1][0]
+
+    y_serial = max(4 / 1024.0, data["serial"][1][0] - y_calib)  # must be atleast 4 KiB
 
     first = True
 
@@ -91,13 +93,12 @@ for (ax), p, data, i in zip(axs.flatten(), patterns, Benchmarks, range(1000)):
         y = np.asarray(v[1])
         err = np.asarray(v[2])
 
-        err = err
-        y = y
+        y = np.maximum(4 / 1024.0, y - y_calib)  # Subtract zero offset
 
         def func(x, a, b, n):
-            return y_calib + a + b * x**n
+            return a + b * (y[0]) * x**n
 
-        p0 = (y[0], 1, 1)
+        p0 = (1, 1, 1)
         bounds = ([0, 0, 0], [np.inf, np.inf, np.inf])
         popt, pcov = curve_fit(
             func,
@@ -122,14 +123,19 @@ for (ax), p, data, i in zip(axs.flatten(), patterns, Benchmarks, range(1000)):
 
         ax.plot(
             x,
-            func(x, *popt) - y_calib,
+            func(x, *popt) - y[0],
             "k--",
-            label="Ideal" if i == 0 and first else None,
+            label="$y = a + bM_1x^n$" if i == 0 and first else None,
         )
 
         first = False
 
-        ax.errorbar(x, y - y_calib, yerr=err, label=k if i == 0 else None, capsize=2)
+        if np.any(y < y_serial):
+            print(y_serial, y)
+
+        # assert np.all(y > y_serial)
+
+        ax.errorbar(x, y, yerr=err, label=k if i == 0 else None, capsize=2)
 
         ax.set_title(f"\\textit{{{p}}}")
 
