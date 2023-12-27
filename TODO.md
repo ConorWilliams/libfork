@@ -2,6 +2,8 @@
 
 - Check HWLOC numa detection is up to par
 
+- Make LF_FIBER_STACK_SIZE set init fibre size instead of current
+
 - Benchmarks working, run benchmarks on CSD3 with mimalloc
 
 - Fix github actions

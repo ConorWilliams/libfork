@@ -15,6 +15,7 @@ find_package(benchmark REQUIRED)
 find_package(Taskflow REQUIRED)
 find_package(TBB REQUIRED)
 find_package(OpenMP REQUIRED)
+find_package(concurrencpp REQUIRED)
 
 
 # ---- Benchmarks ----
@@ -46,6 +47,7 @@ target_link_libraries(benchmark
         TBB::tbb 
         Taskflow::Taskflow 
         benchmark::benchmark_main
+        concurrencpp::concurrencpp
 )
 
 option(LF_NO_CHECK "Disable benchmark verifications to speed up the benchmarks " OFF)

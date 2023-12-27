@@ -10,7 +10,8 @@
             "dependencies": [
                 "benchmark",
                 "taskflow",
-                "tbb"
+                "tbb",
+                "concurrencpp"
             ]
         },
         "boost": {
