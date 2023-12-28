@@ -22,12 +22,12 @@ inline namespace core {
 /**
  * @brief An enumeration that determines the behavior of a coroutine's promise.
  *
- * You can inspect the first arg of an async function to determine the tag.
+ * You can inspect the first argument of an async function to determine the tag.
  */
 enum class tag {
-  root, ///< This coroutine is a root task (allocated on heap) from an ``lf::sync_wait``.
-  call, ///< Non root task (on a virtual stack) from an ``lf::call``, completes synchronously.
-  fork, ///< Non root task (on a virtual stack) from an ``lf::fork``, completes asynchronously.
+  root, ///< This coroutine is a root task from an ``lf::sync_wait``.
+  call, ///< Non root task from an ``lf::call``, completes synchronously.
+  fork, ///< Non root task from an ``lf::fork``, completes asynchronously.
 };
 
 } // namespace core

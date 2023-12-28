@@ -397,12 +397,12 @@ inline namespace core {
 /**
  * @brief An enumeration that determines the behavior of a coroutine's promise.
  *
- * You can inspect the first arg of an async function to determine the tag.
+ * You can inspect the first argument of an async function to determine the tag.
  */
 enum class tag {
-  root, ///< This coroutine is a root task (allocated on heap) from an ``lf::sync_wait``.
-  call, ///< Non root task (on a virtual stack) from an ``lf::call``, completes synchronously.
-  fork, ///< Non root task (on a virtual stack) from an ``lf::fork``, completes asynchronously.
+  root, ///< This coroutine is a root task from an ``lf::sync_wait``.
+  call, ///< Non root task from an ``lf::call``, completes synchronously.
+  fork, ///< Non root task from an ``lf::fork``, completes asynchronously.
 };
 
 } // namespace core
@@ -1338,6 +1338,13 @@ constexpr deque<T>::~deque() noexcept {
 
 
 
+#ifndef LF_FIBRE_INIT_SIZE
+  // Will be round to a multiple of page size anyway
+  #define LF_FIBRE_INIT_SIZE 1
+#endif
+
+static_assert(LF_FIBRE_INIT_SIZE > 0, "Stacks must have a positive size");
+
 /**
  * @file stack.hpp
  *
@@ -1447,7 +1454,7 @@ class stack {
      * @brief Allocate a new stacklet with a stack of size of at least`size` and attach it to the given
      * stacklet chain.
      *
-     * Requires that `prev` must be the top stacklet in a chain or `nullptr`.
+     * Requires that `prev` must be the top stacklet in a chain or `nullptr`. This will round size up to
      */
     [[nodiscard]] LF_NOINLINE static auto next_stacklet(std::size_t size, stacklet *prev) -> stacklet * {
 
@@ -1481,9 +1488,11 @@ class stack {
     }
 
     /**
-     * @brief Allocate an initial stacklet
+     * @brief Allocate an initial stacklet.
      */
-    [[nodiscard]] static auto next_stacklet() -> stacklet * { return stacklet::next_stacklet(1, nullptr); }
+    [[nodiscard]] static auto next_stacklet() -> stacklet * {
+      return stacklet::next_stacklet(LF_FIBRE_INIT_SIZE, nullptr);
+    }
 
     std::byte *m_lo;  ///< This stacklet's stack.
     std::byte *m_sp;  ///< The current position of the stack pointer in the stack.
@@ -2131,7 +2140,7 @@ class manual_lifetime : immovable<manual_lifetime<T>> {
   }
 
   /**
-   * @brief Start lifetime of object.
+   * @brief Start lifetime of object at assignment.
    */
   template <typename U>
     requires std::constructible_from<T, U>
@@ -2318,6 +2327,8 @@ inline namespace core {
 
 /**
  * @brief Check is a type is suitable for allocation on libfork's stacks.
+ *
+ * This requires the type to be `std::default_initializable<T>` and have non-new-extended alignment.
  */
 template <typename T>
 concept co_allocable = std::default_initializable<T> && alignof(T) <= impl::k_new_align;
@@ -2619,6 +2630,9 @@ concept forkable = invocable<F, Args...> && async_invocable<impl::discard_t, tag
 
 // --------- //
 
+/**
+ * @brief Fetch `R` when the async function `F` returns `lf::task<R>`.
+ */
 template <typename F, typename... Args>
   requires invocable<F, Args...>
 using async_result_t = impl::unsafe_result_t<impl::discard_t, tag::call, F, Args...>;
@@ -2697,8 +2711,8 @@ concept quasi_pointer = std::default_initializable<I> && std::movable<I> && dere
  * object](https://en.cppreference.com/w/cpp/named_req/FunctionObject).
  *
  * An async function object is a function object that returns an `lf::task` when `operator()` is called.
- * with appropriate arguments. The call to `operator()` must create a coroutine. The first argument
- * of an async function must accept a deduced templated type that satisfies the `lf::core::first_arg` concept.
+ * with appropriate arguments. The call to `operator()` must create a libfork coroutine. The first argument
+ * of an async function must accept a deduced templated-type that satisfies the `lf::core::first_arg` concept.
  * The return type and invocability of an async function must be independent of the first argument except
  * for its tag value.
  *
@@ -2712,7 +2726,10 @@ concept async_function_object = std::is_object_v<F> && std::copy_constructible<F
 /**
  * @brief This describes the public-API of the first argument passed to an async function.
  *
- * An async functions' invocability and return type must be independent of their first argument.
+ * An async functions' invocability and return type must be independent of their first argument except for its
+ * tag value. A user may query the first argument's static member `tag` to obtain this value. Additionally, a
+ * user may query the first argument's static member function `context()` to obtain a pointer to the current
+ * workers `lf::context`.
  */
 template <typename T>
 concept first_arg = async_function_object<T> && requires (T arg) {
@@ -3362,7 +3379,7 @@ concept returnable = std::is_void_v<T> || std::is_reference_v<T> || std::movable
  *    return type of an `async` function only.
  *
  * .. warning::
- *    The value type ``T`` of a coroutine should never be independent of the coroutines first-argument.
+ *    The value type ``T`` of a coroutine should be independent of the coroutines first-argument.
  *
  * \endrst
  */
@@ -3489,7 +3506,7 @@ class eventually<T> : impl::immovable<eventually<T>> {
 // ------------------------------------------------------------------------ //
 
 /**
- * @brief A `manual_eventually<T>` is an `eventually<T>` which does not call destroy on destruction.
+ * @brief A `lf::manual_eventually<T>` is an `lf::eventually<T>` which does not call destroy on destruction.
  *
  * This is useful for writing exception safe fork-join code and should be considered an expert-only feature.
  */
@@ -3533,18 +3550,15 @@ class manual_eventually<T> : eventually<T> {
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include <coroutine>
+
+#include <exception>
 #include <semaphore>
 #include <type_traits>
 #include <utility>
 
-#include <libfork/core/eventually.hpp>
-#include <libfork/core/invocable.hpp>
 
-#include <libfork/core/ext/handles.hpp>
-#include <libfork/core/ext/list.hpp>
-#include <libfork/core/ext/tls.hpp>
 
-#include <libfork/core/impl/combinate.hpp>
 
 /**
  * @file sync_wait.hpp
@@ -3568,62 +3582,74 @@ concept scheduler = requires (Sch &&sch, intruded_list<submit_handle> handle) {
 };
 
 /**
- * @brief Schedule execution of `fun` on `sch` and block until the task is complete.
+ * @brief Schedule execution of `fun` on `sch` and __block__ until the task is complete.
+ *
+ * This is the primary entry point from the synchonous to the asynchronous world. A typical libfork program
+ * is expected to make a call from `main` into a scheduler/runtime by scheduling a single root-task with this
+ * function.
+ *
+ * This will build a task from `fun` and dispatch it to `sch` via its `schedule` method. Sync wait should
+ * __not__ be called by a worker thread (which are never allowed to block) unless the call to `schedule`
+ * completes synchonously.
  */
 template <scheduler Sch, async_function_object F, class... Args>
   requires rootable<F, Args...>
 auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
 
-  using namespace lf::impl;
   using R = async_result_t<F, Args...>;
   constexpr bool is_void = std::is_void_v<R>;
+  std::binary_semaphore sem{0};
+  manual_eventually<std::conditional_t<is_void, impl::empty, R>> result;
 
-  // TODO make this a manual lifetime and clean up exception handling.
-  eventually<std::conditional_t<is_void, empty, R>> result;
+  // This is to support a worker sync waiting on work they will launch inline.
+  bool worker = impl::tls::has_stack;
+  // Will cache workers stack here.
+  std::optional<impl::stack> prev = std::nullopt;
 
-  bool worker = tls::has_stack;
-
-  std::optional<stack> prev = std::nullopt;
+  LF_DEFER {
+    // Memory leaks if unwinding!
+    if (std::uncaught_exceptions() > 0) {
+      std::terminate();
+    }
+  };
 
   if (!worker) {
     LF_LOG("Sync wait from non-worker thread");
-    tls::thread_stack.construct();
-    tls::has_stack = true;
+    impl::tls::thread_stack.construct();
+    impl::tls::has_stack = true;
   } else {
     LF_LOG("Sync wait from worker thread");
-    prev.emplace();
-    swap(*prev, *tls::thread_stack);
+    prev.emplace();                        // Default construct.
+    swap(*prev, *impl::tls::thread_stack); // ADL call.
   }
 
-  quasi_awaitable await = [&]() noexcept(!std::is_trivially_destructible_v<R>) {
+  impl::y_combinate combi = [&]() {
     if constexpr (is_void) {
-      return combinate<tag::root>(discard_t{}, std::move(fun))(std::forward<Args>(args)...);
+      return combinate<tag::root>(impl::discard_t{}, std::move(fun));
     } else {
-      return combinate<tag::root>(&result, std::move(fun))(std::forward<Args>(args)...);
+      return combinate<tag::root>(&result, std::move(fun));
     }
   }();
 
-  ignore_t{} = tls::thread_stack->release();
+  impl::quasi_awaitable await = std::move(combi)(std::forward<Args>(args)...);
+  await.promise->set_semaphore(&sem);
+  auto *handle = std::bit_cast<submit_handle>(static_cast<impl::frame *>(await.promise));
+
+  impl::ignore_t{} = impl::tls::thread_stack->release();
 
   if (!worker) {
-    tls::thread_stack.destroy();
-    tls::has_stack = false;
+    impl::tls::thread_stack.destroy();
+    impl::tls::has_stack = false;
   } else {
-    swap(*prev, *tls::thread_stack);
+    swap(*prev, *impl::tls::thread_stack);
   }
-
-  std::binary_semaphore sem{0};
-
-  await.promise->set_semaphore(&sem);
-
-  auto *handle = std::bit_cast<submit_handle>(static_cast<frame *>(await.promise));
 
   typename intrusive_list<submit_handle>::node node{handle};
 
-  [&]() noexcept(!std::is_trivially_destructible_v<R>) {
-    std::forward<Sch>(sch).schedule(&node);
-    sem.acquire();
-  }();
+  std::forward<Sch>(sch).schedule(&node);
+  sem.acquire();
+
+  LF_DEFER { result.destroy(); };
 
   if constexpr (!is_void) {
     return *std::move(result);

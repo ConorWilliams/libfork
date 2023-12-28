@@ -21,6 +21,13 @@
 
 #include "libfork/core/impl/utility.hpp"
 
+#ifndef LF_FIBRE_INIT_SIZE
+  // Will be round to a multiple of page size anyway
+  #define LF_FIBRE_INIT_SIZE 1
+#endif
+
+static_assert(LF_FIBRE_INIT_SIZE > 0, "Stacks must have a positive size");
+
 /**
  * @file stack.hpp
  *
@@ -130,7 +137,7 @@ class stack {
      * @brief Allocate a new stacklet with a stack of size of at least`size` and attach it to the given
      * stacklet chain.
      *
-     * Requires that `prev` must be the top stacklet in a chain or `nullptr`.
+     * Requires that `prev` must be the top stacklet in a chain or `nullptr`. This will round size up to
      */
     [[nodiscard]] LF_NOINLINE static auto next_stacklet(std::size_t size, stacklet *prev) -> stacklet * {
 
@@ -164,9 +171,11 @@ class stack {
     }
 
     /**
-     * @brief Allocate an initial stacklet
+     * @brief Allocate an initial stacklet.
      */
-    [[nodiscard]] static auto next_stacklet() -> stacklet * { return stacklet::next_stacklet(1, nullptr); }
+    [[nodiscard]] static auto next_stacklet() -> stacklet * {
+      return stacklet::next_stacklet(LF_FIBRE_INIT_SIZE, nullptr);
+    }
 
     std::byte *m_lo;  ///< This stacklet's stack.
     std::byte *m_sp;  ///< The current position of the stack pointer in the stack.

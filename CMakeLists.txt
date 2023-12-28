@@ -40,10 +40,10 @@ target_compile_features(libfork_libfork INTERFACE cxx_std_23)
 
 # ---- Compiler options ----- #
 
-option(LF_FIBRE_STACK_SIZE "The size of the fibre stack (in multiples 4kb pages)" OFF)
+option(LF_FIBRE_INIT_SIZE "The initial size (bytes) of a fibre's stack (default 4 KiB)" OFF)
 
-if(LF_FIBRE_STACK_SIZE)
-  target_compile_definitions(libfork_libfork INTERFACE LF_FIBRE_STACK_SIZE=${LF_FIBRE_STACK_SIZE})
+if(LF_FIBRE_INIT_SIZE)
+  target_compile_definitions(libfork_libfork INTERFACE LF_FIBRE_INIT_SIZE=${LF_FIBRE_INIT_SIZE})
 endif()
 
 # If this is off then libfork will store a pointer to avoid any UB, enable only as an optimization

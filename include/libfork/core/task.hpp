@@ -51,7 +51,7 @@ concept returnable = std::is_void_v<T> || std::is_reference_v<T> || std::movable
  *    return type of an `async` function only.
  *
  * .. warning::
- *    The value type ``T`` of a coroutine should never be independent of the coroutines first-argument.
+ *    The value type ``T`` of a coroutine should be independent of the coroutines first-argument.
  *
  * \endrst
  */

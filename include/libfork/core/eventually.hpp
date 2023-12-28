@@ -130,7 +130,7 @@ class eventually<T> : impl::immovable<eventually<T>> {
 // ------------------------------------------------------------------------ //
 
 /**
- * @brief A `manual_eventually<T>` is an `eventually<T>` which does not call destroy on destruction.
+ * @brief A `lf::manual_eventually<T>` is an `lf::eventually<T>` which does not call destroy on destruction.
  *
  * This is useful for writing exception safe fork-join code and should be considered an expert-only feature.
  */

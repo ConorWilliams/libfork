@@ -199,6 +199,9 @@ concept forkable = invocable<F, Args...> && async_invocable<impl::discard_t, tag
 
 // --------- //
 
+/**
+ * @brief Fetch `R` when the async function `F` returns `lf::task<R>`.
+ */
 template <typename F, typename... Args>
   requires invocable<F, Args...>
 using async_result_t = impl::unsafe_result_t<impl::discard_t, tag::call, F, Args...>;

@@ -42,7 +42,7 @@ class manual_lifetime : immovable<manual_lifetime<T>> {
   }
 
   /**
-   * @brief Start lifetime of object.
+   * @brief Start lifetime of object at assignment.
    */
   template <typename U>
     requires std::constructible_from<T, U>

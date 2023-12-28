@@ -9,18 +9,24 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include <coroutine>
+
+#include <exception>
 #include <semaphore>
 #include <type_traits>
 #include <utility>
 
-#include <libfork/core/eventually.hpp>
-#include <libfork/core/invocable.hpp>
+#include "libfork/core/defer.hpp"
+#include "libfork/core/eventually.hpp"
+#include "libfork/core/invocable.hpp"
+#include "libfork/core/macro.hpp"
 
-#include <libfork/core/ext/handles.hpp>
-#include <libfork/core/ext/list.hpp>
-#include <libfork/core/ext/tls.hpp>
+#include "libfork/core/ext/handles.hpp"
+#include "libfork/core/ext/list.hpp"
+#include "libfork/core/ext/tls.hpp"
 
-#include <libfork/core/impl/combinate.hpp>
+#include "libfork/core/impl/combinate.hpp"
+#include "libfork/core/impl/utility.hpp"
 
 /**
  * @file sync_wait.hpp
@@ -44,62 +50,74 @@ concept scheduler = requires (Sch &&sch, intruded_list<submit_handle> handle) {
 };
 
 /**
- * @brief Schedule execution of `fun` on `sch` and block until the task is complete.
+ * @brief Schedule execution of `fun` on `sch` and __block__ until the task is complete.
+ *
+ * This is the primary entry point from the synchonous to the asynchronous world. A typical libfork program
+ * is expected to make a call from `main` into a scheduler/runtime by scheduling a single root-task with this
+ * function.
+ *
+ * This will build a task from `fun` and dispatch it to `sch` via its `schedule` method. Sync wait should
+ * __not__ be called by a worker thread (which are never allowed to block) unless the call to `schedule`
+ * completes synchonously.
  */
 template <scheduler Sch, async_function_object F, class... Args>
   requires rootable<F, Args...>
 auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
 
-  using namespace lf::impl;
   using R = async_result_t<F, Args...>;
   constexpr bool is_void = std::is_void_v<R>;
+  std::binary_semaphore sem{0};
+  manual_eventually<std::conditional_t<is_void, impl::empty, R>> result;
 
-  // TODO make this a manual lifetime and clean up exception handling.
-  eventually<std::conditional_t<is_void, empty, R>> result;
+  // This is to support a worker sync waiting on work they will launch inline.
+  bool worker = impl::tls::has_stack;
+  // Will cache workers stack here.
+  std::optional<impl::stack> prev = std::nullopt;
 
-  bool worker = tls::has_stack;
-
-  std::optional<stack> prev = std::nullopt;
+  LF_DEFER {
+    // Memory leaks if unwinding!
+    if (std::uncaught_exceptions() > 0) {
+      std::terminate();
+    }
+  };
 
   if (!worker) {
     LF_LOG("Sync wait from non-worker thread");
-    tls::thread_stack.construct();
-    tls::has_stack = true;
+    impl::tls::thread_stack.construct();
+    impl::tls::has_stack = true;
   } else {
     LF_LOG("Sync wait from worker thread");
-    prev.emplace();
-    swap(*prev, *tls::thread_stack);
+    prev.emplace();                        // Default construct.
+    swap(*prev, *impl::tls::thread_stack); // ADL call.
   }
 
-  quasi_awaitable await = [&]() noexcept(!std::is_trivially_destructible_v<R>) {
+  impl::y_combinate combi = [&]() {
     if constexpr (is_void) {
-      return combinate<tag::root>(discard_t{}, std::move(fun))(std::forward<Args>(args)...);
+      return combinate<tag::root>(impl::discard_t{}, std::move(fun));
     } else {
-      return combinate<tag::root>(&result, std::move(fun))(std::forward<Args>(args)...);
+      return combinate<tag::root>(&result, std::move(fun));
     }
   }();
 
-  ignore_t{} = tls::thread_stack->release();
+  impl::quasi_awaitable await = std::move(combi)(std::forward<Args>(args)...);
+  await.promise->set_semaphore(&sem);
+  auto *handle = std::bit_cast<submit_handle>(static_cast<impl::frame *>(await.promise));
+
+  impl::ignore_t{} = impl::tls::thread_stack->release();
 
   if (!worker) {
-    tls::thread_stack.destroy();
-    tls::has_stack = false;
+    impl::tls::thread_stack.destroy();
+    impl::tls::has_stack = false;
   } else {
-    swap(*prev, *tls::thread_stack);
+    swap(*prev, *impl::tls::thread_stack);
   }
-
-  std::binary_semaphore sem{0};
-
-  await.promise->set_semaphore(&sem);
-
-  auto *handle = std::bit_cast<submit_handle>(static_cast<frame *>(await.promise));
 
   typename intrusive_list<submit_handle>::node node{handle};
 
-  [&]() noexcept(!std::is_trivially_destructible_v<R>) {
-    std::forward<Sch>(sch).schedule(&node);
-    sem.acquire();
-  }();
+  std::forward<Sch>(sch).schedule(&node);
+  sem.acquire();
+
+  LF_DEFER { result.destroy(); };
 
   if constexpr (!is_void) {
     return *std::move(result);

@@ -53,8 +53,8 @@ concept quasi_pointer = std::default_initializable<I> && std::movable<I> && dere
  * object](https://en.cppreference.com/w/cpp/named_req/FunctionObject).
  *
  * An async function object is a function object that returns an `lf::task` when `operator()` is called.
- * with appropriate arguments. The call to `operator()` must create a coroutine. The first argument
- * of an async function must accept a deduced templated type that satisfies the `lf::core::first_arg` concept.
+ * with appropriate arguments. The call to `operator()` must create a libfork coroutine. The first argument
+ * of an async function must accept a deduced templated-type that satisfies the `lf::core::first_arg` concept.
  * The return type and invocability of an async function must be independent of the first argument except
  * for its tag value.
  *
@@ -68,7 +68,10 @@ concept async_function_object = std::is_object_v<F> && std::copy_constructible<F
 /**
  * @brief This describes the public-API of the first argument passed to an async function.
  *
- * An async functions' invocability and return type must be independent of their first argument.
+ * An async functions' invocability and return type must be independent of their first argument except for its
+ * tag value. A user may query the first argument's static member `tag` to obtain this value. Additionally, a
+ * user may query the first argument's static member function `context()` to obtain a pointer to the current
+ * workers `lf::context`.
  */
 template <typename T>
 concept first_arg = async_function_object<T> && requires (T arg) {

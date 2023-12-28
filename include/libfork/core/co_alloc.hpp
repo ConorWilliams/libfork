@@ -29,6 +29,8 @@ inline namespace core {
 
 /**
  * @brief Check is a type is suitable for allocation on libfork's stacks.
+ *
+ * This requires the type to be `std::default_initializable<T>` and have non-new-extended alignment.
  */
 template <typename T>
 concept co_allocable = std::default_initializable<T> && alignof(T) <= impl::k_new_align;
