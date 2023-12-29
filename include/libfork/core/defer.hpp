@@ -11,9 +11,10 @@
 
 #include <concepts>
 #include <functional>
-#include <libfork/core/macro.hpp>
 #include <type_traits>
 #include <utility>
+
+#include "libfork/core/macro.hpp"
 
 #include "libfork/core/impl/utility.hpp"
 
@@ -68,9 +69,6 @@ class [[nodiscard("Defer will execute unless bound to a name!")]] defer : impl::
  private:
   [[no_unique_address]] F m_f;
 };
-
-#define LF_CONCAT_OUTER(a, b) LF_CONCAT_INNER(a, b)
-#define LF_CONCAT_INNER(a, b) a##b
 
 /**
  * @brief A macro to create an automatically named defer object.

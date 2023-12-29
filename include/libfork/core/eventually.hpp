@@ -145,6 +145,11 @@ class manual_eventually : impl::manual_lifetime<T> {
   using impl::manual_lifetime<T>::destroy;
 };
 
+/**
+ * @brief A `lf::manual_eventually<T>` is an `lf::eventually<T>` which does not call destroy on destruction.
+ *
+ * This is useful for writing exception safe fork-join code and should be considered an expert-only feature.
+ */
 template <impl::non_void T>
   requires impl::reference<T>
 class manual_eventually<T> : eventually<T> {
@@ -155,7 +160,10 @@ class manual_eventually<T> : eventually<T> {
   using eventually<T>::operator->;
   using eventually<T>::operator*;
 
-  void destroy() noexcept {};
+  /**
+   * @brief Destroy the contained object (call its destructor).
+   */
+  void destroy() noexcept { static_assert(std::is_trivially_destructible_v<T>); };
 };
 
 } // namespace core

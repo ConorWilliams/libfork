@@ -16,11 +16,8 @@ Busy pool
 Unit pool
 -------------------
 
-.. doxygentypedef:: lf::unit_pool
+.. doxygenclass:: lf::unit_pool
 
 
-Debug pool (extension)
-----------------------------
 
-.. doxygentypedef:: lf::ext::debug_pool
 

@@ -80,9 +80,9 @@ class context : impl::immovable<context> {
   /**
    * @brief Submit pending/suspended tasks to the context.
    *
-   * This is for use by implementor of the scheduler, this will trigger the notification function.
+   * This is for use by the implementor of the scheduler, this will trigger the notification function.
    */
-  void submit(intruded_list<submit_handle> jobs) noexcept {
+  void submit(intruded_list<submit_handle> jobs) {
     m_submit.push(non_null(jobs));
     m_notify();
   }
@@ -93,11 +93,16 @@ class context : impl::immovable<context> {
   nullary_function_t m_notify; ///< The user supplied notification function.
 };
 
+/**
+ * @brief Context for (user) schedulers to interact with.
+ *
+ * Additionally exposes submit and pop functions.
+ */
 class worker_context : public context {
  public:
   using context::context;
 
-  using context::submit;
+  using context::submit; ///< Submit an external task.
 
   /**
    * @brief Fetch a linked-list of the submitted tasks.
@@ -116,6 +121,9 @@ class worker_context : public context {
 
 namespace impl {
 
+/**
+ * @brief Context for internal use, contains full-API for push/pop.
+ */
 class full_context : public worker_context {
  public:
   using worker_context::worker_context;

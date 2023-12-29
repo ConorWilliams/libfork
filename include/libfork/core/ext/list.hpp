@@ -77,8 +77,12 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
 
   /**
    * @brief Push a new node, this can be called concurrently from any number of threads.
+   *
+   * `new_node` should be an unlinked node e.g. not part of a list.
    */
   constexpr void push(node *new_node) noexcept {
+
+    LF_ASSERT(new_node->m_next == nullptr);
 
     node *stale_head = m_head.load(std::memory_order_relaxed);
 

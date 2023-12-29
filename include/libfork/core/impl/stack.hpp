@@ -22,7 +22,11 @@
 #include "libfork/core/impl/utility.hpp"
 
 #ifndef LF_FIBRE_INIT_SIZE
-  // Will be round to a multiple of page size anyway
+  /**
+   * @brief The initial size for a stack (in bytes).
+   *
+   * All stacklets will be round up to a multiple of the page size.
+   */
   #define LF_FIBRE_INIT_SIZE 1
 #endif
 

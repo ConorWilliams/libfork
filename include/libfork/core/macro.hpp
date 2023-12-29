@@ -281,6 +281,15 @@
   #endif
 #endif
 
+/**
+ * @brief Concatenation macro
+ */
+#define LF_CONCAT_OUTER(a, b) LF_CONCAT_INNER(a, b)
+/**
+ * @brief Internal concatenation macro (use LF_CONCAT_OUTER)
+ */
+#define LF_CONCAT_INNER(a, b) a##b
+
 // NOLINTEND
 
 #endif /* C5DCA647_8269_46C2_B76F_5FA68738AEDA */

@@ -28,17 +28,40 @@ namespace lf {
 
 namespace impl::tls {
 
+/**
+ * @brief Set when `impl::tls::thread_stack` is alive.
+ */
 constinit inline thread_local bool has_stack = false;
+/**
+ * @brief A workers stack.
+ *
+ * This is wrapped in an `manual_lifetime` to make it trivially destructible/constructible such that it
+ * requires no construction checks to access.
+ */
 constinit inline thread_local manual_lifetime<stack> thread_stack = {};
-
+/**
+ * @brief Set when `impl::tls::thread_stack` is alive.
+ */
 constinit inline thread_local bool has_context = false;
+/**
+ * @brief A workers context.
+ *
+ * This is wrapped in an `manual_lifetime` to make it trivially destructible/constructible such that it
+ * requires no construction checks to access.
+ */
 constinit inline thread_local manual_lifetime<full_context> thread_context = {};
 
+/**
+ * @brief Checked access to a workers stack.
+ */
 [[nodiscard]] inline auto stack() -> stack * {
   LF_ASSERT(has_stack);
   return thread_stack.data();
 }
 
+/**
+ * @brief Checked access to a workers context.
+ */
 [[nodiscard]] inline auto context() -> full_context * {
   LF_ASSERT(has_context);
   return thread_context.data();

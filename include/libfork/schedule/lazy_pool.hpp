@@ -40,9 +40,9 @@ namespace lf {
 
 namespace impl {
 
-static constexpr std::memory_order acquire = std::memory_order_acquire;
-static constexpr std::memory_order acq_rel = std::memory_order_acq_rel;
-static constexpr std::memory_order release = std::memory_order_release;
+static constexpr std::memory_order acquire = std::memory_order_acquire; ///< Alias
+static constexpr std::memory_order acq_rel = std::memory_order_acq_rel; ///< Alias
+static constexpr std::memory_order release = std::memory_order_release; ///< Alias
 
 /**
  * @brief A collection of heap allocated atomic variables used for tracking the state of the scheduler.
@@ -51,15 +51,18 @@ struct lazy_vars : busy_vars {
 
   using busy_vars::busy_vars;
 
-  // Invariant: *** if (A > 0) then (T >= 1 OR S == 0) ***
-
+  /**
+   * @brief Counters and notifiers for each numa locality.
+   */
   struct fat_counters {
     alignas(k_cache_line) std::atomic_uint64_t thief = 0; ///< Number of thieving workers.
     alignas(k_cache_line) event_count notifier;           ///< Notifier for this numa pool.
   };
 
-  alignas(k_cache_line) std::atomic_uint64_t active = 0;
-  alignas(k_cache_line) std::vector<fat_counters> numa;
+  alignas(k_cache_line) std::atomic_uint64_t active = 0; ///< Total number of actives.
+  alignas(k_cache_line) std::vector<fat_counters> numa;  ///< Counters for each numa locality.
+
+  // Invariant: *** if (A > 0) then (T >= 1 OR S == 0) ***
 
   /**
    * Called by a thief with work, effect: thief->active, do work, active->sleep.
@@ -112,7 +115,7 @@ struct lazy_vars : busy_vars {
 };
 
 /**
- * @brief The function that workers run while the pool is alive.
+ * @brief The function that workers run while the pool is alive (worker event-loop)
  */
 inline auto lazy_work(numa_topology::numa_node<numa_context<lazy_vars>> node) noexcept {
 
@@ -275,8 +278,6 @@ class lazy_pool {
   std::vector<std::thread> m_threads = {};
   std::vector<context *> m_contexts = {};
 
-  using strategy = numa_strategy;
-
  public:
   /**
    * @brief Construct a new lazy_pool object and `n` worker threads.
@@ -284,7 +285,8 @@ class lazy_pool {
    * @param n The number of worker threads to create, defaults to the number of hardware threads.
    * @param strategy The numa strategy for distributing workers.
    */
-  explicit lazy_pool(std::size_t n = std::thread::hardware_concurrency(), strategy strategy = strategy::fan)
+  explicit lazy_pool(std::size_t n = std::thread::hardware_concurrency(),
+                     numa_strategy strategy = numa_strategy::fan)
       : m_num_threads(n) {
 
     LF_ASSERT_NO_ASSUME(!m_share->stop.test(std::memory_order_acquire));
@@ -324,7 +326,10 @@ class lazy_pool {
     }
   }
 
-  void schedule(lf::intruded_list<lf::submit_handle> jobs) { m_worker[m_dist(m_rng)]->submit(jobs); }
+  /**
+   * @brief Schedule a job on a random worker.
+   */
+  void schedule(lf::intruded_list<lf::submit_handle> job) { m_worker[m_dist(m_rng)]->submit(job); }
 
   /**
    * @brief Get a view of the worker's contexts.

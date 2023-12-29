@@ -24,13 +24,16 @@
 
 namespace lf::impl {
 
+/**
+ * @brief A helper class that stores a quasi_pointer.
+ */
 template <quasi_pointer I>
 class return_result_base {
  public:
-  void set_return(I ret) noexcept { this->m_ret = std::move(ret); }
+  void set_return(I &&ret) noexcept { this->m_ret = std::move(ret); }
 
  protected:
-  [[no_unique_address]] I m_ret;
+  [[no_unique_address]] I m_ret; ///< The stored quasi-pointer
 };
 
 /**

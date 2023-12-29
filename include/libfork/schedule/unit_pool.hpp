@@ -26,6 +26,9 @@ namespace lf {
  */
 class unit_pool : impl::immovable<unit_pool> {
  public:
+  /**
+   * @brief Run a job inline.
+   */
   static void schedule(lf::intruded_list<lf::submit_handle> jobs) {
     for_each_elem(jobs, [](lf::submit_handle hand) {
       resume(hand);

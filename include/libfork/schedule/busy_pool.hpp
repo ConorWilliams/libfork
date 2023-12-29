@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <exception>
 #include <latch>
+#include <libfork/core/impl/utility.hpp>
 #include <memory>
 #include <numeric>
 #include <random>
@@ -37,15 +38,23 @@ namespace lf {
 
 namespace impl {
 
+/**
+ * @brief Variable used to synchronize a collection of threads.
+ */
 struct busy_vars {
-
+  /**
+   * @brief Construct a new busy vars object for synchronizing `n` workers with one master.
+   */
   explicit busy_vars(std::size_t n) : latch_start(n + 1), latch_stop(n) { LF_ASSERT(n > 0); }
 
-  alignas(k_cache_line) std::latch latch_start;
-  alignas(k_cache_line) std::latch latch_stop;
-  alignas(k_cache_line) std::atomic_flag stop;
+  alignas(k_cache_line) std::latch latch_start; ///< Synchronize construction.
+  alignas(k_cache_line) std::latch latch_stop;  ///< Synchronize destruction.
+  alignas(k_cache_line) std::atomic_flag stop;  ///< Signal shutdown.
 };
 
+/**
+ * @brief Workers event-loop.
+ */
 inline void busy_work(numa_topology::numa_node<impl::numa_context<busy_vars>> node) noexcept {
 
   LF_ASSERT(!node.neighbors.empty());
@@ -94,7 +103,7 @@ inline void busy_work(numa_topology::numa_node<impl::numa_context<busy_vars>> no
  * of threads is equal to the number of hardware cores and the multiplexer has no other load.
  * Additionally (if an installation of `hwloc` was found) this pool is NUMA aware.
  */
-class busy_pool {
+class busy_pool : impl::move_only<busy_pool> {
 
   std::size_t m_num_threads;
   std::uniform_int_distribution<std::size_t> m_dist{0, m_num_threads - 1};
@@ -104,8 +113,6 @@ class busy_pool {
   std::vector<std::thread> m_threads = {};
   std::vector<context *> m_contexts = {};
 
-  using strategy = numa_strategy;
-
  public:
   /**
    * @brief Construct a new busy_pool object.
@@ -113,7 +120,8 @@ class busy_pool {
    * @param n The number of worker threads to create, defaults to the number of hardware threads.
    * @param strategy The numa strategy for distributing workers.
    */
-  explicit busy_pool(std::size_t n = std::thread::hardware_concurrency(), strategy strategy = strategy::fan)
+  explicit busy_pool(std::size_t n = std::thread::hardware_concurrency(),
+                     numa_strategy strategy = numa_strategy::fan)
       : m_num_threads(n) {
 
     for (std::size_t i = 0; i < n; ++i) {

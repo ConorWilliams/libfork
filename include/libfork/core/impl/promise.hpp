@@ -14,22 +14,22 @@
 #include <type_traits>
 #include <utility>
 
-#include <libfork/core/co_alloc.hpp>
-#include <libfork/core/control_flow.hpp>
-#include <libfork/core/first_arg.hpp>
-#include <libfork/core/invocable.hpp>
-#include <libfork/core/tag.hpp>
-#include <libfork/core/task.hpp>
+#include "libfork/core/co_alloc.hpp"
+#include "libfork/core/control_flow.hpp"
+#include "libfork/core/first_arg.hpp"
+#include "libfork/core/invocable.hpp"
+#include "libfork/core/tag.hpp"
+#include "libfork/core/task.hpp"
 
-#include <libfork/core/ext/context.hpp>
-#include <libfork/core/ext/handles.hpp>
-#include <libfork/core/ext/tls.hpp>
+#include "libfork/core/ext/context.hpp"
+#include "libfork/core/ext/handles.hpp"
+#include "libfork/core/ext/tls.hpp"
 
-#include <libfork/core/impl/awaitables.hpp>
-#include <libfork/core/impl/combinate.hpp>
-#include <libfork/core/impl/frame.hpp>
-#include <libfork/core/impl/return.hpp>
-#include <libfork/core/impl/utility.hpp>
+#include "libfork/core/impl/awaitables.hpp"
+#include "libfork/core/impl/combinate.hpp"
+#include "libfork/core/impl/frame.hpp"
+#include "libfork/core/impl/return.hpp"
+#include "libfork/core/impl/utility.hpp"
 
 /**
  * @file promise.hpp
@@ -246,9 +246,18 @@ struct promise_base : frame {
 template <returnable R, return_address_for<R> I, tag Tag>
 struct promise : promise_base, return_result<R, I> {
 
+  /**
+   * @brief Construct a new promise object.
+   *
+   * Stores a handle to the promise in the `frame` and loads the tls stack and stores a pointer to the top
+   * fibril.
+   */
   promise() noexcept
       : promise_base{std::coroutine_handle<promise>::from_promise(*this), tls::stack()->top()} {}
 
+  /**
+   * @brief Returned task stores a copy of the `this` pointer.
+   */
   auto get_return_object() noexcept -> task<R> { return {{}, static_cast<void *>(this)}; }
 
   /**
@@ -302,6 +311,9 @@ struct promise : promise_base, return_result<R, I> {
 
 // -------------------------------------------------- //
 
+/**
+ * @brief A dependent value to emulate `static_assert(false)`.
+ */
 template <typename...>
 inline constexpr bool always_false = false;
 
@@ -327,10 +339,15 @@ struct safe_fork_t<tag::fork, From, To &&> : std::false_type {
   static_assert(always_false<From, To &&>, "Forked r-value may dangle!");
 };
 
+/**
+ * @brief Triggers a static assert if a conversion may dangle.
+ */
 template <tag Tag, typename From, typename To>
 inline constexpr bool safe_fork_v = safe_fork_t<Tag, From, To>::value;
 
 } // namespace lf::impl
+
+#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
 
 /**
  * @brief Specialize coroutine_traits for task<...> from functions.
@@ -366,6 +383,6 @@ struct std::coroutine_traits<lf::task<R>, This, lf::impl::first_arg_t<I, Tag, F,
   using promise_type = lf::impl::promise<R, I, Tag>;
 };
 
-// TODO: test if disallowing r-values for forked coroutines at the top level breaks concepts.
+#endif
 
 #endif /* C854CDE9_1125_46E1_9E2A_0B0006BFC135 */

@@ -51,23 +51,34 @@ struct discard_t {
 
 // ------------ Bare-bones inconsistent invocable ------------ //
 
+namespace detail {
+
 template <typename I, typename Task>
 struct valid_return : std::false_type {};
 
 template <>
 struct valid_return<discard_t, task<void>> : std::true_type {};
 
-template <typename R, std::indirectly_writable<R> I>
+template <returnable R, std::indirectly_writable<R> I>
 struct valid_return<I, task<R>> : std::true_type {};
 
-template <typename I, typename Task>
-inline constexpr bool valid_return_v = valid_return<I, Task>::value;
+} // namespace detail
 
+/**
+ * @brief Verify that `Task` is an lf::task and that the result can be returned by `I`.
+ *
+ * This requires that `I` is `std::indirectly_writable` or that `I` is `discard_t` and the task returns void.
+ */
+template <typename I, typename Task>
+inline constexpr bool valid_return_v = quasi_pointer<I> && detail::valid_return<I, Task>::value;
+
+/**
+ * @brief Verify that `R` returned via `I`.
+ *
+ * This requires that `I` is `std::indirectly_writable` or that `I` is `discard_t` and the `R` is void.
+ */
 template <typename I, typename R>
-concept return_address_for =    //
-    quasi_pointer<I> &&         //
-    returnable<R> &&            //
-    valid_return_v<I, task<R>>; //
+concept return_address_for = quasi_pointer<I> && returnable<R> && valid_return_v<I, task<R>>;
 
 /**
  * @brief Verify `F` is async `Tag` invocable with `Args...` and returns a task who's result type is
@@ -80,6 +91,11 @@ concept async_invocable_to_task =
     std::invocable<F, impl::first_arg_t<I, Tag, F, Args &&...>, Args...> &&                                //
     valid_return_v<I, std::invoke_result_t<F, impl::first_arg_t<discard_t, Tag, F, Args &&...>, Args...>>; //
 
+/**
+ * @brief Let `F(Args...) -> task<R>` then this returns 'R'.
+ *
+ * Unsafe in the sense that it does not check that F is `async_invocable`.
+ */
 template <typename I, tag Tag, typename F, typename... Args>
   requires async_invocable_to_task<I, Tag, F, Args...>
 using unsafe_result_t = std::invoke_result_t<F, impl::first_arg_t<I, Tag, F, Args &&...>, Args...>::type;
@@ -133,16 +149,26 @@ concept consistent =                                 //
 
 // --------------------- //
 
+namespace detail {
+
 template <typename R>
 struct as_eventually : std::type_identity<eventually<R> *> {};
 
 template <>
 struct as_eventually<void> : std::type_identity<discard_t> {};
 
+} // namespace detail
+
+/**
+ * @brief Let `F(Args...) -> task<R>` then this returns `eventually<R> *` or `discard_t` if `R` is void.
+ */
 template <typename I, tag Tag, typename F, typename... Args>
   requires async_invocable_to_task<I, Tag, F, Args...>
-using as_eventually_t = as_eventually<impl::unsafe_result_t<I, Tag, F, Args...>>::type;
+using as_eventually_t = detail::as_eventually<impl::unsafe_result_t<I, Tag, F, Args...>>::type;
 
+/**
+ * @brief Check `F` is async invocable to a task with `I`,` discard_t` and the appropriate `eventually`.
+ */
 template <typename I, tag Tag, typename F, typename... Args>
 concept consistent_invocable =                                                                 //
     async_invocable_to_task<I, Tag, F, Args...> &&                                             //

@@ -34,6 +34,8 @@ struct promise;
 
 /**
  * @brief Awaitable in the context of an `lf::task` coroutine.
+ *
+ * This will be transformed by an `await_transform` and trigger a fork or call.
  */
 template <returnable R, return_address_for<R> I, tag Tag>
 struct [[nodiscard("A quasi_awaitable MUST be immediately co_awaited!")]] quasi_awaitable {
@@ -42,6 +44,11 @@ struct [[nodiscard("A quasi_awaitable MUST be immediately co_awaited!")]] quasi_
 
 // ---------------------------- //
 
+/**
+ * @brief Call an async function with a synthesized first argument.
+ *
+ * The first argument will contain a copy of the function hence, this is a fixed-point combinator.
+ */
 template <quasi_pointer I, tag Tag, async_function_object F>
 struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combinate {
 
@@ -73,15 +80,20 @@ struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combin
   }
 };
 
-// // ---------------------------- //
+// ---------------------------- //
 
+/**
+ * @brief Build a combinator for `ret` and `fun`.
+ */
 template <tag Tag, quasi_pointer I, async_function_object F>
 auto combinate(I ret, F fun) -> y_combinate<I, Tag, F> {
   return {std::move(ret), std::move(fun)};
 }
 
 /**
- * @brief Prevent each layer wrapping the function in another `first_arg_t`.
+ * @brief Build a combinator for `ret` and `fun`.
+ *
+ * This specialization prevents each layer wrapping the function in another `first_arg_t`.
  */
 template <tag Tag,
           tag OtherTag,

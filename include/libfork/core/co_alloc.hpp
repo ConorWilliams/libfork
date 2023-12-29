@@ -47,11 +47,17 @@ struct [[nodiscard("This object should be co_awaited")]] co_new_t {
   static constexpr std::size_t count = Extent; ///< The number of elements to allocate.
 };
 
+/**
+ * @brief An awaitable (in the context of an ``lf::task``) which triggers stack allocation.
+ */
 template <co_allocable T>
 struct [[nodiscard("This object should be co_awaited")]] co_new_t<T, std::dynamic_extent> {
   std::size_t count; ///< The number of elements to allocate.
 };
 
+/**
+ * @brief An awaitable (in the context of an ``lf::task``) which triggers stack deallocation.
+ */
 template <co_allocable T, std::size_t Extent>
 struct [[nodiscard("This object should be co_awaited")]] co_delete_t : std::span<T, Extent> {};
 

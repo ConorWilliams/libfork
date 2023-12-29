@@ -52,7 +52,7 @@ concept scheduler = requires (Sch &&sch, intruded_list<submit_handle> handle) {
 /**
  * @brief Schedule execution of `fun` on `sch` and __block__ until the task is complete.
  *
- * This is the primary entry point from the synchonous to the asynchronous world. A typical libfork program
+ * This is the primary entry point from the synchronous to the asynchronous world. A typical libfork program
  * is expected to make a call from `main` into a scheduler/runtime by scheduling a single root-task with this
  * function.
  *

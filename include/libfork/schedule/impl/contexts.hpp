@@ -31,6 +31,9 @@
 // --------------------------------------------------------------------- //
 namespace lf::impl {
 
+/**
+ * @brief Manages an `lf::worker_context` and exposes numa aware stealing.
+ */
 template <typename Shared>
 struct numa_context {
  private:
@@ -45,6 +48,9 @@ struct numa_context {
   std::vector<numa_context *> m_neigh;            ///< Our neighbors (excluding ourselves).
 
  public:
+  /**
+   * @brief Construct a new numa context object.
+   */
   numa_context(xoshiro const &rng, std::shared_ptr<Shared> shared)
       : m_rng(rng),
         m_shared{std::move(non_null(shared))} {}
@@ -54,6 +60,9 @@ struct numa_context {
    */
   [[nodiscard]] auto shared() const noexcept -> Shared & { return *non_null(m_shared); }
 
+  /**
+   * @brief An alias for `numa_topology::numa_node<numa_context<Shared>>`.
+   */
   using numa_node = numa_topology::numa_node<numa_context>;
 
   /**
@@ -144,6 +153,8 @@ struct numa_context {
       return nullptr;
     }
 
+#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
+
     #define LF_RETURN_OR_CONTINUE(expr) \
       auto * context = expr;\
       LF_ASSERT(context); \
@@ -181,6 +192,8 @@ struct numa_context {
     }
 
 #undef LF_RETURN_OR_CONTINUE
+
+#endif // LF_DOXYGEN_SHOULD_SKIP_THIS
 
     return nullptr;
   }

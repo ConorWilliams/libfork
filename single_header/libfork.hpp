@@ -355,6 +355,15 @@
   #endif
 #endif
 
+/**
+ * @brief Concatenation macro
+ */
+#define LF_CONCAT_OUTER(a, b) LF_CONCAT_INNER(a, b)
+/**
+ * @brief Internal concatenation macro (use LF_CONCAT_OUTER)
+ */
+#define LF_CONCAT_INNER(a, b) a##b
+
 // NOLINTEND
 
 #endif /* C5DCA647_8269_46C2_B76F_5FA68738AEDA */
@@ -1339,7 +1348,11 @@ constexpr deque<T>::~deque() noexcept {
 
 
 #ifndef LF_FIBRE_INIT_SIZE
-  // Will be round to a multiple of page size anyway
+  /**
+   * @brief The initial size for a stack (in bytes).
+   *
+   * All stacklets will be round up to a multiple of the page size.
+   */
   #define LF_FIBRE_INIT_SIZE 1
 #endif
 
@@ -1929,8 +1942,12 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
 
   /**
    * @brief Push a new node, this can be called concurrently from any number of threads.
+   *
+   * `new_node` should be an unlinked node e.g. not part of a list.
    */
   constexpr void push(node *new_node) noexcept {
+
+    LF_ASSERT(new_node->m_next == nullptr);
 
     node *stale_head = m_head.load(std::memory_order_relaxed);
 
@@ -2040,9 +2057,9 @@ class context : impl::immovable<context> {
   /**
    * @brief Submit pending/suspended tasks to the context.
    *
-   * This is for use by implementor of the scheduler, this will trigger the notification function.
+   * This is for use by the implementor of the scheduler, this will trigger the notification function.
    */
-  void submit(intruded_list<submit_handle> jobs) noexcept {
+  void submit(intruded_list<submit_handle> jobs) {
     m_submit.push(non_null(jobs));
     m_notify();
   }
@@ -2053,11 +2070,16 @@ class context : impl::immovable<context> {
   nullary_function_t m_notify; ///< The user supplied notification function.
 };
 
+/**
+ * @brief Context for (user) schedulers to interact with.
+ *
+ * Additionally exposes submit and pop functions.
+ */
 class worker_context : public context {
  public:
   using context::context;
 
-  using context::submit;
+  using context::submit; ///< Submit an external task.
 
   /**
    * @brief Fetch a linked-list of the submitted tasks.
@@ -2076,6 +2098,9 @@ class worker_context : public context {
 
 namespace impl {
 
+/**
+ * @brief Context for internal use, contains full-API for push/pop.
+ */
 class full_context : public worker_context {
  public:
   using worker_context::worker_context;
@@ -2222,17 +2247,40 @@ namespace lf {
 
 namespace impl::tls {
 
+/**
+ * @brief Set when `impl::tls::thread_stack` is alive.
+ */
 constinit inline thread_local bool has_stack = false;
+/**
+ * @brief A workers stack.
+ *
+ * This is wrapped in an `manual_lifetime` to make it trivially destructible/constructible such that it
+ * requires no construction checks to access.
+ */
 constinit inline thread_local manual_lifetime<stack> thread_stack = {};
-
+/**
+ * @brief Set when `impl::tls::thread_stack` is alive.
+ */
 constinit inline thread_local bool has_context = false;
+/**
+ * @brief A workers context.
+ *
+ * This is wrapped in an `manual_lifetime` to make it trivially destructible/constructible such that it
+ * requires no construction checks to access.
+ */
 constinit inline thread_local manual_lifetime<full_context> thread_context = {};
 
+/**
+ * @brief Checked access to a workers stack.
+ */
 [[nodiscard]] inline auto stack() -> stack * {
   LF_ASSERT(has_stack);
   return thread_stack.data();
 }
 
+/**
+ * @brief Checked access to a workers context.
+ */
 [[nodiscard]] inline auto context() -> full_context * {
   LF_ASSERT(has_context);
   return thread_context.data();
@@ -2345,11 +2393,17 @@ struct [[nodiscard("This object should be co_awaited")]] co_new_t {
   static constexpr std::size_t count = Extent; ///< The number of elements to allocate.
 };
 
+/**
+ * @brief An awaitable (in the context of an ``lf::task``) which triggers stack allocation.
+ */
 template <co_allocable T>
 struct [[nodiscard("This object should be co_awaited")]] co_new_t<T, std::dynamic_extent> {
   std::size_t count; ///< The number of elements to allocate.
 };
 
+/**
+ * @brief An awaitable (in the context of an ``lf::task``) which triggers stack deallocation.
+ */
 template <co_allocable T, std::size_t Extent>
 struct [[nodiscard("This object should be co_awaited")]] co_delete_t : std::span<T, Extent> {};
 
@@ -2482,23 +2536,34 @@ struct discard_t {
 
 // ------------ Bare-bones inconsistent invocable ------------ //
 
+namespace detail {
+
 template <typename I, typename Task>
 struct valid_return : std::false_type {};
 
 template <>
 struct valid_return<discard_t, task<void>> : std::true_type {};
 
-template <typename R, std::indirectly_writable<R> I>
+template <returnable R, std::indirectly_writable<R> I>
 struct valid_return<I, task<R>> : std::true_type {};
 
-template <typename I, typename Task>
-inline constexpr bool valid_return_v = valid_return<I, Task>::value;
+} // namespace detail
 
+/**
+ * @brief Verify that `Task` is an lf::task and that the result can be returned by `I`.
+ *
+ * This requires that `I` is `std::indirectly_writable` or that `I` is `discard_t` and the task returns void.
+ */
+template <typename I, typename Task>
+inline constexpr bool valid_return_v = quasi_pointer<I> && detail::valid_return<I, Task>::value;
+
+/**
+ * @brief Verify that `R` returned via `I`.
+ *
+ * This requires that `I` is `std::indirectly_writable` or that `I` is `discard_t` and the `R` is void.
+ */
 template <typename I, typename R>
-concept return_address_for =    //
-    quasi_pointer<I> &&         //
-    returnable<R> &&            //
-    valid_return_v<I, task<R>>; //
+concept return_address_for = quasi_pointer<I> && returnable<R> && valid_return_v<I, task<R>>;
 
 /**
  * @brief Verify `F` is async `Tag` invocable with `Args...` and returns a task who's result type is
@@ -2511,6 +2576,11 @@ concept async_invocable_to_task =
     std::invocable<F, impl::first_arg_t<I, Tag, F, Args &&...>, Args...> &&                                //
     valid_return_v<I, std::invoke_result_t<F, impl::first_arg_t<discard_t, Tag, F, Args &&...>, Args...>>; //
 
+/**
+ * @brief Let `F(Args...) -> task<R>` then this returns 'R'.
+ *
+ * Unsafe in the sense that it does not check that F is `async_invocable`.
+ */
 template <typename I, tag Tag, typename F, typename... Args>
   requires async_invocable_to_task<I, Tag, F, Args...>
 using unsafe_result_t = std::invoke_result_t<F, impl::first_arg_t<I, Tag, F, Args &&...>, Args...>::type;
@@ -2564,16 +2634,26 @@ concept consistent =                                 //
 
 // --------------------- //
 
+namespace detail {
+
 template <typename R>
 struct as_eventually : std::type_identity<eventually<R> *> {};
 
 template <>
 struct as_eventually<void> : std::type_identity<discard_t> {};
 
+} // namespace detail
+
+/**
+ * @brief Let `F(Args...) -> task<R>` then this returns `eventually<R> *` or `discard_t` if `R` is void.
+ */
 template <typename I, tag Tag, typename F, typename... Args>
   requires async_invocable_to_task<I, Tag, F, Args...>
-using as_eventually_t = as_eventually<impl::unsafe_result_t<I, Tag, F, Args...>>::type;
+using as_eventually_t = detail::as_eventually<impl::unsafe_result_t<I, Tag, F, Args...>>::type;
 
+/**
+ * @brief Check `F` is async invocable to a task with `I`,` discard_t` and the appropriate `eventually`.
+ */
 template <typename I, tag Tag, typename F, typename... Args>
 concept consistent_invocable =                                                                 //
     async_invocable_to_task<I, Tag, F, Args...> &&                                             //
@@ -2837,10 +2917,21 @@ namespace lf::impl {
 
 // -------------------------------------------------------- //
 
+/**
+ * @brief An awaiter to explicitly transfer execution to another worker.
+ *
+ * This is generated by `await_transform` when awaiting on a pointer to a `lf::context`.
+ */
 struct switch_awaitable : std::suspend_always {
 
+  /**
+   * @brief Shortcut if already on context.
+   */
   auto await_ready() const noexcept { return tls::context() == dest; }
 
+  /**
+   * @brief Reschedule this coro onto `dest`.
+   */
   auto await_suspend(std::coroutine_handle<>) noexcept -> std::coroutine_handle<> {
 
     // Schedule this coro for execution on Dest.
@@ -2875,14 +2966,23 @@ struct switch_awaitable : std::suspend_always {
     return std::noop_coroutine();
   }
 
-  intrusive_list<submit_handle>::node self;
-  context *dest;
+  intrusive_list<submit_handle>::node self; ///< The current coroutine's handle.
+  context *dest;                            ///< Target context.
 };
 
 // -------------------------------------------------------- //
 
+/**
+ * @brief An awaiter that returns space allocated on the current fibre's stack.
+ *
+ * This never suspends the coroutine and is generated by `await_transform` when awaiting on a pointer to a
+ * `lf::context`.
+ */
 template <typename T, std::size_t E>
 struct alloc_awaitable : std::suspend_never, std::span<T, E> {
+  /**
+   * @brief Return a handle to the memory.
+   */
   [[nodiscard]] auto await_resume() const noexcept -> std::conditional_t<E == 1, T *, std::span<T, E>> {
     if constexpr (E == 1) {
       return this->data();
@@ -2894,8 +2994,16 @@ struct alloc_awaitable : std::suspend_never, std::span<T, E> {
 
 // -------------------------------------------------------- //
 
+/**
+ * @brief An awaiter that suspends the current coroutine and transfers control to a child task.
+ *
+ * The parent task is made available for stealing. This is generated by `await_transform` when awaiting on an
+ * `lf::impl::quasi_awaitable`.
+ */
 struct fork_awaitable : std::suspend_always {
-
+  /**
+   * @brief Sym-transfer to child, push parent to queue.
+   */
   auto await_suspend(std::coroutine_handle<>) const noexcept -> std::coroutine_handle<> {
     LF_LOG("Forking, push parent to context");
     // Need a copy (on stack) in case *this is destructed after push.
@@ -2904,22 +3012,35 @@ struct fork_awaitable : std::suspend_always {
     return child;
   }
 
-  frame *child;
-  frame *parent;
+  frame *child;  ///< The suspended child coroutine's frame.
+  frame *parent; ///< The calling coroutine's frame.
 };
 
+/**
+ * @brief An awaiter that suspends the current coroutine and transfers control to a child task.
+ *
+ * The parent task is __not__ made available for stealing. This is generated by `await_transform` when
+ * awaiting on an `lf::impl::quasi_awaitable`.
+ */
 struct call_awaitable : std::suspend_always {
-
+  /**
+   * @brief Sym-transfer to child.
+   */
   auto await_suspend(std::coroutine_handle<>) const noexcept -> std::coroutine_handle<> {
     LF_LOG("Calling");
     return child->self();
   }
 
-  frame *child;
+  frame *child; ///< The suspended child coroutine's frame.
 };
 
 // -------------------------------------------------------------------------------- //
 
+/**
+ * @brief An awaiter to synchronize execution of child tasks.
+ *
+ * This is generated by `await_transform` when awaiting on an `lf::impl::join_type`.
+ */
 struct join_awaitable {
  private:
   void take_stack_reset_frame() const noexcept {
@@ -2932,6 +3053,9 @@ struct join_awaitable {
   }
 
  public:
+  /**
+   * @brief Shortcut if children are ready.
+   */
   auto await_ready() const noexcept -> bool {
     // If no steals then we are the only owner of the parent and we are ready to join.
     if (self->load_steals() == 0) {
@@ -2958,6 +3082,9 @@ struct join_awaitable {
     return false;
   }
 
+  /**
+   * @brief Mark at join point then yield to scheduler or resume if children are done.
+   */
   auto await_suspend(std::coroutine_handle<> task) const noexcept -> std::coroutine_handle<> {
     // Currently        joins  = k_u16_max  - num_joined
     // We set           joins  = joins()    - (k_u16_max - num_steals)
@@ -2992,6 +3119,9 @@ struct join_awaitable {
     return std::noop_coroutine();
   }
 
+  /**
+   * @brief A noop in release.
+   */
   void await_resume() const noexcept {
     LF_LOG("join resumes");
     // Check we have been reset.
@@ -3000,7 +3130,7 @@ struct join_awaitable {
     LF_ASSERT(self->stacklet() == tls::stack()->top());
   }
 
-  frame *self;
+  frame *self; ///< The frame of the awaiting coroutine.
 };
 
 } // namespace lf::impl
@@ -3025,6 +3155,8 @@ struct promise;
 
 /**
  * @brief Awaitable in the context of an `lf::task` coroutine.
+ *
+ * This will be transformed by an `await_transform` and trigger a fork or call.
  */
 template <returnable R, return_address_for<R> I, tag Tag>
 struct [[nodiscard("A quasi_awaitable MUST be immediately co_awaited!")]] quasi_awaitable {
@@ -3033,6 +3165,11 @@ struct [[nodiscard("A quasi_awaitable MUST be immediately co_awaited!")]] quasi_
 
 // ---------------------------- //
 
+/**
+ * @brief Call an async function with a synthesized first argument.
+ *
+ * The first argument will contain a copy of the function hence, this is a fixed-point combinator.
+ */
 template <quasi_pointer I, tag Tag, async_function_object F>
 struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combinate {
 
@@ -3064,15 +3201,20 @@ struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combin
   }
 };
 
-// // ---------------------------- //
+// ---------------------------- //
 
+/**
+ * @brief Build a combinator for `ret` and `fun`.
+ */
 template <tag Tag, quasi_pointer I, async_function_object F>
 auto combinate(I ret, F fun) -> y_combinate<I, Tag, F> {
   return {std::move(ret), std::move(fun)};
 }
 
 /**
- * @brief Prevent each layer wrapping the function in another `first_arg_t`.
+ * @brief Build a combinator for `ret` and `fun`.
+ *
+ * This specialization prevents each layer wrapping the function in another `first_arg_t`.
  */
 template <tag Tag,
           tag OtherTag,
@@ -3243,9 +3385,9 @@ inline constexpr impl::bind_task<tag::call> call = {};
 
 #include <concepts>
 #include <functional>
-#include <libfork/core/macro.hpp>
 #include <type_traits>
 #include <utility>
+
 
 
 /**
@@ -3299,9 +3441,6 @@ class [[nodiscard("Defer will execute unless bound to a name!")]] defer : impl::
  private:
   [[no_unique_address]] F m_f;
 };
-
-#define LF_CONCAT_OUTER(a, b) LF_CONCAT_INNER(a, b)
-#define LF_CONCAT_INNER(a, b) a##b
 
 /**
  * @brief A macro to create an automatically named defer object.
@@ -3521,6 +3660,11 @@ class manual_eventually : impl::manual_lifetime<T> {
   using impl::manual_lifetime<T>::destroy;
 };
 
+/**
+ * @brief A `lf::manual_eventually<T>` is an `lf::eventually<T>` which does not call destroy on destruction.
+ *
+ * This is useful for writing exception safe fork-join code and should be considered an expert-only feature.
+ */
 template <impl::non_void T>
   requires impl::reference<T>
 class manual_eventually<T> : eventually<T> {
@@ -3531,7 +3675,10 @@ class manual_eventually<T> : eventually<T> {
   using eventually<T>::operator->;
   using eventually<T>::operator*;
 
-  void destroy() noexcept {};
+  /**
+   * @brief Destroy the contained object (call its destructor).
+   */
+  void destroy() noexcept { static_assert(std::is_trivially_destructible_v<T>); };
 };
 
 } // namespace core
@@ -3584,7 +3731,7 @@ concept scheduler = requires (Sch &&sch, intruded_list<submit_handle> handle) {
 /**
  * @brief Schedule execution of `fun` on `sch` and __block__ until the task is complete.
  *
- * This is the primary entry point from the synchonous to the asynchronous world. A typical libfork program
+ * This is the primary entry point from the synchronous to the asynchronous world. A typical libfork program
  * is expected to make a call from `main` into a scheduler/runtime by scheduling a single root-task with this
  * function.
  *
@@ -3739,22 +3886,96 @@ inline void resume(task_handle ptr) noexcept {
 #include <type_traits>
 #include <utility>
 
-#include <libfork/core/co_alloc.hpp>
-#include <libfork/core/control_flow.hpp>
-#include <libfork/core/first_arg.hpp>
-#include <libfork/core/invocable.hpp>
-#include <libfork/core/tag.hpp>
-#include <libfork/core/task.hpp>
 
-#include <libfork/core/ext/context.hpp>
-#include <libfork/core/ext/handles.hpp>
-#include <libfork/core/ext/tls.hpp>
+#ifndef A896798B_7E3B_4854_9997_89EA5AE765EB
+#define A896798B_7E3B_4854_9997_89EA5AE765EB
 
-#include <libfork/core/impl/awaitables.hpp>
-#include <libfork/core/impl/combinate.hpp>
-#include <libfork/core/impl/frame.hpp>
-#include <libfork/core/impl/return.hpp>
-#include <libfork/core/impl/utility.hpp>
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>
+#include <type_traits>
+
+
+
+/**
+ * @file return.hpp
+ *
+ * @brief A promise base class that provides the `return_value` method(s).
+ */
+
+namespace lf::impl {
+
+/**
+ * @brief A helper class that stores a quasi_pointer.
+ */
+template <quasi_pointer I>
+class return_result_base {
+ public:
+  void set_return(I &&ret) noexcept { this->m_ret = std::move(ret); }
+
+ protected:
+  [[no_unique_address]] I m_ret; ///< The stored quasi-pointer
+};
+
+/**
+ * @brief General case for non-void, non-reference
+ */
+template <returnable R, return_address_for<R> I>
+struct return_result : return_result_base<I> {
+
+  /**
+   * @brief Convert and assign `value` to the return address.
+   *
+   * If the return address is directly assignable from `value` this will not construct the intermediate `T`.
+   */
+  template <std::convertible_to<R> U>
+  void return_value(U &&value) {
+    if constexpr (std::indirectly_writable<I, U>) {
+      *(this->m_ret) = std::forward<U>(value);
+    } else {
+      *(this->m_ret) = static_cast<R>(std::forward<U>(value));
+    }
+  }
+
+  /**
+   * @brief For use with `co_return {expr}`
+   */
+  void return_value(R &&value) { *(this->m_ret) = std::move(value); }
+};
+
+/**
+ * @brief Case for reference types.
+ */
+template <returnable R, return_address_for<R> I>
+  requires std::is_reference_v<R>
+struct return_result<R, I> : return_result_base<I> {
+  /**
+   * @brief Assign `value` to the return address.
+   */
+  template <safe_ref_bind_to<R> U>
+  void return_value(U &&ref) {
+    *(this->m_ret) = std::forward<U>(ref);
+  }
+};
+
+/**
+ * @brief Case for void return.
+ */
+template <>
+struct return_result<void, discard_t> {
+  static constexpr void return_void() noexcept {};
+};
+
+} // namespace lf::impl
+
+#endif /* A896798B_7E3B_4854_9997_89EA5AE765EB */
+
 
 /**
  * @file promise.hpp
@@ -3971,9 +4192,18 @@ struct promise_base : frame {
 template <returnable R, return_address_for<R> I, tag Tag>
 struct promise : promise_base, return_result<R, I> {
 
+  /**
+   * @brief Construct a new promise object.
+   *
+   * Stores a handle to the promise in the `frame` and loads the tls stack and stores a pointer to the top
+   * fibril.
+   */
   promise() noexcept
       : promise_base{std::coroutine_handle<promise>::from_promise(*this), tls::stack()->top()} {}
 
+  /**
+   * @brief Returned task stores a copy of the `this` pointer.
+   */
   auto get_return_object() noexcept -> task<R> { return {{}, static_cast<void *>(this)}; }
 
   /**
@@ -4027,6 +4257,9 @@ struct promise : promise_base, return_result<R, I> {
 
 // -------------------------------------------------- //
 
+/**
+ * @brief A dependent value to emulate `static_assert(false)`.
+ */
 template <typename...>
 inline constexpr bool always_false = false;
 
@@ -4052,10 +4285,15 @@ struct safe_fork_t<tag::fork, From, To &&> : std::false_type {
   static_assert(always_false<From, To &&>, "Forked r-value may dangle!");
 };
 
+/**
+ * @brief Triggers a static assert if a conversion may dangle.
+ */
 template <tag Tag, typename From, typename To>
 inline constexpr bool safe_fork_v = safe_fork_t<Tag, From, To>::value;
 
 } // namespace lf::impl
+
+#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
 
 /**
  * @brief Specialize coroutine_traits for task<...> from functions.
@@ -4091,94 +4329,9 @@ struct std::coroutine_traits<lf::task<R>, This, lf::impl::first_arg_t<I, Tag, F,
   using promise_type = lf::impl::promise<R, I, Tag>;
 };
 
-// TODO: test if disallowing r-values for forked coroutines at the top level breaks concepts.
+#endif
 
 #endif /* C854CDE9_1125_46E1_9E2A_0B0006BFC135 */
-#ifndef A896798B_7E3B_4854_9997_89EA5AE765EB
-#define A896798B_7E3B_4854_9997_89EA5AE765EB
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>
-#include <type_traits>
-
-
-
-/**
- * @file return.hpp
- *
- * @brief A promise base class that provides the `return_value` method(s).
- */
-
-namespace lf::impl {
-
-template <quasi_pointer I>
-class return_result_base {
- public:
-  void set_return(I ret) noexcept { this->m_ret = std::move(ret); }
-
- protected:
-  [[no_unique_address]] I m_ret;
-};
-
-/**
- * @brief General case for non-void, non-reference
- */
-template <returnable R, return_address_for<R> I>
-struct return_result : return_result_base<I> {
-
-  /**
-   * @brief Convert and assign `value` to the return address.
-   *
-   * If the return address is directly assignable from `value` this will not construct the intermediate `T`.
-   */
-  template <std::convertible_to<R> U>
-  void return_value(U &&value) {
-    if constexpr (std::indirectly_writable<I, U>) {
-      *(this->m_ret) = std::forward<U>(value);
-    } else {
-      *(this->m_ret) = static_cast<R>(std::forward<U>(value));
-    }
-  }
-
-  /**
-   * @brief For use with `co_return {expr}`
-   */
-  void return_value(R &&value) { *(this->m_ret) = std::move(value); }
-};
-
-/**
- * @brief Case for reference types.
- */
-template <returnable R, return_address_for<R> I>
-  requires std::is_reference_v<R>
-struct return_result<R, I> : return_result_base<I> {
-  /**
-   * @brief Assign `value` to the return address.
-   */
-  template <safe_ref_bind_to<R> U>
-  void return_value(U &&ref) {
-    *(this->m_ret) = std::forward<U>(ref);
-  }
-};
-
-/**
- * @brief Case for void return.
- */
-template <>
-struct return_result<void, discard_t> {
-  static constexpr void return_void() noexcept {};
-};
-
-} // namespace lf::impl
-
-#endif /* A896798B_7E3B_4854_9997_89EA5AE765EB */
 
 
 /**
@@ -4296,6 +4449,7 @@ inline constexpr auto lift = []<class F, class... Args>(auto, F &&func, Args &&.
 #include <cstddef>
 #include <exception>
 #include <latch>
+#include <libfork/core/impl/utility.hpp>
 #include <memory>
 #include <numeric>
 #include <random>
@@ -5033,6 +5187,9 @@ static_assert(uniform_random_bit_generator<xoshiro>);
 // --------------------------------------------------------------------- //
 namespace lf::impl {
 
+/**
+ * @brief Manages an `lf::worker_context` and exposes numa aware stealing.
+ */
 template <typename Shared>
 struct numa_context {
  private:
@@ -5047,6 +5204,9 @@ struct numa_context {
   std::vector<numa_context *> m_neigh;            ///< Our neighbors (excluding ourselves).
 
  public:
+  /**
+   * @brief Construct a new numa context object.
+   */
   numa_context(xoshiro const &rng, std::shared_ptr<Shared> shared)
       : m_rng(rng),
         m_shared{std::move(non_null(shared))} {}
@@ -5056,6 +5216,9 @@ struct numa_context {
    */
   [[nodiscard]] auto shared() const noexcept -> Shared & { return *non_null(m_shared); }
 
+  /**
+   * @brief An alias for `numa_topology::numa_node<numa_context<Shared>>`.
+   */
   using numa_node = numa_topology::numa_node<numa_context>;
 
   /**
@@ -5146,6 +5309,8 @@ struct numa_context {
       return nullptr;
     }
 
+#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
+
     #define LF_RETURN_OR_CONTINUE(expr) \
       auto * context = expr;\
       LF_ASSERT(context); \
@@ -5184,6 +5349,8 @@ struct numa_context {
 
 #undef LF_RETURN_OR_CONTINUE
 
+#endif // LF_DOXYGEN_SHOULD_SKIP_THIS
+
     return nullptr;
   }
 };
@@ -5203,15 +5370,23 @@ namespace lf {
 
 namespace impl {
 
+/**
+ * @brief Variable used to synchronize a collection of threads.
+ */
 struct busy_vars {
-
+  /**
+   * @brief Construct a new busy vars object for synchronizing `n` workers with one master.
+   */
   explicit busy_vars(std::size_t n) : latch_start(n + 1), latch_stop(n) { LF_ASSERT(n > 0); }
 
-  alignas(k_cache_line) std::latch latch_start;
-  alignas(k_cache_line) std::latch latch_stop;
-  alignas(k_cache_line) std::atomic_flag stop;
+  alignas(k_cache_line) std::latch latch_start; ///< Synchronize construction.
+  alignas(k_cache_line) std::latch latch_stop;  ///< Synchronize destruction.
+  alignas(k_cache_line) std::atomic_flag stop;  ///< Signal shutdown.
 };
 
+/**
+ * @brief Workers event-loop.
+ */
 inline void busy_work(numa_topology::numa_node<impl::numa_context<busy_vars>> node) noexcept {
 
   LF_ASSERT(!node.neighbors.empty());
@@ -5260,7 +5435,7 @@ inline void busy_work(numa_topology::numa_node<impl::numa_context<busy_vars>> no
  * of threads is equal to the number of hardware cores and the multiplexer has no other load.
  * Additionally (if an installation of `hwloc` was found) this pool is NUMA aware.
  */
-class busy_pool {
+class busy_pool : impl::move_only<busy_pool> {
 
   std::size_t m_num_threads;
   std::uniform_int_distribution<std::size_t> m_dist{0, m_num_threads - 1};
@@ -5270,8 +5445,6 @@ class busy_pool {
   std::vector<std::thread> m_threads = {};
   std::vector<context *> m_contexts = {};
 
-  using strategy = numa_strategy;
-
  public:
   /**
    * @brief Construct a new busy_pool object.
@@ -5279,7 +5452,8 @@ class busy_pool {
    * @param n The number of worker threads to create, defaults to the number of hardware threads.
    * @param strategy The numa strategy for distributing workers.
    */
-  explicit busy_pool(std::size_t n = std::thread::hardware_concurrency(), strategy strategy = strategy::fan)
+  explicit busy_pool(std::size_t n = std::thread::hardware_concurrency(),
+                     numa_strategy strategy = numa_strategy::fan)
       : m_num_threads(n) {
 
     for (std::size_t i = 0; i < n; ++i) {
@@ -5615,9 +5789,9 @@ namespace lf {
 
 namespace impl {
 
-static constexpr std::memory_order acquire = std::memory_order_acquire;
-static constexpr std::memory_order acq_rel = std::memory_order_acq_rel;
-static constexpr std::memory_order release = std::memory_order_release;
+static constexpr std::memory_order acquire = std::memory_order_acquire; ///< Alias
+static constexpr std::memory_order acq_rel = std::memory_order_acq_rel; ///< Alias
+static constexpr std::memory_order release = std::memory_order_release; ///< Alias
 
 /**
  * @brief A collection of heap allocated atomic variables used for tracking the state of the scheduler.
@@ -5626,15 +5800,18 @@ struct lazy_vars : busy_vars {
 
   using busy_vars::busy_vars;
 
-  // Invariant: *** if (A > 0) then (T >= 1 OR S == 0) ***
-
+  /**
+   * @brief Counters and notifiers for each numa locality.
+   */
   struct fat_counters {
     alignas(k_cache_line) std::atomic_uint64_t thief = 0; ///< Number of thieving workers.
     alignas(k_cache_line) event_count notifier;           ///< Notifier for this numa pool.
   };
 
-  alignas(k_cache_line) std::atomic_uint64_t active = 0;
-  alignas(k_cache_line) std::vector<fat_counters> numa;
+  alignas(k_cache_line) std::atomic_uint64_t active = 0; ///< Total number of actives.
+  alignas(k_cache_line) std::vector<fat_counters> numa;  ///< Counters for each numa locality.
+
+  // Invariant: *** if (A > 0) then (T >= 1 OR S == 0) ***
 
   /**
    * Called by a thief with work, effect: thief->active, do work, active->sleep.
@@ -5687,7 +5864,7 @@ struct lazy_vars : busy_vars {
 };
 
 /**
- * @brief The function that workers run while the pool is alive.
+ * @brief The function that workers run while the pool is alive (worker event-loop)
  */
 inline auto lazy_work(numa_topology::numa_node<numa_context<lazy_vars>> node) noexcept {
 
@@ -5850,8 +6027,6 @@ class lazy_pool {
   std::vector<std::thread> m_threads = {};
   std::vector<context *> m_contexts = {};
 
-  using strategy = numa_strategy;
-
  public:
   /**
    * @brief Construct a new lazy_pool object and `n` worker threads.
@@ -5859,7 +6034,8 @@ class lazy_pool {
    * @param n The number of worker threads to create, defaults to the number of hardware threads.
    * @param strategy The numa strategy for distributing workers.
    */
-  explicit lazy_pool(std::size_t n = std::thread::hardware_concurrency(), strategy strategy = strategy::fan)
+  explicit lazy_pool(std::size_t n = std::thread::hardware_concurrency(),
+                     numa_strategy strategy = numa_strategy::fan)
       : m_num_threads(n) {
 
     LF_ASSERT_NO_ASSUME(!m_share->stop.test(std::memory_order_acquire));
@@ -5899,7 +6075,10 @@ class lazy_pool {
     }
   }
 
-  void schedule(lf::intruded_list<lf::submit_handle> jobs) { m_worker[m_dist(m_rng)]->submit(jobs); }
+  /**
+   * @brief Schedule a job on a random worker.
+   */
+  void schedule(lf::intruded_list<lf::submit_handle> job) { m_worker[m_dist(m_rng)]->submit(job); }
 
   /**
    * @brief Get a view of the worker's contexts.
@@ -5954,6 +6133,9 @@ namespace lf {
  */
 class unit_pool : impl::immovable<unit_pool> {
  public:
+  /**
+   * @brief Run a job inline.
+   */
   static void schedule(lf::intruded_list<lf::submit_handle> jobs) {
     for_each_elem(jobs, [](lf::submit_handle hand) {
       resume(hand);
