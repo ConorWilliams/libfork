@@ -2058,7 +2058,7 @@ class context : impl::immovable<context> {
   /**
    * @brief Submit pending/suspended tasks to the context.
    *
-   * This is for use by the implementor of the scheduler, this will trigger the notification function.
+   * This is for use by the implementer of the scheduler, this will trigger the notification function.
    */
   void submit(intruded_list<submit_handle> jobs) {
     m_submit.push(non_null(jobs));
@@ -2589,76 +2589,65 @@ using unsafe_result_t = std::invoke_result_t<F, impl::first_arg_t<I, Tag, F, Arg
 // --------------------- //
 
 /**
- * @brief Check that I1, I2 and I3 are the same type, invariant under permutations.
+ * @brief Check that F can be 'Tag'-invoked to produce `task<R>`.
  */
-template <typename I1, typename I2, typename I3>
-concept same_as = std::same_as<I1, I2> && std::same_as<I2, I3> && std::same_as<I3, I1>;
+template <typename R, typename I, tag T, typename F, typename... Args>
+concept return_exactly =                                //
+    async_invocable_to_task<I, T, F, Args...> &&        //
+    std::same_as<R, unsafe_result_t<I, T, F, Args...>>; //
 
 /**
- * @brief Check that F can be 'Tag'-invoked with I1, I2, I3 and all calls produce the same result.
- *
- * Symmetric under all permutations of I1, I2 and I3.
+ * @brief Check that `F` can be `T`-invoked and called with `Args...`.
  */
-template <typename I1, typename I2, typename I3, tag Tag, typename F, typename... Args>
-concept return_consistent =                         //
-    async_invocable_to_task<I1, Tag, F, Args...> && //
-    async_invocable_to_task<I2, Tag, F, Args...> && //
-    async_invocable_to_task<I3, Tag, F, Args...> && //
-    same_as<                                        //
-        unsafe_result_t<I1, Tag, F, Args...>,       //
-        unsafe_result_t<I2, Tag, F, Args...>,       //
-        unsafe_result_t<I3, Tag, F, Args...>        //
-        >;
-
-/**
- * @brief Check that F can be async-invoked with any combination of IA, IB, T1, T2 and all calls produce
- * the same result.
- *
- * Symmetric in permutations of I's and T's.
- */
-template <typename IA, typename IB, typename IC, tag T1, tag T2, typename F, typename... Args>
-concept consistent =                                 //
-    return_consistent<IA, IB, IC, T1, F, Args...> && //
-    return_consistent<IA, IB, IC, T2, F, Args...> && //
-    std::same_as<                                    //
-        unsafe_result_t<IA, T1, F, Args...>,         //
-        unsafe_result_t<IA, T2, F, Args...>          //
-        > &&                                         //
-    std::same_as<                                    //
-        unsafe_result_t<IB, T1, F, Args...>,         //
-        unsafe_result_t<IB, T2, F, Args...>          //
-        > &&                                         //
-    std::same_as<                                    //
-        unsafe_result_t<IC, T1, F, Args...>,         //
-        unsafe_result_t<IC, T2, F, Args...>          //
-        >;
-
-// --------------------- //
+template <typename R, typename I, tag T, typename F, typename... Args>
+concept call_consistent =                        //
+    return_exactly<R, I, T, F, Args...> &&       //
+    return_exactly<R, I, tag::call, F, Args...>; //
 
 namespace detail {
 
 template <typename R>
 struct as_eventually : std::type_identity<eventually<R> *> {};
-
 template <>
 struct as_eventually<void> : std::type_identity<discard_t> {};
+
+template <typename R>
+struct as_manual_eventually : std::type_identity<eventually<R> *> {};
+template <>
+struct as_manual_eventually<void> : std::type_identity<discard_t> {};
 
 } // namespace detail
 
 /**
- * @brief Let `F(Args...) -> task<R>` then this returns `eventually<R> *` or `discard_t` if `R` is void.
+ * @brief Check that `Tag`-invoking and calling `F` with `Args...` produces task<R>.
+ *
+ * This also checks the results is consistent when it is discarded and returned by `eventually<R> *` or a
+ * `manual_eventually<R> *`.
  */
-template <typename I, tag Tag, typename F, typename... Args>
-  requires async_invocable_to_task<I, Tag, F, Args...>
-using as_eventually_t = detail::as_eventually<impl::unsafe_result_t<I, Tag, F, Args...>>::type;
+template <typename R, typename I, tag T, typename F, typename... Args>
+concept self_consistent =                                                              //
+    call_consistent<R, I, T, F, Args...> &&                                            //
+    call_consistent<R, discard_t, T, F, Args...> &&                                    //
+    call_consistent<R, typename detail::as_eventually<R>::type, T, F, Args...> &&      //
+    call_consistent<R, typename detail::as_manual_eventually<R>::type, T, F, Args...>; //
+
+// --------------------- //
+
+// /**
+//  * @brief Let `F(Args...) -> task<R>` then this returns `eventually<R> *` or `discard_t` if `R` is void.
+//  */
+// template <typename I, tag Tag, typename F, typename... Args>
+//   requires async_invocable_to_task<I, Tag, F, Args...>
+// using as_eventually_t = detail::as_eventually<impl::unsafe_result_t<I, Tag, F, Args...>>::type;
 
 /**
- * @brief Check `F` is async invocable to a task with `I`,` discard_t` and the appropriate `eventually`.
+ * @brief Check `F` is async invocable to a task with `I`,` discard_t` and the appropriate
+ * `manual_eventually`.
  */
 template <typename I, tag Tag, typename F, typename... Args>
-concept consistent_invocable =                                                                 //
-    async_invocable_to_task<I, Tag, F, Args...> &&                                             //
-    consistent<I, discard_t, as_eventually_t<I, Tag, F, Args...>, tag::call, Tag, F, Args...>; //
+concept consistent_invocable =                                                //
+    async_invocable_to_task<I, Tag, F, Args...> &&                            //
+    self_consistent<unsafe_result_t<I, Tag, F, Args...>, I, Tag, F, Args...>; //
 
 // --------------------- //
 
@@ -2680,7 +2669,7 @@ inline namespace core {
  *  - The result of all of these calls is an instance of type `lf::task<R>`.
  *  - `I` is movable and dereferenceable.
  *  - `I` is indirectly writable from `R` or `R` is `void` while `I` is `discard_t`.
- *  - If `R` is non-void then `F` is `lf::core::async_invocable` when `I` is `lf::eventually<R> *`.
+ *  - If `R` is non-void then `F` is `lf::core::async_invocable` when `I` is `lf::[manual_]eventually<R> *`.
  *
  * This concept is provided as a building block for higher-level concepts.
  */
@@ -3208,7 +3197,8 @@ struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combin
  * @brief Build a combinator for `ret` and `fun`.
  */
 template <tag Tag, quasi_pointer I, async_function_object F>
-auto combinate(I ret, F fun) -> y_combinate<I, Tag, F> {
+  requires std::is_rvalue_reference_v<I &&>
+auto combinate(I &&ret, F fun) -> y_combinate<I, Tag, F> {
   return {std::move(ret), std::move(fun)};
 }
 
@@ -3223,7 +3213,8 @@ template <tag Tag,
           quasi_pointer OtherI,
           async_function_object F,
           typename... Args>
-auto combinate(I ret, first_arg_t<OtherI, OtherTag, F, Args...> arg) -> y_combinate<I, Tag, F> {
+  requires std::is_rvalue_reference_v<I &&>
+auto combinate(I &&ret, first_arg_t<OtherI, OtherTag, F, Args...> arg) -> y_combinate<I, Tag, F> {
   return {std::move(ret), unwrap(std::move(arg))};
 }
 
@@ -3738,7 +3729,7 @@ concept scheduler = requires (Sch &&sch, intruded_list<submit_handle> handle) {
  *
  * This will build a task from `fun` and dispatch it to `sch` via its `schedule` method. Sync wait should
  * __not__ be called by a worker thread (which are never allowed to block) unless the call to `schedule`
- * completes synchonously.
+ * completes synchronously.
  */
 template <scheduler Sch, async_function_object F, class... Args>
   requires rootable<F, Args...>
@@ -5839,7 +5830,7 @@ struct lazy_vars : busy_vars {
     //
     // Invariant in numa j != i is uneffected.
     //
-    // In numa i we guarantee that Ti >= 1 by waking somone else if we are the last thief as Si != 0.
+    // In numa i we guarantee that Ti >= 1 by waking someone else if we are the last thief as Si != 0.
 
     if (numa[tid].thief.fetch_sub(1, acq_rel) == 1) {
       numa[tid].notifier.notify_one();

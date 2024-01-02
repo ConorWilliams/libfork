@@ -86,7 +86,8 @@ struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combin
  * @brief Build a combinator for `ret` and `fun`.
  */
 template <tag Tag, quasi_pointer I, async_function_object F>
-auto combinate(I ret, F fun) -> y_combinate<I, Tag, F> {
+  requires std::is_rvalue_reference_v<I &&>
+auto combinate(I &&ret, F fun) -> y_combinate<I, Tag, F> {
   return {std::move(ret), std::move(fun)};
 }
 
@@ -101,7 +102,8 @@ template <tag Tag,
           quasi_pointer OtherI,
           async_function_object F,
           typename... Args>
-auto combinate(I ret, first_arg_t<OtherI, OtherTag, F, Args...> arg) -> y_combinate<I, Tag, F> {
+  requires std::is_rvalue_reference_v<I &&>
+auto combinate(I &&ret, first_arg_t<OtherI, OtherTag, F, Args...> arg) -> y_combinate<I, Tag, F> {
   return {std::move(ret), unwrap(std::move(arg))};
 }
 
