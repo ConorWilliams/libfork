@@ -58,7 +58,7 @@ concept scheduler = requires (Sch &&sch, intruded_list<submit_handle> handle) {
  *
  * This will build a task from `fun` and dispatch it to `sch` via its `schedule` method. Sync wait should
  * __not__ be called by a worker thread (which are never allowed to block) unless the call to `schedule`
- * completes synchonously.
+ * completes synchronously.
  */
 template <scheduler Sch, async_function_object F, class... Args>
   requires rootable<F, Args...>

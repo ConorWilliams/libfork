@@ -25,12 +25,13 @@
 
 <h3 align="center"> **Now with 🌵**  </h1>
 
-`libfork` is primarily an abstraction for strict [fork-join parallelism](https://en.wikipedia.org/wiki/Fork%E2%80%93join_model). This is made possible without the use of any macros/inline assembly using C++20's coroutines. Ultra-fine grained parallelism (the ability to spawn tasks with very low overhead) is enabled by an innovative implementation of a non-allocating [cactus-stack](https://en.wikipedia.org/wiki/Parent_pointer_tree) that utilizes _stack-stealing_.
-
-__TLDR:__
+Libfork is primarily an abstraction for strict [fork-join parallelism](https://en.wikipedia.org/wiki/Fork%E2%80%93join_model). This is made possible without the use of any macros/inline assembly using C++20's coroutines. Ultra-fine grained parallelism (the ability to spawn tasks with very low overhead) is enabled by an innovative implementation of an (almost) non-allocating [cactus-stack](https://en.wikipedia.org/wiki/Parent_pointer_tree) utilizing _segmented stacks_. Libfork presents a cross-platform API that decouples scheduling task graphs (a customization point) from writing tasks and expressing their dependencies. Additionally, libfork provides performant NUMA-aware work-stealing schedulers for general use. If you'd like to learn more check out [the tour of libfork](#a-tour-of-libfork) or grok the __TLDR__:
 
 ```c++
-inline constexpr lf::async fib = [](auto fib, int n) -> lf::task<int> { 
+
+#include "libfork/core.hpp"
+
+inline constexpr auto fib = [](auto fib, int n) -> lf::task<int> { 
   
   if (n < 2) {
     co_return n;
@@ -38,46 +39,96 @@ inline constexpr lf::async fib = [](auto fib, int n) -> lf::task<int> {
 
   int a, b
 
-  co_await lf::fork[a, fib](n - 1);    // Spawn a child task.
-  co_await lf::call[b, fib](n - 2);    // Execute inline.
+  co_await lf::fork[&a, fib](n - 1);    // Spawn a child task.
+  co_await lf::call[&b, fib](n - 2);    // Execute a child inline.
 
-  co_await lf::join;                   // Wait for children.
+  co_await lf::join;                    // Wait for children.
 
-  co_return a + b;                     // Safe to access after join.
+  co_return a + b;                      // Safe to read after a join.
 };
 ```
 
-`libfork` presents a cross-platform API that decouples scheduling tasks (a customization point) from writing tasks and expressing their dependencies. Additionally, `libfork` provides performant NUMA-aware work-stealing schedulers for general use. If you like to learn more check out [the tour of `libfork`](#a-tour-of-libfork) below.
-
 ## Benchmarks
 
-See the [benchmark's README](bench/README.md) for a comparison of `libfork` to openMP and Intel's TBB, as well as some ARM/weak-memory-model benchmarks.
+See the [benchmark's README](bench/README.md) for a comparison of `libfork` to openMP, Intel's TBB, and, Taskflow as well as some ARM/weak-memory-model benchmarks.
 
-## Building and installing
+## Using libfork
 
-See the [BUILDING](BUILDING.md) document for full details on compilation, installation and optional dependencies.
+<!-- TODO: check all these -->
 
-<h4 align="center"> ⚠️ COMPILER NIGGLES ⚠️ </h4>
+<!-- TODO: Check all the links -->
 
-Some very new C++ features are used in `libfork`, most compilers have buggy implementations of coroutines, we do our best to work around known bugs:
+Libfork is a header-only library with full CMake support and zero required-dependencies. Refer to the [BUILDING](BUILDING.md) document for full details on compiling the tests/benchmarks/docs, installation, optional dependencies and, tools for developers. See below for the easiest ways to consume libfork in your CMake projects.
 
-- __gcc__ `libfork` is tested on versions 11.x-13.x however gcc [does not perform a guaranteed tail call](https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100897) for coroutine's symmetric transfer unless compiling with optimization greater than or equal to `-O2` and sanitizers are not in use. This will result in stack overflows for some programs in un-optimized builds.
+### If you have installed libfork
 
-- __clang__ `libfork` compiles on versions 15.x-17.x however for versions 16.x and below bugs [#63022](https://github.com/llvm/llvm-project/issues/63022) and [#47179](https://github.com/llvm/llvm-project/issues/47179) will cause crashes for optimized builds in multithreaded programs. We work around this in these versions by isolating access to `thread_local` storage in non-inlined functions however, this introduces a performance penalty.
+```cmake
+find_package(libfork REQUIRED)
 
-- __Apple's clang__ `libfork` is compatible with the standard library that Apple ships with Xcode 2015 however Xcode 15 itself segfaults when compiling `libfork` and Xcode 14 is not supported.
+target_link_libraries(
+    project_target PRIVATE libfork::libfork
+)
+```
 
-- __msvc__ `libfork` compiles on versions 19.35-19.37 however due to [this bug](https://developercommunity.visualstudio.com/t/Incorrect-code-generation-for-symmetric/1659260?scope=follow) (duplicate [here](https://developercommunity.visualstudio.com/t/Using-symmetric-transfer-and-coroutine_h/10251975?scope=follow&q=symmetric)) it will always seg-fault due to an erroneous double delete.
+### Using CMake's ``FetchContent``
+
+```cmake
+include(FetchContent)
+
+FetchContent_Declare(
+    libfork
+    GIT_REPOSITORY https://github.com/conorwilliams/libfork.git
+    GIT_TAG v3.0.0
+    GIT_SHALLOW TRUE
+)
+
+FetchContent_MakeAvailable(libfork)
+
+target_link_libraries(
+    project_target PRIVATE libfork::libfork
+)
+```
+
+### Using [CMP.cmake](https://github.com/cpm-cmake/CPM.cmake)
+
+```cmake
+# Assuming your ``CPM.cmake`` file is the ``cmake`` directory.
+include(cmake/CPM.cmake)
+
+CPMAddPackage("gh:conorwilliams/libfork#3.0.0")
+
+target_link_libraries(
+    project_target PRIVATE libfork::libfork
+)
+```
+
+### Using git submodules
+
+```cmake
+# Assuming you cloned libfork as a submodule into "external/libfork".
+add_subdirectory(external/libfork)
+
+target_link_libraries(
+    project_target PRIVATE libfork::libfork
+)
+```
+
+### Single header
+
+Although this is __not recommend__ and primarily exist for easy integration with [godbolt](www.example.com); libfork supplies a [single header](single_header/libfork.hpp) that you can copy-and-paste into your project. See the [BUILDING](BUILDING.md) document's note about hwloc integration.
+
+<!-- TODO: godbolt with include. -->
+
+## API reference
+
+See the generated [docs](https://conorwilliams.github.io/libfork/).
 
 ## Contributing
 
-1. See the [CONTRIBUTING](CONTRIBUTING.md) document.
-2. Have a snoop around the `impl` namespace.
-3. Ask as many questions as you can think of!
-
-## API reference/documentation
-
-See the generated [docs](https://conorwilliams.github.io/libfork/).
+1. Read the [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md) document.
+2. Read the [BUILDING](BUILDING.md) document.
+3. Have a snoop around the `impl` namespace.
+4. Ask as many questions as you can think of!
 
 ## Changelog
 

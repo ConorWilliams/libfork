@@ -80,7 +80,7 @@ class context : impl::immovable<context> {
   /**
    * @brief Submit pending/suspended tasks to the context.
    *
-   * This is for use by the implementor of the scheduler, this will trigger the notification function.
+   * This is for use by the implementer of the scheduler, this will trigger the notification function.
    */
   void submit(intruded_list<submit_handle> jobs) {
     m_submit.push(non_null(jobs));

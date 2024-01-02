@@ -1,6 +1,3 @@
-# A small python utility to measure memory usage using the GNU time utility
-
-
 import argparse
 import numpy as np
 
@@ -68,13 +65,14 @@ patterns = [
 ]
 
 for (ax), p, data, i in zip(axs.flatten(), patterns, Benchmarks, range(1000)):
+    #
     print(f"{p=}")
 
     # y_zero = data["zero"][1][0]
 
     y_calib = data["calibrate"][1][0]
 
-    y_serial = max(4 / 1024.0, data["serial"][1][0] - y_calib)  # must be atleast 4 KiB
+    y_serial = max(4 / 1024.0, data["serial"][1][0] - y_calib)  # must be at least 4 KiB
 
     first = True
 
@@ -96,7 +94,7 @@ for (ax), p, data, i in zip(axs.flatten(), patterns, Benchmarks, range(1000)):
         y = np.maximum(4 / 1024.0, y - y_calib)  # Subtract zero offset
 
         def func(x, a, b, n):
-            return a + b * (y[0]) * x**n
+            return a + b * y[0] * x**n
 
         p0 = (1, 1, 1)
         bounds = ([0, 0, 0], [np.inf, np.inf, np.inf])
@@ -115,25 +113,27 @@ for (ax), p, data, i in zip(axs.flatten(), patterns, Benchmarks, range(1000)):
 
         da, db, dn = np.sqrt(np.diag(pcov))
 
-        print(f"{k:>30}: {a:>16.1f} + {b:>16.4f} * x^{n:>8.2f} +- {dn:<8.2f}")
+        print(f"{k:>30}: {a:>16.1f} + {b:>16.4f} * x^{n:<8.2f} +- {dn:<8.2f}")
 
         if k == "taskflow":
             pass
-            # continue
+            continue
 
         ax.plot(
             x,
-            func(x, *popt) - y[0],
+            func(x, *popt),
             "k--",
             label="$y = a + bM_1x^n$" if i == 0 and first else None,
         )
 
         first = False
 
-        if np.any(y < y_serial):
-            print(y_serial, y)
+        # if np.any(y < y_serial):
+        #     print(y_serial, y)
 
         # assert np.all(y > y_serial)
+
+        # eff = np.maximum(4 / 1024.0, y - y_serial)
 
         ax.errorbar(x, y, yerr=err, label=k if i == 0 else None, capsize=2)
 
@@ -144,7 +144,7 @@ for (ax), p, data, i in zip(axs.flatten(), patterns, Benchmarks, range(1000)):
         # ax.set_xlim(0, 112)
         # ax.set_ylim(bottom=0)
 
-        ax.set_yscale("log", base=10)
+        # ax.set_yscale("log", base=10)
         # ax.set_xscale("log", base=10)
 
 

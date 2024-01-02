@@ -80,7 +80,7 @@ struct lazy_vars : busy_vars {
     //
     // Invariant in numa j != i is uneffected.
     //
-    // In numa i we guarantee that Ti >= 1 by waking somone else if we are the last thief as Si != 0.
+    // In numa i we guarantee that Ti >= 1 by waking someone else if we are the last thief as Si != 0.
 
     if (numa[tid].thief.fetch_sub(1, acq_rel) == 1) {
       numa[tid].notifier.notify_one();
