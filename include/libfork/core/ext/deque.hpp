@@ -36,7 +36,8 @@
 /**
  * This is a workaround for clang generating bad codegen for ``std::atomic_thread_fence``.
  */
-#if defined(__clang__) && defined(__has_include)
+
+#if defined(LF_USE_BOOST_ATOMIC) && defined(__clang__) && defined(__has_include)
   #if __has_include(<boost/atomic.hpp>)
     #include <boost/atomic.hpp>
     #define LF_ATOMIC_THREAD_FENCE_SEQ_CST boost::atomic_thread_fence(boost::memory_order_seq_cst)

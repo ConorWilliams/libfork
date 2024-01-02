@@ -50,7 +50,8 @@
         "CMAKE_TOOLCHAIN_FILE": {
           "type": "FILEPATH",
           "value": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake"
-        }
+        },
+        "VCPKG_MANIFEST_FEATURES": "benchmark;test"
       }
     },
     {

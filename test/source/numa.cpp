@@ -26,7 +26,7 @@ using namespace impl;
 TEST_CASE("make_topology", "[numa]") {
   for (int i = 0; i < 10; i++) {
     numa_topology topo = {};
-#ifdef LF_HAS_HWLOC
+#ifdef LF_USE_HWLOC
     REQUIRE(topo);
 #else
     REQUIRE(!topo);
@@ -34,7 +34,7 @@ TEST_CASE("make_topology", "[numa]") {
   }
 }
 
-#ifdef LF_HAS_HWLOC
+#ifdef LF_USE_HWLOC
 
 namespace {
 

@@ -1,10 +1,24 @@
 {
     "name": "libfork-tests",
-    "description": "These are libfork's test-suite dependencies.",
-    "dependencies": [
-        "catch2"
-    ],
     "features": {
+        "hwloc": {
+            "description": "This an OPTIONAL dependency, it is used for cpu topology detection, it is recommended to use the system distribution if available.",
+            "dependencies": [
+                "hwloc"
+            ]
+        },
+        "boost": {
+            "description": "This an OPTIONAL dependency, fetches a modern boost-atomic to make up for clangs bad std::atomic codegen, this is recommended for clang users, it is recommended to use the system distribution if available.",
+            "dependencies": [
+                "boost-atomic"
+            ]
+        },
+        "test": {
+            "description": "These are libfork's test-suite dependencies.",
+            "dependencies": [
+                "catch2"
+            ]
+        },
         "benchmark": {
             "description": "These are libfork's benchmarking dependencies.",
             "dependencies": [
@@ -12,12 +26,6 @@
                 "taskflow",
                 "tbb",
                 "concurrencpp"
-            ]
-        },
-        "boost": {
-            "description": "This fetches a modern boost-atomic to make up for clangs bad std::atomic codegen.",
-            "dependencies": [
-                "boost-atomic"
             ]
         }
     }
