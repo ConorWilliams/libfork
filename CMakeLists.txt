@@ -19,11 +19,11 @@ project(
 
 message(STATUS "CMAKE_BUILD_TYPE is set to '${CMAKE_BUILD_TYPE}'")
 
-# ---- Dependencies ----
+# ---- System dependencies ----
 
 find_package(Threads REQUIRED)
 
-# ---- Declare library ----
+# ------ Declare library ------
 
 add_library(libfork_libfork INTERFACE)
 add_library(libfork::libfork ALIAS libfork_libfork)
@@ -54,23 +54,54 @@ if(LF_COROUTINE_OFFSET)
   target_compile_definitions(libfork_libfork INTERFACE LF_COROUTINE_OFFSET=${LF_COROUTINE_OFFSET})
 endif()
 
-# ---- hwloc support ----
 
-find_package(HWLOC)
 
-if(HWLOC_FOUND)
-  target_compile_definitions(libfork_libfork INTERFACE LF_HAS_HWLOC)
-  target_include_directories(libfork_libfork SYSTEM INTERFACE ${HWLOC_INCLUDE_DIRS})
-  target_link_libraries(libfork_libfork INTERFACE ${HWLOC_LIBRARIES})
+# --------------- Optional dependancies--------------- 
+
+# ---------------- hwloc---------------- 
+
+#
+option(LF_NO_HWLOC "Explicitly disable hwloc support" OFF)
+
+if (NOT LF_NO_HWLOC)
+  # hwloc has no cmake support so we have to do things manually
+  find_path(HWLOC_hwloc_include hwloc.h)
+  find_library(HWLOC_hwloc_library hwloc)
+
+  if(HWLOC_hwloc_include AND HWLOC_hwloc_library)
+    
+    message(STATUS "Found hwloc headers: ${HWLOC_hwloc_include}")
+    message(STATUS "Found hwloc library: ${HWLOC_hwloc_library}")
+
+    # Instucts libfork to use hwloc.
+    target_compile_definitions(libfork_libfork INTERFACE LF_USE_HWLOC)
+
+    # Build a imported dummy library.
+    add_library(hwloc_hwloc UNKNOWN IMPORTED)
+    add_library(hwloc::hwloc ALIAS hwloc_hwloc)
+
+    set_target_properties(hwloc_hwloc PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES "${HWLOC_hwloc_include}"
+      IMPORTED_LOCATION "${HWLOC_hwloc_library}"
+    )
+    
+    # Link dummy to libfork.
+    target_link_libraries(libfork_libfork INTERFACE hwloc::hwloc)
+
+  else()
+    message(WARNING "hwloc.h not found, disabling libfork's NUMA support!")
+  endif()
 else()
-  message(WARNING "Disabling libfork's hwloc support because we couldn't find it")
+  message(WARNING "Not looking for hwloc, NUMA support disabled!")
 endif()
 
-# ---- Optional boost for clang acceleration ---- 
+# ---- Boost (for clang acceleration) ---- 
 
 find_package(Boost 1.83.0 COMPONENTS atomic)
 
 if(Boost_FOUND)
+  # Instucts libfork to use boost atomic (clang only)
+  target_compile_definitions(libfork_libfork INTERFACE LF_USE_BOOST_ATOMIC)
   target_link_libraries(libfork_libfork INTERFACE Boost::atomic)
 endif()
 

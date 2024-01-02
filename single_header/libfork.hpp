@@ -889,7 +889,8 @@ constexpr auto apply_to(Tuple &&tup, F &&func)
 /**
  * This is a workaround for clang generating bad codegen for ``std::atomic_thread_fence``.
  */
-#if defined(__clang__) && defined(__has_include)
+
+#if defined(LF_USE_BOOST_ATOMIC) && defined(__clang__) && defined(__has_include)
   #if __has_include(<boost/atomic.hpp>)
     #include <boost/atomic.hpp>
     #define LF_ATOMIC_THREAD_FENCE_SEQ_CST boost::atomic_thread_fence(boost::memory_order_seq_cst)
@@ -4482,8 +4483,18 @@ inline constexpr auto lift = []<class F, class... Args>(auto, F &&func, Args &&.
  * @brief An abstraction over `hwloc`.
  */
 
-#ifdef LF_HAS_HWLOC
+#ifdef __has_include
+  #if defined(LF_USE_HWLOC) && not __has_include(<hwloc.h>)
+    #error "LF_USE_HWLOC is defined but <hwloc.h> is not available"
+  #endif
+#endif
+
+#ifdef LF_USE_HWLOC
   #include <hwloc.h>
+#endif
+
+#ifdef LF_USE_HWLOC
+static_assert(HWLOC_VERSION_MAJOR == 2 && HWLOC_VERSION_MINOR >= 7, "hwloc too old");
 #endif
 
 /**
@@ -4513,7 +4524,6 @@ struct hwloc_bitmap_s;
 struct hwloc_topology;
 
 namespace lf {
-
 inline namespace ext {
 
 // ------------- hwloc can go wrong in a lot of ways... ------------- //
@@ -4545,7 +4555,7 @@ class numa_topology {
 
   struct bitmap_deleter {
     LF_STATIC_CALL void operator()(hwloc_bitmap_s *ptr) LF_STATIC_CONST noexcept {
-#ifdef LF_HAS_HWLOC
+#ifdef LF_USE_HWLOC
       hwloc_bitmap_free(ptr);
 #else
       LF_ASSERT(!ptr);
@@ -4632,7 +4642,7 @@ class numa_topology {
 
 // ---------------------------- Topology implementation ---------------------------- //
 
-#ifdef LF_HAS_HWLOC
+#ifdef LF_USE_HWLOC
 
 inline numa_topology::numa_topology() {
 
