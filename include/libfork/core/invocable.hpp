@@ -14,12 +14,12 @@
 #include <type_traits>
 #include <utility>
 
-#include <libfork/core/eventually.hpp>
-#include <libfork/core/first_arg.hpp>
-#include <libfork/core/task.hpp>
+#include "libfork/core/eventually.hpp"
+#include "libfork/core/first_arg.hpp"
+#include "libfork/core/task.hpp"
 
-#include <libfork/core/impl/frame.hpp>
-#include <libfork/core/impl/utility.hpp>
+#include "libfork/core/impl/frame.hpp"
+#include "libfork/core/impl/utility.hpp"
 
 /**
  * @file invocable.hpp

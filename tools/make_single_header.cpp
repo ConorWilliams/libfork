@@ -4,7 +4,6 @@
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
-#include "libfork/core/macro.hpp"
 #include <algorithm>
 #include <deque>
 #include <filesystem>
@@ -14,6 +13,8 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+#include "libfork/core/macro.hpp"
 
 namespace fs = std::filesystem;
 
@@ -44,7 +45,8 @@ struct include_processor {
   explicit include_processor(fs::path &&start_path) : m_start_path(std::move(start_path)) {}
 
   auto process_one(fs::path const &path) -> std::string {
-    std::cout << "Processing path " << path << '\n';
+    //
+    // std::cout << "Processing path " << path << '\n';
 
     std::ifstream infile(path);
 
@@ -52,22 +54,23 @@ struct include_processor {
 
     std::deque<replacement> replacements;
 
-    std::for_each(std::sregex_iterator(text.begin(), text.end(), m_regex), std::sregex_iterator{}, [&](auto const &match) {
-      //
-      auto rep = replacement{match.position(), match.length(), {}};
+    std::for_each(std::sregex_iterator(text.begin(), text.end(), m_regex),
+                  std::sregex_iterator{},
+                  [&](auto const &match) {
+                    //
+                    auto rep = replacement{match.position(), match.length(), {}};
 
-      auto new_path = m_start_path;
+                    auto new_path = m_start_path;
 
-      std::cout << "Matched " << match.str(1) << '\n';
+                    new_path = fs::canonical(new_path.append(match.str(1)));
 
-      new_path = fs::canonical(new_path.append(match.str(1)));
+                    if (!contains(m_processed_paths, new_path)) {
+                      std::cout << "Found " << match.str(1) << " in " << path << '\n';
+                      rep.text = process_one(new_path);
+                    }
 
-      if (!contains(m_processed_paths, new_path)) {
-        rep.text = process_one(new_path);
-      }
-
-      replacements.push_back(std::move(rep));
-    });
+                    replacements.push_back(std::move(rep));
+                  });
 
     process_replacements(text, replacements);
     m_processed_paths.push_back(path);

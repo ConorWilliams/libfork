@@ -15,7 +15,7 @@
 #include <cstddef>
 #include <exception>
 #include <latch>
-#include <libfork/core/impl/utility.hpp>
+
 #include <memory>
 #include <numeric>
 #include <random>

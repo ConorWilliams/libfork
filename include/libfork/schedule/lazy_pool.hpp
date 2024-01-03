@@ -22,7 +22,7 @@
 
 #include "libfork/core.hpp"
 
-#include <libfork/schedule/busy_pool.hpp>
+#include "libfork/schedule/busy_pool.hpp"
 
 #include "libfork/schedule/ext/event_count.hpp"
 #include "libfork/schedule/ext/numa.hpp"

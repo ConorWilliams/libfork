@@ -14,12 +14,12 @@
 #include <type_traits>
 #include <utility>
 
-#include <libfork/core/tag.hpp>
+#include "libfork/core/tag.hpp"
 
-#include <libfork/core/ext/context.hpp>
-#include <libfork/core/ext/tls.hpp>
+#include "libfork/core/ext/context.hpp"
+#include "libfork/core/ext/tls.hpp"
 
-#include <libfork/core/impl/utility.hpp>
+#include "libfork/core/impl/utility.hpp"
 
 /**
  * @file first_arg.hpp

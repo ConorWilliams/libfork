@@ -2499,13 +2499,389 @@ inline auto co_delete(T *ptr) -> impl::co_delete_t<T, Extent> {
 #include <functional>
 #include <type_traits>
 #include <utility>
+#ifndef B7972761_4CBF_4B86_B195_F754295372BF
+#define B7972761_4CBF_4B86_B195_F754295372BF
 
-#include <libfork/core/eventually.hpp>
-#include <libfork/core/first_arg.hpp>
-#include <libfork/core/task.hpp>
+// Copyright © Conor Williams <conorwilliams@outlook.com>
 
-#include <libfork/core/impl/frame.hpp>
-#include <libfork/core/impl/utility.hpp>
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>
+#include <memory>
+#include <type_traits>
+#include <utility>
+#ifndef AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
+#define AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>
+#include <type_traits>
+
+
+/**
+ * @file task.hpp
+ *
+ * @brief Implementation of the core ``lf::task`` type.
+ */
+
+namespace lf {
+
+inline namespace core {
+
+// --------------------------------- Task --------------------------------- //
+
+// TODO: private destructor such that tasks can only be created inside the library?
+
+/**
+ * @brief A type returnable from libfork's async functions/coroutines.
+ *
+ * This requires that `T` is `void` a reference or a `std::movable` type.
+ */
+template <typename T>
+concept returnable = std::is_void_v<T> || std::is_reference_v<T> || std::movable<T>;
+
+/**
+ * @brief The return type for libfork's async functions/coroutines.
+ *
+ * This predominantly exists to disambiguate `libfork`s coroutines from other coroutines and specify `T` the
+ * async function's return type which is required to be `void`, a reference, or a `std::movable` type.
+ *
+ * \rst
+ *
+ * .. note::
+ *
+ *    No consumer of this library should never touch an instance of this type, it is used for specifying the
+ *    return type of an `async` function only.
+ *
+ * .. warning::
+ *    The value type ``T`` of a coroutine should be independent of the coroutines first-argument.
+ *
+ * \endrst
+ */
+template <returnable T = void>
+struct LF_CORO_ATTRIBUTES task : std::type_identity<T> {
+  void *promise; ///< An opaque handle to the coroutine promise.
+};
+
+} // namespace core
+
+} // namespace lf
+
+#endif /* AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172 */
+
+
+
+/**
+ * @file eventually.hpp
+ *
+ * @brief Classes for delaying construction of an object.
+ */
+
+namespace lf {
+
+inline namespace core {
+
+// ------------------------------------------------------------------------ //
+
+/**
+ * @brief A wrapper to delay construction of an object.
+ *
+ * This class supports delayed construction of immovable types and reference types.
+ *
+ * \rst
+ *
+ * .. note::
+ *    This documentation is generated from the non-reference specialization, see the source
+ *    for the reference specialization.
+ *
+ * .. warning::
+ *    It is undefined behavior if the object inside an `eventually` is not constructed before it
+ *    is used or if the lifetime of the ``lf::eventually`` ends before an object is constructed.
+ *    If you are placing instances of `eventually` on the heap you need to be very careful about
+ *    exceptions.
+ *
+ * \endrst
+ */
+template <impl::non_void T>
+class eventually : impl::manual_lifetime<T> {
+ public:
+  using impl::manual_lifetime<T>::construct;
+  using impl::manual_lifetime<T>::operator=;
+  using impl::manual_lifetime<T>::operator->;
+  using impl::manual_lifetime<T>::operator*;
+
+  // clang-format off
+
+  /**
+   * @brief Destroy the object which __must__ be inside the eventually.
+   */
+  constexpr ~eventually() noexcept requires std::is_trivially_destructible_v<T> = default;
+
+  // clang-format on
+
+  constexpr ~eventually() noexcept(std::is_nothrow_destructible_v<T>) { this->destroy(); }
+};
+
+// ------------------------------------------------------------------------ //
+
+/**
+ * @brief Has pointer semantics.
+ *
+ * `eventually<T &> val` should behave like `T & val` except assignment rebinds.
+ */
+template <impl::non_void T>
+  requires impl::reference<T>
+class eventually<T> : impl::immovable<eventually<T>> {
+ public:
+  /**
+   * @brief Construct an object inside the eventually from ``expr``.
+   */
+  template <impl::safe_ref_bind_to<T> U>
+  void construct(U &&expr) noexcept {
+    m_value = std::addressof(expr);
+  }
+
+  /**
+   * @brief Construct an object inside the eventually from ``expr``.
+   */
+  template <impl::safe_ref_bind_to<T> U>
+  void operator=(U &&expr) noexcept {
+    m_value = std::addressof(expr);
+  }
+
+  /**
+   * @brief Access the wrapped reference.
+   */
+  [[nodiscard]] auto operator->() const noexcept -> std::remove_reference_t<T> * { return m_value; }
+
+  /**
+   * @brief Deference the wrapped pointer.
+   *
+   * This will decay `T&&` to `T&` just like using a `T &&` reference would.
+   */
+  [[nodiscard]] auto operator*() const & noexcept -> std::remove_reference_t<T> & { return *m_value; }
+
+  /**
+   * @brief Forward the wrapped reference.
+   *
+   * This will not decay T&& to T&, nor will it promote T& to T&&.
+   */
+  [[nodiscard]] auto operator*() const && noexcept -> T {
+    if constexpr (std::is_rvalue_reference_v<T>) {
+      return std::move(*m_value);
+    } else {
+      return *m_value;
+    }
+  }
+
+ private:
+  std::remove_reference_t<T> *m_value;
+};
+
+// ------------------------------------------------------------------------ //
+
+/**
+ * @brief A `lf::manual_eventually<T>` is an `lf::eventually<T>` which does not call destroy on destruction.
+ *
+ * This is useful for writing exception safe fork-join code and should be considered an expert-only feature.
+ */
+template <impl::non_void T>
+class manual_eventually : impl::manual_lifetime<T> {
+
+ public:
+  using impl::manual_lifetime<T>::construct;
+  using impl::manual_lifetime<T>::operator=;
+  using impl::manual_lifetime<T>::operator->;
+  using impl::manual_lifetime<T>::operator*;
+  using impl::manual_lifetime<T>::destroy;
+};
+
+/**
+ * @brief A `lf::manual_eventually<T>` is an `lf::eventually<T>` which does not call destroy on destruction.
+ *
+ * This is useful for writing exception safe fork-join code and should be considered an expert-only feature.
+ */
+template <impl::non_void T>
+  requires impl::reference<T>
+class manual_eventually<T> : eventually<T> {
+
+ public:
+  using eventually<T>::construct;
+  using eventually<T>::operator=;
+  using eventually<T>::operator->;
+  using eventually<T>::operator*;
+
+  /**
+   * @brief Destroy the contained object (call its destructor).
+   */
+  void destroy() noexcept { static_assert(std::is_trivially_destructible_v<T>); };
+};
+
+} // namespace core
+
+} // namespace lf
+
+#endif /* B7972761_4CBF_4B86_B195_F754295372BF */
+#ifndef DD0B4328_55BD_452B_A4A5_5A4670A6217B
+#define DD0B4328_55BD_452B_A4A5_5A4670A6217B
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>
+#include <functional>
+#include <type_traits>
+#include <utility>
+
+
+
+
+/**
+ * @file first_arg.hpp
+ *
+ * @brief Machinery for the (library-generated) first argument of async functions.
+ */
+
+namespace lf {
+
+inline namespace core {
+
+/**
+ * @brief Test if the expression `*std::declval<T&>()` is valid and has a referenceable type i.e. non-void.
+ */
+template <typename I>
+concept dereferenceable = requires (I val) {
+  { *val } -> impl::can_reference;
+};
+
+/**
+ * @brief A quasi-pointer if a movable type that can be dereferenced to a referenceable type type i.e.
+ * non-void.
+ *
+ * A quasi-pointer is assumed to be cheap-to-move like an iterator/legacy-pointer.
+ */
+template <typename I>
+concept quasi_pointer = std::default_initializable<I> && std::movable<I> && dereferenceable<I>;
+
+/**
+ * @brief A concept that requires a type be a copyable [function
+ * object](https://en.cppreference.com/w/cpp/named_req/FunctionObject).
+ *
+ * An async function object is a function object that returns an `lf::task` when `operator()` is called.
+ * with appropriate arguments. The call to `operator()` must create a libfork coroutine. The first argument
+ * of an async function must accept a deduced templated-type that satisfies the `lf::core::first_arg` concept.
+ * The return type and invocability of an async function must be independent of the first argument except
+ * for its tag value.
+ *
+ * An async function may be copied, its copies must be equivalent to the original and support concurrent
+ * invocation from multiple threads. It is assumed that an async function is cheap-to-copy like
+ * an iterator/legacy-pointer.
+ */
+template <typename F>
+concept async_function_object = std::is_object_v<F> && std::copy_constructible<F>;
+
+/**
+ * @brief This describes the public-API of the first argument passed to an async function.
+ *
+ * An async functions' invocability and return type must be independent of their first argument except for its
+ * tag value. A user may query the first argument's static member `tag` to obtain this value. Additionally, a
+ * user may query the first argument's static member function `context()` to obtain a pointer to the current
+ * workers `lf::context`.
+ */
+template <typename T>
+concept first_arg = async_function_object<T> && requires (T arg) {
+  { T::tag } -> std::convertible_to<tag>;
+  { T::context() } -> std::same_as<context *>;
+};
+
+} // namespace core
+
+namespace impl {
+
+/**
+ * @brief The type passed as the first argument to async functions.
+ *
+ * Its functions are:
+ *
+ * - Act as a y-combinator (expose same invocability as F).
+ * - Statically inform the return pointer type.
+ * - Statically provide the tag.
+ * - Statically provide the calling argument types.
+ */
+template <quasi_pointer I, tag Tag, async_function_object F, typename... Cargs>
+class first_arg_t {
+ public:
+  static constexpr tag tag = Tag; ///< The way this async function was called.
+
+  first_arg_t() = default;
+
+  static auto context() -> context * { return tls::context(); }
+
+  template <different_from<first_arg_t> T>
+    requires std::constructible_from<F, T>
+  explicit first_arg_t(T &&expr) noexcept(std::is_nothrow_constructible_v<F, T>)
+      : m_fun(std::forward<T>(expr)) {}
+
+  template <typename... Args>
+    requires std::invocable<F &, Args...>
+  auto operator()(Args &&...args) & noexcept(std::is_nothrow_invocable_v<F &, Args...>)
+      -> std::invoke_result_t<F &, Args...> {
+    return std::invoke(m_fun, std::forward<Args>(args)...);
+  }
+
+  template <typename... Args>
+    requires std::invocable<F const &, Args...>
+  auto operator()(Args &&...args) const & noexcept(std::is_nothrow_invocable_v<F &, Args...>)
+      -> std::invoke_result_t<F const &, Args...> {
+    return std::invoke(m_fun, std::forward<Args>(args)...);
+  }
+
+  template <typename... Args>
+    requires std::invocable<F &&, Args...>
+  auto operator()(Args &&...args) && noexcept(std::is_nothrow_invocable_v<F &, Args...>)
+      -> std::invoke_result_t<F &&, Args...> {
+    return std::invoke(std::move(m_fun), std::forward<Args>(args)...);
+  }
+
+  template <typename... Args>
+    requires std::invocable<F const &&, Args...>
+  auto operator()(Args &&...args) const && noexcept(std::is_nothrow_invocable_v<F &, Args...>)
+      -> std::invoke_result_t<F const &&, Args...> {
+    return std::invoke(std::move(m_fun), std::forward<Args>(args)...);
+  }
+
+ private:
+  /**
+   * @brief Hidden friend reduces discoverability.
+   */
+  friend auto unwrap(first_arg_t &&arg) -> F && { return std::move(arg.m_fun); }
+
+  F m_fun;
+};
+
+} // namespace impl
+
+} // namespace lf
+
+#endif /* DD0B4328_55BD_452B_A4A5_5A4670A6217B */
+
+
 
 /**
  * @file invocable.hpp
@@ -2726,157 +3102,6 @@ using async_result_t = impl::unsafe_result_t<impl::discard_t, tag::call, F, Args
 
 #include <type_traits>
 #include <utility>
-#ifndef DD0B4328_55BD_452B_A4A5_5A4670A6217B
-#define DD0B4328_55BD_452B_A4A5_5A4670A6217B
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>
-#include <functional>
-#include <type_traits>
-#include <utility>
-
-#include <libfork/core/tag.hpp>
-
-#include <libfork/core/ext/context.hpp>
-#include <libfork/core/ext/tls.hpp>
-
-#include <libfork/core/impl/utility.hpp>
-
-/**
- * @file first_arg.hpp
- *
- * @brief Machinery for the (library-generated) first argument of async functions.
- */
-
-namespace lf {
-
-inline namespace core {
-
-/**
- * @brief Test if the expression `*std::declval<T&>()` is valid and has a referenceable type i.e. non-void.
- */
-template <typename I>
-concept dereferenceable = requires (I val) {
-  { *val } -> impl::can_reference;
-};
-
-/**
- * @brief A quasi-pointer if a movable type that can be dereferenced to a referenceable type type i.e.
- * non-void.
- *
- * A quasi-pointer is assumed to be cheap-to-move like an iterator/legacy-pointer.
- */
-template <typename I>
-concept quasi_pointer = std::default_initializable<I> && std::movable<I> && dereferenceable<I>;
-
-/**
- * @brief A concept that requires a type be a copyable [function
- * object](https://en.cppreference.com/w/cpp/named_req/FunctionObject).
- *
- * An async function object is a function object that returns an `lf::task` when `operator()` is called.
- * with appropriate arguments. The call to `operator()` must create a libfork coroutine. The first argument
- * of an async function must accept a deduced templated-type that satisfies the `lf::core::first_arg` concept.
- * The return type and invocability of an async function must be independent of the first argument except
- * for its tag value.
- *
- * An async function may be copied, its copies must be equivalent to the original and support concurrent
- * invocation from multiple threads. It is assumed that an async function is cheap-to-copy like
- * an iterator/legacy-pointer.
- */
-template <typename F>
-concept async_function_object = std::is_object_v<F> && std::copy_constructible<F>;
-
-/**
- * @brief This describes the public-API of the first argument passed to an async function.
- *
- * An async functions' invocability and return type must be independent of their first argument except for its
- * tag value. A user may query the first argument's static member `tag` to obtain this value. Additionally, a
- * user may query the first argument's static member function `context()` to obtain a pointer to the current
- * workers `lf::context`.
- */
-template <typename T>
-concept first_arg = async_function_object<T> && requires (T arg) {
-  { T::tag } -> std::convertible_to<tag>;
-  { T::context() } -> std::same_as<context *>;
-};
-
-} // namespace core
-
-namespace impl {
-
-/**
- * @brief The type passed as the first argument to async functions.
- *
- * Its functions are:
- *
- * - Act as a y-combinator (expose same invocability as F).
- * - Statically inform the return pointer type.
- * - Statically provide the tag.
- * - Statically provide the calling argument types.
- */
-template <quasi_pointer I, tag Tag, async_function_object F, typename... Cargs>
-class first_arg_t {
- public:
-  static constexpr tag tag = Tag; ///< The way this async function was called.
-
-  first_arg_t() = default;
-
-  static auto context() -> context * { return tls::context(); }
-
-  template <different_from<first_arg_t> T>
-    requires std::constructible_from<F, T>
-  explicit first_arg_t(T &&expr) noexcept(std::is_nothrow_constructible_v<F, T>)
-      : m_fun(std::forward<T>(expr)) {}
-
-  template <typename... Args>
-    requires std::invocable<F &, Args...>
-  auto operator()(Args &&...args) & noexcept(std::is_nothrow_invocable_v<F &, Args...>)
-      -> std::invoke_result_t<F &, Args...> {
-    return std::invoke(m_fun, std::forward<Args>(args)...);
-  }
-
-  template <typename... Args>
-    requires std::invocable<F const &, Args...>
-  auto operator()(Args &&...args) const & noexcept(std::is_nothrow_invocable_v<F &, Args...>)
-      -> std::invoke_result_t<F const &, Args...> {
-    return std::invoke(m_fun, std::forward<Args>(args)...);
-  }
-
-  template <typename... Args>
-    requires std::invocable<F &&, Args...>
-  auto operator()(Args &&...args) && noexcept(std::is_nothrow_invocable_v<F &, Args...>)
-      -> std::invoke_result_t<F &&, Args...> {
-    return std::invoke(std::move(m_fun), std::forward<Args>(args)...);
-  }
-
-  template <typename... Args>
-    requires std::invocable<F const &&, Args...>
-  auto operator()(Args &&...args) const && noexcept(std::is_nothrow_invocable_v<F &, Args...>)
-      -> std::invoke_result_t<F const &&, Args...> {
-    return std::invoke(std::move(m_fun), std::forward<Args>(args)...);
-  }
-
- private:
-  /**
-   * @brief Hidden friend reduces discoverability.
-   */
-  friend auto unwrap(first_arg_t &&arg) -> F && { return std::move(arg.m_fun); }
-
-  F m_fun;
-};
-
-} // namespace impl
-
-} // namespace lf
-
-#endif /* DD0B4328_55BD_452B_A4A5_5A4670A6217B */
 
 #ifndef CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
 #define CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
@@ -3444,240 +3669,6 @@ class [[nodiscard("Defer will execute unless bound to a name!")]] defer : impl::
 } // namespace lf
 
 #endif /* B4EE570B_F5CF_42CB_9AF3_7376F45FDACC */
-#ifndef B7972761_4CBF_4B86_B195_F754295372BF
-#define B7972761_4CBF_4B86_B195_F754295372BF
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>
-#include <memory>
-#include <type_traits>
-#include <utility>
-#ifndef AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
-#define AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>
-#include <type_traits>
-
-
-/**
- * @file task.hpp
- *
- * @brief Implementation of the core ``lf::task`` type.
- */
-
-namespace lf {
-
-inline namespace core {
-
-// --------------------------------- Task --------------------------------- //
-
-// TODO: private destructor such that tasks can only be created inside the library?
-
-/**
- * @brief A type returnable from libfork's async functions/coroutines.
- *
- * This requires that `T` is `void` a reference or a `std::movable` type.
- */
-template <typename T>
-concept returnable = std::is_void_v<T> || std::is_reference_v<T> || std::movable<T>;
-
-/**
- * @brief The return type for libfork's async functions/coroutines.
- *
- * This predominantly exists to disambiguate `libfork`s coroutines from other coroutines and specify `T` the
- * async function's return type which is required to be `void`, a reference, or a `std::movable` type.
- *
- * \rst
- *
- * .. note::
- *
- *    No consumer of this library should never touch an instance of this type, it is used for specifying the
- *    return type of an `async` function only.
- *
- * .. warning::
- *    The value type ``T`` of a coroutine should be independent of the coroutines first-argument.
- *
- * \endrst
- */
-template <returnable T = void>
-struct LF_CORO_ATTRIBUTES task : std::type_identity<T> {
-  void *promise; ///< An opaque handle to the coroutine promise.
-};
-
-} // namespace core
-
-} // namespace lf
-
-#endif /* AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172 */
-
-
-
-/**
- * @file eventually.hpp
- *
- * @brief Classes for delaying construction of an object.
- */
-
-namespace lf {
-
-inline namespace core {
-
-// ------------------------------------------------------------------------ //
-
-/**
- * @brief A wrapper to delay construction of an object.
- *
- * This class supports delayed construction of immovable types and reference types.
- *
- * \rst
- *
- * .. note::
- *    This documentation is generated from the non-reference specialization, see the source
- *    for the reference specialization.
- *
- * .. warning::
- *    It is undefined behavior if the object inside an `eventually` is not constructed before it
- *    is used or if the lifetime of the ``lf::eventually`` ends before an object is constructed.
- *    If you are placing instances of `eventually` on the heap you need to be very careful about
- *    exceptions.
- *
- * \endrst
- */
-template <impl::non_void T>
-class eventually : impl::manual_lifetime<T> {
- public:
-  using impl::manual_lifetime<T>::construct;
-  using impl::manual_lifetime<T>::operator=;
-  using impl::manual_lifetime<T>::operator->;
-  using impl::manual_lifetime<T>::operator*;
-
-  // clang-format off
-
-  /**
-   * @brief Destroy the object which __must__ be inside the eventually.
-   */
-  constexpr ~eventually() noexcept requires std::is_trivially_destructible_v<T> = default;
-
-  // clang-format on
-
-  constexpr ~eventually() noexcept(std::is_nothrow_destructible_v<T>) { this->destroy(); }
-};
-
-// ------------------------------------------------------------------------ //
-
-/**
- * @brief Has pointer semantics.
- *
- * `eventually<T &> val` should behave like `T & val` except assignment rebinds.
- */
-template <impl::non_void T>
-  requires impl::reference<T>
-class eventually<T> : impl::immovable<eventually<T>> {
- public:
-  /**
-   * @brief Construct an object inside the eventually from ``expr``.
-   */
-  template <impl::safe_ref_bind_to<T> U>
-  void construct(U &&expr) noexcept {
-    m_value = std::addressof(expr);
-  }
-
-  /**
-   * @brief Construct an object inside the eventually from ``expr``.
-   */
-  template <impl::safe_ref_bind_to<T> U>
-  void operator=(U &&expr) noexcept {
-    m_value = std::addressof(expr);
-  }
-
-  /**
-   * @brief Access the wrapped reference.
-   */
-  [[nodiscard]] auto operator->() const noexcept -> std::remove_reference_t<T> * { return m_value; }
-
-  /**
-   * @brief Deference the wrapped pointer.
-   *
-   * This will decay `T&&` to `T&` just like using a `T &&` reference would.
-   */
-  [[nodiscard]] auto operator*() const & noexcept -> std::remove_reference_t<T> & { return *m_value; }
-
-  /**
-   * @brief Forward the wrapped reference.
-   *
-   * This will not decay T&& to T&, nor will it promote T& to T&&.
-   */
-  [[nodiscard]] auto operator*() const && noexcept -> T {
-    if constexpr (std::is_rvalue_reference_v<T>) {
-      return std::move(*m_value);
-    } else {
-      return *m_value;
-    }
-  }
-
- private:
-  std::remove_reference_t<T> *m_value;
-};
-
-// ------------------------------------------------------------------------ //
-
-/**
- * @brief A `lf::manual_eventually<T>` is an `lf::eventually<T>` which does not call destroy on destruction.
- *
- * This is useful for writing exception safe fork-join code and should be considered an expert-only feature.
- */
-template <impl::non_void T>
-class manual_eventually : impl::manual_lifetime<T> {
-
- public:
-  using impl::manual_lifetime<T>::construct;
-  using impl::manual_lifetime<T>::operator=;
-  using impl::manual_lifetime<T>::operator->;
-  using impl::manual_lifetime<T>::operator*;
-  using impl::manual_lifetime<T>::destroy;
-};
-
-/**
- * @brief A `lf::manual_eventually<T>` is an `lf::eventually<T>` which does not call destroy on destruction.
- *
- * This is useful for writing exception safe fork-join code and should be considered an expert-only feature.
- */
-template <impl::non_void T>
-  requires impl::reference<T>
-class manual_eventually<T> : eventually<T> {
-
- public:
-  using eventually<T>::construct;
-  using eventually<T>::operator=;
-  using eventually<T>::operator->;
-  using eventually<T>::operator*;
-
-  /**
-   * @brief Destroy the contained object (call its destructor).
-   */
-  void destroy() noexcept { static_assert(std::is_trivially_destructible_v<T>); };
-};
-
-} // namespace core
-
-} // namespace lf
-
-#endif /* B7972761_4CBF_4B86_B195_F754295372BF */
 #ifndef AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A
 #define AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A
 
@@ -4441,7 +4432,7 @@ inline constexpr auto lift = []<class F, class... Args>(auto, F &&func, Args &&.
 #include <cstddef>
 #include <exception>
 #include <latch>
-#include <libfork/core/impl/utility.hpp>
+
 #include <memory>
 #include <numeric>
 #include <random>
@@ -5533,7 +5524,6 @@ static_assert(scheduler<busy_pool>);
 #include <thread>
 
 
-#include <libfork/schedule/busy_pool.hpp>
 #pragma once
 
 // Copyright (c) Conor Williams, Meta Platforms, Inc. and its affiliates.
