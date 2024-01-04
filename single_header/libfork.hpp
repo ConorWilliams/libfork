@@ -1665,15 +1665,15 @@ class stack_eptr {
     if constexpr (LF_COMPILER_EXCEPTIONS) {
       if (m_except == state::err) {
 
+        LF_ASSERT(*m_eptr != nullptr);
+
         LF_DEFER {
           LF_ASSERT(*m_eptr == nullptr);
           m_eptr.destroy();
           m_except = state::ok;
         };
 
-        LF_ASSERT(*m_eptr != nullptr);
-
-        std::rethrow_exception(std::move(*m_eptr));
+        std::rethrow_exception(std::exchange(*m_eptr, nullptr));
       }
     }
   }

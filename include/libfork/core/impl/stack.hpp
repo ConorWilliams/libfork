@@ -10,15 +10,19 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <algorithm>
+#include <atomic>
 #include <bit>
 #include <cstddef>
 #include <cstdlib>
+
 #include <memory>
 #include <type_traits>
 #include <utility>
 
+#include "libfork/core/defer.hpp"
 #include "libfork/core/macro.hpp"
 
+#include "libfork/core/impl/manual_lifetime.hpp"
 #include "libfork/core/impl/utility.hpp"
 
 #ifndef LF_FIBRE_INIT_SIZE
@@ -50,8 +54,8 @@ inline constexpr auto round_up_to_page_size(std::size_t size) noexcept -> std::s
   // req + malloc_block_est is a multiple of the page size.
   // req > size + stacklet_size
 
-  std::size_t constexpr page_size = 4096;           // 4 KiB on most systems.
-  std::size_t constexpr malloc_meta_data_size = 96; // An (over)estimate.
+  std::size_t constexpr page_size = 4096;                           // 4 KiB on most systems.
+  std::size_t constexpr malloc_meta_data_size = 6 * sizeof(void *); // An (over)estimate.
 
   static_assert(std::has_single_bit(page_size));
 
@@ -67,19 +71,97 @@ inline constexpr auto round_up_to_page_size(std::size_t size) noexcept -> std::s
 }
 
 /**
+ * @brief A trivial wrapper around a `std::exception_ptr` that allows for concurrent storage.
+ *
+ * If `LF_COMPILER_EXCEPTIONS` is false then this is an empty class and all its methods are no-ops.
+ */
+class stack_eptr {
+
+#if LF_COMPILER_EXCEPTIONS
+  /**
+   * @brief States of `m_eptr`.
+   */
+  enum class state {
+    ok, ///< `m_eptr` is uninitialized.
+    err ///< `m_eptr` contains a live exception pointer.
+  };
+
+  static_assert(std::atomic_ref<state>::is_always_lock_free, "Lock-free atomic's required");
+
+  manual_lifetime<std::exception_ptr> m_eptr; ///< Maybe an exception pointer.
+  state m_except;                             ///< State of the exception pointer.
+#endif
+
+ public:
+  /**
+   * @brief Set this to the OK state.
+   *
+   * Can __only__ be called when the caller has exclusive ownership over this object.
+   */
+  void init_eptr() noexcept {
+    if constexpr (LF_COMPILER_EXCEPTIONS) {
+      m_except = state::ok;
+    }
+  }
+
+  /**
+   * @brief Check if this contains an exception.
+   *
+   * Can __only__ be called when the caller has exclusive ownership over this object.
+   */
+  [[nodiscard]] auto has_err() const noexcept -> bool {
+    if constexpr (LF_COMPILER_EXCEPTIONS) {
+      return m_except == state::ok;
+    } else {
+      return true;
+    }
+  }
+
+  /**
+   * @brief Capture the exception currently being thrown.
+   *
+   * Safe to call concurrently, first exception is saved.
+   */
+  void capture_exception() noexcept {
+    if constexpr (LF_COMPILER_EXCEPTIONS) {
+      if (std::atomic_ref{m_except}.exchange(state::err) == state::ok) {
+        m_eptr.construct(std::current_exception());
+      }
+    }
+  }
+
+  /**
+   * @brief If this contains an exception then it will be rethrown, reset this object to the OK state.
+   *
+   * This can __only__ be called when the caller has exclusive ownership over this object.
+   */
+  void rethrow_if_exception() {
+    if constexpr (LF_COMPILER_EXCEPTIONS) {
+      if (m_except == state::err) {
+
+        LF_ASSERT(*m_eptr != nullptr);
+
+        LF_DEFER {
+          LF_ASSERT(*m_eptr == nullptr);
+          m_eptr.destroy();
+          m_except = state::ok;
+        };
+
+        std::rethrow_exception(std::exchange(*m_eptr, nullptr));
+      }
+    }
+  }
+};
+
+/**
  * @brief A stack is a user-space (geometric) segmented program stack.
  *
- * A stack stores the execution of a DAG from root (which may be a stolen task or true root) to suspend point.
- * A stack is composed of stacklets, each stacklet is a contiguous region of stack space stored in a
+ * A stack stores the execution of a DAG from root (which may be a stolen task or true root) to suspend
+ * point. A stack is composed of stacklets, each stacklet is a contiguous region of stack space stored in a
  * double-linked list. A stack tracks the top stacklet, the top stacklet contains the last allocation or the
  * stack is empty. The top stacklet may have zero or one cached stacklets "ahead" of it.
  */
 class stack {
-
-  // Want underlying malloc to allocate one-page for the first stacklet.
-  // static constexpr std::size_t malloc_block_est = 64;
-  // static constexpr std::size_t stacklet_size = 6 * sizeof(void *);
-  // static constexpr std::size_t k_init_size = 4 * impl::k_kibibyte - stacklet_size - malloc_block_est;
 
  public:
   /**
@@ -89,8 +171,11 @@ class stack {
    *
    * A stacklet is allocated as a contiguous chunk of memory, the first bytes of the chunk contain the
    * stacklet object. Semantically, a stacklet is a dynamically sized object.
+   *
+   * Each stacklet also contains an exception pointer and atomic flag which stores exceptions thrown by
+   * children.
    */
-  class alignas(impl::k_new_align) stacklet : impl::immovable<stacklet> {
+  class alignas(impl::k_new_align) stacklet : impl::immovable<stacklet>, public stack_eptr {
 
     friend class stack;
 
@@ -134,6 +219,7 @@ class stack {
      */
     void set_next(stacklet *new_next) noexcept {
       LF_ASSERT(is_top());
+      LF_ASSERT(m_next == nullptr || m_next->has_err() == false);
       std::free(std::exchange(m_next, new_next)); // NOLINT
     }
 
@@ -170,6 +256,7 @@ class stack {
 
       next->m_prev = prev;
       next->m_next = nullptr;
+      next->init_eptr();
 
       return next;
     }
@@ -237,9 +324,10 @@ class stack {
 
   ~stack() noexcept {
     LF_ASSERT(m_fib);
-    LF_ASSERT(!m_fib->m_prev); // Should only be destructed at the root.
-    m_fib->set_next(nullptr);  //
-    std::free(m_fib);          // NOLINT
+    LF_ASSERT(!m_fib->m_prev);            // Should only be destructed at the root.
+    LF_ASSERT(m_fib->has_err() == false); // Exceptions should have been rethrown.
+    m_fib->set_next(nullptr);             // Free a cached stacklet.
+    std::free(m_fib);                     // NOLINT
   }
 
   [[nodiscard]] auto empty() -> bool {
