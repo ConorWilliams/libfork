@@ -126,7 +126,7 @@ inline auto lazy_work(numa_topology::numa_node<numa_context<lazy_vars>> node) no
 
   std::shared_ptr my_context = node.neighbors.front().front();
 
-  LF_ASSERT(!my_context->shared().numa.empty());
+  LF_ASSERT(my_context && !my_context->shared().numa.empty());
 
   std::size_t numa_tid = node.numa;
 
@@ -289,7 +289,7 @@ class lazy_pool {
                      numa_strategy strategy = numa_strategy::fan)
       : m_num_threads(n) {
 
-    LF_ASSERT_NO_ASSUME(!m_share->stop.test(std::memory_order_acquire));
+    LF_ASSERT_NO_ASSUME(m_share && !m_share->stop.test(std::memory_order_acquire));
 
     for (std::size_t i = 0; i < n; ++i) {
       m_worker.push_back(std::make_shared<impl::numa_context<impl::lazy_vars>>(m_rng, m_share));

@@ -111,7 +111,7 @@ struct fold_overload_impl {
     switch (len) {
       case 0:
       case 1:
-        LF_ASSERT(false);
+        LF_ASSERT(false && "Unreachable");
       case 2: {
         I lhs = head;
         I rhs = head + 1;

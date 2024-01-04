@@ -200,40 +200,48 @@
   #endif
 #endif
 
+namespace lf::impl {
+
+#ifdef __cpp_lib_unreachable
+using std::unreachable;
+#else
 /**
- * @brief A wrapper for C++23's ``[[assume(expr)]]`` attribute.
- *
- * Reverts to compiler specific implementations if the attribute is not
- * available.
+ * @brief A homebrew version of `std::unreachable`, see https://en.cppreference.com/w/cpp/utility/unreachable
+ */
+[[noreturn]] inline void unreachable() {
+  // Uses compiler specific extensions if possible.
+  // Even if no extension is used, undefined behavior is still raised by
+  // an empty function body and the noreturn attribute.
+  #if defined(_MSC_VER) && !defined(__clang__) // MSVC
+  __assume(false);
+  #else                                        // GCC, Clang
+  __builtin_unreachable();
+  #endif
+}
+#endif
+
+} // namespace lf::impl
+
+/**
+ * @brief Invokes undefined behaviour if ``expr`` evaluates to `false`.
  *
  * \rst
  *
  *  .. warning::
  *
- *    Using some intrinsics (i.e. GCC's ``__builtin_unreachable()``) this has
- *    different semantics than ``[[assume(expr)]]`` as it WILL evaluate the
+ *    This has different semantics than ``[[assume(expr)]]`` as it WILL evaluate the
  *    expression at runtime. Hence you should conservatively only use this macro
  *    if ``expr`` is side-effect free and cheap to evaluate.
  *
  * \endrst
  */
-#if __has_cpp_attribute(assume)
-  #define LF_ASSUME(expr) [[assume(bool(expr))]]
-#elif defined(__clang__)
-  #define LF_ASSUME(expr) __builtin_assume(bool(expr))
-#elif defined(__GNUC__) && !defined(__ICC)
-  #define LF_ASSUME(expr)                                                                                    \
-    if (bool(expr)) {                                                                                        \
-    } else {                                                                                                 \
-      __builtin_unreachable();                                                                               \
-    }
-#elif defined(_MSC_VER) || defined(__ICC)
-  #define LF_ASSUME(expr) __assume(bool(expr))
-#else
-  #define LF_ASSUME(expr)                                                                                    \
-    do {                                                                                                     \
-    } while (false)
-#endif
+
+#define LF_ASSUME(expr)                                                                                      \
+  do {                                                                                                       \
+    if (!(expr)) {                                                                                           \
+      ::lf::impl::unreachable();                                                                             \
+    }                                                                                                        \
+  } while (false)
 
 /**
  * @brief If ``NDEBUG`` is defined then ``LF_ASSERT(expr)`` is  `` `` otherwise ``assert(expr)``.
@@ -265,13 +273,12 @@
   #if defined(_MSC_VER)
     #define LF_NOINLINE __declspec(noinline)
   #elif defined(__GNUC__) && __GNUC__ > 3
-    // Clang also defines __GNUC__ (as 4)
+  // Clang also defines __GNUC__ (as 4)
     #if defined(__CUDACC__)
-      // nvcc doesn't always parse __noinline__,
-      // see: https://svn.boost.org/trac/boost/ticket/9392
+  // nvcc doesn't always parse __noinline__, see: https://svn.boost.org/trac/boost/ticket/9392
       #define LF_NOINLINE __attribute__((noinline))
     #elif defined(__HIP__)
-      // See https://github.com/boostorg/config/issues/392
+  // See https://github.com/boostorg/config/issues/392
       #define LF_NOINLINE __attribute__((noinline))
     #else
       #define LF_NOINLINE __attribute__((__noinline__))
@@ -290,14 +297,13 @@
  *
  *    This does not imply the c++'s `inline` keyword which also has an effect on linkage.
  *
- *
  * \endrst
  */
 #if !defined(LF_FORCEINLINE)
   #if defined(_MSC_VER)
     #define LF_FORCEINLINE __forceinline
   #elif defined(__GNUC__) && __GNUC__ > 3
-    // Clang also defines __GNUC__ (as 4)
+  // Clang also defines __GNUC__ (as 4)
     #define LF_FORCEINLINE __attribute__((__always_inline__))
   #else
     #define LF_FORCEINLINE
@@ -1325,8 +1331,10 @@ constexpr deque<T>::~deque() noexcept {
 
 #include <atomic>
 #include <coroutine>
+#include <exception>
 #include <semaphore>
 #include <type_traits>
+#include <utility>
 #ifndef F7577AB3_0439_404D_9D98_072AB84FBCD0
 #define F7577AB3_0439_404D_9D98_072AB84FBCD0
 
@@ -1339,13 +1347,208 @@ constexpr deque<T>::~deque() noexcept {
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <algorithm>
+#include <atomic>
 #include <bit>
 #include <cstddef>
 #include <cstdlib>
+
 #include <memory>
 #include <type_traits>
 #include <utility>
+#ifndef B4EE570B_F5CF_42CB_9AF3_7376F45FDACC
+#define B4EE570B_F5CF_42CB_9AF3_7376F45FDACC
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>
+#include <functional>
+#include <type_traits>
+#include <utility>
+
+
+
+/**
+ * @file defer.hpp
+ *
+ * @brief A Golang-like defer implemented via destructor calls.
+ */
+
+namespace lf {
+
+inline namespace core {
+
+/**
+ * @brief Basic implementation of a Golang-like defer.
+ *
+ * \rst
+ *
+ * Use like:
+ *
+ * .. code::
+ *
+ *    auto * ptr = c_api_init();
+ *
+ *    defer _ = [&ptr] () noexcept {
+ *      c_api_clean_up(ptr);
+ *    };
+ *
+ *    // Code that may throw
+ *
+ * \endrst
+ *
+ * You can also use the ``LF_DEFER`` macro to create an automatically named defer object.
+ *
+ */
+template <class F>
+  requires std::is_nothrow_invocable_v<F>
+class [[nodiscard("Defer will execute unless bound to a name!")]] defer : impl::immovable<defer<F>> {
+ public:
+  /**
+   * @brief Construct a new Defer object.
+   *
+   * @param f Nullary invocable forwarded into object and invoked by destructor.
+   */
+  constexpr defer(F &&f) noexcept(std::is_nothrow_constructible_v<F, F &&>) : m_f(std::forward<F>(f)) {}
+
+  /**
+   * @brief Calls the invocable.
+   */
+  LF_FORCEINLINE constexpr ~defer() noexcept { std::invoke(std::forward<F>(m_f)); }
+
+ private:
+  [[no_unique_address]] F m_f;
+};
+
+/**
+ * @brief A macro to create an automatically named defer object.
+ */
+#define LF_DEFER ::lf::defer LF_CONCAT_OUTER(at_exit_, __LINE__) = [&]() noexcept
+
+} // namespace core
+
+} // namespace lf
+
+#endif /* B4EE570B_F5CF_42CB_9AF3_7376F45FDACC */
+
+#ifndef F51F8998_9E69_458E_95E1_8592A49FA76C
+#define F51F8998_9E69_458E_95E1_8592A49FA76C
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <memory>
+#include <new>
+
+
+/**
+ * @file manual_lifetime.hpp
+ *
+ * @brief A utility class for explicitly managing the lifetime of an object.
+ */
+
+namespace lf::impl {
+
+// TODO: we could make manual_lifetime<T> empty if T is empty?
+
+/**
+ * @brief Provides storage for a single object of type ``T``.
+ *
+ * Every instance of manual_lifetime is trivially constructible/destructible.
+ */
+template <typename T>
+class manual_lifetime : immovable<manual_lifetime<T>> {
+ public:
+  /**
+   * @brief Start lifetime of object.
+   */
+  template <typename... Args>
+    requires std::constructible_from<T, Args...>
+  auto construct(Args &&...args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> T * {
+    return ::new (static_cast<void *>(m_buf.data())) T(std::forward<Args>(args)...);
+  }
+
+  /**
+   * @brief Start lifetime of object at assignment.
+   */
+  template <typename U>
+    requires std::constructible_from<T, U>
+  void operator=(U &&expr) noexcept(std::is_nothrow_constructible_v<T, U>) {
+    this->construct(std::forward<U>(expr));
+  }
+
+  /**
+   * @brief Destroy the contained object, must have been constructed first.
+   *
+   * A noop if ``T`` is trivially destructible.
+   */
+  void destroy() noexcept(std::is_nothrow_destructible_v<T>)
+    requires std::is_destructible_v<T>
+  {
+    if constexpr (!std::is_trivially_destructible_v<T>) {
+      std::destroy_at(data());
+    }
+  }
+
+  /**
+   * @brief Get a pointer to the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto data() noexcept -> T * { return std::launder(reinterpret_cast<T *>(m_buf.data())); }
+
+  /**
+   * @brief Get a pointer to the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto data() const noexcept -> T * {
+    return std::launder(reinterpret_cast<T const *>(m_buf.data()));
+  }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator->() noexcept -> T * { return data(); }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator->() const noexcept -> T const * { return data(); }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() & noexcept -> T & { return *data(); }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() const & noexcept -> T const & { return *data(); }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() && noexcept -> T && { return std::move(*data()); }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() const && noexcept -> T const && { return std::move(*data()); }
+
+ private:
+  [[no_unique_address]] alignas(T) std::array<std::byte, sizeof(T)> m_buf;
+};
+
+} // namespace lf::impl
+
+#endif /* F51F8998_9E69_458E_95E1_8592A49FA76C */
 
 
 #ifndef LF_FIBRE_INIT_SIZE
@@ -1377,8 +1580,8 @@ inline constexpr auto round_up_to_page_size(std::size_t size) noexcept -> std::s
   // req + malloc_block_est is a multiple of the page size.
   // req > size + stacklet_size
 
-  std::size_t constexpr page_size = 4096;           // 4 KiB on most systems.
-  std::size_t constexpr malloc_meta_data_size = 96; // An (over)estimate.
+  std::size_t constexpr page_size = 4096;                           // 4 KiB on most systems.
+  std::size_t constexpr malloc_meta_data_size = 6 * sizeof(void *); // An (over)estimate.
 
   static_assert(std::has_single_bit(page_size));
 
@@ -1394,19 +1597,97 @@ inline constexpr auto round_up_to_page_size(std::size_t size) noexcept -> std::s
 }
 
 /**
+ * @brief A trivial wrapper around a `std::exception_ptr` that allows for concurrent storage.
+ *
+ * If `LF_COMPILER_EXCEPTIONS` is false then this is an empty class and all its methods are no-ops.
+ */
+class stack_eptr {
+
+#if LF_COMPILER_EXCEPTIONS
+  /**
+   * @brief States of `m_eptr`.
+   */
+  enum class state {
+    ok, ///< `m_eptr` is uninitialized.
+    err ///< `m_eptr` contains a live exception pointer.
+  };
+
+  static_assert(std::atomic_ref<state>::is_always_lock_free, "Lock-free atomic's required");
+
+  manual_lifetime<std::exception_ptr> m_eptr; ///< Maybe an exception pointer.
+  state m_except;                             ///< State of the exception pointer.
+#endif
+
+ public:
+  /**
+   * @brief Set this to the OK state.
+   *
+   * Can __only__ be called when the caller has exclusive ownership over this object.
+   */
+  void init_eptr() noexcept {
+    if constexpr (LF_COMPILER_EXCEPTIONS) {
+      m_except = state::ok;
+    }
+  }
+
+  /**
+   * @brief Check if this contains an exception.
+   *
+   * Can __only__ be called when the caller has exclusive ownership over this object.
+   */
+  [[nodiscard]] auto has_err() const noexcept -> bool {
+    if constexpr (LF_COMPILER_EXCEPTIONS) {
+      return m_except == state::ok;
+    } else {
+      return true;
+    }
+  }
+
+  /**
+   * @brief Capture the exception currently being thrown.
+   *
+   * Safe to call concurrently, first exception is saved.
+   */
+  void capture_exception() noexcept {
+    if constexpr (LF_COMPILER_EXCEPTIONS) {
+      if (std::atomic_ref{m_except}.exchange(state::err) == state::ok) {
+        m_eptr.construct(std::current_exception());
+      }
+    }
+  }
+
+  /**
+   * @brief If this contains an exception then it will be rethrown, reset this object to the OK state.
+   *
+   * This can __only__ be called when the caller has exclusive ownership over this object.
+   */
+  void rethrow_if_exception() {
+    if constexpr (LF_COMPILER_EXCEPTIONS) {
+      if (m_except == state::err) {
+
+        LF_DEFER {
+          LF_ASSERT(*m_eptr == nullptr);
+          m_eptr.destroy();
+          m_except = state::ok;
+        };
+
+        LF_ASSERT(*m_eptr != nullptr);
+
+        std::rethrow_exception(std::move(*m_eptr));
+      }
+    }
+  }
+};
+
+/**
  * @brief A stack is a user-space (geometric) segmented program stack.
  *
- * A stack stores the execution of a DAG from root (which may be a stolen task or true root) to suspend point.
- * A stack is composed of stacklets, each stacklet is a contiguous region of stack space stored in a
+ * A stack stores the execution of a DAG from root (which may be a stolen task or true root) to suspend
+ * point. A stack is composed of stacklets, each stacklet is a contiguous region of stack space stored in a
  * double-linked list. A stack tracks the top stacklet, the top stacklet contains the last allocation or the
  * stack is empty. The top stacklet may have zero or one cached stacklets "ahead" of it.
  */
 class stack {
-
-  // Want underlying malloc to allocate one-page for the first stacklet.
-  // static constexpr std::size_t malloc_block_est = 64;
-  // static constexpr std::size_t stacklet_size = 6 * sizeof(void *);
-  // static constexpr std::size_t k_init_size = 4 * impl::k_kibibyte - stacklet_size - malloc_block_est;
 
  public:
   /**
@@ -1416,8 +1697,11 @@ class stack {
    *
    * A stacklet is allocated as a contiguous chunk of memory, the first bytes of the chunk contain the
    * stacklet object. Semantically, a stacklet is a dynamically sized object.
+   *
+   * Each stacklet also contains an exception pointer and atomic flag which stores exceptions thrown by
+   * children.
    */
-  class alignas(impl::k_new_align) stacklet : impl::immovable<stacklet> {
+  class alignas(impl::k_new_align) stacklet : impl::immovable<stacklet>, public stack_eptr {
 
     friend class stack;
 
@@ -1461,6 +1745,7 @@ class stack {
      */
     void set_next(stacklet *new_next) noexcept {
       LF_ASSERT(is_top());
+      LF_ASSERT(m_next == nullptr || m_next->has_err() == false);
       std::free(std::exchange(m_next, new_next)); // NOLINT
     }
 
@@ -1497,6 +1782,7 @@ class stack {
 
       next->m_prev = prev;
       next->m_next = nullptr;
+      next->init_eptr();
 
       return next;
     }
@@ -1564,9 +1850,10 @@ class stack {
 
   ~stack() noexcept {
     LF_ASSERT(m_fib);
-    LF_ASSERT(!m_fib->m_prev); // Should only be destructed at the root.
-    m_fib->set_next(nullptr);  //
-    std::free(m_fib);          // NOLINT
+    LF_ASSERT(!m_fib->m_prev);            // Should only be destructed at the root.
+    LF_ASSERT(m_fib->has_err() == false); // Exceptions should have been rethrown.
+    m_fib->set_next(nullptr);             // Free a cached stacklet.
+    std::free(m_fib);                     // NOLINT
   }
 
   [[nodiscard]] auto empty() -> bool {
@@ -1676,6 +1963,14 @@ class stack {
 namespace lf::impl {
 
 /**
+ * @brief A small structure that acts a bit like a root task's parent.
+ */
+struct root_notify {
+  std::binary_semaphore m_sem{0}; ///< Notified when root task completes
+  std::exception_ptr m_eptr{};    ///< Set if root task finished with an exception.
+};
+
+/**
  * @brief A small bookkeeping struct which is a member of each task's promise.
  */
 class frame {
@@ -1686,8 +1981,8 @@ class frame {
 
   stack::stacklet *m_stacklet; ///< Needs to be in promise in case allocation elided (as does m_parent).
   union {
-    frame *m_parent;              ///< Non-root tasks store a pointer to their parent.
-    std::binary_semaphore *m_sem; ///< Root tasks store a pointer to a semaphore.
+    frame *m_parent;       ///< Non-root tasks store a pointer to their parent.
+    root_notify *m_notify; ///< Root tasks store a pointer to a notifier
   };
   std::atomic_uint16_t m_join = k_u16_max; ///< Number of children joined (with offset).
   std::uint16_t m_steal = 0;               ///< Number of times this frame has been stolen.
@@ -1714,14 +2009,18 @@ class frame {
   void set_parent(frame *parent) noexcept { m_parent = non_null(parent); }
 
   /**
-   * @brief Set the pointer to the semaphore.
+   * @brief Set a root tasks parent.
    */
-  void set_semaphore(std::binary_semaphore *sem) noexcept { m_sem = non_null(sem); }
+  void set_root_notify(root_notify *notify) noexcept { m_notify = non_null(notify); }
 
   /**
-   * @brief Set the stacklet object.
+   * @brief Set the stacklet object to point at a new stacklet.
+   *
+   * Returns the previous stacklet.
    */
-  void set_stacklet(stack::stacklet *stacklet) noexcept { m_stacklet = non_null(stacklet); }
+  auto reset_stacklet(stack::stacklet *stacklet) noexcept -> stack::stacklet * {
+    return std::exchange(m_stacklet, non_null(stacklet));
+  }
 
   /**
    * @brief Get a pointer to the parent frame.
@@ -1731,11 +2030,11 @@ class frame {
   [[nodiscard]] auto parent() const noexcept -> frame * { return m_parent; }
 
   /**
-   * @brief Get a pointer to the parent frame.
+   * @brief Get a pointer to the notifier for this root frame.
    *
    * Only valid if this is not a root frame.
    */
-  [[nodiscard]] auto semaphore() const noexcept -> std::binary_semaphore * { return m_sem; }
+  [[nodiscard]] auto root_notify() const noexcept -> root_notify * { return m_notify; }
 
   /**
    * @brief Get a pointer to the top of the top of the stack-stack this frame was allocated on.
@@ -1948,7 +2247,7 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
    */
   constexpr void push(node *new_node) noexcept {
 
-    LF_ASSERT(new_node->m_next == nullptr);
+    LF_ASSERT(new_node && new_node->m_next == nullptr);
 
     node *stale_head = m_head.load(std::memory_order_relaxed);
 
@@ -2123,119 +2422,6 @@ class full_context : public worker_context {
 
 #endif /* D66BBECE_E467_4EB6_B74A_AAA2E7256E02 */
 
-#ifndef F51F8998_9E69_458E_95E1_8592A49FA76C
-#define F51F8998_9E69_458E_95E1_8592A49FA76C
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <memory>
-#include <new>
-
-
-/**
- * @file manual_lifetime.hpp
- *
- * @brief A utility class for explicitly managing the lifetime of an object.
- */
-
-namespace lf::impl {
-
-// TODO: we could make manual_lifetime<T> empty if T is empty?
-
-/**
- * @brief Provides storage for a single object of type ``T``.
- *
- * Every instance of manual_lifetime is trivially constructible/destructible.
- */
-template <typename T>
-class manual_lifetime : immovable<manual_lifetime<T>> {
- public:
-  /**
-   * @brief Start lifetime of object.
-   */
-  template <typename... Args>
-    requires std::constructible_from<T, Args...>
-  auto construct(Args &&...args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> T * {
-    return ::new (static_cast<void *>(m_buf.data())) T(std::forward<Args>(args)...);
-  }
-
-  /**
-   * @brief Start lifetime of object at assignment.
-   */
-  template <typename U>
-    requires std::constructible_from<T, U>
-  void operator=(U &&expr) noexcept(std::is_nothrow_constructible_v<T, U>) {
-    this->construct(std::forward<U>(expr));
-  }
-
-  /**
-   * @brief Destroy the contained object, must have been constructed first.
-   *
-   * A noop if ``T`` is trivially destructible.
-   */
-  void destroy() noexcept(std::is_nothrow_destructible_v<T>)
-    requires std::is_destructible_v<T>
-  {
-    if constexpr (!std::is_trivially_destructible_v<T>) {
-      std::destroy_at(data());
-    }
-  }
-
-  /**
-   * @brief Get a pointer to the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto data() noexcept -> T * { return std::launder(reinterpret_cast<T *>(m_buf.data())); }
-
-  /**
-   * @brief Get a pointer to the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto data() const noexcept -> T * {
-    return std::launder(reinterpret_cast<T const *>(m_buf.data()));
-  }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator->() noexcept -> T * { return data(); }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator->() const noexcept -> T const * { return data(); }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator*() & noexcept -> T & { return *data(); }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator*() const & noexcept -> T const & { return *data(); }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator*() && noexcept -> T && { return std::move(*data()); }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator*() const && noexcept -> T const && { return std::move(*data()); }
-
- private:
-  [[no_unique_address]] alignas(T) std::array<std::byte, sizeof(T)> m_buf;
-};
-
-} // namespace lf::impl
-
-#endif /* F51F8998_9E69_458E_95E1_8592A49FA76C */
 
 
 /**
@@ -3589,86 +3775,6 @@ inline constexpr impl::bind_task<tag::call> call = {};
 } // namespace lf
 
 #endif /* E8D38B49_7170_41BC_90E9_6D6389714304 */
-#ifndef B4EE570B_F5CF_42CB_9AF3_7376F45FDACC
-#define B4EE570B_F5CF_42CB_9AF3_7376F45FDACC
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>
-#include <functional>
-#include <type_traits>
-#include <utility>
-
-
-
-/**
- * @file defer.hpp
- *
- * @brief A Golang-like defer implemented via destructor calls.
- */
-
-namespace lf {
-
-inline namespace core {
-
-/**
- * @brief Basic implementation of a Golang-like defer.
- *
- * \rst
- *
- * Use like:
- *
- * .. code::
- *
- *    auto * ptr = c_api_init();
- *
- *    defer _ = [&ptr] () noexcept {
- *      c_api_clean_up(ptr);
- *    };
- *
- *    // Code that may throw
- *
- * \endrst
- *
- * You can also use the ``LF_DEFER`` macro to create an automatically named defer object.
- *
- */
-template <class F>
-  requires std::is_nothrow_invocable_v<F>
-class [[nodiscard("Defer will execute unless bound to a name!")]] defer : impl::immovable<defer<F>> {
- public:
-  /**
-   * @brief Construct a new Defer object.
-   *
-   * @param f Nullary invocable forwarded into object and invoked by destructor.
-   */
-  constexpr defer(F &&f) noexcept(std::is_nothrow_constructible_v<F, F &&>) : m_f(std::forward<F>(f)) {}
-
-  /**
-   * @brief Calls the invocable.
-   */
-  LF_FORCEINLINE constexpr ~defer() noexcept { std::invoke(std::forward<F>(m_f)); }
-
- private:
-  [[no_unique_address]] F m_f;
-};
-
-/**
- * @brief A macro to create an automatically named defer object.
- */
-#define LF_DEFER ::lf::defer LF_CONCAT_OUTER(at_exit_, __LINE__) = [&]() noexcept
-
-} // namespace core
-
-} // namespace lf
-
-#endif /* B4EE570B_F5CF_42CB_9AF3_7376F45FDACC */
 #ifndef AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A
 #define AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A
 
@@ -3683,7 +3789,6 @@ class [[nodiscard("Defer will execute unless bound to a name!")]] defer : impl::
 #include <coroutine>
 
 #include <exception>
-#include <semaphore>
 #include <type_traits>
 #include <utility>
 
@@ -4110,7 +4215,7 @@ struct promise_base : frame {
 
     // clang-format on
 
-    this->set_stacklet(stack->top());
+    this->reset_stacklet(stack->top());
 
     return alloc_awaitable<T, E>{{}, std::span<T, E>{ptr, await.count}};
   }
@@ -4120,7 +4225,7 @@ struct promise_base : frame {
     std::ranges::destroy(await);
     auto *stack = impl::tls::stack();
     stack->deallocate(await.data());
-    this->set_stacklet(stack->top());
+    this->reset_stacklet(stack->top());
     return {};
   }
 
@@ -5321,7 +5426,7 @@ struct numa_context {
           continue;\
 \
         default:\
-          LF_ASSERT(false);\
+          LF_ASSERT(false && "Unreachable");\
       }
 
 
@@ -5866,7 +5971,7 @@ inline auto lazy_work(numa_topology::numa_node<numa_context<lazy_vars>> node) no
 
   std::shared_ptr my_context = node.neighbors.front().front();
 
-  LF_ASSERT(!my_context->shared().numa.empty());
+  LF_ASSERT(my_context && !my_context->shared().numa.empty());
 
   std::size_t numa_tid = node.numa;
 
@@ -6029,7 +6134,7 @@ class lazy_pool {
                      numa_strategy strategy = numa_strategy::fan)
       : m_num_threads(n) {
 
-    LF_ASSERT_NO_ASSUME(!m_share->stop.test(std::memory_order_acquire));
+    LF_ASSERT_NO_ASSUME(m_share && !m_share->stop.test(std::memory_order_acquire));
 
     for (std::size_t i = 0; i < n; ++i) {
       m_worker.push_back(std::make_shared<impl::numa_context<impl::lazy_vars>>(m_rng, m_share));

@@ -173,7 +173,7 @@ struct numa_context {
           continue;\
 \
         default:\
-          LF_ASSERT(false);\
+          LF_ASSERT(false && "Unreachable");\
       }
 
 

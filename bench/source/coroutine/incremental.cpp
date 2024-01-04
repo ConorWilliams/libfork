@@ -129,7 +129,7 @@ struct promise {
   static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
   static auto final_suspend() noexcept -> std::suspend_never { return {}; }
   static void return_void() {}
-  static void unhandled_exception() { LF_ASSERT(false); }
+  static void unhandled_exception() { LF_ASSERT(false && "Unreachable"); }
 };
 
 auto fib_impl(int &ret, int n) -> coroutine {
@@ -198,7 +198,7 @@ struct promise : /*lf::impl::frame_block, */ op {
   static auto initial_suspend() noexcept -> std::suspend_never { return {}; }
   static auto final_suspend() noexcept -> std::suspend_never { return {}; }
   static void return_void() {}
-  static void unhandled_exception() { LF_ASSERT(false); }
+  static void unhandled_exception() { LF_ASSERT(false && "Unreachable"); }
 };
 
 auto fib_impl(int &ret, int n) -> coroutine {
@@ -255,7 +255,7 @@ struct promise : /*lf::impl::frame_block, */ fixed_stack_coro::op {
   static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
   static auto final_suspend() noexcept -> std::suspend_never { return {}; }
   static void return_void() {}
-  static void unhandled_exception() { LF_ASSERT(false); }
+  static void unhandled_exception() { LF_ASSERT(false && "Unreachable"); }
 };
 
 auto fib_impl(int &ret, int n) -> coroutine {
@@ -314,7 +314,7 @@ struct promise : lf::impl::frame, fixed_stack_coro::op {
   static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
   static auto final_suspend() noexcept -> std::suspend_never { return {}; }
   static void return_void() {}
-  static void unhandled_exception() { LF_ASSERT(false); }
+  static void unhandled_exception() { LF_ASSERT(false && "Unreachable"); }
 };
 
 auto fib_impl(int &ret, int n) -> coroutine {
@@ -371,7 +371,7 @@ struct promise : lf::impl::frame, fixed_stack_coro::op {
   static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
   static auto final_suspend() noexcept -> std::suspend_never { return {}; }
   static void return_void() {}
-  static void unhandled_exception() { LF_ASSERT(false); }
+  static void unhandled_exception() { LF_ASSERT(false && "Unreachable"); }
 };
 
 auto fib_impl(int &ret, int n) -> coroutine {
@@ -432,7 +432,7 @@ struct promise : lf::impl::frame, fixed_stack_coro::op {
   static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
   static auto final_suspend() noexcept -> std::suspend_always { return {}; }
   static void return_void() {}
-  static void unhandled_exception() { LF_ASSERT(false); }
+  static void unhandled_exception() { LF_ASSERT(false && "Unreachable"); }
 };
 
 auto fib_impl(int &ret, int n) -> coroutine {
@@ -498,7 +498,7 @@ struct promise : lf::impl::promise_base {
   static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
   static auto final_suspend() noexcept -> std::suspend_never { return {}; }
   static void return_void() {}
-  static void unhandled_exception() { LF_ASSERT(false); }
+  static void unhandled_exception() { LF_ASSERT(false && "Unreachable"); }
 };
 
 auto fib_impl(int &ret, int n) -> coroutine {
@@ -573,7 +573,7 @@ struct promise : lf::impl::promise_base {
     return awaitable{};
   }
   static void return_void() {}
-  static void unhandled_exception() { LF_ASSERT(false); }
+  static void unhandled_exception() { LF_ASSERT(false && "Unreachable"); }
 
   auto await_transform(coroutine child) {
 

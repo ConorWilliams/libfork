@@ -82,7 +82,7 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
    */
   constexpr void push(node *new_node) noexcept {
 
-    LF_ASSERT(new_node->m_next == nullptr);
+    LF_ASSERT(new_node && new_node->m_next == nullptr);
 
     node *stale_head = m_head.load(std::memory_order_relaxed);
 

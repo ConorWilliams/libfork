@@ -126,40 +126,48 @@
   #endif
 #endif
 
+namespace lf::impl {
+
+#ifdef __cpp_lib_unreachable
+using std::unreachable;
+#else
 /**
- * @brief A wrapper for C++23's ``[[assume(expr)]]`` attribute.
- *
- * Reverts to compiler specific implementations if the attribute is not
- * available.
+ * @brief A homebrew version of `std::unreachable`, see https://en.cppreference.com/w/cpp/utility/unreachable
+ */
+[[noreturn]] inline void unreachable() {
+  // Uses compiler specific extensions if possible.
+  // Even if no extension is used, undefined behavior is still raised by
+  // an empty function body and the noreturn attribute.
+  #if defined(_MSC_VER) && !defined(__clang__) // MSVC
+  __assume(false);
+  #else                                        // GCC, Clang
+  __builtin_unreachable();
+  #endif
+}
+#endif
+
+} // namespace lf::impl
+
+/**
+ * @brief Invokes undefined behaviour if ``expr`` evaluates to `false`.
  *
  * \rst
  *
  *  .. warning::
  *
- *    Using some intrinsics (i.e. GCC's ``__builtin_unreachable()``) this has
- *    different semantics than ``[[assume(expr)]]`` as it WILL evaluate the
+ *    This has different semantics than ``[[assume(expr)]]`` as it WILL evaluate the
  *    expression at runtime. Hence you should conservatively only use this macro
  *    if ``expr`` is side-effect free and cheap to evaluate.
  *
  * \endrst
  */
-#if __has_cpp_attribute(assume)
-  #define LF_ASSUME(expr) [[assume(bool(expr))]]
-#elif defined(__clang__)
-  #define LF_ASSUME(expr) __builtin_assume(bool(expr))
-#elif defined(__GNUC__) && !defined(__ICC)
-  #define LF_ASSUME(expr)                                                                                    \
-    if (bool(expr)) {                                                                                        \
-    } else {                                                                                                 \
-      __builtin_unreachable();                                                                               \
-    }
-#elif defined(_MSC_VER) || defined(__ICC)
-  #define LF_ASSUME(expr) __assume(bool(expr))
-#else
-  #define LF_ASSUME(expr)                                                                                    \
-    do {                                                                                                     \
-    } while (false)
-#endif
+
+#define LF_ASSUME(expr)                                                                                      \
+  do {                                                                                                       \
+    if (!(expr)) {                                                                                           \
+      ::lf::impl::unreachable();                                                                             \
+    }                                                                                                        \
+  } while (false)
 
 /**
  * @brief If ``NDEBUG`` is defined then ``LF_ASSERT(expr)`` is  `` `` otherwise ``assert(expr)``.
@@ -191,13 +199,12 @@
   #if defined(_MSC_VER)
     #define LF_NOINLINE __declspec(noinline)
   #elif defined(__GNUC__) && __GNUC__ > 3
-    // Clang also defines __GNUC__ (as 4)
+  // Clang also defines __GNUC__ (as 4)
     #if defined(__CUDACC__)
-      // nvcc doesn't always parse __noinline__,
-      // see: https://svn.boost.org/trac/boost/ticket/9392
+  // nvcc doesn't always parse __noinline__, see: https://svn.boost.org/trac/boost/ticket/9392
       #define LF_NOINLINE __attribute__((noinline))
     #elif defined(__HIP__)
-      // See https://github.com/boostorg/config/issues/392
+  // See https://github.com/boostorg/config/issues/392
       #define LF_NOINLINE __attribute__((noinline))
     #else
       #define LF_NOINLINE __attribute__((__noinline__))
@@ -216,14 +223,13 @@
  *
  *    This does not imply the c++'s `inline` keyword which also has an effect on linkage.
  *
- *
  * \endrst
  */
 #if !defined(LF_FORCEINLINE)
   #if defined(_MSC_VER)
     #define LF_FORCEINLINE __forceinline
   #elif defined(__GNUC__) && __GNUC__ > 3
-    // Clang also defines __GNUC__ (as 4)
+  // Clang also defines __GNUC__ (as 4)
     #define LF_FORCEINLINE __attribute__((__always_inline__))
   #else
     #define LF_FORCEINLINE
