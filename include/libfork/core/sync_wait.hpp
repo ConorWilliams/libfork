@@ -12,7 +12,6 @@
 #include <coroutine>
 
 #include <exception>
-#include <semaphore>
 #include <type_traits>
 #include <utility>
 
@@ -66,20 +65,22 @@ auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
 
   using R = async_result_t<F, Args...>;
   constexpr bool is_void = std::is_void_v<R>;
-  std::binary_semaphore sem{0};
-  manual_eventually<std::conditional_t<is_void, impl::empty, R>> result;
+
+  impl::root_notify notifier;
+  eventually<std::conditional_t<is_void, impl::empty, R>> result;
 
   // This is to support a worker sync waiting on work they will launch inline.
   bool worker = impl::tls::has_stack;
   // Will cache workers stack here.
   std::optional<impl::stack> prev = std::nullopt;
 
-  LF_DEFER {
-    // Memory leaks if unwinding!
-    if (std::uncaught_exceptions() > 0) {
-      std::terminate();
+  impl::y_combinate combinator = [&]() {
+    if constexpr (is_void) {
+      return combinate<tag::root>(impl::discard_t{}, std::move(fun));
+    } else {
+      return combinate<tag::root>(&result, std::move(fun));
     }
-  };
+  }();
 
   if (!worker) {
     LF_LOG("Sync wait from non-worker thread");
@@ -91,37 +92,33 @@ auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
     swap(*prev, *impl::tls::thread_stack); // ADL call.
   }
 
-  impl::y_combinate combi = [&]() {
-    if constexpr (is_void) {
-      return combinate<tag::root>(impl::discard_t{}, std::move(fun));
+  // This makes a coroutine which can only be destroyed at final_suspend
+  // hence, no exceptions from here on.
+  impl::quasi_awaitable await = std::move(combinator)(std::forward<Args>(args)...);
+
+  return [&]() noexcept -> async_result_t<F, Args...> {
+    //
+    await.promise->set_root_notify(&notifier);
+    auto *handle = std::bit_cast<submit_handle>(static_cast<impl::frame *>(await.promise));
+
+    impl::ignore_t{} = impl::tls::thread_stack->release();
+
+    if (!worker) {
+      impl::tls::thread_stack.destroy();
+      impl::tls::has_stack = false;
     } else {
-      return combinate<tag::root>(&result, std::move(fun));
+      swap(*prev, *impl::tls::thread_stack);
+    }
+
+    typename intrusive_list<submit_handle>::node node{handle};
+
+    std::forward<Sch>(sch).schedule(&node);
+    notifier.sem.acquire();
+
+    if constexpr (!is_void) {
+      return *std::move(result);
     }
   }();
-
-  impl::quasi_awaitable await = std::move(combi)(std::forward<Args>(args)...);
-  await.promise->set_semaphore(&sem);
-  auto *handle = std::bit_cast<submit_handle>(static_cast<impl::frame *>(await.promise));
-
-  impl::ignore_t{} = impl::tls::thread_stack->release();
-
-  if (!worker) {
-    impl::tls::thread_stack.destroy();
-    impl::tls::has_stack = false;
-  } else {
-    swap(*prev, *impl::tls::thread_stack);
-  }
-
-  typename intrusive_list<submit_handle>::node node{handle};
-
-  std::forward<Sch>(sch).schedule(&node);
-  sem.acquire();
-
-  LF_DEFER { result.destroy(); };
-
-  if constexpr (!is_void) {
-    return *std::move(result);
-  }
 }
 
 } // namespace core

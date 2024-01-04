@@ -1637,7 +1637,7 @@ class stack_eptr {
    */
   [[nodiscard]] auto has_err() const noexcept -> bool {
     if constexpr (LF_COMPILER_EXCEPTIONS) {
-      return m_except == state::ok;
+      return m_except == state::err;
     } else {
       return true;
     }
@@ -1966,8 +1966,8 @@ namespace lf::impl {
  * @brief A small structure that acts a bit like a root task's parent.
  */
 struct root_notify {
-  std::binary_semaphore m_sem{0}; ///< Notified when root task completes
-  std::exception_ptr m_eptr{};    ///< Set if root task finished with an exception.
+  std::binary_semaphore sem{0}; ///< Notified when root task completes
+  std::exception_ptr eptr{};    ///< Set if root task finished with an exception.
 };
 
 /**
@@ -2034,7 +2034,7 @@ class frame {
    *
    * Only valid if this is not a root frame.
    */
-  [[nodiscard]] auto root_notify() const noexcept -> root_notify * { return m_notify; }
+  [[nodiscard]] auto notifier() const noexcept -> root_notify * { return m_notify; }
 
   /**
    * @brief Get a pointer to the top of the top of the stack-stack this frame was allocated on.
@@ -2698,6 +2698,7 @@ inline auto co_delete(T *ptr) -> impl::co_delete_t<T, Extent> {
 
 #include <concepts>
 #include <memory>
+#include <optional>
 #include <type_traits>
 #include <utility>
 #ifndef AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
@@ -2781,9 +2782,10 @@ inline namespace core {
 // ------------------------------------------------------------------------ //
 
 /**
- * @brief A wrapper to delay construction of an object.
+ * @brief A wrapper to delay construction of an object, like ``std::optional``.
  *
- * This class supports delayed construction of immovable types and reference types.
+ * This class supports delayed construction of reference types. It is like a simplified version of
+ * `std::optional` that is only constructed once. Construction is done (zero or one times) via assignment.
  *
  * \rst
  *
@@ -2791,32 +2793,71 @@ inline namespace core {
  *    This documentation is generated from the non-reference specialization, see the source
  *    for the reference specialization.
  *
- * .. warning::
- *    It is undefined behavior if the object inside an `eventually` is not constructed before it
- *    is used or if the lifetime of the ``lf::eventually`` ends before an object is constructed.
- *    If you are placing instances of `eventually` on the heap you need to be very careful about
- *    exceptions.
- *
  * \endrst
  */
 template <impl::non_void T>
-class eventually : impl::manual_lifetime<T> {
- public:
-  using impl::manual_lifetime<T>::construct;
-  using impl::manual_lifetime<T>::operator=;
-  using impl::manual_lifetime<T>::operator->;
-  using impl::manual_lifetime<T>::operator*;
+class eventually : impl::immovable<eventually<T>> {
 
-  // clang-format off
+  std::optional<T> m_value; ///< The contained object.
+
+ public:
+  /**
+   * @brief Start lifetime of object at assignment.
+   */
+  template <typename U>
+    requires std::constructible_from<T, U>
+  void operator=(U &&expr) noexcept(std::is_nothrow_constructible_v<T, U>) {
+    LF_ASSERT(!m_value);
+    m_value.emplace(std::forward<U>(expr));
+  }
 
   /**
-   * @brief Destroy the object which __must__ be inside the eventually.
+   * @brief Access the contained object, must have been constructed first.
    */
-  constexpr ~eventually() noexcept requires std::is_trivially_destructible_v<T> = default;
+  [[nodiscard]] auto operator->() noexcept -> T * {
+    LF_ASSERT(m_value);
+    return m_value.operator->();
+  }
 
-  // clang-format on
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator->() const noexcept -> T const * {
+    LF_ASSERT(m_value);
+    return m_value.operator->();
+  }
 
-  constexpr ~eventually() noexcept(std::is_nothrow_destructible_v<T>) { this->destroy(); }
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() & noexcept -> T & {
+    LF_ASSERT(m_value);
+    return *m_value;
+  }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() const & noexcept -> T const & {
+    LF_ASSERT(m_value);
+    return *m_value;
+  }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() && noexcept -> T && {
+    LF_ASSERT(m_value);
+    return *std::move(m_value);
+  }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() const && noexcept -> T const && {
+    LF_ASSERT(m_value);
+    return *std::move(m_value);
+  }
 };
 
 // ------------------------------------------------------------------------ //
@@ -2830,14 +2871,6 @@ template <impl::non_void T>
   requires impl::reference<T>
 class eventually<T> : impl::immovable<eventually<T>> {
  public:
-  /**
-   * @brief Construct an object inside the eventually from ``expr``.
-   */
-  template <impl::safe_ref_bind_to<T> U>
-  void construct(U &&expr) noexcept {
-    m_value = std::addressof(expr);
-  }
-
   /**
    * @brief Construct an object inside the eventually from ``expr``.
    */
@@ -2873,45 +2906,6 @@ class eventually<T> : impl::immovable<eventually<T>> {
 
  private:
   std::remove_reference_t<T> *m_value;
-};
-
-// ------------------------------------------------------------------------ //
-
-/**
- * @brief A `lf::manual_eventually<T>` is an `lf::eventually<T>` which does not call destroy on destruction.
- *
- * This is useful for writing exception safe fork-join code and should be considered an expert-only feature.
- */
-template <impl::non_void T>
-class manual_eventually : impl::manual_lifetime<T> {
-
- public:
-  using impl::manual_lifetime<T>::construct;
-  using impl::manual_lifetime<T>::operator=;
-  using impl::manual_lifetime<T>::operator->;
-  using impl::manual_lifetime<T>::operator*;
-  using impl::manual_lifetime<T>::destroy;
-};
-
-/**
- * @brief A `lf::manual_eventually<T>` is an `lf::eventually<T>` which does not call destroy on destruction.
- *
- * This is useful for writing exception safe fork-join code and should be considered an expert-only feature.
- */
-template <impl::non_void T>
-  requires impl::reference<T>
-class manual_eventually<T> : eventually<T> {
-
- public:
-  using eventually<T>::construct;
-  using eventually<T>::operator=;
-  using eventually<T>::operator->;
-  using eventually<T>::operator*;
-
-  /**
-   * @brief Destroy the contained object (call its destructor).
-   */
-  void destroy() noexcept { static_assert(std::is_trivially_destructible_v<T>); };
 };
 
 } // namespace core
@@ -3173,25 +3167,18 @@ struct as_eventually : std::type_identity<eventually<R> *> {};
 template <>
 struct as_eventually<void> : std::type_identity<discard_t> {};
 
-template <typename R>
-struct as_manual_eventually : std::type_identity<eventually<R> *> {};
-template <>
-struct as_manual_eventually<void> : std::type_identity<discard_t> {};
-
 } // namespace detail
 
 /**
  * @brief Check that `Tag`-invoking and calling `F` with `Args...` produces task<R>.
  *
- * This also checks the results is consistent when it is discarded and returned by `eventually<R> *` or a
- * `manual_eventually<R> *`.
+ * This also checks the results is consistent when it is discarded and returned by `eventually<R> *`.
  */
 template <typename R, typename I, tag T, typename F, typename... Args>
-concept self_consistent =                                                              //
-    call_consistent<R, I, T, F, Args...> &&                                            //
-    call_consistent<R, discard_t, T, F, Args...> &&                                    //
-    call_consistent<R, typename detail::as_eventually<R>::type, T, F, Args...> &&      //
-    call_consistent<R, typename detail::as_manual_eventually<R>::type, T, F, Args...>; //
+concept self_consistent =                                                       //
+    call_consistent<R, I, T, F, Args...> &&                                     //
+    call_consistent<R, discard_t, T, F, Args...> &&                             //
+    call_consistent<R, typename detail::as_eventually<R>::type, T, F, Args...>; //
 
 // --------------------- //
 
@@ -3203,8 +3190,7 @@ concept self_consistent =                                                       
 // using as_eventually_t = detail::as_eventually<impl::unsafe_result_t<I, Tag, F, Args...>>::type;
 
 /**
- * @brief Check `F` is async invocable to a task with `I`,` discard_t` and the appropriate
- * `manual_eventually`.
+ * @brief Check `F` is async invocable to a task with `I`,` discard_t` and the appropriate `eventually`.
  */
 template <typename I, tag Tag, typename F, typename... Args>
 concept consistent_invocable =                                                //
@@ -3833,20 +3819,22 @@ auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
 
   using R = async_result_t<F, Args...>;
   constexpr bool is_void = std::is_void_v<R>;
-  std::binary_semaphore sem{0};
-  manual_eventually<std::conditional_t<is_void, impl::empty, R>> result;
+
+  impl::root_notify notifier;
+  eventually<std::conditional_t<is_void, impl::empty, R>> result;
 
   // This is to support a worker sync waiting on work they will launch inline.
   bool worker = impl::tls::has_stack;
   // Will cache workers stack here.
   std::optional<impl::stack> prev = std::nullopt;
 
-  LF_DEFER {
-    // Memory leaks if unwinding!
-    if (std::uncaught_exceptions() > 0) {
-      std::terminate();
+  impl::y_combinate combinator = [&]() {
+    if constexpr (is_void) {
+      return combinate<tag::root>(impl::discard_t{}, std::move(fun));
+    } else {
+      return combinate<tag::root>(&result, std::move(fun));
     }
-  };
+  }();
 
   if (!worker) {
     LF_LOG("Sync wait from non-worker thread");
@@ -3858,37 +3846,33 @@ auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
     swap(*prev, *impl::tls::thread_stack); // ADL call.
   }
 
-  impl::y_combinate combi = [&]() {
-    if constexpr (is_void) {
-      return combinate<tag::root>(impl::discard_t{}, std::move(fun));
+  // This makes a coroutine which can only be destroyed at final_suspend
+  // hence, no exceptions from here on.
+  impl::quasi_awaitable await = std::move(combinator)(std::forward<Args>(args)...);
+
+  return [&]() noexcept -> async_result_t<F, Args...> {
+    //
+    await.promise->set_root_notify(&notifier);
+    auto *handle = std::bit_cast<submit_handle>(static_cast<impl::frame *>(await.promise));
+
+    impl::ignore_t{} = impl::tls::thread_stack->release();
+
+    if (!worker) {
+      impl::tls::thread_stack.destroy();
+      impl::tls::has_stack = false;
     } else {
-      return combinate<tag::root>(&result, std::move(fun));
+      swap(*prev, *impl::tls::thread_stack);
+    }
+
+    typename intrusive_list<submit_handle>::node node{handle};
+
+    std::forward<Sch>(sch).schedule(&node);
+    notifier.sem.acquire();
+
+    if constexpr (!is_void) {
+      return *std::move(result);
     }
   }();
-
-  impl::quasi_awaitable await = std::move(combi)(std::forward<Args>(args)...);
-  await.promise->set_semaphore(&sem);
-  auto *handle = std::bit_cast<submit_handle>(static_cast<impl::frame *>(await.promise));
-
-  impl::ignore_t{} = impl::tls::thread_stack->release();
-
-  if (!worker) {
-    impl::tls::thread_stack.destroy();
-    impl::tls::has_stack = false;
-  } else {
-    swap(*prev, *impl::tls::thread_stack);
-  }
-
-  typename intrusive_list<submit_handle>::node node{handle};
-
-  std::forward<Sch>(sch).schedule(&node);
-  sem.acquire();
-
-  LF_DEFER { result.destroy(); };
-
-  if constexpr (!is_void) {
-    return *std::move(result);
-  }
 }
 
 } // namespace core
@@ -4317,7 +4301,9 @@ struct promise : promise_base, return_result<R, I> {
 
         LF_LOG("Root task at final suspend, releases semaphore and yields");
 
-        child.promise().semaphore()->release();
+        child.promise().notifier()->sem.release();
+
+        // semaphore()->release();
         child.destroy();
 
         // A root task is always the first on a stack, now it has been completed the stack is empty.

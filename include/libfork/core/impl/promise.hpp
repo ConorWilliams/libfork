@@ -181,7 +181,7 @@ struct promise_base : frame {
 
     // clang-format on
 
-    this->set_stacklet(stack->top());
+    this->reset_stacklet(stack->top());
 
     return alloc_awaitable<T, E>{{}, std::span<T, E>{ptr, await.count}};
   }
@@ -191,7 +191,7 @@ struct promise_base : frame {
     std::ranges::destroy(await);
     auto *stack = impl::tls::stack();
     stack->deallocate(await.data());
-    this->set_stacklet(stack->top());
+    this->reset_stacklet(stack->top());
     return {};
   }
 
@@ -283,7 +283,9 @@ struct promise : promise_base, return_result<R, I> {
 
         LF_LOG("Root task at final suspend, releases semaphore and yields");
 
-        child.promise().semaphore()->release();
+        child.promise().notifier()->sem.release();
+
+        // semaphore()->release();
         child.destroy();
 
         // A root task is always the first on a stack, now it has been completed the stack is empty.

@@ -111,7 +111,7 @@ class stack_eptr {
    */
   [[nodiscard]] auto has_err() const noexcept -> bool {
     if constexpr (LF_COMPILER_EXCEPTIONS) {
-      return m_except == state::ok;
+      return m_except == state::err;
     } else {
       return true;
     }

@@ -11,8 +11,10 @@
 
 #include <atomic>
 #include <coroutine>
+#include <exception>
 #include <semaphore>
 #include <type_traits>
+#include <utility>
 
 #include "libfork/core/impl/stack.hpp"
 
@@ -25,6 +27,14 @@
 namespace lf::impl {
 
 /**
+ * @brief A small structure that acts a bit like a root task's parent.
+ */
+struct root_notify {
+  std::binary_semaphore sem{0}; ///< Notified when root task completes
+  std::exception_ptr eptr{};    ///< Set if root task finished with an exception.
+};
+
+/**
  * @brief A small bookkeeping struct which is a member of each task's promise.
  */
 class frame {
@@ -35,8 +45,8 @@ class frame {
 
   stack::stacklet *m_stacklet; ///< Needs to be in promise in case allocation elided (as does m_parent).
   union {
-    frame *m_parent;              ///< Non-root tasks store a pointer to their parent.
-    std::binary_semaphore *m_sem; ///< Root tasks store a pointer to a semaphore.
+    frame *m_parent;       ///< Non-root tasks store a pointer to their parent.
+    root_notify *m_notify; ///< Root tasks store a pointer to a notifier
   };
   std::atomic_uint16_t m_join = k_u16_max; ///< Number of children joined (with offset).
   std::uint16_t m_steal = 0;               ///< Number of times this frame has been stolen.
@@ -63,14 +73,18 @@ class frame {
   void set_parent(frame *parent) noexcept { m_parent = non_null(parent); }
 
   /**
-   * @brief Set the pointer to the semaphore.
+   * @brief Set a root tasks parent.
    */
-  void set_semaphore(std::binary_semaphore *sem) noexcept { m_sem = non_null(sem); }
+  void set_root_notify(root_notify *notify) noexcept { m_notify = non_null(notify); }
 
   /**
-   * @brief Set the stacklet object.
+   * @brief Set the stacklet object to point at a new stacklet.
+   *
+   * Returns the previous stacklet.
    */
-  void set_stacklet(stack::stacklet *stacklet) noexcept { m_stacklet = non_null(stacklet); }
+  auto reset_stacklet(stack::stacklet *stacklet) noexcept -> stack::stacklet * {
+    return std::exchange(m_stacklet, non_null(stacklet));
+  }
 
   /**
    * @brief Get a pointer to the parent frame.
@@ -80,11 +94,11 @@ class frame {
   [[nodiscard]] auto parent() const noexcept -> frame * { return m_parent; }
 
   /**
-   * @brief Get a pointer to the parent frame.
+   * @brief Get a pointer to the notifier for this root frame.
    *
    * Only valid if this is not a root frame.
    */
-  [[nodiscard]] auto semaphore() const noexcept -> std::binary_semaphore * { return m_sem; }
+  [[nodiscard]] auto notifier() const noexcept -> root_notify * { return m_notify; }
 
   /**
    * @brief Get a pointer to the top of the top of the stack-stack this frame was allocated on.

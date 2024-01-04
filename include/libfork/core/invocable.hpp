@@ -125,25 +125,18 @@ struct as_eventually : std::type_identity<eventually<R> *> {};
 template <>
 struct as_eventually<void> : std::type_identity<discard_t> {};
 
-template <typename R>
-struct as_manual_eventually : std::type_identity<eventually<R> *> {};
-template <>
-struct as_manual_eventually<void> : std::type_identity<discard_t> {};
-
 } // namespace detail
 
 /**
  * @brief Check that `Tag`-invoking and calling `F` with `Args...` produces task<R>.
  *
- * This also checks the results is consistent when it is discarded and returned by `eventually<R> *` or a
- * `manual_eventually<R> *`.
+ * This also checks the results is consistent when it is discarded and returned by `eventually<R> *`.
  */
 template <typename R, typename I, tag T, typename F, typename... Args>
-concept self_consistent =                                                              //
-    call_consistent<R, I, T, F, Args...> &&                                            //
-    call_consistent<R, discard_t, T, F, Args...> &&                                    //
-    call_consistent<R, typename detail::as_eventually<R>::type, T, F, Args...> &&      //
-    call_consistent<R, typename detail::as_manual_eventually<R>::type, T, F, Args...>; //
+concept self_consistent =                                                       //
+    call_consistent<R, I, T, F, Args...> &&                                     //
+    call_consistent<R, discard_t, T, F, Args...> &&                             //
+    call_consistent<R, typename detail::as_eventually<R>::type, T, F, Args...>; //
 
 // --------------------- //
 
@@ -155,8 +148,7 @@ concept self_consistent =                                                       
 // using as_eventually_t = detail::as_eventually<impl::unsafe_result_t<I, Tag, F, Args...>>::type;
 
 /**
- * @brief Check `F` is async invocable to a task with `I`,` discard_t` and the appropriate
- * `manual_eventually`.
+ * @brief Check `F` is async invocable to a task with `I`,` discard_t` and the appropriate `eventually`.
  */
 template <typename I, tag Tag, typename F, typename... Args>
 concept consistent_invocable =                                                //

@@ -11,13 +11,13 @@
 
 #include <concepts>
 #include <memory>
+#include <optional>
 #include <type_traits>
 #include <utility>
 
 #include "libfork/core/macro.hpp"
 #include "libfork/core/task.hpp"
 
-#include "libfork/core/impl/manual_lifetime.hpp"
 #include "libfork/core/impl/utility.hpp"
 
 /**
@@ -33,9 +33,10 @@ inline namespace core {
 // ------------------------------------------------------------------------ //
 
 /**
- * @brief A wrapper to delay construction of an object.
+ * @brief A wrapper to delay construction of an object, like ``std::optional``.
  *
- * This class supports delayed construction of immovable types and reference types.
+ * This class supports delayed construction of reference types. It is like a simplified version of
+ * `std::optional` that is only constructed once. Construction is done (zero or one times) via assignment.
  *
  * \rst
  *
@@ -43,32 +44,71 @@ inline namespace core {
  *    This documentation is generated from the non-reference specialization, see the source
  *    for the reference specialization.
  *
- * .. warning::
- *    It is undefined behavior if the object inside an `eventually` is not constructed before it
- *    is used or if the lifetime of the ``lf::eventually`` ends before an object is constructed.
- *    If you are placing instances of `eventually` on the heap you need to be very careful about
- *    exceptions.
- *
  * \endrst
  */
 template <impl::non_void T>
-class eventually : impl::manual_lifetime<T> {
- public:
-  using impl::manual_lifetime<T>::construct;
-  using impl::manual_lifetime<T>::operator=;
-  using impl::manual_lifetime<T>::operator->;
-  using impl::manual_lifetime<T>::operator*;
+class eventually : impl::immovable<eventually<T>> {
 
-  // clang-format off
+  std::optional<T> m_value; ///< The contained object.
+
+ public:
+  /**
+   * @brief Start lifetime of object at assignment.
+   */
+  template <typename U>
+    requires std::constructible_from<T, U>
+  void operator=(U &&expr) noexcept(std::is_nothrow_constructible_v<T, U>) {
+    LF_ASSERT(!m_value);
+    m_value.emplace(std::forward<U>(expr));
+  }
 
   /**
-   * @brief Destroy the object which __must__ be inside the eventually.
+   * @brief Access the contained object, must have been constructed first.
    */
-  constexpr ~eventually() noexcept requires std::is_trivially_destructible_v<T> = default;
+  [[nodiscard]] auto operator->() noexcept -> T * {
+    LF_ASSERT(m_value);
+    return m_value.operator->();
+  }
 
-  // clang-format on
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator->() const noexcept -> T const * {
+    LF_ASSERT(m_value);
+    return m_value.operator->();
+  }
 
-  constexpr ~eventually() noexcept(std::is_nothrow_destructible_v<T>) { this->destroy(); }
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() & noexcept -> T & {
+    LF_ASSERT(m_value);
+    return *m_value;
+  }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() const & noexcept -> T const & {
+    LF_ASSERT(m_value);
+    return *m_value;
+  }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() && noexcept -> T && {
+    LF_ASSERT(m_value);
+    return *std::move(m_value);
+  }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() const && noexcept -> T const && {
+    LF_ASSERT(m_value);
+    return *std::move(m_value);
+  }
 };
 
 // ------------------------------------------------------------------------ //
@@ -82,14 +122,6 @@ template <impl::non_void T>
   requires impl::reference<T>
 class eventually<T> : impl::immovable<eventually<T>> {
  public:
-  /**
-   * @brief Construct an object inside the eventually from ``expr``.
-   */
-  template <impl::safe_ref_bind_to<T> U>
-  void construct(U &&expr) noexcept {
-    m_value = std::addressof(expr);
-  }
-
   /**
    * @brief Construct an object inside the eventually from ``expr``.
    */
@@ -125,45 +157,6 @@ class eventually<T> : impl::immovable<eventually<T>> {
 
  private:
   std::remove_reference_t<T> *m_value;
-};
-
-// ------------------------------------------------------------------------ //
-
-/**
- * @brief A `lf::manual_eventually<T>` is an `lf::eventually<T>` which does not call destroy on destruction.
- *
- * This is useful for writing exception safe fork-join code and should be considered an expert-only feature.
- */
-template <impl::non_void T>
-class manual_eventually : impl::manual_lifetime<T> {
-
- public:
-  using impl::manual_lifetime<T>::construct;
-  using impl::manual_lifetime<T>::operator=;
-  using impl::manual_lifetime<T>::operator->;
-  using impl::manual_lifetime<T>::operator*;
-  using impl::manual_lifetime<T>::destroy;
-};
-
-/**
- * @brief A `lf::manual_eventually<T>` is an `lf::eventually<T>` which does not call destroy on destruction.
- *
- * This is useful for writing exception safe fork-join code and should be considered an expert-only feature.
- */
-template <impl::non_void T>
-  requires impl::reference<T>
-class manual_eventually<T> : eventually<T> {
-
- public:
-  using eventually<T>::construct;
-  using eventually<T>::operator=;
-  using eventually<T>::operator->;
-  using eventually<T>::operator*;
-
-  /**
-   * @brief Destroy the contained object (call its destructor).
-   */
-  void destroy() noexcept { static_assert(std::is_trivially_destructible_v<T>); };
 };
 
 } // namespace core

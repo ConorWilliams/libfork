@@ -21,7 +21,7 @@ TEST_CASE("Eventually, trivial types", "[eventually]") {
   a = 2;
 
   eventually<float> b;
-  b.construct(9);
+  b = 9;
 
   REQUIRE(*a == 2);
   REQUIRE(*b == 9);
@@ -36,7 +36,7 @@ TEST_CASE("Eventually, non-trivial types", "[eventually]") {
 
   std::vector<float> c = *std::move(a);
 
-  b.construct(c.begin(), c.end());
+  b = std::vector<float>(c.begin(), c.end());
 
   REQUIRE(c == *b);
 }
