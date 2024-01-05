@@ -29,9 +29,8 @@ namespace lf::impl {
 /**
  * @brief A small structure that acts a bit like a root task's parent.
  */
-struct root_notify {
+struct root_notify : stack_eptr {
   std::binary_semaphore sem{0}; ///< Notified when root task completes
-  std::exception_ptr eptr{};    ///< Set if root task finished with an exception.
 };
 
 /**

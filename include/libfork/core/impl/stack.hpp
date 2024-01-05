@@ -92,6 +92,24 @@ class stack_eptr {
   state m_except;                             ///< State of the exception pointer.
 #endif
 
+  /**
+   * @brief Cold path in `rethrow_if_exception` in its own non-inline function.
+   */
+  LF_NOINLINE void rethrow() {
+    if constexpr (LF_COMPILER_EXCEPTIONS) {
+
+      LF_ASSERT(*m_eptr != nullptr);
+
+      LF_DEFER {
+        LF_ASSERT(*m_eptr == nullptr);
+        m_eptr.destroy();
+        m_except = state::ok;
+      };
+
+      std::rethrow_exception(std::exchange(*m_eptr, nullptr));
+    }
+  }
+
  public:
   /**
    * @brief Set this to the OK state.
@@ -135,19 +153,10 @@ class stack_eptr {
    *
    * This can __only__ be called when the caller has exclusive ownership over this object.
    */
-  void rethrow_if_exception() {
+  LF_FORCEINLINE void rethrow_if_exception() {
     if constexpr (LF_COMPILER_EXCEPTIONS) {
       if (m_except == state::err) {
-
-        LF_ASSERT(*m_eptr != nullptr);
-
-        LF_DEFER {
-          LF_ASSERT(*m_eptr == nullptr);
-          m_eptr.destroy();
-          m_except = state::ok;
-        };
-
-        std::rethrow_exception(std::exchange(*m_eptr, nullptr));
+        rethrow();
       }
     }
   }

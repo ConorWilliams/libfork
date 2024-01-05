@@ -1618,6 +1618,24 @@ class stack_eptr {
   state m_except;                             ///< State of the exception pointer.
 #endif
 
+  /**
+   * @brief Cold path in `rethrow_if_exception` in its own non-inline function.
+   */
+  LF_NOINLINE void rethrow() {
+    if constexpr (LF_COMPILER_EXCEPTIONS) {
+
+      LF_ASSERT(*m_eptr != nullptr);
+
+      LF_DEFER {
+        LF_ASSERT(*m_eptr == nullptr);
+        m_eptr.destroy();
+        m_except = state::ok;
+      };
+
+      std::rethrow_exception(std::exchange(*m_eptr, nullptr));
+    }
+  }
+
  public:
   /**
    * @brief Set this to the OK state.
@@ -1661,19 +1679,10 @@ class stack_eptr {
    *
    * This can __only__ be called when the caller has exclusive ownership over this object.
    */
-  void rethrow_if_exception() {
+  LF_FORCEINLINE void rethrow_if_exception() {
     if constexpr (LF_COMPILER_EXCEPTIONS) {
       if (m_except == state::err) {
-
-        LF_ASSERT(*m_eptr != nullptr);
-
-        LF_DEFER {
-          LF_ASSERT(*m_eptr == nullptr);
-          m_eptr.destroy();
-          m_except = state::ok;
-        };
-
-        std::rethrow_exception(std::exchange(*m_eptr, nullptr));
+        rethrow();
       }
     }
   }
@@ -1965,9 +1974,8 @@ namespace lf::impl {
 /**
  * @brief A small structure that acts a bit like a root task's parent.
  */
-struct root_notify {
+struct root_notify : stack_eptr {
   std::binary_semaphore sem{0}; ///< Notified when root task completes
-  std::exception_ptr eptr{};    ///< Set if root task finished with an exception.
 };
 
 /**
@@ -3509,12 +3517,14 @@ struct join_awaitable {
   /**
    * @brief A noop in release.
    */
-  void await_resume() const noexcept {
+  void await_resume() const {
     LF_LOG("join resumes");
     // Check we have been reset.
     LF_ASSERT(self->load_steals() == 0);
     LF_ASSERT_NO_ASSUME(self->load_joins(std::memory_order_acquire) == k_u16_max);
     LF_ASSERT(self->stacklet() == tls::stack()->top());
+
+    self->stacklet()->rethrow_if_exception();
   }
 
   frame *self; ///< The frame of the awaiting coroutine.
@@ -3821,6 +3831,7 @@ auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
   constexpr bool is_void = std::is_void_v<R>;
 
   impl::root_notify notifier;
+  notifier.init_eptr();
   eventually<std::conditional_t<is_void, impl::empty, R>> result;
 
   // This is to support a worker sync waiting on work they will launch inline.
@@ -4170,15 +4181,6 @@ struct promise_base : frame {
 
   static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
 
-  /**
-   * @brief Terminates the program.
-   */
-  static void unhandled_exception() noexcept {
-    noexcept_invoke([] {
-      LF_RETHROW;
-    });
-  }
-
   // -------------------------------------------------------------- //
 
   template <co_allocable T, std::size_t E>
@@ -4267,8 +4269,8 @@ struct promise : promise_base, return_result<R, I> {
   /**
    * @brief Construct a new promise object.
    *
-   * Stores a handle to the promise in the `frame` and loads the tls stack and stores a pointer to the top
-   * fibril.
+   * Stores a handle to the promise in the `frame` and loads the tls stack
+   * and stores a pointer to the top fibril.
    */
   promise() noexcept
       : promise_base{std::coroutine_handle<promise>::from_promise(*this), tls::stack()->top()} {}
@@ -4293,6 +4295,17 @@ struct promise : promise_base, return_result<R, I> {
     return final_awaitable{};
   }
 
+  /**
+   * @brief Cache in parent's stacklet.
+   */
+  void unhandled_exception() noexcept {
+    if constexpr (Tag == tag::root) {
+      this->notifier()->capture_exception();
+    } else {
+      this->parent()->stacklet()->capture_exception();
+    }
+  }
+
  private:
   struct final_awaitable : std::suspend_always {
     static auto await_suspend(std::coroutine_handle<promise> child) noexcept -> std::coroutine_handle<> {
@@ -4302,11 +4315,10 @@ struct promise : promise_base, return_result<R, I> {
         LF_LOG("Root task at final suspend, releases semaphore and yields");
 
         child.promise().notifier()->sem.release();
-
-        // semaphore()->release();
         child.destroy();
 
         // A root task is always the first on a stack, now it has been completed the stack is empty.
+        LF_ASSERT(tls::stack()->empty());
 
         return std::noop_coroutine();
       }

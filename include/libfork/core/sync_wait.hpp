@@ -67,6 +67,7 @@ auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
   constexpr bool is_void = std::is_void_v<R>;
 
   impl::root_notify notifier;
+  notifier.init_eptr();
   eventually<std::conditional_t<is_void, impl::empty, R>> result;
 
   // This is to support a worker sync waiting on work they will launch inline.

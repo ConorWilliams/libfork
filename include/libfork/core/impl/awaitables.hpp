@@ -238,12 +238,14 @@ struct join_awaitable {
   /**
    * @brief A noop in release.
    */
-  void await_resume() const noexcept {
+  void await_resume() const {
     LF_LOG("join resumes");
     // Check we have been reset.
     LF_ASSERT(self->load_steals() == 0);
     LF_ASSERT_NO_ASSUME(self->load_joins(std::memory_order_acquire) == k_u16_max);
     LF_ASSERT(self->stacklet() == tls::stack()->top());
+
+    self->stacklet()->rethrow_if_exception();
   }
 
   frame *self; ///< The frame of the awaiting coroutine.

@@ -152,15 +152,6 @@ struct promise_base : frame {
 
   static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
 
-  /**
-   * @brief Terminates the program.
-   */
-  static void unhandled_exception() noexcept {
-    noexcept_invoke([] {
-      LF_RETHROW;
-    });
-  }
-
   // -------------------------------------------------------------- //
 
   template <co_allocable T, std::size_t E>
@@ -249,8 +240,8 @@ struct promise : promise_base, return_result<R, I> {
   /**
    * @brief Construct a new promise object.
    *
-   * Stores a handle to the promise in the `frame` and loads the tls stack and stores a pointer to the top
-   * fibril.
+   * Stores a handle to the promise in the `frame` and loads the tls stack
+   * and stores a pointer to the top fibril.
    */
   promise() noexcept
       : promise_base{std::coroutine_handle<promise>::from_promise(*this), tls::stack()->top()} {}
@@ -275,6 +266,17 @@ struct promise : promise_base, return_result<R, I> {
     return final_awaitable{};
   }
 
+  /**
+   * @brief Cache in parent's stacklet.
+   */
+  void unhandled_exception() noexcept {
+    if constexpr (Tag == tag::root) {
+      this->notifier()->capture_exception();
+    } else {
+      this->parent()->stacklet()->capture_exception();
+    }
+  }
+
  private:
   struct final_awaitable : std::suspend_always {
     static auto await_suspend(std::coroutine_handle<promise> child) noexcept -> std::coroutine_handle<> {
@@ -284,11 +286,10 @@ struct promise : promise_base, return_result<R, I> {
         LF_LOG("Root task at final suspend, releases semaphore and yields");
 
         child.promise().notifier()->sem.release();
-
-        // semaphore()->release();
         child.destroy();
 
         // A root task is always the first on a stack, now it has been completed the stack is empty.
+        LF_ASSERT(tls::stack()->empty());
 
         return std::noop_coroutine();
       }
