@@ -7,12 +7,13 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <exception>
-#include <libfork/core/macro.hpp>
+#include <thread>
 #include <vector>
 
-#include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_template_test_macros.hpp>
 
 #include "libfork/core.hpp"
+#include "libfork/schedule.hpp"
 
 // NOLINTBEGIN No need to check the tests for style.
 
@@ -26,37 +27,135 @@ using lf::join;
 
 using lf::task;
 
+template <typename T>
+auto make_scheduler() -> T {
+  if constexpr (std::constructible_from<T, std::size_t>) {
+    return T{std::min(4U, std::thread::hardware_concurrency())};
+  } else {
+    return T{};
+  }
+}
+
 constexpr auto fib = [](auto fib, int n) -> task<int> {
   //
+
+  if (n == 7) {
+    throw std::runtime_error{"7 is unlucky"};
+  }
+
   if (n < 2) {
     co_return n;
   }
 
   int a, b;
 
-  std::exception_ptr __exception_ptr;
+  {
+    std::exception_ptr __exception_ptr;
 
-  try {
-    co_await fork[a, fib](n - 1);
-    co_await call[b, fib](n - 2);
-  } catch (...) {
-    __exception_ptr = std::current_exception();
-    goto __exception;
+    // clang-format off
+
+    LF_TRY {
+      co_await fork(&a, fib)(n - 1);
+      co_await call(&b, fib)(n - 2);
+      goto fallthrough;
+    } LF_CATCH_ALL {
+      __exception_ptr = std::current_exception();
+    }
+
+    // clang-format on
+
+    co_await join;
+    std::rethrow_exception(std::move(__exception_ptr));
+
+  fallthrough:
+    LF_ASSERT(__exception_ptr == nullptr);
+    co_await join;
   }
 
-  co_await join;
-  goto __fallthrough;
+  co_return a + b;
+};
 
-__exception:
-  LF_ASSERT(__exception_ptr);
-  co_await join;
-  std::rethrow_exception(std::move(__exception_ptr));
+constexpr auto fib_integ = [](auto fib, int n) -> task<int> {
+  //
 
-__fallthrough:
+  if (n == 7) {
+    throw std::runtime_error{"7 is unlucky"};
+  }
+
+  if (n < 2) {
+    co_return n;
+  }
+
+  int a, b;
+
+  // clang-format off
+
+  LF_TRY {
+    co_await fork(&a, fib)(n - 1);
+    co_await call(&b, fib)(n - 2);
+  } LF_CATCH_ALL {
+    fib.stash_exception();
+  }
+
+  // clang-format on
+
+  co_await join;
 
   co_return a + b;
 };
 
 } // namespace
+
+TEMPLATE_TEST_CASE("Exceptional fib", "[exception][template]", unit_pool, busy_pool, lazy_pool) {
+
+  auto schedule = make_scheduler<TestType>();
+
+  for (int i = 0; i < 1000; ++i) {
+
+    for (int j = 0; j < 14; ++j) {
+
+      // clang-format off
+
+      LF_TRY {
+        sync_wait(schedule, fib, j);
+        
+        #if LF_COMPILER_EXCEPTIONS
+          REQUIRE(j < 7);
+        #endif
+      } LF_CATCH_ALL {
+        REQUIRE(j >= 7);
+      }
+
+      // clang-format on
+    }
+  }
+}
+
+TEMPLATE_TEST_CASE("Integ exceptional fib", "[exception][template]", unit_pool, busy_pool, lazy_pool) {
+
+  auto schedule = make_scheduler<TestType>();
+
+  for (int i = 0; i < 1000; ++i) {
+
+    for (int j = 0; j < 14; ++j) {
+
+      // clang-format off
+
+      LF_TRY {
+        
+        sync_wait(schedule, fib_integ, j);
+
+        #if LF_COMPILER_EXCEPTIONS
+          REQUIRE(j < 7);
+        #endif
+
+      } LF_CATCH_ALL {
+        REQUIRE(j >= 7);
+      }
+
+      // clang-format on
+    }
+  }
+}
 
 // NOLINTEND

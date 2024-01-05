@@ -67,7 +67,6 @@ auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
   constexpr bool is_void = std::is_void_v<R>;
 
   impl::root_notify notifier;
-  notifier.init_eptr();
   eventually<std::conditional_t<is_void, impl::empty, R>> result;
 
   // This is to support a worker sync waiting on work they will launch inline.
@@ -94,10 +93,10 @@ auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
   }
 
   // This makes a coroutine which can only be destroyed at final_suspend
-  // hence, no exceptions from here on.
+  // hence, no exceptions until it has run.
   impl::quasi_awaitable await = std::move(combinator)(std::forward<Args>(args)...);
 
-  return [&]() noexcept -> async_result_t<F, Args...> {
+  [&]() noexcept {
     //
     await.promise->set_root_notify(&notifier);
     auto *handle = std::bit_cast<submit_handle>(static_cast<impl::frame *>(await.promise));
@@ -115,11 +114,15 @@ auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
 
     std::forward<Sch>(sch).schedule(&node);
     notifier.sem.acquire();
-
-    if constexpr (!is_void) {
-      return *std::move(result);
-    }
   }();
+
+  if (notifier.m_eptr) {
+    std::rethrow_exception(std::move(notifier.m_eptr));
+  }
+
+  if constexpr (!is_void) {
+    return *std::move(result);
+  }
 }
 
 } // namespace core

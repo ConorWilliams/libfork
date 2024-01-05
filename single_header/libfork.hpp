@@ -1335,26 +1335,6 @@ constexpr deque<T>::~deque() noexcept {
 #include <semaphore>
 #include <type_traits>
 #include <utility>
-#ifndef F7577AB3_0439_404D_9D98_072AB84FBCD0
-#define F7577AB3_0439_404D_9D98_072AB84FBCD0
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <algorithm>
-#include <atomic>
-#include <bit>
-#include <cstddef>
-#include <cstdlib>
-
-#include <memory>
-#include <type_traits>
-#include <utility>
 #ifndef B4EE570B_F5CF_42CB_9AF3_7376F45FDACC
 #define B4EE570B_F5CF_42CB_9AF3_7376F45FDACC
 
@@ -1549,7 +1529,33 @@ class manual_lifetime : immovable<manual_lifetime<T>> {
 } // namespace lf::impl
 
 #endif /* F51F8998_9E69_458E_95E1_8592A49FA76C */
+#ifndef F7577AB3_0439_404D_9D98_072AB84FBCD0
+#define F7577AB3_0439_404D_9D98_072AB84FBCD0
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <algorithm>
+#include <bit>
+#include <cstddef>
+#include <cstdlib>
+
+#include <memory>
+#include <type_traits>
+#include <utility>
+
+
+
+/**
+ * @file stack.hpp
+ *
+ * @brief Implementation of libfork's geometric segmented stacks.
+ */
 
 #ifndef LF_FIBRE_INIT_SIZE
   /**
@@ -1561,12 +1567,6 @@ class manual_lifetime : immovable<manual_lifetime<T>> {
 #endif
 
 static_assert(LF_FIBRE_INIT_SIZE > 0, "Stacks must have a positive size");
-
-/**
- * @file stack.hpp
- *
- * @brief Implementation of libfork's geometric segmented stacks.
- */
 
 namespace lf::impl {
 
@@ -1597,98 +1597,6 @@ inline constexpr auto round_up_to_page_size(std::size_t size) noexcept -> std::s
 }
 
 /**
- * @brief A trivial wrapper around a `std::exception_ptr` that allows for concurrent storage.
- *
- * If `LF_COMPILER_EXCEPTIONS` is false then this is an empty class and all its methods are no-ops.
- */
-class stack_eptr {
-
-#if LF_COMPILER_EXCEPTIONS
-  /**
-   * @brief States of `m_eptr`.
-   */
-  enum class state {
-    ok, ///< `m_eptr` is uninitialized.
-    err ///< `m_eptr` contains a live exception pointer.
-  };
-
-  static_assert(std::atomic_ref<state>::is_always_lock_free, "Lock-free atomic's required");
-
-  manual_lifetime<std::exception_ptr> m_eptr; ///< Maybe an exception pointer.
-  state m_except;                             ///< State of the exception pointer.
-#endif
-
-  /**
-   * @brief Cold path in `rethrow_if_exception` in its own non-inline function.
-   */
-  LF_NOINLINE void rethrow() {
-    if constexpr (LF_COMPILER_EXCEPTIONS) {
-
-      LF_ASSERT(*m_eptr != nullptr);
-
-      LF_DEFER {
-        LF_ASSERT(*m_eptr == nullptr);
-        m_eptr.destroy();
-        m_except = state::ok;
-      };
-
-      std::rethrow_exception(std::exchange(*m_eptr, nullptr));
-    }
-  }
-
- public:
-  /**
-   * @brief Set this to the OK state.
-   *
-   * Can __only__ be called when the caller has exclusive ownership over this object.
-   */
-  void init_eptr() noexcept {
-    if constexpr (LF_COMPILER_EXCEPTIONS) {
-      m_except = state::ok;
-    }
-  }
-
-  /**
-   * @brief Check if this contains an exception.
-   *
-   * Can __only__ be called when the caller has exclusive ownership over this object.
-   */
-  [[nodiscard]] auto has_err() const noexcept -> bool {
-    if constexpr (LF_COMPILER_EXCEPTIONS) {
-      return m_except == state::err;
-    } else {
-      return true;
-    }
-  }
-
-  /**
-   * @brief Capture the exception currently being thrown.
-   *
-   * Safe to call concurrently, first exception is saved.
-   */
-  void capture_exception() noexcept {
-    if constexpr (LF_COMPILER_EXCEPTIONS) {
-      if (std::atomic_ref{m_except}.exchange(state::err) == state::ok) {
-        m_eptr.construct(std::current_exception());
-      }
-    }
-  }
-
-  /**
-   * @brief If this contains an exception then it will be rethrown, reset this object to the OK state.
-   *
-   * This can __only__ be called when the caller has exclusive ownership over this object.
-   */
-  LF_FORCEINLINE void rethrow_if_exception() {
-    if constexpr (LF_COMPILER_EXCEPTIONS) {
-      if (m_except == state::err) {
-        rethrow();
-      }
-    }
-  }
-};
-
-/**
  * @brief A stack is a user-space (geometric) segmented program stack.
  *
  * A stack stores the execution of a DAG from root (which may be a stolen task or true root) to suspend
@@ -1710,7 +1618,7 @@ class stack {
    * Each stacklet also contains an exception pointer and atomic flag which stores exceptions thrown by
    * children.
    */
-  class alignas(impl::k_new_align) stacklet : impl::immovable<stacklet>, public stack_eptr {
+  class alignas(impl::k_new_align) stacklet : impl::immovable<stacklet> {
 
     friend class stack;
 
@@ -1754,7 +1662,6 @@ class stack {
      */
     void set_next(stacklet *new_next) noexcept {
       LF_ASSERT(is_top());
-      LF_ASSERT(m_next == nullptr || m_next->has_err() == false);
       std::free(std::exchange(m_next, new_next)); // NOLINT
     }
 
@@ -1791,7 +1698,6 @@ class stack {
 
       next->m_prev = prev;
       next->m_next = nullptr;
-      next->init_eptr();
 
       return next;
     }
@@ -1859,10 +1765,9 @@ class stack {
 
   ~stack() noexcept {
     LF_ASSERT(m_fib);
-    LF_ASSERT(!m_fib->m_prev);            // Should only be destructed at the root.
-    LF_ASSERT(m_fib->has_err() == false); // Exceptions should have been rethrown.
-    m_fib->set_next(nullptr);             // Free a cached stacklet.
-    std::free(m_fib);                     // NOLINT
+    LF_ASSERT(!m_fib->m_prev); // Should only be destructed at the root.
+    m_fib->set_next(nullptr);  // Free a cached stacklet.
+    std::free(m_fib);          // NOLINT
   }
 
   [[nodiscard]] auto empty() -> bool {
@@ -1974,7 +1879,8 @@ namespace lf::impl {
 /**
  * @brief A small structure that acts a bit like a root task's parent.
  */
-struct root_notify : stack_eptr {
+struct root_notify {
+  std::exception_ptr m_eptr;    ///< Maybe an exception pointer.
   std::binary_semaphore sem{0}; ///< Notified when root task completes
 };
 
@@ -1983,17 +1889,45 @@ struct root_notify : stack_eptr {
  */
 class frame {
 
+#if LF_COMPILER_EXCEPTIONS
+  manual_lifetime<std::exception_ptr> m_eptr; ///< Maybe an exception pointer.
+#endif
+
 #ifndef LF_COROUTINE_OFFSET
   std::coroutine_handle<> m_this_coro; ///< Handle to this coroutine.
 #endif
 
   stack::stacklet *m_stacklet; ///< Needs to be in promise in case allocation elided (as does m_parent).
+
   union {
     frame *m_parent;       ///< Non-root tasks store a pointer to their parent.
     root_notify *m_notify; ///< Root tasks store a pointer to a notifier
   };
+
   std::atomic_uint16_t m_join = k_u16_max; ///< Number of children joined (with offset).
   std::uint16_t m_steal = 0;               ///< Number of times this frame has been stolen.
+
+#if LF_COMPILER_EXCEPTIONS
+  bool m_except = false; ///< Flag to indicate if an exception has been set.
+#endif
+
+  /**
+   * @brief Cold path in `rethrow_if_exception` in its own non-inline function.
+   */
+  LF_NOINLINE void rethrow() {
+#if LF_COMPILER_EXCEPTIONS
+
+    LF_ASSERT(*m_eptr != nullptr);
+
+    LF_DEFER {
+      LF_ASSERT(*m_eptr == nullptr);
+      m_eptr.destroy();
+      m_except = false;
+    };
+
+    std::rethrow_exception(std::exchange(*m_eptr, nullptr));
+#endif
+  }
 
  public:
   /**
@@ -2096,6 +2030,45 @@ class frame {
     // only thread who can touch this control block until a steal which
     // would provide the required memory synchronization.
     std::construct_at(&m_join, k_u16_max);
+  }
+
+  /**
+   * @brief Capture the exception currently being thrown.
+   *
+   * Safe to call concurrently, first exception is saved.
+   */
+  void capture_exception() noexcept {
+#if LF_COMPILER_EXCEPTIONS
+    if (!std::atomic_ref{m_except}.exchange(true, std::memory_order_acq_rel)) {
+      m_eptr.construct(std::current_exception());
+    }
+#endif
+  }
+
+  /**
+   * @brief If this contains an exception then it will be rethrown, reset this object to the OK state.
+   *
+   * This can __only__ be called when the caller has exclusive ownership over this object.
+   */
+  LF_FORCEINLINE void rethrow_if_exception() {
+#if LF_COMPILER_EXCEPTIONS
+    if (m_except) {
+      rethrow();
+    }
+#endif
+  }
+
+  /**
+   * @brief Check if this contains an exception.
+   *
+   * This can __only__ be called when the caller has exclusive ownership over this object.
+   */
+  [[nodiscard]] auto has_exception() const noexcept -> bool {
+#if LF_COMPILER_EXCEPTIONS
+    return m_except;
+#else
+    return false;
+#endif
   }
 };
 
@@ -2990,12 +2963,13 @@ concept async_function_object = std::is_object_v<F> && std::copy_constructible<F
  * An async functions' invocability and return type must be independent of their first argument except for its
  * tag value. A user may query the first argument's static member `tag` to obtain this value. Additionally, a
  * user may query the first argument's static member function `context()` to obtain a pointer to the current
- * workers `lf::context`.
+ * workers `lf::context`. Finally a user may cache an exception in-flight by calling `.stash_exception()`.
  */
 template <typename T>
 concept first_arg = async_function_object<T> && requires (T arg) {
   { T::tag } -> std::convertible_to<tag>;
   { T::context() } -> std::same_as<context *>;
+  { arg.stash_exception() } noexcept;
 };
 
 } // namespace core
@@ -3008,6 +2982,7 @@ namespace impl {
  * Its functions are:
  *
  * - Act as a y-combinator (expose same invocability as F).
+ * - Provide a handle to the coroutine frame for exception handling.
  * - Statically inform the return pointer type.
  * - Statically provide the tag.
  * - Statically provide the calling argument types.
@@ -3020,6 +2995,15 @@ class first_arg_t {
   first_arg_t() = default;
 
   static auto context() -> context * { return tls::context(); }
+
+  /**
+   * @brief Stash an exception that will be rethrown at the end of the next join.
+   */
+  void stash_exception() const noexcept {
+#if LF_COMPILER_EXCEPTIONS
+    m_frame->capture_exception();
+#endif
+  }
 
   template <different_from<first_arg_t> T>
     requires std::constructible_from<F, T>
@@ -3056,11 +3040,23 @@ class first_arg_t {
 
  private:
   /**
-   * @brief Hidden friend reduces discoverability.
+   * @brief Hidden friend reduces discoverability, this is an implementation detail.
    */
-  friend auto unwrap(first_arg_t &&arg) -> F && { return std::move(arg.m_fun); }
+  friend auto unwrap(first_arg_t &&arg) noexcept -> F && { return std::move(arg.m_fun); }
 
-  F m_fun;
+  /**
+   * @brief Hidden friend reduces discoverability, this is an implementation detail.
+   */
+  LF_FORCEINLINE friend auto unsafe_set_frame(first_arg_t &arg, frame *frame) noexcept {
+#if LF_COMPILER_EXCEPTIONS
+    arg.m_frame = frame;
+#endif
+  }
+
+  [[no_unique_address]] F m_fun;
+#if LF_COMPILER_EXCEPTIONS
+  frame *m_frame;
+#endif
 };
 
 } // namespace impl
@@ -3295,7 +3291,6 @@ using async_result_t = impl::unsafe_result_t<impl::discard_t, tag::call, F, Args
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <coroutine>
-
 #include <span>
 #include <type_traits>
 
@@ -3515,7 +3510,7 @@ struct join_awaitable {
   }
 
   /**
-   * @brief A noop in release.
+   * @brief Propagate exceptions.
    */
   void await_resume() const {
     LF_LOG("join resumes");
@@ -3524,7 +3519,7 @@ struct join_awaitable {
     LF_ASSERT_NO_ASSUME(self->load_joins(std::memory_order_acquire) == k_u16_max);
     LF_ASSERT(self->stacklet() == tls::stack()->top());
 
-    self->stacklet()->rethrow_if_exception();
+    self->rethrow_if_exception();
   }
 
   frame *self; ///< The frame of the awaiting coroutine.
@@ -3831,7 +3826,6 @@ auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
   constexpr bool is_void = std::is_void_v<R>;
 
   impl::root_notify notifier;
-  notifier.init_eptr();
   eventually<std::conditional_t<is_void, impl::empty, R>> result;
 
   // This is to support a worker sync waiting on work they will launch inline.
@@ -3858,10 +3852,10 @@ auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
   }
 
   // This makes a coroutine which can only be destroyed at final_suspend
-  // hence, no exceptions from here on.
+  // hence, no exceptions until it has run.
   impl::quasi_awaitable await = std::move(combinator)(std::forward<Args>(args)...);
 
-  return [&]() noexcept -> async_result_t<F, Args...> {
+  [&]() noexcept {
     //
     await.promise->set_root_notify(&notifier);
     auto *handle = std::bit_cast<submit_handle>(static_cast<impl::frame *>(await.promise));
@@ -3879,11 +3873,15 @@ auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
 
     std::forward<Sch>(sch).schedule(&node);
     notifier.sem.acquire();
-
-    if constexpr (!is_void) {
-      return *std::move(result);
-    }
   }();
+
+  if (notifier.m_eptr) {
+    std::rethrow_exception(std::move(notifier.m_eptr));
+  }
+
+  if constexpr (!is_void) {
+    return *std::move(result);
+  }
 }
 
 } // namespace core
@@ -3965,6 +3963,7 @@ inline void resume(task_handle ptr) noexcept {
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <concepts>
+#include <exception>
 #include <new>
 #include <type_traits>
 #include <utility>
@@ -4267,13 +4266,22 @@ template <returnable R, return_address_for<R> I, tag Tag>
 struct promise : promise_base, return_result<R, I> {
 
   /**
+   * @brief Construct a new promise object, delegate to main constructor.
+   */
+  template <typename This, first_arg Arg, typename... Args>
+  promise(This const & /*unused*/, Arg &arg, Args const &.../*unused*/) noexcept : promise(arg) {}
+
+  /**
    * @brief Construct a new promise object.
    *
    * Stores a handle to the promise in the `frame` and loads the tls stack
-   * and stores a pointer to the top fibril.
+   * and stores a pointer to the top fibril. Also sets the first argument's frame pointer.
    */
-  promise() noexcept
-      : promise_base{std::coroutine_handle<promise>::from_promise(*this), tls::stack()->top()} {}
+  template <first_arg Arg, typename... Args>
+  explicit promise(Arg &arg, Args const &.../*unused*/) noexcept
+      : promise_base{std::coroutine_handle<promise>::from_promise(*this), tls::stack()->top()} {
+    unsafe_set_frame(arg, this);
+  }
 
   /**
    * @brief Returned task stores a copy of the `this` pointer.
@@ -4291,6 +4299,7 @@ struct promise : promise_base, return_result<R, I> {
 
     LF_ASSERT(this->load_steals() == 0);                                           // Fork without join.
     LF_ASSERT_NO_ASSUME(this->load_joins(std::memory_order_acquire) == k_u16_max); // Invalid state.
+    LF_ASSERT(!this->has_exception());                                             // Must have rethrown.
 
     return final_awaitable{};
   }
@@ -4300,9 +4309,9 @@ struct promise : promise_base, return_result<R, I> {
    */
   void unhandled_exception() noexcept {
     if constexpr (Tag == tag::root) {
-      this->notifier()->capture_exception();
+      this->notifier()->m_eptr = std::current_exception();
     } else {
-      this->parent()->stacklet()->capture_exception();
+      this->parent()->capture_exception();
     }
   }
 

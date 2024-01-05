@@ -10,7 +10,6 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <algorithm>
-#include <atomic>
 #include <bit>
 #include <cstddef>
 #include <cstdlib>
@@ -19,11 +18,15 @@
 #include <type_traits>
 #include <utility>
 
-#include "libfork/core/defer.hpp"
 #include "libfork/core/macro.hpp"
 
-#include "libfork/core/impl/manual_lifetime.hpp"
 #include "libfork/core/impl/utility.hpp"
+
+/**
+ * @file stack.hpp
+ *
+ * @brief Implementation of libfork's geometric segmented stacks.
+ */
 
 #ifndef LF_FIBRE_INIT_SIZE
   /**
@@ -35,12 +38,6 @@
 #endif
 
 static_assert(LF_FIBRE_INIT_SIZE > 0, "Stacks must have a positive size");
-
-/**
- * @file stack.hpp
- *
- * @brief Implementation of libfork's geometric segmented stacks.
- */
 
 namespace lf::impl {
 
@@ -71,98 +68,6 @@ inline constexpr auto round_up_to_page_size(std::size_t size) noexcept -> std::s
 }
 
 /**
- * @brief A trivial wrapper around a `std::exception_ptr` that allows for concurrent storage.
- *
- * If `LF_COMPILER_EXCEPTIONS` is false then this is an empty class and all its methods are no-ops.
- */
-class stack_eptr {
-
-#if LF_COMPILER_EXCEPTIONS
-  /**
-   * @brief States of `m_eptr`.
-   */
-  enum class state {
-    ok, ///< `m_eptr` is uninitialized.
-    err ///< `m_eptr` contains a live exception pointer.
-  };
-
-  static_assert(std::atomic_ref<state>::is_always_lock_free, "Lock-free atomic's required");
-
-  manual_lifetime<std::exception_ptr> m_eptr; ///< Maybe an exception pointer.
-  state m_except;                             ///< State of the exception pointer.
-#endif
-
-  /**
-   * @brief Cold path in `rethrow_if_exception` in its own non-inline function.
-   */
-  LF_NOINLINE void rethrow() {
-    if constexpr (LF_COMPILER_EXCEPTIONS) {
-
-      LF_ASSERT(*m_eptr != nullptr);
-
-      LF_DEFER {
-        LF_ASSERT(*m_eptr == nullptr);
-        m_eptr.destroy();
-        m_except = state::ok;
-      };
-
-      std::rethrow_exception(std::exchange(*m_eptr, nullptr));
-    }
-  }
-
- public:
-  /**
-   * @brief Set this to the OK state.
-   *
-   * Can __only__ be called when the caller has exclusive ownership over this object.
-   */
-  void init_eptr() noexcept {
-    if constexpr (LF_COMPILER_EXCEPTIONS) {
-      m_except = state::ok;
-    }
-  }
-
-  /**
-   * @brief Check if this contains an exception.
-   *
-   * Can __only__ be called when the caller has exclusive ownership over this object.
-   */
-  [[nodiscard]] auto has_err() const noexcept -> bool {
-    if constexpr (LF_COMPILER_EXCEPTIONS) {
-      return m_except == state::err;
-    } else {
-      return true;
-    }
-  }
-
-  /**
-   * @brief Capture the exception currently being thrown.
-   *
-   * Safe to call concurrently, first exception is saved.
-   */
-  void capture_exception() noexcept {
-    if constexpr (LF_COMPILER_EXCEPTIONS) {
-      if (std::atomic_ref{m_except}.exchange(state::err) == state::ok) {
-        m_eptr.construct(std::current_exception());
-      }
-    }
-  }
-
-  /**
-   * @brief If this contains an exception then it will be rethrown, reset this object to the OK state.
-   *
-   * This can __only__ be called when the caller has exclusive ownership over this object.
-   */
-  LF_FORCEINLINE void rethrow_if_exception() {
-    if constexpr (LF_COMPILER_EXCEPTIONS) {
-      if (m_except == state::err) {
-        rethrow();
-      }
-    }
-  }
-};
-
-/**
  * @brief A stack is a user-space (geometric) segmented program stack.
  *
  * A stack stores the execution of a DAG from root (which may be a stolen task or true root) to suspend
@@ -184,7 +89,7 @@ class stack {
    * Each stacklet also contains an exception pointer and atomic flag which stores exceptions thrown by
    * children.
    */
-  class alignas(impl::k_new_align) stacklet : impl::immovable<stacklet>, public stack_eptr {
+  class alignas(impl::k_new_align) stacklet : impl::immovable<stacklet> {
 
     friend class stack;
 
@@ -228,7 +133,6 @@ class stack {
      */
     void set_next(stacklet *new_next) noexcept {
       LF_ASSERT(is_top());
-      LF_ASSERT(m_next == nullptr || m_next->has_err() == false);
       std::free(std::exchange(m_next, new_next)); // NOLINT
     }
 
@@ -265,7 +169,6 @@ class stack {
 
       next->m_prev = prev;
       next->m_next = nullptr;
-      next->init_eptr();
 
       return next;
     }
@@ -333,10 +236,9 @@ class stack {
 
   ~stack() noexcept {
     LF_ASSERT(m_fib);
-    LF_ASSERT(!m_fib->m_prev);            // Should only be destructed at the root.
-    LF_ASSERT(m_fib->has_err() == false); // Exceptions should have been rethrown.
-    m_fib->set_next(nullptr);             // Free a cached stacklet.
-    std::free(m_fib);                     // NOLINT
+    LF_ASSERT(!m_fib->m_prev); // Should only be destructed at the root.
+    m_fib->set_next(nullptr);  // Free a cached stacklet.
+    std::free(m_fib);          // NOLINT
   }
 
   [[nodiscard]] auto empty() -> bool {

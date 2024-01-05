@@ -16,6 +16,9 @@
 #include <type_traits>
 #include <utility>
 
+#include "libfork/core/defer.hpp"
+
+#include "libfork/core/impl/manual_lifetime.hpp"
 #include "libfork/core/impl/stack.hpp"
 
 /**
@@ -29,7 +32,8 @@ namespace lf::impl {
 /**
  * @brief A small structure that acts a bit like a root task's parent.
  */
-struct root_notify : stack_eptr {
+struct root_notify {
+  std::exception_ptr m_eptr;    ///< Maybe an exception pointer.
   std::binary_semaphore sem{0}; ///< Notified when root task completes
 };
 
@@ -38,17 +42,45 @@ struct root_notify : stack_eptr {
  */
 class frame {
 
+#if LF_COMPILER_EXCEPTIONS
+  manual_lifetime<std::exception_ptr> m_eptr; ///< Maybe an exception pointer.
+#endif
+
 #ifndef LF_COROUTINE_OFFSET
   std::coroutine_handle<> m_this_coro; ///< Handle to this coroutine.
 #endif
 
   stack::stacklet *m_stacklet; ///< Needs to be in promise in case allocation elided (as does m_parent).
+
   union {
     frame *m_parent;       ///< Non-root tasks store a pointer to their parent.
     root_notify *m_notify; ///< Root tasks store a pointer to a notifier
   };
+
   std::atomic_uint16_t m_join = k_u16_max; ///< Number of children joined (with offset).
   std::uint16_t m_steal = 0;               ///< Number of times this frame has been stolen.
+
+#if LF_COMPILER_EXCEPTIONS
+  bool m_except = false; ///< Flag to indicate if an exception has been set.
+#endif
+
+  /**
+   * @brief Cold path in `rethrow_if_exception` in its own non-inline function.
+   */
+  LF_NOINLINE void rethrow() {
+#if LF_COMPILER_EXCEPTIONS
+
+    LF_ASSERT(*m_eptr != nullptr);
+
+    LF_DEFER {
+      LF_ASSERT(*m_eptr == nullptr);
+      m_eptr.destroy();
+      m_except = false;
+    };
+
+    std::rethrow_exception(std::exchange(*m_eptr, nullptr));
+#endif
+  }
 
  public:
   /**
@@ -151,6 +183,45 @@ class frame {
     // only thread who can touch this control block until a steal which
     // would provide the required memory synchronization.
     std::construct_at(&m_join, k_u16_max);
+  }
+
+  /**
+   * @brief Capture the exception currently being thrown.
+   *
+   * Safe to call concurrently, first exception is saved.
+   */
+  void capture_exception() noexcept {
+#if LF_COMPILER_EXCEPTIONS
+    if (!std::atomic_ref{m_except}.exchange(true, std::memory_order_acq_rel)) {
+      m_eptr.construct(std::current_exception());
+    }
+#endif
+  }
+
+  /**
+   * @brief If this contains an exception then it will be rethrown, reset this object to the OK state.
+   *
+   * This can __only__ be called when the caller has exclusive ownership over this object.
+   */
+  LF_FORCEINLINE void rethrow_if_exception() {
+#if LF_COMPILER_EXCEPTIONS
+    if (m_except) {
+      rethrow();
+    }
+#endif
+  }
+
+  /**
+   * @brief Check if this contains an exception.
+   *
+   * This can __only__ be called when the caller has exclusive ownership over this object.
+   */
+  [[nodiscard]] auto has_exception() const noexcept -> bool {
+#if LF_COMPILER_EXCEPTIONS
+    return m_except;
+#else
+    return false;
+#endif
   }
 };
 

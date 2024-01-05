@@ -71,12 +71,13 @@ concept async_function_object = std::is_object_v<F> && std::copy_constructible<F
  * An async functions' invocability and return type must be independent of their first argument except for its
  * tag value. A user may query the first argument's static member `tag` to obtain this value. Additionally, a
  * user may query the first argument's static member function `context()` to obtain a pointer to the current
- * workers `lf::context`.
+ * workers `lf::context`. Finally a user may cache an exception in-flight by calling `.stash_exception()`.
  */
 template <typename T>
 concept first_arg = async_function_object<T> && requires (T arg) {
   { T::tag } -> std::convertible_to<tag>;
   { T::context() } -> std::same_as<context *>;
+  { arg.stash_exception() } noexcept;
 };
 
 } // namespace core
@@ -89,6 +90,7 @@ namespace impl {
  * Its functions are:
  *
  * - Act as a y-combinator (expose same invocability as F).
+ * - Provide a handle to the coroutine frame for exception handling.
  * - Statically inform the return pointer type.
  * - Statically provide the tag.
  * - Statically provide the calling argument types.
@@ -101,6 +103,15 @@ class first_arg_t {
   first_arg_t() = default;
 
   static auto context() -> context * { return tls::context(); }
+
+  /**
+   * @brief Stash an exception that will be rethrown at the end of the next join.
+   */
+  void stash_exception() const noexcept {
+#if LF_COMPILER_EXCEPTIONS
+    m_frame->capture_exception();
+#endif
+  }
 
   template <different_from<first_arg_t> T>
     requires std::constructible_from<F, T>
@@ -137,11 +148,23 @@ class first_arg_t {
 
  private:
   /**
-   * @brief Hidden friend reduces discoverability.
+   * @brief Hidden friend reduces discoverability, this is an implementation detail.
    */
-  friend auto unwrap(first_arg_t &&arg) -> F && { return std::move(arg.m_fun); }
+  friend auto unwrap(first_arg_t &&arg) noexcept -> F && { return std::move(arg.m_fun); }
 
-  F m_fun;
+  /**
+   * @brief Hidden friend reduces discoverability, this is an implementation detail.
+   */
+  LF_FORCEINLINE friend auto unsafe_set_frame(first_arg_t &arg, frame *frame) noexcept {
+#if LF_COMPILER_EXCEPTIONS
+    arg.m_frame = frame;
+#endif
+  }
+
+  [[no_unique_address]] F m_fun;
+#if LF_COMPILER_EXCEPTIONS
+  frame *m_frame;
+#endif
 };
 
 } // namespace impl

@@ -10,7 +10,6 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <coroutine>
-
 #include <span>
 #include <type_traits>
 
@@ -236,7 +235,7 @@ struct join_awaitable {
   }
 
   /**
-   * @brief A noop in release.
+   * @brief Propagate exceptions.
    */
   void await_resume() const {
     LF_LOG("join resumes");
@@ -245,7 +244,7 @@ struct join_awaitable {
     LF_ASSERT_NO_ASSUME(self->load_joins(std::memory_order_acquire) == k_u16_max);
     LF_ASSERT(self->stacklet() == tls::stack()->top());
 
-    self->stacklet()->rethrow_if_exception();
+    self->rethrow_if_exception();
   }
 
   frame *self; ///< The frame of the awaiting coroutine.

@@ -10,6 +10,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <concepts>
+#include <exception>
 #include <new>
 #include <type_traits>
 #include <utility>
@@ -238,13 +239,22 @@ template <returnable R, return_address_for<R> I, tag Tag>
 struct promise : promise_base, return_result<R, I> {
 
   /**
+   * @brief Construct a new promise object, delegate to main constructor.
+   */
+  template <typename This, first_arg Arg, typename... Args>
+  promise(This const & /*unused*/, Arg &arg, Args const &.../*unused*/) noexcept : promise(arg) {}
+
+  /**
    * @brief Construct a new promise object.
    *
    * Stores a handle to the promise in the `frame` and loads the tls stack
-   * and stores a pointer to the top fibril.
+   * and stores a pointer to the top fibril. Also sets the first argument's frame pointer.
    */
-  promise() noexcept
-      : promise_base{std::coroutine_handle<promise>::from_promise(*this), tls::stack()->top()} {}
+  template <first_arg Arg, typename... Args>
+  explicit promise(Arg &arg, Args const &.../*unused*/) noexcept
+      : promise_base{std::coroutine_handle<promise>::from_promise(*this), tls::stack()->top()} {
+    unsafe_set_frame(arg, this);
+  }
 
   /**
    * @brief Returned task stores a copy of the `this` pointer.
@@ -262,6 +272,7 @@ struct promise : promise_base, return_result<R, I> {
 
     LF_ASSERT(this->load_steals() == 0);                                           // Fork without join.
     LF_ASSERT_NO_ASSUME(this->load_joins(std::memory_order_acquire) == k_u16_max); // Invalid state.
+    LF_ASSERT(!this->has_exception());                                             // Must have rethrown.
 
     return final_awaitable{};
   }
@@ -271,9 +282,9 @@ struct promise : promise_base, return_result<R, I> {
    */
   void unhandled_exception() noexcept {
     if constexpr (Tag == tag::root) {
-      this->notifier()->capture_exception();
+      this->notifier()->m_eptr = std::current_exception();
     } else {
-      this->parent()->stacklet()->capture_exception();
+      this->parent()->capture_exception();
     }
   }
 

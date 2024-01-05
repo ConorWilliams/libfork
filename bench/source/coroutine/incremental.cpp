@@ -10,6 +10,7 @@
 #include <libfork.hpp>
 #include <libfork/core/ext/tls.hpp>
 #include <libfork/core/impl/promise.hpp>
+#include <libfork/core/macro.hpp>
 
 inline constexpr volatile int work = 24;
 volatile int output;
@@ -699,8 +700,16 @@ inline constexpr auto fib_impl = [](auto fib, int n) LF_STATIC_CALL -> lf::task<
 
   int a, b;
 
-  co_await lf::fork(&a, fib)(n - 1);
-  co_await lf::call(&b, fib)(n - 2);
+  // clang-format off
+
+  LF_TRY {
+    co_await lf::fork(&a, fib)(n - 1);
+    co_await lf::call(&b, fib)(n - 2);
+  } LF_CATCH_ALL { 
+    fib.stash_exception(); 
+  }
+
+  // clang-format on
 
   co_await lf::join;
 
@@ -728,6 +737,52 @@ void fib(benchmark::State &state) {
 BENCHMARK(libfork_forking_return_int::fib<lf::unit_pool>)->UseRealTime();
 BENCHMARK(libfork_forking_return_int::fib<lf::lazy_pool>)->UseRealTime();
 BENCHMARK(libfork_forking_return_int::fib<lf::busy_pool>)->UseRealTime();
+
+// ----------------------- libfork exception safe ----------------------- //
+
+namespace libfork_forking_return_int_exceptions {
+
+inline constexpr auto fib_impl = [](auto fib, int n) LF_STATIC_CALL -> lf::task<int> {
+  if (n < 2) {
+    co_return n;
+  }
+
+  int a, b;
+
+  LF_TRY {
+    co_await lf::fork(&a, fib)(n - 1);
+    co_await lf::call(&b, fib)(n - 2);
+    goto fallthrough;
+  }
+  LF_CATCH_ALL {}
+
+fallthrough:
+  co_await lf::join;
+
+  co_return a + b;
+};
+
+template <typename Sch>
+void fib(benchmark::State &state) {
+
+  Sch sch = [&] {
+    if constexpr (std::constructible_from<Sch, int>) {
+      return Sch(1);
+    } else {
+      return Sch{};
+    }
+  }();
+
+  for (auto _ : state) {
+    output = lf::sync_wait(sch, fib_impl, work);
+  }
+}
+
+} // namespace libfork_forking_return_int_exceptions
+
+BENCHMARK(libfork_forking_return_int_exceptions::fib<lf::unit_pool>)->UseRealTime();
+BENCHMARK(libfork_forking_return_int_exceptions::fib<lf::lazy_pool>)->UseRealTime();
+BENCHMARK(libfork_forking_return_int_exceptions::fib<lf::busy_pool>)->UseRealTime();
 
 void deque(benchmark::State &state) {
 
