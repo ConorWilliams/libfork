@@ -149,7 +149,7 @@ using std::unreachable;
 } // namespace lf::impl
 
 /**
- * @brief Invokes undefined behaviour if ``expr`` evaluates to `false`.
+ * @brief Invokes undefined behavior if ``expr`` evaluates to `false`.
  *
  * \rst
  *
