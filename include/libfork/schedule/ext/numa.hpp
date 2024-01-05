@@ -37,7 +37,7 @@
 #endif
 
 #ifdef LF_USE_HWLOC
-static_assert(HWLOC_VERSION_MAJOR == 2 && HWLOC_VERSION_MINOR >= 7, "hwloc too old");
+static_assert(HWLOC_VERSION_MAJOR == 2, "hwloc too old");
 #endif
 
 /**
