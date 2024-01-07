@@ -31,14 +31,20 @@ namespace impl::tls {
 /**
  * @brief Set when `impl::tls::thread_stack` is alive.
  */
-constinit inline thread_local bool has_stack = false;
+inline thread_local bool has_stack = false;
 /**
  * @brief A workers stack.
  *
  * This is wrapped in an `manual_lifetime` to make it trivially destructible/constructible such that it
  * requires no construction checks to access.
+ *
+ * TODO: Find out why this is not constinit on MSVC.
  */
-constinit inline thread_local manual_lifetime<stack> thread_stack = {};
+#ifndef _MSC_VER
+constinit
+#endif
+    inline thread_local manual_lifetime<stack>
+        thread_stack = {};
 /**
  * @brief Set when `impl::tls::thread_stack` is alive.
  */
@@ -49,7 +55,11 @@ constinit inline thread_local bool has_context = false;
  * This is wrapped in an `manual_lifetime` to make it trivially destructible/constructible such that it
  * requires no construction checks to access.
  */
-constinit inline thread_local manual_lifetime<full_context> thread_context = {};
+#ifndef _MSC_VER
+constinit
+#endif
+    inline thread_local manual_lifetime<full_context>
+        thread_context = {};
 
 /**
  * @brief Checked access to a workers stack.

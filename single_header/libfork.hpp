@@ -1144,7 +1144,7 @@ class deque : impl::immovable<deque<T>> {
    *
    * @param val Value to add to the deque.
    */
-  LF_FORCEINLINE constexpr void push(T const &val) noexcept;
+  constexpr void push(T const &val) noexcept;
   /**
    * @brief Pop an item from the deque.
    *
@@ -1153,8 +1153,7 @@ class deque : impl::immovable<deque<T>> {
    */
   template <std::invocable F = impl::return_nullopt<T>>
     requires std::convertible_to<T, std::invoke_result_t<F>>
-  LF_FORCEINLINE constexpr auto pop(F &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<F>)
-      -> std::invoke_result_t<F>;
+  constexpr auto pop(F &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<F>) -> std::invoke_result_t<F>;
 
   /**
    * @brief Steal an item from the deque.
@@ -1217,7 +1216,7 @@ constexpr auto deque<T>::empty() const noexcept -> bool {
 }
 
 template <dequeable T>
-LF_FORCEINLINE constexpr auto deque<T>::push(T const &val) noexcept -> void {
+constexpr auto deque<T>::push(T const &val) noexcept -> void {
   std::ptrdiff_t const bottom = m_bottom.load(relaxed);
   std::ptrdiff_t const top = m_top.load(acquire);
   impl::atomic_ring_buf<T> *buf = m_buf.load(relaxed);
@@ -1239,7 +1238,7 @@ LF_FORCEINLINE constexpr auto deque<T>::push(T const &val) noexcept -> void {
 template <dequeable T>
 template <std::invocable F>
   requires std::convertible_to<T, std::invoke_result_t<F>>
-LF_FORCEINLINE constexpr auto deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_v<F>)
+constexpr auto deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_v<F>)
     -> std::invoke_result_t<F> {
 
   std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1; //
@@ -2447,14 +2446,20 @@ namespace impl::tls {
 /**
  * @brief Set when `impl::tls::thread_stack` is alive.
  */
-constinit inline thread_local bool has_stack = false;
+inline thread_local bool has_stack = false;
 /**
  * @brief A workers stack.
  *
  * This is wrapped in an `manual_lifetime` to make it trivially destructible/constructible such that it
  * requires no construction checks to access.
+ *
+ * TODO: Find out why this is not constinit on MSVC.
  */
-constinit inline thread_local manual_lifetime<stack> thread_stack = {};
+#ifndef _MSC_VER
+constinit
+#endif
+    inline thread_local manual_lifetime<stack>
+        thread_stack = {};
 /**
  * @brief Set when `impl::tls::thread_stack` is alive.
  */
@@ -2465,7 +2470,11 @@ constinit inline thread_local bool has_context = false;
  * This is wrapped in an `manual_lifetime` to make it trivially destructible/constructible such that it
  * requires no construction checks to access.
  */
-constinit inline thread_local manual_lifetime<full_context> thread_context = {};
+#ifndef _MSC_VER
+constinit
+#endif
+    inline thread_local manual_lifetime<full_context>
+        thread_context = {};
 
 /**
  * @brief Checked access to a workers stack.
