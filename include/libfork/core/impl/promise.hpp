@@ -215,14 +215,14 @@ struct promise_base : frame {
     requires (Tg == tag::call || Tg == tag::fork)
   auto await_transform(quasi_awaitable<R2, I2, Tg> awaitable) noexcept {
 
-    awaitable.promise->set_parent(this);
+    awaitable.prom->set_parent(this);
 
     if constexpr (Tg == tag::call) {
-      return call_awaitable{{}, awaitable.promise};
+      return call_awaitable{{}, awaitable.prom};
     }
 
     if constexpr (Tg == tag::fork) {
-      return fork_awaitable{{}, awaitable.promise, this};
+      return fork_awaitable{{}, awaitable.prom, this};
     }
   }
 };

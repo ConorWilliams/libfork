@@ -69,13 +69,13 @@ concept async_function_object = std::is_object_v<F> && std::copy_constructible<F
  * @brief This describes the public-API of the first argument passed to an async function.
  *
  * An async functions' invocability and return type must be independent of their first argument except for its
- * tag value. A user may query the first argument's static member `tag` to obtain this value. Additionally, a
- * user may query the first argument's static member function `context()` to obtain a pointer to the current
+ * tag value. A user may query the first argument's static member `tagged` to obtain this value. Additionally,
+ * a user may query the first argument's static member function `context()` to obtain a pointer to the current
  * workers `lf::context`. Finally a user may cache an exception in-flight by calling `.stash_exception()`.
  */
 template <typename T>
 concept first_arg = async_function_object<T> && requires (T arg) {
-  { T::tag } -> std::convertible_to<tag>;
+  { T::tagged } -> std::convertible_to<tag>;
   { T::context() } -> std::same_as<context *>;
   { arg.stash_exception() } noexcept;
 };
@@ -98,7 +98,7 @@ namespace impl {
 template <quasi_pointer I, tag Tag, async_function_object F, typename... Cargs>
 class first_arg_t {
  public:
-  static constexpr tag tag = Tag; ///< The way this async function was called.
+  static constexpr tag tagged = Tag; ///< The way this async function was called.
 
   first_arg_t() = default;
 

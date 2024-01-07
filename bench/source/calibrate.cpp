@@ -7,7 +7,7 @@
 
 namespace {
 
-LF_NOINLINE constexpr auto sleep() -> void { std::this_thread::sleep_for(std::chrono::milliseconds(500)); };
+LF_NOINLINE auto sleep() -> void { std::this_thread::sleep_for(std::chrono::milliseconds(500)); };
 
 void calibrate(benchmark::State &state) {
 

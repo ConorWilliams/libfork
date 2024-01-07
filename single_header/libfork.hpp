@@ -2739,7 +2739,7 @@ concept returnable = std::is_void_v<T> || std::is_reference_v<T> || std::movable
  */
 template <returnable T = void>
 struct LF_CORO_ATTRIBUTES task : std::type_identity<T> {
-  void *promise; ///< An opaque handle to the coroutine promise.
+  void *prom; ///< An opaque handle to the coroutine promise.
 };
 
 } // namespace core
@@ -2961,13 +2961,13 @@ concept async_function_object = std::is_object_v<F> && std::copy_constructible<F
  * @brief This describes the public-API of the first argument passed to an async function.
  *
  * An async functions' invocability and return type must be independent of their first argument except for its
- * tag value. A user may query the first argument's static member `tag` to obtain this value. Additionally, a
- * user may query the first argument's static member function `context()` to obtain a pointer to the current
+ * tag value. A user may query the first argument's static member `tagged` to obtain this value. Additionally,
+ * a user may query the first argument's static member function `context()` to obtain a pointer to the current
  * workers `lf::context`. Finally a user may cache an exception in-flight by calling `.stash_exception()`.
  */
 template <typename T>
 concept first_arg = async_function_object<T> && requires (T arg) {
-  { T::tag } -> std::convertible_to<tag>;
+  { T::tagged } -> std::convertible_to<tag>;
   { T::context() } -> std::same_as<context *>;
   { arg.stash_exception() } noexcept;
 };
@@ -2990,7 +2990,7 @@ namespace impl {
 template <quasi_pointer I, tag Tag, async_function_object F, typename... Cargs>
 class first_arg_t {
  public:
-  static constexpr tag tag = Tag; ///< The way this async function was called.
+  static constexpr tag tagged = Tag; ///< The way this async function was called.
 
   first_arg_t() = default;
 
@@ -3552,7 +3552,7 @@ struct promise;
  */
 template <returnable R, return_address_for<R> I, tag Tag>
 struct [[nodiscard("A quasi_awaitable MUST be immediately co_awaited!")]] quasi_awaitable {
-  promise<R, I, Tag> *promise; ///< The parent/semaphore needs to be set!
+  promise<R, I, Tag> *prom; ///< The parent/semaphore needs to be set!
 };
 
 // ---------------------------- //
@@ -3583,7 +3583,7 @@ struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combin
     using R = async_result_t<F, Args...>;
     using P = promise<R, I, Tag>;
 
-    auto *prom = static_cast<P *>(task.promise);
+    auto *prom = static_cast<P *>(task.prom);
 
     if constexpr (!std::is_void_v<R>) {
       prom->set_return(std::move(ret));
@@ -3857,8 +3857,8 @@ auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
 
   [&]() noexcept {
     //
-    await.promise->set_root_notify(&notifier);
-    auto *handle = std::bit_cast<submit_handle>(static_cast<impl::frame *>(await.promise));
+    await.prom->set_root_notify(&notifier);
+    auto *handle = std::bit_cast<submit_handle>(static_cast<impl::frame *>(await.prom));
 
     impl::ignore_t{} = impl::tls::thread_stack->release();
 
@@ -4242,14 +4242,14 @@ struct promise_base : frame {
     requires (Tg == tag::call || Tg == tag::fork)
   auto await_transform(quasi_awaitable<R2, I2, Tg> awaitable) noexcept {
 
-    awaitable.promise->set_parent(this);
+    awaitable.prom->set_parent(this);
 
     if constexpr (Tg == tag::call) {
-      return call_awaitable{{}, awaitable.promise};
+      return call_awaitable{{}, awaitable.prom};
     }
 
     if constexpr (Tg == tag::fork) {
-      return fork_awaitable{{}, awaitable.promise, this};
+      return fork_awaitable{{}, awaitable.prom, this};
     }
   }
 };

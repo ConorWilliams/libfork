@@ -98,8 +98,8 @@ auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
 
   [&]() noexcept {
     //
-    await.promise->set_root_notify(&notifier);
-    auto *handle = std::bit_cast<submit_handle>(static_cast<impl::frame *>(await.promise));
+    await.prom->set_root_notify(&notifier);
+    auto *handle = std::bit_cast<submit_handle>(static_cast<impl::frame *>(await.prom));
 
     impl::ignore_t{} = impl::tls::thread_stack->release();
 

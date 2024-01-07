@@ -39,7 +39,7 @@ struct promise;
  */
 template <returnable R, return_address_for<R> I, tag Tag>
 struct [[nodiscard("A quasi_awaitable MUST be immediately co_awaited!")]] quasi_awaitable {
-  promise<R, I, Tag> *promise; ///< The parent/semaphore needs to be set!
+  promise<R, I, Tag> *prom; ///< The parent/semaphore needs to be set!
 };
 
 // ---------------------------- //
@@ -70,7 +70,7 @@ struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combin
     using R = async_result_t<F, Args...>;
     using P = promise<R, I, Tag>;
 
-    auto *prom = static_cast<P *>(task.promise);
+    auto *prom = static_cast<P *>(task.prom);
 
     if constexpr (!std::is_void_v<R>) {
       prom->set_return(std::move(ret));
