@@ -1335,6 +1335,7 @@ constexpr deque<T>::~deque() noexcept {
 #include <semaphore>
 #include <type_traits>
 #include <utility>
+#include <version>
 #ifndef B4EE570B_F5CF_42CB_9AF3_7376F45FDACC
 #define B4EE570B_F5CF_42CB_9AF3_7376F45FDACC
 
@@ -1907,8 +1908,15 @@ class frame {
   std::atomic_uint16_t m_join = k_u16_max; ///< Number of children joined (with offset).
   std::uint16_t m_steal = 0;               ///< Number of times this frame has been stolen.
 
+/**
+ * @brief Flag to indicate if an exception has been set.
+ */
 #if LF_COMPILER_EXCEPTIONS
-  bool m_except = false; ///< Flag to indicate if an exception has been set.
+  #ifdef __cpp_lib_atomic_ref
+  bool m_except = false;
+  #else
+  std::atomic_bool m_except = false;
+  #endif
 #endif
 
   /**
@@ -1922,7 +1930,11 @@ class frame {
     LF_DEFER {
       LF_ASSERT(*m_eptr == nullptr);
       m_eptr.destroy();
+  #ifdef __cpp_lib_atomic_ref
       m_except = false;
+  #else
+      m_except.store(false, std::memory_order_relaxed);
+  #endif
     };
 
     std::rethrow_exception(std::exchange(*m_eptr, nullptr));
@@ -2039,7 +2051,14 @@ class frame {
    */
   void capture_exception() noexcept {
 #if LF_COMPILER_EXCEPTIONS
-    if (!std::atomic_ref{m_except}.exchange(true, std::memory_order_acq_rel)) {
+
+  #ifdef __cpp_lib_atomic_ref
+    bool prev = std::atomic_ref{m_except}.exchange(true, std::memory_order_acq_rel);
+  #else
+    bool prev = m_except.exchange(true, std::memory_order_acq_rel);
+  #endif
+
+    if (!prev) {
       m_eptr.construct(std::current_exception());
     }
 #endif
@@ -2052,9 +2071,15 @@ class frame {
    */
   LF_FORCEINLINE void rethrow_if_exception() {
 #if LF_COMPILER_EXCEPTIONS
+
+  #ifdef __cpp_lib_atomic_ref
     if (m_except) {
+  #else
+    if (m_except.load(std::memory_order_relaxed)) {
+  #endif
       rethrow();
     }
+
 #endif
   }
 
@@ -2065,7 +2090,11 @@ class frame {
    */
   [[nodiscard]] auto has_exception() const noexcept -> bool {
 #if LF_COMPILER_EXCEPTIONS
+  #ifdef __cpp_lib_atomic_ref
     return m_except;
+  #else
+    return m_except.load(std::memory_order_relaxed);
+  #endif
 #else
     return false;
 #endif
