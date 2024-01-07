@@ -91,11 +91,13 @@ jobs:
 
     - uses: ./.github/actions/setup
 
-    - name: Get a newer clang
-      run: sudo apt-get update && sudo apt-get install clang-15 -y
+    - name: Install LLVM and Clang
+      uses: KyleMayes/install-llvm-action@v1
+      with:
+        version: "16.0.4"
+        env: true
   
     - name: Configure
-      env: { CXX: clang++-15 }
       run: cmake --preset=ci-sanitize
 
     - name: Build
