@@ -64,7 +64,7 @@ constinit
 /**
  * @brief Checked access to a workers stack.
  */
-[[nodiscard]] inline auto stack() -> stack * {
+[[nodiscard]] LF_CLANG_TLS_NOINLINE inline auto stack() -> stack * {
   LF_ASSERT(has_stack);
   return thread_stack.data();
 }
@@ -72,7 +72,7 @@ constinit
 /**
  * @brief Checked access to a workers context.
  */
-[[nodiscard]] inline auto context() -> full_context * {
+[[nodiscard]] LF_CLANG_TLS_NOINLINE inline auto context() -> full_context * {
   LF_ASSERT(has_context);
   return thread_context.data();
 }
@@ -91,7 +91,7 @@ inline namespace ext {
  *
  * \endrst
  */
-[[nodiscard]] inline auto worker_init(nullary_function_t notify) -> worker_context * {
+[[nodiscard]] LF_CLANG_TLS_NOINLINE inline auto worker_init(nullary_function_t notify) -> worker_context * {
 
   LF_LOG("Initializing worker");
 
@@ -127,7 +127,7 @@ inline namespace ext {
  *
  * \endrst
  */
-inline void finalize(worker_context *worker) {
+LF_CLANG_TLS_NOINLINE inline void finalize(worker_context *worker) {
 
   LF_LOG("Finalizing worker");
 

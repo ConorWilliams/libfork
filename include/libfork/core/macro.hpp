@@ -215,6 +215,21 @@ using std::unreachable;
 #endif
 
 /**
+ * @brief Force no-inline for clang, works-around https://github.com/llvm/llvm-project/issues/63022.
+ *
+ * TODO: Check __apple_build_version__ when xcode 16 is released.
+ */
+#if defined(__clang__)
+  #if defined(__apple_build_version__) || __clang_major__ <= 16
+    #define LF_CLANG_TLS_NOINLINE LF_NOINLINE
+  #else
+    #define LF_CLANG_TLS_NOINLINE
+  #endif
+#else
+  #define LF_CLANG_TLS_NOINLINE
+#endif
+
+/**
  * @brief Macro to use next to 'inline' to force a function to be inlined.
  *
  * \rst

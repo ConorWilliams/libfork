@@ -61,7 +61,7 @@ concept scheduler = requires (Sch &&sch, intruded_list<submit_handle> handle) {
  */
 template <scheduler Sch, async_function_object F, class... Args>
   requires rootable<F, Args...>
-auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
+LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
 
   using R = async_result_t<F, Args...>;
   constexpr bool is_void = std::is_void_v<R>;

@@ -289,6 +289,21 @@ using std::unreachable;
 #endif
 
 /**
+ * @brief Force no-inline for clang, works-around https://github.com/llvm/llvm-project/issues/63022.
+ *
+ * TODO: Check __apple_build_version__ when xcode 16 is released.
+ */
+#if defined(__clang__)
+  #if defined(__apple_build_version__) || __clang_major__ <= 16
+    #define LF_CLANG_TLS_NOINLINE LF_NOINLINE
+  #else
+    #define LF_CLANG_TLS_NOINLINE
+  #endif
+#else
+  #define LF_CLANG_TLS_NOINLINE
+#endif
+
+/**
  * @brief Macro to use next to 'inline' to force a function to be inlined.
  *
  * \rst
@@ -2479,7 +2494,7 @@ constinit
 /**
  * @brief Checked access to a workers stack.
  */
-[[nodiscard]] inline auto stack() -> stack * {
+[[nodiscard]] LF_CLANG_TLS_NOINLINE inline auto stack() -> stack * {
   LF_ASSERT(has_stack);
   return thread_stack.data();
 }
@@ -2487,7 +2502,7 @@ constinit
 /**
  * @brief Checked access to a workers context.
  */
-[[nodiscard]] inline auto context() -> full_context * {
+[[nodiscard]] LF_CLANG_TLS_NOINLINE inline auto context() -> full_context * {
   LF_ASSERT(has_context);
   return thread_context.data();
 }
@@ -2506,7 +2521,7 @@ inline namespace ext {
  *
  * \endrst
  */
-[[nodiscard]] inline auto worker_init(nullary_function_t notify) -> worker_context * {
+[[nodiscard]] LF_CLANG_TLS_NOINLINE inline auto worker_init(nullary_function_t notify) -> worker_context * {
 
   LF_LOG("Initializing worker");
 
@@ -2542,7 +2557,7 @@ inline namespace ext {
  *
  * \endrst
  */
-inline void finalize(worker_context *worker) {
+LF_CLANG_TLS_NOINLINE inline void finalize(worker_context *worker) {
 
   LF_LOG("Finalizing worker");
 
@@ -3859,7 +3874,7 @@ concept scheduler = requires (Sch &&sch, intruded_list<submit_handle> handle) {
  */
 template <scheduler Sch, async_function_object F, class... Args>
   requires rootable<F, Args...>
-auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
+LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
 
   using R = async_result_t<F, Args...>;
   constexpr bool is_void = std::is_void_v<R>;
