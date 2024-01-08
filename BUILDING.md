@@ -1,10 +1,10 @@
-# Building libfork
+# Building with libfork
 
 ## Pre-requisites
 
 ### Dependencies
 
-Outside of a compiler, libfork has no required dependencies. However, libfork can use some optional dependencies to enable additional features, the tests/benchmarks/docs have their own dependencies and, developer's lint targets need some additional. A complete list of libfork's dependencies are as follows:
+Outside of a compiler, libfork has no required dependencies. However, libfork can use some optional dependencies to enable additional features, the tests/benchmarks/docs have their own dependencies and, the developer's lint and miscellaneous targets need a few additional dependencies. A complete list of libfork's dependencies are as follows:
 
 <!-- TODO: test with a fresh wsl ubuntu -->
 
@@ -15,9 +15,9 @@ Core:
 
 Optional:
 
-- __pkg-config__ TODO (for hwloc find?)
 - __hwloc__ see [below](#hwloc)
-- __boost-atomic__
+- __pkg-config__ to locate hwloc
+- __boost-atomic__ recommended for performance
 
 Docs:
 
@@ -66,25 +66,17 @@ Libfork uses hwloc when `LF_USE_HWLOC` is defined, this must be defined (or unde
 
 Some very new C++ features are used in libfork, most compilers have buggy implementations of coroutines, we do our best to work around known bugs/deficiencies:
 
-- __clang__ Libfork compiles on versions 15.x-18.x however for versions 16.x and below bugs [#63022](https://github.com/llvm/llvm-project/issues/63022) and [#47179](https://github.com/llvm/llvm-project/issues/47179) will cause crashes for optimized builds in multithreaded programs.
-
-<!-- We work around this in these versions by isolating access to `thread_local` storage in non-inlined functions however, this introduces a performance penalty. -->
+- __clang__ Libfork compiles on versions 15.x-18.x however for versions 16.x and below bugs [#63022](https://github.com/llvm/llvm-project/issues/63022) and [#47179](https://github.com/llvm/llvm-project/issues/47179) will cause crashes for optimized builds in multithreaded programs. We work around these bugs by isolating access to `thread_local` storage in non-inlined functions however, this introduces a performance penalty in these versions.
 
 - __gcc__ Libfork is tested on versions 11.x-13.x however gcc [does not perform a guaranteed tail call](https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100897) for coroutine's symmetric transfer unless compiling with optimization greater than or equal to `-O2` and sanitizers are not in use. This will result in stack overflows for some programs in un-optimized builds.
 
-- __Apple's clang__ Libfork is compatible with the standard library that Apple ships with Xcode 2015 however Xcode 15 itself segfaults when compiling libfork and Xcode 14 is not supported.
+- __Apple's clang__ Libfork is compatible with the standard library that Apple ships with Xcode 2015 but, the mitigations for the old clang versions (mentioned above) fractionally degrade performance.
 
-- __msvc__ Libfork compiles on versions 19.35-19.37 however due to [this bug](https://developercommunity.visualstudio.com/t/Incorrect-code-generation-for-symmetric/1659260?scope=follow) (duplicate [here](https://developercommunity.visualstudio.com/t/Using-symmetric-transfer-and-coroutine_h/10251975?scope=follow&q=symmetric)) it will always seg-fault at runtime due to an erroneous double delete. Note that, by default, MSVC is not standards compliant and you need to pass some flags to make it behave properly. See the `flags-windows` preset in the [CMakePresets.json](CMakePresets.json) file for the flags and with what
-variable to provide them to CMake during configuration.
+- __msvc__ Libfork compiles on versions 19.35-19.37 however due to [this bug](https://developercommunity.visualstudio.com/t/Incorrect-code-generation-for-symmetric/1659260?scope=follow) (duplicate [here](https://developercommunity.visualstudio.com/t/Using-symmetric-transfer-and-coroutine_h/10251975?scope=follow&q=symmetric)) it will always seg-fault at runtime due to an erroneous double delete. Note that, by default, MSVC is not standards compliant and you need to pass some flags to make it behave properly - see the `flags-windows` preset in the [CMakePresets.json](CMakePresets.json) file.
 
 ### Apple silicon
 
-CMake supports building on Apple Silicon properly since 3.20.1. Make sure you
-have the [latest version][1] installed.
-
-TODO: work around clang bug if required by CI
-
-TODO: Check CI for apple clang
+CMake supports building on Apple Silicon properly since 3.20.1. Make sure you have the [latest version][1] installed.
 
 ## Getting the source
 
