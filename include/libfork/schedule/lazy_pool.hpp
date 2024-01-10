@@ -9,26 +9,32 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <algorithm>
-#include <atomic>
-#include <bit>
-#include <latch>
-#include <limits>
-#include <memory>
-#include <optional>
-#include <random>
-#include <stdexcept>
-#include <thread>
+#include <algorithm>  // for __max_element_fn
+#include <atomic>     // for atomic_flag, memory_...
+#include <concepts>   // for same_as
+#include <cstddef>    // for size_t
+#include <functional> // for less
+#include <latch>      // for latch
+#include <memory>     // for shared_ptr, __shared...
+#include <random>     // for random_device, unifo...
+#include <span>       // for span
+#include <thread>     // for thread
+#include <utility>    // for move
+#include <vector>     // for vector
 
-#include "libfork/core.hpp"
-
-#include "libfork/schedule/busy_pool.hpp"
-
-#include "libfork/schedule/ext/event_count.hpp"
-#include "libfork/schedule/ext/numa.hpp"
-#include "libfork/schedule/ext/random.hpp"
-
-#include "libfork/schedule/impl/contexts.hpp"
+#include "libfork/core/defer.hpp"               // for LF_DEFER
+#include "libfork/core/ext/context.hpp"         // for context, nullary_fun...
+#include "libfork/core/ext/handles.hpp"         // for submit_handle, task_...
+#include "libfork/core/ext/list.hpp"            // for for_each_elem, intru...
+#include "libfork/core/ext/resume.hpp"          // for resume
+#include "libfork/core/impl/utility.hpp"        // for k_cache_line
+#include "libfork/core/macro.hpp"               // for LF_ASSERT, LF_LOG
+#include "libfork/core/sync_wait.hpp"           // for scheduler
+#include "libfork/schedule/busy_pool.hpp"       // for busy_vars
+#include "libfork/schedule/ext/event_count.hpp" // for event_count
+#include "libfork/schedule/ext/numa.hpp"        // for numa_strategy, numa_...
+#include "libfork/schedule/ext/random.hpp"      // for xoshiro, seed
+#include "libfork/schedule/impl/contexts.hpp"   // for numa_context
 
 /**
  * @file lazy_pool.hpp

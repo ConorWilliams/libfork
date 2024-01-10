@@ -9,7 +9,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include "libfork/core.hpp"
+#include "libfork/core/ext/context.hpp"  // for nullary_function_t, worker_...
+#include "libfork/core/ext/handles.hpp"  // for submit_handle
+#include "libfork/core/ext/list.hpp"     // for for_each_elem, intruded_list
+#include "libfork/core/ext/resume.hpp"   // for resume
+#include "libfork/core/ext/tls.hpp"      // for worker_init, finalize
+#include "libfork/core/impl/utility.hpp" // for immovable
 
 /**
  * @file unit_pool.hpp

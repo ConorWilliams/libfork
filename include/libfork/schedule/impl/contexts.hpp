@@ -9,18 +9,22 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <algorithm>
-#include <atomic>
-#include <bit>
-#include <cstddef>
-#include <memory>
-#include <random>
-#include <vector>
+#include <algorithm> // for shuffle
+#include <cstddef>   // for size_t
+#include <memory>    // for shared_ptr
+#include <random>    // for discrete_distribution
+#include <utility>   // for exchange, move
+#include <vector>    // for vector
 
-#include "libfork/core.hpp"
-
-#include "libfork/schedule/ext/numa.hpp"
-#include "libfork/schedule/ext/random.hpp"
+#include "libfork/core/ext/context.hpp"    // for worker_context, context
+#include "libfork/core/ext/deque.hpp"      // for err
+#include "libfork/core/ext/handles.hpp"    // for submit_handle, task_handle
+#include "libfork/core/ext/list.hpp"       // for intruded_list
+#include "libfork/core/ext/tls.hpp"        // for finalize, worker_init
+#include "libfork/core/impl/utility.hpp"   // for non_null, map
+#include "libfork/core/macro.hpp"          // for LF_ASSERT, LF_LOG, LF_CAT...
+#include "libfork/schedule/ext/numa.hpp"   // for numa_topology
+#include "libfork/schedule/ext/random.hpp" // for xoshiro
 
 /**
  * @file contexts.hpp

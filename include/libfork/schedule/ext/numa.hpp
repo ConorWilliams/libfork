@@ -9,16 +9,20 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <cerrno>
-#include <climits>
-#include <cstddef>
-#include <limits>
-#include <map>
-#include <memory>
-#include <set>
-#include <vector>
+#include <algorithm> // for max
+#include <cerrno>    // for ENOSYS, EXDEV, errno
+#include <climits>   // for INT_MAX
+#include <cstddef>   // for size_t
+#include <iterator>  // for distance
+#include <map>       // for map, operator==
+#include <memory>    // for shared_ptr, operator==, unique_ptr
+#include <set>       // for set
+#include <stdexcept> // for runtime_error
+#include <utility>   // for move
+#include <vector>    // for vector
 
-#include "libfork/core.hpp"
+#include "libfork/core/impl/utility.hpp" // for map
+#include "libfork/core/macro.hpp"        // for LF_ASSERT, LF_STATIC_CALL, LF_STAT...
 
 /**
  * @file numa.hpp
@@ -33,7 +37,7 @@
 #endif
 
 #ifdef LF_USE_HWLOC
-  #include <hwloc.h>
+  #include <hwloc.h> // for hwloc_obj, hwloc_obj_t, hwl...
 #endif
 
 #ifdef LF_USE_HWLOC
@@ -52,7 +56,6 @@ static_assert(HWLOC_VERSION_MAJOR == 2, "hwloc too old");
  * \endrst
  */
 struct hwloc_bitmap_s;
-
 /**
  * @brief An opaque description of a computers topology.
  *

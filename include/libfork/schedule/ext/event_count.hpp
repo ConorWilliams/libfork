@@ -16,14 +16,14 @@
 
 // The contents of this file have been adapted from https://github.com/facebook/folly
 
-#include <atomic>
-#include <bit>
-#include <cstdint>
-#include <functional>
-#include <thread>
-#include <type_traits>
+#include <atomic>     // for atomic, memory_order_acq_rel
+#include <bit>        // for endian
+#include <cstdint>    // for uint64_t, uint32_t
+#include <functional> // for invoke
+#include <stddef.h>   // for size_t
 
-#include "libfork/core.hpp"
+#include "libfork/core/impl/utility.hpp" // for immovable
+#include "libfork/core/macro.hpp"        // for LF_ASSERT, LF_CATCH_ALL
 
 /**
  * @file event_count.hpp

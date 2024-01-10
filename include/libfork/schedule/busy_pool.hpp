@@ -9,24 +9,27 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <algorithm>
-#include <atomic>
-#include <bit>
-#include <cstddef>
-#include <exception>
-#include <latch>
+#include <atomic>  // for atomic_flag, memory_or...
+#include <cstddef> // for size_t
+#include <latch>   // for latch
+#include <memory>  // for shared_ptr, __shared_p...
+#include <random>  // for random_device, uniform...
+#include <span>    // for span
+#include <thread>  // for thread
+#include <utility> // for move
+#include <vector>  // for vector
 
-#include <memory>
-#include <numeric>
-#include <random>
-#include <thread>
-
-#include "libfork/core.hpp"
-
-#include "libfork/schedule/ext/numa.hpp"
-#include "libfork/schedule/ext/random.hpp"
-
-#include "libfork/schedule/impl/contexts.hpp"
+#include "libfork/core/defer.hpp"             // for LF_DEFER
+#include "libfork/core/ext/context.hpp"       // for context, nullary_funct...
+#include "libfork/core/ext/handles.hpp"       // for submit_handle, task_ha...
+#include "libfork/core/ext/list.hpp"          // for for_each_elem, intrude...
+#include "libfork/core/ext/resume.hpp"        // for resume
+#include "libfork/core/impl/utility.hpp"      // for k_cache_line, move_only
+#include "libfork/core/macro.hpp"             // for LF_ASSERT, LF_ASSERT_N...
+#include "libfork/core/sync_wait.hpp"         // for scheduler
+#include "libfork/schedule/ext/numa.hpp"      // for numa_strategy, numa_to...
+#include "libfork/schedule/ext/random.hpp"    // for xoshiro, seed
+#include "libfork/schedule/impl/contexts.hpp" // for numa_context
 
 /**
  * @file busy_pool.hpp

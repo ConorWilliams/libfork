@@ -4471,19 +4471,16 @@ inline constexpr auto lift = []<class F, class... Args>(auto, F &&func, Args &&.
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <algorithm>
-#include <atomic>
-#include <bit>
-#include <cstddef>
-#include <exception>
-#include <latch>
-
-#include <memory>
-#include <numeric>
-#include <random>
-#include <thread>
-
-#ifndef D8877F11_1F66_4AD0_B949_C0DFF390C2DB
+#include <atomic>  // for atomic_flag, memory_or...
+#include <cstddef> // for size_t
+#include <latch>   // for latch
+#include <memory>  // for shared_ptr, __shared_p...
+#include <random>  // for random_device, uniform...
+#include <span>    // for span
+#include <thread>  // for thread
+#include <utility> // for move
+#include <vector>  // for vector
+             // for LF_DEFER       // for context, nullary_funct...       // for submit_handle, task_ha...          // for for_each_elem, intrude...        // for resume      // for k_cache_line, move_only             // for LF_ASSERT, LF_ASSERT_N...         // for scheduler#ifndef D8877F11_1F66_4AD0_B949_C0DFF390C2DB
 #define D8877F11_1F66_4AD0_B949_C0DFF390C2DB
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
@@ -4494,15 +4491,18 @@ inline constexpr auto lift = []<class F, class... Args>(auto, F &&func, Args &&.
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <cerrno>
-#include <climits>
-#include <cstddef>
-#include <limits>
-#include <map>
-#include <memory>
-#include <set>
-#include <vector>
-
+#include <algorithm> // for max
+#include <cerrno>    // for ENOSYS, EXDEV, errno
+#include <climits>   // for INT_MAX
+#include <cstddef>   // for size_t
+#include <iterator>  // for distance
+#include <map>       // for map, operator==
+#include <memory>    // for shared_ptr, operator==, unique_ptr
+#include <set>       // for set
+#include <stdexcept> // for runtime_error
+#include <utility>   // for move
+#include <vector>    // for vector
+ // for map        // for LF_ASSERT, LF_STATIC_CALL, LF_STAT...
 
 /**
  * @file numa.hpp
@@ -4517,7 +4517,7 @@ inline constexpr auto lift = []<class F, class... Args>(auto, F &&func, Args &&.
 #endif
 
 #ifdef LF_USE_HWLOC
-  #include <hwloc.h>
+  #include <hwloc.h> // for hwloc_obj, hwloc_obj_t, hwl...
 #endif
 
 #ifdef LF_USE_HWLOC
@@ -4536,7 +4536,6 @@ static_assert(HWLOC_VERSION_MAJOR == 2, "hwloc too old");
  * \endrst
  */
 struct hwloc_bitmap_s;
-
 /**
  * @brief An opaque description of a computers topology.
  *
@@ -4989,7 +4988,7 @@ inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &dat
 } // namespace lf
 
 #endif /* D8877F11_1F66_4AD0_B949_C0DFF390C2DB */
-#ifndef CA0BE1EA_88CD_4E63_9D89_37395E859565
+      // for numa_strategy, numa_to...#ifndef CA0BE1EA_88CD_4E63_9D89_37395E859565
 #define CA0BE1EA_88CD_4E63_9D89_37395E859565
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
@@ -5000,15 +4999,13 @@ inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &dat
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <array>
-#include <climits>
-#include <concepts>
-#include <cstddef>
-#include <cstdint>
-#include <functional>
-#include <limits>
-#include <random>
-#include <utility>
+#include <array>       // for array
+#include <concepts>    // for same_as
+#include <cstdint>     // for uint64_t
+#include <functional>  // for invoke
+#include <limits>      // for numeric_limits
+#include <random>      // for uniform_int_distribution, uniform_random_bit_...
+#include <type_traits> // for remove_cvref_t, invoke_result_t, remove_refer...
 
 /**
  * \file random.hpp
@@ -5193,8 +5190,7 @@ static_assert(uniform_random_bit_generator<xoshiro>);
 } // namespace lf
 
 #endif /* CA0BE1EA_88CD_4E63_9D89_37395E859565 */
-
-#ifndef C1B42944_8E33_4F6B_BAD6_5FB687F6C737
+    // for xoshiro, seed#ifndef C1B42944_8E33_4F6B_BAD6_5FB687F6C737
 #define C1B42944_8E33_4F6B_BAD6_5FB687F6C737
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
@@ -5205,15 +5201,13 @@ static_assert(uniform_random_bit_generator<xoshiro>);
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <algorithm>
-#include <atomic>
-#include <bit>
-#include <cstddef>
-#include <memory>
-#include <random>
-#include <vector>
-
-
+#include <algorithm> // for shuffle
+#include <cstddef>   // for size_t
+#include <memory>    // for shared_ptr
+#include <random>    // for discrete_distribution
+#include <utility>   // for exchange, move
+#include <vector>    // for vector
+    // for worker_context, context      // for err    // for submit_handle, task_handle       // for intruded_list        // for finalize, worker_init   // for non_null, map          // for LF_ASSERT, LF_LOG, LF_CAT...   // for numa_topology // for xoshiro
 
 /**
  * @file contexts.hpp
@@ -5395,7 +5389,7 @@ struct numa_context {
 } // namespace lf::impl
 
 #endif /* C1B42944_8E33_4F6B_BAD6_5FB687F6C737 */
-
+ // for numa_context
 
 /**
  * @file busy_pool.hpp
@@ -5557,19 +5551,19 @@ static_assert(scheduler<busy_pool>);
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <algorithm>
-#include <atomic>
-#include <bit>
-#include <latch>
-#include <limits>
-#include <memory>
-#include <optional>
-#include <random>
-#include <stdexcept>
-#include <thread>
-
-
-#pragma once
+#include <algorithm>  // for __max_element_fn
+#include <atomic>     // for atomic_flag, memory_...
+#include <concepts>   // for same_as
+#include <cstddef>    // for size_t
+#include <functional> // for less
+#include <latch>      // for latch
+#include <memory>     // for shared_ptr, __shared...
+#include <random>     // for random_device, unifo...
+#include <span>       // for span
+#include <thread>     // for thread
+#include <utility>    // for move
+#include <vector>     // for vector
+               // for LF_DEFER         // for context, nullary_fun...         // for submit_handle, task_...            // for for_each_elem, intru...          // for resume        // for k_cache_line               // for LF_ASSERT, LF_LOG           // for scheduler       // for busy_vars#pragma once
 
 // Copyright (c) Conor Williams, Meta Platforms, Inc. and its affiliates.
 //
@@ -5587,13 +5581,12 @@ static_assert(scheduler<busy_pool>);
 
 // The contents of this file have been adapted from https://github.com/facebook/folly
 
-#include <atomic>
-#include <bit>
-#include <cstdint>
-#include <functional>
-#include <thread>
-#include <type_traits>
-
+#include <atomic>     // for atomic, memory_order_acq_rel
+#include <bit>        // for endian
+#include <cstdint>    // for uint64_t, uint32_t
+#include <functional> // for invoke
+#include <stddef.h>   // for size_t
+ // for immovable        // for LF_ASSERT, LF_CATCH_ALL
 
 /**
  * @file event_count.hpp
@@ -5812,8 +5805,7 @@ void event_count::await(Pred const &condition) noexcept(std::is_nothrow_invocabl
 
 } // namespace ext
 
-} // namespace lf
-
+} // namespace lf // for event_count        // for numa_strategy, numa_...      // for xoshiro, seed   // for numa_context
 
 /**
  * @file lazy_pool.hpp
@@ -6152,7 +6144,7 @@ static_assert(scheduler<lazy_pool>);
 // Self Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
+  // for nullary_function_t, worker_...  // for submit_handle     // for for_each_elem, intruded_list   // for resume      // for worker_init, finalize // for immovable
 
 /**
  * @file unit_pool.hpp
