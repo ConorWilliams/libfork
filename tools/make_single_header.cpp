@@ -66,7 +66,7 @@ struct include_processor {
 
                     if (!contains(m_processed_paths, new_path)) {
                       std::cout << "Found " << match.str(1) << " in " << path << '\n';
-                      rep.text = process_one(new_path);
+                      rep.text = "\n" + process_one(new_path) + "\n";
                     }
 
                     replacements.push_back(std::move(rep));

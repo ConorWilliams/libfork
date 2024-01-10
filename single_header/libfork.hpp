@@ -13,6 +13,7 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #ifndef B3512749_D678_438A_8E60_B1E880CF6C23
 #define B3512749_D678_438A_8E60_B1E880CF6C23
 
@@ -23,6 +24,7 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #ifndef B13463FB_3CF9_46F1_AFAC_19CBCB99A23C
 #define B13463FB_3CF9_46F1_AFAC_19CBCB99A23C
 
@@ -37,6 +39,7 @@
 #include <functional>
 #include <type_traits>
 #include <utility>
+
 #ifndef A6BE090F_9077_40E8_9B57_9BAFD9620469
 #define A6BE090F_9077_40E8_9B57_9BAFD9620469
 
@@ -47,6 +50,7 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #ifndef A951FB73_0FCF_4B7C_A997_42B7E87D21CB
 #define A951FB73_0FCF_4B7C_A997_42B7E87D21CB
 // Copyright © Conor Williams <conorwilliams@outlook.com>
@@ -61,6 +65,7 @@
 #include <cstddef>  // for size_t
 #include <memory>
 #include <span> // for dynamic_extent, span
+
 #ifndef CF97E524_27A6_4CD9_8967_39F1B1BE97B6
 #define CF97E524_27A6_4CD9_8967_39F1B1BE97B6
 
@@ -74,6 +79,7 @@
 
 #include <stdexcept> // for runtime_error
 #include <utility>   // for move
+
 #ifndef D66BBECE_E467_4EB6_B74A_AAA2E7256E02
 #define D66BBECE_E467_4EB6_B74A_AAA2E7256E02
 
@@ -88,6 +94,7 @@
 #include <functional> // for function
 #include <utility>    // for move
 #include <version>    // for __cpp_lib_move_only_function
+
 #ifndef C9703881_3D9C_41A5_A7A2_44615C4CFA6A
 #define C9703881_3D9C_41A5_A7A2_44615C4CFA6A
 
@@ -111,6 +118,7 @@
 #include <utility>     // for addressof, forward, exchange
 #include <vector>      // for vector
 #include <version>     // for ptrdiff_t
+
 #ifndef DF63D333_F8C0_4BBA_97E1_32A78466B8B7
 #define DF63D333_F8C0_4BBA_97E1_32A78466B8B7
 
@@ -136,6 +144,7 @@
 #include <utility>         // for forward
 #include <vector>          // for vector
 #include <version>         // for __cpp_lib_hardware_interference_size
+
 #ifndef C5DCA647_8269_46C2_B76F_5FA68738AEDA
 #define C5DCA647_8269_46C2_B76F_5FA68738AEDA
 
@@ -454,6 +463,7 @@ using std::unreachable;
 // NOLINTEND
 
 #endif /* C5DCA647_8269_46C2_B76F_5FA68738AEDA */
+
  // for LF_HOF_RETURNS
 
 /**
@@ -730,6 +740,7 @@ auto byte_cast(T *ptr) LF_HOF_RETURNS(std::bit_cast<forward_cv_t<T, std::byte> *
 } // namespace lf::impl
 
 #endif /* DF63D333_F8C0_4BBA_97E1_32A78466B8B7 */
+
  // for k_cache_line, immovable        // for LF_ASSERT, LF_STATIC_CALL
 
 /**
@@ -1167,7 +1178,9 @@ constexpr deque<T>::~deque() noexcept {
 #undef LF_ATOMIC_THREAD_FENCE_SEQ_CST
 
 #endif /* C9703881_3D9C_41A5_A7A2_44615C4CFA6A */
-    // for deque, steal_t#ifndef ACB944D8_08B6_4600_9302_602E847753FD
+
+    // for deque, steal_t
+#ifndef ACB944D8_08B6_4600_9302_602E847753FD
 #define ACB944D8_08B6_4600_9302_602E847753FD
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
@@ -1180,6 +1193,7 @@ constexpr deque<T>::~deque() noexcept {
 
 #include <type_traits> // for is_standard_layout_v
 #include <version>     // for __cpp_lib_is_pointer_interconvertible_base_of
+
 #ifndef DD6F6C5C_C146_4C02_99B9_7D2D132C0844
 #define DD6F6C5C_C146_4C02_99B9_7D2D132C0844
 
@@ -1200,6 +1214,7 @@ constexpr deque<T>::~deque() noexcept {
 #include <type_traits> // for is_standard_layout_v
 #include <utility>     // for exchange
 #include <version>     // for __cpp_lib_atomic_ref
+
 #ifndef B4EE570B_F5CF_42CB_9AF3_7376F45FDACC
 #define B4EE570B_F5CF_42CB_9AF3_7376F45FDACC
 
@@ -1278,7 +1293,9 @@ class [[nodiscard("Defer will execute unless bound to a name!")]] defer : impl::
 } // namespace lf
 
 #endif /* B4EE570B_F5CF_42CB_9AF3_7376F45FDACC */
-                // for LF_DEFER#ifndef F51F8998_9E69_458E_95E1_8592A49FA76C
+
+                // for LF_DEFER
+#ifndef F51F8998_9E69_458E_95E1_8592A49FA76C
 #define F51F8998_9E69_458E_95E1_8592A49FA76C
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
@@ -1395,7 +1412,9 @@ class manual_lifetime : immovable<manual_lifetime<T>> {
 } // namespace lf::impl
 
 #endif /* F51F8998_9E69_458E_95E1_8592A49FA76C */
- // for manual_lifetime#ifndef F7577AB3_0439_404D_9D98_072AB84FBCD0
+
+ // for manual_lifetime
+#ifndef F7577AB3_0439_404D_9D98_072AB84FBCD0
 #define F7577AB3_0439_404D_9D98_072AB84FBCD0
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
@@ -1736,6 +1755,7 @@ class stack {
 } // namespace lf::impl
 
 #endif /* F7577AB3_0439_404D_9D98_072AB84FBCD0 */
+
            // for stack         // for non_null, k_u16_max                // for LF_COMPILER_EXCEPTIONS
 
 /**
@@ -1975,6 +1995,7 @@ static_assert(std::is_standard_layout_v<frame>);
 } // namespace lf::impl
 
 #endif /* DD6F6C5C_C146_4C02_99B9_7D2D132C0844 */
+
  // for frame
 
 /**
@@ -2044,7 +2065,9 @@ using task_handle = task_t *;
 } // namespace lf
 
 #endif /* ACB944D8_08B6_4600_9302_602E847753FD */
-  // for task_handle, submit_handle#ifndef BC7496D2_E762_43A4_92A3_F2AD10690569
+
+  // for task_handle, submit_handle
+#ifndef BC7496D2_E762_43A4_92A3_F2AD10690569
 #define BC7496D2_E762_43A4_92A3_F2AD10690569
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
@@ -2173,6 +2196,7 @@ using intruded_list = typename intrusive_list<T>::node *;
 } // namespace lf
 
 #endif /* BC7496D2_E762_43A4_92A3_F2AD10690569 */
+
      // for intrusive_list, intruded_list // for non_null, immovable        // for LF_ASSERT
 
 /**
@@ -2312,6 +2336,7 @@ class full_context : public worker_context {
 } // namespace lf
 
 #endif /* D66BBECE_E467_4EB6_B74A_AAA2E7256E02 */
+
           // for full_context, ... // for manual_lifetime           // for stack                // for LF_CLANG_TLS_NOINLINE
 
 /**
@@ -2447,6 +2472,7 @@ inline LF_CLANG_TLS_NOINLINE void finalize(worker_context *worker) {
 } // namespace lf
 
 #endif /* CF97E524_27A6_4CD9_8967_39F1B1BE97B6 */
+
  // for k_new_align
 
 /**
@@ -2557,6 +2583,8 @@ inline auto co_delete(T *ptr) -> impl::co_delete_t<T, Extent> {
 
 #endif /* A951FB73_0FCF_4B7C_A997_42B7E87D21CB */
 
+
+
 #ifndef E8D38B49_7170_41BC_90E9_6D6389714304
 #define E8D38B49_7170_41BC_90E9_6D6389714304
 
@@ -2570,6 +2598,7 @@ inline auto co_delete(T *ptr) -> impl::co_delete_t<T, Extent> {
 
 #include <utility> // for move
 #include <version> // for __cpp_multidimensional_subscript
+
 #ifndef DD0B4328_55BD_452B_A4A5_5A4670A6217B
 #define DD0B4328_55BD_452B_A4A5_5A4670A6217B
 
@@ -2585,7 +2614,8 @@ inline auto co_delete(T *ptr) -> impl::co_delete_t<T, Extent> {
 #include <functional>  // for invoke
 #include <type_traits> // for invoke_result_t
 #include <utility>     // for forward
-  // for context, full_context      // for context   // for frame // for different_from, referenceable        // for LF_COMPILER_EXCEPTIONS, LF_...#ifndef A75DC3F0_D0C3_4669_A901_0B22556C873C
+  // for context, full_context      // for context   // for frame // for different_from, referenceable        // for LF_COMPILER_EXCEPTIONS, LF_...
+#ifndef A75DC3F0_D0C3_4669_A901_0B22556C873C
 #define A75DC3F0_D0C3_4669_A901_0B22556C873C
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
@@ -2622,6 +2652,7 @@ enum class tag {
 } // namespace lf
 
 #endif /* A75DC3F0_D0C3_4669_A901_0B22556C873C */
+
           // for tag
 
 /**
@@ -2796,7 +2827,9 @@ class first_arg_t {
 } // namespace lf
 
 #endif /* DD0B4328_55BD_452B_A4A5_5A4670A6217B */
-      // for async_function_object#ifndef AD9A2908_3043_4CEC_9A2A_A57DE168DF19
+
+      // for async_function_object
+#ifndef AD9A2908_3043_4CEC_9A2A_A57DE168DF19
 #define AD9A2908_3043_4CEC_9A2A_A57DE168DF19
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
@@ -2809,7 +2842,8 @@ class first_arg_t {
 
 #include <type_traits>
 #include <utility> // for as_const, forward
- // for quasi_pointer, async_function_...#ifndef CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
+ // for quasi_pointer, async_function_...
+#ifndef CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
 #define CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
@@ -2826,7 +2860,8 @@ class first_arg_t {
 #include <cstddef>     // for size_t
 #include <span>        // for span
 #include <type_traits> // for conditional_t
-  // for full_context, context  // for submit_handle, task_handle     // for intrusive_list      // for context, stack   // for frame   // for stack // for k_u16_max#ifndef A5349E86_5BAA_48EF_94E9_F0EBF630DE04
+  // for full_context, context  // for submit_handle, task_handle     // for intrusive_list      // for context, stack   // for frame   // for stack // for k_u16_max
+#ifndef A5349E86_5BAA_48EF_94E9_F0EBF630DE04
 #define A5349E86_5BAA_48EF_94E9_F0EBF630DE04
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
@@ -2840,6 +2875,7 @@ class first_arg_t {
 #include <concepts>    // for invocable, same_as
 #include <iterator>    // for indirectly_writable
 #include <type_traits> // for true_type, type_identity, inv...
+
 #ifndef B7972761_4CBF_4B86_B195_F754295372BF
 #define B7972761_4CBF_4B86_B195_F754295372BF
 
@@ -3001,7 +3037,9 @@ class eventually<T> : impl::immovable<eventually<T>> {
 } // namespace lf
 
 #endif /* B7972761_4CBF_4B86_B195_F754295372BF */
- // for eventually  // for first_arg_t, quasi_pointer  // for tag#ifndef AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
+
+ // for eventually  // for first_arg_t, quasi_pointer  // for tag
+#ifndef AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
 #define AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
@@ -3066,6 +3104,7 @@ struct LF_CORO_ATTRIBUTES task : std::type_identity<T> {
 } // namespace lf
 
 #endif /* AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172 */
+
  // for task, returnable
 
 /**
@@ -3272,6 +3311,7 @@ using async_result_t = impl::unsafe_result_t<impl::discard_t, tag::call, F, Args
 } // namespace lf
 
 #endif /* A5349E86_5BAA_48EF_94E9_F0EBF630DE04 */
+
     // for ignore_t        // for LF_LOG, LF_ASSERT, LF_ASSER...
 
 /**
@@ -3505,6 +3545,7 @@ struct join_awaitable {
 } // namespace lf::impl
 
 #endif /* CF3E6AC4_246A_4131_BF7A_FE5CD641A19B */
+
  // for async_result_t, return_address...       // for tag      // for returnable, task
 
 /**
@@ -3600,6 +3641,7 @@ auto combinate(I &&ret, first_arg_t<OtherI, OtherTag, F, Args...> arg) -> y_comb
 } // namespace lf::impl
 
 #endif /* AD9A2908_3043_4CEC_9A2A_A57DE168DF19 */
+
  // for combinate      // for discard_t          // for LF_STATIC_CALL, LF_STATIC...            // for tag
 
 /**
@@ -3743,6 +3785,8 @@ inline constexpr impl::bind_task<tag::call> call = {};
 } // namespace lf
 
 #endif /* E8D38B49_7170_41BC_90E9_6D6389714304 */
+
+
 #ifndef AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A
 #define AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A
 
@@ -3871,6 +3915,8 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_
 
 #endif /* AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A */
 
+
+
 #ifndef DE9399DB_593B_4C5C_A9D7_89B9F2FAB920
 #define DE9399DB_593B_4C5C_A9D7_89B9F2FAB920
 
@@ -3934,6 +3980,8 @@ inline void resume(task_handle ptr) noexcept {
 
 #endif /* DE9399DB_593B_4C5C_A9D7_89B9F2FAB920 */
 
+
+
 #ifndef C854CDE9_1125_46E1_9E2A_0B0006BFC135
 #define C854CDE9_1125_46E1_9E2A_0B0006BFC135
 
@@ -3956,7 +4004,8 @@ inline void resume(task_handle ptr) noexcept {
 #include <span>        // for span
 #include <type_traits> // for false_type, true_type
 #include <utility>
-        // for co_allocable, co_delete_t    // for join_type     // for full_context, context     // for submit_handle, task_handle        // for intrusive_list         // for stack, context       // for async_function_object // for alloc_awaitable, call_aw...  // for quasi_awaitable      // for frame#ifndef A896798B_7E3B_4854_9997_89EA5AE765EB
+        // for co_allocable, co_delete_t    // for join_type     // for full_context, context     // for submit_handle, task_handle        // for intrusive_list         // for stack, context       // for async_function_object // for alloc_awaitable, call_aw...  // for quasi_awaitable      // for frame
+#ifndef A896798B_7E3B_4854_9997_89EA5AE765EB
 #define A896798B_7E3B_4854_9997_89EA5AE765EB
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
@@ -4051,6 +4100,7 @@ struct return_result<void, discard_t> {
 } // namespace lf::impl
 
 #endif /* A896798B_7E3B_4854_9997_89EA5AE765EB */
+
      // for return_result      // for stack    // for byte_cast, k_u16_max       // for return_address_for, igno...           // for LF_LOG, LF_ASSERT, LF_FO...             // for tag            // for returnable, task
 
 /**
@@ -4435,6 +4485,7 @@ struct std::coroutine_traits<lf::task<R>, This, lf::impl::first_arg_t<I, Tag, F,
 #endif /* C854CDE9_1125_46E1_9E2A_0B0006BFC135 */
 
 
+
 /**
  * @file core.hpp
  *
@@ -4446,6 +4497,7 @@ struct std::coroutine_traits<lf::task<R>, This, lf::impl::first_arg_t<I, Tag, F,
  */
 
 #endif /* A6BE090F_9077_40E8_9B57_9BAFD9620469 */
+
 
 
 /**
@@ -4516,6 +4568,7 @@ inline constexpr auto lift = []<class F, class... Args>(auto, F &&func, Args &&.
 #endif /* B13463FB_3CF9_46F1_AFAC_19CBCB99A23C */
 
 
+
 /**
  * @file algorithm.hpp
  *
@@ -4523,6 +4576,8 @@ inline constexpr auto lift = []<class F, class... Args>(auto, F &&func, Args &&.
  */
 
 #endif /* B3512749_D678_438A_8E60_B1E880CF6C23 */
+
+
 #ifndef A616E976_A92A_4CE4_B807_936EF8C5FBC4
 #define A616E976_A92A_4CE4_B807_936EF8C5FBC4
 
@@ -4533,6 +4588,7 @@ inline constexpr auto lift = []<class F, class... Args>(auto, F &&func, Args &&.
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 #ifndef B5AE1829_6F8A_4118_AB15_FE73F851271F
 #define B5AE1829_6F8A_4118_AB15_FE73F851271F
 
@@ -4553,7 +4609,8 @@ inline constexpr auto lift = []<class F, class... Args>(auto, F &&func, Args &&.
 #include <thread>  // for thread
 #include <utility> // for move
 #include <vector>  // for vector
-             // for LF_DEFER       // for context, nullary_funct...       // for submit_handle, task_ha...          // for for_each_elem, intrude...        // for resume      // for k_cache_line, move_only             // for LF_ASSERT, LF_ASSERT_N...         // for scheduler#ifndef D8877F11_1F66_4AD0_B949_C0DFF390C2DB
+             // for LF_DEFER       // for context, nullary_funct...       // for submit_handle, task_ha...          // for for_each_elem, intrude...        // for resume      // for k_cache_line, move_only             // for LF_ASSERT, LF_ASSERT_N...         // for scheduler
+#ifndef D8877F11_1F66_4AD0_B949_C0DFF390C2DB
 #define D8877F11_1F66_4AD0_B949_C0DFF390C2DB
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
@@ -5062,7 +5119,9 @@ inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &dat
 } // namespace lf
 
 #endif /* D8877F11_1F66_4AD0_B949_C0DFF390C2DB */
-      // for numa_strategy, numa_to...#ifndef CA0BE1EA_88CD_4E63_9D89_37395E859565
+
+      // for numa_strategy, numa_to...
+#ifndef CA0BE1EA_88CD_4E63_9D89_37395E859565
 #define CA0BE1EA_88CD_4E63_9D89_37395E859565
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
@@ -5264,7 +5323,9 @@ static_assert(uniform_random_bit_generator<xoshiro>);
 } // namespace lf
 
 #endif /* CA0BE1EA_88CD_4E63_9D89_37395E859565 */
-    // for xoshiro, seed#ifndef C1B42944_8E33_4F6B_BAD6_5FB687F6C737
+
+    // for xoshiro, seed
+#ifndef C1B42944_8E33_4F6B_BAD6_5FB687F6C737
 #define C1B42944_8E33_4F6B_BAD6_5FB687F6C737
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
@@ -5466,6 +5527,7 @@ struct numa_context {
 } // namespace lf::impl
 
 #endif /* C1B42944_8E33_4F6B_BAD6_5FB687F6C737 */
+
  // for numa_context
 
 /**
@@ -5617,6 +5679,8 @@ static_assert(scheduler<busy_pool>);
 } // namespace lf
 
 #endif /* B5AE1829_6F8A_4118_AB15_FE73F851271F */
+
+
 #ifndef C1BED09D_40CC_4EA1_B687_38A5BCC31907
 #define C1BED09D_40CC_4EA1_B687_38A5BCC31907
 
@@ -5640,7 +5704,8 @@ static_assert(scheduler<busy_pool>);
 #include <thread>     // for thread
 #include <utility>    // for move
 #include <vector>     // for vector
-               // for LF_DEFER         // for context, nullary_fun...         // for submit_handle, task_...            // for for_each_elem, intru...          // for resume        // for k_cache_line               // for LF_ASSERT, LF_LOG           // for scheduler       // for busy_vars#pragma once
+               // for LF_DEFER         // for context, nullary_fun...         // for submit_handle, task_...            // for for_each_elem, intru...          // for resume        // for k_cache_line               // for LF_ASSERT, LF_LOG           // for scheduler       // for busy_vars
+#pragma once
 
 // Copyright (c) Conor Williams, Meta Platforms, Inc. and its affiliates.
 //
@@ -5882,7 +5947,8 @@ void event_count::await(Pred const &condition) noexcept(std::is_nothrow_invocabl
 
 } // namespace ext
 
-} // namespace lf // for event_count        // for numa_strategy, numa_...      // for xoshiro, seed   // for numa_context
+} // namespace lf
+ // for event_count        // for numa_strategy, numa_...      // for xoshiro, seed   // for numa_context
 
 /**
  * @file lazy_pool.hpp
@@ -6211,6 +6277,8 @@ static_assert(scheduler<lazy_pool>);
 } // namespace lf
 
 #endif /* C1BED09D_40CC_4EA1_B687_38A5BCC31907 */
+
+
 #ifndef C8EE9A0A_3B9F_4FFE_8FF5_910645E0C7CC
 #define C8EE9A0A_3B9F_4FFE_8FF5_910645E0C7CC
 
@@ -6260,6 +6328,7 @@ class unit_pool : impl::immovable<unit_pool> {
 
 
 
+
 /**
  * @file schedule.hpp
  *
@@ -6269,6 +6338,7 @@ class unit_pool : impl::immovable<unit_pool> {
  */
 
 #endif /* A616E976_A92A_4CE4_B807_936EF8C5FBC4 */
+
 
 
 /**
