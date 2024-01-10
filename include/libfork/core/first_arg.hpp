@@ -36,7 +36,7 @@ inline namespace core {
  */
 template <typename I>
 concept dereferenceable = requires (I val) {
-  { *val } -> impl::can_reference;
+  { *val } -> impl::referenceable;
 };
 
 /**

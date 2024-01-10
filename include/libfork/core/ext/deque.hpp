@@ -215,6 +215,17 @@ struct steal_t {
 };
 
 /**
+ * @brief A functor that returns ``std::nullopt``.
+ */
+template <typename T>
+struct return_nullopt {
+  /**
+   * @brief Returns ``std::nullopt``.
+   */
+  LF_STATIC_CALL constexpr auto operator()() LF_STATIC_CONST noexcept -> std::optional<T> { return {}; }
+};
+
+/**
  * @brief An unbounded lock-free single-producer multiple-consumer work-stealing deque.
  *
  * \rst
@@ -292,7 +303,7 @@ class deque : impl::immovable<deque<T>> {
    * Only the owner thread can pop out an item from the deque. If the buffer is empty calls `when_empty` and
    * returns the result. By default, `when_empty` is a no-op that returns a null `std::optional<T>`.
    */
-  template <std::invocable F = impl::return_nullopt<T>>
+  template <std::invocable F = return_nullopt<T>>
     requires std::convertible_to<T, std::invoke_result_t<F>>
   constexpr auto pop(F &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<F>) -> std::invoke_result_t<F>;
 

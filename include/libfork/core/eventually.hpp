@@ -119,7 +119,7 @@ class eventually : impl::immovable<eventually<T>> {
  * `eventually<T &> val` should behave like `T & val` except assignment rebinds.
  */
 template <impl::non_void T>
-  requires impl::reference<T>
+  requires std::is_reference_v<T>
 class eventually<T> : impl::immovable<eventually<T>> {
  public:
   /**

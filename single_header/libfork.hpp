@@ -84,14 +84,6 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <cassert>
-#include <concepts>
-#include <cstddef>
-#include <cstdint>
-#include <exception>
-#include <functional>
-#include <new>
-#include <type_traits>
-#include <utility>
 #include <version>
 
 /**
@@ -186,6 +178,9 @@
    */
   #define LF_RETHROW throw
 #else
+
+  #include <exception>
+
   #define LF_TRY if constexpr (true)
   #define LF_CATCH_ALL if constexpr (false)
   #ifndef NDEBUG
@@ -200,6 +195,10 @@
   #endif
 #endif
 
+#ifdef __cpp_lib_unreachable
+  #include <utility>
+#endif
+
 namespace lf::impl {
 
 #ifdef __cpp_lib_unreachable
@@ -210,13 +209,14 @@ using std::unreachable;
  */
 [[noreturn]] inline void unreachable() {
   // Uses compiler specific extensions if possible.
-  // Even if no extension is used, undefined behavior is still raised by
-  // an empty function body and the noreturn attribute.
   #if defined(_MSC_VER) && !defined(__clang__) // MSVC
   __assume(false);
   #else                                        // GCC, Clang
   __builtin_unreachable();
   #endif
+  // Even if no extension is used, undefined behavior is still raised by infinite loop.
+  for (;;) {
+  }
 }
 #endif
 
@@ -476,7 +476,6 @@ enum class tag {
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <array>
 #include <bit>
 #include <cstddef>
 #include <cstdint>
@@ -484,11 +483,10 @@ enum class tag {
 #include <functional>
 #include <limits>
 #include <new>
-#include <optional>
 #include <source_location>
-#include <tuple>
 #include <type_traits>
 #include <utility>
+#include <vector>
 #include <version>
 
 
@@ -563,11 +561,6 @@ static_assert(std::has_single_bit(k_new_align));
  */
 static constexpr std::uint16_t k_u16_max = std::numeric_limits<std::uint16_t>::max();
 
-/**
- * @brief Number of bytes in a kibibyte.
- */
-inline constexpr std::size_t k_kibibyte = 1024;
-
 // ---------------- Utility classes ---------------- //
 
 /**
@@ -576,16 +569,6 @@ inline constexpr std::size_t k_kibibyte = 1024;
 struct empty {};
 
 static_assert(std::is_empty_v<empty>);
-
-// -------------------------------- //
-
-/**
- * @brief A functor that returns ``std::nullopt``.
- */
-template <typename T>
-struct return_nullopt {
-  LF_STATIC_CALL constexpr auto operator()() LF_STATIC_CONST noexcept -> std::optional<T> { return {}; }
-};
 
 // -------------------------------- //
 
@@ -637,7 +620,7 @@ static_assert(std::is_empty_v<immovable<void>>);
  * @brief Test if we can form a reference to an instance of type T.
  */
 template <typename T>
-concept can_reference = requires () { typename std::type_identity_t<T &>; };
+concept referenceable = requires () { typename std::type_identity_t<T &>; };
 
 // Ban constructs like (T && -> T const &) which would dangle.
 
@@ -673,71 +656,8 @@ struct safe_ref_bind_impl<To const &&, From &&> : std::true_type {};
 template <typename From, typename To>
 concept safe_ref_bind_to =                          //
     std::is_reference_v<To> &&                      //
-    can_reference<From> &&                          //
+    referenceable<From> &&                          //
     detail::safe_ref_bind_impl<To, From &&>::value; //
-
-namespace detail {
-
-template <class Lambda, int = (((void)Lambda{}()), 0)>
-consteval auto constexpr_callable_help(Lambda) -> bool {
-  return true;
-}
-
-consteval auto constexpr_callable_help(auto &&...) -> bool { return false; }
-
-} // namespace detail
-
-/**
- * @brief Detect if a function is constexpr-callable.
- *
- * \rst
- *
- * Use like:
- *
- * .. code::
- *
- *    if constexpr (is_constexpr<[]{ function_to_test() }>){
- *      // ...
- *    }
- *
- * \endrst
- */
-template <auto Lambda>
-concept constexpr_callable = detail::constexpr_callable_help(Lambda);
-
-namespace detail::static_test {
-
-inline void foo() {}
-
-static_assert(constexpr_callable<[] {}>);
-
-static_assert(constexpr_callable<[] {
-  std::has_single_bit(1U);
-}>);
-
-static_assert(!constexpr_callable<[] {
-  foo();
-}>);
-
-} // namespace detail::static_test
-
-/**
- * @brief Forwards to ``std::is_reference_v<T>``.
- */
-template <typename T>
-concept reference = std::is_reference_v<T>;
-
-/**
- * @brief Forwards to ``std::is_reference_v<T>``.
- */
-template <typename T>
-concept non_reference = !std::is_reference_v<T>;
-
-/**
- * @brief Check is a type is ``void``.
- */
-template <typename T>
-concept is_void = std::is_void_v<T>;
 
 /**
  * @brief Check is a type is not ``void``.
@@ -745,27 +665,18 @@ concept is_void = std::is_void_v<T>;
 template <typename T>
 concept non_void = !std::is_void_v<T>;
 
-/**
- * @brief Check if a type has ``const``, ``volatile`` or reference qualifiers.
- */
-template <typename T>
-concept unqualified = std::same_as<std::remove_cvref_t<T>, T>;
-
 namespace detail {
 
 template <typename From, typename To>
-struct forward_cv;
+struct forward_cv : std::type_identity<To> {};
 
-template <unqualified From, typename To>
-struct forward_cv<From, To> : std::type_identity<To> {};
-
-template <unqualified From, typename To>
+template <typename From, typename To>
 struct forward_cv<From const, To> : std::type_identity<To const> {};
 
-template <unqualified From, typename To>
+template <typename From, typename To>
 struct forward_cv<From volatile, To> : std::type_identity<To volatile> {};
 
-template <unqualified From, typename To>
+template <typename From, typename To>
 struct forward_cv<From const volatile, To> : std::type_identity<To const volatile> {};
 
 } // namespace detail
@@ -773,35 +684,9 @@ struct forward_cv<From const volatile, To> : std::type_identity<To const volatil
 /**
  * @brief Copy the ``const``/``volatile`` qualifiers from ``From`` to ``To``.
  */
-template <non_reference From, unqualified To>
+template <typename From, typename To>
+  requires (!std::is_reference_v<From> && std::same_as<std::remove_cvref_t<To>, To>)
 using forward_cv_t = typename detail::forward_cv<From, To>::type;
-
-namespace detail {
-
-template <typename T>
-struct constify_ref;
-
-template <typename T>
-struct constify_ref<T &> : std::type_identity<T const &> {};
-
-template <typename T>
-struct constify_ref<T &&> : std::type_identity<T const &&> {};
-
-} // namespace detail
-
-/**
- * @brief Convert ``T & -> T const&`` and ``T && -> T const&&``.
- */
-template <reference T>
-using constify_ref_t = typename detail::constify_ref<T>::type;
-
-/**
- * @brief True if the unqualified ``T`` and ``U`` refer to different types.
- *
- * This is useful for preventing ''T &&'' constructor/assignment from replacing the defaults.
- */
-template <typename T, typename U>
-concept non_converting = !std::same_as<std::remove_cvref_t<U>, std::remove_cvref_t<T>>;
 
 /**
  * @brief True if the unqualified ``T`` and ``U`` refer to different types.
@@ -812,16 +697,6 @@ template <typename T, typename U>
 concept different_from = !std::same_as<std::remove_cvref_t<U>, std::remove_cvref_t<T>>;
 
 // ---------------- Small functions ---------------- //
-
-/**
- * @brief Invoke a callable with the given arguments, unconditionally noexcept.
- */
-template <typename... Args, std::invocable<Args...> Fn>
-constexpr auto noexcept_invoke(Fn &&fun, Args &&...args) noexcept -> std::invoke_result_t<Fn, Args...> {
-  return std::invoke(std::forward<Fn>(fun), std::forward<Args>(args)...);
-}
-
-// -------------------------------- //
 
 /**
  * @brief Transform `[a, b, c] -> [f(a), f(b), f(c)]`.
@@ -866,34 +741,24 @@ template <typename T>
   requires requires (T &&ptr) {
     { ptr == nullptr } -> std::convertible_to<bool>;
   }
-constexpr auto non_null(T &&ptr, std::source_location loc = std::source_location::current()) noexcept
-    -> T && {
+constexpr auto non_null(T &&x, std::source_location loc = std::source_location::current()) noexcept -> T && {
 #ifndef NDEBUG
-  if (ptr == nullptr) {
+  if (x == nullptr) {
     // NOLINTNEXTLINE
     std::fprintf(stderr, "%s:%d: Null check failed: %s\n", loc.file_name(), loc.line(), loc.function_name());
     std::terminate();
   }
 #endif
-  return std::forward<T>(ptr);
+  return std::forward<T>(x);
 }
 
 // -------------------------------- //
 
 /**
- * @brief Like ``std::apply`` but reverses the argument order.
+ * @brief Cast a pointer to a byte pointer.
  */
-template <class F, class Tuple>
-constexpr auto apply_to(Tuple &&tup, F &&func)
-    LF_HOF_RETURNS(std::apply(std::forward<F>(func), std::forward<Tuple>(tup)))
-
-    // -------------------------------- //
-
-    /**
-     * @brief Cast a pointer to a byte pointer.
-     */
-    template <typename T>
-    auto byte_cast(T *ptr) LF_HOF_RETURNS(std::bit_cast<forward_cv_t<T, std::byte> *>(ptr))
+template <typename T>
+auto byte_cast(T *ptr) LF_HOF_RETURNS(std::bit_cast<forward_cv_t<T, std::byte> *>(ptr))
 
 } // namespace lf::impl
 
@@ -1089,6 +954,17 @@ struct steal_t {
 };
 
 /**
+ * @brief A functor that returns ``std::nullopt``.
+ */
+template <typename T>
+struct return_nullopt {
+  /**
+   * @brief Returns ``std::nullopt``.
+   */
+  LF_STATIC_CALL constexpr auto operator()() LF_STATIC_CONST noexcept -> std::optional<T> { return {}; }
+};
+
+/**
  * @brief An unbounded lock-free single-producer multiple-consumer work-stealing deque.
  *
  * \rst
@@ -1166,7 +1042,7 @@ class deque : impl::immovable<deque<T>> {
    * Only the owner thread can pop out an item from the deque. If the buffer is empty calls `when_empty` and
    * returns the result. By default, `when_empty` is a no-op that returns a null `std::optional<T>`.
    */
-  template <std::invocable F = impl::return_nullopt<T>>
+  template <std::invocable F = return_nullopt<T>>
     requires std::convertible_to<T, std::invoke_result_t<F>>
   constexpr auto pop(F &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<F>) -> std::invoke_result_t<F>;
 
@@ -2716,9 +2592,8 @@ inline auto co_delete(T *ptr) -> impl::co_delete_t<T, Extent> {
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <concepts>
-#include <functional>
+#include <iterator>
 #include <type_traits>
-#include <utility>
 #ifndef B7972761_4CBF_4B86_B195_F754295372BF
 #define B7972761_4CBF_4B86_B195_F754295372BF
 
@@ -2746,7 +2621,6 @@ inline auto co_delete(T *ptr) -> impl::co_delete_t<T, Extent> {
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>
 #include <type_traits>
 
 
@@ -2902,7 +2776,7 @@ class eventually : impl::immovable<eventually<T>> {
  * `eventually<T &> val` should behave like `T & val` except assignment rebinds.
  */
 template <impl::non_void T>
-  requires impl::reference<T>
+  requires std::is_reference_v<T>
 class eventually<T> : impl::immovable<eventually<T>> {
  public:
   /**
@@ -2981,7 +2855,7 @@ inline namespace core {
  */
 template <typename I>
 concept dereferenceable = requires (I val) {
-  { *val } -> impl::can_reference;
+  { *val } -> impl::referenceable;
 };
 
 /**
@@ -3830,8 +3704,6 @@ inline constexpr impl::bind_task<tag::call> call = {};
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <coroutine>
 
 #include <exception>
 #include <type_traits>
