@@ -50,10 +50,10 @@ Extension API
    api/ext.rst
 
 
-Macros in ``libfork``
----------------------------
+.. Macros in ``libfork``
+.. ---------------------------
 
-.. doxygenfile:: libfork/core/macro.hpp
+.. .. doxygenfile:: libfork/core/macro.hpp
 
 
 Internal documentation

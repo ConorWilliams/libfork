@@ -70,6 +70,7 @@ struct hwloc_bitmap_s;
 struct hwloc_topology;
 
 namespace lf {
+
 inline namespace ext {
 
 // ------------- hwloc can go wrong in a lot of ways... ------------- //
@@ -88,8 +89,8 @@ struct hwloc_error : std::runtime_error {
  * @brief Enum to control distribution strategy of workers among numa nodes.
  */
 enum class numa_strategy {
-  fan, // Put workers as far away from each other as possible (maximize cache.)
-  seq, // Fill up each numa node sequentially (ignoring SMT).
+  fan, ///< Put workers as far away from each other as possible (maximize cache.)
+  seq, ///< Fill up each numa node sequentially (ignoring SMT).
 };
 
 /**

@@ -1,73 +1,61 @@
 Extension API
-=========================
+=============
 
-Writing  schedulers
------------------------------
+Containers
+------------
 
-A scheduler has an associated ``thread_context`` type. A scheduler is 
-expected to deploy a number of worker threads each of which has an instance
-of the schedulers context type. These worker threads must call ``worker_init``
-and ``worker_finalize`` at their construction and destruction respectively.
+.. toctree::
+   :maxdepth: 2
 
-The core concept
-~~~~~~~~~~~~~~~~
+   ext/list.rst
+   ext/deque.rst
 
-.. doxygenconcept:: lf::ext::thread_context
 
-Thread setup and teardown
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Pages
+-----
+
+.. toctree::
+   :maxdepth: 2
+
+   ext/event_count.rst
+   ext/random.rst
+   ext/numa.rst
+
+Interface types
+---------------
+
+These types are components of the scheduler API.
+
+.. doxygentypedef:: lf::ext::nullary_function_t
+
+.. doxygentypedef:: lf::ext::intruded_list
+
+.. doxygenclass:: lf::ext::task_t
+   :members:
+
+.. doxygenclass:: lf::ext::submit_t
+   :members:
+
+.. doxygentypedef:: lf::ext::task_handle
+
+.. doxygentypedef:: lf::ext::submit_handle
+
+Worker context
+...............
+
+.. doxygenclass:: lf::ext::worker_context
+   :members:
+
+Scheduler API functions
+-----------------------
 
 .. doxygenfunction:: lf::ext::worker_init
 
-.. doxygenfunction:: lf::ext::worker_finalize
+.. doxygenfunction:: lf::ext::finalize
 
-Handle types
-~~~~~~~~~~~~
+.. doxygenfunction:: lf::ext::resume(task_handle ptr)
 
-.. doxygenstruct:: lf::ext::task_h
-
-.. doxygenstruct:: lf::ext::submit_h
-
-.. doxygentypedef:: lf::ext::intruded_h
-
-The cactus stack
-~~~~~~~~~~~~~~~~
-
-.. doxygenclass:: lf::ext::fibre_stack
-    :members:
-
-Submission lists
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. toctree::
-   :glob: 
-   :maxdepth: 1
-
-   ext/list.rst
-
-
-Exposed internals
---------------------
-
-These classes are used to build ``libfork``s schedulers. They are exposed for reuse.
-
-.. toctree::
-   :glob: 
-   :maxdepth: 1
-
-   ext/deque.rst
-   ext/buffer.rst
-   ext/event_count.rst
-   ext/numa.rst
-   ext/random.rst
-
-
-Generated listing
----------------------
-
-.. toctree::
-   ext.gen.rst
+.. doxygenfunction:: lf::ext::resume(submit_handle ptr)
 
 
 
- 

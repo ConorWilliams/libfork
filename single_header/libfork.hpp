@@ -34,9 +34,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>
-#include <source_location>
+#include <functional>
 #include <type_traits>
+#include <utility>
 #ifndef A6BE090F_9077_40E8_9B57_9BAFD9620469
 #define A6BE090F_9077_40E8_9B57_9BAFD9620469
 
@@ -761,8 +761,7 @@ namespace lf {
 inline namespace ext {
 
 /**
- * @brief Verify a type is suitable for use with
- * [`std::atomic`](https://en.cppreference.com/w/cpp/atomic/atomic).
+ * @brief Verify a type is suitable for use with `std::atomic`
  *
  * This requires a `TriviallyCopyable` type satisfying both `CopyConstructible` and `CopyAssignable`.
  */
@@ -779,6 +778,11 @@ concept atomicable = std::is_trivially_copyable_v<T> && //
 template <typename T>
 concept lock_free = atomicable<T> && std::atomic<T>::is_always_lock_free;
 
+/**
+ * @brief Test is a type is suitable for use with `lf::deque`.
+ *
+ * This requires it to be `lf::ext::lock_free` and `std::default_initializable`.
+ */
 template <typename T>
 concept dequeable = lock_free<T> && std::default_initializable<T>;
 
@@ -1992,7 +1996,7 @@ inline namespace ext {
  *
  * .. note::
  *
- *    A pointer to an ``submit_h`` should only ever passed to ``resume()``.
+ *    A pointer to an ``submit_h`` should never be deferenced, only passed to ``lf::ext::resume()``.
  *
  * \endrst
  */
@@ -2018,7 +2022,7 @@ using submit_handle = submit_t *;
  *
  * .. note::
  *
- *    A pointer to an ``task_h`` should only ever passed to ``resume()``.
+ *    A pointer to an ``task_h`` should never be deferenced, only passed to ``lf::ext::resume()``.
  *
  * \endrst
  */
@@ -2191,7 +2195,7 @@ class worker_context; // API for worker threads.
 namespace impl {
 
 class full_context;      // Internal API
-struct switch_awaitable; // Forwadr decl for friend.
+struct switch_awaitable; // Forward decl for friend.
 
 } // namespace impl
 
@@ -2208,6 +2212,14 @@ using nullary_function_t = std::function<void()>;
 
 /**
  * @brief Core-visible context for users to query and submit tasks to.
+ *
+ * This class is technically part of the extension API however it is documented in the core API as a pointer
+ * to a context (obtained via the .context() method of a first argument) can be ``co_awaited`` to explicitly
+ * transfer control/execution of a coroutine.
+ *
+ * Each worker thread stores a context object, this is managed by the library. Internally a context manages
+ * the work stealing queue and the submission queue. Submissions to the submission queue trigger a
+ * user-supplied notification.
  */
 class context : impl::immovable<context> {
  public:
@@ -2241,7 +2253,7 @@ class context : impl::immovable<context> {
 };
 
 /**
- * @brief Context for (user) schedulers to interact with.
+ * @brief Context for (extension) schedulers to interact with.
  *
  * Additionally exposes submit and pop functions.
  */
@@ -2249,7 +2261,7 @@ class worker_context : public context {
  public:
   using context::context;
 
-  using context::submit; ///< Submit an external task.
+  using context::submit;
 
   /**
    * @brief Fetch a linked-list of the submitted tasks.
@@ -2371,11 +2383,11 @@ inline namespace ext {
  * \rst
  *
  * .. warning::
- *    These should be cleaned up with ``worker_finalize(...)``.
+ *    This should be cleaned up with ``lf::ext::finalize()``.
  *
  * \endrst
  */
-[[nodiscard]] LF_CLANG_TLS_NOINLINE inline auto worker_init(nullary_function_t notify) -> worker_context * {
+[[nodiscard]] inline LF_CLANG_TLS_NOINLINE auto worker_init(nullary_function_t notify) -> worker_context * {
 
   LF_LOG("Initializing worker");
 
@@ -2407,11 +2419,11 @@ inline namespace ext {
  * \rst
  *
  * .. warning::
- *    These must be initialized with ``worker_init(...)``.
+ *    These must have been initialized with ``worker_init(...)``.
  *
  * \endrst
  */
-LF_CLANG_TLS_NOINLINE inline void finalize(worker_context *worker) {
+inline LF_CLANG_TLS_NOINLINE void finalize(worker_context *worker) {
 
   LF_LOG("Finalizing worker");
 
@@ -4611,6 +4623,7 @@ struct hwloc_bitmap_s;
 struct hwloc_topology;
 
 namespace lf {
+
 inline namespace ext {
 
 // ------------- hwloc can go wrong in a lot of ways... ------------- //
@@ -4629,8 +4642,8 @@ struct hwloc_error : std::runtime_error {
  * @brief Enum to control distribution strategy of workers among numa nodes.
  */
 enum class numa_strategy {
-  fan, // Put workers as far away from each other as possible (maximize cache.)
-  seq, // Fill up each numa node sequentially (ignoring SMT).
+  fan, ///< Put workers as far away from each other as possible (maximize cache.)
+  seq, ///< Fill up each numa node sequentially (ignoring SMT).
 };
 
 /**
@@ -5647,9 +5660,9 @@ static_assert(scheduler<busy_pool>);
 
 #include <atomic>     // for atomic, memory_order_acq_rel
 #include <bit>        // for endian
+#include <cstddef>    // for size_t
 #include <cstdint>    // for uint64_t, uint32_t
 #include <functional> // for invoke
-#include <stddef.h>   // for size_t
  // for immovable        // for LF_ASSERT, LF_CATCH_ALL
 
 /**

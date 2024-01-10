@@ -86,11 +86,11 @@ inline namespace ext {
  * \rst
  *
  * .. warning::
- *    These should be cleaned up with ``worker_finalize(...)``.
+ *    This should be cleaned up with ``lf::ext::finalize()``.
  *
  * \endrst
  */
-[[nodiscard]] LF_CLANG_TLS_NOINLINE inline auto worker_init(nullary_function_t notify) -> worker_context * {
+[[nodiscard]] inline LF_CLANG_TLS_NOINLINE auto worker_init(nullary_function_t notify) -> worker_context * {
 
   LF_LOG("Initializing worker");
 
@@ -122,11 +122,11 @@ inline namespace ext {
  * \rst
  *
  * .. warning::
- *    These must be initialized with ``worker_init(...)``.
+ *    These must have been initialized with ``worker_init(...)``.
  *
  * \endrst
  */
-LF_CLANG_TLS_NOINLINE inline void finalize(worker_context *worker) {
+inline LF_CLANG_TLS_NOINLINE void finalize(worker_context *worker) {
 
   LF_LOG("Finalizing worker");
 

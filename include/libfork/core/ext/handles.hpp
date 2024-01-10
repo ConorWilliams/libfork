@@ -33,7 +33,7 @@ inline namespace ext {
  *
  * .. note::
  *
- *    A pointer to an ``submit_h`` should only ever passed to ``resume()``.
+ *    A pointer to an ``submit_h`` should never be deferenced, only passed to ``lf::ext::resume()``.
  *
  * \endrst
  */
@@ -59,7 +59,7 @@ using submit_handle = submit_t *;
  *
  * .. note::
  *
- *    A pointer to an ``task_h`` should only ever passed to ``resume()``.
+ *    A pointer to an ``task_h`` should never be deferenced, only passed to ``lf::ext::resume()``.
  *
  * \endrst
  */

@@ -18,9 +18,9 @@
 
 #include <atomic>     // for atomic, memory_order_acq_rel
 #include <bit>        // for endian
+#include <cstddef>    // for size_t
 #include <cstdint>    // for uint64_t, uint32_t
 #include <functional> // for invoke
-#include <stddef.h>   // for size_t
 
 #include "libfork/core/impl/utility.hpp" // for immovable
 #include "libfork/core/macro.hpp"        // for LF_ASSERT, LF_CATCH_ALL

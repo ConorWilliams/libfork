@@ -90,6 +90,11 @@ Defer
     :members:
     :undoc-members:
 
+Context
+~~~~~~~
+
+.. doxygenclass:: lf::ext::context
+   :members:
 
 Stack allocation
 ------------------

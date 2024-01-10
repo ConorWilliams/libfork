@@ -54,8 +54,7 @@ namespace lf {
 inline namespace ext {
 
 /**
- * @brief Verify a type is suitable for use with
- * [`std::atomic`](https://en.cppreference.com/w/cpp/atomic/atomic).
+ * @brief Verify a type is suitable for use with `std::atomic`
  *
  * This requires a `TriviallyCopyable` type satisfying both `CopyConstructible` and `CopyAssignable`.
  */
@@ -72,6 +71,11 @@ concept atomicable = std::is_trivially_copyable_v<T> && //
 template <typename T>
 concept lock_free = atomicable<T> && std::atomic<T>::is_always_lock_free;
 
+/**
+ * @brief Test is a type is suitable for use with `lf::deque`.
+ *
+ * This requires it to be `lf::ext::lock_free` and `std::default_initializable`.
+ */
 template <typename T>
 concept dequeable = lock_free<T> && std::default_initializable<T>;
 

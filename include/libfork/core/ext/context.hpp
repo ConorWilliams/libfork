@@ -39,7 +39,7 @@ class worker_context; // API for worker threads.
 namespace impl {
 
 class full_context;      // Internal API
-struct switch_awaitable; // Forwadr decl for friend.
+struct switch_awaitable; // Forward decl for friend.
 
 } // namespace impl
 
@@ -56,6 +56,14 @@ using nullary_function_t = std::function<void()>;
 
 /**
  * @brief Core-visible context for users to query and submit tasks to.
+ *
+ * This class is technically part of the extension API however it is documented in the core API as a pointer
+ * to a context (obtained via the .context() method of a first argument) can be ``co_awaited`` to explicitly
+ * transfer control/execution of a coroutine.
+ *
+ * Each worker thread stores a context object, this is managed by the library. Internally a context manages
+ * the work stealing queue and the submission queue. Submissions to the submission queue trigger a
+ * user-supplied notification.
  */
 class context : impl::immovable<context> {
  public:
@@ -89,7 +97,7 @@ class context : impl::immovable<context> {
 };
 
 /**
- * @brief Context for (user) schedulers to interact with.
+ * @brief Context for (extension) schedulers to interact with.
  *
  * Additionally exposes submit and pop functions.
  */
@@ -97,7 +105,7 @@ class worker_context : public context {
  public:
   using context::context;
 
-  using context::submit; ///< Submit an external task.
+  using context::submit;
 
   /**
    * @brief Fetch a linked-list of the submitted tasks.

@@ -7,38 +7,38 @@ Utilities
 Type traits
 ~~~~~~~~~~~~
 
-.. doxygentypedef:: lf::invoke_result_t
+.. .. doxygentypedef:: lf::invoke_result_t
 
-.. doxygentypedef:: lf::indirect_result_t
+.. .. doxygentypedef:: lf::indirect_result_t
 
-Concepts
-~~~~~~~~~
+.. Concepts
+.. ~~~~~~~~~
 
-.. doxygenconcept:: lf::semigroup
+.. .. doxygenconcept:: lf::semigroup
 
-.. doxygenconcept:: lf::foldable
+.. .. doxygenconcept:: lf::foldable
 
-Indirect variations
-*******************
+.. Indirect variations
+.. *******************
 
-.. doxygenconcept:: lf::indirectly_unary_invocable
+.. .. doxygenconcept:: lf::indirectly_unary_invocable
 
-.. doxygenconcept:: lf::indirect_semigroup
+.. .. doxygenconcept:: lf::indirect_semigroup
 
-.. doxygenconcept:: lf::indirectly_foldable
+.. .. doxygenconcept:: lf::indirectly_foldable
 
 Lifting functions
 ~~~~~~~~~~~~~~~~~~~
 
-.. doxygenfunction:: lf::lift
+.. doxygenvariable:: lf::lift 
 
-.. doxygendefine:: LF_LIFT
+.. doxygendefine:: LF_LOFT
 
-.. doxygendefine:: LF_LIFT2
+.. doxygendefine:: LF_CLOFT
 
 Constrained algorithms
 -----------------------
 
-.. doxygenvariable:: lf::for_each
+.. .. doxygenvariable:: lf::for_each
 
-.. doxygenvariable:: lf::fold
+.. .. doxygenvariable:: lf::fold
