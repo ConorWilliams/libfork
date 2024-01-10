@@ -9,23 +9,25 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <coroutine>
+#include <bit>         // for bit_cast
+#include <exception>   // for exception_ptr, reth...
+#include <optional>    // for optional, nullopt
+#include <type_traits> // for conditional_t
+#include <utility>     // for forward, move
 
-#include <exception>
-#include <type_traits>
-#include <utility>
-
-#include "libfork/core/defer.hpp"
-#include "libfork/core/eventually.hpp"
-#include "libfork/core/invocable.hpp"
-#include "libfork/core/macro.hpp"
-
-#include "libfork/core/ext/handles.hpp"
-#include "libfork/core/ext/list.hpp"
-#include "libfork/core/ext/tls.hpp"
-
-#include "libfork/core/impl/combinate.hpp"
-#include "libfork/core/impl/utility.hpp"
+#include "libfork/core/eventually.hpp"           // for eventually
+#include "libfork/core/ext/handles.hpp"          // for submit_handle
+#include "libfork/core/ext/list.hpp"             // for intruded_list, intr...
+#include "libfork/core/ext/tls.hpp"              // for thread_stack, has_s...
+#include "libfork/core/first_arg.hpp"            // for async_function_object
+#include "libfork/core/impl/combinate.hpp"       // for quasi_awaitable
+#include "libfork/core/impl/frame.hpp"           // for root_notify, frame
+#include "libfork/core/impl/manual_lifetime.hpp" // for manual_lifetime
+#include "libfork/core/impl/stack.hpp"           // for stack, swap
+#include "libfork/core/impl/utility.hpp"         // for empty
+#include "libfork/core/invocable.hpp"            // for async_result_t, ign...
+#include "libfork/core/macro.hpp"                // for LF_LOG, LF_CLANG_TL...
+#include "libfork/core/tag.hpp"                  // for tag
 
 /**
  * @file sync_wait.hpp
@@ -34,6 +36,12 @@
  */
 
 namespace lf {
+
+namespace impl {
+
+struct empty;
+
+} // namespace impl
 
 inline namespace core {
 

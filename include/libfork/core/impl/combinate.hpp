@@ -10,12 +10,13 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <type_traits>
-#include <utility>
+#include <utility> // for as_const, forward
 
-#include "libfork/core/first_arg.hpp"
-#include "libfork/core/invocable.hpp"
-
+#include "libfork/core/first_arg.hpp" // for quasi_pointer, async_function_...
 #include "libfork/core/impl/awaitables.hpp"
+#include "libfork/core/invocable.hpp" // for async_result_t, return_address...
+#include "libfork/core/tag.hpp"       // for tag
+#include "libfork/core/task.hpp"      // for returnable, task
 
 /**
  * @file combinate.hpp

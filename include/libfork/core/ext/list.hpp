@@ -9,14 +9,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <atomic>
-#include <concepts>
-#include <type_traits>
-#include <utility>
+#include <atomic>     // for atomic, memory_order_consume
+#include <concepts>   // for invocable
+#include <functional> // for invoke
 
-#include "libfork/core/macro.hpp"
-
-#include "libfork/core/impl/utility.hpp"
+#include "libfork/core/impl/utility.hpp" // for immovable
+#include "libfork/core/macro.hpp"        // for LF_ASSERT
 
 /**
  * @file list.hpp

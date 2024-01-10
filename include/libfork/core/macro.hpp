@@ -9,16 +9,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <cassert>
-#include <concepts>
-#include <cstddef>
-#include <cstdint>
-#include <exception>
-#include <functional>
-#include <new>
-#include <type_traits>
-#include <utility>
-#include <version>
+#include <cassert> // for assert
+#include <version> // for __cpp_lib_unreachable, ...
 
 /**
  * @file macro.hpp
@@ -112,6 +104,9 @@
    */
   #define LF_RETHROW throw
 #else
+
+  #include <exception>
+
   #define LF_TRY if constexpr (true)
   #define LF_CATCH_ALL if constexpr (false)
   #ifndef NDEBUG
@@ -126,6 +121,10 @@
   #endif
 #endif
 
+#ifdef __cpp_lib_unreachable
+  #include <utility>
+#endif
+
 namespace lf::impl {
 
 #ifdef __cpp_lib_unreachable
@@ -136,13 +135,14 @@ using std::unreachable;
  */
 [[noreturn]] inline void unreachable() {
   // Uses compiler specific extensions if possible.
-  // Even if no extension is used, undefined behavior is still raised by
-  // an empty function body and the noreturn attribute.
   #if defined(_MSC_VER) && !defined(__clang__) // MSVC
   __assume(false);
   #else                                        // GCC, Clang
   __builtin_unreachable();
   #endif
+  // Even if no extension is used, undefined behavior is still raised by infinite loop.
+  for (;;) {
+  }
 }
 #endif
 
@@ -279,6 +279,7 @@ using std::unreachable;
 
     #ifdef __cpp_lib_format
       #include <format>
+
       #define LF_FORMAT(message, ...) std::format((message)__VA_OPT__(, ) __VA_ARGS__)
     #else
       #define LF_FORMAT(message, ...) (message)
@@ -286,6 +287,7 @@ using std::unreachable;
 
     #ifdef __cpp_lib_syncbuf
       #include <syncstream>
+
       #define LF_SYNC_COUT std::osyncstream(std::cout) << std::this_thread::get_id()
     #else
       #define LF_SYNC_COUT std::cout << std::this_thread::get_id()

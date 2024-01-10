@@ -9,10 +9,15 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include "libfork/core/macro.hpp"
+#include <bit>       // for bit_cast
+#include <coroutine> // for coroutine_handle
 
-#include "libfork/core/ext/handles.hpp"
-#include "libfork/core/ext/tls.hpp"
+#include "libfork/core/ext/context.hpp" // for full_context
+#include "libfork/core/ext/handles.hpp" // for submit_handle, task_handle
+#include "libfork/core/ext/tls.hpp"     // for context, stack
+#include "libfork/core/impl/frame.hpp"  // for frame
+#include "libfork/core/impl/stack.hpp"  // for stack
+#include "libfork/core/macro.hpp"       // for LF_ASSERT_NO_ASSUME, LF_LOG
 
 /**
  * @file resume.hpp

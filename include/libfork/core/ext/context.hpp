@@ -9,18 +9,15 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>
-#include <functional>
-#include <version>
+#include <functional> // for function
+#include <utility>    // for move
+#include <version>    // for __cpp_lib_move_only_function
 
-#include "libfork/core/macro.hpp"
-#include "libfork/core/tag.hpp"
-
-#include "libfork/core/ext/deque.hpp"
-#include "libfork/core/ext/handles.hpp"
-#include "libfork/core/ext/list.hpp"
-
-#include "libfork/core/impl/utility.hpp"
+#include "libfork/core/ext/deque.hpp"    // for deque, steal_t
+#include "libfork/core/ext/handles.hpp"  // for task_handle, submit_handle
+#include "libfork/core/ext/list.hpp"     // for intrusive_list, intruded_list
+#include "libfork/core/impl/utility.hpp" // for non_null, immovable
+#include "libfork/core/macro.hpp"        // for LF_ASSERT
 
 /**
  * @file context.hpp
@@ -34,16 +31,14 @@ namespace lf {
 
 inline namespace ext {
 
-class context; // Semi-User facing, (for submitting tasks).
-
+class context;        // Semi-User facing, (for submitting tasks).
 class worker_context; // API for worker threads.
 
 } // namespace ext
 
 namespace impl {
 
-class full_context; // Internal API
-
+class full_context;      // Internal API
 struct switch_awaitable; // Forwadr decl for friend.
 
 } // namespace impl

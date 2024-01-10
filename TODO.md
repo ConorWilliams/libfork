@@ -1,12 +1,5 @@
 # The todo list
 
-- Check HWLOC numa detection is up to par
-
-- Benchmarks working, run benchmarks on CSD3 with mimalloc
-
-- Fix github actions
-- non_null macro
-- Use manual_eventually in sync_wait
 - CTRL F for TODO
 - Includes for std:: and lf:: need tidying
 - Docs need updating

@@ -9,17 +9,17 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>
-#include <functional>
-#include <type_traits>
-#include <utility>
+#include <concepts>    // for invocable, constructible_from
+#include <functional>  // for invoke
+#include <type_traits> // for invoke_result_t
+#include <utility>     // for forward
 
-#include "libfork/core/tag.hpp"
-
-#include "libfork/core/ext/context.hpp"
-#include "libfork/core/ext/tls.hpp"
-
-#include "libfork/core/impl/utility.hpp"
+#include "libfork/core/ext/context.hpp"  // for context, full_context
+#include "libfork/core/ext/tls.hpp"      // for context
+#include "libfork/core/impl/frame.hpp"   // for frame
+#include "libfork/core/impl/utility.hpp" // for different_from, referenceable
+#include "libfork/core/macro.hpp"        // for LF_COMPILER_EXCEPTIONS, LF_...
+#include "libfork/core/tag.hpp"          // for tag
 
 /**
  * @file first_arg.hpp

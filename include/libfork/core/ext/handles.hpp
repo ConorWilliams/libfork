@@ -9,10 +9,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <type_traits>
-#include <version>
+#include <type_traits> // for is_standard_layout_v
+#include <version>     // for __cpp_lib_is_pointer_interconvertible_base_of
 
-#include "libfork/core/impl/frame.hpp"
+#include "libfork/core/impl/frame.hpp" // for frame
 
 /**
  * @file handles.hpp

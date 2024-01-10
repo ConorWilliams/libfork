@@ -9,14 +9,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>
-#include <functional>
-#include <type_traits>
-#include <utility>
+#include <functional>  // for invoke
+#include <type_traits> // for is_nothrow_invocable_v, is_nothrow_constructible_v
+#include <utility>     // for forward
 
-#include "libfork/core/macro.hpp"
-
-#include "libfork/core/impl/utility.hpp"
+#include "libfork/core/impl/utility.hpp" // for immovable
+#include "libfork/core/macro.hpp"        // for LF_CONCAT_OUTER, LF_FORCEIN...
 
 /**
  * @file defer.hpp

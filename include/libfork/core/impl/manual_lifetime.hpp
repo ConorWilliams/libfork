@@ -9,10 +9,14 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <memory>
-#include <new>
+#include <array>    // for array
+#include <concepts> // for constructible_from
+#include <cstddef>  // for byte
+#include <memory>   // for destroy_at
+#include <new>      // for launder, operator new
+#include <utility>  // for forward
 
-#include "libfork/core/impl/utility.hpp"
+#include "libfork/core/impl/utility.hpp" // for immovable
 
 /**
  * @file manual_lifetime.hpp

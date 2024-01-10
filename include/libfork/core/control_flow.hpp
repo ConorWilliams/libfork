@@ -10,12 +10,14 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <utility>
+#include <utility> // for move
+#include <version> // for __cpp_multidimensional_subscript
 
-#include "libfork/core/invocable.hpp"
-#include "libfork/core/tag.hpp"
-
-#include "libfork/core/impl/combinate.hpp"
+#include "libfork/core/first_arg.hpp"      // for async_function_object
+#include "libfork/core/impl/combinate.hpp" // for combinate
+#include "libfork/core/invocable.hpp"      // for discard_t
+#include "libfork/core/macro.hpp"          // for LF_STATIC_CALL, LF_STATIC...
+#include "libfork/core/tag.hpp"            // for tag
 
 /**
  * @file control_flow.hpp

@@ -9,11 +9,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>
-#include <type_traits>
+#include <concepts>    // for movable
+#include <type_traits> // for type_identity
 
-#include "libfork/core/macro.hpp"
-#include "libfork/core/tag.hpp"
+#include "libfork/core/macro.hpp" // for LF_CORO_ATTRIBUTES
 
 /**
  * @file task.hpp

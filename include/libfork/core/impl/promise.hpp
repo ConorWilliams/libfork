@@ -9,28 +9,35 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include <atomic> // for atomic_thread_fence, mem...
+#include <bit>    // for bit_cast
 #include <concepts>
-#include <exception>
+#include <coroutine> // for coroutine_handle, noop_c...
+#include <cstddef>   // for size_t
+#include <exception> // for current_exception
+#include <memory>    // for destroy, uninitialized_d...
 #include <new>
-#include <type_traits>
+#include <span>        // for span
+#include <type_traits> // for false_type, true_type
 #include <utility>
 
-#include "libfork/core/co_alloc.hpp"
-#include "libfork/core/control_flow.hpp"
-#include "libfork/core/first_arg.hpp"
-#include "libfork/core/invocable.hpp"
-#include "libfork/core/tag.hpp"
-#include "libfork/core/task.hpp"
-
-#include "libfork/core/ext/context.hpp"
-#include "libfork/core/ext/handles.hpp"
-#include "libfork/core/ext/tls.hpp"
-
-#include "libfork/core/impl/awaitables.hpp"
-#include "libfork/core/impl/combinate.hpp"
-#include "libfork/core/impl/frame.hpp"
-#include "libfork/core/impl/return.hpp"
-#include "libfork/core/impl/utility.hpp"
+#include "libfork/core/co_alloc.hpp"        // for co_allocable, co_delete_t
+#include "libfork/core/control_flow.hpp"    // for join_type
+#include "libfork/core/ext/context.hpp"     // for full_context, context
+#include "libfork/core/ext/handles.hpp"     // for submit_handle, task_handle
+#include "libfork/core/ext/list.hpp"        // for intrusive_list
+#include "libfork/core/ext/tls.hpp"         // for stack, context
+#include "libfork/core/first_arg.hpp"       // for async_function_object
+#include "libfork/core/impl/awaitables.hpp" // for alloc_awaitable, call_aw...
+#include "libfork/core/impl/combinate.hpp"  // for quasi_awaitable
+#include "libfork/core/impl/frame.hpp"      // for frame
+#include "libfork/core/impl/return.hpp"     // for return_result
+#include "libfork/core/impl/stack.hpp"      // for stack
+#include "libfork/core/impl/utility.hpp"    // for byte_cast, k_u16_max
+#include "libfork/core/invocable.hpp"       // for return_address_for, igno...
+#include "libfork/core/macro.hpp"           // for LF_LOG, LF_ASSERT, LF_FO...
+#include "libfork/core/tag.hpp"             // for tag
+#include "libfork/core/task.hpp"            // for returnable, task
 
 /**
  * @file promise.hpp

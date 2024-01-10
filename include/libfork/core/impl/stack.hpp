@@ -9,18 +9,16 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <algorithm>
-#include <bit>
-#include <cstddef>
-#include <cstdlib>
+#include <algorithm>   // for max
+#include <bit>         // for has_single_bit
+#include <cstddef>     // for size_t, byte, nullptr_t
+#include <cstdlib>     // for free, malloc
+#include <new>         // for bad_alloc
+#include <type_traits> // for is_trivially_default_constr...
+#include <utility>     // for exchange, swap
 
-#include <memory>
-#include <type_traits>
-#include <utility>
-
-#include "libfork/core/macro.hpp"
-
-#include "libfork/core/impl/utility.hpp"
+#include "libfork/core/impl/utility.hpp" // for byte_cast, k_new_align, non...
+#include "libfork/core/macro.hpp"        // for LF_ASSERT, LF_LOG, LF_FORCE...
 
 /**
  * @file stack.hpp

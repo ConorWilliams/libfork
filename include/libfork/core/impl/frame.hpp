@@ -9,18 +9,21 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <atomic>
-#include <coroutine>
-#include <exception>
-#include <semaphore>
-#include <type_traits>
-#include <utility>
-#include <version>
+#include <atomic>      // for atomic_ref, memory_...
+#include <coroutine>   // for coroutine_handle
+#include <cstdint>     // for uint16_t
+#include <exception>   // for exception_ptr, oper...
+#include <memory>      // for construct_at
+#include <semaphore>   // for binary_semaphore
+#include <type_traits> // for is_standard_layout_v
+#include <utility>     // for exchange
+#include <version>     // for __cpp_lib_atomic_ref
 
-#include "libfork/core/defer.hpp"
-
-#include "libfork/core/impl/manual_lifetime.hpp"
-#include "libfork/core/impl/stack.hpp"
+#include "libfork/core/defer.hpp"                // for LF_DEFER
+#include "libfork/core/impl/manual_lifetime.hpp" // for manual_lifetime
+#include "libfork/core/impl/stack.hpp"           // for stack
+#include "libfork/core/impl/utility.hpp"         // for non_null, k_u16_max
+#include "libfork/core/macro.hpp"                // for LF_COMPILER_EXCEPTIONS
 
 /**
  * @file frame.hpp

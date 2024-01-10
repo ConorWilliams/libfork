@@ -9,16 +9,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>
-#include <memory>
-#include <optional>
-#include <type_traits>
-#include <utility>
+#include <concepts>    // for constructible_from
+#include <optional>    // for optional
+#include <type_traits> // for remove_reference_t
+#include <utility>     // for addressof, forward
 
-#include "libfork/core/macro.hpp"
-#include "libfork/core/task.hpp"
-
-#include "libfork/core/impl/utility.hpp"
+#include "libfork/core/impl/utility.hpp" // for immovable, non_void, safe_r...
+#include "libfork/core/macro.hpp"        // for LF_ASSERT
 
 /**
  * @file eventually.hpp

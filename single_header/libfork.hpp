@@ -57,9 +57,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>
+#include <concepts> // for default_initializable
+#include <cstddef>  // for size_t
 #include <memory>
-#include <span>
+#include <span> // for dynamic_extent, span
 #ifndef CF97E524_27A6_4CD9_8967_39F1B1BE97B6
 #define CF97E524_27A6_4CD9_8967_39F1B1BE97B6
 
@@ -71,7 +72,70 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <stdexcept>
+#include <stdexcept> // for runtime_error
+#include <utility>   // for move
+#ifndef D66BBECE_E467_4EB6_B74A_AAA2E7256E02
+#define D66BBECE_E467_4EB6_B74A_AAA2E7256E02
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <functional> // for function
+#include <utility>    // for move
+#include <version>    // for __cpp_lib_move_only_function
+#ifndef C9703881_3D9C_41A5_A7A2_44615C4CFA6A
+#define C9703881_3D9C_41A5_A7A2_44615C4CFA6A
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <algorithm>   // for max
+#include <atomic>      // for atomic, atomic_thread_fence
+#include <bit>         // for has_single_bit
+#include <concepts>    // for convertible_to, invocable
+#include <cstddef>     // for ptrdiff_t, size_t
+#include <functional>  // for invoke
+#include <memory>      // for unique_ptr, make_unique
+#include <optional>    // for optional
+#include <type_traits> // for invoke_result_t
+#include <utility>     // for addressof, forward, exchange
+#include <vector>      // for vector
+#include <version>     // for ptrdiff_t
+#ifndef DF63D333_F8C0_4BBA_97E1_32A78466B8B7
+#define DF63D333_F8C0_4BBA_97E1_32A78466B8B7
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <bit>             // for bit_cast, has_single_bit
+#include <concepts>        // for same_as, convertible_to
+#include <cstddef>         // for byte, size_t
+#include <cstdint>         // for uint16_t
+#include <cstdio>          // for fprintf, stderr
+#include <exception>       // for terminate
+#include <functional>      // for invoke
+#include <limits>          // for numeric_limits
+#include <new>             // for std::hardware_destructive_interference_size
+#include <source_location> // for source_location
+#include <type_traits>     // for invoke_result_t, type_identity
+#include <utility>         // for forward
+#include <vector>          // for vector
+#include <version>         // for __cpp_lib_hardware_interference_size
 #ifndef C5DCA647_8269_46C2_B76F_5FA68738AEDA
 #define C5DCA647_8269_46C2_B76F_5FA68738AEDA
 
@@ -83,8 +147,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <cassert>
-#include <version>
+#include <cassert> // for assert
+#include <version> // for __cpp_lib_unreachable, ...
 
 /**
  * @file macro.hpp
@@ -353,6 +417,7 @@ using std::unreachable;
 
     #ifdef __cpp_lib_format
       #include <format>
+
       #define LF_FORMAT(message, ...) std::format((message)__VA_OPT__(, ) __VA_ARGS__)
     #else
       #define LF_FORMAT(message, ...) (message)
@@ -360,6 +425,7 @@ using std::unreachable;
 
     #ifdef __cpp_lib_syncbuf
       #include <syncstream>
+
       #define LF_SYNC_COUT std::osyncstream(std::cout) << std::this_thread::get_id()
     #else
       #define LF_SYNC_COUT std::cout << std::this_thread::get_id()
@@ -388,107 +454,7 @@ using std::unreachable;
 // NOLINTEND
 
 #endif /* C5DCA647_8269_46C2_B76F_5FA68738AEDA */
-
-#ifndef D66BBECE_E467_4EB6_B74A_AAA2E7256E02
-#define D66BBECE_E467_4EB6_B74A_AAA2E7256E02
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>
-#include <functional>
-#include <version>
-#ifndef A75DC3F0_D0C3_4669_A901_0B22556C873C
-#define A75DC3F0_D0C3_4669_A901_0B22556C873C
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-/**
- * @file tag.hpp
- *
- * @brief Libfork's dispatch tag types.
- */
-
-namespace lf {
-
-inline namespace core {
-
-/**
- * @brief An enumeration that determines the behavior of a coroutine's promise.
- *
- * You can inspect the first argument of an async function to determine the tag.
- */
-enum class tag {
-  root, ///< This coroutine is a root task from an ``lf::sync_wait``.
-  call, ///< Non root task from an ``lf::call``, completes synchronously.
-  fork, ///< Non root task from an ``lf::fork``, completes asynchronously.
-};
-
-} // namespace core
-
-} // namespace lf
-
-#endif /* A75DC3F0_D0C3_4669_A901_0B22556C873C */
-
-#ifndef C9703881_3D9C_41A5_A7A2_44615C4CFA6A
-#define C9703881_3D9C_41A5_A7A2_44615C4CFA6A
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <atomic>
-#include <bit>
-#include <concepts>
-#include <cstddef>
-#include <cstdint>
-#include <memory>
-#include <new>
-#include <optional>
-#include <type_traits>
-#include <utility>
-#include <vector>
-#include <version>
-
-#ifndef DF63D333_F8C0_4BBA_97E1_32A78466B8B7
-#define DF63D333_F8C0_4BBA_97E1_32A78466B8B7
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <bit>
-#include <cstddef>
-#include <cstdint>
-#include <cstdio>
-#include <functional>
-#include <limits>
-#include <new>
-#include <source_location>
-#include <type_traits>
-#include <utility>
-#include <vector>
-#include <version>
-
+ // for LF_HOF_RETURNS
 
 /**
  * @file utility.hpp
@@ -763,7 +729,7 @@ auto byte_cast(T *ptr) LF_HOF_RETURNS(std::bit_cast<forward_cv_t<T, std::byte> *
 } // namespace lf::impl
 
 #endif /* DF63D333_F8C0_4BBA_97E1_32A78466B8B7 */
-
+ // for k_cache_line, immovable        // for LF_ASSERT, LF_STATIC_CALL
 
 /**
  * @file deque.hpp
@@ -779,6 +745,7 @@ auto byte_cast(T *ptr) LF_HOF_RETURNS(std::bit_cast<forward_cv_t<T, std::byte> *
 #if defined(LF_USE_BOOST_ATOMIC) && defined(__clang__) && defined(__has_include)
   #if __has_include(<boost/atomic.hpp>)
     #include <boost/atomic.hpp>
+
     #define LF_ATOMIC_THREAD_FENCE_SEQ_CST boost::atomic_thread_fence(boost::memory_order_seq_cst)
   #else
     #warning "Boost.Atomic not found, falling back to std::atomic_thread_fence"
@@ -1195,7 +1162,7 @@ constexpr deque<T>::~deque() noexcept {
 #undef LF_ATOMIC_THREAD_FENCE_SEQ_CST
 
 #endif /* C9703881_3D9C_41A5_A7A2_44615C4CFA6A */
-#ifndef ACB944D8_08B6_4600_9302_602E847753FD
+    // for deque, steal_t#ifndef ACB944D8_08B6_4600_9302_602E847753FD
 #define ACB944D8_08B6_4600_9302_602E847753FD
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
@@ -1206,8 +1173,8 @@ constexpr deque<T>::~deque() noexcept {
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <type_traits>
-#include <version>
+#include <type_traits> // for is_standard_layout_v
+#include <version>     // for __cpp_lib_is_pointer_interconvertible_base_of
 #ifndef DD6F6C5C_C146_4C02_99B9_7D2D132C0844
 #define DD6F6C5C_C146_4C02_99B9_7D2D132C0844
 
@@ -1219,13 +1186,15 @@ constexpr deque<T>::~deque() noexcept {
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <atomic>
-#include <coroutine>
-#include <exception>
-#include <semaphore>
-#include <type_traits>
-#include <utility>
-#include <version>
+#include <atomic>      // for atomic_ref, memory_...
+#include <coroutine>   // for coroutine_handle
+#include <cstdint>     // for uint16_t
+#include <exception>   // for exception_ptr, oper...
+#include <memory>      // for construct_at
+#include <semaphore>   // for binary_semaphore
+#include <type_traits> // for is_standard_layout_v
+#include <utility>     // for exchange
+#include <version>     // for __cpp_lib_atomic_ref
 #ifndef B4EE570B_F5CF_42CB_9AF3_7376F45FDACC
 #define B4EE570B_F5CF_42CB_9AF3_7376F45FDACC
 
@@ -1237,12 +1206,10 @@ constexpr deque<T>::~deque() noexcept {
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>
-#include <functional>
-#include <type_traits>
-#include <utility>
-
-
+#include <functional>  // for invoke
+#include <type_traits> // for is_nothrow_invocable_v, is_nothrow_constructible_v
+#include <utility>     // for forward
+ // for immovable        // for LF_CONCAT_OUTER, LF_FORCEIN...
 
 /**
  * @file defer.hpp
@@ -1306,8 +1273,7 @@ class [[nodiscard("Defer will execute unless bound to a name!")]] defer : impl::
 } // namespace lf
 
 #endif /* B4EE570B_F5CF_42CB_9AF3_7376F45FDACC */
-
-#ifndef F51F8998_9E69_458E_95E1_8592A49FA76C
+                // for LF_DEFER#ifndef F51F8998_9E69_458E_95E1_8592A49FA76C
 #define F51F8998_9E69_458E_95E1_8592A49FA76C
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
@@ -1318,9 +1284,13 @@ class [[nodiscard("Defer will execute unless bound to a name!")]] defer : impl::
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <memory>
-#include <new>
-
+#include <array>    // for array
+#include <concepts> // for constructible_from
+#include <cstddef>  // for byte
+#include <memory>   // for destroy_at
+#include <new>      // for launder, operator new
+#include <utility>  // for forward
+ // for immovable
 
 /**
  * @file manual_lifetime.hpp
@@ -1420,7 +1390,7 @@ class manual_lifetime : immovable<manual_lifetime<T>> {
 } // namespace lf::impl
 
 #endif /* F51F8998_9E69_458E_95E1_8592A49FA76C */
-#ifndef F7577AB3_0439_404D_9D98_072AB84FBCD0
+ // for manual_lifetime#ifndef F7577AB3_0439_404D_9D98_072AB84FBCD0
 #define F7577AB3_0439_404D_9D98_072AB84FBCD0
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
@@ -1431,16 +1401,14 @@ class manual_lifetime : immovable<manual_lifetime<T>> {
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <algorithm>
-#include <bit>
-#include <cstddef>
-#include <cstdlib>
-
-#include <memory>
-#include <type_traits>
-#include <utility>
-
-
+#include <algorithm>   // for max
+#include <bit>         // for has_single_bit
+#include <cstddef>     // for size_t, byte, nullptr_t
+#include <cstdlib>     // for free, malloc
+#include <new>         // for bad_alloc
+#include <type_traits> // for is_trivially_default_constr...
+#include <utility>     // for exchange, swap
+ // for byte_cast, k_new_align, non...        // for LF_ASSERT, LF_LOG, LF_FORCE...
 
 /**
  * @file stack.hpp
@@ -1757,7 +1725,7 @@ class stack {
 } // namespace lf::impl
 
 #endif /* F7577AB3_0439_404D_9D98_072AB84FBCD0 */
-
+           // for stack         // for non_null, k_u16_max                // for LF_COMPILER_EXCEPTIONS
 
 /**
  * @file frame.hpp
@@ -1996,7 +1964,7 @@ static_assert(std::is_standard_layout_v<frame>);
 } // namespace lf::impl
 
 #endif /* DD6F6C5C_C146_4C02_99B9_7D2D132C0844 */
-
+ // for frame
 
 /**
  * @file handles.hpp
@@ -2065,7 +2033,7 @@ using task_handle = task_t *;
 } // namespace lf
 
 #endif /* ACB944D8_08B6_4600_9302_602E847753FD */
-#ifndef BC7496D2_E762_43A4_92A3_F2AD10690569
+  // for task_handle, submit_handle#ifndef BC7496D2_E762_43A4_92A3_F2AD10690569
 #define BC7496D2_E762_43A4_92A3_F2AD10690569
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
@@ -2076,12 +2044,10 @@ using task_handle = task_t *;
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <atomic>
-#include <concepts>
-#include <type_traits>
-#include <utility>
-
-
+#include <atomic>     // for atomic, memory_order_consume
+#include <concepts>   // for invocable
+#include <functional> // for invoke
+ // for immovable        // for LF_ASSERT
 
 /**
  * @file list.hpp
@@ -2196,8 +2162,7 @@ using intruded_list = typename intrusive_list<T>::node *;
 } // namespace lf
 
 #endif /* BC7496D2_E762_43A4_92A3_F2AD10690569 */
-
-
+     // for intrusive_list, intruded_list // for non_null, immovable        // for LF_ASSERT
 
 /**
  * @file context.hpp
@@ -2211,16 +2176,14 @@ namespace lf {
 
 inline namespace ext {
 
-class context; // Semi-User facing, (for submitting tasks).
-
+class context;        // Semi-User facing, (for submitting tasks).
 class worker_context; // API for worker threads.
 
 } // namespace ext
 
 namespace impl {
 
-class full_context; // Internal API
-
+class full_context;      // Internal API
 struct switch_awaitable; // Forwadr decl for friend.
 
 } // namespace impl
@@ -2321,8 +2284,7 @@ class full_context : public worker_context {
 } // namespace lf
 
 #endif /* D66BBECE_E467_4EB6_B74A_AAA2E7256E02 */
-
-
+          // for full_context, worke... // for manual_lifetime           // for stack                // for LF_CLANG_TLS_NOINLINE
 
 /**
  * @file tls.hpp
@@ -2457,8 +2419,7 @@ LF_CLANG_TLS_NOINLINE inline void finalize(worker_context *worker) {
 } // namespace lf
 
 #endif /* CF97E524_27A6_4CD9_8967_39F1B1BE97B6 */
-
-
+ // for k_new_align
 
 /**
  * @file co_alloc.hpp
@@ -2579,248 +2540,8 @@ inline auto co_delete(T *ptr) -> impl::co_delete_t<T, Extent> {
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <utility>
-#ifndef A5349E86_5BAA_48EF_94E9_F0EBF630DE04
-#define A5349E86_5BAA_48EF_94E9_F0EBF630DE04
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>
-#include <iterator>
-#include <type_traits>
-#ifndef B7972761_4CBF_4B86_B195_F754295372BF
-#define B7972761_4CBF_4B86_B195_F754295372BF
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>
-#include <memory>
-#include <optional>
-#include <type_traits>
-#include <utility>
-#ifndef AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
-#define AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <type_traits>
-
-
-/**
- * @file task.hpp
- *
- * @brief Implementation of the core ``lf::task`` type.
- */
-
-namespace lf {
-
-inline namespace core {
-
-// --------------------------------- Task --------------------------------- //
-
-// TODO: private destructor such that tasks can only be created inside the library?
-
-/**
- * @brief A type returnable from libfork's async functions/coroutines.
- *
- * This requires that `T` is `void` a reference or a `std::movable` type.
- */
-template <typename T>
-concept returnable = std::is_void_v<T> || std::is_reference_v<T> || std::movable<T>;
-
-/**
- * @brief The return type for libfork's async functions/coroutines.
- *
- * This predominantly exists to disambiguate `libfork`s coroutines from other coroutines and specify `T` the
- * async function's return type which is required to be `void`, a reference, or a `std::movable` type.
- *
- * \rst
- *
- * .. note::
- *
- *    No consumer of this library should never touch an instance of this type, it is used for specifying the
- *    return type of an `async` function only.
- *
- * .. warning::
- *    The value type ``T`` of a coroutine should be independent of the coroutines first-argument.
- *
- * \endrst
- */
-template <returnable T = void>
-struct LF_CORO_ATTRIBUTES task : std::type_identity<T> {
-  void *prom; ///< An opaque handle to the coroutine promise.
-};
-
-} // namespace core
-
-} // namespace lf
-
-#endif /* AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172 */
-
-
-
-/**
- * @file eventually.hpp
- *
- * @brief Classes for delaying construction of an object.
- */
-
-namespace lf {
-
-inline namespace core {
-
-// ------------------------------------------------------------------------ //
-
-/**
- * @brief A wrapper to delay construction of an object, like ``std::optional``.
- *
- * This class supports delayed construction of reference types. It is like a simplified version of
- * `std::optional` that is only constructed once. Construction is done (zero or one times) via assignment.
- *
- * \rst
- *
- * .. note::
- *    This documentation is generated from the non-reference specialization, see the source
- *    for the reference specialization.
- *
- * \endrst
- */
-template <impl::non_void T>
-class eventually : impl::immovable<eventually<T>> {
-
-  std::optional<T> m_value; ///< The contained object.
-
- public:
-  /**
-   * @brief Start lifetime of object at assignment.
-   */
-  template <typename U>
-    requires std::constructible_from<T, U>
-  void operator=(U &&expr) noexcept(std::is_nothrow_constructible_v<T, U>) {
-    LF_ASSERT(!m_value);
-    m_value.emplace(std::forward<U>(expr));
-  }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator->() noexcept -> T * {
-    LF_ASSERT(m_value);
-    return m_value.operator->();
-  }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator->() const noexcept -> T const * {
-    LF_ASSERT(m_value);
-    return m_value.operator->();
-  }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator*() & noexcept -> T & {
-    LF_ASSERT(m_value);
-    return *m_value;
-  }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator*() const & noexcept -> T const & {
-    LF_ASSERT(m_value);
-    return *m_value;
-  }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator*() && noexcept -> T && {
-    LF_ASSERT(m_value);
-    return *std::move(m_value);
-  }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator*() const && noexcept -> T const && {
-    LF_ASSERT(m_value);
-    return *std::move(m_value);
-  }
-};
-
-// ------------------------------------------------------------------------ //
-
-/**
- * @brief Has pointer semantics.
- *
- * `eventually<T &> val` should behave like `T & val` except assignment rebinds.
- */
-template <impl::non_void T>
-  requires std::is_reference_v<T>
-class eventually<T> : impl::immovable<eventually<T>> {
- public:
-  /**
-   * @brief Construct an object inside the eventually from ``expr``.
-   */
-  template <impl::safe_ref_bind_to<T> U>
-  void operator=(U &&expr) noexcept {
-    m_value = std::addressof(expr);
-  }
-
-  /**
-   * @brief Access the wrapped reference.
-   */
-  [[nodiscard]] auto operator->() const noexcept -> std::remove_reference_t<T> * { return m_value; }
-
-  /**
-   * @brief Deference the wrapped pointer.
-   *
-   * This will decay `T&&` to `T&` just like using a `T &&` reference would.
-   */
-  [[nodiscard]] auto operator*() const & noexcept -> std::remove_reference_t<T> & { return *m_value; }
-
-  /**
-   * @brief Forward the wrapped reference.
-   *
-   * This will not decay T&& to T&, nor will it promote T& to T&&.
-   */
-  [[nodiscard]] auto operator*() const && noexcept -> T {
-    if constexpr (std::is_rvalue_reference_v<T>) {
-      return std::move(*m_value);
-    } else {
-      return *m_value;
-    }
-  }
-
- private:
-  std::remove_reference_t<T> *m_value;
-};
-
-} // namespace core
-
-} // namespace lf
-
-#endif /* B7972761_4CBF_4B86_B195_F754295372BF */
+#include <utility> // for move
+#include <version> // for __cpp_multidimensional_subscript
 #ifndef DD0B4328_55BD_452B_A4A5_5A4670A6217B
 #define DD0B4328_55BD_452B_A4A5_5A4670A6217B
 
@@ -2832,13 +2553,48 @@ class eventually<T> : impl::immovable<eventually<T>> {
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>
-#include <functional>
-#include <type_traits>
-#include <utility>
+#include <concepts>    // for invocable, constructible_from
+#include <functional>  // for invoke
+#include <type_traits> // for invoke_result_t
+#include <utility>     // for forward
+  // for context, full_context      // for context   // for frame // for different_from, referenceable        // for LF_COMPILER_EXCEPTIONS, LF_...#ifndef A75DC3F0_D0C3_4669_A901_0B22556C873C
+#define A75DC3F0_D0C3_4669_A901_0B22556C873C
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
 
+// SPDX-License-Identifier: MPL-2.0
 
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+/**
+ * @file tag.hpp
+ *
+ * @brief Libfork's dispatch tag types.
+ */
+
+namespace lf {
+
+inline namespace core {
+
+/**
+ * @brief An enumeration that determines the behavior of a coroutine's promise.
+ *
+ * You can inspect the first argument of an async function to determine the tag.
+ */
+enum class tag {
+  root, ///< This coroutine is a root task from an ``lf::sync_wait``.
+  call, ///< Non root task from an ``lf::call``, completes synchronously.
+  fork, ///< Non root task from an ``lf::fork``, completes asynchronously.
+};
+
+} // namespace core
+
+} // namespace lf
+
+#endif /* A75DC3F0_D0C3_4669_A901_0B22556C873C */
+          // for tag
 
 /**
  * @file first_arg.hpp
@@ -2991,8 +2747,277 @@ class first_arg_t {
 } // namespace lf
 
 #endif /* DD0B4328_55BD_452B_A4A5_5A4670A6217B */
+      // for async_function_object#ifndef AD9A2908_3043_4CEC_9A2A_A57DE168DF19
+#define AD9A2908_3043_4CEC_9A2A_A57DE168DF19
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
 
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <type_traits>
+#include <utility> // for as_const, forward
+ // for quasi_pointer, async_function_...#ifndef CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
+#define CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <atomic>      // for memory_order_acquire, atomi...
+#include <bit>         // for bit_cast
+#include <coroutine>   // for coroutine_handle, noop_coro...
+#include <cstddef>     // for size_t
+#include <span>        // for span
+#include <type_traits> // for conditional_t
+  // for full_context, context  // for submit_handle, task_handle     // for intrusive_list      // for context, stack   // for frame   // for stack // for k_u16_max#ifndef A5349E86_5BAA_48EF_94E9_F0EBF630DE04
+#define A5349E86_5BAA_48EF_94E9_F0EBF630DE04
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>    // for invocable, same_as
+#include <iterator>    // for indirectly_writable
+#include <type_traits> // for true_type, type_identity, inv...
+#ifndef B7972761_4CBF_4B86_B195_F754295372BF
+#define B7972761_4CBF_4B86_B195_F754295372BF
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>    // for constructible_from
+#include <optional>    // for optional
+#include <type_traits> // for remove_reference_t
+#include <utility>     // for addressof, forward
+ // for immovable, non_void, safe_r...        // for LF_ASSERT
+
+/**
+ * @file eventually.hpp
+ *
+ * @brief Classes for delaying construction of an object.
+ */
+
+namespace lf {
+
+inline namespace core {
+
+// ------------------------------------------------------------------------ //
+
+/**
+ * @brief A wrapper to delay construction of an object, like ``std::optional``.
+ *
+ * This class supports delayed construction of reference types. It is like a simplified version of
+ * `std::optional` that is only constructed once. Construction is done (zero or one times) via assignment.
+ *
+ * \rst
+ *
+ * .. note::
+ *    This documentation is generated from the non-reference specialization, see the source
+ *    for the reference specialization.
+ *
+ * \endrst
+ */
+template <impl::non_void T>
+class eventually : impl::immovable<eventually<T>> {
+
+  std::optional<T> m_value; ///< The contained object.
+
+ public:
+  /**
+   * @brief Start lifetime of object at assignment.
+   */
+  template <typename U>
+    requires std::constructible_from<T, U>
+  void operator=(U &&expr) noexcept(std::is_nothrow_constructible_v<T, U>) {
+    LF_ASSERT(!m_value);
+    m_value.emplace(std::forward<U>(expr));
+  }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator->() noexcept -> T * {
+    LF_ASSERT(m_value);
+    return m_value.operator->();
+  }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator->() const noexcept -> T const * {
+    LF_ASSERT(m_value);
+    return m_value.operator->();
+  }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() & noexcept -> T & {
+    LF_ASSERT(m_value);
+    return *m_value;
+  }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() const & noexcept -> T const & {
+    LF_ASSERT(m_value);
+    return *m_value;
+  }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() && noexcept -> T && {
+    LF_ASSERT(m_value);
+    return *std::move(m_value);
+  }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() const && noexcept -> T const && {
+    LF_ASSERT(m_value);
+    return *std::move(m_value);
+  }
+};
+
+// ------------------------------------------------------------------------ //
+
+/**
+ * @brief Has pointer semantics.
+ *
+ * `eventually<T &> val` should behave like `T & val` except assignment rebinds.
+ */
+template <impl::non_void T>
+  requires std::is_reference_v<T>
+class eventually<T> : impl::immovable<eventually<T>> {
+ public:
+  /**
+   * @brief Construct an object inside the eventually from ``expr``.
+   */
+  template <impl::safe_ref_bind_to<T> U>
+  void operator=(U &&expr) noexcept {
+    m_value = std::addressof(expr);
+  }
+
+  /**
+   * @brief Access the wrapped reference.
+   */
+  [[nodiscard]] auto operator->() const noexcept -> std::remove_reference_t<T> * { return m_value; }
+
+  /**
+   * @brief Deference the wrapped pointer.
+   *
+   * This will decay `T&&` to `T&` just like using a `T &&` reference would.
+   */
+  [[nodiscard]] auto operator*() const & noexcept -> std::remove_reference_t<T> & { return *m_value; }
+
+  /**
+   * @brief Forward the wrapped reference.
+   *
+   * This will not decay T&& to T&, nor will it promote T& to T&&.
+   */
+  [[nodiscard]] auto operator*() const && noexcept -> T {
+    if constexpr (std::is_rvalue_reference_v<T>) {
+      return std::move(*m_value);
+    } else {
+      return *m_value;
+    }
+  }
+
+ private:
+  std::remove_reference_t<T> *m_value;
+};
+
+} // namespace core
+
+} // namespace lf
+
+#endif /* B7972761_4CBF_4B86_B195_F754295372BF */
+ // for eventually  // for first_arg_t, quasi_pointer  // for tag#ifndef AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
+#define AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>    // for movable
+#include <type_traits> // for type_identity
+ // for LF_CORO_ATTRIBUTES
+
+/**
+ * @file task.hpp
+ *
+ * @brief Implementation of the core ``lf::task`` type.
+ */
+
+namespace lf {
+
+inline namespace core {
+
+// --------------------------------- Task --------------------------------- //
+
+// TODO: private destructor such that tasks can only be created inside the library?
+
+/**
+ * @brief A type returnable from libfork's async functions/coroutines.
+ *
+ * This requires that `T` is `void` a reference or a `std::movable` type.
+ */
+template <typename T>
+concept returnable = std::is_void_v<T> || std::is_reference_v<T> || std::movable<T>;
+
+/**
+ * @brief The return type for libfork's async functions/coroutines.
+ *
+ * This predominantly exists to disambiguate `libfork`s coroutines from other coroutines and specify `T` the
+ * async function's return type which is required to be `void`, a reference, or a `std::movable` type.
+ *
+ * \rst
+ *
+ * .. note::
+ *
+ *    No consumer of this library should never touch an instance of this type, it is used for specifying the
+ *    return type of an `async` function only.
+ *
+ * .. warning::
+ *    The value type ``T`` of a coroutine should be independent of the coroutines first-argument.
+ *
+ * \endrst
+ */
+template <returnable T = void>
+struct LF_CORO_ATTRIBUTES task : std::type_identity<T> {
+  void *prom; ///< An opaque handle to the coroutine promise.
+};
+
+} // namespace core
+
+} // namespace lf
+
+#endif /* AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172 */
+ // for task, returnable
 
 /**
  * @file invocable.hpp
@@ -3192,38 +3217,7 @@ using async_result_t = impl::unsafe_result_t<impl::discard_t, tag::call, F, Args
 } // namespace lf
 
 #endif /* A5349E86_5BAA_48EF_94E9_F0EBF630DE04 */
-
-#ifndef AD9A2908_3043_4CEC_9A2A_A57DE168DF19
-#define AD9A2908_3043_4CEC_9A2A_A57DE168DF19
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <type_traits>
-#include <utility>
-
-#ifndef CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
-#define CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <coroutine>
-#include <span>
-#include <type_traits>
-
-
-
+    // for ignore_t        // for LF_LOG, LF_ASSERT, LF_ASSER...
 
 /**
  * @file awaitables.hpp
@@ -3456,7 +3450,7 @@ struct join_awaitable {
 } // namespace lf::impl
 
 #endif /* CF3E6AC4_246A_4131_BF7A_FE5CD641A19B */
-
+ // for async_result_t, return_address...       // for tag      // for returnable, task
 
 /**
  * @file combinate.hpp
@@ -3551,7 +3545,7 @@ auto combinate(I &&ret, first_arg_t<OtherI, OtherTag, F, Args...> arg) -> y_comb
 } // namespace lf::impl
 
 #endif /* AD9A2908_3043_4CEC_9A2A_A57DE168DF19 */
-
+ // for combinate      // for discard_t          // for LF_STATIC_CALL, LF_STATIC...            // for tag
 
 /**
  * @file control_flow.hpp
@@ -3705,12 +3699,12 @@ inline constexpr impl::bind_task<tag::call> call = {};
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <exception>
-#include <type_traits>
-#include <utility>
-
-
-
+#include <bit>         // for bit_cast
+#include <exception>   // for exception_ptr, reth...
+#include <optional>    // for optional, nullopt
+#include <type_traits> // for conditional_t
+#include <utility>     // for forward, move
+           // for eventually          // for submit_handle             // for intruded_list, intr...              // for thread_stack, has_s...            // for async_function_object       // for quasi_awaitable           // for root_notify, frame // for manual_lifetime           // for stack, swap         // for empty            // for async_result_t, ign...                // for LF_LOG, LF_CLANG_TL...                  // for tag
 
 /**
  * @file sync_wait.hpp
@@ -3719,6 +3713,12 @@ inline constexpr impl::bind_task<tag::call> call = {};
  */
 
 namespace lf {
+
+namespace impl {
+
+struct empty;
+
+} // namespace impl
 
 inline namespace core {
 
@@ -3827,7 +3827,9 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-
+#include <bit>       // for bit_cast
+#include <coroutine> // for coroutine_handle
+ // for full_context // for submit_handle, task_handle     // for context, stack  // for frame  // for stack       // for LF_ASSERT_NO_ASSUME, LF_LOG
 
 /**
  * @file resume.hpp
@@ -3888,14 +3890,18 @@ inline void resume(task_handle ptr) noexcept {
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include <atomic> // for atomic_thread_fence, mem...
+#include <bit>    // for bit_cast
 #include <concepts>
-#include <exception>
+#include <coroutine> // for coroutine_handle, noop_c...
+#include <cstddef>   // for size_t
+#include <exception> // for current_exception
+#include <memory>    // for destroy, uninitialized_d...
 #include <new>
-#include <type_traits>
+#include <span>        // for span
+#include <type_traits> // for false_type, true_type
 #include <utility>
-
-
-#ifndef A896798B_7E3B_4854_9997_89EA5AE765EB
+        // for co_allocable, co_delete_t    // for join_type     // for full_context, context     // for submit_handle, task_handle        // for intrusive_list         // for stack, context       // for async_function_object // for alloc_awaitable, call_aw...  // for quasi_awaitable      // for frame#ifndef A896798B_7E3B_4854_9997_89EA5AE765EB
 #define A896798B_7E3B_4854_9997_89EA5AE765EB
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
@@ -3906,10 +3912,11 @@ inline void resume(task_handle ptr) noexcept {
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>
+#include <concepts> // for convertible_to
+#include <iterator> // for indirectly_writable
 #include <type_traits>
-
-
+#include <utility> // for forward
+    // for quasi_pointer // for safe_ref_bind_to    // for return_address_for, discard_t         // for returnable
 
 /**
  * @file return.hpp
@@ -3983,7 +3990,7 @@ struct return_result<void, discard_t> {
 } // namespace lf::impl
 
 #endif /* A896798B_7E3B_4854_9997_89EA5AE765EB */
-
+     // for return_result      // for stack    // for byte_cast, k_u16_max       // for return_address_for, igno...           // for LF_LOG, LF_ASSERT, LF_FO...             // for tag            // for returnable, task
 
 /**
  * @file promise.hpp

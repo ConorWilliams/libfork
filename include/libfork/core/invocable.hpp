@@ -9,17 +9,15 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>
-#include <functional>
-#include <type_traits>
-#include <utility>
+#include <concepts>    // for invocable, same_as
+#include <iterator>    // for indirectly_writable
+#include <type_traits> // for true_type, type_identity, inv...
 
-#include "libfork/core/eventually.hpp"
-#include "libfork/core/first_arg.hpp"
-#include "libfork/core/task.hpp"
-
-#include "libfork/core/impl/frame.hpp"
+#include "libfork/core/eventually.hpp" // for eventually
+#include "libfork/core/first_arg.hpp"  // for first_arg_t, quasi_pointer
 #include "libfork/core/impl/utility.hpp"
+#include "libfork/core/tag.hpp"  // for tag
+#include "libfork/core/task.hpp" // for task, returnable
 
 /**
  * @file invocable.hpp

@@ -9,20 +9,22 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <bit>
-#include <cstddef>
-#include <cstdint>
-#include <cstdio>
-#include <functional>
-#include <limits>
-#include <new>
-#include <source_location>
-#include <type_traits>
-#include <utility>
-#include <vector>
-#include <version>
+#include <bit>             // for bit_cast, has_single_bit
+#include <concepts>        // for same_as, convertible_to
+#include <cstddef>         // for byte, size_t
+#include <cstdint>         // for uint16_t
+#include <cstdio>          // for fprintf, stderr
+#include <exception>       // for terminate
+#include <functional>      // for invoke
+#include <limits>          // for numeric_limits
+#include <new>             // for std::hardware_destructive_interference_size
+#include <source_location> // for source_location
+#include <type_traits>     // for invoke_result_t, type_identity
+#include <utility>         // for forward
+#include <vector>          // for vector
+#include <version>         // for __cpp_lib_hardware_interference_size
 
-#include "libfork/core/macro.hpp"
+#include "libfork/core/macro.hpp" // for LF_HOF_RETURNS
 
 /**
  * @file utility.hpp

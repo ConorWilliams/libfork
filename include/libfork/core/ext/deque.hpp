@@ -9,22 +9,21 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <atomic>
-#include <bit>
-#include <concepts>
-#include <cstddef>
-#include <cstdint>
-#include <memory>
-#include <new>
-#include <optional>
-#include <type_traits>
-#include <utility>
-#include <vector>
-#include <version>
+#include <algorithm>   // for max
+#include <atomic>      // for atomic, atomic_thread_fence
+#include <bit>         // for has_single_bit
+#include <concepts>    // for convertible_to, invocable
+#include <cstddef>     // for ptrdiff_t, size_t
+#include <functional>  // for invoke
+#include <memory>      // for unique_ptr, make_unique
+#include <optional>    // for optional
+#include <type_traits> // for invoke_result_t
+#include <utility>     // for addressof, forward, exchange
+#include <vector>      // for vector
+#include <version>     // for ptrdiff_t
 
-#include "libfork/core/macro.hpp"
-
-#include "libfork/core/impl/utility.hpp"
+#include "libfork/core/impl/utility.hpp" // for k_cache_line, immovable
+#include "libfork/core/macro.hpp"        // for LF_ASSERT, LF_STATIC_CALL
 
 /**
  * @file deque.hpp
@@ -40,6 +39,7 @@
 #if defined(LF_USE_BOOST_ATOMIC) && defined(__clang__) && defined(__has_include)
   #if __has_include(<boost/atomic.hpp>)
     #include <boost/atomic.hpp>
+
     #define LF_ATOMIC_THREAD_FENCE_SEQ_CST boost::atomic_thread_fence(boost::memory_order_seq_cst)
   #else
     #warning "Boost.Atomic not found, falling back to std::atomic_thread_fence"
