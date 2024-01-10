@@ -13,6 +13,8 @@ plt.rcParams["text.usetex"] = True
 
 parser = argparse.ArgumentParser(description="Plot memory")
 
+parser.add_argument("-o", "--output_file", help="Output file")
+
 args = parser.parse_args()
 
 Benchmarks = []
@@ -20,14 +22,14 @@ Benchmarks = []
 patterns = [
     "fib",
     "integ",
-    "matmul",
     "nqueens",
     "T1",
-    "T3",
     "T1L",
-    "T3L",
     "T1XXL",
+    "T3",
+    "T3L",
     "T3XXL",
+    "matmul",
 ]
 
 for bm in patterns:
@@ -49,28 +51,32 @@ for bm in patterns:
     Benchmarks.append(data)
 
 
-fig, axs = plt.subplots(5, 2, figsize=(6, 10), sharex="col", sharey=False)
+fig, axs = plt.subplots(3, 3, figsize=(6, 6.5), sharex="col", sharey="row")
 
 patterns = [
     "fib",
     "integrate",
-    "matmul",
     "nqueens",
     "T1 ",
-    "T3 ",
     "T1L",
-    "T3L",
     "T1XXL",
+    "T3 ",
+    "T3L",
     "T3XXL",
+    "matmul",
 ]
 
-for (ax), p, data, i in zip(axs.flatten(), patterns, Benchmarks, range(1000)):
+from itertools import cycle
+
+for (ax), p, data, i in zip(cycle(axs.flatten()), patterns, Benchmarks, range(1000)):
     #
     print(f"{p=}")
 
     # y_zero = data["zero"][1][0]
 
     y_calib = data["calibrate"][1][0]
+    # x5 because this is a standard error not a standard deviation
+    y_calib_err = data["calibrate"][2][0] * 5
 
     y_serial = max(4 / 1024.0, data["serial"][1][0] - y_calib)  # must be at least 4 KiB
 
@@ -78,26 +84,49 @@ for (ax), p, data, i in zip(axs.flatten(), patterns, Benchmarks, range(1000)):
 
     for k, v in data.items():
         #
-        if "seq" in k:
+        if "seq" in k or "_coalloc_" in k:
+            # print("Skipping", k)
             continue
 
         if k == "zero" or k == "serial" or k == "calibrate":
             continue
 
-        # if "lib" not in k:
-        #     continue
+        if "omp" in k:
+            label = "OpenMP"
+            mark = "o"
+        elif "tbb" in k:
+            label = "OneTBB"
+            mark = "s"
+        elif "taskflow" in k:
+            label = "Taskflow"
+            mark = "d"
+        elif "busy" in k and "co" in k:
+            label = "Busy-LF*"
+            mark = "<"
+        elif "busy" in k:
+            label = "Busy-LF"
+            mark = "v"
+        elif "lazy" in k and "co" in k:
+            label = "Lazy-LF*"
+            mark = ">"
+        elif "lazy" in k:
+            label = "Lazy-LF"
+            mark = "^"
+        else:
+            raise "error"
 
         x = np.asarray(v[0])
         y = np.asarray(v[1])
         err = np.asarray(v[2])
 
         y = np.maximum(4 / 1024.0, y - y_calib)  # Subtract zero offset
+        err = np.sqrt(err**2 + y_calib_err**2)
 
         def func(x, a, b, n):
             return a + b * y[0] * x**n
 
         p0 = (1, 1, 1)
-        bounds = ([0, 0, 0], [np.inf, np.inf, np.inf])
+        bounds = ([-np.inf, 0, 0], [np.inf, np.inf, np.inf])
         popt, pcov = curve_fit(
             func,
             x,
@@ -105,7 +134,7 @@ for (ax), p, data, i in zip(axs.flatten(), patterns, Benchmarks, range(1000)):
             p0=p0,
             bounds=bounds,
             maxfev=10000,
-            # sigma=err,
+            sigma=err,
             # absolute_sigma=True,
         )
 
@@ -113,44 +142,52 @@ for (ax), p, data, i in zip(axs.flatten(), patterns, Benchmarks, range(1000)):
 
         da, db, dn = np.sqrt(np.diag(pcov))
 
-        print(f"{k:>30}: {a:>16.1f} + {b:>16.4f} * x^{n:<8.2f} +- {dn:<8.2f}")
+        print(
+            f"{label:>12}: {a:>10.1f} + {b:.2e}({db:.2e}) * x^{n:.2f} +- {dn:.2f} mem_112={y[-1]:.0f} "
+        )
+
+        if p == "matmul":
+            continue
 
         if k == "taskflow":
             pass
-            continue
+            # continue
 
+        ax.errorbar(
+            x,
+            y,
+            yerr=err,
+            label=label if i == 6 else None,
+            capsize=2,
+            marker=mark,
+            markersize=4,
+            linestyle="None",
+        )
+
+        # if "*" not in label:
         ax.plot(
             x,
             func(x, *popt),
-            "k--",
-            label="$y = a + bM_1x^n$" if i == 0 and first else None,
+            "k-",
+            # linewidth=0.75,
+            label="Fit" if i == 7 and first else None,
         )
 
         first = False
 
-        # if np.any(y < y_serial):
-        #     print(y_serial, y)
-
-        # assert np.all(y > y_serial)
-
-        # eff = np.maximum(4 / 1024.0, y - y_serial)
-
-        ax.errorbar(x, y, yerr=err, label=k if i == 0 else None, capsize=2)
-
         ax.set_title(f"\\textit{{{p}}}")
-
-        ax.set_xticks(range(0, int(112 + 1.5), 14))
+        ax.set_xticks(range(0, int(112 + 1.5), 28))
+        ax.set_xlim(0, 112)
 
         # ax.set_xlim(0, 112)
         # ax.set_ylim(bottom=0)
 
-        # ax.set_yscale("log", base=10)
+        ax.set_yscale("log", base=10)
         # ax.set_xscale("log", base=10)
 
 
-fig.supxlabel("\\textbf{{Threads/cores}}")
-fig.supylabel("\\textbf{{$\Delta$MRSS/MiB}}")
-
+fig.supxlabel("\\textbf{{Cores}}")
+fig.supylabel("\\textbf{{MRSS/MiB}}")
 
 fig.legend(
     loc="upper center",
@@ -159,7 +196,7 @@ fig.legend(
     frameon=False,
 )
 
-fig.tight_layout(rect=(0, 0, 0.95, 0.95))
+fig.tight_layout(rect=(0, 0, 1, 0.925), h_pad=0.5, w_pad=0.1)
 
-# if args.output_file is not None:
-plt.savefig("test.pdf")
+if args.output_file is not None:
+    plt.savefig(args.output_file, bbox_inches="tight")

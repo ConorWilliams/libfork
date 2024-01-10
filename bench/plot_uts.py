@@ -84,6 +84,9 @@ count = 0
 
 patterns = ["T1 ", "T3 ", "T1L", "T3L", "T1XXL", "T3XXL"]
 
+leg_hi = []
+leg_lo = []
+
 for (ax_abs), p in zip(axs.flatten(), patterns):
     # find the serial benchmark
 
@@ -162,7 +165,9 @@ for (ax_abs), p in zip(axs.flatten(), patterns):
         else:
             raise "error"
 
-        print(f"{label:>20}: T_s/T_112 = {tS / y[-1]:.1f} T_s/T_1 = {tS / y[0]:.3f}")
+        print(
+            f"  {label:<10}: T_s/T_112 = {tS / y[-1]:<4.1f} T_s/T_1 = {tS / y[0]:<4.3f}, T_112 = {y[-1]:.3f}"
+        )
 
         # --------------- #
 
@@ -178,42 +183,24 @@ for (ax_abs), p in zip(axs.flatten(), patterns):
             terr /= x
 
         if count == 0:
-            ax_abs.errorbar(
+            obj = ax_abs.errorbar(
                 x, t, yerr=terr, label=label, capsize=2, marker=mark, markersize=4
             )
+            if "LF" in label:
+                leg_hi.append(obj)
+            else:
+                leg_lo.append(obj)
         else:
             ax_abs.errorbar(x, t, yerr=terr, capsize=2, marker=mark, markersize=4)
 
         ymax = max(ymax, max(t))
         ymin = min(ymin, min(t))
 
-    # print(f"ymax: {ymax}")
-    # print(f"xmax: {xmax}")
-
-    # ideal_abs = range(1, int(ymax + 1.5))
-
-    # ax_abs.plot(
-    #     ideal_abs,
-    #     ideal_abs if not args.rel else [1] * len(ideal_abs),
-    #     color="black",
-    #     linestyle="dashed",
-    #     label="Ideal" if count == 0 else None,
-    # )
-
     ax_abs.set_title(f"\\textit{{{p}}}")
-
     ax_abs.set_xticks(range(0, int(xmax + 1.5), 14))
-
-    # ax_abs.set_yscale("log", base=2)
-    # ax_abs.set_xscale("log", base=2)
-
     ax_abs.set_xlim(0, 112)
 
     count += 1
-
-# fig.legend()
-
-# fig.set_
 
 fig.supxlabel("\\textbf{{Cores}}")
 
@@ -223,10 +210,22 @@ else:
     fig.supylabel("\\textbf{{Speedup}}")
 
 
-fig.legend(
+# kw = dict(bbox_to_anchor=(0, 0), edgecolor="w")
+
+leg_lo = fig.legend(
+    handles=leg_lo,
+    ncol=3,
     loc="upper center",
-    # bbox_to_anchor=(0, 0),
+    bbox_to_anchor=[0.5, 0.965],
+    frameon=False,
+)
+
+# plt.gca().add_artist(leg_lo)
+
+leg_hi = fig.legend(
+    handles=leg_hi,
     ncol=4,
+    loc="upper center",
     frameon=False,
 )
 

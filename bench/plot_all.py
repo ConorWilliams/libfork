@@ -120,10 +120,10 @@ for (ax_abs), p, benchmarks in zip(axs.flatten(), patterns, Benchmarks):
 
         # --------------- #
 
-        m, c = np.polyfit(x[:10], y[0] / mi[:10], 1)
-        # print(f"{label:>40}: pre: {m}")
+        g1, c = np.polyfit(x[:10], y[0] / mi[:10], 1)
+        g2, c = np.polyfit(x[10:], y[0] / mi[10:], 1)
 
-        m, c = np.polyfit(x[10:], y[0] / mi[10:], 1)
+        # print(f"{label:>40}: pre: {m}")
         # print(f"{label:>40}: ost: {m}")
 
         # --------------- #
@@ -141,7 +141,9 @@ for (ax_abs), p, benchmarks in zip(axs.flatten(), patterns, Benchmarks):
         else:
             print(f"skipping {label}")
 
-        print(f"{label:>20}: T_s/T_112 = {tS / y[-1]:.1f} T_1/T_s = {y[0]/tS:.3f}")
+        print(
+            f"  {label:<10}: T_s/T_112 = {tS / y[-1]:<7.2f} T_1/T_s = {y[0]/tS:<7.3f} T_1/T_112 = {y[0]/y[-1]:<7.1f} g1 = {g1:.3f} g2 = {g2:.3f}"
+        )
 
         # --------------- #
 
