@@ -567,9 +567,10 @@ static_assert(std::is_empty_v<immovable<void>>);
 template <typename CRTP>
 struct move_only {
 
-  move_only(const move_only &) = delete;
+  move_only(move_only const &) = delete;
   move_only(move_only &&) noexcept = default;
-  auto operator=(const move_only &) -> move_only & = delete;
+
+  auto operator=(move_only const &) -> move_only & = delete;
   auto operator=(move_only &&) noexcept -> move_only & = default;
 
   ~move_only() = default;
@@ -827,7 +828,7 @@ struct atomic_ring_buf {
    * This function allocates a new buffer and returns a pointer to it.
    * The caller is responsible for deallocating the memory.
    *
-   * @param bottom The bottom of the range to copy from (inclusive).
+   * @param bot The bottom of the range to copy from (inclusive).
    * @param top The top of the range to copy from (exclusive).
    */
   [[nodiscard]] constexpr auto resize(std::ptrdiff_t bot, std::ptrdiff_t top) const -> atomic_ring_buf<T> * {
@@ -1622,6 +1623,9 @@ class stack {
     swap(lhs.m_fib, rhs.m_fib);
   }
 
+  /**
+   * @brief Destroy the stack object.
+   */
   ~stack() noexcept {
     LF_ASSERT(m_fib);
     LF_ASSERT(!m_fib->m_prev); // Should only be destructed at the root.
@@ -1629,9 +1633,12 @@ class stack {
     std::free(m_fib);          // NOLINT
   }
 
+  /**
+   * @brief Test if the stack is empty (has no allocations).
+   */
   [[nodiscard]] auto empty() -> bool {
     LF_ASSERT(m_fib && m_fib->is_top());
-    return m_fib->empty();
+    return m_fib->empty() && m_fib->m_prev == nullptr;
   }
 
   /**
@@ -2268,14 +2275,23 @@ class full_context : public worker_context {
  public:
   using worker_context::worker_context;
 
+  /**
+   * @brief Add a task to the work queue.
+   */
   void push(task_handle task) noexcept { m_tasks.push(non_null(task)); }
 
+  /**
+   * @brief Remove a task from the work queue
+   */
   [[nodiscard]] auto pop() noexcept -> task_handle {
     return m_tasks.pop([]() -> task_handle {
       return nullptr;
     });
   }
 
+  /**
+   * @brief Test if the work queue is empty.
+   */
   [[nodiscard]] auto empty() const noexcept -> bool { return m_tasks.empty(); }
 };
 
@@ -2669,14 +2685,20 @@ namespace impl {
  * - Statically inform the return pointer type.
  * - Statically provide the tag.
  * - Statically provide the calling argument types.
+ *
+ * Hence, a first argument is also an async function object.
  */
 template <quasi_pointer I, tag Tag, async_function_object F, typename... Cargs>
 class first_arg_t {
  public:
-  static constexpr tag tagged = Tag; ///< The way this async function was called.
+  /**
+   * @brief Tag indicating how the async function was called.
+   */
+  static constexpr tag tagged = Tag;
 
-  first_arg_t() = default;
-
+  /**
+   * @brief Get the current workers context.
+   */
   static auto context() -> context * { return tls::context(); }
 
   /**
@@ -2688,11 +2710,17 @@ class first_arg_t {
 #endif
   }
 
+  /**
+   * @brief Construct a first_arg_t from an async function object.
+   */
   template <different_from<first_arg_t> T>
     requires std::constructible_from<F, T>
   explicit first_arg_t(T &&expr) noexcept(std::is_nothrow_constructible_v<F, T>)
       : m_fun(std::forward<T>(expr)) {}
 
+  /**
+   * @brief Forward call to the underlying async function object.
+   */
   template <typename... Args>
     requires std::invocable<F &, Args...>
   auto operator()(Args &&...args) & noexcept(std::is_nothrow_invocable_v<F &, Args...>)
@@ -2700,6 +2728,9 @@ class first_arg_t {
     return std::invoke(m_fun, std::forward<Args>(args)...);
   }
 
+  /**
+   * @brief Forward call to the underlying async function object.
+   */
   template <typename... Args>
     requires std::invocable<F const &, Args...>
   auto operator()(Args &&...args) const & noexcept(std::is_nothrow_invocable_v<F &, Args...>)
@@ -2707,6 +2738,9 @@ class first_arg_t {
     return std::invoke(m_fun, std::forward<Args>(args)...);
   }
 
+  /**
+   * @brief Forward call to the underlying async function object.
+   */
   template <typename... Args>
     requires std::invocable<F &&, Args...>
   auto operator()(Args &&...args) && noexcept(std::is_nothrow_invocable_v<F &, Args...>)
@@ -2714,6 +2748,9 @@ class first_arg_t {
     return std::invoke(std::move(m_fun), std::forward<Args>(args)...);
   }
 
+  /**
+   * @brief Forward call to the underlying async function object.
+   */
   template <typename... Args>
     requires std::invocable<F const &&, Args...>
   auto operator()(Args &&...args) const && noexcept(std::is_nothrow_invocable_v<F &, Args...>)
@@ -3035,6 +3072,9 @@ namespace impl {
  * Useful to ignore a value tagged with ``[[no_discard]]``.
  */
 struct ignore_t {
+  /**
+   * @brief A no-op assignment operator.
+   */
   constexpr void operator=([[maybe_unused]] auto const &discard) const noexcept {}
 };
 
@@ -3044,6 +3084,9 @@ struct ignore_t {
  * This type is indirectly writable from any value.
  */
 struct discard_t {
+  /**
+   * @brief Return a proxy object that can be assigned any value.
+   */
   constexpr auto operator*() -> ignore_t { return {}; }
 };
 
@@ -3262,13 +3305,13 @@ struct switch_awaitable : std::suspend_always {
 
     /**
      * While running the ancestor several things can happen:
-     *  - We hit a join in the ancestor:
-     *    - Case Win join:
-     *      Take stack, OK to treat tasks on our WSQ as non-stolen.
-     *    - Case Loose join:
-     *      Must treat tasks on our WSQ as stolen.
-     * - We loose a join in a descendent of the ancestor:
-     *   Ok all task on WSQ must have been stole by other threads and handled as stolen appropriately.
+     *   We hit a join in the ancestor:
+     *      Case Win join:
+     *        Take stack, OK to treat tasks on our WSQ as non-stolen.
+     *      Case Loose join:
+     *        Must treat tasks on our WSQ as stolen.
+     *   We loose a join in a descendent of the ancestor:
+     *    Ok all task on WSQ must have been stole by other threads and handled as stolen appropriately.
      */
 
     if (auto *eff_stolen = std::bit_cast<frame *>(tls::context()->pop())) {
@@ -3932,6 +3975,9 @@ namespace lf::impl {
 template <quasi_pointer I>
 class return_result_base {
  public:
+  /**
+   * @brief Set the return pointer.
+   */
   void set_return(I &&ret) noexcept { this->m_ret = std::move(ret); }
 
  protected:
@@ -3984,6 +4030,9 @@ struct return_result<R, I> : return_result_base<I> {
  */
 template <>
 struct return_result<void, discard_t> {
+  /**
+   * @brief A no-op.
+   */
   static constexpr void return_void() noexcept {};
 };
 
@@ -4099,6 +4148,9 @@ inline auto final_await_suspend(frame *parent) noexcept -> std::coroutine_handle
  */
 struct promise_base : frame {
 
+  /**
+   * @brief Inherit constructor.
+   */
   using frame::frame;
 
   /**
@@ -4111,10 +4163,16 @@ struct promise_base : frame {
    */
   LF_FORCEINLINE static void operator delete(void *ptr) noexcept { tls::stack()->deallocate(ptr); }
 
+  /**
+   * @brief Start suspended (lazy).
+   */
   static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
 
   // -------------------------------------------------------------- //
 
+  /**
+   * @brief Make an awaitable that allocates on this workers stack.
+   */
   template <co_allocable T, std::size_t E>
   auto await_transform(co_new_t<T, E> await) {
 
@@ -4138,6 +4196,9 @@ struct promise_base : frame {
     return alloc_awaitable<T, E>{{}, std::span<T, E>{ptr, await.count}};
   }
 
+  /**
+   * @brief Make an awaitable that frees memory from this workers stack.
+   */
   template <co_allocable T, std::size_t E>
   auto await_transform(co_delete_t<T, E> await) noexcept -> std::suspend_never {
     std::ranges::destroy(await);
@@ -5253,7 +5314,7 @@ struct numa_context {
   using numa_node = numa_topology::numa_node<numa_context>;
 
   /**
-   * @brief Initialize the context and worker with the given topology and bind it to a hardware core.
+   * @brief Initialize the underlying worker context and bind calling thread a hardware core.
    *
    * This is separate from construction as the master thread will need to construct
    * the contexts before they can form a reference to them, this must be called by the
@@ -5310,6 +5371,9 @@ struct numa_context {
     }
   }
 
+  /**
+   * @brief Call `lf::finalize` on the underlying worker context.
+   */
   void finalize_worker() { finalize(std::exchange(m_context, nullptr)); }
 
   /**

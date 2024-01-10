@@ -121,7 +121,7 @@ struct atomic_ring_buf {
    * This function allocates a new buffer and returns a pointer to it.
    * The caller is responsible for deallocating the memory.
    *
-   * @param bottom The bottom of the range to copy from (inclusive).
+   * @param bot The bottom of the range to copy from (inclusive).
    * @param top The top of the range to copy from (exclusive).
    */
   [[nodiscard]] constexpr auto resize(std::ptrdiff_t bot, std::ptrdiff_t top) const -> atomic_ring_buf<T> * {

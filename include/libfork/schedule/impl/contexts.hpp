@@ -70,7 +70,7 @@ struct numa_context {
   using numa_node = numa_topology::numa_node<numa_context>;
 
   /**
-   * @brief Initialize the context and worker with the given topology and bind it to a hardware core.
+   * @brief Initialize the underlying worker context and bind calling thread a hardware core.
    *
    * This is separate from construction as the master thread will need to construct
    * the contexts before they can form a reference to them, this must be called by the
@@ -127,6 +127,9 @@ struct numa_context {
     }
   }
 
+  /**
+   * @brief Call `lf::finalize` on the underlying worker context.
+   */
   void finalize_worker() { finalize(std::exchange(m_context, nullptr)); }
 
   /**

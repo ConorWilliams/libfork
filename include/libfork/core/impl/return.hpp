@@ -33,6 +33,9 @@ namespace lf::impl {
 template <quasi_pointer I>
 class return_result_base {
  public:
+  /**
+   * @brief Set the return pointer.
+   */
   void set_return(I &&ret) noexcept { this->m_ret = std::move(ret); }
 
  protected:
@@ -85,6 +88,9 @@ struct return_result<R, I> : return_result_base<I> {
  */
 template <>
 struct return_result<void, discard_t> {
+  /**
+   * @brief A no-op.
+   */
   static constexpr void return_void() noexcept {};
 };
 

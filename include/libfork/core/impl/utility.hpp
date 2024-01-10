@@ -137,9 +137,10 @@ static_assert(std::is_empty_v<immovable<void>>);
 template <typename CRTP>
 struct move_only {
 
-  move_only(const move_only &) = delete;
+  move_only(move_only const &) = delete;
   move_only(move_only &&) noexcept = default;
-  auto operator=(const move_only &) -> move_only & = delete;
+
+  auto operator=(move_only const &) -> move_only & = delete;
   auto operator=(move_only &&) noexcept -> move_only & = default;
 
   ~move_only() = default;

@@ -35,6 +35,9 @@ namespace impl {
  * Useful to ignore a value tagged with ``[[no_discard]]``.
  */
 struct ignore_t {
+  /**
+   * @brief A no-op assignment operator.
+   */
   constexpr void operator=([[maybe_unused]] auto const &discard) const noexcept {}
 };
 
@@ -44,6 +47,9 @@ struct ignore_t {
  * This type is indirectly writable from any value.
  */
 struct discard_t {
+  /**
+   * @brief Return a proxy object that can be assigned any value.
+   */
   constexpr auto operator*() -> ignore_t { return {}; }
 };
 

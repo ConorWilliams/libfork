@@ -146,6 +146,9 @@ inline auto final_await_suspend(frame *parent) noexcept -> std::coroutine_handle
  */
 struct promise_base : frame {
 
+  /**
+   * @brief Inherit constructor.
+   */
   using frame::frame;
 
   /**
@@ -158,10 +161,16 @@ struct promise_base : frame {
    */
   LF_FORCEINLINE static void operator delete(void *ptr) noexcept { tls::stack()->deallocate(ptr); }
 
+  /**
+   * @brief Start suspended (lazy).
+   */
   static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
 
   // -------------------------------------------------------------- //
 
+  /**
+   * @brief Make an awaitable that allocates on this workers stack.
+   */
   template <co_allocable T, std::size_t E>
   auto await_transform(co_new_t<T, E> await) {
 
@@ -185,6 +194,9 @@ struct promise_base : frame {
     return alloc_awaitable<T, E>{{}, std::span<T, E>{ptr, await.count}};
   }
 
+  /**
+   * @brief Make an awaitable that frees memory from this workers stack.
+   */
   template <co_allocable T, std::size_t E>
   auto await_transform(co_delete_t<T, E> await) noexcept -> std::suspend_never {
     std::ranges::destroy(await);

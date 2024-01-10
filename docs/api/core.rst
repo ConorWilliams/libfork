@@ -83,10 +83,6 @@ Eventually
    :undoc-members:
 
 
-.. doxygenclass:: lf::core::manual_eventually
-   :members:
-   :undoc-members:
-
 Defer
 ~~~~~
 
@@ -98,10 +94,8 @@ Defer
 Stack allocation
 ------------------
 
+.. doxygenfunction:: lf::core::co_new(std::size_t count)
 .. doxygenfunction:: lf::core::co_new()
 
-.. doxygenfunction:: lf::core::co_new(std::size_t count)
-
-.. doxygenfunction:: lf::core::co_delete(T *ptr)
-
 .. doxygenfunction:: lf::core::co_delete(std::span<T, Extent> span)
+.. doxygenfunction:: lf::core::co_delete(T *ptr)

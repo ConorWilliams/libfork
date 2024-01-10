@@ -94,14 +94,20 @@ namespace impl {
  * - Statically inform the return pointer type.
  * - Statically provide the tag.
  * - Statically provide the calling argument types.
+ *
+ * Hence, a first argument is also an async function object.
  */
 template <quasi_pointer I, tag Tag, async_function_object F, typename... Cargs>
 class first_arg_t {
  public:
-  static constexpr tag tagged = Tag; ///< The way this async function was called.
+  /**
+   * @brief Tag indicating how the async function was called.
+   */
+  static constexpr tag tagged = Tag;
 
-  first_arg_t() = default;
-
+  /**
+   * @brief Get the current workers context.
+   */
   static auto context() -> context * { return tls::context(); }
 
   /**
@@ -113,11 +119,17 @@ class first_arg_t {
 #endif
   }
 
+  /**
+   * @brief Construct a first_arg_t from an async function object.
+   */
   template <different_from<first_arg_t> T>
     requires std::constructible_from<F, T>
   explicit first_arg_t(T &&expr) noexcept(std::is_nothrow_constructible_v<F, T>)
       : m_fun(std::forward<T>(expr)) {}
 
+  /**
+   * @brief Forward call to the underlying async function object.
+   */
   template <typename... Args>
     requires std::invocable<F &, Args...>
   auto operator()(Args &&...args) & noexcept(std::is_nothrow_invocable_v<F &, Args...>)
@@ -125,6 +137,9 @@ class first_arg_t {
     return std::invoke(m_fun, std::forward<Args>(args)...);
   }
 
+  /**
+   * @brief Forward call to the underlying async function object.
+   */
   template <typename... Args>
     requires std::invocable<F const &, Args...>
   auto operator()(Args &&...args) const & noexcept(std::is_nothrow_invocable_v<F &, Args...>)
@@ -132,6 +147,9 @@ class first_arg_t {
     return std::invoke(m_fun, std::forward<Args>(args)...);
   }
 
+  /**
+   * @brief Forward call to the underlying async function object.
+   */
   template <typename... Args>
     requires std::invocable<F &&, Args...>
   auto operator()(Args &&...args) && noexcept(std::is_nothrow_invocable_v<F &, Args...>)
@@ -139,6 +157,9 @@ class first_arg_t {
     return std::invoke(std::move(m_fun), std::forward<Args>(args)...);
   }
 
+  /**
+   * @brief Forward call to the underlying async function object.
+   */
   template <typename... Args>
     requires std::invocable<F const &&, Args...>
   auto operator()(Args &&...args) const && noexcept(std::is_nothrow_invocable_v<F &, Args...>)

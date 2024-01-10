@@ -232,6 +232,9 @@ class stack {
     swap(lhs.m_fib, rhs.m_fib);
   }
 
+  /**
+   * @brief Destroy the stack object.
+   */
   ~stack() noexcept {
     LF_ASSERT(m_fib);
     LF_ASSERT(!m_fib->m_prev); // Should only be destructed at the root.
@@ -239,9 +242,12 @@ class stack {
     std::free(m_fib);          // NOLINT
   }
 
+  /**
+   * @brief Test if the stack is empty (has no allocations).
+   */
   [[nodiscard]] auto empty() -> bool {
     LF_ASSERT(m_fib && m_fib->is_top());
-    return m_fib->empty();
+    return m_fib->empty() && m_fib->m_prev == nullptr;
   }
 
   /**

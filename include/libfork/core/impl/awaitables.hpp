@@ -69,13 +69,13 @@ struct switch_awaitable : std::suspend_always {
 
     /**
      * While running the ancestor several things can happen:
-     *  - We hit a join in the ancestor:
-     *    - Case Win join:
-     *      Take stack, OK to treat tasks on our WSQ as non-stolen.
-     *    - Case Loose join:
-     *      Must treat tasks on our WSQ as stolen.
-     * - We loose a join in a descendent of the ancestor:
-     *   Ok all task on WSQ must have been stole by other threads and handled as stolen appropriately.
+     *   We hit a join in the ancestor:
+     *      Case Win join:
+     *        Take stack, OK to treat tasks on our WSQ as non-stolen.
+     *      Case Loose join:
+     *        Must treat tasks on our WSQ as stolen.
+     *   We loose a join in a descendent of the ancestor:
+     *    Ok all task on WSQ must have been stole by other threads and handled as stolen appropriately.
      */
 
     if (auto *eff_stolen = std::bit_cast<frame *>(tls::context()->pop())) {

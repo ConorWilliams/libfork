@@ -123,14 +123,23 @@ class full_context : public worker_context {
  public:
   using worker_context::worker_context;
 
+  /**
+   * @brief Add a task to the work queue.
+   */
   void push(task_handle task) noexcept { m_tasks.push(non_null(task)); }
 
+  /**
+   * @brief Remove a task from the work queue
+   */
   [[nodiscard]] auto pop() noexcept -> task_handle {
     return m_tasks.pop([]() -> task_handle {
       return nullptr;
     });
   }
 
+  /**
+   * @brief Test if the work queue is empty.
+   */
   [[nodiscard]] auto empty() const noexcept -> bool { return m_tasks.empty(); }
 };
 
