@@ -2284,7 +2284,7 @@ class full_context : public worker_context {
 } // namespace lf
 
 #endif /* D66BBECE_E467_4EB6_B74A_AAA2E7256E02 */
-          // for full_context, worke... // for manual_lifetime           // for stack                // for LF_CLANG_TLS_NOINLINE
+          // for full_context, ... // for manual_lifetime           // for stack                // for LF_CLANG_TLS_NOINLINE
 
 /**
  * @file tls.hpp

@@ -12,7 +12,7 @@
 #include <stdexcept> // for runtime_error
 #include <utility>   // for move
 
-#include "libfork/core/ext/context.hpp"          // for full_context, worke...
+#include "libfork/core/ext/context.hpp"          // for full_context, ...
 #include "libfork/core/impl/manual_lifetime.hpp" // for manual_lifetime
 #include "libfork/core/impl/stack.hpp"           // for stack
 #include "libfork/core/macro.hpp"                // for LF_CLANG_TLS_NOINLINE
