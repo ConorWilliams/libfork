@@ -17,8 +17,8 @@ inline constexpr auto fib = [](auto fib, int n) -> task<int> {
 
   int a, b;
 
-  co_await fork[&a, fib](n - 1);
-  co_await call[&b, fib](n - 2);
+  co_await fork(&a, fib)(n - 1);
+  co_await call(&b, fib)(n - 2);
 
   co_await join;
 
