@@ -9,10 +9,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <atomic>      // for memory_order_acquire, atomi...
-#include <bit>         // for bit_cast
-#include <coroutine>   // for coroutine_handle, noop_coro...
-#include <cstddef>     // for size_t
+#include <atomic>    // for memory_order_acquire, atomi...
+#include <bit>       // for bit_cast
+#include <coroutine> // for coroutine_handle, noop_coro...
+#include <cstddef>   // for size_t
+#include <cstdint>
 #include <span>        // for span
 #include <type_traits> // for conditional_t
 
@@ -53,11 +54,32 @@ struct switch_awaitable : std::suspend_always {
    */
   auto await_suspend(std::coroutine_handle<>) noexcept -> std::coroutine_handle<> {
 
-    // Schedule this coro for execution on Dest.
+    // We currently own the "resumable" handle of this coroutine, if there have been any
+    // steals then we do not own the stack this coroutine is on and the resumer should not
+    // take the stack otherwise, we should give-it-up and the resumer should take it.
+
+    auto *underlying = std::bit_cast<frame *>(unwrap(&self));
+
+    std::uint16_t steals = underlying->load_steals();
+
+    // Assert the above paragraphs validity.
+#ifndef NDEBUG
+    if (steals == 0) {
+      LF_ASSERT(underlying->stacklet() == tls::stack()->top());
+    } else {
+      LF_ASSERT(underlying->stacklet() != tls::stack()->top());
+    }
+#endif
+
+    // Schedule this coro for execution on Dest, cannot touch underlying.
     dest->submit(&self);
 
-    // Dest will take this stack upon resumption hence, we must release it.
-    ignore_t{} = tls::stack()->release();
+    if (steals == 0) {
+      // Dest will take this stack upon resumption hence, we must release it.
+      ignore_t{} = tls::stack()->release();
+    }
+
+    LF_ASSERT(tls::stack()->empty());
 
     // Eventually dest will fail to pop() the ancestor task that we 'could' pop() here and
     // then treat it as a task that was stolen from it.
@@ -82,6 +104,7 @@ struct switch_awaitable : std::suspend_always {
       eff_stolen->fetch_add_steal();
       return eff_stolen->self();
     }
+
     return std::noop_coroutine();
   }
 
@@ -230,6 +253,9 @@ struct join_awaitable {
     // We cannot currently own this stack (checking would violate above).
 
     // If no explicit scheduling then we must have an empty WSQ as we stole this task.
+
+    // If explicit scheduling then we may have tasks on our WSQ if we performed a self-steal
+    // in a switch awaitable. In this case we can/must do another self-steal.
 
     if (auto *eff_stolen = std::bit_cast<frame *>(tls::context()->pop())) {
       eff_stolen->fetch_add_steal();

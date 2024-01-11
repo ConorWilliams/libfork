@@ -38,11 +38,18 @@ inline void resume(submit_handle ptr) noexcept {
 
   auto *frame = std::bit_cast<impl::frame *>(ptr);
 
-  *impl::tls::stack() = impl::stack{frame->stacklet()};
+  if (frame->load_steals() == 0) {
+    impl::stack *stack = impl::tls::stack();
+    LF_ASSERT(stack->empty());
+    *stack = impl::stack{frame->stacklet()};
+  } else {
+    LF_ASSERT_NO_ASSUME(impl::tls::stack()->empty());
+  }
 
   LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
   frame->self().resume();
   LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
+  LF_ASSERT_NO_ASSUME(impl::tls::stack()->empty());
 }
 
 /**
@@ -57,8 +64,10 @@ inline void resume(task_handle ptr) noexcept {
   frame->fetch_add_steal();
 
   LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
+  LF_ASSERT_NO_ASSUME(impl::tls::stack()->empty());
   frame->self().resume();
   LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
+  LF_ASSERT_NO_ASSUME(impl::tls::stack()->empty());
 }
 
 } // namespace ext
