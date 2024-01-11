@@ -99,8 +99,16 @@ Context
 Stack allocation
 ------------------
 
+Functions
+~~~~~~~~~
+
 .. doxygenfunction:: lf::core::co_new(std::size_t count)
+
 .. doxygenfunction:: lf::core::co_new()
 
-.. doxygenfunction:: lf::core::co_delete(std::span<T, Extent> span)
-.. doxygenfunction:: lf::core::co_delete(T *ptr)
+Classes
+~~~~~~~
+
+.. doxygenclass:: lf::core::stack_allocated
+   :members:
+

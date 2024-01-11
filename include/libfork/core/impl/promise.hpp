@@ -172,38 +172,8 @@ struct promise_base : frame {
    * @brief Make an awaitable that allocates on this workers stack.
    */
   template <co_allocable T, std::size_t E>
-  auto await_transform(co_new_t<T, E> await) {
-
-    auto *stack = tls::stack();
-
-    T *ptr = static_cast<T *>(stack->allocate(await.count * sizeof(T)));
-
-    // clang-format off
-
-    LF_TRY {
-      std::ranges::uninitialized_default_construct_n(ptr, await.count);
-    } LF_CATCH_ALL {
-      stack->deallocate(ptr);
-      LF_RETHROW;
-    }
-
-    // clang-format on
-
-    this->reset_stacklet(stack->top());
-
-    return alloc_awaitable<T, E>{{}, std::span<T, E>{ptr, await.count}};
-  }
-
-  /**
-   * @brief Make an awaitable that frees memory from this workers stack.
-   */
-  template <co_allocable T, std::size_t E>
-  auto await_transform(co_delete_t<T, E> await) noexcept -> std::suspend_never {
-    std::ranges::destroy(await);
-    auto *stack = impl::tls::stack();
-    stack->deallocate(await.data());
-    this->reset_stacklet(stack->top());
-    return {};
+  auto await_transform(co_new_t<T, E> await) noexcept {
+    return alloc_awaitable<T, E>{{}, await, this};
   }
 
   // -------------------------------------------------------------- //

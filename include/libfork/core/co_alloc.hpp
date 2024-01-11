@@ -12,6 +12,8 @@
 #include <cstddef>  // for size_t
 #include <memory>
 #include <span> // for dynamic_extent, span
+#include <type_traits>
+#include <utility>
 
 #include "libfork/core/ext/tls.hpp"
 #include "libfork/core/impl/frame.hpp"
@@ -55,30 +57,89 @@ struct [[nodiscard("This object should be co_awaited")]] co_new_t<T, std::dynami
   std::size_t count; ///< The number of elements to allocate.
 };
 
-/**
- * @brief An awaitable (in the context of an ``lf::task``) which triggers stack deallocation.
- */
-template <co_allocable T, std::size_t Extent>
-struct [[nodiscard("This object should be co_awaited")]] co_delete_t : std::span<T, Extent> {};
-
 } // namespace impl
 
 inline namespace core {
 
 /**
- * @brief A function which returns an awaitable (in the context of an ``lf::task``) which triggers allocation
- * on a stack's stack.
+ * @brief The result of `co_await`ing the result of ``lf::core::co_new``.
  *
- * Upon ``co_await``ing the result of this function a pointer or ``std::span`` representing the allocated
- * memory is returned. The memory is deleted with a matched call to ``co_delete``, This must be performed in a
- * FILO order (i.e destroyed in the reverse order they were allocated) with any other ``co_new``ed calls. The
- * lifetime of `co_new`ed memory must strictly nest within the lifetime of the task/co-routine it is allocated
- * within. Finally all calls to ``co_new``/``co_delete`` must occur __outside__ of a fork-join scope.
+ * A raii wrapper around a ``std::span`` pointing to the memory allocated on the stack.
+ * This type can be destructured into a ``std::span``/pointer to the allocated memory.
+ */
+template <co_allocable T, std::size_t Extent>
+class stack_allocated : impl::immovable<stack_allocated<T, Extent>> {
+ public:
+  /**
+   * @brief Construct a new co allocated object.
+   */
+  stack_allocated(impl::frame *frame, std::span<T, Extent> span) noexcept : m_span{span}, m_frame{frame} {}
+
+  /**
+   * @brief Get a span/pointer, depending on the extent, to the allocated memory.
+   */
+  template <std::size_t I>
+    requires (I == 0)
+  auto get() const noexcept -> std::conditional_t<Extent == 1, T *, std::span<T, Extent>> {
+    if constexpr (Extent == 1) {
+      return m_span.data();
+    } else {
+      return m_span;
+    }
+  }
+
+  /**
+   * @brief For consistent handling in generic code.
+   */
+  auto span() const noexcept -> std::span<T, Extent> { return m_span; }
+
+  /**
+   * @brief Destroys objects and releases the memory.
+   */
+  ~stack_allocated() noexcept {
+    std::ranges::destroy(m_span);
+    auto *stack = impl::tls::stack();
+    stack->deallocate(m_span.data());
+    m_frame->reset_stacklet(stack->top());
+  }
+
+ private:
+  impl::frame *m_frame;
+  std::span<T, Extent> m_span;
+};
+
+} // namespace core
+
+} // namespace lf
+
+#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
+
+template <lf::co_allocable T, std::size_t Extent>
+struct std::tuple_size<lf::stack_allocated<T, Extent>> : std::integral_constant<std::size_t, 1> {};
+
+template <lf::co_allocable T, std::size_t Extent>
+struct std::tuple_element<0, lf::stack_allocated<T, Extent>> : std::type_identity<std::span<T, Extent>> {};
+
+template <lf::co_allocable T>
+struct std::tuple_element<0, lf::stack_allocated<T, 1>> : std::type_identity<T *> {};
+
+#endif
+
+namespace lf {
+
+inline namespace core {
+
+/**
+ * @brief A function which returns an awaitable (in the context of an ``lf::task``) which triggers allocation
+ * on a worker's stack.
+ *
+ * Upon ``co_await``ing the result of this function an ``lf::stack_allocated`` object is returned.
+ *
  *
  * \rst
  *
  * .. warning::
- *    This is an expert only feature with many foot-guns attached.
+ *    This must be called __outside__ of a fork-join scope and is an expert only feature!
  *
  * \endrst
  *
@@ -91,32 +152,23 @@ inline auto co_new(std::size_t count) -> impl::co_new_t<T, std::dynamic_extent> 
 
 /**
  * @brief A function which returns an awaitable (in the context of an ``lf::task``) which triggers allocation
- * on a stack's stack.
+ * on a worker's stack.
  *
- * See the documentation for the dynamic version, ``lf::co_new(std::size_t)``, for a full description.
+ * Upon ``co_await``ing the result of this function an ``lf::stack_allocated`` object is returned.
+ *
+ *
+ * \rst
+ *
+ * .. warning::
+ *    This must be called __outside__ of a fork-join scope and is an expert only feature!
+ *
+ * \endrst
+ *
  */
 template <co_allocable T, std::size_t Extent = 1>
   requires (Extent != std::dynamic_extent)
 inline auto co_new() -> impl::co_new_t<T, Extent> {
   return {};
-}
-
-/**
- * @brief Free the memory allocated by a call to ``co_new``.
- */
-template <co_allocable T, std::size_t Extent = 1>
-  requires (Extent >= 2)
-inline auto co_delete(std::span<T, Extent> span) -> impl::co_delete_t<T, Extent> {
-  return impl::co_delete_t<T, Extent>{span};
-}
-
-/**
- * @brief Free the memory allocated by a call to ``co_new``.
- */
-template <co_allocable T, std::size_t Extent = 1>
-  requires (Extent == 1)
-inline auto co_delete(T *ptr) -> impl::co_delete_t<T, Extent> {
-  return impl::co_delete_t<T, Extent>{std::span<T, 1>{ptr, 1}};
 }
 
 } // namespace core

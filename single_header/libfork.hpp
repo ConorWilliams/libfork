@@ -65,6 +65,8 @@
 #include <cstddef>  // for size_t
 #include <memory>
 #include <span> // for dynamic_extent, span
+#include <type_traits>
+#include <utility>
 
 #ifndef CF97E524_27A6_4CD9_8967_39F1B1BE97B6
 #define CF97E524_27A6_4CD9_8967_39F1B1BE97B6
@@ -2513,30 +2515,89 @@ struct [[nodiscard("This object should be co_awaited")]] co_new_t<T, std::dynami
   std::size_t count; ///< The number of elements to allocate.
 };
 
-/**
- * @brief An awaitable (in the context of an ``lf::task``) which triggers stack deallocation.
- */
-template <co_allocable T, std::size_t Extent>
-struct [[nodiscard("This object should be co_awaited")]] co_delete_t : std::span<T, Extent> {};
-
 } // namespace impl
 
 inline namespace core {
 
 /**
- * @brief A function which returns an awaitable (in the context of an ``lf::task``) which triggers allocation
- * on a stack's stack.
+ * @brief The result of `co_await`ing the result of ``lf::core::co_new``.
  *
- * Upon ``co_await``ing the result of this function a pointer or ``std::span`` representing the allocated
- * memory is returned. The memory is deleted with a matched call to ``co_delete``, This must be performed in a
- * FILO order (i.e destroyed in the reverse order they were allocated) with any other ``co_new``ed calls. The
- * lifetime of `co_new`ed memory must strictly nest within the lifetime of the task/co-routine it is allocated
- * within. Finally all calls to ``co_new``/``co_delete`` must occur __outside__ of a fork-join scope.
+ * A raii wrapper around a ``std::span`` pointing to the memory allocated on the stack.
+ * This type can be destructured into a ``std::span``/pointer to the allocated memory.
+ */
+template <co_allocable T, std::size_t Extent>
+class stack_allocated : impl::immovable<stack_allocated<T, Extent>> {
+ public:
+  /**
+   * @brief Construct a new co allocated object.
+   */
+  stack_allocated(impl::frame *frame, std::span<T, Extent> span) noexcept : m_span{span}, m_frame{frame} {}
+
+  /**
+   * @brief Get a span/pointer, depending on the extent, to the allocated memory.
+   */
+  template <std::size_t I>
+    requires (I == 0)
+  auto get() const noexcept -> std::conditional_t<Extent == 1, T *, std::span<T, Extent>> {
+    if constexpr (Extent == 1) {
+      return m_span.data();
+    } else {
+      return m_span;
+    }
+  }
+
+  /**
+   * @brief For consistent handling in generic code.
+   */
+  auto span() const noexcept -> std::span<T, Extent> { return m_span; }
+
+  /**
+   * @brief Destroys objects and releases the memory.
+   */
+  ~stack_allocated() noexcept {
+    std::ranges::destroy(m_span);
+    auto *stack = impl::tls::stack();
+    stack->deallocate(m_span.data());
+    m_frame->reset_stacklet(stack->top());
+  }
+
+ private:
+  impl::frame *m_frame;
+  std::span<T, Extent> m_span;
+};
+
+} // namespace core
+
+} // namespace lf
+
+#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
+
+template <lf::co_allocable T, std::size_t Extent>
+struct std::tuple_size<lf::stack_allocated<T, Extent>> : std::integral_constant<std::size_t, 1> {};
+
+template <lf::co_allocable T, std::size_t Extent>
+struct std::tuple_element<0, lf::stack_allocated<T, Extent>> : std::type_identity<std::span<T, Extent>> {};
+
+template <lf::co_allocable T>
+struct std::tuple_element<0, lf::stack_allocated<T, 1>> : std::type_identity<T *> {};
+
+#endif
+
+namespace lf {
+
+inline namespace core {
+
+/**
+ * @brief A function which returns an awaitable (in the context of an ``lf::task``) which triggers allocation
+ * on a worker's stack.
+ *
+ * Upon ``co_await``ing the result of this function an ``lf::stack_allocated`` object is returned.
+ *
  *
  * \rst
  *
  * .. warning::
- *    This is an expert only feature with many foot-guns attached.
+ *    This must be called __outside__ of a fork-join scope and is an expert only feature!
  *
  * \endrst
  *
@@ -2549,32 +2610,23 @@ inline auto co_new(std::size_t count) -> impl::co_new_t<T, std::dynamic_extent> 
 
 /**
  * @brief A function which returns an awaitable (in the context of an ``lf::task``) which triggers allocation
- * on a stack's stack.
+ * on a worker's stack.
  *
- * See the documentation for the dynamic version, ``lf::co_new(std::size_t)``, for a full description.
+ * Upon ``co_await``ing the result of this function an ``lf::stack_allocated`` object is returned.
+ *
+ *
+ * \rst
+ *
+ * .. warning::
+ *    This must be called __outside__ of a fork-join scope and is an expert only feature!
+ *
+ * \endrst
+ *
  */
 template <co_allocable T, std::size_t Extent = 1>
   requires (Extent != std::dynamic_extent)
 inline auto co_new() -> impl::co_new_t<T, Extent> {
   return {};
-}
-
-/**
- * @brief Free the memory allocated by a call to ``co_new``.
- */
-template <co_allocable T, std::size_t Extent = 1>
-  requires (Extent >= 2)
-inline auto co_delete(std::span<T, Extent> span) -> impl::co_delete_t<T, Extent> {
-  return impl::co_delete_t<T, Extent>{span};
-}
-
-/**
- * @brief Free the memory allocated by a call to ``co_new``.
- */
-template <co_allocable T, std::size_t Extent = 1>
-  requires (Extent == 1)
-inline auto co_delete(T *ptr) -> impl::co_delete_t<T, Extent> {
-  return impl::co_delete_t<T, Extent>{std::span<T, 1>{ptr, 1}};
 }
 
 } // namespace core
@@ -2859,8 +2911,7 @@ class first_arg_t {
 #include <coroutine> // for coroutine_handle, noop_coro...
 #include <cstddef>   // for size_t
 #include <cstdint>
-#include <span>        // for span
-#include <type_traits> // for conditional_t
+#include <span> // for span
   // for full_context, context  // for submit_handle, task_handle     // for intrusive_list      // for context, stack   // for frame   // for stack // for k_u16_max
 #ifndef A5349E86_5BAA_48EF_94E9_F0EBF630DE04
 #define A5349E86_5BAA_48EF_94E9_F0EBF630DE04
@@ -3405,21 +3456,39 @@ struct switch_awaitable : std::suspend_always {
 /**
  * @brief An awaiter that returns space allocated on the current fibre's stack.
  *
- * This never suspends the coroutine and is generated by `await_transform` when awaiting on a pointer to a
- * `lf::context`.
+ * This never suspends the coroutine.
  */
-template <typename T, std::size_t E>
-struct alloc_awaitable : std::suspend_never, std::span<T, E> {
+template <co_allocable T, std::size_t E>
+struct alloc_awaitable : std::suspend_never {
   /**
    * @brief Return a handle to the memory.
    */
-  [[nodiscard]] auto await_resume() const noexcept -> std::conditional_t<E == 1, T *, std::span<T, E>> {
-    if constexpr (E == 1) {
-      return this->data();
-    } else {
-      return *this;
+  [[nodiscard]] auto await_resume() const -> stack_allocated<T, E> {
+
+    auto *stack = tls::stack();
+
+    LF_ASSERT(stack->top() == self->stacklet()); // Must own the stack.
+
+    T *ptr = static_cast<T *>(stack->allocate(request.count * sizeof(T)));
+
+    // clang-format off
+
+    LF_TRY {
+      std::ranges::uninitialized_default_construct_n(ptr, request.count);
+    } LF_CATCH_ALL {
+      stack->deallocate(ptr);
+      LF_RETHROW;
     }
+
+    // clang-format on
+
+    self->reset_stacklet(stack->top());
+
+    return {self, std::span<T, E>{ptr, request.count}};
   }
+
+  co_new_t<T, E> request; ///< The requested allocation.
+  frame *self;            ///< The current coroutine's frame.
 };
 
 // -------------------------------------------------------- //
@@ -4271,38 +4340,8 @@ struct promise_base : frame {
    * @brief Make an awaitable that allocates on this workers stack.
    */
   template <co_allocable T, std::size_t E>
-  auto await_transform(co_new_t<T, E> await) {
-
-    auto *stack = tls::stack();
-
-    T *ptr = static_cast<T *>(stack->allocate(await.count * sizeof(T)));
-
-    // clang-format off
-
-    LF_TRY {
-      std::ranges::uninitialized_default_construct_n(ptr, await.count);
-    } LF_CATCH_ALL {
-      stack->deallocate(ptr);
-      LF_RETHROW;
-    }
-
-    // clang-format on
-
-    this->reset_stacklet(stack->top());
-
-    return alloc_awaitable<T, E>{{}, std::span<T, E>{ptr, await.count}};
-  }
-
-  /**
-   * @brief Make an awaitable that frees memory from this workers stack.
-   */
-  template <co_allocable T, std::size_t E>
-  auto await_transform(co_delete_t<T, E> await) noexcept -> std::suspend_never {
-    std::ranges::destroy(await);
-    auto *stack = impl::tls::stack();
-    stack->deallocate(await.data());
-    this->reset_stacklet(stack->top());
-    return {};
+  auto await_transform(co_new_t<T, E> await) noexcept {
+    return alloc_awaitable<T, E>{{}, await, this};
   }
 
   // -------------------------------------------------------------- //

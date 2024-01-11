@@ -55,7 +55,7 @@ inline constexpr auto sch_on = [](auto sch_on, context *target) -> task<bool> {
 inline constexpr auto loop = [](auto loop, int n, std::vector<context *> neigh) -> task<bool> {
   //
 
-  std::span res = co_await co_new<int>(n == 0 ? neigh.size() : n);
+  auto [res] = co_await co_new<int>(n == 0 ? neigh.size() : n);
 
   if (n == 0) {
     for (int i = 0; i < res.size(); ++i) {
@@ -83,11 +83,7 @@ inline constexpr auto loop = [](auto loop, int n, std::vector<context *> neigh) 
 
   co_await lf::join;
 
-  bool ok = std::ranges::all_of(res, std::identity{});
-
-  co_await co_delete(res);
-
-  co_return ok;
+  co_return std::ranges::all_of(res, std::identity{});
 };
 
 } // namespace

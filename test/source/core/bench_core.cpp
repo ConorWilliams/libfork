@@ -51,18 +51,14 @@ inline constexpr auto co_fib = [](auto co_fib, int n) -> lf::task<int> {
     co_return n;
   }
 
-  std::span r = co_await lf::co_new<int, 2>();
+  auto [r] = co_await lf::co_new<int, 2>();
 
   co_await lf::fork(&r[0], co_fib)(n - 1);
   co_await lf::call(&r[1], co_fib)(n - 2);
 
   co_await lf::join;
 
-  int res = r[1] + r[0];
-
-  co_await lf::co_delete(r);
-
-  co_return res;
+  co_return r[1] + r[0];
 };
 
 struct scheduler : lf::impl::immovable<scheduler> {

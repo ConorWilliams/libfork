@@ -99,6 +99,7 @@ constexpr auto fib_integ = [](auto fib, int n) -> task<int> {
 
   // clang-format on
 
+  // This rethrows the exception if there was one.
   co_await join;
 
   co_return a + b;

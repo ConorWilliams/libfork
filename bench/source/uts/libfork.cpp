@@ -68,7 +68,7 @@ inline constexpr auto uts = [](auto uts, int depth, Node *parent) LF_STATIC_CALL
 
   if (num_children > 0) {
 
-    std::span cs = co_await lf::co_new<pair>(num_children);
+    auto [cs] = co_await lf::co_new<pair>(num_children);
 
     for (int i = 0; i < num_children; i++) {
 
@@ -94,8 +94,6 @@ inline constexpr auto uts = [](auto uts, int depth, Node *parent) LF_STATIC_CALL
       r.size += elem.res.size;
       r.leaves += elem.res.leaves;
     }
-
-    co_await lf::co_delete(cs);
 
   } else {
     r.leaves = 1;

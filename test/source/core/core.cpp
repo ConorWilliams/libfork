@@ -288,20 +288,17 @@ inline constexpr auto co_fib = [](auto co_fib, int n) -> lf::task<int> {
     co_return n;
   }
 
-  int *a = co_await lf::co_new<int>();
-  int *b = co_await lf::co_new<int>();
+  auto [a] = co_await lf::co_new<int>();
+  auto [b] = co_await lf::co_new<int>();
+
+  static_assert(std::same_as<decltype(a), int *>);
 
   co_await lf::fork(a, co_fib)(n - 1);
   co_await lf::call(b, co_fib)(n - 2);
 
   co_await lf::join;
 
-  int res = *a + *b;
-
-  co_await lf::co_delete(b);
-  co_await lf::co_delete(a);
-
-  co_return res;
+  co_return *a + *b;
 };
 
 } // namespace
