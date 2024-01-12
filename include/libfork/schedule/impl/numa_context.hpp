@@ -16,7 +16,7 @@
 #include <utility>   // for exchange, move
 #include <vector>    // for vector
 
-#include "libfork/core/ext/context.hpp"    // for worker_context, context
+#include "libfork/core/ext/context.hpp"    // for worker_context, nullary_f...
 #include "libfork/core/ext/deque.hpp"      // for err
 #include "libfork/core/ext/handles.hpp"    // for submit_handle, task_handle
 #include "libfork/core/ext/list.hpp"       // for intruded_list

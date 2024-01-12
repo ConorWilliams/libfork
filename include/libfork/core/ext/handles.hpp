@@ -12,7 +12,7 @@
 #include <type_traits> // for is_standard_layout_v
 #include <version>     // for __cpp_lib_is_pointer_interconvertible_base_of
 
-#include "libfork/core/ext/list.hpp"   // for frame
+#include "libfork/core/ext/list.hpp"   // for intrusive_list
 #include "libfork/core/impl/frame.hpp" // for frame
 
 /**

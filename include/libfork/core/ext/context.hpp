@@ -15,7 +15,7 @@
 
 #include "libfork/core/ext/deque.hpp"    // for deque, steal_t
 #include "libfork/core/ext/handles.hpp"  // for task_handle, submit_handle
-#include "libfork/core/ext/list.hpp"     // for intrusive_list, intruded_list
+#include "libfork/core/ext/list.hpp"     // for intrusive_list
 #include "libfork/core/impl/utility.hpp" // for non_null, immovable
 #include "libfork/core/macro.hpp"        // for LF_ASSERT
 
@@ -114,6 +114,9 @@ namespace impl {
  */
 class full_context : public worker_context {
  public:
+  /**
+   * @brief Construct a new full context object, store a copy of the user provided notification function.
+   */
   explicit full_context(nullary_function_t notify) noexcept : worker_context(std::move(notify)) {}
 
   /**

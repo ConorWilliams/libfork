@@ -8,16 +8,18 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts> // for default_initializable
-#include <cstddef>  // for size_t
-#include <memory>
-#include <span> // for dynamic_extent, span
-#include <type_traits>
+#include <array>       // for tuple_element, tuple_size
+#include <concepts>    // for default_initializable
+#include <cstddef>     // for size_t
+#include <memory>      // for destroy
+#include <span>        // for dynamic_extent, span
+#include <type_traits> // for type_identity, conditional_t
 #include <utility>
 
-#include "libfork/core/ext/tls.hpp"
-#include "libfork/core/impl/frame.hpp"
-#include "libfork/core/impl/utility.hpp" // for k_new_align
+#include "libfork/core/ext/tls.hpp"      // for stack
+#include "libfork/core/impl/frame.hpp"   // for frame
+#include "libfork/core/impl/stack.hpp"   // for stack
+#include "libfork/core/impl/utility.hpp" // for immovable, k_new_align
 
 /**
  * @file co_alloc.hpp

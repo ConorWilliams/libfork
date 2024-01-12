@@ -16,8 +16,8 @@
 #include <utility>     // for forward, move
 
 #include "libfork/core/eventually.hpp"           // for eventually
-#include "libfork/core/ext/handles.hpp"          // for submit_handle
-#include "libfork/core/ext/list.hpp"             // for intruded_list, intr...
+#include "libfork/core/ext/handles.hpp"          // for submit_handle, subm...
+#include "libfork/core/ext/list.hpp"             // for intrusive_list
 #include "libfork/core/ext/tls.hpp"              // for thread_stack, has_s...
 #include "libfork/core/first_arg.hpp"            // for async_function_object
 #include "libfork/core/impl/combinate.hpp"       // for quasi_awaitable

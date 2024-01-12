@@ -15,7 +15,7 @@
 #include <type_traits> // for invoke_result_t
 #include <utility>     // for forward
 
-#include "libfork/core/ext/context.hpp" // for context, full_context
+#include "libfork/core/ext/context.hpp" // for worker_context, full_context
 #include "libfork/core/ext/handles.hpp"
 #include "libfork/core/ext/tls.hpp"      // for context
 #include "libfork/core/impl/frame.hpp"   // for frame

@@ -18,13 +18,13 @@
 #include <memory>    // for destroy, uninitialized_d...
 #include <new>
 #include <span>        // for span
-#include <type_traits> // for false_type, true_type
-#include <utility>
+#include <type_traits> // for false_type, remove_cvref_t
+#include <utility>     // for forward
 
-#include "libfork/core/co_alloc.hpp"        // for co_allocable, co_delete_t
+#include "libfork/core/co_alloc.hpp"        // for co_allocable, co_new_t
 #include "libfork/core/control_flow.hpp"    // for join_type
-#include "libfork/core/ext/context.hpp"     // for full_context, context
-#include "libfork/core/ext/handles.hpp"     // for submit_handle, task_handle
+#include "libfork/core/ext/context.hpp"     // for full_context
+#include "libfork/core/ext/handles.hpp"     // for submit_t, task_handle
 #include "libfork/core/ext/list.hpp"        // for intrusive_list
 #include "libfork/core/ext/tls.hpp"         // for stack, context
 #include "libfork/core/first_arg.hpp"       // for async_function_object
@@ -34,11 +34,11 @@
 #include "libfork/core/impl/return.hpp"     // for return_result
 #include "libfork/core/impl/stack.hpp"      // for stack
 #include "libfork/core/impl/utility.hpp"    // for byte_cast, k_u16_max
-#include "libfork/core/interop.hpp"
-#include "libfork/core/invocable.hpp" // for return_address_for, igno...
-#include "libfork/core/macro.hpp"     // for LF_LOG, LF_ASSERT, LF_FO...
-#include "libfork/core/tag.hpp"       // for tag
-#include "libfork/core/task.hpp"      // for returnable, task
+#include "libfork/core/interop.hpp"         // for external_awaitable
+#include "libfork/core/invocable.hpp"       // for return_address_for, igno...
+#include "libfork/core/macro.hpp"           // for LF_LOG, LF_ASSERT, LF_FO...
+#include "libfork/core/tag.hpp"             // for tag
+#include "libfork/core/task.hpp"            // for returnable, task
 
 /**
  * @file promise.hpp
