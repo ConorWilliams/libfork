@@ -2384,7 +2384,7 @@ inline namespace ext {
 /**
  * @brief Initialize thread-local variables for a worker.
  *
- * Returns a handle to the library-managed context for the worker, this context is assosiated exclusively with
+ * Returns a handle to the library-managed context for the worker, this context is associated exclusively with
  * the thread that called this function.
  *
  * @param notify Called when a task is submitted to a worker, this may be called concurrently.
