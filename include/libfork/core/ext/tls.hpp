@@ -81,12 +81,17 @@ constinit
 inline namespace ext {
 
 /**
- * @brief Initialize thread-local variables before a worker can resume submitted tasks.
+ * @brief Initialize thread-local variables for a worker.
+ *
+ * Returns a handle to the library-managed context for the worker, this context is assosiated exclusively with
+ * the thread that called this function.
+ *
+ * @param notify Called when a task is submitted to a worker, this may be called concurrently.
  *
  * \rst
  *
  * .. warning::
- *    This should be cleaned up with ``lf::ext::finalize()``.
+ *    This return value should be cleaned up with ``lf::ext::finalize()``.
  *
  * \endrst
  */
@@ -118,6 +123,8 @@ inline namespace ext {
 
 /**
  * @brief Clean-up thread-local variable before destructing a worker's context.
+ *
+ * This must be called by the same worker (thread) which called ``lf::ext::worker_init()``.
  *
  * \rst
  *

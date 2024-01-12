@@ -28,8 +28,6 @@ inline namespace ext {
 /**
  * @brief A type safe wrapper around a handle to a coroutine that is at a submission point.
  *
- * Instances of this type (wrapped in an `lf::intrusive_list`s node) will be passed to a worker's context.
- *
  * \rst
  *
  * .. note::
@@ -53,8 +51,6 @@ using submit_handle = typename intrusive_list<submit_t *>::node *;
 
 /**
  * @brief A type safe wrapper around a handle to a stealable coroutine.
- *
- * Instances of this type will be passed to a worker's context.
  *
  * \rst
  *

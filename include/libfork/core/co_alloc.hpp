@@ -69,7 +69,7 @@ class stack_allocated : impl::immovable<stack_allocated<T>> {
    */
   stack_allocated(impl::frame *frame, std::span<T> span) noexcept : m_span{span}, m_frame{frame} {}
 
-  /*
+  /**
    * @brief Get a span over the allocated memory.
    */
   template <std::size_t I>
@@ -78,7 +78,7 @@ class stack_allocated : impl::immovable<stack_allocated<T>> {
     return m_span;
   }
 
-  /*
+  /**
    * @brief Get a span over the allocated memory.
    */
   template <std::size_t I>

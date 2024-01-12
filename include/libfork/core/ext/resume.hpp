@@ -32,6 +32,8 @@ inline namespace ext {
 
 /**
  * @brief Resume a collection of tasks at a submission point.
+ *
+ * This thread must be the worker thread that the tasks were submitted to.
  */
 inline void resume(submit_handle ptr) noexcept {
   for_each_elem(ptr, [](submit_t *raw) LF_STATIC_CALL {
@@ -57,6 +59,8 @@ inline void resume(submit_handle ptr) noexcept {
 
 /**
  * @brief Resume a stolen task.
+ *
+ * This thread must be a worker thread.
  */
 inline void resume(task_handle ptr) noexcept {
 

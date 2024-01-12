@@ -63,9 +63,9 @@ using nullary_function_t = std::function<void()>;
 class worker_context : impl::immovable<context> {
  public:
   /**
-   * @brief Submit pending/suspended tasks to the context.
+   * @brief Submit suspended tasks to the context, supports concurrent submission.
    *
-   * This is for use by the implementer of the scheduler, this will trigger the notification function.
+   * This will trigger the notification function.
    */
   void submit(submit_handle jobs) {
     m_submit.push(non_null(jobs));
@@ -80,9 +80,7 @@ class worker_context : impl::immovable<context> {
   [[nodiscard]] auto try_pop_all() noexcept -> submit_handle { return m_submit.try_pop_all(); }
 
   /**
-   * @brief Attempt a steal operation from this contexts task deque.
-   *
-   * If a task is stolen `resume` must be called on it.
+   * @brief Attempt a steal operation from this contexts task deque, supports concurrent stealing.
    */
   [[nodiscard]] auto try_steal() noexcept -> steal_t<task_handle> { return m_tasks.steal(); }
 

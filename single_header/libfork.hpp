@@ -2139,8 +2139,6 @@ inline namespace ext {
 /**
  * @brief A type safe wrapper around a handle to a coroutine that is at a submission point.
  *
- * Instances of this type (wrapped in an `lf::intrusive_list`s node) will be passed to a worker's context.
- *
  * \rst
  *
  * .. note::
@@ -2164,8 +2162,6 @@ using submit_handle = typename intrusive_list<submit_t *>::node *;
 
 /**
  * @brief A type safe wrapper around a handle to a stealable coroutine.
- *
- * Instances of this type will be passed to a worker's context.
  *
  * \rst
  *
@@ -2240,9 +2236,9 @@ using nullary_function_t = std::function<void()>;
 class worker_context : impl::immovable<context> {
  public:
   /**
-   * @brief Submit pending/suspended tasks to the context.
+   * @brief Submit suspended tasks to the context, supports concurrent submission.
    *
-   * This is for use by the implementer of the scheduler, this will trigger the notification function.
+   * This will trigger the notification function.
    */
   void submit(submit_handle jobs) {
     m_submit.push(non_null(jobs));
@@ -2257,9 +2253,7 @@ class worker_context : impl::immovable<context> {
   [[nodiscard]] auto try_pop_all() noexcept -> submit_handle { return m_submit.try_pop_all(); }
 
   /**
-   * @brief Attempt a steal operation from this contexts task deque.
-   *
-   * If a task is stolen `resume` must be called on it.
+   * @brief Attempt a steal operation from this contexts task deque, supports concurrent stealing.
    */
   [[nodiscard]] auto try_steal() noexcept -> steal_t<task_handle> { return m_tasks.steal(); }
 
@@ -2388,12 +2382,17 @@ constinit
 inline namespace ext {
 
 /**
- * @brief Initialize thread-local variables before a worker can resume submitted tasks.
+ * @brief Initialize thread-local variables for a worker.
+ *
+ * Returns a handle to the library-managed context for the worker, this context is assosiated exclusively with
+ * the thread that called this function.
+ *
+ * @param notify Called when a task is submitted to a worker, this may be called concurrently.
  *
  * \rst
  *
  * .. warning::
- *    This should be cleaned up with ``lf::ext::finalize()``.
+ *    This return value should be cleaned up with ``lf::ext::finalize()``.
  *
  * \endrst
  */
@@ -2425,6 +2424,8 @@ inline namespace ext {
 
 /**
  * @brief Clean-up thread-local variable before destructing a worker's context.
+ *
+ * This must be called by the same worker (thread) which called ``lf::ext::worker_init()``.
  *
  * \rst
  *
@@ -2508,7 +2509,7 @@ class stack_allocated : impl::immovable<stack_allocated<T>> {
    */
   stack_allocated(impl::frame *frame, std::span<T> span) noexcept : m_span{span}, m_frame{frame} {}
 
-  /*
+  /**
    * @brief Get a span over the allocated memory.
    */
   template <std::size_t I>
@@ -2517,7 +2518,7 @@ class stack_allocated : impl::immovable<stack_allocated<T>> {
     return m_span;
   }
 
-  /*
+  /**
    * @brief Get a span over the allocated memory.
    */
   template <std::size_t I>
@@ -4109,6 +4110,8 @@ inline namespace ext {
 
 /**
  * @brief Resume a collection of tasks at a submission point.
+ *
+ * This thread must be the worker thread that the tasks were submitted to.
  */
 inline void resume(submit_handle ptr) noexcept {
   for_each_elem(ptr, [](submit_t *raw) LF_STATIC_CALL {
@@ -4134,6 +4137,8 @@ inline void resume(submit_handle ptr) noexcept {
 
 /**
  * @brief Resume a stolen task.
+ *
+ * This thread must be a worker thread.
  */
 inline void resume(task_handle ptr) noexcept {
 
