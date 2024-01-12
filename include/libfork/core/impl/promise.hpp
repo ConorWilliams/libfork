@@ -185,9 +185,9 @@ struct promise_base : frame {
   template <external_awaitable A>
   auto await_transform(A &&await) -> switch_awaitable<std::remove_cvref_t<A>> {
 
-    auto *submit = std::bit_cast<submit_handle>(static_cast<frame *>(this));
+    auto *submit = std::bit_cast<submit_t *>(static_cast<frame *>(this));
 
-    using node = typename intrusive_list<submit_handle>::node;
+    using node = typename intrusive_list<submit_t *>::node;
 
     return {std::forward<A>(await), node{submit}};
   }

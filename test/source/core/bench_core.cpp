@@ -63,13 +63,11 @@ inline constexpr auto co_fib = [](auto co_fib, int n) -> lf::task<int> {
 
 struct scheduler : lf::impl::immovable<scheduler> {
 
-  void schedule(lf::intruded_list<lf::submit_handle> jobs) {
+  void schedule(lf::submit_handle job) {
 
-    context->submit(jobs);
+    context->submit(job);
 
-    for_each_elem(context->try_pop_all(), [](lf::submit_handle hand) {
-      resume(hand);
-    });
+    resume(context->try_pop_all());
   }
 
   ~scheduler() { lf::finalize(context); }

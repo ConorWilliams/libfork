@@ -84,11 +84,10 @@ inline void busy_work(numa_topology::numa_node<impl::numa_context<busy_vars>> no
 
   while (!my_context->shared().stop.test(std::memory_order_acquire)) {
 
-    intruded_list<submit_handle> submissions = my_context->try_pop_all();
-
-    for_each_elem(submissions, [](lf::submit_handle submitted) LF_STATIC_CALL noexcept {
-      resume(submitted);
-    });
+    if (submit_handle submissions = my_context->try_pop_all()) {
+      resume(submissions);
+      continue;
+    }
 
     if (task_handle task = my_context->try_steal()) {
       resume(task);
@@ -157,7 +156,7 @@ class busy_pool : impl::move_only<busy_pool> {
   /**
    * @brief Schedule a task for execution.
    */
-  void schedule(lf::intruded_list<lf::submit_handle> jobs) { m_worker[m_dist(m_rng)]->submit(jobs); }
+  void schedule(submit_handle job) { m_worker[m_dist(m_rng)]->submit(job); }
 
   /**
    * @brief Get a view of the worker's contexts.

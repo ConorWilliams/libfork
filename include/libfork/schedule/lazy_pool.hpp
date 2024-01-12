@@ -74,7 +74,7 @@ struct lazy_vars : busy_vars {
    * Called by a thief with work, effect: thief->active, do work, active->sleep.
    */
   template <typename Handle>
-    requires std::same_as<Handle, task_handle> || std::same_as<Handle, intruded_list<submit_handle>>
+    requires std::same_as<Handle, task_handle> || std::same_as<Handle, submit_handle>
   void thief_work_sleep(Handle handle, std::size_t tid) noexcept {
 
     // Invariant: *** if (A > 0) then (Ti >= 1 OR Si == 0) for all i***
@@ -107,13 +107,7 @@ struct lazy_vars : busy_vars {
       }
     }
 
-    if constexpr (std::same_as<Handle, intruded_list<submit_handle>>) {
-      for_each_elem(handle, [](submit_handle submitted) LF_STATIC_CALL noexcept {
-        resume(submitted);
-      });
-    } else {
-      resume(handle);
-    }
+    resume(handle);
 
     // Finally A <- A - 1 does not invalidate the invariant in any domain.
     active.fetch_sub(1, release);
@@ -335,7 +329,7 @@ class lazy_pool {
   /**
    * @brief Schedule a job on a random worker.
    */
-  void schedule(lf::intruded_list<lf::submit_handle> job) { m_worker[m_dist(m_rng)]->submit(job); }
+  void schedule(submit_handle job) { m_worker[m_dist(m_rng)]->submit(job); }
 
   /**
    * @brief Get a view of the worker's contexts.

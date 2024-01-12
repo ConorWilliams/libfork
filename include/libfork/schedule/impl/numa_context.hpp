@@ -140,14 +140,14 @@ struct numa_context {
   /**
    * @brief Submit a job to the owned worker context.
    */
-  void submit(lf::intruded_list<lf::submit_handle> jobs) { non_null(m_context)->submit(jobs); }
+  void submit(submit_handle job) { non_null(m_context)->submit(job); }
 
   /**
    * @brief Fetch a linked-list of the submitted tasks.
    *
    * If there are no submitted tasks, then returned pointer will be null.
    */
-  [[nodiscard]] auto try_pop_all() noexcept -> intruded_list<submit_handle> {
+  [[nodiscard]] auto try_pop_all() noexcept -> submit_handle {
     return non_null(m_context)->try_pop_all();
   }
 

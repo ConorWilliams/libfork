@@ -67,7 +67,7 @@ class worker_context : impl::immovable<context> {
    *
    * This is for use by the implementer of the scheduler, this will trigger the notification function.
    */
-  void submit(intruded_list<submit_handle> jobs) {
+  void submit(submit_handle jobs) {
     m_submit.push(non_null(jobs));
     m_notify();
   }
@@ -77,7 +77,7 @@ class worker_context : impl::immovable<context> {
    *
    * If there are no submitted tasks, then returned pointer will be null.
    */
-  [[nodiscard]] auto try_pop_all() noexcept -> intruded_list<submit_handle> { return m_submit.try_pop_all(); }
+  [[nodiscard]] auto try_pop_all() noexcept -> submit_handle { return m_submit.try_pop_all(); }
 
   /**
    * @brief Attempt a steal operation from this contexts task deque.
@@ -99,8 +99,8 @@ class worker_context : impl::immovable<context> {
     LF_ASSERT(m_notify);
   }
 
-  deque<task_handle> m_tasks;             ///< All non-null.
-  intrusive_list<submit_handle> m_submit; ///< All non-null.
+  deque<task_handle> m_tasks;          ///< All non-null.
+  intrusive_list<submit_t *> m_submit; ///< All non-null.
 
   nullary_function_t m_notify; ///< The user supplied notification function.
 };

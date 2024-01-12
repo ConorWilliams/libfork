@@ -48,11 +48,11 @@ inline namespace core {
 /**
  * @brief A concept that schedulers must satisfy.
  *
- * This requires only a single method, `schedule` which accepts an `lf::intruded_list<submit_handle>` and
+ * This requires only a single method, `schedule` which accepts an `lf::submit_handle` and
  * promises to call `lf::resume()` on it.
  */
 template <typename Sch>
-concept scheduler = requires (Sch &&sch, intruded_list<submit_handle> handle) {
+concept scheduler = requires (Sch &&sch, submit_handle handle) {
   std::forward<Sch>(sch).schedule(handle); //
 };
 
@@ -107,7 +107,7 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_
   [&]() noexcept {
     //
     await.prom->set_root_notify(&notifier);
-    auto *handle = std::bit_cast<submit_handle>(static_cast<impl::frame *>(await.prom));
+    auto *handle = std::bit_cast<submit_t *>(static_cast<impl::frame *>(await.prom));
 
     impl::ignore_t{} = impl::tls::thread_stack->release();
 
@@ -118,7 +118,7 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_
       swap(*prev, *impl::tls::thread_stack);
     }
 
-    typename intrusive_list<submit_handle>::node node{handle};
+    typename intrusive_list<submit_t *>::node node{handle};
 
     std::forward<Sch>(sch).schedule(&node);
     notifier.sem.acquire();

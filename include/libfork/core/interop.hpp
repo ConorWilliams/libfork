@@ -25,6 +25,16 @@
 
 namespace lf {
 
+namespace impl {
+
+/**
+ * @brief Verify a forwarding reference is storable as a value type.
+ */
+template <typename T>
+concept storable = std::constructible_from<std::remove_cvref_t<T>, T &&>;
+
+} // namespace impl
+
 inline namespace core {
 
 /**
@@ -36,9 +46,8 @@ inline namespace core {
  * normal.
  */
 template <typename T>
-concept external_awaitable = //
-    std::constructible_from<std::remove_cvref_t<T>, T &&> &&
-    requires (std::remove_cvref_t<T> awaiter, intruded_list<submit_handle> handle) {
+concept external_awaitable =
+    impl::storable<T> && requires (std::remove_cvref_t<T> awaiter, submit_handle handle) {
       { awaiter.await_ready() } -> std::convertible_to<bool>;
       { awaiter.await_suspend(handle) } -> std::same_as<void>;
       { awaiter.await_resume() };
@@ -64,7 +73,7 @@ struct [[nodiscard]] schedule_on_context {
   /**
    * @brief Reschedule this coroutine onto the requested destination.
    */
-  auto await_suspend(intruded_list<submit_handle> handle) noexcept -> void { m_dest->submit(handle); }
+  auto await_suspend(submit_handle handle) noexcept -> void { m_dest->submit(handle); }
 
   /**
    * @brief A no-op.

@@ -28,8 +28,6 @@ These types are components of the scheduler API.
 
 .. doxygentypedef:: lf::ext::nullary_function_t
 
-.. doxygentypedef:: lf::ext::intruded_list
-
 .. doxygenclass:: lf::ext::task_t
    :members:
 

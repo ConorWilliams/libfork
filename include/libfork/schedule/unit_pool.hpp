@@ -34,11 +34,7 @@ class unit_pool : impl::immovable<unit_pool> {
   /**
    * @brief Run a job inline.
    */
-  static void schedule(lf::intruded_list<lf::submit_handle> jobs) {
-    for_each_elem(jobs, [](lf::submit_handle hand) {
-      resume(hand);
-    });
-  }
+  static void schedule(submit_handle job) { resume(job); }
 
   ~unit_pool() noexcept { lf::finalize(m_context); }
 

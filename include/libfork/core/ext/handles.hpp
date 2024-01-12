@@ -12,6 +12,7 @@
 #include <type_traits> // for is_standard_layout_v
 #include <version>     // for __cpp_lib_is_pointer_interconvertible_base_of
 
+#include "libfork/core/ext/list.hpp"   // for frame
 #include "libfork/core/impl/frame.hpp" // for frame
 
 /**
@@ -46,9 +47,9 @@ static_assert(std::is_pointer_interconvertible_base_of_v<impl::frame, submit_t>)
 #endif
 
 /**
- * @brief An alias for a pointer to a `submit_t`.
+ * @brief An alias for a pointer to a `submit_t` wrapped in an intruded list.
  */
-using submit_handle = submit_t *;
+using submit_handle = typename intrusive_list<submit_t *>::node *;
 
 /**
  * @brief A type safe wrapper around a handle to a stealable coroutine.

@@ -1196,6 +1196,131 @@ constexpr deque<T>::~deque() noexcept {
 #include <type_traits> // for is_standard_layout_v
 #include <version>     // for __cpp_lib_is_pointer_interconvertible_base_of
 
+#ifndef BC7496D2_E762_43A4_92A3_F2AD10690569
+#define BC7496D2_E762_43A4_92A3_F2AD10690569
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <atomic>     // for atomic, memory_order_consume
+#include <concepts>   // for invocable
+#include <functional> // for invoke
+ // for immovable        // for LF_ASSERT
+
+/**
+ * @file list.hpp
+ *
+ * @brief Lock-free intrusive list for use when submitting tasks.
+ */
+
+namespace lf {
+
+inline namespace ext {
+
+/**
+ * @brief A multi-producer, single-consumer intrusive list.
+ *
+ * This implementation is lock-free, allocates no memory and is optimized for weak memory models.
+ */
+template <typename T>
+class intrusive_list : impl::immovable<intrusive_list<T>> {
+ public:
+  /**
+   * @brief An intruded node in the list.
+   */
+  class node : impl::immovable<node> {
+   public:
+    /**
+     * @brief Construct a node storing a copy of `data`.
+     */
+    explicit constexpr node(T const &data) noexcept(std::is_nothrow_copy_constructible_v<T>) : m_data(data) {}
+
+    /**
+     * @brief Access the value stored in a node of the list.
+     */
+    friend constexpr auto unwrap(node *ptr) noexcept -> T & { return non_null(ptr)->m_data; }
+
+    /**
+     * @brief Call `func` on each unwrapped node linked in the list.
+     *
+     * This is a noop if `root` is `nullptr`.
+     */
+    template <std::invocable<T &> F>
+    friend constexpr void for_each_elem(node *root, F &&func) noexcept(std::is_nothrow_invocable_v<F, T &>) {
+      while (root) {
+        // Have to be very careful here, we can't deference `root` after
+        // we've called `func` as `func` could destroy the node so, we have
+        // to cache the next pointer before the function call.
+        auto next = root->m_next;
+        std::invoke(func, root->m_data);
+        root = next;
+      }
+    }
+
+   private:
+    friend class intrusive_list;
+
+    [[no_unique_address]] T m_data;
+    node *m_next = nullptr;
+  };
+
+  /**
+   * @brief Push a new node, this can be called concurrently from any number of threads.
+   *
+   * `new_node` should be an unlinked node e.g. not part of a list.
+   */
+  constexpr void push(node *new_node) noexcept {
+
+    LF_ASSERT(new_node && new_node->m_next == nullptr);
+
+    node *stale_head = m_head.load(std::memory_order_relaxed);
+
+    for (;;) {
+      non_null(new_node)->m_next = stale_head;
+
+      if (m_head.compare_exchange_weak(stale_head, new_node, std::memory_order_release)) {
+        return;
+      }
+    }
+  }
+
+  /**
+   * @brief Pop all the nodes from the list and return a pointer to the root (`nullptr` if empty).
+   *
+   * Only the owner (thread) of the list can call this function, this will reverse the direction of the list
+   * such that `for_each_elem` will operate if FIFO order.
+   */
+  constexpr auto try_pop_all() noexcept -> node * {
+
+    node *last = m_head.exchange(nullptr, std::memory_order_consume);
+    node *first = nullptr;
+
+    while (last) {
+      node *tmp = last;
+      last = last->m_next;
+      tmp->m_next = first;
+      first = tmp;
+    }
+
+    return first;
+  }
+
+ private:
+  std::atomic<node *> m_head = nullptr;
+};
+
+} // namespace ext
+
+} // namespace lf
+
+#endif /* BC7496D2_E762_43A4_92A3_F2AD10690569 */
+
+   // for frame
 #ifndef DD6F6C5C_C146_4C02_99B9_7D2D132C0844
 #define DD6F6C5C_C146_4C02_99B9_7D2D132C0844
 
@@ -2032,9 +2157,9 @@ static_assert(std::is_pointer_interconvertible_base_of_v<impl::frame, submit_t>)
 #endif
 
 /**
- * @brief An alias for a pointer to a `submit_t`.
+ * @brief An alias for a pointer to a `submit_t` wrapped in an intruded list.
  */
-using submit_handle = submit_t *;
+using submit_handle = typename intrusive_list<submit_t *>::node *;
 
 /**
  * @brief A type safe wrapper around a handle to a stealable coroutine.
@@ -2068,138 +2193,7 @@ using task_handle = task_t *;
 
 #endif /* ACB944D8_08B6_4600_9302_602E847753FD */
 
-  // for task_handle, submit_handle
-#ifndef BC7496D2_E762_43A4_92A3_F2AD10690569
-#define BC7496D2_E762_43A4_92A3_F2AD10690569
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <atomic>     // for atomic, memory_order_consume
-#include <concepts>   // for invocable
-#include <functional> // for invoke
- // for immovable        // for LF_ASSERT
-
-/**
- * @file list.hpp
- *
- * @brief Lock-free intrusive list for use when submitting tasks.
- */
-
-namespace lf {
-
-inline namespace ext {
-
-/**
- * @brief A multi-producer, single-consumer intrusive list.
- *
- * This implementation is lock-free, allocates no memory and is optimized for weak memory models.
- */
-template <typename T>
-class intrusive_list : impl::immovable<intrusive_list<T>> {
- public:
-  /**
-   * @brief An intruded node in the list.
-   */
-  class node : impl::immovable<node> {
-   public:
-    /**
-     * @brief Construct a node storing a copy of `data`.
-     */
-    explicit constexpr node(T const &data) noexcept(std::is_nothrow_copy_constructible_v<T>) : m_data(data) {}
-
-    /**
-     * @brief Access the value stored in a node of the list.
-     */
-    friend constexpr auto unwrap(node *ptr) noexcept -> T & { return non_null(ptr)->m_data; }
-
-    /**
-     * @brief Call `func` on each unwrapped node linked in the list.
-     *
-     * This is a noop if `root` is `nullptr`.
-     */
-    template <std::invocable<T &> F>
-    friend constexpr void for_each_elem(node *root, F &&func) noexcept(std::is_nothrow_invocable_v<F, T &>) {
-      while (root) {
-        // Have to be very careful here, we can't deference `root` after
-        // we've called `func` as `func` could destroy the node so, we have
-        // to cache the next pointer before the function call.
-        auto next = root->m_next;
-        std::invoke(func, root->m_data);
-        root = next;
-      }
-    }
-
-   private:
-    friend class intrusive_list;
-
-    [[no_unique_address]] T m_data;
-    node *m_next = nullptr;
-  };
-
-  /**
-   * @brief Push a new node, this can be called concurrently from any number of threads.
-   *
-   * `new_node` should be an unlinked node e.g. not part of a list.
-   */
-  constexpr void push(node *new_node) noexcept {
-
-    LF_ASSERT(new_node && new_node->m_next == nullptr);
-
-    node *stale_head = m_head.load(std::memory_order_relaxed);
-
-    for (;;) {
-      non_null(new_node)->m_next = stale_head;
-
-      if (m_head.compare_exchange_weak(stale_head, new_node, std::memory_order_release)) {
-        return;
-      }
-    }
-  }
-
-  /**
-   * @brief Pop all the nodes from the list and return a pointer to the root (`nullptr` if empty).
-   *
-   * Only the owner (thread) of the list can call this function, this will reverse the direction of the list
-   * such that `for_each_elem` will operate if FIFO order.
-   */
-  constexpr auto try_pop_all() noexcept -> node * {
-
-    node *last = m_head.exchange(nullptr, std::memory_order_consume);
-    node *first = nullptr;
-
-    while (last) {
-      node *tmp = last;
-      last = last->m_next;
-      tmp->m_next = first;
-      first = tmp;
-    }
-
-    return first;
-  }
-
- private:
-  std::atomic<node *> m_head = nullptr;
-};
-
-/**
- * @brief A type alias for the node type of an intrusive list.
- */
-template <typename T>
-using intruded_list = typename intrusive_list<T>::node *;
-
-} // namespace ext
-
-} // namespace lf
-
-#endif /* BC7496D2_E762_43A4_92A3_F2AD10690569 */
-
-     // for intrusive_list, intruded_list // for non_null, immovable        // for LF_ASSERT
+  // for task_handle, submit_handle     // for intrusive_list, intruded_list // for non_null, immovable        // for LF_ASSERT
 
 /**
  * @file context.hpp
@@ -2249,7 +2243,7 @@ class worker_context : impl::immovable<context> {
    *
    * This is for use by the implementer of the scheduler, this will trigger the notification function.
    */
-  void submit(intruded_list<submit_handle> jobs) {
+  void submit(submit_handle jobs) {
     m_submit.push(non_null(jobs));
     m_notify();
   }
@@ -2259,7 +2253,7 @@ class worker_context : impl::immovable<context> {
    *
    * If there are no submitted tasks, then returned pointer will be null.
    */
-  [[nodiscard]] auto try_pop_all() noexcept -> intruded_list<submit_handle> { return m_submit.try_pop_all(); }
+  [[nodiscard]] auto try_pop_all() noexcept -> submit_handle { return m_submit.try_pop_all(); }
 
   /**
    * @brief Attempt a steal operation from this contexts task deque.
@@ -2281,8 +2275,8 @@ class worker_context : impl::immovable<context> {
     LF_ASSERT(m_notify);
   }
 
-  deque<task_handle> m_tasks;             ///< All non-null.
-  intrusive_list<submit_handle> m_submit; ///< All non-null.
+  deque<task_handle> m_tasks;          ///< All non-null.
+  intrusive_list<submit_t *> m_submit; ///< All non-null.
 
   nullary_function_t m_notify; ///< The user supplied notification function.
 };
@@ -2649,12 +2643,106 @@ inline auto co_new() -> impl::co_new_t<T, Extent> {
 
 #include <concepts> // for invocable, constructible_from
 #include <coroutine>
-#include <functional> // for invoke
-#include <libfork/core/ext/handles.hpp>
-#include <libfork/core/interop.hpp>
+#include <functional>  // for invoke
 #include <type_traits> // for invoke_result_t
 #include <utility>     // for forward
-  // for context, full_context      // for context   // for frame // for different_from, referenceable        // for LF_COMPILER_EXCEPTIONS, LF_...
+ // for context, full_context      // for context   // for frame // for different_from, referenceable
+#ifndef BDE6CBCC_7576_4082_AAC5_2A207FEA9293
+#define BDE6CBCC_7576_4082_AAC5_2A207FEA9293
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>
+#include <type_traits>
+#include <utility>
+ // for  submit_handle
+
+/**
+ * @file interop.hpp
+ *
+ * @brief Machinery for interfacing with external workers.
+ */
+
+namespace lf {
+
+namespace impl {
+
+/**
+ * @brief Verify a forwarding reference is storable as a value type.
+ */
+template <typename T>
+concept storable = std::constructible_from<std::remove_cvref_t<T>, T &&>;
+
+} // namespace impl
+
+inline namespace core {
+
+/**
+ * @brief Defines the interface for external awaitables.
+ *
+ * An external awaitable can be awaited inside a libfork coroutine. If the external awaitable
+ * is not ready then the coroutine will be suspended and a submit_handle will be passed to the
+ * external awaitor's ``await_suspend()`` function. This can then be resumed by any worker as
+ * normal.
+ */
+template <typename T>
+concept external_awaitable =
+    impl::storable<T> && requires (std::remove_cvref_t<T> awaiter, submit_handle handle) {
+      { awaiter.await_ready() } -> std::convertible_to<bool>;
+      { awaiter.await_suspend(handle) } -> std::same_as<void>;
+      { awaiter.await_resume() };
+    };
+
+/**
+ * @brief An external awaitable to explicitly transfer execution to another worker.
+ */
+struct [[nodiscard]] schedule_on_context {
+ private:
+  worker_context *m_dest;
+
+  explicit schedule_on_context(worker_context *dest) noexcept : m_dest{dest} {}
+
+  friend auto resume_on(worker_context *dest) noexcept -> schedule_on_context;
+
+ public:
+  /**
+   * @brief Don't suspend if on correct context.
+   */
+  auto await_ready() const noexcept { return impl::tls::context() == m_dest; }
+
+  /**
+   * @brief Reschedule this coroutine onto the requested destination.
+   */
+  auto await_suspend(submit_handle handle) noexcept -> void { m_dest->submit(handle); }
+
+  /**
+   * @brief A no-op.
+   */
+  auto await_resume() const noexcept -> void {}
+};
+
+static_assert(external_awaitable<schedule_on_context>);
+
+/**
+ * @brief Create an external awaitable to explicitly transfer execution to ``dest``.
+ */
+inline auto resume_on(worker_context *dest) noexcept -> schedule_on_context {
+  return schedule_on_context{non_null(dest)};
+}
+
+} // namespace core
+
+} // namespace lf
+
+#endif /* BDE6CBCC_7576_4082_AAC5_2A207FEA9293 */
+
+ // for LF_COMPILER_EXCEPTIONS, LF_...
 #ifndef A75DC3F0_D0C3_4669_A901_0B22556C873C
 #define A75DC3F0_D0C3_4669_A901_0B22556C873C
 
@@ -2693,7 +2781,7 @@ enum class tag {
 
 #endif /* A75DC3F0_D0C3_4669_A901_0B22556C873C */
 
-          // for tag
+   // for tag
 
 /**
  * @file first_arg.hpp
@@ -2901,93 +2989,6 @@ class first_arg_t {
 #include <cstdint>   //
 #include <span>      // for span
   // for full_context, context  // for submit_handle, task_handle     // for intrusive_list      // for context, stack   // for frame   // for stack // for k_u16_max
-#ifndef BDE6CBCC_7576_4082_AAC5_2A207FEA9293
-#define BDE6CBCC_7576_4082_AAC5_2A207FEA9293
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>
-#include <type_traits>
-#include <utility>
- // for  submit_handle
-
-/**
- * @file interop.hpp
- *
- * @brief Machinery for interfacing with external workers.
- */
-
-namespace lf {
-
-inline namespace core {
-
-/**
- * @brief Defines the interface for external awaitables.
- *
- * An external awaitable can be awaited inside a libfork coroutine. If the external awaitable
- * is not ready then the coroutine will be suspended and a submit_handle will be passed to the
- * external awaitor's ``await_suspend()`` function. This can then be resumed by any worker as
- * normal.
- */
-template <typename T>
-concept external_awaitable = //
-    std::constructible_from<std::remove_cvref_t<T>, T &&> &&
-    requires (std::remove_cvref_t<T> awaiter, intruded_list<submit_handle> handle) {
-      { awaiter.await_ready() } -> std::convertible_to<bool>;
-      { awaiter.await_suspend(handle) } -> std::same_as<void>;
-      { awaiter.await_resume() };
-    };
-
-/**
- * @brief An external awaitable to explicitly transfer execution to another worker.
- */
-struct [[nodiscard]] schedule_on_context {
- private:
-  worker_context *m_dest;
-
-  explicit schedule_on_context(worker_context *dest) noexcept : m_dest{dest} {}
-
-  friend auto resume_on(worker_context *dest) noexcept -> schedule_on_context;
-
- public:
-  /**
-   * @brief Don't suspend if on correct context.
-   */
-  auto await_ready() const noexcept { return impl::tls::context() == m_dest; }
-
-  /**
-   * @brief Reschedule this coroutine onto the requested destination.
-   */
-  auto await_suspend(intruded_list<submit_handle> handle) noexcept -> void { m_dest->submit(handle); }
-
-  /**
-   * @brief A no-op.
-   */
-  auto await_resume() const noexcept -> void {}
-};
-
-static_assert(external_awaitable<schedule_on_context>);
-
-/**
- * @brief Create an external awaitable to explicitly transfer execution to ``dest``.
- */
-inline auto resume_on(worker_context *dest) noexcept -> schedule_on_context {
-  return schedule_on_context{non_null(dest)};
-}
-
-} // namespace core
-
-} // namespace lf
-
-#endif /* BDE6CBCC_7576_4082_AAC5_2A207FEA9293 */
-
-
 #ifndef A5349E86_5BAA_48EF_94E9_F0EBF630DE04
 #define A5349E86_5BAA_48EF_94E9_F0EBF630DE04
 
@@ -3543,85 +3544,9 @@ struct switch_awaitable {
     return external.await_ready();
   }
 
-  A external;                               ///< The external awaitable.
-  intrusive_list<submit_handle>::node self; ///< The current coroutine's handle.
+  A external;                            ///< The external awaitable.
+  intrusive_list<submit_t *>::node self; ///< The current coroutine's handle.
 };
-
-/**
- * @brief An awaiter to explicitly transfer execution to another worker.
- *
- * This is generated by `await_transform` when awaiting on a pointer to a `lf::context`.
- */
-
-// struct switch_awaitable : std::suspend_always {
-
-//   /**
-//    * @brief Shortcut if already on context.
-//    */
-//   auto await_ready() const noexcept { return tls::context() == dest; }
-
-//   /**
-//    * @brief Reschedule this coro onto `dest`.
-//    */
-//   auto await_suspend(std::coroutine_handle<>) noexcept -> std::coroutine_handle<> {
-
-//     // We currently own the "resumable" handle of this coroutine, if there have been any
-//     // steals then we do not own the stack this coroutine is on and the resumer should not
-//     // take the stack otherwise, we should give-it-up and the resumer should take it.
-
-//     auto *underlying = std::bit_cast<frame *>(unwrap(&self));
-
-//     std::uint16_t steals = underlying->load_steals();
-
-//     // Assert the above paragraphs validity.
-// #ifndef NDEBUG
-//     if (steals == 0) {
-//       LF_ASSERT(underlying->stacklet() == tls::stack()->top());
-//     } else {
-//       LF_ASSERT(underlying->stacklet() != tls::stack()->top());
-//     }
-// #endif
-
-//     // Schedule this coro for execution on Dest, cannot touch underlying.
-//     dest->submit(&self);
-
-//     if (steals == 0) {
-//       // Dest will take this stack upon resumption hence, we must release it.
-//       ignore_t{} = tls::stack()->release();
-//     }
-
-//     LF_ASSERT(tls::stack()->empty());
-
-//     // Eventually dest will fail to pop() the ancestor task that we 'could' pop() here and
-//     // then treat it as a task that was stolen from it.
-
-//     // Now we have a number of tasks on our WSQ which we have "effectively stolen" from dest.
-//     // All of them will eventually reach a join point.
-
-//     // We can pop() the ancestor, mark it stolen and then resume it.
-
-//     /**
-//      * While running the ancestor several things can happen:
-//      *   We hit a join in the ancestor:
-//      *      Case Win join:
-//      *        Take stack, OK to treat tasks on our WSQ as non-stolen.
-//      *      Case Loose join:
-//      *        Must treat tasks on our WSQ as stolen.
-//      *   We loose a join in a descendent of the ancestor:
-//      *    Ok all task on WSQ must have been stole by other threads and handled as stolen appropriately.
-//      */
-
-//     if (auto *eff_stolen = std::bit_cast<frame *>(tls::context()->pop())) {
-//       eff_stolen->fetch_add_steal();
-//       return eff_stolen->self();
-//     }
-
-//     return std::noop_coroutine();
-//   }
-
-//   intrusive_list<submit_handle>::node self; ///< The current coroutine's handle.
-//   context *dest;                            ///< Target context.
-// };
 
 // -------------------------------------------------------- //
 
@@ -4087,11 +4012,11 @@ inline namespace core {
 /**
  * @brief A concept that schedulers must satisfy.
  *
- * This requires only a single method, `schedule` which accepts an `lf::intruded_list<submit_handle>` and
+ * This requires only a single method, `schedule` which accepts an `lf::submit_handle` and
  * promises to call `lf::resume()` on it.
  */
 template <typename Sch>
-concept scheduler = requires (Sch &&sch, intruded_list<submit_handle> handle) {
+concept scheduler = requires (Sch &&sch, submit_handle handle) {
   std::forward<Sch>(sch).schedule(handle); //
 };
 
@@ -4146,7 +4071,7 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_
   [&]() noexcept {
     //
     await.prom->set_root_notify(&notifier);
-    auto *handle = std::bit_cast<submit_handle>(static_cast<impl::frame *>(await.prom));
+    auto *handle = std::bit_cast<submit_t *>(static_cast<impl::frame *>(await.prom));
 
     impl::ignore_t{} = impl::tls::thread_stack->release();
 
@@ -4157,7 +4082,7 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_
       swap(*prev, *impl::tls::thread_stack);
     }
 
-    typename intrusive_list<submit_handle>::node node{handle};
+    typename intrusive_list<submit_t *>::node node{handle};
 
     std::forward<Sch>(sch).schedule(&node);
     notifier.sem.acquire();
@@ -4193,7 +4118,7 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_
 
 #include <bit>       // for bit_cast
 #include <coroutine> // for coroutine_handle
- // for full_context // for submit_handle, task_handle     // for context, stack  // for frame  // for stack       // for LF_ASSERT_NO_ASSUME, LF_LOG
+ // for full_context // for submit_handle, task_handle    // for context, stack // for frame // for stack      // for LF_ASSERT_NO_ASSUME, LF_LOG
 
 /**
  * @file resume.hpp
@@ -4206,26 +4131,28 @@ namespace lf {
 inline namespace ext {
 
 /**
- * @brief Resume a task at a submission point.
+ * @brief Resume a collection of tasks at a submission point.
  */
 inline void resume(submit_handle ptr) noexcept {
+  for_each_elem(ptr, [](submit_t *raw) static {
+    //
+    LF_LOG("Call to resume on submitted task");
 
-  LF_LOG("Call to resume on submitted task");
+    auto *frame = std::bit_cast<impl::frame *>(raw);
 
-  auto *frame = std::bit_cast<impl::frame *>(ptr);
+    if (frame->load_steals() == 0) {
+      impl::stack *stack = impl::tls::stack();
+      LF_ASSERT(stack->empty());
+      *stack = impl::stack{frame->stacklet()};
+    } else {
+      LF_ASSERT_NO_ASSUME(impl::tls::stack()->empty());
+    }
 
-  if (frame->load_steals() == 0) {
-    impl::stack *stack = impl::tls::stack();
-    LF_ASSERT(stack->empty());
-    *stack = impl::stack{frame->stacklet()};
-  } else {
+    LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
+    frame->self().resume();
+    LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
     LF_ASSERT_NO_ASSUME(impl::tls::stack()->empty());
-  }
-
-  LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
-  frame->self().resume();
-  LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
-  LF_ASSERT_NO_ASSUME(impl::tls::stack()->empty());
+  });
 }
 
 /**
@@ -4520,9 +4447,9 @@ struct promise_base : frame {
   template <external_awaitable A>
   auto await_transform(A &&await) -> switch_awaitable<std::remove_cvref_t<A>> {
 
-    auto *submit = std::bit_cast<submit_handle>(static_cast<frame *>(this));
+    auto *submit = std::bit_cast<submit_t *>(static_cast<frame *>(this));
 
-    using node = typename intrusive_list<submit_handle>::node;
+    using node = typename intrusive_list<submit_t *>::node;
 
     return {std::forward<A>(await), node{submit}};
   }
@@ -5703,14 +5630,14 @@ struct numa_context {
   /**
    * @brief Submit a job to the owned worker context.
    */
-  void submit(lf::intruded_list<lf::submit_handle> jobs) { non_null(m_context)->submit(jobs); }
+  void submit(submit_handle job) { non_null(m_context)->submit(job); }
 
   /**
    * @brief Fetch a linked-list of the submitted tasks.
    *
    * If there are no submitted tasks, then returned pointer will be null.
    */
-  [[nodiscard]] auto try_pop_all() noexcept -> intruded_list<submit_handle> {
+  [[nodiscard]] auto try_pop_all() noexcept -> submit_handle {
     return non_null(m_context)->try_pop_all();
   }
 
@@ -5828,11 +5755,10 @@ inline void busy_work(numa_topology::numa_node<impl::numa_context<busy_vars>> no
 
   while (!my_context->shared().stop.test(std::memory_order_acquire)) {
 
-    intruded_list<submit_handle> submissions = my_context->try_pop_all();
-
-    for_each_elem(submissions, [](lf::submit_handle submitted) LF_STATIC_CALL noexcept {
-      resume(submitted);
-    });
+    if (submit_handle submissions = my_context->try_pop_all()) {
+      resume(submissions);
+      continue;
+    }
 
     if (task_handle task = my_context->try_steal()) {
       resume(task);
@@ -5901,7 +5827,7 @@ class busy_pool : impl::move_only<busy_pool> {
   /**
    * @brief Schedule a task for execution.
    */
-  void schedule(lf::intruded_list<lf::submit_handle> jobs) { m_worker[m_dist(m_rng)]->submit(jobs); }
+  void schedule(submit_handle job) { m_worker[m_dist(m_rng)]->submit(job); }
 
   /**
    * @brief Get a view of the worker's contexts.
@@ -6233,7 +6159,7 @@ struct lazy_vars : busy_vars {
    * Called by a thief with work, effect: thief->active, do work, active->sleep.
    */
   template <typename Handle>
-    requires std::same_as<Handle, task_handle> || std::same_as<Handle, intruded_list<submit_handle>>
+    requires std::same_as<Handle, task_handle> || std::same_as<Handle, submit_handle>
   void thief_work_sleep(Handle handle, std::size_t tid) noexcept {
 
     // Invariant: *** if (A > 0) then (Ti >= 1 OR Si == 0) for all i***
@@ -6266,13 +6192,7 @@ struct lazy_vars : busy_vars {
       }
     }
 
-    if constexpr (std::same_as<Handle, intruded_list<submit_handle>>) {
-      for_each_elem(handle, [](submit_handle submitted) LF_STATIC_CALL noexcept {
-        resume(submitted);
-      });
-    } else {
-      resume(handle);
-    }
+    resume(handle);
 
     // Finally A <- A - 1 does not invalidate the invariant in any domain.
     active.fetch_sub(1, release);
@@ -6494,7 +6414,7 @@ class lazy_pool {
   /**
    * @brief Schedule a job on a random worker.
    */
-  void schedule(lf::intruded_list<lf::submit_handle> job) { m_worker[m_dist(m_rng)]->submit(job); }
+  void schedule(submit_handle job) { m_worker[m_dist(m_rng)]->submit(job); }
 
   /**
    * @brief Get a view of the worker's contexts.
@@ -6554,11 +6474,7 @@ class unit_pool : impl::immovable<unit_pool> {
   /**
    * @brief Run a job inline.
    */
-  static void schedule(lf::intruded_list<lf::submit_handle> jobs) {
-    for_each_elem(jobs, [](lf::submit_handle hand) {
-      resume(hand);
-    });
-  }
+  static void schedule(submit_handle job) { resume(job); }
 
   ~unit_pool() noexcept { lf::finalize(m_context); }
 

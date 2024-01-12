@@ -118,12 +118,6 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
   std::atomic<node *> m_head = nullptr;
 };
 
-/**
- * @brief A type alias for the node type of an intrusive list.
- */
-template <typename T>
-using intruded_list = typename intrusive_list<T>::node *;
-
 } // namespace ext
 
 } // namespace lf

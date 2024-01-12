@@ -14,10 +14,11 @@
 
 #include "libfork/core/ext/context.hpp" // for full_context
 #include "libfork/core/ext/handles.hpp" // for submit_handle, task_handle
-#include "libfork/core/ext/tls.hpp"     // for context, stack
-#include "libfork/core/impl/frame.hpp"  // for frame
-#include "libfork/core/impl/stack.hpp"  // for stack
-#include "libfork/core/macro.hpp"       // for LF_ASSERT_NO_ASSUME, LF_LOG
+#include "libfork/core/ext/list.hpp"
+#include "libfork/core/ext/tls.hpp"    // for context, stack
+#include "libfork/core/impl/frame.hpp" // for frame
+#include "libfork/core/impl/stack.hpp" // for stack
+#include "libfork/core/macro.hpp"      // for LF_ASSERT_NO_ASSUME, LF_LOG
 
 /**
  * @file resume.hpp
@@ -30,26 +31,28 @@ namespace lf {
 inline namespace ext {
 
 /**
- * @brief Resume a task at a submission point.
+ * @brief Resume a collection of tasks at a submission point.
  */
 inline void resume(submit_handle ptr) noexcept {
+  for_each_elem(ptr, [](submit_t *raw) static {
+    //
+    LF_LOG("Call to resume on submitted task");
 
-  LF_LOG("Call to resume on submitted task");
+    auto *frame = std::bit_cast<impl::frame *>(raw);
 
-  auto *frame = std::bit_cast<impl::frame *>(ptr);
+    if (frame->load_steals() == 0) {
+      impl::stack *stack = impl::tls::stack();
+      LF_ASSERT(stack->empty());
+      *stack = impl::stack{frame->stacklet()};
+    } else {
+      LF_ASSERT_NO_ASSUME(impl::tls::stack()->empty());
+    }
 
-  if (frame->load_steals() == 0) {
-    impl::stack *stack = impl::tls::stack();
-    LF_ASSERT(stack->empty());
-    *stack = impl::stack{frame->stacklet()};
-  } else {
+    LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
+    frame->self().resume();
+    LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
     LF_ASSERT_NO_ASSUME(impl::tls::stack()->empty());
-  }
-
-  LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
-  frame->self().resume();
-  LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
-  LF_ASSERT_NO_ASSUME(impl::tls::stack()->empty());
+  });
 }
 
 /**
