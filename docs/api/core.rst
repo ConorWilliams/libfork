@@ -33,6 +33,8 @@ API
 
 .. doxygenconcept:: lf::core::co_allocable
 
+.. doxygenconcept:: lf::core::external_awaitable
+
 Functional
 ~~~~~~~~~~
 
@@ -53,6 +55,9 @@ Utility
 Control flow
 --------------------------------
 
+Blocking 
+~~~~~~~~~
+
 .. doxygenfunction:: lf::core::sync_wait
 
 Fork-join
@@ -64,6 +69,13 @@ Fork-join
 
 .. doxygenvariable:: lf::core::join
 
+
+Explicit
+~~~~~~~~
+
+.. doxygenfunction:: lf::core::resume_on
+
+.. doxygenstruct:: lf::core::schedule_on_context
 
 Classes
 ----------------
@@ -90,11 +102,6 @@ Defer
     :members:
     :undoc-members:
 
-Context
-~~~~~~~
-
-.. doxygenclass:: lf::ext::context
-   :members:
 
 Stack allocation
 ------------------

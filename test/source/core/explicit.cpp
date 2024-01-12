@@ -37,9 +37,9 @@ inline constexpr auto r_fib = [](auto fib, int n) -> lf::task<int> {
   co_return a + b;
 };
 
-inline constexpr auto sch_on = [](auto sch_on, context *target) -> task<bool> {
+inline constexpr auto sch_on = [](auto sch_on, worker_context *target) -> task<bool> {
   //
-  co_await target;
+  co_await resume_on(target);
 
   if (sch_on.context() != target) {
     co_return false;
@@ -52,7 +52,7 @@ inline constexpr auto sch_on = [](auto sch_on, context *target) -> task<bool> {
   co_return n == 8;
 };
 
-inline constexpr auto loop = [](auto loop, int n, std::vector<context *> neigh) -> task<bool> {
+inline constexpr auto loop = [](auto loop, int n, std::vector<worker_context *> neigh) -> task<bool> {
   //
 
   auto [res] = co_await co_new<int>(n == 0 ? neigh.size() : n);
@@ -105,7 +105,8 @@ TEMPLATE_TEST_CASE("Explicit scheduling", "[explicit][template]", busy_pool, laz
 
 namespace {
 
-inline constexpr auto sfib = [](auto sfib, int n, std::span<context *> neigh, lf::xoshiro rng) -> task<int> {
+inline constexpr auto sfib =
+    [](auto sfib, int n, std::span<worker_context *> neigh, lf::xoshiro rng) -> task<int> {
   //
   if (n < 2) {
     co_return n;
@@ -115,9 +116,9 @@ inline constexpr auto sfib = [](auto sfib, int n, std::span<context *> neigh, lf
 
     std::uniform_int_distribution<std::size_t> dist{0, neigh.size() - 1};
 
-    context *target = neigh[dist(rng)];
+    worker_context *target = neigh[dist(rng)];
 
-    co_await target;
+    co_await resume_on(target);
 
     if (sfib.context() != target) {
       co_return -1;
@@ -160,7 +161,8 @@ TEMPLATE_TEST_CASE("Explicit fibonacci", "[explicit][template]", busy_pool, lazy
 
 namespace {
 
-inline constexpr auto scope = [](auto sfib, int n, std::span<context *> neigh, lf::xoshiro rng) -> task<int> {
+inline constexpr auto scope =
+    [](auto sfib, int n, std::span<worker_context *> neigh, lf::xoshiro rng) -> task<int> {
   //
   if (n < 2) {
     co_return n;
@@ -169,9 +171,9 @@ inline constexpr auto scope = [](auto sfib, int n, std::span<context *> neigh, l
   std::uniform_int_distribution<std::size_t> dist{0, neigh.size() - 1};
 
   if (rng() % 2 == 0) {
-    context *target = neigh[dist(rng)];
+    worker_context *target = neigh[dist(rng)];
 
-    co_await target;
+    co_await resume_on(target);
 
     if (sfib.context() != target) {
       co_return -1;
@@ -183,8 +185,8 @@ inline constexpr auto scope = [](auto sfib, int n, std::span<context *> neigh, l
   co_await lf::fork(&a, sfib)(n - 1, neigh, lf::xoshiro{seed, rng});
 
   if (rng() % 2 == 0) {
-    context *target = neigh[dist(rng)];
-    co_await target;
+    worker_context *target = neigh[dist(rng)];
+    co_await resume_on(target);
     if (sfib.context() != target) {
       co_return -1;
     }
@@ -195,8 +197,8 @@ inline constexpr auto scope = [](auto sfib, int n, std::span<context *> neigh, l
   co_await lf::join;
 
   if (rng() % 2 == 0) {
-    context *target = neigh[dist(rng)];
-    co_await target;
+    worker_context *target = neigh[dist(rng)];
+    co_await resume_on(target);
     if (sfib.context() != target) {
       co_return -1;
     }

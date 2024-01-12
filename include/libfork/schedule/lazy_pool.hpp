@@ -22,19 +22,19 @@
 #include <utility>    // for move
 #include <vector>     // for vector
 
-#include "libfork/core/defer.hpp"               // for LF_DEFER
-#include "libfork/core/ext/context.hpp"         // for context, nullary_fun...
-#include "libfork/core/ext/handles.hpp"         // for submit_handle, task_...
-#include "libfork/core/ext/list.hpp"            // for for_each_elem, intru...
-#include "libfork/core/ext/resume.hpp"          // for resume
-#include "libfork/core/impl/utility.hpp"        // for k_cache_line
-#include "libfork/core/macro.hpp"               // for LF_ASSERT, LF_LOG
-#include "libfork/core/sync_wait.hpp"           // for scheduler
-#include "libfork/schedule/busy_pool.hpp"       // for busy_vars
-#include "libfork/schedule/ext/event_count.hpp" // for event_count
-#include "libfork/schedule/ext/numa.hpp"        // for numa_strategy, numa_...
-#include "libfork/schedule/ext/random.hpp"      // for xoshiro, seed
-#include "libfork/schedule/impl/contexts.hpp"   // for numa_context
+#include "libfork/core/defer.hpp"                 // for LF_DEFER
+#include "libfork/core/ext/context.hpp"           // for context, nullary_fun...
+#include "libfork/core/ext/handles.hpp"           // for submit_handle, task_...
+#include "libfork/core/ext/list.hpp"              // for for_each_elem, intru...
+#include "libfork/core/ext/resume.hpp"            // for resume
+#include "libfork/core/impl/utility.hpp"          // for k_cache_line
+#include "libfork/core/macro.hpp"                 // for LF_ASSERT, LF_LOG
+#include "libfork/core/sync_wait.hpp"             // for scheduler
+#include "libfork/schedule/busy_pool.hpp"         // for busy_vars
+#include "libfork/schedule/ext/event_count.hpp"   // for event_count
+#include "libfork/schedule/ext/numa.hpp"          // for numa_strategy, numa_...
+#include "libfork/schedule/ext/random.hpp"        // for xoshiro, seed
+#include "libfork/schedule/impl/numa_context.hpp" // for numa_context
 
 /**
  * @file lazy_pool.hpp
@@ -282,7 +282,7 @@ class lazy_pool {
   std::shared_ptr<impl::lazy_vars> m_share = std::make_shared<impl::lazy_vars>(m_num_threads);
   std::vector<std::shared_ptr<impl::numa_context<impl::lazy_vars>>> m_worker = {};
   std::vector<std::thread> m_threads = {};
-  std::vector<context *> m_contexts = {};
+  std::vector<worker_context *> m_contexts = {};
 
  public:
   /**
@@ -340,7 +340,7 @@ class lazy_pool {
   /**
    * @brief Get a view of the worker's contexts.
    */
-  auto contexts() noexcept -> std::span<context *> { return m_contexts; }
+  auto contexts() noexcept -> std::span<worker_context *> { return m_contexts; }
 
   ~lazy_pool() noexcept {
     LF_LOG("Requesting a stop");

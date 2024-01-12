@@ -38,8 +38,7 @@ class worker_context; // API for worker threads.
 
 namespace impl {
 
-class full_context;      // Internal API
-struct switch_awaitable; // Forward decl for friend.
+class full_context; // Internal API
 
 } // namespace impl
 
@@ -55,31 +54,14 @@ using nullary_function_t = std::function<void()>;
 #endif
 
 /**
- * @brief Core-visible context for users to query and submit tasks to.
+ * @brief  Context for (extension) schedulers to interact with.
  *
- * This class is technically part of the extension API however it is documented in the core API as a pointer
- * to a context (obtained via the .context() method of a first argument) can be ``co_awaited`` to explicitly
- * transfer control/execution of a coroutine.
- *
- * Each worker thread stores a context object, this is managed by the library. Internally a context manages
- * the work stealing queue and the submission queue. Submissions to the submission queue trigger a
- * user-supplied notification.
+ * Each worker thread stores a context object, this is managed by the library. Internally a context
+ * manages the work stealing queue and the submission queue. Submissions to the submission queue
+ * trigger a user-supplied notification.
  */
-class context : impl::immovable<context> {
+class worker_context : impl::immovable<context> {
  public:
-  /**
-   * @brief Construct a context for a worker thread.
-   *
-   * Notify is a function that may be called concurrently by other workers to signal to the worker
-   * owning this context that a task has been submitted to a private queue.
-   */
-  explicit context(nullary_function_t notify) noexcept : m_notify(std::move(notify)) { LF_ASSERT(m_notify); }
-
- private:
-  friend class ext::worker_context;
-  friend class impl::full_context;
-  friend struct impl::switch_awaitable;
-
   /**
    * @brief Submit pending/suspended tasks to the context.
    *
@@ -90,25 +72,8 @@ class context : impl::immovable<context> {
     m_notify();
   }
 
-  deque<task_handle> m_tasks;             ///< All non-null.
-  intrusive_list<submit_handle> m_submit; ///< All non-null.
-
-  nullary_function_t m_notify; ///< The user supplied notification function.
-};
-
-/**
- * @brief Context for (extension) schedulers to interact with.
- *
- * Additionally exposes submit and pop functions.
- */
-class worker_context : public context {
- public:
-  using context::context;
-
-  using context::submit;
-
   /**
-   * @brief Fetch a linked-list of the submitted tasks.
+   * @brief Fetch a linked-list of the submitted tasks, for use __only by the owning worker thread__.
    *
    * If there are no submitted tasks, then returned pointer will be null.
    */
@@ -116,8 +81,28 @@ class worker_context : public context {
 
   /**
    * @brief Attempt a steal operation from this contexts task deque.
+   *
+   * If a task is stolen `resume` must be called on it.
    */
   [[nodiscard]] auto try_steal() noexcept -> steal_t<task_handle> { return m_tasks.steal(); }
+
+ private:
+  friend class impl::full_context;
+
+  /**
+   * @brief Construct a context for a worker thread.
+   *
+   * Notify is a function that may be called concurrently by other workers to signal to the worker
+   * owning this context that a task has been submitted to a private queue.
+   */
+  explicit worker_context(nullary_function_t notify) noexcept : m_notify(std::move(notify)) {
+    LF_ASSERT(m_notify);
+  }
+
+  deque<task_handle> m_tasks;             ///< All non-null.
+  intrusive_list<submit_handle> m_submit; ///< All non-null.
+
+  nullary_function_t m_notify; ///< The user supplied notification function.
 };
 
 } // namespace ext
@@ -129,7 +114,7 @@ namespace impl {
  */
 class full_context : public worker_context {
  public:
-  using worker_context::worker_context;
+  explicit full_context(nullary_function_t notify) noexcept : worker_context(std::move(notify)) {}
 
   /**
    * @brief Add a task to the work queue.

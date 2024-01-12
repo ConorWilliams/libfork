@@ -135,7 +135,7 @@ struct numa_context {
   /**
    * @brief Fetch the `lf::context` a thread has associated with this object.
    */
-  auto get_underlying() noexcept -> context * { return m_context; }
+  auto get_underlying() noexcept -> worker_context * { return m_context; }
 
   /**
    * @brief Submit a job to the owned worker context.

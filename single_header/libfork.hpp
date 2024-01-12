@@ -2220,8 +2220,7 @@ class worker_context; // API for worker threads.
 
 namespace impl {
 
-class full_context;      // Internal API
-struct switch_awaitable; // Forward decl for friend.
+class full_context; // Internal API
 
 } // namespace impl
 
@@ -2237,31 +2236,14 @@ using nullary_function_t = std::function<void()>;
 #endif
 
 /**
- * @brief Core-visible context for users to query and submit tasks to.
+ * @brief  Context for (extension) schedulers to interact with.
  *
- * This class is technically part of the extension API however it is documented in the core API as a pointer
- * to a context (obtained via the .context() method of a first argument) can be ``co_awaited`` to explicitly
- * transfer control/execution of a coroutine.
- *
- * Each worker thread stores a context object, this is managed by the library. Internally a context manages
- * the work stealing queue and the submission queue. Submissions to the submission queue trigger a
- * user-supplied notification.
+ * Each worker thread stores a context object, this is managed by the library. Internally a context
+ * manages the work stealing queue and the submission queue. Submissions to the submission queue
+ * trigger a user-supplied notification.
  */
-class context : impl::immovable<context> {
+class worker_context : impl::immovable<context> {
  public:
-  /**
-   * @brief Construct a context for a worker thread.
-   *
-   * Notify is a function that may be called concurrently by other workers to signal to the worker
-   * owning this context that a task has been submitted to a private queue.
-   */
-  explicit context(nullary_function_t notify) noexcept : m_notify(std::move(notify)) { LF_ASSERT(m_notify); }
-
- private:
-  friend class ext::worker_context;
-  friend class impl::full_context;
-  friend struct impl::switch_awaitable;
-
   /**
    * @brief Submit pending/suspended tasks to the context.
    *
@@ -2272,25 +2254,8 @@ class context : impl::immovable<context> {
     m_notify();
   }
 
-  deque<task_handle> m_tasks;             ///< All non-null.
-  intrusive_list<submit_handle> m_submit; ///< All non-null.
-
-  nullary_function_t m_notify; ///< The user supplied notification function.
-};
-
-/**
- * @brief Context for (extension) schedulers to interact with.
- *
- * Additionally exposes submit and pop functions.
- */
-class worker_context : public context {
- public:
-  using context::context;
-
-  using context::submit;
-
   /**
-   * @brief Fetch a linked-list of the submitted tasks.
+   * @brief Fetch a linked-list of the submitted tasks, for use __only by the owning worker thread__.
    *
    * If there are no submitted tasks, then returned pointer will be null.
    */
@@ -2298,8 +2263,28 @@ class worker_context : public context {
 
   /**
    * @brief Attempt a steal operation from this contexts task deque.
+   *
+   * If a task is stolen `resume` must be called on it.
    */
   [[nodiscard]] auto try_steal() noexcept -> steal_t<task_handle> { return m_tasks.steal(); }
+
+ private:
+  friend class impl::full_context;
+
+  /**
+   * @brief Construct a context for a worker thread.
+   *
+   * Notify is a function that may be called concurrently by other workers to signal to the worker
+   * owning this context that a task has been submitted to a private queue.
+   */
+  explicit worker_context(nullary_function_t notify) noexcept : m_notify(std::move(notify)) {
+    LF_ASSERT(m_notify);
+  }
+
+  deque<task_handle> m_tasks;             ///< All non-null.
+  intrusive_list<submit_handle> m_submit; ///< All non-null.
+
+  nullary_function_t m_notify; ///< The user supplied notification function.
 };
 
 } // namespace ext
@@ -2311,7 +2296,7 @@ namespace impl {
  */
 class full_context : public worker_context {
  public:
-  using worker_context::worker_context;
+  explicit full_context(nullary_function_t notify) noexcept : worker_context(std::move(notify)) {}
 
   /**
    * @brief Add a task to the work queue.
@@ -2662,8 +2647,11 @@ inline auto co_new() -> impl::co_new_t<T, Extent> {
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>    // for invocable, constructible_from
-#include <functional>  // for invoke
+#include <concepts> // for invocable, constructible_from
+#include <coroutine>
+#include <functional> // for invoke
+#include <libfork/core/ext/handles.hpp>
+#include <libfork/core/interop.hpp>
 #include <type_traits> // for invoke_result_t
 #include <utility>     // for forward
   // for context, full_context      // for context   // for frame // for different_from, referenceable        // for LF_COMPILER_EXCEPTIONS, LF_...
@@ -2757,12 +2745,12 @@ concept async_function_object = std::is_object_v<F> && std::copy_constructible<F
  * An async functions' invocability and return type must be independent of their first argument except for its
  * tag value. A user may query the first argument's static member `tagged` to obtain this value. Additionally,
  * a user may query the first argument's static member function `context()` to obtain a pointer to the current
- * workers `lf::context`. Finally a user may cache an exception in-flight by calling `.stash_exception()`.
+ * workers context. Finally a user may cache an exception in-flight by calling `.stash_exception()`.
  */
 template <typename T>
 concept first_arg = async_function_object<T> && requires (T arg) {
   { T::tagged } -> std::convertible_to<tag>;
-  { T::context() } -> std::same_as<context *>;
+  { T::context() } -> std::same_as<worker_context *>;
   { arg.stash_exception() } noexcept;
 };
 
@@ -2794,7 +2782,7 @@ class first_arg_t {
   /**
    * @brief Get the current workers context.
    */
-  static auto context() -> context * { return tls::context(); }
+  static auto context() -> worker_context * { return tls::context(); }
 
   /**
    * @brief Stash an exception that will be rethrown at the end of the next join.
@@ -2910,9 +2898,96 @@ class first_arg_t {
 #include <bit>       // for bit_cast
 #include <coroutine> // for coroutine_handle, noop_coro...
 #include <cstddef>   // for size_t
-#include <cstdint>
-#include <span> // for span
+#include <cstdint>   //
+#include <span>      // for span
   // for full_context, context  // for submit_handle, task_handle     // for intrusive_list      // for context, stack   // for frame   // for stack // for k_u16_max
+#ifndef BDE6CBCC_7576_4082_AAC5_2A207FEA9293
+#define BDE6CBCC_7576_4082_AAC5_2A207FEA9293
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>
+#include <type_traits>
+#include <utility>
+ // for  submit_handle
+
+/**
+ * @file interop.hpp
+ *
+ * @brief Machinery for interfacing with external workers.
+ */
+
+namespace lf {
+
+inline namespace core {
+
+/**
+ * @brief Defines the interface for external awaitables.
+ *
+ * An external awaitable can be awaited inside a libfork coroutine. If the external awaitable
+ * is not ready then the coroutine will be suspended and a submit_handle will be passed to the
+ * external awaitor's ``await_suspend()`` function. This can then be resumed by any worker as
+ * normal.
+ */
+template <typename T>
+concept external_awaitable = //
+    std::constructible_from<std::remove_cvref_t<T>, T &&> &&
+    requires (std::remove_cvref_t<T> awaiter, intruded_list<submit_handle> handle) {
+      { awaiter.await_ready() } -> std::convertible_to<bool>;
+      { awaiter.await_suspend(handle) } -> std::same_as<void>;
+      { awaiter.await_resume() };
+    };
+
+/**
+ * @brief An external awaitable to explicitly transfer execution to another worker.
+ */
+struct [[nodiscard]] schedule_on_context {
+ private:
+  worker_context *m_dest;
+
+  explicit schedule_on_context(worker_context *dest) noexcept : m_dest{dest} {}
+
+  friend auto resume_on(worker_context *dest) noexcept -> schedule_on_context;
+
+ public:
+  /**
+   * @brief Don't suspend if on correct context.
+   */
+  auto await_ready() const noexcept { return impl::tls::context() == m_dest; }
+
+  /**
+   * @brief Reschedule this coroutine onto the requested destination.
+   */
+  auto await_suspend(intruded_list<submit_handle> handle) noexcept -> void { m_dest->submit(handle); }
+
+  /**
+   * @brief A no-op.
+   */
+  auto await_resume() const noexcept -> void {}
+};
+
+static_assert(external_awaitable<schedule_on_context>);
+
+/**
+ * @brief Create an external awaitable to explicitly transfer execution to ``dest``.
+ */
+inline auto resume_on(worker_context *dest) noexcept -> schedule_on_context {
+  return schedule_on_context{non_null(dest)};
+}
+
+} // namespace core
+
+} // namespace lf
+
+#endif /* BDE6CBCC_7576_4082_AAC5_2A207FEA9293 */
+
+
 #ifndef A5349E86_5BAA_48EF_94E9_F0EBF630DE04
 #define A5349E86_5BAA_48EF_94E9_F0EBF630DE04
 
@@ -3364,7 +3439,7 @@ using async_result_t = impl::unsafe_result_t<impl::discard_t, tag::call, F, Args
 
 #endif /* A5349E86_5BAA_48EF_94E9_F0EBF630DE04 */
 
-    // for ignore_t        // for LF_LOG, LF_ASSERT, LF_ASSER...
+ // for ignore_t     // for LF_LOG, LF_ASSERT, LF_ASSER...
 
 /**
  * @file awaitables.hpp
@@ -3377,16 +3452,37 @@ namespace lf::impl {
 // -------------------------------------------------------- //
 
 /**
- * @brief An awaiter to explicitly transfer execution to another worker.
+ * @brief To handle tasks on a WSQ that have been "effectively stolen".
  *
- * This is generated by `await_transform` when awaiting on a pointer to a `lf::context`.
+ * If explicit scheduling has occurred then there may be tasks on a workers WSQ that
+ * have been "effectively stolen" from another worker. These can be handled in
+ * reverse order.
+ *
  */
-struct switch_awaitable : std::suspend_always {
+inline LF_FORCEINLINE auto try_self_stealing() -> std::coroutine_handle<> {
+  //
+  if (auto *eff_stolen = std::bit_cast<frame *>(tls::context()->pop())) {
+    eff_stolen->fetch_add_steal();
+    return eff_stolen->self();
+  }
+
+  return std::noop_coroutine();
+}
+
+// -------------------------------------------------------- //
+
+/**
+ * @brief A wrapper for an ``lf::core::external_awaitable`` that
+ */
+template <external_awaitable A>
+struct switch_awaitable {
 
   /**
-   * @brief Shortcut if already on context.
+   * @brief Forward to the external awaitable's await_resume().
    */
-  auto await_ready() const noexcept { return tls::context() == dest; }
+  auto await_ready() noexcept(noexcept(std::declval<A &>().await_ready())) -> bool {
+    return external.await_ready();
+  }
 
   /**
    * @brief Reschedule this coro onto `dest`.
@@ -3397,21 +3493,19 @@ struct switch_awaitable : std::suspend_always {
     // steals then we do not own the stack this coroutine is on and the resumer should not
     // take the stack otherwise, we should give-it-up and the resumer should take it.
 
-    auto *underlying = std::bit_cast<frame *>(unwrap(&self));
-
-    std::uint16_t steals = underlying->load_steals();
+    std::uint16_t steals = std::bit_cast<frame *>(unwrap(&self))->load_steals();
 
     // Assert the above paragraphs validity.
 #ifndef NDEBUG
-    if (steals == 0) {
-      LF_ASSERT(underlying->stacklet() == tls::stack()->top());
+    if (auto *tmp = std::bit_cast<frame *>(unwrap(&self)); steals == 0) {
+      LF_ASSERT(tmp->stacklet() == tls::stack()->top());
     } else {
-      LF_ASSERT(underlying->stacklet() != tls::stack()->top());
+      LF_ASSERT(tmp->stacklet() != tls::stack()->top());
     }
 #endif
 
-    // Schedule this coro for execution on Dest, cannot touch underlying.
-    dest->submit(&self);
+    // Schedule this coroutine for execution, cannot touch underlying after this.
+    external.await_suspend(&self);
 
     if (steals == 0) {
       // Dest will take this stack upon resumption hence, we must release it.
@@ -3439,17 +3533,95 @@ struct switch_awaitable : std::suspend_always {
      *    Ok all task on WSQ must have been stole by other threads and handled as stolen appropriately.
      */
 
-    if (auto *eff_stolen = std::bit_cast<frame *>(tls::context()->pop())) {
-      eff_stolen->fetch_add_steal();
-      return eff_stolen->self();
-    }
-
-    return std::noop_coroutine();
+    return try_self_stealing();
   }
 
+  /**
+   * @brief Forward to the external awaitable's await_resume().
+   */
+  auto await_resume() noexcept(noexcept(std::declval<A &>().await_resume())) -> decltype(auto) {
+    return external.await_ready();
+  }
+
+  A external;                               ///< The external awaitable.
   intrusive_list<submit_handle>::node self; ///< The current coroutine's handle.
-  context *dest;                            ///< Target context.
 };
+
+/**
+ * @brief An awaiter to explicitly transfer execution to another worker.
+ *
+ * This is generated by `await_transform` when awaiting on a pointer to a `lf::context`.
+ */
+
+// struct switch_awaitable : std::suspend_always {
+
+//   /**
+//    * @brief Shortcut if already on context.
+//    */
+//   auto await_ready() const noexcept { return tls::context() == dest; }
+
+//   /**
+//    * @brief Reschedule this coro onto `dest`.
+//    */
+//   auto await_suspend(std::coroutine_handle<>) noexcept -> std::coroutine_handle<> {
+
+//     // We currently own the "resumable" handle of this coroutine, if there have been any
+//     // steals then we do not own the stack this coroutine is on and the resumer should not
+//     // take the stack otherwise, we should give-it-up and the resumer should take it.
+
+//     auto *underlying = std::bit_cast<frame *>(unwrap(&self));
+
+//     std::uint16_t steals = underlying->load_steals();
+
+//     // Assert the above paragraphs validity.
+// #ifndef NDEBUG
+//     if (steals == 0) {
+//       LF_ASSERT(underlying->stacklet() == tls::stack()->top());
+//     } else {
+//       LF_ASSERT(underlying->stacklet() != tls::stack()->top());
+//     }
+// #endif
+
+//     // Schedule this coro for execution on Dest, cannot touch underlying.
+//     dest->submit(&self);
+
+//     if (steals == 0) {
+//       // Dest will take this stack upon resumption hence, we must release it.
+//       ignore_t{} = tls::stack()->release();
+//     }
+
+//     LF_ASSERT(tls::stack()->empty());
+
+//     // Eventually dest will fail to pop() the ancestor task that we 'could' pop() here and
+//     // then treat it as a task that was stolen from it.
+
+//     // Now we have a number of tasks on our WSQ which we have "effectively stolen" from dest.
+//     // All of them will eventually reach a join point.
+
+//     // We can pop() the ancestor, mark it stolen and then resume it.
+
+//     /**
+//      * While running the ancestor several things can happen:
+//      *   We hit a join in the ancestor:
+//      *      Case Win join:
+//      *        Take stack, OK to treat tasks on our WSQ as non-stolen.
+//      *      Case Loose join:
+//      *        Must treat tasks on our WSQ as stolen.
+//      *   We loose a join in a descendent of the ancestor:
+//      *    Ok all task on WSQ must have been stole by other threads and handled as stolen appropriately.
+//      */
+
+//     if (auto *eff_stolen = std::bit_cast<frame *>(tls::context()->pop())) {
+//       eff_stolen->fetch_add_steal();
+//       return eff_stolen->self();
+//     }
+
+//     return std::noop_coroutine();
+//   }
+
+//   intrusive_list<submit_handle>::node self; ///< The current coroutine's handle.
+//   context *dest;                            ///< Target context.
+// };
 
 // -------------------------------------------------------- //
 
@@ -3614,11 +3786,7 @@ struct join_awaitable {
     // If explicit scheduling then we may have tasks on our WSQ if we performed a self-steal
     // in a switch awaitable. In this case we can/must do another self-steal.
 
-    if (auto *eff_stolen = std::bit_cast<frame *>(tls::context()->pop())) {
-      eff_stolen->fetch_add_steal();
-      return eff_stolen->self();
-    }
-    return std::noop_coroutine();
+    return try_self_stealing();
   }
 
   /**
@@ -4205,7 +4373,7 @@ struct return_result<void, discard_t> {
 
 #endif /* A896798B_7E3B_4854_9997_89EA5AE765EB */
 
-     // for return_result      // for stack    // for byte_cast, k_u16_max       // for return_address_for, igno...           // for LF_LOG, LF_ASSERT, LF_FO...             // for tag            // for returnable, task
+     // for return_result      // for stack    // for byte_cast, k_u16_max // for return_address_for, igno...     // for LF_LOG, LF_ASSERT, LF_FO...       // for tag      // for returnable, task
 
 /**
  * @file promise.hpp
@@ -4347,13 +4515,16 @@ struct promise_base : frame {
   // -------------------------------------------------------------- //
 
   /**
-   * @brief Transform a context pointer into a context-switch awaitable.
+   * @brief Transform an external awaitable into a real awaitable.
    */
-  auto await_transform(context *dest) -> switch_awaitable {
+  template <external_awaitable A>
+  auto await_transform(A &&await) -> switch_awaitable<std::remove_cvref_t<A>> {
 
     auto *submit = std::bit_cast<submit_handle>(static_cast<frame *>(this));
 
-    return {{}, typename intrusive_list<submit_handle>::node{submit}, dest};
+    using node = typename intrusive_list<submit_handle>::node;
+
+    return {std::forward<A>(await), node{submit}};
   }
 
   // -------------------------------------------------------------- //
@@ -4683,7 +4854,7 @@ inline constexpr auto lift = []<class F, class... Args>(auto, F &&func, Args &&.
 #include <thread>  // for thread
 #include <utility> // for move
 #include <vector>  // for vector
-             // for LF_DEFER       // for context, nullary_funct...       // for submit_handle, task_ha...          // for for_each_elem, intrude...        // for resume      // for k_cache_line, move_only             // for LF_ASSERT, LF_ASSERT_N...         // for scheduler
+                 // for LF_DEFER           // for context, nullary_funct...           // for submit_handle, task_ha...              // for for_each_elem, intrude...            // for resume          // for k_cache_line, move_only                 // for LF_ASSERT, LF_ASSERT_N...             // for scheduler
 #ifndef D8877F11_1F66_4AD0_B949_C0DFF390C2DB
 #define D8877F11_1F66_4AD0_B949_C0DFF390C2DB
 
@@ -5194,7 +5365,7 @@ inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &dat
 
 #endif /* D8877F11_1F66_4AD0_B949_C0DFF390C2DB */
 
-      // for numa_strategy, numa_to...
+          // for numa_strategy, numa_to...
 #ifndef CA0BE1EA_88CD_4E63_9D89_37395E859565
 #define CA0BE1EA_88CD_4E63_9D89_37395E859565
 
@@ -5398,7 +5569,7 @@ static_assert(uniform_random_bit_generator<xoshiro>);
 
 #endif /* CA0BE1EA_88CD_4E63_9D89_37395E859565 */
 
-    // for xoshiro, seed
+        // for xoshiro, seed
 #ifndef C1B42944_8E33_4F6B_BAD6_5FB687F6C737
 #define C1B42944_8E33_4F6B_BAD6_5FB687F6C737
 
@@ -5527,7 +5698,7 @@ struct numa_context {
   /**
    * @brief Fetch the `lf::context` a thread has associated with this object.
    */
-  auto get_underlying() noexcept -> context * { return m_context; }
+  auto get_underlying() noexcept -> worker_context * { return m_context; }
 
   /**
    * @brief Submit a job to the owned worker context.
@@ -5687,7 +5858,7 @@ class busy_pool : impl::move_only<busy_pool> {
   std::shared_ptr<impl::busy_vars> m_share = std::make_shared<impl::busy_vars>(m_num_threads);
   std::vector<std::shared_ptr<impl::numa_context<impl::busy_vars>>> m_worker = {};
   std::vector<std::thread> m_threads = {};
-  std::vector<context *> m_contexts = {};
+  std::vector<worker_context *> m_contexts = {};
 
  public:
   /**
@@ -5735,7 +5906,7 @@ class busy_pool : impl::move_only<busy_pool> {
   /**
    * @brief Get a view of the worker's contexts.
    */
-  auto contexts() noexcept -> std::span<context *> { return m_contexts; }
+  auto contexts() noexcept -> std::span<worker_context *> { return m_contexts; }
 
   ~busy_pool() noexcept {
     LF_LOG("Requesting a stop");
@@ -5778,7 +5949,7 @@ static_assert(scheduler<busy_pool>);
 #include <thread>     // for thread
 #include <utility>    // for move
 #include <vector>     // for vector
-               // for LF_DEFER         // for context, nullary_fun...         // for submit_handle, task_...            // for for_each_elem, intru...          // for resume        // for k_cache_line               // for LF_ASSERT, LF_LOG           // for scheduler       // for busy_vars
+                 // for LF_DEFER           // for context, nullary_fun...           // for submit_handle, task_...              // for for_each_elem, intru...            // for resume          // for k_cache_line                 // for LF_ASSERT, LF_LOG             // for scheduler         // for busy_vars
 #pragma once
 
 // Copyright (c) Conor Williams, Meta Platforms, Inc. and its affiliates.
@@ -6022,7 +6193,7 @@ void event_count::await(Pred const &condition) noexcept(std::is_nothrow_invocabl
 } // namespace ext
 
 } // namespace lf
- // for event_count        // for numa_strategy, numa_...      // for xoshiro, seed   // for numa_context
+   // for event_count          // for numa_strategy, numa_...        // for xoshiro, seed // for numa_context
 
 /**
  * @file lazy_pool.hpp
@@ -6270,7 +6441,7 @@ class lazy_pool {
   std::shared_ptr<impl::lazy_vars> m_share = std::make_shared<impl::lazy_vars>(m_num_threads);
   std::vector<std::shared_ptr<impl::numa_context<impl::lazy_vars>>> m_worker = {};
   std::vector<std::thread> m_threads = {};
-  std::vector<context *> m_contexts = {};
+  std::vector<worker_context *> m_contexts = {};
 
  public:
   /**
@@ -6328,7 +6499,7 @@ class lazy_pool {
   /**
    * @brief Get a view of the worker's contexts.
    */
-  auto contexts() noexcept -> std::span<context *> { return m_contexts; }
+  auto contexts() noexcept -> std::span<worker_context *> { return m_contexts; }
 
   ~lazy_pool() noexcept {
     LF_LOG("Requesting a stop");

@@ -34,10 +34,11 @@
 #include "libfork/core/impl/return.hpp"     // for return_result
 #include "libfork/core/impl/stack.hpp"      // for stack
 #include "libfork/core/impl/utility.hpp"    // for byte_cast, k_u16_max
-#include "libfork/core/invocable.hpp"       // for return_address_for, igno...
-#include "libfork/core/macro.hpp"           // for LF_LOG, LF_ASSERT, LF_FO...
-#include "libfork/core/tag.hpp"             // for tag
-#include "libfork/core/task.hpp"            // for returnable, task
+#include "libfork/core/interop.hpp"
+#include "libfork/core/invocable.hpp" // for return_address_for, igno...
+#include "libfork/core/macro.hpp"     // for LF_LOG, LF_ASSERT, LF_FO...
+#include "libfork/core/tag.hpp"       // for tag
+#include "libfork/core/task.hpp"      // for returnable, task
 
 /**
  * @file promise.hpp
@@ -179,13 +180,16 @@ struct promise_base : frame {
   // -------------------------------------------------------------- //
 
   /**
-   * @brief Transform a context pointer into a context-switch awaitable.
+   * @brief Transform an external awaitable into a real awaitable.
    */
-  auto await_transform(context *dest) -> switch_awaitable {
+  template <external_awaitable A>
+  auto await_transform(A &&await) -> switch_awaitable<std::remove_cvref_t<A>> {
 
     auto *submit = std::bit_cast<submit_handle>(static_cast<frame *>(this));
 
-    return {{}, typename intrusive_list<submit_handle>::node{submit}, dest};
+    using node = typename intrusive_list<submit_handle>::node;
+
+    return {std::forward<A>(await), node{submit}};
   }
 
   // -------------------------------------------------------------- //

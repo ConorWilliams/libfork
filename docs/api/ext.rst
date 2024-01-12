@@ -11,8 +11,8 @@ Containers
    ext/deque.rst
 
 
-Pages
------
+Components
+----------
 
 .. toctree::
    :maxdepth: 2

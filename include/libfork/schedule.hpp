@@ -17,7 +17,7 @@
 #include "libfork/schedule/ext/numa.hpp"
 #include "libfork/schedule/ext/random.hpp"
 
-#include "libfork/schedule/impl/contexts.hpp"
+#include "libfork/schedule/impl/numa_context.hpp"
 
 /**
  * @file schedule.hpp

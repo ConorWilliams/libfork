@@ -19,17 +19,17 @@
 #include <utility> // for move
 #include <vector>  // for vector
 
-#include "libfork/core/defer.hpp"             // for LF_DEFER
-#include "libfork/core/ext/context.hpp"       // for context, nullary_funct...
-#include "libfork/core/ext/handles.hpp"       // for submit_handle, task_ha...
-#include "libfork/core/ext/list.hpp"          // for for_each_elem, intrude...
-#include "libfork/core/ext/resume.hpp"        // for resume
-#include "libfork/core/impl/utility.hpp"      // for k_cache_line, move_only
-#include "libfork/core/macro.hpp"             // for LF_ASSERT, LF_ASSERT_N...
-#include "libfork/core/sync_wait.hpp"         // for scheduler
-#include "libfork/schedule/ext/numa.hpp"      // for numa_strategy, numa_to...
-#include "libfork/schedule/ext/random.hpp"    // for xoshiro, seed
-#include "libfork/schedule/impl/contexts.hpp" // for numa_context
+#include "libfork/core/defer.hpp"                 // for LF_DEFER
+#include "libfork/core/ext/context.hpp"           // for context, nullary_funct...
+#include "libfork/core/ext/handles.hpp"           // for submit_handle, task_ha...
+#include "libfork/core/ext/list.hpp"              // for for_each_elem, intrude...
+#include "libfork/core/ext/resume.hpp"            // for resume
+#include "libfork/core/impl/utility.hpp"          // for k_cache_line, move_only
+#include "libfork/core/macro.hpp"                 // for LF_ASSERT, LF_ASSERT_N...
+#include "libfork/core/sync_wait.hpp"             // for scheduler
+#include "libfork/schedule/ext/numa.hpp"          // for numa_strategy, numa_to...
+#include "libfork/schedule/ext/random.hpp"        // for xoshiro, seed
+#include "libfork/schedule/impl/numa_context.hpp" // for numa_context
 
 /**
  * @file busy_pool.hpp
@@ -114,7 +114,7 @@ class busy_pool : impl::move_only<busy_pool> {
   std::shared_ptr<impl::busy_vars> m_share = std::make_shared<impl::busy_vars>(m_num_threads);
   std::vector<std::shared_ptr<impl::numa_context<impl::busy_vars>>> m_worker = {};
   std::vector<std::thread> m_threads = {};
-  std::vector<context *> m_contexts = {};
+  std::vector<worker_context *> m_contexts = {};
 
  public:
   /**
@@ -162,7 +162,7 @@ class busy_pool : impl::move_only<busy_pool> {
   /**
    * @brief Get a view of the worker's contexts.
    */
-  auto contexts() noexcept -> std::span<context *> { return m_contexts; }
+  auto contexts() noexcept -> std::span<worker_context *> { return m_contexts; }
 
   ~busy_pool() noexcept {
     LF_LOG("Requesting a stop");

@@ -139,7 +139,8 @@ TEST_CASE("tree checks", "[tree]") {
 
 namespace {
 
-inline constexpr auto search = [](auto search, tree const &root, int val, context *context) -> task<bool> {
+inline constexpr auto search =
+    [](auto search, tree const &root, int val, worker_context *context) -> task<bool> {
   //
   if (root.val == val) {
     co_return true;
@@ -147,7 +148,7 @@ inline constexpr auto search = [](auto search, tree const &root, int val, contex
 
   if (context && root.val % 10 == 0) {
     //
-    co_await context;
+    co_await resume_on(context);
 
     if (search.context() != context) {
       LF_THROW(std::runtime_error("context not cleared"));

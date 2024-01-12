@@ -9,8 +9,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>    // for invocable, constructible_from
-#include <functional>  // for invoke
+#include <concepts> // for invocable, constructible_from
+#include <coroutine>
+#include <functional> // for invoke
+#include <libfork/core/ext/handles.hpp>
+#include <libfork/core/interop.hpp>
 #include <type_traits> // for invoke_result_t
 #include <utility>     // for forward
 
@@ -71,12 +74,12 @@ concept async_function_object = std::is_object_v<F> && std::copy_constructible<F
  * An async functions' invocability and return type must be independent of their first argument except for its
  * tag value. A user may query the first argument's static member `tagged` to obtain this value. Additionally,
  * a user may query the first argument's static member function `context()` to obtain a pointer to the current
- * workers `lf::context`. Finally a user may cache an exception in-flight by calling `.stash_exception()`.
+ * workers context. Finally a user may cache an exception in-flight by calling `.stash_exception()`.
  */
 template <typename T>
 concept first_arg = async_function_object<T> && requires (T arg) {
   { T::tagged } -> std::convertible_to<tag>;
-  { T::context() } -> std::same_as<context *>;
+  { T::context() } -> std::same_as<worker_context *>;
   { arg.stash_exception() } noexcept;
 };
 
@@ -108,7 +111,7 @@ class first_arg_t {
   /**
    * @brief Get the current workers context.
    */
-  static auto context() -> context * { return tls::context(); }
+  static auto context() -> worker_context * { return tls::context(); }
 
   /**
    * @brief Stash an exception that will be rethrown at the end of the next join.
