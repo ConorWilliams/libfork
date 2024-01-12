@@ -70,7 +70,7 @@ Some very new C++ features are used in libfork, most compilers have buggy implem
 
 - __gcc__ Libfork is tested on versions 11.x-13.x however gcc [does not perform a guaranteed tail call](https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100897) for coroutine's symmetric transfer unless compiling with optimization greater than or equal to `-O2` and sanitizers are not in use. This will result in stack overflows for some programs in un-optimized builds.
 
-- __Apple's clang__ Libfork is compatible with the standard library that Apple ships with Xcode 2015 but, the mitigations for the old clang versions (mentioned above) fractionally degrade performance.
+- __Apple's clang__ Libfork is compatible with the standard library that Apple ships with Xcode 2015 but, the mitigations for the old clang versions (mentioned above) degrade performance.
 
 - __msvc__ Libfork compiles on versions 19.35-19.37 however due to [this bug](https://developercommunity.visualstudio.com/t/Incorrect-code-generation-for-symmetric/1659260?scope=follow) (duplicate [here](https://developercommunity.visualstudio.com/t/Using-symmetric-transfer-and-coroutine_h/10251975?scope=follow&q=symmetric)) it will always seg-fault at runtime due to an erroneous double delete. Note that, by default, MSVC is not standards compliant and you need to pass some flags to make it behave properly - see the `flags-windows` preset in the [CMakePresets.json](CMakePresets.json) file.
 
@@ -92,16 +92,14 @@ If you use a central vcpkg installation you can skip the recursive clone and set
 
 This project doesn't require any special command-line flags to build to keep things simple.
 
-For building in release mode with a single-configuration
-generator, like the Unix Makefiles one:
+For building in release mode with a single-configuration generator, like the Unix Makefiles one:
 
 ```sh
 cmake -S . -B build -D CMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-Or with a multi-configuration
-generator, like the Visual Studio ones:
+Or with a multi-configuration generator, like the Visual Studio ones:
 
 ```sh
 cmake -S . -B build
@@ -115,15 +113,13 @@ Note, the build step won't do anything as libfork is a header-only library and n
 The following commands require at least CMake 3.15 to run, because that is the
 version in which [Install a Project][2] was added. As a pre, the [above commands](#configure-and-build) must have been run.
 
-To install the release mode artifacts (headers) with a
-single-configuration generator, like the Unix Makefiles one:
+To install the release artifacts (headers) with a single-configuration generator, like the Unix Makefiles one:
 
 ```sh
 cmake --install build
 ```
 
-Or with a
-multi-configuration generator, like the Visual Studio ones:
+Or with a multi-configuration generator, like the Visual Studio ones:
 
 ```sh
 cmake --install build --config Release
