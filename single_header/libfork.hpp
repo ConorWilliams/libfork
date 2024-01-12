@@ -2485,16 +2485,8 @@ namespace impl {
 /**
  * @brief An awaitable (in the context of an ``lf::task``) which triggers stack allocation.
  */
-template <co_allocable T, std::size_t Extent>
-struct [[nodiscard("This object should be co_awaited")]] co_new_t {
-  static constexpr std::size_t count = Extent; ///< The number of elements to allocate.
-};
-
-/**
- * @brief An awaitable (in the context of an ``lf::task``) which triggers stack allocation.
- */
 template <co_allocable T>
-struct [[nodiscard("This object should be co_awaited")]] co_new_t<T, std::dynamic_extent> {
+struct [[nodiscard("This object should be co_awaited")]] co_new_t {
   std::size_t count; ///< The number of elements to allocate.
 };
 
@@ -2506,33 +2498,33 @@ inline namespace core {
  * @brief The result of `co_await`ing the result of ``lf::core::co_new``.
  *
  * A raii wrapper around a ``std::span`` pointing to the memory allocated on the stack.
- * This type can be destructured into a ``std::span``/pointer to the allocated memory.
+ * This type can be destructured into a ``std::span`` to the allocated memory.
  */
-template <co_allocable T, std::size_t Extent>
-class stack_allocated : impl::immovable<stack_allocated<T, Extent>> {
+template <co_allocable T>
+class stack_allocated : impl::immovable<stack_allocated<T>> {
  public:
   /**
    * @brief Construct a new co allocated object.
    */
-  stack_allocated(impl::frame *frame, std::span<T, Extent> span) noexcept : m_span{span}, m_frame{frame} {}
+  stack_allocated(impl::frame *frame, std::span<T> span) noexcept : m_span{span}, m_frame{frame} {}
 
-  /**
-   * @brief Get a span/pointer, depending on the extent, to the allocated memory.
+  /*
+   * @brief Get a span over the allocated memory.
    */
   template <std::size_t I>
     requires (I == 0)
-  auto get() const noexcept -> std::conditional_t<Extent == 1, T *, std::span<T, Extent>> {
-    if constexpr (Extent == 1) {
-      return m_span.data();
-    } else {
-      return m_span;
-    }
+  auto get() noexcept -> std::span<T> {
+    return m_span;
   }
 
-  /**
-   * @brief For consistent handling in generic code.
+  /*
+   * @brief Get a span over the allocated memory.
    */
-  auto span() const noexcept -> std::span<T, Extent> { return m_span; }
+  template <std::size_t I>
+    requires (I == 0)
+  auto get() const noexcept -> std::span<T const> {
+    return m_span;
+  }
 
   /**
    * @brief Destroys objects and releases the memory.
@@ -2546,7 +2538,7 @@ class stack_allocated : impl::immovable<stack_allocated<T, Extent>> {
 
  private:
   impl::frame *m_frame;
-  std::span<T, Extent> m_span;
+  std::span<T> m_span;
 };
 
 } // namespace core
@@ -2555,14 +2547,17 @@ class stack_allocated : impl::immovable<stack_allocated<T, Extent>> {
 
 #ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
 
-template <lf::co_allocable T, std::size_t Extent>
-struct std::tuple_size<lf::stack_allocated<T, Extent>> : std::integral_constant<std::size_t, 1> {};
-
-template <lf::co_allocable T, std::size_t Extent>
-struct std::tuple_element<0, lf::stack_allocated<T, Extent>> : std::type_identity<std::span<T, Extent>> {};
+template <lf::co_allocable T>
+struct std::tuple_size<lf::stack_allocated<T>> : std::integral_constant<std::size_t, 1> {};
 
 template <lf::co_allocable T>
-struct std::tuple_element<0, lf::stack_allocated<T, 1>> : std::type_identity<T *> {};
+struct std::tuple_size<lf::stack_allocated<T> const> : std::integral_constant<std::size_t, 1> {};
+
+template <lf::co_allocable T>
+struct std::tuple_element<0, lf::stack_allocated<T>> : std::type_identity<std::span<T>> {};
+
+template <lf::co_allocable T>
+struct std::tuple_element<0, lf::stack_allocated<T> const> : std::type_identity<std::span<T const>> {};
 
 #endif
 
@@ -2571,11 +2566,9 @@ namespace lf {
 inline namespace core {
 
 /**
- * @brief A function which returns an awaitable (in the context of an ``lf::task``) which triggers allocation
- * on a worker's stack.
+ * @brief A function which returns an awaitable which triggers allocation on a worker's stack.
  *
  * Upon ``co_await``ing the result of this function an ``lf::stack_allocated`` object is returned.
- *
  *
  * \rst
  *
@@ -2585,31 +2578,9 @@ inline namespace core {
  * \endrst
  *
  */
-template <co_allocable T, std::size_t Extent = std::dynamic_extent>
-  requires (Extent == std::dynamic_extent)
-inline auto co_new(std::size_t count) -> impl::co_new_t<T, std::dynamic_extent> {
-  return impl::co_new_t<T, std::dynamic_extent>{count};
-}
-
-/**
- * @brief A function which returns an awaitable (in the context of an ``lf::task``) which triggers allocation
- * on a worker's stack.
- *
- * Upon ``co_await``ing the result of this function an ``lf::stack_allocated`` object is returned.
- *
- *
- * \rst
- *
- * .. warning::
- *    This must be called __outside__ of a fork-join scope and is an expert only feature!
- *
- * \endrst
- *
- */
-template <co_allocable T, std::size_t Extent = 1>
-  requires (Extent != std::dynamic_extent)
-inline auto co_new() -> impl::co_new_t<T, Extent> {
-  return {};
+template <co_allocable T>
+inline auto co_new(std::size_t count) -> impl::co_new_t<T> {
+  return impl::co_new_t<T>{count};
 }
 
 } // namespace core
@@ -3561,12 +3532,12 @@ struct switch_awaitable {
  *
  * This never suspends the coroutine.
  */
-template <co_allocable T, std::size_t E>
+template <co_allocable T>
 struct alloc_awaitable : std::suspend_never {
   /**
    * @brief Return a handle to the memory.
    */
-  [[nodiscard]] auto await_resume() const -> stack_allocated<T, E> {
+  [[nodiscard]] auto await_resume() const -> stack_allocated<T> {
 
     auto *stack = tls::stack();
 
@@ -3587,11 +3558,11 @@ struct alloc_awaitable : std::suspend_never {
 
     self->reset_stacklet(stack->top());
 
-    return {self, std::span<T, E>{ptr, request.count}};
+    return {self, std::span<T>{ptr, request.count}};
   }
 
-  co_new_t<T, E> request; ///< The requested allocation.
-  frame *self;            ///< The current coroutine's frame.
+  co_new_t<T> request; ///< The requested allocation.
+  frame *self;         ///< The current coroutine's frame.
 };
 
 // -------------------------------------------------------- //
@@ -4440,9 +4411,9 @@ struct promise_base : frame {
   /**
    * @brief Make an awaitable that allocates on this workers stack.
    */
-  template <co_allocable T, std::size_t E>
-  auto await_transform(co_new_t<T, E> await) noexcept {
-    return alloc_awaitable<T, E>{{}, await, this};
+  template <co_allocable T>
+  auto await_transform(co_new_t<T> await) noexcept {
+    return alloc_awaitable<T>{{}, await, this};
   }
 
   // -------------------------------------------------------------- //
@@ -5523,7 +5494,7 @@ static_assert(uniform_random_bit_generator<xoshiro>);
     // for worker_context, nullary_f...      // for err    // for submit_handle, task_handle       // for intruded_list        // for finalize, worker_init   // for non_null, map          // for LF_ASSERT, LF_LOG, LF_CAT...   // for numa_topology // for xoshiro
 
 /**
- * @file contexts.hpp
+ * @file numa_context.hpp
  *
  * @brief An augmentation of the `worker_context` which tracks the topology of the numa nodes.
  */

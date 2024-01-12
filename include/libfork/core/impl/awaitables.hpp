@@ -143,12 +143,12 @@ struct switch_awaitable {
  *
  * This never suspends the coroutine.
  */
-template <co_allocable T, std::size_t E>
+template <co_allocable T>
 struct alloc_awaitable : std::suspend_never {
   /**
    * @brief Return a handle to the memory.
    */
-  [[nodiscard]] auto await_resume() const -> stack_allocated<T, E> {
+  [[nodiscard]] auto await_resume() const -> stack_allocated<T> {
 
     auto *stack = tls::stack();
 
@@ -169,11 +169,11 @@ struct alloc_awaitable : std::suspend_never {
 
     self->reset_stacklet(stack->top());
 
-    return {self, std::span<T, E>{ptr, request.count}};
+    return {self, std::span<T>{ptr, request.count}};
   }
 
-  co_new_t<T, E> request; ///< The requested allocation.
-  frame *self;            ///< The current coroutine's frame.
+  co_new_t<T> request; ///< The requested allocation.
+  frame *self;         ///< The current coroutine's frame.
 };
 
 // -------------------------------------------------------- //

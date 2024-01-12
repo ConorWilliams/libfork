@@ -51,7 +51,7 @@ inline constexpr auto co_fib = [](auto co_fib, int n) -> lf::task<int> {
     co_return n;
   }
 
-  auto [r] = co_await lf::co_new<int, 2>();
+  auto [r] = co_await lf::co_new<int>(2);
 
   co_await lf::fork(&r[0], co_fib)(n - 1);
   co_await lf::call(&r[1], co_fib)(n - 2);

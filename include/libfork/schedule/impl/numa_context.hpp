@@ -27,7 +27,7 @@
 #include "libfork/schedule/ext/random.hpp" // for xoshiro
 
 /**
- * @file contexts.hpp
+ * @file numa_context.hpp
  *
  * @brief An augmentation of the `worker_context` which tracks the topology of the numa nodes.
  */

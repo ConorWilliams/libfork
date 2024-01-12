@@ -172,9 +172,9 @@ struct promise_base : frame {
   /**
    * @brief Make an awaitable that allocates on this workers stack.
    */
-  template <co_allocable T, std::size_t E>
-  auto await_transform(co_new_t<T, E> await) noexcept {
-    return alloc_awaitable<T, E>{{}, await, this};
+  template <co_allocable T>
+  auto await_transform(co_new_t<T> await) noexcept {
+    return alloc_awaitable<T>{{}, await, this};
   }
 
   // -------------------------------------------------------------- //
