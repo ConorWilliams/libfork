@@ -34,7 +34,7 @@ inline namespace ext {
  * @brief Resume a collection of tasks at a submission point.
  */
 inline void resume(submit_handle ptr) noexcept {
-  for_each_elem(ptr, [](submit_t *raw) static {
+  for_each_elem(ptr, [](submit_t *raw) LF_STATIC_CALL {
     //
     LF_LOG("Call to resume on submitted task");
 

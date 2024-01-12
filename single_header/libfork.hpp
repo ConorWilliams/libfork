@@ -61,11 +61,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts> // for default_initializable
-#include <cstddef>  // for size_t
-#include <memory>
-#include <span> // for dynamic_extent, span
-#include <type_traits>
+#include <array>       // for tuple_element, tuple_size
+#include <concepts>    // for default_initializable
+#include <cstddef>     // for size_t
+#include <memory>      // for destroy
+#include <span>        // for dynamic_extent, span
+#include <type_traits> // for type_identity, conditional_t
 #include <utility>
 
 #ifndef CF97E524_27A6_4CD9_8967_39F1B1BE97B6
@@ -1320,7 +1321,7 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
 
 #endif /* BC7496D2_E762_43A4_92A3_F2AD10690569 */
 
-   // for frame
+   // for intrusive_list
 #ifndef DD6F6C5C_C146_4C02_99B9_7D2D132C0844
 #define DD6F6C5C_C146_4C02_99B9_7D2D132C0844
 
@@ -2193,7 +2194,7 @@ using task_handle = task_t *;
 
 #endif /* ACB944D8_08B6_4600_9302_602E847753FD */
 
-  // for task_handle, submit_handle     // for intrusive_list, intruded_list // for non_null, immovable        // for LF_ASSERT
+  // for task_handle, submit_handle     // for intrusive_list // for non_null, immovable        // for LF_ASSERT
 
 /**
  * @file context.hpp
@@ -2290,6 +2291,9 @@ namespace impl {
  */
 class full_context : public worker_context {
  public:
+  /**
+   * @brief Construct a new full context object, store a copy of the user provided notification function.
+   */
   explicit full_context(nullary_function_t notify) noexcept : worker_context(std::move(notify)) {}
 
   /**
@@ -2318,7 +2322,7 @@ class full_context : public worker_context {
 
 #endif /* D66BBECE_E467_4EB6_B74A_AAA2E7256E02 */
 
-          // for full_context, ... // for manual_lifetime           // for stack                // for LF_CLANG_TLS_NOINLINE
+          // for full_context, worker... // for manual_lifetime           // for stack                // for LF_CLANG_TLS_NOINLINE
 
 /**
  * @file tls.hpp
@@ -2454,7 +2458,7 @@ inline LF_CLANG_TLS_NOINLINE void finalize(worker_context *worker) {
 
 #endif /* CF97E524_27A6_4CD9_8967_39F1B1BE97B6 */
 
- // for k_new_align
+      // for stack   // for frame   // for stack // for immovable, k_new_align
 
 /**
  * @file co_alloc.hpp
@@ -2646,7 +2650,7 @@ inline auto co_new() -> impl::co_new_t<T, Extent> {
 #include <functional>  // for invoke
 #include <type_traits> // for invoke_result_t
 #include <utility>     // for forward
- // for context, full_context      // for context   // for frame // for different_from, referenceable
+ // for worker_context, full_context      // for context   // for frame // for different_from, referenceable
 #ifndef BDE6CBCC_7576_4082_AAC5_2A207FEA9293
 #define BDE6CBCC_7576_4082_AAC5_2A207FEA9293
 
@@ -2658,10 +2662,10 @@ inline auto co_new() -> impl::co_new_t<T, Extent> {
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>
-#include <type_traits>
+#include <concepts>    // for constructible_from, convert...
+#include <type_traits> // for remove_cvref_t
 #include <utility>
- // for  submit_handle
+ // for worker_context, full_context // for submit_handle      // for context // for non_null
 
 /**
  * @file interop.hpp
@@ -2986,9 +2990,11 @@ class first_arg_t {
 #include <bit>       // for bit_cast
 #include <coroutine> // for coroutine_handle, noop_coro...
 #include <cstddef>   // for size_t
-#include <cstdint>   //
+#include <cstdint>   // for uint16_t
+#include <memory>    // for uninitialized_default_const...
 #include <span>      // for span
-  // for full_context, context  // for submit_handle, task_handle     // for intrusive_list      // for context, stack   // for frame   // for stack // for k_u16_max
+#include <utility>   // for declval
+     // for co_allocable, co_new_t, sta...  // for full_context  // for submit_t, task_handle     // for unwrap, intrusive_list      // for stack, context   // for frame   // for stack // for k_u16_max      // for external_awaitable
 #ifndef A5349E86_5BAA_48EF_94E9_F0EBF630DE04
 #define A5349E86_5BAA_48EF_94E9_F0EBF630DE04
 
@@ -3440,7 +3446,7 @@ using async_result_t = impl::unsafe_result_t<impl::discard_t, tag::call, F, Args
 
 #endif /* A5349E86_5BAA_48EF_94E9_F0EBF630DE04 */
 
- // for ignore_t     // for LF_LOG, LF_ASSERT, LF_ASSER...
+    // for ignore_t        // for LF_ASSERT, LF_LOG, LF_ASSER...
 
 /**
  * @file awaitables.hpp
@@ -3991,7 +3997,7 @@ inline constexpr impl::bind_task<tag::call> call = {};
 #include <optional>    // for optional, nullopt
 #include <type_traits> // for conditional_t
 #include <utility>     // for forward, move
-           // for eventually          // for submit_handle             // for intruded_list, intr...              // for thread_stack, has_s...            // for async_function_object       // for quasi_awaitable           // for root_notify, frame // for manual_lifetime           // for stack, swap         // for empty            // for async_result_t, ign...                // for LF_LOG, LF_CLANG_TL...                  // for tag
+           // for eventually          // for submit_handle, subm...             // for intrusive_list              // for thread_stack, has_s...            // for async_function_object       // for quasi_awaitable           // for root_notify, frame // for manual_lifetime           // for stack, swap         // for empty            // for async_result_t, ign...                // for LF_LOG, LF_CLANG_TL...                  // for tag
 
 /**
  * @file sync_wait.hpp
@@ -4118,7 +4124,7 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_
 
 #include <bit>       // for bit_cast
 #include <coroutine> // for coroutine_handle
- // for full_context // for submit_handle, task_handle    // for context, stack // for frame // for stack      // for LF_ASSERT_NO_ASSUME, LF_LOG
+ // for full_context // for submit_t, submit_handle, tas...    // for for_each_elem     // for stack, context  // for frame  // for stack       // for LF_ASSERT_NO_ASSUME, LF_LOG
 
 /**
  * @file resume.hpp
@@ -4134,7 +4140,7 @@ inline namespace ext {
  * @brief Resume a collection of tasks at a submission point.
  */
 inline void resume(submit_handle ptr) noexcept {
-  for_each_elem(ptr, [](submit_t *raw) static {
+  for_each_elem(ptr, [](submit_t *raw) LF_STATIC_CALL {
     //
     LF_LOG("Call to resume on submitted task");
 
@@ -4201,9 +4207,9 @@ inline void resume(task_handle ptr) noexcept {
 #include <memory>    // for destroy, uninitialized_d...
 #include <new>
 #include <span>        // for span
-#include <type_traits> // for false_type, true_type
-#include <utility>
-        // for co_allocable, co_delete_t    // for join_type     // for full_context, context     // for submit_handle, task_handle        // for intrusive_list         // for stack, context       // for async_function_object // for alloc_awaitable, call_aw...  // for quasi_awaitable      // for frame
+#include <type_traits> // for false_type, remove_cvref_t
+#include <utility>     // for forward
+        // for co_allocable, co_new_t    // for join_type     // for full_context     // for submit_t, task_handle        // for intrusive_list         // for stack, context       // for async_function_object // for alloc_awaitable, call_aw...  // for quasi_awaitable      // for frame
 #ifndef A896798B_7E3B_4854_9997_89EA5AE765EB
 #define A896798B_7E3B_4854_9997_89EA5AE765EB
 
@@ -4300,7 +4306,7 @@ struct return_result<void, discard_t> {
 
 #endif /* A896798B_7E3B_4854_9997_89EA5AE765EB */
 
-     // for return_result      // for stack    // for byte_cast, k_u16_max // for return_address_for, igno...     // for LF_LOG, LF_ASSERT, LF_FO...       // for tag      // for returnable, task
+     // for return_result      // for stack    // for byte_cast, k_u16_max         // for external_awaitable       // for return_address_for, igno...           // for LF_LOG, LF_ASSERT, LF_FO...             // for tag            // for returnable, task
 
 /**
  * @file promise.hpp
@@ -4772,16 +4778,16 @@ inline constexpr auto lift = []<class F, class... Args>(auto, F &&func, Args &&.
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <atomic>  // for atomic_flag, memory_or...
+#include <atomic>  // for atomic_flag, memory...
 #include <cstddef> // for size_t
 #include <latch>   // for latch
-#include <memory>  // for shared_ptr, __shared_p...
-#include <random>  // for random_device, uniform...
+#include <memory>  // for shared_ptr, __shar...
+#include <random>  // for random_device, uni...
 #include <span>    // for span
 #include <thread>  // for thread
 #include <utility> // for move
 #include <vector>  // for vector
-                 // for LF_DEFER           // for context, nullary_funct...           // for submit_handle, task_ha...              // for for_each_elem, intrude...            // for resume          // for k_cache_line, move_only                 // for LF_ASSERT, LF_ASSERT_N...             // for scheduler
+                 // for LF_DEFER           // for worker_context           // for submit_handle, tas...              // for for_each_elem, intrude...            // for resume          // for k_cache_line, move...                 // for LF_ASSERT, LF_ASSE...             // for scheduler
 #ifndef D8877F11_1F66_4AD0_B949_C0DFF390C2DB
 #define D8877F11_1F66_4AD0_B949_C0DFF390C2DB
 
@@ -5292,7 +5298,7 @@ inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &dat
 
 #endif /* D8877F11_1F66_4AD0_B949_C0DFF390C2DB */
 
-          // for numa_strategy, numa_to...
+          // for numa_strategy, num...
 #ifndef CA0BE1EA_88CD_4E63_9D89_37395E859565
 #define CA0BE1EA_88CD_4E63_9D89_37395E859565
 
@@ -5514,7 +5520,7 @@ static_assert(uniform_random_bit_generator<xoshiro>);
 #include <random>    // for discrete_distribution
 #include <utility>   // for exchange, move
 #include <vector>    // for vector
-    // for worker_context, context      // for err    // for submit_handle, task_handle       // for intruded_list        // for finalize, worker_init   // for non_null, map          // for LF_ASSERT, LF_LOG, LF_CAT...   // for numa_topology // for xoshiro
+    // for worker_context, nullary_f...      // for err    // for submit_handle, task_handle       // for intruded_list        // for finalize, worker_init   // for non_null, map          // for LF_ASSERT, LF_LOG, LF_CAT...   // for numa_topology // for xoshiro
 
 /**
  * @file contexts.hpp
@@ -5864,18 +5870,18 @@ static_assert(scheduler<busy_pool>);
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <algorithm>  // for __max_element_fn
-#include <atomic>     // for atomic_flag, memory_...
+#include <atomic>     // for atomic_flag, memory...
 #include <concepts>   // for same_as
 #include <cstddef>    // for size_t
 #include <functional> // for less
 #include <latch>      // for latch
-#include <memory>     // for shared_ptr, __shared...
-#include <random>     // for random_device, unifo...
+#include <memory>     // for shared_ptr, __shar...
+#include <random>     // for random_device, uni...
 #include <span>       // for span
 #include <thread>     // for thread
 #include <utility>    // for move
 #include <vector>     // for vector
-                 // for LF_DEFER           // for context, nullary_fun...           // for submit_handle, task_...              // for for_each_elem, intru...            // for resume          // for k_cache_line                 // for LF_ASSERT, LF_LOG             // for scheduler         // for busy_vars
+                 // for LF_DEFER           // for worker_context           // for submit_handle, tas...              // for for_each_elem, intru...            // for resume          // for k_cache_line                 // for LF_ASSERT, LF_LOG             // for scheduler         // for busy_vars
 #pragma once
 
 // Copyright (c) Conor Williams, Meta Platforms, Inc. and its affiliates.
@@ -6119,7 +6125,7 @@ void event_count::await(Pred const &condition) noexcept(std::is_nothrow_invocabl
 } // namespace ext
 
 } // namespace lf
-   // for event_count          // for numa_strategy, numa_...        // for xoshiro, seed // for numa_context
+   // for event_count          // for numa_strategy, num...        // for xoshiro, seed // for numa_context
 
 /**
  * @file lazy_pool.hpp
