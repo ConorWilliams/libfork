@@ -297,10 +297,11 @@ class deque : impl::immovable<deque<T>> {
    *
    * Only the owner thread can insert an item into the deque.
    * This operation can trigger the deque to resize if more space is required.
+   * This may throw if an allocation is required and then fails.
    *
    * @param val Value to add to the deque.
    */
-  constexpr void push(T const &val) noexcept;
+  constexpr void push(T const &val);
   /**
    * @brief Pop an item from the deque.
    *
@@ -372,14 +373,19 @@ constexpr auto deque<T>::empty() const noexcept -> bool {
 }
 
 template <dequeable T>
-constexpr auto deque<T>::push(T const &val) noexcept -> void {
+constexpr auto deque<T>::push(T const &val) -> void {
   std::ptrdiff_t const bottom = m_bottom.load(relaxed);
   std::ptrdiff_t const top = m_top.load(acquire);
   impl::atomic_ring_buf<T> *buf = m_buf.load(relaxed);
 
   if (buf->capacity() < (bottom - top) + 1) {
-    // Deque is full, build a new one, this can never throw as we reserve 64 slots.
-    m_garbage.emplace_back(std::exchange(buf, buf->resize(bottom, top)));
+    // Deque is full, build a new one.
+    impl::atomic_ring_buf<T> *bigger = buf->resize(bottom, top);
+
+    [&]() noexcept {
+      // This should never throw as we reserve 64 slots.
+      m_garbage.emplace_back(std::exchange(buf, bigger));
+    }();
     m_buf.store(buf, relaxed);
   }
 

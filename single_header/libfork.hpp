@@ -1018,10 +1018,11 @@ class deque : impl::immovable<deque<T>> {
    *
    * Only the owner thread can insert an item into the deque.
    * This operation can trigger the deque to resize if more space is required.
+   * This may throw if an allocation is required and then fails.
    *
    * @param val Value to add to the deque.
    */
-  constexpr void push(T const &val) noexcept;
+  constexpr void push(T const &val);
   /**
    * @brief Pop an item from the deque.
    *
@@ -1093,14 +1094,19 @@ constexpr auto deque<T>::empty() const noexcept -> bool {
 }
 
 template <dequeable T>
-constexpr auto deque<T>::push(T const &val) noexcept -> void {
+constexpr auto deque<T>::push(T const &val) -> void {
   std::ptrdiff_t const bottom = m_bottom.load(relaxed);
   std::ptrdiff_t const top = m_top.load(acquire);
   impl::atomic_ring_buf<T> *buf = m_buf.load(relaxed);
 
   if (buf->capacity() < (bottom - top) + 1) {
-    // Deque is full, build a new one, this can never throw as we reserve 64 slots.
-    m_garbage.emplace_back(std::exchange(buf, buf->resize(bottom, top)));
+    // Deque is full, build a new one.
+    impl::atomic_ring_buf<T> *bigger = buf->resize(bottom, top);
+
+    [&]() noexcept {
+      // This should never throw as we reserve 64 slots.
+      m_garbage.emplace_back(std::exchange(buf, bigger));
+    }();
     m_buf.store(buf, relaxed);
   }
 
@@ -2293,7 +2299,7 @@ class full_context : public worker_context {
   /**
    * @brief Add a task to the work queue.
    */
-  void push(task_handle task) noexcept { m_tasks.push(non_null(task)); }
+  void push(task_handle task) { m_tasks.push(non_null(task)); }
 
   /**
    * @brief Remove a task from the work queue
@@ -2364,7 +2370,7 @@ constinit
 /**
  * @brief Checked access to a workers stack.
  */
-[[nodiscard]] LF_CLANG_TLS_NOINLINE inline auto stack() -> stack * {
+[[nodiscard]] LF_CLANG_TLS_NOINLINE inline auto stack() noexcept -> stack * {
   LF_ASSERT(has_stack);
   return thread_stack.data();
 }
@@ -2372,7 +2378,7 @@ constinit
 /**
  * @brief Checked access to a workers context.
  */
-[[nodiscard]] LF_CLANG_TLS_NOINLINE inline auto context() -> full_context * {
+[[nodiscard]] LF_CLANG_TLS_NOINLINE inline auto context() noexcept -> full_context * {
   LF_ASSERT(has_context);
   return thread_context.data();
 }
@@ -3466,7 +3472,7 @@ struct switch_awaitable {
   /**
    * @brief Reschedule this coro onto `dest`.
    */
-  auto await_suspend(std::coroutine_handle<>) noexcept -> std::coroutine_handle<> {
+  auto await_suspend(std::coroutine_handle<> /*unused*/) noexcept -> std::coroutine_handle<> {
 
     // We currently own the "resumable" handle of this coroutine, if there have been any
     // steals then we do not own the stack this coroutine is on and the resumer should not
@@ -3578,11 +3584,30 @@ struct fork_awaitable : std::suspend_always {
   /**
    * @brief Sym-transfer to child, push parent to queue.
    */
-  auto await_suspend(std::coroutine_handle<>) const noexcept -> std::coroutine_handle<> {
+  auto await_suspend(std::coroutine_handle<> /*unused*/) const -> std::coroutine_handle<> {
     LF_LOG("Forking, push parent to context");
+
     // Need a copy (on stack) in case *this is destructed after push.
     std::coroutine_handle child = this->child->self();
-    tls::context()->push(std::bit_cast<task_handle>(parent));
+
+    // clang-format off
+    
+    LF_TRY {
+      tls::context()->push(std::bit_cast<task_handle>(parent));
+    } LF_CATCH_ALL {
+      // If await_suspend throws an exception then: 
+      //  - The exception is caught, 
+      //  - The coroutine is resumed, 
+      //  - The exception is immediately re-thrown.
+
+      // Hence, we need to clean up the child which will never start:
+      child.destroy(); 
+
+      LF_RETHROW;
+    }
+
+    // clang-format on
+
     return child;
   }
 
@@ -3600,7 +3625,7 @@ struct call_awaitable : std::suspend_always {
   /**
    * @brief Sym-transfer to child.
    */
-  auto await_suspend(std::coroutine_handle<>) const noexcept -> std::coroutine_handle<> {
+  auto await_suspend(std::coroutine_handle<> /*unused*/) const noexcept -> std::coroutine_handle<> {
     LF_LOG("Calling");
     return child->self();
   }
@@ -4375,6 +4400,8 @@ inline auto final_await_suspend(frame *parent) noexcept -> std::coroutine_handle
     // thread will take ownership of the parent's we must give it up.
     LF_LOG("Thread releases control of parent's stack");
 
+    // If this throw an exception then the worker must die as it does not have a stack.
+    // Hence, program termination is appropriate.
     ignore_t{} = tls_stack->release();
 
   } else {
@@ -4405,6 +4432,11 @@ struct promise_base : frame {
    * @brief Deallocate the coroutine from current `stack`s stack.
    */
   LF_FORCEINLINE static void operator delete(void *ptr) noexcept { tls::stack()->deallocate(ptr); }
+
+  /**
+   * @brief Assert destroyed by the correct thread.
+   */
+  ~promise_base() noexcept { LF_ASSERT(tls::stack()->top() == stacklet()); }
 
   /**
    * @brief Start suspended (lazy).
@@ -5789,8 +5821,8 @@ class busy_pool : impl::move_only<busy_pool> {
     std::vector nodes = numa_topology{}.distribute(m_worker, strategy);
 
     [&]() noexcept {
-      // All workers must be created, if we fail to create them all then we must terminate else
-      // the workers will hang on the start latch.
+      // All workers must be created, if we fail to create them all then we must
+      // terminate else the workers will hang on the start latch.
       for (auto &&node : nodes) {
         m_threads.emplace_back(impl::busy_work, std::move(node));
       }

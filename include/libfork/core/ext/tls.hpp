@@ -63,7 +63,7 @@ constinit
 /**
  * @brief Checked access to a workers stack.
  */
-[[nodiscard]] LF_CLANG_TLS_NOINLINE inline auto stack() -> stack * {
+[[nodiscard]] LF_CLANG_TLS_NOINLINE inline auto stack() noexcept -> stack * {
   LF_ASSERT(has_stack);
   return thread_stack.data();
 }
@@ -71,7 +71,7 @@ constinit
 /**
  * @brief Checked access to a workers context.
  */
-[[nodiscard]] LF_CLANG_TLS_NOINLINE inline auto context() -> full_context * {
+[[nodiscard]] LF_CLANG_TLS_NOINLINE inline auto context() noexcept -> full_context * {
   LF_ASSERT(has_context);
   return thread_context.data();
 }

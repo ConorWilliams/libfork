@@ -76,7 +76,7 @@ struct switch_awaitable {
   /**
    * @brief Reschedule this coro onto `dest`.
    */
-  auto await_suspend(std::coroutine_handle<>) noexcept -> std::coroutine_handle<> {
+  auto await_suspend(std::coroutine_handle<> /*unused*/) noexcept -> std::coroutine_handle<> {
 
     // We currently own the "resumable" handle of this coroutine, if there have been any
     // steals then we do not own the stack this coroutine is on and the resumer should not
@@ -188,11 +188,30 @@ struct fork_awaitable : std::suspend_always {
   /**
    * @brief Sym-transfer to child, push parent to queue.
    */
-  auto await_suspend(std::coroutine_handle<>) const noexcept -> std::coroutine_handle<> {
+  auto await_suspend(std::coroutine_handle<> /*unused*/) const -> std::coroutine_handle<> {
     LF_LOG("Forking, push parent to context");
+
     // Need a copy (on stack) in case *this is destructed after push.
     std::coroutine_handle child = this->child->self();
-    tls::context()->push(std::bit_cast<task_handle>(parent));
+
+    // clang-format off
+    
+    LF_TRY {
+      tls::context()->push(std::bit_cast<task_handle>(parent));
+    } LF_CATCH_ALL {
+      // If await_suspend throws an exception then: 
+      //  - The exception is caught, 
+      //  - The coroutine is resumed, 
+      //  - The exception is immediately re-thrown.
+
+      // Hence, we need to clean up the child which will never start:
+      child.destroy(); 
+
+      LF_RETHROW;
+    }
+
+    // clang-format on
+
     return child;
   }
 
@@ -210,7 +229,7 @@ struct call_awaitable : std::suspend_always {
   /**
    * @brief Sym-transfer to child.
    */
-  auto await_suspend(std::coroutine_handle<>) const noexcept -> std::coroutine_handle<> {
+  auto await_suspend(std::coroutine_handle<> /*unused*/) const noexcept -> std::coroutine_handle<> {
     LF_LOG("Calling");
     return child->self();
   }

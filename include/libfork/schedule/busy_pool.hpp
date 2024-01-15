@@ -136,8 +136,8 @@ class busy_pool : impl::move_only<busy_pool> {
     std::vector nodes = numa_topology{}.distribute(m_worker, strategy);
 
     [&]() noexcept {
-      // All workers must be created, if we fail to create them all then we must terminate else
-      // the workers will hang on the start latch.
+      // All workers must be created, if we fail to create them all then we must
+      // terminate else the workers will hang on the start latch.
       for (auto &&node : nodes) {
         m_threads.emplace_back(impl::busy_work, std::move(node));
       }

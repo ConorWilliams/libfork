@@ -131,6 +131,8 @@ inline auto final_await_suspend(frame *parent) noexcept -> std::coroutine_handle
     // thread will take ownership of the parent's we must give it up.
     LF_LOG("Thread releases control of parent's stack");
 
+    // If this throw an exception then the worker must die as it does not have a stack.
+    // Hence, program termination is appropriate.
     ignore_t{} = tls_stack->release();
 
   } else {
@@ -161,6 +163,11 @@ struct promise_base : frame {
    * @brief Deallocate the coroutine from current `stack`s stack.
    */
   LF_FORCEINLINE static void operator delete(void *ptr) noexcept { tls::stack()->deallocate(ptr); }
+
+  /**
+   * @brief Assert destroyed by the correct thread.
+   */
+  ~promise_base() noexcept { LF_ASSERT(tls::stack()->top() == stacklet()); }
 
   /**
    * @brief Start suspended (lazy).
