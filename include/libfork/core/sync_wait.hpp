@@ -90,15 +90,15 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_
     swap(*prev, *impl::tls::thread_stack); // ADL call.
   }
 
-  // This makes a coroutine which can only be destroyed at final_suspend
-  // hence, no exceptions until it has run.
+  // This makes a coroutine may need cleanup if exceptions...
   impl::quasi_awaitable await = std::move(combinator)(std::forward<Args>(args)...);
 
   [&]() noexcept {
     //
     await.prom->set_root_notify(&notifier);
-    auto *handle = std::bit_cast<submit_t *>(static_cast<impl::frame *>(await.prom));
+    auto *handle = std::bit_cast<impl::submit_t *>(static_cast<impl::frame *>(await.prom));
 
+    // If this threw we could clean up coroutine.
     impl::ignore_t{} = impl::tls::thread_stack->release();
 
     if (!worker) {
@@ -108,9 +108,12 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_
       swap(*prev, *impl::tls::thread_stack);
     }
 
-    typename intrusive_list<submit_t *>::node node{handle};
+    typename intrusive_list<impl::submit_t *>::node node{handle};
 
+    // If this threw we could clean up the coroutine if we repaired the worker state.
     std::forward<Sch>(sch).schedule(&node);
+
+    // If this threw we would have to terminate.
     notifier.sem.acquire();
   }();
 

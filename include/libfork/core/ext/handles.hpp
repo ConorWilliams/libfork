@@ -23,7 +23,7 @@
 
 namespace lf {
 
-inline namespace ext {
+namespace impl {
 
 /**
  * @brief A type safe wrapper around a handle to a coroutine that is at a submission point.
@@ -45,11 +45,6 @@ static_assert(std::is_pointer_interconvertible_base_of_v<impl::frame, submit_t>)
 #endif
 
 /**
- * @brief An alias for a pointer to a `submit_t` wrapped in an intruded list.
- */
-using submit_handle = typename intrusive_list<submit_t *>::node *;
-
-/**
  * @brief A type safe wrapper around a handle to a stealable coroutine.
  *
  * \rst
@@ -68,10 +63,19 @@ static_assert(std::is_standard_layout_v<task_t>);
 static_assert(std::is_pointer_interconvertible_base_of_v<impl::frame, task_t>);
 #endif
 
+} // namespace impl
+
+inline namespace ext {
+
+/**
+ * @brief An alias for a pointer to a `submit_t` wrapped in an intruded list.
+ */
+using submit_handle = typename intrusive_list<impl::submit_t *>::node *;
+
 /**
  * @brief An alias for a pointer to a `task_t`.
  */
-using task_handle = task_t *;
+using task_handle = impl::task_t *;
 
 } // namespace ext
 

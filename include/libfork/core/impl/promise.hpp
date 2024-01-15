@@ -24,7 +24,7 @@
 #include "libfork/core/co_alloc.hpp"        // for co_allocable, co_new_t
 #include "libfork/core/control_flow.hpp"    // for join_type
 #include "libfork/core/ext/context.hpp"     // for full_context
-#include "libfork/core/ext/handles.hpp"     // for submit_t, task_handle
+#include "libfork/core/ext/handles.hpp"     // for impl::submit_t, task_handle
 #include "libfork/core/ext/list.hpp"        // for intrusive_list
 #include "libfork/core/ext/tls.hpp"         // for stack, context
 #include "libfork/core/first_arg.hpp"       // for async_function_object
@@ -192,9 +192,9 @@ struct promise_base : frame {
   template <context_switcher A>
   auto await_transform(A &&await) -> context_switch_awaitable<std::remove_cvref_t<A>> {
 
-    auto *submit = std::bit_cast<submit_t *>(static_cast<frame *>(this));
+    auto *submit = std::bit_cast<impl::submit_t *>(static_cast<frame *>(this));
 
-    using node = typename intrusive_list<submit_t *>::node;
+    using node = typename intrusive_list<impl::submit_t *>::node;
 
     return {std::forward<A>(await), node{submit}};
   }

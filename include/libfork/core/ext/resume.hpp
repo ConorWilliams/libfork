@@ -13,7 +13,7 @@
 #include <coroutine> // for coroutine_handle
 
 #include "libfork/core/ext/context.hpp" // for full_context
-#include "libfork/core/ext/handles.hpp" // for submit_t, submit_handle, tas...
+#include "libfork/core/ext/handles.hpp" // for impl::impl::submit_t, submit_handle, tas...
 #include "libfork/core/ext/list.hpp"    // for for_each_elem
 #include "libfork/core/ext/tls.hpp"     // for stack, context
 #include "libfork/core/impl/frame.hpp"  // for frame
@@ -36,7 +36,7 @@ inline namespace ext {
  * This thread must be the worker thread that the tasks were submitted to.
  */
 inline void resume(submit_handle ptr) noexcept {
-  for_each_elem(ptr, [](submit_t *raw) LF_STATIC_CALL {
+  for_each_elem(ptr, [](impl::submit_t *raw) LF_STATIC_CALL {
     //
     LF_LOG("Call to resume on submitted task");
 
