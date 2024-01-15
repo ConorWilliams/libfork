@@ -26,9 +26,9 @@
 #include "libfork/core/impl/frame.hpp"   // for frame
 #include "libfork/core/impl/stack.hpp"   // for stack
 #include "libfork/core/impl/utility.hpp" // for k_u16_max
-#include "libfork/core/interop.hpp"      // for external_awaitable
 #include "libfork/core/invocable.hpp"    // for ignore_t
 #include "libfork/core/macro.hpp"        // for LF_ASSERT, LF_LOG, LF_ASSER...
+#include "libfork/core/scheduler.hpp"    // for context_switcher
 
 /**
  * @file awaitables.hpp
@@ -48,7 +48,7 @@ namespace lf::impl {
  * reverse order.
  *
  */
-inline LF_FORCEINLINE auto try_self_stealing() -> std::coroutine_handle<> {
+inline LF_FORCEINLINE auto try_self_stealing() noexcept -> std::coroutine_handle<> {
   //
   if (auto *eff_stolen = std::bit_cast<frame *>(tls::context()->pop())) {
     eff_stolen->fetch_add_steal();
@@ -61,22 +61,46 @@ inline LF_FORCEINLINE auto try_self_stealing() -> std::coroutine_handle<> {
 // -------------------------------------------------------- //
 
 /**
- * @brief A wrapper for an ``lf::core::external_awaitable`` that
+ * @brief Test if a context switcher has a noexcept initial_suspend().
  */
-template <external_awaitable A>
-struct switch_awaitable {
+template <typename A>
+concept noexcept_await_ready = context_switcher<A> && requires (std::remove_cvref_t<A> await) {
+  { await.await_ready() } noexcept;
+};
+
+/**
+ * @brief Test if a context switcher has a noexcept await_suspend().
+ */
+template <typename A>
+concept noexcept_await_suspend =
+    context_switcher<A> && requires (std::remove_cvref_t<A> await, submit_handle handle) {
+      { await.await_suspend(handle) } noexcept;
+    };
+
+/**
+ * @brief Test if a context switcher has a noexcept await_resume().
+ */
+template <typename A>
+concept noexcept_await_resume = context_switcher<A> && requires (std::remove_cvref_t<A> await) {
+  { await.await_resume() } noexcept;
+};
+
+/**
+ * @brief A wrapper for an ``lf::core::context_switcher`` that
+ */
+template <context_switcher A>
+struct context_switch_awaitable {
 
   /**
    * @brief Forward to the external awaitable's await_resume().
    */
-  auto await_ready() noexcept(noexcept(std::declval<A &>().await_ready())) -> bool {
-    return external.await_ready();
-  }
+  auto await_ready() noexcept(noexcept_await_ready<A>) -> bool { return external.await_ready(); }
 
   /**
    * @brief Reschedule this coro onto `dest`.
    */
-  auto await_suspend(std::coroutine_handle<> /*unused*/) noexcept -> std::coroutine_handle<> {
+  auto
+  await_suspend(std::coroutine_handle<> /**/) noexcept(noexcept_await_suspend<A>) -> std::coroutine_handle<> {
 
     // We currently own the "resumable" handle of this coroutine, if there have been any
     // steals then we do not own the stack this coroutine is on and the resumer should not
@@ -98,7 +122,13 @@ struct switch_awaitable {
 
     if (steals == 0) {
       // Dest will take this stack upon resumption hence, we must release it.
-      ignore_t{} = tls::stack()->release();
+
+      // If this throws (fails to allocate) then the worker must die as
+      // it cannot resume a self-stolen task without a stack and we cannot
+      // recover the submitted task.
+      []() noexcept {
+        ignore_t{} = tls::stack()->release();
+      }();
     }
 
     LF_ASSERT(tls::stack()->empty());
@@ -128,9 +158,7 @@ struct switch_awaitable {
   /**
    * @brief Forward to the external awaitable's await_resume().
    */
-  auto await_resume() noexcept(noexcept(std::declval<A &>().await_resume())) -> decltype(auto) {
-    return external.await_ready();
-  }
+  auto await_resume() noexcept(noexcept_await_resume<A>) -> decltype(auto) { return external.await_resume(); }
 
   A external;                            ///< The external awaitable.
   intrusive_list<submit_t *>::node self; ///< The current coroutine's handle.

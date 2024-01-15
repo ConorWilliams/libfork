@@ -63,11 +63,11 @@ using nullary_function_t = std::function<void()>;
 class worker_context : impl::immovable<context> {
  public:
   /**
-   * @brief Submit suspended tasks to the context, supports concurrent submission.
+   * @brief schedule suspended tasks to the context, supports concurrent submission.
    *
    * This will trigger the notification function.
    */
-  void submit(submit_handle jobs) {
+  void schedule(submit_handle jobs) {
     m_submit.push(non_null(jobs));
     m_notify();
   }
@@ -90,8 +90,8 @@ class worker_context : impl::immovable<context> {
   /**
    * @brief Construct a context for a worker thread.
    *
-   * Notify is a function that may be called concurrently by other workers to signal to the worker
-   * owning this context that a task has been submitted to a private queue.
+   * Notify is a function that may be called concurrently by other workers to signal to the
+   * worker owning this context that a task has been submitted to a private queue.
    */
   explicit worker_context(nullary_function_t notify) noexcept : m_notify(std::move(notify)) {
     LF_ASSERT(m_notify);

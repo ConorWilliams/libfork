@@ -401,16 +401,41 @@ using std::unreachable;
   #endif
 #endif
 
-/**
- * @brief Compiler specific attributes libfork uses for its coroutine types.
- */
 #if defined(__clang__) && defined(__has_attribute)
-  #if __has_attribute(coro_return_type) && __has_attribute(coro_only_destroy_when_complete)
-    #define LF_CORO_ATTRIBUTES [[clang::coro_only_destroy_when_complete]] [[clang::coro_return_type]]
+  /**
+   * @brief Compiler specific attribute.
+   */
+  #if __has_attribute(coro_return_type)
+    #define LF_CORO_RETURN_TYPE [[clang::coro_return_type]]
   #else
-    #define LF_CORO_ATTRIBUTES
+    #define LF_CORO_RETURN_TYPE
   #endif
+  /**
+   * @brief Compiler specific attribute.
+   */
+  #if __has_attribute(coro_only_destroy_when_complete)
+    #define LF_CORO_ONLY_DESTROY_WHEN_COMPLETE [[clang::coro_only_destroy_when_complete]]
+  #else
+    #define LF_CORO_ONLY_DESTROY_WHEN_COMPLETE
+  #endif
+  /**
+   * @brief Compiler specific attribute.
+   */
+  #if __has_attribute(coro_lifetimebound)
+    #define LF_CORO_LIFETIMEBOUND [[clang::coro_lifetimebound]]
+  #else
+    #define LF_CORO_LIFETIMEBOUND
+  #endif
+
+  /**
+   * @brief Compiler specific attributes libfork uses for its coroutine types.
+   */
+  #define LF_CORO_ATTRIBUTES LF_CORO_RETURN_TYPE LF_CORO_ONLY_DESTROY_WHEN_COMPLETE LF_CORO_LIFETIMEBOUND
+
 #else
+  /**
+   * @brief Compiler specific attributes libfork uses for its coroutine types.
+   */
   #define LF_CORO_ATTRIBUTES
 #endif
 
@@ -966,7 +991,7 @@ struct return_nullopt {
  *
  * Example:
  *
- * .. include:: ../../../test/source/schedule/deque.cpp
+ * .. include:: ../../../test/source/core/deque.cpp
  *    :code:
  *    :start-after: // !BEGIN-EXAMPLE
  *    :end-before: // !END-EXAMPLE
@@ -1121,8 +1146,8 @@ constexpr auto deque<T>::push(T const &val) -> void {
 template <dequeable T>
 template <std::invocable F>
   requires std::convertible_to<T, std::invoke_result_t<F>>
-constexpr auto deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_v<F>)
-    -> std::invoke_result_t<F> {
+constexpr auto
+deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_v<F>) -> std::invoke_result_t<F> {
 
   std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1; //
   impl::atomic_ring_buf<T> *buf = m_buf.load(relaxed);      //
@@ -2242,11 +2267,11 @@ using nullary_function_t = std::function<void()>;
 class worker_context : impl::immovable<context> {
  public:
   /**
-   * @brief Submit suspended tasks to the context, supports concurrent submission.
+   * @brief schedule suspended tasks to the context, supports concurrent submission.
    *
    * This will trigger the notification function.
    */
-  void submit(submit_handle jobs) {
+  void schedule(submit_handle jobs) {
     m_submit.push(non_null(jobs));
     m_notify();
   }
@@ -2269,8 +2294,8 @@ class worker_context : impl::immovable<context> {
   /**
    * @brief Construct a context for a worker thread.
    *
-   * Notify is a function that may be called concurrently by other workers to signal to the worker
-   * owning this context that a task has been submitted to a private queue.
+   * Notify is a function that may be called concurrently by other workers to signal to the
+   * worker owning this context that a task has been submitted to a private queue.
    */
   explicit worker_context(nullary_function_t notify) noexcept : m_notify(std::move(notify)) {
     LF_ASSERT(m_notify);
@@ -2628,7 +2653,7 @@ inline auto co_new(std::size_t count) -> impl::co_new_t<T> {
 #include <functional>  // for invoke
 #include <type_traits> // for invoke_result_t
 #include <utility>     // for forward
- // for worker_context, full_context      // for context   // for frame // for different_from, referenceable
+ // for worker_context, full_context      // for context   // for frame // for different_from, referenceable        // for LF_COMPILER_EXCEPTIONS, LF_...
 #ifndef BDE6CBCC_7576_4082_AAC5_2A207FEA9293
 #define BDE6CBCC_7576_4082_AAC5_2A207FEA9293
 
@@ -2646,9 +2671,9 @@ inline auto co_new(std::size_t count) -> impl::co_new_t<T> {
  // for worker_context, full_context // for submit_handle      // for context // for non_null
 
 /**
- * @file interop.hpp
+ * @file scheduler.hpp
  *
- * @brief Machinery for interfacing with external workers.
+ * @brief Machinery for interfacing with scheduling coroutines.
  */
 
 namespace lf {
@@ -2666,31 +2691,54 @@ concept storable = std::constructible_from<std::remove_cvref_t<T>, T &&>;
 inline namespace core {
 
 /**
- * @brief Defines the interface for external awaitables.
+ * @brief A concept that schedulers must satisfy.
  *
- * An external awaitable can be awaited inside a libfork coroutine. If the external awaitable
+ * This requires only a single method, `schedule` which accepts an `lf::submit_handle` and
+ * promises to call `lf::resume()` on it.
+ */
+template <typename Sch>
+concept scheduler = requires (Sch &&sch, submit_handle handle) {
+  std::forward<Sch>(sch).schedule(handle); //
+};
+
+/**
+ * @brief Defines the interface for awaitables that may trigger a context switch.
+ *
+ * A ``context_switcher`` can be awaited inside a libfork coroutine. If the awaitable
  * is not ready then the coroutine will be suspended and a submit_handle will be passed to the
- * external awaitor's ``await_suspend()`` function. This can then be resumed by any worker as
+ * context switcher's ``await_suspend()`` function. This can then be resumed by any worker as
  * normal.
  */
 template <typename T>
-concept external_awaitable =
+concept context_switcher =
     impl::storable<T> && requires (std::remove_cvref_t<T> awaiter, submit_handle handle) {
       { awaiter.await_ready() } -> std::convertible_to<bool>;
       { awaiter.await_suspend(handle) } -> std::same_as<void>;
       { awaiter.await_resume() };
     };
 
+template <scheduler Sch>
+struct resume_on_quasi_awaitable;
+
 /**
- * @brief An external awaitable to explicitly transfer execution to another worker.
+ * @brief Create an ``lf::core::context_switcher`` to explicitly transfer execution to ``dest``.
  */
-struct [[nodiscard]] schedule_on_context {
+template <scheduler Sch>
+auto resume_on(Sch *dest) noexcept -> resume_on_quasi_awaitable<Sch> {
+  return resume_on_quasi_awaitable<Sch>{non_null(dest)};
+}
+
+/**
+ * @brief An ``lf::core::context_switcher`` that just transfers execution to a new scheduler.
+ */
+template <scheduler Sch>
+struct [[nodiscard("This should be immediately co_awaited")]] resume_on_quasi_awaitable {
  private:
-  worker_context *m_dest;
+  Sch *m_dest;
 
-  explicit schedule_on_context(worker_context *dest) noexcept : m_dest{dest} {}
+  explicit resume_on_quasi_awaitable(worker_context *dest) noexcept : m_dest{dest} {}
 
-  friend auto resume_on(worker_context *dest) noexcept -> schedule_on_context;
+  friend auto resume_on<Sch>(Sch *dest) noexcept -> resume_on_quasi_awaitable;
 
  public:
   /**
@@ -2701,22 +2749,18 @@ struct [[nodiscard]] schedule_on_context {
   /**
    * @brief Reschedule this coroutine onto the requested destination.
    */
-  auto await_suspend(submit_handle handle) noexcept -> void { m_dest->submit(handle); }
+  auto
+  await_suspend(submit_handle handle) noexcept(noexcept(std::declval<Sch *>()->schedule(handle))) -> void {
+    m_dest->schedule(handle);
+  }
 
   /**
    * @brief A no-op.
    */
-  auto await_resume() const noexcept -> void {}
+  static auto await_resume() noexcept -> void {}
 };
 
-static_assert(external_awaitable<schedule_on_context>);
-
-/**
- * @brief Create an external awaitable to explicitly transfer execution to ``dest``.
- */
-inline auto resume_on(worker_context *dest) noexcept -> schedule_on_context {
-  return schedule_on_context{non_null(dest)};
-}
+static_assert(context_switcher<resume_on_quasi_awaitable<worker_context>>);
 
 } // namespace core
 
@@ -2724,7 +2768,7 @@ inline auto resume_on(worker_context *dest) noexcept -> schedule_on_context {
 
 #endif /* BDE6CBCC_7576_4082_AAC5_2A207FEA9293 */
 
- // for LF_COMPILER_EXCEPTIONS, LF_...
+
 #ifndef A75DC3F0_D0C3_4669_A901_0B22556C873C
 #define A75DC3F0_D0C3_4669_A901_0B22556C873C
 
@@ -2763,7 +2807,7 @@ enum class tag {
 
 #endif /* A75DC3F0_D0C3_4669_A901_0B22556C873C */
 
-   // for tag
+ // for tag
 
 /**
  * @file first_arg.hpp
@@ -2972,7 +3016,7 @@ class first_arg_t {
 #include <memory>    // for uninitialized_default_const...
 #include <span>      // for span
 #include <utility>   // for declval
-     // for co_allocable, co_new_t, sta...  // for full_context  // for submit_t, task_handle     // for unwrap, intrusive_list      // for stack, context   // for frame   // for stack // for k_u16_max      // for external_awaitable
+     // for co_allocable, co_new_t, sta...  // for full_context  // for submit_t, task_handle     // for unwrap, intrusive_list      // for stack, context   // for frame   // for stack // for k_u16_max
 #ifndef A5349E86_5BAA_48EF_94E9_F0EBF630DE04
 #define A5349E86_5BAA_48EF_94E9_F0EBF630DE04
 
@@ -3424,7 +3468,7 @@ using async_result_t = impl::unsafe_result_t<impl::discard_t, tag::call, F, Args
 
 #endif /* A5349E86_5BAA_48EF_94E9_F0EBF630DE04 */
 
-    // for ignore_t        // for LF_ASSERT, LF_LOG, LF_ASSER...
+    // for ignore_t        // for LF_ASSERT, LF_LOG, LF_ASSER...    // for context_switcher
 
 /**
  * @file awaitables.hpp
@@ -3444,7 +3488,7 @@ namespace lf::impl {
  * reverse order.
  *
  */
-inline LF_FORCEINLINE auto try_self_stealing() -> std::coroutine_handle<> {
+inline LF_FORCEINLINE auto try_self_stealing() noexcept -> std::coroutine_handle<> {
   //
   if (auto *eff_stolen = std::bit_cast<frame *>(tls::context()->pop())) {
     eff_stolen->fetch_add_steal();
@@ -3457,22 +3501,46 @@ inline LF_FORCEINLINE auto try_self_stealing() -> std::coroutine_handle<> {
 // -------------------------------------------------------- //
 
 /**
- * @brief A wrapper for an ``lf::core::external_awaitable`` that
+ * @brief Test if a context switcher has a noexcept initial_suspend().
  */
-template <external_awaitable A>
-struct switch_awaitable {
+template <typename A>
+concept noexcept_await_ready = context_switcher<A> && requires (std::remove_cvref_t<A> await) {
+  { await.await_ready() } noexcept;
+};
+
+/**
+ * @brief Test if a context switcher has a noexcept await_suspend().
+ */
+template <typename A>
+concept noexcept_await_suspend =
+    context_switcher<A> && requires (std::remove_cvref_t<A> await, submit_handle handle) {
+      { await.await_suspend(handle) } noexcept;
+    };
+
+/**
+ * @brief Test if a context switcher has a noexcept await_resume().
+ */
+template <typename A>
+concept noexcept_await_resume = context_switcher<A> && requires (std::remove_cvref_t<A> await) {
+  { await.await_resume() } noexcept;
+};
+
+/**
+ * @brief A wrapper for an ``lf::core::context_switcher`` that
+ */
+template <context_switcher A>
+struct context_switch_awaitable {
 
   /**
    * @brief Forward to the external awaitable's await_resume().
    */
-  auto await_ready() noexcept(noexcept(std::declval<A &>().await_ready())) -> bool {
-    return external.await_ready();
-  }
+  auto await_ready() noexcept(noexcept_await_ready<A>) -> bool { return external.await_ready(); }
 
   /**
    * @brief Reschedule this coro onto `dest`.
    */
-  auto await_suspend(std::coroutine_handle<> /*unused*/) noexcept -> std::coroutine_handle<> {
+  auto
+  await_suspend(std::coroutine_handle<> /**/) noexcept(noexcept_await_suspend<A>) -> std::coroutine_handle<> {
 
     // We currently own the "resumable" handle of this coroutine, if there have been any
     // steals then we do not own the stack this coroutine is on and the resumer should not
@@ -3494,7 +3562,13 @@ struct switch_awaitable {
 
     if (steals == 0) {
       // Dest will take this stack upon resumption hence, we must release it.
-      ignore_t{} = tls::stack()->release();
+
+      // If this throws (fails to allocate) then the worker must die as
+      // it cannot resume a self-stolen task without a stack and we cannot
+      // recover the submitted task.
+      []() noexcept {
+        ignore_t{} = tls::stack()->release();
+      }();
     }
 
     LF_ASSERT(tls::stack()->empty());
@@ -3524,9 +3598,7 @@ struct switch_awaitable {
   /**
    * @brief Forward to the external awaitable's await_resume().
    */
-  auto await_resume() noexcept(noexcept(std::declval<A &>().await_resume())) -> decltype(auto) {
-    return external.await_ready();
-  }
+  auto await_resume() noexcept(noexcept_await_resume<A>) -> decltype(auto) { return external.await_resume(); }
 
   A external;                            ///< The external awaitable.
   intrusive_list<submit_t *>::node self; ///< The current coroutine's handle.
@@ -3994,7 +4066,7 @@ inline constexpr impl::bind_task<tag::call> call = {};
 #include <optional>    // for optional, nullopt
 #include <type_traits> // for conditional_t
 #include <utility>     // for forward, move
-           // for eventually          // for submit_handle, subm...             // for intrusive_list              // for thread_stack, has_s...            // for async_function_object       // for quasi_awaitable           // for root_notify, frame // for manual_lifetime           // for stack, swap         // for empty            // for async_result_t, ign...                // for LF_LOG, LF_CLANG_TL...                  // for tag
+           // for eventually          // for submit_handle, subm...             // for intrusive_list              // for thread_stack, has_s...            // for async_function_object       // for quasi_awaitable           // for root_notify, frame // for manual_lifetime           // for stack, swap         // for empty            // for async_result_t, ign...                // for LF_LOG, LF_CLANG_TL...            // for scheduler                  // for tag
 
 /**
  * @file sync_wait.hpp
@@ -4011,17 +4083,6 @@ struct empty;
 } // namespace impl
 
 inline namespace core {
-
-/**
- * @brief A concept that schedulers must satisfy.
- *
- * This requires only a single method, `schedule` which accepts an `lf::submit_handle` and
- * promises to call `lf::resume()` on it.
- */
-template <typename Sch>
-concept scheduler = requires (Sch &&sch, submit_handle handle) {
-  std::forward<Sch>(sch).schedule(handle); //
-};
 
 /**
  * @brief Schedule execution of `fun` on `sch` and __block__ until the task is complete.
@@ -4307,7 +4368,7 @@ struct return_result<void, discard_t> {
 
 #endif /* A896798B_7E3B_4854_9997_89EA5AE765EB */
 
-     // for return_result      // for stack    // for byte_cast, k_u16_max         // for external_awaitable       // for return_address_for, igno...           // for LF_LOG, LF_ASSERT, LF_FO...             // for tag            // for returnable, task
+     // for return_result      // for stack    // for byte_cast, k_u16_max       // for return_address_for, igno...           // for LF_LOG, LF_ASSERT, LF_FO...       // for context_switcher             // for tag            // for returnable, task
 
 /**
  * @file promise.hpp
@@ -4456,10 +4517,10 @@ struct promise_base : frame {
   // -------------------------------------------------------------- //
 
   /**
-   * @brief Transform an external awaitable into a real awaitable.
+   * @brief Transform a context_switch awaitable into a real awaitable.
    */
-  template <external_awaitable A>
-  auto await_transform(A &&await) -> switch_awaitable<std::remove_cvref_t<A>> {
+  template <context_switcher A>
+  auto await_transform(A &&await) -> context_switch_awaitable<std::remove_cvref_t<A>> {
 
     auto *submit = std::bit_cast<submit_t *>(static_cast<frame *>(this));
 
@@ -4473,7 +4534,7 @@ struct promise_base : frame {
   /**
    * @brief Get a join awaitable.
    */
-  auto await_transform(join_type) noexcept -> join_awaitable { return {this}; }
+  auto await_transform(join_type /*unused*/) noexcept -> join_awaitable { return {this}; }
 
   // -------------------------------------------------------------- //
 
@@ -5642,9 +5703,9 @@ struct numa_context {
   auto get_underlying() noexcept -> worker_context * { return m_context; }
 
   /**
-   * @brief Submit a job to the owned worker context.
+   * @brief schedule a job to the owned worker context.
    */
-  void submit(submit_handle job) { non_null(m_context)->submit(job); }
+  void schedule(submit_handle job) { non_null(m_context)->schedule(job); }
 
   /**
    * @brief Fetch a linked-list of the submitted tasks.
@@ -5841,7 +5902,7 @@ class busy_pool : impl::move_only<busy_pool> {
   /**
    * @brief Schedule a task for execution.
    */
-  void schedule(submit_handle job) { m_worker[m_dist(m_rng)]->submit(job); }
+  void schedule(submit_handle job) { m_worker[m_dist(m_rng)]->schedule(job); }
 
   /**
    * @brief Get a view of the worker's contexts.
@@ -6428,7 +6489,7 @@ class lazy_pool {
   /**
    * @brief Schedule a job on a random worker.
    */
-  void schedule(submit_handle job) { m_worker[m_dist(m_rng)]->submit(job); }
+  void schedule(submit_handle job) { m_worker[m_dist(m_rng)]->schedule(job); }
 
   /**
    * @brief Get a view of the worker's contexts.
@@ -6505,7 +6566,7 @@ class unit_pool : impl::immovable<unit_pool> {
 
 
 /**
- * @file schedule.hpp
+ * @file scheduler.hpp
  *
  * @brief Meta header which includes all the schedulers in ``libfork/schedule``.
  *

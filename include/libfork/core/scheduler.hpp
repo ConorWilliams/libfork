@@ -20,9 +20,9 @@
 #include "libfork/core/impl/utility.hpp" // for non_null
 
 /**
- * @file interop.hpp
+ * @file scheduler.hpp
  *
- * @brief Machinery for interfacing with external workers.
+ * @brief Machinery for interfacing with scheduling coroutines.
  */
 
 namespace lf {
@@ -40,31 +40,54 @@ concept storable = std::constructible_from<std::remove_cvref_t<T>, T &&>;
 inline namespace core {
 
 /**
- * @brief Defines the interface for external awaitables.
+ * @brief A concept that schedulers must satisfy.
  *
- * An external awaitable can be awaited inside a libfork coroutine. If the external awaitable
+ * This requires only a single method, `schedule` which accepts an `lf::submit_handle` and
+ * promises to call `lf::resume()` on it.
+ */
+template <typename Sch>
+concept scheduler = requires (Sch &&sch, submit_handle handle) {
+  std::forward<Sch>(sch).schedule(handle); //
+};
+
+/**
+ * @brief Defines the interface for awaitables that may trigger a context switch.
+ *
+ * A ``context_switcher`` can be awaited inside a libfork coroutine. If the awaitable
  * is not ready then the coroutine will be suspended and a submit_handle will be passed to the
- * external awaitor's ``await_suspend()`` function. This can then be resumed by any worker as
+ * context switcher's ``await_suspend()`` function. This can then be resumed by any worker as
  * normal.
  */
 template <typename T>
-concept external_awaitable =
+concept context_switcher =
     impl::storable<T> && requires (std::remove_cvref_t<T> awaiter, submit_handle handle) {
       { awaiter.await_ready() } -> std::convertible_to<bool>;
       { awaiter.await_suspend(handle) } -> std::same_as<void>;
       { awaiter.await_resume() };
     };
 
+template <scheduler Sch>
+struct resume_on_quasi_awaitable;
+
 /**
- * @brief An external awaitable to explicitly transfer execution to another worker.
+ * @brief Create an ``lf::core::context_switcher`` to explicitly transfer execution to ``dest``.
  */
-struct [[nodiscard]] schedule_on_context {
+template <scheduler Sch>
+auto resume_on(Sch *dest) noexcept -> resume_on_quasi_awaitable<Sch> {
+  return resume_on_quasi_awaitable<Sch>{non_null(dest)};
+}
+
+/**
+ * @brief An ``lf::core::context_switcher`` that just transfers execution to a new scheduler.
+ */
+template <scheduler Sch>
+struct [[nodiscard("This should be immediately co_awaited")]] resume_on_quasi_awaitable {
  private:
-  worker_context *m_dest;
+  Sch *m_dest;
 
-  explicit schedule_on_context(worker_context *dest) noexcept : m_dest{dest} {}
+  explicit resume_on_quasi_awaitable(worker_context *dest) noexcept : m_dest{dest} {}
 
-  friend auto resume_on(worker_context *dest) noexcept -> schedule_on_context;
+  friend auto resume_on<Sch>(Sch *dest) noexcept -> resume_on_quasi_awaitable;
 
  public:
   /**
@@ -75,22 +98,18 @@ struct [[nodiscard]] schedule_on_context {
   /**
    * @brief Reschedule this coroutine onto the requested destination.
    */
-  auto await_suspend(submit_handle handle) noexcept -> void { m_dest->submit(handle); }
+  auto
+  await_suspend(submit_handle handle) noexcept(noexcept(std::declval<Sch *>()->schedule(handle))) -> void {
+    m_dest->schedule(handle);
+  }
 
   /**
    * @brief A no-op.
    */
-  auto await_resume() const noexcept -> void {}
+  static auto await_resume() noexcept -> void {}
 };
 
-static_assert(external_awaitable<schedule_on_context>);
-
-/**
- * @brief Create an external awaitable to explicitly transfer execution to ``dest``.
- */
-inline auto resume_on(worker_context *dest) noexcept -> schedule_on_context {
-  return schedule_on_context{non_null(dest)};
-}
+static_assert(context_switcher<resume_on_quasi_awaitable<worker_context>>);
 
 } // namespace core
 

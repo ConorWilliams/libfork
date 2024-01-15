@@ -156,7 +156,7 @@ class busy_pool : impl::move_only<busy_pool> {
   /**
    * @brief Schedule a task for execution.
    */
-  void schedule(submit_handle job) { m_worker[m_dist(m_rng)]->submit(job); }
+  void schedule(submit_handle job) { m_worker[m_dist(m_rng)]->schedule(job); }
 
   /**
    * @brief Get a view of the worker's contexts.

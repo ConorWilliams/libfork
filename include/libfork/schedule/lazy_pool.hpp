@@ -329,7 +329,7 @@ class lazy_pool {
   /**
    * @brief Schedule a job on a random worker.
    */
-  void schedule(submit_handle job) { m_worker[m_dist(m_rng)]->submit(job); }
+  void schedule(submit_handle job) { m_worker[m_dist(m_rng)]->schedule(job); }
 
   /**
    * @brief Get a view of the worker's contexts.

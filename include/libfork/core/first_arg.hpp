@@ -20,9 +20,9 @@
 #include "libfork/core/ext/tls.hpp"      // for context
 #include "libfork/core/impl/frame.hpp"   // for frame
 #include "libfork/core/impl/utility.hpp" // for different_from, referenceable
-#include "libfork/core/interop.hpp"
-#include "libfork/core/macro.hpp" // for LF_COMPILER_EXCEPTIONS, LF_...
-#include "libfork/core/tag.hpp"   // for tag
+#include "libfork/core/macro.hpp"        // for LF_COMPILER_EXCEPTIONS, LF_...
+#include "libfork/core/scheduler.hpp"
+#include "libfork/core/tag.hpp" // for tag
 
 /**
  * @file first_arg.hpp

@@ -20,7 +20,7 @@
 #include "libfork/schedule/impl/numa_context.hpp"
 
 /**
- * @file schedule.hpp
+ * @file scheduler.hpp
  *
  * @brief Meta header which includes all the schedulers in ``libfork/schedule``.
  *

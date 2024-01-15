@@ -138,9 +138,9 @@ struct numa_context {
   auto get_underlying() noexcept -> worker_context * { return m_context; }
 
   /**
-   * @brief Submit a job to the owned worker context.
+   * @brief schedule a job to the owned worker context.
    */
-  void submit(submit_handle job) { non_null(m_context)->submit(job); }
+  void schedule(submit_handle job) { non_null(m_context)->schedule(job); }
 
   /**
    * @brief Fetch a linked-list of the submitted tasks.

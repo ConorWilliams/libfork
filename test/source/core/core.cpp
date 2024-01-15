@@ -176,7 +176,7 @@ inline constexpr auto v_fib = [](auto fib, int &ret, int n) -> lf::task<void> {
   ret = a + b;
 };
 
-}
+} // namespace
 
 TEMPLATE_TEST_CASE("Fibonacci - void", "[core][template]", unit_pool, busy_pool, lazy_pool) {
 
@@ -218,7 +218,7 @@ inline constexpr auto v_fib_ignore = [](auto fib, int &ret, int n) -> lf::task<i
   co_return a + b;
 };
 
-}
+} // namespace
 
 TEMPLATE_TEST_CASE("Fibonacci - ignored", "[core][template]", unit_pool, busy_pool, lazy_pool) {
 

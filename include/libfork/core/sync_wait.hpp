@@ -27,6 +27,7 @@
 #include "libfork/core/impl/utility.hpp"         // for empty
 #include "libfork/core/invocable.hpp"            // for async_result_t, ign...
 #include "libfork/core/macro.hpp"                // for LF_LOG, LF_CLANG_TL...
+#include "libfork/core/scheduler.hpp"            // for scheduler
 #include "libfork/core/tag.hpp"                  // for tag
 
 /**
@@ -44,17 +45,6 @@ struct empty;
 } // namespace impl
 
 inline namespace core {
-
-/**
- * @brief A concept that schedulers must satisfy.
- *
- * This requires only a single method, `schedule` which accepts an `lf::submit_handle` and
- * promises to call `lf::resume()` on it.
- */
-template <typename Sch>
-concept scheduler = requires (Sch &&sch, submit_handle handle) {
-  std::forward<Sch>(sch).schedule(handle); //
-};
 
 /**
  * @brief Schedule execution of `fun` on `sch` and __block__ until the task is complete.

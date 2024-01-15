@@ -65,7 +65,7 @@ struct scheduler : lf::impl::immovable<scheduler> {
 
   void schedule(lf::submit_handle job) {
 
-    context->submit(job);
+    context->schedule(job);
 
     resume(context->try_pop_all());
   }

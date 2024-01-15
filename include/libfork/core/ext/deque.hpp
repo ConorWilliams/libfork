@@ -245,7 +245,7 @@ struct return_nullopt {
  *
  * Example:
  *
- * .. include:: ../../../test/source/schedule/deque.cpp
+ * .. include:: ../../../test/source/core/deque.cpp
  *    :code:
  *    :start-after: // !BEGIN-EXAMPLE
  *    :end-before: // !END-EXAMPLE
@@ -400,8 +400,8 @@ constexpr auto deque<T>::push(T const &val) -> void {
 template <dequeable T>
 template <std::invocable F>
   requires std::convertible_to<T, std::invoke_result_t<F>>
-constexpr auto deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_v<F>)
-    -> std::invoke_result_t<F> {
+constexpr auto
+deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_v<F>) -> std::invoke_result_t<F> {
 
   std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1; //
   impl::atomic_ring_buf<T> *buf = m_buf.load(relaxed);      //
