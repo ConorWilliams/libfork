@@ -22,18 +22,19 @@ Building blocks
 
 .. doxygenconcept:: lf::core::quasi_pointer
 
+.. doxygenconcept:: lf::core::co_allocable
+
 API
 ~~~
 
 .. doxygenconcept:: lf::core::async_function_object
-   
-.. doxygenconcept:: lf::core::first_arg
 
 .. doxygenconcept:: lf::core::scheduler
 
-.. doxygenconcept:: lf::core::co_allocable
+.. doxygenconcept:: lf::core::context_switcher
+   
+.. doxygenconcept:: lf::core::first_arg
 
-.. doxygenconcept:: lf::core::external_awaitable
 
 Functional
 ~~~~~~~~~~
@@ -75,7 +76,7 @@ Explicit
 
 .. doxygenfunction:: lf::core::resume_on
 
-.. doxygenstruct:: lf::core::schedule_on_context
+.. doxygenstruct:: lf::core::resume_on_quasi_awaitable
 
 Classes
 ----------------

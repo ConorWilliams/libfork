@@ -251,16 +251,41 @@ using std::unreachable;
   #endif
 #endif
 
-/**
- * @brief Compiler specific attributes libfork uses for its coroutine types.
- */
 #if defined(__clang__) && defined(__has_attribute)
-  #if __has_attribute(coro_return_type) && __has_attribute(coro_only_destroy_when_complete)
-    #define LF_CORO_ATTRIBUTES [[clang::coro_only_destroy_when_complete]] [[clang::coro_return_type]]
+  /**
+   * @brief Compiler specific attribute.
+   */
+  #if __has_attribute(coro_return_type)
+    #define LF_CORO_RETURN_TYPE [[clang::coro_return_type]]
   #else
-    #define LF_CORO_ATTRIBUTES
+    #define LF_CORO_RETURN_TYPE
   #endif
+  /**
+   * @brief Compiler specific attribute.
+   */
+  #if __has_attribute(coro_only_destroy_when_complete)
+    #define LF_CORO_ONLY_DESTROY_WHEN_COMPLETE [[clang::coro_only_destroy_when_complete]]
+  #else
+    #define LF_CORO_ONLY_DESTROY_WHEN_COMPLETE
+  #endif
+  /**
+   * @brief Compiler specific attribute.
+   */
+  #if __has_attribute(coro_lifetimebound)
+    #define LF_CORO_LIFETIMEBOUND [[clang::coro_lifetimebound]]
+  #else
+    #define LF_CORO_LIFETIMEBOUND
+  #endif
+
+  /**
+   * @brief Compiler specific attributes libfork uses for its coroutine types.
+   */
+  #define LF_CORO_ATTRIBUTES LF_CORO_RETURN_TYPE LF_CORO_ONLY_DESTROY_WHEN_COMPLETE LF_CORO_LIFETIMEBOUND
+
 #else
+  /**
+   * @brief Compiler specific attributes libfork uses for its coroutine types.
+   */
   #define LF_CORO_ATTRIBUTES
 #endif
 

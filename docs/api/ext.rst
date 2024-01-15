@@ -64,13 +64,7 @@ Components
    ext/random.rst
    ext/numa.rst
 
-Interface types
----------------
 
-
-
-Worker context
-...............
 
 
 

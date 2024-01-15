@@ -371,7 +371,7 @@ inline constexpr auto eventually_demo = [](auto) -> lf::task<> {
 
 ### Explicit scheduling
 
-Normally in libfork _where_ a task is being executed is controlled by the runtime. However, you may want to explicitly schedule a task to be resumed on a certain worker or write an awaitable that transfers execution to a different pool of workers. This is made possible through the `external_awaitable` API. Instead of writing a regular awaitable, write one that conforms to the `external_awaitable` concept, like this:
+Normally in libfork _where_ a task is being executed is controlled by the runtime. However, you may want to explicitly schedule a task to be resumed on a certain worker or write an awaitable that transfers execution to a different pool of workers. This is made possible through the `context_switcher` API. Instead of writing a regular awaitable, write one that conforms to the `context_switcher` concept, like this:
   
 ```cpp
 struct my_special_awaitable {
