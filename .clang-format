@@ -11,6 +11,7 @@ RequiresExpressionIndentation: OuterScope
 BinPackArguments : false
 BinPackParameters : false
 LambdaBodyIndentation : Signature
+PenaltyReturnTypeOnItsOwnLine : 1
 
 SpaceBeforeParens: Custom
 SpaceBeforeParensOptions:

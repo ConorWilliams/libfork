@@ -5323,8 +5323,8 @@ inline void numa_topology::numa_handle::bind() const {
   LF_ASSERT(!cpup);
 }
 
-inline auto numa_topology::split(std::size_t n, numa_strategy /* strategy */) const
-    -> std::vector<numa_handle> {
+inline auto
+numa_topology::split(std::size_t n, numa_strategy /* strategy */) const -> std::vector<numa_handle> {
   return std::vector<numa_handle>(n);
 }
 
