@@ -50,7 +50,7 @@ Functional
 Utility
 .......
 
-.. doxygentypedef:: async_result_t
+.. doxygentypedef:: invoke_result_t
 
 
 Control flow

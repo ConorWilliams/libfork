@@ -35,7 +35,7 @@ inline namespace ext {
  *
  * This thread must be the worker thread that the tasks were submitted to.
  */
-inline void resume(submit_handle ptr) noexcept {
+inline void resume(submit_handle ptr) {
   for_each_elem(ptr, [](impl::submit_t *raw) LF_STATIC_CALL {
     //
     LF_LOG("Call to resume on submitted task");
@@ -62,7 +62,7 @@ inline void resume(submit_handle ptr) noexcept {
  *
  * This thread must be a worker thread.
  */
-inline void resume(task_handle ptr) noexcept {
+inline void resume(task_handle ptr) {
 
   LF_LOG("Call to resume on stolen task");
 

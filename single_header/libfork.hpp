@@ -2726,6 +2726,8 @@ struct resume_on_quasi_awaitable;
 
 /**
  * @brief Create an ``lf::core::context_switcher`` to explicitly transfer execution to ``dest``.
+ *
+ * `dest` must be non-null.
  */
 template <scheduler Sch>
 auto resume_on(Sch *dest) noexcept -> resume_on_quasi_awaitable<Sch> {
@@ -3350,8 +3352,18 @@ concept async_invocable_to_task =
  */
 template <typename I, tag Tag, typename F, typename... Args>
   requires async_invocable_to_task<I, Tag, F, Args...>
-using unsafe_result_t =
-    typename std::invoke_result_t<F, impl::first_arg_t<I, Tag, F, Args &&...>, Args...>::type;
+struct unsafe_result {
+  using type = std::invoke_result_t<F, impl::first_arg_t<I, Tag, F, Args...>, Args...>::type;
+};
+
+/**
+ * @brief Let `F(Args...) -> task<R>` then this returns 'R'.
+ *
+ * Unsafe in the sense that it does not check that F is `async_invocable`.
+ */
+template <typename I, tag Tag, typename F, typename... Args>
+  requires async_invocable_to_task<I, Tag, F, Args...>
+using unsafe_result_t = typename unsafe_result<I, Tag, F, Args...>::type;
 
 // --------------------- //
 
@@ -3464,7 +3476,14 @@ concept forkable = invocable<F, Args...> && async_invocable<impl::discard_t, tag
  */
 template <typename F, typename... Args>
   requires invocable<F, Args...>
-using async_result_t = impl::unsafe_result_t<impl::discard_t, tag::call, F, Args...>;
+struct invoke_result : impl::unsafe_result<impl::discard_t, tag::call, F, Args...> {};
+
+/**
+ * @brief Fetch `R` when the async function `F` returns `lf::task<R>`.
+ */
+template <typename F, typename... Args>
+  requires invocable<F, Args...>
+using invoke_result_t = typename invoke_result<F, Args...>::type;
 
 } // namespace core
 
@@ -3813,7 +3832,7 @@ struct join_awaitable {
 
 #endif /* CF3E6AC4_246A_4131_BF7A_FE5CD641A19B */
 
- // for async_result_t, return_address...       // for tag      // for returnable, task
+ // for invoke_result_t, return_address...       // for tag      // for returnable, task
 
 /**
  * @file combinate.hpp
@@ -3858,14 +3877,14 @@ struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combin
    */
   template <typename... Args>
     requires async_invocable<I, Tag, F, Args...>
-  auto operator()(Args &&...args) && -> quasi_awaitable<async_result_t<F, Args...>, I, Tag> {
+  auto operator()(Args &&...args) && -> quasi_awaitable<invoke_result_t<F, Args...>, I, Tag> {
 
     task task = std::move(fun)(                                 //
         first_arg_t<I, Tag, F, Args &&...>(std::as_const(fun)), //
         std::forward<Args>(args)...                             //
     );
 
-    using R = async_result_t<F, Args...>;
+    using R = invoke_result_t<F, Args...>;
     using P = promise<R, I, Tag>;
 
     auto *prom = static_cast<P *>(task.prom);
@@ -4070,7 +4089,7 @@ inline constexpr impl::bind_task<tag::call> call = {};
 #include <optional>    // for optional, nullopt
 #include <type_traits> // for conditional_t
 #include <utility>     // for forward, move
-           // for eventually          // for submit_handle, subm...             // for intrusive_list              // for thread_stack, has_s...            // for async_function_object       // for quasi_awaitable           // for root_notify, frame // for manual_lifetime           // for stack, swap         // for empty            // for async_result_t, ign...                // for LF_LOG, LF_CLANG_TL...            // for scheduler                  // for tag
+           // for eventually          // for submit_handle, subm...             // for intrusive_list              // for thread_stack, has_s...            // for async_function_object       // for quasi_awaitable           // for root_notify, frame // for manual_lifetime           // for stack, swap         // for empty            // for invoke_result_t, ign...                // for LF_LOG, LF_CLANG_TL...            // for scheduler                  // for tag
 
 /**
  * @file sync_wait.hpp
@@ -4101,9 +4120,9 @@ inline namespace core {
  */
 template <scheduler Sch, async_function_object F, class... Args>
   requires rootable<F, Args...>
-LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
+LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> invoke_result_t<F, Args...> {
 
-  using R = async_result_t<F, Args...>;
+  using R = invoke_result_t<F, Args...>;
   constexpr bool is_void = std::is_void_v<R>;
 
   impl::root_notify notifier;
@@ -4206,7 +4225,7 @@ inline namespace ext {
  *
  * This thread must be the worker thread that the tasks were submitted to.
  */
-inline void resume(submit_handle ptr) noexcept {
+inline void resume(submit_handle ptr) {
   for_each_elem(ptr, [](impl::submit_t *raw) LF_STATIC_CALL {
     //
     LF_LOG("Call to resume on submitted task");
@@ -4233,7 +4252,7 @@ inline void resume(submit_handle ptr) noexcept {
  *
  * This thread must be a worker thread.
  */
-inline void resume(task_handle ptr) noexcept {
+inline void resume(task_handle ptr) {
 
   LF_LOG("Call to resume on stolen task");
 

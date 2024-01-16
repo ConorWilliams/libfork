@@ -375,19 +375,15 @@ Normally in libfork _where_ a task is being executed is controlled by the runtim
   
 ```cpp
 struct my_special_awaitable {
- 
-  auto await_ready() /* [const] [noexcept] */ -> bool;
- 
-  auto await_suspend(lf::submit_handle handle) noexcept -> void;
- 
-  auto await_resume() /* [const] [noexcept] */ -> /* [T] */;
-
+  auto await_ready() -> bool;
+  auto await_suspend(lf::submit_handle handle)  -> void;
+  auto await_resume()  -> /* [T] */;
 };
 ```
 
 This can be `co_await`ed inside a libfork task, if `await_ready` returns `false` then the task will be suspended and `await_suspend` will be called with a handle to the suspended task, this can be resumed by any worker you like.
 
-This is used by libfork's `resume_on(worker_context *)` to enable explicit scheduling.
+This is used by libfork's `template<scheduler T> auto resume_on(T *)` to enable explicit scheduling.
 
 ### Contexts and schedulers
 

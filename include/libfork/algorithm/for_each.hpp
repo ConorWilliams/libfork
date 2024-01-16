@@ -120,11 +120,10 @@
 //             typename Proj = std::identity,
 //             indirectly_unary_invocable<std::projected<std::ranges::iterator_t<Range>, Proj>> Fun>
 //     requires std::ranges::sized_range<Range>
-//   LF_STATIC_CALL auto operator()(auto for_each,
-//                                  Range &&range,
-//                                  std::ranges::range_difference_t<Range> n,
-//                                  Fun fun,
-//                                  Proj proj = {}) LF_STATIC_CONST->lf::task<> {
+//   LF_STATIC_CALL auto
+//   operator()(auto for_each, Range &&range, std::ranges::range_difference_t<Range> n, Fun fun, Proj proj =
+//   {})
+//       LF_STATIC_CONST->lf::task<> {
 
 //     LF_ASSERT(n > 0);
 

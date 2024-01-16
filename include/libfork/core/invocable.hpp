@@ -102,8 +102,18 @@ concept async_invocable_to_task =
  */
 template <typename I, tag Tag, typename F, typename... Args>
   requires async_invocable_to_task<I, Tag, F, Args...>
-using unsafe_result_t =
-    typename std::invoke_result_t<F, impl::first_arg_t<I, Tag, F, Args &&...>, Args...>::type;
+struct unsafe_result {
+  using type = std::invoke_result_t<F, impl::first_arg_t<I, Tag, F, Args...>, Args...>::type;
+};
+
+/**
+ * @brief Let `F(Args...) -> task<R>` then this returns 'R'.
+ *
+ * Unsafe in the sense that it does not check that F is `async_invocable`.
+ */
+template <typename I, tag Tag, typename F, typename... Args>
+  requires async_invocable_to_task<I, Tag, F, Args...>
+using unsafe_result_t = typename unsafe_result<I, Tag, F, Args...>::type;
 
 // --------------------- //
 
@@ -216,7 +226,14 @@ concept forkable = invocable<F, Args...> && async_invocable<impl::discard_t, tag
  */
 template <typename F, typename... Args>
   requires invocable<F, Args...>
-using async_result_t = impl::unsafe_result_t<impl::discard_t, tag::call, F, Args...>;
+struct invoke_result : impl::unsafe_result<impl::discard_t, tag::call, F, Args...> {};
+
+/**
+ * @brief Fetch `R` when the async function `F` returns `lf::task<R>`.
+ */
+template <typename F, typename... Args>
+  requires invocable<F, Args...>
+using invoke_result_t = typename invoke_result<F, Args...>::type;
 
 } // namespace core
 

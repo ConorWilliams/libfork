@@ -14,7 +14,7 @@
 
 #include "libfork/core/first_arg.hpp" // for quasi_pointer, async_function_...
 #include "libfork/core/impl/awaitables.hpp"
-#include "libfork/core/invocable.hpp" // for async_result_t, return_address...
+#include "libfork/core/invocable.hpp" // for invoke_result_t, return_address...
 #include "libfork/core/tag.hpp"       // for tag
 #include "libfork/core/task.hpp"      // for returnable, task
 
@@ -61,14 +61,14 @@ struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combin
    */
   template <typename... Args>
     requires async_invocable<I, Tag, F, Args...>
-  auto operator()(Args &&...args) && -> quasi_awaitable<async_result_t<F, Args...>, I, Tag> {
+  auto operator()(Args &&...args) && -> quasi_awaitable<invoke_result_t<F, Args...>, I, Tag> {
 
     task task = std::move(fun)(                                 //
         first_arg_t<I, Tag, F, Args &&...>(std::as_const(fun)), //
         std::forward<Args>(args)...                             //
     );
 
-    using R = async_result_t<F, Args...>;
+    using R = invoke_result_t<F, Args...>;
     using P = promise<R, I, Tag>;
 
     auto *prom = static_cast<P *>(task.prom);

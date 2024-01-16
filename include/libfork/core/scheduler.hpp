@@ -71,6 +71,8 @@ struct resume_on_quasi_awaitable;
 
 /**
  * @brief Create an ``lf::core::context_switcher`` to explicitly transfer execution to ``dest``.
+ *
+ * `dest` must be non-null.
  */
 template <scheduler Sch>
 auto resume_on(Sch *dest) noexcept -> resume_on_quasi_awaitable<Sch> {

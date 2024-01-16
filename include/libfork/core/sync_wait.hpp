@@ -25,7 +25,7 @@
 #include "libfork/core/impl/manual_lifetime.hpp" // for manual_lifetime
 #include "libfork/core/impl/stack.hpp"           // for stack, swap
 #include "libfork/core/impl/utility.hpp"         // for empty
-#include "libfork/core/invocable.hpp"            // for async_result_t, ign...
+#include "libfork/core/invocable.hpp"            // for invoke_result_t, ign...
 #include "libfork/core/macro.hpp"                // for LF_LOG, LF_CLANG_TL...
 #include "libfork/core/scheduler.hpp"            // for scheduler
 #include "libfork/core/tag.hpp"                  // for tag
@@ -59,9 +59,9 @@ inline namespace core {
  */
 template <scheduler Sch, async_function_object F, class... Args>
   requires rootable<F, Args...>
-LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
+LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> invoke_result_t<F, Args...> {
 
-  using R = async_result_t<F, Args...>;
+  using R = invoke_result_t<F, Args...>;
   constexpr bool is_void = std::is_void_v<R>;
 
   impl::root_notify notifier;

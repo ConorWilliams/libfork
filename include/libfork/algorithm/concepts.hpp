@@ -12,6 +12,7 @@
 // #include <concepts>
 // #include <functional>
 // #include <iterator>
+// #include <libfork/core/invocable.hpp>
 // #include <type_traits>
 
 // #include "libfork/core.hpp"
@@ -26,38 +27,57 @@
 
 // // ------------------------------------ invoke_result_t ------------------------------------ //
 
-// namespace impl::detail {
+// namespace detail {
+
+// /**
+//  * @brief Nicer error messages.
+//  */
+// template <bool NormalInvocable, bool AsyncInvocable>
+// concept exclusive_invocable = (NormalInvocable || AsyncInvocable) && !(NormalInvocable && AsyncInvocable);
+
+// } // namespace detail
+
+// /**
+//  * @brief Test if "F" is async invocable __xor__ normally invocable with ``Args...``.
+//  */
+// template <typename F, typename... Args>
+// concept either_invocable = detail::exclusive_invocable<std::invocable<F, Args...>, lf::invocable<F,
+// Args...>>;
+
+// namespace detail {
 
 // template <typename F, typename... Args>
-// struct task_result : std::invoke_result<F, Args...> {};
+// struct either_invocable_result;
 
-// template <async_fn F, typename... Args>
-// struct task_result<F, Args...> {
-//   using type = value_of<std::invoke_result_t<F, Args...>>;
-// };
+// template <typename F, typename... Args>
+//   requires invocable<F, Args...>
+// struct either_invocable_result<F, Args...> : async_result<F, Args...> {};
 
-// } // namespace impl::detail
+// template <typename F, typename... Args>
+//   requires std::invocable<F, Args...>
+// struct either_invocable_result<F, Args...> : std::invoke_result<F, Args...> {};
+
+// } // namespace detail
 
 // /**
 //  * @brief The result of invoking a regular-or-async function.
 //  *
 //  * If F is a regular function then this is the same as `std::invoke_result<F, Args...>`. Otherwise,
-//  * if F is an async function then this is the same as the result of `co_await`ing a value of type
-//  * `std::invoke_result_t<F, Args...>` in an `lf::task`.
+//  * if F is an async function then this is the same as `lf::core::invoke_result_t<F, Args...>`.
 //  */
 // template <typename F, typename... Args>
-//   requires std::invocable<F, Args...>
-// using invoke_result_t = typename impl::detail::task_result<F, Args...>::type;
+//   requires either_invocable<F, Args...>
+// using either_result_t = detail::either_invocable_result<F, Args...>::type;
 
 // // ------------------------------------ indirectly_result_t ------------------------------------ //
 
-// /**
-//  * @brief A version of `std::indirect_result_t` that uses `lf::invoke_result_t` instead of the `std`
-//  version.
-//  */
-// template <class F, class... Is>
-//   requires (std::indirectly_readable<Is> && ...) && std::invocable<F, std::iter_reference_t<Is>...>
-// using indirect_result_t = invoke_result_t<F, std::iter_reference_t<Is>...>;
+// // /**
+// //  * @brief A version of `std::indirect_result_t` that uses `lf::invoke_result_t` instead of the `std`
+// //  version.
+// //  */
+// // template <class F, class... Is>
+// //   requires (std::indirectly_readable<Is> && ...) && std::invocable<F, std::iter_reference_t<Is>...>
+// // using indirect_result_t = invoke_result_t<F, std::iter_reference_t<Is>...>;
 
 // // ------------------------------- indirectly_unary_invocable ------------------------------- //
 
@@ -87,9 +107,7 @@
 // } // namespace detail
 
 // /**
-//  * @brief A version of `std::indirectly_unary_invocable` that uses `lf::invoke_result_t` instead of the
-//  `std`
-//  * version.
+//  * @brief ``std::indirectly_unary_invocable` that uses `lf::invoke_result_t` instead of the `std` version.
 //  *
 //  * This uses the relaxed version from
 //  * [P2997R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2997r0.html#ref-LWG3859)
