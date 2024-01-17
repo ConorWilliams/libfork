@@ -57,12 +57,6 @@ inline constexpr impl::join_type join = {};
 
 namespace impl {
 
-#if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
-  #define LF_DEPRECATE [[deprecated("Use operator[] instead of operator()")]]
-#else
-  #define LF_DEPRECATE
-#endif
-
 /**
  * @brief An invocable (and subscriptable) wrapper that binds a return address to an asynchronous function.
  */
@@ -74,7 +68,7 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <quasi_pointer I, async_function_object F>
-  LF_DEPRECATE [[nodiscard]] LF_STATIC_CALL auto operator()(I ret, F fun) LF_STATIC_CONST {
+  LF_DEPRECATE_CALL [[nodiscard]] LF_STATIC_CALL auto operator()(I ret, F fun) LF_STATIC_CONST {
     return combinate<Tag>(std::move(ret), std::move(fun));
   }
 
@@ -84,7 +78,7 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <async_function_object F>
-  LF_DEPRECATE [[nodiscard]] LF_STATIC_CALL auto operator()(F fun) LF_STATIC_CONST {
+  LF_DEPRECATE_CALL [[nodiscard]] LF_STATIC_CALL auto operator()(F fun) LF_STATIC_CONST {
     return combinate<Tag>(discard_t{}, std::move(fun));
   }
 
@@ -110,8 +104,6 @@ struct bind_task {
   }
 #endif
 };
-
-#undef LF_DEPRECATE
 
 } // namespace impl
 

@@ -31,6 +31,7 @@
 #include "libfork/core/impl/stack.hpp"      // for stack
 #include "libfork/core/impl/utility.hpp"    // for byte_cast, k_u16_max
 #include "libfork/core/invocable.hpp"       // for return_address_for, igno...
+#include "libfork/core/just.hpp"            // for just_awaitable
 #include "libfork/core/macro.hpp"           // for LF_LOG, LF_ASSERT, LF_FO...
 #include "libfork/core/scheduler.hpp"       // for context_switcher
 #include "libfork/core/tag.hpp"             // for tag
@@ -209,7 +210,7 @@ struct promise_base : frame {
    */
   template <returnable R2, return_address_for<R2> I2, tag Tg>
     requires (Tg == tag::call || Tg == tag::fork)
-  auto await_transform(quasi_awaitable<R2, I2, Tg> awaitable) noexcept {
+  auto await_transform(quasi_awaitable<R2, I2, Tg> &&awaitable) noexcept {
 
     awaitable.prom->set_parent(this);
 
@@ -220,6 +221,15 @@ struct promise_base : frame {
     if constexpr (Tg == tag::fork) {
       return fork_awaitable{{}, awaitable.prom, this};
     }
+  }
+
+  /**
+   * @brief Pass through a just awaitable.
+   */
+  template <returnable R2>
+  auto await_transform(just_awaitable<R2> &&awaitable) noexcept -> just_awaitable<R2> && {
+    awaitable.frame()->set_parent(this);
+    return std::move(awaitable);
   }
 };
 

@@ -28,7 +28,6 @@
 Libfork is primarily an abstraction for fully-portable, strict, [fork-join parallelism](https://en.wikipedia.org/wiki/Fork%E2%80%93join_model). This is made possible without the use of any macros/inline assembly using C++20's coroutines. Ultra-fine grained parallelism (the ability to spawn tasks with very low overhead) is enabled by an innovative implementation of an (almost) non-allocating [cactus-stack](https://en.wikipedia.org/wiki/Parent_pointer_tree) utilizing _segmented stacks_. Libfork presents a cross-platform API that decouples scheduling tasks (a customization point) from writing tasks. Additionally, libfork provides performant NUMA-aware work-stealing schedulers for general use. If you'd like to learn more check out [the tour of libfork](#a-tour-of-libfork) then try it on [compiler explorer](https://godbolt.org/z/nzTPKqrrq) or, just grok the __TLDR__:
 
 ```cpp
-
 #include "libfork/core.hpp"
 
 inline constexpr auto fib = [](auto fib, int n) -> lf::task<int> { 
@@ -145,6 +144,7 @@ This section provides some background and highlights of the `core` API, for deta
 - [Restrictions on references](#restrictions-on-references)
 - [Delaying construction with `lf::eventually<T>`](#delaying-construction)
 - [Exception in libfork](#exceptions)
+- [Immediate invocation](#immediate-invocation)
 - [Explicit scheduling](#explicit-scheduling)
 - [Contexts and schedulers](#contexts-and-schedulers)
 
@@ -268,26 +268,6 @@ This would dangle if `process_string` accepted arguments by reference. Specifica
 
 __Note:__ You can still dangle by ending the lifetime of an l-value referenced object __after__ a fork.
 
-<!-- ### Directly invoking async functions
-
-Sometimes you may want to invoke an async function directly instead of having to bind a result with `lf::call`. For example if you are using one of the parallel algorithms:
-
-```cpp
-inline constexpr lf::async modify_vec = [](auto, std::vector<int> & numbers) -> lf::task<int> { 
-  co_await lf::for_each(numbers, modify)
-};
-```
-
-Where `modify` is a regular or async function that modifies a single element of the vector such as:
-
-```cpp
-inline constexpr lf::async modify = [](auto, int &n) -> lf::task<void> { 
-  // ... Some expensive modifying operation on n ...
-};
-```
-
-If `lf::for_each` returned a value then so would the `co_await` expression. Invoking and awaiting an async function directly has the same semantics as `lf::call` however, it will automatically bind the return value to a temporary variable. -->
-
 ### Delaying construction
 
 Some types are expensive or impossible to default construct, for these instances libfork provides the `lf::eventually` template type. `lf::eventually` functions like a `std::optional` that is only constructed once and supports references:
@@ -386,6 +366,24 @@ inline constexpr auto exception_stash_demo = [](auto) -> lf::task<> {
     // Handle result.
   }                            
 };
+```
+
+### Immediate invocation
+
+Sometimes you may want to just call an async function without a fork join scope, for example:
+
+```cpp
+int result;
+
+co_await lf::fork[&result, some_function](/* args.. */);
+
+co_await lf::join; // Still needed in-case of exceptions
+```
+
+In this case you could simplify the above with `lf::just`:
+
+```cpp
+int result = co_await lf::just[some_function](/* args.. */);
 ```
 
 ### Explicit scheduling
