@@ -37,6 +37,9 @@ namespace impl {
  */
 template <returnable R>
 struct just_awaitable_base {
+  /**
+   * @brief The return variable.
+   */
   try_eventually<R> ret;
 };
 

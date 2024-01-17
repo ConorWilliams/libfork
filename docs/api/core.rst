@@ -59,6 +59,7 @@ Blocking
 
 .. doxygenfunction:: lf::core::sync_wait
 
+
 Fork-join
 ~~~~~~~~~~~~
 
@@ -68,6 +69,11 @@ Fork-join
 
 .. doxygenvariable:: lf::core::join
 
+
+Invocation
+~~~~~~~~~~
+
+.. doxygenvariable:: lf::core::just
 
 Explicit
 ~~~~~~~~
