@@ -25,11 +25,10 @@
 #include "libfork/core/defer.hpp"                 // for LF_DEFER
 #include "libfork/core/ext/context.hpp"           // for worker_context
 #include "libfork/core/ext/handles.hpp"           // for submit_handle, tas...
-#include "libfork/core/ext/list.hpp"              // for for_each_elem, intru...
 #include "libfork/core/ext/resume.hpp"            // for resume
 #include "libfork/core/impl/utility.hpp"          // for k_cache_line
 #include "libfork/core/macro.hpp"                 // for LF_ASSERT, LF_LOG
-#include "libfork/core/sync_wait.hpp"             // for scheduler
+#include "libfork/core/scheduler.hpp"             // for scheduler
 #include "libfork/schedule/busy_pool.hpp"         // for busy_vars
 #include "libfork/schedule/ext/event_count.hpp"   // for event_count
 #include "libfork/schedule/ext/numa.hpp"          // for numa_strategy, num...

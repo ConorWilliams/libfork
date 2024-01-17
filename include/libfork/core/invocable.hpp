@@ -13,12 +13,11 @@
 #include <iterator>    // for indirectly_writable
 #include <type_traits> // for true_type, type_identity, inv...
 
-#include "libfork/core/eventually.hpp" // for eventually
-#include "libfork/core/exception.hpp"
-#include "libfork/core/first_arg.hpp" // for first_arg_t, quasi_pointer
-#include "libfork/core/impl/utility.hpp"
-#include "libfork/core/tag.hpp"  // for tag
-#include "libfork/core/task.hpp" // for task, returnable
+#include "libfork/core/eventually.hpp" // for basic_eventually
+#include "libfork/core/exception.hpp"  // for stash_exception_in_return
+#include "libfork/core/first_arg.hpp"  // for first_arg_t, quasi_pointer
+#include "libfork/core/tag.hpp"        // for tag
+#include "libfork/core/task.hpp"       // for task, returnable
 
 /**
  * @file invocable.hpp

@@ -19,7 +19,6 @@
 #include "libfork/core/ext/context.hpp"    // for worker_context, nullary_f...
 #include "libfork/core/ext/deque.hpp"      // for err
 #include "libfork/core/ext/handles.hpp"    // for submit_handle, task_handle
-#include "libfork/core/ext/list.hpp"       // for intruded_list
 #include "libfork/core/ext/tls.hpp"        // for finalize, worker_init
 #include "libfork/core/impl/utility.hpp"   // for non_null, map
 #include "libfork/core/macro.hpp"          // for LF_ASSERT, LF_LOG, LF_CAT...

@@ -9,23 +9,18 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <atomic> // for atomic_thread_fence, mem...
-#include <bit>    // for bit_cast
-#include <concepts>
-#include <coroutine> // for coroutine_handle, noop_c...
-#include <cstddef>   // for size_t
-#include <exception> // for current_exception
-#include <memory>    // for destroy, uninitialized_d...
-#include <new>
-#include <span>        // for span
+#include <atomic>      // for atomic_thread_fence, mem...
+#include <bit>         // for bit_cast
+#include <coroutine>   // for coroutine_handle, noop_c...
+#include <cstddef>     // for size_t
 #include <type_traits> // for false_type, remove_cvref_t
 #include <utility>     // for forward
 
-#include "libfork/core/co_alloc.hpp"     // for co_allocable, co_new_t
-#include "libfork/core/control_flow.hpp" // for join_type
-#include "libfork/core/exception.hpp"
+#include "libfork/core/co_alloc.hpp"        // for co_allocable, co_new_t
+#include "libfork/core/control_flow.hpp"    // for join_type
+#include "libfork/core/exception.hpp"       // for stash_exception_in_return
 #include "libfork/core/ext/context.hpp"     // for full_context
-#include "libfork/core/ext/handles.hpp"     // for impl::submit_t, task_handle
+#include "libfork/core/ext/handles.hpp"     // for submit_t, task_handle
 #include "libfork/core/ext/list.hpp"        // for intrusive_list
 #include "libfork/core/ext/tls.hpp"         // for stack, context
 #include "libfork/core/first_arg.hpp"       // for async_function_object

@@ -113,7 +113,6 @@ static_assert(!std::is_same_v<new_empty<>, new_empty<>>);
 template <bool Cond, typename T, auto Anon = [] {}>
 using else_empty_t = std::conditional_t<Cond, T, new_empty<Anon>>;
 
-
 // -------------------------------- //
 
 /**

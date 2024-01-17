@@ -9,15 +9,15 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts> // for constructible_from
-#include <exception>
-#include <memory>
-#include <type_traits> // for remove_reference_t
+#include <concepts>    // for constructible_from
+#include <exception>   // for exception_ptr, current_exce...
+#include <memory>      // for destroy_at, construct_at
+#include <type_traits> // for add_lvalue_reference_t, add...
 #include <utility>     // for addressof, forward
 
-#include "libfork/core/impl/utility.hpp" // for immovable, non_void, safe_r...
-#include "libfork/core/macro.hpp"        // for LF_ASSERT
-#include "libfork/core/task.hpp"
+#include "libfork/core/impl/utility.hpp" // for new_empty, else_empty_t
+#include "libfork/core/macro.hpp"        // for LF_ASSERT, unreachable
+#include "libfork/core/task.hpp"         // for returnable
 
 /**
  * @file eventually.hpp

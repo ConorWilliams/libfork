@@ -12,8 +12,8 @@
 #include <concepts>    // for default_initializable
 #include <cstddef>     // for size_t
 #include <memory>      // for destroy
-#include <span>        // for dynamic_extent, span
-#include <type_traits> // for type_identity, conditional_t
+#include <span>        // for span
+#include <type_traits> // for integral_constant, type_ide...
 #include <utility>
 
 #include "libfork/core/ext/tls.hpp"      // for stack

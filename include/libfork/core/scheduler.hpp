@@ -9,13 +9,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>    // for constructible_from, convert...
+#include <concepts>    // for constructible_from, converti...
 #include <type_traits> // for remove_cvref_t
-#include <utility>
+#include <utility>     // for declval, forward
 
-#include "libfork/core/ext/context.hpp" // for worker_context, full_context
-#include "libfork/core/ext/handles.hpp" // for submit_handle
-#include "libfork/core/ext/list.hpp"
+#include "libfork/core/ext/context.hpp"  // for worker_context
+#include "libfork/core/ext/handles.hpp"  // for submit_handle
 #include "libfork/core/ext/tls.hpp"      // for context
 #include "libfork/core/impl/utility.hpp" // for non_null
 

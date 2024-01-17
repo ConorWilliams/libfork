@@ -65,8 +65,8 @@
 #include <concepts>    // for default_initializable
 #include <cstddef>     // for size_t
 #include <memory>      // for destroy
-#include <span>        // for dynamic_extent, span
-#include <type_traits> // for type_identity, conditional_t
+#include <span>        // for span
+#include <type_traits> // for integral_constant, type_ide...
 #include <utility>
 
 #ifndef CF97E524_27A6_4CD9_8967_39F1B1BE97B6
@@ -580,7 +580,6 @@ static_assert(!std::is_same_v<new_empty<>, new_empty<>>);
  */
 template <bool Cond, typename T, auto Anon = [] {}>
 using else_empty_t = std::conditional_t<Cond, T, new_empty<Anon>>;
-
 
 // -------------------------------- //
 
@@ -2652,129 +2651,11 @@ inline auto co_new(std::size_t count) -> impl::co_new_t<T> {
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts> // for invocable, constructible_from
-#include <coroutine>
+#include <concepts>    // for invocable, constructible_from
 #include <functional>  // for invoke
 #include <type_traits> // for invoke_result_t
 #include <utility>     // for forward
- // for worker_context, full_context      // for context   // for frame // for different_from, referenceable        // for LF_COMPILER_EXCEPTIONS, LF_...
-#ifndef BDE6CBCC_7576_4082_AAC5_2A207FEA9293
-#define BDE6CBCC_7576_4082_AAC5_2A207FEA9293
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>    // for constructible_from, convert...
-#include <type_traits> // for remove_cvref_t
-#include <utility>
- // for worker_context, full_context // for submit_handle      // for context // for non_null
-
-/**
- * @file scheduler.hpp
- *
- * @brief Machinery for interfacing with scheduling coroutines.
- */
-
-namespace lf {
-
-namespace impl {
-
-/**
- * @brief Verify a forwarding reference is storable as a value type.
- */
-template <typename T>
-concept storable = std::constructible_from<std::remove_cvref_t<T>, T &&>;
-
-} // namespace impl
-
-inline namespace core {
-
-/**
- * @brief A concept that schedulers must satisfy.
- *
- * This requires only a single method, `schedule` which accepts an `lf::submit_handle` and
- * promises to call `lf::resume()` on it.
- */
-template <typename Sch>
-concept scheduler = requires (Sch &&sch, submit_handle handle) {
-  std::forward<Sch>(sch).schedule(handle); //
-};
-
-/**
- * @brief Defines the interface for awaitables that may trigger a context switch.
- *
- * A ``context_switcher`` can be awaited inside a libfork coroutine. If the awaitable
- * is not ready then the coroutine will be suspended and a submit_handle will be passed to the
- * context switcher's ``await_suspend()`` function. This can then be resumed by any worker as
- * normal.
- */
-template <typename T>
-concept context_switcher =
-    impl::storable<T> && requires (std::remove_cvref_t<T> awaiter, submit_handle handle) {
-      { awaiter.await_ready() } -> std::convertible_to<bool>;
-      { awaiter.await_suspend(handle) } -> std::same_as<void>;
-      { awaiter.await_resume() };
-    };
-
-template <scheduler Sch>
-struct resume_on_quasi_awaitable;
-
-/**
- * @brief Create an ``lf::core::context_switcher`` to explicitly transfer execution to ``dest``.
- *
- * `dest` must be non-null.
- */
-template <scheduler Sch>
-auto resume_on(Sch *dest) noexcept -> resume_on_quasi_awaitable<Sch> {
-  return resume_on_quasi_awaitable<Sch>{non_null(dest)};
-}
-
-/**
- * @brief An ``lf::core::context_switcher`` that just transfers execution to a new scheduler.
- */
-template <scheduler Sch>
-struct [[nodiscard("This should be immediately co_awaited")]] resume_on_quasi_awaitable {
- private:
-  Sch *m_dest;
-
-  explicit resume_on_quasi_awaitable(worker_context *dest) noexcept : m_dest{dest} {}
-
-  friend auto resume_on<Sch>(Sch *dest) noexcept -> resume_on_quasi_awaitable;
-
- public:
-  /**
-   * @brief Don't suspend if on correct context.
-   */
-  auto await_ready() const noexcept { return impl::tls::context() == m_dest; }
-
-  /**
-   * @brief Reschedule this coroutine onto the requested destination.
-   */
-  auto
-  await_suspend(submit_handle handle) noexcept(noexcept(std::declval<Sch *>()->schedule(handle))) -> void {
-    m_dest->schedule(handle);
-  }
-
-  /**
-   * @brief A no-op.
-   */
-  static auto await_resume() noexcept -> void {}
-};
-
-static_assert(context_switcher<resume_on_quasi_awaitable<worker_context>>);
-
-} // namespace core
-
-} // namespace lf
-
-#endif /* BDE6CBCC_7576_4082_AAC5_2A207FEA9293 */
-
-
+  // for worker_context, full_context      // for context   // for frame // for different_from, referenceable        // for LF_COMPILER_EXCEPTIONS, LF_...
 #ifndef A75DC3F0_D0C3_4669_A901_0B22556C873C
 #define A75DC3F0_D0C3_4669_A901_0B22556C873C
 
@@ -2813,7 +2694,7 @@ enum class tag {
 
 #endif /* A75DC3F0_D0C3_4669_A901_0B22556C873C */
 
- // for tag
+          // for tag
 
 /**
  * @file first_arg.hpp
@@ -3000,29 +2881,9 @@ class first_arg_t {
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <type_traits>
-#include <utility> // for as_const, forward
+#include <concepts> // for same_as
+#include <utility>  // for as_const, forward
  // for quasi_pointer, async_function_...
-#ifndef CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
-#define CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <atomic>    // for memory_order_acquire, atomi...
-#include <bit>       // for bit_cast
-#include <coroutine> // for coroutine_handle, noop_coro...
-#include <cstddef>   // for size_t
-#include <cstdint>   // for uint16_t
-#include <memory>    // for uninitialized_default_const...
-#include <span>      // for span
-#include <utility>   // for declval
-     // for co_allocable, co_new_t, sta...  // for full_context  // for impl::submit_t, task_handle     // for unwrap, intrusive_list      // for stack, context   // for frame   // for stack // for k_u16_max
 #ifndef A5349E86_5BAA_48EF_94E9_F0EBF630DE04
 #define A5349E86_5BAA_48EF_94E9_F0EBF630DE04
 
@@ -3049,12 +2910,12 @@ class first_arg_t {
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts> // for constructible_from
-#include <exception>
-#include <memory>
-#include <type_traits> // for remove_reference_t
+#include <concepts>    // for constructible_from
+#include <exception>   // for exception_ptr, current_exce...
+#include <memory>      // for destroy_at, construct_at
+#include <type_traits> // for add_lvalue_reference_t, add...
 #include <utility>     // for addressof, forward
- // for immovable, non_void, safe_r...        // for LF_ASSERT
+ // for new_empty, else_empty_t        // for LF_ASSERT, unreachable
 #ifndef AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
 #define AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
 
@@ -3121,7 +2982,7 @@ struct LF_CORO_ATTRIBUTES task : std::type_identity<T> {
 
 #endif /* AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172 */
 
-
+         // for returnable
 
 /**
  * @file eventually.hpp
@@ -3531,7 +3392,7 @@ using try_eventually = basic_eventually<T, true>;
 
 #endif /* B7972761_4CBF_4B86_B195_F754295372BF */
 
- // for eventually
+ // for basic_eventually
 #ifndef A090B92E_A266_42C9_BFB0_10681B6BD425
 #define A090B92E_A266_42C9_BFB0_10681B6BD425
 
@@ -3568,7 +3429,7 @@ concept stash_exception_in_return = quasi_pointer<I> && requires (I ptr) {
 
 #endif /* A090B92E_A266_42C9_BFB0_10681B6BD425 */
 
- // for first_arg_t, quasi_pointer  // for tag // for task, returnable
+  // for stash_exception_in_return  // for first_arg_t, quasi_pointer        // for tag       // for task, returnable
 
 /**
  * @file invocable.hpp
@@ -3801,7 +3662,609 @@ using invoke_result_t = typename invoke_result<F, Args...>::type;
 
 #endif /* A5349E86_5BAA_48EF_94E9_F0EBF630DE04 */
 
-    // for ignore_t        // for LF_ASSERT, LF_LOG, LF_ASSER...    // for context_switcher
+ // for invoke_result_t, return_addres...       // for tag      // for returnable, task
+
+/**
+ * @file combinate.hpp
+ *
+ * @brief Utility for building a coroutine's first argument and invoking it.
+ */
+
+namespace lf::impl {
+
+// ---------------------------- //
+
+template <returnable R, return_address_for<R> I, tag Tag>
+struct promise;
+
+// -------------------------------------------------------- //
+
+/**
+ * @brief Awaitable in the context of an `lf::task` coroutine.
+ *
+ * This will be transformed by an `await_transform` and trigger a fork or call.
+ */
+template <returnable R, return_address_for<R> I, tag Tag>
+struct [[nodiscard("A quasi_awaitable MUST be immediately co_awaited!")]] quasi_awaitable {
+  promise<R, I, Tag> *prom; ///< The parent/semaphore needs to be set!
+};
+
+// ---------------------------- //
+
+/**
+ * @brief Call an async function with a synthesized first argument.
+ *
+ * The first argument will contain a copy of the function hence, this is a fixed-point combinator.
+ */
+template <quasi_pointer I, tag Tag, async_function_object F>
+struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combinate {
+
+  [[no_unique_address]] I ret; ///< The return address.
+  [[no_unique_address]] F fun; ///< The asynchronous function.
+
+  /**
+   * @brief Invoke the coroutine, set's the return pointer.
+   */
+  template <typename... Args>
+    requires async_invocable<I, Tag, F, Args...>
+  auto operator()(Args &&...args) && -> quasi_awaitable<invoke_result_t<F, Args...>, I, Tag> {
+
+    task task = std::move(fun)(                                 //
+        first_arg_t<I, Tag, F, Args &&...>(std::as_const(fun)), //
+        std::forward<Args>(args)...                             //
+    );
+
+    using R = invoke_result_t<F, Args...>;
+    using P = promise<R, I, Tag>;
+
+    auto *prom = static_cast<P *>(task.prom);
+
+    if constexpr (!std::same_as<I, discard_t>) {
+      prom->set_return(std::move(ret));
+    }
+
+    return {prom};
+  }
+};
+
+// ---------------------------- //
+
+/**
+ * @brief Build a combinator for `ret` and `fun`.
+ */
+template <tag Tag, quasi_pointer I, async_function_object F>
+  requires std::is_rvalue_reference_v<I &&>
+auto combinate(I &&ret, F fun) -> y_combinate<I, Tag, F> {
+  return {std::move(ret), std::move(fun)};
+}
+
+/**
+ * @brief Build a combinator for `ret` and `fun`.
+ *
+ * This specialization prevents each layer wrapping the function in another `first_arg_t`.
+ */
+template <tag Tag,
+          tag OtherTag,
+          quasi_pointer I,
+          quasi_pointer OtherI,
+          async_function_object F,
+          typename... Args>
+  requires std::is_rvalue_reference_v<I &&>
+auto combinate(I &&ret, first_arg_t<OtherI, OtherTag, F, Args...> arg) -> y_combinate<I, Tag, F> {
+  return {std::move(ret), unwrap(std::move(arg))};
+}
+
+} // namespace lf::impl
+
+#endif /* AD9A2908_3043_4CEC_9A2A_A57DE168DF19 */
+
+ // for combinate      // for discard_t          // for LF_STATIC_CALL, LF_STATIC...            // for tag
+
+/**
+ * @file control_flow.hpp
+ *
+ * @brief Meta header which includes ``lf::fork``, ``lf::call``, ``lf::join`` machinery.
+ */
+
+namespace lf {
+
+namespace impl {
+/**
+ * @brief A empty tag type used to disambiguate a join.
+ */
+struct join_type {};
+
+} // namespace impl
+
+inline namespace core {
+
+/**
+ * @brief An awaitable (in a `lf::task`) that triggers a join.
+ *
+ * After a join is resumed it is guaranteed that all forked child tasks will have completed.
+ *
+ * \rst
+ *
+ * .. note::
+ *
+ *    There is no relationship between the thread that executes the ``lf::join``
+ *    and the thread that resumes the coroutine.
+ *
+ * \endrst
+ */
+inline constexpr impl::join_type join = {};
+
+} // namespace core
+
+namespace impl {
+
+#if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
+  #define LF_DEPRECATE [[deprecated("Use operator[] instead of operator()")]]
+#else
+  #define LF_DEPRECATE
+#endif
+
+/**
+ * @brief An invocable (and subscriptable) wrapper that binds a return address to an asynchronous function.
+ */
+template <tag Tag>
+struct bind_task {
+  /**
+   * @brief Bind return address `ret` to an asynchronous function.
+   *
+   * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
+   */
+  template <quasi_pointer I, async_function_object F>
+  LF_DEPRECATE [[nodiscard]] LF_STATIC_CALL auto operator()(I ret, F fun) LF_STATIC_CONST {
+    return combinate<Tag>(std::move(ret), std::move(fun));
+  }
+
+  /**
+   * @brief Set a void return address for an asynchronous function.
+   *
+   * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
+   */
+  template <async_function_object F>
+  LF_DEPRECATE [[nodiscard]] LF_STATIC_CALL auto operator()(F fun) LF_STATIC_CONST {
+    return combinate<Tag>(discard_t{}, std::move(fun));
+  }
+
+#if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
+  /**
+   * @brief Bind return address `ret` to an asynchronous function.
+   *
+   * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
+   */
+  template <quasi_pointer I, async_function_object F>
+  [[nodiscard]] LF_STATIC_CALL auto operator[](I ret, F fun) LF_STATIC_CONST {
+    return combinate<Tag>(std::move(ret), std::move(fun));
+  }
+
+  /**
+   * @brief Set a void return address for an asynchronous function.
+   *
+   * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
+   */
+  template <async_function_object F>
+  [[nodiscard]] LF_STATIC_CALL auto operator[](F fun) LF_STATIC_CONST {
+    return combinate<Tag>(discard_t{}, std::move(fun));
+  }
+#endif
+};
+
+#undef LF_DEPRECATE
+
+} // namespace impl
+
+inline namespace core {
+
+/**
+ * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a fork.
+ *
+ * Conceptually the forked/child task can be executed anywhere at anytime and
+ * and in parallel with its continuation.
+ *
+ * \rst
+ *
+ * .. note::
+ *
+ *    There is no guaranteed relationship between the thread that executes the ``lf::fork``
+ *    and the thread(s) that execute the continuation/child. However, currently ``libfork``
+ *    uses continuation stealing so the thread that calls ``lf::fork`` will immediately begin
+ *    executing the child.
+ *
+ * \endrst
+ */
+inline constexpr impl::bind_task<tag::fork> fork = {};
+
+/**
+ * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a call.
+ *
+ * Conceptually the called/child task can be executed anywhere at anytime but, its
+ * continuation is guaranteed to be sequenced after the child returns.
+ *
+ * \rst
+ *
+ * .. note::
+ *
+ *    There is no relationship between the thread that executes the ``lf::call`` and
+ *    the thread(s) that execute the continuation/child. However, currently ``libfork``
+ *    uses continuation stealing so the thread that calls ``lf::call`` will immediately
+ *    begin executing the child.
+ *
+ * \endrst
+ */
+inline constexpr impl::bind_task<tag::call> call = {};
+
+} // namespace core
+
+} // namespace lf
+
+#endif /* E8D38B49_7170_41BC_90E9_6D6389714304 */
+
+
+#ifndef AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A
+#define AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <bit>         // for bit_cast
+#include <exception>   // for rethrow_exception
+#include <optional>    // for optional, nullopt
+#include <semaphore>   // for binary_semaphore
+#include <type_traits> // for conditional_t
+#include <utility>     // for forward
+           // for basic_eventually          // for submit_t             // for intrusive_list              // for thread_stack, has_s...            // for async_function_object       // for quasi_awaitable           // for frame // for manual_lifetime           // for stack, swap            // for invoke_result_t                // for LF_LOG, LF_CLANG_TL...
+#ifndef BDE6CBCC_7576_4082_AAC5_2A207FEA9293
+#define BDE6CBCC_7576_4082_AAC5_2A207FEA9293
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>    // for constructible_from, converti...
+#include <type_traits> // for remove_cvref_t
+#include <utility>     // for declval, forward
+  // for worker_context  // for submit_handle      // for context // for non_null
+
+/**
+ * @file scheduler.hpp
+ *
+ * @brief Machinery for interfacing with scheduling coroutines.
+ */
+
+namespace lf {
+
+namespace impl {
+
+/**
+ * @brief Verify a forwarding reference is storable as a value type.
+ */
+template <typename T>
+concept storable = std::constructible_from<std::remove_cvref_t<T>, T &&>;
+
+} // namespace impl
+
+inline namespace core {
+
+/**
+ * @brief A concept that schedulers must satisfy.
+ *
+ * This requires only a single method, `schedule` which accepts an `lf::submit_handle` and
+ * promises to call `lf::resume()` on it.
+ */
+template <typename Sch>
+concept scheduler = requires (Sch &&sch, submit_handle handle) {
+  std::forward<Sch>(sch).schedule(handle); //
+};
+
+/**
+ * @brief Defines the interface for awaitables that may trigger a context switch.
+ *
+ * A ``context_switcher`` can be awaited inside a libfork coroutine. If the awaitable
+ * is not ready then the coroutine will be suspended and a submit_handle will be passed to the
+ * context switcher's ``await_suspend()`` function. This can then be resumed by any worker as
+ * normal.
+ */
+template <typename T>
+concept context_switcher =
+    impl::storable<T> && requires (std::remove_cvref_t<T> awaiter, submit_handle handle) {
+      { awaiter.await_ready() } -> std::convertible_to<bool>;
+      { awaiter.await_suspend(handle) } -> std::same_as<void>;
+      { awaiter.await_resume() };
+    };
+
+template <scheduler Sch>
+struct resume_on_quasi_awaitable;
+
+/**
+ * @brief Create an ``lf::core::context_switcher`` to explicitly transfer execution to ``dest``.
+ *
+ * `dest` must be non-null.
+ */
+template <scheduler Sch>
+auto resume_on(Sch *dest) noexcept -> resume_on_quasi_awaitable<Sch> {
+  return resume_on_quasi_awaitable<Sch>{non_null(dest)};
+}
+
+/**
+ * @brief An ``lf::core::context_switcher`` that just transfers execution to a new scheduler.
+ */
+template <scheduler Sch>
+struct [[nodiscard("This should be immediately co_awaited")]] resume_on_quasi_awaitable {
+ private:
+  Sch *m_dest;
+
+  explicit resume_on_quasi_awaitable(worker_context *dest) noexcept : m_dest{dest} {}
+
+  friend auto resume_on<Sch>(Sch *dest) noexcept -> resume_on_quasi_awaitable;
+
+ public:
+  /**
+   * @brief Don't suspend if on correct context.
+   */
+  auto await_ready() const noexcept { return impl::tls::context() == m_dest; }
+
+  /**
+   * @brief Reschedule this coroutine onto the requested destination.
+   */
+  auto
+  await_suspend(submit_handle handle) noexcept(noexcept(std::declval<Sch *>()->schedule(handle))) -> void {
+    m_dest->schedule(handle);
+  }
+
+  /**
+   * @brief A no-op.
+   */
+  static auto await_resume() noexcept -> void {}
+};
+
+static_assert(context_switcher<resume_on_quasi_awaitable<worker_context>>);
+
+} // namespace core
+
+} // namespace lf
+
+#endif /* BDE6CBCC_7576_4082_AAC5_2A207FEA9293 */
+
+            // for scheduler                  // for tag
+
+/**
+ * @file sync_wait.hpp
+ *
+ * @brief Functionally to enter coroutines from a non-worker thread.
+ */
+
+namespace lf {
+
+namespace impl {
+
+// struct tls_stack_swap : immovable<tls_stack_swap> {
+
+//   void make_stack_fresh() {
+//     if (stack_is_fresh) {
+//       return;
+//     }
+//     if (!m_this_thread_was_worker) {
+//       impl::tls::thread_stack.construct();
+//       impl::tls::has_stack = true;
+//       return;
+//     }
+//     m_cache.emplace();                        // Default construct.
+//     swap(*m_cache, *impl::tls::thread_stack); // ADL call.
+//   }
+
+//   void restore_stack() {
+//     if (!stack_is_fresh) {
+//       return;
+//     }
+//     if (!worker) {
+//       impl::tls::thread_stack.destroy();
+//       impl::tls::has_stack = false;
+//     } else {
+//       swap(*prev, *impl::tls::thread_stack);
+//     }
+//   }
+
+//  private:
+//   std::optional<impl::stack> m_cache;
+//   bool stack_is_fresh = false;
+//   bool const m_this_thread_was_worker = impl::tls::has_stack;
+// };
+
+} // namespace impl
+
+inline namespace core {
+
+/**
+ * @brief Schedule execution of `fun` on `sch` and __block__ until the task is complete.
+ *
+ * This is the primary entry point from the synchronous to the asynchronous world. A typical libfork program
+ * is expected to make a call from `main` into a scheduler/runtime by scheduling a single root-task with this
+ * function.
+ *
+ * This will build a task from `fun` and dispatch it to `sch` via its `schedule` method. Sync wait should
+ * __not__ be called by a worker thread (which are never allowed to block) unless the call to `schedule`
+ * completes synchronously.
+ */
+template <scheduler Sch, async_function_object F, class... Args>
+  requires rootable<F, Args...>
+LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> invoke_result_t<F, Args...> {
+
+  std::binary_semaphore sem{0};
+
+  // This is to support a worker sync waiting on work they will launch inline.
+  bool worker = impl::tls::has_stack;
+  // Will cache workers stack here.
+  std::optional<impl::stack> prev = std::nullopt;
+
+  basic_eventually<invoke_result_t<F, Args...>, true> result;
+
+  impl::y_combinate combinator = combinate<tag::root>(&result, std::move(fun));
+
+  if (!worker) {
+    LF_LOG("Sync wait from non-worker thread");
+    impl::tls::thread_stack.construct();
+    impl::tls::has_stack = true;
+  } else {
+    LF_LOG("Sync wait from worker thread");
+    prev.emplace();                        // Default construct.
+    swap(*prev, *impl::tls::thread_stack); // ADL call.
+  }
+
+  // This makes a coroutine may need cleanup if exceptions...
+  impl::quasi_awaitable await = std::move(combinator)(std::forward<Args>(args)...);
+
+  [&]() noexcept {
+    //
+    await.prom->set_root_sem(&sem);
+    auto *handle = std::bit_cast<impl::submit_t *>(static_cast<impl::frame *>(await.prom));
+
+    // If this threw we could clean up coroutine.
+    impl::ignore_t{} = impl::tls::thread_stack->release();
+
+    if (!worker) {
+      impl::tls::thread_stack.destroy();
+      impl::tls::has_stack = false;
+    } else {
+      swap(*prev, *impl::tls::thread_stack);
+    }
+
+    typename intrusive_list<impl::submit_t *>::node node{handle};
+
+    // If this threw we could clean up the coroutine if we repaired the worker state.
+    std::forward<Sch>(sch).schedule(&node);
+
+    // If this threw we would have to terminate.
+    sem.acquire();
+  }();
+
+  if (result.has_exception()) {
+    std::rethrow_exception(std::move(result).exception());
+  }
+
+  if constexpr (!std::is_void_v<invoke_result_t<F, Args...>>) {
+    return *std::move(result);
+  }
+}
+
+} // namespace core
+
+} // namespace lf
+
+#endif /* AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A */
+
+
+
+#ifndef DE9399DB_593B_4C5C_A9D7_89B9F2FAB920
+#define DE9399DB_593B_4C5C_A9D7_89B9F2FAB920
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <bit>       // for bit_cast
+#include <coroutine> // for coroutine_handle
+ // for full_context // for submit_t, submit_handle, tas...    // for for_each_elem     // for stack, context  // for frame  // for stack       // for LF_ASSERT_NO_ASSUME, LF_LOG
+
+/**
+ * @file resume.hpp
+ *
+ * @brief Functions to resume stolen and submitted task.
+ */
+
+namespace lf {
+
+inline namespace ext {
+
+/**
+ * @brief Resume a collection of tasks at a submission point.
+ *
+ * This thread must be the worker thread that the tasks were submitted to.
+ */
+inline void resume(submit_handle ptr) {
+  for_each_elem(ptr, [](impl::submit_t *raw) LF_STATIC_CALL {
+    //
+    LF_LOG("Call to resume on submitted task");
+
+    auto *frame = std::bit_cast<impl::frame *>(raw);
+
+    if (frame->load_steals() == 0) {
+      impl::stack *stack = impl::tls::stack();
+      LF_ASSERT(stack->empty());
+      *stack = impl::stack{frame->stacklet()};
+    } else {
+      LF_ASSERT_NO_ASSUME(impl::tls::stack()->empty());
+    }
+
+    LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
+    frame->self().resume();
+    LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
+    LF_ASSERT_NO_ASSUME(impl::tls::stack()->empty());
+  });
+}
+
+/**
+ * @brief Resume a stolen task.
+ *
+ * This thread must be a worker thread.
+ */
+inline void resume(task_handle ptr) {
+
+  LF_LOG("Call to resume on stolen task");
+
+  auto *frame = std::bit_cast<impl::frame *>(ptr);
+
+  frame->fetch_add_steal();
+
+  LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
+  LF_ASSERT_NO_ASSUME(impl::tls::stack()->empty());
+  frame->self().resume();
+  LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
+  LF_ASSERT_NO_ASSUME(impl::tls::stack()->empty());
+}
+
+} // namespace ext
+
+} // namespace lf
+
+#endif /* DE9399DB_593B_4C5C_A9D7_89B9F2FAB920 */
+
+
+
+#ifndef CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
+#define CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <atomic>      // for memory_order_acquire, atomi...
+#include <bit>         // for bit_cast
+#include <coroutine>   // for coroutine_handle, noop_coro...
+#include <cstdint>     // for uint16_t
+#include <memory>      // for uninitialized_default_const...
+#include <span>        // for span
+#include <type_traits> // for remove_cvref_t
+     // for co_allocable, co_new_t, sta...  // for full_context  // for submit_handle, submit_t     // for unwrap, intrusive_list      // for stack, context   // for frame   // for stack // for k_u16_max    // for ignore_t        // for LF_ASSERT, LF_LOG, LF_CATCH...    // for context_switcher
 
 /**
  * @file awaitables.hpp
@@ -4142,472 +4605,6 @@ struct join_awaitable {
 
 #endif /* CF3E6AC4_246A_4131_BF7A_FE5CD641A19B */
 
- // for invoke_result_t, return_address...       // for tag      // for returnable, task
-
-/**
- * @file combinate.hpp
- *
- * @brief Utility for building a coroutine's first argument and invoking it.
- */
-
-namespace lf::impl {
-
-// ---------------------------- //
-
-template <returnable R, return_address_for<R> I, tag Tag>
-struct promise;
-
-// -------------------------------------------------------- //
-
-/**
- * @brief Awaitable in the context of an `lf::task` coroutine.
- *
- * This will be transformed by an `await_transform` and trigger a fork or call.
- */
-template <returnable R, return_address_for<R> I, tag Tag>
-struct [[nodiscard("A quasi_awaitable MUST be immediately co_awaited!")]] quasi_awaitable {
-  promise<R, I, Tag> *prom; ///< The parent/semaphore needs to be set!
-};
-
-// ---------------------------- //
-
-/**
- * @brief Call an async function with a synthesized first argument.
- *
- * The first argument will contain a copy of the function hence, this is a fixed-point combinator.
- */
-template <quasi_pointer I, tag Tag, async_function_object F>
-struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combinate {
-
-  [[no_unique_address]] I ret; ///< The return address.
-  [[no_unique_address]] F fun; ///< The asynchronous function.
-
-  /**
-   * @brief Invoke the coroutine, set's the return pointer.
-   */
-  template <typename... Args>
-    requires async_invocable<I, Tag, F, Args...>
-  auto operator()(Args &&...args) && -> quasi_awaitable<invoke_result_t<F, Args...>, I, Tag> {
-
-    task task = std::move(fun)(                                 //
-        first_arg_t<I, Tag, F, Args &&...>(std::as_const(fun)), //
-        std::forward<Args>(args)...                             //
-    );
-
-    using R = invoke_result_t<F, Args...>;
-    using P = promise<R, I, Tag>;
-
-    auto *prom = static_cast<P *>(task.prom);
-
-    if constexpr (!std::same_as<I, discard_t>) {
-      prom->set_return(std::move(ret));
-    }
-
-    return {prom};
-  }
-};
-
-// ---------------------------- //
-
-/**
- * @brief Build a combinator for `ret` and `fun`.
- */
-template <tag Tag, quasi_pointer I, async_function_object F>
-  requires std::is_rvalue_reference_v<I &&>
-auto combinate(I &&ret, F fun) -> y_combinate<I, Tag, F> {
-  return {std::move(ret), std::move(fun)};
-}
-
-/**
- * @brief Build a combinator for `ret` and `fun`.
- *
- * This specialization prevents each layer wrapping the function in another `first_arg_t`.
- */
-template <tag Tag,
-          tag OtherTag,
-          quasi_pointer I,
-          quasi_pointer OtherI,
-          async_function_object F,
-          typename... Args>
-  requires std::is_rvalue_reference_v<I &&>
-auto combinate(I &&ret, first_arg_t<OtherI, OtherTag, F, Args...> arg) -> y_combinate<I, Tag, F> {
-  return {std::move(ret), unwrap(std::move(arg))};
-}
-
-} // namespace lf::impl
-
-#endif /* AD9A2908_3043_4CEC_9A2A_A57DE168DF19 */
-
- // for combinate      // for discard_t          // for LF_STATIC_CALL, LF_STATIC...            // for tag
-
-/**
- * @file control_flow.hpp
- *
- * @brief Meta header which includes ``lf::fork``, ``lf::call``, ``lf::join`` machinery.
- */
-
-namespace lf {
-
-namespace impl {
-/**
- * @brief A empty tag type used to disambiguate a join.
- */
-struct join_type {};
-
-} // namespace impl
-
-inline namespace core {
-
-/**
- * @brief An awaitable (in a `lf::task`) that triggers a join.
- *
- * After a join is resumed it is guaranteed that all forked child tasks will have completed.
- *
- * \rst
- *
- * .. note::
- *
- *    There is no relationship between the thread that executes the ``lf::join``
- *    and the thread that resumes the coroutine.
- *
- * \endrst
- */
-inline constexpr impl::join_type join = {};
-
-} // namespace core
-
-namespace impl {
-
-#if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
-  #define LF_DEPRECATE [[deprecated("Use operator[] instead of operator()")]]
-#else
-  #define LF_DEPRECATE
-#endif
-
-/**
- * @brief An invocable (and subscriptable) wrapper that binds a return address to an asynchronous function.
- */
-template <tag Tag>
-struct bind_task {
-  /**
-   * @brief Bind return address `ret` to an asynchronous function.
-   *
-   * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
-   */
-  template <quasi_pointer I, async_function_object F>
-  LF_DEPRECATE [[nodiscard]] LF_STATIC_CALL auto operator()(I ret, F fun) LF_STATIC_CONST {
-    return combinate<Tag>(std::move(ret), std::move(fun));
-  }
-
-  /**
-   * @brief Set a void return address for an asynchronous function.
-   *
-   * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
-   */
-  template <async_function_object F>
-  LF_DEPRECATE [[nodiscard]] LF_STATIC_CALL auto operator()(F fun) LF_STATIC_CONST {
-    return combinate<Tag>(discard_t{}, std::move(fun));
-  }
-
-#if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
-  /**
-   * @brief Bind return address `ret` to an asynchronous function.
-   *
-   * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
-   */
-  template <quasi_pointer I, async_function_object F>
-  [[nodiscard]] LF_STATIC_CALL auto operator[](I ret, F fun) LF_STATIC_CONST {
-    return combinate<Tag>(std::move(ret), std::move(fun));
-  }
-
-  /**
-   * @brief Set a void return address for an asynchronous function.
-   *
-   * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
-   */
-  template <async_function_object F>
-  [[nodiscard]] LF_STATIC_CALL auto operator[](F fun) LF_STATIC_CONST {
-    return combinate<Tag>(discard_t{}, std::move(fun));
-  }
-#endif
-};
-
-#undef LF_DEPRECATE
-
-} // namespace impl
-
-inline namespace core {
-
-/**
- * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a fork.
- *
- * Conceptually the forked/child task can be executed anywhere at anytime and
- * and in parallel with its continuation.
- *
- * \rst
- *
- * .. note::
- *
- *    There is no guaranteed relationship between the thread that executes the ``lf::fork``
- *    and the thread(s) that execute the continuation/child. However, currently ``libfork``
- *    uses continuation stealing so the thread that calls ``lf::fork`` will immediately begin
- *    executing the child.
- *
- * \endrst
- */
-inline constexpr impl::bind_task<tag::fork> fork = {};
-
-/**
- * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a call.
- *
- * Conceptually the called/child task can be executed anywhere at anytime but, its
- * continuation is guaranteed to be sequenced after the child returns.
- *
- * \rst
- *
- * .. note::
- *
- *    There is no relationship between the thread that executes the ``lf::call`` and
- *    the thread(s) that execute the continuation/child. However, currently ``libfork``
- *    uses continuation stealing so the thread that calls ``lf::call`` will immediately
- *    begin executing the child.
- *
- * \endrst
- */
-inline constexpr impl::bind_task<tag::call> call = {};
-
-} // namespace core
-
-} // namespace lf
-
-#endif /* E8D38B49_7170_41BC_90E9_6D6389714304 */
-
-
-#ifndef AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A
-#define AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <bit>       // for bit_cast
-#include <exception> // for exception_ptr, reth...
-#include <optional>  // for optional, nullopt
-#include <semaphore>
-#include <type_traits> // for conditional_t
-#include <utility>     // for forward, move
-           // for eventually          // for submit_handle, subm...             // for intrusive_list              // for thread_stack, has_s...            // for async_function_object       // for quasi_awaitable           // for root_notify, frame // for manual_lifetime           // for stack, swap // for invoke_result_t, ign...     // for LF_LOG, LF_CLANG_TL... // for scheduler       // for tag
-
-/**
- * @file sync_wait.hpp
- *
- * @brief Functionally to enter coroutines from a non-worker thread.
- */
-
-namespace lf {
-
-namespace impl {
-
-// struct tls_stack_swap : immovable<tls_stack_swap> {
-
-//   void make_stack_fresh() {
-//     if (stack_is_fresh) {
-//       return;
-//     }
-//     if (!m_this_thread_was_worker) {
-//       impl::tls::thread_stack.construct();
-//       impl::tls::has_stack = true;
-//       return;
-//     }
-//     m_cache.emplace();                        // Default construct.
-//     swap(*m_cache, *impl::tls::thread_stack); // ADL call.
-//   }
-
-//   void restore_stack() {
-//     if (!stack_is_fresh) {
-//       return;
-//     }
-//     if (!worker) {
-//       impl::tls::thread_stack.destroy();
-//       impl::tls::has_stack = false;
-//     } else {
-//       swap(*prev, *impl::tls::thread_stack);
-//     }
-//   }
-
-//  private:
-//   std::optional<impl::stack> m_cache;
-//   bool stack_is_fresh = false;
-//   bool const m_this_thread_was_worker = impl::tls::has_stack;
-// };
-
-} // namespace impl
-
-inline namespace core {
-
-/**
- * @brief Schedule execution of `fun` on `sch` and __block__ until the task is complete.
- *
- * This is the primary entry point from the synchronous to the asynchronous world. A typical libfork program
- * is expected to make a call from `main` into a scheduler/runtime by scheduling a single root-task with this
- * function.
- *
- * This will build a task from `fun` and dispatch it to `sch` via its `schedule` method. Sync wait should
- * __not__ be called by a worker thread (which are never allowed to block) unless the call to `schedule`
- * completes synchronously.
- */
-template <scheduler Sch, async_function_object F, class... Args>
-  requires rootable<F, Args...>
-LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> invoke_result_t<F, Args...> {
-
-  std::binary_semaphore sem{0};
-
-  // This is to support a worker sync waiting on work they will launch inline.
-  bool worker = impl::tls::has_stack;
-  // Will cache workers stack here.
-  std::optional<impl::stack> prev = std::nullopt;
-
-  basic_eventually<invoke_result_t<F, Args...>, true> result;
-
-  impl::y_combinate combinator = combinate<tag::root>(&result, std::move(fun));
-
-  if (!worker) {
-    LF_LOG("Sync wait from non-worker thread");
-    impl::tls::thread_stack.construct();
-    impl::tls::has_stack = true;
-  } else {
-    LF_LOG("Sync wait from worker thread");
-    prev.emplace();                        // Default construct.
-    swap(*prev, *impl::tls::thread_stack); // ADL call.
-  }
-
-  // This makes a coroutine may need cleanup if exceptions...
-  impl::quasi_awaitable await = std::move(combinator)(std::forward<Args>(args)...);
-
-  [&]() noexcept {
-    //
-    await.prom->set_root_sem(&sem);
-    auto *handle = std::bit_cast<impl::submit_t *>(static_cast<impl::frame *>(await.prom));
-
-    // If this threw we could clean up coroutine.
-    impl::ignore_t{} = impl::tls::thread_stack->release();
-
-    if (!worker) {
-      impl::tls::thread_stack.destroy();
-      impl::tls::has_stack = false;
-    } else {
-      swap(*prev, *impl::tls::thread_stack);
-    }
-
-    typename intrusive_list<impl::submit_t *>::node node{handle};
-
-    // If this threw we could clean up the coroutine if we repaired the worker state.
-    std::forward<Sch>(sch).schedule(&node);
-
-    // If this threw we would have to terminate.
-    sem.acquire();
-  }();
-
-  if (result.has_exception()) {
-    std::rethrow_exception(std::move(result).exception());
-  }
-
-  if constexpr (!std::is_void_v<invoke_result_t<F, Args...>>) {
-    return *std::move(result);
-  }
-}
-
-} // namespace core
-
-} // namespace lf
-
-#endif /* AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A */
-
-
-
-#ifndef DE9399DB_593B_4C5C_A9D7_89B9F2FAB920
-#define DE9399DB_593B_4C5C_A9D7_89B9F2FAB920
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <bit>       // for bit_cast
-#include <coroutine> // for coroutine_handle
- // for full_context // for impl::impl::submit_t, submit_handle, tas...    // for for_each_elem     // for stack, context  // for frame  // for stack       // for LF_ASSERT_NO_ASSUME, LF_LOG
-
-/**
- * @file resume.hpp
- *
- * @brief Functions to resume stolen and submitted task.
- */
-
-namespace lf {
-
-inline namespace ext {
-
-/**
- * @brief Resume a collection of tasks at a submission point.
- *
- * This thread must be the worker thread that the tasks were submitted to.
- */
-inline void resume(submit_handle ptr) {
-  for_each_elem(ptr, [](impl::submit_t *raw) LF_STATIC_CALL {
-    //
-    LF_LOG("Call to resume on submitted task");
-
-    auto *frame = std::bit_cast<impl::frame *>(raw);
-
-    if (frame->load_steals() == 0) {
-      impl::stack *stack = impl::tls::stack();
-      LF_ASSERT(stack->empty());
-      *stack = impl::stack{frame->stacklet()};
-    } else {
-      LF_ASSERT_NO_ASSUME(impl::tls::stack()->empty());
-    }
-
-    LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
-    frame->self().resume();
-    LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
-    LF_ASSERT_NO_ASSUME(impl::tls::stack()->empty());
-  });
-}
-
-/**
- * @brief Resume a stolen task.
- *
- * This thread must be a worker thread.
- */
-inline void resume(task_handle ptr) {
-
-  LF_LOG("Call to resume on stolen task");
-
-  auto *frame = std::bit_cast<impl::frame *>(ptr);
-
-  frame->fetch_add_steal();
-
-  LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
-  LF_ASSERT_NO_ASSUME(impl::tls::stack()->empty());
-  frame->self().resume();
-  LF_ASSERT_NO_ASSUME(impl::tls::context()->empty());
-  LF_ASSERT_NO_ASSUME(impl::tls::stack()->empty());
-}
-
-} // namespace ext
-
-} // namespace lf
-
-#endif /* DE9399DB_593B_4C5C_A9D7_89B9F2FAB920 */
-
-
 
 #ifndef C854CDE9_1125_46E1_9E2A_0B0006BFC135
 #define C854CDE9_1125_46E1_9E2A_0B0006BFC135
@@ -4620,18 +4617,13 @@ inline void resume(task_handle ptr) {
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <atomic> // for atomic_thread_fence, mem...
-#include <bit>    // for bit_cast
-#include <concepts>
-#include <coroutine> // for coroutine_handle, noop_c...
-#include <cstddef>   // for size_t
-#include <exception> // for current_exception
-#include <memory>    // for destroy, uninitialized_d...
-#include <new>
-#include <span>        // for span
+#include <atomic>      // for atomic_thread_fence, mem...
+#include <bit>         // for bit_cast
+#include <coroutine>   // for coroutine_handle, noop_c...
+#include <cstddef>     // for size_t
 #include <type_traits> // for false_type, remove_cvref_t
 #include <utility>     // for forward
-     // for co_allocable, co_new_t // for join_type     // for full_context     // for impl::submit_t, task_handle        // for intrusive_list         // for stack, context       // for async_function_object // for alloc_awaitable, call_aw...  // for quasi_awaitable      // for frame
+        // for co_allocable, co_new_t    // for join_type       // for stash_exception_in_return     // for full_context     // for submit_t, task_handle        // for intrusive_list         // for stack, context       // for async_function_object // for alloc_awaitable, call_aw...  // for quasi_awaitable      // for frame
 #ifndef A896798B_7E3B_4854_9997_89EA5AE765EB
 #define A896798B_7E3B_4854_9997_89EA5AE765EB
 
@@ -4647,7 +4639,7 @@ inline void resume(task_handle ptr) {
 #include <iterator> // for indirectly_writable
 #include <type_traits>
 #include <utility> // for forward
-    // for quasi_pointer // for safe_ref_bind_to    // for return_address_for, discard_t         // for returnable
+    // for stash_exception_in_return    // for quasi_pointer // for safe_ref_bind_to    // for return_address_for, discard_t         // for returnable
 
 /**
  * @file return.hpp
@@ -5231,7 +5223,7 @@ inline constexpr auto lift = []<class F, class... Args>(auto, F &&func, Args &&.
 #include <thread>  // for thread
 #include <utility> // for move
 #include <vector>  // for vector
-                 // for LF_DEFER           // for worker_context           // for submit_handle, tas...              // for for_each_elem, intrude...            // for resume          // for k_cache_line, move...                 // for LF_ASSERT, LF_ASSE...             // for scheduler
+                 // for LF_DEFER           // for worker_context           // for submit_handle, tas...            // for resume          // for k_cache_line, move...                 // for LF_ASSERT, LF_ASSE...             // for scheduler
 #ifndef D8877F11_1F66_4AD0_B949_C0DFF390C2DB
 #define D8877F11_1F66_4AD0_B949_C0DFF390C2DB
 
@@ -5964,7 +5956,7 @@ static_assert(uniform_random_bit_generator<xoshiro>);
 #include <random>    // for discrete_distribution
 #include <utility>   // for exchange, move
 #include <vector>    // for vector
-    // for worker_context, nullary_f...      // for err    // for submit_handle, task_handle       // for intruded_list        // for finalize, worker_init   // for non_null, map          // for LF_ASSERT, LF_LOG, LF_CAT...   // for numa_topology // for xoshiro
+    // for worker_context, nullary_f...      // for err    // for submit_handle, task_handle        // for finalize, worker_init   // for non_null, map          // for LF_ASSERT, LF_LOG, LF_CAT...   // for numa_topology // for xoshiro
 
 /**
  * @file numa_context.hpp
@@ -6325,7 +6317,7 @@ static_assert(scheduler<busy_pool>);
 #include <thread>     // for thread
 #include <utility>    // for move
 #include <vector>     // for vector
-                 // for LF_DEFER           // for worker_context           // for submit_handle, tas...              // for for_each_elem, intru...            // for resume          // for k_cache_line                 // for LF_ASSERT, LF_LOG             // for scheduler         // for busy_vars
+                 // for LF_DEFER           // for worker_context           // for submit_handle, tas...            // for resume          // for k_cache_line                 // for LF_ASSERT, LF_LOG             // for scheduler         // for busy_vars
 #pragma once
 
 // Copyright (c) Conor Williams, Meta Platforms, Inc. and its affiliates.
@@ -6904,7 +6896,7 @@ static_assert(scheduler<lazy_pool>);
 // Self Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
-  // for nullary_function_t, worker_...  // for submit_handle     // for for_each_elem, intruded_list   // for resume      // for worker_init, finalize // for immovable
+  // for nullary_function_t, worker_...  // for submit_handle   // for resume      // for worker_init, finalize // for immovable
 
 /**
  * @file unit_pool.hpp

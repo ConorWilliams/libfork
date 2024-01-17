@@ -9,27 +9,26 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <bit>       // for bit_cast
-#include <exception> // for exception_ptr, reth...
-#include <optional>  // for optional, nullopt
-#include <semaphore>
+#include <bit>         // for bit_cast
+#include <exception>   // for rethrow_exception
+#include <optional>    // for optional, nullopt
+#include <semaphore>   // for binary_semaphore
 #include <type_traits> // for conditional_t
-#include <utility>     // for forward, move
+#include <utility>     // for forward
 
-#include "libfork/core/eventually.hpp"           // for eventually
-#include "libfork/core/ext/handles.hpp"          // for submit_handle, subm...
+#include "libfork/core/eventually.hpp"           // for basic_eventually
+#include "libfork/core/ext/handles.hpp"          // for submit_t
 #include "libfork/core/ext/list.hpp"             // for intrusive_list
 #include "libfork/core/ext/tls.hpp"              // for thread_stack, has_s...
 #include "libfork/core/first_arg.hpp"            // for async_function_object
 #include "libfork/core/impl/combinate.hpp"       // for quasi_awaitable
-#include "libfork/core/impl/frame.hpp"           // for root_notify, frame
+#include "libfork/core/impl/frame.hpp"           // for frame
 #include "libfork/core/impl/manual_lifetime.hpp" // for manual_lifetime
 #include "libfork/core/impl/stack.hpp"           // for stack, swap
-#include "libfork/core/impl/utility.hpp"
-#include "libfork/core/invocable.hpp" // for invoke_result_t, ign...
-#include "libfork/core/macro.hpp"     // for LF_LOG, LF_CLANG_TL...
-#include "libfork/core/scheduler.hpp" // for scheduler
-#include "libfork/core/tag.hpp"       // for tag
+#include "libfork/core/invocable.hpp"            // for invoke_result_t
+#include "libfork/core/macro.hpp"                // for LF_LOG, LF_CLANG_TL...
+#include "libfork/core/scheduler.hpp"            // for scheduler
+#include "libfork/core/tag.hpp"                  // for tag
 
 /**
  * @file sync_wait.hpp
