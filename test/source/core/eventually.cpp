@@ -105,8 +105,9 @@ inline constexpr auto fwd = [](auto, T val, bool exception) -> task<T> {
   if constexpr (std::is_reference_v<T>) {
     if constexpr (std::is_rvalue_reference_v<T>) {
       co_return std::move(val);
+    } else {
+      co_return val;
     }
-    co_return val;
   } else {
     co_return std::move(val);
   }
