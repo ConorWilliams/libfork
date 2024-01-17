@@ -73,7 +73,7 @@ struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combin
 
     auto *prom = static_cast<P *>(task.prom);
 
-    if constexpr (!std::is_void_v<R>) {
+    if constexpr (!std::same_as<I, discard_t>) {
       prom->set_return(std::move(ret));
     }
 

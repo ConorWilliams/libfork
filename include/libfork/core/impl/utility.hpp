@@ -100,11 +100,19 @@ static constexpr std::uint16_t k_u16_max = std::numeric_limits<std::uint16_t>::m
 // ---------------- Utility classes ---------------- //
 
 /**
- * @brief An empty type.
+ * @brief Every instantiation generates a unique type.
  */
-struct empty {};
+template <auto = [] {}>
+struct new_empty {};
 
-static_assert(std::is_empty_v<empty>);
+static_assert(!std::is_same_v<new_empty<>, new_empty<>>);
+
+/**
+ * If `Cond` is `true` then `T` otherwise a new empty type.
+ */
+template <bool Cond, typename T, auto Anon = [] {}>
+using else_empty_t = std::conditional_t<Cond, T, new_empty<Anon>>;
+
 
 // -------------------------------- //
 

@@ -34,14 +34,6 @@
 namespace lf::impl {
 
 /**
- * @brief A small structure that acts a bit like a root task's parent.
- */
-struct root_notify {
-  std::exception_ptr m_eptr;    ///< Maybe an exception pointer.
-  std::binary_semaphore sem{0}; ///< Notified when root task completes
-};
-
-/**
  * @brief A small bookkeeping struct which is a member of each task's promise.
  */
 class frame {
@@ -57,8 +49,8 @@ class frame {
   stack::stacklet *m_stacklet; ///< Needs to be in promise in case allocation elided (as does m_parent).
 
   union {
-    frame *m_parent;       ///< Non-root tasks store a pointer to their parent.
-    root_notify *m_notify; ///< Root tasks store a pointer to a notifier
+    frame *m_parent;              ///< Non-root tasks store a pointer to their parent.
+    std::binary_semaphore *m_sem; ///< Root tasks store a pointer to a semaphore to notify the caller.
   };
 
   std::atomic_uint16_t m_join = k_u16_max; ///< Number of children joined (with offset).
@@ -121,7 +113,7 @@ class frame {
   /**
    * @brief Set a root tasks parent.
    */
-  void set_root_notify(root_notify *notify) noexcept { m_notify = non_null(notify); }
+  void set_root_sem(std::binary_semaphore *sem) noexcept { m_sem = non_null(sem); }
 
   /**
    * @brief Set the stacklet object to point at a new stacklet.
@@ -140,11 +132,11 @@ class frame {
   [[nodiscard]] auto parent() const noexcept -> frame * { return m_parent; }
 
   /**
-   * @brief Get a pointer to the notifier for this root frame.
+   * @brief Get a pointer to the semaphore for this root frame.
    *
    * Only valid if this is not a root frame.
    */
-  [[nodiscard]] auto notifier() const noexcept -> root_notify * { return m_notify; }
+  [[nodiscard]] auto semaphore() const noexcept -> std::binary_semaphore * { return m_sem; }
 
   /**
    * @brief Get a pointer to the top of the top of the stack-stack this frame was allocated on.

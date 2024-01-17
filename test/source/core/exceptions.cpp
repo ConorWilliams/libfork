@@ -39,8 +39,8 @@ auto make_scheduler() -> T {
 constexpr auto fib = [](auto fib, int n) -> task<int> {
   //
 
-  if (n == 7) {
-    throw std::runtime_error{"7 is unlucky"};
+  if (n == 7 && LF_COMPILER_EXCEPTIONS) {
+    LF_THROW(std::runtime_error{"7 is unlucky"});
   }
 
   if (n < 2) {
@@ -50,7 +50,7 @@ constexpr auto fib = [](auto fib, int n) -> task<int> {
   int a, b;
 
   {
-    std::exception_ptr __exception_ptr;
+    std::exception_ptr exception_ptr;
 
     // clang-format off
 
@@ -59,16 +59,16 @@ constexpr auto fib = [](auto fib, int n) -> task<int> {
       co_await call(&b, fib)(n - 2);
       goto fallthrough;
     } LF_CATCH_ALL {
-      __exception_ptr = std::current_exception();
+      exception_ptr = std::current_exception();
     }
 
     // clang-format on
 
     co_await join;
-    std::rethrow_exception(std::move(__exception_ptr));
+    std::rethrow_exception(std::move(exception_ptr));
 
   fallthrough:
-    LF_ASSERT(__exception_ptr == nullptr);
+    LF_ASSERT(exception_ptr == nullptr);
     co_await join;
   }
 
@@ -78,8 +78,8 @@ constexpr auto fib = [](auto fib, int n) -> task<int> {
 constexpr auto fib_integ = [](auto fib, int n) -> task<int> {
   //
 
-  if (n == 7) {
-    throw std::runtime_error{"7 is unlucky"};
+  if (n == 7 && LF_COMPILER_EXCEPTIONS) {
+    LF_THROW(std::runtime_error{"7 is unlucky"});
   }
 
   if (n < 2) {
@@ -106,6 +106,8 @@ constexpr auto fib_integ = [](auto fib, int n) -> task<int> {
 };
 
 } // namespace
+
+// #ifdef LF_COMPILER_EXCEPTIONS
 
 TEMPLATE_TEST_CASE("Exceptional fib", "[exception][template]", unit_pool, busy_pool, lazy_pool) {
 

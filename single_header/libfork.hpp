@@ -568,11 +568,19 @@ static constexpr std::uint16_t k_u16_max = std::numeric_limits<std::uint16_t>::m
 // ---------------- Utility classes ---------------- //
 
 /**
- * @brief An empty type.
+ * @brief Every instantiation generates a unique type.
  */
-struct empty {};
+template <auto = [] {}>
+struct new_empty {};
 
-static_assert(std::is_empty_v<empty>);
+static_assert(!std::is_same_v<new_empty<>, new_empty<>>);
+
+/**
+ * If `Cond` is `true` then `T` otherwise a new empty type.
+ */
+template <bool Cond, typename T, auto Anon = [] {}>
+using else_empty_t = std::conditional_t<Cond, T, new_empty<Anon>>;
+
 
 // -------------------------------- //
 
@@ -1926,14 +1934,6 @@ class stack {
 namespace lf::impl {
 
 /**
- * @brief A small structure that acts a bit like a root task's parent.
- */
-struct root_notify {
-  std::exception_ptr m_eptr;    ///< Maybe an exception pointer.
-  std::binary_semaphore sem{0}; ///< Notified when root task completes
-};
-
-/**
  * @brief A small bookkeeping struct which is a member of each task's promise.
  */
 class frame {
@@ -1949,8 +1949,8 @@ class frame {
   stack::stacklet *m_stacklet; ///< Needs to be in promise in case allocation elided (as does m_parent).
 
   union {
-    frame *m_parent;       ///< Non-root tasks store a pointer to their parent.
-    root_notify *m_notify; ///< Root tasks store a pointer to a notifier
+    frame *m_parent;              ///< Non-root tasks store a pointer to their parent.
+    std::binary_semaphore *m_sem; ///< Root tasks store a pointer to a semaphore to notify the caller.
   };
 
   std::atomic_uint16_t m_join = k_u16_max; ///< Number of children joined (with offset).
@@ -2013,7 +2013,7 @@ class frame {
   /**
    * @brief Set a root tasks parent.
    */
-  void set_root_notify(root_notify *notify) noexcept { m_notify = non_null(notify); }
+  void set_root_sem(std::binary_semaphore *sem) noexcept { m_sem = non_null(sem); }
 
   /**
    * @brief Set the stacklet object to point at a new stacklet.
@@ -2032,11 +2032,11 @@ class frame {
   [[nodiscard]] auto parent() const noexcept -> frame * { return m_parent; }
 
   /**
-   * @brief Get a pointer to the notifier for this root frame.
+   * @brief Get a pointer to the semaphore for this root frame.
    *
    * Only valid if this is not a root frame.
    */
-  [[nodiscard]] auto notifier() const noexcept -> root_notify * { return m_notify; }
+  [[nodiscard]] auto semaphore() const noexcept -> std::binary_semaphore * { return m_sem; }
 
   /**
    * @brief Get a pointer to the top of the top of the stack-stack this frame was allocated on.
@@ -3049,158 +3049,12 @@ class first_arg_t {
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>    // for constructible_from
-#include <optional>    // for optional
+#include <concepts> // for constructible_from
+#include <exception>
+#include <memory>
 #include <type_traits> // for remove_reference_t
 #include <utility>     // for addressof, forward
  // for immovable, non_void, safe_r...        // for LF_ASSERT
-
-/**
- * @file eventually.hpp
- *
- * @brief Classes for delaying construction of an object.
- */
-
-namespace lf {
-
-inline namespace core {
-
-// ------------------------------------------------------------------------ //
-
-/**
- * @brief A wrapper to delay construction of an object, like ``std::optional``.
- *
- * This class supports delayed construction of reference types. It is like a simplified version of
- * `std::optional` that is only constructed once. Construction is done (zero or one times) via assignment.
- *
- * \rst
- *
- * .. note::
- *    This documentation is generated from the non-reference specialization, see the source
- *    for the reference specialization.
- *
- * \endrst
- */
-template <impl::non_void T>
-class eventually : impl::immovable<eventually<T>> {
-
-  std::optional<T> m_value; ///< The contained object.
-
- public:
-  /**
-   * @brief Start lifetime of object at assignment.
-   */
-  template <typename U>
-    requires std::constructible_from<T, U>
-  void operator=(U &&expr) noexcept(std::is_nothrow_constructible_v<T, U>) {
-    LF_ASSERT(!m_value);
-    m_value.emplace(std::forward<U>(expr));
-  }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator->() noexcept -> T * {
-    LF_ASSERT(m_value);
-    return m_value.operator->();
-  }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator->() const noexcept -> T const * {
-    LF_ASSERT(m_value);
-    return m_value.operator->();
-  }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator*() & noexcept -> T & {
-    LF_ASSERT(m_value);
-    return *m_value;
-  }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator*() const & noexcept -> T const & {
-    LF_ASSERT(m_value);
-    return *m_value;
-  }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator*() && noexcept -> T && {
-    LF_ASSERT(m_value);
-    return *std::move(m_value);
-  }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator*() const && noexcept -> T const && {
-    LF_ASSERT(m_value);
-    return *std::move(m_value);
-  }
-};
-
-// ------------------------------------------------------------------------ //
-
-/**
- * @brief Has pointer semantics.
- *
- * `eventually<T &> val` should behave like `T & val` except assignment rebinds.
- */
-template <impl::non_void T>
-  requires std::is_reference_v<T>
-class eventually<T> : impl::immovable<eventually<T>> {
- public:
-  /**
-   * @brief Construct an object inside the eventually from ``expr``.
-   */
-  template <impl::safe_ref_bind_to<T> U>
-  void operator=(U &&expr) noexcept {
-    m_value = std::addressof(expr);
-  }
-
-  /**
-   * @brief Access the wrapped reference.
-   */
-  [[nodiscard]] auto operator->() const noexcept -> std::remove_reference_t<T> * { return m_value; }
-
-  /**
-   * @brief Deference the wrapped pointer.
-   *
-   * This will decay `T&&` to `T&` just like using a `T &&` reference would.
-   */
-  [[nodiscard]] auto operator*() const & noexcept -> std::remove_reference_t<T> & { return *m_value; }
-
-  /**
-   * @brief Forward the wrapped reference.
-   *
-   * This will not decay T&& to T&, nor will it promote T& to T&&.
-   */
-  [[nodiscard]] auto operator*() const && noexcept -> T {
-    if constexpr (std::is_rvalue_reference_v<T>) {
-      return std::move(*m_value);
-    } else {
-      return *m_value;
-    }
-  }
-
- private:
-  std::remove_reference_t<T> *m_value;
-};
-
-} // namespace core
-
-} // namespace lf
-
-#endif /* B7972761_4CBF_4B86_B195_F754295372BF */
-
- // for eventually  // for first_arg_t, quasi_pointer  // for tag
 #ifndef AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
 #define AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
 
@@ -3267,7 +3121,454 @@ struct LF_CORO_ATTRIBUTES task : std::type_identity<T> {
 
 #endif /* AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172 */
 
- // for task, returnable
+
+
+/**
+ * @file eventually.hpp
+ *
+ * @brief Classes for delaying construction of an object.
+ */
+
+namespace lf {
+
+namespace impl {
+
+namespace detail {
+
+/**
+ * @brief Base case -> T
+ */
+template <returnable T>
+struct eventually_value : std::type_identity<T> {};
+
+/**
+ * @brief void specialization -> empty
+ */
+template <>
+struct eventually_value<void> : std::type_identity<new_empty<>> {};
+
+/**
+ * @brief Reference specialization -> remove_reference<T> *
+ */
+template <returnable T>
+  requires std::is_reference_v<T>
+struct eventually_value<T> : std::add_pointer<T> {};
+
+} // namespace detail
+
+template <returnable T>
+using eventually_value_t = typename detail::eventually_value<T>::type;
+
+} // namespace impl
+
+inline namespace core {
+
+// ------------------------------------------------------------------------ //
+
+/**
+ * @brief A wrapper to delay construction of an object.
+ *
+ * An eventually is either empty, contains an object of type `T` or, (if `Exception` is true) contains an
+ * exception. Assignment to an empty eventually will construct an object of type `T` inside the eventually.
+ */
+template <returnable T, bool Exception>
+  requires impl::non_void<T> || Exception
+class basic_eventually : impl::immovable<basic_eventually<T, Exception>> {
+
+  /**
+   *         | void                 | ref                        | val
+   * eptr    | empty or exception * | ref or empty or exception  | val or empty or exception
+   * no eptr | invalid              | ref or empty *             | val or empty
+   *
+   *
+   * If two-states (*) then we can omit the state member.
+   */
+
+  static constexpr bool is_void = std::is_void_v<T>;
+  static constexpr bool is_ref_value = !is_void && std::is_reference_v<T>;
+  static constexpr bool is_val_value = !is_void && !std::is_reference_v<T>;
+
+  /**
+   * @brief If implicit_state is true then we store state bit in exception_ptr or reference ptr.
+   */
+  static constexpr bool implicit_state = (is_ref_value && !Exception) || (is_void && Exception);
+
+  enum class state : char {
+    empty,     ///< No object has been constructed.
+    value,     ///< An object has been constructed.
+    exception, ///< An exception has been thrown during and is stored.
+  };
+
+  [[no_unique_address]] union {
+    [[no_unique_address]] impl::new_empty<> m_empty;
+    [[no_unique_address]] impl::eventually_value_t<T> m_value;
+    [[no_unique_address]] impl::else_empty_t<Exception, std::exception_ptr> m_exception;
+  };
+
+  [[no_unique_address]] impl::else_empty_t<!implicit_state, state> m_flag;
+
+  // ----------------------- Hidden friends ----------------------- //
+
+  /**
+   * @brief Store the current exception, ``dest.empty()`` must be true.
+   *
+   * After this function is called, ``has_exception()`` will be true.
+   */
+  friend auto stash_exception(basic_eventually &dest) noexcept -> void
+    requires Exception
+  {
+    LF_ASSERT(dest.empty());
+
+    std::construct_at(std::addressof(dest.m_exception), std::current_exception());
+
+    if constexpr (!implicit_state) {
+      dest.m_flag = state::exception;
+    }
+  }
+
+ public:
+  // ------------------------- Helper ------------------------- //
+
+  using value_type = T;
+
+  // ------------------------ Construct ------------------------ //
+
+  // clang-format off
+
+  /**
+   * @brief Construct an empty eventually.
+   */
+  basic_eventually() noexcept requires implicit_state && Exception : m_exception{nullptr} {}
+
+  /**
+   * @brief Construct an empty eventually.
+   */
+  basic_eventually() noexcept requires implicit_state && (not Exception) : m_value{nullptr} {}
+
+
+  /**
+   * @brief Construct an empty eventually.
+   */
+  basic_eventually() noexcept requires (not implicit_state) : m_empty{}, m_flag{state::empty} {}
+
+  // clang-format on
+
+  // ------------------------ Destruct ------------------------ //
+
+  /**
+   * @brief Destroy the eventually object and the contained object.
+   */
+  ~basic_eventually() noexcept {
+    if constexpr (implicit_state) {
+      if constexpr (Exception) {
+        std::destroy_at(std::addressof(m_exception));
+      } else {
+        // T* is trivially destructible.
+      }
+    } else {
+      switch (m_flag) {
+        case state::empty:
+          return;
+        case state::value:
+          if constexpr (!is_void) {
+            std::destroy_at(std::addressof(m_value));
+            return;
+          } else {
+            lf::impl::unreachable();
+          }
+        case state::exception:
+          if constexpr (Exception) {
+            std::destroy_at(std::addressof(m_exception));
+            return;
+          } else {
+            lf::impl::unreachable();
+          }
+        default:
+          lf::impl::unreachable();
+      }
+    }
+  }
+  // ----------------------- Check state ----------------------- //
+
+  /**
+   * @brief Check if the eventually is empty.
+   */
+  [[nodiscard]] auto empty() const noexcept -> bool {
+    if constexpr (implicit_state) {
+      if constexpr (Exception) {
+        return m_exception == nullptr;
+      } else {
+        return m_value == nullptr;
+      }
+    } else {
+      return m_flag == state::empty;
+    }
+  }
+
+  /**
+   * @brief Check if there is a value stored in the eventually.
+   */
+  [[nodiscard]] auto has_value() const noexcept -> bool
+    requires is_val_value || is_ref_value
+  {
+    if constexpr (implicit_state) {
+      return m_value != nullptr;
+    } else {
+      return m_flag == state::value;
+    }
+  }
+
+  /**
+   * @brief Test is there is an exception stored in the eventually.
+   */
+  [[nodiscard]] auto has_exception() const noexcept -> bool
+    requires Exception
+  {
+    if constexpr (implicit_state) {
+      return m_exception != nullptr;
+    } else {
+      return m_flag == state::exception;
+    }
+  }
+
+  // ------------------------ Assignment ------------------------ //
+
+  /**
+   * @brief Store a value in the eventually, requires that ``empty()`` is true.
+   *
+   * After this function is called, ``has_value()`` will be true.
+   */
+  template <typename U>
+    requires is_val_value && std::constructible_from<T, U>
+  auto operator=(U &&expr) noexcept(std::is_nothrow_constructible_v<T, U>) -> basic_eventually & {
+    LF_ASSERT(empty());
+    std::construct_at(std::addressof(m_value), std::forward<U>(expr));
+    m_flag = state::value;
+    return *this;
+  }
+
+  // -----------
+
+  /**
+   * @brief Store a value in the eventually, requires that ``empty()`` is true.
+   *
+   * After this function is called, ``has_value()`` will be true.
+   */
+  template <impl::safe_ref_bind_to<T> U>
+    requires is_ref_value
+  auto operator=(U &&expr) noexcept -> basic_eventually & {
+
+    LF_ASSERT(empty());
+    m_value = std::addressof(expr);
+
+    if constexpr (!implicit_state) {
+      m_flag = state::value;
+    }
+
+    return *this;
+  }
+
+  // -------------------- Exception handling -------------------- //
+
+  /**
+   * @brief Access the stored exception, ``has_exception()`` must be true.
+   */
+  [[nodiscard]] auto exception() & noexcept -> std::exception_ptr &
+    requires Exception
+  {
+    LF_ASSERT(has_exception());
+    return m_exception;
+  }
+
+  /**
+   * @brief Access the stored exception, ``has_exception()`` must be true.
+   */
+  [[nodiscard]] auto exception() const & noexcept -> std::exception_ptr const &
+    requires Exception
+  {
+    LF_ASSERT(has_exception());
+    return m_exception;
+  }
+
+  /**
+   * @brief Access the stored exception, ``has_exception()`` must be true.
+   */
+  [[nodiscard]] auto exception() && noexcept -> std::exception_ptr &&
+    requires Exception
+  {
+    LF_ASSERT(has_exception());
+    return std::move(m_exception);
+  }
+
+  /**
+   * @brief Access the stored exception, ``has_exception()`` must be true.
+   */
+  [[nodiscard]] auto exception() const && noexcept -> std::exception_ptr const &&
+    requires Exception
+  {
+    LF_ASSERT(has_exception());
+    return std::move(m_exception);
+  }
+
+  // ------------------------ Operator -> ------------------------ //
+
+  /**
+   * @brief Access the stored value, ``has_value()`` must be true.
+   */
+  [[nodiscard]] auto operator->() noexcept -> std::add_pointer_t<T>
+    requires is_val_value
+  {
+    LF_ASSERT(has_value());
+    return std::addressof(m_value);
+  }
+
+  /**
+   * @brief Access the stored value, ``has_value()`` must be true.
+   */
+  [[nodiscard]] auto operator->() const noexcept -> std::add_pointer_t<T const>
+    requires is_val_value
+  {
+    LF_ASSERT(has_value());
+    return std::addressof(m_value);
+  }
+
+  // -----------
+
+  /**
+   * @brief Access the stored value, ``has_value()`` must be true.
+   */
+  [[nodiscard]] auto operator->() const noexcept -> std::add_pointer_t<T>
+    requires is_ref_value
+  {
+    LF_ASSERT(has_value());
+    return m_value;
+  }
+
+  // ------------------------ Operator * ------------------------ //
+
+  /**
+   * @brief Access the stored value, ``has_value()`` must be true.
+   */
+  [[nodiscard]] auto operator*() & noexcept -> std::add_lvalue_reference_t<T>
+    requires is_val_value
+  {
+    LF_ASSERT(has_value());
+    return m_value;
+  }
+
+  /**
+   * @brief Access the stored value, ``has_value()`` must be true.
+   */
+  [[nodiscard]] auto operator*() const & noexcept -> std::add_lvalue_reference_t<T const>
+    requires is_val_value
+  {
+    LF_ASSERT(has_value());
+    return m_value;
+  }
+
+  /**
+   * @brief Access the stored value, ``has_value()`` must be true.
+   */
+  [[nodiscard]] auto operator*() && noexcept -> std::add_rvalue_reference_t<T>
+    requires is_val_value
+  {
+    LF_ASSERT(has_value());
+    return std::move(m_value);
+  }
+
+  /**
+   * @brief Access the stored value, ``has_value()`` must be true.
+   */
+  [[nodiscard]] auto operator*() const && noexcept -> std::add_rvalue_reference_t<T const>
+    requires is_val_value
+  {
+    LF_ASSERT(has_value());
+    return std::move(m_value);
+  }
+
+  // -----------
+
+  /**
+   * @brief Access the stored value, ``has_value()`` must be true.
+   *
+   * This will decay `T&&` to `T&` just like using a `T &&` reference would.
+   */
+  [[nodiscard]] auto operator*() const & noexcept -> std::add_lvalue_reference_t<std::remove_reference_t<T>>
+    requires is_ref_value
+  {
+    LF_ASSERT(has_value());
+    return *m_value;
+  }
+
+  /**
+   * @brief Access the stored value, ``has_value()`` must be true.
+   *
+   * This will not decay T&& to T&, nor will it promote T& to T&&.
+   */
+  [[nodiscard]] auto operator*() const && noexcept -> T
+    requires is_ref_value
+  {
+
+    LF_ASSERT(has_value());
+
+    if constexpr (std::is_rvalue_reference_v<T>) {
+      return std::move(*m_value);
+    } else {
+      return *m_value;
+    }
+  }
+};
+
+template <returnable T>
+using eventually = basic_eventually<T, false>;
+
+template <returnable T>
+using try_eventually = basic_eventually<T, true>;
+
+} // namespace core
+
+} // namespace lf
+
+#endif /* B7972761_4CBF_4B86_B195_F754295372BF */
+
+ // for eventually
+#ifndef A090B92E_A266_42C9_BFB0_10681B6BD425
+#define A090B92E_A266_42C9_BFB0_10681B6BD425
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ // for quasi_pointer
+
+/**
+ * @file exception.hpp
+ *
+ * @brief Interface for individual exception handling.
+ */
+
+namespace lf {
+
+inline namespace core {
+
+/**
+ * @brief A concept that requires a type can store an exception.
+ */
+template <typename I>
+concept stash_exception_in_return = quasi_pointer<I> && requires (I ptr) {
+  { stash_exception(*ptr) } noexcept;
+};
+
+} // namespace core
+
+} // namespace lf
+
+#endif /* A090B92E_A266_42C9_BFB0_10681B6BD425 */
+
+ // for first_arg_t, quasi_pointer  // for tag // for task, returnable
 
 /**
  * @file invocable.hpp
@@ -3307,12 +3608,19 @@ struct discard_t {
 
 namespace detail {
 
+// Base case: invalid
 template <typename I, typename Task>
 struct valid_return : std::false_type {};
 
+// Special case: discard_t is valid for void
 template <>
 struct valid_return<discard_t, task<void>> : std::true_type {};
 
+// Special case: stash_exception_in_return + void
+template <stash_exception_in_return I>
+struct valid_return<I, task<void>> : std::true_type {};
+
+// Anything indirectly_writable
 template <returnable R, std::indirectly_writable<R> I>
 struct valid_return<I, task<R>> : std::true_type {};
 
@@ -3385,35 +3693,37 @@ concept call_consistent =                        //
 
 namespace detail {
 
-template <typename R>
-struct as_eventually : std::type_identity<eventually<R> *> {};
+template <typename R, bool Exception>
+struct as_eventually : std::type_identity<basic_eventually<R, Exception> *> {};
+
 template <>
-struct as_eventually<void> : std::type_identity<discard_t> {};
+struct as_eventually<void, false> : std::type_identity<discard_t> {};
 
 } // namespace detail
 
 /**
+ * @brief Wrap R in an basic_eventually if it is not void.
+ */
+template <typename R, bool Exception>
+using as_eventually_t = typename detail::as_eventually<R, Exception>::type;
+
+/**
  * @brief Check that `Tag`-invoking and calling `F` with `Args...` produces task<R>.
  *
- * This also checks the results is consistent when it is discarded and returned by `eventually<R> *`.
+ * This also checks the results is consistent when it is discarded and returned
+ * by `basic_eventually<...> *`.
  */
 template <typename R, typename I, tag T, typename F, typename... Args>
-concept self_consistent =                                                       //
-    call_consistent<R, I, T, F, Args...> &&                                     //
-    call_consistent<R, discard_t, T, F, Args...> &&                             //
-    call_consistent<R, typename detail::as_eventually<R>::type, T, F, Args...>; //
+concept self_consistent =                                          //
+    call_consistent<R, I, T, F, Args...> &&                        //
+    call_consistent<R, discard_t, T, F, Args...> &&                //
+    call_consistent<R, as_eventually_t<R, true>, T, F, Args...> && //
+    call_consistent<R, as_eventually_t<R, false>, T, F, Args...>;  //
 
 // --------------------- //
 
-// /**
-//  * @brief Let `F(Args...) -> task<R>` then this returns `eventually<R> *` or `discard_t` if `R` is void.
-//  */
-// template <typename I, tag Tag, typename F, typename... Args>
-//   requires async_invocable_to_task<I, Tag, F, Args...>
-// using as_eventually_t = detail::as_eventually<impl::unsafe_result_t<I, Tag, F, Args...>>::type;
-
 /**
- * @brief Check `F` is async invocable to a task with `I`,` discard_t` and the appropriate `eventually`.
+ * @brief Check `F` is async invocable to a task with `I`,` discard_t` and the appropriate `eventually`s.
  */
 template <typename I, tag Tag, typename F, typename... Args>
 concept consistent_invocable =                                                //
@@ -3440,7 +3750,7 @@ inline namespace core {
  *  - The result of all of these calls is an instance of type `lf::task<R>`.
  *  - `I` is movable and dereferenceable.
  *  - `I` is indirectly writable from `R` or `R` is `void` while `I` is `discard_t`.
- *  - If `R` is non-void then `F` is `lf::core::async_invocable` when `I` is `lf::[manual_]eventually<R> *`.
+ *  - If `R` is non-void then `F` is `lf::core::async_invocable` when `I` is `lf::basic_eventually<R, ?> *`.
  *
  * This concept is provided as a building block for higher-level concepts.
  */
@@ -3889,7 +4199,7 @@ struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combin
 
     auto *prom = static_cast<P *>(task.prom);
 
-    if constexpr (!std::is_void_v<R>) {
+    if constexpr (!std::same_as<I, discard_t>) {
       prom->set_return(std::move(ret));
     }
 
@@ -4084,12 +4394,13 @@ inline constexpr impl::bind_task<tag::call> call = {};
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <bit>         // for bit_cast
-#include <exception>   // for exception_ptr, reth...
-#include <optional>    // for optional, nullopt
+#include <bit>       // for bit_cast
+#include <exception> // for exception_ptr, reth...
+#include <optional>  // for optional, nullopt
+#include <semaphore>
 #include <type_traits> // for conditional_t
 #include <utility>     // for forward, move
-           // for eventually          // for submit_handle, subm...             // for intrusive_list              // for thread_stack, has_s...            // for async_function_object       // for quasi_awaitable           // for root_notify, frame // for manual_lifetime           // for stack, swap         // for empty            // for invoke_result_t, ign...                // for LF_LOG, LF_CLANG_TL...            // for scheduler                  // for tag
+           // for eventually          // for submit_handle, subm...             // for intrusive_list              // for thread_stack, has_s...            // for async_function_object       // for quasi_awaitable           // for root_notify, frame // for manual_lifetime           // for stack, swap // for invoke_result_t, ign...     // for LF_LOG, LF_CLANG_TL... // for scheduler       // for tag
 
 /**
  * @file sync_wait.hpp
@@ -4101,7 +4412,38 @@ namespace lf {
 
 namespace impl {
 
-struct empty;
+// struct tls_stack_swap : immovable<tls_stack_swap> {
+
+//   void make_stack_fresh() {
+//     if (stack_is_fresh) {
+//       return;
+//     }
+//     if (!m_this_thread_was_worker) {
+//       impl::tls::thread_stack.construct();
+//       impl::tls::has_stack = true;
+//       return;
+//     }
+//     m_cache.emplace();                        // Default construct.
+//     swap(*m_cache, *impl::tls::thread_stack); // ADL call.
+//   }
+
+//   void restore_stack() {
+//     if (!stack_is_fresh) {
+//       return;
+//     }
+//     if (!worker) {
+//       impl::tls::thread_stack.destroy();
+//       impl::tls::has_stack = false;
+//     } else {
+//       swap(*prev, *impl::tls::thread_stack);
+//     }
+//   }
+
+//  private:
+//   std::optional<impl::stack> m_cache;
+//   bool stack_is_fresh = false;
+//   bool const m_this_thread_was_worker = impl::tls::has_stack;
+// };
 
 } // namespace impl
 
@@ -4122,24 +4464,16 @@ template <scheduler Sch, async_function_object F, class... Args>
   requires rootable<F, Args...>
 LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> invoke_result_t<F, Args...> {
 
-  using R = invoke_result_t<F, Args...>;
-  constexpr bool is_void = std::is_void_v<R>;
-
-  impl::root_notify notifier;
-  eventually<std::conditional_t<is_void, impl::empty, R>> result;
+  std::binary_semaphore sem{0};
 
   // This is to support a worker sync waiting on work they will launch inline.
   bool worker = impl::tls::has_stack;
   // Will cache workers stack here.
   std::optional<impl::stack> prev = std::nullopt;
 
-  impl::y_combinate combinator = [&]() {
-    if constexpr (is_void) {
-      return combinate<tag::root>(impl::discard_t{}, std::move(fun));
-    } else {
-      return combinate<tag::root>(&result, std::move(fun));
-    }
-  }();
+  basic_eventually<invoke_result_t<F, Args...>, true> result;
+
+  impl::y_combinate combinator = combinate<tag::root>(&result, std::move(fun));
 
   if (!worker) {
     LF_LOG("Sync wait from non-worker thread");
@@ -4156,7 +4490,7 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> invoke
 
   [&]() noexcept {
     //
-    await.prom->set_root_notify(&notifier);
+    await.prom->set_root_sem(&sem);
     auto *handle = std::bit_cast<impl::submit_t *>(static_cast<impl::frame *>(await.prom));
 
     // If this threw we could clean up coroutine.
@@ -4175,14 +4509,14 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> invoke
     std::forward<Sch>(sch).schedule(&node);
 
     // If this threw we would have to terminate.
-    notifier.sem.acquire();
+    sem.acquire();
   }();
 
-  if (notifier.m_eptr) {
-    std::rethrow_exception(std::move(notifier.m_eptr));
+  if (result.has_exception()) {
+    std::rethrow_exception(std::move(result).exception());
   }
 
-  if constexpr (!is_void) {
+  if constexpr (!std::is_void_v<invoke_result_t<F, Args...>>) {
     return *std::move(result);
   }
 }
@@ -4297,7 +4631,7 @@ inline void resume(task_handle ptr) {
 #include <span>        // for span
 #include <type_traits> // for false_type, remove_cvref_t
 #include <utility>     // for forward
-        // for co_allocable, co_new_t    // for join_type     // for full_context     // for impl::submit_t, task_handle        // for intrusive_list         // for stack, context       // for async_function_object // for alloc_awaitable, call_aw...  // for quasi_awaitable      // for frame
+     // for co_allocable, co_new_t // for join_type     // for full_context     // for impl::submit_t, task_handle        // for intrusive_list         // for stack, context       // for async_function_object // for alloc_awaitable, call_aw...  // for quasi_awaitable      // for frame
 #ifndef A896798B_7E3B_4854_9997_89EA5AE765EB
 #define A896798B_7E3B_4854_9997_89EA5AE765EB
 
@@ -4334,7 +4668,9 @@ class return_result_base {
    */
   void set_return(I &&ret) noexcept { this->m_ret = std::move(ret); }
 
- protected:
+  auto get_return() noexcept -> I & { return this->m_ret; }
+
+ private:
   [[no_unique_address]] I m_ret; ///< The stored quasi-pointer
 };
 
@@ -4352,16 +4688,16 @@ struct return_result : return_result_base<I> {
   template <std::convertible_to<R> U>
   void return_value(U &&value) {
     if constexpr (std::indirectly_writable<I, U>) {
-      *(this->m_ret) = std::forward<U>(value);
+      *(this->get_return()) = std::forward<U>(value);
     } else {
-      *(this->m_ret) = static_cast<R>(std::forward<U>(value));
+      *(this->get_return()) = static_cast<R>(std::forward<U>(value));
     }
   }
 
   /**
    * @brief For use with `co_return {expr}`
    */
-  void return_value(R &&value) { *(this->m_ret) = std::move(value); }
+  void return_value(R &&value) { *(this->get_return()) = std::move(value); }
 };
 
 /**
@@ -4375,8 +4711,19 @@ struct return_result<R, I> : return_result_base<I> {
    */
   template <safe_ref_bind_to<R> U>
   void return_value(U &&ref) {
-    *(this->m_ret) = std::forward<U>(ref);
+    *(this->get_return()) = std::forward<U>(ref);
   }
+};
+
+/**
+ * @brief Case for void return with a stash_exception_in_return
+ */
+template <stash_exception_in_return I>
+struct return_result<void, I> : return_result_base<I> {
+  /**
+   * @brief A no-op.
+   */
+  static constexpr void return_void() noexcept {};
 };
 
 /**
@@ -4594,6 +4941,8 @@ struct promise_base : frame {
 template <returnable R, return_address_for<R> I, tag Tag>
 struct promise : promise_base, return_result<R, I> {
 
+  static_assert(Tag != tag::root || stash_exception_in_return<I>);
+
   /**
    * @brief Construct a new promise object, delegate to main constructor.
    */
@@ -4637,8 +4986,8 @@ struct promise : promise_base, return_result<R, I> {
    * @brief Cache in parent's stacklet.
    */
   void unhandled_exception() noexcept {
-    if constexpr (Tag == tag::root) {
-      this->notifier()->m_eptr = std::current_exception();
+    if constexpr (stash_exception_in_return<I>) {
+      stash_exception(*(this->get_return()));
     } else {
       this->parent()->capture_exception();
     }
@@ -4652,7 +5001,7 @@ struct promise : promise_base, return_result<R, I> {
 
         LF_LOG("Root task at final suspend, releases semaphore and yields");
 
-        child.promise().notifier()->sem.release();
+        child.promise().semaphore()->release();
         child.destroy();
 
         // A root task is always the first on a stack, now it has been completed the stack is empty.

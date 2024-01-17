@@ -14,6 +14,7 @@
 #include <type_traits>
 #include <utility> // for forward
 
+#include "libfork/core/exception.hpp"
 #include "libfork/core/first_arg.hpp"    // for quasi_pointer
 #include "libfork/core/impl/utility.hpp" // for safe_ref_bind_to
 #include "libfork/core/invocable.hpp"    // for return_address_for, discard_t
@@ -38,7 +39,9 @@ class return_result_base {
    */
   void set_return(I &&ret) noexcept { this->m_ret = std::move(ret); }
 
- protected:
+  auto get_return() noexcept -> I & { return this->m_ret; }
+
+ private:
   [[no_unique_address]] I m_ret; ///< The stored quasi-pointer
 };
 
@@ -56,16 +59,16 @@ struct return_result : return_result_base<I> {
   template <std::convertible_to<R> U>
   void return_value(U &&value) {
     if constexpr (std::indirectly_writable<I, U>) {
-      *(this->m_ret) = std::forward<U>(value);
+      *(this->get_return()) = std::forward<U>(value);
     } else {
-      *(this->m_ret) = static_cast<R>(std::forward<U>(value));
+      *(this->get_return()) = static_cast<R>(std::forward<U>(value));
     }
   }
 
   /**
    * @brief For use with `co_return {expr}`
    */
-  void return_value(R &&value) { *(this->m_ret) = std::move(value); }
+  void return_value(R &&value) { *(this->get_return()) = std::move(value); }
 };
 
 /**
@@ -79,8 +82,19 @@ struct return_result<R, I> : return_result_base<I> {
    */
   template <safe_ref_bind_to<R> U>
   void return_value(U &&ref) {
-    *(this->m_ret) = std::forward<U>(ref);
+    *(this->get_return()) = std::forward<U>(ref);
   }
+};
+
+/**
+ * @brief Case for void return with a stash_exception_in_return
+ */
+template <stash_exception_in_return I>
+struct return_result<void, I> : return_result_base<I> {
+  /**
+   * @brief A no-op.
+   */
+  static constexpr void return_void() noexcept {};
 };
 
 /**

@@ -14,7 +14,8 @@
 #include <type_traits> // for true_type, type_identity, inv...
 
 #include "libfork/core/eventually.hpp" // for eventually
-#include "libfork/core/first_arg.hpp"  // for first_arg_t, quasi_pointer
+#include "libfork/core/exception.hpp"
+#include "libfork/core/first_arg.hpp" // for first_arg_t, quasi_pointer
 #include "libfork/core/impl/utility.hpp"
 #include "libfork/core/tag.hpp"  // for tag
 #include "libfork/core/task.hpp" // for task, returnable
@@ -57,12 +58,19 @@ struct discard_t {
 
 namespace detail {
 
+// Base case: invalid
 template <typename I, typename Task>
 struct valid_return : std::false_type {};
 
+// Special case: discard_t is valid for void
 template <>
 struct valid_return<discard_t, task<void>> : std::true_type {};
 
+// Special case: stash_exception_in_return + void
+template <stash_exception_in_return I>
+struct valid_return<I, task<void>> : std::true_type {};
+
+// Anything indirectly_writable
 template <returnable R, std::indirectly_writable<R> I>
 struct valid_return<I, task<R>> : std::true_type {};
 
@@ -135,35 +143,37 @@ concept call_consistent =                        //
 
 namespace detail {
 
-template <typename R>
-struct as_eventually : std::type_identity<eventually<R> *> {};
+template <typename R, bool Exception>
+struct as_eventually : std::type_identity<basic_eventually<R, Exception> *> {};
+
 template <>
-struct as_eventually<void> : std::type_identity<discard_t> {};
+struct as_eventually<void, false> : std::type_identity<discard_t> {};
 
 } // namespace detail
 
 /**
+ * @brief Wrap R in an basic_eventually if it is not void.
+ */
+template <typename R, bool Exception>
+using as_eventually_t = typename detail::as_eventually<R, Exception>::type;
+
+/**
  * @brief Check that `Tag`-invoking and calling `F` with `Args...` produces task<R>.
  *
- * This also checks the results is consistent when it is discarded and returned by `eventually<R> *`.
+ * This also checks the results is consistent when it is discarded and returned
+ * by `basic_eventually<...> *`.
  */
 template <typename R, typename I, tag T, typename F, typename... Args>
-concept self_consistent =                                                       //
-    call_consistent<R, I, T, F, Args...> &&                                     //
-    call_consistent<R, discard_t, T, F, Args...> &&                             //
-    call_consistent<R, typename detail::as_eventually<R>::type, T, F, Args...>; //
+concept self_consistent =                                          //
+    call_consistent<R, I, T, F, Args...> &&                        //
+    call_consistent<R, discard_t, T, F, Args...> &&                //
+    call_consistent<R, as_eventually_t<R, true>, T, F, Args...> && //
+    call_consistent<R, as_eventually_t<R, false>, T, F, Args...>;  //
 
 // --------------------- //
 
-// /**
-//  * @brief Let `F(Args...) -> task<R>` then this returns `eventually<R> *` or `discard_t` if `R` is void.
-//  */
-// template <typename I, tag Tag, typename F, typename... Args>
-//   requires async_invocable_to_task<I, Tag, F, Args...>
-// using as_eventually_t = detail::as_eventually<impl::unsafe_result_t<I, Tag, F, Args...>>::type;
-
 /**
- * @brief Check `F` is async invocable to a task with `I`,` discard_t` and the appropriate `eventually`.
+ * @brief Check `F` is async invocable to a task with `I`,` discard_t` and the appropriate `eventually`s.
  */
 template <typename I, tag Tag, typename F, typename... Args>
 concept consistent_invocable =                                                //
@@ -190,7 +200,7 @@ inline namespace core {
  *  - The result of all of these calls is an instance of type `lf::task<R>`.
  *  - `I` is movable and dereferenceable.
  *  - `I` is indirectly writable from `R` or `R` is `void` while `I` is `discard_t`.
- *  - If `R` is non-void then `F` is `lf::core::async_invocable` when `I` is `lf::[manual_]eventually<R> *`.
+ *  - If `R` is non-void then `F` is `lf::core::async_invocable` when `I` is `lf::basic_eventually<R, ?> *`.
  *
  * This concept is provided as a building block for higher-level concepts.
  */

@@ -9,9 +9,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <bit>         // for bit_cast
-#include <exception>   // for exception_ptr, reth...
-#include <optional>    // for optional, nullopt
+#include <bit>       // for bit_cast
+#include <exception> // for exception_ptr, reth...
+#include <optional>  // for optional, nullopt
+#include <semaphore>
 #include <type_traits> // for conditional_t
 #include <utility>     // for forward, move
 
@@ -24,11 +25,11 @@
 #include "libfork/core/impl/frame.hpp"           // for root_notify, frame
 #include "libfork/core/impl/manual_lifetime.hpp" // for manual_lifetime
 #include "libfork/core/impl/stack.hpp"           // for stack, swap
-#include "libfork/core/impl/utility.hpp"         // for empty
-#include "libfork/core/invocable.hpp"            // for invoke_result_t, ign...
-#include "libfork/core/macro.hpp"                // for LF_LOG, LF_CLANG_TL...
-#include "libfork/core/scheduler.hpp"            // for scheduler
-#include "libfork/core/tag.hpp"                  // for tag
+#include "libfork/core/impl/utility.hpp"
+#include "libfork/core/invocable.hpp" // for invoke_result_t, ign...
+#include "libfork/core/macro.hpp"     // for LF_LOG, LF_CLANG_TL...
+#include "libfork/core/scheduler.hpp" // for scheduler
+#include "libfork/core/tag.hpp"       // for tag
 
 /**
  * @file sync_wait.hpp
@@ -40,7 +41,38 @@ namespace lf {
 
 namespace impl {
 
-struct empty;
+// struct tls_stack_swap : immovable<tls_stack_swap> {
+
+//   void make_stack_fresh() {
+//     if (stack_is_fresh) {
+//       return;
+//     }
+//     if (!m_this_thread_was_worker) {
+//       impl::tls::thread_stack.construct();
+//       impl::tls::has_stack = true;
+//       return;
+//     }
+//     m_cache.emplace();                        // Default construct.
+//     swap(*m_cache, *impl::tls::thread_stack); // ADL call.
+//   }
+
+//   void restore_stack() {
+//     if (!stack_is_fresh) {
+//       return;
+//     }
+//     if (!worker) {
+//       impl::tls::thread_stack.destroy();
+//       impl::tls::has_stack = false;
+//     } else {
+//       swap(*prev, *impl::tls::thread_stack);
+//     }
+//   }
+
+//  private:
+//   std::optional<impl::stack> m_cache;
+//   bool stack_is_fresh = false;
+//   bool const m_this_thread_was_worker = impl::tls::has_stack;
+// };
 
 } // namespace impl
 
@@ -61,24 +93,16 @@ template <scheduler Sch, async_function_object F, class... Args>
   requires rootable<F, Args...>
 LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> invoke_result_t<F, Args...> {
 
-  using R = invoke_result_t<F, Args...>;
-  constexpr bool is_void = std::is_void_v<R>;
-
-  impl::root_notify notifier;
-  eventually<std::conditional_t<is_void, impl::empty, R>> result;
+  std::binary_semaphore sem{0};
 
   // This is to support a worker sync waiting on work they will launch inline.
   bool worker = impl::tls::has_stack;
   // Will cache workers stack here.
   std::optional<impl::stack> prev = std::nullopt;
 
-  impl::y_combinate combinator = [&]() {
-    if constexpr (is_void) {
-      return combinate<tag::root>(impl::discard_t{}, std::move(fun));
-    } else {
-      return combinate<tag::root>(&result, std::move(fun));
-    }
-  }();
+  basic_eventually<invoke_result_t<F, Args...>, true> result;
+
+  impl::y_combinate combinator = combinate<tag::root>(&result, std::move(fun));
 
   if (!worker) {
     LF_LOG("Sync wait from non-worker thread");
@@ -95,7 +119,7 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> invoke
 
   [&]() noexcept {
     //
-    await.prom->set_root_notify(&notifier);
+    await.prom->set_root_sem(&sem);
     auto *handle = std::bit_cast<impl::submit_t *>(static_cast<impl::frame *>(await.prom));
 
     // If this threw we could clean up coroutine.
@@ -114,14 +138,14 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> invoke
     std::forward<Sch>(sch).schedule(&node);
 
     // If this threw we would have to terminate.
-    notifier.sem.acquire();
+    sem.acquire();
   }();
 
-  if (notifier.m_eptr) {
-    std::rethrow_exception(std::move(notifier.m_eptr));
+  if (result.has_exception()) {
+    std::rethrow_exception(std::move(result).exception());
   }
 
-  if constexpr (!is_void) {
+  if constexpr (!std::is_void_v<invoke_result_t<F, Args...>>) {
     return *std::move(result);
   }
 }

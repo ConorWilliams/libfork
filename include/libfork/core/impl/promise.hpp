@@ -21,8 +21,9 @@
 #include <type_traits> // for false_type, remove_cvref_t
 #include <utility>     // for forward
 
-#include "libfork/core/co_alloc.hpp"        // for co_allocable, co_new_t
-#include "libfork/core/control_flow.hpp"    // for join_type
+#include "libfork/core/co_alloc.hpp"     // for co_allocable, co_new_t
+#include "libfork/core/control_flow.hpp" // for join_type
+#include "libfork/core/exception.hpp"
 #include "libfork/core/ext/context.hpp"     // for full_context
 #include "libfork/core/ext/handles.hpp"     // for impl::submit_t, task_handle
 #include "libfork/core/ext/list.hpp"        // for intrusive_list
@@ -238,6 +239,8 @@ struct promise_base : frame {
 template <returnable R, return_address_for<R> I, tag Tag>
 struct promise : promise_base, return_result<R, I> {
 
+  static_assert(Tag != tag::root || stash_exception_in_return<I>);
+
   /**
    * @brief Construct a new promise object, delegate to main constructor.
    */
@@ -281,8 +284,8 @@ struct promise : promise_base, return_result<R, I> {
    * @brief Cache in parent's stacklet.
    */
   void unhandled_exception() noexcept {
-    if constexpr (Tag == tag::root) {
-      this->notifier()->m_eptr = std::current_exception();
+    if constexpr (stash_exception_in_return<I>) {
+      stash_exception(*(this->get_return()));
     } else {
       this->parent()->capture_exception();
     }
@@ -296,7 +299,7 @@ struct promise : promise_base, return_result<R, I> {
 
         LF_LOG("Root task at final suspend, releases semaphore and yields");
 
-        child.promise().notifier()->sem.release();
+        child.promise().semaphore()->release();
         child.destroy();
 
         // A root task is always the first on a stack, now it has been completed the stack is empty.
