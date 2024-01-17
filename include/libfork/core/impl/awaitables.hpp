@@ -47,7 +47,7 @@ namespace lf::impl {
  * reverse order.
  *
  */
-inline LF_FORCEINLINE auto try_self_stealing() noexcept -> std::coroutine_handle<> {
+[[nodiscard]] inline LF_FORCEINLINE auto try_self_stealing() noexcept -> std::coroutine_handle<> {
   //
   if (auto *eff_stolen = std::bit_cast<frame *>(tls::context()->pop())) {
     eff_stolen->fetch_add_steal();

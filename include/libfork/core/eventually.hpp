@@ -102,7 +102,10 @@ class basic_eventually : impl::immovable<basic_eventually<T, Exception>> {
     exception, ///< An exception has been thrown during and is stored.
   };
 
-  [[no_unique_address]] union {
+#ifndef _MSC_VER
+  [[no_unique_address]]
+#endif
+  union {
     [[no_unique_address]] impl::empty_t<1> m_empty;
     [[no_unique_address]] impl::eventually_value_t<T> m_value; ///< Uses empty_t<0>
     [[no_unique_address]] impl::else_empty_t<Exception, std::exception_ptr, 2> m_exception;

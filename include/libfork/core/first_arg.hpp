@@ -108,7 +108,7 @@ class first_arg_t {
   /**
    * @brief Get the current workers context.
    */
-  static auto context() -> worker_context * { return tls::context(); }
+  [[nodiscard]] static auto context() -> worker_context * { return tls::context(); }
 
   /**
    * @brief Stash an exception that will be rethrown at the end of the next join.
@@ -171,7 +171,7 @@ class first_arg_t {
   /**
    * @brief Hidden friend reduces discoverability, this is an implementation detail.
    */
-  friend auto unwrap(first_arg_t &&arg) noexcept -> F && { return std::move(arg.m_fun); }
+  [[nodiscard]] friend auto unwrap(first_arg_t &&arg) noexcept -> F && { return std::move(arg.m_fun); }
 
   /**
    * @brief Hidden friend reduces discoverability, this is an implementation detail.

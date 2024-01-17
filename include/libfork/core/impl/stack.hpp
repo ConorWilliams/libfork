@@ -42,7 +42,7 @@ namespace lf::impl {
 /**
  * @brief Round size close to a multiple of the page_size.
  */
-inline constexpr auto round_up_to_page_size(std::size_t size) noexcept -> std::size_t {
+[[nodiscard]] inline constexpr auto round_up_to_page_size(std::size_t size) noexcept -> std::size_t {
 
   // Want calculate req such that:
 

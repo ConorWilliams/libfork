@@ -42,7 +42,7 @@ class return_result_base {
   /**
    * @brief Get a reference to the return pointer.
    */
-  auto get_return() noexcept -> I & { return this->m_ret; }
+  [[nodiscard]] auto get_return() noexcept -> I & { return this->m_ret; }
 
  private:
   [[no_unique_address]] I m_ret; ///< The stored quasi-pointer

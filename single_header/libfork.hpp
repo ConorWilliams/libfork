@@ -951,7 +951,7 @@ struct steal_t {
    *
    * Requires ``code == err::none`` .
    */
-  constexpr auto operator->() noexcept -> T * {
+  [[nodiscard]] constexpr auto operator->() noexcept -> T * {
     LF_ASSERT(code == err::none);
     return std::addressof(val);
   }
@@ -960,7 +960,7 @@ struct steal_t {
    *
    * Requires ``code == err::none`` .
    */
-  constexpr auto operator->() const noexcept -> T const * {
+  [[nodiscard]] constexpr auto operator->() const noexcept -> T const * {
     LF_ASSERT(code == err::none);
     return std::addressof(val);
   }
@@ -1069,7 +1069,8 @@ class deque : impl::immovable<deque<T>> {
    * Any threads can try to steal an item from the deque. This operation can fail if the deque is
    * empty or if another thread simultaneously stole an item from the deque.
    */
-  constexpr auto steal() noexcept -> steal_t<T>;
+  [[nodiscard]] constexpr auto steal() noexcept -> steal_t<T>;
+
   /**
    * @brief Destroy the deque object.
    *
@@ -1280,7 +1281,7 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
     /**
      * @brief Access the value stored in a node of the list.
      */
-    friend constexpr auto unwrap(node *ptr) noexcept -> T & { return non_null(ptr)->m_data; }
+    [[nodiscard]] friend constexpr auto unwrap(node *ptr) noexcept -> T & { return non_null(ptr)->m_data; }
 
     /**
      * @brief Call `func` on each unwrapped node linked in the list.
@@ -1620,7 +1621,7 @@ namespace lf::impl {
 /**
  * @brief Round size close to a multiple of the page_size.
  */
-inline constexpr auto round_up_to_page_size(std::size_t size) noexcept -> std::size_t {
+[[nodiscard]] inline constexpr auto round_up_to_page_size(std::size_t size) noexcept -> std::size_t {
 
   // Want calculate req such that:
 
@@ -2546,7 +2547,7 @@ class stack_allocated : impl::immovable<stack_allocated<T>> {
    */
   template <std::size_t I>
     requires (I == 0)
-  auto get() noexcept -> std::span<T> {
+  [[nodiscard]] auto get() noexcept -> std::span<T> {
     return m_span;
   }
 
@@ -2555,7 +2556,7 @@ class stack_allocated : impl::immovable<stack_allocated<T>> {
    */
   template <std::size_t I>
     requires (I == 0)
-  auto get() const noexcept -> std::span<T const> {
+  [[nodiscard]] auto get() const noexcept -> std::span<T const> {
     return m_span;
   }
 
@@ -2612,7 +2613,7 @@ inline namespace core {
  *
  */
 template <co_allocable T>
-inline auto co_new(std::size_t count) -> impl::co_new_t<T> {
+[[nodiscard]] auto co_new(std::size_t count) -> impl::co_new_t<T> {
   return impl::co_new_t<T>{count};
 }
 
@@ -2781,7 +2782,7 @@ class first_arg_t {
   /**
    * @brief Get the current workers context.
    */
-  static auto context() -> worker_context * { return tls::context(); }
+  [[nodiscard]] static auto context() -> worker_context * { return tls::context(); }
 
   /**
    * @brief Stash an exception that will be rethrown at the end of the next join.
@@ -2844,7 +2845,7 @@ class first_arg_t {
   /**
    * @brief Hidden friend reduces discoverability, this is an implementation detail.
    */
-  friend auto unwrap(first_arg_t &&arg) noexcept -> F && { return std::move(arg.m_fun); }
+  [[nodiscard]] friend auto unwrap(first_arg_t &&arg) noexcept -> F && { return std::move(arg.m_fun); }
 
   /**
    * @brief Hidden friend reduces discoverability, this is an implementation detail.
@@ -3065,7 +3066,10 @@ class basic_eventually : impl::immovable<basic_eventually<T, Exception>> {
     exception, ///< An exception has been thrown during and is stored.
   };
 
-  [[no_unique_address]] union {
+#ifndef _MSC_VER
+  [[no_unique_address]]
+#endif
+  union {
     [[no_unique_address]] impl::empty_t<1> m_empty;
     [[no_unique_address]] impl::eventually_value_t<T> m_value; ///< Uses empty_t<0>
     [[no_unique_address]] impl::else_empty_t<Exception, std::exception_ptr, 2> m_exception;
@@ -4308,7 +4312,7 @@ namespace lf::impl {
  * reverse order.
  *
  */
-inline LF_FORCEINLINE auto try_self_stealing() noexcept -> std::coroutine_handle<> {
+[[nodiscard]] inline LF_FORCEINLINE auto try_self_stealing() noexcept -> std::coroutine_handle<> {
   //
   if (auto *eff_stolen = std::bit_cast<frame *>(tls::context()->pop())) {
     eff_stolen->fetch_add_steal();
@@ -4687,7 +4691,7 @@ class return_result_base {
   /**
    * @brief Get a reference to the return pointer.
    */
-  auto get_return() noexcept -> I & { return this->m_ret; }
+  [[nodiscard]] auto get_return() noexcept -> I & { return this->m_ret; }
 
  private:
   [[no_unique_address]] I m_ret; ///< The stored quasi-pointer

@@ -200,7 +200,7 @@ struct steal_t {
    *
    * Requires ``code == err::none`` .
    */
-  constexpr auto operator->() noexcept -> T * {
+  [[nodiscard]] constexpr auto operator->() noexcept -> T * {
     LF_ASSERT(code == err::none);
     return std::addressof(val);
   }
@@ -209,7 +209,7 @@ struct steal_t {
    *
    * Requires ``code == err::none`` .
    */
-  constexpr auto operator->() const noexcept -> T const * {
+  [[nodiscard]] constexpr auto operator->() const noexcept -> T const * {
     LF_ASSERT(code == err::none);
     return std::addressof(val);
   }
@@ -318,7 +318,8 @@ class deque : impl::immovable<deque<T>> {
    * Any threads can try to steal an item from the deque. This operation can fail if the deque is
    * empty or if another thread simultaneously stole an item from the deque.
    */
-  constexpr auto steal() noexcept -> steal_t<T>;
+  [[nodiscard]] constexpr auto steal() noexcept -> steal_t<T>;
+
   /**
    * @brief Destroy the deque object.
    *

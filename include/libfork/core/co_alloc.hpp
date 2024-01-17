@@ -74,7 +74,7 @@ class stack_allocated : impl::immovable<stack_allocated<T>> {
    */
   template <std::size_t I>
     requires (I == 0)
-  auto get() noexcept -> std::span<T> {
+  [[nodiscard]] auto get() noexcept -> std::span<T> {
     return m_span;
   }
 
@@ -83,7 +83,7 @@ class stack_allocated : impl::immovable<stack_allocated<T>> {
    */
   template <std::size_t I>
     requires (I == 0)
-  auto get() const noexcept -> std::span<T const> {
+  [[nodiscard]] auto get() const noexcept -> std::span<T const> {
     return m_span;
   }
 
@@ -140,7 +140,7 @@ inline namespace core {
  *
  */
 template <co_allocable T>
-inline auto co_new(std::size_t count) -> impl::co_new_t<T> {
+[[nodiscard]] auto co_new(std::size_t count) -> impl::co_new_t<T> {
   return impl::co_new_t<T>{count};
 }
 

@@ -47,7 +47,7 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
     /**
      * @brief Access the value stored in a node of the list.
      */
-    friend constexpr auto unwrap(node *ptr) noexcept -> T & { return non_null(ptr)->m_data; }
+    [[nodiscard]] friend constexpr auto unwrap(node *ptr) noexcept -> T & { return non_null(ptr)->m_data; }
 
     /**
      * @brief Call `func` on each unwrapped node linked in the list.
