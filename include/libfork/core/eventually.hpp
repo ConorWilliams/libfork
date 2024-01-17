@@ -41,7 +41,7 @@ struct eventually_value : std::type_identity<T> {};
  * @brief void specialization -> empty
  */
 template <>
-struct eventually_value<void> : std::type_identity<new_empty<>> {};
+struct eventually_value<void> : std::type_identity<empty_t<0>> {};
 
 /**
  * @brief Reference specialization -> remove_reference<T> *
@@ -103,12 +103,12 @@ class basic_eventually : impl::immovable<basic_eventually<T, Exception>> {
   };
 
   [[no_unique_address]] union {
-    [[no_unique_address]] impl::new_empty<> m_empty;
-    [[no_unique_address]] impl::eventually_value_t<T> m_value;
-    [[no_unique_address]] impl::else_empty_t<Exception, std::exception_ptr> m_exception;
+    [[no_unique_address]] impl::empty_t<1> m_empty;
+    [[no_unique_address]] impl::eventually_value_t<T> m_value; ///< Uses empty_t<0>
+    [[no_unique_address]] impl::else_empty_t<Exception, std::exception_ptr, 2> m_exception;
   };
 
-  [[no_unique_address]] impl::else_empty_t<!implicit_state, state> m_flag;
+  [[no_unique_address]] impl::else_empty_t<!implicit_state, state, 3> m_flag;
 
   // ----------------------- Hidden friends ----------------------- //
 

@@ -63,7 +63,7 @@ struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combin
   auto operator()(Args &&...args) && -> quasi_awaitable<invoke_result_t<F, Args...>, I, Tag> {
 
     task task = std::move(fun)(                                 //
-        first_arg_t<I, Tag, F, Args &&...>(std::as_const(fun)), //
+        first_arg_t<I, Tag, F, Args &&...>(std::as_const(fun)), // Makes a copy of fun
         std::forward<Args>(args)...                             //
     );
 
