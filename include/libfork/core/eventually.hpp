@@ -15,8 +15,8 @@
 #include <type_traits> // for add_lvalue_reference_t, add...
 #include <utility>     // for addressof, forward
 
-#include "libfork/core/impl/utility.hpp" // for new_empty, else_empty_t
-#include "libfork/core/macro.hpp"        // for LF_ASSERT, unreachable
+#include "libfork/core/impl/utility.hpp" // for empty_t, else_empty_t, immo...
+#include "libfork/core/macro.hpp"        // for LF_ASSERT, unreachable, LF_...
 #include "libfork/core/task.hpp"         // for returnable
 
 /**
@@ -233,11 +233,16 @@ class basic_eventually : impl::immovable<basic_eventually<T, Exception>> {
   [[nodiscard]] auto has_exception() const noexcept -> bool
     requires Exception
   {
+#if LF_COMPILER_EXCEPTIONS
     if constexpr (implicit_state) {
       return m_exception != nullptr;
     } else {
       return m_flag == state::exception;
     }
+
+#else
+    return false;
+#endif
   }
 
   // ------------------------ Assignment ------------------------ //

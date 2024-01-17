@@ -338,6 +338,15 @@ using std::unreachable;
  */
 #define LF_CONCAT_INNER(a, b) a##b
 
+/**
+ * @brief Depreciate operator() in favor of operator[] if multidimensional subscript is available.
+ */
+#if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
+  #define LF_DEPRECATE_CALL [[deprecated("Use operator[] instead of operator()")]]
+#else
+  #define LF_DEPRECATE_CALL
+#endif
+
 // NOLINTEND
 
 #endif /* C5DCA647_8269_46C2_B76F_5FA68738AEDA */
