@@ -3430,7 +3430,12 @@ namespace lf {
 inline namespace core {
 
 /**
- * @brief A concept that requires a type can store an exception.
+ * @brief A concept that checks if a quasi-pointer can be used to stash an exception.
+ *
+ * If the expression `stash_exception(*ptr)` is well-formed and `noexcept` and `ptr` is
+ * used as the return address of an async function, then if that function terminates
+ * with an exception, the exception will be stored in the quasi-pointer via a call to
+ * `stash_exception`.
  */
 template <typename I>
 concept stash_exception_in_return = quasi_pointer<I> && requires (I ptr) {

@@ -35,6 +35,7 @@ API
    
 .. doxygenconcept:: lf::core::co_allocable
 
+.. doxygenconcept:: lf::core::stash_exception_in_return
 
 Functional
 ~~~~~~~~~~

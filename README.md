@@ -143,8 +143,8 @@ This section provides some background and highlights of the `core` API, for deta
 - [Fork-join](#fork-join)
 - [The cactus stack](#the-cactus-stack)
 - [Restrictions on references](#restrictions-on-references)
-- [Exception in libfork](#exceptions)
 - [Delaying construction with `lf::eventually<T>`](#delaying-construction)
+- [Exception in libfork](#exceptions)
 - [Explicit scheduling](#explicit-scheduling)
 - [Contexts and schedulers](#contexts-and-schedulers)
 
@@ -288,6 +288,41 @@ inline constexpr lf::async modify = [](auto, int &n) -> lf::task<void> {
 
 If `lf::for_each` returned a value then so would the `co_await` expression. Invoking and awaiting an async function directly has the same semantics as `lf::call` however, it will automatically bind the return value to a temporary variable. -->
 
+### Delaying construction
+
+Some types are expensive or impossible to default construct, for these instances libfork provides the `lf::eventually` template type. `lf::eventually` functions like a `std::optional` that is only constructed once and supports references:
+
+```cpp
+// Not default constructible.
+struct difficult {
+  difficult(int) {}
+};
+
+// Async function that returns a difficult.
+inline constexpr auto make_difficult = [](auto) -> lf::task<difficult> {
+  co_return 42;
+}
+
+// Async function that returns a reference.
+inline constexpr auto reference = [](auto) -> lf::task<int &> {
+  co_return /* some reference */;
+}
+
+inline constexpr auto eventually_demo = [](auto) -> lf::task<> { 
+
+  // Use lf::eventually to delay construction.
+  lf::eventually<difficult> a;
+  lf::eventually<int &> b;
+  
+  co_await lf::fork[&a, make_difficult]();    
+  co_await lf::fork[&b, reference]();
+
+  co_await lf::join;     
+
+  std::cout << *b << std::endl; // lf::eventually support operators * and ->
+};
+```
+
 ### Exceptions
 
 Libfork supports exceptions in async functions. If an exception escapes an async function then it will be stored in its parent and re-thrown when the parent reaches a join-point. For example:
@@ -328,44 +363,28 @@ inline constexpr auto good_code = [](auto good_code) -> lf::task<> {
     good_code.stash_exception(); // Store's exception.
   } 
 
-  co_await lf::join;             // Exception from child or will be re-thrown here.                             
+  co_await lf::join; // Exception from child or stash_exception will be re-thrown here.                             
 };
 ```
 
 If/when C++ adds asynchronous RAII then this will be made much cleaner.
 
-### Delaying construction
-
-Some types are expensive or impossible to default construct, for these instances libfork provides the `lf::eventually` template type. `lf::eventually` functions like a `std::optional` that is only constructed once and supports references:
+If you would like to capture exceptions for each child individually then you can use a return object that supports capturing exceptions, for example:
 
 ```cpp
-// Not default constructible.
-struct difficult {
-  difficult(int) {}
-};
-
-// Async function that returns a difficult.
-inline constexpr auto make_difficult = [](auto) -> lf::task<difficult> {
-  co_return 42;
-}
-
-// Async function that returns a reference.
-inline constexpr auto reference = [](auto) -> lf::task<int &> {
-  co_return /* some reference */;
-}
-
-inline constexpr auto eventually_demo = [](auto) -> lf::task<> { 
-
-  // Use lf::eventually to delay construction.
-  lf::eventually<difficult> a;
-  lf::eventually<int &> b;
+inline constexpr auto exception_stash_demo = [](auto) -> lf::task<> { 
   
-  co_await lf::fork[&a, make_difficult]();    
-  co_await lf::fork[&b, reference]();
+  try_eventually<int> ret;
+  
+  co_await lf::fork[&ret, int_or_throw](/* args.. */);    
 
-  co_await lf::join;     
+  co_await lf::join; // Will not throw, exception stored in ret.
 
-  std::cout << *b << std::endl; // lf::eventually support operators * and ->
+  if (ret.has_exception()) {
+    // Handle exception.
+  } else {
+    // Handle result.
+  }                            
 };
 ```
 
