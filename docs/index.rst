@@ -45,7 +45,7 @@ Extension API
     :no-link:  
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
 
    api/ext.rst
 

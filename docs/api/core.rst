@@ -11,7 +11,7 @@ Enums
 Concepts and traits
 -----------------------------
 
-Libfork has a concept-driven API, built upon the following concepts.
+Libfork has a concept-driven API, built upon the following concepts and traits.
 
 Building blocks
 ~~~~~~~~~~~~~~~
@@ -22,18 +22,18 @@ Building blocks
 
 .. doxygenconcept:: lf::core::quasi_pointer
 
-.. doxygenconcept:: lf::core::co_allocable
+.. doxygenconcept:: lf::core::async_function_object
 
 API
 ~~~
 
-.. doxygenconcept:: lf::core::async_function_object
+.. doxygenconcept:: lf::core::first_arg
 
 .. doxygenconcept:: lf::core::scheduler
 
 .. doxygenconcept:: lf::core::context_switcher
    
-.. doxygenconcept:: lf::core::first_arg
+.. doxygenconcept:: lf::core::co_allocable
 
 
 Functional
@@ -46,9 +46,6 @@ Functional
 .. doxygenconcept:: lf::core::rootable
 
 .. doxygenconcept:: lf::core::forkable
-
-Utility
-.......
 
 .. doxygentypedef:: invoke_result_t
 
@@ -91,9 +88,16 @@ Task
 Eventually
 ~~~~~~~~~~
 
-.. doxygenclass:: lf::core::eventually
-   :members:
-   :undoc-members:
+.. toctree::
+   :maxdepth: 2
+
+   eventually.rst
+
+
+.. doxygentypedef:: lf::core::eventually
+
+.. doxygentypedef:: lf::core::try_eventually
+
 
 
 Defer

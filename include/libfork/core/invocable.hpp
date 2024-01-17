@@ -103,13 +103,16 @@ concept async_invocable_to_task =
     valid_return_v<I, std::invoke_result_t<F, impl::first_arg_t<discard_t, Tag, F, Args &&...>, Args...>>; //
 
 /**
- * @brief Let `F(Args...) -> task<R>` then this returns 'R'.
+ * @brief Fetch the underlying result type of an async invocation.
  *
  * Unsafe in the sense that it does not check that F is `async_invocable`.
  */
 template <typename I, tag Tag, typename F, typename... Args>
   requires async_invocable_to_task<I, Tag, F, Args...>
 struct unsafe_result {
+  /**
+   * @brief Let `F(Args...) -> task<R>` then this is 'R'.
+   */
   using type = std::invoke_result_t<F, impl::first_arg_t<I, Tag, F, Args...>, Args...>::type;
 };
 
@@ -194,12 +197,14 @@ inline namespace core {
  * generate the appropriate (opaque) first-argument.
  *
  * This requires:
+ *  - `F` is an async function object.
  *  - `F` is 'Tag'/call invocable with `Args...` when writing the result to `I` or discarding it.
  *  - The result of all of these calls has the same type.
  *  - The result of all of these calls is an instance of type `lf::task<R>`.
  *  - `I` is movable and dereferenceable.
  *  - `I` is indirectly writable from `R` or `R` is `void` while `I` is `discard_t`.
- *  - If `R` is non-void then `F` is `lf::core::async_invocable` when `I` is `lf::basic_eventually<R, ?> *`.
+ *  - If `R` is non-void then `F` is `lf::core::async_invocable` when `I` is `lf::eventually<R> *`.
+ *  - `F` is `lf::core::async_invocable` when `I` is `lf::try_eventually<R> *`.
  *
  * This concept is provided as a building block for higher-level concepts.
  */

@@ -3017,6 +3017,13 @@ struct eventually_value<T> : std::add_pointer<T> {};
 
 } // namespace detail
 
+/**
+ * @brief Return the appropriate type to store in an eventually.
+ *
+ * If `T` is `void` then we store an empty object.
+ * If `T` is a reference then we store a pointer to the referenced type.
+ * Otherwise we store the type directly.
+ */
 template <returnable T>
 using eventually_value_t = typename detail::eventually_value<T>::type;
 
@@ -3090,6 +3097,9 @@ class basic_eventually : impl::immovable<basic_eventually<T, Exception>> {
  public:
   // ------------------------- Helper ------------------------- //
 
+  /**
+   * @brief The type of the object stored in the eventually.
+   */
   using value_type = T;
 
   // ------------------------ Construct ------------------------ //
@@ -3099,18 +3109,18 @@ class basic_eventually : impl::immovable<basic_eventually<T, Exception>> {
   /**
    * @brief Construct an empty eventually.
    */
-  basic_eventually() noexcept requires implicit_state && Exception : m_exception{nullptr} {}
+  basic_eventually() noexcept requires (implicit_state && Exception) : m_exception{nullptr} {}
 
   /**
    * @brief Construct an empty eventually.
    */
-  basic_eventually() noexcept requires implicit_state && (not Exception) : m_value{nullptr} {}
+  basic_eventually() noexcept requires (implicit_state && !Exception) : m_value{nullptr} {}
 
 
   /**
    * @brief Construct an empty eventually.
    */
-  basic_eventually() noexcept requires (not implicit_state) : m_empty{}, m_flag{state::empty} {}
+  basic_eventually() noexcept requires (!implicit_state) : m_empty{}, m_flag{state::empty} {}
 
   // clang-format on
 
@@ -3170,7 +3180,7 @@ class basic_eventually : impl::immovable<basic_eventually<T, Exception>> {
    * @brief Check if there is a value stored in the eventually.
    */
   [[nodiscard]] auto has_value() const noexcept -> bool
-    requires is_val_value || is_ref_value
+    requires (is_val_value || is_ref_value)
   {
     if constexpr (implicit_state) {
       return m_value != nullptr;
@@ -3200,7 +3210,7 @@ class basic_eventually : impl::immovable<basic_eventually<T, Exception>> {
    * After this function is called, ``has_value()`` will be true.
    */
   template <typename U>
-    requires is_val_value && std::constructible_from<T, U>
+    requires (is_val_value && std::constructible_from<T, U>)
   auto operator=(U &&expr) noexcept(std::is_nothrow_constructible_v<T, U>) -> basic_eventually & {
     LF_ASSERT(empty());
     std::construct_at(std::addressof(m_value), std::forward<U>(expr));
@@ -3216,7 +3226,7 @@ class basic_eventually : impl::immovable<basic_eventually<T, Exception>> {
    * After this function is called, ``has_value()`` will be true.
    */
   template <impl::safe_ref_bind_to<T> U>
-    requires is_ref_value
+    requires (is_ref_value)
   auto operator=(U &&expr) noexcept -> basic_eventually & {
 
     LF_ASSERT(empty());
@@ -3380,9 +3390,15 @@ class basic_eventually : impl::immovable<basic_eventually<T, Exception>> {
   }
 };
 
+/**
+ * @brief An alias for `lf::core::basic_eventually<T, false>`.
+ */
 template <returnable T>
 using eventually = basic_eventually<T, false>;
 
+/**
+ * @brief An alias for `lf::core::basic_eventually<T, true>`.
+ */
 template <returnable T>
 using try_eventually = basic_eventually<T, true>;
 
@@ -3515,13 +3531,16 @@ concept async_invocable_to_task =
     valid_return_v<I, std::invoke_result_t<F, impl::first_arg_t<discard_t, Tag, F, Args &&...>, Args...>>; //
 
 /**
- * @brief Let `F(Args...) -> task<R>` then this returns 'R'.
+ * @brief Fetch the underlying result type of an async invocation.
  *
  * Unsafe in the sense that it does not check that F is `async_invocable`.
  */
 template <typename I, tag Tag, typename F, typename... Args>
   requires async_invocable_to_task<I, Tag, F, Args...>
 struct unsafe_result {
+  /**
+   * @brief Let `F(Args...) -> task<R>` then this is 'R'.
+   */
   using type = std::invoke_result_t<F, impl::first_arg_t<I, Tag, F, Args...>, Args...>::type;
 };
 
@@ -3606,12 +3625,14 @@ inline namespace core {
  * generate the appropriate (opaque) first-argument.
  *
  * This requires:
+ *  - `F` is an async function object.
  *  - `F` is 'Tag'/call invocable with `Args...` when writing the result to `I` or discarding it.
  *  - The result of all of these calls has the same type.
  *  - The result of all of these calls is an instance of type `lf::task<R>`.
  *  - `I` is movable and dereferenceable.
  *  - `I` is indirectly writable from `R` or `R` is `void` while `I` is `discard_t`.
- *  - If `R` is non-void then `F` is `lf::core::async_invocable` when `I` is `lf::basic_eventually<R, ?> *`.
+ *  - If `R` is non-void then `F` is `lf::core::async_invocable` when `I` is `lf::eventually<R> *`.
+ *  - `F` is `lf::core::async_invocable` when `I` is `lf::try_eventually<R> *`.
  *
  * This concept is provided as a building block for higher-level concepts.
  */
@@ -4660,6 +4681,9 @@ class return_result_base {
    */
   void set_return(I &&ret) noexcept { this->m_ret = std::move(ret); }
 
+  /**
+   * @brief Get a reference to the return pointer.
+   */
   auto get_return() noexcept -> I & { return this->m_ret; }
 
  private:

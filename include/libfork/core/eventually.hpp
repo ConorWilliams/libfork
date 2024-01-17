@@ -52,6 +52,13 @@ struct eventually_value<T> : std::add_pointer<T> {};
 
 } // namespace detail
 
+/**
+ * @brief Return the appropriate type to store in an eventually.
+ *
+ * If `T` is `void` then we store an empty object.
+ * If `T` is a reference then we store a pointer to the referenced type.
+ * Otherwise we store the type directly.
+ */
 template <returnable T>
 using eventually_value_t = typename detail::eventually_value<T>::type;
 
@@ -125,6 +132,9 @@ class basic_eventually : impl::immovable<basic_eventually<T, Exception>> {
  public:
   // ------------------------- Helper ------------------------- //
 
+  /**
+   * @brief The type of the object stored in the eventually.
+   */
   using value_type = T;
 
   // ------------------------ Construct ------------------------ //
@@ -134,18 +144,18 @@ class basic_eventually : impl::immovable<basic_eventually<T, Exception>> {
   /**
    * @brief Construct an empty eventually.
    */
-  basic_eventually() noexcept requires implicit_state && Exception : m_exception{nullptr} {}
+  basic_eventually() noexcept requires (implicit_state && Exception) : m_exception{nullptr} {}
 
   /**
    * @brief Construct an empty eventually.
    */
-  basic_eventually() noexcept requires implicit_state && (not Exception) : m_value{nullptr} {}
+  basic_eventually() noexcept requires (implicit_state && !Exception) : m_value{nullptr} {}
 
 
   /**
    * @brief Construct an empty eventually.
    */
-  basic_eventually() noexcept requires (not implicit_state) : m_empty{}, m_flag{state::empty} {}
+  basic_eventually() noexcept requires (!implicit_state) : m_empty{}, m_flag{state::empty} {}
 
   // clang-format on
 
@@ -205,7 +215,7 @@ class basic_eventually : impl::immovable<basic_eventually<T, Exception>> {
    * @brief Check if there is a value stored in the eventually.
    */
   [[nodiscard]] auto has_value() const noexcept -> bool
-    requires is_val_value || is_ref_value
+    requires (is_val_value || is_ref_value)
   {
     if constexpr (implicit_state) {
       return m_value != nullptr;
@@ -235,7 +245,7 @@ class basic_eventually : impl::immovable<basic_eventually<T, Exception>> {
    * After this function is called, ``has_value()`` will be true.
    */
   template <typename U>
-    requires is_val_value && std::constructible_from<T, U>
+    requires (is_val_value && std::constructible_from<T, U>)
   auto operator=(U &&expr) noexcept(std::is_nothrow_constructible_v<T, U>) -> basic_eventually & {
     LF_ASSERT(empty());
     std::construct_at(std::addressof(m_value), std::forward<U>(expr));
@@ -251,7 +261,7 @@ class basic_eventually : impl::immovable<basic_eventually<T, Exception>> {
    * After this function is called, ``has_value()`` will be true.
    */
   template <impl::safe_ref_bind_to<T> U>
-    requires is_ref_value
+    requires (is_ref_value)
   auto operator=(U &&expr) noexcept -> basic_eventually & {
 
     LF_ASSERT(empty());
@@ -415,9 +425,15 @@ class basic_eventually : impl::immovable<basic_eventually<T, Exception>> {
   }
 };
 
+/**
+ * @brief An alias for `lf::core::basic_eventually<T, false>`.
+ */
 template <returnable T>
 using eventually = basic_eventually<T, false>;
 
+/**
+ * @brief An alias for `lf::core::basic_eventually<T, true>`.
+ */
 template <returnable T>
 using try_eventually = basic_eventually<T, true>;
 

@@ -39,6 +39,9 @@ class return_result_base {
    */
   void set_return(I &&ret) noexcept { this->m_ret = std::move(ret); }
 
+  /**
+   * @brief Get a reference to the return pointer.
+   */
   auto get_return() noexcept -> I & { return this->m_ret; }
 
  private:
