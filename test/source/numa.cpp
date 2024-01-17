@@ -39,8 +39,8 @@ TEST_CASE("make_topology", "[numa]") {
 namespace {
 
 struct comp {
-  auto operator()(numa_topology::numa_handle const &lhs, numa_topology::numa_handle const &rhs) const noexcept
-      -> bool {
+  auto operator()(numa_topology::numa_handle const &lhs,
+                  numa_topology::numa_handle const &rhs) const noexcept -> bool {
     return hwloc_bitmap_compare(lhs.cpup.get(), rhs.cpup.get()) < 0;
   }
 };
@@ -95,11 +95,11 @@ TEST_CASE("distances", "[numa]") {
 
   std::size_t max_unique = std::thread::hardware_concurrency();
 
-  for (std::size_t i = 1; i <= 2 * max_unique; i++) {
+  for (std::size_t n = 1; n <= 2 * max_unique; n++) {
 
-    ext::detail::distance_matrix dist{topo.split(i)};
+    ext::detail::distance_matrix dist{topo.split(n)};
 
-    REQUIRE(dist.size() == i);
+    REQUIRE(dist.size() == n);
 
     print_distances(dist);
 

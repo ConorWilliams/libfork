@@ -12,6 +12,6 @@ inline constexpr auto sfib(int n) -> int {
     return n;
   }
   return sfib(n - 1) + sfib(n - 2);
-};
+}
 
 #endif /* CCFF3C63_F96E_4159_92DE_84921182174B */

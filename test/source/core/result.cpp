@@ -13,6 +13,8 @@
 
 // NOLINTBEGIN No need to check the tests for style.
 
+// clang-format off
+
 using namespace lf;
 
 using namespace lf::impl;
@@ -29,11 +31,9 @@ struct anything {
 template <typename R, typename I>
 struct coro {
   struct promise_type : return_result<R, I> {
-    // clang-format off
+    
     promise_type() : return_result<R, I>{anything{}} {}
     promise_type() requires std::is_void_v<R> = default;
-
-    // clang-format on
 
     auto get_return_object() noexcept -> coro { return {}; }
     auto initial_suspend() noexcept -> std::suspend_always { return {}; }
@@ -60,11 +60,11 @@ auto test1() -> coro<void, discard_t> { co_return; }
     co_return {};                                                                                            \
   }
 
-trivial(discard_t, discard_t);
-trivial(int, int *);
-trivial(double, double *);
-trivial(int_o, std::optional<int> *);
-trivial(int_e, eventually<int> *);
+trivial(discard_t, discard_t)
+trivial(int, int *)
+trivial(double, double *)
+trivial(int_o, std::optional<int> *)
+trivial(int_e, eventually<int> *)
 
 #define vector(name, type)                                                                                   \
   auto vector_##name() -> coro<std::vector<int>, type> {                                                     \
@@ -78,10 +78,11 @@ trivial(int_e, eventually<int> *);
     co_return {1, 2, 3};                                                                                     \
   }
 
-vector(void, discard_t);
-vector(vec, std::vector<int> *);
-vector(vec_o, std::optional<std::vector<int>> *);
-vector(vec_e, eventually<std::vector<int>> *);
+vector(void, discard_t)
+vector(vec, std::vector<int> *)
+vector(vec_o, std::optional<std::vector<int>> *)
+vector(vec_e, eventually<std::vector<int>> *)
+
 
 // ------------------------------------------- //
 
@@ -96,11 +97,11 @@ int x = 23;
     co_return std::move(x);                                                                                  \
   }
 
-reference(void, discard_t);
-reference(int, eventually<int &> *);
+reference(void, discard_t)
+reference(int, eventually<int &> *)
 
-rreference(void, discard_t);
-rreference(int, eventually<int &&> *);
+rreference(void, discard_t)
+rreference(int, eventually<int &&> *)
 
 } // namespace
 

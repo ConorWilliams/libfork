@@ -108,8 +108,9 @@ struct numa_context {
       // Skip the first one as it is just us.
       for (std::size_t i = 1; i < topo.neighbors.size(); ++i) {
 
-        double n = topo.neighbors[i].size();
-        double w = 1 / (n * i * i);
+        double n = static_cast<double>(topo.neighbors[i].size());
+        double I = static_cast<double>(i);
+        double w = 1. / (n * I * I);
 
         for (auto &&context : topo.neighbors[i]) {
           weights.push_back(w);

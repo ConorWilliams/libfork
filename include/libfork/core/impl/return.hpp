@@ -97,7 +97,7 @@ struct return_result<void, I> : return_result_base<I> {
   /**
    * @brief A no-op.
    */
-  static constexpr void return_void() noexcept {};
+  static constexpr void return_void() noexcept {}
 };
 
 /**
@@ -108,7 +108,7 @@ struct return_result<void, discard_t> {
   /**
    * @brief A no-op.
    */
-  static constexpr void return_void() noexcept {};
+  static constexpr void return_void() noexcept {}
 };
 
 } // namespace lf::impl

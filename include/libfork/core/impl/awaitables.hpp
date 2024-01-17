@@ -219,7 +219,7 @@ struct fork_awaitable : std::suspend_always {
     LF_LOG("Forking, push parent to context");
 
     // Need a copy (on stack) in case *this is destructed after push.
-    std::coroutine_handle child = this->child->self();
+    std::coroutine_handle stack_child = this->child->self();
 
     // clang-format off
     
@@ -232,14 +232,14 @@ struct fork_awaitable : std::suspend_always {
       //  - The exception is immediately re-thrown.
 
       // Hence, we need to clean up the child which will never start:
-      child.destroy(); 
+      stack_child.destroy(); 
 
       LF_RETHROW;
     }
 
     // clang-format on
 
-    return child;
+    return stack_child;
   }
 
   frame *child;  ///< The suspended child coroutine's frame.

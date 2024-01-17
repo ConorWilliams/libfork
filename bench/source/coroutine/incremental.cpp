@@ -26,7 +26,7 @@ LF_NOINLINE constexpr auto fib_impl(int n) -> int {
     return n;
   }
   return fib_impl(n - 1) + fib_impl(n - 2);
-};
+}
 
 void fib(benchmark::State &state) {
   for (auto _ : state) {
@@ -55,7 +55,7 @@ LF_NOINLINE constexpr auto fib_impl(int &ret, int n) -> void {
   fib_impl(b, n - 2);
 
   ret = a + b;
-};
+}
 
 void fib(benchmark::State &state) {
 
@@ -86,7 +86,8 @@ LF_NOINLINE constexpr auto fib_impl(int &ret, int n) -> void {
     return;
   }
 
-  int a, b;
+  int a;
+  int b;
 
   qu.push(&a);
 
@@ -96,7 +97,7 @@ LF_NOINLINE constexpr auto fib_impl(int &ret, int n) -> void {
   qu.pop();
 
   ret = a + b;
-};
+}
 
 void fib(benchmark::State &state) {
 
@@ -145,7 +146,7 @@ auto fib_impl(int &ret, int n) -> coroutine {
   fib_impl(b, n - 2).resume();
 
   ret = a + b;
-};
+}
 
 void fib(benchmark::State &state) {
 
@@ -214,7 +215,7 @@ auto fib_impl(int &ret, int n) -> coroutine {
   fib_impl(b, n - 2);
 
   ret = a + b;
-};
+}
 
 void fib(benchmark::State &state) {
 
@@ -271,7 +272,7 @@ auto fib_impl(int &ret, int n) -> coroutine {
   fib_impl(b, n - 2).resume();
 
   ret = a + b;
-};
+}
 
 void fib(benchmark::State &state) {
 
@@ -330,7 +331,7 @@ auto fib_impl(int &ret, int n) -> coroutine {
   fib_impl(b, n - 2).resume();
 
   ret = a + b;
-};
+}
 
 void fib(benchmark::State &state) {
 
@@ -387,7 +388,7 @@ auto fib_impl(int &ret, int n) -> coroutine {
   fib_impl(b, n - 2).resume();
 
   ret = a + b;
-};
+}
 
 void fib(benchmark::State &state) {
 
@@ -457,7 +458,7 @@ auto fib_impl(int &ret, int n) -> coroutine {
   }
 
   ret = a + b;
-};
+}
 
 void fib(benchmark::State &state) {
 
@@ -514,7 +515,7 @@ auto fib_impl(int &ret, int n) -> coroutine {
   fib_impl(b, n - 2).resume();
 
   ret = a + b;
-};
+}
 
 void fib(benchmark::State &state) {
 
@@ -564,7 +565,7 @@ struct promise : lf::impl::promise_base {
         frame *parent = self.promise().parent();
         self.destroy();
 
-        if (parent) {
+        if (parent != nullptr) {
           return parent->self();
         }
         return std::noop_coroutine();
@@ -597,20 +598,21 @@ auto fib_impl(int &ret, int n) -> coroutine {
     co_return;
   }
 
-  int a, b;
+  int a;
+  int b;
 
   co_await fib_impl(a, n - 1);
   co_await fib_impl(b, n - 2);
 
   ret = a + b;
-};
+}
 
 void fib(benchmark::State &state) {
 
   auto *ctx = lf::worker_init(lf::nullary_function_t{[]() {}});
 
   for (auto _ : state) {
-    int tmp;
+    int tmp = 0;
 
     lf::impl::frame *root = fib_impl(tmp, work).prom;
     root->set_parent(nullptr);
@@ -637,7 +639,8 @@ inline constexpr auto fib_impl = [](auto fib, int n) LF_STATIC_CALL -> lf::task<
     co_return n;
   }
 
-  int a, b;
+  int a;
+  int b;
 
   co_await lf::call(&a, fib)(n - 1);
   co_await lf::call(&b, fib)(n - 2);

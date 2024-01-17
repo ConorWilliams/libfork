@@ -67,7 +67,7 @@ class stack_allocated : impl::immovable<stack_allocated<T>> {
   /**
    * @brief Construct a new co allocated object.
    */
-  stack_allocated(impl::frame *frame, std::span<T> span) noexcept : m_span{span}, m_frame{frame} {}
+  stack_allocated(impl::frame *frame, std::span<T> span) noexcept : m_frame{frame}, m_span{span} {}
 
   /**
    * @brief Get a span over the allocated memory.

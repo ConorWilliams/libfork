@@ -58,7 +58,7 @@ inline constexpr auto loop = [](auto loop, int n, std::vector<worker_context *> 
   auto [res] = co_await co_new<int>(n == 0 ? neigh.size() : n);
 
   if (n == 0) {
-    for (int i = 0; i < res.size(); ++i) {
+    for (std::size_t i = 0; i < res.size(); ++i) {
       if (n % 2 == 0) {
         co_await lf::fork(&res[i], sch_on)(neigh[i]);
       } else {
@@ -69,7 +69,7 @@ inline constexpr auto loop = [](auto loop, int n, std::vector<worker_context *> 
 
     lf::xoshiro rng{seed, std::random_device{}};
 
-    for (int i = 0; i < res.size(); ++i) {
+    for (std::size_t i = 0; i < res.size(); ++i) {
 
       std::ranges::shuffle(neigh, rng);
 

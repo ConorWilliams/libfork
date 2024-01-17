@@ -2541,7 +2541,7 @@ class stack_allocated : impl::immovable<stack_allocated<T>> {
   /**
    * @brief Construct a new co allocated object.
    */
-  stack_allocated(impl::frame *frame, std::span<T> span) noexcept : m_span{span}, m_frame{frame} {}
+  stack_allocated(impl::frame *frame, std::span<T> span) noexcept : m_frame{frame}, m_span{span} {}
 
   /**
    * @brief Get a span over the allocated memory.
@@ -3067,10 +3067,15 @@ class basic_eventually : impl::immovable<basic_eventually<T, Exception>> {
     exception, ///< An exception has been thrown during and is stored.
   };
 
+  // Need to define before union to work around bug in old GCC/MSVC
+  using empty_t = impl::new_empty<>;
+  using value_t = impl::eventually_value_t<T>;
+  using error_t = impl::else_empty_t<Exception, std::exception_ptr>;
+
   [[no_unique_address]] union {
-    [[no_unique_address]] impl::new_empty<> m_empty;
-    [[no_unique_address]] impl::eventually_value_t<T> m_value;
-    [[no_unique_address]] impl::else_empty_t<Exception, std::exception_ptr> m_exception;
+    [[no_unique_address]] empty_t m_empty;
+    [[no_unique_address]] value_t m_value;
+    [[no_unique_address]] error_t m_exception;
   };
 
   [[no_unique_address]] impl::else_empty_t<!implicit_state, state> m_flag;
@@ -4477,7 +4482,7 @@ struct fork_awaitable : std::suspend_always {
     LF_LOG("Forking, push parent to context");
 
     // Need a copy (on stack) in case *this is destructed after push.
-    std::coroutine_handle child = this->child->self();
+    std::coroutine_handle stack_child = this->child->self();
 
     // clang-format off
     
@@ -4490,14 +4495,14 @@ struct fork_awaitable : std::suspend_always {
       //  - The exception is immediately re-thrown.
 
       // Hence, we need to clean up the child which will never start:
-      child.destroy(); 
+      stack_child.destroy(); 
 
       LF_RETHROW;
     }
 
     // clang-format on
 
-    return child;
+    return stack_child;
   }
 
   frame *child;  ///< The suspended child coroutine's frame.
@@ -4739,7 +4744,7 @@ struct return_result<void, I> : return_result_base<I> {
   /**
    * @brief A no-op.
    */
-  static constexpr void return_void() noexcept {};
+  static constexpr void return_void() noexcept {}
 };
 
 /**
@@ -4750,7 +4755,7 @@ struct return_result<void, discard_t> {
   /**
    * @brief A no-op.
    */
-  static constexpr void return_void() noexcept {};
+  static constexpr void return_void() noexcept {}
 };
 
 } // namespace lf::impl
@@ -6065,8 +6070,9 @@ struct numa_context {
       // Skip the first one as it is just us.
       for (std::size_t i = 1; i < topo.neighbors.size(); ++i) {
 
-        double n = topo.neighbors[i].size();
-        double w = 1 / (n * i * i);
+        double n = static_cast<double>(topo.neighbors[i].size());
+        double I = static_cast<double>(i);
+        double w = 1. / (n * I * I);
 
         for (auto &&context : topo.neighbors[i]) {
           weights.push_back(w);

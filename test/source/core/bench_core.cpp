@@ -17,14 +17,6 @@
 
 namespace {
 
-inline constexpr auto noop = [](lf::first_arg auto noop) -> lf::task<> {
-  co_return;
-};
-
-inline constexpr auto call = [](auto, int n) -> lf::task<int> {
-  co_return n;
-};
-
 struct noise {
   noise() { std::cout << "cons()" << std::endl; }
   ~noise() { std::cout << "dest()" << std::endl; }
@@ -88,38 +80,31 @@ LF_NOINLINE constexpr auto sfib(int &ret, int n) -> void {
   sfib(b, n - 2);
 
   ret = a + b;
-};
+}
 
 auto test(auto) -> lf::task<> { co_return {}; }
 
 } // namespace
 
-// TEST_CASE("Core nooper", "[core][benchmark]") {
+TEST_CASE("Benchmarks", "[core][benchmark]") {
 
-//   scheduler sch{};
+  scheduler sch{};
 
-//   for (int i = 1; i < 30 + 1; ++i) {
+  volatile int in = 20;
 
-//     int val = lf::sync_wait(sch, fib, i);
+  BENCHMARK("Fibonacci serial") {
+    int out = 0;
+    sfib(out, in);
+    return out;
+  };
 
-//     std::cout << "fib " << i << " = " << val << std::endl;
-//   }
+  BENCHMARK("Fibonacci parall") {
+    //
+    return lf::sync_wait(sch, fib, in);
+  };
 
-//   volatile int in = 32;
-
-//   BENCHMARK("Fibonacci serial") {
-//     int out;
-//     sfib(out, in);
-//     return out;
-//   };
-
-//   BENCHMARK("Fibonacci parall") {
-//     //
-//     return lf::sync_wait(sch, fib, in);
-//   };
-
-//   BENCHMARK("Fibonacci parall co_alloc") {
-//     //
-//     return lf::sync_wait(sch, co_fib, in);
-//   };
-// }
+  BENCHMARK("Fibonacci parall co_alloc") {
+    //
+    return lf::sync_wait(sch, co_fib, in);
+  };
+}
