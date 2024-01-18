@@ -17,7 +17,7 @@
 #include "libfork/core/impl/awaitables.hpp" // for call_awaitable
 #include "libfork/core/impl/combinate.hpp"  // for combinate
 #include "libfork/core/impl/frame.hpp"      // for frame
-#include "libfork/core/invocable.hpp"       // for invocable, invoke_result_t
+#include "libfork/core/invocable.hpp"       // for invocable, async_result_t
 #include "libfork/core/macro.hpp"           // for LF_STATIC_CALL, LF_STATI...
 #include "libfork/core/tag.hpp"             // for tag
 #include "libfork/core/task.hpp"            // for returnable
@@ -100,9 +100,9 @@ struct bind_just {
   template <async_function_object F>
   LF_DEPRECATE_CALL [[nodiscard]] LF_STATIC_CALL auto operator()(F fun) LF_STATIC_CONST {
     return [fun = std::move(fun)]<typename... Args>(Args &&...args) mutable
-      requires invocable<F, Args...>
+      requires async_invocable<F, Args...>
     {
-      return impl::just_awaitable<invoke_result_t<F, Args...>>(std::move(fun), std::forward<Args>(args)...);
+      return impl::just_awaitable<async_result_t<F, Args...>>(std::move(fun), std::forward<Args>(args)...);
     };
   }
 
@@ -115,9 +115,9 @@ struct bind_just {
   template <async_function_object F>
   [[nodiscard]] LF_STATIC_CALL auto operator[](F fun) LF_STATIC_CONST {
     return [fun = std::move(fun)]<typename... Args>(Args &&...args) mutable
-      requires invocable<F, Args...>
+      requires async_invocable<F, Args...>
     {
-      return impl::just_awaitable<invoke_result_t<F, Args...>>(std::move(fun), std::forward<Args>(args)...);
+      return impl::just_awaitable<async_result_t<F, Args...>>(std::move(fun), std::forward<Args>(args)...);
     };
   }
 #endif

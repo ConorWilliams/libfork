@@ -2751,15 +2751,19 @@ concept quasi_pointer = std::default_initializable<I> && std::movable<I> && dere
  * an iterator/legacy-pointer.
  */
 template <typename F>
-concept async_function_object = std::is_class_v<std::remove_cvref_t<F>> && std::copy_constructible<F>;
+concept async_function_object =                     //
+    std::is_class_v<std::remove_cvref_t<F>> &&      //
+    std::copy_constructible<F> &&                   //
+    std::convertible_to<F, std::remove_cvref_t<F>>; //
 
 /**
  * @brief This describes the public-API of the first argument passed to an async function.
  *
- * An async functions' invocability and return type must be independent of their first argument except for its
- * tag value. A user may query the first argument's static member `tagged` to obtain this value. Additionally,
- * a user may query the first argument's static member function `context()` to obtain a pointer to the current
- * workers context. Finally a user may cache an exception in-flight by calling `.stash_exception()`.
+ * An async functions' invocability and return type must be independent of their first argument except for
+ * its tag value. A user may query the first argument's static member `tagged` to obtain this value.
+ * Additionally, a user may query the first argument's static member function `context()` to obtain a
+ * pointer to the current workers context. Finally a user may cache an exception in-flight by calling
+ * `.stash_exception()`.
  */
 template <typename T>
 concept first_arg = std::is_class_v<T> && async_function_object<T> && requires (T arg) {
@@ -2785,8 +2789,8 @@ namespace impl {
  *
  * Hence, a first argument is also an async function object.
  */
-template <quasi_pointer I, tag Tag, async_function_object F, typename... Cargs>
-  requires std::is_class_v<F> && (std::is_reference_v<Cargs> && ...)
+template <quasi_pointer I, tag Tag, async_function_object F, typename... CallArgs>
+  requires std::is_class_v<F> && (std::is_reference_v<CallArgs> && ...)
 class first_arg_t {
  public:
   /**
@@ -3493,7 +3497,7 @@ struct ignore_t {
   /**
    * @brief A no-op assignment operator.
    */
-  constexpr void operator=([[maybe_unused]] auto const &discard) const noexcept {}
+  constexpr auto operator=(auto const & /* unused */) const noexcept -> ignore_t const & { return *this; }
 };
 
 /**
@@ -3566,7 +3570,7 @@ concept async_invocable_to_task =
 /**
  * @brief Fetch the underlying result type of an async invocation.
  *
- * Unsafe in the sense that it does not check that F is `async_invocable`.
+ * Unsafe in the sense that it does not check that F is `async_tag_invocable`.
  */
 template <typename I, tag Tag, typename F, typename... Args>
   requires async_invocable_to_task<I, Tag, F, Args...>
@@ -3582,7 +3586,7 @@ struct unsafe_result {
 /**
  * @brief Let `F(Args...) -> task<R>` then this returns 'R'.
  *
- * Unsafe in the sense that it does not check that F is `async_invocable`.
+ * Unsafe in the sense that it does not check that F is `async_tag_invocable`.
  */
 template <typename I, tag Tag, typename F, typename... Args>
   requires async_invocable_to_task<I, Tag, F, Args...>
@@ -3666,39 +3670,39 @@ inline namespace core {
  *  - The result of all of these calls is an instance of type `lf::task<R>`.
  *  - `I` is movable and dereferenceable.
  *  - `I` is indirectly writable from `R` or `R` is `void` while `I` is `discard_t`.
- *  - If `R` is non-void then `F` is `lf::core::async_invocable` when `I` is `lf::eventually<R> *`.
- *  - `F` is `lf::core::async_invocable` when `I` is `lf::try_eventually<R> *`.
+ *  - If `R` is non-void then `F` is `lf::core::async_tag_invocable` when `I` is `lf::eventually<R> *`.
+ *  - `F` is `lf::core::async_tag_invocable` when `I` is `lf::try_eventually<R> *`.
  *
  * This concept is provided as a building block for higher-level concepts.
  */
 template <typename I, tag Tag, typename F, typename... Args>
-concept async_invocable = impl::consistent_invocable<I, Tag, F, Args...>;
+concept async_tag_invocable = impl::consistent_invocable<I, Tag, F, Args...>;
 
 // --------- //
 
 /**
- * @brief Alias for `lf::core::async_invocable<lf::impl::discard_t, lf::core::tag::call, F, Args...>`.
+ * @brief Alias for `lf::core::async_tag_invocable<lf::impl::discard_t, lf::core::tag::call, F, Args...>`.
  */
 template <typename F, typename... Args>
-concept callable = async_invocable<impl::discard_t, tag::call, F, Args...>;
+concept callable = async_tag_invocable<impl::discard_t, tag::call, F, Args...>;
 
 /**
  * @brief Test if an async function is root-invocable and call-invocable, subsumes `lf::core::callable`.
  */
 template <typename F, typename... Args>
-concept rootable = callable<F, Args...> && async_invocable<impl::discard_t, tag::root, F, Args...>;
+concept rootable = callable<F, Args...> && async_tag_invocable<impl::discard_t, tag::root, F, Args...>;
 
 /**
  * @brief Test if an async function is fork-invocable and call-invocable, subsumes `lf::core::callable`.
  */
 template <typename F, typename... Args>
-concept forkable = callable<F, Args...> && async_invocable<impl::discard_t, tag::fork, F, Args...>;
+concept forkable = callable<F, Args...> && async_tag_invocable<impl::discard_t, tag::fork, F, Args...>;
 
 /**
  * @brief Test if an async function is `lf::core::forkable` and `lf::core::rootable`, subsumes both.
  */
 template <typename F, typename... Args>
-concept invocable = forkable<F, Args...> && rootable<F, Args...>;
+concept async_invocable = forkable<F, Args...> && rootable<F, Args...>;
 
 // --------- //
 
@@ -3707,14 +3711,14 @@ concept invocable = forkable<F, Args...> && rootable<F, Args...>;
  */
 template <typename F, typename... Args>
   requires callable<F, Args...>
-struct invoke_result : impl::unsafe_result<impl::discard_t, tag::call, F, Args...> {};
+struct async_result : impl::unsafe_result<impl::discard_t, tag::call, F, Args...> {};
 
 /**
  * @brief Fetch `R` when the async function `F` returns `lf::task<R>`.
  */
 template <typename F, typename... Args>
   requires callable<F, Args...>
-using invoke_result_t = typename invoke_result<F, Args...>::type;
+using async_result_t = typename async_result<F, Args...>::type;
 
 } // namespace core
 
@@ -3722,7 +3726,7 @@ using invoke_result_t = typename invoke_result<F, Args...>::type;
 
 #endif /* A5349E86_5BAA_48EF_94E9_F0EBF630DE04 */
 
- // for invoke_result_t, return_addres...       // for tag      // for returnable, task
+ // for async_result_t, return_addres...       // for tag      // for returnable, task
 
 /**
  * @file combinate.hpp
@@ -3766,15 +3770,15 @@ struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combin
    * @brief Invoke the coroutine, set's the return pointer.
    */
   template <typename... Args>
-    requires async_invocable<I, Tag, F, Args...>
-  auto operator()(Args &&...args) && -> quasi_awaitable<invoke_result_t<F, Args...>, I, Tag> {
+    requires async_tag_invocable<I, Tag, F, Args...>
+  auto operator()(Args &&...args) && -> quasi_awaitable<async_result_t<F, Args...>, I, Tag> {
 
     task task = std::move(fun)(                                 //
         first_arg_t<I, Tag, F, Args &&...>(std::as_const(fun)), // Makes a copy of fun
         std::forward<Args>(args)...                             //
     );
 
-    using R = invoke_result_t<F, Args...>;
+    using R = async_result_t<F, Args...>;
     using P = promise<R, I, Tag>;
 
     auto *prom = static_cast<P *>(task.prom);
@@ -4446,7 +4450,7 @@ struct join_awaitable {
 
 #endif /* CF3E6AC4_246A_4131_BF7A_FE5CD641A19B */
 
- // for call_awaitable  // for combinate      // for frame       // for invocable, invoke_result_t           // for LF_STATIC_CALL, LF_STATI...             // for tag            // for returnable
+ // for call_awaitable  // for combinate      // for frame       // for invocable, async_result_t           // for LF_STATIC_CALL, LF_STATI...             // for tag            // for returnable
 
 /**
  * @file just.hpp
@@ -4526,9 +4530,9 @@ struct bind_just {
   template <async_function_object F>
   LF_DEPRECATE_CALL [[nodiscard]] LF_STATIC_CALL auto operator()(F fun) LF_STATIC_CONST {
     return [fun = std::move(fun)]<typename... Args>(Args &&...args) mutable
-      requires invocable<F, Args...>
+      requires async_invocable<F, Args...>
     {
-      return impl::just_awaitable<invoke_result_t<F, Args...>>(std::move(fun), std::forward<Args>(args)...);
+      return impl::just_awaitable<async_result_t<F, Args...>>(std::move(fun), std::forward<Args>(args)...);
     };
   }
 
@@ -4541,9 +4545,9 @@ struct bind_just {
   template <async_function_object F>
   [[nodiscard]] LF_STATIC_CALL auto operator[](F fun) LF_STATIC_CONST {
     return [fun = std::move(fun)]<typename... Args>(Args &&...args) mutable
-      requires invocable<F, Args...>
+      requires async_invocable<F, Args...>
     {
-      return impl::just_awaitable<invoke_result_t<F, Args...>>(std::move(fun), std::forward<Args>(args)...);
+      return impl::just_awaitable<async_result_t<F, Args...>>(std::move(fun), std::forward<Args>(args)...);
     };
   }
 #endif
@@ -4583,7 +4587,7 @@ inline constexpr impl::bind_just just = {};
 #include <semaphore>   // for binary_semaphore
 #include <type_traits> // for conditional_t
 #include <utility>     // for forward
-           // for basic_eventually          // for submit_t             // for intrusive_list              // for thread_stack, has_s...            // for async_function_object       // for quasi_awaitable           // for frame // for manual_lifetime           // for stack, swap            // for invoke_result_t                // for LF_LOG, LF_CLANG_TL...            // for scheduler                  // for tag
+           // for basic_eventually          // for submit_t             // for intrusive_list              // for thread_stack, has_s...            // for async_function_object       // for quasi_awaitable           // for frame // for manual_lifetime           // for stack, swap            // for async_result_t                // for LF_LOG, LF_CLANG_TL...            // for scheduler                  // for tag
 
 /**
  * @file sync_wait.hpp
@@ -4645,7 +4649,7 @@ inline namespace core {
  */
 template <scheduler Sch, async_function_object F, class... Args>
   requires rootable<F, Args...>
-LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> invoke_result_t<F, Args...> {
+LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
 
   std::binary_semaphore sem{0};
 
@@ -4654,7 +4658,7 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> invoke
   // Will cache workers stack here.
   std::optional<impl::stack> prev = std::nullopt;
 
-  basic_eventually<invoke_result_t<F, Args...>, true> result;
+  basic_eventually<async_result_t<F, Args...>, true> result;
 
   impl::y_combinate combinator = combinate<tag::root>(&result, std::move(fun));
 
@@ -4699,7 +4703,7 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> invoke
     std::rethrow_exception(std::move(result).exception());
   }
 
-  if constexpr (!std::is_void_v<invoke_result_t<F, Args...>>) {
+  if constexpr (!std::is_void_v<async_result_t<F, Args...>>) {
     return *std::move(result);
   }
 }

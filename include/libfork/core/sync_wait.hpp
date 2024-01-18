@@ -25,7 +25,7 @@
 #include "libfork/core/impl/frame.hpp"           // for frame
 #include "libfork/core/impl/manual_lifetime.hpp" // for manual_lifetime
 #include "libfork/core/impl/stack.hpp"           // for stack, swap
-#include "libfork/core/invocable.hpp"            // for invoke_result_t
+#include "libfork/core/invocable.hpp"            // for async_result_t
 #include "libfork/core/macro.hpp"                // for LF_LOG, LF_CLANG_TL...
 #include "libfork/core/scheduler.hpp"            // for scheduler
 #include "libfork/core/tag.hpp"                  // for tag
@@ -90,7 +90,7 @@ inline namespace core {
  */
 template <scheduler Sch, async_function_object F, class... Args>
   requires rootable<F, Args...>
-LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> invoke_result_t<F, Args...> {
+LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
 
   std::binary_semaphore sem{0};
 
@@ -99,7 +99,7 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> invoke
   // Will cache workers stack here.
   std::optional<impl::stack> prev = std::nullopt;
 
-  basic_eventually<invoke_result_t<F, Args...>, true> result;
+  basic_eventually<async_result_t<F, Args...>, true> result;
 
   impl::y_combinate combinator = combinate<tag::root>(&result, std::move(fun));
 
@@ -144,7 +144,7 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> invoke
     std::rethrow_exception(std::move(result).exception());
   }
 
-  if constexpr (!std::is_void_v<invoke_result_t<F, Args...>>) {
+  if constexpr (!std::is_void_v<async_result_t<F, Args...>>) {
     return *std::move(result);
   }
 }

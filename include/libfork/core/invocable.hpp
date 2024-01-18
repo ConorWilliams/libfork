@@ -38,7 +38,7 @@ struct ignore_t {
   /**
    * @brief A no-op assignment operator.
    */
-  constexpr void operator=([[maybe_unused]] auto const &discard) const noexcept {}
+  constexpr auto operator=(auto const & /* unused */) const noexcept -> ignore_t const & { return *this; }
 };
 
 /**
@@ -111,7 +111,7 @@ concept async_invocable_to_task =
 /**
  * @brief Fetch the underlying result type of an async invocation.
  *
- * Unsafe in the sense that it does not check that F is `async_invocable`.
+ * Unsafe in the sense that it does not check that F is `async_tag_invocable`.
  */
 template <typename I, tag Tag, typename F, typename... Args>
   requires async_invocable_to_task<I, Tag, F, Args...>
@@ -127,7 +127,7 @@ struct unsafe_result {
 /**
  * @brief Let `F(Args...) -> task<R>` then this returns 'R'.
  *
- * Unsafe in the sense that it does not check that F is `async_invocable`.
+ * Unsafe in the sense that it does not check that F is `async_tag_invocable`.
  */
 template <typename I, tag Tag, typename F, typename... Args>
   requires async_invocable_to_task<I, Tag, F, Args...>
@@ -211,39 +211,39 @@ inline namespace core {
  *  - The result of all of these calls is an instance of type `lf::task<R>`.
  *  - `I` is movable and dereferenceable.
  *  - `I` is indirectly writable from `R` or `R` is `void` while `I` is `discard_t`.
- *  - If `R` is non-void then `F` is `lf::core::async_invocable` when `I` is `lf::eventually<R> *`.
- *  - `F` is `lf::core::async_invocable` when `I` is `lf::try_eventually<R> *`.
+ *  - If `R` is non-void then `F` is `lf::core::async_tag_invocable` when `I` is `lf::eventually<R> *`.
+ *  - `F` is `lf::core::async_tag_invocable` when `I` is `lf::try_eventually<R> *`.
  *
  * This concept is provided as a building block for higher-level concepts.
  */
 template <typename I, tag Tag, typename F, typename... Args>
-concept async_invocable = impl::consistent_invocable<I, Tag, F, Args...>;
+concept async_tag_invocable = impl::consistent_invocable<I, Tag, F, Args...>;
 
 // --------- //
 
 /**
- * @brief Alias for `lf::core::async_invocable<lf::impl::discard_t, lf::core::tag::call, F, Args...>`.
+ * @brief Alias for `lf::core::async_tag_invocable<lf::impl::discard_t, lf::core::tag::call, F, Args...>`.
  */
 template <typename F, typename... Args>
-concept callable = async_invocable<impl::discard_t, tag::call, F, Args...>;
+concept callable = async_tag_invocable<impl::discard_t, tag::call, F, Args...>;
 
 /**
  * @brief Test if an async function is root-invocable and call-invocable, subsumes `lf::core::callable`.
  */
 template <typename F, typename... Args>
-concept rootable = callable<F, Args...> && async_invocable<impl::discard_t, tag::root, F, Args...>;
+concept rootable = callable<F, Args...> && async_tag_invocable<impl::discard_t, tag::root, F, Args...>;
 
 /**
  * @brief Test if an async function is fork-invocable and call-invocable, subsumes `lf::core::callable`.
  */
 template <typename F, typename... Args>
-concept forkable = callable<F, Args...> && async_invocable<impl::discard_t, tag::fork, F, Args...>;
+concept forkable = callable<F, Args...> && async_tag_invocable<impl::discard_t, tag::fork, F, Args...>;
 
 /**
  * @brief Test if an async function is `lf::core::forkable` and `lf::core::rootable`, subsumes both.
  */
 template <typename F, typename... Args>
-concept invocable = forkable<F, Args...> && rootable<F, Args...>;
+concept async_invocable = forkable<F, Args...> && rootable<F, Args...>;
 
 // --------- //
 
@@ -252,14 +252,14 @@ concept invocable = forkable<F, Args...> && rootable<F, Args...>;
  */
 template <typename F, typename... Args>
   requires callable<F, Args...>
-struct invoke_result : impl::unsafe_result<impl::discard_t, tag::call, F, Args...> {};
+struct async_result : impl::unsafe_result<impl::discard_t, tag::call, F, Args...> {};
 
 /**
  * @brief Fetch `R` when the async function `F` returns `lf::task<R>`.
  */
 template <typename F, typename... Args>
   requires callable<F, Args...>
-using invoke_result_t = typename invoke_result<F, Args...>::type;
+using async_result_t = typename async_result<F, Args...>::type;
 
 } // namespace core
 

@@ -40,7 +40,7 @@ API
 Functional
 ~~~~~~~~~~
 
-.. doxygenconcept:: lf::core::async_invocable
+.. doxygenconcept:: lf::core::async_tag_invocable
 
 .. doxygenconcept:: lf::core::callable
 
@@ -48,9 +48,9 @@ Functional
 
 .. doxygenconcept:: lf::core::forkable
 
-.. doxygenconcept:: lf::core::invocable
+.. doxygenconcept:: lf::core::async_invocable
 
-.. doxygentypedef:: invoke_result_t
+.. doxygentypedef:: async_result_t
 
 
 Control flow

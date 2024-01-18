@@ -63,15 +63,19 @@ concept quasi_pointer = std::default_initializable<I> && std::movable<I> && dere
  * an iterator/legacy-pointer.
  */
 template <typename F>
-concept async_function_object = std::is_class_v<std::remove_cvref_t<F>> && std::copy_constructible<F>;
+concept async_function_object =                     //
+    std::is_class_v<std::remove_cvref_t<F>> &&      //
+    std::copy_constructible<F> &&                   //
+    std::convertible_to<F, std::remove_cvref_t<F>>; //
 
 /**
  * @brief This describes the public-API of the first argument passed to an async function.
  *
- * An async functions' invocability and return type must be independent of their first argument except for its
- * tag value. A user may query the first argument's static member `tagged` to obtain this value. Additionally,
- * a user may query the first argument's static member function `context()` to obtain a pointer to the current
- * workers context. Finally a user may cache an exception in-flight by calling `.stash_exception()`.
+ * An async functions' invocability and return type must be independent of their first argument except for
+ * its tag value. A user may query the first argument's static member `tagged` to obtain this value.
+ * Additionally, a user may query the first argument's static member function `context()` to obtain a
+ * pointer to the current workers context. Finally a user may cache an exception in-flight by calling
+ * `.stash_exception()`.
  */
 template <typename T>
 concept first_arg = std::is_class_v<T> && async_function_object<T> && requires (T arg) {
@@ -97,8 +101,8 @@ namespace impl {
  *
  * Hence, a first argument is also an async function object.
  */
-template <quasi_pointer I, tag Tag, async_function_object F, typename... Cargs>
-  requires std::is_class_v<F> && (std::is_reference_v<Cargs> && ...)
+template <quasi_pointer I, tag Tag, async_function_object F, typename... CallArgs>
+  requires std::is_class_v<F> && (std::is_reference_v<CallArgs> && ...)
 class first_arg_t {
  public:
   /**
