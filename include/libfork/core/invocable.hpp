@@ -225,21 +225,25 @@ concept async_invocable = impl::consistent_invocable<I, Tag, F, Args...>;
  * @brief Alias for `lf::core::async_invocable<lf::impl::discard_t, lf::core::tag::call, F, Args...>`.
  */
 template <typename F, typename... Args>
-concept invocable = async_invocable<impl::discard_t, tag::call, F, Args...>;
+concept callable = async_invocable<impl::discard_t, tag::call, F, Args...>;
 
 /**
- * @brief Alias for `lf::core::async_invocable<lf::impl::discard_t, lf::core::tag::root, F, Args...>`,
- * subsumes `lf::core::invocable`.
+ * @brief Test if an async function is root-invocable and call-invocable, subsumes `lf::core::callable`.
  */
 template <typename F, typename... Args>
-concept rootable = invocable<F, Args...> && async_invocable<impl::discard_t, tag::root, F, Args...>;
+concept rootable = callable<F, Args...> && async_invocable<impl::discard_t, tag::root, F, Args...>;
 
 /**
- * @brief Alias for `lf::core::async_invocable<lf::impl::discard_t, lf::core::tag::fork, F, Args...>`,
- * subsumes `lf::core::invocable`.
+ * @brief Test if an async function is fork-invocable and call-invocable, subsumes `lf::core::callable`.
  */
 template <typename F, typename... Args>
-concept forkable = invocable<F, Args...> && async_invocable<impl::discard_t, tag::fork, F, Args...>;
+concept forkable = callable<F, Args...> && async_invocable<impl::discard_t, tag::fork, F, Args...>;
+
+/**
+ * @brief Test if an async function is `lf::core::forkable` and `lf::core::rootable`, subsumes both.
+ */
+template <typename F, typename... Args>
+concept invocable = forkable<F, Args...> && rootable<F, Args...>;
 
 // --------- //
 
@@ -247,14 +251,14 @@ concept forkable = invocable<F, Args...> && async_invocable<impl::discard_t, tag
  * @brief Fetch `R` when the async function `F` returns `lf::task<R>`.
  */
 template <typename F, typename... Args>
-  requires invocable<F, Args...>
+  requires callable<F, Args...>
 struct invoke_result : impl::unsafe_result<impl::discard_t, tag::call, F, Args...> {};
 
 /**
  * @brief Fetch `R` when the async function `F` returns `lf::task<R>`.
  */
 template <typename F, typename... Args>
-  requires invocable<F, Args...>
+  requires callable<F, Args...>
 using invoke_result_t = typename invoke_result<F, Args...>::type;
 
 } // namespace core

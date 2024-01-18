@@ -42,11 +42,13 @@ Functional
 
 .. doxygenconcept:: lf::core::async_invocable
 
-.. doxygenconcept:: lf::core::invocable
+.. doxygenconcept:: lf::core::callable
 
 .. doxygenconcept:: lf::core::rootable
 
 .. doxygenconcept:: lf::core::forkable
+
+.. doxygenconcept:: lf::core::invocable
 
 .. doxygentypedef:: invoke_result_t
 
