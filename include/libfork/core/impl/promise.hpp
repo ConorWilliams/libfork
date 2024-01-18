@@ -334,6 +334,14 @@ struct promise : promise_base, return_result<R, I> {
 // -------------------------------------------------- //
 
 /**
+ * @brief A basic type list.
+ */
+template <typename...>
+struct list {};
+
+namespace detail {
+
+/**
  * @brief A dependent value to emulate `static_assert(false)`.
  */
 template <typename...>
@@ -342,30 +350,61 @@ inline constexpr bool always_false = false;
 /**
  * @brief All non-reference destinations are safe for most types.
  */
-template <tag Tag, typename, typename To>
-struct safe_fork_t : std::true_type {};
-
-/**
- * @brief Rvalue to const-lvalue promotions are unsafe.
- */
 template <typename From, typename To>
-struct safe_fork_t<tag::fork, From &&, To const &> : std::false_type {
-  static_assert(always_false<From &&, To const &>, "Unsafe r-value to const l-value conversion may dangle!");
+struct safe_fork_t : std::false_type {
+  static_assert(always_false<From, To>, "Unsafe fork detected!");
 };
 
 /**
- * @brief All r-value destinations are always unsafe.
+ * @brief Pass by value is (in general) safe.
+ *
+ * This may not hold if the type is a reference wrapper of some kind.
  */
 template <typename From, typename To>
-struct safe_fork_t<tag::fork, From, To &&> : std::false_type {
-  static_assert(always_false<From, To &&>, "Forked r-value may dangle!");
-};
+  requires (!std::is_reference_v<To>)
+struct safe_fork_t<From, To> : std::true_type {};
+
+/**
+ * @brief l-value references are safe.
+ */
+template <typename From, typename To>
+  requires std::same_as<From, To>
+struct safe_fork_t<From &, To &> : std::true_type {};
+
+/**
+ * @brief Const promotion of l-value references is safe.
+ */
+template <typename From, typename To>
+  requires std::same_as<From, To>
+struct safe_fork_t<From &, To const &> : std::true_type {};
 
 /**
  * @brief Triggers a static assert if a conversion may dangle.
  */
-template <tag Tag, typename From, typename To>
-inline constexpr bool safe_fork_v = safe_fork_t<Tag, From, To>::value;
+template <tag, typename, typename>
+struct safe_fork : std::true_type {};
+
+// General case.
+template <typename From, typename... A, typename To, typename... B>
+struct safe_fork<tag::fork, list<From, A...>, list<To, B...>> : safe_fork<tag::fork, list<A...>, list<B...>> {
+  static_assert(safe_fork_t<From, To>::value);
+};
+
+/**
+ * @brief Special case for defaulted arguments, can only check if they are r-values references.
+ */
+template <typename Head, typename... Tail>
+struct safe_fork<tag::fork, list<>, list<Head, Tail...>> : safe_fork<tag::fork, list<>, list<Tail...>> {
+  static_assert(!std::is_rvalue_reference_v<Head>, "Forked rvalue will dangle");
+};
+
+} // namespace detail
+
+/**
+ * @brief Triggers a static assert if a conversion may dangle.
+ */
+template <tag Tag, typename FromList, typename ToList>
+inline constexpr bool safe_fork_v = detail::safe_fork<Tag, FromList, ToList>::value;
 
 } // namespace lf::impl
 
@@ -378,11 +417,15 @@ template <lf::returnable R,
           lf::impl::return_address_for<R> I,
           lf::tag Tag,
           lf::async_function_object F,
-          typename... Crgs,
+          typename... CallArgs,
           typename... Args>
-struct std::coroutine_traits<lf::task<R>, lf::impl::first_arg_t<I, Tag, F, Crgs...>, Args...> {
+struct std::coroutine_traits<lf::task<R>, lf::impl::first_arg_t<I, Tag, F, CallArgs...>, Args...> {
+
+  // May have less if defaulted parameters are used.
+  static_assert(sizeof...(CallArgs) <= sizeof...(Args));
+
   // This will trigger an inner static assert if an unsafe reference is forked.
-  static_assert((lf::impl::safe_fork_v<Tag, Crgs, Args> && ...));
+  static_assert(lf::impl::safe_fork_v<Tag, lf::impl::list<CallArgs...>, lf::impl::list<Args...>>);
 
   using promise_type = lf::impl::promise<R, I, Tag>;
 };
@@ -395,16 +438,10 @@ template <lf::returnable R,
           lf::impl::return_address_for<R> I,
           lf::tag Tag,
           lf::async_function_object F,
-          typename... Crgs,
+          typename... CallArgs,
           typename... Args>
-struct std::coroutine_traits<lf::task<R>, This, lf::impl::first_arg_t<I, Tag, F, Crgs...>, Args...> {
-  // This will trigger an inner static assert if an unsafe reference is forked.
-  static_assert((lf::impl::safe_fork_v<Tag, Crgs, Args> && ...));
-
-  static_assert((lf::impl::safe_fork_v<Tag, This, This>), "Object parameter will dangle!");
-
-  using promise_type = lf::impl::promise<R, I, Tag>;
-};
+struct std::coroutine_traits<lf::task<R>, This, lf::impl::first_arg_t<I, Tag, F, CallArgs...>, Args...>
+    : std::coroutine_traits<lf::task<R>, lf::impl::first_arg_t<I, Tag, F, CallArgs...>, Args..., This> {};
 
 #endif
 

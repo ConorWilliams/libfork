@@ -144,7 +144,7 @@ TEMPLATE_TEST_CASE("Fibonacci - returning", "[core][template]", unit_pool, busy_
       auto schedule = make_scheduler<TestType>();
 
       for (int i = 1; i < 20; ++i) {
-        REQUIRE(fib(i) == sync_wait(schedule, r_fib, i));
+        REQUIRE(fib(i) == sync_wait(schedule, r_fib, std::move(i)));
       }
     }
   }
