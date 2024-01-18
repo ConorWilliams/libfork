@@ -400,6 +400,7 @@ template <lf::returnable R,
 struct std::coroutine_traits<lf::task<R>, This, lf::impl::first_arg_t<I, Tag, F, Crgs...>, Args...> {
   // This will trigger an inner static assert if an unsafe reference is forked.
   static_assert((lf::impl::safe_fork_v<Tag, Crgs, Args> && ...));
+
   static_assert((lf::impl::safe_fork_v<Tag, This, This>), "Object parameter will dangle!");
 
   using promise_type = lf::impl::promise<R, I, Tag>;

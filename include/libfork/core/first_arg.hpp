@@ -63,7 +63,7 @@ concept quasi_pointer = std::default_initializable<I> && std::movable<I> && dere
  * an iterator/legacy-pointer.
  */
 template <typename F>
-concept async_function_object = std::is_object_v<F> && std::copy_constructible<F>;
+concept async_function_object = std::is_class_v<std::remove_cvref_t<F>> && std::copy_constructible<F>;
 
 /**
  * @brief This describes the public-API of the first argument passed to an async function.
@@ -74,7 +74,7 @@ concept async_function_object = std::is_object_v<F> && std::copy_constructible<F
  * workers context. Finally a user may cache an exception in-flight by calling `.stash_exception()`.
  */
 template <typename T>
-concept first_arg = async_function_object<T> && requires (T arg) {
+concept first_arg = std::is_class_v<T> && async_function_object<T> && requires (T arg) {
   { T::tagged } -> std::convertible_to<tag>;
   { T::context() } -> std::same_as<worker_context *>;
   { arg.stash_exception() } noexcept;
@@ -98,6 +98,7 @@ namespace impl {
  * Hence, a first argument is also an async function object.
  */
 template <quasi_pointer I, tag Tag, async_function_object F, typename... Cargs>
+  requires std::is_class_v<F> && (std::is_reference_v<Cargs> && ...)
 class first_arg_t {
  public:
   /**

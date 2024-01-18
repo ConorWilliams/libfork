@@ -97,10 +97,16 @@ concept return_address_for = quasi_pointer<I> && returnable<R> && valid_return_v
  */
 template <typename I, tag Tag, typename F, typename... Args>
 concept async_invocable_to_task =
-    quasi_pointer<I> &&                                                                                    //
-    async_function_object<F> &&                                                                            //
-    std::invocable<F, impl::first_arg_t<I, Tag, F, Args &&...>, Args...> &&                                //
-    valid_return_v<I, std::invoke_result_t<F, impl::first_arg_t<discard_t, Tag, F, Args &&...>, Args...>>; //
+    quasi_pointer<I> &&                                                                             //
+    async_function_object<F> &&                                                                     //
+    std::invocable<std::remove_cvref_t<F> &&,                                                       //
+                   impl::first_arg_t<I, Tag, std::remove_cvref_t<F>, Args &&...>,                   //
+                   Args...> &&                                                                      //
+    valid_return_v<                                                                                 //
+        I,                                                                                          //
+        std::invoke_result_t<std::remove_cvref_t<F> &&,                                             //
+                             impl::first_arg_t<discard_t, Tag, std::remove_cvref_t<F>, Args &&...>, //
+                             Args...>>;                                                             //
 
 /**
  * @brief Fetch the underlying result type of an async invocation.
@@ -113,7 +119,9 @@ struct unsafe_result {
   /**
    * @brief Let `F(Args...) -> task<R>` then this is 'R'.
    */
-  using type = std::invoke_result_t<F, impl::first_arg_t<I, Tag, F, Args...>, Args...>::type;
+  using type = std::invoke_result_t<std::remove_cvref_t<F> &&,
+                                    impl::first_arg_t<I, Tag, std::remove_cvref_t<F>, Args &&...>,
+                                    Args...>::type;
 };
 
 /**

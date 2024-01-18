@@ -68,8 +68,13 @@ class worker_context : impl::immovable<context> {
    * This will trigger the notification function.
    */
   void schedule(submit_handle jobs) {
+
     m_submit.push(non_null(jobs));
-    m_notify();
+
+    // Once we have pushed if this throws we cannot uphold the strong exception guarantee.
+    [&]() noexcept {
+      m_notify();
+    }();
   }
 
   /**

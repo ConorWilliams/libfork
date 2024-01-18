@@ -2283,8 +2283,13 @@ class worker_context : impl::immovable<context> {
    * This will trigger the notification function.
    */
   void schedule(submit_handle jobs) {
+
     m_submit.push(non_null(jobs));
-    m_notify();
+
+    // Once we have pushed if this throws we cannot uphold the strong exception guarantee.
+    [&]() noexcept {
+      m_notify();
+    }();
   }
 
   /**
@@ -2746,7 +2751,7 @@ concept quasi_pointer = std::default_initializable<I> && std::movable<I> && dere
  * an iterator/legacy-pointer.
  */
 template <typename F>
-concept async_function_object = std::is_object_v<F> && std::copy_constructible<F>;
+concept async_function_object = std::is_class_v<std::remove_cvref_t<F>> && std::copy_constructible<F>;
 
 /**
  * @brief This describes the public-API of the first argument passed to an async function.
@@ -2757,7 +2762,7 @@ concept async_function_object = std::is_object_v<F> && std::copy_constructible<F
  * workers context. Finally a user may cache an exception in-flight by calling `.stash_exception()`.
  */
 template <typename T>
-concept first_arg = async_function_object<T> && requires (T arg) {
+concept first_arg = std::is_class_v<T> && async_function_object<T> && requires (T arg) {
   { T::tagged } -> std::convertible_to<tag>;
   { T::context() } -> std::same_as<worker_context *>;
   { arg.stash_exception() } noexcept;
@@ -2781,6 +2786,7 @@ namespace impl {
  * Hence, a first argument is also an async function object.
  */
 template <quasi_pointer I, tag Tag, async_function_object F, typename... Cargs>
+  requires std::is_class_v<F> && (std::is_reference_v<Cargs> && ...)
 class first_arg_t {
  public:
   /**
@@ -3546,10 +3552,16 @@ concept return_address_for = quasi_pointer<I> && returnable<R> && valid_return_v
  */
 template <typename I, tag Tag, typename F, typename... Args>
 concept async_invocable_to_task =
-    quasi_pointer<I> &&                                                                                    //
-    async_function_object<F> &&                                                                            //
-    std::invocable<F, impl::first_arg_t<I, Tag, F, Args &&...>, Args...> &&                                //
-    valid_return_v<I, std::invoke_result_t<F, impl::first_arg_t<discard_t, Tag, F, Args &&...>, Args...>>; //
+    quasi_pointer<I> &&                                                                             //
+    async_function_object<F> &&                                                                     //
+    std::invocable<std::remove_cvref_t<F> &&,                                                       //
+                   impl::first_arg_t<I, Tag, std::remove_cvref_t<F>, Args &&...>,                   //
+                   Args...> &&                                                                      //
+    valid_return_v<                                                                                 //
+        I,                                                                                          //
+        std::invoke_result_t<std::remove_cvref_t<F> &&,                                             //
+                             impl::first_arg_t<discard_t, Tag, std::remove_cvref_t<F>, Args &&...>, //
+                             Args...>>;                                                             //
 
 /**
  * @brief Fetch the underlying result type of an async invocation.
@@ -3562,7 +3574,9 @@ struct unsafe_result {
   /**
    * @brief Let `F(Args...) -> task<R>` then this is 'R'.
    */
-  using type = std::invoke_result_t<F, impl::first_arg_t<I, Tag, F, Args...>, Args...>::type;
+  using type = std::invoke_result_t<std::remove_cvref_t<F> &&,
+                                    impl::first_arg_t<I, Tag, std::remove_cvref_t<F>, Args &&...>,
+                                    Args...>::type;
 };
 
 /**
@@ -4010,7 +4024,8 @@ inline namespace core {
  * @brief A concept that schedulers must satisfy.
  *
  * This requires only a single method, `schedule` which accepts an `lf::submit_handle` and
- * promises to call `lf::resume()` on it.
+ * promises to call `lf::resume()` on it. The `schedule method should fulfill the strong
+ * exception guarantee.
  */
 template <typename Sch>
 concept scheduler = requires (Sch &&sch, submit_handle handle) {
@@ -5268,6 +5283,7 @@ template <lf::returnable R,
 struct std::coroutine_traits<lf::task<R>, This, lf::impl::first_arg_t<I, Tag, F, Crgs...>, Args...> {
   // This will trigger an inner static assert if an unsafe reference is forked.
   static_assert((lf::impl::safe_fork_v<Tag, Crgs, Args> && ...));
+
   static_assert((lf::impl::safe_fork_v<Tag, This, This>), "Object parameter will dangle!");
 
   using promise_type = lf::impl::promise<R, I, Tag>;
