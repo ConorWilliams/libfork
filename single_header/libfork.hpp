@@ -3971,7 +3971,8 @@ inline constexpr impl::bind_task<tag::call> call = {};
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <exception> // for rethrow_exception
-#include <utility>   // for forward
+#include <type_traits>
+#include <utility> // for forward
       // for try_eventually       // for async_function_object
 #ifndef CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
 #define CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
@@ -4519,6 +4520,53 @@ class [[nodiscard("co_await this!")]] just_awaitable : just_awaitable_base<R>, c
 };
 
 /**
+ * @brief A wrapper around a returned value that will be passed through an `co_await`.
+ */
+template <typename T>
+struct [[nodiscard("co_await this!")]] just_wrapped : std::suspend_never {
+  /**
+   * @brief Forward the result.
+   */
+  constexpr auto await_resume() noexcept -> T && {
+    if constexpr (std::is_lvalue_reference_v<T>) {
+      return val;
+    } else {
+      return std::move(val);
+    }
+  }
+
+  T val; ///< The value to be forwarded.
+};
+
+/**
+ * @brief A wrapper that supplies an async function with a call operator.
+ */
+template <typename F>
+  requires (!std::is_reference_v<F>)
+struct [[nodiscard("This should be immediately invoked!")]] call_just {
+
+  /**
+   * @brief Make an awaitable that will call the async function then immediately join.
+   */
+  template <typename... Args>
+    requires async_invocable<F, Args...>
+  auto operator()(Args &&...args) && -> just_awaitable<async_result_t<F, Args...>> {
+    return just_awaitable<async_result_t<F, Args...>>(std::move(fun), std::forward<Args>(args)...);
+  }
+
+  /**
+   * @brief Immediately invoke a regular function and wrap the result in an awaitable class.
+   */
+  template <typename... Args>
+    requires std::invocable<F, Args...> && (!async_invocable<F, Args...>)
+  auto operator()(Args &&...args) && -> just_wrapped<std::invoke_result_t<F, Args...>> {
+    return {{}, std::invoke(std::move(fun), std::forward<Args>(args)...)};
+  }
+
+  [[no_unique_address]] F fun; ///< The async or regular function.
+};
+
+/**
  * @brief An invocable (and subscriptable) wrapper that makes an async function object immediately callable.
  */
 struct bind_just {
@@ -4527,13 +4575,9 @@ struct bind_just {
    *
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a call + join.
    */
-  template <async_function_object F>
-  LF_DEPRECATE_CALL [[nodiscard]] LF_STATIC_CALL auto operator()(F fun) LF_STATIC_CONST {
-    return [fun = std::move(fun)]<typename... Args>(Args &&...args) mutable
-      requires async_invocable<F, Args...>
-    {
-      return impl::just_awaitable<async_result_t<F, Args...>>(std::move(fun), std::forward<Args>(args)...);
-    };
+  template <typename F>
+  LF_DEPRECATE_CALL LF_STATIC_CALL auto operator()(F fun) LF_STATIC_CONST->call_just<F> {
+    return {std::move(fun)};
   }
 
 #if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
@@ -4542,13 +4586,9 @@ struct bind_just {
    *
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a call + join.
    */
-  template <async_function_object F>
-  [[nodiscard]] LF_STATIC_CALL auto operator[](F fun) LF_STATIC_CONST {
-    return [fun = std::move(fun)]<typename... Args>(Args &&...args) mutable
-      requires async_invocable<F, Args...>
-    {
-      return impl::just_awaitable<async_result_t<F, Args...>>(std::move(fun), std::forward<Args>(args)...);
-    };
+  template <typename F>
+  LF_STATIC_CALL auto operator[](F fun) LF_STATIC_CONST->call_just<F> {
+    return {std::move(fun)};
   }
 #endif
 };
@@ -4558,8 +4598,7 @@ struct bind_just {
 inline namespace core {
 
 /**
- * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a call +
- * join.
+ * @brief A second-order functor, produces an awaitable (in an ``lf::task``) that will trigger a call + join.
  */
 inline constexpr impl::bind_just just = {};
 
@@ -5114,12 +5153,22 @@ struct promise_base : frame {
     }
   }
 
+  // -------------------------------------------------------------- //
+
   /**
    * @brief Pass through a just awaitable.
    */
   template <returnable R2>
   auto await_transform(just_awaitable<R2> &&awaitable) noexcept -> just_awaitable<R2> && {
     awaitable.frame()->set_parent(this);
+    return std::move(awaitable);
+  }
+
+  /**
+   * @brief Pass through a just awaitable.
+   */
+  template <returnable T>
+  auto await_transform(just_wrapped<T> &&awaitable) noexcept -> just_wrapped<T> && {
     return std::move(awaitable);
   }
 };

@@ -58,7 +58,7 @@ inline constexpr auto r_fib = [](auto fib, int n) -> lf::task<int> {
   }
 
   int a = co_await just(fib)(n - 1);
-  int b = co_await just(fib)(n - 2);
+  int b = co_await just(::fib)(n - 2);
 
   co_return a + b;
 };

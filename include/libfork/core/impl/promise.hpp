@@ -223,12 +223,22 @@ struct promise_base : frame {
     }
   }
 
+  // -------------------------------------------------------------- //
+
   /**
    * @brief Pass through a just awaitable.
    */
   template <returnable R2>
   auto await_transform(just_awaitable<R2> &&awaitable) noexcept -> just_awaitable<R2> && {
     awaitable.frame()->set_parent(this);
+    return std::move(awaitable);
+  }
+
+  /**
+   * @brief Pass through a just awaitable.
+   */
+  template <returnable T>
+  auto await_transform(just_wrapped<T> &&awaitable) noexcept -> just_wrapped<T> && {
     return std::move(awaitable);
   }
 };
