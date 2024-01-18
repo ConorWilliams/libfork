@@ -42,7 +42,7 @@ struct just_awaitable_base {
   /**
    * @brief The return variable.
    */
-  try_eventually<R> ret;
+  [[no_unique_address]] try_eventually<R> ret;
 };
 
 /**
@@ -106,8 +106,14 @@ struct [[nodiscard("co_await this!")]] just_wrapped : std::suspend_never {
     }
   }
 
-  T val; ///< The value to be forwarded.
+  [[no_unique_address]] T val; ///< The value to be forwarded.
 };
+
+/**
+ * @brief Void specialization of ``just_wrapped``.
+ */
+template <>
+struct just_wrapped<void> : std::suspend_never {};
 
 /**
  * @brief A wrapper that supplies an async function with a call operator.
@@ -131,7 +137,12 @@ struct [[nodiscard("This should be immediately invoked!")]] call_just {
   template <typename... Args>
     requires std::invocable<F, Args...> && (!async_invocable<F, Args...>)
   auto operator()(Args &&...args) && -> just_wrapped<std::invoke_result_t<F, Args...>> {
-    return {{}, std::invoke(std::move(fun), std::forward<Args>(args)...)};
+    if constexpr (std::is_void_v<std::invoke_result_t<F, Args...>>) {
+      std::invoke(std::move(fun), std::forward<Args>(args)...);
+      return {};
+    } else {
+      return {{}, std::invoke(std::move(fun), std::forward<Args>(args)...)};
+    }
   }
 
   [[no_unique_address]] F fun; ///< The async or regular function.
