@@ -1,126 +1,194 @@
-// #ifndef D336C448_D1EE_4616_9277_E0D7D550A10A
-// #define D336C448_D1EE_4616_9277_E0D7D550A10A
+#ifndef D336C448_D1EE_4616_9277_E0D7D550A10A
+#define D336C448_D1EE_4616_9277_E0D7D550A10A
 
-// // Copyright © Conor Williams <conorwilliams@outlook.com>
+// Copyright © Conor Williams <conorwilliams@outlook.com>
 
-// // SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MPL-2.0
 
-// // This Source Code Form is subject to the terms of the Mozilla Public
-// // License, v. 2.0. If a copy of the MPL was not distributed with this
-// // file, You can obtain one at https://mozilla.org/MPL/2.0/.
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-// #include <concepts>
-// #include <functional>
-// #include <iterator>
-// #include <type_traits>
+#include <concepts>
+#include <iterator>
+#include <type_traits>
 
-// #include "libfork/core/invocable.hpp"
-// #include "libfork/core.hpp"
+#include "libfork/core/invocable.hpp"
 
-// /**
-//  * @file concepts.hpp
-//  *
-//  * @brief Variations of the standard library's concepts used for constraining algorithms.
-//  */
+/**
+ * @file concepts.hpp
+ *
+ * @brief Variations of the standard library's concepts used for constraining algorithms.
+ */
 
-// namespace lf {
+namespace lf {
 
-// // ------------------------------------ invoke_result_t ------------------------------------ //
+// ------------------------------------  either invocable ------------------------------------ //
 
-// namespace detail {
+namespace detail {
 
-// /**
-//  * @brief Nicer error messages.
-//  */
-// template <bool NormalInvocable, bool AsyncInvocable>
-// concept exclusive_invocable = (NormalInvocable || AsyncInvocable) && !(NormalInvocable && AsyncInvocable);
+/**
+ * @brief Nicer error messages.
+ */
+template <bool NormalInvocable, bool AsyncInvocable>
+concept exclusive_invocable = (NormalInvocable || AsyncInvocable) && !(NormalInvocable && AsyncInvocable);
 
-// } // namespace detail
+} // namespace detail
 
-// /**
-//  * @brief Test if "F" is async invocable __xor__ normally invocable with ``Args...``.
-//  */
-// template <typename F, typename... Args>
-// concept either_invocable = detail::exclusive_invocable<std::invocable<F, Args...>, lf::invocable<F,
-// Args...>>;
+/**
+ * @brief Test if "F" is async invocable __xor__ normally invocable with ``Args...``.
+ */
+template <typename F, typename... Args>
+concept invocable = detail::exclusive_invocable<std::invocable<F, Args...>, async_invocable<F, Args...>>;
 
-// namespace detail {
+/**
+ * @brief Test if "F" is regularly async invocable __xor__ normally invocable invocable with ``Args...``.
+ */
+template <typename F, typename... Args>
+concept regular_invocable = invocable<F, Args...>;
 
-// template <typename F, typename... Args>
-// struct either_invocable_result;
+// ------------------------------------  either result type ------------------------------------ //
 
-// template <typename F, typename... Args>
-//   requires invocable<F, Args...>
-// struct either_invocable_result<F, Args...> : async_result<F, Args...> {};
+namespace detail {
 
-// template <typename F, typename... Args>
-//   requires std::invocable<F, Args...>
-// struct either_invocable_result<F, Args...> : std::invoke_result<F, Args...> {};
+template <typename F, typename... Args>
+struct either_invocable_result;
 
-// } // namespace detail
+template <typename F, typename... Args>
+  requires async_invocable<F, Args...>
+struct either_invocable_result<F, Args...> : async_result<F, Args...> {};
 
-// /**
-//  * @brief The result of invoking a regular-or-async function.
-//  *
-//  * If F is a regular function then this is the same as `std::invoke_result<F, Args...>`. Otherwise,
-//  * if F is an async function then this is the same as `lf::core::invoke_result_t<F, Args...>`.
-//  */
-// template <typename F, typename... Args>
-//   requires either_invocable<F, Args...>
-// using either_result_t = detail::either_invocable_result<F, Args...>::type;
+template <typename F, typename... Args>
+  requires std::invocable<F, Args...>
+struct either_invocable_result<F, Args...> : std::invoke_result<F, Args...> {};
 
-// // ------------------------------------ indirectly_result_t ------------------------------------ //
+} // namespace detail
 
-// // /**
-// //  * @brief A version of `std::indirect_result_t` that uses `lf::invoke_result_t` instead of the `std`
-// //  version.
-// //  */
-// // template <class F, class... Is>
-// //   requires (std::indirectly_readable<Is> && ...) && std::invocable<F, std::iter_reference_t<Is>...>
-// // using indirect_result_t = invoke_result_t<F, std::iter_reference_t<Is>...>;
+/**
+ * @brief The result of invoking a regular-or-async function.
+ *
+ * If F is a regular function then this is the same as `std::invoke_result<F, Args...>`. Otherwise,
+ * if F is an async function then this is the same as `lf::core::invoke_result_t<F, Args...>`.
+ */
+template <typename F, typename... Args>
+  requires invocable<F, Args...>
+using invoke_result_t = typename detail::either_invocable_result<F, Args...>::type;
 
-// // ------------------------------- indirectly_unary_invocable ------------------------------- //
+// ------------------------------------ indirect_value_t ------------------------------------ //
 
-// namespace detail {
+namespace detail {
 
-// template <typename I>
-// struct indirect_value_impl {
-//   using type = std::iter_value_t<I> &;
-// };
+/**
+ * @brief Base case for regular iterators.
+ */
+template <typename I>
+struct indirect_value_impl {
+  using type = std::iter_value_t<I> &;
+};
 
-// template <typename Iter, typename Proj>
-// struct indirect_value_impl<std::projected<Iter, Proj>> {
-//   using type = invoke_result_t<Proj &, std::iter_value_t<Iter> &>;
-// };
+/**
+ * @brief Specialization for projected iterators.
+ */
+template <typename Proj>
+  requires requires { typename Proj::secret_projected_indirect_value_helper; }
+struct indirect_value_impl<Proj> {
+ private:
+  using iter = Proj::secret_projected_indirect_value_helper::iterator;
+  using proj = Proj::secret_projected_indirect_value_helper::projection;
 
-// /**
-//  * @brief From [P2609R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2609r3.html) this
-//  relaxes
-//  * some constraints a little.
-//  *
-//  * Specifically: `indirect_value_t<I>` must be `std::iter_value_t<I> &` for an iterator and
-//  * `invoke_result_t<Proj &, indirect_value_t<Iter>>` for `std::projected<Proj, Iter>`.
-//  */
-// template <std::indirectly_readable I>
-// using indirect_value_t = typename indirect_value_impl<I>::type;
+ public:
+  // Recursively drill down to the non-projected iterator.
+  using type = invoke_result_t<proj &, typename indirect_value_impl<iter>::type>;
+};
 
-// } // namespace detail
+/**
+ * @brief From [P2609R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2609r3.html).
+ *
+ * Relaxes some constraints for ``lf::core::indirectly_unary_invocable`` Specifically: `indirect_value_t<I>`
+ * must be `std::iter_value_t<I> &` for an iterator and `either_result_t<Proj &, indirect_value_t<Iter>>` for
+ * `projected<Proj, Iter>`.
+ */
+template <std::indirectly_readable I>
+using indirect_value_t = typename detail::indirect_value_impl<I>::type;
 
-// /**
-//  * @brief ``std::indirectly_unary_invocable` that uses `lf::invoke_result_t` instead of the `std` version.
-//  *
-//  * This uses the relaxed version from
-//  * [P2997R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2997r0.html#ref-LWG3859)
-//  */
-// template <class F, class I>
-// concept indirectly_unary_invocable = std::indirectly_readable<I> &&                     //
-//                                      std::copy_constructible<F> &&                      //
-//                                      std::invocable<F &, std::iter_value_t<I> &> &&     //
-//                                      std::invocable<F &, std::iter_reference_t<I>> &&   //
-//                                      std::common_reference_with<                        //
-//                                          invoke_result_t<F &, std::iter_value_t<I> &>,  //
-//                                          invoke_result_t<F &, std::iter_reference_t<I>> //
-//                                          >;
+} // namespace detail
+
+// ------------------------------- indirectly_unary_invocable ------------------------------- //
+
+/**
+ * @brief ``std::indirectly_unary_invocable` that accepts async and regular function.
+ *
+ * This uses the relaxed version from
+ * [P2997R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2997r0.html#ref-LWG3859)
+ *
+ * And the further relaxation from
+ * [P2609R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2609r3.html)
+ */
+template <class F, class I>
+concept indirectly_unary_invocable = std::indirectly_readable<I> &&                         //
+                                     std::copy_constructible<F> &&                          //
+                                     invocable<F &, detail::indirect_value_t<I>> &&         //
+                                     invocable<F &, std::iter_reference_t<I>> &&            //
+                                     std::common_reference_with<                            //
+                                         invoke_result_t<F &, detail::indirect_value_t<I>>, //
+                                         invoke_result_t<F &, std::iter_reference_t<I>>     //
+                                         >;
+
+/**
+ * @brief ``std::indirectly_regular_unary_invocable` that accepts async and regular function.
+ *
+ * This uses the relaxed version from
+ * [P2997R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2997r0.html#ref-LWG3859)
+ *
+ * And the further relaxation from
+ * [P2609R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2609r3.html)
+ */
+template <class F, class I>
+concept indirectly_regular_unary_invocable = indirectly_unary_invocable<F, I>;
+
+// ------------------------------------ indirect_result_t ------------------------------------ //
+
+/**
+ * @brief A variation of `std::indirect_result_t` that accepts async and regular function.
+ */
+template <class F, class... Is>
+  requires (std::indirectly_readable<Is> && ...) && invocable<F, std::iter_reference_t<Is>...>
+using indirect_result_t = invoke_result_t<F, std::iter_reference_t<Is>...>;
+
+// ------------------------------------ projected ------------------------------------ //
+
+namespace detail {
+
+template <class I>
+struct conditional_difference_type {};
+
+template <std::weakly_incrementable I>
+struct conditional_difference_type<I> {
+  using difference_type = std::iter_difference_t<I>;
+};
+
+template <class I, class Proj>
+struct projected_impl {
+  struct adl_barrier : conditional_difference_type<I> {
+
+    using value_type = std::remove_cvref_t<indirect_result_t<Proj &, I>>;
+
+    auto operator*() const -> indirect_result_t<Proj &, I>; // not defined
+
+    struct secret_projected_indirect_value_helper {
+      using iterator = I;
+      using projection = Proj;
+    };
+  };
+};
+
+} // namespace detail
+
+/**
+ * @brief A variation of `std::projected` that accepts async and regular function.
+ */
+template <std::indirectly_readable I, indirectly_regular_unary_invocable<I> Proj>
+using projected = typename detail::projected_impl<I, Proj>::adl_barrier;
 
 // // ---------------------------------- Semigroup  helpers ---------------------------------- //
 
@@ -293,6 +361,6 @@
 //                               foldable<Bop &, std::iter_reference_t<I>> &&      //
 //                               foldable<Bop &, std::iter_common_reference_t<I>>; //
 
-// } // namespace lf
+} // namespace lf
 
-// #endif /* D336C448_D1EE_4616_9277_E0D7D550A10A */
+#endif /* D336C448_D1EE_4616_9277_E0D7D550A10A */
