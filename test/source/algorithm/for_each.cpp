@@ -83,7 +83,7 @@ void test(Sch &&sch, F add_one, Proj proj = {}) {
 
     for (int i = 1; i < 4; ++i) {
 
-      std::vector<int> small = {0, 0, 0};
+      std::vector<int> small{0, 0, 0};
 
       lf::sync_wait(sch, lf::for_each, std::span(small.data(), 3), i, add_one);
       REQUIRE(small == std::vector<int>{1, 1, 1});

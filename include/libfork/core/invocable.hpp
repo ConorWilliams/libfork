@@ -119,9 +119,11 @@ struct unsafe_result {
   /**
    * @brief Let `F(Args...) -> task<R>` then this is 'R'.
    */
-  using type = std::invoke_result_t<std::remove_cvref_t<F> &&,
-                                    impl::first_arg_t<I, Tag, std::remove_cvref_t<F>, Args &&...>,
-                                    Args...>::type;
+  using type = typename std::invoke_result_t<                        //
+      std::remove_cvref_t<F> &&,                                     //
+      impl::first_arg_t<I, Tag, std::remove_cvref_t<F>, Args &&...>, //
+      Args...                                                        //
+      >::type;
 };
 
 /**

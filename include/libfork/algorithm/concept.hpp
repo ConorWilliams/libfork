@@ -93,8 +93,8 @@ template <typename Proj>
   requires requires { typename Proj::secret_projected_indirect_value_helper; }
 struct indirect_value_impl<Proj> {
  private:
-  using iter = Proj::secret_projected_indirect_value_helper::iterator;
-  using proj = Proj::secret_projected_indirect_value_helper::projection;
+  using iter = typename Proj::secret_projected_indirect_value_helper::iterator;
+  using proj = typename Proj::secret_projected_indirect_value_helper::projection;
 
  public:
   // Recursively drill down to the non-projected iterator.
