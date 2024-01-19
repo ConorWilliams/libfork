@@ -28,24 +28,19 @@ namespace lf {
 namespace detail {
 
 /**
- * @brief Nicer error messages.
- */
-template <bool NormalInvocable, bool AsyncInvocable>
-concept exclusive_invocable = (NormalInvocable || AsyncInvocable) && !(NormalInvocable && AsyncInvocable);
-
-} // namespace detail
-
-/**
  * @brief Test if "F" is async invocable __xor__ normally invocable with ``Args...``.
  */
 template <typename F, typename... Args>
-concept invocable = detail::exclusive_invocable<std::invocable<F, Args...>, async_invocable<F, Args...>>;
+concept invocable = (std::invocable<F, Args...> || async_invocable<F, Args...>) &&
+                    !(std::invocable<F, Args...> && async_invocable<F, Args...>);
 
 /**
  * @brief Test if "F" is regularly async invocable __xor__ normally invocable invocable with ``Args...``.
  */
 template <typename F, typename... Args>
-concept regular_invocable = invocable<F, Args...>;
+concept regular_invocable = invocable<F, Args...> &&                                               //
+                            (std::regular_invocable<F, Args...> || async_invocable<F, Args...>) && //
+                            !(std::regular_invocable<F, Args...> && async_invocable<F, Args...>);  //
 
 // ------------------------------------  either result type ------------------------------------ //
 
