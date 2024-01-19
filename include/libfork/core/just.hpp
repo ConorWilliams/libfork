@@ -16,7 +16,6 @@
 #include <type_traits> // for invoke_result_t
 #include <utility>     // for forward
 
-#include "libfork/core/control_flow.hpp"
 #include "libfork/core/eventually.hpp"      // for try_eventually
 #include "libfork/core/first_arg.hpp"       // for async_function_object
 #include "libfork/core/impl/awaitables.hpp" // for call_awaitable

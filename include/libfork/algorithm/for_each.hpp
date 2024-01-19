@@ -9,12 +9,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <algorithm>
-#include <concepts>
 #include <functional> // for identity
 #include <iterator>   // for iter_difference_t, random_access_iterator, size...
 #include <ranges>     // for begin, end, iterator_t, random_access_range
-#include <type_traits>
 
 #include "libfork/algorithm/concept.hpp" // for indirectly_unary_invocable, projected
 #include "libfork/core/control_flow.hpp" // for call, fork, join

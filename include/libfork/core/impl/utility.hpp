@@ -284,16 +284,16 @@ template <typename T>
     { ptr == nullptr } -> std::convertible_to<bool>;
   }
 constexpr auto
-non_null(T &&x, [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept
+non_null(T &&val, [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept
     -> T && {
 #ifndef NDEBUG
-  if (x == nullptr) {
+  if (val == nullptr) {
     // NOLINTNEXTLINE
     std::fprintf(stderr, "%s:%d: Null check failed: %s\n", loc.file_name(), loc.line(), loc.function_name());
     std::terminate();
   }
 #endif
-  return std::forward<T>(x);
+  return std::forward<T>(val);
 }
 
 // -------------------------------- //
