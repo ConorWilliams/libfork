@@ -102,7 +102,7 @@ void test(Sch &&sch, F add_one, Proj proj = {}) {
 
 } // namespace
 
-TEMPLATE_TEST_CASE("for each", "[algorithm][template]", unit_pool) {
+TEMPLATE_TEST_CASE("for each", "[algorithm][template]", unit_pool, busy_pool, lazy_pool) {
 
   auto pool = make_scheduler<TestType>();
 

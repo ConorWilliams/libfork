@@ -9,8 +9,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <atomic>      // for atomic_thread_fence, mem...
-#include <bit>         // for bit_cast
+#include <atomic> // for atomic_thread_fence, mem...
+#include <bit>    // for bit_cast
+#include <concepts>
 #include <coroutine>   // for coroutine_handle, noop_c...
 #include <cstddef>     // for size_t
 #include <type_traits> // for false_type, remove_cvref_t
@@ -378,14 +379,14 @@ struct safe_fork_t<From, To> : std::true_type {};
  * @brief l-value references are safe.
  */
 template <typename From, typename To>
-  requires std::same_as<From, To>
+  requires std::convertible_to<From &, To &>
 struct safe_fork_t<From &, To &> : std::true_type {};
 
 /**
  * @brief Const promotion of l-value references is safe.
  */
 template <typename From, typename To>
-  requires std::same_as<From, To>
+  requires std::convertible_to<From &, To &>
 struct safe_fork_t<From &, To const &> : std::true_type {};
 
 /**

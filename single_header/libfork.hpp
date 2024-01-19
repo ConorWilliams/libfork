@@ -3093,7 +3093,9 @@ class basic_eventually : impl::immovable<basic_eventually<T, Exception>> {
     impl::else_empty_t<Exception, std::exception_ptr> m_exception; //
   };
 
-  [[no_unique_address]] impl::else_empty_t<!implicit_state, state> m_flag;
+  // This empty type needs to be different from the empty types in the union
+  // to allow [[no_unique_address]] to work, hence the 1.
+  [[no_unique_address]] impl::else_empty_t<!implicit_state, state, 1> m_flag;
 
   // ----------------------- Hidden friends ----------------------- //
 
@@ -3124,25 +3126,27 @@ class basic_eventually : impl::immovable<basic_eventually<T, Exception>> {
 
   // ------------------------ Construct ------------------------ //
 
-  // clang-format off
+  /**
+   * @brief Construct an empty eventually.
+   */
+  basic_eventually() noexcept
+    requires (implicit_state && Exception)
+      : m_exception{nullptr} {}
 
   /**
    * @brief Construct an empty eventually.
    */
-  basic_eventually() noexcept requires (implicit_state && Exception) : m_exception{nullptr} {}
+  basic_eventually() noexcept
+    requires (implicit_state && !Exception)
+      : m_value{nullptr} {}
 
   /**
    * @brief Construct an empty eventually.
    */
-  basic_eventually() noexcept requires (implicit_state && !Exception) : m_value{nullptr} {}
-
-
-  /**
-   * @brief Construct an empty eventually.
-   */
-  basic_eventually() noexcept requires (!implicit_state) : m_empty{}, m_flag{state::empty} {}
-
-  // clang-format on
+  basic_eventually() noexcept
+    requires (!implicit_state)
+      : m_empty{},
+        m_flag{state::empty} {}
 
   // ------------------------ Destruct ------------------------ //
 

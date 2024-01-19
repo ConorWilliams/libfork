@@ -283,7 +283,9 @@ template <typename T>
   requires requires (T &&ptr) {
     { ptr == nullptr } -> std::convertible_to<bool>;
   }
-constexpr auto non_null(T &&x, std::source_location loc = std::source_location::current()) noexcept -> T && {
+constexpr auto
+non_null(T &&x,
+         [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept -> T && {
 #ifndef NDEBUG
   if (x == nullptr) {
     // NOLINTNEXTLINE
