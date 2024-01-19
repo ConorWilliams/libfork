@@ -94,7 +94,7 @@ jobs:
     - name: Install LLVM and Clang
       uses: KyleMayes/install-llvm-action@v1
       with:
-        version: "16.0.4"
+        version: "17.0.6"
         env: true
   
     - name: Configure
