@@ -100,30 +100,35 @@ void test(Sch &&sch, F add_one, Proj proj = {}) {
   }
 }
 
+constexpr auto add_reg = [](int &i) {
+  i++;
+};
+
+constexpr auto add_coro = [](auto, int &i) -> task<void> {
+  i++;
+  co_return;
+};
+
+constexpr auto coro_identity = []<typename T>(auto, T &&val) -> task<T &&> {
+  co_return std::forward<T>(val);
+};
+
 } // namespace
 
-TEMPLATE_TEST_CASE("for each", "[algorithm][template]", unit_pool, busy_pool, lazy_pool) {
+TEMPLATE_TEST_CASE("for each (reg, reg)", "[algorithm][template]", unit_pool, busy_pool, lazy_pool) {
+  test(make_scheduler<TestType>(), add_reg);
+}
 
-  auto pool = make_scheduler<TestType>();
+TEMPLATE_TEST_CASE("for each (co, reg)", "[algorithm][template]", unit_pool, busy_pool, lazy_pool) {
+  test(make_scheduler<TestType>(), add_coro);
+}
 
-  auto add_reg = [](int &i) {
-    i++;
-  };
+TEMPLATE_TEST_CASE("for each (reg, co)", "[algorithm][template]", unit_pool, busy_pool, lazy_pool) {
+  test(make_scheduler<TestType>(), add_reg, coro_identity);
+}
 
-  auto add_coro = [](auto, int &i) -> task<void> {
-    i++;
-    co_return;
-  };
-
-  test(pool, add_reg);
-  test(pool, add_coro);
-
-  auto coro_identity = []<typename T>(auto, T &&val) -> task<T &&> {
-    co_return std::forward<T>(val);
-  };
-
-  test(pool, add_reg, coro_identity);
-  test(pool, add_coro, coro_identity);
+TEMPLATE_TEST_CASE("for each (co, co)", "[algorithm][template]", unit_pool, busy_pool, lazy_pool) {
+  test(make_scheduler<TestType>(), add_coro, coro_identity);
 }
 
 // NOLINTEND
