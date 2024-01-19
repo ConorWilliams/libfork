@@ -89,7 +89,10 @@ class xoshiro {
    */
   template <uniform_random_bit_generator PRNG>
     requires (!std::is_const_v<std::remove_reference_t<PRNG &&>>)
-  constexpr xoshiro(impl::seed_t, PRNG &&dev) noexcept {
+#if __cpp_constexpr >= 202110L
+  constexpr
+#endif
+      xoshiro(impl::seed_t, PRNG &&dev) noexcept {
     for (std::uniform_int_distribution<result_type> dist{min(), max()}; auto &elem : m_state) {
       elem = dist(dev);
     }

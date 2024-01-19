@@ -760,7 +760,9 @@ template <typename T>
   requires requires (T &&ptr) {
     { ptr == nullptr } -> std::convertible_to<bool>;
   }
-constexpr auto non_null(T &&x, std::source_location loc = std::source_location::current()) noexcept -> T && {
+constexpr auto
+non_null(T &&x,
+         [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept -> T && {
 #ifndef NDEBUG
   if (x == nullptr) {
     // NOLINTNEXTLINE
@@ -3085,16 +3087,13 @@ class basic_eventually : impl::immovable<basic_eventually<T, Exception>> {
     exception, ///< An exception has been thrown during and is stored.
   };
 
-#ifndef _MSC_VER
-  [[no_unique_address]]
-#endif
   union {
-    [[no_unique_address]] impl::empty_t<1> m_empty;
-    [[no_unique_address]] impl::eventually_value_t<T> m_value; ///< Uses empty_t<0>
-    [[no_unique_address]] impl::else_empty_t<Exception, std::exception_ptr, 2> m_exception;
+    impl::eventually_value_t<T> m_value;                           //
+    impl::empty_t<> m_empty;                                       //
+    impl::else_empty_t<Exception, std::exception_ptr> m_exception; //
   };
 
-  [[no_unique_address]] impl::else_empty_t<!implicit_state, state, 3> m_flag;
+  [[no_unique_address]] impl::else_empty_t<!implicit_state, state> m_flag;
 
   // ----------------------- Hidden friends ----------------------- //
 
@@ -4857,8 +4856,9 @@ inline void resume(task_handle ptr) {
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <atomic>      // for atomic_thread_fence, mem...
-#include <bit>         // for bit_cast
+#include <atomic> // for atomic_thread_fence, mem...
+#include <bit>    // for bit_cast
+#include <concepts>
 #include <coroutine>   // for coroutine_handle, noop_c...
 #include <cstddef>     // for size_t
 #include <type_traits> // for false_type, remove_cvref_t
@@ -5319,14 +5319,14 @@ struct safe_fork_t<From, To> : std::true_type {};
  * @brief l-value references are safe.
  */
 template <typename From, typename To>
-  requires std::same_as<From, To>
+  requires std::convertible_to<From &, To &>
 struct safe_fork_t<From &, To &> : std::true_type {};
 
 /**
  * @brief Const promotion of l-value references is safe.
  */
 template <typename From, typename To>
-  requires std::same_as<From, To>
+  requires std::convertible_to<From &, To &>
 struct safe_fork_t<From &, To const &> : std::true_type {};
 
 /**
@@ -6126,7 +6126,10 @@ class xoshiro {
    */
   template <uniform_random_bit_generator PRNG>
     requires (!std::is_const_v<std::remove_reference_t<PRNG &&>>)
-  constexpr xoshiro(impl::seed_t, PRNG &&dev) noexcept {
+#if __cpp_constexpr >= 202110L
+  constexpr
+#endif
+      xoshiro(impl::seed_t, PRNG &&dev) noexcept {
     for (std::uniform_int_distribution<result_type> dist{min(), max()}; auto &elem : m_state) {
       elem = dist(dev);
     }
