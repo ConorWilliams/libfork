@@ -16,7 +16,8 @@
         "test": {
             "description": "These are libfork's test-suite dependencies.",
             "dependencies": [
-                "catch2"
+                "catch2",
+                "backward-cpp"
             ]
         },
         "benchmark": {
