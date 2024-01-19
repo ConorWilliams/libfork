@@ -14,7 +14,7 @@
 #include <utility>     // for forward
 
 #include "libfork/core/impl/utility.hpp" // for immovable
-#include "libfork/core/macro.hpp"        // for LF_CONCAT_OUTER, LF_FORCEIN...
+#include "libfork/core/macro.hpp"        // for LF_CONCAT_OUTER, LF_FORCEINLINE
 
 /**
  * @file defer.hpp

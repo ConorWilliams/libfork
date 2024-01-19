@@ -19,7 +19,7 @@
 #include <limits>          // for numeric_limits
 #include <new>             // for std::hardware_destructive_interference_size
 #include <source_location> // for source_location
-#include <type_traits>     // for invoke_result_t, type_identity
+#include <type_traits>     // for invoke_result_t, type_identity, remove_cvref_t, true_type
 #include <utility>         // for forward
 #include <vector>          // for vector
 #include <version>         // for __cpp_lib_hardware_interference_size
@@ -284,8 +284,8 @@ template <typename T>
     { ptr == nullptr } -> std::convertible_to<bool>;
   }
 constexpr auto
-non_null(T &&x,
-         [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept -> T && {
+non_null(T &&x, [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept
+    -> T && {
 #ifndef NDEBUG
   if (x == nullptr) {
     // NOLINTNEXTLINE

@@ -10,9 +10,9 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <algorithm>   // for max
-#include <atomic>      // for atomic, atomic_thread_fence
+#include <atomic>      // for atomic, atomic_thread_fence, memory_order, memo...
 #include <bit>         // for has_single_bit
-#include <concepts>    // for convertible_to, invocable
+#include <concepts>    // for convertible_to, invocable, default_initializable
 #include <cstddef>     // for ptrdiff_t, size_t
 #include <functional>  // for invoke
 #include <memory>      // for unique_ptr, make_unique
@@ -23,7 +23,7 @@
 #include <version>     // for ptrdiff_t
 
 #include "libfork/core/impl/utility.hpp" // for k_cache_line, immovable
-#include "libfork/core/macro.hpp"        // for LF_ASSERT, LF_STATIC_CALL
+#include "libfork/core/macro.hpp"        // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST
 
 /**
  * @file deque.hpp

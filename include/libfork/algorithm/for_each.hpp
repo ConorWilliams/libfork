@@ -11,14 +11,16 @@
 
 #include <algorithm>
 #include <concepts>
-#include <functional>
-#include <iterator>
-#include <ranges>
+#include <functional> // for identity
+#include <iterator>   // for iter_difference_t, random_access_iterator, size...
+#include <ranges>     // for begin, end, iterator_t, random_access_range
 #include <type_traits>
 
-#include "libfork/core.hpp"
-
-#include "libfork/algorithm/concepts.hpp"
+#include "libfork/algorithm/concept.hpp" // for indirectly_unary_invocable, projected
+#include "libfork/core/control_flow.hpp" // for call, fork, join
+#include "libfork/core/just.hpp"         // for just
+#include "libfork/core/macro.hpp"        // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST
+#include "libfork/core/task.hpp"         // for task
 
 /**
  * @file for_each.hpp

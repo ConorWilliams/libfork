@@ -16,12 +16,12 @@
 #include <utility>   // for exchange, move
 #include <vector>    // for vector
 
-#include "libfork/core/ext/context.hpp"    // for worker_context, nullary_f...
+#include "libfork/core/ext/context.hpp"    // for worker_context, nullary_function_t
 #include "libfork/core/ext/deque.hpp"      // for err
 #include "libfork/core/ext/handles.hpp"    // for submit_handle, task_handle
 #include "libfork/core/ext/tls.hpp"        // for finalize, worker_init
 #include "libfork/core/impl/utility.hpp"   // for non_null, map
-#include "libfork/core/macro.hpp"          // for LF_ASSERT, LF_LOG, LF_CAT...
+#include "libfork/core/macro.hpp"          // for LF_ASSERT, LF_LOG, LF_CATCH_ALL, LF_RETHROW
 #include "libfork/schedule/ext/numa.hpp"   // for numa_topology
 #include "libfork/schedule/ext/random.hpp" // for xoshiro
 

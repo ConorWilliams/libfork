@@ -14,11 +14,11 @@
 #include <cstddef>     // for size_t, byte, nullptr_t
 #include <cstdlib>     // for free, malloc
 #include <new>         // for bad_alloc
-#include <type_traits> // for is_trivially_default_constr...
+#include <type_traits> // for is_trivially_default_constructible_v, is_trivia...
 #include <utility>     // for exchange, swap
 
-#include "libfork/core/impl/utility.hpp" // for byte_cast, k_new_align, non...
-#include "libfork/core/macro.hpp"        // for LF_ASSERT, LF_LOG, LF_FORCE...
+#include "libfork/core/impl/utility.hpp" // for byte_cast, k_new_align, non_null, immovable
+#include "libfork/core/macro.hpp"        // for LF_ASSERT, LF_LOG, LF_FORCEINLINE, LF_NOINLINE
 
 /**
  * @file stack.hpp

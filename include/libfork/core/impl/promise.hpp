@@ -9,12 +9,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <atomic> // for atomic_thread_fence, mem...
+#include <atomic> // for atomic_thread_fence, memory_order_acquire
 #include <bit>    // for bit_cast
 #include <concepts>
-#include <coroutine>   // for coroutine_handle, noop_c...
+#include <coroutine>   // for coroutine_handle, noop_coroutine, coroutine_...
 #include <cstddef>     // for size_t
-#include <type_traits> // for false_type, remove_cvref_t
+#include <type_traits> // for true_type, false_type, remove_cvref_t
 #include <utility>     // for forward
 
 #include "libfork/core/co_alloc.hpp"        // for co_allocable, co_new_t
@@ -24,16 +24,16 @@
 #include "libfork/core/ext/handles.hpp"     // for submit_t, task_handle
 #include "libfork/core/ext/list.hpp"        // for intrusive_list
 #include "libfork/core/ext/tls.hpp"         // for stack, context
-#include "libfork/core/first_arg.hpp"       // for async_function_object
-#include "libfork/core/impl/awaitables.hpp" // for alloc_awaitable, call_aw...
+#include "libfork/core/first_arg.hpp"       // for first_arg_t, async_function_object, first_arg
+#include "libfork/core/impl/awaitables.hpp" // for alloc_awaitable, call_awaitable, context_swi...
 #include "libfork/core/impl/combinate.hpp"  // for quasi_awaitable
 #include "libfork/core/impl/frame.hpp"      // for frame
 #include "libfork/core/impl/return.hpp"     // for return_result
 #include "libfork/core/impl/stack.hpp"      // for stack
 #include "libfork/core/impl/utility.hpp"    // for byte_cast, k_u16_max
-#include "libfork/core/invocable.hpp"       // for return_address_for, igno...
-#include "libfork/core/just.hpp"            // for just_awaitable
-#include "libfork/core/macro.hpp"           // for LF_LOG, LF_ASSERT, LF_FO...
+#include "libfork/core/invocable.hpp"       // for return_address_for, ignore_t
+#include "libfork/core/just.hpp"            // for just_awaitable, just_wrapped
+#include "libfork/core/macro.hpp"           // for LF_LOG, LF_ASSERT, LF_FORCEINLINE, LF_ASSERT...
 #include "libfork/core/scheduler.hpp"       // for context_switcher
 #include "libfork/core/tag.hpp"             // for tag
 #include "libfork/core/task.hpp"            // for returnable, task

@@ -13,12 +13,12 @@
 #include <coroutine> // for coroutine_handle
 
 #include "libfork/core/ext/context.hpp" // for full_context
-#include "libfork/core/ext/handles.hpp" // for submit_t, submit_handle, tas...
+#include "libfork/core/ext/handles.hpp" // for submit_t, submit_handle, task_handle
 #include "libfork/core/ext/list.hpp"    // for for_each_elem
 #include "libfork/core/ext/tls.hpp"     // for stack, context
 #include "libfork/core/impl/frame.hpp"  // for frame
 #include "libfork/core/impl/stack.hpp"  // for stack
-#include "libfork/core/macro.hpp"       // for LF_ASSERT_NO_ASSUME, LF_LOG
+#include "libfork/core/macro.hpp"       // for LF_ASSERT_NO_ASSUME, LF_LOG, LF_ASSERT, LF_STATI...
 
 /**
  * @file resume.hpp

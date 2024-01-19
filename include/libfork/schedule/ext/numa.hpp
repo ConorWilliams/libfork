@@ -22,7 +22,7 @@
 #include <vector>    // for vector
 
 #include "libfork/core/impl/utility.hpp" // for map
-#include "libfork/core/macro.hpp"        // for LF_ASSERT, LF_STATIC_CALL, LF_STAT...
+#include "libfork/core/macro.hpp"        // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST
 
 /**
  * @file numa.hpp

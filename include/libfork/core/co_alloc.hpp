@@ -13,7 +13,7 @@
 #include <cstddef>     // for size_t
 #include <memory>      // for destroy
 #include <span>        // for span
-#include <type_traits> // for integral_constant, type_ide...
+#include <type_traits> // for integral_constant, type_identity
 #include <utility>
 
 #include "libfork/core/ext/tls.hpp"      // for stack

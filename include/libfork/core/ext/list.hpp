@@ -9,7 +9,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <atomic>     // for atomic, memory_order_consume
+#include <atomic>     // for atomic, memory_order_consume, memory_order_relaxed
 #include <concepts>   // for invocable
 #include <functional> // for invoke
 

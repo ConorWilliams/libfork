@@ -14,8 +14,8 @@
 #include <cstdint>     // for uint64_t
 #include <functional>  // for invoke
 #include <limits>      // for numeric_limits
-#include <random>      // for uniform_int_distribution, uniform_random_bit_...
-#include <type_traits> // for remove_cvref_t, invoke_result_t, remove_refer...
+#include <random>      // for uniform_int_distribution, uniform_random_bit_generator
+#include <type_traits> // for remove_cvref_t, invoke_result_t, remove_reference_t
 
 /**
  * \file random.hpp

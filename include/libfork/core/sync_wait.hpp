@@ -19,14 +19,14 @@
 #include "libfork/core/eventually.hpp"           // for basic_eventually
 #include "libfork/core/ext/handles.hpp"          // for submit_t
 #include "libfork/core/ext/list.hpp"             // for intrusive_list
-#include "libfork/core/ext/tls.hpp"              // for thread_stack, has_s...
+#include "libfork/core/ext/tls.hpp"              // for thread_stack, has_stack
 #include "libfork/core/first_arg.hpp"            // for async_function_object
-#include "libfork/core/impl/combinate.hpp"       // for quasi_awaitable
+#include "libfork/core/impl/combinate.hpp"       // for quasi_awaitable, y_combinate
 #include "libfork/core/impl/frame.hpp"           // for frame
 #include "libfork/core/impl/manual_lifetime.hpp" // for manual_lifetime
 #include "libfork/core/impl/stack.hpp"           // for stack, swap
-#include "libfork/core/invocable.hpp"            // for async_result_t
-#include "libfork/core/macro.hpp"                // for LF_LOG, LF_CLANG_TL...
+#include "libfork/core/invocable.hpp"            // for async_result_t, ignore_t, rootable
+#include "libfork/core/macro.hpp"                // for LF_LOG, LF_CLANG_TLS_NOINLINE
 #include "libfork/core/scheduler.hpp"            // for scheduler
 #include "libfork/core/tag.hpp"                  // for tag
 

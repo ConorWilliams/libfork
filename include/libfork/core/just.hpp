@@ -9,9 +9,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <exception> // for rethrow_exception
-#include <type_traits>
-#include <utility> // for forward
+#include <concepts>    // for invocable
+#include <coroutine>   // for suspend_never
+#include <exception>   // for rethrow_exception
+#include <functional>  // for invoke
+#include <type_traits> // for invoke_result_t
+#include <utility>     // for forward
 
 #include "libfork/core/control_flow.hpp"
 #include "libfork/core/eventually.hpp"      // for try_eventually
@@ -19,8 +22,8 @@
 #include "libfork/core/impl/awaitables.hpp" // for call_awaitable
 #include "libfork/core/impl/combinate.hpp"  // for combinate
 #include "libfork/core/impl/frame.hpp"      // for frame
-#include "libfork/core/invocable.hpp"       // for invocable, async_result_t
-#include "libfork/core/macro.hpp"           // for LF_STATIC_CALL, LF_STATI...
+#include "libfork/core/invocable.hpp"       // for async_invocable, async_result_t
+#include "libfork/core/macro.hpp"           // for LF_STATIC_CALL, LF_STATIC_CONST, LF_DEPRECAT...
 #include "libfork/core/tag.hpp"             // for tag
 #include "libfork/core/task.hpp"            // for returnable
 

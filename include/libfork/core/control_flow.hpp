@@ -13,10 +13,10 @@
 #include <utility> // for move
 #include <version> // for __cpp_multidimensional_subscript
 
-#include "libfork/core/first_arg.hpp"      // for async_function_object
+#include "libfork/core/first_arg.hpp"      // for async_function_object, quasi_pointer
 #include "libfork/core/impl/combinate.hpp" // for combinate
 #include "libfork/core/invocable.hpp"      // for discard_t
-#include "libfork/core/macro.hpp"          // for LF_STATIC_CALL, LF_STATIC...
+#include "libfork/core/macro.hpp"          // for LF_STATIC_CALL, LF_STATIC_CONST, LF_DEPRECATE...
 #include "libfork/core/tag.hpp"            // for tag
 
 /**

@@ -36,117 +36,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <functional>
-#include <type_traits>
-#include <utility>
-
-#ifndef A6BE090F_9077_40E8_9B57_9BAFD9620469
-#define A6BE090F_9077_40E8_9B57_9BAFD9620469
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#ifndef A951FB73_0FCF_4B7C_A997_42B7E87D21CB
-#define A951FB73_0FCF_4B7C_A997_42B7E87D21CB
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <array>       // for tuple_element, tuple_size
-#include <concepts>    // for default_initializable
-#include <cstddef>     // for size_t
-#include <memory>      // for destroy
-#include <span>        // for span
-#include <type_traits> // for integral_constant, type_ide...
-#include <utility>
-
-#ifndef CF97E524_27A6_4CD9_8967_39F1B1BE97B6
-#define CF97E524_27A6_4CD9_8967_39F1B1BE97B6
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <stdexcept> // for runtime_error
-#include <utility>   // for move
-
-#ifndef D66BBECE_E467_4EB6_B74A_AAA2E7256E02
-#define D66BBECE_E467_4EB6_B74A_AAA2E7256E02
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <functional> // for function
-#include <utility>    // for move
-#include <version>    // for __cpp_lib_move_only_function
-
-#ifndef C9703881_3D9C_41A5_A7A2_44615C4CFA6A
-#define C9703881_3D9C_41A5_A7A2_44615C4CFA6A
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <algorithm>   // for max
-#include <atomic>      // for atomic, atomic_thread_fence
-#include <bit>         // for has_single_bit
-#include <concepts>    // for convertible_to, invocable
-#include <cstddef>     // for ptrdiff_t, size_t
+#include <concepts>    // for invocable
 #include <functional>  // for invoke
-#include <memory>      // for unique_ptr, make_unique
-#include <optional>    // for optional
 #include <type_traits> // for invoke_result_t
-#include <utility>     // for addressof, forward, exchange
-#include <vector>      // for vector
-#include <version>     // for ptrdiff_t
-
-#ifndef DF63D333_F8C0_4BBA_97E1_32A78466B8B7
-#define DF63D333_F8C0_4BBA_97E1_32A78466B8B7
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <bit>             // for bit_cast, has_single_bit
-#include <concepts>        // for same_as, convertible_to
-#include <cstddef>         // for byte, size_t
-#include <cstdint>         // for uint16_t
-#include <cstdio>          // for fprintf, stderr
-#include <exception>       // for terminate
-#include <functional>      // for invoke
-#include <limits>          // for numeric_limits
-#include <new>             // for std::hardware_destructive_interference_size
-#include <source_location> // for source_location
-#include <type_traits>     // for invoke_result_t, type_identity
-#include <utility>         // for forward
-#include <vector>          // for vector
-#include <version>         // for __cpp_lib_hardware_interference_size
+#include <utility>     // for forward
 
 #ifndef C5DCA647_8269_46C2_B76F_5FA68738AEDA
 #define C5DCA647_8269_46C2_B76F_5FA68738AEDA
@@ -501,6 +394,260 @@ using std::unreachable;
 
 #endif /* C5DCA647_8269_46C2_B76F_5FA68738AEDA */
 
+ // for LF_HOF_RETURNS, LF_STATIC_CALL
+#ifndef AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
+#define AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>    // for movable
+#include <type_traits> // for type_identity
+ // for LF_CORO_ATTRIBUTES
+
+/**
+ * @file task.hpp
+ *
+ * @brief Implementation of the core ``lf::task`` type.
+ */
+
+namespace lf {
+
+inline namespace core {
+
+// --------------------------------- Task --------------------------------- //
+
+// TODO: private destructor such that tasks can only be created inside the library?
+
+/**
+ * @brief A type returnable from libfork's async functions/coroutines.
+ *
+ * This requires that `T` is `void` a reference or a `std::movable` type.
+ */
+template <typename T>
+concept returnable = std::is_void_v<T> || std::is_reference_v<T> || std::movable<T>;
+
+/**
+ * @brief The return type for libfork's async functions/coroutines.
+ *
+ * This predominantly exists to disambiguate `libfork`s coroutines from other coroutines and specify `T` the
+ * async function's return type which is required to be `void`, a reference, or a `std::movable` type.
+ *
+ * \rst
+ *
+ * .. note::
+ *
+ *    No consumer of this library should never touch an instance of this type, it is used for specifying the
+ *    return type of an `async` function only.
+ *
+ * .. warning::
+ *    The value type ``T`` of a coroutine should be independent of the coroutines first-argument.
+ *
+ * \endrst
+ */
+template <returnable T = void>
+struct LF_CORO_ATTRIBUTES task : std::type_identity<T> {
+  void *prom; ///< An opaque handle to the coroutine promise.
+};
+
+} // namespace core
+
+} // namespace lf
+
+#endif /* AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172 */
+
+  // for task
+
+/**
+ * @file lift.hpp
+ *
+ * @brief Higher-order functions for lifting functions into async functions.
+ */
+
+namespace lf {
+
+/**
+ * @brief A higher-order function that lifts a function into an asynchronous function.
+ *
+ * \rst
+ *
+ * This is useful for when you want to fork a regular function:
+ *
+ * .. code::
+ *
+ *    auto work(int x) -> int;
+ *
+ * Then later in some async context you can do:
+ *
+ * .. code::
+ *
+ *    {
+ *      int a, b;
+ *
+ *      co_await fork[a, lift](work, 42);
+ *      co_await fork[b, lift](work, 007);
+ *
+ *      co_await join;
+ *    }
+ *
+ * .. note::
+ *
+ *    The lifted function will accept arguments by forwarding reference.
+ *
+ * \endrst
+ */
+inline constexpr auto lift = []<class F, class... Args>(auto, F &&func, Args &&...args)
+                                 LF_STATIC_CALL -> task<std::invoke_result_t<F, Args...>>
+  requires std::invocable<F, Args...>
+{
+  co_return std::invoke(std::forward<F>(func), std::forward<Args>(args)...);
+};
+
+/**
+ * @brief Lift an overload-set/template into a constrained lambda.
+ *
+ * This is useful for passing overloaded/template names to higher order functions like `lf::fork`/`lf::call`.
+ */
+#define LF_LOFT(name)                                                                                        \
+  [](auto &&...args) LF_STATIC_CALL LF_HOF_RETURNS(name(::std::forward<decltype(args)>(args)...))
+
+/**
+ * @brief Lift an overload-set/template into a constrained capturing lambda.
+ *
+ * The variadic arguments are used as the lambda's capture.
+ *
+ * This is useful for passing overloaded/template names to higher order functions like `lf::fork`/`lf::call`.
+ */
+#define LF_CLOFT(name, ...)                                                                                  \
+  [__VA_ARGS__](auto &&...args) LF_HOF_RETURNS(name(::std::forward<decltype(args)>(args)...))
+
+} // namespace lf
+
+#endif /* B13463FB_3CF9_46F1_AFAC_19CBCB99A23C */
+
+
+
+/**
+ * @file algorithm.hpp
+ *
+ * @brief Meta header which includes all the algorithms in ``libfork/algorithm``.
+ */
+
+#endif /* B3512749_D678_438A_8E60_B1E880CF6C23 */
+
+
+#ifndef A6BE090F_9077_40E8_9B57_9BAFD9620469
+#define A6BE090F_9077_40E8_9B57_9BAFD9620469
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#ifndef A951FB73_0FCF_4B7C_A997_42B7E87D21CB
+#define A951FB73_0FCF_4B7C_A997_42B7E87D21CB
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <array>       // for tuple_element, tuple_size
+#include <concepts>    // for default_initializable
+#include <cstddef>     // for size_t
+#include <memory>      // for destroy
+#include <span>        // for span
+#include <type_traits> // for integral_constant, type_identity
+#include <utility>
+
+#ifndef CF97E524_27A6_4CD9_8967_39F1B1BE97B6
+#define CF97E524_27A6_4CD9_8967_39F1B1BE97B6
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <stdexcept> // for runtime_error
+#include <utility>   // for move
+
+#ifndef D66BBECE_E467_4EB6_B74A_AAA2E7256E02
+#define D66BBECE_E467_4EB6_B74A_AAA2E7256E02
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <functional> // for function
+#include <utility>    // for move
+#include <version>    // for __cpp_lib_move_only_function
+
+#ifndef C9703881_3D9C_41A5_A7A2_44615C4CFA6A
+#define C9703881_3D9C_41A5_A7A2_44615C4CFA6A
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <algorithm>   // for max
+#include <atomic>      // for atomic, atomic_thread_fence, memory_order, memo...
+#include <bit>         // for has_single_bit
+#include <concepts>    // for convertible_to, invocable, default_initializable
+#include <cstddef>     // for ptrdiff_t, size_t
+#include <functional>  // for invoke
+#include <memory>      // for unique_ptr, make_unique
+#include <optional>    // for optional
+#include <type_traits> // for invoke_result_t
+#include <utility>     // for addressof, forward, exchange
+#include <vector>      // for vector
+#include <version>     // for ptrdiff_t
+
+#ifndef DF63D333_F8C0_4BBA_97E1_32A78466B8B7
+#define DF63D333_F8C0_4BBA_97E1_32A78466B8B7
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <bit>             // for bit_cast, has_single_bit
+#include <concepts>        // for same_as, convertible_to
+#include <cstddef>         // for byte, size_t
+#include <cstdint>         // for uint16_t
+#include <cstdio>          // for fprintf, stderr
+#include <exception>       // for terminate
+#include <functional>      // for invoke
+#include <limits>          // for numeric_limits
+#include <new>             // for std::hardware_destructive_interference_size
+#include <source_location> // for source_location
+#include <type_traits>     // for invoke_result_t, type_identity, remove_cvref_t, true_type
+#include <utility>         // for forward
+#include <vector>          // for vector
+#include <version>         // for __cpp_lib_hardware_interference_size
  // for LF_HOF_RETURNS
 
 /**
@@ -761,8 +908,8 @@ template <typename T>
     { ptr == nullptr } -> std::convertible_to<bool>;
   }
 constexpr auto
-non_null(T &&x,
-         [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept -> T && {
+non_null(T &&x, [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept
+    -> T && {
 #ifndef NDEBUG
   if (x == nullptr) {
     // NOLINTNEXTLINE
@@ -785,7 +932,7 @@ auto byte_cast(T *ptr) LF_HOF_RETURNS(std::bit_cast<forward_cv_t<T, std::byte> *
 
 #endif /* DF63D333_F8C0_4BBA_97E1_32A78466B8B7 */
 
- // for k_cache_line, immovable        // for LF_ASSERT, LF_STATIC_CALL
+ // for k_cache_line, immovable        // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST
 
 /**
  * @file deque.hpp
@@ -1256,7 +1403,7 @@ constexpr deque<T>::~deque() noexcept {
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <atomic>     // for atomic, memory_order_consume
+#include <atomic>     // for atomic, memory_order_consume, memory_order_relaxed
 #include <concepts>   // for invocable
 #include <functional> // for invoke
  // for immovable        // for LF_ASSERT
@@ -1381,13 +1528,13 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <atomic>      // for atomic_ref, memory_...
+#include <atomic>      // for atomic_ref, memory_order, atomic_uint16_t
 #include <coroutine>   // for coroutine_handle
 #include <cstdint>     // for uint16_t
-#include <exception>   // for exception_ptr, oper...
+#include <exception>   // for exception_ptr, operator==, current_exce...
 #include <memory>      // for construct_at
 #include <semaphore>   // for binary_semaphore
-#include <type_traits> // for is_standard_layout_v
+#include <type_traits> // for is_standard_layout_v, is_trivially_dest...
 #include <utility>     // for exchange
 #include <version>     // for __cpp_lib_atomic_ref
 
@@ -1405,7 +1552,7 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
 #include <functional>  // for invoke
 #include <type_traits> // for is_nothrow_invocable_v, is_nothrow_constructible_v
 #include <utility>     // for forward
- // for immovable        // for LF_CONCAT_OUTER, LF_FORCEIN...
+ // for immovable        // for LF_CONCAT_OUTER, LF_FORCEINLINE
 
 /**
  * @file defer.hpp
@@ -1606,9 +1753,9 @@ class manual_lifetime : immovable<manual_lifetime<T>> {
 #include <cstddef>     // for size_t, byte, nullptr_t
 #include <cstdlib>     // for free, malloc
 #include <new>         // for bad_alloc
-#include <type_traits> // for is_trivially_default_constr...
+#include <type_traits> // for is_trivially_default_constructible_v, is_trivia...
 #include <utility>     // for exchange, swap
- // for byte_cast, k_new_align, non...        // for LF_ASSERT, LF_LOG, LF_FORCE...
+ // for byte_cast, k_new_align, non_null, immovable        // for LF_ASSERT, LF_LOG, LF_FORCEINLINE, LF_NOINLINE
 
 /**
  * @file stack.hpp
@@ -1932,7 +2079,7 @@ class stack {
 
 #endif /* F7577AB3_0439_404D_9D98_072AB84FBCD0 */
 
-           // for stack         // for non_null, k_u16_max                // for LF_COMPILER_EXCEPTIONS
+           // for stack         // for non_null, k_u16_max                // for LF_COMPILER_EXCEPTIONS, LF_ASSERT, LF_F...
 
 /**
  * @file frame.hpp
@@ -2234,7 +2381,7 @@ using task_handle = impl::task_t *;
 
 #endif /* ACB944D8_08B6_4600_9302_602E847753FD */
 
-  // for task_handle, submit_handle     // for intrusive_list // for non_null, immovable        // for LF_ASSERT
+  // for task_handle, submit_handle, submit_t     // for intrusive_list // for non_null, immovable        // for LF_ASSERT
 
 /**
  * @file context.hpp
@@ -2365,7 +2512,7 @@ class full_context : public worker_context {
 
 #endif /* D66BBECE_E467_4EB6_B74A_AAA2E7256E02 */
 
-          // for full_context, worker... // for manual_lifetime           // for stack                // for LF_CLANG_TLS_NOINLINE
+          // for full_context, worker_context, nullary_f... // for manual_lifetime           // for stack                // for LF_CLANG_TLS_NOINLINE, LF_THROW, LF_ASSERT
 
 /**
  * @file tls.hpp
@@ -2666,11 +2813,11 @@ template <co_allocable T>
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>    // for invocable, constructible_from
+#include <concepts>    // for invocable, convertible_to, constructible_from
 #include <functional>  // for invoke
-#include <type_traits> // for invoke_result_t
+#include <type_traits> // for invoke_result_t, remove_cvref_t
 #include <utility>     // for forward
-  // for worker_context, full_context      // for context   // for frame // for different_from, referenceable        // for LF_COMPILER_EXCEPTIONS, LF_...
+  // for worker_context, full_context      // for context   // for frame // for different_from, referenceable        // for LF_COMPILER_EXCEPTIONS, LF_FORCEINLINE
 #ifndef A75DC3F0_D0C3_4669_A901_0B22556C873C
 #define A75DC3F0_D0C3_4669_A901_0B22556C873C
 
@@ -2889,7 +3036,7 @@ class first_arg_t {
 
 #endif /* DD0B4328_55BD_452B_A4A5_5A4670A6217B */
 
-      // for async_function_object
+      // for async_function_object, quasi_pointer
 #ifndef AD9A2908_3043_4CEC_9A2A_A57DE168DF19
 #define AD9A2908_3043_4CEC_9A2A_A57DE168DF19
 
@@ -2903,7 +3050,7 @@ class first_arg_t {
 
 #include <concepts> // for same_as
 #include <utility>  // for as_const, forward
- // for quasi_pointer, async_function_...
+ // for quasi_pointer, async_function_object, first_arg_t
 #ifndef A5349E86_5BAA_48EF_94E9_F0EBF630DE04
 #define A5349E86_5BAA_48EF_94E9_F0EBF630DE04
 
@@ -2917,7 +3064,7 @@ class first_arg_t {
 
 #include <concepts>    // for invocable, same_as
 #include <iterator>    // for indirectly_writable
-#include <type_traits> // for true_type, type_identity, inv...
+#include <type_traits> // for remove_cvref_t, true_type, type_identity, invoke_...
 
 #ifndef B7972761_4CBF_4B86_B195_F754295372BF
 #define B7972761_4CBF_4B86_B195_F754295372BF
@@ -2931,78 +3078,11 @@ class first_arg_t {
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <concepts>    // for constructible_from
-#include <exception>   // for exception_ptr, current_exce...
+#include <exception>   // for exception_ptr, current_exception
 #include <memory>      // for destroy_at, construct_at
-#include <type_traits> // for add_lvalue_reference_t, add...
+#include <type_traits> // for add_lvalue_reference_t, add_pointer_t, type_ide...
 #include <utility>     // for addressof, forward
- // for empty_t, else_empty_t, immo...        // for LF_ASSERT, unreachable, LF_...
-#ifndef AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
-#define AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>    // for movable
-#include <type_traits> // for type_identity
- // for LF_CORO_ATTRIBUTES
-
-/**
- * @file task.hpp
- *
- * @brief Implementation of the core ``lf::task`` type.
- */
-
-namespace lf {
-
-inline namespace core {
-
-// --------------------------------- Task --------------------------------- //
-
-// TODO: private destructor such that tasks can only be created inside the library?
-
-/**
- * @brief A type returnable from libfork's async functions/coroutines.
- *
- * This requires that `T` is `void` a reference or a `std::movable` type.
- */
-template <typename T>
-concept returnable = std::is_void_v<T> || std::is_reference_v<T> || std::movable<T>;
-
-/**
- * @brief The return type for libfork's async functions/coroutines.
- *
- * This predominantly exists to disambiguate `libfork`s coroutines from other coroutines and specify `T` the
- * async function's return type which is required to be `void`, a reference, or a `std::movable` type.
- *
- * \rst
- *
- * .. note::
- *
- *    No consumer of this library should never touch an instance of this type, it is used for specifying the
- *    return type of an `async` function only.
- *
- * .. warning::
- *    The value type ``T`` of a coroutine should be independent of the coroutines first-argument.
- *
- * \endrst
- */
-template <returnable T = void>
-struct LF_CORO_ATTRIBUTES task : std::type_identity<T> {
-  void *prom; ///< An opaque handle to the coroutine promise.
-};
-
-} // namespace core
-
-} // namespace lf
-
-#endif /* AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172 */
-
-         // for returnable
+ // for empty_t, else_empty_t, immovable, non_void, saf...        // for LF_ASSERT, unreachable, LF_COMPILER_EXCEPTIONS         // for returnable
 
 /**
  * @file eventually.hpp
@@ -3479,7 +3559,7 @@ concept stash_exception_in_return = quasi_pointer<I> && requires (I ptr) {
 
 #endif /* A090B92E_A266_42C9_BFB0_10681B6BD425 */
 
-  // for stash_exception_in_return  // for first_arg_t, quasi_pointer        // for tag       // for task, returnable
+  // for stash_exception_in_return  // for first_arg_t, quasi_pointer, async_function_object        // for tag       // for task, returnable
 
 /**
  * @file invocable.hpp
@@ -3729,7 +3809,7 @@ using async_result_t = typename async_result<F, Args...>::type;
 
 #endif /* A5349E86_5BAA_48EF_94E9_F0EBF630DE04 */
 
- // for async_result_t, return_addres...       // for tag      // for returnable, task
+ // for async_result_t, return_address_for, async_tag_invo...       // for tag      // for returnable, task
 
 /**
  * @file combinate.hpp
@@ -3825,7 +3905,7 @@ auto combinate(I &&ret, first_arg_t<OtherI, OtherTag, F, Args...> arg) -> y_comb
 
 #endif /* AD9A2908_3043_4CEC_9A2A_A57DE168DF19 */
 
- // for combinate      // for discard_t          // for LF_STATIC_CALL, LF_STATIC...            // for tag
+ // for combinate      // for discard_t          // for LF_STATIC_CALL, LF_STATIC_CONST, LF_DEPRECATE...            // for tag
 
 /**
  * @file control_flow.hpp
@@ -3973,9 +4053,12 @@ inline constexpr impl::bind_task<tag::call> call = {};
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <exception> // for rethrow_exception
-#include <type_traits>
-#include <utility> // for forward
+#include <concepts>    // for invocable
+#include <coroutine>   // for suspend_never
+#include <exception>   // for rethrow_exception
+#include <functional>  // for invoke
+#include <type_traits> // for invoke_result_t
+#include <utility>     // for forward
       // for try_eventually       // for async_function_object
 #ifndef CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
 #define CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
@@ -3988,14 +4071,14 @@ inline constexpr impl::bind_task<tag::call> call = {};
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <atomic>      // for memory_order_acquire, atomi...
+#include <atomic>      // for memory_order_acquire, atomic_thread_fence, memo...
 #include <bit>         // for bit_cast
-#include <coroutine>   // for coroutine_handle, noop_coro...
+#include <coroutine>   // for coroutine_handle, noop_coroutine, suspend_always
 #include <cstdint>     // for uint16_t
-#include <memory>      // for uninitialized_default_const...
+#include <memory>      // for uninitialized_default_construct_n
 #include <span>        // for span
 #include <type_traits> // for remove_cvref_t
-     // for co_allocable, co_new_t, sta...  // for full_context  // for submit_handle, submit_t     // for unwrap, intrusive_list      // for stack, context   // for frame   // for stack // for k_u16_max    // for ignore_t        // for LF_ASSERT, LF_LOG, LF_CATCH...
+     // for co_allocable, co_new_t, stack_allocated  // for full_context  // for submit_handle, submit_t, task_handle     // for unwrap, intrusive_list      // for stack, context   // for frame   // for stack // for k_u16_max    // for ignore_t        // for LF_ASSERT, LF_LOG, LF_CATCH_ALL, LF_RETHROW
 #ifndef BDE6CBCC_7576_4082_AAC5_2A207FEA9293
 #define BDE6CBCC_7576_4082_AAC5_2A207FEA9293
 
@@ -4007,7 +4090,7 @@ inline constexpr impl::bind_task<tag::call> call = {};
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>    // for constructible_from, converti...
+#include <concepts>    // for constructible_from, convertible_to, same_as
 #include <type_traits> // for remove_cvref_t
 #include <utility>     // for declval, forward
   // for worker_context  // for submit_handle      // for context // for non_null
@@ -4454,7 +4537,7 @@ struct join_awaitable {
 
 #endif /* CF3E6AC4_246A_4131_BF7A_FE5CD641A19B */
 
- // for call_awaitable  // for combinate      // for frame       // for invocable, async_result_t           // for LF_STATIC_CALL, LF_STATI...             // for tag            // for returnable
+ // for call_awaitable  // for combinate      // for frame       // for async_invocable, async_result_t           // for LF_STATIC_CALL, LF_STATIC_CONST, LF_DEPRECAT...             // for tag            // for returnable
 
 /**
  * @file just.hpp
@@ -4640,7 +4723,7 @@ inline constexpr impl::bind_just just = {};
 #include <semaphore>   // for binary_semaphore
 #include <type_traits> // for conditional_t
 #include <utility>     // for forward
-           // for basic_eventually          // for submit_t             // for intrusive_list              // for thread_stack, has_s...            // for async_function_object       // for quasi_awaitable           // for frame // for manual_lifetime           // for stack, swap            // for async_result_t                // for LF_LOG, LF_CLANG_TL...            // for scheduler                  // for tag
+           // for basic_eventually          // for submit_t             // for intrusive_list              // for thread_stack, has_stack            // for async_function_object       // for quasi_awaitable, y_combinate           // for frame // for manual_lifetime           // for stack, swap            // for async_result_t, ignore_t, rootable                // for LF_LOG, LF_CLANG_TLS_NOINLINE            // for scheduler                  // for tag
 
 /**
  * @file sync_wait.hpp
@@ -4782,7 +4865,7 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_
 
 #include <bit>       // for bit_cast
 #include <coroutine> // for coroutine_handle
- // for full_context // for submit_t, submit_handle, tas...    // for for_each_elem     // for stack, context  // for frame  // for stack       // for LF_ASSERT_NO_ASSUME, LF_LOG
+ // for full_context // for submit_t, submit_handle, task_handle    // for for_each_elem     // for stack, context  // for frame  // for stack       // for LF_ASSERT_NO_ASSUME, LF_LOG, LF_ASSERT, LF_STATI...
 
 /**
  * @file resume.hpp
@@ -4860,14 +4943,14 @@ inline void resume(task_handle ptr) {
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <atomic> // for atomic_thread_fence, mem...
+#include <atomic> // for atomic_thread_fence, memory_order_acquire
 #include <bit>    // for bit_cast
 #include <concepts>
-#include <coroutine>   // for coroutine_handle, noop_c...
+#include <coroutine>   // for coroutine_handle, noop_coroutine, coroutine_...
 #include <cstddef>     // for size_t
-#include <type_traits> // for false_type, remove_cvref_t
+#include <type_traits> // for true_type, false_type, remove_cvref_t
 #include <utility>     // for forward
-        // for co_allocable, co_new_t    // for join_type       // for stash_exception_in_return     // for full_context     // for submit_t, task_handle        // for intrusive_list         // for stack, context       // for async_function_object // for alloc_awaitable, call_aw...  // for quasi_awaitable      // for frame
+        // for co_allocable, co_new_t    // for join_type       // for stash_exception_in_return     // for full_context     // for submit_t, task_handle        // for intrusive_list         // for stack, context       // for first_arg_t, async_function_object, first_arg // for alloc_awaitable, call_awaitable, context_swi...  // for quasi_awaitable      // for frame
 #ifndef A896798B_7E3B_4854_9997_89EA5AE765EB
 #define A896798B_7E3B_4854_9997_89EA5AE765EB
 
@@ -4980,7 +5063,7 @@ struct return_result<void, discard_t> {
 
 #endif /* A896798B_7E3B_4854_9997_89EA5AE765EB */
 
-     // for return_result      // for stack    // for byte_cast, k_u16_max       // for return_address_for, igno...            // for just_awaitable           // for LF_LOG, LF_ASSERT, LF_FO...       // for context_switcher             // for tag            // for returnable, task
+     // for return_result      // for stack    // for byte_cast, k_u16_max       // for return_address_for, ignore_t            // for just_awaitable, just_wrapped           // for LF_LOG, LF_ASSERT, LF_FORCEINLINE, LF_ASSERT...       // for context_switcher             // for tag            // for returnable, task
 
 /**
  * @file promise.hpp
@@ -5417,85 +5500,6 @@ struct std::coroutine_traits<lf::task<R>, This, lf::impl::first_arg_t<I, Tag, F,
 #endif /* A6BE090F_9077_40E8_9B57_9BAFD9620469 */
 
 
-
-/**
- * @file lift.hpp
- *
- * @brief Higher-order functions for lifting functions into async functions.
- */
-
-namespace lf {
-
-/**
- * @brief A higher-order function that lifts a function into an asynchronous function.
- *
- * \rst
- *
- * This is useful for when you want to fork a regular function:
- *
- * .. code::
- *
- *    auto work(int x) -> int;
- *
- * Then later in some async context you can do:
- *
- * .. code::
- *
- *    {
- *      int a, b;
- *
- *      co_await fork[a, lift](work, 42);
- *      co_await fork[b, lift](work, 007);
- *
- *      co_await join;
- *    }
- *
- * .. note::
- *
- *    The lifted function will accept arguments by forwarding reference.
- *
- * \endrst
- */
-inline constexpr auto lift = []<class F, class... Args>(auto, F &&func, Args &&...args)
-                                 LF_STATIC_CALL -> task<std::invoke_result_t<F, Args...>>
-  requires std::invocable<F, Args...>
-{
-  co_return std::invoke(std::forward<F>(func), std::forward<Args>(args)...);
-};
-
-/**
- * @brief Lift an overload-set/template into a constrained lambda.
- *
- * This is useful for passing overloaded/template names to higher order functions like `lf::fork`/`lf::call`.
- */
-#define LF_LOFT(name)                                                                                        \
-  [](auto &&...args) LF_STATIC_CALL LF_HOF_RETURNS(name(::std::forward<decltype(args)>(args)...))
-
-/**
- * @brief Lift an overload-set/template into a constrained capturing lambda.
- *
- * The variadic arguments are used as the lambda's capture.
- *
- * This is useful for passing overloaded/template names to higher order functions like `lf::fork`/`lf::call`.
- */
-#define LF_CLOFT(name, ...)                                                                                  \
-  [__VA_ARGS__](auto &&...args) LF_HOF_RETURNS(name(::std::forward<decltype(args)>(args)...))
-
-} // namespace lf
-
-#endif /* B13463FB_3CF9_46F1_AFAC_19CBCB99A23C */
-
-
-
-/**
- * @file algorithm.hpp
- *
- * @brief Meta header which includes all the algorithms in ``libfork/algorithm``.
- */
-
-#endif /* B3512749_D678_438A_8E60_B1E880CF6C23 */
-
-
 #ifndef A616E976_A92A_4CE4_B807_936EF8C5FBC4
 #define A616E976_A92A_4CE4_B807_936EF8C5FBC4
 
@@ -5518,16 +5522,16 @@ inline constexpr auto lift = []<class F, class... Args>(auto, F &&func, Args &&.
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <atomic>  // for atomic_flag, memory...
+#include <atomic>  // for atomic_flag, memory_order_acquire, mem...
 #include <cstddef> // for size_t
 #include <latch>   // for latch
-#include <memory>  // for shared_ptr, __shar...
-#include <random>  // for random_device, uni...
+#include <memory>  // for shared_ptr, __shared_ptr_access, make_...
+#include <random>  // for random_device, uniform_int_distribution
 #include <span>    // for span
 #include <thread>  // for thread
 #include <utility> // for move
 #include <vector>  // for vector
-                 // for LF_DEFER           // for worker_context           // for submit_handle, tas...            // for resume          // for k_cache_line, move...                 // for LF_ASSERT, LF_ASSE...             // for scheduler
+                 // for LF_DEFER           // for worker_context, nullary_function_t           // for submit_handle, task_handle            // for resume          // for k_cache_line, move_only                 // for LF_ASSERT, LF_ASSERT_NO_ASSUME, LF_LOG             // for scheduler
 #ifndef D8877F11_1F66_4AD0_B949_C0DFF390C2DB
 #define D8877F11_1F66_4AD0_B949_C0DFF390C2DB
 
@@ -5550,7 +5554,7 @@ inline constexpr auto lift = []<class F, class... Args>(auto, F &&func, Args &&.
 #include <stdexcept> // for runtime_error
 #include <utility>   // for move
 #include <vector>    // for vector
- // for map        // for LF_ASSERT, LF_STATIC_CALL, LF_STAT...
+ // for map        // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST
 
 /**
  * @file numa.hpp
@@ -6038,7 +6042,7 @@ inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &dat
 
 #endif /* D8877F11_1F66_4AD0_B949_C0DFF390C2DB */
 
-          // for numa_strategy, num...
+          // for numa_strategy, numa_topology
 #ifndef CA0BE1EA_88CD_4E63_9D89_37395E859565
 #define CA0BE1EA_88CD_4E63_9D89_37395E859565
 
@@ -6055,8 +6059,8 @@ inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &dat
 #include <cstdint>     // for uint64_t
 #include <functional>  // for invoke
 #include <limits>      // for numeric_limits
-#include <random>      // for uniform_int_distribution, uniform_random_bit_...
-#include <type_traits> // for remove_cvref_t, invoke_result_t, remove_refer...
+#include <random>      // for uniform_int_distribution, uniform_random_bit_generator
+#include <type_traits> // for remove_cvref_t, invoke_result_t, remove_reference_t
 
 /**
  * \file random.hpp
@@ -6263,7 +6267,7 @@ static_assert(uniform_random_bit_generator<xoshiro>);
 #include <random>    // for discrete_distribution
 #include <utility>   // for exchange, move
 #include <vector>    // for vector
-    // for worker_context, nullary_f...      // for err    // for submit_handle, task_handle        // for finalize, worker_init   // for non_null, map          // for LF_ASSERT, LF_LOG, LF_CAT...   // for numa_topology // for xoshiro
+    // for worker_context, nullary_function_t      // for err    // for submit_handle, task_handle        // for finalize, worker_init   // for non_null, map          // for LF_ASSERT, LF_LOG, LF_CATCH_ALL, LF_RETHROW   // for numa_topology // for xoshiro
 
 /**
  * @file numa_context.hpp
@@ -6613,19 +6617,19 @@ static_assert(scheduler<busy_pool>);
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <algorithm>  // for __max_element_fn
-#include <atomic>     // for atomic_flag, memory...
+#include <algorithm>  // for __max_element_fn, max_element
+#include <atomic>     // for atomic_flag, memory_order, memory_orde...
 #include <concepts>   // for same_as
 #include <cstddef>    // for size_t
 #include <functional> // for less
 #include <latch>      // for latch
-#include <memory>     // for shared_ptr, __shar...
-#include <random>     // for random_device, uni...
+#include <memory>     // for shared_ptr, __shared_ptr_access, make_...
+#include <random>     // for random_device, uniform_int_distribution
 #include <span>       // for span
 #include <thread>     // for thread
 #include <utility>    // for move
 #include <vector>     // for vector
-                 // for LF_DEFER           // for worker_context           // for submit_handle, tas...            // for resume          // for k_cache_line                 // for LF_ASSERT, LF_LOG             // for scheduler         // for busy_vars
+                 // for LF_DEFER           // for worker_context, nullary_function_t           // for submit_handle, task_handle            // for resume          // for k_cache_line                 // for LF_ASSERT, LF_LOG, LF_ASSERT_NO_ASSUME             // for scheduler         // for busy_vars
 #pragma once
 
 // Copyright (c) Conor Williams, Meta Platforms, Inc. and its affiliates.
@@ -6644,12 +6648,12 @@ static_assert(scheduler<busy_pool>);
 
 // The contents of this file have been adapted from https://github.com/facebook/folly
 
-#include <atomic>     // for atomic, memory_order_acq_rel
+#include <atomic>     // for atomic, memory_order_acq_rel, memory_order_seq_cst
 #include <bit>        // for endian
 #include <cstddef>    // for size_t
 #include <cstdint>    // for uint64_t, uint32_t
 #include <functional> // for invoke
- // for immovable        // for LF_ASSERT, LF_CATCH_ALL
+ // for immovable        // for LF_ASSERT, LF_CATCH_ALL, LF_RETHROW, LF_TRY
 
 /**
  * @file event_count.hpp
@@ -6869,7 +6873,7 @@ void event_count::await(Pred const &condition) noexcept(std::is_nothrow_invocabl
 } // namespace ext
 
 } // namespace lf
-   // for event_count          // for numa_strategy, num...        // for xoshiro, seed // for numa_context
+   // for event_count          // for numa_strategy, numa_topology        // for xoshiro, seed // for numa_context
 
 /**
  * @file lazy_pool.hpp
@@ -7204,7 +7208,7 @@ static_assert(scheduler<lazy_pool>);
 // Self Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
-  // for nullary_function_t, worker_...  // for submit_handle   // for resume      // for worker_init, finalize // for immovable
+  // for nullary_function_t, worker_context  // for submit_handle   // for resume      // for worker_init, finalize // for immovable
 
 /**
  * @file unit_pool.hpp

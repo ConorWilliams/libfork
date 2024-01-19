@@ -9,29 +9,29 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <algorithm>  // for __max_element_fn
-#include <atomic>     // for atomic_flag, memory...
+#include <algorithm>  // for __max_element_fn, max_element
+#include <atomic>     // for atomic_flag, memory_order, memory_orde...
 #include <concepts>   // for same_as
 #include <cstddef>    // for size_t
 #include <functional> // for less
 #include <latch>      // for latch
-#include <memory>     // for shared_ptr, __shar...
-#include <random>     // for random_device, uni...
+#include <memory>     // for shared_ptr, __shared_ptr_access, make_...
+#include <random>     // for random_device, uniform_int_distribution
 #include <span>       // for span
 #include <thread>     // for thread
 #include <utility>    // for move
 #include <vector>     // for vector
 
 #include "libfork/core/defer.hpp"                 // for LF_DEFER
-#include "libfork/core/ext/context.hpp"           // for worker_context
-#include "libfork/core/ext/handles.hpp"           // for submit_handle, tas...
+#include "libfork/core/ext/context.hpp"           // for worker_context, nullary_function_t
+#include "libfork/core/ext/handles.hpp"           // for submit_handle, task_handle
 #include "libfork/core/ext/resume.hpp"            // for resume
 #include "libfork/core/impl/utility.hpp"          // for k_cache_line
-#include "libfork/core/macro.hpp"                 // for LF_ASSERT, LF_LOG
+#include "libfork/core/macro.hpp"                 // for LF_ASSERT, LF_LOG, LF_ASSERT_NO_ASSUME
 #include "libfork/core/scheduler.hpp"             // for scheduler
 #include "libfork/schedule/busy_pool.hpp"         // for busy_vars
 #include "libfork/schedule/ext/event_count.hpp"   // for event_count
-#include "libfork/schedule/ext/numa.hpp"          // for numa_strategy, num...
+#include "libfork/schedule/ext/numa.hpp"          // for numa_strategy, numa_topology
 #include "libfork/schedule/ext/random.hpp"        // for xoshiro, seed
 #include "libfork/schedule/impl/numa_context.hpp" // for numa_context
 

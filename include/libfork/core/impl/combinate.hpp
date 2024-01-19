@@ -12,8 +12,8 @@
 #include <concepts> // for same_as
 #include <utility>  // for as_const, forward
 
-#include "libfork/core/first_arg.hpp" // for quasi_pointer, async_function_...
-#include "libfork/core/invocable.hpp" // for async_result_t, return_addres...
+#include "libfork/core/first_arg.hpp" // for quasi_pointer, async_function_object, first_arg_t
+#include "libfork/core/invocable.hpp" // for async_result_t, return_address_for, async_tag_invo...
 #include "libfork/core/tag.hpp"       // for tag
 #include "libfork/core/task.hpp"      // for returnable, task
 

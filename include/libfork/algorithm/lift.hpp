@@ -9,11 +9,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <functional>
-#include <type_traits>
-#include <utility>
+#include <concepts>    // for invocable
+#include <functional>  // for invoke
+#include <type_traits> // for invoke_result_t
+#include <utility>     // for forward
 
-#include "libfork/core.hpp"
+#include "libfork/core/macro.hpp" // for LF_HOF_RETURNS, LF_STATIC_CALL
+#include "libfork/core/task.hpp"  // for task
 
 /**
  * @file lift.hpp

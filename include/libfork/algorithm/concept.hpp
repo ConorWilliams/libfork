@@ -9,11 +9,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>
-#include <iterator>
-#include <type_traits>
+#include <concepts>    // for common_reference_with, copy_constructible, invocable
+#include <iterator>    // for indirectly_readable, iter_reference_t, iter_differ...
+#include <type_traits> // for invoke_result, remove_cvref_t
 
-#include "libfork/core/invocable.hpp"
+#include "libfork/core/invocable.hpp" // for async_invocable, async_result
 
 /**
  * @file concepts.hpp

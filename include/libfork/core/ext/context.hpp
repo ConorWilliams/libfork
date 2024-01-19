@@ -14,7 +14,7 @@
 #include <version>    // for __cpp_lib_move_only_function
 
 #include "libfork/core/ext/deque.hpp"    // for deque, steal_t
-#include "libfork/core/ext/handles.hpp"  // for task_handle, submit_handle
+#include "libfork/core/ext/handles.hpp"  // for task_handle, submit_handle, submit_t
 #include "libfork/core/ext/list.hpp"     // for intrusive_list
 #include "libfork/core/impl/utility.hpp" // for non_null, immovable
 #include "libfork/core/macro.hpp"        // for LF_ASSERT
