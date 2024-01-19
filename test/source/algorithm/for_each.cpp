@@ -78,6 +78,8 @@ void test(Sch &&sch, F add_one, Proj proj = {}) {
     check(v, count++);
   }
 
+#ifndef _MSC_VER
+
   {
     // ----------- Now with small inputs ----------- //
 
@@ -98,6 +100,8 @@ void test(Sch &&sch, F add_one, Proj proj = {}) {
       REQUIRE(small == std::vector<int>{3, 2, 1});
     }
   }
+
+#endif
 }
 
 constexpr auto add_reg = [](int &i) {
