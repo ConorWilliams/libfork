@@ -1,5 +1,3 @@
-#include <catch2/catch_test_macros.hpp>
-
 #include "../../single_header/libfork.hpp"
 
 namespace {
@@ -25,13 +23,11 @@ inline constexpr auto fib = [](auto fib, int n) -> task<int> {
   co_return a + b;
 };
 
+} // namespace
+
 auto main() -> int {
 
   int fib_10 = lf::sync_wait(lf::lazy_pool{}, fib, 10);
 
   return fib_10 == 55 ? 0 : 1;
 }
-
-} // namespace
-
-TEST_CASE("Single header", "[main]") { REQUIRE(main() == 0); }
