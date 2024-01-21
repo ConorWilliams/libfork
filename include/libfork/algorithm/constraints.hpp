@@ -9,11 +9,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>    // for common_reference_with, copy_constructible, invocable
-#include <iterator>    // for indirectly_readable, iter_reference_t, iter_differ...
-#include <type_traits> // for invoke_result, remove_cvref_t
+#include <concepts>    // for copy_constructible, common_reference_with, invocable
+#include <iterator>    // for iter_reference_t, indirectly_readable, iter_differ...
+#include <type_traits> // for decay_t, invoke_result, remove_cvref_t
 
-#include "libfork/core/invocable.hpp" // for async_invocable, async_result
+#include "libfork/core/invocable.hpp" // for async_invocable, async_regular_invocable, async_re...
 
 /**
  * @file constraints.hpp
@@ -29,15 +29,15 @@ namespace lf {
  * @brief Test if "F" is async invocable __xor__ normally invocable with ``Args...``.
  */
 template <typename F, typename... Args>
-concept invocable = (std::invocable<F, Args...> || async_invocable<F, Args...>) &&
-                    !(std::invocable<F, Args...> && async_invocable<F, Args...>);
+concept invocable = (std::invocable<F, Args...> || async_invocable<F, Args...>)&&!(
+    std::invocable<F, Args...> && async_invocable<F, Args...>);
 
 /**
  * @brief Test if "F" is regularly async invocable __xor__ normally invocable invocable with ``Args...``.
  */
 template <typename F, typename... Args>
-concept regular_invocable = (std::regular_invocable<F, Args...> || async_regular_invocable<F, Args...>) &&
-                            !(std::regular_invocable<F, Args...> && async_regular_invocable<F, Args...>);
+concept regular_invocable = (std::regular_invocable<F, Args...> || async_regular_invocable<F, Args...>)&&!(
+    std::regular_invocable<F, Args...> && async_regular_invocable<F, Args...>);
 
 // ------------------------------------  either result type ------------------------------------ //
 

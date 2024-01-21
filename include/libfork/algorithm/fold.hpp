@@ -9,17 +9,19 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>
-#include <functional>
-#include <iterator>
-#include <optional>
-#include <ranges>
-#include <type_traits>
+#include <concepts>    // for invocable
+#include <functional>  // for identity, invoke
+#include <iterator>    // for random_access_iterator, sized_sentinel_for
+#include <optional>    // for nullopt, optional
+#include <ranges>      // for begin, end, iterator_t, empty, random_acces...
+#include <type_traits> // for decay_t
 
-#include "libfork/algorithm/constraints.hpp"
-#include "libfork/core/control_flow.hpp"
-#include "libfork/core/eventually.hpp"
-#include "libfork/core/just.hpp"
+#include "libfork/algorithm/constraints.hpp" // for projected, indirectly_foldable, semigroup_t
+#include "libfork/core/control_flow.hpp"     // for call, fork, join, rethrow_if_exception
+#include "libfork/core/eventually.hpp"       // for eventually
+#include "libfork/core/just.hpp"             // for just
+#include "libfork/core/macro.hpp"            // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST
+#include "libfork/core/task.hpp"             // for task
 
 /**
  * @file fold.hpp

@@ -10,7 +10,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <functional> // for identity
-#include <iterator>   // for iter_difference_t, random_access_iterator, size...
+#include <iterator>   // for iter_difference_t, random_access_iterator
 #include <ranges>     // for begin, end, iterator_t, random_access_range
 
 #include "libfork/algorithm/constraints.hpp" // for indirectly_unary_invocable, projected

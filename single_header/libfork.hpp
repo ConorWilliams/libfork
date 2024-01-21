@@ -36,9 +36,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>    // for common_reference_with, copy_constructible, invocable
-#include <iterator>    // for indirectly_readable, iter_reference_t, iter_differ...
-#include <type_traits> // for invoke_result, remove_cvref_t
+#include <concepts>    // for copy_constructible, common_reference_with, invocable
+#include <iterator>    // for iter_reference_t, indirectly_readable, iter_differ...
+#include <type_traits> // for decay_t, invoke_result, remove_cvref_t
 
 #ifndef A5349E86_5BAA_48EF_94E9_F0EBF630DE04
 #define A5349E86_5BAA_48EF_94E9_F0EBF630DE04
@@ -3551,7 +3551,7 @@ using async_result_t = typename async_result<F, Args...>::type;
 
 #endif /* A5349E86_5BAA_48EF_94E9_F0EBF630DE04 */
 
- // for async_invocable, async_result
+ // for async_invocable, async_regular_invocable, async_re...
 
 /**
  * @file constraints.hpp
@@ -3567,15 +3567,15 @@ namespace lf {
  * @brief Test if "F" is async invocable __xor__ normally invocable with ``Args...``.
  */
 template <typename F, typename... Args>
-concept invocable = (std::invocable<F, Args...> || async_invocable<F, Args...>) &&
-                    !(std::invocable<F, Args...> && async_invocable<F, Args...>);
+concept invocable = (std::invocable<F, Args...> || async_invocable<F, Args...>)&&!(
+    std::invocable<F, Args...> && async_invocable<F, Args...>);
 
 /**
  * @brief Test if "F" is regularly async invocable __xor__ normally invocable invocable with ``Args...``.
  */
 template <typename F, typename... Args>
-concept regular_invocable = (std::regular_invocable<F, Args...> || async_regular_invocable<F, Args...>) &&
-                            !(std::regular_invocable<F, Args...> && async_regular_invocable<F, Args...>);
+concept regular_invocable = (std::regular_invocable<F, Args...> || async_regular_invocable<F, Args...>)&&!(
+    std::regular_invocable<F, Args...> && async_regular_invocable<F, Args...>);
 
 // ------------------------------------  either result type ------------------------------------ //
 
@@ -3873,13 +3873,13 @@ concept indirectly_foldable =                                                 //
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>
-#include <functional>
-#include <iterator>
-#include <optional>
-#include <ranges>
-#include <type_traits>
-
+#include <concepts>    // for invocable
+#include <functional>  // for identity, invoke
+#include <iterator>    // for random_access_iterator, sized_sentinel_for
+#include <optional>    // for nullopt, optional
+#include <ranges>      // for begin, end, iterator_t, empty, random_acces...
+#include <type_traits> // for decay_t
+ // for projected, indirectly_foldable, semigroup_t
 
 #ifndef E8D38B49_7170_41BC_90E9_6D6389714304
 #define E8D38B49_7170_41BC_90E9_6D6389714304
@@ -4153,7 +4153,7 @@ inline constexpr impl::bind_task<tag::call> call = {};
 
 #endif /* E8D38B49_7170_41BC_90E9_6D6389714304 */
 
-
+     // for call, fork, join, rethrow_if_exception       // for eventually
 #ifndef DE1C62F1_949F_48DC_BC2C_960C4439332D
 #define DE1C62F1_949F_48DC_BC2C_960C4439332D
 
@@ -4966,7 +4966,7 @@ inline constexpr impl::bind_just just = {};
 
 #endif /* DE1C62F1_949F_48DC_BC2C_960C4439332D */
 
-
+             // for just            // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST             // for task
 
 /**
  * @file fold.hpp
@@ -5214,7 +5214,7 @@ inline constexpr impl::fold_overload fold = {};
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <functional> // for identity
-#include <iterator>   // for iter_difference_t, random_access_iterator, size...
+#include <iterator>   // for iter_difference_t, random_access_iterator
 #include <ranges>     // for begin, end, iterator_t, random_access_range
  // for indirectly_unary_invocable, projected     // for call, fork, join             // for just            // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST             // for task
 
@@ -5722,7 +5722,7 @@ inline void resume(task_handle ptr) {
 #include <cstddef>     // for size_t
 #include <type_traits> // for true_type, false_type, remove_cvref_t
 #include <utility>     // for forward
-        // for co_allocable, co_new_t    // for join_type       // for stash_exception_in_return     // for full_context     // for submit_t, task_handle        // for intrusive_list         // for stack, context       // for first_arg_t, async_function_object, first_arg // for alloc_awaitable, call_awaitable, context_swi...  // for quasi_awaitable      // for frame
+        // for co_allocable, co_new_t    // for join_type, rethrow_if_exception_type       // for stash_exception_in_return     // for full_context     // for submit_t, task_handle        // for intrusive_list         // for stack, context       // for first_arg_t, async_function_object, first_arg // for alloc_awaitable, call_awaitable, context_swi...  // for quasi_awaitable      // for frame
 #ifndef A896798B_7E3B_4854_9997_89EA5AE765EB
 #define A896798B_7E3B_4854_9997_89EA5AE765EB
 
