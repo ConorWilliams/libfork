@@ -25,8 +25,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#ifndef B13463FB_3CF9_46F1_AFAC_19CBCB99A23C
-#define B13463FB_3CF9_46F1_AFAC_19CBCB99A23C
+#ifndef D336C448_D1EE_4616_9277_E0D7D550A10A
+#define D336C448_D1EE_4616_9277_E0D7D550A10A
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
 
@@ -36,10 +36,67 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>    // for invocable
-#include <functional>  // for invoke
-#include <type_traits> // for invoke_result_t
-#include <utility>     // for forward
+#include <concepts>    // for common_reference_with, copy_constructible, invocable
+#include <iterator>    // for indirectly_readable, iter_reference_t, iter_differ...
+#include <type_traits> // for invoke_result, remove_cvref_t
+
+#ifndef A5349E86_5BAA_48EF_94E9_F0EBF630DE04
+#define A5349E86_5BAA_48EF_94E9_F0EBF630DE04
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>    // for invocable, same_as
+#include <iterator>    // for indirectly_writable
+#include <type_traits> // for remove_cvref_t, true_type, type_identity, invoke_...
+
+#ifndef B7972761_4CBF_4B86_B195_F754295372BF
+#define B7972761_4CBF_4B86_B195_F754295372BF
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>    // for constructible_from
+#include <exception>   // for exception_ptr, current_exception
+#include <memory>      // for destroy_at, construct_at
+#include <type_traits> // for add_lvalue_reference_t, add_pointer_t, type_ide...
+#include <utility>     // for addressof, forward
+
+#ifndef DF63D333_F8C0_4BBA_97E1_32A78466B8B7
+#define DF63D333_F8C0_4BBA_97E1_32A78466B8B7
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <bit>             // for bit_cast, has_single_bit
+#include <concepts>        // for same_as, convertible_to
+#include <cstddef>         // for byte, size_t
+#include <cstdint>         // for uint16_t
+#include <cstdio>          // for fprintf, stderr
+#include <exception>       // for terminate
+#include <functional>      // for invoke
+#include <limits>          // for numeric_limits
+#include <new>             // for std::hardware_destructive_interference_size
+#include <source_location> // for source_location
+#include <type_traits>     // for invoke_result_t, type_identity, remove_cvref_t, true_type
+#include <utility>         // for forward
+#include <vector>          // for vector
+#include <version>         // for __cpp_lib_hardware_interference_size
 
 #ifndef C5DCA647_8269_46C2_B76F_5FA68738AEDA
 #define C5DCA647_8269_46C2_B76F_5FA68738AEDA
@@ -394,260 +451,6 @@ using std::unreachable;
 
 #endif /* C5DCA647_8269_46C2_B76F_5FA68738AEDA */
 
- // for LF_HOF_RETURNS, LF_STATIC_CALL
-#ifndef AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
-#define AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>    // for movable
-#include <type_traits> // for type_identity
- // for LF_CORO_ATTRIBUTES
-
-/**
- * @file task.hpp
- *
- * @brief Implementation of the core ``lf::task`` type.
- */
-
-namespace lf {
-
-inline namespace core {
-
-// --------------------------------- Task --------------------------------- //
-
-// TODO: private destructor such that tasks can only be created inside the library?
-
-/**
- * @brief A type returnable from libfork's async functions/coroutines.
- *
- * This requires that `T` is `void` a reference or a `std::movable` type.
- */
-template <typename T>
-concept returnable = std::is_void_v<T> || std::is_reference_v<T> || std::movable<T>;
-
-/**
- * @brief The return type for libfork's async functions/coroutines.
- *
- * This predominantly exists to disambiguate `libfork`s coroutines from other coroutines and specify `T` the
- * async function's return type which is required to be `void`, a reference, or a `std::movable` type.
- *
- * \rst
- *
- * .. note::
- *
- *    No consumer of this library should never touch an instance of this type, it is used for specifying the
- *    return type of an `async` function only.
- *
- * .. warning::
- *    The value type ``T`` of a coroutine should be independent of the coroutines first-argument.
- *
- * \endrst
- */
-template <returnable T = void>
-struct LF_CORO_ATTRIBUTES task : std::type_identity<T> {
-  void *prom; ///< An opaque handle to the coroutine promise.
-};
-
-} // namespace core
-
-} // namespace lf
-
-#endif /* AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172 */
-
-  // for task
-
-/**
- * @file lift.hpp
- *
- * @brief Higher-order functions for lifting functions into async functions.
- */
-
-namespace lf {
-
-/**
- * @brief A higher-order function that lifts a function into an asynchronous function.
- *
- * \rst
- *
- * This is useful for when you want to fork a regular function:
- *
- * .. code::
- *
- *    auto work(int x) -> int;
- *
- * Then later in some async context you can do:
- *
- * .. code::
- *
- *    {
- *      int a, b;
- *
- *      co_await fork[a, lift](work, 42);
- *      co_await fork[b, lift](work, 007);
- *
- *      co_await join;
- *    }
- *
- * .. note::
- *
- *    The lifted function will accept arguments by forwarding reference.
- *
- * \endrst
- */
-inline constexpr auto lift = []<class F, class... Args>(auto, F &&func, Args &&...args)
-                                 LF_STATIC_CALL -> task<std::invoke_result_t<F, Args...>>
-  requires std::invocable<F, Args...>
-{
-  co_return std::invoke(std::forward<F>(func), std::forward<Args>(args)...);
-};
-
-/**
- * @brief Lift an overload-set/template into a constrained lambda.
- *
- * This is useful for passing overloaded/template names to higher order functions like `lf::fork`/`lf::call`.
- */
-#define LF_LOFT(name)                                                                                        \
-  [](auto &&...args) LF_STATIC_CALL LF_HOF_RETURNS(name(::std::forward<decltype(args)>(args)...))
-
-/**
- * @brief Lift an overload-set/template into a constrained capturing lambda.
- *
- * The variadic arguments are used as the lambda's capture.
- *
- * This is useful for passing overloaded/template names to higher order functions like `lf::fork`/`lf::call`.
- */
-#define LF_CLOFT(name, ...)                                                                                  \
-  [__VA_ARGS__](auto &&...args) LF_HOF_RETURNS(name(::std::forward<decltype(args)>(args)...))
-
-} // namespace lf
-
-#endif /* B13463FB_3CF9_46F1_AFAC_19CBCB99A23C */
-
-
-
-/**
- * @file algorithm.hpp
- *
- * @brief Meta header which includes all the algorithms in ``libfork/algorithm``.
- */
-
-#endif /* B3512749_D678_438A_8E60_B1E880CF6C23 */
-
-
-#ifndef A6BE090F_9077_40E8_9B57_9BAFD9620469
-#define A6BE090F_9077_40E8_9B57_9BAFD9620469
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#ifndef A951FB73_0FCF_4B7C_A997_42B7E87D21CB
-#define A951FB73_0FCF_4B7C_A997_42B7E87D21CB
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <array>       // for tuple_element, tuple_size
-#include <concepts>    // for default_initializable
-#include <cstddef>     // for size_t
-#include <memory>      // for destroy
-#include <span>        // for span
-#include <type_traits> // for integral_constant, type_identity
-#include <utility>
-
-#ifndef CF97E524_27A6_4CD9_8967_39F1B1BE97B6
-#define CF97E524_27A6_4CD9_8967_39F1B1BE97B6
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <stdexcept> // for runtime_error
-#include <utility>   // for move
-
-#ifndef D66BBECE_E467_4EB6_B74A_AAA2E7256E02
-#define D66BBECE_E467_4EB6_B74A_AAA2E7256E02
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <functional> // for function
-#include <utility>    // for move
-#include <version>    // for __cpp_lib_move_only_function
-
-#ifndef C9703881_3D9C_41A5_A7A2_44615C4CFA6A
-#define C9703881_3D9C_41A5_A7A2_44615C4CFA6A
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <algorithm>   // for max
-#include <atomic>      // for atomic, atomic_thread_fence, memory_order, memo...
-#include <bit>         // for has_single_bit
-#include <concepts>    // for convertible_to, invocable, default_initializable
-#include <cstddef>     // for ptrdiff_t, size_t
-#include <functional>  // for invoke
-#include <memory>      // for unique_ptr, make_unique
-#include <optional>    // for optional
-#include <type_traits> // for invoke_result_t
-#include <utility>     // for addressof, forward, exchange
-#include <vector>      // for vector
-#include <version>     // for ptrdiff_t
-
-#ifndef DF63D333_F8C0_4BBA_97E1_32A78466B8B7
-#define DF63D333_F8C0_4BBA_97E1_32A78466B8B7
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <bit>             // for bit_cast, has_single_bit
-#include <concepts>        // for same_as, convertible_to
-#include <cstddef>         // for byte, size_t
-#include <cstdint>         // for uint16_t
-#include <cstdio>          // for fprintf, stderr
-#include <exception>       // for terminate
-#include <functional>      // for invoke
-#include <limits>          // for numeric_limits
-#include <new>             // for std::hardware_destructive_interference_size
-#include <source_location> // for source_location
-#include <type_traits>     // for invoke_result_t, type_identity, remove_cvref_t, true_type
-#include <utility>         // for forward
-#include <vector>          // for vector
-#include <version>         // for __cpp_lib_hardware_interference_size
  // for LF_HOF_RETURNS
 
 /**
@@ -932,6 +735,574 @@ auto byte_cast(T *ptr) LF_HOF_RETURNS(std::bit_cast<forward_cv_t<T, std::byte> *
 
 #endif /* DF63D333_F8C0_4BBA_97E1_32A78466B8B7 */
 
+ // for empty_t, else_empty_t, immovable, non_void, saf...        // for LF_ASSERT, unreachable, LF_COMPILER_EXCEPTIONS
+#ifndef AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
+#define AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>    // for movable
+#include <type_traits> // for type_identity
+ // for LF_CORO_ATTRIBUTES
+
+/**
+ * @file task.hpp
+ *
+ * @brief Implementation of the core ``lf::task`` type.
+ */
+
+namespace lf {
+
+inline namespace core {
+
+// --------------------------------- Task --------------------------------- //
+
+// TODO: private destructor such that tasks can only be created inside the library?
+
+/**
+ * @brief A type returnable from libfork's async functions/coroutines.
+ *
+ * This requires that `T` is `void` a reference or a `std::movable` type.
+ */
+template <typename T>
+concept returnable = std::is_void_v<T> || std::is_reference_v<T> || std::movable<T>;
+
+/**
+ * @brief The return type for libfork's async functions/coroutines.
+ *
+ * This predominantly exists to disambiguate `libfork`s coroutines from other coroutines and specify `T` the
+ * async function's return type which is required to be `void`, a reference, or a `std::movable` type.
+ *
+ * \rst
+ *
+ * .. note::
+ *
+ *    No consumer of this library should never touch an instance of this type, it is used for specifying the
+ *    return type of an `async` function only.
+ *
+ * .. warning::
+ *    The value type ``T`` of a coroutine should be independent of the coroutines first-argument.
+ *
+ * \endrst
+ */
+template <returnable T = void>
+struct LF_CORO_ATTRIBUTES task : std::type_identity<T> {
+  void *prom; ///< An opaque handle to the coroutine promise.
+};
+
+} // namespace core
+
+} // namespace lf
+
+#endif /* AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172 */
+
+         // for returnable
+
+/**
+ * @file eventually.hpp
+ *
+ * @brief Classes for delaying construction of an object.
+ */
+
+namespace lf {
+
+namespace impl {
+
+namespace detail {
+
+/**
+ * @brief Base case -> T
+ */
+template <returnable T>
+struct eventually_value : std::type_identity<T> {};
+
+/**
+ * @brief void specialization -> empty
+ */
+template <>
+struct eventually_value<void> : std::type_identity<empty_t<0>> {};
+
+/**
+ * @brief Reference specialization -> remove_reference<T> *
+ */
+template <returnable T>
+  requires std::is_reference_v<T>
+struct eventually_value<T> : std::add_pointer<T> {};
+
+} // namespace detail
+
+/**
+ * @brief Return the appropriate type to store in an eventually.
+ *
+ * If `T` is `void` then we store an empty object.
+ * If `T` is a reference then we store a pointer to the referenced type.
+ * Otherwise we store the type directly.
+ */
+template <returnable T>
+using eventually_value_t = typename detail::eventually_value<T>::type;
+
+} // namespace impl
+
+inline namespace core {
+
+// ------------------------------------------------------------------------ //
+
+/**
+ * @brief A wrapper to delay construction of an object.
+ *
+ * An eventually is either empty, contains an object of type `T` or, (if `Exception` is true) contains an
+ * exception. Assignment to an empty eventually will construct an object of type `T` inside the eventually.
+ */
+template <returnable T, bool Exception>
+  requires impl::non_void<T> || Exception
+class basic_eventually : impl::immovable<basic_eventually<T, Exception>> {
+
+  /**
+   *         | void                 | ref                        | val
+   * eptr    | empty or exception * | ref or empty or exception  | val or empty or exception
+   * no eptr | invalid              | ref or empty *             | val or empty
+   *
+   *
+   * If two-states (*) then we can omit the state member.
+   */
+
+  static constexpr bool is_void = std::is_void_v<T>;
+  static constexpr bool is_ref_value = !is_void && std::is_reference_v<T>;
+  static constexpr bool is_val_value = !is_void && !std::is_reference_v<T>;
+
+  /**
+   * @brief If implicit_state is true then we store state bit in exception_ptr or reference ptr.
+   */
+  static constexpr bool implicit_state = (is_ref_value && !Exception) || (is_void && Exception);
+
+  enum class state : char {
+    empty,     ///< No object has been constructed.
+    value,     ///< An object has been constructed.
+    exception, ///< An exception has been thrown during and is stored.
+  };
+
+  union {
+    impl::eventually_value_t<T> m_value;                           //
+    impl::empty_t<> m_empty;                                       //
+    impl::else_empty_t<Exception, std::exception_ptr> m_exception; //
+  };
+
+  // This empty type needs to be different from the empty types in the union
+  // to allow [[no_unique_address]] to work, hence the 1.
+  [[no_unique_address]] impl::else_empty_t<!implicit_state, state, 1> m_flag;
+
+  // ----------------------- Hidden friends ----------------------- //
+
+  /**
+   * @brief Store the current exception, ``dest.empty()`` must be true.
+   *
+   * After this function is called, ``has_exception()`` will be true.
+   */
+  friend auto stash_exception(basic_eventually &dest) noexcept -> void
+    requires Exception
+  {
+    LF_ASSERT(dest.empty());
+
+    std::construct_at(std::addressof(dest.m_exception), std::current_exception());
+
+    if constexpr (!implicit_state) {
+      dest.m_flag = state::exception;
+    }
+  }
+
+ public:
+  // ------------------------- Helper ------------------------- //
+
+  /**
+   * @brief The type of the object stored in the eventually.
+   */
+  using value_type = T;
+
+  // ------------------------ Construct ------------------------ //
+
+  /**
+   * @brief Construct an empty eventually.
+   */
+  basic_eventually() noexcept
+    requires (implicit_state && Exception)
+      : m_exception{nullptr} {}
+
+  /**
+   * @brief Construct an empty eventually.
+   */
+  basic_eventually() noexcept
+    requires (implicit_state && !Exception)
+      : m_value{nullptr} {}
+
+  /**
+   * @brief Construct an empty eventually.
+   */
+  basic_eventually() noexcept
+    requires (!implicit_state)
+      : m_empty{},
+        m_flag{state::empty} {}
+
+  // ------------------------ Destruct ------------------------ //
+
+  /**
+   * @brief Destroy the eventually object and the contained object.
+   */
+  ~basic_eventually() noexcept {
+    if constexpr (implicit_state) {
+      if constexpr (Exception) {
+        std::destroy_at(std::addressof(m_exception));
+      } else {
+        // T* is trivially destructible.
+      }
+    } else {
+      switch (m_flag) {
+        case state::empty:
+          return;
+        case state::value:
+          if constexpr (!is_void) {
+            std::destroy_at(std::addressof(m_value));
+            return;
+          } else {
+            lf::impl::unreachable();
+          }
+        case state::exception:
+          if constexpr (Exception) {
+            std::destroy_at(std::addressof(m_exception));
+            return;
+          } else {
+            lf::impl::unreachable();
+          }
+        default:
+          lf::impl::unreachable();
+      }
+    }
+  }
+  // ----------------------- Check state ----------------------- //
+
+  /**
+   * @brief Check if the eventually is empty.
+   */
+  [[nodiscard]] auto empty() const noexcept -> bool {
+    if constexpr (implicit_state) {
+      if constexpr (Exception) {
+        return m_exception == nullptr;
+      } else {
+        return m_value == nullptr;
+      }
+    } else {
+      return m_flag == state::empty;
+    }
+  }
+
+  /**
+   * @brief Check if there is a value stored in the eventually.
+   */
+  [[nodiscard]] auto has_value() const noexcept -> bool
+    requires (is_val_value || is_ref_value)
+  {
+    if constexpr (implicit_state) {
+      return m_value != nullptr;
+    } else {
+      return m_flag == state::value;
+    }
+  }
+
+  /**
+   * @brief Test is there is an exception stored in the eventually.
+   */
+  [[nodiscard]] auto has_exception() const noexcept -> bool
+    requires Exception
+  {
+#if LF_COMPILER_EXCEPTIONS
+    if constexpr (implicit_state) {
+      return m_exception != nullptr;
+    } else {
+      return m_flag == state::exception;
+    }
+
+#else
+    return false;
+#endif
+  }
+
+  // ------------------------ Assignment ------------------------ //
+
+  /**
+   * @brief Store a value in the eventually, requires that ``empty()`` is true.
+   *
+   * After this function is called, ``has_value()`` will be true.
+   */
+  template <typename U>
+    requires (is_val_value && std::constructible_from<T, U>)
+  auto operator=(U &&expr) noexcept(std::is_nothrow_constructible_v<T, U>) -> basic_eventually & {
+    LF_ASSERT(empty());
+    std::construct_at(std::addressof(m_value), std::forward<U>(expr));
+    m_flag = state::value;
+    return *this;
+  }
+
+  // -----------
+
+  /**
+   * @brief Store a value in the eventually, requires that ``empty()`` is true.
+   *
+   * After this function is called, ``has_value()`` will be true.
+   */
+  template <impl::safe_ref_bind_to<T> U>
+    requires (is_ref_value)
+  auto operator=(U &&expr) noexcept -> basic_eventually & {
+
+    LF_ASSERT(empty());
+    m_value = std::addressof(expr);
+
+    if constexpr (!implicit_state) {
+      m_flag = state::value;
+    }
+
+    return *this;
+  }
+
+  // -------------------- Exception handling -------------------- //
+
+  /**
+   * @brief Access the stored exception, ``has_exception()`` must be true.
+   */
+  [[nodiscard]] auto exception() & noexcept -> std::exception_ptr &
+    requires Exception
+  {
+    LF_ASSERT(has_exception());
+    return m_exception;
+  }
+
+  /**
+   * @brief Access the stored exception, ``has_exception()`` must be true.
+   */
+  [[nodiscard]] auto exception() const & noexcept -> std::exception_ptr const &
+    requires Exception
+  {
+    LF_ASSERT(has_exception());
+    return m_exception;
+  }
+
+  /**
+   * @brief Access the stored exception, ``has_exception()`` must be true.
+   */
+  [[nodiscard]] auto exception() && noexcept -> std::exception_ptr &&
+    requires Exception
+  {
+    LF_ASSERT(has_exception());
+    return std::move(m_exception);
+  }
+
+  /**
+   * @brief Access the stored exception, ``has_exception()`` must be true.
+   */
+  [[nodiscard]] auto exception() const && noexcept -> std::exception_ptr const &&
+    requires Exception
+  {
+    LF_ASSERT(has_exception());
+    return std::move(m_exception);
+  }
+
+  // ------------------------ Operator -> ------------------------ //
+
+  /**
+   * @brief Access the stored value, ``has_value()`` must be true.
+   */
+  [[nodiscard]] auto operator->() noexcept -> std::add_pointer_t<T>
+    requires is_val_value
+  {
+    LF_ASSERT(has_value());
+    return std::addressof(m_value);
+  }
+
+  /**
+   * @brief Access the stored value, ``has_value()`` must be true.
+   */
+  [[nodiscard]] auto operator->() const noexcept -> std::add_pointer_t<T const>
+    requires is_val_value
+  {
+    LF_ASSERT(has_value());
+    return std::addressof(m_value);
+  }
+
+  // -----------
+
+  /**
+   * @brief Access the stored value, ``has_value()`` must be true.
+   */
+  [[nodiscard]] auto operator->() const noexcept -> std::add_pointer_t<T>
+    requires is_ref_value
+  {
+    LF_ASSERT(has_value());
+    return m_value;
+  }
+
+  // ------------------------ Operator * ------------------------ //
+
+  /**
+   * @brief Access the stored value, ``has_value()`` must be true.
+   */
+  [[nodiscard]] auto operator*() & noexcept -> std::add_lvalue_reference_t<T>
+    requires is_val_value
+  {
+    LF_ASSERT(has_value());
+    return m_value;
+  }
+
+  /**
+   * @brief Access the stored value, ``has_value()`` must be true.
+   */
+  [[nodiscard]] auto operator*() const & noexcept -> std::add_lvalue_reference_t<T const>
+    requires is_val_value
+  {
+    LF_ASSERT(has_value());
+    return m_value;
+  }
+
+  /**
+   * @brief Access the stored value, ``has_value()`` must be true.
+   */
+  [[nodiscard]] auto operator*() && noexcept -> std::add_rvalue_reference_t<T>
+    requires is_val_value
+  {
+    LF_ASSERT(has_value());
+    return std::move(m_value);
+  }
+
+  /**
+   * @brief Access the stored value, ``has_value()`` must be true.
+   */
+  [[nodiscard]] auto operator*() const && noexcept -> std::add_rvalue_reference_t<T const>
+    requires is_val_value
+  {
+    LF_ASSERT(has_value());
+    return std::move(m_value);
+  }
+
+  // -----------
+
+  /**
+   * @brief Access the stored value, ``has_value()`` must be true.
+   *
+   * This will decay `T&&` to `T&` just like using a `T &&` reference would.
+   */
+  [[nodiscard]] auto operator*() const & noexcept -> std::add_lvalue_reference_t<std::remove_reference_t<T>>
+    requires is_ref_value
+  {
+    LF_ASSERT(has_value());
+    return *m_value;
+  }
+
+  /**
+   * @brief Access the stored value, ``has_value()`` must be true.
+   *
+   * This will not decay T&& to T&, nor will it promote T& to T&&.
+   */
+  [[nodiscard]] auto operator*() const && noexcept -> T
+    requires is_ref_value
+  {
+
+    LF_ASSERT(has_value());
+
+    if constexpr (std::is_rvalue_reference_v<T>) {
+      return std::move(*m_value);
+    } else {
+      return *m_value;
+    }
+  }
+};
+
+/**
+ * @brief An alias for `lf::core::basic_eventually<T, false>`.
+ */
+template <returnable T>
+using eventually = basic_eventually<T, false>;
+
+/**
+ * @brief An alias for `lf::core::basic_eventually<T, true>`.
+ */
+template <returnable T>
+using try_eventually = basic_eventually<T, true>;
+
+} // namespace core
+
+} // namespace lf
+
+#endif /* B7972761_4CBF_4B86_B195_F754295372BF */
+
+ // for basic_eventually
+#ifndef A090B92E_A266_42C9_BFB0_10681B6BD425
+#define A090B92E_A266_42C9_BFB0_10681B6BD425
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#ifndef DD0B4328_55BD_452B_A4A5_5A4670A6217B
+#define DD0B4328_55BD_452B_A4A5_5A4670A6217B
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>    // for invocable, convertible_to, constructible_from
+#include <functional>  // for invoke
+#include <type_traits> // for invoke_result_t, remove_cvref_t
+#include <utility>     // for forward
+
+#ifndef D66BBECE_E467_4EB6_B74A_AAA2E7256E02
+#define D66BBECE_E467_4EB6_B74A_AAA2E7256E02
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <functional> // for function
+#include <utility>    // for move
+#include <version>    // for __cpp_lib_move_only_function
+
+#ifndef C9703881_3D9C_41A5_A7A2_44615C4CFA6A
+#define C9703881_3D9C_41A5_A7A2_44615C4CFA6A
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <algorithm>   // for max
+#include <atomic>      // for atomic, atomic_thread_fence, memory_order, memo...
+#include <bit>         // for has_single_bit
+#include <concepts>    // for convertible_to, invocable, default_initializable
+#include <cstddef>     // for ptrdiff_t, size_t
+#include <functional>  // for invoke
+#include <memory>      // for unique_ptr, make_unique
+#include <optional>    // for optional
+#include <type_traits> // for invoke_result_t
+#include <utility>     // for addressof, forward, exchange
+#include <vector>      // for vector
+#include <version>     // for ptrdiff_t
  // for k_cache_line, immovable        // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST
 
 /**
@@ -2512,6 +2883,20 @@ class full_context : public worker_context {
 
 #endif /* D66BBECE_E467_4EB6_B74A_AAA2E7256E02 */
 
+  // for worker_context, full_context
+#ifndef CF97E524_27A6_4CD9_8967_39F1B1BE97B6
+#define CF97E524_27A6_4CD9_8967_39F1B1BE97B6
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <stdexcept> // for runtime_error
+#include <utility>   // for move
           // for full_context, worker_context, nullary_f... // for manual_lifetime           // for stack                // for LF_CLANG_TLS_NOINLINE, LF_THROW, LF_ASSERT
 
 /**
@@ -2655,169 +3040,7 @@ inline LF_CLANG_TLS_NOINLINE void finalize(worker_context *worker) {
 
 #endif /* CF97E524_27A6_4CD9_8967_39F1B1BE97B6 */
 
-      // for stack   // for frame   // for stack // for immovable, k_new_align
-
-/**
- * @file co_alloc.hpp
- *
- * @brief Expert-only utilities to interact with a coroutines stack.
- */
-
-namespace lf {
-
-inline namespace core {
-
-/**
- * @brief Check is a type is suitable for allocation on libfork's stacks.
- *
- * This requires the type to be `std::default_initializable<T>` and have non-new-extended alignment.
- */
-template <typename T>
-concept co_allocable = std::default_initializable<T> && alignof(T) <= impl::k_new_align;
-
-} // namespace core
-
-namespace impl {
-
-/**
- * @brief An awaitable (in the context of an ``lf::task``) which triggers stack allocation.
- */
-template <co_allocable T>
-struct [[nodiscard("This object should be co_awaited")]] co_new_t {
-  std::size_t count; ///< The number of elements to allocate.
-};
-
-} // namespace impl
-
-inline namespace core {
-
-/**
- * @brief The result of `co_await`ing the result of ``lf::core::co_new``.
- *
- * A raii wrapper around a ``std::span`` pointing to the memory allocated on the stack.
- * This type can be destructured into a ``std::span`` to the allocated memory.
- */
-template <co_allocable T>
-class stack_allocated : impl::immovable<stack_allocated<T>> {
- public:
-  /**
-   * @brief Construct a new co allocated object.
-   */
-  stack_allocated(impl::frame *frame, std::span<T> span) noexcept : m_frame{frame}, m_span{span} {}
-
-  /**
-   * @brief Get a span over the allocated memory.
-   */
-  template <std::size_t I>
-    requires (I == 0)
-  [[nodiscard]] auto get() noexcept -> std::span<T> {
-    return m_span;
-  }
-
-  /**
-   * @brief Get a span over the allocated memory.
-   */
-  template <std::size_t I>
-    requires (I == 0)
-  [[nodiscard]] auto get() const noexcept -> std::span<T const> {
-    return m_span;
-  }
-
-  /**
-   * @brief Destroys objects and releases the memory.
-   */
-  ~stack_allocated() noexcept {
-    std::ranges::destroy(m_span);
-    auto *stack = impl::tls::stack();
-    stack->deallocate(m_span.data());
-    m_frame->reset_stacklet(stack->top());
-  }
-
- private:
-  impl::frame *m_frame;
-  std::span<T> m_span;
-};
-
-} // namespace core
-
-} // namespace lf
-
-#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
-
-template <lf::co_allocable T>
-struct std::tuple_size<lf::stack_allocated<T>> : std::integral_constant<std::size_t, 1> {};
-
-template <lf::co_allocable T>
-struct std::tuple_size<lf::stack_allocated<T> const> : std::integral_constant<std::size_t, 1> {};
-
-template <lf::co_allocable T>
-struct std::tuple_element<0, lf::stack_allocated<T>> : std::type_identity<std::span<T>> {};
-
-template <lf::co_allocable T>
-struct std::tuple_element<0, lf::stack_allocated<T> const> : std::type_identity<std::span<T const>> {};
-
-#endif
-
-namespace lf {
-
-inline namespace core {
-
-/**
- * @brief A function which returns an awaitable which triggers allocation on a worker's stack.
- *
- * Upon ``co_await``ing the result of this function an ``lf::stack_allocated`` object is returned.
- *
- * \rst
- *
- * .. warning::
- *    This must be called __outside__ of a fork-join scope and is an expert only feature!
- *
- * \endrst
- *
- */
-template <co_allocable T>
-[[nodiscard]] auto co_new(std::size_t count) -> impl::co_new_t<T> {
-  return impl::co_new_t<T>{count};
-}
-
-} // namespace core
-
-} // namespace lf
-
-#endif /* A951FB73_0FCF_4B7C_A997_42B7E87D21CB */
-
-
-
-#ifndef E8D38B49_7170_41BC_90E9_6D6389714304
-#define E8D38B49_7170_41BC_90E9_6D6389714304
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <utility> // for move
-#include <version> // for __cpp_multidimensional_subscript
-
-#ifndef DD0B4328_55BD_452B_A4A5_5A4670A6217B
-#define DD0B4328_55BD_452B_A4A5_5A4670A6217B
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>    // for invocable, convertible_to, constructible_from
-#include <functional>  // for invoke
-#include <type_traits> // for invoke_result_t, remove_cvref_t
-#include <utility>     // for forward
-  // for worker_context, full_context      // for context   // for frame // for different_from, referenceable        // for LF_COMPILER_EXCEPTIONS, LF_FORCEINLINE
+      // for context   // for frame // for different_from, referenceable        // for LF_COMPILER_EXCEPTIONS, LF_FORCEINLINE
 #ifndef A75DC3F0_D0C3_4669_A901_0B22556C873C
 #define A75DC3F0_D0C3_4669_A901_0B22556C873C
 
@@ -3036,498 +3259,6 @@ class first_arg_t {
 
 #endif /* DD0B4328_55BD_452B_A4A5_5A4670A6217B */
 
-      // for async_function_object, quasi_pointer
-#ifndef AD9A2908_3043_4CEC_9A2A_A57DE168DF19
-#define AD9A2908_3043_4CEC_9A2A_A57DE168DF19
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts> // for same_as
-#include <utility>  // for as_const, forward
- // for quasi_pointer, async_function_object, first_arg_t
-#ifndef A5349E86_5BAA_48EF_94E9_F0EBF630DE04
-#define A5349E86_5BAA_48EF_94E9_F0EBF630DE04
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>    // for invocable, same_as
-#include <iterator>    // for indirectly_writable
-#include <type_traits> // for remove_cvref_t, true_type, type_identity, invoke_...
-
-#ifndef B7972761_4CBF_4B86_B195_F754295372BF
-#define B7972761_4CBF_4B86_B195_F754295372BF
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>    // for constructible_from
-#include <exception>   // for exception_ptr, current_exception
-#include <memory>      // for destroy_at, construct_at
-#include <type_traits> // for add_lvalue_reference_t, add_pointer_t, type_ide...
-#include <utility>     // for addressof, forward
- // for empty_t, else_empty_t, immovable, non_void, saf...        // for LF_ASSERT, unreachable, LF_COMPILER_EXCEPTIONS         // for returnable
-
-/**
- * @file eventually.hpp
- *
- * @brief Classes for delaying construction of an object.
- */
-
-namespace lf {
-
-namespace impl {
-
-namespace detail {
-
-/**
- * @brief Base case -> T
- */
-template <returnable T>
-struct eventually_value : std::type_identity<T> {};
-
-/**
- * @brief void specialization -> empty
- */
-template <>
-struct eventually_value<void> : std::type_identity<empty_t<0>> {};
-
-/**
- * @brief Reference specialization -> remove_reference<T> *
- */
-template <returnable T>
-  requires std::is_reference_v<T>
-struct eventually_value<T> : std::add_pointer<T> {};
-
-} // namespace detail
-
-/**
- * @brief Return the appropriate type to store in an eventually.
- *
- * If `T` is `void` then we store an empty object.
- * If `T` is a reference then we store a pointer to the referenced type.
- * Otherwise we store the type directly.
- */
-template <returnable T>
-using eventually_value_t = typename detail::eventually_value<T>::type;
-
-} // namespace impl
-
-inline namespace core {
-
-// ------------------------------------------------------------------------ //
-
-/**
- * @brief A wrapper to delay construction of an object.
- *
- * An eventually is either empty, contains an object of type `T` or, (if `Exception` is true) contains an
- * exception. Assignment to an empty eventually will construct an object of type `T` inside the eventually.
- */
-template <returnable T, bool Exception>
-  requires impl::non_void<T> || Exception
-class basic_eventually : impl::immovable<basic_eventually<T, Exception>> {
-
-  /**
-   *         | void                 | ref                        | val
-   * eptr    | empty or exception * | ref or empty or exception  | val or empty or exception
-   * no eptr | invalid              | ref or empty *             | val or empty
-   *
-   *
-   * If two-states (*) then we can omit the state member.
-   */
-
-  static constexpr bool is_void = std::is_void_v<T>;
-  static constexpr bool is_ref_value = !is_void && std::is_reference_v<T>;
-  static constexpr bool is_val_value = !is_void && !std::is_reference_v<T>;
-
-  /**
-   * @brief If implicit_state is true then we store state bit in exception_ptr or reference ptr.
-   */
-  static constexpr bool implicit_state = (is_ref_value && !Exception) || (is_void && Exception);
-
-  enum class state : char {
-    empty,     ///< No object has been constructed.
-    value,     ///< An object has been constructed.
-    exception, ///< An exception has been thrown during and is stored.
-  };
-
-  union {
-    impl::eventually_value_t<T> m_value;                           //
-    impl::empty_t<> m_empty;                                       //
-    impl::else_empty_t<Exception, std::exception_ptr> m_exception; //
-  };
-
-  // This empty type needs to be different from the empty types in the union
-  // to allow [[no_unique_address]] to work, hence the 1.
-  [[no_unique_address]] impl::else_empty_t<!implicit_state, state, 1> m_flag;
-
-  // ----------------------- Hidden friends ----------------------- //
-
-  /**
-   * @brief Store the current exception, ``dest.empty()`` must be true.
-   *
-   * After this function is called, ``has_exception()`` will be true.
-   */
-  friend auto stash_exception(basic_eventually &dest) noexcept -> void
-    requires Exception
-  {
-    LF_ASSERT(dest.empty());
-
-    std::construct_at(std::addressof(dest.m_exception), std::current_exception());
-
-    if constexpr (!implicit_state) {
-      dest.m_flag = state::exception;
-    }
-  }
-
- public:
-  // ------------------------- Helper ------------------------- //
-
-  /**
-   * @brief The type of the object stored in the eventually.
-   */
-  using value_type = T;
-
-  // ------------------------ Construct ------------------------ //
-
-  /**
-   * @brief Construct an empty eventually.
-   */
-  basic_eventually() noexcept
-    requires (implicit_state && Exception)
-      : m_exception{nullptr} {}
-
-  /**
-   * @brief Construct an empty eventually.
-   */
-  basic_eventually() noexcept
-    requires (implicit_state && !Exception)
-      : m_value{nullptr} {}
-
-  /**
-   * @brief Construct an empty eventually.
-   */
-  basic_eventually() noexcept
-    requires (!implicit_state)
-      : m_empty{},
-        m_flag{state::empty} {}
-
-  // ------------------------ Destruct ------------------------ //
-
-  /**
-   * @brief Destroy the eventually object and the contained object.
-   */
-  ~basic_eventually() noexcept {
-    if constexpr (implicit_state) {
-      if constexpr (Exception) {
-        std::destroy_at(std::addressof(m_exception));
-      } else {
-        // T* is trivially destructible.
-      }
-    } else {
-      switch (m_flag) {
-        case state::empty:
-          return;
-        case state::value:
-          if constexpr (!is_void) {
-            std::destroy_at(std::addressof(m_value));
-            return;
-          } else {
-            lf::impl::unreachable();
-          }
-        case state::exception:
-          if constexpr (Exception) {
-            std::destroy_at(std::addressof(m_exception));
-            return;
-          } else {
-            lf::impl::unreachable();
-          }
-        default:
-          lf::impl::unreachable();
-      }
-    }
-  }
-  // ----------------------- Check state ----------------------- //
-
-  /**
-   * @brief Check if the eventually is empty.
-   */
-  [[nodiscard]] auto empty() const noexcept -> bool {
-    if constexpr (implicit_state) {
-      if constexpr (Exception) {
-        return m_exception == nullptr;
-      } else {
-        return m_value == nullptr;
-      }
-    } else {
-      return m_flag == state::empty;
-    }
-  }
-
-  /**
-   * @brief Check if there is a value stored in the eventually.
-   */
-  [[nodiscard]] auto has_value() const noexcept -> bool
-    requires (is_val_value || is_ref_value)
-  {
-    if constexpr (implicit_state) {
-      return m_value != nullptr;
-    } else {
-      return m_flag == state::value;
-    }
-  }
-
-  /**
-   * @brief Test is there is an exception stored in the eventually.
-   */
-  [[nodiscard]] auto has_exception() const noexcept -> bool
-    requires Exception
-  {
-#if LF_COMPILER_EXCEPTIONS
-    if constexpr (implicit_state) {
-      return m_exception != nullptr;
-    } else {
-      return m_flag == state::exception;
-    }
-
-#else
-    return false;
-#endif
-  }
-
-  // ------------------------ Assignment ------------------------ //
-
-  /**
-   * @brief Store a value in the eventually, requires that ``empty()`` is true.
-   *
-   * After this function is called, ``has_value()`` will be true.
-   */
-  template <typename U>
-    requires (is_val_value && std::constructible_from<T, U>)
-  auto operator=(U &&expr) noexcept(std::is_nothrow_constructible_v<T, U>) -> basic_eventually & {
-    LF_ASSERT(empty());
-    std::construct_at(std::addressof(m_value), std::forward<U>(expr));
-    m_flag = state::value;
-    return *this;
-  }
-
-  // -----------
-
-  /**
-   * @brief Store a value in the eventually, requires that ``empty()`` is true.
-   *
-   * After this function is called, ``has_value()`` will be true.
-   */
-  template <impl::safe_ref_bind_to<T> U>
-    requires (is_ref_value)
-  auto operator=(U &&expr) noexcept -> basic_eventually & {
-
-    LF_ASSERT(empty());
-    m_value = std::addressof(expr);
-
-    if constexpr (!implicit_state) {
-      m_flag = state::value;
-    }
-
-    return *this;
-  }
-
-  // -------------------- Exception handling -------------------- //
-
-  /**
-   * @brief Access the stored exception, ``has_exception()`` must be true.
-   */
-  [[nodiscard]] auto exception() & noexcept -> std::exception_ptr &
-    requires Exception
-  {
-    LF_ASSERT(has_exception());
-    return m_exception;
-  }
-
-  /**
-   * @brief Access the stored exception, ``has_exception()`` must be true.
-   */
-  [[nodiscard]] auto exception() const & noexcept -> std::exception_ptr const &
-    requires Exception
-  {
-    LF_ASSERT(has_exception());
-    return m_exception;
-  }
-
-  /**
-   * @brief Access the stored exception, ``has_exception()`` must be true.
-   */
-  [[nodiscard]] auto exception() && noexcept -> std::exception_ptr &&
-    requires Exception
-  {
-    LF_ASSERT(has_exception());
-    return std::move(m_exception);
-  }
-
-  /**
-   * @brief Access the stored exception, ``has_exception()`` must be true.
-   */
-  [[nodiscard]] auto exception() const && noexcept -> std::exception_ptr const &&
-    requires Exception
-  {
-    LF_ASSERT(has_exception());
-    return std::move(m_exception);
-  }
-
-  // ------------------------ Operator -> ------------------------ //
-
-  /**
-   * @brief Access the stored value, ``has_value()`` must be true.
-   */
-  [[nodiscard]] auto operator->() noexcept -> std::add_pointer_t<T>
-    requires is_val_value
-  {
-    LF_ASSERT(has_value());
-    return std::addressof(m_value);
-  }
-
-  /**
-   * @brief Access the stored value, ``has_value()`` must be true.
-   */
-  [[nodiscard]] auto operator->() const noexcept -> std::add_pointer_t<T const>
-    requires is_val_value
-  {
-    LF_ASSERT(has_value());
-    return std::addressof(m_value);
-  }
-
-  // -----------
-
-  /**
-   * @brief Access the stored value, ``has_value()`` must be true.
-   */
-  [[nodiscard]] auto operator->() const noexcept -> std::add_pointer_t<T>
-    requires is_ref_value
-  {
-    LF_ASSERT(has_value());
-    return m_value;
-  }
-
-  // ------------------------ Operator * ------------------------ //
-
-  /**
-   * @brief Access the stored value, ``has_value()`` must be true.
-   */
-  [[nodiscard]] auto operator*() & noexcept -> std::add_lvalue_reference_t<T>
-    requires is_val_value
-  {
-    LF_ASSERT(has_value());
-    return m_value;
-  }
-
-  /**
-   * @brief Access the stored value, ``has_value()`` must be true.
-   */
-  [[nodiscard]] auto operator*() const & noexcept -> std::add_lvalue_reference_t<T const>
-    requires is_val_value
-  {
-    LF_ASSERT(has_value());
-    return m_value;
-  }
-
-  /**
-   * @brief Access the stored value, ``has_value()`` must be true.
-   */
-  [[nodiscard]] auto operator*() && noexcept -> std::add_rvalue_reference_t<T>
-    requires is_val_value
-  {
-    LF_ASSERT(has_value());
-    return std::move(m_value);
-  }
-
-  /**
-   * @brief Access the stored value, ``has_value()`` must be true.
-   */
-  [[nodiscard]] auto operator*() const && noexcept -> std::add_rvalue_reference_t<T const>
-    requires is_val_value
-  {
-    LF_ASSERT(has_value());
-    return std::move(m_value);
-  }
-
-  // -----------
-
-  /**
-   * @brief Access the stored value, ``has_value()`` must be true.
-   *
-   * This will decay `T&&` to `T&` just like using a `T &&` reference would.
-   */
-  [[nodiscard]] auto operator*() const & noexcept -> std::add_lvalue_reference_t<std::remove_reference_t<T>>
-    requires is_ref_value
-  {
-    LF_ASSERT(has_value());
-    return *m_value;
-  }
-
-  /**
-   * @brief Access the stored value, ``has_value()`` must be true.
-   *
-   * This will not decay T&& to T&, nor will it promote T& to T&&.
-   */
-  [[nodiscard]] auto operator*() const && noexcept -> T
-    requires is_ref_value
-  {
-
-    LF_ASSERT(has_value());
-
-    if constexpr (std::is_rvalue_reference_v<T>) {
-      return std::move(*m_value);
-    } else {
-      return *m_value;
-    }
-  }
-};
-
-/**
- * @brief An alias for `lf::core::basic_eventually<T, false>`.
- */
-template <returnable T>
-using eventually = basic_eventually<T, false>;
-
-/**
- * @brief An alias for `lf::core::basic_eventually<T, true>`.
- */
-template <returnable T>
-using try_eventually = basic_eventually<T, true>;
-
-} // namespace core
-
-} // namespace lf
-
-#endif /* B7972761_4CBF_4B86_B195_F754295372BF */
-
- // for basic_eventually
-#ifndef A090B92E_A266_42C9_BFB0_10681B6BD425
-#define A090B92E_A266_42C9_BFB0_10681B6BD425
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
  // for quasi_pointer
 
 /**
@@ -3820,7 +3551,364 @@ using async_result_t = typename async_result<F, Args...>::type;
 
 #endif /* A5349E86_5BAA_48EF_94E9_F0EBF630DE04 */
 
- // for async_result_t, return_address_for, async_tag_invo...       // for tag      // for returnable, task
+ // for async_invocable, async_result
+
+/**
+ * @file constraints.hpp
+ *
+ * @brief Variations of the standard library's concepts used for constraining algorithms.
+ */
+
+namespace lf {
+
+// ------------------------------------  either invocable ------------------------------------ //
+
+/**
+ * @brief Test if "F" is async invocable __xor__ normally invocable with ``Args...``.
+ */
+template <typename F, typename... Args>
+concept invocable = (std::invocable<F, Args...> || async_invocable<F, Args...>) &&
+                    !(std::invocable<F, Args...> && async_invocable<F, Args...>);
+
+/**
+ * @brief Test if "F" is regularly async invocable __xor__ normally invocable invocable with ``Args...``.
+ */
+template <typename F, typename... Args>
+concept regular_invocable = (std::regular_invocable<F, Args...> || async_regular_invocable<F, Args...>) &&
+                            !(std::regular_invocable<F, Args...> && async_regular_invocable<F, Args...>);
+
+// ------------------------------------  either result type ------------------------------------ //
+
+namespace detail {
+
+template <typename F, typename... Args>
+struct either_invocable_result;
+
+template <typename F, typename... Args>
+  requires async_invocable<F, Args...>
+struct either_invocable_result<F, Args...> : async_result<F, Args...> {};
+
+template <typename F, typename... Args>
+  requires std::invocable<F, Args...>
+struct either_invocable_result<F, Args...> : std::invoke_result<F, Args...> {};
+
+} // namespace detail
+
+/**
+ * @brief The result of invoking a regular-or-async function.
+ *
+ * If F is a regular function then this is the same as `std::invoke_result<F, Args...>`. Otherwise,
+ * if F is an async function then this is the same as `lf::core::invoke_result_t<F, Args...>`.
+ */
+template <typename F, typename... Args>
+  requires invocable<F, Args...>
+using invoke_result_t = typename detail::either_invocable_result<F, Args...>::type;
+
+// ------------------------------------ indirect_value_t ------------------------------------ //
+
+namespace detail {
+
+/**
+ * @brief Base case for regular iterators.
+ */
+template <typename I>
+struct indirect_value_impl {
+  using type = std::iter_value_t<I> &;
+};
+
+/**
+ * @brief Specialization for projected iterators.
+ */
+template <typename Proj>
+  requires requires { typename Proj::secret_projected_indirect_value_helper; }
+struct indirect_value_impl<Proj> {
+ private:
+  using iter = typename Proj::secret_projected_indirect_value_helper::iterator;
+  using proj = typename Proj::secret_projected_indirect_value_helper::projection;
+
+ public:
+  // Recursively drill down to the non-projected iterator.
+  using type = invoke_result_t<proj &, typename indirect_value_impl<iter>::type>;
+};
+
+} // namespace detail
+
+/**
+ * @brief From [P2609R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2609r3.html).
+ *
+ * Relaxes some constraints for ``lf::core::indirectly_unary_invocable`` Specifically: `indirect_value_t<I>`
+ * must be `std::iter_value_t<I> &` for an iterator and `invoke_result_t<Proj &, indirect_value_t<Iter>>` for
+ * `projected<Proj, Iter>`.
+ */
+template <std::indirectly_readable I>
+using indirect_value_t = typename detail::indirect_value_impl<I>::type;
+
+// ------------------------------- indirectly_unary_invocable ------------------------------- //
+
+/**
+ * @brief ``std::indirectly_unary_invocable` that accepts async and regular function.
+ *
+ * This uses the relaxed version from
+ * [P2997R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2997r0.html#ref-LWG3859)
+ *
+ * And the further relaxation from
+ * [P2609R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2609r3.html)
+ */
+template <class F, class I>
+concept indirectly_unary_invocable = std::indirectly_readable<I> &&                     //
+                                     std::copy_constructible<F> &&                      //
+                                     invocable<F &, indirect_value_t<I>> &&             //
+                                     invocable<F &, std::iter_reference_t<I>> &&        //
+                                     std::common_reference_with<                        //
+                                         invoke_result_t<F &, indirect_value_t<I>>,     //
+                                         invoke_result_t<F &, std::iter_reference_t<I>> //
+                                         >;
+
+/**
+ * @brief ``std::indirectly_regular_unary_invocable` that accepts async and regular function.
+ *
+ * This uses the relaxed version from
+ * [P2997R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2997r0.html#ref-LWG3859)
+ *
+ * And the further relaxation from
+ * [P2609R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2609r3.html)
+ *
+ * __Hint:__ indirect_value_t<I> = invoke_result_t<proj &, std::iter_value_t<I> &> for 1-projected iterators.
+ */
+template <class F, class I>
+concept indirectly_regular_unary_invocable = std::indirectly_readable<I> &&                      //
+                                             std::copy_constructible<F> &&                       //
+                                             regular_invocable<F &, indirect_value_t<I>> &&      //
+                                             regular_invocable<F &, std::iter_reference_t<I>> && //
+                                             std::common_reference_with<                         //
+                                                 invoke_result_t<F &, indirect_value_t<I>>,      //
+                                                 invoke_result_t<F &, std::iter_reference_t<I>>  //
+                                                 >;
+
+// ------------------------------------ indirect_result_t ------------------------------------ //
+
+/**
+ * @brief A variation of `std::indirect_result_t` that accepts async and regular function.
+ */
+template <class F, class... Is>
+  requires (std::indirectly_readable<Is> && ...) && invocable<F, std::iter_reference_t<Is>...>
+using indirect_result_t = invoke_result_t<F, std::iter_reference_t<Is>...>;
+
+// ------------------------------------ projected ------------------------------------ //
+
+namespace detail {
+
+template <class I>
+struct conditional_difference_type {};
+
+template <std::weakly_incrementable I>
+struct conditional_difference_type<I> {
+  using difference_type = std::iter_difference_t<I>;
+};
+
+template <class I, class Proj>
+struct projected_impl {
+  struct adl_barrier : conditional_difference_type<I> {
+
+    using value_type = std::remove_cvref_t<indirect_result_t<Proj &, I>>;
+
+    auto operator*() const -> indirect_result_t<Proj &, I>; // not defined
+
+    struct secret_projected_indirect_value_helper {
+      using iterator = I;
+      using projection = Proj;
+    };
+  };
+};
+
+} // namespace detail
+
+/**
+ * @brief A variation of `std::projected` that accepts async and regular function.
+ */
+template <std::indirectly_readable I, indirectly_regular_unary_invocable<I> Proj>
+using projected = typename detail::projected_impl<I, Proj>::adl_barrier;
+
+// // ---------------------------------- Semigroup  helpers ---------------------------------- //
+
+namespace impl {
+
+template <typename R, typename F, typename... Args>
+concept regular_invocable_returns =
+    regular_invocable<F, Args...> && std::same_as<R, invoke_result_t<F, Args...>>;
+
+} // namespace impl
+
+namespace detail {
+
+/**
+ * @brief Test if `Bop` is invocable with all combinations of `T` and `R` and all invocations return `R`.
+ */
+template <class R, class Bop, class T>
+concept semigroup_impl = impl::regular_invocable_returns<R, Bop, T, T> && //
+                         impl::regular_invocable_returns<R, Bop, T, R> && //
+                         impl::regular_invocable_returns<R, Bop, R, T> && //
+                         impl::regular_invocable_returns<R, Bop, R, R>;   //
+
+} // namespace detail
+
+// ---------------------------------- Semigroup ---------------------------------- //
+
+/**
+ * @brief A semigroup is a set `S` and an associative binary operation `·`, such that `S` is closed under `·`.
+ *
+ * Associativity means that for all `a, b, c` in `S`, `(a · b) · c = a · (b · c)`.
+ *
+ * Example: `(Z, +)` is a semigroup, since we can add any two integers and the result is also an integer.
+ *
+ * Example: `(Z, /)` is not a semigroup, since `2/3` s not an integer.
+ *
+ * Example: `(Z, -)` is not a semigroup, since `(1 - 1) - 1 != 1 - (1 - 1)`.
+ *
+ * Let `bop` and `t` be objects of types `Bop` and `T` respectively. Then the following expressions
+ * must be valid:
+ *
+ * 1. `bop(t, t)`
+ * 2. `bop(t, bop(t, t))`
+ * 3. `bop(bop(t, t), t)`
+ * 4. `bop(bop(t, t), bop(t, t))`
+ *
+ * Additionally, the expressions must return the same type, `R`.
+ *
+ * Hence the `S` is the set of the values in `R`, to align with the mathematical definition of a semigroup
+ * we say that `T` _represents_ `S`.
+ *
+ * __Note:__ A semigroup requires all invocations to be regular. This is a semantic requirement only.
+ */
+template <class Bop, class T>
+concept semigroup =
+    regular_invocable<Bop, T, T> && detail::semigroup_impl<invoke_result_t<Bop, T, T>, Bop, T>; //
+
+/**
+ * @brief The result of invoking a semigroup's binary operator with two values of type `T`.
+ */
+template <class Bop, class T>
+  requires semigroup<Bop, T>
+using semigroup_t = invoke_result_t<Bop, T, T>;
+
+/**
+ * @brief Test if a binary operator is a semigroup over `T` and `U` with the same result type.
+ *
+ * A dual semigroup requires that `Bop` is a semigroup over `T` and `U` with the same
+ * `semigroup_t` and mixed invocation of `Bop` over `T` and `U` has semigroup
+ * semantics.
+ *
+ * Let u be an object of type `U` and t be an object of type `T`. Then the additional following
+ * expressions must be valid and return the same type:
+ *
+ * 1. `bop(t, u)`
+ * 2. `bop(u, t)`
+ *
+ * This is commutative in `T` and `U`.
+ */
+template <class Bop, class T, class U>
+concept common_semigroup = semigroup<Bop, T> &&                                               //
+                           semigroup<Bop, U> &&                                               //
+                           std::same_as<semigroup_t<Bop, T>, semigroup_t<Bop, U>> &&          //
+                           impl::regular_invocable_returns<semigroup_t<Bop, T>, Bop, U, T> && //
+                           impl::regular_invocable_returns<semigroup_t<Bop, U>, Bop, T, U>;   //
+
+// ------------------------------------ Foldable ------------------------------------ //
+
+namespace detail {
+
+template <class Acc, class Bop, class T>
+concept foldable_impl =                               //
+    common_semigroup<Bop, Acc, T> &&                  //
+    std::movable<Acc> &&                              // Accumulator moved in loop.
+    std::convertible_to<semigroup_t<Bop, T>, Acc> &&  // `fold bop [a] = a`
+    std::assignable_from<Acc &, semigroup_t<Bop, T>>; // Accumulator assigned in loop.
+
+} // namespace detail
+
+/**
+ * @brief Test if a binary operation supports a fold operation over a type.
+ *
+ * This means a collection of one or more values of type `T` can be folded to a single value
+ * of type `Acc` equal to `std::decay_t<semigroup_t<Bop, T>>` using `bop`, an operator of type `Bop`.
+ *
+ * For example using the infix notation `a · b` to mean `bop(a, b)`:
+ *
+ * 1. `fold bop [a] = a`
+ * 2. `fold bop [a, b] = a · b`
+ * 3. `fold bop [a, b, c] = a · b · c`
+ * 4. `fold bop [a, b, c, ...] = a · b · c · ...`
+ *
+ * The order of evaluation is unspecified but the elements will not be reordered.
+ */
+template <class Bop, class T>
+concept foldable =                                                    //
+    semigroup<Bop, T> &&                                              //
+    detail::foldable_impl<std::decay_t<semigroup_t<Bop, T>>, Bop, T>; //
+
+/**
+ * @brief An indirect version of `lf::foldable`.
+ */
+template <class Bop, class I>
+concept indirectly_foldable =                                                 //
+    std::indirectly_readable<I> &&                                            //
+    std::copy_constructible<Bop> &&                                           //
+    common_semigroup<Bop &, indirect_value_t<I>, std::iter_reference_t<I>> && //
+    foldable<Bop &, indirect_value_t<I>> &&                                   //
+    foldable<Bop &, std::iter_reference_t<I>>;                                //
+
+} // namespace lf
+
+#endif /* D336C448_D1EE_4616_9277_E0D7D550A10A */
+
+
+#ifndef B29F7CE3_05ED_4A3D_A464_CBA0454226F0
+#define B29F7CE3_05ED_4A3D_A464_CBA0454226F0
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>
+#include <functional>
+#include <iterator>
+#include <optional>
+#include <ranges>
+#include <type_traits>
+
+
+#ifndef E8D38B49_7170_41BC_90E9_6D6389714304
+#define E8D38B49_7170_41BC_90E9_6D6389714304
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <utility> // for move
+#include <version> // for __cpp_multidimensional_subscript
+      // for async_function_object, quasi_pointer
+#ifndef AD9A2908_3043_4CEC_9A2A_A57DE168DF19
+#define AD9A2908_3043_4CEC_9A2A_A57DE168DF19
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts> // for same_as
+#include <utility>  // for as_const, forward
+ // for quasi_pointer, async_function_object, first_arg_t // for async_result_t, return_address_for, async_tag_invo...       // for tag      // for returnable, task
 
 /**
  * @file combinate.hpp
@@ -4102,6 +4190,155 @@ inline constexpr impl::bind_task<tag::call> call = {};
 #include <memory>      // for uninitialized_default_construct_n
 #include <span>        // for span
 #include <type_traits> // for remove_cvref_t
+
+#ifndef A951FB73_0FCF_4B7C_A997_42B7E87D21CB
+#define A951FB73_0FCF_4B7C_A997_42B7E87D21CB
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <array>       // for tuple_element, tuple_size
+#include <concepts>    // for default_initializable
+#include <cstddef>     // for size_t
+#include <memory>      // for destroy
+#include <span>        // for span
+#include <type_traits> // for integral_constant, type_identity
+#include <utility>
+      // for stack   // for frame   // for stack // for immovable, k_new_align
+
+/**
+ * @file co_alloc.hpp
+ *
+ * @brief Expert-only utilities to interact with a coroutines stack.
+ */
+
+namespace lf {
+
+inline namespace core {
+
+/**
+ * @brief Check is a type is suitable for allocation on libfork's stacks.
+ *
+ * This requires the type to be `std::default_initializable<T>` and have non-new-extended alignment.
+ */
+template <typename T>
+concept co_allocable = std::default_initializable<T> && alignof(T) <= impl::k_new_align;
+
+} // namespace core
+
+namespace impl {
+
+/**
+ * @brief An awaitable (in the context of an ``lf::task``) which triggers stack allocation.
+ */
+template <co_allocable T>
+struct [[nodiscard("This object should be co_awaited")]] co_new_t {
+  std::size_t count; ///< The number of elements to allocate.
+};
+
+} // namespace impl
+
+inline namespace core {
+
+/**
+ * @brief The result of `co_await`ing the result of ``lf::core::co_new``.
+ *
+ * A raii wrapper around a ``std::span`` pointing to the memory allocated on the stack.
+ * This type can be destructured into a ``std::span`` to the allocated memory.
+ */
+template <co_allocable T>
+class stack_allocated : impl::immovable<stack_allocated<T>> {
+ public:
+  /**
+   * @brief Construct a new co allocated object.
+   */
+  stack_allocated(impl::frame *frame, std::span<T> span) noexcept : m_frame{frame}, m_span{span} {}
+
+  /**
+   * @brief Get a span over the allocated memory.
+   */
+  template <std::size_t I>
+    requires (I == 0)
+  [[nodiscard]] auto get() noexcept -> std::span<T> {
+    return m_span;
+  }
+
+  /**
+   * @brief Get a span over the allocated memory.
+   */
+  template <std::size_t I>
+    requires (I == 0)
+  [[nodiscard]] auto get() const noexcept -> std::span<T const> {
+    return m_span;
+  }
+
+  /**
+   * @brief Destroys objects and releases the memory.
+   */
+  ~stack_allocated() noexcept {
+    std::ranges::destroy(m_span);
+    auto *stack = impl::tls::stack();
+    stack->deallocate(m_span.data());
+    m_frame->reset_stacklet(stack->top());
+  }
+
+ private:
+  impl::frame *m_frame;
+  std::span<T> m_span;
+};
+
+} // namespace core
+
+} // namespace lf
+
+#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
+
+template <lf::co_allocable T>
+struct std::tuple_size<lf::stack_allocated<T>> : std::integral_constant<std::size_t, 1> {};
+
+template <lf::co_allocable T>
+struct std::tuple_size<lf::stack_allocated<T> const> : std::integral_constant<std::size_t, 1> {};
+
+template <lf::co_allocable T>
+struct std::tuple_element<0, lf::stack_allocated<T>> : std::type_identity<std::span<T>> {};
+
+template <lf::co_allocable T>
+struct std::tuple_element<0, lf::stack_allocated<T> const> : std::type_identity<std::span<T const>> {};
+
+#endif
+
+namespace lf {
+
+inline namespace core {
+
+/**
+ * @brief A function which returns an awaitable which triggers allocation on a worker's stack.
+ *
+ * Upon ``co_await``ing the result of this function an ``lf::stack_allocated`` object is returned.
+ *
+ * \rst
+ *
+ * .. warning::
+ *    This must be called __outside__ of a fork-join scope and is an expert only feature!
+ *
+ * \endrst
+ *
+ */
+template <co_allocable T>
+[[nodiscard]] auto co_new(std::size_t count) -> impl::co_new_t<T> {
+  return impl::co_new_t<T>{count};
+}
+
+} // namespace core
+
+} // namespace lf
+
+#endif /* A951FB73_0FCF_4B7C_A997_42B7E87D21CB */
+
      // for co_allocable, co_new_t, stack_allocated  // for full_context  // for submit_handle, submit_t, task_handle     // for unwrap, intrusive_list      // for stack, context   // for frame   // for stack // for k_u16_max    // for ignore_t        // for LF_ASSERT, LF_LOG, LF_CATCH_ALL, LF_RETHROW
 #ifndef BDE6CBCC_7576_4082_AAC5_2A207FEA9293
 #define BDE6CBCC_7576_4082_AAC5_2A207FEA9293
@@ -4729,6 +4966,517 @@ inline constexpr impl::bind_just just = {};
 
 #endif /* DE1C62F1_949F_48DC_BC2C_960C4439332D */
 
+
+
+/**
+ * @file fold.hpp
+ *
+ * @brief A parallel adaptation of the `std::fold_[...]` family.
+ */
+
+namespace lf {
+
+namespace impl {
+
+namespace detail {
+
+template <class Bop, std::random_access_iterator I, class Proj>
+  requires indirectly_foldable<Bop, projected<I, Proj>>
+using indirect_fold_acc_t = std::decay_t<semigroup_t<Bop &, std::iter_reference_t<projected<I, Proj>>>>;
+
+template <std::random_access_iterator I,
+          std::sized_sentinel_for<I> S,
+          class Proj,
+          indirectly_foldable<projected<I, Proj>> Bop>
+struct fold_overload_impl {
+
+  using acc = indirect_fold_acc_t<Bop, I, Proj>;
+  using difference_t = std::iter_difference_t<I>;
+
+  static constexpr bool async_bop = !std::invocable<Bop &, acc, std::iter_reference_t<projected<I, Proj>>>;
+
+  /**
+   * @brief Recursive implementation of `fold`, requires that `tail - head > 0`.
+   */
+  LF_STATIC_CALL auto
+  operator()(auto fold, I head, S tail, difference_t n, Bop bop, Proj proj) LF_STATIC_CONST->lf::task<acc> {
+
+    LF_ASSERT(n > 1);
+
+    difference_t len = tail - head;
+
+    LF_ASSERT(len > 0);
+
+    if (len <= n) {
+
+      auto init = acc(co_await just(proj)(*head)); // Require convertible to U
+
+      for (++head; head != tail; ++head) {
+
+        // Assignability to U.
+
+        if constexpr (async_bop) {
+          co_await call(&init, bop)(std::move(init), co_await just(proj)(*head));
+          co_await rethrow_if_exception;
+        } else {
+          init = std::invoke(bop, std::move(init), co_await just(proj)(*head));
+        }
+      }
+
+      co_return std::move(init);
+    }
+
+    auto mid = head + (len / 2);
+
+    LF_ASSERT(mid - head > 0);
+    LF_ASSERT(tail - mid > 0);
+
+    eventually<acc> lhs;
+    eventually<acc> rhs;
+
+    co_await lf::fork(&lhs, fold)(head, mid, n, bop, proj);
+    co_await lf::call(&rhs, fold)(mid, tail, n, bop, proj);
+
+    co_await lf::join;
+
+    co_return co_await just(std::move(bop))( //
+        *std::move(lhs),                     //
+        *std::move(rhs)                      //
+    );                                       //
+  }
+
+  /**
+   * @brief Recursive implementation of `fold` for `n = 1`, requires that `tail - head > 1`.
+   *
+   * You cannot parallelize a chunk smaller than or equal to size three, for example, `a + b + c`
+   * requires `a + b` to be evaluated before adding the result to `c`.
+   */
+  LF_STATIC_CALL auto
+  operator()(auto fold, I head, S tail, Bop bop, Proj proj) LF_STATIC_CONST->lf::task<acc> {
+
+    difference_t len = tail - head;
+
+    LF_ASSERT(len >= 0);
+
+    switch (len) {
+      case 0:
+        LF_ASSERT(false && "Unreachable");
+      case 1:
+        co_return co_await lf::just(std::move(proj))(*head);
+      default:
+        auto mid = head + (len / 2);
+
+        LF_ASSERT(mid - head > 0);
+        LF_ASSERT(tail - mid > 0);
+
+        eventually<acc> lhs;
+        eventually<acc> rhs;
+
+        co_await lf::fork(&lhs, fold)(head, mid, bop, proj);
+        co_await lf::call(&rhs, fold)(mid, tail, bop, proj);
+
+        co_await lf::join;
+
+        co_return co_await just(std::move(bop))( //
+            *std::move(lhs),                     //
+            *std::move(rhs)                      //
+        );                                       //
+    }
+  }
+};
+
+} // namespace detail
+
+struct fold_overload {
+  /**
+   * @brief Recursive implementation of `fold` for `n = 1` case.
+   */
+  template <std::random_access_iterator I,
+            std::sized_sentinel_for<I> S,
+            class Proj = std::identity,
+            indirectly_foldable<projected<I, Proj>> Bop>
+  LF_STATIC_CALL auto operator()(auto /* unused */, I head, S tail, Bop bop, Proj proj = {})
+      LF_STATIC_CONST->lf::task<std::optional<detail::indirect_fold_acc_t<Bop, I, Proj>>> {
+
+    if (head == tail) {
+      co_return std::nullopt;
+    }
+
+    co_return co_await lf::just(detail::fold_overload_impl<I, S, Proj, Bop>{})(
+        std::move(head), std::move(tail), std::move(bop), std::move(proj) //
+    );
+  }
+
+  /**
+   * @brief Recursive implementation of `fold`.
+   *
+   * This will dispatch to the `n = 1` case if `n <= 3`.
+   */
+  template <std::random_access_iterator I,
+            std::sized_sentinel_for<I> S,
+            class Proj = std::identity,
+            indirectly_foldable<projected<I, Proj>> Bop>
+  LF_STATIC_CALL auto
+  operator()(auto /* unused */, I head, S tail, std::iter_difference_t<I> n, Bop bop, Proj proj = {})
+      LF_STATIC_CONST->lf::task<std::optional<detail::indirect_fold_acc_t<Bop, I, Proj>>> {
+
+    if (head == tail) {
+      co_return std::nullopt;
+    }
+
+    if (n == 1) {
+      co_return co_await lf::just(detail::fold_overload_impl<I, S, Proj, Bop>{})(
+          std::move(head), std::move(tail), std::move(bop), std::move(proj) //
+      );
+    }
+
+    co_return co_await lf::just(detail::fold_overload_impl<I, S, Proj, Bop>{})(
+        std::move(head), std::move(tail), n, std::move(bop), std::move(proj) //
+    );
+  }
+
+  /**
+   * @brief Range version.
+   */
+  template <std::ranges::random_access_range Range,
+            class Proj = std::identity,
+            indirectly_foldable<projected<std::ranges::iterator_t<Range>, Proj>> Bop>
+    requires std::ranges::sized_range<Range>
+  LF_STATIC_CALL auto operator()(auto /* unused */, Range &&range, Bop bop, Proj proj = {}) LF_STATIC_CONST
+      ->lf::task<std::optional<detail::indirect_fold_acc_t<Bop, std::ranges::iterator_t<Range>, Proj>>> {
+
+    if (std::ranges::empty(range)) {
+      co_return std::nullopt;
+    }
+
+    using I = std::decay_t<decltype(std::ranges::begin(range))>;
+    using S = std::decay_t<decltype(std::ranges::end(range))>;
+
+    co_return co_await lf::just(detail::fold_overload_impl<I, S, Proj, Bop>{})(
+        std::ranges::begin(range), std::ranges::end(range), std::move(bop), std::move(proj) //
+    );
+  }
+
+  /**
+   * @brief Range version.
+   */
+  template <std::ranges::random_access_range Range,
+            class Proj = std::identity,
+            indirectly_foldable<projected<std::ranges::iterator_t<Range>, Proj>> Bop>
+    requires std::ranges::sized_range<Range>
+  LF_STATIC_CALL auto operator()(auto /* unused */,
+                                 Range &&range,
+                                 std::ranges::range_difference_t<Range> n,
+                                 Bop bop,
+                                 Proj proj = {}) LF_STATIC_CONST
+      ->lf::task<std::optional<detail::indirect_fold_acc_t<Bop, std::ranges::iterator_t<Range>, Proj>>> {
+
+    if (std::ranges::empty(range)) {
+      co_return std::nullopt;
+    }
+
+    using I = std::decay_t<decltype(std::ranges::begin(range))>;
+    using S = std::decay_t<decltype(std::ranges::end(range))>;
+
+    if (n == 1) {
+      co_return co_await lf::just(detail::fold_overload_impl<I, S, Proj, Bop>{})(
+          std::ranges::begin(range), std::ranges::end(range), std::move(bop), std::move(proj) //
+      );
+    }
+
+    co_return co_await lf::just(detail::fold_overload_impl<I, S, Proj, Bop>{})(
+        std::ranges::begin(range), std::ranges::end(range), n, std::move(bop), std::move(proj) //
+    );
+  }
+};
+
+} // namespace impl
+
+/**
+ * @brief Apply a binary operation to the elements of a range in parallel.
+ */
+inline constexpr impl::fold_overload fold = {};
+
+} // namespace lf
+
+#endif /* B29F7CE3_05ED_4A3D_A464_CBA0454226F0 */
+
+
+#ifndef C5165911_AD64_4DAC_ACEB_DDB9B718B3ED
+#define C5165911_AD64_4DAC_ACEB_DDB9B718B3ED
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <functional> // for identity
+#include <iterator>   // for iter_difference_t, random_access_iterator, size...
+#include <ranges>     // for begin, end, iterator_t, random_access_range
+ // for indirectly_unary_invocable, projected     // for call, fork, join             // for just            // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST             // for task
+
+/**
+ * @file for_each.hpp
+ *
+ * @brief A parallel implementation of `std::for_each`.
+ */
+
+namespace lf {
+
+namespace impl {
+
+struct for_each_overload {
+
+  /**
+   * @brief Divide and conquer implementation.
+   *
+   * This is an efficient implementation for sized random access ranges.
+   */
+  template <std::random_access_iterator I,
+            std::sized_sentinel_for<I> S,
+            typename Proj = std::identity,
+            indirectly_unary_invocable<projected<I, Proj>> Fun>
+  LF_STATIC_CALL auto
+  operator()(auto for_each, I head, S tail, std::iter_difference_t<I> n, Fun fun, Proj proj = {})
+      LF_STATIC_CONST->lf::task<> {
+
+    LF_ASSERT(n > 0);
+
+    std::iter_difference_t<I> len = tail - head;
+
+    LF_ASSERT(len >= 0);
+
+    if (len == 0) {
+      co_return;
+    }
+
+    if (len <= n) {
+      for (; head != tail; ++head) {
+        co_await lf::just(fun)(co_await just(proj)(*head));
+      }
+      co_return;
+    }
+
+    auto mid = head + (len / 2);
+
+    co_await lf::fork(for_each)(head, mid, n, fun, proj);
+    co_await lf::call(for_each)(mid, tail, n, fun, proj);
+
+    co_await lf::join;
+  }
+
+  /**
+   * @brief Divide and conquer n = 1 version.
+   *
+   * This is an efficient implementation for sized random access ranges.
+   */
+  template <std::random_access_iterator I,
+            std::sized_sentinel_for<I> S,
+            typename Proj = std::identity,
+            indirectly_unary_invocable<projected<I, Proj>> Fun>
+  LF_STATIC_CALL auto
+  operator()(auto for_each, I head, S tail, Fun fun, Proj proj = {}) LF_STATIC_CONST->lf::task<> {
+
+    std::iter_difference_t<I> len = tail - head;
+
+    LF_ASSERT(len >= 0);
+
+    switch (len) {
+      case 0:
+        break;
+      case 1:
+        co_await lf::just(fun)(co_await just(proj)(*head));
+        break;
+      default:
+        auto mid = head + (len / 2);
+
+        co_await lf::fork(for_each)(head, mid, fun, proj);
+        co_await lf::call(for_each)(mid, tail, fun, proj);
+
+        co_await lf::join;
+    }
+  }
+
+  /**
+   * @brief Range version, dispatches to the iterator version.
+   *
+   * This will dispatch to `n = 1` specialization if `n = 1`
+   */
+  template <std::ranges::random_access_range Range,
+            typename Proj = std::identity,
+            indirectly_unary_invocable<projected<std::ranges::iterator_t<Range>, Proj>> Fun>
+    requires std::ranges::sized_range<Range>
+  LF_STATIC_CALL auto
+  operator()(auto for_each, Range &&range, std::ranges::range_difference_t<Range> n, Fun fun, Proj proj = {})
+      LF_STATIC_CONST->lf::task<> {
+
+    LF_ASSERT(n > 0);
+
+    if (n == 1) {
+      co_await just(for_each)(std::ranges::begin(range), std::ranges::end(range), fun, proj);
+    } else {
+      co_await just(for_each)(std::ranges::begin(range), std::ranges::end(range), n, fun, proj);
+    }
+  }
+
+  /**
+   * @brief Range n = 1, version, dispatches to the iterator version.
+   */
+  template <std::ranges::random_access_range Range,
+            typename Proj = std::identity,
+            indirectly_unary_invocable<projected<std::ranges::iterator_t<Range>, Proj>> Fun>
+    requires std::ranges::sized_range<Range>
+  LF_STATIC_CALL auto
+  operator()(auto for_each, Range &&range, Fun fun, Proj proj = {}) LF_STATIC_CONST->lf::task<> {
+    co_await lf::just(for_each)(
+        std::ranges::begin(range), std::ranges::end(range), std::move(fun), std::move(proj) //
+    );
+  }
+};
+
+} // namespace impl
+
+/**
+ * @brief A parallel implementation of `std::ranges::for_each`.
+ *
+ * \rst
+ *
+ * Exemplary usage:
+ *
+ * .. code::
+ *
+ *    co_await lf::for_each(v, 10, [](auto &elem) {
+ *      elem = 0;
+ *    });
+ *
+ * \endrst
+ *
+ * This will set each element of `v` to `0` in parallel using a n size of ``10``. The n size is the
+ * number of elements each task will process, the n size can be omitted and defaults to ``1``.
+ *
+ * If the function handed to `for_each` is an ``async`` function, then the function will be called
+ * asynchronously, this allows you to launch further tasks recursively. The projection is required
+ * to be a regular function.
+ *
+ * Unlike `std::ranges::for_each`, this function will make an implementation defined number of copies
+ * of the function objects and may invoke these copies concurrently. Hence, it is assumed function
+ * objects are cheap to copy.
+ */
+inline constexpr impl::for_each_overload for_each = {};
+
+} // namespace lf
+
+#endif /* C5165911_AD64_4DAC_ACEB_DDB9B718B3ED */
+
+
+#ifndef B13463FB_3CF9_46F1_AFAC_19CBCB99A23C
+#define B13463FB_3CF9_46F1_AFAC_19CBCB99A23C
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>    // for invocable
+#include <functional>  // for invoke
+#include <type_traits> // for invoke_result_t
+#include <utility>     // for forward
+ // for LF_HOF_RETURNS, LF_STATIC_CALL  // for task
+
+/**
+ * @file lift.hpp
+ *
+ * @brief Higher-order functions for lifting functions into async functions.
+ */
+
+namespace lf {
+
+/**
+ * @brief A higher-order function that lifts a function into an asynchronous function.
+ *
+ * \rst
+ *
+ * This is useful for when you want to fork a regular function:
+ *
+ * .. code::
+ *
+ *    auto work(int x) -> int;
+ *
+ * Then later in some async context you can do:
+ *
+ * .. code::
+ *
+ *    {
+ *      int a, b;
+ *
+ *      co_await fork[a, lift](work, 42);
+ *      co_await fork[b, lift](work, 007);
+ *
+ *      co_await join;
+ *    }
+ *
+ * .. note::
+ *
+ *    The lifted function will accept arguments by forwarding reference.
+ *
+ * \endrst
+ */
+inline constexpr auto lift = []<class F, class... Args>(auto, F &&func, Args &&...args)
+                                 LF_STATIC_CALL -> task<std::invoke_result_t<F, Args...>>
+  requires std::invocable<F, Args...>
+{
+  co_return std::invoke(std::forward<F>(func), std::forward<Args>(args)...);
+};
+
+/**
+ * @brief Lift an overload-set/template into a constrained lambda.
+ *
+ * This is useful for passing overloaded/template names to higher order functions like `lf::fork`/`lf::call`.
+ */
+#define LF_LOFT(name)                                                                                        \
+  [](auto &&...args) LF_STATIC_CALL LF_HOF_RETURNS(name(::std::forward<decltype(args)>(args)...))
+
+/**
+ * @brief Lift an overload-set/template into a constrained capturing lambda.
+ *
+ * The variadic arguments are used as the lambda's capture.
+ *
+ * This is useful for passing overloaded/template names to higher order functions like `lf::fork`/`lf::call`.
+ */
+#define LF_CLOFT(name, ...)                                                                                  \
+  [__VA_ARGS__](auto &&...args) LF_HOF_RETURNS(name(::std::forward<decltype(args)>(args)...))
+
+} // namespace lf
+
+#endif /* B13463FB_3CF9_46F1_AFAC_19CBCB99A23C */
+
+
+
+/**
+ * @file algorithm.hpp
+ *
+ * @brief Meta header which includes all the algorithms in ``libfork/algorithm``.
+ */
+
+#endif /* B3512749_D678_438A_8E60_B1E880CF6C23 */
+
+
+#ifndef A6BE090F_9077_40E8_9B57_9BAFD9620469
+#define A6BE090F_9077_40E8_9B57_9BAFD9620469
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #ifndef AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A
 #define AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A

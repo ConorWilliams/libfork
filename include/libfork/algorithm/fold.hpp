@@ -12,7 +12,6 @@
 #include <concepts>
 #include <functional>
 #include <iterator>
-#include <numeric>
 #include <optional>
 #include <ranges>
 #include <type_traits>
