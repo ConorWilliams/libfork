@@ -1,110 +1,119 @@
-// // Copyright © Conor Williams <conorwilliams@outlook.com>
+// Copyright © Conor Williams <conorwilliams@outlook.com>
 
-// // SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MPL-2.0
 
-// // This Source Code Form is subject to the terms of the Mozilla Public
-// // License, v. 2.0. If a copy of the MPL was not distributed with this
-// // file, You can obtain one at https://mozilla.org/MPL/2.0/.
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-// // #define NDEBUG
-// // #define LF_COROUTINE_OFFSET 2 * sizeof(void *)
+// #define NDEBUG
+// #define LF_COROUTINE_OFFSET 2 * sizeof(void *)
 
-// #include <vector>
+#include <functional>
+#include <vector>
 
-// #include <catch2/benchmark/catch_benchmark.hpp>
-// #include <catch2/catch_template_test_macros.hpp>
-// #include <catch2/catch_test_macros.hpp>
+#include <catch2/benchmark/catch_benchmark.hpp>
+#include <catch2/catch_template_test_macros.hpp>
+#include <catch2/catch_test_macros.hpp>
 
-// #include "libfork/schedule.hpp"
+#include "libfork/algorithm/fold.hpp"
 
-// #include "libfork/algorithm/fold.hpp"
+#include "libfork/core.hpp"
+#include "libfork/schedule.hpp"
 
-// // NOLINTBEGIN No linting in tests
+// NOLINTBEGIN No linting in tests
 
-// using namespace lf;
+using namespace lf;
 
-// TEMPLATE_TEST_CASE("fold", "[algorithm][template]", std::vector<int>) {
+namespace {
 
-//   TestType v;
+template <typename T>
+auto make_scheduler() -> T {
+  if constexpr (std::constructible_from<T, std::size_t>) {
+    return T{std::min(4U, std::thread::hardware_concurrency())};
+  } else {
+    return T{};
+  }
+}
 
-//   constexpr int n = 10'000;
+template <typename F>
+auto doubler(F fun) {
+  return [fun]<class T>(auto /* unused */, T x) -> task<T> {
+    co_return 2 * co_await lf::just(fun)(std::forward<T>(x));
+  };
+}
 
-//   for (auto i = 1; i <= n; i++) {
-//     v.push_back(i);
-//   }
+template <typename Sch, typename F, typename Proj = std::identity>
+void test(Sch &&sch, F sum, Proj proj = {}) {
+  //
 
-//   constexpr int correct = n * (n + 1) / 2;
+  std::span<int> oops;
 
-//   lf::lazy_pool pool{};
+  // Empty cases
+  REQUIRE(lf::sync_wait(sch, lf::fold, oops, sum, proj) == std::nullopt);
+  REQUIRE(lf::sync_wait(sch, lf::fold, oops.begin(), oops.end(), sum, proj) == std::nullopt);
+  REQUIRE(lf::sync_wait(sch, lf::fold, oops, 10, sum, proj) == std::nullopt);
+  REQUIRE(lf::sync_wait(sch, lf::fold, oops.begin(), oops.end(), 10, sum, proj) == std::nullopt);
 
-//   auto times_2 = [](auto x) {
-//     return 2 * x;
-//   };
+  std::vector<int> v;
 
-//   // --------------- First regular function --------------- //
+  constexpr int n = 10'000;
 
-//   {
-//     auto fun = std::plus<>{};
+  for (auto i = 1; i <= n; i++) {
+    v.push_back(i);
+  }
 
-//     //   Check grain = 1 case:
-//     REQUIRE(lf::sync_wait(pool, lf::fold, v, fun) == correct);
+  constexpr int correct = n * (n + 1) / 2;
 
-//     // Check grain > 1 and n % grain == 0 case:
-//     REQUIRE(v.size() % 100 == 0);
-//     REQUIRE(lf::sync_wait(pool, lf::fold, v, 100, fun) == correct);
+  //   Check grain = 1 case:
+  REQUIRE(lf::sync_wait(sch, lf::fold, v, sum, proj) == correct);
+  REQUIRE(lf::sync_wait(sch, lf::fold, v.begin(), v.end(), sum, proj) == correct);
+  REQUIRE(lf::sync_wait(sch, lf::fold, v, sum, doubler(proj)) == 2 * correct);
+  REQUIRE(lf::sync_wait(sch, lf::fold, v.begin(), v.end(), sum, doubler(proj)) == 2 * correct);
 
-//     // Check grain > 1 and n % grain != 0 case:
-//     REQUIRE(v.size() % 300 != 0);
-//     REQUIRE(lf::sync_wait(pool, lf::fold, v, 300, fun) == correct);
+  for (auto m : {100, 300, 20'000}) {
+    REQUIRE(lf::sync_wait(sch, lf::fold, v, m, sum, proj) == correct);
+    REQUIRE(lf::sync_wait(sch, lf::fold, v.begin(), v.end(), m, sum, proj) == correct);
+    REQUIRE(lf::sync_wait(sch, lf::fold, v, m, sum, doubler(proj)) == 2 * correct);
+    REQUIRE(lf::sync_wait(sch, lf::fold, v.begin(), v.end(), m, sum, doubler(proj)) == 2 * correct);
+  }
 
-//     // Check grain > size case:
-//     REQUIRE(v.size() < 20'000);
-//     REQUIRE(lf::sync_wait(pool, lf::fold, v, 20'000, fun) == correct);
+#ifndef _MSC_VER
 
-//     // ----- With projection ---- //
+  // ----------- Now with small inputs ----------- //
 
-//     REQUIRE(lf::sync_wait(pool, lf::fold, v, fun, times_2) == 2 * correct);
+  REQUIRE(lf::sync_wait(sch, fold, std::span(v.data(), 4), sum, proj) == 4 * (4 + 1) / 2);
+  REQUIRE(lf::sync_wait(sch, fold, std::span(v.data(), 3), sum, proj) == 3 * (3 + 1) / 2);
+  REQUIRE(lf::sync_wait(sch, fold, std::span(v.data(), 2), sum, proj) == 2 * (2 + 1) / 2);
+  REQUIRE(lf::sync_wait(sch, fold, std::span(v.data(), 1), sum, proj) == 1 * (1 + 1) / 2);
 
-//     REQUIRE(lf::sync_wait(pool, lf::fold, v, 300, fun, times_2) == 2 * correct);
-//   }
+#endif
+}
 
-//   // --------------- Now async + mixed--------------- //
+constexpr auto sum_reg = std::plus<>{};
 
-//   {
+constexpr auto sum_coro = [](auto, auto const a, auto const b) -> task<decltype(a + b)> {
+  co_return a + b;
+};
 
-//     async fun = [](auto, auto a, auto b) -> task<long> {
-//       co_return a + b;
-//     };
+constexpr auto coro_identity = []<typename T>(auto, T &&val) -> task<T &&> {
+  co_return std::forward<T>(val);
+};
 
-//     //   Check grain = 1 case:
-//     REQUIRE(lf::sync_wait(pool, lf::fold, v, fun) == correct);
+} // namespace
 
-//     // Check grain > 1 and n % grain == 0 case:
-//     REQUIRE(v.size() % 100 == 0);
-//     REQUIRE(lf::sync_wait(pool, lf::fold, v, 100, fun) == correct);
+TEMPLATE_TEST_CASE("fold (reg, reg)", "[algorithm][template]", unit_pool, busy_pool, lazy_pool) {
+  test(make_scheduler<TestType>(), sum_reg);
+}
 
-//     // Check grain > 1 and n % grain != 0 case:
-//     REQUIRE(v.size() % 300 != 0);
-//     REQUIRE(lf::sync_wait(pool, lf::fold, v, 300, fun) == correct);
+TEMPLATE_TEST_CASE("fold (co, reg)", "[algorithm][template]", unit_pool, busy_pool, lazy_pool) {
+  test(make_scheduler<TestType>(), sum_coro);
+}
 
-//     // Check grain > size case:
-//     REQUIRE(v.size() < 20'000);
-//     REQUIRE(lf::sync_wait(pool, lf::fold, v, 20'000, fun) == correct);
+TEMPLATE_TEST_CASE("fold (reg, co)", "[algorithm][template]", unit_pool, busy_pool, lazy_pool) {
+  test(make_scheduler<TestType>(), sum_reg, coro_identity);
+}
 
-//     // ----- With projection ---- //
-
-//     REQUIRE(lf::sync_wait(pool, lf::fold, v, fun, times_2) == 2 * correct);
-
-//     REQUIRE(lf::sync_wait(pool, lf::fold, v, 300, fun, times_2) == 2 * correct);
-//   }
-
-//   // ----------- Now with small inputs ----------- //
-
-//   REQUIRE(lf::sync_wait(pool, fold, std::span(v.data(), 4), std::plus<>{}) == 4 * (4 + 1) / 2);
-//   REQUIRE(lf::sync_wait(pool, fold, std::span(v.data(), 3), std::plus<>{}) == 3 * (3 + 1) / 2);
-//   REQUIRE(lf::sync_wait(pool, fold, std::span(v.data(), 2), std::plus<>{}) == 2 * (2 + 1) / 2);
-//   REQUIRE(lf::sync_wait(pool, fold, std::span(v.data(), 1), std::plus<>{}) == 1 * (1 + 1) / 2);
-//   // REQUIRE(!lf::sync_wait(pool, fold, std::span(v.data(), 0), std::plus<>{}));
-
-//   // ------------------ with large n ------------------ //
-// }
+TEMPLATE_TEST_CASE("fold (co, co)", "[algorithm][template]", unit_pool, busy_pool, lazy_pool) {
+  test(make_scheduler<TestType>(), sum_coro, coro_identity);
+}

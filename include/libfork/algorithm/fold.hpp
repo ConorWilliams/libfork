@@ -1,260 +1,256 @@
-// #ifndef B29F7CE3_05ED_4A3D_A464_CBA0454226F0
-// #define B29F7CE3_05ED_4A3D_A464_CBA0454226F0
+#ifndef B29F7CE3_05ED_4A3D_A464_CBA0454226F0
+#define B29F7CE3_05ED_4A3D_A464_CBA0454226F0
 
-// // Copyright © Conor Williams <conorwilliams@outlook.com>
+// Copyright © Conor Williams <conorwilliams@outlook.com>
 
-// // SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MPL-2.0
 
-// // This Source Code Form is subject to the terms of the Mozilla Public
-// // License, v. 2.0. If a copy of the MPL was not distributed with this
-// // file, You can obtain one at https://mozilla.org/MPL/2.0/.
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-// #include <concepts>
-// #include <functional>
-// #include <iterator>
-// #include <numeric>
-// #include <optional>
-// #include <ranges>
-// #include <type_traits>
+#include <concepts>
+#include <functional>
+#include <iterator>
+#include <numeric>
+#include <optional>
+#include <ranges>
+#include <type_traits>
 
-// #include "libfork/algorithm/concepts.hpp"
+#include "libfork/algorithm/constraints.hpp"
+#include "libfork/core/control_flow.hpp"
+#include "libfork/core/eventually.hpp"
+#include "libfork/core/just.hpp"
 
-// /**
-//  * @file fold.hpp
-//  *
-//  * @brief A parallel adaptation of the `std::fold_[...]` family.
-//  */
+/**
+ * @file fold.hpp
+ *
+ * @brief A parallel adaptation of the `std::fold_[...]` family.
+ */
 
-// namespace lf {
+namespace lf {
 
-// namespace impl {
+namespace impl {
 
-// namespace detail {
+namespace detail {
 
-// struct fold_overload_impl {
-//   /**
-//    * @brief Recursive implementation of `fold`, requires that `tail - head > 0`.
-//    */
-//   template <std::random_access_iterator I,
-//             std::sized_sentinel_for<I> S,
-//             class Proj = std::identity,
-//             indirectly_foldable<std::projected<I, Proj>> Bop>
-//   LF_STATIC_CALL auto operator()(auto fold, //
-//                                  I head,
-//                                  S tail,
-//                                  std::iter_difference_t<I> n,
-//                                  Bop bop,
-//                                  Proj proj = {}) LF_STATIC_CONST->lf::task<indirect_result_t<Bop, I, I>> {
+template <class Bop, std::random_access_iterator I, class Proj>
+  requires indirectly_foldable<Bop, projected<I, Proj>>
+using indirect_fold_acc_t = std::decay_t<semigroup_t<Bop &, std::iter_reference_t<projected<I, Proj>>>>;
 
-//     LF_ASSERT(n > 3);
+template <std::random_access_iterator I,
+          std::sized_sentinel_for<I> S,
+          class Proj,
+          indirectly_foldable<projected<I, Proj>> Bop>
+struct fold_overload_impl {
 
-//     std::iter_difference_t<I> len = tail - head;
+  using acc = indirect_fold_acc_t<Bop, I, Proj>;
+  using difference_t = std::iter_difference_t<I>;
 
-//     LF_ASSERT(len > 0);
+  static constexpr bool async_bop = !std::invocable<Bop &, acc, std::iter_reference_t<projected<I, Proj>>>;
 
-//     using acc_t = indirect_result_t<Bop, I, I>;
+  /**
+   * @brief Recursive implementation of `fold`, requires that `tail - head > 0`.
+   */
+  LF_STATIC_CALL auto
+  operator()(auto fold, I head, S tail, difference_t n, Bop bop, Proj proj) LF_STATIC_CONST->lf::task<acc> {
 
-//     if (len <= n) {
-//       acc_t acc(std::invoke(proj, *head));
+    LF_ASSERT(n > 1);
 
-//       for (++head; head != tail; ++head) {
-//         if constexpr (async_fn<Bop>) {
-//           co_await call(acc, bop)(std::move(acc), std::invoke(proj, *head));
-//         } else {
-//           acc = std::invoke(bop, std::move(acc), std::invoke(proj, *head));
-//         }
-//       }
-//       co_return acc;
-//     }
+    difference_t len = tail - head;
 
-//     auto mid = head + (len / 2);
+    LF_ASSERT(len > 0);
 
-//     eventually<acc_t> lhs;
-//     eventually<acc_t> rhs;
+    if (len <= n) {
 
-//     co_await lf::fork(lhs, fold)(head, mid, n, bop, proj);
-//     co_await lf::call(rhs, fold)(mid, tail, n, bop, proj);
+      auto init = acc(co_await just(proj)(*head)); // Require convertible to U
 
-//     co_await lf::join;
+      for (++head; head != tail; ++head) {
 
-//     if constexpr (async_fn<Bop>) {
-//       co_return co_await std::invoke(bop, std::move(*lhs), std::move(*rhs));
-//     } else {
-//       co_return std::invoke(bop, std::move(*lhs), std::move(*rhs));
-//     }
-//   }
+        // Assignability to U.
 
-//   /**
-//    * @brief Recursive implementation of `fold` for `n <= 3`, requires that `tail - head > 1`.
-//    *
-//    * You cannot parallelize a chunk smaller than or equal to size three, for example, `a + b + c`
-//    * requires `a + b` to be evaluated before adding the result to `c`.
-//    */
-//   template <std::random_access_iterator I,
-//             std::sized_sentinel_for<I> S,
-//             class Proj = std::identity,
-//             indirectly_foldable<std::projected<I, Proj>> Bop>
-//   LF_STATIC_CALL auto operator()(auto fold, //
-//                                  I head,
-//                                  S tail,
-//                                  Bop bop,
-//                                  Proj proj = {}) LF_STATIC_CONST->lf::task<indirect_result_t<Bop, I, I>> {
+        if constexpr (async_bop) {
+          co_await call(&init, bop)(std::move(init), co_await just(proj)(*head));
+          co_await rethrow_if_exception;
+        } else {
+          init = std::invoke(bop, std::move(init), co_await just(proj)(*head));
+        }
+      }
 
-//     std::iter_difference_t<I> len = tail - head;
+      co_return std::move(init);
+    }
 
-//     LF_ASSERT(len > 0);
+    auto mid = head + (len / 2);
 
-//     using acc_t = indirect_result_t<Bop, I, I>;
+    LF_ASSERT(mid - head > 0);
+    LF_ASSERT(tail - mid > 0);
 
-//     switch (len) {
-//       case 0:
-//       case 1:
-//         LF_ASSERT(false && "Unreachable");
-//       case 2: {
-//         I lhs = head;
-//         I rhs = head + 1;
+    eventually<acc> lhs;
+    eventually<acc> rhs;
 
-//         if constexpr (async_fn<Bop>) {
-//           co_return co_await std::invoke(bop, std::invoke(proj, *lhs), std::invoke(proj, *rhs));
-//         } else {
-//           co_return std::invoke(bop, std::invoke(proj, *lhs), std::invoke(proj, *rhs));
-//         }
-//       }
-//       case 3: {
-//         auto mid = head + (len / 2);
+    co_await lf::fork(&lhs, fold)(head, mid, n, bop, proj);
+    co_await lf::call(&rhs, fold)(mid, tail, n, bop, proj);
 
-//         I l_lhs = head;
-//         I l_rhs = head + 1;
+    co_await lf::join;
 
-//         I rhs = head + 2;
+    co_return co_await just(std::move(bop))( //
+        *std::move(lhs),                     //
+        *std::move(rhs)                      //
+    );                                       //
+  }
 
-//         if constexpr (async_fn<Bop>) {
-//           eventually<acc_t> lhs;
-//           co_await lf::call(lhs, bop)(std::invoke(proj, *l_lhs), std::invoke(proj, *l_rhs));
-//           co_return co_await std::invoke(bop, std::move(*lhs), std::invoke(proj, *rhs));
-//         } else {
-//           acc_t lhs = std::invoke(bop, std::invoke(proj, *l_lhs), std::invoke(proj, *l_rhs));
-//           co_return std::invoke(bop, std::move(lhs), std::invoke(proj, *rhs));
-//         }
-//       }
-//       default:
-//         auto mid = head + (len / 2);
+  /**
+   * @brief Recursive implementation of `fold` for `n = 1`, requires that `tail - head > 1`.
+   *
+   * You cannot parallelize a chunk smaller than or equal to size three, for example, `a + b + c`
+   * requires `a + b` to be evaluated before adding the result to `c`.
+   */
+  LF_STATIC_CALL auto
+  operator()(auto fold, I head, S tail, Bop bop, Proj proj) LF_STATIC_CONST->lf::task<acc> {
 
-//         eventually<acc_t> lhs;
-//         eventually<acc_t> rhs;
+    difference_t len = tail - head;
 
-//         co_await lf::fork(lhs, fold)(head, mid, bop, proj);
-//         co_await lf::call(rhs, fold)(mid, tail, bop, proj);
+    LF_ASSERT(len >= 0);
 
-//         co_await lf::join;
+    switch (len) {
+      case 0:
+        LF_ASSERT(false && "Unreachable");
+      case 1:
+        co_return co_await lf::just(std::move(proj))(*head);
+      default:
+        auto mid = head + (len / 2);
 
-//         if constexpr (async_fn<Bop>) {
-//           co_return co_await std::invoke(bop, std::move(*lhs), std::move(*rhs));
-//         } else {
-//           co_return std::invoke(bop, std::move(*lhs), std::move(*rhs));
-//         }
-//     }
-//   }
-// };
+        LF_ASSERT(mid - head > 0);
+        LF_ASSERT(tail - mid > 0);
 
-// inline constexpr async fold_impl = fold_overload_impl{};
+        eventually<acc> lhs;
+        eventually<acc> rhs;
 
-// } // namespace detail
+        co_await lf::fork(&lhs, fold)(head, mid, bop, proj);
+        co_await lf::call(&rhs, fold)(mid, tail, bop, proj);
 
-// struct fold_overload {
-//   /**
-//    * @brief Recursive implementation of `fold` for `n = 1` case.
-//    */
-//   template <std::random_access_iterator I,
-//             std::sized_sentinel_for<I> S,
-//             class Proj = std::identity,
-//             indirectly_foldable<std::projected<I, Proj>> Bop>
-//   LF_STATIC_CALL auto operator()(auto, I head, S tail, Bop bop, Proj proj = {})
-//       LF_STATIC_CONST->lf::task<std::optional<indirect_result_t<Bop, I, I>>> {
+        co_await lf::join;
 
-//     auto len = tail - head;
+        co_return co_await just(std::move(bop))( //
+            *std::move(lhs),                     //
+            *std::move(rhs)                      //
+        );                                       //
+    }
+  }
+};
 
-//     LF_ASSERT(len >= 0);
+} // namespace detail
 
-//     switch (len) {
-//       case 0:
-//         co_return std::nullopt;
-//       case 1:
-//         co_return std::invoke(proj, *head);
-//       default:
-//         co_return co_await detail::fold_impl(head, tail, bop, proj);
-//     }
-//   }
+struct fold_overload {
+  /**
+   * @brief Recursive implementation of `fold` for `n = 1` case.
+   */
+  template <std::random_access_iterator I,
+            std::sized_sentinel_for<I> S,
+            class Proj = std::identity,
+            indirectly_foldable<projected<I, Proj>> Bop>
+  LF_STATIC_CALL auto operator()(auto /* unused */, I head, S tail, Bop bop, Proj proj = {})
+      LF_STATIC_CONST->lf::task<std::optional<detail::indirect_fold_acc_t<Bop, I, Proj>>> {
 
-//   /**
-//    * @brief Recursive implementation of `fold`.
-//    *
-//    * This will dispatch to the `n = 1` case if `n <= 3`.
-//    */
-//   template <std::random_access_iterator I,
-//             std::sized_sentinel_for<I> S,
-//             class Proj = std::identity,
-//             indirectly_foldable<std::projected<I, Proj>> Bop>
-//   LF_STATIC_CALL auto operator()(auto, I head, S tail, std::iter_difference_t<I> n, Bop bop, Proj proj =
-//   {})
-//       LF_STATIC_CONST->lf::task<std::optional<indirect_result_t<Bop, I, I>>> {
+    if (head == tail) {
+      co_return std::nullopt;
+    }
 
-//     auto len = tail - head;
+    co_return co_await lf::just(detail::fold_overload_impl<I, S, Proj, Bop>{})(
+        std::move(head), std::move(tail), std::move(bop), std::move(proj) //
+    );
+  }
 
-//     LF_ASSERT(len >= 0);
+  /**
+   * @brief Recursive implementation of `fold`.
+   *
+   * This will dispatch to the `n = 1` case if `n <= 3`.
+   */
+  template <std::random_access_iterator I,
+            std::sized_sentinel_for<I> S,
+            class Proj = std::identity,
+            indirectly_foldable<projected<I, Proj>> Bop>
+  LF_STATIC_CALL auto
+  operator()(auto /* unused */, I head, S tail, std::iter_difference_t<I> n, Bop bop, Proj proj = {})
+      LF_STATIC_CONST->lf::task<std::optional<detail::indirect_fold_acc_t<Bop, I, Proj>>> {
 
-//     switch (len) {
-//       case 0:
-//         co_return std::nullopt;
-//       case 1:
-//         co_return std::invoke(proj, *head);
-//       default:
-//         LF_ASSERT(n >= 0);
+    if (head == tail) {
+      co_return std::nullopt;
+    }
 
-//         if (n <= 3) {
-//           co_return co_await detail::fold_impl(head, tail, bop, proj);
-//         } else {
-//           co_return co_await detail::fold_impl(head, tail, n, bop, proj);
-//         }
-//     }
-//   }
+    if (n == 1) {
+      co_return co_await lf::just(detail::fold_overload_impl<I, S, Proj, Bop>{})(
+          std::move(head), std::move(tail), std::move(bop), std::move(proj) //
+      );
+    }
 
-//   /**
-//    * @brief Range version, dispatches to the iterator version.
-//    */
-//   template <std::ranges::random_access_range Range,
-//             class Proj = std::identity,
-//             indirectly_foldable<std::projected<std::ranges::iterator_t<Range>, Proj>> Bop>
-//     requires std::ranges::sized_range<Range>
-//   LF_STATIC_CALL auto
-//   operator()(auto fold, Range &&range, std::ranges::range_difference_t<Range> n, Bop bop, Proj proj = {})
-//       LF_STATIC_CONST->lf::task<std::optional<
-//           indirect_result_t<Bop, std::ranges::iterator_t<Range>, std::ranges::iterator_t<Range>>>> {
-//     co_return co_await fold(std::ranges::begin(range), std::ranges::end(range), n, bop, proj);
-//   }
+    co_return co_await lf::just(detail::fold_overload_impl<I, S, Proj, Bop>{})(
+        std::move(head), std::move(tail), n, std::move(bop), std::move(proj) //
+    );
+  }
 
-//   /**
-//    * @brief Range version, dispatches to the iterator version.
-//    */
-//   template <std::ranges::random_access_range Range,
-//             class Proj = std::identity,
-//             indirectly_foldable<std::projected<std::ranges::iterator_t<Range>, Proj>> Bop>
-//     requires std::ranges::sized_range<Range>
-//   LF_STATIC_CALL auto operator()(auto fold, Range &&range, Bop bop, Proj proj = {})
-//   LF_STATIC_CONST->lf::task<
-//       std::optional<indirect_result_t<Bop, std::ranges::iterator_t<Range>,
-//       std::ranges::iterator_t<Range>>>> {
-//     co_return co_await fold(std::ranges::begin(range), std::ranges::end(range), bop, proj);
-//   }
-// };
+  /**
+   * @brief Range version.
+   */
+  template <std::ranges::random_access_range Range,
+            class Proj = std::identity,
+            indirectly_foldable<projected<std::ranges::iterator_t<Range>, Proj>> Bop>
+    requires std::ranges::sized_range<Range>
+  LF_STATIC_CALL auto operator()(auto /* unused */, Range &&range, Bop bop, Proj proj = {}) LF_STATIC_CONST
+      ->lf::task<std::optional<detail::indirect_fold_acc_t<Bop, std::ranges::iterator_t<Range>, Proj>>> {
 
-// } // namespace impl
+    if (std::ranges::empty(range)) {
+      co_return std::nullopt;
+    }
 
-// /**
-//  * @brief Apply a binary operation to the elements of a range in parallel.
-//  */
-// inline constexpr async fold = impl::fold_overload{};
+    using I = std::decay_t<decltype(std::ranges::begin(range))>;
+    using S = std::decay_t<decltype(std::ranges::end(range))>;
 
-// } // namespace lf
+    co_return co_await lf::just(detail::fold_overload_impl<I, S, Proj, Bop>{})(
+        std::ranges::begin(range), std::ranges::end(range), std::move(bop), std::move(proj) //
+    );
+  }
 
-// #endif /* B29F7CE3_05ED_4A3D_A464_CBA0454226F0 */
+  /**
+   * @brief Range version.
+   */
+  template <std::ranges::random_access_range Range,
+            class Proj = std::identity,
+            indirectly_foldable<projected<std::ranges::iterator_t<Range>, Proj>> Bop>
+    requires std::ranges::sized_range<Range>
+  LF_STATIC_CALL auto operator()(auto /* unused */,
+                                 Range &&range,
+                                 std::ranges::range_difference_t<Range> n,
+                                 Bop bop,
+                                 Proj proj = {}) LF_STATIC_CONST
+      ->lf::task<std::optional<detail::indirect_fold_acc_t<Bop, std::ranges::iterator_t<Range>, Proj>>> {
+
+    if (std::ranges::empty(range)) {
+      co_return std::nullopt;
+    }
+
+    using I = std::decay_t<decltype(std::ranges::begin(range))>;
+    using S = std::decay_t<decltype(std::ranges::end(range))>;
+
+    if (n == 1) {
+      co_return co_await lf::just(detail::fold_overload_impl<I, S, Proj, Bop>{})(
+          std::ranges::begin(range), std::ranges::end(range), std::move(bop), std::move(proj) //
+      );
+    }
+
+    co_return co_await lf::just(detail::fold_overload_impl<I, S, Proj, Bop>{})(
+        std::ranges::begin(range), std::ranges::end(range), n, std::move(bop), std::move(proj) //
+    );
+  }
+};
+
+} // namespace impl
+
+/**
+ * @brief Apply a binary operation to the elements of a range in parallel.
+ */
+inline constexpr impl::fold_overload fold = {};
+
+} // namespace lf
+
+#endif /* B29F7CE3_05ED_4A3D_A464_CBA0454226F0 */
