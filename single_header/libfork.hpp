@@ -2900,10 +2900,10 @@ concept quasi_pointer = std::default_initializable<I> && std::movable<I> && dere
  * an iterator/legacy-pointer.
  */
 template <typename F>
-concept async_function_object =                     //
-    std::is_class_v<std::remove_cvref_t<F>> &&      //
-    std::copy_constructible<F> &&                   //
-    std::convertible_to<F, std::remove_cvref_t<F>>; //
+concept async_function_object =                        //
+    std::is_class_v<std::remove_cvref_t<F>> &&         // Only classes can have templated operator().
+    std::copy_constructible<std::remove_cvref_t<F>> && // Must be able to copy/move a value.
+    std::convertible_to<F, std::remove_cvref_t<F>>;    // Must be able to convert to a value.
 
 /**
  * @brief This describes the public-API of the first argument passed to an async function.
@@ -3789,6 +3789,15 @@ concept forkable = callable<F, Args...> && async_tag_invocable<impl::discard_t, 
 template <typename F, typename... Args>
 concept async_invocable = forkable<F, Args...> && rootable<F, Args...>;
 
+/**
+ * @brief Test if an async function is `lf::core::forkable` and `lf::core::rootable`, subsumes both.
+ *
+ * The `async_regular_invocable` concept adds to the `async_invocable` concept by requiring the invoke
+ * expression to be equality-preserving and not modify either the function object or the arguments.
+ */
+template <typename F, typename... Args>
+concept async_regular_invocable = forkable<F, Args...> && rootable<F, Args...>;
+
 // --------- //
 
 /**
@@ -3918,10 +3927,16 @@ auto combinate(I &&ret, first_arg_t<OtherI, OtherTag, F, Args...> arg) -> y_comb
 namespace lf {
 
 namespace impl {
+
 /**
  * @brief A empty tag type used to disambiguate a join.
  */
 struct join_type {};
+
+/**
+ * @brief A empty tag type that forces a rethrow of an exception.
+ */
+struct rethrow_if_exception_type {};
 
 } // namespace impl
 
@@ -3946,6 +3961,13 @@ inline constexpr impl::join_type join = {};
 } // namespace core
 
 namespace impl {
+
+/**
+ * @brief An awaitable (in a `lf::task`) that triggers a rethrow of the internal exception (if any).
+ *
+ * This is designed for use in combination with `lf::call` when you are not inside a fork-join scope.
+ */
+inline constexpr impl::rethrow_if_exception_type rethrow_if_exception = {};
 
 /**
  * @brief An invocable (and subscriptable) wrapper that binds a return address to an asynchronous function.
@@ -5232,6 +5254,16 @@ struct promise_base : frame {
    * @brief Get a join awaitable.
    */
   auto await_transform(join_type /*unused*/) noexcept -> join_awaitable { return {this}; }
+
+  // -------------------------------------------------------------- //
+
+  /**
+   * @brief Rethrow the internal exception if there is one.
+   */
+  auto await_transform(rethrow_if_exception_type /*unused*/) -> std::suspend_never {
+    this->rethrow_if_exception();
+    return {};
+  }
 
   // -------------------------------------------------------------- //
 

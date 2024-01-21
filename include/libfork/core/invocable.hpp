@@ -247,6 +247,15 @@ concept forkable = callable<F, Args...> && async_tag_invocable<impl::discard_t, 
 template <typename F, typename... Args>
 concept async_invocable = forkable<F, Args...> && rootable<F, Args...>;
 
+/**
+ * @brief Test if an async function is `lf::core::forkable` and `lf::core::rootable`, subsumes both.
+ *
+ * The `async_regular_invocable` concept adds to the `async_invocable` concept by requiring the invoke
+ * expression to be equality-preserving and not modify either the function object or the arguments.
+ */
+template <typename F, typename... Args>
+concept async_regular_invocable = forkable<F, Args...> && rootable<F, Args...>;
+
 // --------- //
 
 /**

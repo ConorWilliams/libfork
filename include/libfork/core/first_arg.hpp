@@ -63,10 +63,10 @@ concept quasi_pointer = std::default_initializable<I> && std::movable<I> && dere
  * an iterator/legacy-pointer.
  */
 template <typename F>
-concept async_function_object =                     //
-    std::is_class_v<std::remove_cvref_t<F>> &&      //
-    std::copy_constructible<F> &&                   //
-    std::convertible_to<F, std::remove_cvref_t<F>>; //
+concept async_function_object =                        //
+    std::is_class_v<std::remove_cvref_t<F>> &&         // Only classes can have templated operator().
+    std::copy_constructible<std::remove_cvref_t<F>> && // Must be able to copy/move a value.
+    std::convertible_to<F, std::remove_cvref_t<F>>;    // Must be able to convert to a value.
 
 /**
  * @brief This describes the public-API of the first argument passed to an async function.
