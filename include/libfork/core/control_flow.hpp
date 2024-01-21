@@ -28,10 +28,16 @@
 namespace lf {
 
 namespace impl {
+
 /**
  * @brief A empty tag type used to disambiguate a join.
  */
 struct join_type {};
+
+/**
+ * @brief A empty tag type that forces a rethrow of an exception.
+ */
+struct rethrow_if_exception_type {};
 
 } // namespace impl
 
@@ -56,6 +62,13 @@ inline constexpr impl::join_type join = {};
 } // namespace core
 
 namespace impl {
+
+/**
+ * @brief An awaitable (in a `lf::task`) that triggers a rethrow of the internal exception (if any).
+ *
+ * This is designed for use in combination with `lf::call` when you are not inside a fork-join scope.
+ */
+inline constexpr impl::rethrow_if_exception_type rethrow_if_exception = {};
 
 /**
  * @brief An invocable (and subscriptable) wrapper that binds a return address to an asynchronous function.

@@ -207,6 +207,16 @@ struct promise_base : frame {
   // -------------------------------------------------------------- //
 
   /**
+   * @brief Rethrow the internal exception if there is one.
+   */
+  auto await_transform(rethrow_if_exception_type /*unused*/) -> std::suspend_never {
+    this->rethrow_if_exception();
+    return {};
+  }
+
+  // -------------------------------------------------------------- //
+
+  /**
    * @brief Transform a call packet into a call awaitable.
    */
   template <returnable R2, return_address_for<R2> I2, tag Tg>
