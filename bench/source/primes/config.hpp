@@ -2,6 +2,7 @@
 #define C39D8802_9977_423A_88EB_5816761ED5A8
 
 inline constexpr int primes_lim = 10'000'000;
+inline constexpr int primes_chunk = 10;
 
 /**
  * @brief See https://en.wikipedia.org/wiki/Primality_test

@@ -3,6 +3,7 @@
 #include <benchmark/benchmark.h>
 
 #include <libfork.hpp>
+#include <ranges>
 
 #include "../util.hpp"
 #include "config.hpp"
@@ -14,8 +15,9 @@ namespace {
 template <lf::scheduler Sch, lf::numa_strategy Strategy>
 void primes_libfork(benchmark::State &state) {
 
-  state.counters["green_threads"] = state.range(0);
+  state.counters["green_threads"] = static_cast<double>(state.range(0));
   state.counters["primes(n)"] = primes_lim;
+  state.counters["primes_chunk"] = primes_chunk;
 
   Sch sch = [&] {
     if constexpr (std::constructible_from<Sch, int>) {
@@ -29,7 +31,12 @@ void primes_libfork(benchmark::State &state) {
   volatile int output = 0;
 
   for (auto _ : state) {
-    output = *lf::sync_wait(sch, lf::fold, std::ranges::views::iota(1, secret), 10, std::plus<>{}, is_prime);
+
+    auto iota = std::ranges::views::iota(1, secret);
+
+    output = *lf::sync_wait(
+        sch, lf::fold, std::ranges::views::reverse(iota), primes_chunk, std::plus<>{}, is_prime //
+    );
   }
 }
 
