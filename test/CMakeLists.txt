@@ -5,7 +5,10 @@ project(libforkTests LANGUAGES CXX)
 include(../cmake/project-is-top-level.cmake)
 include(../cmake/folders.cmake)
 
+
+
 if(PROJECT_IS_TOP_LEVEL)
+  find_package(Threads REQUIRED)
   find_package(libfork REQUIRED)
   enable_testing()
 endif()
@@ -13,7 +16,7 @@ endif()
 # ----- Single header -----
 
 add_executable(libfork_test_single_header ${CMAKE_CURRENT_SOURCE_DIR}/single_header/main.cpp)
-target_link_libraries(libfork_test_single_header)
+target_link_libraries(libfork_test_single_header PRIVATE libfork::libfork)
 
 
 # ---- Dependencies ----
