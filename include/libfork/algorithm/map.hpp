@@ -10,10 +10,10 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <functional> // for identity
-#include <iterator>   // for iter_difference_t, random_access_iterator
-#include <ranges>     // for begin, end, iterator_t, random_access_range
+#include <iterator>   // for random_access_iterator, indirectly_copyable
+#include <ranges>     // for iterator_t, begin, end, random_access_range
 
-#include "libfork/algorithm/constraints.hpp" // for indirectly_unary_invocable, projected
+#include "libfork/algorithm/constraints.hpp" // for projected, indirectly_unary_invocable
 #include "libfork/core/control_flow.hpp"     // for call, fork, join
 #include "libfork/core/just.hpp"             // for just
 #include "libfork/core/macro.hpp"            // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST
@@ -184,8 +184,8 @@ struct map_overload {
  *
  * \endrst
  *
- * This will set each element of `out` to one more tha corresponding element in `v` using a chunk size of
- * ``10``.
+ * This will set each element of `out` to one more than corresponding element in `v` using
+ * a chunk size of ``10``.
  *
  * If the function or projection handed to `map` are async functions, then they will be
  * invoked asynchronously, this allows you to launch further tasks recursively.

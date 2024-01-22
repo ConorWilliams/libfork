@@ -13,6 +13,7 @@
 #include "libfork/algorithm/fold.hpp"
 #include "libfork/algorithm/for_each.hpp"
 #include "libfork/algorithm/lift.hpp"
+#include "libfork/algorithm/map.hpp"
 
 /**
  * @file algorithm.hpp
