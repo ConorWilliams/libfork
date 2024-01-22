@@ -22,6 +22,11 @@ Iteration with ``for_each``
 
 .. doxygenvariable:: lf::for_each
 
+Transformations with ``map``
+----------------------------
+
+.. doxygenvariable:: lf::map
+
 Reductions with ``fold``
 ------------------------
 

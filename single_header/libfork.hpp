@@ -3567,15 +3567,15 @@ namespace lf {
  * @brief Test if "F" is async invocable __xor__ normally invocable with ``Args...``.
  */
 template <typename F, typename... Args>
-concept invocable = (std::invocable<F, Args...> || async_invocable<F, Args...>)&&!(
-    std::invocable<F, Args...> && async_invocable<F, Args...>);
+concept invocable = (std::invocable<F, Args...> || async_invocable<F, Args...>) &&
+                    !(std::invocable<F, Args...> && async_invocable<F, Args...>);
 
 /**
  * @brief Test if "F" is regularly async invocable __xor__ normally invocable invocable with ``Args...``.
  */
 template <typename F, typename... Args>
-concept regular_invocable = (std::regular_invocable<F, Args...> || async_regular_invocable<F, Args...>)&&!(
-    std::regular_invocable<F, Args...> && async_regular_invocable<F, Args...>);
+concept regular_invocable = (std::regular_invocable<F, Args...> || async_regular_invocable<F, Args...>) &&
+                            !(std::regular_invocable<F, Args...> && async_regular_invocable<F, Args...>);
 
 // ------------------------------------  either result type ------------------------------------ //
 
@@ -3620,16 +3620,8 @@ struct indirect_value_impl {
  * @brief Specialization for projected iterators.
  */
 template <typename Proj>
-  requires requires { typename Proj::secret_projected_indirect_value_helper; }
-struct indirect_value_impl<Proj> {
- private:
-  using iter = typename Proj::secret_projected_indirect_value_helper::iterator;
-  using proj = typename Proj::secret_projected_indirect_value_helper::projection;
-
- public:
-  // Recursively drill down to the non-projected iterator.
-  using type = invoke_result_t<proj &, typename indirect_value_impl<iter>::type>;
-};
+  requires requires { typename Proj::secret_projected_indirect_value; }
+struct indirect_value_impl<Proj> : Proj::secret_projected_indirect_value {};
 
 } // namespace detail
 
@@ -3706,28 +3698,71 @@ struct conditional_difference_type<I> {
 
 template <class I, class Proj>
 struct projected_impl {
-  struct adl_barrier : conditional_difference_type<I> {
-
+  /**
+   * @brief An ADL barrier.
+   */
+  struct projected_iterator : conditional_difference_type<I> {
+    /**
+     * @brief The value_type of the projected iterator.
+     */
     using value_type = std::remove_cvref_t<indirect_result_t<Proj &, I>>;
-
-    auto operator*() const -> indirect_result_t<Proj &, I>; // not defined
-
-    struct secret_projected_indirect_value_helper {
-      using iterator = I;
-      using projection = Proj;
+    /**
+     * @brief Not defined.
+     */
+    auto operator*() const -> indirect_result_t<Proj &, I>; ///<
+    /**
+     * @brief For internal use only!
+     */
+    struct secret_projected_indirect_value {
+      using type = invoke_result_t<Proj &, indirect_value_t<I>>;
     };
   };
 };
 
+/**
+ * @brief A variation of `std::projected` that accepts async/regular function.
+ */
+template <std::indirectly_readable I, indirectly_regular_unary_invocable<I> Proj>
+using project_once = typename detail::projected_impl<I, Proj>::projected_iterator;
+
+template <typename...>
+struct compose_projection {};
+
+template <std::indirectly_readable I>
+struct compose_projection<I> : std::type_identity<I> {};
+
+template <std::indirectly_readable I, indirectly_regular_unary_invocable<I> Proj, typename... Other>
+struct compose_projection<I, Proj, Other...> : compose_projection<project_once<I, Proj>, Other...> {};
+
+//
+
+template <typename...>
+struct composable : std::false_type {};
+
+template <std::indirectly_readable I>
+struct composable<I> : std::true_type {};
+
+template <std::indirectly_readable I, indirectly_regular_unary_invocable<I> Proj, typename... Other>
+struct composable<I, Proj, Other...> : composable<project_once<I, Proj>, Other...> {};
+
+template <typename I, typename... Proj>
+concept indirectly_composable = std::indirectly_readable<I> && composable<I, Proj...>::value;
+
 } // namespace detail
 
 /**
- * @brief A variation of `std::projected` that accepts async and regular function.
+ * @brief A variation of `std::projected` that accepts async/regular functions and composes projections.
  */
-template <std::indirectly_readable I, indirectly_regular_unary_invocable<I> Proj>
-using projected = typename detail::projected_impl<I, Proj>::adl_barrier;
+template <std::indirectly_readable I, typename... Proj>
+  requires detail::indirectly_composable<I, Proj...>
+using projected = typename detail::compose_projection<I, Proj...>::type;
 
-// // ---------------------------------- Semigroup  helpers ---------------------------------- //
+// Quick test
+
+static_assert(std::same_as<indirect_value_t<int *>, int &>);
+static_assert(std::same_as<indirect_value_t<projected<int *, int (*)(int &)>>, int>);
+
+// ---------------------------------- Semigroup  helpers ---------------------------------- //
 
 namespace impl {
 
@@ -5088,6 +5123,9 @@ struct fold_overload_impl {
 
 } // namespace detail
 
+/**
+ * @brief Overload set for `lf::fold`.
+ */
 struct fold_overload {
   /**
    * @brief Recursive implementation of `fold` for `n = 1` case.
@@ -5224,15 +5262,15 @@ struct fold_overload {
  *
  * \endrst
  *
- * This test if each element in `v` is even in parallel using a chunk size of ``10`` and return the total
+ * This test if each element in `v` is even in parallel, using a chunk size of ``10``, and returns the total
  * number of even elements.
  *
- * If the binary operator or projection handed to `for_each` are async functions, then they will be
+ * If the binary operator or projection handed to `fold` are async functions, then they will be
  * invoked asynchronously, this allows you to launch further tasks recursively.
  *
- * Unlike `std::ranges::for_each`, this function will make an implementation defined number of copies
- * of the function objects and may invoke these copies concurrently. Hence, it is assumed function
- * objects are cheap to copy.
+ * Unlike the `std::ranges::fold` variations, this function will make an implementation defined number of copies
+ * of the function objects and may invoke these copies concurrently. Hence, it is assumed function objects are 
+ * cheap to copy.
  */
 inline constexpr impl::fold_overload fold = {};
 

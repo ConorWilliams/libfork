@@ -142,6 +142,9 @@ struct fold_overload_impl {
 
 } // namespace detail
 
+/**
+ * @brief Overload set for `lf::fold`.
+ */
 struct fold_overload {
   /**
    * @brief Recursive implementation of `fold` for `n = 1` case.
@@ -278,15 +281,15 @@ struct fold_overload {
  *
  * \endrst
  *
- * This test if each element in `v` is even in parallel using a chunk size of ``10`` and return the total
+ * This test if each element in `v` is even in parallel, using a chunk size of ``10``, and returns the total
  * number of even elements.
  *
- * If the binary operator or projection handed to `for_each` are async functions, then they will be
+ * If the binary operator or projection handed to `fold` are async functions, then they will be
  * invoked asynchronously, this allows you to launch further tasks recursively.
  *
- * Unlike `std::ranges::for_each`, this function will make an implementation defined number of copies
- * of the function objects and may invoke these copies concurrently. Hence, it is assumed function
- * objects are cheap to copy.
+ * Unlike the `std::ranges::fold` variations, this function will make an implementation defined number of copies
+ * of the function objects and may invoke these copies concurrently. Hence, it is assumed function objects are 
+ * cheap to copy.
  */
 inline constexpr impl::fold_overload fold = {};
 
