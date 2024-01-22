@@ -29,12 +29,13 @@ namespace lf {
 
 namespace impl {
 
+/**
+ * @brief Overload set for `lf::for_each`.
+ */
 struct for_each_overload {
 
   /**
    * @brief Divide and conquer implementation.
-   *
-   * This is an efficient implementation for sized random access ranges.
    */
   template <std::random_access_iterator I,
             std::sized_sentinel_for<I> S,
@@ -71,8 +72,6 @@ struct for_each_overload {
 
   /**
    * @brief Divide and conquer n = 1 version.
-   *
-   * This is an efficient implementation for sized random access ranges.
    */
   template <std::random_access_iterator I,
             std::sized_sentinel_for<I> S,
@@ -145,22 +144,34 @@ struct for_each_overload {
  *
  * \rst
  *
+ * Effective call signature:
+ *
+ * .. code ::
+ *
+ *    template <std::random_access_iterator I,
+ *              std::sized_sentinel_for<I> S,
+ *              typename Proj = std::identity,
+ *              indirectly_unary_invocable<projected<I, Proj>> Fun
+ *              >
+ *    auto for_each(I head, S tail, std::iter_difference_t<I> n, Fun fun, Proj proj = {}) -> lf::task<>;
+ *
+ * Overloads exist for a random access range (instead of ``head`` and ``tail``) and ``n`` can be omitted
+ * (which will set ``n = 1``).
+ *
  * Exemplary usage:
  *
  * .. code::
  *
- *    co_await lf::for_each(v, 10, [](auto &elem) {
+ *    co_await just[for_each](v, 10, [](auto &elem) {
  *      elem = 0;
  *    });
  *
  * \endrst
  *
- * This will set each element of `v` to `0` in parallel using a n size of ``10``. The n size is the
- * number of elements each task will process, the n size can be omitted and defaults to ``1``.
+ * This will set each element of `v` to `0` in parallel using a chunk size of ``10``.
  *
- * If the function handed to `for_each` is an ``async`` function, then the function will be called
- * asynchronously, this allows you to launch further tasks recursively. The projection is required
- * to be a regular function.
+ * If the function or projection handed to `for_each` are async functions, then they will be
+ * invoked asynchronously, this allows you to launch further tasks recursively.
  *
  * Unlike `std::ranges::for_each`, this function will make an implementation defined number of copies
  * of the function objects and may invoke these copies concurrently. Hence, it is assumed function

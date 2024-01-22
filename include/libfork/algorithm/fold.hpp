@@ -31,13 +31,16 @@
 
 namespace lf {
 
-namespace impl {
-
-namespace detail {
-
+/**
+ * @brief Compute the accumulator/result type for a fold operation.
+ */
 template <class Bop, std::random_access_iterator I, class Proj>
   requires indirectly_foldable<Bop, projected<I, Proj>>
 using indirect_fold_acc_t = std::decay_t<semigroup_t<Bop &, std::iter_reference_t<projected<I, Proj>>>>;
+
+namespace impl {
+
+namespace detail {
 
 template <std::random_access_iterator I,
           std::sized_sentinel_for<I> S,
@@ -67,9 +70,6 @@ struct fold_overload_impl {
       auto init = acc(co_await just(proj)(*head)); // Require convertible to U
 
       for (++head; head != tail; ++head) {
-
-        // Assignability to U.
-
         if constexpr (async_bop) {
           co_await call(&init, bop)(std::move(init), co_await just(proj)(*head));
           co_await rethrow_if_exception;
@@ -151,7 +151,7 @@ struct fold_overload {
             class Proj = std::identity,
             indirectly_foldable<projected<I, Proj>> Bop>
   LF_STATIC_CALL auto operator()(auto /* unused */, I head, S tail, Bop bop, Proj proj = {})
-      LF_STATIC_CONST->lf::task<std::optional<detail::indirect_fold_acc_t<Bop, I, Proj>>> {
+      LF_STATIC_CONST->lf::task<std::optional<indirect_fold_acc_t<Bop, I, Proj>>> {
 
     if (head == tail) {
       co_return std::nullopt;
@@ -173,7 +173,7 @@ struct fold_overload {
             indirectly_foldable<projected<I, Proj>> Bop>
   LF_STATIC_CALL auto
   operator()(auto /* unused */, I head, S tail, std::iter_difference_t<I> n, Bop bop, Proj proj = {})
-      LF_STATIC_CONST->lf::task<std::optional<detail::indirect_fold_acc_t<Bop, I, Proj>>> {
+      LF_STATIC_CONST->lf::task<std::optional<indirect_fold_acc_t<Bop, I, Proj>>> {
 
     if (head == tail) {
       co_return std::nullopt;
@@ -198,7 +198,7 @@ struct fold_overload {
             indirectly_foldable<projected<std::ranges::iterator_t<Range>, Proj>> Bop>
     requires std::ranges::sized_range<Range>
   LF_STATIC_CALL auto operator()(auto /* unused */, Range &&range, Bop bop, Proj proj = {}) LF_STATIC_CONST
-      ->lf::task<std::optional<detail::indirect_fold_acc_t<Bop, std::ranges::iterator_t<Range>, Proj>>> {
+      ->lf::task<std::optional<indirect_fold_acc_t<Bop, std::ranges::iterator_t<Range>, Proj>>> {
 
     if (std::ranges::empty(range)) {
       co_return std::nullopt;
@@ -224,7 +224,7 @@ struct fold_overload {
                                  std::ranges::range_difference_t<Range> n,
                                  Bop bop,
                                  Proj proj = {}) LF_STATIC_CONST
-      ->lf::task<std::optional<detail::indirect_fold_acc_t<Bop, std::ranges::iterator_t<Range>, Proj>>> {
+      ->lf::task<std::optional<indirect_fold_acc_t<Bop, std::ranges::iterator_t<Range>, Proj>>> {
 
     if (std::ranges::empty(range)) {
       co_return std::nullopt;
@@ -247,10 +247,50 @@ struct fold_overload {
 
 } // namespace impl
 
+// clang-format off
+
 /**
- * @brief Apply a binary operation to the elements of a range in parallel.
+ * @brief A parallel implementation of `std::ranges::fold_left_first`.
+ *
+ * \rst
+ *
+ * Effective call signature:
+ *
+ * .. code ::
+ *
+ *    template <std::random_access_iterator I,
+ *              std::sized_sentinel_for<I> S,
+ *              typename Proj = std::identity,
+ *              indirectly_foldable<projected<I, Proj>> Bop
+ *              >
+ *    auto fold(I head, S tail, std::iter_difference_t<I> n, Bop bop, Proj proj = {}) -> lf::task<indirect_fold_acc_t<Bop, I, Proj>>;
+ *
+ * Overloads exist for a random access range (instead of ``head`` and ``tail``) and ``n`` can be omitted
+ * (which will set ``n = 1``).
+ *
+ * Exemplary usage:
+ *
+ * .. code::
+ *
+ *    co_await just[fold](v, 10, std::plus<>{}, [](auto &elem) -> std::size_t {
+ *      return elem % 2 == 0;
+ *    });
+ *
+ * \endrst
+ *
+ * This test if each element in `v` is even in parallel using a chunk size of ``10`` and return the total
+ * number of even elements.
+ *
+ * If the binary operator or projection handed to `for_each` are async functions, then they will be
+ * invoked asynchronously, this allows you to launch further tasks recursively.
+ *
+ * Unlike `std::ranges::for_each`, this function will make an implementation defined number of copies
+ * of the function objects and may invoke these copies concurrently. Hence, it is assumed function
+ * objects are cheap to copy.
  */
 inline constexpr impl::fold_overload fold = {};
+
+// clang-format on
 
 } // namespace lf
 

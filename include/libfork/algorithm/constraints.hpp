@@ -96,7 +96,8 @@ struct indirect_value_impl<Proj> {
 } // namespace detail
 
 /**
- * @brief From [P2609R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2609r3.html).
+ * @brief From [P2609R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2609r3.html), the
+ * referenced value type.
  *
  * Relaxes some constraints for ``lf::core::indirectly_unary_invocable`` Specifically: `indirect_value_t<I>`
  * must be `std::iter_value_t<I> &` for an iterator and `invoke_result_t<Proj &, indirect_value_t<Iter>>` for
@@ -111,10 +112,8 @@ using indirect_value_t = typename detail::indirect_value_impl<I>::type;
  * @brief ``std::indirectly_unary_invocable` that accepts async and regular function.
  *
  * This uses the relaxed version from
- * [P2997R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2997r0.html#ref-LWG3859)
- *
- * And the further relaxation from
- * [P2609R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2609r3.html)
+ * [P2997R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2997r0.html#ref-LWG3859) and the
+ * further relaxation from [P2609R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2609r3.html)
  */
 template <class F, class I>
 concept indirectly_unary_invocable = std::indirectly_readable<I> &&                     //
@@ -130,12 +129,11 @@ concept indirectly_unary_invocable = std::indirectly_readable<I> &&             
  * @brief ``std::indirectly_regular_unary_invocable` that accepts async and regular function.
  *
  * This uses the relaxed version from
- * [P2997R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2997r0.html#ref-LWG3859)
+ * [P2997R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2997r0.html#ref-LWG3859) and the
+ * further relaxation from [P2609R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2609r3.html)
  *
- * And the further relaxation from
- * [P2609R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2609r3.html)
- *
- * __Hint:__ indirect_value_t<I> = invoke_result_t<proj &, std::iter_value_t<I> &> for 1-projected iterators.
+ * __Hint:__ `indirect_value_t<I> = invoke_result_t<proj &, std::iter_value_t<I> &>` for 1-projected
+ * iterators.
  */
 template <class F, class I>
 concept indirectly_regular_unary_invocable = std::indirectly_readable<I> &&                      //
@@ -195,6 +193,9 @@ using projected = typename detail::projected_impl<I, Proj>::adl_barrier;
 
 namespace impl {
 
+/**
+ * @brief Verify `F` is invocable with `Args...` and returns `R`.
+ */
 template <typename R, typename F, typename... Args>
 concept regular_invocable_returns =
     regular_invocable<F, Args...> && std::same_as<R, invoke_result_t<F, Args...>>;
@@ -257,11 +258,11 @@ using semigroup_t = invoke_result_t<Bop, T, T>;
  * @brief Test if a binary operator is a semigroup over `T` and `U` with the same result type.
  *
  * A dual semigroup requires that `Bop` is a semigroup over `T` and `U` with the same
- * `semigroup_t` and mixed invocation of `Bop` over `T` and `U` has semigroup
+ * `lf::semigroup_t` and mixed invocation of `Bop` over `T` and `U` has semigroup
  * semantics.
  *
- * Let u be an object of type `U` and t be an object of type `T`. Then the additional following
- * expressions must be valid and return the same type:
+ * Let u be an object of type `U` and t be an object of type `T`, the additional following
+ * expressions must be valid and return the same `lf::semigroup_t` as the previous expressions:
  *
  * 1. `bop(t, u)`
  * 2. `bop(u, t)`

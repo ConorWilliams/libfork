@@ -1,44 +1,33 @@
 Algorithms
 ================
 
-Utilities
---------------
+.. toctree::
+   :maxdepth: 3
 
-Type traits
-~~~~~~~~~~~~
-
-.. .. doxygentypedef:: lf::invoke_result_t
-
-.. .. doxygentypedef:: lf::indirect_result_t
-
-.. Concepts
-.. ~~~~~~~~~
-
-.. .. doxygenconcept:: lf::semigroup
-
-.. .. doxygenconcept:: lf::foldable
-
-.. Indirect variations
-.. *******************
-
-.. .. doxygenconcept:: lf::indirectly_unary_invocable
-
-.. .. doxygenconcept:: lf::indirect_semigroup
-
-.. .. doxygenconcept:: lf::indirectly_foldable
+   concepts.rst
 
 Lifting functions
-~~~~~~~~~~~~~~~~~~~
+-----------------
 
 .. doxygenvariable:: lf::lift 
+
+-----------------
 
 .. doxygendefine:: LF_LOFT
 
 .. doxygendefine:: LF_CLOFT
 
-Constrained algorithms
------------------------
+Iteration with ``for_each``
+---------------------------
 
-.. .. doxygenvariable:: lf::for_each
+.. doxygenvariable:: lf::for_each
 
-.. .. doxygenvariable:: lf::fold
+Reductions with ``fold``
+------------------------
+
+.. doxygentypedef:: lf::indirect_fold_acc_t
+
+-----------------
+
+.. doxygenvariable:: lf::fold
+
