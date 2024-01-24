@@ -1,4 +1,5 @@
 
+#include <functional>
 #include <iostream>
 
 #include <catch2/benchmark/catch_benchmark.hpp>
@@ -14,61 +15,83 @@ using namespace lf;
 
 namespace {
 
-// for (auto it = ++beg; it != end; ++it) {
-//   auto acc = out;
-//   ++out;
-//   *out = *acc + *it;
-// }
+// TODO: test a non commutative operation.
 
-// inline constexpr int chunk = 3;
+/**
+ * @brief Out of place.
+ */
+template <typename I, typename S, typename O, typename Bop, typename Proj>
+auto up_scan(I beg, S end, std::iter_difference_t<I> n, Bop bop, Proj proj, O out) -> void {
 
-template <typename T>
-void bop(T lhs, T rhs) {
-  *rhs = *lhs + *rhs;
-}
+  if (auto size = end - beg; size <= n) {
 
-template <typename T>
-void scan_up(T beg, T end) {
-  switch (auto size = end - beg) {
-    case 1:
-      return;
-    default:
-      auto mid = beg + size / 2;
+    // Assignable/writable from projected input (std::indirectly_copyable?)
+    *out = proj(*beg);
 
-      scan_up(beg, mid);
-      scan_up(mid, end);
+    for (++beg; beg != end; ++beg) {
+      auto prev = out;
+      // Assignable/writable from bop result.
+      // Bop is a common_semigroup over projected iterator and the output iterator.
+      *++out = bop(*prev, proj(*beg));
+    }
+  } else {
+    // Recurse to smaller chunks.
+    auto half = size / 2;
+    auto mid = beg + half;
+    up_scan(beg, mid, n, bop, proj, out);
+    up_scan(mid, end, n, bop, proj, out + half);
 
-      auto lhs = beg + size / 2 - 1;
-      auto rhs = beg + size / 1 - 1;
+    // TODO: give these the correct names l_child, r_child etc.
 
-      *rhs = *lhs + *rhs;
+    // Accumulate in rhs of output chunk.
+    auto lhs = out + (half - 1);
+    auto rhs = out + (size - 1);
+    // Bop is a common_semigroup over output iter with with l and r value refs.
+    *rhs = bop(*lhs, std::ranges::iter_move(rhs));
   }
 }
 
-template <typename T>
-void scan_up(T beg, T end, T out) {
-  switch (auto size = end - beg) {
-    case 1:
-      *out = *beg;
-      return;
-    default:
-      auto mid = beg + size / 2;
+/**
+ * @brief Operates in place.
+ */
+template <typename I, typename S, typename Bop>
+auto down_scan_r(I beg, S end, std::iter_difference_t<I> n, Bop bop) -> void {
 
-      scan_up(beg, mid);
-      scan_up(mid, end);
+  if (auto size = end - beg; size <= n) {
+    /**
+     * Chunks looks like:
+     *
+     *  [a, b, c, acc_1] [d, e, f, acc_2] [h, i, j, acc_3]
+     *                    ^- beg           ^- end
+     */
 
-      auto lhs = out + size / 2 - 1;
-      auto rhs = out + size / 1 - 1;
+    auto acc = beg - 1; // Carried/previous accumulation
 
-      *rhs = *lhs + *rhs;
+    for (; beg != end - 1; ++beg) {
+      // Same as up_scan's second assignment.
+      *beg = bop(*acc, std::ranges::iter_move(beg));
+    }
+  } else {
+    auto half = size / 2;
+    auto mid = beg + half;
+
+    auto acc = beg - 1;                            // Carried/previous accumulation
+    auto rhs = beg + (half - 1);                   // This is the left child of the tree.
+    *rhs = bop(*acc, std::ranges::iter_move(rhs)); // Same as up_scan's second assignment.
+
+    down_scan_r(beg, mid, n, bop);
+    down_scan_r(mid, end, n, bop);
   }
 }
 
-template <typename T>
-void scan_down_l(T beg, T end);
-
-template <typename T>
-void scan_down_r(T beg, T end);
+template <typename I, typename S, typename Bop>
+auto scan_down_l(I beg, S end, auto n, Bop bop) -> void {
+  if (auto size = end - beg; size > n) {
+    auto mid = beg + size / 2;
+    scan_down_l(beg, mid, n, bop);
+    down_scan_r(mid, end, n, bop);
+  }
+}
 
 /**
  * @brief
@@ -79,59 +102,34 @@ void scan_down_r(T beg, T end);
  *
  */
 template <typename T>
-auto scan(T beg, T end) {
-  scan_up(beg, end, beg);
-  scan_down_l(beg, end);
-}
-
-template <typename T>
-void scan_down_l(T beg, T end) {
-  switch (auto size = end - beg) {
-    case 1:
-    case 2:
-      return;
-    default:
-      auto mid = beg + size / 2;
-
-      scan_down_l(beg, mid); // Left recursion
-      scan_down_r(mid, end); // Right recursion
-  }
-}
-
-template <typename T>
-void scan_down_r(T beg, T end) {
-  switch (auto size = end - beg) {
-    case 1:
-      return;
-    default:
-      auto mid = beg + size / 2;
-
-      *(mid - 1) += *(beg - 1);
-
-      scan_down_r(beg, mid); // Left recursion
-      scan_down_r(mid, end); // Right recursion
-  }
+auto scan(T beg, T end, auto n) {
+  up_scan(beg, end, n, std::plus<>{}, std::identity{}, beg);
+  scan_down_l(beg, end, n, std::plus<>{});
 }
 
 } // namespace
 
 TEMPLATE_TEST_CASE("scan", "[algorithm][template]", unit_pool /*, busy_pool, lazy_pool*/) {
 
-  for (int n = 1; n <= 15; n++) {
+  for (int chunk = 1; chunk <= 15; chunk++) {
 
-    std::vector<int> v(n, 1);
-    std::vector<int> out;
+    // std::cout << "chunk: " << chunk << std::endl;
 
-    scan(v.begin(), v.end());
+    for (int n = 1; n <= 15; n++) {
 
-    for (auto &&elem : out) {
-      std::cout << elem << " ";
-    }
+      std::vector<int> v(n, 1);
+      std::vector<int> out;
 
-    // std::cout << std::endl;
+      scan(v.begin(), v.end(), chunk);
 
-    for (int i = 0; i < v.size(); i++) {
-      CHECK(v[i] == i + 1);
+      // for (auto &&elem : v) {
+      //   std::cout << elem << " ";
+      // }
+      // std::cout << std::endl;
+
+      for (int i = 0; i < v.size(); i++) {
+        REQUIRE(v[i] == i + 1);
+      }
     }
   }
 

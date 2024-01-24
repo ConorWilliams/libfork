@@ -5050,18 +5050,18 @@ struct fold_overload_impl {
 
     if (len <= n) {
 
-      auto init = acc(co_await just(proj)(*head)); // Require convertible to U
+      auto lhs = acc(co_await just(proj)(*head)); // Require convertible to U
 
       for (++head; head != tail; ++head) {
         if constexpr (async_bop) {
-          co_await call(&init, bop)(std::move(init), co_await just(proj)(*head));
+          co_await call(&lhs, bop)(std::move(lhs), co_await just(proj)(*head));
           co_await rethrow_if_exception;
         } else {
-          init = std::invoke(bop, std::move(init), co_await just(proj)(*head));
+          lhs = std::invoke(bop, std::move(lhs), co_await just(proj)(*head));
         }
       }
 
-      co_return std::move(init);
+      co_return std::move(lhs);
     }
 
     auto mid = head + (len / 2);
