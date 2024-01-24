@@ -23,58 +23,33 @@ namespace {
 // inline constexpr int chunk = 3;
 
 template <typename T>
-auto bop(T beg, T right) -> T {
-  *right = *beg + *right;
-  return right;
+auto bop(T lhs, T rhs) -> T {
+  *rhs = *lhs + *rhs;
+  return rhs;
 }
 
 template <typename T>
-auto scan_up(T beg, T end) -> T {
+auto scan_up(T beg, T end) {
   switch (auto size = end - beg) {
     case 1:
-      return beg; // This is the left and right child.
+      return beg; // This is the lhs and rhs child.
     case 2:
-      return bop(beg, beg + 1); // Returns right child.
+      return bop(beg, end - 1); // Returns rhs child.
     default:
-      auto half = beg + size / 2;
+      auto mid = beg + size / 2;
 
-      auto left1 = scan_up(beg, half);
-      auto right = scan_up(half, end);
+      scan_up(beg, mid);
+      scan_up(mid, end);
 
-      return bop(left1, right); // Returns right child.
+      return bop(mid - 1, end - 1); // Returns rhs child.
   }
 }
 
 template <typename T>
-auto scan_down(T beg, T end, auto node) {
+void scan_down_l(T beg, T end);
 
-  /**
-   * Pattern
-   *
-   * tmp <- right (node)
-   * right <- node
-   * beg <- tmp + node
-   */
-
-  switch (auto size = end - beg) {
-    case 1:
-      return;
-    case 2: {
-      *(beg + 1) = std::ranges::iter_move(beg) + node;
-      *beg = std::move(node);
-      return;
-    }
-    default:
-      auto half = beg + size / 2;
-
-      auto left = beg + size / 2 - 1;
-
-      auto tmp1 = node + *left;
-
-      scan_down(beg, half, std::move(node)); // Left recursion
-      scan_down(half, end, std::move(tmp1)); // Right recursion
-  }
-}
+template <typename T>
+void scan_down_r(T beg, T end);
 
 /**
  * @brief
@@ -87,14 +62,47 @@ auto scan_down(T beg, T end, auto node) {
 template <typename T>
 auto scan(T beg, T end) {
   scan_up(beg, end);
-  scan_down(beg, end, 0);
+
+  scan_down_l(beg, end);
+}
+
+template <typename T>
+void scan_down_l(T beg, T end) {
+  switch (auto size = end - beg) {
+    case 1:
+    case 2:
+      return;
+    default:
+      auto mid = beg + size / 2;
+
+      scan_down_l(beg, mid); // Left recursion
+      scan_down_r(mid, end); // Right recursion
+  }
+}
+
+template <typename T>
+void scan_down_r(T beg, T end) {
+  switch (auto size = end - beg) {
+    case 1:
+      return;
+    case 2:
+      *beg += *(beg - 1);
+      return;
+    default:
+      auto mid = beg + size / 2;
+
+      *(mid - 1) += *(beg - 1);
+
+      scan_down_r(beg, mid); // Left recursion
+      scan_down_r(mid, end); // Right recursion
+  }
 }
 
 } // namespace
 
 TEMPLATE_TEST_CASE("scan", "[algorithm][template]", unit_pool /*, busy_pool, lazy_pool*/) {
 
-  for (int n = 1; n < 10; n++) {
+  for (int n = 1; n <= 15; n++) {
 
     std::vector<int> v(n, 1);
     std::vector<int> out;
@@ -107,9 +115,9 @@ TEMPLATE_TEST_CASE("scan", "[algorithm][template]", unit_pool /*, busy_pool, laz
 
     // std::cout << std::endl;
 
-    // for (int i = 0; i < v.size(); i++) {
-    CHECK(v == out);
-    // }
+    for (int i = 0; i < v.size(); i++) {
+      CHECK(v[i] == i + 1);
+    }
   }
 
   // for (int n = 1; n < 10; n++) {
