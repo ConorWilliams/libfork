@@ -23,25 +23,44 @@ namespace {
 // inline constexpr int chunk = 3;
 
 template <typename T>
-auto bop(T lhs, T rhs) -> T {
+void bop(T lhs, T rhs) {
   *rhs = *lhs + *rhs;
-  return rhs;
 }
 
 template <typename T>
-auto scan_up(T beg, T end) {
+void scan_up(T beg, T end) {
   switch (auto size = end - beg) {
     case 1:
-      return beg; // This is the lhs and rhs child.
-    case 2:
-      return bop(beg, end - 1); // Returns rhs child.
+      return;
     default:
       auto mid = beg + size / 2;
 
       scan_up(beg, mid);
       scan_up(mid, end);
 
-      return bop(mid - 1, end - 1); // Returns rhs child.
+      auto lhs = beg + size / 2 - 1;
+      auto rhs = beg + size / 1 - 1;
+
+      *rhs = *lhs + *rhs;
+  }
+}
+
+template <typename T>
+void scan_up(T beg, T end, T out) {
+  switch (auto size = end - beg) {
+    case 1:
+      *out = *beg;
+      return;
+    default:
+      auto mid = beg + size / 2;
+
+      scan_up(beg, mid);
+      scan_up(mid, end);
+
+      auto lhs = out + size / 2 - 1;
+      auto rhs = out + size / 1 - 1;
+
+      *rhs = *lhs + *rhs;
   }
 }
 
@@ -61,8 +80,7 @@ void scan_down_r(T beg, T end);
  */
 template <typename T>
 auto scan(T beg, T end) {
-  scan_up(beg, end);
-
+  scan_up(beg, end, beg);
   scan_down_l(beg, end);
 }
 
@@ -84,9 +102,6 @@ template <typename T>
 void scan_down_r(T beg, T end) {
   switch (auto size = end - beg) {
     case 1:
-      return;
-    case 2:
-      *beg += *(beg - 1);
       return;
     default:
       auto mid = beg + size / 2;
