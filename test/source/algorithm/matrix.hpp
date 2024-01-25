@@ -18,26 +18,27 @@ struct matrix {
   friend auto operator<<(std::ostream &os, matrix const &mat) -> std::ostream & {
     return os << '{' << mat.a << ',' << mat.b << ',' << mat.c << ',' << mat.d << '}';
   }
+
+  friend auto operator*(matrix const &lhs, matrix const &rhs) -> matrix {
+    return {
+        lhs.a * rhs.a + lhs.b * rhs.c,
+        lhs.a * rhs.b + lhs.b * rhs.d,
+        lhs.c * rhs.a + lhs.d * rhs.c,
+        lhs.c * rhs.b + lhs.d * rhs.d,
+    };
+  }
+
+  friend auto operator*(unsigned long scalar, matrix const &rhs) -> matrix {
+    return {
+        scalar * rhs.a,
+        scalar * rhs.b,
+        scalar * rhs.c,
+        scalar * rhs.d,
+    };
+  }
 };
 
-auto operator*(matrix const &lhs, matrix const &rhs) -> matrix {
-  return {
-      lhs.a * rhs.a + lhs.b * rhs.c,
-      lhs.a * rhs.b + lhs.b * rhs.d,
-      lhs.c * rhs.a + lhs.d * rhs.c,
-      lhs.c * rhs.b + lhs.d * rhs.d,
-  };
-}
-
-auto operator*(int a, matrix const &rhs) -> matrix {
-  return {
-      a * rhs.a,
-      a * rhs.b,
-      a * rhs.c,
-      a * rhs.d,
-  };
-}
-auto random_vec(std::type_identity<matrix>, std::size_t n) -> std::vector<matrix> {
+inline auto random_vec(std::type_identity<matrix>, std::size_t n) -> std::vector<matrix> {
 
   std::vector<matrix> out(n);
 

@@ -763,8 +763,6 @@ inline namespace core {
 
 // --------------------------------- Task --------------------------------- //
 
-// TODO: private destructor such that tasks can only be created inside the library?
-
 /**
  * @brief A type returnable from libfork's async functions/coroutines.
  *
@@ -2015,8 +2013,6 @@ class [[nodiscard("Defer will execute unless bound to a name!")]] defer : impl::
  */
 
 namespace lf::impl {
-
-// TODO: we could make manual_lifetime<T> empty if T is empty?
 
 /**
  * @brief Provides storage for a single object of type ``T``.

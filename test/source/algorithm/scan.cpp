@@ -66,7 +66,7 @@ void test(Sch &&sch, F bop, Proj proj, Check check) {
 
   constexpr std::size_t max_elems = 50;
 
-  for (std::size_t n = 5; n < max_elems; n++) { //
+  for (std::size_t n = 0; n < max_elems; n++) { //
 
     std::vector<T> const in = random_vec(std::type_identity<T>{}, n);
     std::vector<T> const out_ok = check(in);
