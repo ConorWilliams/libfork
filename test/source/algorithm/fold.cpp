@@ -10,11 +10,14 @@
 // #define LF_COROUTINE_OFFSET 2 * sizeof(void *)
 
 #include <functional>
+#include <type_traits>
 #include <vector>
 
 #include <catch2/benchmark/catch_benchmark.hpp>
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
+
+#include "matrix.hpp"
 
 #include "libfork/algorithm/fold.hpp"
 
@@ -100,8 +103,6 @@ constexpr auto coro_identity = []<typename T>(auto, T &&val) -> task<T &&> {
   co_return std::forward<T>(val);
 };
 
-// TODO: check fold with non-commutative operations.
-
 } // namespace
 
 TEMPLATE_TEST_CASE("fold (reg, reg)", "[algorithm][template]", unit_pool, busy_pool, lazy_pool) {
@@ -118,4 +119,22 @@ TEMPLATE_TEST_CASE("fold (reg, co)", "[algorithm][template]", unit_pool, busy_po
 
 TEMPLATE_TEST_CASE("fold (co, co)", "[algorithm][template]", unit_pool, busy_pool, lazy_pool) {
   test(make_scheduler<TestType>(), sum_coro, coro_identity);
+}
+
+TEMPLATE_TEST_CASE("fold non-commuting", "[algorithm][template]", unit_pool, busy_pool, lazy_pool) {
+
+  auto sch = make_scheduler<TestType>();
+
+  constexpr std::size_t max_elems = 50;
+
+  for (std::size_t n = 1; n < max_elems; n++) {
+    for (int chunk = 1; chunk <= static_cast<int>(max_elems) + 1; chunk++) {
+
+      std::vector<matrix> const in = random_vec(std::type_identity<matrix>{}, n);
+
+      matrix ngv = std::reduce(in.begin(), in.end(), matrix{1, 0, 0, 1}, std::multiplies<>{});
+
+      REQUIRE(ngv == lf::sync_wait(sch, lf::fold, in, chunk, std::multiplies<>{}));
+    }
+  }
 }

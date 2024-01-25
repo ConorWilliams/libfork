@@ -5285,9 +5285,9 @@ struct fold_overload {
  *              typename Proj = std::identity,
  *              indirectly_foldable<projected<I, Proj>> Bop
  *              >
- *    auto fold(I head, S tail, std::iter_difference_t<I> n, Bop bop, Proj proj = {}) -> lf::task<indirect_fold_acc_t<Bop, I, Proj>>;
+ *    auto fold(I head, S tail, std::iter_difference_t<I> n, Bop bop, Proj proj = {}) -> indirect_fold_acc_t<Bop, I, Proj>;
  *
- * Overloads exist for a random access range (instead of ``head`` and ``tail``) and ``n`` can be omitted
+ * Overloads exist for a random-access range (instead of ``head`` and ``tail``) and ``n`` can be omitted
  * (which will set ``n = 1``).
  *
  * Exemplary usage:
@@ -5299,16 +5299,14 @@ struct fold_overload {
  *    });
  *
  * \endrst
- *
- * This test if each element in `v` is even in parallel, using a chunk size of ``10``, and returns the total
- * number of even elements.
+ * 
+ * This counts the number of even elements in `v` in parallel, using a chunk size of ``10``.
  *
  * If the binary operator or projection handed to `fold` are async functions, then they will be
  * invoked asynchronously, this allows you to launch further tasks recursively.
  *
  * Unlike the `std::ranges::fold` variations, this function will make an implementation defined number of copies
- * of the function objects and may invoke these copies concurrently. Hence, it is assumed function objects are 
- * cheap to copy.
+ * of the function objects and may invoke these copies concurrently.
  */
 inline constexpr impl::fold_overload fold = {};
 
@@ -5485,9 +5483,9 @@ struct for_each_overload {
  *              typename Proj = std::identity,
  *              indirectly_unary_invocable<projected<I, Proj>> Fun
  *              >
- *    auto for_each(I head, S tail, std::iter_difference_t<I> n, Fun fun, Proj proj = {}) -> lf::task<>;
+ *    void for_each(I head, S tail, std::iter_difference_t<I> n, Fun fun, Proj proj = {});
  *
- * Overloads exist for a random access range (instead of ``head`` and ``tail``) and ``n`` can be omitted
+ * Overloads exist for a random-access range (instead of ``head`` and ``tail``) and ``n`` can be omitted
  * (which will set ``n = 1``).
  *
  * Exemplary usage:
@@ -5506,8 +5504,7 @@ struct for_each_overload {
  * invoked asynchronously, this allows you to launch further tasks recursively.
  *
  * Unlike `std::ranges::for_each`, this function will make an implementation defined number of copies
- * of the function objects and may invoke these copies concurrently. Hence, it is assumed function
- * objects are cheap to copy.
+ * of the function objects and may invoke these copies concurrently.
  */
 inline constexpr impl::for_each_overload for_each = {};
 
@@ -5781,9 +5778,9 @@ struct map_overload {
  *              indirectly_unary_invocable<projected<I, Proj>> Fun
  *              >
  *      requires std::indirectly_copyable<projected<I, Proj, Fun>, O>
- *    auto map(I head, S tail, O out, std::iter_difference_t<I> n, Fun fun, Proj proj = {}) -> lf::task<>;
+ *    void map(I head, S tail, O out, std::iter_difference_t<I> n, Fun fun, Proj proj = {});
  *
- * Overloads exist for a random access range (instead of ``head`` and ``tail``) and ``n`` can be omitted
+ * Overloads exist for a random-access range (instead of ``head`` and ``tail``) and ``n`` can be omitted
  * (which will set ``n = 1``).
  *
  * Exemplary usage:
@@ -5801,12 +5798,14 @@ struct map_overload {
  * This will set each element of `out` to one more than corresponding element in `v` using
  * a chunk size of ``10``.
  *
+ * The input and output ranges must either be distinct (i.e. non-overlapping) or the same range (hence the
+ * transformation may be performed in-place).
+ *
  * If the function or projection handed to `map` are async functions, then they will be
  * invoked asynchronously, this allows you to launch further tasks recursively.
  *
  * Unlike `std::transform`, this function will make an implementation defined number of copies
- * of the function objects and may invoke these copies concurrently. Hence, it is assumed function
- * objects are cheap to copy.
+ * of the function objects and may invoke these copies concurrently.
  */
 inline constexpr impl::map_overload map = {};
 
