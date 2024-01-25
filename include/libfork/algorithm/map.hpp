@@ -66,8 +66,16 @@ struct map_overload {
     auto dif = (len / 2);
     auto mid = head + dif;
 
-    co_await lf::fork(map)(head, mid, out, n, fun, proj);
-    co_await lf::call(map)(mid, tail, out + dif, n, fun, proj);
+    // clang-format off
+
+    LF_TRY {
+      co_await lf::fork(map)(head, mid, out, n, fun, proj);
+      co_await lf::call(map)(mid, tail, out + dif, n, fun, proj);
+    } LF_CATCH_ALL { 
+      map.stash_exception(); 
+    }
+
+    // clang-format on
 
     co_await lf::join;
   }
@@ -98,8 +106,16 @@ struct map_overload {
         auto dif = (len / 2);
         auto mid = head + dif;
 
-        co_await lf::fork(map)(head, mid, out, fun, proj);
-        co_await lf::call(map)(mid, tail, out + dif, fun, proj);
+        // clang-format off
+
+        LF_TRY {  
+          co_await lf::fork(map)(head, mid, out, fun, proj);
+          co_await lf::call(map)(mid, tail, out + dif, fun, proj);
+        } LF_CATCH_ALL { 
+          map.stash_exception(); 
+        }
+
+        // clang-format on
 
         co_await lf::join;
     }

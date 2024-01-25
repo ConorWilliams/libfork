@@ -3878,6 +3878,9 @@ concept foldable_impl =                               //
  * 4. `fold bop [a, b, c, ...] = a · b · c · ...`
  *
  * The order of evaluation is unspecified but the elements will not be reordered.
+ *
+ * @tparam Bop Associative binary operator.
+ * @tparam I Input type
  */
 template <class Bop, class T>
 concept foldable =                                                    //
@@ -3886,6 +3889,9 @@ concept foldable =                                                    //
 
 /**
  * @brief An indirect version of `lf::foldable`.
+ *
+ * @tparam Bop Associative binary operator.
+ * @tparam I Input iterator.
  */
 template <class Bop, class I>
 concept indirectly_foldable =                                                 //
@@ -3894,6 +3900,24 @@ concept indirectly_foldable =                                                 //
     common_semigroup<Bop &, indirect_value_t<I>, std::iter_reference_t<I>> && //
     foldable<Bop &, indirect_value_t<I>> &&                                   //
     foldable<Bop &, std::iter_reference_t<I>>;                                //
+
+/**
+ * @brief Verify that the generalized prefix sum over `Bop` is valid.
+ *
+ * @tparam O Output iterator/accumulator.
+ * @tparam Bop Associative binary operator.
+ * @tparam I Input iterator.
+ */
+template <class Bop, class O, class I>
+concept indirectly_scannable =                                                            //
+    std::indirectly_readable<O> &&                                                        //
+    std::indirectly_readable<I> &&                                                        //
+    std::copy_constructible<Bop> &&                                                       //
+    std::indirectly_writable<O, std::iter_reference_t<I>> &&                              // For n = 1
+    common_semigroup<Bop &, std::iter_reference_t<O>, std::iter_reference_t<I>> &&        // bop(*o, *in)
+    common_semigroup<Bop &, std::iter_reference_t<I>, std::iter_rvalue_reference_t<O>> && // bop(*in, MOV(*o))
+    common_semigroup<Bop &, std::iter_rvalue_reference_t<O>, std::iter_reference_t<O>> && // bop(MOV(*o), *o)
+    std::indirectly_writable<O, semigroup_t<Bop &, std::iter_reference_t<O>>>;            // *o= -^
 
 } // namespace lf
 
@@ -5072,8 +5096,16 @@ struct fold_overload_impl {
     eventually<acc> lhs;
     eventually<acc> rhs;
 
-    co_await lf::fork(&lhs, fold)(head, mid, n, bop, proj);
-    co_await lf::call(&rhs, fold)(mid, tail, n, bop, proj);
+    // clang-format off
+
+    LF_TRY {
+      co_await lf::fork(&lhs, fold)(head, mid, n, bop, proj);
+      co_await lf::call(&rhs, fold)(mid, tail, n, bop, proj);
+    } LF_CATCH_ALL {
+      fold.stash_exception();
+    }
+
+    // clang-format on
 
     co_await lf::join;
 
@@ -5110,8 +5142,16 @@ struct fold_overload_impl {
         eventually<acc> lhs;
         eventually<acc> rhs;
 
-        co_await lf::fork(&lhs, fold)(head, mid, bop, proj);
-        co_await lf::call(&rhs, fold)(mid, tail, bop, proj);
+        // clang-format off
+
+        LF_TRY {
+          co_await lf::fork(&lhs, fold)(head, mid, bop, proj);
+          co_await lf::call(&rhs, fold)(mid, tail, bop, proj);
+        } LF_CATCH_ALL {
+          fold.stash_exception();
+        }
+
+        // clang-format on
 
         co_await lf::join;
 
@@ -5344,8 +5384,16 @@ struct for_each_overload {
 
     auto mid = head + (len / 2);
 
-    co_await lf::fork(for_each)(head, mid, n, fun, proj);
-    co_await lf::call(for_each)(mid, tail, n, fun, proj);
+    // clang-format off
+
+    LF_TRY {
+      co_await lf::fork(for_each)(head, mid, n, fun, proj);
+      co_await lf::call(for_each)(mid, tail, n, fun, proj);
+    } LF_CATCH_ALL { 
+      for_each.stash_exception(); 
+    }
+
+    // clang-format on
 
     co_await lf::join;
   }
@@ -5373,8 +5421,16 @@ struct for_each_overload {
       default:
         auto mid = head + (len / 2);
 
-        co_await lf::fork(for_each)(head, mid, fun, proj);
-        co_await lf::call(for_each)(mid, tail, fun, proj);
+        // clang-format off
+
+        LF_TRY {
+          co_await lf::fork(for_each)(head, mid, fun, proj);
+          co_await lf::call(for_each)(mid, tail, fun, proj);
+        } LF_CATCH_ALL { 
+          for_each.stash_exception(); 
+        }
+
+        // clang-format on
 
         co_await lf::join;
     }
@@ -5612,8 +5668,16 @@ struct map_overload {
     auto dif = (len / 2);
     auto mid = head + dif;
 
-    co_await lf::fork(map)(head, mid, out, n, fun, proj);
-    co_await lf::call(map)(mid, tail, out + dif, n, fun, proj);
+    // clang-format off
+
+    LF_TRY {
+      co_await lf::fork(map)(head, mid, out, n, fun, proj);
+      co_await lf::call(map)(mid, tail, out + dif, n, fun, proj);
+    } LF_CATCH_ALL { 
+      map.stash_exception(); 
+    }
+
+    // clang-format on
 
     co_await lf::join;
   }
@@ -5644,8 +5708,16 @@ struct map_overload {
         auto dif = (len / 2);
         auto mid = head + dif;
 
-        co_await lf::fork(map)(head, mid, out, fun, proj);
-        co_await lf::call(map)(mid, tail, out + dif, fun, proj);
+        // clang-format off
+
+        LF_TRY {  
+          co_await lf::fork(map)(head, mid, out, fun, proj);
+          co_await lf::call(map)(mid, tail, out + dif, fun, proj);
+        } LF_CATCH_ALL { 
+          map.stash_exception(); 
+        }
+
+        // clang-format on
 
         co_await lf::join;
     }

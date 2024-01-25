@@ -64,8 +64,16 @@ struct for_each_overload {
 
     auto mid = head + (len / 2);
 
-    co_await lf::fork(for_each)(head, mid, n, fun, proj);
-    co_await lf::call(for_each)(mid, tail, n, fun, proj);
+    // clang-format off
+
+    LF_TRY {
+      co_await lf::fork(for_each)(head, mid, n, fun, proj);
+      co_await lf::call(for_each)(mid, tail, n, fun, proj);
+    } LF_CATCH_ALL { 
+      for_each.stash_exception(); 
+    }
+
+    // clang-format on
 
     co_await lf::join;
   }
@@ -93,8 +101,16 @@ struct for_each_overload {
       default:
         auto mid = head + (len / 2);
 
-        co_await lf::fork(for_each)(head, mid, fun, proj);
-        co_await lf::call(for_each)(mid, tail, fun, proj);
+        // clang-format off
+
+        LF_TRY {
+          co_await lf::fork(for_each)(head, mid, fun, proj);
+          co_await lf::call(for_each)(mid, tail, fun, proj);
+        } LF_CATCH_ALL { 
+          for_each.stash_exception(); 
+        }
+
+        // clang-format on
 
         co_await lf::join;
     }

@@ -100,6 +100,8 @@ constexpr auto coro_identity = []<typename T>(auto, T &&val) -> task<T &&> {
   co_return std::forward<T>(val);
 };
 
+// TODO: check fold with non-commutative operations.
+
 } // namespace
 
 TEMPLATE_TEST_CASE("fold (reg, reg)", "[algorithm][template]", unit_pool, busy_pool, lazy_pool) {
