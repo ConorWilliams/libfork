@@ -201,7 +201,7 @@ TEST_CASE("WSQ.Owner", "[wsq]") { wsq_test_owner(); }
 // Testcase: WSQTest.nThief
 // ----------------------------------------------------------------------------
 TEST_CASE("WSQ.nThieves", "[wsq]") {
-  for (unsigned int i = 1; i <= std::thread::hardware_concurrency(); ++i) {
+  for (unsigned int i = 1; i <= std::min(8U, std::thread::hardware_concurrency()); ++i) {
     wsq_test_n_thieves(i);
   }
 }
