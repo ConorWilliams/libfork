@@ -29,15 +29,15 @@ namespace lf {
  * @brief Test if "F" is async invocable __xor__ normally invocable with ``Args...``.
  */
 template <typename F, typename... Args>
-concept invocable = (std::invocable<F, Args...> || async_invocable<F, Args...>)&&!(
-    std::invocable<F, Args...> && async_invocable<F, Args...>);
+concept invocable = (std::invocable<F, Args...> || async_invocable<F, Args...>) &&
+                    !(std::invocable<F, Args...> && async_invocable<F, Args...>);
 
 /**
  * @brief Test if "F" is regularly async invocable __xor__ normally invocable invocable with ``Args...``.
  */
 template <typename F, typename... Args>
-concept regular_invocable = (std::regular_invocable<F, Args...> || async_regular_invocable<F, Args...>)&&!(
-    std::regular_invocable<F, Args...> && async_regular_invocable<F, Args...>);
+concept regular_invocable = (std::regular_invocable<F, Args...> || async_regular_invocable<F, Args...>) &&
+                            !(std::regular_invocable<F, Args...> && async_regular_invocable<F, Args...>);
 
 // ------------------------------------  either result type ------------------------------------ //
 
@@ -327,6 +327,8 @@ concept foldable_impl =                               //
 /**
  * @brief Test if a binary operation supports a fold operation over a type.
  *
+ * The binary operation must be associative but not necessarily commutative.
+ *
  * This means a collection of one or more values of type `T` can be folded to a single value
  * of type `Acc` equal to `std::decay_t<semigroup_t<Bop, T>>` using `bop`, an operator of type `Bop`.
  *
@@ -338,6 +340,9 @@ concept foldable_impl =                               //
  * 4. `fold bop [a, b, c, ...] = a · b · c · ...`
  *
  * The order of evaluation is unspecified but the elements will not be reordered.
+ *
+ * @tparam Bop Associative binary operator.
+ * @tparam I Input type
  */
 template <class Bop, class T>
 concept foldable =                                                    //
@@ -346,6 +351,9 @@ concept foldable =                                                    //
 
 /**
  * @brief An indirect version of `lf::foldable`.
+ *
+ * @tparam Bop Associative binary operator.
+ * @tparam I Input iterator.
  */
 template <class Bop, class I>
 concept indirectly_foldable =                                                 //
@@ -354,6 +362,24 @@ concept indirectly_foldable =                                                 //
     common_semigroup<Bop &, indirect_value_t<I>, std::iter_reference_t<I>> && //
     foldable<Bop &, indirect_value_t<I>> &&                                   //
     foldable<Bop &, std::iter_reference_t<I>>;                                //
+
+/**
+ * @brief Verify that the generalized prefix sum over `Bop` is valid.
+ *
+ * @tparam O Output iterator/accumulator.
+ * @tparam Bop Associative binary operator.
+ * @tparam I Input iterator.
+ */
+template <class Bop, class O, class I>
+concept indirectly_scannable =                                                            //
+    std::indirectly_readable<O> &&                                                        //
+    std::indirectly_readable<I> &&                                                        //
+    std::copy_constructible<Bop> &&                                                       //
+    std::indirectly_writable<O, std::iter_reference_t<I>> &&                              // For n = 1
+    common_semigroup<Bop &, std::iter_reference_t<O>, std::iter_reference_t<I>> &&        // bop(*o, *in)
+    common_semigroup<Bop &, std::iter_reference_t<I>, std::iter_rvalue_reference_t<O>> && // bop(*in, MOV(*o))
+    common_semigroup<Bop &, std::iter_rvalue_reference_t<O>, std::iter_reference_t<O>> && // bop(MOV(*o), *o)
+    std::indirectly_writable<O, semigroup_t<Bop &, std::iter_reference_t<O>>>;            // *o= -^
 
 } // namespace lf
 
