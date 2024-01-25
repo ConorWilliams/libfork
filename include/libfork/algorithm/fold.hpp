@@ -282,9 +282,9 @@ struct fold_overload {
  *              typename Proj = std::identity,
  *              indirectly_foldable<projected<I, Proj>> Bop
  *              >
- *    auto fold(I head, S tail, std::iter_difference_t<I> n, Bop bop, Proj proj = {}) -> lf::task<indirect_fold_acc_t<Bop, I, Proj>>;
+ *    auto fold(I head, S tail, std::iter_difference_t<I> n, Bop bop, Proj proj = {}) -> indirect_fold_acc_t<Bop, I, Proj>;
  *
- * Overloads exist for a random access range (instead of ``head`` and ``tail``) and ``n`` can be omitted
+ * Overloads exist for a random-access range (instead of ``head`` and ``tail``) and ``n`` can be omitted
  * (which will set ``n = 1``).
  *
  * Exemplary usage:
@@ -296,16 +296,14 @@ struct fold_overload {
  *    });
  *
  * \endrst
- *
- * This test if each element in `v` is even in parallel, using a chunk size of ``10``, and returns the total
- * number of even elements.
+ * 
+ * This counts the number of even elements in `v` in parallel, using a chunk size of ``10``.
  *
  * If the binary operator or projection handed to `fold` are async functions, then they will be
  * invoked asynchronously, this allows you to launch further tasks recursively.
  *
  * Unlike the `std::ranges::fold` variations, this function will make an implementation defined number of copies
- * of the function objects and may invoke these copies concurrently. Hence, it is assumed function objects are 
- * cheap to copy.
+ * of the function objects and may invoke these copies concurrently.
  */
 inline constexpr impl::fold_overload fold = {};
 

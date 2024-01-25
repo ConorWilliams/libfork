@@ -183,9 +183,9 @@ struct map_overload {
  *              indirectly_unary_invocable<projected<I, Proj>> Fun
  *              >
  *      requires std::indirectly_copyable<projected<I, Proj, Fun>, O>
- *    auto map(I head, S tail, O out, std::iter_difference_t<I> n, Fun fun, Proj proj = {}) -> lf::task<>;
+ *    void map(I head, S tail, O out, std::iter_difference_t<I> n, Fun fun, Proj proj = {});
  *
- * Overloads exist for a random access range (instead of ``head`` and ``tail``) and ``n`` can be omitted
+ * Overloads exist for a random-access range (instead of ``head`` and ``tail``) and ``n`` can be omitted
  * (which will set ``n = 1``).
  *
  * Exemplary usage:
@@ -203,12 +203,14 @@ struct map_overload {
  * This will set each element of `out` to one more than corresponding element in `v` using
  * a chunk size of ``10``.
  *
+ * The input and output ranges must either be distinct (i.e. non-overlapping) or the same range (hence the
+ * transformation may be performed in-place).
+ *
  * If the function or projection handed to `map` are async functions, then they will be
  * invoked asynchronously, this allows you to launch further tasks recursively.
  *
  * Unlike `std::transform`, this function will make an implementation defined number of copies
- * of the function objects and may invoke these copies concurrently. Hence, it is assumed function
- * objects are cheap to copy.
+ * of the function objects and may invoke these copies concurrently.
  */
 inline constexpr impl::map_overload map = {};
 

@@ -39,4 +39,6 @@ Constraints
 .. doxygenconcept:: lf::foldable
 
 .. doxygenconcept:: lf::indirectly_foldable
+
+.. doxygenconcept:: lf::indirectly_scannable
     

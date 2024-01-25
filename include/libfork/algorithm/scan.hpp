@@ -216,6 +216,9 @@ inline constexpr auto rhs_down_sweep =
   co_await lf::join;
 };
 
+/**
+ * @brief Down-sweep of sub-tree with no left sibling.
+ */
 inline constexpr auto lhs_down_sweep =
     []<std::random_access_iterator O, std::sized_sentinel_for<O> S, typename Bop>(auto lhs_down_sweep, //
                                                                                   O beg,
@@ -434,15 +437,43 @@ struct scan_overload {
 } // namespace impl
 
 /**
- * @brief
+ * @brief A parallel implementation of `std::inclusive_scan` that accepts generalized ranges and projections.
  *
+ * \rst
  *
- * Bear in mind scan loop and self assignment
+ * Effective call signature:
  *
- *  *it_i = bop(*(it_i  - 1), proj(*it_i));
- * *out_i = bop(*(out_i - 1), proj(*it_i));
+ * .. code ::
  *
+ *    template <std::random_access_iterator I,
+ *              std::sized_sentinel_for<I> S,
+ *              std::random_access_iterator O,
+ *              class Proj = std::identity,
+ *              indirectly_scannable<O, projected<I, Proj>> Bop
+ *              >
+ *    void scan(I beg, S end, O out, std::iter_difference_t<I> n, Bop bop, Proj proj = {});
  *
+ * Overloads exist for a random-access range (instead of ``head`` and ``tail``), in place scans (omit the
+ * `out` iterator) and, the chunk size, ``n``, can be omitted (which will set ``n = 1``).
+ *
+ * Exemplary usage:
+ *
+ * .. code::
+ *
+ *    co_await just[scan](in, out.begin(), std::plus<>{});
+ *
+ * \endrst
+ *
+ * This computes the cumulative sum of the input and stores it in the output-range e.g. `[1, 2, 2, 1] -> [1,
+ * 3, 5, 6]`.
+ *
+ * The input and output ranges must either be distinct (i.e. non-overlapping) or the same range.
+ *
+ * If the binary operator or projection handed to `scan` are async functions, then they will be
+ * invoked asynchronously, this allows you to launch further tasks recursively.
+ *
+ * Unlike the `std::` variations, this function will make an implementation defined number of
+ * copies of the function objects and may invoke these copies concurrently.
  */
 inline constexpr impl::scan_overload scan = {};
 

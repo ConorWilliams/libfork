@@ -169,9 +169,9 @@ struct for_each_overload {
  *              typename Proj = std::identity,
  *              indirectly_unary_invocable<projected<I, Proj>> Fun
  *              >
- *    auto for_each(I head, S tail, std::iter_difference_t<I> n, Fun fun, Proj proj = {}) -> lf::task<>;
+ *    void for_each(I head, S tail, std::iter_difference_t<I> n, Fun fun, Proj proj = {});
  *
- * Overloads exist for a random access range (instead of ``head`` and ``tail``) and ``n`` can be omitted
+ * Overloads exist for a random-access range (instead of ``head`` and ``tail``) and ``n`` can be omitted
  * (which will set ``n = 1``).
  *
  * Exemplary usage:
@@ -190,8 +190,7 @@ struct for_each_overload {
  * invoked asynchronously, this allows you to launch further tasks recursively.
  *
  * Unlike `std::ranges::for_each`, this function will make an implementation defined number of copies
- * of the function objects and may invoke these copies concurrently. Hence, it is assumed function
- * objects are cheap to copy.
+ * of the function objects and may invoke these copies concurrently.
  */
 inline constexpr impl::for_each_overload for_each = {};
 

@@ -36,3 +36,7 @@ Reductions with ``fold``
 
 .. doxygenvariable:: lf::fold
 
+Generalized prefix sums with ``scan``
+-------------------------------------
+
+.. doxygenvariable:: lf::scan
