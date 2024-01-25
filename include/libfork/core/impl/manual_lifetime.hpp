@@ -26,8 +26,6 @@
 
 namespace lf::impl {
 
-// TODO: we could make manual_lifetime<T> empty if T is empty?
-
 /**
  * @brief Provides storage for a single object of type ``T``.
  *

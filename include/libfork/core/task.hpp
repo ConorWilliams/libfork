@@ -26,8 +26,6 @@ inline namespace core {
 
 // --------------------------------- Task --------------------------------- //
 
-// TODO: private destructor such that tasks can only be created inside the library?
-
 /**
  * @brief A type returnable from libfork's async functions/coroutines.
  *
