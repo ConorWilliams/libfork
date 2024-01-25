@@ -9,12 +9,16 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <iterator> // for identity, invoke
+#include <concepts>   // for invocable
+#include <functional> // for identity, invoke
+#include <iterator>   // for iter_difference_t, random_access_iterator
+#include <ranges>     // for begin, end, iterator_t, range_difference_t
 
-#include "libfork/algorithm/constraints.hpp"
-#include "libfork/core/control_flow.hpp"
-#include "libfork/core/just.hpp"
-#include "libfork/core/macro.hpp"
+#include "libfork/algorithm/constraints.hpp" // for indirectly_scannable, projected
+#include "libfork/core/control_flow.hpp"     // for call, rethrow_if_exception, fork, join
+#include "libfork/core/just.hpp"             // for just
+#include "libfork/core/macro.hpp"            // for LF_STATIC_CALL, LF_STATIC_CONST, LF_CATCH_ALL
+#include "libfork/core/task.hpp"             // for task
 
 /**
  * @file scan.hpp

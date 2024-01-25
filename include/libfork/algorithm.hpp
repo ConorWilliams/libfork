@@ -14,6 +14,7 @@
 #include "libfork/algorithm/for_each.hpp"
 #include "libfork/algorithm/lift.hpp"
 #include "libfork/algorithm/map.hpp"
+#include "libfork/algorithm/scan.hpp"
 
 /**
  * @file algorithm.hpp
