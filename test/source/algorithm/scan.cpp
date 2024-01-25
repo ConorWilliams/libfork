@@ -2,123 +2,27 @@
 #include <functional>
 #include <iostream>
 #include <iterator>
+#include <limits>
+#include <numeric>
+#include <random>
+#include <string>
+#include <thread>
+#include <type_traits>
 
 #include <catch2/benchmark/catch_benchmark.hpp>
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#include "libfork/algorithm/constraints.hpp"
-#include "libfork/algorithm/scan.hpp"
+#include "matrix.hpp"
+
 #include "libfork/core.hpp"
-#include "libfork/core/sync_wait.hpp"
 #include "libfork/schedule.hpp"
+
+#include "libfork/algorithm/scan.hpp"
 
 using namespace lf;
 
 namespace {
-
-// TODO: test a non commutative operation.
-
-/**
- *
- * How we invoke Bop:
- *
- *  bop(*out, proj(*in))
- *  bop(*out, std::ranges::iter_move(out))
- *
- *  *out = proj(*in)
- *  *out = bop(...);
- *
- */
-
-/**
- * @brief Out of place.
- */
-template <typename I, typename S, typename O, typename Bop, typename Proj>
-auto all_up_scan(I beg, S end, std::iter_difference_t<I> n, Bop bop, Proj proj, O out) -> void {
-
-  if (auto size = end - beg; size <= n) {
-    // Assignable/writable from projected input (std::indirectly_copyable?)
-    *out = proj(*beg);
-
-    for (++beg; beg != end; ++beg) {
-      // Assignable/writable from bop result.
-      // Bop is a common_semigroup over projected iterator and the output iterator.
-      auto prev = out;
-      ++out;
-      *out = bop(*prev, proj(*beg));
-    }
-  } else {
-    // Recurse to smaller chunks.
-    auto half = size / 2;
-    auto mid = beg + half;
-    all_up_scan(beg, mid, n, bop, proj, out);
-    all_up_scan(mid, end, n, bop, proj, out + half);
-
-    // Accumulate in rhs of output chunk.
-    // Require bop is a common_semigroup over output iter with with l and r value refs.
-    auto l_child = out + (half - 1);
-    auto r_child = out + (size - 1);
-    *r_child = bop(*l_child, std::ranges::iter_move(r_child));
-  }
-}
-
-/**
- * @brief Operates in place.
- */
-template <typename I, typename S, typename Bop>
-auto rhs_down_scan(I beg, S end, std::iter_difference_t<I> n, Bop bop) -> void {
-
-  /**
-   * Chunks looks like:
-   *
-   *  [a, b, c, acc_prev] [d, e, f, acc] [h, i, j, acc_next]
-   *                       ^- beg         ^- end
-   */
-
-  auto acc_prev = beg - 1; // Carried/previous accumulation
-
-  if (auto size = end - beg; size <= n) {
-    for (; beg != end - 1; ++beg) {
-      // Same as all_up_scan's second assignment.
-      *beg = bop(*acc_prev, std::ranges::iter_move(beg));
-    }
-  } else {
-    auto half = size / 2;
-    auto mid = beg + half;
-
-    auto rhs = beg + (half - 1);                        // This is the left child of the tree.
-    *rhs = bop(*acc_prev, std::ranges::iter_move(rhs)); // Same as all_up_scan's second assignment.
-
-    rhs_down_scan(beg, mid, n, bop);
-    rhs_down_scan(mid, end, n, bop);
-  }
-}
-
-template <typename I, typename S, typename Bop>
-auto lhs_down_scan(I beg, S end, std::iter_difference_t<I> n, Bop bop) -> void {
-  if (auto size = end - beg; size > n) {
-    auto mid = beg + size / 2;
-    lhs_down_scan(beg, mid, n, bop);
-    rhs_down_scan(mid, end, n, bop);
-  }
-}
-
-/**
- * @brief
- *
- * y0 = x0
- * y1 = x0 + x1
- * y2 = x0 + x1+ x2
- *
- */
-template <typename I, typename S, typename O, typename Bop, typename Proj = std::identity>
-auto scan(I beg, S end, O out, std::iter_difference_t<I> n, Bop bop, Proj proj = {}) -> void {
-  if (auto size = end - beg; size > 0) {
-    all_up_scan(beg, end, n, bop, proj, out);
-    lhs_down_scan(out, out + size, n, bop);
-  }
-}
 
 template <typename T>
 auto make_scheduler() -> T {
@@ -129,63 +33,190 @@ auto make_scheduler() -> T {
   }
 }
 
-} // namespace
+auto random_vec(std::type_identity<int>, std::size_t n) -> std::vector<int> {
 
-/**
- * @brief Test matrix:
- *
- * 1. in place vs out of place
- * 2. commutative vs non commutative
- * 3. chunk size
- * 4. input size
- * 5. projections (or lack thereof)
- */
+  std::vector<int> out(n);
 
-TEMPLATE_TEST_CASE("scan", "[algorithm][template]", unit_pool, busy_pool, lazy_pool) {
+  lf::xoshiro rng{lf::seed, std::random_device{}};
+  std::uniform_int_distribution<int> dist{0, std::numeric_limits<int>::max() / (static_cast<int>(n) + 1) / 2};
 
-  auto sch = make_scheduler<TestType>();
+  for (auto &&elem : out) {
+    elem = dist(rng);
+  }
 
-  for (int chunk = 1; chunk <= 15; chunk++) {
+  return out;
+}
 
-    // std::cout << "chunk: " << chunk << std::endl;
+auto random_vec(std::type_identity<std::string>, std::size_t n) -> std::vector<std::string> {
 
-    for (int n = 1; n <= 15; n++) {
+  std::vector<std::string> out(n);
 
-      std::vector<int> v(n, 1);
-      std::vector<int> out(v.size());
+  lf::xoshiro rng{lf::seed, std::random_device{}};
+  std::uniform_int_distribution<char> dist{'a', 'z'};
 
-      // inclusive_scan(v.begin(), v.end(), out.begin());
+  for (auto &&elem : out) {
+    elem.push_back(dist(rng));
+  }
 
-      // scan(v.begin(), v.end(), out.begin(), chunk, std::plus<>{});
+  return out;
+}
 
-      sync_wait(sch, lf::impl::scan_overload{}, v.begin(), v.end(), out.begin(), chunk, std::plus<>{});
+template <typename T, typename Sch, typename Check, typename F, typename Proj = std::identity>
+void test(Sch &&sch, F bop, Proj proj, Check check) {
 
-      // for (auto &&elem : out) {
-      //   std::cout << elem << " ";
-      // }
-      // std::cout << std::endl;
+  constexpr std::size_t max_elems = 50;
 
-      for (int i = 0; i < v.size(); i++) {
-        REQUIRE(out[i] == i + 1);
+  for (std::size_t n = 5; n < max_elems; n++) { //
+
+    std::vector<T> const in = random_vec(std::type_identity<T>{}, n);
+    std::vector<T> const out_ok = check(in);
+
+    // for (auto &&elem : in) {
+    //   std::cout << elem << ' ';
+    // }
+    // std::cout << '\n';
+
+    // for (auto &&elem : out_ok) {
+    //   std::cout << elem << ' ';
+    // }
+    // std::cout << '\n';
+
+    for (int chunk = 1; chunk <= static_cast<int>(max_elems) + 1; chunk++) {
+
+      // Test all eight overloads
+
+      /* [iterator,chunk,output] */ {
+        std::vector<T> out(in.size());
+        lf::sync_wait(sch, lf::scan, in.begin(), in.end(), out.begin(), chunk, bop, proj);
+        REQUIRE(out == out_ok);
+      }
+      /* [iterator,n = 1,output] */ {
+        if (chunk == 1) {
+          std::vector<T> out(in.size());
+          lf::sync_wait(sch, lf::scan, in.begin(), in.end(), out.begin(), bop, proj);
+          REQUIRE(out == out_ok);
+        }
+      }
+      /* [iterator,chunk,in_place] */ {
+        std::vector<T> out = in;
+        lf::sync_wait(sch, lf::scan, out.begin(), out.end(), chunk, bop, proj);
+        REQUIRE(out == out_ok);
+      }
+      /* [iterator,n = 1,in_place] */ {
+        if (chunk == 1) {
+          std::vector<T> out = in;
+          lf::sync_wait(sch, lf::scan, out.begin(), out.end(), bop, proj);
+          REQUIRE(out == out_ok);
+        }
+      }
+      /* [range,chunk,output] */ {
+        std::vector<T> out(in.size());
+        lf::sync_wait(sch, lf::scan, in, out.begin(), chunk, bop, proj);
+        REQUIRE(out == out_ok);
+      }
+      /* [range,n = 1,output] */ {
+        if (chunk == 1) {
+          //
+          std::vector<T> out(in.size());
+          lf::sync_wait(sch, lf::scan, in, out.begin(), bop, proj);
+          REQUIRE(out == out_ok);
+        }
+      }
+      /* [range,chunk,in_place] */ {
+        std::vector<T> out = in;
+        lf::sync_wait(sch, lf::scan, out, chunk, bop, proj);
+        REQUIRE(out == out_ok);
+      }
+      /* [range,n = 1,in_place] */ {
+        if (chunk == 1) {
+          std::vector<T> out = in;
+          lf::sync_wait(sch, lf::scan, out, bop, proj);
+          REQUIRE(out == out_ok);
+        }
       }
     }
   }
+}
 
-  // for (int n = 1; n < 10; n++) {
+template <typename Bop, typename Proj>
+auto check(Bop bop, Proj proj) {
+  return [bop, proj]<class T>(std::vector<T> const &in) {
+    //
 
-  //   std::vector<int> v(n, 1);
-  //   std::vector<int> out(v.size());
+    std::vector<T> tmp;
 
-  //   scan<4>(v.begin(), v.end(), out.begin());
+    for (auto &&elem : in) {
+      tmp.push_back(proj(elem));
+    }
 
-  //   for (auto &&elem : out) {
-  //     std::cout << elem << " ";
-  //   }
+    std::vector<T> out(in.size());
 
-  //   std::cout << std::endl;
+    std::inclusive_scan(tmp.begin(), tmp.end(), out.begin(), bop);
 
-  //   for (int i = 0; i < v.size(); i++) {
-  //     REQUIRE(out[i] == i + 1);
-  //   }
-  // }
+    return out;
+  };
+}
+
+auto doubler = [](auto const &X) -> decltype(2 * X) {
+  return 2 * X;
+};
+
+auto coro_doubler = [](auto, auto const &X) -> task<decltype(2 * X)> {
+  co_return 2 * X;
+};
+
+constexpr auto coro_plus = [](auto, auto const a, auto const b) -> task<decltype(a + b)> {
+  co_return a + b;
+};
+
+constexpr auto coro_identity = []<typename T>(auto, T &&val) -> task<T &&> {
+  co_return std::forward<T>(val);
+};
+
+} // namespace
+
+TEMPLATE_TEST_CASE("scan (reg, reg)", "[scan][template]", unit_pool, busy_pool, lazy_pool) {
+  SECTION("(+), (id)") {
+    test<int>(make_scheduler<TestType>(), std::plus{}, std::identity{}, check(std::plus{}, std::identity{}));
+  }
+  SECTION("(+), (2*)") {
+    test<int>(make_scheduler<TestType>(), std::plus{}, doubler, check(std::plus{}, doubler));
+  }
+  SECTION("(matmul), (id)") {
+    test<matrix>(make_scheduler<TestType>(),
+                 std::multiplies{},
+                 std::identity{},
+                 check(std::multiplies<>{}, std::identity{}));
+  }
+  SECTION("(string +), (id)") {
+    test<std::string>(
+        make_scheduler<TestType>(), std::plus{}, std::identity{}, check(std::plus{}, std::identity{}));
+  }
+}
+
+TEMPLATE_TEST_CASE("scan <int> (co, reg)", "[scan][template]", unit_pool, busy_pool, lazy_pool) {
+  SECTION("(+), (id)") {
+    test<int>(make_scheduler<TestType>(), coro_plus, std::identity{}, check(std::plus{}, std::identity{}));
+  }
+  SECTION("(+), (2*)") {
+    test<int>(make_scheduler<TestType>(), coro_plus, doubler, check(std::plus{}, doubler));
+  }
+}
+
+TEMPLATE_TEST_CASE("scan <int> (reg, co)", "[scan][template]", unit_pool, busy_pool, lazy_pool) {
+  SECTION("(+), (id)") {
+    test<int>(make_scheduler<TestType>(), std::plus{}, coro_identity, check(std::plus{}, std::identity{}));
+  }
+  SECTION("(+), (2*)") {
+    test<int>(make_scheduler<TestType>(), std::plus{}, coro_doubler, check(std::plus{}, doubler));
+  }
+}
+
+TEMPLATE_TEST_CASE("scan <int> (co, co)", "[scan][template]", unit_pool, busy_pool, lazy_pool) {
+  SECTION("(+), (id)") {
+    test<int>(make_scheduler<TestType>(), coro_plus, coro_identity, check(std::plus{}, std::identity{}));
+  }
+  SECTION("(+), (2*)") {
+    test<int>(make_scheduler<TestType>(), coro_plus, coro_doubler, check(std::plus{}, doubler));
+  }
 }

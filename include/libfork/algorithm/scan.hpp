@@ -14,6 +14,7 @@
 #include "libfork/algorithm/constraints.hpp"
 #include "libfork/core/control_flow.hpp"
 #include "libfork/core/just.hpp"
+#include "libfork/core/macro.hpp"
 
 /**
  * @file scan.hpp
@@ -68,6 +69,7 @@ namespace impl {
  * Partition 1: [1, 1, 3][1, 2, 1, 7]
  * Partition 2: [1][1, 3][1, 2][1, 7]
  */
+template <bool InPlace>
 inline constexpr auto reduction_sweep =
     []<std::random_access_iterator I,
        std::sized_sentinel_for<I> S,
@@ -86,12 +88,18 @@ inline constexpr auto reduction_sweep =
   //
   if (size <= n) {
 
-    *out = proj(*beg);
+    if constexpr (!(InPlace && std::is_same_v<std::identity, Proj>)) {
+      *out = co_await just(proj)(*beg);
+    }
 
     for (++beg; beg != end; ++beg) {
 
-      O prev = out;
+      auto prev = out;
       ++out;
+
+      if constexpr (InPlace) {
+        LF_ASSERT(out == beg.base());
+      }
 
       if constexpr (async_bop) {
         co_await call(out, bop)(*prev, co_await just(proj)(*beg));
@@ -253,8 +261,8 @@ struct scan_overload {
                                  std::iter_difference_t<I> n,
                                  Bop bop,
                                  Proj proj = {}) LF_STATIC_CONST->task<void> {
-    if (auto size = end - beg; size > 0) {
-      co_await lf::just(reduction_sweep)(beg, end, n, bop, proj, out);
+    if (std::iter_difference_t<I> size = end - beg; size > 0) {
+      co_await lf::just(reduction_sweep<false>)(beg, end, n, bop, proj, out);
       co_await lf::just(lhs_down_sweep)(out, out + size, n, bop);
     }
   }
@@ -272,7 +280,10 @@ struct scan_overload {
                                  O out,
                                  Bop bop,
                                  Proj proj = {}) LF_STATIC_CONST->task<void> {
-    co_return;
+    if (std::iter_difference_t<I> size = end - beg; size > 0) {
+      co_await lf::just(reduction_sweep<false>)(beg, end, std::iter_difference_t<I>(1), bop, proj, out);
+      co_await lf::just(lhs_down_sweep)(out, out + size, std::iter_difference_t<I>(1), bop);
+    }
   }
   /**
    * @brief [iterator,chunk,in_place] version (4-5)
@@ -287,6 +298,16 @@ struct scan_overload {
                                  std::iter_difference_t<I> n,
                                  Bop bop,
                                  Proj proj = {}) LF_STATIC_CONST->task<void> {
+    if (std::iter_difference_t<I> size = end - beg; size > 0) {
+      co_await lf::just(reduction_sweep<true>)(std::move_iterator(beg),
+                                               std::move_sentinel(end),
+                                               n,
+                                               bop,
+                                               proj,
+                                               beg //
+      );
+      co_await lf::just(lhs_down_sweep)(beg, end, n, bop);
+    }
     co_return;
   }
   /**
@@ -301,7 +322,16 @@ struct scan_overload {
                                  S end,
                                  Bop bop,
                                  Proj proj = {}) LF_STATIC_CONST->task<void> {
-    co_return;
+    if (std::iter_difference_t<I> size = end - beg; size > 0) {
+      co_await lf::just(reduction_sweep<true>)(std::move_iterator(beg),
+                                               std::move_sentinel(end),
+                                               std::iter_difference_t<I>(1),
+                                               bop,
+                                               proj,
+                                               beg //
+      );
+      co_await lf::just(lhs_down_sweep)(beg, end, std::iter_difference_t<I>(1), bop);
+    }
   }
   /**
    * @brief [range,chunk,output] version (5-6)
@@ -317,7 +347,12 @@ struct scan_overload {
                                  std::ranges::range_difference_t<R> n,
                                  Bop bop,
                                  Proj proj = {}) LF_STATIC_CONST->task<void> {
-    co_return;
+    if (!std::ranges::empty(range)) {
+      co_await lf::just(reduction_sweep<false>)(
+          std::ranges::begin(range), std::ranges::end(range), n, bop, proj, out //
+      );
+      co_await lf::just(lhs_down_sweep)(out, out + std::ranges::ssize(range), n, bop);
+    }
   }
   /**
    * @brief [range,n = 1,output] version (4-5)
@@ -332,7 +367,18 @@ struct scan_overload {
                                  O out,
                                  Bop bop,
                                  Proj proj = {}) LF_STATIC_CONST->task<void> {
-    co_return;
+    if (!std::ranges::empty(range)) {
+      co_await lf::just(reduction_sweep<false>)(std::ranges::begin(range),
+                                                std::ranges::end(range),
+                                                std::ranges::range_difference_t<R>(1),
+                                                bop,
+                                                proj,
+                                                out //
+      );
+      co_await lf::just(lhs_down_sweep)(
+          out, out + std::ranges::ssize(range), std::ranges::range_difference_t<R>(1), bop //
+      );
+    }
   }
   /**
    * @brief [range,chunk,in_place] version (4-5)
@@ -347,7 +393,16 @@ struct scan_overload {
                                  std::ranges::range_difference_t<R> n,
                                  Bop bop,
                                  Proj proj = {}) LF_STATIC_CONST->task<void> {
-    co_return;
+    if (!std::ranges::empty(range)) {
+      co_await lf::just(reduction_sweep<true>)(std::move_iterator(std::ranges::begin(range)),
+                                               std::move_sentinel(std::ranges::end(range)),
+                                               n,
+                                               bop,
+                                               proj,
+                                               std::ranges::begin(range) //
+      );
+      co_await lf::just(lhs_down_sweep)(std::ranges::begin(range), std::ranges::end(range), n, bop);
+    }
   }
   /**
    * @brief [range,n = 1,in_place] version.
@@ -361,12 +416,34 @@ struct scan_overload {
                                  R &&range,
                                  Bop bop,
                                  Proj proj = {}) LF_STATIC_CONST->task<void> {
-    co_return;
+    if (!std::ranges::empty(range)) {
+      co_await lf::just(reduction_sweep<true>)(std::move_iterator(std::ranges::begin(range)),
+                                               std::move_sentinel(std::ranges::end(range)),
+                                               std::ranges::range_difference_t<R>(1),
+                                               bop,
+                                               proj,
+                                               std::ranges::begin(range) //
+      );
+      co_await lf::just(lhs_down_sweep)(
+          std::ranges::begin(range), std::ranges::end(range), std::ranges::range_difference_t<R>(1), bop //
+      );
+    }
   }
 };
 
 } // namespace impl
 
+/**
+ * @brief
+ *
+ *
+ * Bear in mind scan loop and self assignment
+ *
+ *  *it_i = bop(*(it_i  - 1), proj(*it_i));
+ * *out_i = bop(*(out_i - 1), proj(*it_i));
+ *
+ *
+ */
 inline constexpr impl::scan_overload scan = {};
 
 } // namespace lf
