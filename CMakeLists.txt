@@ -4,7 +4,7 @@ include(cmake/prelude.cmake)
 
 project(
   libfork
-  VERSION 2.1.0
+  VERSION 2.1.1
   DESCRIPTION "A C++ library for fork-join parallelism using coroutines"
   HOMEPAGE_URL "https://github.com/ConorWilliams/libfork"
   LANGUAGES CXX
@@ -27,10 +27,13 @@ set_property(
   EXPORT_NAME libfork
 )
 
+set(CMAKE_INSTALL_INCLUDEDIR "include/libfork-${PROJECT_VERSION}" CACHE PATH "")
+
 target_include_directories(
   libfork_libfork ${warning_guard}
   INTERFACE
   "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
+  "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
 )
 
 target_compile_features(libfork_libfork INTERFACE cxx_std_20)
@@ -40,14 +43,5 @@ if(NOT CMAKE_SKIP_INSTALL_RULES)
   include(cmake/install-rules.cmake)
 endif()
 
-# ---- Developer mode ----
-if(NOT libfork_DEVELOPER_MODE)
-  return()
-elseif(NOT PROJECT_IS_TOP_LEVEL)
-  message(
-    AUTHOR_WARNING
-    "Developer mode is intended for developers of libfork"
-  )
-endif()
-
+# ---- Developer options ----
 include(cmake/dev-mode.cmake)

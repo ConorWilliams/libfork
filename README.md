@@ -9,7 +9,33 @@ Libfork presents a cross-platform API that decouples scheduling tasks (a customi
 
 ## Benchmarks
 
-See the [benchmark's README](benchmark/README.md) for a comparison of libfork to openMP and Intel's TBB, as well as some ARM/weak-memory-model benchmarks. 
+See the [benchmark's README](benchmark/README.md) for a comparison of libfork to openMP and Intel's TBB, as well as some ARM/weak-memory-model benchmarks.
+
+## Consuming the library
+
+This package is available via conancenter. Add the following line to your conanfile.txt
+
+```ini
+[requires]
+libfork/2.1.1
+```
+and install it to conan2 cache:
+
+```sh
+conan install .. --build missing
+```
+
+(Plase make sure that you use a c++20 ready conan profile!)
+
+You may then use the library in your project's cmake:
+
+```cmake
+find_package(libfork REQUIRED)  
+target_link_libraries(
+    project_target PRIVATE libfork::libfork
+)
+```
+
 
 ## Building and installing
 

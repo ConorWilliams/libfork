@@ -1,17 +1,37 @@
+# Build with conan2
+
+Make sure you use the following commands with a cpp20-ready conan profile (check `vim $(conan profile path default)` or specify your own)
+
+```sh
+conan install . --build missing
+conan build . -s build_type=Debug
+```
+
+For devs: It's also possible to build including tests, docs, benchmarks or coverage:
+
+```sh
+conan build . -s build_type=Debug \
+    -o build_tests=True \
+    -o build_benchmarks=True \
+    -o build_docs=True \
+    -o enable_coverage=True \
+    --build missing
+```
+
 # Building with CMake
 
-## Build
+Note: The following steps will be slightly different when you installed  the dependencies using conan and want to build congruently with your installed packages (highly recommended). In that case, the conan output will give you either a cmake presets file to work with or the exact command line options to use.
 
-This project doesn't require any special command-line flags to build to keep
-things simple.
+## Build
 
 Here are the steps for building in release mode with a single-configuration
 generator, like the Unix Makefiles one:
 
 ```sh
-cmake -S . -B build -D CMAKE_BUILD_TYPE=Release
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
+
 
 Here are the steps for building in release mode with a multi-configuration
 generator, like the Visual Studio ones:

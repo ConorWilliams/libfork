@@ -1,10 +1,3 @@
-if(PROJECT_IS_TOP_LEVEL)
-    set(
-        CMAKE_INSTALL_INCLUDEDIR "include/libfork-${PROJECT_VERSION}"
-        CACHE PATH ""
-    )
-endif()
-
 # Project is configured with no languages, so tell GNUInstallDirs the lib dir
 set(CMAKE_INSTALL_LIBDIR lib CACHE PATH "")
 
@@ -39,10 +32,15 @@ set(
 )
 mark_as_advanced(libfork_INSTALL_CMAKEDIR)
 
+configure_package_config_file(cmake/install-config.cmake.in "${package}Config.cmake"
+    INSTALL_DESTINATION "${libfork_INSTALL_CMAKEDIR}"
+    NO_SET_AND_CHECK_MACRO
+    NO_CHECK_REQUIRED_COMPONENTS_MACRO
+)
+
 install(
-    FILES cmake/install-config.cmake
+    FILES "${PROJECT_BINARY_DIR}/${package}Config.cmake"
     DESTINATION "${libfork_INSTALL_CMAKEDIR}"
-    RENAME "${package}Config.cmake"
     COMPONENT libfork_Development
 )
 
