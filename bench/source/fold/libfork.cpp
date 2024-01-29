@@ -12,12 +12,30 @@ using namespace lf;
 
 namespace {
 
-template <lf::scheduler Sch, lf::numa_strategy Strategy>
+constexpr auto repeat_nest = [](auto, std::vector<unsigned> const &in) -> lf::task<unsigned> {
+  co_return *co_await lf::just(lf::fold)(
+      std::ranges::views::iota(0UL, fold_reps), std::plus<>{}, [&](auto, int) -> task<unsigned> {
+        co_return *co_await lf::just(lf::fold)(in, fold_chunk, std::plus<>{});
+      });
+};
+
+constexpr auto repeat = [](auto, std::vector<unsigned> const &in) -> lf::task<unsigned> {
+  unsigned sum = 0;
+
+  for (std::size_t i = 0; i < fold_reps; ++i) {
+    sum += *co_await lf::just(lf::fold)(in, fold_chunk, std::plus<>{});
+  }
+
+  co_return sum;
+};
+
+template <lf::scheduler Sch, lf::numa_strategy Strategy, bool Nest = false>
 void fold_libfork(benchmark::State &state) {
 
   state.counters["green_threads"] = static_cast<double>(state.range(0));
-  state.counters["fold(n)"] = fold_n;
-  state.counters["fold_chunk"] = fold_chunk;
+  state.counters["n"] = fold_n;
+  state.counters["reps"] = fold_reps;
+  state.counters["chunk"] = fold_chunk;
 
   Sch sch = [&] {
     if constexpr (std::constructible_from<Sch, int>) {
@@ -30,16 +48,27 @@ void fold_libfork(benchmark::State &state) {
   std::vector<unsigned> in = lf::sync_wait(sch, lf::lift, make_vec_fold);
   volatile unsigned sink = 0;
 
-
-
   for (auto _ : state) {
-    sink = *lf::sync_wait(sch, lf::fold, std::ranges::views::iota(fold_n), fold_chunk, std::plus<>{});
+    if constexpr (Nest) {
+      sink = lf::sync_wait(sch, repeat_nest, in);
+    } else {
+      sink = lf::sync_wait(sch, repeat, in);
+    }
   }
+}
 
-  // std::cout << sink << std::endl;
+template <lf::scheduler Sch, lf::numa_strategy Strategy>
+void nest_fold_libfork(benchmark::State &state) {
+  fold_libfork<Sch, Strategy, true>(state);
 }
 
 } // namespace
+
+// BENCHMARK(nest_fold_libfork<lazy_pool, numa_strategy::seq>)->Apply(targs)->UseRealTime();
+BENCHMARK(nest_fold_libfork<lazy_pool, numa_strategy::fan>)->Apply(targs)->UseRealTime();
+
+// BENCHMARK(nest_fold_libfork<busy_pool, numa_strategy::seq>)->Apply(targs)->UseRealTime();
+// BENCHMARK(nest_fold_libfork<busy_pool, numa_strategy::fan>)->Apply(targs)->UseRealTime();
 
 // BENCHMARK(fold_libfork<lazy_pool, numa_strategy::seq>)->Apply(targs)->UseRealTime();
 BENCHMARK(fold_libfork<lazy_pool, numa_strategy::fan>)->Apply(targs)->UseRealTime();

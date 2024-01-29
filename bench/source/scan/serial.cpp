@@ -1,7 +1,7 @@
-#include <iostream>
-#include <ranges>
-#include <numeric>
 #include <functional>
+#include <iostream>
+#include <numeric>
+#include <ranges>
 
 #include <benchmark/benchmark.h>
 
@@ -16,14 +16,19 @@ void scan_serial(benchmark::State &state) {
 
   std::vector<unsigned> in = make_vec();
   std::vector<unsigned> ou(in.size());
+
   volatile unsigned sink = 0;
 
-  
-
   for (auto _ : state) {
-    std::inclusive_scan(in.begin(), in.end(), ou.begin(), std::plus<>{});
-    sink = ou.back();
+    for (std::size_t i = 0; i < scan_reps; ++i) {
+      std::inclusive_scan(in.begin(), in.end(), ou.begin(), std::plus<>{});
+      std::ranges::swap(in, ou);
+      std::inclusive_scan(ou.begin(), ou.end(), in.begin(), std::plus<>{});
+      std::ranges::swap(in, ou);
+    }
   }
+
+  sink = ou.back();
 }
 
 } // namespace

@@ -110,7 +110,6 @@ inline constexpr auto reduction_sweep =
         co_await rethrow_if_exception;
       } else {
         *out = std::invoke(bop, *prev, co_await just(proj)(*beg));
-      //  *out = *prev + *beg;  
       }
     }
 

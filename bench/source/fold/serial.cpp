@@ -1,7 +1,7 @@
-#include <iostream>
-#include <ranges>
-#include <numeric>
 #include <functional>
+#include <iostream>
+#include <numeric>
+#include <ranges>
 
 #include <benchmark/benchmark.h>
 
@@ -17,9 +17,15 @@ void fold_serial(benchmark::State &state) {
   std::vector<unsigned> in = make_vec_fold();
   volatile unsigned sink = 0;
 
+  unsigned sum = 0;
+
   for (auto _ : state) {
-    sink = std::accumulate(in.begin(), in.end(), 0);
+    for (std::size_t i = 0; i < fold_reps; ++i) {
+      sum += std::accumulate(in.begin(), in.end(), 0);
+    }
   }
+
+  sink = sum;
 
   // std::cout << sink << std::endl;
 }
