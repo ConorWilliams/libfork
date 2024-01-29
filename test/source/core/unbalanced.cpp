@@ -6,23 +6,23 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <algorithm>
-#include <memory>
-#include <random>
-
-#include <catch2/benchmark/catch_benchmark.hpp>
-#include <catch2/catch_template_test_macros.hpp>
-#include <catch2/catch_test_macros.hpp>
+#include <algorithm>                             // for min, shuffle
+#include <array>                                 // for array
+#include <catch2/catch_template_test_macros.hpp> // for TEMPLATE_TEST_CASE, TypeList
+#include <catch2/catch_test_macros.hpp>          // for INTERNAL_CATCH_NOINTERNAL_CATCH_DEF
+#include <concepts>                              // for constructible_from
+#include <cstddef>                               // for size_t
+#include <memory>                                // for unique_ptr, make_unique, swap
+#include <random>                                // for random_device, uniform_real_distribution
+#include <stdexcept>                             // for runtime_error
+#include <thread>                                // for thread
+#include <utility>                               // for move
+#include <vector>                                // for vector
 
 // #define LF_DEFAULT_LOGGING.
 
-#include "libfork/core.hpp"
-
-#include "libfork/schedule/busy_pool.hpp"
-// #include "libfork/schedule/lazy_pool.hpp"
-#include "libfork/schedule/unit_pool.hpp"
-
-#include "libfork/schedule/ext/random.hpp"
+#include "libfork/core.hpp"     // for sync_wait, task, worker_context, resume_on
+#include "libfork/schedule.hpp" // for xoshiro, busy_pool, unit_pool, seed
 
 // NOLINTBEGIN No linting in tests
 

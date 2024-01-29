@@ -1,24 +1,23 @@
 
-#include <functional>
-#include <iostream>
-#include <iterator>
-#include <limits>
-#include <numeric>
-#include <random>
-#include <string>
-#include <thread>
-#include <type_traits>
+#include <algorithm>                             // for min
+#include <catch2/catch_template_test_macros.hpp> // for TEMPLATE_TEST_CASE, TypeList
+#include <catch2/catch_test_macros.hpp>          // for operator<=, operator==, INTERNAL_CATCH_...
+#include <concepts>                              // for constructible_from
+#include <cstddef>                               // for size_t
+#include <functional>                            // for plus, identity, multiplies
+#include <limits>                                // for numeric_limits
+#include <numeric>                               // for inclusive_scan
+#include <random>                                // for random_device, uniform_int_distribution
+#include <string>                                // for operator+, string, basic_string
+#include <thread>                                // for thread
+#include <type_traits>                           // for type_identity
+#include <utility>                               // for forward
+#include <vector>                                // for operator==, vector
 
-#include <catch2/benchmark/catch_benchmark.hpp>
-#include <catch2/catch_template_test_macros.hpp>
-#include <catch2/catch_test_macros.hpp>
-
-#include "matrix.hpp"
-
-#include "libfork/core.hpp"
-#include "libfork/schedule.hpp"
-
-#include "libfork/algorithm/scan.hpp"
+#include "libfork/algorithm/scan.hpp" // for scan
+#include "libfork/core.hpp"           // for task, sync_wait
+#include "libfork/schedule.hpp"       // for xoshiro, busy_pool, lazy_pool, unit_pool
+#include "matrix.hpp"                 // for matrix, operator*
 
 using namespace lf;
 
@@ -52,7 +51,8 @@ auto random_vec(std::type_identity<std::string>, std::size_t n) -> std::vector<s
   std::vector<std::string> out(n);
 
   lf::xoshiro rng{lf::seed, std::random_device{}};
-  std::uniform_int_distribution<char> dist{'a', 'z'};
+
+  std::uniform_int_distribution<int> dist{'a', 'z'};
 
   for (auto &&elem : out) {
     elem.push_back(dist(rng));

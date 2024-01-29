@@ -9,17 +9,20 @@
 // #define NDEBUG
 // #define LF_COROUTINE_OFFSET 2 * sizeof(void *)
 
-#include <functional>
-#include <list>
-#include <vector>
+#include <algorithm>                             // for min
+#include <catch2/catch_template_test_macros.hpp> // for TEMPLATE_TEST_CASE, TypeList
+#include <catch2/catch_test_macros.hpp>          // for INTERNAL_CATCH_NOINTERNAL_CATCH_DEF
+#include <concepts>                              // for constructible_from
+#include <cstddef>                               // for size_t
+#include <functional>                            // for identity
+#include <span>                                  // for span
+#include <thread>                                // for thread
+#include <utility>                               // for forward
+#include <vector>                                // for vector, allocator, operator==
 
-#include <catch2/benchmark/catch_benchmark.hpp>
-#include <catch2/catch_template_test_macros.hpp>
-#include <catch2/catch_test_macros.hpp>
-
-#include "libfork/algorithm/for_each.hpp"
-#include "libfork/core.hpp"
-#include "libfork/schedule.hpp"
+#include "libfork/algorithm/for_each.hpp" // for for_each
+#include "libfork/core.hpp"               // for sync_wait, task
+#include "libfork/schedule.hpp"           // for busy_pool, lazy_pool, unit_pool
 
 // NOLINTBEGIN No linting in tests
 

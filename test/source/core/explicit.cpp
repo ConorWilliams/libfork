@@ -6,15 +6,18 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <random>
-#include <stdexcept>
-#include <thread>
+#include <algorithm>                             // for min, all_of, __shuffle_fn, shuffle
+#include <catch2/catch_template_test_macros.hpp> // for TEMPLATE_TEST_CASE, TypeList
+#include <catch2/catch_test_macros.hpp>          // for INTERNAL_CATCH_NOINTERNAL_CATCH_DEF
+#include <cstddef>                               // for size_t
+#include <functional>                            // for identity
+#include <random>                                // for random_device, uniform_int_distribution
+#include <span>                                  // for span
+#include <thread>                                // for thread
+#include <vector>                                // for vector
 
-#include <catch2/catch_template_test_macros.hpp>
-#include <catch2/catch_test_macros.hpp>
-
-#include "libfork/core.hpp"
-#include "libfork/schedule.hpp"
+#include "libfork/core.hpp"     // for sync_wait, worker_context, task, resume_on
+#include "libfork/schedule.hpp" // for xoshiro, seed, busy_pool, lazy_pool
 
 using namespace lf;
 

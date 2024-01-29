@@ -8,16 +8,18 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <iostream>
-#include <memory>
-#include <set>
-#include <thread>
+#include <catch2/catch_test_macros.hpp> // for operator==, operator""_catch_sr, AssertionHandler
+#include <cstddef>                      // for size_t
+#include <hwloc/bitmap.h>               // for hwloc_bitmap_compare, hwloc_bitmap_s
+#include <iostream>                     // for basic_ostream, char_traits, operator<<, cout
+#include <memory>                       // for shared_ptr, __shared_ptr_access, make_shared
+#include <set>                          // for set
+#include <thread>                       // for thread
+#include <utility>                      // for move
+#include <vector>                       // for vector
 
-#include <catch2/catch_test_macros.hpp>
-
-#include "libfork/core.hpp"
-
-#include "libfork/schedule/ext/numa.hpp"
+#include "libfork/core.hpp"     // for impl
+#include "libfork/schedule.hpp" // for distance_matrix, numa_topology
 
 using namespace lf;
 

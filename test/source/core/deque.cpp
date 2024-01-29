@@ -6,13 +6,16 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_test_macros.hpp> // for operator""_catch_sr, operator==, AssertionHandler
 
 // !BEGIN-EXAMPLE
 
-#include <thread>
+#include <atomic>   // for atomic
+#include <optional> // for optional
+#include <thread>   // for thread
+#include <vector>   // for vector
 
-#include "libfork/core/ext/deque.hpp"
+#include "libfork/core.hpp" // for deque, err, steal_t, return_nullopt
 
 auto example() -> int {
   // Work-stealing deque of ints

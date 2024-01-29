@@ -6,10 +6,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <catch2/catch_test_macros.hpp>
-#include <libfork/core/invocable.hpp>
+#include <coroutine> // for suspend_always, coroutine_handle
+#include <optional>  // for optional
+#include <utility>   // for move
+#include <vector>    // for vector
 
-#include "libfork/core.hpp"
+#include "libfork/core.hpp" // for discard_t, eventually, return_result
 
 // NOLINTBEGIN No need to check the tests for style.
 

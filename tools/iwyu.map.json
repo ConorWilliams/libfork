@@ -1,0 +1,18 @@
+[
+  {
+    "include": [
+      "@\"libfork/core/.*\"",
+      "private",
+      "\"libfork/core.hpp\"",
+      "public"
+    ]
+  },
+  {
+    "include": [
+      "@\"libfork/schedule/.*\"",
+      "private",
+      "\"libfork/schedule.hpp\"",
+      "public"
+    ]
+  }
+]

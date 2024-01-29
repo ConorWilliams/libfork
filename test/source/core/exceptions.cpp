@@ -6,14 +6,18 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <exception>
-#include <thread>
-#include <vector>
+#include <algorithm>                             // for min
+#include <catch2/catch_template_test_macros.hpp> // for INTERNAL_CATCH_NOINTERNAL_CATCH_DEF
+#include <catch2/catch_test_macros.hpp>          // for operator<, operator>=, AssertionHandler
+#include <concepts>                              // for constructible_from
+#include <cstddef>                               // for size_t
+#include <exception>                             // for exception_ptr, current_exception, opera...
+#include <stdexcept>                             // for runtime_error
+#include <thread>                                // for thread
+#include <utility>                               // for move
 
-#include <catch2/catch_template_test_macros.hpp>
-
-#include "libfork/core.hpp"
-#include "libfork/schedule.hpp"
+#include "libfork/core.hpp"     // for sync_wait, task, LF_CATCH_ALL, LF_COMPI...
+#include "libfork/schedule.hpp" // for busy_pool, lazy_pool, unit_pool
 
 // NOLINTBEGIN No need to check the tests for style.
 

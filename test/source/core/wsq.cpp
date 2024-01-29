@@ -24,15 +24,17 @@
 
 // The contents of this file have been adapted from: https://github.com/taskflow/work-stealing-queue
 
-#include <atomic>
-#include <deque>
-#include <random>
-#include <set>
-#include <thread>
+#include <algorithm>                    // for min
+#include <catch2/catch_test_macros.hpp> // for operator""_catch_sr, AssertionHandler, REQUIRE
+#include <deque>                        // for deque, operator==, _Deque_iterator
+#include <optional>                     // for optional
+#include <set>                          // for set, operator==, _Rb_tree_const_iterator
+#include <stdint.h>                     // for int64_t
+#include <stdlib.h>                     // for rand
+#include <thread>                       // for thread
+#include <vector>                       // for vector
 
-#include <catch2/catch_test_macros.hpp>
-
-#include "libfork/core/ext/deque.hpp"
+#include "libfork/core.hpp" // for deque, steal_t, return_nullopt
 
 // NOLINTBEGIN No linting in tests
 

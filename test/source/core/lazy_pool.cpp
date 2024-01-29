@@ -6,16 +6,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <iostream>
-#include <vector>
+#include <catch2/catch_test_macros.hpp> // for StringRef, TEST_CASE
+#include <iostream>                     // for char_traits, basic_ostream, operator<<, basic_os...
+#include <thread>                       // for thread
 
-#include <catch2/catch_test_macros.hpp>
-
-#include "libfork/core.hpp"
-
-#include "libfork/algorithm/lift.hpp"
-
-#include "libfork/schedule/lazy_pool.hpp"
+#include "libfork/algorithm/lift.hpp" // for (anonymous), lift
+#include "libfork/core.hpp"           // for task, discard_t, sync_wait, y_combinate, join
+#include "libfork/schedule.hpp"       // for lazy_pool
 
 using namespace lf;
 

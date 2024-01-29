@@ -6,14 +6,14 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <iostream>
-
-#include <catch2/benchmark/catch_benchmark_all.hpp>
-#include <catch2/catch_test_macros.hpp>
+#include <catch2/benchmark/catch_benchmark.hpp> // for Benchmark, BENCHMARK
+#include <catch2/catch_test_macros.hpp>         // for StringRef, TEST_CASE
+#include <iostream>                             // for char_traits, basic_ostream, operator<<
+#include <memory>                               // for allocator
 
 // #define LF_DEFAULT_LOGGING
 
-#include "libfork/core.hpp"
+#include "libfork/core.hpp" // for task, sync_wait, worker_init, co_new
 
 namespace {
 

@@ -16,18 +16,18 @@
 
 // The contents of this file have been adapted from https://github.com/facebook/folly
 
-#include <algorithm>
-#include <atomic>
-#include <random>
-#include <semaphore>
-#include <thread>
-#include <type_traits>
-#include <vector>
+#include <algorithm>                    // for min, shuffle
+#include <atomic>                       // for atomic, __atomic_base
+#include <catch2/catch_test_macros.hpp> // for operator==, StringRef, operator""_catch_sr, Asse...
+#include <iterator>                     // for pair
+#include <random>                       // for random_device, uniform_int_distribution
+#include <stddef.h>                     // for size_t
+#include <stdint.h>                     // for uint32_t
+#include <thread>                       // for thread
+#include <utility>                      // for pair
+#include <vector>                       // for vector
 
-#include <catch2/catch_test_macros.hpp>
-
-#include "libfork/schedule/ext/event_count.hpp"
-#include "libfork/schedule/ext/random.hpp"
+#include "libfork/schedule.hpp" // for xoshiro, event_count, seed
 
 // NOLINTBEGIN No need to check the tests for style.
 
