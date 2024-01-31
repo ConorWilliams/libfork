@@ -245,7 +245,10 @@ or not block at all)</p>
 <p>Waiter:</p>
 <div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">condition</span><span class="p">())</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="c1">// handle fast path first</span>
 <span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="p">(;;)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="w"> </span><span class="n">key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">eventCount</span><span class="p">.</span><span class="n">prepare_wait</span><span class="p">();</span><span class="w"> </span><span class="n">condition</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">    </span><span class="k">auto</span><span class="w"> </span><span class="n">key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">eventCount</span><span class="p">.</span><span class="n">prepare_wait</span><span class="p">();</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">condition</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
 <span class="w">      </span><span class="n">eventCount</span><span class="p">.</span><span class="n">cancel_wait</span><span class="p">();</span>
 <span class="w">      </span><span class="k">break</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
