@@ -189,14 +189,14 @@ class event_count {
 
 inline void event_count::notify_one() noexcept {
   if (m_val.fetch_add(k_add_epoch, std::memory_order_acq_rel) & k_waiter_mask) [[unlikely]] {  // NOLINT
-    DEBUG_TRACKER("notify")
+    DEBUG_TRACKER("notify");
     epoch()->notify_one();
   }
 }
 
 inline void event_count::notify_all() noexcept {
   if (m_val.fetch_add(k_add_epoch, std::memory_order_acq_rel) & k_waiter_mask) [[unlikely]] {  // NOLINT
-    DEBUG_TRACKER("notify")
+    DEBUG_TRACKER("notify");
     epoch()->notify_all();
   }
 }
