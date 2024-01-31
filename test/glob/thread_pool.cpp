@@ -68,7 +68,7 @@
 //   }
 // }
 
-// TEST_CASE("re-use", "[thread_pool]") {
+// TEST_CASE("reuse", "[thread_pool]") {
 //   for (int i = 0; i < 100; ++i) {
 //     thread_pool pool{};
 //     for (int j = 0; j < 1; ++j) {

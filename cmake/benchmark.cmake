@@ -26,4 +26,4 @@ else()
 endif()
 
 # ---- End-of-file commands ----
-add_folders(Benchamark)
+add_folders(Benchmark)

@@ -12,7 +12,7 @@
 
 ### Meta  -->
 
-## [**Version x.x.x**](https://github.com/ConorWilliams/libfork/compare/v2.1.0...dev)
+## [**Version x.x.x**](https://github.com/ConorWilliams/libfork/compare/v2.1.1...dev)
 
 ### Added
 
@@ -22,7 +22,18 @@
 
 ### Bugfixes
 
-### Meta 
+### Meta
+
+## [**Version 2.1.1**](https://github.com/ConorWilliams/libfork/compare/v2.1.0...v2.1.1)
+
+### Added
+
+- Conan support
+
+### Bugfixes
+
+- CMake install interface now uses correct include path
+- CMake config module exports its dependencies correctly
 
 ## [**Version 2.1.0**](https://github.com/ConorWilliams/libfork/compare/v2.0.0...v2.1.0)
 
@@ -60,7 +71,7 @@ This release overhauled libfork bringing many changes including:
 ### Removed
 
 - Exception handling (tasks now call ``terminate()`` if they exit with an unhandled exception).
-- The global ``forkpool`` thread pool. This functionality will be reintroduced in a future release but in the form of a customisable scheduler.
+- The global ``forkpool`` thread pool. This functionality will be reintroduced in a future release but in the form of a customizable scheduler.
 
 ### Meta 
 
