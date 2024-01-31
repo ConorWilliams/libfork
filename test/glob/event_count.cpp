@@ -73,7 +73,7 @@ class semaphore {
 
 TEST_CASE("event count, deadlocking (folly)", "[event_count]") {
   // We're basically testing for no deadlock.
-  static const size_t count = 300000;
+  static size_t const count = 300000;
 
   enum class Op {
     UP,

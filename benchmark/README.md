@@ -55,7 +55,7 @@ Here with a 7 by 7 tree (7 branches per node, leaf nodes are 7 branches from the
 
 ## Cache oblivious matrix multiplication (matmul)
 
-![Matrix multipication results](./figs/matmul.svg)
+![Matrix multiplication results](./figs/matmul.svg)
 
 For this benchmark computing the product of two 1024x1024 matrices, we see the schedulers perform similarly as expected for a higher workload. Note the TBB tests segfaults here, I have no idea why? We see the speed-up with the number of threads tails, perhaps the algorithm is not perfectly parallelisable ($p < 1$) or maybe we are beginning to saturate the memory bandwidth.
 

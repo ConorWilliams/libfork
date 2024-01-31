@@ -589,7 +589,7 @@ struct promise_type : detail::allocator_mixin<Allocator>, result<T>, waiter<Root
         // After a sync we reset a/n
         m_promise->m_steals = 0;
         // We know we are the only thread who can touch this promise until a
-        // steal which would provide the required memory syncronisation.
+        // steal which would provide the required memory synchronization.
         m_promise->m_join.store(k_imax, std::memory_order_relaxed);
       }
 
