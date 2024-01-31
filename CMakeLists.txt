@@ -43,5 +43,14 @@ if(NOT CMAKE_SKIP_INSTALL_RULES)
   include(cmake/install-rules.cmake)
 endif()
 
+if(NOT libfork_DEVELOPER_MODE)
+  return()
+elseif(NOT PROJECT_IS_TOP_LEVEL)
+  message(
+    AUTHOR_WARNING
+    "Developer mode is intended for developers of libfork"
+  )
+endif()
+
 # ---- Developer options ----
 include(cmake/dev-mode.cmake)
