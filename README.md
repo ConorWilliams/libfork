@@ -25,7 +25,7 @@ and install it to conan2 cache:
 conan install .. --build missing
 ```
 
-(Plase make sure that you use a c++20 ready conan profile!)
+(Please make sure that you use a c++20 ready conan profile!)
 
 You may then use the library in your project's cmake:
 
