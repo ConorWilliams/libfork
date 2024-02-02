@@ -12,13 +12,12 @@ using namespace lf;
 
 namespace {
 
-constexpr auto repeat = [](auto, std::vector<unsigned> &in, std::vector<unsigned> &ou) -> lf::task<void> {
+constexpr auto repeat = [](auto, unsigned const * in, unsigned * ou) -> lf::task<void> {
   for (std::size_t i = 0; i < scan_reps; ++i) {
-    co_await lf::just(lf::scan)(in, ou.begin(), scan_chunk, std::plus<>{});
-    std::ranges::swap(in, ou);
-    co_await lf::just(lf::scan)(ou, in.begin(), scan_chunk, std::plus<>{});
-    std::ranges::swap(in, ou);
+    // std::inclusive_scan(in, in + scan_n, ou, std::plus<>{}); ///
+    co_await lf::just(lf::scan)(in, in + scan_n, ou, scan_chunk, std::plus<>{}); 
   }
+  co_return;
 };
 
 template <lf::scheduler Sch, lf::numa_strategy Strategy>
@@ -40,13 +39,13 @@ void scan_libfork(benchmark::State &state) {
   std::vector in = lf::sync_wait(sch, lf::lift, make_vec);
 
   std::vector ou = lf::sync_wait(sch, lf::lift, [&] {
-    return std::vector<unsigned>(in.size());
+    return std::vector{in};
   });
 
   volatile unsigned sink = 0;
 
   for (auto _ : state) {
-    lf::sync_wait(sch, repeat, in, ou);
+    lf::sync_wait(sch, repeat, in.data(), ou.data());
   }
 
   sink = ou.back();

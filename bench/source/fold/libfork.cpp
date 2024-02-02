@@ -12,13 +12,6 @@ using namespace lf;
 
 namespace {
 
-constexpr auto repeat_nest = [](auto, std::vector<unsigned> const &in) -> lf::task<unsigned> {
-  co_return *co_await lf::just(lf::fold)(
-      std::ranges::views::iota(0UL, fold_reps), std::plus<>{}, [&](auto, int) -> task<unsigned> {
-        co_return *co_await lf::just(lf::fold)(in, fold_chunk, std::plus<>{});
-      });
-};
-
 constexpr auto repeat = [](auto, std::vector<unsigned> const &in) -> lf::task<unsigned> {
   unsigned sum = 0;
 
@@ -49,23 +42,11 @@ void fold_libfork(benchmark::State &state) {
   volatile unsigned sink = 0;
 
   for (auto _ : state) {
-    if constexpr (Nest) {
-      sink = lf::sync_wait(sch, repeat_nest, in);
-    } else {
-      sink = lf::sync_wait(sch, repeat, in);
-    }
+    sink = lf::sync_wait(sch, repeat, in);
   }
 }
 
-template <lf::scheduler Sch, lf::numa_strategy Strategy>
-void nest_fold_libfork(benchmark::State &state) {
-  fold_libfork<Sch, Strategy, true>(state);
-}
-
 } // namespace
-
-// BENCHMARK(nest_fold_libfork<lazy_pool, numa_strategy::seq>)->Apply(targs)->UseRealTime();
-BENCHMARK(nest_fold_libfork<lazy_pool, numa_strategy::fan>)->Apply(targs)->UseRealTime();
 
 // BENCHMARK(nest_fold_libfork<busy_pool, numa_strategy::seq>)->Apply(targs)->UseRealTime();
 // BENCHMARK(nest_fold_libfork<busy_pool, numa_strategy::fan>)->Apply(targs)->UseRealTime();

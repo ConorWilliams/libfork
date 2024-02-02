@@ -3,11 +3,13 @@
 
 #include <vector>
 
-// Match serial
+inline constexpr std::size_t fold_n /**/ = 1'000'000;
+inline constexpr std::size_t fold_chunk = fold_n / 32;
+inline constexpr std::size_t fold_reps = 1'000;
 
-inline constexpr std::size_t fold_n /**/ = 10'000;
-inline constexpr std::size_t fold_chunk = 1'000;
-inline constexpr std::size_t fold_reps = 100'000;
+// inline constexpr std::size_t fold_n /**/ = 8'000;
+// inline constexpr std::size_t fold_chunk = fold_n / 32;
+// inline constexpr std::size_t fold_reps = 100'000;
 
 inline auto make_vec_fold() -> std::vector<unsigned> {
 

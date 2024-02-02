@@ -5,6 +5,8 @@
 
 #include <benchmark/benchmark.h>
 
+#include "libfork/core.hpp"
+
 #include "../util.hpp"
 #include "config.hpp"
 
@@ -22,9 +24,6 @@ void scan_serial(benchmark::State &state) {
   for (auto _ : state) {
     for (std::size_t i = 0; i < scan_reps; ++i) {
       std::inclusive_scan(in.begin(), in.end(), ou.begin(), std::plus<>{});
-      std::ranges::swap(in, ou);
-      std::inclusive_scan(ou.begin(), ou.end(), in.begin(), std::plus<>{});
-      std::ranges::swap(in, ou);
     }
   }
 
