@@ -237,19 +237,6 @@ concept regular_invocable_returns =
 
 } // namespace impl
 
-namespace detail {
-
-/**
- * @brief Test if `Bop` is invocable with all combinations of `T` and `R` and all invocations return `R`.
- */
-template <class R, class Bop, class T>
-concept semigroup_impl = impl::regular_invocable_returns<R, Bop, T, T> && //
-                         impl::regular_invocable_returns<R, Bop, T, R> && //
-                         impl::regular_invocable_returns<R, Bop, R, T> && //
-                         impl::regular_invocable_returns<R, Bop, R, R>;   //
-
-} // namespace detail
-
 // ---------------------------------- Semigroup ---------------------------------- //
 
 /**
@@ -263,64 +250,45 @@ concept semigroup_impl = impl::regular_invocable_returns<R, Bop, T, T> && //
  *
  * Example: `(Z, -)` is not a semigroup, since `(1 - 1) - 1 != 1 - (1 - 1)`.
  *
- * Let `bop` and `t` be objects of types `Bop` and `T` respectively. Then the following expressions
+ * Let `t`, `u` and `bop` be objects of types `T`, `U` and `Bop` respectively. Then the following expressions
  * must be valid:
  *
  * 1. `bop(t, t)`
- * 2. `bop(t, bop(t, t))`
- * 3. `bop(bop(t, t), t)`
- * 4. `bop(bop(t, t), bop(t, t))`
+ * 2. `bop(u, u)`
+ * 3. `bop(u, t)`
+ * 4. `bop(t, u)`
  *
  * Additionally, the expressions must return the same type, `R`.
  *
- * Hence the `S` is the set of the values in `R`, to align with the mathematical definition of a semigroup
- * we say that `T` _represents_ `S`.
- *
  * __Note:__ A semigroup requires all invocations to be regular. This is a semantic requirement only.
  */
-template <class Bop, class T>
-concept semigroup =
-    regular_invocable<Bop, T, T> && detail::semigroup_impl<invoke_result_t<Bop, T, T>, Bop, T>; //
-
-/**
- * @brief The result of invoking a semigroup's binary operator with two values of type `T`.
- */
-template <class Bop, class T>
-  requires semigroup<Bop, T>
-using semigroup_t = invoke_result_t<Bop, T, T>;
-
-/**
- * @brief Test if a binary operator is a semigroup over `T` and `U` with the same result type.
- *
- * A dual semigroup requires that `Bop` is a semigroup over `T` and `U` with the same
- * `lf::semigroup_t` and mixed invocation of `Bop` over `T` and `U` has semigroup
- * semantics.
- *
- * Let u be an object of type `U` and t be an object of type `T`, the additional following
- * expressions must be valid and return the same `lf::semigroup_t` as the previous expressions:
- *
- * 1. `bop(t, u)`
- * 2. `bop(u, t)`
- *
- * This is commutative in `T` and `U`.
- */
 template <class Bop, class T, class U>
-concept common_semigroup = semigroup<Bop, T> &&                                               //
-                           semigroup<Bop, U> &&                                               //
-                           std::same_as<semigroup_t<Bop, T>, semigroup_t<Bop, U>> &&          //
-                           impl::regular_invocable_returns<semigroup_t<Bop, T>, Bop, U, T> && //
-                           impl::regular_invocable_returns<semigroup_t<Bop, U>, Bop, T, U>;   //
+concept semigroup =
+    regular_invocable<Bop, T, T> &&                                           // Pure invocations
+    regular_invocable<Bop, U, U> &&                                           //
+    std::same_as<invoke_result_t<Bop, T, T>, invoke_result_t<Bop, U, U>> &&   //
+    impl::regular_invocable_returns<invoke_result_t<Bop, T, T>, Bop, T, U> && // Mixed invocations
+    impl::regular_invocable_returns<invoke_result_t<Bop, U, U>, Bop, U, T>;   //
 
 // ------------------------------------ Foldable ------------------------------------ //
 
 namespace detail {
 
 template <class Acc, class Bop, class T>
-concept foldable_impl =                               //
-    common_semigroup<Bop, Acc, T> &&                  //
-    std::movable<Acc> &&                              // Accumulator moved in loop.
-    std::convertible_to<semigroup_t<Bop, T>, Acc> &&  // `fold bop [a] = a`
-    std::assignable_from<Acc &, semigroup_t<Bop, T>>; // Accumulator assigned in loop.
+concept foldable_to =                                        //
+    std::movable<Acc> &&                                     //
+    semigroup<Bop, Acc, T> &&                                //
+    std::constructible_from<Acc, T> &&                       //
+    std::convertible_to<T, Acc> &&                           //
+    std::assignable_from<Acc &, invoke_result_t<Bop, T, T>>; //
+
+template <class Acc, class Bop, class I>
+concept indirectly_foldable_to =                                       //
+    std::indirectly_readable<I> &&                                     //
+    std::copy_constructible<Bop> &&                                    //
+    semigroup<Bop &, indirect_value_t<I>, std::iter_reference_t<I>> && //
+    foldable_to<Acc, Bop &, indirect_value_t<I>> &&                    //
+    foldable_to<Acc, Bop &, std::iter_reference_t<I>>;                 //
 
 } // namespace detail
 
@@ -345,9 +313,9 @@ concept foldable_impl =                               //
  * @tparam I Input type
  */
 template <class Bop, class T>
-concept foldable =                                                    //
-    semigroup<Bop, T> &&                                              //
-    detail::foldable_impl<std::decay_t<semigroup_t<Bop, T>>, Bop, T>; //
+concept foldable =                                                         //
+    invocable<Bop, T, T> &&                                                //
+    detail::foldable_to<std::decay_t<invoke_result_t<Bop, T, T>>, Bop, T>; //
 
 /**
  * @brief An indirect version of `lf::foldable`.
@@ -356,30 +324,50 @@ concept foldable =                                                    //
  * @tparam I Input iterator.
  */
 template <class Bop, class I>
-concept indirectly_foldable =                                                 //
-    std::indirectly_readable<I> &&                                            //
-    std::copy_constructible<Bop> &&                                           //
-    common_semigroup<Bop &, indirect_value_t<I>, std::iter_reference_t<I>> && //
-    foldable<Bop &, indirect_value_t<I>> &&                                   //
-    foldable<Bop &, std::iter_reference_t<I>>;                                //
-
-/**
- * @brief Verify that the generalized prefix sum over `Bop` is valid.
- *
- * @tparam O Output iterator/accumulator.
- * @tparam Bop Associative binary operator.
- * @tparam I Input iterator.
- */
-template <class Bop, class O, class I>
-concept indirectly_scannable =                                                            //
-    std::indirectly_readable<O> &&                                                        //
+concept indirectly_foldable =                                                             //
     std::indirectly_readable<I> &&                                                        //
     std::copy_constructible<Bop> &&                                                       //
-    std::indirectly_writable<O, std::iter_reference_t<I>> &&                              // For n = 1
-    common_semigroup<Bop &, std::iter_reference_t<O>, std::iter_reference_t<I>> &&        // bop(*o, *in)
-    common_semigroup<Bop &, std::iter_reference_t<I>, std::iter_rvalue_reference_t<O>> && // bop(*in, MOV(*o))
-    common_semigroup<Bop &, std::iter_rvalue_reference_t<O>, std::iter_reference_t<O>> && // bop(MOV(*o), *o)
-    std::indirectly_writable<O, semigroup_t<Bop &, std::iter_reference_t<O>>>;            // *o= -^
+    invocable<Bop &, std::iter_reference_t<I>, std::iter_reference_t<I>> &&               //
+    detail::indirectly_foldable_to<std::decay_t<indirect_result_t<Bop &, I, I>>, Bop, I>; //
+
+/**
+ * @brief Compute the accumulator/result type for a fold operation.
+ */
+template <class Bop, std::random_access_iterator I, class Proj>
+  requires indirectly_foldable<Bop, projected<I, Proj>>
+using indirect_fold_acc_t = std::decay_t<indirect_result_t<Bop &, projected<I, Proj>, projected<I, Proj>>>;
+
+namespace detail {
+
+template <class Acc, class Bop, class O>
+concept scannable_impl =
+    std::indirectly_writable<O, Acc> &&                                            // Write result of fold.
+    semigroup<Bop &, std::iter_reference_t<O>, std::iter_rvalue_reference_t<O>> && // Scan/reduce over O.
+    std::indirectly_writable<O, indirect_result_t<Bop &, O, O>> &&                 //   Write result of -^.
+    std::indirectly_writable<O, Acc &> &&                                          // Copy acc in scan.
+    std::constructible_from<Acc, std::iter_reference_t<O>> &&                      // Initialize acc in scan.
+    std::convertible_to<std::iter_reference_t<O>, Acc>;                            // Same as -^.
+
+}
+
+template <class Bop, class O, class T>
+concept scannable =                                       //
+    std::indirectly_readable<O> &&                        //
+    std::indirectly_writable<O, T> &&                     // n = 1 case.
+    detail::foldable_to<std::iter_value_t<O>, Bop, T> &&  // Regular reduction over T.
+    detail::scannable_impl<std::iter_value_t<O>, Bop, O>; //
+
+// TODO requirements for last one once we fix such that the last element is used.
+
+template <class Bop, class O, class I>
+concept indirectly_scannable =
+    std::indirectly_readable<O> &&                                  //
+    std::indirectly_readable<I> &&                                  //
+    std::copy_constructible<Bop> &&                                 //
+    std::indirectly_writable<O, indirect_value_t<I>> &&             // n = 1 case.
+    std::indirectly_writable<O, std::iter_reference_t<I>> &&        //   -^.
+    detail::indirectly_foldable_to<std::iter_value_t<O>, Bop, I> && // Regular reduction over T.
+    detail::scannable_impl<std::iter_value_t<O>, Bop, O>;
 
 } // namespace lf
 

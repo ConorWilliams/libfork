@@ -31,13 +31,6 @@
 
 namespace lf {
 
-/**
- * @brief Compute the accumulator/result type for a fold operation.
- */
-template <class Bop, std::random_access_iterator I, class Proj>
-  requires indirectly_foldable<Bop, projected<I, Proj>>
-using indirect_fold_acc_t = std::decay_t<semigroup_t<Bop &, std::iter_reference_t<projected<I, Proj>>>>;
-
 namespace impl {
 
 namespace detail {
@@ -48,26 +41,26 @@ template <std::random_access_iterator I,
           indirectly_foldable<projected<I, Proj>> Bop>
 struct fold_overload_impl {
 
-  using acc = indirect_fold_acc_t<Bop, I, Proj>;
-  using difference_t = std::iter_difference_t<I>;
+  using acc_t = indirect_fold_acc_t<Bop, I, Proj>;
+  using int_t = std::iter_difference_t<I>;
 
-  static constexpr bool async_bop = !std::invocable<Bop &, acc, std::iter_reference_t<projected<I, Proj>>>;
+  static constexpr bool async_bop = !std::invocable<Bop &, acc_t, std::iter_reference_t<projected<I, Proj>>>;
 
   /**
    * @brief Recursive implementation of `fold`, requires that `tail - head > 0`.
    */
   LF_STATIC_CALL auto
-  operator()(auto fold, I head, S tail, difference_t n, Bop bop, Proj proj) LF_STATIC_CONST->lf::task<acc> {
+  operator()(auto fold, I head, S tail, int_t n, Bop bop, Proj proj) LF_STATIC_CONST->lf::task<acc_t> {
 
     LF_ASSERT(n > 1);
 
-    difference_t len = tail - head;
+    int_t len = tail - head;
 
     LF_ASSERT(len > 0);
 
     if (len <= n) {
 
-      auto lhs = acc(co_await just(proj)(*head)); // Require convertible to U
+      acc_t lhs = acc_t(co_await just(proj)(*head)); // Require convertible to U
 
       for (++head; head != tail; ++head) {
         if constexpr (async_bop) {
@@ -86,8 +79,8 @@ struct fold_overload_impl {
     LF_ASSERT(mid - head > 0);
     LF_ASSERT(tail - mid > 0);
 
-    eventually<acc> lhs;
-    eventually<acc> rhs;
+    eventually<acc_t> lhs;
+    eventually<acc_t> rhs;
 
     // clang-format off
 
@@ -115,9 +108,9 @@ struct fold_overload_impl {
    * requires `a + b` to be evaluated before adding the result to `c`.
    */
   LF_STATIC_CALL auto
-  operator()(auto fold, I head, S tail, Bop bop, Proj proj) LF_STATIC_CONST->lf::task<acc> {
+  operator()(auto fold, I head, S tail, Bop bop, Proj proj) LF_STATIC_CONST->lf::task<acc_t> {
 
-    difference_t len = tail - head;
+    int_t len = tail - head;
 
     LF_ASSERT(len >= 0);
 
@@ -132,8 +125,8 @@ struct fold_overload_impl {
         LF_ASSERT(mid - head > 0);
         LF_ASSERT(tail - mid > 0);
 
-        eventually<acc> lhs;
-        eventually<acc> rhs;
+        eventually<acc_t> lhs;
+        eventually<acc_t> rhs;
 
         // clang-format off
 
