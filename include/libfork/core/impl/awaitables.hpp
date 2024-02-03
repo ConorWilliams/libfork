@@ -250,27 +250,33 @@ struct fork_awaitable : std::suspend_always {
  * @brief An awaiter identical to `fork_awaitable` but with an additional boolean indicating if the child
  * completed synchonously.
  *
- * @tparam NoExcept If `true` then the child captures it's exceptions in it's result.
- * @tparam R Where the fork is located.
+ * @tparam ChildThrows If `true` then the child captures it's exceptions in it's result.
+ * @tparam R Where the fork statement is located.
  */
-template <bool NoExcept, region R = region::unknown>
+template <bool ChildThrows, region R>
   requires (R != region::outside)
-struct tracked_fork_awaitable : fork_awaitable {
+struct sync_fork_awaitable : fork_awaitable {
   /**
    * @brief Returns `true` if the forked child completed synchronously.
    *
-   * If `NoException` is `false` then this will throw `lf::core::exception_before_join`
-   * if there is an exception.
+   * If `ChildThrows` is `true` then this will throw `lf::core::exception_before_join`
+   * if there is an exception or possibly the childs exception if the child had no forked
+   * siblings.
    */
-  auto await_resume() const -> bool {
+  auto await_resume() const noexcept(!ChildThrows) -> bool {
     // For it to be safe to consume the value from the child we justed forked it
     // must not have thrown an exception. We can check if __some__ child threw an
     // exception but we cannot (generally) retrieve it as exception is not safe
     // to touch until after a join.
-    if (parent->load_steals() == steals) {
-      if constexpr (!NoExcept) {
-        if constexpr (R == region::opening_fork) {
+    if (std::uint16_t steals_post = parent->load_steals(); steals_post == steals_pre) {
+      if constexpr (ChildThrows) {
+        if (R == region::opening_fork) {
+          LF_ASSERT(steals_post == 0);
           // If the opening fork completed synchonously the we can rethrow.
+          parent->rethrow_if_exception();
+        } else if (steals_post == 0) {
+          // No steals have happened hence, no one else could thrown an
+          // exception hence, so we can touch the exception object.
           parent->rethrow_if_exception();
         } else {
           // Otherwise, we throw a substitute exception.
@@ -284,7 +290,7 @@ struct tracked_fork_awaitable : fork_awaitable {
     return false;
   }
 
-  std::uint16_t steals; ///< The number of times the parent was stolen __before__ the fork.
+  std::uint16_t steals_pre; ///< The number of times the parent was stolen __before__ the fork.
 };
 
 /**
@@ -303,6 +309,38 @@ struct call_awaitable : std::suspend_always {
   }
 
   frame *child; ///< The suspended child coroutine's frame.
+};
+
+/**
+ * @brief An awaiter identical to `call_awaitable` that also propagates an exception.
+ *
+ * This has limited use inside a fork-join scope.
+ *
+ * @tparam R Where the call statement is located.
+ */
+template <region R>
+  requires (R != region::opening_fork)
+struct eager_call_awaitable : call_awaitable {
+  /**
+   * @brief Eagerly rethrow any exceptions from the child or its siblings.
+   */
+  void await_resume() const {
+    if constexpr (R == region::outside) {
+      LF_ASSERT(parent->load_steals() == 0);
+      // Outside fork-join we can touch the exception.
+      parent->rethrow_if_exception();
+    } else if (parent->load_steals() == 0) {
+      // Can throw the real exception.
+      parent->rethrow_if_exception();
+    } else {
+      // Otherwise we throw a substitute.
+      if (parent->atomic_has_exception()) {
+        LF_THROW(exception_before_join{});
+      }
+    }
+  }
+
+  frame *parent; ///< The calling coroutine's frame.
 };
 
 // -------------------------------------------------------------------------------- //

@@ -17,7 +17,6 @@
 #include <utility>     // for forward
 
 #include "libfork/core/eventually.hpp"      // for try_eventually
-#include "libfork/core/first_arg.hpp"       // for async_function_object
 #include "libfork/core/impl/awaitables.hpp" // for call_awaitable
 #include "libfork/core/impl/combinate.hpp"  // for combinate
 #include "libfork/core/impl/frame.hpp"      // for frame

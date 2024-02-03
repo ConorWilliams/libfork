@@ -101,7 +101,7 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_
 
   basic_eventually<async_result_t<F, Args...>, true> result;
 
-  impl::y_combinate combinator = combinate<tag::root, impl::modifier::none>(&result, std::move(fun));
+  impl::y_combinate combinator = combinate<tag::root, modifier::none>(&result, std::move(fun));
 
   if (!worker) {
     LF_LOG("Sync wait from non-worker thread");

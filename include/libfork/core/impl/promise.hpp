@@ -225,14 +225,30 @@ struct promise_base : frame {
 
     awaitable.prom->set_parent(this);
 
+    constexpr bool throwing = stash_exception_in_return<I>;
+
+    using enum region;
+
     if constexpr (Tag == tag::call) {
-      return call_awaitable{{}, awaitable.prom};
+      if /*  */ constexpr (throwing && std::same_as<Mod, modifier::eager_throw>) {
+        return eager_call_awaitable<unknown>{{{}, awaitable.prom}, this};
+      } else if constexpr (throwing && std::same_as<Mod, modifier::eager_throw_outside>) {
+        return eager_call_awaitable<outside>{{{}, awaitable.prom}, this};
+      } else {
+        return call_awaitable{{}, awaitable.prom};
+      }
     }
 
-    constexpr bool no_except_child = stash_exception_in_return<I>;
-
     if constexpr (Tag == tag::fork) {
-      return tracked_fork_awaitable<no_except_child>{{{}, awaitable.prom, this}, this->load_steals()};
+      if /*  */ constexpr (std::same_as<Mod, modifier::none>) {
+        return fork_awaitable{{}, awaitable.prom, this};
+      } else if constexpr (std::same_as<Mod, modifier::sync>) {
+        return sync_fork_awaitable<throwing, unknown>{{{}, awaitable.prom, this}, this->load_steals()};
+      } else if constexpr (std::same_as<Mod, modifier::sync_outside>) {
+        return sync_fork_awaitable<throwing, opening_fork>{{{}, awaitable.prom, this}, this->load_steals()};
+      } else {
+        static_assert(always_false<Mod>, "Unimplemented modifier for fork!");
+      }
     }
   }
 

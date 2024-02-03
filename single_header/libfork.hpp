@@ -3094,20 +3094,20 @@ enum class tag {
   fork, ///< Non root task from an ``lf::fork``, completes asynchronously.
 };
 
-} // namespace core
-
-namespace impl {
-
 /**
- * @brief Modifier's to the tag category, these do not effect the child task, only the awaitable.
+ * @brief Modifier's to the tag category, these do not effect the child's promise, only the awaitable.
+ *
+ * See `lf::core::dispatch` for more information and uses.
  *
  * We use a namespace + types rather than an enumeration to allow for type-concept.
  */
 namespace modifier {
 
-struct none {};         ///< No modification to the call category.
-struct sync {};         ///< The call is a `fork`, but the awaitable reports if the call was synchonous.
-struct sync_outside {}; ///< Same as `sync` but outside a fork-join scope.
+struct none {};                ///< No modification to the dispatch category.
+struct sync {};                ///< The dispatch is a `fork`, reports if the fork completed synchonously.
+struct sync_outside {};        ///< Same as `sync` but outside a fork-join scope.
+struct eager_throw {};         ///< The dispatch is a `call`, the awaitable will throw eagerly.
+struct eager_throw_outside {}; ///< Same as `eager_throw` but outside a fork-join scope.
 
 } // namespace modifier
 
@@ -3115,7 +3115,7 @@ namespace detail {
 
 template <typename Mod, tag T>
 struct valid_modifier_impl : std::false_type {
-  static_assert(always_false<Mod>, "Mod is not a valid modifier");
+  static_assert(impl::always_false<Mod>, "Mod is not a valid modifier for tag T!");
 };
 
 template <tag T>
@@ -3127,13 +3127,28 @@ struct valid_modifier_impl<modifier::sync, tag::fork> : std::true_type {};
 template <>
 struct valid_modifier_impl<modifier::sync_outside, tag::fork> : std::true_type {};
 
+// TODO: in theory it is possible to extend eager to fork but you may as well just use sync[_outside]?
+
+template <>
+struct valid_modifier_impl<modifier::eager_throw, tag::call> : std::true_type {};
+
+template <>
+struct valid_modifier_impl<modifier::eager_throw_outside, tag::call> : std::true_type {};
+
 } // namespace detail
 
+/**
+ * @brief Test if a type is a valid modifier for a tag.
+ */
 template <typename T, tag Tag>
 concept modifier_for = detail::valid_modifier_impl<T, Tag>::value;
 
+} // namespace core
+
+namespace impl {
+
 /**
- * @brief An enumerator of statement locations wrt to a fork-join scope.
+ * @brief An enumerator describing a statement's location wrt to a fork-join scope.
  */
 enum class region {
   unknown,      ///< Unknown location wrt to a fork-join scope.
@@ -3356,10 +3371,11 @@ concept stash_exception_in_return = quasi_pointer<I> && requires (I ptr) {
 /**
  * @brief Thrown when a parent knows a child threw an exception but before a join point has been reached.
  *
- * This exception __must__ be caught and then __join must be called__ which will rethrow the childs exception.
+ * This exception __must__ be caught and then __join must be called__, which will rethrow the childs
+ * exception.
  */
 struct exception_before_join : std::exception {
-  auto what() const noexcept -> char const * override { return "Some child threw an exception."; }
+  auto what() const noexcept -> char const * override { return "A child threw an exception!"; }
 };
 
 } // namespace core
@@ -4239,10 +4255,45 @@ struct bind_task {
 inline namespace core {
 
 /**
+ * @brief A second-order function for advanced control of `fork`/`call`.
+ *
+ * Users should prefer `lf::core::fork` and `lf::core::call` over this function. `lf::core::dispatch`
+ * primarily caters for niche exception handling use-cases and has more stringent requirements on when/where
+ * it can be used.
+ *
+ * If `Tag == lf::core::tag::call` then dispatches like `lf::core::call`, i.e. the parent cannot be stolen.
+ * If `Tag == lf::core::tag::fork` then dispatches like `lf::core::fork`, i.e. the parent can be stolen.
+ *
+ * The modifiers perform the following actions:
+ *
+ * - `lf::core::modifier::none` - No modification to the call category.
+ * - `lf::core::modifier::sync` - The tag is `fork`, but the awaitable reports if the call was synchonous,
+ * if the call was synchonous then this fork does not count as opening a fork-join scope and the internal
+ * exception will be checked, if it was set (either by the child of a sibling) then either that exception will
+ * be rethrown or a new exception will be thrown. In either case this does not count as a join. If this is
+ * inside a fork-join scope the thrown exception __must__ be caught and a call to `co_await lf::join` __must__
+ * be made.
+ * - `lf::core::modifier::sync_outside` - Same as `sync` but guarantees that the fork statement is outside a
+ * fork-join scope. Hence, if the the call completes synchonously, the exception of the forked child will be
+ * rethrown and a fork-join scope will not have been opened (hence a join is not required).
+ * - `lf::core::modifier::eager_throw` - The tag is `call` after resuming the awaitable the internal exception
+ * is checked, if it is set (either from the child or by a sibling) then it or a new exception will be
+ * (re)thrown.
+ * - `lf::core::modifier::eager_throw_outside` - Same as `eager_throw` but guarantees that the call statement
+ * is outside a fork-join scope hence, the child's exception will be rethrown.
+ *
+ * @tparam Tag The tag of the dispatched task.
+ * @tparam Mod A modifier for the dispatched sequence.
+ */
+template <tag Tag, modifier_for<Tag> Mod = modifier::none>
+  requires (Tag == tag::call || Tag == tag::fork)
+inline constexpr auto dispatch = impl::bind_task<Tag, Mod>{};
+
+/**
  * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a fork.
  *
- * Conceptually the forked/child task can be executed anywhere at anytime and
- * and in parallel with its continuation.
+ * Conceptually the forked/child task can be executed anywhere at anytime and in parallel with its
+ * continuation.
  *
  * \rst
  *
@@ -4255,13 +4306,13 @@ inline namespace core {
  *
  * \endrst
  */
-inline constexpr impl::bind_task<tag::fork, impl::modifier::none> fork = {};
+inline constexpr auto fork = dispatch<tag::fork>;
 
 /**
  * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a call.
  *
- * Conceptually the called/child task can be executed anywhere at anytime but, its
- * continuation is guaranteed to be sequenced after the child returns.
+ * Conceptually the called/child task can be executed anywhere at anytime but, its continuation is guaranteed
+ * to be sequenced after the child returns.
  *
  * \rst
  *
@@ -4274,7 +4325,7 @@ inline constexpr impl::bind_task<tag::fork, impl::modifier::none> fork = {};
  *
  * \endrst
  */
-inline constexpr impl::bind_task<tag::call, impl::modifier::none> call = {};
+inline constexpr auto call = dispatch<tag::call>;
 
 } // namespace core
 
@@ -4300,7 +4351,7 @@ inline constexpr impl::bind_task<tag::call, impl::modifier::none> call = {};
 #include <functional>  // for invoke
 #include <type_traits> // for invoke_result_t
 #include <utility>     // for forward
-      // for try_eventually       // for async_function_object
+      // for try_eventually
 #ifndef CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
 #define CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
 
@@ -4809,27 +4860,33 @@ struct fork_awaitable : std::suspend_always {
  * @brief An awaiter identical to `fork_awaitable` but with an additional boolean indicating if the child
  * completed synchonously.
  *
- * @tparam NoExcept If `true` then the child captures it's exceptions in it's result.
- * @tparam R Where the fork is located.
+ * @tparam ChildThrows If `true` then the child captures it's exceptions in it's result.
+ * @tparam R Where the fork statement is located.
  */
-template <bool NoExcept, region R = region::unknown>
+template <bool ChildThrows, region R>
   requires (R != region::outside)
-struct tracked_fork_awaitable : fork_awaitable {
+struct sync_fork_awaitable : fork_awaitable {
   /**
    * @brief Returns `true` if the forked child completed synchronously.
    *
-   * If `NoException` is `false` then this will throw `lf::core::exception_before_join`
-   * if there is an exception.
+   * If `ChildThrows` is `true` then this will throw `lf::core::exception_before_join`
+   * if there is an exception or possibly the childs exception if the child had no forked
+   * siblings.
    */
-  auto await_resume() const -> bool {
+  auto await_resume() const noexcept(!ChildThrows) -> bool {
     // For it to be safe to consume the value from the child we justed forked it
     // must not have thrown an exception. We can check if __some__ child threw an
     // exception but we cannot (generally) retrieve it as exception is not safe
     // to touch until after a join.
-    if (parent->load_steals() == steals) {
-      if constexpr (!NoExcept) {
-        if constexpr (R == region::opening_fork) {
+    if (std::uint16_t steals_post = parent->load_steals(); steals_post == steals_pre) {
+      if constexpr (ChildThrows) {
+        if (R == region::opening_fork) {
+          LF_ASSERT(steals_post == 0);
           // If the opening fork completed synchonously the we can rethrow.
+          parent->rethrow_if_exception();
+        } else if (steals_post == 0) {
+          // No steals have happened hence, no one else could thrown an
+          // exception hence, so we can touch the exception object.
           parent->rethrow_if_exception();
         } else {
           // Otherwise, we throw a substitute exception.
@@ -4843,7 +4900,7 @@ struct tracked_fork_awaitable : fork_awaitable {
     return false;
   }
 
-  std::uint16_t steals; ///< The number of times the parent was stolen __before__ the fork.
+  std::uint16_t steals_pre; ///< The number of times the parent was stolen __before__ the fork.
 };
 
 /**
@@ -4862,6 +4919,38 @@ struct call_awaitable : std::suspend_always {
   }
 
   frame *child; ///< The suspended child coroutine's frame.
+};
+
+/**
+ * @brief An awaiter identical to `call_awaitable` that also propagates an exception.
+ *
+ * This has limited use inside a fork-join scope.
+ *
+ * @tparam R Where the call statement is located.
+ */
+template <region R>
+  requires (R != region::opening_fork)
+struct eager_call_awaitable : call_awaitable {
+  /**
+   * @brief Eagerly rethrow any exceptions from the child or its siblings.
+   */
+  void await_resume() const {
+    if constexpr (R == region::outside) {
+      LF_ASSERT(parent->load_steals() == 0);
+      // Outside fork-join we can touch the exception.
+      parent->rethrow_if_exception();
+    } else if (parent->load_steals() == 0) {
+      // Can throw the real exception.
+      parent->rethrow_if_exception();
+    } else {
+      // Otherwise we throw a substitute.
+      if (parent->atomic_has_exception()) {
+        LF_THROW(exception_before_join{});
+      }
+    }
+  }
+
+  frame *parent; ///< The calling coroutine's frame.
 };
 
 // -------------------------------------------------------------------------------- //
@@ -6522,7 +6611,7 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_
 
   basic_eventually<async_result_t<F, Args...>, true> result;
 
-  impl::y_combinate combinator = combinate<tag::root, impl::modifier::none>(&result, std::move(fun));
+  impl::y_combinate combinator = combinate<tag::root, modifier::none>(&result, std::move(fun));
 
   if (!worker) {
     LF_LOG("Sync wait from non-worker thread");
@@ -6978,14 +7067,30 @@ struct promise_base : frame {
 
     awaitable.prom->set_parent(this);
 
+    constexpr bool throwing = stash_exception_in_return<I>;
+
+    using enum region;
+
     if constexpr (Tag == tag::call) {
-      return call_awaitable{{}, awaitable.prom};
+      if /*  */ constexpr (throwing && std::same_as<Mod, modifier::eager_throw>) {
+        return eager_call_awaitable<unknown>{{{}, awaitable.prom}, this};
+      } else if constexpr (throwing && std::same_as<Mod, modifier::eager_throw_outside>) {
+        return eager_call_awaitable<outside>{{{}, awaitable.prom}, this};
+      } else {
+        return call_awaitable{{}, awaitable.prom};
+      }
     }
 
-    constexpr bool no_except_child = stash_exception_in_return<I>;
-
     if constexpr (Tag == tag::fork) {
-      return tracked_fork_awaitable<no_except_child>{{{}, awaitable.prom, this}, this->load_steals()};
+      if /*  */ constexpr (std::same_as<Mod, modifier::none>) {
+        return fork_awaitable{{}, awaitable.prom, this};
+      } else if constexpr (std::same_as<Mod, modifier::sync>) {
+        return sync_fork_awaitable<throwing, unknown>{{{}, awaitable.prom, this}, this->load_steals()};
+      } else if constexpr (std::same_as<Mod, modifier::sync_outside>) {
+        return sync_fork_awaitable<throwing, opening_fork>{{{}, awaitable.prom, this}, this->load_steals()};
+      } else {
+        static_assert(always_false<Mod>, "Unimplemented modifier for fork!");
+      }
     }
   }
 
