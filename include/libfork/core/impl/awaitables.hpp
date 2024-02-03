@@ -246,6 +246,18 @@ struct fork_awaitable : std::suspend_always {
   frame *parent; ///< The calling coroutine's frame.
 };
 
+struct tracked_fork_awaitable : fork_awaitable {
+
+  auto await_suspend(std::coroutine_handle<> handle) -> std::coroutine_handle<> {
+    steals = parent->load_steals();
+    return fork_awaitable::await_suspend(handle);
+  }
+
+  auto await_resume() const noexcept -> bool { return parent->load_steals() == steals; }
+
+  std::uint16_t steals; ///< The number of times the parent was stolen __before__ the fork.
+};
+
 /**
  * @brief An awaiter that suspends the current coroutine and transfers control to a child task.
  *

@@ -230,7 +230,7 @@ struct promise_base : frame {
     }
 
     if constexpr (Tg == tag::fork) {
-      return fork_awaitable{{}, awaitable.prom, this};
+      return tracked_fork_awaitable{{{}, awaitable.prom, this}};
     }
   }
 
