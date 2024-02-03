@@ -87,6 +87,8 @@ struct reduction_sweep {
 
       acc_t acc = acc_t(proj(*beg));
 
+      // The optimizer sometimes trips up here so we force a bit of unrolling.
+#pragma unroll(8)
       for (++beg; beg != end; ++beg) {
         acc = bop(std::move(acc), proj(*beg));
       }
@@ -155,6 +157,8 @@ struct scan_sweep {
         ++out;
       }
 
+      // The optimizer sometimes trips up here so we force a bit of unrolling.
+#pragma unroll(8)
       for (I last = beg + size - 1; beg != last; ++beg, ++out) {
         *out = acc = bop(std::move(acc), proj(*beg));
       }
@@ -176,16 +180,14 @@ struct scan_sweep {
   }
 };
 
-constexpr auto repeat = [](auto, unsigned const *in, unsigned *ou) -> lf::task<void> {
+constexpr auto repeat_it = []<class I, class S, class O>(auto, I beg, S end, O out) -> lf::task<void> {
   for (std::size_t i = 0; i < scan_reps; ++i) {
     // std::inclusive_scan(in, in + scan_n, ou, std::plus<>{}); ///
-    co_await lf::just(
-        reduction_sweep<unsigned const *, unsigned const *, std::identity, std::plus<>, unsigned *>{})(
-        in, in + scan_n, scan_chunk, std::plus<>{}, std::identity{}, ou);
+    co_await lf::just(reduction_sweep<I, S, std::identity, std::plus<>, O>{})(
+        beg, end, scan_chunk, std::plus<>{}, std::identity{}, out);
 
-    co_await lf::just(
-        scan_sweep<unsigned const *, unsigned const *, std::identity, std::plus<>, unsigned *>{})(
-        in, in + scan_n, scan_chunk, std::plus<>{}, std::identity{}, ou);
+    co_await lf::just(scan_sweep<I, S, std::identity, std::plus<>, O>{})(
+        beg, end, scan_chunk, std::plus<>{}, std::identity{}, out);
 
     // *(out + size - 1) = bop(*(out + size - 2), *(in + size - 1), )
   }
@@ -217,7 +219,7 @@ void scan_libfork2(benchmark::State &state) {
   volatile unsigned sink = 0;
 
   for (auto _ : state) {
-    lf::sync_wait(sch, repeat, in.data(), ou.data());
+    lf::sync_wait(sch, repeat_it, in.begin(), in.end(), ou.begin());
   }
 
   sink = ou.back();

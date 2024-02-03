@@ -96,6 +96,7 @@ inline constexpr auto reduction_sweep =
       *out = co_await just(proj)(*beg);
     }
 
+#pragma unroll(8)
     for (++beg; beg != end; ++beg) {
 
       auto prev = out;
@@ -183,6 +184,7 @@ inline constexpr auto rhs_down_sweep =
   O acc_prev = beg - 1; // Carried/previous accumulation
 
   if (size <= n) {
+#pragma unroll(8)
     for (; beg != end - 1; ++beg) {
       if constexpr (async_bop) {
         co_await call(beg, bop)(*acc_prev, std::ranges::iter_move(beg));
