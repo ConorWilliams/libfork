@@ -84,8 +84,9 @@ struct fold_overload_impl {
 
     // clang-format off
 
+    co_await lf::fork(&lhs, fold)(head, mid, n, bop, proj);
+
     LF_TRY {
-      co_await lf::fork(&lhs, fold)(head, mid, n, bop, proj);
       co_await lf::call(&rhs, fold)(mid, tail, n, bop, proj);
     } LF_CATCH_ALL {
       fold.stash_exception();
@@ -130,8 +131,9 @@ struct fold_overload_impl {
 
         // clang-format off
 
+        co_await lf::fork(&lhs, fold)(head, mid, bop, proj);
+
         LF_TRY {
-          co_await lf::fork(&lhs, fold)(head, mid, bop, proj);
           co_await lf::call(&rhs, fold)(mid, tail, bop, proj);
         } LF_CATCH_ALL {
           fold.stash_exception();

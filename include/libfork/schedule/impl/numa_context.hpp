@@ -98,7 +98,6 @@ struct numa_context {
     // clang-format off
 
     LF_TRY {
-
       if (topo.neighbors.size() > 1){
         m_close = impl::map(topo.neighbors[1], [](auto const & neigh) {
           return neigh.get();

@@ -66,8 +66,9 @@ struct for_each_overload {
 
     // clang-format off
 
+    co_await lf::fork(for_each)(head, mid, n, fun, proj);
+
     LF_TRY {
-      co_await lf::fork(for_each)(head, mid, n, fun, proj);
       co_await lf::call(for_each)(mid, tail, n, fun, proj);
     } LF_CATCH_ALL { 
       for_each.stash_exception(); 
@@ -103,8 +104,9 @@ struct for_each_overload {
 
         // clang-format off
 
+        co_await lf::fork(for_each)(head, mid, fun, proj);
+
         LF_TRY {
-          co_await lf::fork(for_each)(head, mid, fun, proj);
           co_await lf::call(for_each)(mid, tail, fun, proj);
         } LF_CATCH_ALL { 
           for_each.stash_exception(); 

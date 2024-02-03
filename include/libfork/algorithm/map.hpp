@@ -68,8 +68,9 @@ struct map_overload {
 
     // clang-format off
 
+    co_await lf::fork(map)(head, mid, out, n, fun, proj);
+
     LF_TRY {
-      co_await lf::fork(map)(head, mid, out, n, fun, proj);
       co_await lf::call(map)(mid, tail, out + dif, n, fun, proj);
     } LF_CATCH_ALL { 
       map.stash_exception(); 
@@ -108,8 +109,9 @@ struct map_overload {
 
         // clang-format off
 
+        co_await lf::fork(map)(head, mid, out, fun, proj);
+
         LF_TRY {  
-          co_await lf::fork(map)(head, mid, out, fun, proj);
           co_await lf::call(map)(mid, tail, out + dif, fun, proj);
         } LF_CATCH_ALL { 
           map.stash_exception(); 
