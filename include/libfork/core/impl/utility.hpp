@@ -97,6 +97,12 @@ static_assert(std::has_single_bit(k_new_align));
  */
 static constexpr std::uint16_t k_u16_max = std::numeric_limits<std::uint16_t>::max();
 
+/**
+ * @brief A dependent value to emulate `static_assert(false)` pre c++26.
+ */
+template <typename...>
+inline constexpr bool always_false = false;
+
 // ---------------- Utility classes ---------------- //
 
 /**
@@ -284,8 +290,8 @@ template <typename T>
     { ptr == nullptr } -> std::convertible_to<bool>;
   }
 constexpr auto
-non_null(T &&val, [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept
-    -> T && {
+non_null(T &&val,
+         [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept -> T && {
 #ifndef NDEBUG
   if (val == nullptr) {
     // NOLINTNEXTLINE

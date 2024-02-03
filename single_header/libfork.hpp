@@ -524,6 +524,12 @@ static_assert(std::has_single_bit(k_new_align));
  */
 static constexpr std::uint16_t k_u16_max = std::numeric_limits<std::uint16_t>::max();
 
+/**
+ * @brief A dependent value to emulate `static_assert(false)` pre c++26.
+ */
+template <typename...>
+inline constexpr bool always_false = false;
+
 // ---------------- Utility classes ---------------- //
 
 /**
@@ -711,8 +717,8 @@ template <typename T>
     { ptr == nullptr } -> std::convertible_to<bool>;
   }
 constexpr auto
-non_null(T &&val, [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept
-    -> T && {
+non_null(T &&val,
+         [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept -> T && {
 #ifndef NDEBUG
   if (val == nullptr) {
     // NOLINTNEXTLINE
@@ -1246,6 +1252,8 @@ using try_eventually = basic_eventually<T, true>;
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <exception>
 
 #ifndef DD0B4328_55BD_452B_A4A5_5A4670A6217B
 #define DD0B4328_55BD_452B_A4A5_5A4670A6217B
@@ -2622,7 +2630,6 @@ class frame {
    */
   void capture_exception() noexcept {
 #if LF_COMPILER_EXCEPTIONS
-
   #ifdef __cpp_lib_atomic_ref
     bool prev = std::atomic_ref{m_except}.exchange(true, std::memory_order_acq_rel);
   #else
@@ -2636,13 +2643,29 @@ class frame {
   }
 
   /**
-   * @brief If this contains an exception then it will be rethrown, reset this object to the OK state.
+   * @brief Test if the exception flag is set.
+   *
+   * Safe to call concurrently.
+   */
+  auto atomic_has_exception() const noexcept -> bool {
+#if LF_COMPILER_EXCEPTIONS
+  #ifdef __cpp_lib_atomic_ref
+    return std::atomic_ref{m_except}.load(std::memory_order_acquire);
+  #else
+    return m_except.load(std::memory_order_acquire);
+  #endif
+#else
+    return false;
+#endif
+  }
+
+  /**
+   * @brief If this contains an exception then it will be rethrown and this this object reset to the OK state.
    *
    * This can __only__ be called when the caller has exclusive ownership over this object.
    */
   LF_FORCEINLINE void rethrow_if_exception() {
 #if LF_COMPILER_EXCEPTIONS
-
   #ifdef __cpp_lib_atomic_ref
     if (m_except) {
   #else
@@ -2650,7 +2673,6 @@ class frame {
   #endif
       rethrow();
     }
-
 #endif
   }
 
@@ -3048,10 +3070,13 @@ inline LF_CLANG_TLS_NOINLINE void finalize(worker_context *worker) {
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+#include <type_traits>
+
+
 /**
  * @file tag.hpp
  *
- * @brief Libfork's dispatch tag types.
+ * @brief Libfork's dispatch tags.
  */
 
 namespace lf {
@@ -3070,6 +3095,54 @@ enum class tag {
 };
 
 } // namespace core
+
+namespace impl {
+
+/**
+ * @brief Modifier's to the tag category, these do not effect the child task, only the awaitable.
+ *
+ * We use a namespace + types rather than an enumeration to allow for type-concept.
+ */
+namespace modifier {
+
+struct none {};         ///< No modification to the call category.
+struct sync {};         ///< The call is a `fork`, but the awaitable reports if the call was synchonous.
+struct sync_outside {}; ///< Same as `sync` but outside a fork-join scope.
+
+} // namespace modifier
+
+namespace detail {
+
+template <typename Mod, tag T>
+struct valid_modifier_impl : std::false_type {
+  static_assert(always_false<Mod>, "Mod is not a valid modifier");
+};
+
+template <tag T>
+struct valid_modifier_impl<modifier::none, T> : std::true_type {};
+
+template <>
+struct valid_modifier_impl<modifier::sync, tag::fork> : std::true_type {};
+
+template <>
+struct valid_modifier_impl<modifier::sync_outside, tag::fork> : std::true_type {};
+
+} // namespace detail
+
+template <typename T, tag Tag>
+concept modifier_for = detail::valid_modifier_impl<T, Tag>::value;
+
+/**
+ * @brief An enumerator of statement locations wrt to a fork-join scope.
+ */
+enum class region {
+  unknown,      ///< Unknown location wrt to a fork-join scope.
+  outside,      ///< Outside a fork-join scope.
+  inside,       ///< Inside a fork-join scope
+  opening_fork, ///< First fork statement in a fork-join scope.
+};
+
+} // namespace impl
 
 } // namespace lf
 
@@ -3278,6 +3351,15 @@ inline namespace core {
 template <typename I>
 concept stash_exception_in_return = quasi_pointer<I> && requires (I ptr) {
   { stash_exception(*ptr) } noexcept;
+};
+
+/**
+ * @brief Thrown when a parent knows a child threw an exception but before a join point has been reached.
+ *
+ * This exception __must__ be caught and then __join must be called__ which will rethrow the childs exception.
+ */
+struct exception_before_join : std::exception {
+  auto what() const noexcept -> char const * override { return "Some child threw an exception."; }
 };
 
 } // namespace core
@@ -3771,19 +3853,6 @@ concept regular_invocable_returns =
 
 } // namespace impl
 
-namespace detail {
-
-/**
- * @brief Test if `Bop` is invocable with all combinations of `T` and `R` and all invocations return `R`.
- */
-template <class R, class Bop, class T>
-concept semigroup_impl = impl::regular_invocable_returns<R, Bop, T, T> && //
-                         impl::regular_invocable_returns<R, Bop, T, R> && //
-                         impl::regular_invocable_returns<R, Bop, R, T> && //
-                         impl::regular_invocable_returns<R, Bop, R, R>;   //
-
-} // namespace detail
-
 // ---------------------------------- Semigroup ---------------------------------- //
 
 /**
@@ -3797,64 +3866,45 @@ concept semigroup_impl = impl::regular_invocable_returns<R, Bop, T, T> && //
  *
  * Example: `(Z, -)` is not a semigroup, since `(1 - 1) - 1 != 1 - (1 - 1)`.
  *
- * Let `bop` and `t` be objects of types `Bop` and `T` respectively. Then the following expressions
+ * Let `t`, `u` and `bop` be objects of types `T`, `U` and `Bop` respectively. Then the following expressions
  * must be valid:
  *
  * 1. `bop(t, t)`
- * 2. `bop(t, bop(t, t))`
- * 3. `bop(bop(t, t), t)`
- * 4. `bop(bop(t, t), bop(t, t))`
+ * 2. `bop(u, u)`
+ * 3. `bop(u, t)`
+ * 4. `bop(t, u)`
  *
  * Additionally, the expressions must return the same type, `R`.
  *
- * Hence the `S` is the set of the values in `R`, to align with the mathematical definition of a semigroup
- * we say that `T` _represents_ `S`.
- *
  * __Note:__ A semigroup requires all invocations to be regular. This is a semantic requirement only.
  */
-template <class Bop, class T>
-concept semigroup =
-    regular_invocable<Bop, T, T> && detail::semigroup_impl<invoke_result_t<Bop, T, T>, Bop, T>; //
-
-/**
- * @brief The result of invoking a semigroup's binary operator with two values of type `T`.
- */
-template <class Bop, class T>
-  requires semigroup<Bop, T>
-using semigroup_t = invoke_result_t<Bop, T, T>;
-
-/**
- * @brief Test if a binary operator is a semigroup over `T` and `U` with the same result type.
- *
- * A dual semigroup requires that `Bop` is a semigroup over `T` and `U` with the same
- * `lf::semigroup_t` and mixed invocation of `Bop` over `T` and `U` has semigroup
- * semantics.
- *
- * Let u be an object of type `U` and t be an object of type `T`, the additional following
- * expressions must be valid and return the same `lf::semigroup_t` as the previous expressions:
- *
- * 1. `bop(t, u)`
- * 2. `bop(u, t)`
- *
- * This is commutative in `T` and `U`.
- */
 template <class Bop, class T, class U>
-concept common_semigroup = semigroup<Bop, T> &&                                               //
-                           semigroup<Bop, U> &&                                               //
-                           std::same_as<semigroup_t<Bop, T>, semigroup_t<Bop, U>> &&          //
-                           impl::regular_invocable_returns<semigroup_t<Bop, T>, Bop, U, T> && //
-                           impl::regular_invocable_returns<semigroup_t<Bop, U>, Bop, T, U>;   //
+concept semigroup =
+    regular_invocable<Bop, T, T> &&                                           // Pure invocations
+    regular_invocable<Bop, U, U> &&                                           //
+    std::same_as<invoke_result_t<Bop, T, T>, invoke_result_t<Bop, U, U>> &&   //
+    impl::regular_invocable_returns<invoke_result_t<Bop, T, T>, Bop, T, U> && // Mixed invocations
+    impl::regular_invocable_returns<invoke_result_t<Bop, U, U>, Bop, U, T>;   //
 
 // ------------------------------------ Foldable ------------------------------------ //
 
 namespace detail {
 
 template <class Acc, class Bop, class T>
-concept foldable_impl =                               //
-    common_semigroup<Bop, Acc, T> &&                  //
-    std::movable<Acc> &&                              // Accumulator moved in loop.
-    std::convertible_to<semigroup_t<Bop, T>, Acc> &&  // `fold bop [a] = a`
-    std::assignable_from<Acc &, semigroup_t<Bop, T>>; // Accumulator assigned in loop.
+concept foldable_to =                                        //
+    std::movable<Acc> &&                                     //
+    semigroup<Bop, Acc, T> &&                                //
+    std::constructible_from<Acc, T> &&                       //
+    std::convertible_to<T, Acc> &&                           //
+    std::assignable_from<Acc &, invoke_result_t<Bop, T, T>>; //
+
+template <class Acc, class Bop, class I>
+concept indirectly_foldable_to =                                       //
+    std::indirectly_readable<I> &&                                     //
+    std::copy_constructible<Bop> &&                                    //
+    semigroup<Bop &, indirect_value_t<I>, std::iter_reference_t<I>> && //
+    foldable_to<Acc, Bop &, indirect_value_t<I>> &&                    //
+    foldable_to<Acc, Bop &, std::iter_reference_t<I>>;                 //
 
 } // namespace detail
 
@@ -3879,9 +3929,9 @@ concept foldable_impl =                               //
  * @tparam I Input type
  */
 template <class Bop, class T>
-concept foldable =                                                    //
-    semigroup<Bop, T> &&                                              //
-    detail::foldable_impl<std::decay_t<semigroup_t<Bop, T>>, Bop, T>; //
+concept foldable =                                                         //
+    invocable<Bop, T, T> &&                                                //
+    detail::foldable_to<std::decay_t<invoke_result_t<Bop, T, T>>, Bop, T>; //
 
 /**
  * @brief An indirect version of `lf::foldable`.
@@ -3890,30 +3940,50 @@ concept foldable =                                                    //
  * @tparam I Input iterator.
  */
 template <class Bop, class I>
-concept indirectly_foldable =                                                 //
-    std::indirectly_readable<I> &&                                            //
-    std::copy_constructible<Bop> &&                                           //
-    common_semigroup<Bop &, indirect_value_t<I>, std::iter_reference_t<I>> && //
-    foldable<Bop &, indirect_value_t<I>> &&                                   //
-    foldable<Bop &, std::iter_reference_t<I>>;                                //
-
-/**
- * @brief Verify that the generalized prefix sum over `Bop` is valid.
- *
- * @tparam O Output iterator/accumulator.
- * @tparam Bop Associative binary operator.
- * @tparam I Input iterator.
- */
-template <class Bop, class O, class I>
-concept indirectly_scannable =                                                            //
-    std::indirectly_readable<O> &&                                                        //
+concept indirectly_foldable =                                                             //
     std::indirectly_readable<I> &&                                                        //
     std::copy_constructible<Bop> &&                                                       //
-    std::indirectly_writable<O, std::iter_reference_t<I>> &&                              // For n = 1
-    common_semigroup<Bop &, std::iter_reference_t<O>, std::iter_reference_t<I>> &&        // bop(*o, *in)
-    common_semigroup<Bop &, std::iter_reference_t<I>, std::iter_rvalue_reference_t<O>> && // bop(*in, MOV(*o))
-    common_semigroup<Bop &, std::iter_rvalue_reference_t<O>, std::iter_reference_t<O>> && // bop(MOV(*o), *o)
-    std::indirectly_writable<O, semigroup_t<Bop &, std::iter_reference_t<O>>>;            // *o= -^
+    invocable<Bop &, std::iter_reference_t<I>, std::iter_reference_t<I>> &&               //
+    detail::indirectly_foldable_to<std::decay_t<indirect_result_t<Bop &, I, I>>, Bop, I>; //
+
+/**
+ * @brief Compute the accumulator/result type for a fold operation.
+ */
+template <class Bop, std::random_access_iterator I, class Proj>
+  requires indirectly_foldable<Bop, projected<I, Proj>>
+using indirect_fold_acc_t = std::decay_t<indirect_result_t<Bop &, projected<I, Proj>, projected<I, Proj>>>;
+
+namespace detail {
+
+template <class Acc, class Bop, class O>
+concept scannable_impl =
+    std::indirectly_writable<O, Acc> &&                                            // Write result of fold.
+    semigroup<Bop &, std::iter_reference_t<O>, std::iter_rvalue_reference_t<O>> && // Scan/reduce over O.
+    std::indirectly_writable<O, indirect_result_t<Bop &, O, O>> &&                 //   Write result of -^.
+    std::indirectly_writable<O, Acc &> &&                                          // Copy acc in scan.
+    std::constructible_from<Acc, std::iter_reference_t<O>> &&                      // Initialize acc in scan.
+    std::convertible_to<std::iter_reference_t<O>, Acc>;                            // Same as -^.
+
+}
+
+template <class Bop, class O, class T>
+concept scannable =                                       //
+    std::indirectly_readable<O> &&                        //
+    std::indirectly_writable<O, T> &&                     // n = 1 case.
+    detail::foldable_to<std::iter_value_t<O>, Bop, T> &&  // Regular reduction over T.
+    detail::scannable_impl<std::iter_value_t<O>, Bop, O>; //
+
+// TODO requirements for last one once we fix such that the last element is used.
+
+template <class Bop, class O, class I>
+concept indirectly_scannable =
+    std::indirectly_readable<O> &&                                  //
+    std::indirectly_readable<I> &&                                  //
+    std::copy_constructible<Bop> &&                                 //
+    std::indirectly_writable<O, indirect_value_t<I>> &&             // n = 1 case.
+    std::indirectly_writable<O, std::iter_reference_t<I>> &&        //   -^.
+    detail::indirectly_foldable_to<std::iter_value_t<O>, Bop, I> && // Regular reduction over T.
+    detail::scannable_impl<std::iter_value_t<O>, Bop, O>;
 
 } // namespace lf
 
@@ -3965,7 +4035,8 @@ concept indirectly_scannable =                                                  
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <concepts> // for same_as
-#include <utility>  // for as_const, forward
+#include <type_traits>
+#include <utility> // for as_const, forward
  // for quasi_pointer, async_function_object, first_arg_t // for async_result_t, return_address_for, async_tag_invo...       // for tag      // for returnable, task
 
 /**
@@ -3988,7 +4059,7 @@ struct promise;
  *
  * This will be transformed by an `await_transform` and trigger a fork or call.
  */
-template <returnable R, return_address_for<R> I, tag Tag>
+template <returnable R, return_address_for<R> I, tag Tag, modifier_for<Tag> Mod>
 struct [[nodiscard("A quasi_awaitable MUST be immediately co_awaited!")]] quasi_awaitable {
   promise<R, I, Tag> *prom; ///< The parent/semaphore needs to be set!
 };
@@ -4000,7 +4071,7 @@ struct [[nodiscard("A quasi_awaitable MUST be immediately co_awaited!")]] quasi_
  *
  * The first argument will contain a copy of the function hence, this is a fixed-point combinator.
  */
-template <quasi_pointer I, tag Tag, async_function_object F>
+template <quasi_pointer I, tag Tag, modifier_for<Tag> Mod, async_function_object F>
 struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combinate {
 
   [[no_unique_address]] I ret; ///< The return address.
@@ -4011,17 +4082,16 @@ struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combin
    */
   template <typename... Args>
     requires async_tag_invocable<I, Tag, F, Args...>
-  auto operator()(Args &&...args) && -> quasi_awaitable<async_result_t<F, Args...>, I, Tag> {
+  auto operator()(Args &&...args) && -> quasi_awaitable<async_result_t<F, Args...>, I, Tag, Mod> {
 
     task task = std::move(fun)(                                 //
         first_arg_t<I, Tag, F, Args &&...>(std::as_const(fun)), // Makes a copy of fun
         std::forward<Args>(args)...                             //
     );
 
-    using R = async_result_t<F, Args...>;
-    using P = promise<R, I, Tag>;
+    using prom_t = promise<async_result_t<F, Args...>, I, Tag>;
 
-    auto *prom = static_cast<P *>(task.prom);
+    auto *prom = static_cast<prom_t *>(task.prom);
 
     if constexpr (!std::same_as<I, discard_t>) {
       prom->set_return(std::move(ret));
@@ -4036,10 +4106,10 @@ struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combin
 /**
  * @brief Build a combinator for `ret` and `fun`.
  */
-template <tag Tag, quasi_pointer I, async_function_object F>
+template <tag Tag, modifier_for<Tag> Mod, quasi_pointer I, async_function_object F>
   requires std::is_rvalue_reference_v<I &&>
-auto combinate(I &&ret, F fun) -> y_combinate<I, Tag, F> {
-  return {std::move(ret), std::move(fun)};
+auto combinate(I &&ret, F fun) -> y_combinate<I, Tag, Mod, F> {
+  return {std::forward<I>(ret), std::move(fun)};
 }
 
 /**
@@ -4048,14 +4118,15 @@ auto combinate(I &&ret, F fun) -> y_combinate<I, Tag, F> {
  * This specialization prevents each layer wrapping the function in another `first_arg_t`.
  */
 template <tag Tag,
+          modifier_for<Tag> Mod,
           tag OtherTag,
           quasi_pointer I,
           quasi_pointer OtherI,
           async_function_object F,
           typename... Args>
   requires std::is_rvalue_reference_v<I &&>
-auto combinate(I &&ret, first_arg_t<OtherI, OtherTag, F, Args...> arg) -> y_combinate<I, Tag, F> {
-  return {std::move(ret), unwrap(std::move(arg))};
+auto combinate(I &&ret, first_arg_t<OtherI, OtherTag, F, Args...> arg) -> y_combinate<I, Tag, Mod, F> {
+  return {std::forward<I>(ret), unwrap(std::move(arg))};
 }
 
 } // namespace lf::impl
@@ -4118,7 +4189,7 @@ inline constexpr impl::rethrow_if_exception_type rethrow_if_exception = {};
 /**
  * @brief An invocable (and subscriptable) wrapper that binds a return address to an asynchronous function.
  */
-template <tag Tag>
+template <tag Tag, modifier_for<Tag> Mod>
 struct bind_task {
   /**
    * @brief Bind return address `ret` to an asynchronous function.
@@ -4127,7 +4198,7 @@ struct bind_task {
    */
   template <quasi_pointer I, async_function_object F>
   LF_DEPRECATE_CALL [[nodiscard]] LF_STATIC_CALL auto operator()(I ret, F fun) LF_STATIC_CONST {
-    return combinate<Tag>(std::move(ret), std::move(fun));
+    return combinate<Tag, Mod>(std::move(ret), std::move(fun));
   }
 
   /**
@@ -4137,7 +4208,7 @@ struct bind_task {
    */
   template <async_function_object F>
   LF_DEPRECATE_CALL [[nodiscard]] LF_STATIC_CALL auto operator()(F fun) LF_STATIC_CONST {
-    return combinate<Tag>(discard_t{}, std::move(fun));
+    return combinate<Tag, Mod>(discard_t{}, std::move(fun));
   }
 
 #if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
@@ -4148,7 +4219,7 @@ struct bind_task {
    */
   template <quasi_pointer I, async_function_object F>
   [[nodiscard]] LF_STATIC_CALL auto operator[](I ret, F fun) LF_STATIC_CONST {
-    return combinate<Tag>(std::move(ret), std::move(fun));
+    return combinate<Tag, Mod>(std::move(ret), std::move(fun));
   }
 
   /**
@@ -4158,7 +4229,7 @@ struct bind_task {
    */
   template <async_function_object F>
   [[nodiscard]] LF_STATIC_CALL auto operator[](F fun) LF_STATIC_CONST {
-    return combinate<Tag>(discard_t{}, std::move(fun));
+    return combinate<Tag, Mod>(discard_t{}, std::move(fun));
   }
 #endif
 };
@@ -4184,7 +4255,7 @@ inline namespace core {
  *
  * \endrst
  */
-inline constexpr impl::bind_task<tag::fork> fork = {};
+inline constexpr impl::bind_task<tag::fork, impl::modifier::none> fork = {};
 
 /**
  * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a call.
@@ -4203,7 +4274,7 @@ inline constexpr impl::bind_task<tag::fork> fork = {};
  *
  * \endrst
  */
-inline constexpr impl::bind_task<tag::call> call = {};
+inline constexpr impl::bind_task<tag::call, impl::modifier::none> call = {};
 
 } // namespace core
 
@@ -4735,6 +4806,47 @@ struct fork_awaitable : std::suspend_always {
 };
 
 /**
+ * @brief An awaiter identical to `fork_awaitable` but with an additional boolean indicating if the child
+ * completed synchonously.
+ *
+ * @tparam NoExcept If `true` then the child captures it's exceptions in it's result.
+ * @tparam R Where the fork is located.
+ */
+template <bool NoExcept, region R = region::unknown>
+  requires (R != region::outside)
+struct tracked_fork_awaitable : fork_awaitable {
+  /**
+   * @brief Returns `true` if the forked child completed synchronously.
+   *
+   * If `NoException` is `false` then this will throw `lf::core::exception_before_join`
+   * if there is an exception.
+   */
+  auto await_resume() const -> bool {
+    // For it to be safe to consume the value from the child we justed forked it
+    // must not have thrown an exception. We can check if __some__ child threw an
+    // exception but we cannot (generally) retrieve it as exception is not safe
+    // to touch until after a join.
+    if (parent->load_steals() == steals) {
+      if constexpr (!NoExcept) {
+        if constexpr (R == region::opening_fork) {
+          // If the opening fork completed synchonously the we can rethrow.
+          parent->rethrow_if_exception();
+        } else {
+          // Otherwise, we throw a substitute exception.
+          if (parent->atomic_has_exception()) {
+            LF_THROW(exception_before_join{});
+          }
+        }
+      }
+      return true;
+    }
+    return false;
+  }
+
+  std::uint16_t steals; ///< The number of times the parent was stolen __before__ the fork.
+};
+
+/**
  * @brief An awaiter that suspends the current coroutine and transfers control to a child task.
  *
  * The parent task is __not__ made available for stealing. This is generated by `await_transform`
@@ -4889,12 +5001,13 @@ class [[nodiscard("co_await this!")]] just_awaitable : just_awaitable_base<R>, c
 
  public:
  /**
-  * @brief Construct a new just join awaitable binding the return address to an internal member.
+  * @brief Construct a new just awaitable binding the return address to an internal member.
   */
   template <typename Fun, typename... Args>
   explicit just_awaitable(Fun &&fun, Args &&...args)
       : call_awaitable{
-            {}, combinate<tag::call>(&this->ret, std::forward<Fun>(fun))(std::forward<Args>(args)...).prom
+            {}, 
+            combinate<tag::call, modifier::none>(&this->ret, std::forward<Fun>(fun))(std::forward<Args>(args)...).prom
         } 
       {}
 
@@ -5034,13 +5147,6 @@ inline constexpr impl::bind_just just = {};
 
 namespace lf {
 
-/**
- * @brief Compute the accumulator/result type for a fold operation.
- */
-template <class Bop, std::random_access_iterator I, class Proj>
-  requires indirectly_foldable<Bop, projected<I, Proj>>
-using indirect_fold_acc_t = std::decay_t<semigroup_t<Bop &, std::iter_reference_t<projected<I, Proj>>>>;
-
 namespace impl {
 
 namespace detail {
@@ -5051,26 +5157,26 @@ template <std::random_access_iterator I,
           indirectly_foldable<projected<I, Proj>> Bop>
 struct fold_overload_impl {
 
-  using acc = indirect_fold_acc_t<Bop, I, Proj>;
-  using difference_t = std::iter_difference_t<I>;
+  using acc_t = indirect_fold_acc_t<Bop, I, Proj>;
+  using int_t = std::iter_difference_t<I>;
 
-  static constexpr bool async_bop = !std::invocable<Bop &, acc, std::iter_reference_t<projected<I, Proj>>>;
+  static constexpr bool async_bop = !std::invocable<Bop &, acc_t, std::iter_reference_t<projected<I, Proj>>>;
 
   /**
    * @brief Recursive implementation of `fold`, requires that `tail - head > 0`.
    */
   LF_STATIC_CALL auto
-  operator()(auto fold, I head, S tail, difference_t n, Bop bop, Proj proj) LF_STATIC_CONST->lf::task<acc> {
+  operator()(auto fold, I head, S tail, int_t n, Bop bop, Proj proj) LF_STATIC_CONST->lf::task<acc_t> {
 
     LF_ASSERT(n > 1);
 
-    difference_t len = tail - head;
+    int_t len = tail - head;
 
     LF_ASSERT(len > 0);
 
     if (len <= n) {
 
-      auto lhs = acc(co_await just(proj)(*head)); // Require convertible to U
+      acc_t lhs = acc_t(co_await just(proj)(*head)); // Require convertible to U
 
       for (++head; head != tail; ++head) {
         if constexpr (async_bop) {
@@ -5089,13 +5195,14 @@ struct fold_overload_impl {
     LF_ASSERT(mid - head > 0);
     LF_ASSERT(tail - mid > 0);
 
-    eventually<acc> lhs;
-    eventually<acc> rhs;
+    eventually<acc_t> lhs;
+    eventually<acc_t> rhs;
 
     // clang-format off
 
+    co_await lf::fork(&lhs, fold)(head, mid, n, bop, proj);
+
     LF_TRY {
-      co_await lf::fork(&lhs, fold)(head, mid, n, bop, proj);
       co_await lf::call(&rhs, fold)(mid, tail, n, bop, proj);
     } LF_CATCH_ALL {
       fold.stash_exception();
@@ -5118,9 +5225,9 @@ struct fold_overload_impl {
    * requires `a + b` to be evaluated before adding the result to `c`.
    */
   LF_STATIC_CALL auto
-  operator()(auto fold, I head, S tail, Bop bop, Proj proj) LF_STATIC_CONST->lf::task<acc> {
+  operator()(auto fold, I head, S tail, Bop bop, Proj proj) LF_STATIC_CONST->lf::task<acc_t> {
 
-    difference_t len = tail - head;
+    int_t len = tail - head;
 
     LF_ASSERT(len >= 0);
 
@@ -5135,13 +5242,14 @@ struct fold_overload_impl {
         LF_ASSERT(mid - head > 0);
         LF_ASSERT(tail - mid > 0);
 
-        eventually<acc> lhs;
-        eventually<acc> rhs;
+        eventually<acc_t> lhs;
+        eventually<acc_t> rhs;
 
         // clang-format off
 
+        co_await lf::fork(&lhs, fold)(head, mid, bop, proj);
+
         LF_TRY {
-          co_await lf::fork(&lhs, fold)(head, mid, bop, proj);
           co_await lf::call(&rhs, fold)(mid, tail, bop, proj);
         } LF_CATCH_ALL {
           fold.stash_exception();
@@ -5380,8 +5488,9 @@ struct for_each_overload {
 
     // clang-format off
 
+    co_await lf::fork(for_each)(head, mid, n, fun, proj);
+
     LF_TRY {
-      co_await lf::fork(for_each)(head, mid, n, fun, proj);
       co_await lf::call(for_each)(mid, tail, n, fun, proj);
     } LF_CATCH_ALL { 
       for_each.stash_exception(); 
@@ -5417,8 +5526,9 @@ struct for_each_overload {
 
         // clang-format off
 
+        co_await lf::fork(for_each)(head, mid, fun, proj);
+
         LF_TRY {
-          co_await lf::fork(for_each)(head, mid, fun, proj);
           co_await lf::call(for_each)(mid, tail, fun, proj);
         } LF_CATCH_ALL { 
           for_each.stash_exception(); 
@@ -5663,8 +5773,9 @@ struct map_overload {
 
     // clang-format off
 
+    co_await lf::fork(map)(head, mid, out, n, fun, proj);
+
     LF_TRY {
-      co_await lf::fork(map)(head, mid, out, n, fun, proj);
       co_await lf::call(map)(mid, tail, out + dif, n, fun, proj);
     } LF_CATCH_ALL { 
       map.stash_exception(); 
@@ -5703,8 +5814,9 @@ struct map_overload {
 
         // clang-format off
 
+        co_await lf::fork(map)(head, mid, out, fun, proj);
+
         LF_TRY {  
-          co_await lf::fork(map)(head, mid, out, fun, proj);
           co_await lf::call(map)(mid, tail, out + dif, fun, proj);
         } LF_CATCH_ALL { 
           map.stash_exception(); 
@@ -5907,6 +6019,7 @@ inline constexpr auto reduction_sweep =
       *out = co_await just(proj)(*beg);
     }
 
+#pragma unroll(8)
     for (++beg; beg != end; ++beg) {
 
       auto prev = out;
@@ -5994,6 +6107,7 @@ inline constexpr auto rhs_down_sweep =
   O acc_prev = beg - 1; // Carried/previous accumulation
 
   if (size <= n) {
+#pragma unroll(8)
     for (; beg != end - 1; ++beg) {
       if constexpr (async_bop) {
         co_await call(beg, bop)(*acc_prev, std::ranges::iter_move(beg));
@@ -6408,7 +6522,7 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_
 
   basic_eventually<async_result_t<F, Args...>, true> result;
 
-  impl::y_combinate combinator = combinate<tag::root>(&result, std::move(fun));
+  impl::y_combinate combinator = combinate<tag::root, impl::modifier::none>(&result, std::move(fun));
 
   if (!worker) {
     LF_LOG("Sync wait from non-worker thread");
@@ -6858,18 +6972,20 @@ struct promise_base : frame {
   /**
    * @brief Transform a call packet into a call awaitable.
    */
-  template <returnable R2, return_address_for<R2> I2, tag Tg>
-    requires (Tg == tag::call || Tg == tag::fork)
-  auto await_transform(quasi_awaitable<R2, I2, Tg> &&awaitable) noexcept {
+  template <returnable R, return_address_for<R> I, tag Tag, modifier_for<Tag> Mod>
+    requires (Tag == tag::call || Tag == tag::fork)
+  auto await_transform(quasi_awaitable<R, I, Tag, Mod> &&awaitable) noexcept {
 
     awaitable.prom->set_parent(this);
 
-    if constexpr (Tg == tag::call) {
+    if constexpr (Tag == tag::call) {
       return call_awaitable{{}, awaitable.prom};
     }
 
-    if constexpr (Tg == tag::fork) {
-      return fork_awaitable{{}, awaitable.prom, this};
+    constexpr bool no_except_child = stash_exception_in_return<I>;
+
+    if constexpr (Tag == tag::fork) {
+      return tracked_fork_awaitable<no_except_child>{{{}, awaitable.prom, this}, this->load_steals()};
     }
   }
 
@@ -6878,8 +6994,8 @@ struct promise_base : frame {
   /**
    * @brief Pass through a just awaitable.
    */
-  template <returnable R2>
-  auto await_transform(just_awaitable<R2> &&awaitable) noexcept -> just_awaitable<R2> && {
+  template <returnable R>
+  auto await_transform(just_awaitable<R> &&awaitable) noexcept -> just_awaitable<R> && {
     awaitable.frame()->set_parent(this);
     return std::move(awaitable);
   }
@@ -7000,12 +7116,6 @@ template <typename...>
 struct list {};
 
 namespace detail {
-
-/**
- * @brief A dependent value to emulate `static_assert(false)`.
- */
-template <typename...>
-inline constexpr bool always_false = false;
 
 /**
  * @brief All non-reference destinations are safe for most types.
@@ -7964,7 +8074,6 @@ struct numa_context {
     // clang-format off
 
     LF_TRY {
-
       if (topo.neighbors.size() > 1){
         m_close = impl::map(topo.neighbors[1], [](auto const & neigh) {
           return neigh.get();

@@ -199,7 +199,6 @@ class frame {
    */
   void capture_exception() noexcept {
 #if LF_COMPILER_EXCEPTIONS
-
   #ifdef __cpp_lib_atomic_ref
     bool prev = std::atomic_ref{m_except}.exchange(true, std::memory_order_acq_rel);
   #else
@@ -213,13 +212,29 @@ class frame {
   }
 
   /**
-   * @brief If this contains an exception then it will be rethrown, reset this object to the OK state.
+   * @brief Test if the exception flag is set.
+   *
+   * Safe to call concurrently.
+   */
+  auto atomic_has_exception() const noexcept -> bool {
+#if LF_COMPILER_EXCEPTIONS
+  #ifdef __cpp_lib_atomic_ref
+    return std::atomic_ref{m_except}.load(std::memory_order_acquire);
+  #else
+    return m_except.load(std::memory_order_acquire);
+  #endif
+#else
+    return false;
+#endif
+  }
+
+  /**
+   * @brief If this contains an exception then it will be rethrown and this this object reset to the OK state.
    *
    * This can __only__ be called when the caller has exclusive ownership over this object.
    */
   LF_FORCEINLINE void rethrow_if_exception() {
 #if LF_COMPILER_EXCEPTIONS
-
   #ifdef __cpp_lib_atomic_ref
     if (m_except) {
   #else
@@ -227,7 +242,6 @@ class frame {
   #endif
       rethrow();
     }
-
 #endif
   }
 

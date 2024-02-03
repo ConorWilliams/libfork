@@ -57,12 +57,13 @@ class [[nodiscard("co_await this!")]] just_awaitable : just_awaitable_base<R>, c
 
  public:
  /**
-  * @brief Construct a new just join awaitable binding the return address to an internal member.
+  * @brief Construct a new just awaitable binding the return address to an internal member.
   */
   template <typename Fun, typename... Args>
   explicit just_awaitable(Fun &&fun, Args &&...args)
       : call_awaitable{
-            {}, combinate<tag::call>(&this->ret, std::forward<Fun>(fun))(std::forward<Args>(args)...).prom
+            {}, 
+            combinate<tag::call, modifier::none>(&this->ret, std::forward<Fun>(fun))(std::forward<Args>(args)...).prom
         } 
       {}
 

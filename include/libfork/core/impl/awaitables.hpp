@@ -246,14 +246,43 @@ struct fork_awaitable : std::suspend_always {
   frame *parent; ///< The calling coroutine's frame.
 };
 
+/**
+ * @brief An awaiter identical to `fork_awaitable` but with an additional boolean indicating if the child
+ * completed synchonously.
+ *
+ * @tparam NoExcept If `true` then the child captures it's exceptions in it's result.
+ * @tparam R Where the fork is located.
+ */
+template <bool NoExcept, region R = region::unknown>
+  requires (R != region::outside)
 struct tracked_fork_awaitable : fork_awaitable {
-
-  auto await_suspend(std::coroutine_handle<> handle) -> std::coroutine_handle<> {
-    steals = parent->load_steals();
-    return fork_awaitable::await_suspend(handle);
+  /**
+   * @brief Returns `true` if the forked child completed synchronously.
+   *
+   * If `NoException` is `false` then this will throw `lf::core::exception_before_join`
+   * if there is an exception.
+   */
+  auto await_resume() const -> bool {
+    // For it to be safe to consume the value from the child we justed forked it
+    // must not have thrown an exception. We can check if __some__ child threw an
+    // exception but we cannot (generally) retrieve it as exception is not safe
+    // to touch until after a join.
+    if (parent->load_steals() == steals) {
+      if constexpr (!NoExcept) {
+        if constexpr (R == region::opening_fork) {
+          // If the opening fork completed synchonously the we can rethrow.
+          parent->rethrow_if_exception();
+        } else {
+          // Otherwise, we throw a substitute exception.
+          if (parent->atomic_has_exception()) {
+            LF_THROW(exception_before_join{});
+          }
+        }
+      }
+      return true;
+    }
+    return false;
   }
-
-  auto await_resume() const noexcept -> bool { return parent->load_steals() == steals; }
 
   std::uint16_t steals; ///< The number of times the parent was stolen __before__ the fork.
 };

@@ -219,18 +219,20 @@ struct promise_base : frame {
   /**
    * @brief Transform a call packet into a call awaitable.
    */
-  template <returnable R2, return_address_for<R2> I2, tag Tg>
-    requires (Tg == tag::call || Tg == tag::fork)
-  auto await_transform(quasi_awaitable<R2, I2, Tg> &&awaitable) noexcept {
+  template <returnable R, return_address_for<R> I, tag Tag, modifier_for<Tag> Mod>
+    requires (Tag == tag::call || Tag == tag::fork)
+  auto await_transform(quasi_awaitable<R, I, Tag, Mod> &&awaitable) noexcept {
 
     awaitable.prom->set_parent(this);
 
-    if constexpr (Tg == tag::call) {
+    if constexpr (Tag == tag::call) {
       return call_awaitable{{}, awaitable.prom};
     }
 
-    if constexpr (Tg == tag::fork) {
-      return tracked_fork_awaitable{{{}, awaitable.prom, this}};
+    constexpr bool no_except_child = stash_exception_in_return<I>;
+
+    if constexpr (Tag == tag::fork) {
+      return tracked_fork_awaitable<no_except_child>{{{}, awaitable.prom, this}, this->load_steals()};
     }
   }
 
@@ -239,8 +241,8 @@ struct promise_base : frame {
   /**
    * @brief Pass through a just awaitable.
    */
-  template <returnable R2>
-  auto await_transform(just_awaitable<R2> &&awaitable) noexcept -> just_awaitable<R2> && {
+  template <returnable R>
+  auto await_transform(just_awaitable<R> &&awaitable) noexcept -> just_awaitable<R> && {
     awaitable.frame()->set_parent(this);
     return std::move(awaitable);
   }
@@ -361,12 +363,6 @@ template <typename...>
 struct list {};
 
 namespace detail {
-
-/**
- * @brief A dependent value to emulate `static_assert(false)`.
- */
-template <typename...>
-inline constexpr bool always_false = false;
 
 /**
  * @brief All non-reference destinations are safe for most types.

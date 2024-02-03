@@ -73,7 +73,7 @@ inline constexpr impl::rethrow_if_exception_type rethrow_if_exception = {};
 /**
  * @brief An invocable (and subscriptable) wrapper that binds a return address to an asynchronous function.
  */
-template <tag Tag>
+template <tag Tag, modifier_for<Tag> Mod>
 struct bind_task {
   /**
    * @brief Bind return address `ret` to an asynchronous function.
@@ -82,7 +82,7 @@ struct bind_task {
    */
   template <quasi_pointer I, async_function_object F>
   LF_DEPRECATE_CALL [[nodiscard]] LF_STATIC_CALL auto operator()(I ret, F fun) LF_STATIC_CONST {
-    return combinate<Tag>(std::move(ret), std::move(fun));
+    return combinate<Tag, Mod>(std::move(ret), std::move(fun));
   }
 
   /**
@@ -92,7 +92,7 @@ struct bind_task {
    */
   template <async_function_object F>
   LF_DEPRECATE_CALL [[nodiscard]] LF_STATIC_CALL auto operator()(F fun) LF_STATIC_CONST {
-    return combinate<Tag>(discard_t{}, std::move(fun));
+    return combinate<Tag, Mod>(discard_t{}, std::move(fun));
   }
 
 #if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
@@ -103,7 +103,7 @@ struct bind_task {
    */
   template <quasi_pointer I, async_function_object F>
   [[nodiscard]] LF_STATIC_CALL auto operator[](I ret, F fun) LF_STATIC_CONST {
-    return combinate<Tag>(std::move(ret), std::move(fun));
+    return combinate<Tag, Mod>(std::move(ret), std::move(fun));
   }
 
   /**
@@ -113,7 +113,7 @@ struct bind_task {
    */
   template <async_function_object F>
   [[nodiscard]] LF_STATIC_CALL auto operator[](F fun) LF_STATIC_CONST {
-    return combinate<Tag>(discard_t{}, std::move(fun));
+    return combinate<Tag, Mod>(discard_t{}, std::move(fun));
   }
 #endif
 };
@@ -139,7 +139,7 @@ inline namespace core {
  *
  * \endrst
  */
-inline constexpr impl::bind_task<tag::fork> fork = {};
+inline constexpr impl::bind_task<tag::fork, impl::modifier::none> fork = {};
 
 /**
  * @brief A second-order functor used to produce an awaitable (in an ``lf::task``) that will trigger a call.
@@ -158,7 +158,7 @@ inline constexpr impl::bind_task<tag::fork> fork = {};
  *
  * \endrst
  */
-inline constexpr impl::bind_task<tag::call> call = {};
+inline constexpr impl::bind_task<tag::call, impl::modifier::none> call = {};
 
 } // namespace core
 
