@@ -717,8 +717,8 @@ template <typename T>
     { ptr == nullptr } -> std::convertible_to<bool>;
   }
 constexpr auto
-non_null(T &&val,
-         [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept -> T && {
+non_null(T &&val, [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept
+    -> T && {
 #ifndef NDEBUG
   if (val == nullptr) {
     // NOLINTNEXTLINE
@@ -3103,7 +3103,7 @@ enum class tag {
 namespace modifier {
 
 struct none {};                ///< No modification to the dispatch category.
-struct sync {};                ///< The dispatch is a `fork`, reports if the fork completed synchonously.
+struct sync {};                ///< The dispatch is a `fork`, reports if the fork completed synchronously.
 struct sync_outside {};        ///< Same as `sync` but outside a fork-join scope.
 struct eager_throw {};         ///< The dispatch is a `call`, the awaitable will throw eagerly.
 struct eager_throw_outside {}; ///< Same as `eager_throw` but outside a fork-join scope.
@@ -3370,7 +3370,7 @@ concept stash_exception_in_return = quasi_pointer<I> && requires (I ptr) {
 /**
  * @brief Thrown when a parent knows a child threw an exception but before a join point has been reached.
  *
- * This exception __must__ be caught and then __join must be called__, which will rethrow the childs
+ * This exception __must__ be caught and then __join must be called__, which will rethrow the child's
  * exception.
  */
 struct exception_before_join : std::exception {
@@ -4283,14 +4283,14 @@ inline namespace core {
  * The modifiers perform the following actions:
  *
  * - `lf::core::modifier::none` - No modification to the call category.
- * - `lf::core::modifier::sync` - The tag is `fork`, but the awaitable reports if the call was synchonous,
- * if the call was synchonous then this fork does not count as opening a fork-join scope and the internal
+ * - `lf::core::modifier::sync` - The tag is `fork`, but the awaitable reports if the call was synchronous,
+ * if the call was synchronous then this fork does not count as opening a fork-join scope and the internal
  * exception will be checked, if it was set (either by the child of a sibling) then either that exception will
  * be rethrown or a new exception will be thrown. In either case this does not count as a join. If this is
  * inside a fork-join scope the thrown exception __must__ be caught and a call to `co_await lf::join` __must__
  * be made.
  * - `lf::core::modifier::sync_outside` - Same as `sync` but guarantees that the fork statement is outside a
- * fork-join scope. Hence, if the the call completes synchonously, the exception of the forked child will be
+ * fork-join scope. Hence, if the the call completes synchronously, the exception of the forked child will be
  * rethrown and a fork-join scope will not have been opened (hence a join is not required).
  * - `lf::core::modifier::eager_throw` - The tag is `call` after resuming the awaitable the internal exception
  * is checked, if it is set (either from the child or by a sibling) then it or a new exception will be
@@ -4867,7 +4867,7 @@ struct fork_awaitable : std::suspend_always {
 
 /**
  * @brief An awaiter identical to `fork_awaitable` but with an additional boolean indicating if the child
- * completed synchonously.
+ * completed synchronously.
  *
  * @tparam ChildThrows If `true` then the child captures it's exceptions in it's result.
  * @tparam R Where the fork statement is located.
@@ -4879,7 +4879,7 @@ struct sync_fork_awaitable : fork_awaitable {
    * @brief Returns `true` if the forked child completed synchronously.
    *
    * If `ChildThrows` is `true` then this will throw `lf::core::exception_before_join`
-   * if there is an exception or possibly the childs exception if the child had no forked
+   * if there is an exception or possibly the child's exception if the child had no forked
    * siblings.
    */
   auto await_resume() const noexcept(!ChildThrows) -> bool {
@@ -4891,7 +4891,7 @@ struct sync_fork_awaitable : fork_awaitable {
       if constexpr (ChildThrows) {
         if (R == region::opening_fork) {
           LF_ASSERT(steals_post == 0);
-          // If the opening fork completed synchonously the we can rethrow.
+          // If the opening fork completed synchronously the we can rethrow.
           self->rethrow_if_exception();
         } else if (steals_post == 0) {
           // No steals have happened hence, no one else could thrown an

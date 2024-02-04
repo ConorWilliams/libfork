@@ -242,7 +242,7 @@ struct fork_awaitable : std::suspend_always {
 
 /**
  * @brief An awaiter identical to `fork_awaitable` but with an additional boolean indicating if the child
- * completed synchonously.
+ * completed synchronously.
  *
  * @tparam ChildThrows If `true` then the child captures it's exceptions in it's result.
  * @tparam R Where the fork statement is located.
@@ -254,7 +254,7 @@ struct sync_fork_awaitable : fork_awaitable {
    * @brief Returns `true` if the forked child completed synchronously.
    *
    * If `ChildThrows` is `true` then this will throw `lf::core::exception_before_join`
-   * if there is an exception or possibly the childs exception if the child had no forked
+   * if there is an exception or possibly the child's exception if the child had no forked
    * siblings.
    */
   auto await_resume() const noexcept(!ChildThrows) -> bool {
@@ -266,7 +266,7 @@ struct sync_fork_awaitable : fork_awaitable {
       if constexpr (ChildThrows) {
         if (R == region::opening_fork) {
           LF_ASSERT(steals_post == 0);
-          // If the opening fork completed synchonously the we can rethrow.
+          // If the opening fork completed synchronously the we can rethrow.
           self->rethrow_if_exception();
         } else if (steals_post == 0) {
           // No steals have happened hence, no one else could thrown an

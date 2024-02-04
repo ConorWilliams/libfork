@@ -39,7 +39,7 @@ concept stash_exception_in_return = quasi_pointer<I> && requires (I ptr) {
 /**
  * @brief Thrown when a parent knows a child threw an exception but before a join point has been reached.
  *
- * This exception __must__ be caught and then __join must be called__, which will rethrow the childs
+ * This exception __must__ be caught and then __join must be called__, which will rethrow the child's
  * exception.
  */
 struct exception_before_join : std::exception {

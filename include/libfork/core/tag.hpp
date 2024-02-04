@@ -43,7 +43,7 @@ enum class tag {
 namespace modifier {
 
 struct none {};                ///< No modification to the dispatch category.
-struct sync {};                ///< The dispatch is a `fork`, reports if the fork completed synchonously.
+struct sync {};                ///< The dispatch is a `fork`, reports if the fork completed synchronously.
 struct sync_outside {};        ///< Same as `sync` but outside a fork-join scope.
 struct eager_throw {};         ///< The dispatch is a `call`, the awaitable will throw eagerly.
 struct eager_throw_outside {}; ///< Same as `eager_throw` but outside a fork-join scope.

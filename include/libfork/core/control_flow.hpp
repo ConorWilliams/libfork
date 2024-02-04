@@ -123,14 +123,14 @@ inline namespace core {
  * The modifiers perform the following actions:
  *
  * - `lf::core::modifier::none` - No modification to the call category.
- * - `lf::core::modifier::sync` - The tag is `fork`, but the awaitable reports if the call was synchonous,
- * if the call was synchonous then this fork does not count as opening a fork-join scope and the internal
+ * - `lf::core::modifier::sync` - The tag is `fork`, but the awaitable reports if the call was synchronous,
+ * if the call was synchronous then this fork does not count as opening a fork-join scope and the internal
  * exception will be checked, if it was set (either by the child of a sibling) then either that exception will
  * be rethrown or a new exception will be thrown. In either case this does not count as a join. If this is
  * inside a fork-join scope the thrown exception __must__ be caught and a call to `co_await lf::join` __must__
  * be made.
  * - `lf::core::modifier::sync_outside` - Same as `sync` but guarantees that the fork statement is outside a
- * fork-join scope. Hence, if the the call completes synchonously, the exception of the forked child will be
+ * fork-join scope. Hence, if the the call completes synchronously, the exception of the forked child will be
  * rethrown and a fork-join scope will not have been opened (hence a join is not required).
  * - `lf::core::modifier::eager_throw` - The tag is `call` after resuming the awaitable the internal exception
  * is checked, if it is set (either from the child or by a sibling) then it or a new exception will be

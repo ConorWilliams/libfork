@@ -7,8 +7,8 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <algorithm>                             // for min
-#include <catch2/catch_template_test_macros.hpp> // for INTERNAL_CATCH_NOINTERNAL_CATCH_DEF
-#include <catch2/catch_test_macros.hpp>          // for operator<, operator>=, AssertionHandler
+#include <catch2/catch_template_test_macros.hpp> // for TEMPLATE_TEST_CASE, TypeList
+#include <catch2/catch_test_macros.hpp>          // for INTERNAL_CATCH_NOINTERNAL_CATCH_DEF
 #include <concepts>                              // for constructible_from
 #include <cstddef>                               // for size_t
 #include <exception>                             // for exception_ptr, current_exception, opera...
