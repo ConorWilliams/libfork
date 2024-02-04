@@ -17,11 +17,12 @@
 #include <type_traits> // for decay_t
 
 #include "libfork/algorithm/constraints.hpp" // for projected, indirectly_foldable, semigroup_t
-#include "libfork/core/control_flow.hpp"     // for call, fork, join, rethrow_if_exception
-#include "libfork/core/eventually.hpp"       // for eventually
-#include "libfork/core/just.hpp"             // for just
-#include "libfork/core/macro.hpp"            // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST
-#include "libfork/core/task.hpp"             // for task
+#include "libfork/core/control_flow.hpp"
+#include "libfork/core/eventually.hpp" // for eventually
+#include "libfork/core/just.hpp"       // for just
+#include "libfork/core/macro.hpp"      // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST
+#include "libfork/core/tag.hpp"
+#include "libfork/core/task.hpp" // for task
 
 /**
  * @file fold.hpp
@@ -62,10 +63,11 @@ struct fold_overload_impl {
 
       acc_t lhs = acc_t(co_await just(proj)(*head)); // Require convertible to U
 
+      using mod = modifier::eager_throw_outside;
+
       for (++head; head != tail; ++head) {
         if constexpr (async_bop) {
-          co_await call(&lhs, bop)(std::move(lhs), co_await just(proj)(*head));
-          co_await rethrow_if_exception;
+          co_await lf::dispatch<tag::call, mod>(&lhs, bop)(std::move(lhs), co_await just(proj)(*head));
         } else {
           lhs = std::invoke(bop, std::move(lhs), co_await just(proj)(*head));
         }

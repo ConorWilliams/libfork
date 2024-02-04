@@ -4165,11 +4165,6 @@ namespace impl {
  */
 struct join_type {};
 
-/**
- * @brief A empty tag type that forces a rethrow of an exception.
- */
-struct rethrow_if_exception_type {};
-
 } // namespace impl
 
 inline namespace core {
@@ -4193,13 +4188,6 @@ inline constexpr impl::join_type join = {};
 } // namespace core
 
 namespace impl {
-
-/**
- * @brief An awaitable (in a `lf::task`) that triggers a rethrow of the internal exception (if any).
- *
- * This is designed for use in combination with `lf::call` when you are not inside a fork-join scope.
- */
-inline constexpr impl::rethrow_if_exception_type rethrow_if_exception = {};
 
 /**
  * @brief An invocable (and subscriptable) wrapper that binds a return address to an asynchronous function.
@@ -4332,7 +4320,7 @@ inline constexpr auto call = dispatch<tag::call>;
 
 #endif /* E8D38B49_7170_41BC_90E9_6D6389714304 */
 
-     // for call, fork, join, rethrow_if_exception       // for eventually
+ // for eventually
 #ifndef DE1C62F1_949F_48DC_BC2C_960C4439332D
 #define DE1C62F1_949F_48DC_BC2C_960C4439332D
 
@@ -5225,7 +5213,7 @@ inline constexpr impl::bind_just just = {};
 
 #endif /* DE1C62F1_949F_48DC_BC2C_960C4439332D */
 
-             // for just            // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST             // for task
+       // for just      // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST // for task
 
 /**
  * @file fold.hpp
@@ -5266,10 +5254,11 @@ struct fold_overload_impl {
 
       acc_t lhs = acc_t(co_await just(proj)(*head)); // Require convertible to U
 
+      using mod = modifier::eager_throw_outside;
+
       for (++head; head != tail; ++head) {
         if constexpr (async_bop) {
-          co_await call(&lhs, bop)(std::move(lhs), co_await just(proj)(*head));
-          co_await rethrow_if_exception;
+          co_await lf::dispatch<tag::call, mod>(&lhs, bop)(std::move(lhs), co_await just(proj)(*head));
         } else {
           lhs = std::invoke(bop, std::move(lhs), co_await just(proj)(*head));
         }
@@ -6029,7 +6018,7 @@ inline constexpr impl::map_overload map = {};
 #include <functional> // for identity, invoke
 #include <iterator>   // for iter_difference_t, random_access_iterator
 #include <ranges>     // for begin, end, iterator_t, range_difference_t
- // for indirectly_scannable, projected     // for call, rethrow_if_exception, fork, join             // for just            // for LF_STATIC_CALL, LF_STATIC_CONST, LF_CATCH_ALL             // for task
+ // for indirectly_scannable, projected     // for call, fork, join             // for just            // for LF_STATIC_CALL, LF_STATIC_CONST, LF_CATCH_ALL // for task
 
 /**
  * @file scan.hpp
@@ -6117,9 +6106,10 @@ inline constexpr auto reduction_sweep =
         LF_ASSERT(out == beg.base());
       }
 
+      using mod = modifier::eager_throw_outside;
+
       if constexpr (async_bop) {
-        co_await call(out, bop)(*prev, co_await just(proj)(*beg));
-        co_await rethrow_if_exception;
+        co_await lf::dispatch<tag::call, mod>(out, bop)(*prev, co_await just(proj)(*beg));
       } else {
         *out = std::invoke(bop, *prev, co_await just(proj)(*beg));
       }
@@ -6149,9 +6139,10 @@ inline constexpr auto reduction_sweep =
   O l_child = out + (half - 1);
   O r_child = out + (size - 1);
 
+  using mod = modifier::eager_throw_outside;
+
   if constexpr (async_bop) {
-    co_await call(r_child, bop)(*l_child, std::ranges::iter_move(r_child));
-    co_await rethrow_if_exception;
+    co_await lf::dispatch<tag::call, mod>(r_child, bop)(*l_child, std::ranges::iter_move(r_child));
   } else {
     *r_child = bop(*l_child, std::ranges::iter_move(r_child));
   }
@@ -6194,12 +6185,13 @@ inline constexpr auto rhs_down_sweep =
   std::iter_difference_t<O> size = end - beg;
   O acc_prev = beg - 1; // Carried/previous accumulation
 
+  using mod = modifier::eager_throw_outside;
+
   if (size <= n) {
 #pragma unroll(8)
     for (; beg != end - 1; ++beg) {
       if constexpr (async_bop) {
-        co_await call(beg, bop)(*acc_prev, std::ranges::iter_move(beg));
-        co_await rethrow_if_exception;
+        co_await lf::dispatch<tag::call, mod>(beg, bop)(*acc_prev, std::ranges::iter_move(beg));
       } else {
         *beg = bop(*acc_prev, std::ranges::iter_move(beg));
       }
@@ -6211,8 +6203,7 @@ inline constexpr auto rhs_down_sweep =
   O rhs = beg + (half - 1);                  // This is the left child of the tree.
 
   if constexpr (async_bop) {
-    co_await call(rhs, bop)(*acc_prev, std::ranges::iter_move(rhs));
-    co_await rethrow_if_exception;
+    co_await lf::dispatch<tag::call, mod>(rhs, bop)(*acc_prev, std::ranges::iter_move(rhs));
   } else {
     *rhs = bop(*acc_prev, std::ranges::iter_move(rhs));
   }
@@ -6764,7 +6755,7 @@ inline void resume(task_handle ptr) {
 #include <cstddef>     // for size_t
 #include <type_traits> // for true_type, false_type, remove_cvref_t
 #include <utility>     // for forward
-        // for co_allocable, co_new_t    // for join_type, rethrow_if_exception_type       // for stash_exception_in_return     // for full_context     // for submit_t, task_handle        // for intrusive_list         // for stack, context       // for first_arg_t, async_function_object, first_arg // for alloc_awaitable, call_awaitable, context_swi...  // for quasi_awaitable      // for frame
+        // for co_allocable, co_new_t    // for join_type       // for stash_exception_in_return     // for full_context     // for submit_t, task_handle        // for intrusive_list         // for stack, context       // for first_arg_t, async_function_object, first_arg // for alloc_awaitable, call_awaitable, context_swi...  // for quasi_awaitable      // for frame
 #ifndef A896798B_7E3B_4854_9997_89EA5AE765EB
 #define A896798B_7E3B_4854_9997_89EA5AE765EB
 
@@ -7044,16 +7035,6 @@ struct promise_base : frame {
    * @brief Get a join awaitable.
    */
   auto await_transform(join_type /*unused*/) noexcept -> join_awaitable { return {this}; }
-
-  // -------------------------------------------------------------- //
-
-  /**
-   * @brief Rethrow the internal exception if there is one.
-   */
-  auto await_transform(rethrow_if_exception_type /*unused*/) -> std::suspend_never {
-    this->rethrow_if_exception();
-    return {};
-  }
 
   // -------------------------------------------------------------- //
 

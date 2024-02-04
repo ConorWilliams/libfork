@@ -18,7 +18,7 @@
 #include <utility>     // for forward
 
 #include "libfork/core/co_alloc.hpp"        // for co_allocable, co_new_t
-#include "libfork/core/control_flow.hpp"    // for join_type, rethrow_if_exception_type
+#include "libfork/core/control_flow.hpp"    // for join_type
 #include "libfork/core/exception.hpp"       // for stash_exception_in_return
 #include "libfork/core/ext/context.hpp"     // for full_context
 #include "libfork/core/ext/handles.hpp"     // for submit_t, task_handle
@@ -203,16 +203,6 @@ struct promise_base : frame {
    * @brief Get a join awaitable.
    */
   auto await_transform(join_type /*unused*/) noexcept -> join_awaitable { return {this}; }
-
-  // -------------------------------------------------------------- //
-
-  /**
-   * @brief Rethrow the internal exception if there is one.
-   */
-  auto await_transform(rethrow_if_exception_type /*unused*/) -> std::suspend_never {
-    this->rethrow_if_exception();
-    return {};
-  }
 
   // -------------------------------------------------------------- //
 

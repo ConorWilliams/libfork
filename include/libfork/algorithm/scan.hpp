@@ -15,10 +15,11 @@
 #include <ranges>     // for begin, end, iterator_t, range_difference_t
 
 #include "libfork/algorithm/constraints.hpp" // for indirectly_scannable, projected
-#include "libfork/core/control_flow.hpp"     // for call, rethrow_if_exception, fork, join
+#include "libfork/core/control_flow.hpp"     // for call, fork, join
 #include "libfork/core/just.hpp"             // for just
 #include "libfork/core/macro.hpp"            // for LF_STATIC_CALL, LF_STATIC_CONST, LF_CATCH_ALL
-#include "libfork/core/task.hpp"             // for task
+#include "libfork/core/tag.hpp"
+#include "libfork/core/task.hpp" // for task
 
 /**
  * @file scan.hpp
@@ -106,9 +107,10 @@ inline constexpr auto reduction_sweep =
         LF_ASSERT(out == beg.base());
       }
 
+      using mod = modifier::eager_throw_outside;
+
       if constexpr (async_bop) {
-        co_await call(out, bop)(*prev, co_await just(proj)(*beg));
-        co_await rethrow_if_exception;
+        co_await lf::dispatch<tag::call, mod>(out, bop)(*prev, co_await just(proj)(*beg));
       } else {
         *out = std::invoke(bop, *prev, co_await just(proj)(*beg));
       }
@@ -138,9 +140,10 @@ inline constexpr auto reduction_sweep =
   O l_child = out + (half - 1);
   O r_child = out + (size - 1);
 
+  using mod = modifier::eager_throw_outside;
+
   if constexpr (async_bop) {
-    co_await call(r_child, bop)(*l_child, std::ranges::iter_move(r_child));
-    co_await rethrow_if_exception;
+    co_await lf::dispatch<tag::call, mod>(r_child, bop)(*l_child, std::ranges::iter_move(r_child));
   } else {
     *r_child = bop(*l_child, std::ranges::iter_move(r_child));
   }
@@ -183,12 +186,13 @@ inline constexpr auto rhs_down_sweep =
   std::iter_difference_t<O> size = end - beg;
   O acc_prev = beg - 1; // Carried/previous accumulation
 
+  using mod = modifier::eager_throw_outside;
+
   if (size <= n) {
 #pragma unroll(8)
     for (; beg != end - 1; ++beg) {
       if constexpr (async_bop) {
-        co_await call(beg, bop)(*acc_prev, std::ranges::iter_move(beg));
-        co_await rethrow_if_exception;
+        co_await lf::dispatch<tag::call, mod>(beg, bop)(*acc_prev, std::ranges::iter_move(beg));
       } else {
         *beg = bop(*acc_prev, std::ranges::iter_move(beg));
       }
@@ -200,8 +204,7 @@ inline constexpr auto rhs_down_sweep =
   O rhs = beg + (half - 1);                  // This is the left child of the tree.
 
   if constexpr (async_bop) {
-    co_await call(rhs, bop)(*acc_prev, std::ranges::iter_move(rhs));
-    co_await rethrow_if_exception;
+    co_await lf::dispatch<tag::call, mod>(rhs, bop)(*acc_prev, std::ranges::iter_move(rhs));
   } else {
     *rhs = bop(*acc_prev, std::ranges::iter_move(rhs));
   }
