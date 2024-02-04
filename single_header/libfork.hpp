@@ -553,13 +553,14 @@ using else_empty_t = std::conditional_t<Cond, T, empty_t<N>>;
  */
 template <typename CRTP>
 struct immovable {
+  immovable() = default;
+
   immovable(const immovable &) = delete;
   immovable(immovable &&) = delete;
+
   auto operator=(const immovable &) -> immovable & = delete;
   auto operator=(immovable &&) -> immovable & = delete;
 
- protected:
-  immovable() = default;
   ~immovable() = default;
 };
 
@@ -575,6 +576,8 @@ static_assert(std::is_empty_v<immovable<void>>);
 template <typename CRTP>
 struct move_only {
 
+  move_only() = default;
+
   move_only(move_only const &) = delete;
   move_only(move_only &&) noexcept = default;
 
@@ -582,9 +585,6 @@ struct move_only {
   auto operator=(move_only &&) noexcept -> move_only & = default;
 
   ~move_only() = default;
-
- protected:
-  move_only() = default;
 };
 
 static_assert(std::is_empty_v<immovable<void>>);
@@ -796,7 +796,7 @@ concept returnable = std::is_void_v<T> || std::is_reference_v<T> || std::movable
  * \endrst
  */
 template <returnable T = void>
-struct LF_CORO_ATTRIBUTES task : std::type_identity<T> {
+struct LF_CORO_ATTRIBUTES task : std::type_identity<T>, impl::immovable<task<void>> {
   void *prom; ///< An opaque handle to the coroutine promise.
 };
 
@@ -4052,7 +4052,36 @@ concept indirectly_scannable =
 #include <concepts> // for same_as
 #include <type_traits>
 #include <utility> // for as_const, forward
- // for quasi_pointer, async_function_object, first_arg_t // for async_result_t, return_address_for, async_tag_invo...       // for tag      // for returnable, task
+ // for quasi_pointer, async_function_object, first_arg_t
+#ifndef A7699F23_E799_46AB_B1E0_7EA36053AD41
+#define A7699F23_E799_46AB_B1E0_7EA36053AD41
+
+#include <memory>
+
+
+/**
+ * @file unique_frame.hpp
+ *
+ * @brief A unique pointer that owns a coroutine frame.
+ */
+
+namespace lf::impl {
+
+namespace detail {
+
+struct frame_deleter {
+  LF_STATIC_CALL void operator()(frame *frame) noexcept { non_null(frame)->self().destroy(); }
+};
+
+} // namespace detail
+
+using unique_frame = std::unique_ptr<frame, detail::frame_deleter>;
+
+} // namespace lf::impl
+
+#endif /* A7699F23_E799_46AB_B1E0_7EA36053AD41 */
+
+ // for async_result_t, return_address_for, async_tag_invo...       // for tag      // for returnable, task
 
 /**
  * @file combinate.hpp
@@ -4073,11 +4102,11 @@ struct promise;
  * @brief Awaitable in the context of an `lf::task` coroutine.
  *
  * This will be transformed by an `await_transform` and trigger a fork or call.
+ *
+ * NOTE: This is created by `y_combinate`, the parent/semaphore needs to be set by the caller!
  */
 template <returnable R, return_address_for<R> I, tag Tag, modifier_for<Tag> Mod>
-struct [[nodiscard("A quasi_awaitable MUST be immediately co_awaited!")]] quasi_awaitable {
-  promise<R, I, Tag> *prom; ///< The parent/semaphore needs to be set!
-};
+struct [[nodiscard]] quasi_awaitable : immovable<quasi_awaitable<R, I, Tag, Mod>>, unique_frame {};
 
 // ---------------------------- //
 
@@ -4112,7 +4141,7 @@ struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combin
       prom->set_return(std::move(ret));
     }
 
-    return {prom};
+    return {{}, unique_frame{prom}};
   }
 };
 
@@ -4506,7 +4535,7 @@ template <co_allocable T>
 
 #endif /* A951FB73_0FCF_4B7C_A997_42B7E87D21CB */
 
-     // for co_allocable, co_new_t, stack_allocated  // for full_context  // for submit_handle, submit_t, task_handle     // for unwrap, intrusive_list      // for stack, context   // for frame   // for stack // for k_u16_max    // for ignore_t        // for LF_ASSERT, LF_LOG, LF_CATCH_ALL, LF_RETHROW
+    // for co_allocable, co_new_t, stack_allocated // for full_context // for submit_handle, submit_t, task_handle    // for unwrap, intrusive_list     // for stack, context  // for frame  // for stack // for k_u16_max    // for ignore_t        // for LF_ASSERT, LF_LOG, LF_CATCH_ALL, LF_RETHROW
 #ifndef BDE6CBCC_7576_4082_AAC5_2A207FEA9293
 #define BDE6CBCC_7576_4082_AAC5_2A207FEA9293
 
@@ -4812,35 +4841,28 @@ struct fork_awaitable : std::suspend_always {
   /**
    * @brief Sym-transfer to child, push parent to queue.
    */
-  auto await_suspend(std::coroutine_handle<> /*unused*/) const -> std::coroutine_handle<> {
+  auto await_suspend(std::coroutine_handle<> /*unused*/) -> std::coroutine_handle<> {
     LF_LOG("Forking, push parent to context");
 
     // Need a copy (on stack) in case *this is destructed after push.
-    std::coroutine_handle stack_child = this->child->self();
+    // std::coroutine_handle stack_child = this->child->self();
 
-    // clang-format off
-    
-    LF_TRY {
-      tls::context()->push(std::bit_cast<task_handle>(parent));
-    } LF_CATCH_ALL {
-      // If await_suspend throws an exception then: 
-      //  - The exception is caught, 
-      //  - The coroutine is resumed, 
-      //  - The exception is immediately re-thrown.
+    unique_frame stack_child = std::move(child);
 
-      // Hence, we need to clean up the child which will never start:
-      stack_child.destroy(); 
+    // If await_suspend throws an exception then:
+    //  - The exception is caught,
+    //  - The coroutine is resumed,
+    //  - The exception is immediately re-thrown.
 
-      LF_RETHROW;
-    }
+    // Hence, if this throws that is ok.
+    tls::context()->push(std::bit_cast<task_handle>(self));
 
-    // clang-format on
-
-    return stack_child;
+    // If the above didn't throw we take ownership of child's lifetime.
+    return stack_child.release()->self();
   }
 
-  frame *child;  ///< The suspended child coroutine's frame.
-  frame *parent; ///< The calling coroutine's frame.
+  unique_frame child; ///< The suspended child coroutine's frame.
+  frame *self;        ///< The calling coroutine's frame.
 };
 
 /**
@@ -4865,19 +4887,19 @@ struct sync_fork_awaitable : fork_awaitable {
     // must not have thrown an exception. We can check if __some__ child threw an
     // exception but we cannot (generally) retrieve it as exception is not safe
     // to touch until after a join.
-    if (std::uint16_t steals_post = parent->load_steals(); steals_post == steals_pre) {
+    if (std::uint16_t steals_post = self->load_steals(); steals_post == steals_pre) {
       if constexpr (ChildThrows) {
         if (R == region::opening_fork) {
           LF_ASSERT(steals_post == 0);
           // If the opening fork completed synchonously the we can rethrow.
-          parent->rethrow_if_exception();
+          self->rethrow_if_exception();
         } else if (steals_post == 0) {
           // No steals have happened hence, no one else could thrown an
           // exception hence, so we can touch the exception object.
-          parent->rethrow_if_exception();
+          self->rethrow_if_exception();
         } else {
           // Otherwise, we throw a substitute exception.
-          if (parent->atomic_has_exception()) {
+          if (self->atomic_has_exception()) {
             LF_THROW(exception_before_join{});
           }
         }
@@ -4900,12 +4922,13 @@ struct call_awaitable : std::suspend_always {
   /**
    * @brief Sym-transfer to child.
    */
-  auto await_suspend(std::coroutine_handle<> /*unused*/) const noexcept -> std::coroutine_handle<> {
+  auto await_suspend(std::coroutine_handle<> /*unused*/) noexcept -> std::coroutine_handle<> {
     LF_LOG("Calling");
-    return child->self();
+    // Take ownership of the child's lifetime.
+    return child.release()->self();
   }
 
-  frame *child; ///< The suspended child coroutine's frame.
+  unique_frame child; ///< The suspended child coroutine's frame.
 };
 
 /**
@@ -4923,21 +4946,21 @@ struct eager_call_awaitable : call_awaitable {
    */
   void await_resume() const {
     if constexpr (R == region::outside) {
-      LF_ASSERT(parent->load_steals() == 0);
+      LF_ASSERT(self->load_steals() == 0);
       // Outside fork-join we can touch the exception.
-      parent->rethrow_if_exception();
-    } else if (parent->load_steals() == 0) {
+      self->rethrow_if_exception();
+    } else if (self->load_steals() == 0) {
       // Can throw the real exception.
-      parent->rethrow_if_exception();
+      self->rethrow_if_exception();
     } else {
       // Otherwise we throw a substitute.
-      if (parent->atomic_has_exception()) {
+      if (self->atomic_has_exception()) {
         LF_THROW(exception_before_join{});
       }
     }
   }
 
-  frame *parent; ///< The calling coroutine's frame.
+  frame *self; ///< The calling coroutine's frame.
 };
 
 // -------------------------------------------------------------------------------- //
@@ -5060,7 +5083,7 @@ namespace impl {
  * @brief A base class that provides a ``ret`` member.
  */
 template <returnable R>
-struct just_awaitable_base {
+struct just_awaitable_base : immovable<just_awaitable_base<R>> {
   /**
    * @brief The return variable.
    */
@@ -5083,7 +5106,7 @@ class [[nodiscard("co_await this!")]] just_awaitable : just_awaitable_base<R>, c
   explicit just_awaitable(Fun &&fun, Args &&...args)
       : call_awaitable{
             {}, 
-            combinate<tag::call, modifier::none>(&this->ret, std::forward<Fun>(fun))(std::forward<Args>(args)...).prom
+            combinate<tag::call, modifier::none>(&this->ret, std::forward<Fun>(fun))(std::forward<Args>(args)...)
         } 
       {}
 
@@ -5092,7 +5115,7 @@ class [[nodiscard("co_await this!")]] just_awaitable : just_awaitable_base<R>, c
   /**
    * @brief Access the frame of the child task.
    */
-  auto frame() const noexcept -> frame * { return this->child; }
+  auto frame() const noexcept -> frame * { return this->child.get(); }
 
   using call_awaitable::await_ready;
 
@@ -6613,15 +6636,17 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_
     swap(*prev, *impl::tls::thread_stack); // ADL call.
   }
 
-  // This makes a coroutine may need cleanup if exceptions...
+  // This allocates a coroutine on this threads stack.
   impl::quasi_awaitable await = std::move(combinator)(std::forward<Args>(args)...);
 
-  [&]() noexcept {
-    //
-    await.prom->set_root_sem(&sem);
-    auto *handle = std::bit_cast<impl::submit_t *>(static_cast<impl::frame *>(await.prom));
+  await->set_root_sem(&sem);
 
-    // If this threw we could clean up coroutine.
+  auto *handle = std::bit_cast<impl::submit_t *>(await.release()); // Ownership transferred!
+
+  // TODO: this could be made exception safe.
+
+  [&]() noexcept {
+    // If this threw we could clean up coroutine but we would need to repair the worker state.
     impl::ignore_t{} = impl::tls::thread_stack->release();
 
     if (!worker) {
@@ -6636,7 +6661,7 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_
     // If this threw we could clean up the coroutine if we repaired the worker state.
     std::forward<Sch>(sch).schedule(&node);
 
-    // If this threw we would have to terminate.
+    // If this threw we would have to terminate, unless the return variable was stored on the heap.
     sem.acquire();
   }();
 
@@ -7045,7 +7070,7 @@ struct promise_base : frame {
     requires (Tag == tag::call || Tag == tag::fork)
   auto await_transform(quasi_awaitable<R, I, Tag, Mod> &&awaitable) noexcept {
 
-    awaitable.prom->set_parent(this);
+    awaitable->set_parent(this);
 
     constexpr bool throwing = stash_exception_in_return<I>;
 
@@ -7053,21 +7078,22 @@ struct promise_base : frame {
 
     if constexpr (Tag == tag::call) {
       if /*  */ constexpr (throwing && std::same_as<Mod, modifier::eager_throw>) {
-        return eager_call_awaitable<unknown>{{{}, awaitable.prom}, this};
+        return eager_call_awaitable<unknown>{{{}, std::move(awaitable)}, this};
       } else if constexpr (throwing && std::same_as<Mod, modifier::eager_throw_outside>) {
-        return eager_call_awaitable<outside>{{{}, awaitable.prom}, this};
+        return eager_call_awaitable<outside>{{{}, std::move(awaitable)}, this};
       } else {
-        return call_awaitable{{}, awaitable.prom};
+        return call_awaitable{{}, std::move(awaitable)};
       }
     }
 
     if constexpr (Tag == tag::fork) {
       if /*  */ constexpr (std::same_as<Mod, modifier::none>) {
-        return fork_awaitable{{}, awaitable.prom, this};
+        return fork_awaitable{{}, std::move(awaitable), this};
       } else if constexpr (std::same_as<Mod, modifier::sync>) {
-        return sync_fork_awaitable<throwing, unknown>{{{}, awaitable.prom, this}, this->load_steals()};
+        return sync_fork_awaitable<throwing, unknown>{{{}, std::move(awaitable), this}, this->load_steals()};
       } else if constexpr (std::same_as<Mod, modifier::sync_outside>) {
-        return sync_fork_awaitable<throwing, opening_fork>{{{}, awaitable.prom, this}, this->load_steals()};
+        return sync_fork_awaitable<throwing, opening_fork>{{{}, std::move(awaitable), this},
+                                                           this->load_steals()};
       } else {
         static_assert(always_false<Mod>, "Unimplemented modifier for fork!");
       }
@@ -7128,7 +7154,7 @@ struct promise : promise_base, return_result<R, I> {
   /**
    * @brief Returned task stores a copy of the `this` pointer.
    */
-  auto get_return_object() noexcept -> task<R> { return {{}, static_cast<void *>(this)}; }
+  auto get_return_object() noexcept -> task<R> { return {{}, {}, static_cast<void *>(this)}; }
 
   /**
    * @brief Try to resume the parent.

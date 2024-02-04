@@ -12,6 +12,7 @@
 #include <concepts>    // for movable
 #include <type_traits> // for type_identity
 
+#include "libfork/core/impl/utility.hpp"
 #include "libfork/core/macro.hpp" // for LF_CORO_ATTRIBUTES
 
 /**
@@ -53,7 +54,7 @@ concept returnable = std::is_void_v<T> || std::is_reference_v<T> || std::movable
  * \endrst
  */
 template <returnable T = void>
-struct LF_CORO_ATTRIBUTES task : std::type_identity<T> {
+struct LF_CORO_ATTRIBUTES task : std::type_identity<T>, impl::immovable<task<void>> {
   void *prom; ///< An opaque handle to the coroutine promise.
 };
 

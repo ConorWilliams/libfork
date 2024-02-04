@@ -113,15 +113,17 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_
     swap(*prev, *impl::tls::thread_stack); // ADL call.
   }
 
-  // This makes a coroutine may need cleanup if exceptions...
+  // This allocates a coroutine on this threads stack.
   impl::quasi_awaitable await = std::move(combinator)(std::forward<Args>(args)...);
 
-  [&]() noexcept {
-    //
-    await.prom->set_root_sem(&sem);
-    auto *handle = std::bit_cast<impl::submit_t *>(static_cast<impl::frame *>(await.prom));
+  await->set_root_sem(&sem);
 
-    // If this threw we could clean up coroutine.
+  auto *handle = std::bit_cast<impl::submit_t *>(await.release()); // Ownership transferred!
+
+  // TODO: this could be made exception safe.
+
+  [&]() noexcept {
+    // If this threw we could clean up coroutine but we would need to repair the worker state.
     impl::ignore_t{} = impl::tls::thread_stack->release();
 
     if (!worker) {
@@ -136,7 +138,7 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_
     // If this threw we could clean up the coroutine if we repaired the worker state.
     std::forward<Sch>(sch).schedule(&node);
 
-    // If this threw we would have to terminate.
+    // If this threw we would have to terminate, unless the return variable was stored on the heap.
     sem.acquire();
   }();
 

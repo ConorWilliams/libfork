@@ -17,13 +17,14 @@
 #include <span>        // for span
 #include <type_traits> // for remove_cvref_t
 
-#include "libfork/core/co_alloc.hpp"     // for co_allocable, co_new_t, stack_allocated
-#include "libfork/core/ext/context.hpp"  // for full_context
-#include "libfork/core/ext/handles.hpp"  // for submit_handle, submit_t, task_handle
-#include "libfork/core/ext/list.hpp"     // for unwrap, intrusive_list
-#include "libfork/core/ext/tls.hpp"      // for stack, context
-#include "libfork/core/impl/frame.hpp"   // for frame
-#include "libfork/core/impl/stack.hpp"   // for stack
+#include "libfork/core/co_alloc.hpp"    // for co_allocable, co_new_t, stack_allocated
+#include "libfork/core/ext/context.hpp" // for full_context
+#include "libfork/core/ext/handles.hpp" // for submit_handle, submit_t, task_handle
+#include "libfork/core/ext/list.hpp"    // for unwrap, intrusive_list
+#include "libfork/core/ext/tls.hpp"     // for stack, context
+#include "libfork/core/impl/frame.hpp"  // for frame
+#include "libfork/core/impl/stack.hpp"  // for stack
+#include "libfork/core/impl/unique_frame.hpp"
 #include "libfork/core/impl/utility.hpp" // for k_u16_max
 #include "libfork/core/invocable.hpp"    // for ignore_t
 #include "libfork/core/macro.hpp"        // for LF_ASSERT, LF_LOG, LF_CATCH_ALL, LF_RETHROW
@@ -215,35 +216,28 @@ struct fork_awaitable : std::suspend_always {
   /**
    * @brief Sym-transfer to child, push parent to queue.
    */
-  auto await_suspend(std::coroutine_handle<> /*unused*/) const -> std::coroutine_handle<> {
+  auto await_suspend(std::coroutine_handle<> /*unused*/) -> std::coroutine_handle<> {
     LF_LOG("Forking, push parent to context");
 
     // Need a copy (on stack) in case *this is destructed after push.
-    std::coroutine_handle stack_child = this->child->self();
+    // std::coroutine_handle stack_child = this->child->self();
 
-    // clang-format off
-    
-    LF_TRY {
-      tls::context()->push(std::bit_cast<task_handle>(parent));
-    } LF_CATCH_ALL {
-      // If await_suspend throws an exception then: 
-      //  - The exception is caught, 
-      //  - The coroutine is resumed, 
-      //  - The exception is immediately re-thrown.
+    unique_frame stack_child = std::move(child);
 
-      // Hence, we need to clean up the child which will never start:
-      stack_child.destroy(); 
+    // If await_suspend throws an exception then:
+    //  - The exception is caught,
+    //  - The coroutine is resumed,
+    //  - The exception is immediately re-thrown.
 
-      LF_RETHROW;
-    }
+    // Hence, if this throws that is ok.
+    tls::context()->push(std::bit_cast<task_handle>(self));
 
-    // clang-format on
-
-    return stack_child;
+    // If the above didn't throw we take ownership of child's lifetime.
+    return stack_child.release()->self();
   }
 
-  frame *child;  ///< The suspended child coroutine's frame.
-  frame *parent; ///< The calling coroutine's frame.
+  unique_frame child; ///< The suspended child coroutine's frame.
+  frame *self;        ///< The calling coroutine's frame.
 };
 
 /**
@@ -268,19 +262,19 @@ struct sync_fork_awaitable : fork_awaitable {
     // must not have thrown an exception. We can check if __some__ child threw an
     // exception but we cannot (generally) retrieve it as exception is not safe
     // to touch until after a join.
-    if (std::uint16_t steals_post = parent->load_steals(); steals_post == steals_pre) {
+    if (std::uint16_t steals_post = self->load_steals(); steals_post == steals_pre) {
       if constexpr (ChildThrows) {
         if (R == region::opening_fork) {
           LF_ASSERT(steals_post == 0);
           // If the opening fork completed synchonously the we can rethrow.
-          parent->rethrow_if_exception();
+          self->rethrow_if_exception();
         } else if (steals_post == 0) {
           // No steals have happened hence, no one else could thrown an
           // exception hence, so we can touch the exception object.
-          parent->rethrow_if_exception();
+          self->rethrow_if_exception();
         } else {
           // Otherwise, we throw a substitute exception.
-          if (parent->atomic_has_exception()) {
+          if (self->atomic_has_exception()) {
             LF_THROW(exception_before_join{});
           }
         }
@@ -303,12 +297,13 @@ struct call_awaitable : std::suspend_always {
   /**
    * @brief Sym-transfer to child.
    */
-  auto await_suspend(std::coroutine_handle<> /*unused*/) const noexcept -> std::coroutine_handle<> {
+  auto await_suspend(std::coroutine_handle<> /*unused*/) noexcept -> std::coroutine_handle<> {
     LF_LOG("Calling");
-    return child->self();
+    // Take ownership of the child's lifetime.
+    return child.release()->self();
   }
 
-  frame *child; ///< The suspended child coroutine's frame.
+  unique_frame child; ///< The suspended child coroutine's frame.
 };
 
 /**
@@ -326,21 +321,21 @@ struct eager_call_awaitable : call_awaitable {
    */
   void await_resume() const {
     if constexpr (R == region::outside) {
-      LF_ASSERT(parent->load_steals() == 0);
+      LF_ASSERT(self->load_steals() == 0);
       // Outside fork-join we can touch the exception.
-      parent->rethrow_if_exception();
-    } else if (parent->load_steals() == 0) {
+      self->rethrow_if_exception();
+    } else if (self->load_steals() == 0) {
       // Can throw the real exception.
-      parent->rethrow_if_exception();
+      self->rethrow_if_exception();
     } else {
       // Otherwise we throw a substitute.
-      if (parent->atomic_has_exception()) {
+      if (self->atomic_has_exception()) {
         LF_THROW(exception_before_join{});
       }
     }
   }
 
-  frame *parent; ///< The calling coroutine's frame.
+  frame *self; ///< The calling coroutine's frame.
 };
 
 // -------------------------------------------------------------------------------- //

@@ -126,13 +126,14 @@ using else_empty_t = std::conditional_t<Cond, T, empty_t<N>>;
  */
 template <typename CRTP>
 struct immovable {
+  immovable() = default;
+
   immovable(const immovable &) = delete;
   immovable(immovable &&) = delete;
+
   auto operator=(const immovable &) -> immovable & = delete;
   auto operator=(immovable &&) -> immovable & = delete;
 
- protected:
-  immovable() = default;
   ~immovable() = default;
 };
 
@@ -148,6 +149,8 @@ static_assert(std::is_empty_v<immovable<void>>);
 template <typename CRTP>
 struct move_only {
 
+  move_only() = default;
+
   move_only(move_only const &) = delete;
   move_only(move_only &&) noexcept = default;
 
@@ -155,9 +158,6 @@ struct move_only {
   auto operator=(move_only &&) noexcept -> move_only & = default;
 
   ~move_only() = default;
-
- protected:
-  move_only() = default;
 };
 
 static_assert(std::is_empty_v<immovable<void>>);

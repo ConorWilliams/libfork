@@ -39,7 +39,7 @@ namespace impl {
  * @brief A base class that provides a ``ret`` member.
  */
 template <returnable R>
-struct just_awaitable_base {
+struct just_awaitable_base : immovable<just_awaitable_base<R>> {
   /**
    * @brief The return variable.
    */
@@ -62,7 +62,7 @@ class [[nodiscard("co_await this!")]] just_awaitable : just_awaitable_base<R>, c
   explicit just_awaitable(Fun &&fun, Args &&...args)
       : call_awaitable{
             {}, 
-            combinate<tag::call, modifier::none>(&this->ret, std::forward<Fun>(fun))(std::forward<Args>(args)...).prom
+            combinate<tag::call, modifier::none>(&this->ret, std::forward<Fun>(fun))(std::forward<Args>(args)...)
         } 
       {}
 
@@ -71,7 +71,7 @@ class [[nodiscard("co_await this!")]] just_awaitable : just_awaitable_base<R>, c
   /**
    * @brief Access the frame of the child task.
    */
-  auto frame() const noexcept -> frame * { return this->child; }
+  auto frame() const noexcept -> frame * { return this->child.get(); }
 
   using call_awaitable::await_ready;
 

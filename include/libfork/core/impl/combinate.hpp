@@ -14,6 +14,8 @@
 #include <utility> // for as_const, forward
 
 #include "libfork/core/first_arg.hpp" // for quasi_pointer, async_function_object, first_arg_t
+#include "libfork/core/impl/unique_frame.hpp"
+#include "libfork/core/impl/utility.hpp"
 #include "libfork/core/invocable.hpp" // for async_result_t, return_address_for, async_tag_invo...
 #include "libfork/core/tag.hpp"       // for tag
 #include "libfork/core/task.hpp"      // for returnable, task
@@ -37,11 +39,11 @@ struct promise;
  * @brief Awaitable in the context of an `lf::task` coroutine.
  *
  * This will be transformed by an `await_transform` and trigger a fork or call.
+ *
+ * NOTE: This is created by `y_combinate`, the parent/semaphore needs to be set by the caller!
  */
 template <returnable R, return_address_for<R> I, tag Tag, modifier_for<Tag> Mod>
-struct [[nodiscard("A quasi_awaitable MUST be immediately co_awaited!")]] quasi_awaitable {
-  promise<R, I, Tag> *prom; ///< The parent/semaphore needs to be set!
-};
+struct [[nodiscard]] quasi_awaitable : immovable<quasi_awaitable<R, I, Tag, Mod>>, unique_frame {};
 
 // ---------------------------- //
 
@@ -76,7 +78,7 @@ struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combin
       prom->set_return(std::move(ret));
     }
 
-    return {prom};
+    return {{}, unique_frame{prom}};
   }
 };
 

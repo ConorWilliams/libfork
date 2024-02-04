@@ -213,7 +213,7 @@ struct promise_base : frame {
     requires (Tag == tag::call || Tag == tag::fork)
   auto await_transform(quasi_awaitable<R, I, Tag, Mod> &&awaitable) noexcept {
 
-    awaitable.prom->set_parent(this);
+    awaitable->set_parent(this);
 
     constexpr bool throwing = stash_exception_in_return<I>;
 
@@ -221,21 +221,22 @@ struct promise_base : frame {
 
     if constexpr (Tag == tag::call) {
       if /*  */ constexpr (throwing && std::same_as<Mod, modifier::eager_throw>) {
-        return eager_call_awaitable<unknown>{{{}, awaitable.prom}, this};
+        return eager_call_awaitable<unknown>{{{}, std::move(awaitable)}, this};
       } else if constexpr (throwing && std::same_as<Mod, modifier::eager_throw_outside>) {
-        return eager_call_awaitable<outside>{{{}, awaitable.prom}, this};
+        return eager_call_awaitable<outside>{{{}, std::move(awaitable)}, this};
       } else {
-        return call_awaitable{{}, awaitable.prom};
+        return call_awaitable{{}, std::move(awaitable)};
       }
     }
 
     if constexpr (Tag == tag::fork) {
       if /*  */ constexpr (std::same_as<Mod, modifier::none>) {
-        return fork_awaitable{{}, awaitable.prom, this};
+        return fork_awaitable{{}, std::move(awaitable), this};
       } else if constexpr (std::same_as<Mod, modifier::sync>) {
-        return sync_fork_awaitable<throwing, unknown>{{{}, awaitable.prom, this}, this->load_steals()};
+        return sync_fork_awaitable<throwing, unknown>{{{}, std::move(awaitable), this}, this->load_steals()};
       } else if constexpr (std::same_as<Mod, modifier::sync_outside>) {
-        return sync_fork_awaitable<throwing, opening_fork>{{{}, awaitable.prom, this}, this->load_steals()};
+        return sync_fork_awaitable<throwing, opening_fork>{{{}, std::move(awaitable), this},
+                                                           this->load_steals()};
       } else {
         static_assert(always_false<Mod>, "Unimplemented modifier for fork!");
       }
@@ -296,7 +297,7 @@ struct promise : promise_base, return_result<R, I> {
   /**
    * @brief Returned task stores a copy of the `this` pointer.
    */
-  auto get_return_object() noexcept -> task<R> { return {{}, static_cast<void *>(this)}; }
+  auto get_return_object() noexcept -> task<R> { return {{}, {}, static_cast<void *>(this)}; }
 
   /**
    * @brief Try to resume the parent.

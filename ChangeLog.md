@@ -21,6 +21,8 @@
 
 ### Changed
 
+- Improved memory safety of awaitables and made many type immovable to reduce erroneous use.
+
 ### Removed
 
 ### Bugfixes
