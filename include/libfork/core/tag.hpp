@@ -35,11 +35,10 @@ enum class tag {
 };
 
 /**
- * @brief Modifier's to the tag category, these do not effect the child's promise, only the awaitable.
+ * @brief Modifier's for the dispatch tag, these do not effect the child's promise, only the awaitable.
  *
- * See `lf::core::dispatch` for more information and uses.
- *
- * We use a namespace + types rather than an enumeration to allow for type-concept.
+ * See `lf::core::dispatch` for more information and uses, these are low-level and most users should not need
+ * to use them. We use a namespace + types rather than an enumeration to allow for type-concepts.
  */
 namespace modifier {
 

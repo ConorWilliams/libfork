@@ -3,10 +3,18 @@ Core API
 
 The ``core`` subfolder/namespace contains the basic building blocks of the library, this is the API to describe DAG's and internal/backend machinery for memory management. To include just libfork's core use ``#include <libfork/core.hpp>``.
 
-Enums
------
+Enums and tags
+--------------
+
+Dispatch tags
+~~~~~~~~~~~~~
 
 .. doxygenenum:: lf::core::tag
+
+Dispatch modifiers
+~~~~~~~~~~~~~~~~~~
+
+.. doxygennamespace:: lf::core::modifier
 
 Concepts and traits
 -----------------------------
@@ -36,6 +44,8 @@ API
 .. doxygenconcept:: lf::core::co_allocable
 
 .. doxygenconcept:: lf::core::stash_exception_in_return
+
+.. doxygenconcept:: lf::core::modifier_for
 
 Functional
 ~~~~~~~~~~
@@ -83,6 +93,11 @@ Explicit
 .. doxygenfunction:: lf::core::resume_on
 
 .. doxygenstruct:: lf::core::resume_on_quasi_awaitable
+
+Advanced/generic
+~~~~~~~~~~~~~~~~
+
+.. doxygenvariable:: lf::core::dispatch
 
 Classes
 ----------------

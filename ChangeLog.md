@@ -12,7 +12,22 @@
 
 ### Meta  -->
 
-## [**Version 3.5.0**](https://github.com/ConorWilliams/libfork/compare/v2.1.0...v3.5.0)
+## [**Version 3.6.0**](https://github.com/ConorWilliams/libfork/compare/e641fb66fe869d962ecd816a51d4e6f5ecd543b3...dev)
+
+### Added
+
+- A new ``lf::dispatch`` higher order function object for fine grained exception control.
+- A set of constrained algorithms `for_each`, `fold`, `scan`, etc.
+
+### Changed
+
+### Removed
+
+### Bugfixes
+
+### Meta
+
+## [**Versions 3.5.0**](https://github.com/ConorWilliams/libfork/compare/142edfb6711fad18d6035dd22774e90ec646b896...e641fb66fe869d962ecd816a51d4e6f5ecd543b3)
 
 This release is a full overhaul of the API and implementation of libfork that should bring large performance improvements.
 
@@ -30,7 +45,18 @@ This release is a full overhaul of the API and implementation of libfork that sh
 - A new API for defining tasks.
 - A new API for forking/calling/joining tasks.
 - A new API for defining schedulers.
-- Re-introduced exception handling.
+- Re-introduced exception handling and added a customization point for individual exception handling.
+
+## [**Version 2.1.1**](https://github.com/ConorWilliams/libfork/compare/v2.1.0...142edfb6711fad18d6035dd22774e90ec646b896)
+
+### Added
+
+- Conan support
+
+### Bugfixes
+
+- CMake install interface now uses correct include path
+- CMake config module exports its dependencies correctly
 
 ## [**Version 2.1.0**](https://github.com/ConorWilliams/libfork/compare/v2.0.0...v2.1.0)
 

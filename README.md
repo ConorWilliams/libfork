@@ -343,7 +343,7 @@ inline constexpr auto good_code = [](auto good_code) -> lf::task<> {
     good_code.stash_exception(); // Store's exception.
   } 
 
-  co_await lf::join; // Exception from child or stash_exception will be re-thrown here.                             
+  co_await lf::join; // Exception from child or stashed-exception will be re-thrown here.                             
 };
 ```
 
@@ -368,6 +368,17 @@ inline constexpr auto exception_stash_demo = [](auto) -> lf::task<> {
 };
 ```
 
+Any return pointer which satisfies the `stash_exception_in_return` concept will trigger libfork to store the exception in the return object. This concept is specified as follows:
+
+```cpp
+template <typename I>
+concept stash_exception_in_return = lf::quasi_pointer<I> && requires (I ptr) {
+  { stash_exception(*ptr) } noexcept;
+};
+```
+
+__Note:__ the call to `stash_exception` must be `noexcept`.
+
 ### Immediate invocation
 
 Sometimes you may want to just call an async function without a fork join scope, for example:
@@ -375,7 +386,7 @@ Sometimes you may want to just call an async function without a fork join scope,
 ```cpp
 int result;
 
-co_await lf::fork[&result, some_function](/* args.. */);
+co_await lf::call[&result, some_function](/* args.. */);
 
 co_await lf::join; // Still needed in-case of exceptions
 ```
