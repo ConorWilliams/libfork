@@ -23,6 +23,8 @@
 
 #include "../util.hpp"
 #include "config.hpp"
+#include "libfork/core/control_flow.hpp"
+#include "libfork/core/tag.hpp"
 
 namespace {
 
@@ -124,7 +126,7 @@ struct up_sweep {
     }
 
     if (size <= n) {
-      if constexpr (Op == op::fold) { // Equivilent to a fold over acc_t, left sibling not ready.
+      if constexpr (Op == op::fold) { // Equivalent to a fold over acc_t, left sibling not ready.
 
         static_assert(Ival != interval::lhs && Ival != interval::all, "left can always scan");
 
@@ -143,7 +145,7 @@ struct up_sweep {
 
         co_return;
 
-      } else { // A scan inplies the left sibling (if it exists) is ready.
+      } else { // A scan implies the left sibling (if it exists) is ready.
 
         constexpr bool has_left_carry = Ival == interval::mid || Ival == interval::rhs;
 
@@ -183,14 +185,16 @@ struct up_sweep {
 
     if constexpr (Op == op::scan) {
       // Unconditionally launch left child.
-      bool ready = co_await lf::fork(&left_out, up_lhs{})(beg, beg + mid, n, bop, proj, out);
+
+      using mod = lf::modifier::sync_outside;
+
       // If we are a scan then left child is a scan,
       // If the left child is ready then rhs can be a scan.
       // Otherwise the rhs must be a fold.
-      if (ready) {
+      if (co_await lf::dispatch<lf::tag::fork, mod>(&left_out, up_lhs{})(beg, beg + mid, n, bop, proj, out)) {
         // TODO: needs to handle exceptions from fork!
 
-        // Effectivly fused child trees into a single scan.
+        // Effectively fused child trees into a single scan.
         // Right most scanned now from right child.
         co_return co_await lf::just(up_rhs<op::scan>{})(beg + mid, end, n, bop, proj, out + mid);
       }
@@ -201,7 +205,7 @@ struct up_sweep {
     co_await lf::call(up_rhs<op::fold>{})(beg + mid, end, n, bop, proj, out + mid);
     co_await lf::join;
 
-    // Restor invarient: propagete the reduction (scan), to the right sibling (if we have one).
+    // Restore invariant: propagate the reduction (scan), to the right sibling (if we have one).
     if constexpr (Ival == interval::lhs || Ival == interval::mid) {
       *(out + size - 1) = bop(*(out + mid - 1), std::ranges::iter_move(out + size - 1));
     }
@@ -210,7 +214,7 @@ struct up_sweep {
     if constexpr (Op == op::scan) {
       co_return left_out;
     }
-  };
+  }
 };
 
 /**
@@ -241,7 +245,7 @@ struct down_sweep_impl {
       throw "poop";
     }
 
-    if (size <= n) { // Equivilent to a scan (maybe) with an initial value.
+    if (size <= n) { // Equivalent to a scan (maybe) with an initial value.
 
       acc_t acc = acc_t(*(out - 1));
 
@@ -259,7 +263,7 @@ struct down_sweep_impl {
 
     int_t const mid = size / 2;
 
-    // Restor invarient: propagate the reduction (scan), we always have a left sibling.
+    // Restore invariant: propagate the reduction (scan), we always have a left sibling.
     *(out + mid - 1) = bop(*(out - 1), std::ranges::iter_move(out + mid - 1));
 
     // Divide and recurse.
@@ -293,8 +297,8 @@ struct down_sweep {
    *  left fully scanned and right fully scanned -> return (make this impossible).
    *
    *  left fully scanned, right part-scanned -> (invar holds) recurse on right.
-   *  left fully scanned, right unscanned -> (invar holds), call down_sweep on right.
-   *  left part scanned, right unscanned -> restor invar, recurse on left, call down_sweep on right.
+   *  left fully scanned, right un-scanned -> (invar holds), call down_sweep on right.
+   *  left part scanned, right un-scanned -> restore invar, recurse on left, call down_sweep on right.
    */
   LF_STATIC_CALL auto
   operator()(auto /* unused */, I beg, S end, int_t n, Bop bop, Proj proj, O out, I scan_end)
@@ -312,9 +316,9 @@ struct down_sweep {
       I split = beg + mid;
 
       if /*  */ (scan_end < split) {
-        // Left part-scanned, right unscanned.
+        // Left part-scanned, right un-scanned.
 
-        // Restore invarient: propagate the reduction (scan), we always have a left sibling.
+        // Restore invariant: propagate the reduction (scan), we always have a left sibling.
         *(out + mid - 1) = bop(*(out - 1), std::ranges::iter_move(out + mid - 1));
 
         co_await lf::fork(recur_lhs{})(beg, beg + mid, n, bop, proj, out, scan_end);
@@ -322,7 +326,7 @@ struct down_sweep {
         co_await lf::join;
         co_return;
       } else if (scan_end == split) {
-        // Left fully scanned, right unscanned.
+        // Left fully scanned, right un-scanned.
         co_return co_await lf::just(down_rhs{})(beg + mid, end, n, bop, proj, out + mid);
       } else if (scan_end > split) {
         // Left fully scanned, right part-scanned.
