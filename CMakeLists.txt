@@ -93,7 +93,9 @@ endif()
 
 find_package(Boost 1.83.0 COMPONENTS atomic)
 
-if(Boost_FOUND)
+option(LF_NO_BOOST_ATOMIC "Libfork will use std::atomic even if boost is found" OFF)
+
+if(Boost_FOUND AND NOT LF_NO_BOOST_ATOMIC)
   # Instructs libfork to use boost atomic (clang only)
   target_compile_definitions(libfork_libfork INTERFACE LF_USE_BOOST_ATOMIC)
   target_link_libraries(libfork_libfork INTERFACE Boost::atomic)
