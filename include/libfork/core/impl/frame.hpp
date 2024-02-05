@@ -39,22 +39,42 @@ namespace lf::impl {
 class frame {
 
 #if LF_COMPILER_EXCEPTIONS
-  manual_lifetime<std::exception_ptr> m_eptr; ///< Maybe an exception pointer.
+  /**
+   * @brief Maybe an exception pointer.
+   */
+  manual_lifetime<std::exception_ptr> m_eptr;
 #endif
 
 #ifndef LF_COROUTINE_OFFSET
-  std::coroutine_handle<> m_this_coro; ///< Handle to this coroutine.
+  /**
+   * @brief Handle to this coroutine, inferred from `this` if `LF_COROUTINE_OFFSET` is set.
+   */
+  std::coroutine_handle<> m_this_coro;
 #endif
-
-  stack::stacklet *m_stacklet; ///< Needs to be in promise in case allocation elided (as does m_parent).
+  /**
+   * @brief This frames stacklet, needs to be in promise in case allocation elided (as does m_parent).
+   */
+  stack::stacklet *m_stacklet;
 
   union {
-    frame *m_parent;              ///< Non-root tasks store a pointer to their parent.
-    std::binary_semaphore *m_sem; ///< Root tasks store a pointer to a semaphore to notify the caller.
+    /**
+     * @brief Non-root tasks store a pointer to their parent.
+     */
+    frame *m_parent;
+    /**
+     * @brief Root tasks store a pointer to a semaphore to notify the caller.
+     */
+    std::binary_semaphore *m_sem;
   };
 
-  std::atomic_uint16_t m_join = k_u16_max; ///< Number of children joined (with offset).
-  std::uint16_t m_steal = 0;               ///< Number of times this frame has been stolen.
+  /**
+   * @brief  Number of children joined (with offset).
+   */
+  std::atomic_uint16_t m_join = k_u16_max;
+  /**
+   * @brief Number of times this frame has been stolen.
+   */
+  std::uint16_t m_steal = 0;
 
 /**
  * @brief Flag to indicate if an exception has been set.

@@ -178,11 +178,26 @@ class stack {
       return stacklet::next_stacklet(LF_FIBRE_INIT_SIZE, nullptr);
     }
 
-    std::byte *m_lo;  ///< This stacklet's stack.
-    std::byte *m_sp;  ///< The current position of the stack pointer in the stack.
-    std::byte *m_hi;  ///< The one-past-the-end address of the stack.
-    stacklet *m_prev; ///< Doubly linked list (past).
-    stacklet *m_next; ///< Doubly linked list (future).
+    /**
+     * @brief This stacklet's stack.
+     */
+    std::byte *m_lo;
+    /**
+     * @brief The current position of the stack pointer in the stack.
+     */
+    std::byte *m_sp;
+    /**
+     * @brief The one-past-the-end address of the stack.
+     */
+    std::byte *m_hi;
+    /**
+     * @brief Doubly linked list (past).
+     */
+    stacklet *m_prev;
+    /**
+     * @brief Doubly linked list (future).
+     */
+    stacklet *m_next;
   };
 
   // Keep stack aligned.
@@ -335,7 +350,10 @@ class stack {
   }
 
  private:
-  stacklet *m_fib; ///< The allocation stacklet.
+  /**
+   * @brief The allocation stacklet.
+   */
+  stacklet *m_fib;
 };
 
 } // namespace lf::impl

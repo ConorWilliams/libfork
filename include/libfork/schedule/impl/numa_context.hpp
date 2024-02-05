@@ -40,15 +40,38 @@ namespace lf::impl {
 template <typename Shared>
 struct numa_context {
  private:
+  /**
+   * @brief The minimum number of steal attempts we will make per `try_steal` operation.
+   */
   static constexpr std::size_t k_min_steal_attempts = 1024;
+  /**
+   * @brief The number of steal attempts we will make per target in a `try_steal` operation.
+   */
   static constexpr std::size_t k_steal_attempts_per_target = 32;
-
-  xoshiro m_rng;                                  ///< Thread-local RNG.
-  std::shared_ptr<Shared> m_shared;               ///< Shared variables between all numa_contexts.
-  worker_context *m_context = nullptr;            ///< The worker context we are associated with.
-  std::discrete_distribution<std::size_t> m_dist; ///< The distribution for stealing.
-  std::vector<numa_context *> m_close;            ///< First order neighbors.
-  std::vector<numa_context *> m_neigh;            ///< Our neighbors (excluding ourselves).
+  /**
+   * @brief Thread-local RNG.
+   */
+  xoshiro m_rng;
+  /**
+   * @brief Shared variables between all numa_contexts.
+   */
+  std::shared_ptr<Shared> m_shared;
+  /**
+   * @brief The worker context we are associated with.
+   */
+  worker_context *m_context = nullptr;
+  /**
+   * @brief The distribution for stealing.
+   */
+  std::discrete_distribution<std::size_t> m_dist;
+  /**
+   * @brief First order neighbors.
+   */
+  std::vector<numa_context *> m_close;
+  /**
+   * @brief Our neighbors (excluding ourselves).
+   */
+  std::vector<numa_context *> m_neigh;
 
  public:
   /**

@@ -160,8 +160,14 @@ struct context_switch_awaitable {
    */
   auto await_resume() noexcept(noexcept_await_resume<A>) -> decltype(auto) { return external.await_resume(); }
 
-  [[no_unique_address]] A external;            ///< The external awaitable.
-  intrusive_list<impl::submit_t *>::node self; ///< The current coroutine's handle.
+  /**
+   * @brief The external awaitable.
+   */
+  [[no_unique_address]] A external;
+  /**
+   * @brief The current coroutine's handle.
+   */
+  intrusive_list<impl::submit_t *>::node self;
 };
 
 // -------------------------------------------------------- //
@@ -200,8 +206,14 @@ struct alloc_awaitable : std::suspend_never {
     return {self, std::span<T>{ptr, request.count}};
   }
 
-  co_new_t<T> request; ///< The requested allocation.
-  frame *self;         ///< The current coroutine's frame.
+  /**
+   * @brief The requested allocation.
+   */
+  co_new_t<T> request;
+  /**
+   * @brief The current coroutine's frame.
+   */
+  frame *self;
 };
 
 // -------------------------------------------------------- //
@@ -236,8 +248,14 @@ struct fork_awaitable : std::suspend_always {
     return stack_child.release()->self();
   }
 
-  unique_frame child; ///< The suspended child coroutine's frame.
-  frame *self;        ///< The calling coroutine's frame.
+  /**
+   * @brief The suspended child coroutine's frame.
+   */
+  unique_frame child;
+  /**
+   * @brief The calling coroutine's frame.
+   */
+  frame *self;
 };
 
 /**
@@ -283,8 +301,10 @@ struct sync_fork_awaitable : fork_awaitable {
     }
     return false;
   }
-
-  std::uint16_t steals_pre; ///< The number of times the parent was stolen __before__ the fork.
+  /**
+   * @brief The number of times the parent was stolen __before__ the fork.
+   */
+  std::uint16_t steals_pre;
 };
 
 /**
@@ -303,7 +323,10 @@ struct call_awaitable : std::suspend_always {
     return child.release()->self();
   }
 
-  unique_frame child; ///< The suspended child coroutine's frame.
+  /**
+   * @brief The suspended child coroutine's frame.
+   */
+  unique_frame child;
 };
 
 /**
@@ -335,7 +358,10 @@ struct eager_call_awaitable : call_awaitable {
     }
   }
 
-  frame *self; ///< The calling coroutine's frame.
+  /**
+   * @brief The calling coroutine's frame.
+   */
+  frame *self;
 };
 
 // -------------------------------------------------------------------------------- //
@@ -435,7 +461,10 @@ struct join_awaitable {
     self->rethrow_if_exception();
   }
 
-  frame *self; ///< The frame of the awaiting coroutine.
+  /**
+   * @brief The frame of the awaiting coroutine.
+   */
+  frame *self;
 };
 
 } // namespace lf::impl

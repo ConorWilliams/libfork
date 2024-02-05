@@ -140,10 +140,18 @@ struct atomic_ring_buf {
   }
 
  private:
+  /**
+   * @brief An array of atomic elements.
+   */
   using array_t = std::atomic<T>[]; // NOLINT
-
-  std::ptrdiff_t m_cap;  ///< Capacity of the buffer
-  std::ptrdiff_t m_mask; ///< Bit mask to perform modulo capacity operations
+  /**
+   * @brief Capacity of the buffer.
+   */
+  std::ptrdiff_t m_cap;
+  /**
+   * @brief Bit mask to perform modulo capacity operations.
+   */
+  std::ptrdiff_t m_mask;
 
 #ifdef __cpp_lib_smart_ptr_for_overwrite
   std::unique_ptr<array_t> m_buf = std::make_unique_for_overwrite<array_t>(static_cast<std::size_t>(m_cap));
@@ -160,9 +168,18 @@ inline namespace ext {
  * @brief Error codes for ``deque`` 's ``steal()`` operation.
  */
 enum class err : int {
-  none = 0, ///< The ``steal()`` operation succeeded.
-  lost,     ///< Lost the ``steal()`` race hence, the ``steal()`` operation failed.
-  empty,    ///< The deque is empty and hence, the ``steal()`` operation failed.
+  /**
+   * @brief The ``steal()`` operation succeeded.
+   */
+  none = 0,
+  /**
+   * @brief  Lost the ``steal()`` race hence, the ``steal()`` operation failed.
+   */
+  lost,
+  /**
+   * @brief The deque is empty and hence, the ``steal()`` operation failed.
+   */
+  empty,
 };
 
 /**
@@ -214,8 +231,14 @@ struct steal_t {
     return std::addressof(val);
   }
 
-  err code; ///< The error code of the ``steal()`` operation.
-  T val;    ///< The value stolen from the deque, Only valid if ``code == err::stolen``.
+  /**
+   * @brief The error code of the ``steal()`` operation.
+   */
+  err code;
+  /**
+   * @brief The value stolen from the deque, Only valid if ``code == err::stolen``.
+   */
+  T val;
 };
 
 /**

@@ -22,6 +22,9 @@ struct frame_deleter {
 
 } // namespace detail
 
+/**
+ * @brief A unique pointer (with a custom deleter) that owns a coroutine frame.
+ */
 using unique_frame = std::unique_ptr<frame, detail::frame_deleter>;
 
 } // namespace lf::impl

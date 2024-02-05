@@ -44,10 +44,18 @@
 namespace lf {
 
 namespace impl {
-
-static constexpr std::memory_order acquire = std::memory_order_acquire; ///< Alias
-static constexpr std::memory_order acq_rel = std::memory_order_acq_rel; ///< Alias
-static constexpr std::memory_order release = std::memory_order_release; ///< Alias
+/**
+ * @brief Alias to the `std` version.
+ */
+static constexpr std::memory_order acquire = std::memory_order_acquire;
+/**
+ * @brief Alias to the `std` version.
+ */
+static constexpr std::memory_order acq_rel = std::memory_order_acq_rel;
+/**
+ * @brief Alias to the `std` version.
+ */
+static constexpr std::memory_order release = std::memory_order_release;
 
 /**
  * @brief A collection of heap allocated atomic variables used for tracking the state of the scheduler.
@@ -60,12 +68,24 @@ struct lazy_vars : busy_vars {
    * @brief Counters and notifiers for each numa locality.
    */
   struct fat_counters {
-    alignas(k_cache_line) std::atomic_uint64_t thief = 0; ///< Number of thieving workers.
-    alignas(k_cache_line) event_count notifier;           ///< Notifier for this numa pool.
+    /**
+     * @brief Number of thieving workers.
+     */
+    alignas(k_cache_line) std::atomic_uint64_t thief = 0;
+    /**
+     * @brief Notifier for this numa pool.
+     */
+    alignas(k_cache_line) event_count notifier;
   };
 
-  alignas(k_cache_line) std::atomic_uint64_t active = 0; ///< Total number of actives.
-  alignas(k_cache_line) std::vector<fat_counters> numa;  ///< Counters for each numa locality.
+  /**
+   * @brief  Total number of actives.
+   */
+  alignas(k_cache_line) std::atomic_uint64_t active = 0;
+  /**
+   * @brief Counters for each numa locality.
+   */
+  alignas(k_cache_line) std::vector<fat_counters> numa;
 
   // Invariant: *** if (A > 0) then (T >= 1 OR S == 0) ***
 

@@ -797,7 +797,10 @@ concept returnable = std::is_void_v<T> || std::is_reference_v<T> || std::movable
  */
 template <returnable T = void>
 struct LF_CORO_ATTRIBUTES task : std::type_identity<T>, impl::immovable<task<void>> {
-  void *prom; ///< An opaque handle to the coroutine promise.
+  /**
+   * @brief An opaque handle to the coroutine promise.
+   */
+  void *prom;
 };
 
 } // namespace core
@@ -886,9 +889,18 @@ class basic_eventually : impl::immovable<basic_eventually<T, Exception>> {
   static constexpr bool implicit_state = (is_ref_value && !Exception) || (is_void && Exception);
 
   enum class state : char {
-    empty,     ///< No object has been constructed.
-    value,     ///< An object has been constructed.
-    exception, ///< An exception has been thrown during and is stored.
+    /**
+     * @brief No object has been constructed.
+     */
+    empty,
+    /**
+     * @brief An object has been constructed.
+     */
+    value,
+    /**
+     * @brief An exception has been thrown during and is stored.
+     */
+    exception,
   };
 
   union {
@@ -1426,10 +1438,18 @@ struct atomic_ring_buf {
   }
 
  private:
+  /**
+   * @brief An array of atomic elements.
+   */
   using array_t = std::atomic<T>[]; // NOLINT
-
-  std::ptrdiff_t m_cap;  ///< Capacity of the buffer
-  std::ptrdiff_t m_mask; ///< Bit mask to perform modulo capacity operations
+  /**
+   * @brief Capacity of the buffer.
+   */
+  std::ptrdiff_t m_cap;
+  /**
+   * @brief Bit mask to perform modulo capacity operations.
+   */
+  std::ptrdiff_t m_mask;
 
 #ifdef __cpp_lib_smart_ptr_for_overwrite
   std::unique_ptr<array_t> m_buf = std::make_unique_for_overwrite<array_t>(static_cast<std::size_t>(m_cap));
@@ -1446,9 +1466,18 @@ inline namespace ext {
  * @brief Error codes for ``deque`` 's ``steal()`` operation.
  */
 enum class err : int {
-  none = 0, ///< The ``steal()`` operation succeeded.
-  lost,     ///< Lost the ``steal()`` race hence, the ``steal()`` operation failed.
-  empty,    ///< The deque is empty and hence, the ``steal()`` operation failed.
+  /**
+   * @brief The ``steal()`` operation succeeded.
+   */
+  none = 0,
+  /**
+   * @brief  Lost the ``steal()`` race hence, the ``steal()`` operation failed.
+   */
+  lost,
+  /**
+   * @brief The deque is empty and hence, the ``steal()`` operation failed.
+   */
+  empty,
 };
 
 /**
@@ -1500,8 +1529,14 @@ struct steal_t {
     return std::addressof(val);
   }
 
-  err code; ///< The error code of the ``steal()`` operation.
-  T val;    ///< The value stolen from the deque, Only valid if ``code == err::stolen``.
+  /**
+   * @brief The error code of the ``steal()`` operation.
+   */
+  err code;
+  /**
+   * @brief The value stolen from the deque, Only valid if ``code == err::stolen``.
+   */
+  T val;
 };
 
 /**
@@ -2290,11 +2325,26 @@ class stack {
       return stacklet::next_stacklet(LF_FIBRE_INIT_SIZE, nullptr);
     }
 
-    std::byte *m_lo;  ///< This stacklet's stack.
-    std::byte *m_sp;  ///< The current position of the stack pointer in the stack.
-    std::byte *m_hi;  ///< The one-past-the-end address of the stack.
-    stacklet *m_prev; ///< Doubly linked list (past).
-    stacklet *m_next; ///< Doubly linked list (future).
+    /**
+     * @brief This stacklet's stack.
+     */
+    std::byte *m_lo;
+    /**
+     * @brief The current position of the stack pointer in the stack.
+     */
+    std::byte *m_sp;
+    /**
+     * @brief The one-past-the-end address of the stack.
+     */
+    std::byte *m_hi;
+    /**
+     * @brief Doubly linked list (past).
+     */
+    stacklet *m_prev;
+    /**
+     * @brief Doubly linked list (future).
+     */
+    stacklet *m_next;
   };
 
   // Keep stack aligned.
@@ -2447,7 +2497,10 @@ class stack {
   }
 
  private:
-  stacklet *m_fib; ///< The allocation stacklet.
+  /**
+   * @brief The allocation stacklet.
+   */
+  stacklet *m_fib;
 };
 
 } // namespace lf::impl
@@ -2470,22 +2523,42 @@ namespace lf::impl {
 class frame {
 
 #if LF_COMPILER_EXCEPTIONS
-  manual_lifetime<std::exception_ptr> m_eptr; ///< Maybe an exception pointer.
+  /**
+   * @brief Maybe an exception pointer.
+   */
+  manual_lifetime<std::exception_ptr> m_eptr;
 #endif
 
 #ifndef LF_COROUTINE_OFFSET
-  std::coroutine_handle<> m_this_coro; ///< Handle to this coroutine.
+  /**
+   * @brief Handle to this coroutine, inferred from `this` if `LF_COROUTINE_OFFSET` is set.
+   */
+  std::coroutine_handle<> m_this_coro;
 #endif
-
-  stack::stacklet *m_stacklet; ///< Needs to be in promise in case allocation elided (as does m_parent).
+  /**
+   * @brief This frames stacklet, needs to be in promise in case allocation elided (as does m_parent).
+   */
+  stack::stacklet *m_stacklet;
 
   union {
-    frame *m_parent;              ///< Non-root tasks store a pointer to their parent.
-    std::binary_semaphore *m_sem; ///< Root tasks store a pointer to a semaphore to notify the caller.
+    /**
+     * @brief Non-root tasks store a pointer to their parent.
+     */
+    frame *m_parent;
+    /**
+     * @brief Root tasks store a pointer to a semaphore to notify the caller.
+     */
+    std::binary_semaphore *m_sem;
   };
 
-  std::atomic_uint16_t m_join = k_u16_max; ///< Number of children joined (with offset).
-  std::uint16_t m_steal = 0;               ///< Number of times this frame has been stolen.
+  /**
+   * @brief  Number of children joined (with offset).
+   */
+  std::atomic_uint16_t m_join = k_u16_max;
+  /**
+   * @brief Number of times this frame has been stolen.
+   */
+  std::uint16_t m_steal = 0;
 
 /**
  * @brief Flag to indicate if an exception has been set.
@@ -2855,10 +2928,18 @@ class worker_context : impl::immovable<context> {
     LF_ASSERT(m_notify);
   }
 
-  deque<task_handle> m_tasks;                ///< All non-null.
-  intrusive_list<impl::submit_t *> m_submit; ///< All non-null.
-
-  nullary_function_t m_notify; ///< The user supplied notification function.
+  /**
+   * @brief All non-null.
+   */
+  deque<task_handle> m_tasks;
+  /**
+   * @brief All non-null.
+   */
+  intrusive_list<impl::submit_t *> m_submit;
+  /**
+   * @brief The user supplied notification function.
+   */
+  nullary_function_t m_notify;
 };
 
 } // namespace ext
@@ -3089,9 +3170,18 @@ inline namespace core {
  * You can inspect the first argument of an async function to determine the tag.
  */
 enum class tag {
-  root, ///< This coroutine is a root task from an ``lf::sync_wait``.
-  call, ///< Non root task from an ``lf::call``, completes synchronously.
-  fork, ///< Non root task from an ``lf::fork``, completes asynchronously.
+  /**
+   * @brief This coroutine is a root task from an ``lf::sync_wait``.
+   */
+  root,
+  /**
+   * @brief Non root task from an ``lf::call``, completes synchronously.
+   */
+  call,
+  /**
+   * @brief Non root task from an ``lf::fork``, completes asynchronously.
+   */
+  fork,
 };
 
 /**
@@ -3101,12 +3191,26 @@ enum class tag {
  * to use them. We use a namespace + types rather than an enumeration to allow for type-concepts.
  */
 namespace modifier {
-
-struct none {};                ///< No modification to the dispatch category.
-struct sync {};                ///< The dispatch is a `fork`, reports if the fork completed synchronously.
-struct sync_outside {};        ///< Same as `sync` but outside a fork-join scope.
-struct eager_throw {};         ///< The dispatch is a `call`, the awaitable will throw eagerly.
-struct eager_throw_outside {}; ///< Same as `eager_throw` but outside a fork-join scope.
+/**
+ * @brief No modification to the dispatch category.
+ */
+struct none {};
+/**
+ * @brief The dispatch is `fork`, reports if the fork completed synchronously.
+ */
+struct sync {};
+/**
+ * @brief The dispatch is a `fork` outside a fork-join scope, reports if the fork completed synchronously.
+ */
+struct sync_outside {};
+/**
+ * @brief The dispatch is a `call`, the awaitable will throw eagerly.
+ */
+struct eager_throw {};
+/**
+ * @brief The dispatch is a `call` outside a fork-join scope, the awaitable will throw eagerly.
+ */
+struct eager_throw_outside {};
 
 } // namespace modifier
 
@@ -3150,10 +3254,22 @@ namespace impl {
  * @brief An enumerator describing a statement's location wrt to a fork-join scope.
  */
 enum class region {
-  unknown,      ///< Unknown location wrt to a fork-join scope.
-  outside,      ///< Outside a fork-join scope.
-  inside,       ///< Inside a fork-join scope
-  opening_fork, ///< First fork statement in a fork-join scope.
+  /**
+   * @brief Unknown location wrt to a fork-join scope.
+   */
+  unknown,
+  /**
+   * @brief Outside a fork-join scope.
+   */
+  outside,
+  /**
+   * @brief Inside a fork-join scope
+   */
+  inside,
+  /**
+   * @brief First fork statement in a fork-join scope.
+   */
+  opening_fork,
 };
 
 } // namespace impl
@@ -3802,7 +3918,7 @@ struct projected_impl {
     /**
      * @brief Not defined.
      */
-    auto operator*() const -> indirect_result_t<Proj &, I>; ///<
+    auto operator*() const -> indirect_result_t<Proj &, I>;
     /**
      * @brief For internal use only!
      */
@@ -4075,6 +4191,9 @@ struct frame_deleter {
 
 } // namespace detail
 
+/**
+ * @brief A unique pointer (with a custom deleter) that owns a coroutine frame.
+ */
 using unique_frame = std::unique_ptr<frame, detail::frame_deleter>;
 
 } // namespace lf::impl
@@ -4118,8 +4237,14 @@ struct [[nodiscard]] quasi_awaitable : immovable<quasi_awaitable<R, I, Tag, Mod>
 template <quasi_pointer I, tag Tag, modifier_for<Tag> Mod, async_function_object F>
 struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combinate {
 
-  [[no_unique_address]] I ret; ///< The return address.
-  [[no_unique_address]] F fun; ///< The asynchronous function.
+  /**
+   * @brief The return address.
+   */
+  [[no_unique_address]] I ret;
+  /**
+   * @brief The asynchronous function.
+   */
+  [[no_unique_address]] F fun;
 
   /**
    * @brief Invoke the coroutine, set's the return pointer.
@@ -4433,7 +4558,10 @@ namespace impl {
  */
 template <co_allocable T>
 struct [[nodiscard("This object should be co_awaited")]] co_new_t {
-  std::size_t count; ///< The number of elements to allocate.
+  /**
+   * @brief The number of elements to allocate.
+   */
+  std::size_t count;
 };
 
 } // namespace impl
@@ -4785,8 +4913,14 @@ struct context_switch_awaitable {
    */
   auto await_resume() noexcept(noexcept_await_resume<A>) -> decltype(auto) { return external.await_resume(); }
 
-  [[no_unique_address]] A external;            ///< The external awaitable.
-  intrusive_list<impl::submit_t *>::node self; ///< The current coroutine's handle.
+  /**
+   * @brief The external awaitable.
+   */
+  [[no_unique_address]] A external;
+  /**
+   * @brief The current coroutine's handle.
+   */
+  intrusive_list<impl::submit_t *>::node self;
 };
 
 // -------------------------------------------------------- //
@@ -4825,8 +4959,14 @@ struct alloc_awaitable : std::suspend_never {
     return {self, std::span<T>{ptr, request.count}};
   }
 
-  co_new_t<T> request; ///< The requested allocation.
-  frame *self;         ///< The current coroutine's frame.
+  /**
+   * @brief The requested allocation.
+   */
+  co_new_t<T> request;
+  /**
+   * @brief The current coroutine's frame.
+   */
+  frame *self;
 };
 
 // -------------------------------------------------------- //
@@ -4861,8 +5001,14 @@ struct fork_awaitable : std::suspend_always {
     return stack_child.release()->self();
   }
 
-  unique_frame child; ///< The suspended child coroutine's frame.
-  frame *self;        ///< The calling coroutine's frame.
+  /**
+   * @brief The suspended child coroutine's frame.
+   */
+  unique_frame child;
+  /**
+   * @brief The calling coroutine's frame.
+   */
+  frame *self;
 };
 
 /**
@@ -4908,8 +5054,10 @@ struct sync_fork_awaitable : fork_awaitable {
     }
     return false;
   }
-
-  std::uint16_t steals_pre; ///< The number of times the parent was stolen __before__ the fork.
+  /**
+   * @brief The number of times the parent was stolen __before__ the fork.
+   */
+  std::uint16_t steals_pre;
 };
 
 /**
@@ -4928,7 +5076,10 @@ struct call_awaitable : std::suspend_always {
     return child.release()->self();
   }
 
-  unique_frame child; ///< The suspended child coroutine's frame.
+  /**
+   * @brief The suspended child coroutine's frame.
+   */
+  unique_frame child;
 };
 
 /**
@@ -4960,7 +5111,10 @@ struct eager_call_awaitable : call_awaitable {
     }
   }
 
-  frame *self; ///< The calling coroutine's frame.
+  /**
+   * @brief The calling coroutine's frame.
+   */
+  frame *self;
 };
 
 // -------------------------------------------------------------------------------- //
@@ -5060,7 +5214,10 @@ struct join_awaitable {
     self->rethrow_if_exception();
   }
 
-  frame *self; ///< The frame of the awaiting coroutine.
+  /**
+   * @brief The frame of the awaiting coroutine.
+   */
+  frame *self;
 };
 
 } // namespace lf::impl
@@ -5152,7 +5309,10 @@ struct [[nodiscard("co_await this!")]] just_wrapped : std::suspend_never {
     }
   }
 
-  [[no_unique_address]] T val; ///< The value to be forwarded.
+  /**
+   * @brief The value to be forwarded.
+   */
+  [[no_unique_address]] T val;
 };
 
 /**
@@ -5191,7 +5351,10 @@ struct [[nodiscard("This should be immediately invoked!")]] call_just {
     }
   }
 
-  [[no_unique_address]] F fun; ///< The async or regular function.
+  /**
+   * @brief The async or regular function.
+   */
+  [[no_unique_address]] F fun;
 };
 
 /**
@@ -6051,7 +6214,72 @@ inline constexpr impl::map_overload map = {};
 
 namespace lf {
 
-namespace impl {
+namespace v2 {
+
+/**
+ * Operation propagates as:
+ *
+ * scan -> (scan, x)
+ *    x can be scan if the left child completes synchronously, otherwise it must be a fold.
+ *
+ * fold -> (fold, fold)
+ */
+enum class op {
+  scan,
+  fold,
+};
+
+/**
+ * Possible intervals:
+ *
+ * Full range: (lhs, rhs)
+ * Sub range: (lhs, mid), (mid, mid), (mid, rhs)
+ *
+ *
+ * Transformations:
+ *
+ * (lhs, rhs) -> (lhs, mid), (mid, rhs)
+ *
+ * (lhs, mid) -> (lhs, mid), (mid, mid)
+ * (mid, rhs) -> (mid, mid), (mid, rhs)
+ *
+ * (mid, mid) -> (mid, mid), (mid, mid)
+ *
+ */
+enum class interval {
+  all,
+  lhs,
+  mid,
+  rhs,
+};
+
+/**
+ * @brief Get the interval to the left of the current interval.
+ */
+consteval auto l_child_of(interval ival) -> interval {
+  switch (ival) {
+    case interval::all:
+    case interval::lhs:
+      return interval::lhs;
+    case interval::mid:
+    case interval::rhs:
+      return interval::mid;
+  }
+}
+
+/**
+ * @brief Get the interval to the right of the current interval.
+ */
+consteval auto r_child_of(interval ival) -> interval {
+  switch (ival) {
+    case interval::all:
+    case interval::rhs:
+      return interval::rhs;
+    case interval::lhs:
+    case interval::mid:
+      return interval::mid;
+  }
+}
 
 /**
  * @brief Reduction up-sweep of the scan.
@@ -6095,7 +6323,268 @@ namespace impl {
  * Partition 0: [1, 1, 3, 1, 2, 1, 7]
  * Partition 1: [1, 1, 3][1, 2, 1, 7]
  * Partition 2: [1][1, 3][1, 2][1, 7]
+ *
+ * As an optimization over the basic algorithm we scan the chunks on the left of the tree.
  */
+template <std::random_access_iterator I,
+          std::sized_sentinel_for<I> S,
+          class Proj,
+          class Bop,
+          std::random_access_iterator O,
+          interval Ival = interval::all,
+          op Op = op::scan //
+          >
+struct up_sweep {
+
+  using int_t = std::iter_difference_t<I>;
+  using acc_t = std::iter_value_t<O>;
+  using task_t = lf::task<std::conditional_t<Op == op::scan, I, void>>;
+
+  // Propagate the operation to the left child.
+  using up_lhs = up_sweep<I, S, Proj, Bop, O, l_child_of(Ival), Op>;
+
+  // The right child's operation depends on the readiness of the left child.
+  template <op OpChild>
+  using up_rhs = up_sweep<I, S, Proj, Bop, O, r_child_of(Ival), OpChild>;
+
+  /**
+   * Return the end of the scanned range.
+   */
+  LF_STATIC_CALL auto
+  operator()(auto /* */, I beg, S end, int_t n, Bop bop, Proj proj, O out) LF_STATIC_CONST->task_t {
+    //
+    int_t const size = end - beg;
+
+    if (size < 1) {
+      throw "poop";
+    }
+
+    if (size <= n) {
+      if constexpr (Op == op::fold) { // Equivalent to a fold over acc_t, left sibling not ready.
+
+        static_assert(Ival != interval::lhs && Ival != interval::all, "left can always scan");
+
+        if constexpr (Ival == interval::mid) {
+          // Mid segment has a right sibling so do the fold.
+          acc_t acc = acc_t(proj(*beg));
+          // The optimizer sometimes trips up here so we force a bit of unrolling.
+#pragma unroll(8)
+          for (++beg; beg != end; ++beg) {
+            acc = bop(std::move(acc), proj(*beg));
+          }
+          // Store in the correct location in the output (in-case the scan is in-place).
+          *(out + size - 1) = std::move(acc);
+        } else {
+          static_assert(Ival == interval::rhs, "else rhs, which has no right sibling that consumes the fold");
+        }
+
+        co_return;
+
+      } else { // A scan implies the left sibling (if it exists) is ready.
+
+        constexpr bool has_left_carry = Ival == interval::mid || Ival == interval::rhs;
+
+        acc_t acc = [&]() -> acc_t {
+          if constexpr (has_left_carry) {
+            return *(out - 1);
+          } else {
+            return proj(*beg);
+          }
+        }();
+
+        if constexpr (has_left_carry) {
+          *out = acc;
+          ++beg;
+          ++out;
+        }
+
+        // The optimizer sometimes trips up here so we force a bit of unrolling.
+#pragma unroll(8)
+        for (; beg != end; ++beg, ++out) {
+          *out = acc = bop(std::move(acc), proj(*beg));
+        }
+
+        co_return end;
+      }
+    }
+
+    // Divide and recurse.
+    int_t const mid = size / 2;
+
+    /**
+     * Specified through the following concept chain:
+     *  random_access_iterator -> bidirectional_iterator -> forward_iterator -> incrementable -> regular
+     */
+    I left_out;
+
+    if constexpr (Op == op::scan) {
+      // Unconditionally launch left child.
+
+      using mod = lf::modifier::sync_outside;
+
+      // If we are a scan then left child is a scan,
+      // If the left child is ready then rhs can be a scan.
+      // Otherwise the rhs must be a fold.
+      if (co_await lf::dispatch<lf::tag::fork, mod>(&left_out, up_lhs{})(beg, beg + mid, n, bop, proj, out)) {
+        // TODO: needs to handle exceptions from fork!
+
+        // Effectively fused child trees into a single scan.
+        // Right most scanned now from right child.
+        co_return co_await lf::just(up_rhs<op::scan>{})(beg + mid, end, n, bop, proj, out + mid);
+      }
+    } else {
+      co_await lf::fork(up_lhs{})(beg, beg + mid, n, bop, proj, out);
+    }
+
+    co_await lf::call(up_rhs<op::fold>{})(beg + mid, end, n, bop, proj, out + mid);
+    co_await lf::join;
+
+    // Restore invariant: propagate the reduction (scan), to the right sibling (if we have one).
+    if constexpr (Ival == interval::lhs || Ival == interval::mid) {
+      *(out + size - 1) = bop(*(out + mid - 1), std::ranges::iter_move(out + size - 1));
+    }
+
+    // If we are a scan then we return the end of the scanned range which was in the left child.
+    if constexpr (Op == op::scan) {
+      co_return left_out;
+    }
+  }
+};
+
+/**
+ * As some of the input is always scanned during the reduction sweep, we always have a left sibling.
+ */
+template <std::random_access_iterator I,
+          std::sized_sentinel_for<I> S,
+          class Proj,
+          class Bop,
+          std::random_access_iterator O,
+          interval Ival = interval::mid //
+          >
+  requires (Ival == interval::mid || Ival == interval::rhs)
+struct down_sweep_impl {
+
+  using int_t = std::iter_difference_t<I>;
+  using acc_t = std::iter_value_t<O>;
+
+  using down_lhs = down_sweep_impl<I, S, Proj, Bop, O, l_child_of(Ival)>;
+  using down_rhs = down_sweep_impl<I, S, Proj, Bop, O, r_child_of(Ival)>;
+
+  LF_STATIC_CALL auto
+  operator()(auto /* */, I beg, S end, int_t n, Bop bop, Proj proj, O out) LF_STATIC_CONST->lf::task<> {
+
+    int_t const size = end - beg;
+
+    if (size < 1) {
+      throw "poop";
+    }
+
+    if (size <= n) { // Equivalent to a scan (maybe) with an initial value.
+
+      acc_t acc = acc_t(*(out - 1));
+
+      // The furthest-right chunk has no reduction stored in it so we include it in the scan.
+      I last = (Ival == interval::rhs) ? end : beg + size - 1;
+
+      // The optimizer sometimes trips up here so we force a bit of unrolling.
+#pragma unroll(8)
+      for (; beg != last; ++beg, ++out) {
+        *out = acc = bop(std::move(acc), proj(*beg));
+      }
+
+      co_return;
+    }
+
+    int_t const mid = size / 2;
+
+    // Restore invariant: propagate the reduction (scan), we always have a left sibling.
+    *(out + mid - 1) = bop(*(out - 1), std::ranges::iter_move(out + mid - 1));
+
+    // Divide and recurse.
+    co_await lf::fork(down_lhs{})(beg, beg + mid, n, bop, proj, out);
+    co_await lf::call(down_rhs{})(beg + mid, end, n, bop, proj, out + mid);
+    co_await lf::join;
+  }
+};
+
+/**
+ * As some of the input is always scanned during the reduction sweep, we always have a left sibling.
+ */
+template <std::random_access_iterator I,
+          std::sized_sentinel_for<I> S,
+          class Proj,
+          class Bop,
+          std::random_access_iterator O,
+          interval Ival = interval::mid //
+          >
+  requires (Ival == interval::mid || Ival == interval::rhs)
+struct down_sweep {
+
+  using int_t = std::iter_difference_t<I>;
+  using acc_t = std::iter_value_t<O>;
+
+  using recur_lhs = down_sweep<I, S, Proj, Bop, O, l_child_of(Ival)>;
+  using down_rhs = down_sweep_impl<I, S, Proj, Bop, O, r_child_of(Ival)>;
+
+  /**
+   * Options:
+   *  left fully scanned and right fully scanned -> return (make this impossible).
+   *
+   *  left fully scanned, right part-scanned -> (invar holds) recurse on right.
+   *  left fully scanned, right un-scanned -> (invar holds), call down_sweep on right.
+   *  left part scanned, right un-scanned -> restore invar, recurse on left, call down_sweep on right.
+   */
+  LF_STATIC_CALL auto
+  operator()(auto /* unused */, I beg, S end, int_t n, Bop bop, Proj proj, O out, I scan_end)
+      LF_STATIC_CONST->lf::task<> {
+
+    if (end <= scan_end) {
+      throw "should be impossible";
+    }
+
+    for (;;) {
+
+      int_t size = end - beg;
+      int_t mid = size / 2;
+
+      I split = beg + mid;
+
+      if /*  */ (scan_end < split) {
+        // Left part-scanned, right un-scanned.
+
+        // Restore invariant: propagate the reduction (scan), we always have a left sibling.
+        *(out + mid - 1) = bop(*(out - 1), std::ranges::iter_move(out + mid - 1));
+
+        co_await lf::fork(recur_lhs{})(beg, beg + mid, n, bop, proj, out, scan_end);
+        co_await lf::call(down_rhs{})(beg + mid, end, n, bop, proj, out + mid);
+        co_await lf::join;
+        co_return;
+      } else if (scan_end == split) {
+        // Left fully scanned, right un-scanned.
+        co_return co_await lf::just(down_rhs{})(beg + mid, end, n, bop, proj, out + mid);
+      } else if (scan_end > split) {
+        // Left fully scanned, right part-scanned.
+
+        // Recursion looks like: call(recur_rhs{})(beg + mid, end, n, bop, proj, out + mid, scan_end)
+        // Hence, we can loop.
+
+        static_assert(Ival == r_child_of(Ival), "recursion into different function");
+
+        beg = beg + mid;
+        out = out + mid;
+
+        continue;
+      } else {
+        lf::impl::unreachable();
+      }
+    }
+  }
+};
+
+} // namespace v2
+
+namespace impl {
+
 template <bool InPlace>
 inline constexpr auto reduction_sweep =
     []<std::random_access_iterator I,
@@ -6823,7 +7312,10 @@ class return_result_base {
   [[nodiscard]] auto get_return() noexcept -> I & { return this->m_ret; }
 
  private:
-  [[no_unique_address]] I m_ret; ///< The stored quasi-pointer
+  /**
+   * @brief The stored quasi-pointer.
+   */
+  [[no_unique_address]] I m_ret;
 };
 
 /**
@@ -7464,8 +7956,14 @@ struct hwloc_error : std::runtime_error {
  * @brief Enum to control distribution strategy of workers among numa nodes.
  */
 enum class numa_strategy {
-  fan, ///< Put workers as far away from each other as possible (maximize cache.)
-  seq, ///< Fill up each numa node sequentially (ignoring SMT).
+  /**
+   * @brief Put workers as far away from each other as possible (maximize cache.)
+   */
+  fan,
+  /**
+   * @brief Fill up each numa node sequentially (ignoring SMT).
+   */
+  seq,
 };
 
 /**
@@ -7514,9 +8012,18 @@ class numa_topology {
      */
     void bind() const;
 
-    shared_topo topo = nullptr; ///< A shared handle to topology this handle belongs to.
-    unique_cpup cpup = nullptr; ///< A unique handle to processing units that this handle represents.
-    std::size_t numa = 0;       ///< The index of the numa node this handle belongs to, on [0, n).
+    /**
+     * @brief A shared handle to topology this handle belongs to.
+     */
+    shared_topo topo = nullptr;
+    /**
+     * @brief A unique handle to processing units that this handle represents.
+     */
+    unique_cpup cpup = nullptr;
+    /**
+     * @brief  The index of the numa node this handle belongs to, on [0, n).
+     */
+    std::size_t numa = 0;
   };
 
   /**
@@ -7935,7 +8442,10 @@ concept uniform_random_bit_generator_help =                           //
 
 inline namespace ext {
 
-inline constexpr impl::seed_t seed = {}; ///< A tag to disambiguate seeding from other operations.
+/**
+ * @brief  A tag to disambiguate seeding from copy construction.
+ */
+inline constexpr impl::seed_t seed = {};
 
 /**
  * @brief `Like std::uniform_random_bit_generator`, but also requires a nested `result_type`.
@@ -7958,7 +8468,10 @@ concept uniform_random_bit_generator = impl::uniform_random_bit_generator_help<s
  */
 class xoshiro {
  public:
-  using result_type = std::uint64_t; ///< Required by named requirement: UniformRandomBitGenerator
+  /**
+   * @brief Required by named requirement: _UniformRandomBitGenerator_
+   */
+  using result_type = std::uint64_t;
 
   /**
    * @brief Construct a new xoshiro with a fixed default-seed.
@@ -8127,15 +8640,38 @@ namespace lf::impl {
 template <typename Shared>
 struct numa_context {
  private:
+  /**
+   * @brief The minimum number of steal attempts we will make per `try_steal` operation.
+   */
   static constexpr std::size_t k_min_steal_attempts = 1024;
+  /**
+   * @brief The number of steal attempts we will make per target in a `try_steal` operation.
+   */
   static constexpr std::size_t k_steal_attempts_per_target = 32;
-
-  xoshiro m_rng;                                  ///< Thread-local RNG.
-  std::shared_ptr<Shared> m_shared;               ///< Shared variables between all numa_contexts.
-  worker_context *m_context = nullptr;            ///< The worker context we are associated with.
-  std::discrete_distribution<std::size_t> m_dist; ///< The distribution for stealing.
-  std::vector<numa_context *> m_close;            ///< First order neighbors.
-  std::vector<numa_context *> m_neigh;            ///< Our neighbors (excluding ourselves).
+  /**
+   * @brief Thread-local RNG.
+   */
+  xoshiro m_rng;
+  /**
+   * @brief Shared variables between all numa_contexts.
+   */
+  std::shared_ptr<Shared> m_shared;
+  /**
+   * @brief The worker context we are associated with.
+   */
+  worker_context *m_context = nullptr;
+  /**
+   * @brief The distribution for stealing.
+   */
+  std::discrete_distribution<std::size_t> m_dist;
+  /**
+   * @brief First order neighbors.
+   */
+  std::vector<numa_context *> m_close;
+  /**
+   * @brief Our neighbors (excluding ourselves).
+   */
+  std::vector<numa_context *> m_neigh;
 
  public:
   /**
@@ -8317,9 +8853,18 @@ struct busy_vars {
    */
   explicit busy_vars(std::size_t n) : latch_start(n + 1), latch_stop(n) { LF_ASSERT(n > 0); }
 
-  alignas(k_cache_line) std::latch latch_start; ///< Synchronize construction.
-  alignas(k_cache_line) std::latch latch_stop;  ///< Synchronize destruction.
-  alignas(k_cache_line) std::atomic_flag stop;  ///< Signal shutdown.
+  /**
+   * @brief Synchronize construction.
+   */
+  alignas(k_cache_line) std::latch latch_start;
+  /**
+   * @brief Synchronize destruction.
+   */
+  alignas(k_cache_line) std::latch latch_stop;
+  /**
+   * @brief Signal shutdown.
+   */
+  alignas(k_cache_line) std::atomic_flag stop;
 };
 
 /**
@@ -8726,10 +9271,18 @@ void event_count::await(Pred const &condition) noexcept(std::is_nothrow_invocabl
 namespace lf {
 
 namespace impl {
-
-static constexpr std::memory_order acquire = std::memory_order_acquire; ///< Alias
-static constexpr std::memory_order acq_rel = std::memory_order_acq_rel; ///< Alias
-static constexpr std::memory_order release = std::memory_order_release; ///< Alias
+/**
+ * @brief Alias to the `std` version.
+ */
+static constexpr std::memory_order acquire = std::memory_order_acquire;
+/**
+ * @brief Alias to the `std` version.
+ */
+static constexpr std::memory_order acq_rel = std::memory_order_acq_rel;
+/**
+ * @brief Alias to the `std` version.
+ */
+static constexpr std::memory_order release = std::memory_order_release;
 
 /**
  * @brief A collection of heap allocated atomic variables used for tracking the state of the scheduler.
@@ -8742,12 +9295,24 @@ struct lazy_vars : busy_vars {
    * @brief Counters and notifiers for each numa locality.
    */
   struct fat_counters {
-    alignas(k_cache_line) std::atomic_uint64_t thief = 0; ///< Number of thieving workers.
-    alignas(k_cache_line) event_count notifier;           ///< Notifier for this numa pool.
+    /**
+     * @brief Number of thieving workers.
+     */
+    alignas(k_cache_line) std::atomic_uint64_t thief = 0;
+    /**
+     * @brief Notifier for this numa pool.
+     */
+    alignas(k_cache_line) event_count notifier;
   };
 
-  alignas(k_cache_line) std::atomic_uint64_t active = 0; ///< Total number of actives.
-  alignas(k_cache_line) std::vector<fat_counters> numa;  ///< Counters for each numa locality.
+  /**
+   * @brief  Total number of actives.
+   */
+  alignas(k_cache_line) std::atomic_uint64_t active = 0;
+  /**
+   * @brief Counters for each numa locality.
+   */
+  alignas(k_cache_line) std::vector<fat_counters> numa;
 
   // Invariant: *** if (A > 0) then (T >= 1 OR S == 0) ***
 

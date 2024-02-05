@@ -55,8 +55,14 @@ struct [[nodiscard]] quasi_awaitable : immovable<quasi_awaitable<R, I, Tag, Mod>
 template <quasi_pointer I, tag Tag, modifier_for<Tag> Mod, async_function_object F>
 struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combinate {
 
-  [[no_unique_address]] I ret; ///< The return address.
-  [[no_unique_address]] F fun; ///< The asynchronous function.
+  /**
+   * @brief The return address.
+   */
+  [[no_unique_address]] I ret;
+  /**
+   * @brief The asynchronous function.
+   */
+  [[no_unique_address]] F fun;
 
   /**
    * @brief Invoke the coroutine, set's the return pointer.

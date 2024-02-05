@@ -47,7 +47,10 @@ concept uniform_random_bit_generator_help =                           //
 
 inline namespace ext {
 
-inline constexpr impl::seed_t seed = {}; ///< A tag to disambiguate seeding from other operations.
+/**
+ * @brief  A tag to disambiguate seeding from copy construction.
+ */
+inline constexpr impl::seed_t seed = {};
 
 /**
  * @brief `Like std::uniform_random_bit_generator`, but also requires a nested `result_type`.
@@ -70,7 +73,10 @@ concept uniform_random_bit_generator = impl::uniform_random_bit_generator_help<s
  */
 class xoshiro {
  public:
-  using result_type = std::uint64_t; ///< Required by named requirement: UniformRandomBitGenerator
+  /**
+   * @brief Required by named requirement: _UniformRandomBitGenerator_
+   */
+  using result_type = std::uint64_t;
 
   /**
    * @brief Construct a new xoshiro with a fixed default-seed.

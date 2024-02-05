@@ -108,7 +108,10 @@ struct [[nodiscard("co_await this!")]] just_wrapped : std::suspend_never {
     }
   }
 
-  [[no_unique_address]] T val; ///< The value to be forwarded.
+  /**
+   * @brief The value to be forwarded.
+   */
+  [[no_unique_address]] T val;
 };
 
 /**
@@ -147,7 +150,10 @@ struct [[nodiscard("This should be immediately invoked!")]] call_just {
     }
   }
 
-  [[no_unique_address]] F fun; ///< The async or regular function.
+  /**
+   * @brief The async or regular function.
+   */
+  [[no_unique_address]] F fun;
 };
 
 /**

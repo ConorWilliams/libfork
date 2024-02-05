@@ -102,10 +102,18 @@ class worker_context : impl::immovable<context> {
     LF_ASSERT(m_notify);
   }
 
-  deque<task_handle> m_tasks;                ///< All non-null.
-  intrusive_list<impl::submit_t *> m_submit; ///< All non-null.
-
-  nullary_function_t m_notify; ///< The user supplied notification function.
+  /**
+   * @brief All non-null.
+   */
+  deque<task_handle> m_tasks;
+  /**
+   * @brief All non-null.
+   */
+  intrusive_list<impl::submit_t *> m_submit;
+  /**
+   * @brief The user supplied notification function.
+   */
+  nullary_function_t m_notify;
 };
 
 } // namespace ext

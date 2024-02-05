@@ -89,8 +89,14 @@ struct hwloc_error : std::runtime_error {
  * @brief Enum to control distribution strategy of workers among numa nodes.
  */
 enum class numa_strategy {
-  fan, ///< Put workers as far away from each other as possible (maximize cache.)
-  seq, ///< Fill up each numa node sequentially (ignoring SMT).
+  /**
+   * @brief Put workers as far away from each other as possible (maximize cache.)
+   */
+  fan,
+  /**
+   * @brief Fill up each numa node sequentially (ignoring SMT).
+   */
+  seq,
 };
 
 /**
@@ -139,9 +145,18 @@ class numa_topology {
      */
     void bind() const;
 
-    shared_topo topo = nullptr; ///< A shared handle to topology this handle belongs to.
-    unique_cpup cpup = nullptr; ///< A unique handle to processing units that this handle represents.
-    std::size_t numa = 0;       ///< The index of the numa node this handle belongs to, on [0, n).
+    /**
+     * @brief A shared handle to topology this handle belongs to.
+     */
+    shared_topo topo = nullptr;
+    /**
+     * @brief A unique handle to processing units that this handle represents.
+     */
+    unique_cpup cpup = nullptr;
+    /**
+     * @brief  The index of the numa node this handle belongs to, on [0, n).
+     */
+    std::size_t numa = 0;
   };
 
   /**

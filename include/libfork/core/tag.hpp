@@ -29,9 +29,18 @@ inline namespace core {
  * You can inspect the first argument of an async function to determine the tag.
  */
 enum class tag {
-  root, ///< This coroutine is a root task from an ``lf::sync_wait``.
-  call, ///< Non root task from an ``lf::call``, completes synchronously.
-  fork, ///< Non root task from an ``lf::fork``, completes asynchronously.
+  /**
+   * @brief This coroutine is a root task from an ``lf::sync_wait``.
+   */
+  root,
+  /**
+   * @brief Non root task from an ``lf::call``, completes synchronously.
+   */
+  call,
+  /**
+   * @brief Non root task from an ``lf::fork``, completes asynchronously.
+   */
+  fork,
 };
 
 /**
@@ -41,12 +50,26 @@ enum class tag {
  * to use them. We use a namespace + types rather than an enumeration to allow for type-concepts.
  */
 namespace modifier {
-
-struct none {};                ///< No modification to the dispatch category.
-struct sync {};                ///< The dispatch is a `fork`, reports if the fork completed synchronously.
-struct sync_outside {};        ///< Same as `sync` but outside a fork-join scope.
-struct eager_throw {};         ///< The dispatch is a `call`, the awaitable will throw eagerly.
-struct eager_throw_outside {}; ///< Same as `eager_throw` but outside a fork-join scope.
+/**
+ * @brief No modification to the dispatch category.
+ */
+struct none {};
+/**
+ * @brief The dispatch is `fork`, reports if the fork completed synchronously.
+ */
+struct sync {};
+/**
+ * @brief The dispatch is a `fork` outside a fork-join scope, reports if the fork completed synchronously.
+ */
+struct sync_outside {};
+/**
+ * @brief The dispatch is a `call`, the awaitable will throw eagerly.
+ */
+struct eager_throw {};
+/**
+ * @brief The dispatch is a `call` outside a fork-join scope, the awaitable will throw eagerly.
+ */
+struct eager_throw_outside {};
 
 } // namespace modifier
 
@@ -90,10 +113,22 @@ namespace impl {
  * @brief An enumerator describing a statement's location wrt to a fork-join scope.
  */
 enum class region {
-  unknown,      ///< Unknown location wrt to a fork-join scope.
-  outside,      ///< Outside a fork-join scope.
-  inside,       ///< Inside a fork-join scope
-  opening_fork, ///< First fork statement in a fork-join scope.
+  /**
+   * @brief Unknown location wrt to a fork-join scope.
+   */
+  unknown,
+  /**
+   * @brief Outside a fork-join scope.
+   */
+  outside,
+  /**
+   * @brief Inside a fork-join scope
+   */
+  inside,
+  /**
+   * @brief First fork statement in a fork-join scope.
+   */
+  opening_fork,
 };
 
 } // namespace impl

@@ -55,7 +55,10 @@ concept returnable = std::is_void_v<T> || std::is_reference_v<T> || std::movable
  */
 template <returnable T = void>
 struct LF_CORO_ATTRIBUTES task : std::type_identity<T>, impl::immovable<task<void>> {
-  void *prom; ///< An opaque handle to the coroutine promise.
+  /**
+   * @brief An opaque handle to the coroutine promise.
+   */
+  void *prom;
 };
 
 } // namespace core

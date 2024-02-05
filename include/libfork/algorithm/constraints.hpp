@@ -171,7 +171,7 @@ struct projected_impl {
     /**
      * @brief Not defined.
      */
-    auto operator*() const -> indirect_result_t<Proj &, I>; ///<
+    auto operator*() const -> indirect_result_t<Proj &, I>;
     /**
      * @brief For internal use only!
      */

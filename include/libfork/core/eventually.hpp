@@ -97,9 +97,18 @@ class basic_eventually : impl::immovable<basic_eventually<T, Exception>> {
   static constexpr bool implicit_state = (is_ref_value && !Exception) || (is_void && Exception);
 
   enum class state : char {
-    empty,     ///< No object has been constructed.
-    value,     ///< An object has been constructed.
-    exception, ///< An exception has been thrown during and is stored.
+    /**
+     * @brief No object has been constructed.
+     */
+    empty,
+    /**
+     * @brief An object has been constructed.
+     */
+    value,
+    /**
+     * @brief An exception has been thrown during and is stored.
+     */
+    exception,
   };
 
   union {

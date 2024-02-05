@@ -45,7 +45,10 @@ class return_result_base {
   [[nodiscard]] auto get_return() noexcept -> I & { return this->m_ret; }
 
  private:
-  [[no_unique_address]] I m_ret; ///< The stored quasi-pointer
+  /**
+   * @brief The stored quasi-pointer.
+   */
+  [[no_unique_address]] I m_ret;
 };
 
 /**

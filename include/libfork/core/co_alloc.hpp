@@ -48,7 +48,10 @@ namespace impl {
  */
 template <co_allocable T>
 struct [[nodiscard("This object should be co_awaited")]] co_new_t {
-  std::size_t count; ///< The number of elements to allocate.
+  /**
+   * @brief The number of elements to allocate.
+   */
+  std::size_t count;
 };
 
 } // namespace impl

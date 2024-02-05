@@ -49,9 +49,18 @@ struct busy_vars {
    */
   explicit busy_vars(std::size_t n) : latch_start(n + 1), latch_stop(n) { LF_ASSERT(n > 0); }
 
-  alignas(k_cache_line) std::latch latch_start; ///< Synchronize construction.
-  alignas(k_cache_line) std::latch latch_stop;  ///< Synchronize destruction.
-  alignas(k_cache_line) std::atomic_flag stop;  ///< Signal shutdown.
+  /**
+   * @brief Synchronize construction.
+   */
+  alignas(k_cache_line) std::latch latch_start;
+  /**
+   * @brief Synchronize destruction.
+   */
+  alignas(k_cache_line) std::latch latch_stop;
+  /**
+   * @brief Signal shutdown.
+   */
+  alignas(k_cache_line) std::atomic_flag stop;
 };
 
 /**
