@@ -55,8 +55,6 @@ if(LF_COROUTINE_OFFSET)
   target_compile_definitions(libfork_libfork INTERFACE LF_COROUTINE_OFFSET=${LF_COROUTINE_OFFSET})
 endif()
 
-
-
 # --------------- Optional dependancies--------------- 
 
 # ---------------- hwloc---------------- 
@@ -77,7 +75,7 @@ if(PKG_CONFIG_EXECUTABLE)
     target_compile_definitions(libfork_libfork INTERFACE LF_USE_HWLOC)
 
     # Provide headers
-    target_include_directories(libfork_libfork SYSTEM INTERFACE "$<BUILD_INTERFACE:${HWLOC_INCLUDE_DIRS}>")
+    target_include_directories(libfork_libfork SYSTEM INTERFACE ${HWLOC_INCLUDE_DIRS})
     target_compile_options(libfork_libfork INTERFACE ${HWLOC_CFLAGS})
 
     # Provide libraries
@@ -109,7 +107,7 @@ endif()
 
 # ---- Developer mode ----
 
-if(NOT libfork_DEVELOPER_MODE)
+if(NOT libfork_DEV_MODE)
   return()
 elseif(NOT PROJECT_IS_TOP_LEVEL)
   message(AUTHOR_WARNING "Developer mode is intended for developers of libfork")

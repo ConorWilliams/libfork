@@ -138,7 +138,7 @@ install rules.
 
 ## Additional targets
 
-Build system targets that are primarily useful for developers of this project are hidden if the `libfork_DEVELOPER_MODE` option is disabled. Enabling this option makes tests and other developer targets and options available. Not enabling this option means that you are a consumer of this project and thus you
+Build system targets that are primarily useful for developers of this project are hidden if the `libfork_DEV_MODE` option is disabled. Enabling this option makes tests and other developer targets and options available. Not enabling this option means that you are a consumer of this project and thus you
 have no need for these targets and options.
 
 The following targets you may invoke using the build command from above, with an additional `-t <target>` flag. Make sure you have also installed any requiquired dependencies

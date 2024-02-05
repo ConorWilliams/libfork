@@ -1,7 +1,6 @@
 if(PROJECT_IS_TOP_LEVEL)
   set(CMAKE_INSTALL_INCLUDEDIR
-      "include/libfork-${PROJECT_VERSION}"
-      CACHE PATH ""
+      "include/libfork-${PROJECT_VERSION}" CACHE PATH ""
   )
 endif()
 
@@ -39,6 +38,7 @@ set(libfork_INSTALL_CMAKEDIR
     "${CMAKE_INSTALL_DATADIR}/${package}"
     CACHE PATH "CMake package config location relative to the install prefix"
 )
+
 mark_as_advanced(libfork_INSTALL_CMAKEDIR)
 
 install(
