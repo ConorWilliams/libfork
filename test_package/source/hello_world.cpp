@@ -4,7 +4,7 @@
 #include "libfork/schedule/lazy_pool.hpp"
 
 #ifndef LF_USE_HWLOC
-  #error "vcpkg should provide hwloc"
+  #error "Conan should provide hwloc"
 #endif
 
 #include <hwloc.h>

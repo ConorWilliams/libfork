@@ -7,7 +7,7 @@ namespace {
 
 constexpr auto hello_async_world = [](auto /* self */) -> lf::task<int> {
   std::cout << "Hello, async world!" << std::endl;
-  co_return 1;
+  co_return 0;
 };
 
 } // namespace

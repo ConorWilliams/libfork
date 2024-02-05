@@ -4,6 +4,10 @@ include(CMakeFindDependencyMacro)
 
 find_dependency(Threads)
 
+if (DEFINED @libfork_DEPENDS_HWLOC@)
+    find_dependency(hwloc 2.5.0)
+endif()
+
 if (NOT @LF_NO_BOOST_ATOMIC@)
     find_dependency(Boost 1.83.0 COMPONENTS atomic)
 endif()

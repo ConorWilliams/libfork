@@ -59,29 +59,36 @@ endif()
 
 # ---------------- hwloc---------------- 
 
-# Conan exports a proper target for hwloc, vcpkg does not.
-find_package(hwloc 2.5.0)
+option(LF_NO_HWLOC "Disable hwloc support" OFF)
 
-if (hwloc_FOUND)
-  # Instructs libfork to use hwloc.
-  target_compile_definitions(libfork_libfork INTERFACE LF_USE_HWLOC)
+if(NOT LF_NO_HWLOC)
+  # Conan exports a proper target for hwloc, vcpkg does not.
+  find_package(hwloc 2.5.0 QUIET)
 
-  target_link_libraries(libfork_libfork INTERFACE hwloc::hwloc)
-else()
-  # Fallback to custom findHwloc.cmake
-  find_package(Hwloc 2.5.0)
-
-  if(HWLOC_FOUND)
+  if (hwloc_FOUND)
     # Instructs libfork to use hwloc.
     target_compile_definitions(libfork_libfork INTERFACE LF_USE_HWLOC)
 
-    # Provided headers
-    target_include_directories(libfork_libfork SYSTEM INTERFACE ${Hwloc_INCLUDE_DIRS})
+    target_link_libraries(libfork_libfork INTERFACE hwloc::hwloc)
 
-    # Provided libraries
-    target_link_libraries(libfork_libfork INTERFACE ${Hwloc_LINK_LIBRARIES})
+    # Used in package config to re-export hwloc if required.
+    set(libfork_DEPENDS_HWLOC)
   else()
-    message(WARNING "HWLOC not found, NUMA support disabled!")
+    # Fallback to custom findHwloc.cmake
+    find_package(Hwloc 2.5.0)
+
+    if(HWLOC_FOUND)
+      # Instructs libfork to use hwloc.
+      target_compile_definitions(libfork_libfork INTERFACE LF_USE_HWLOC)
+
+      # Provided headers
+      target_include_directories(libfork_libfork SYSTEM INTERFACE ${Hwloc_INCLUDE_DIRS})
+
+      # Provided libraries
+      target_link_libraries(libfork_libfork INTERFACE ${Hwloc_LINK_LIBRARIES})
+    else()
+      message(WARNING "HWLOC not found, NUMA support disabled!")
+    endif()
   endif()
 endif()
 
@@ -91,15 +98,14 @@ option(LF_NO_BOOST_ATOMIC "Libfork will use std::atomic even if boost is found" 
 
 if(NOT LF_NO_BOOST_ATOMIC)
 
-find_package(Boost 1.83.0 COMPONENTS atomic)
+  find_package(Boost 1.83.0 COMPONENTS atomic)
 
-if(Boost_FOUND)
-  # Instructs libfork to use boost atomic (clang only)
-  target_compile_definitions(libfork_libfork INTERFACE LF_USE_BOOST_ATOMIC)
-  target_link_libraries(libfork_libfork INTERFACE Boost::atomic)
-endif()
+  if(Boost_FOUND)
+    # Instructs libfork to use boost atomic (clang only)
+    target_compile_definitions(libfork_libfork INTERFACE LF_USE_BOOST_ATOMIC)
 
-
+    target_link_libraries(libfork_libfork INTERFACE Boost::atomic)
+  endif()
 endif()
 
 # ---- Install rules ----
