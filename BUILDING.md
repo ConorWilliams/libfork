@@ -80,22 +80,24 @@ CMake supports building on Apple Silicon properly since 3.20.1. Make sure you ha
 
 ## Getting the source
 
-All libfork's dependencies can be managed through vcpkg which is supplied as a submodule, hence when getting the source you must clone recursively as follows:
+All libfork's dependencies can be managed through vcpkg which is supplied as a submodule. Hence, if you want to use vcpkg, when cloning the source you must clone recursively as follows:
 
 ```sh
 git clone --recursive git@github.com:ConorWilliams/libfork.git
 ```
 
-If you use a central vcpkg installation you can skip the recursive clone and set `CMAKE_TOOLCHAIN_FILE` as appropriate.
+If you don't want to use vcpkg or use a central vcpkg installation you can skip the recursive clone and set `CMAKE_TOOLCHAIN_FILE` as appropriate.
 
-## Configure and build
+## Configure and build with CMake
+
+### Building
 
 This project doesn't require any special command-line flags to build to keep things simple.
 
 For building in release mode with a single-configuration generator, like the Unix Makefiles one:
 
 ```sh
-cmake -S . -B build -D CMAKE_BUILD_TYPE=Release
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 

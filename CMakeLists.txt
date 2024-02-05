@@ -107,7 +107,7 @@ if(NOT CMAKE_SKIP_INSTALL_RULES)
   include(cmake/install-rules.cmake)
 endif()
 
-# ---- Developer mode ----
+# ---- Developer options ----
 
 if(NOT libfork_DEV_MODE)
   return()
