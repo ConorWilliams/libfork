@@ -91,14 +91,19 @@ endif()
 
 # ---- Boost (for clang acceleration) ---- 
 
-find_package(Boost 1.83.0 COMPONENTS atomic)
-
 option(LF_NO_BOOST_ATOMIC "Libfork will use std::atomic even if boost is found" OFF)
 
-if(Boost_FOUND AND NOT LF_NO_BOOST_ATOMIC)
+if(NOT LF_NO_BOOST_ATOMIC)
+
+find_package(Boost 1.83.0 COMPONENTS atomic)
+
+if(Boost_FOUND)
   # Instructs libfork to use boost atomic (clang only)
   target_compile_definitions(libfork_libfork INTERFACE LF_USE_BOOST_ATOMIC)
   target_link_libraries(libfork_libfork INTERFACE Boost::atomic)
+endif()
+
+
 endif()
 
 # ---- Install rules ----

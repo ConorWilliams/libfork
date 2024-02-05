@@ -1,6 +1,11 @@
 @PACKAGE_INIT@
 
 include(CMakeFindDependencyMacro)
+
 find_dependency(Threads)
+
+if (NOT @LF_NO_BOOST_ATOMIC@)
+    find_dependency(Boost 1.83.0 COMPONENTS atomic)
+endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/libforkTargets.cmake")
