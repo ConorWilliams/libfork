@@ -41,12 +41,14 @@ set(libfork_INSTALL_CMAKEDIR
 
 mark_as_advanced(libfork_INSTALL_CMAKEDIR)
 
+# Generate our CMake package config files
 configure_package_config_file(cmake/install-config.cmake.in "${package}Config.cmake"
     INSTALL_DESTINATION "${libfork_INSTALL_CMAKEDIR}"
     NO_SET_AND_CHECK_MACRO
     NO_CHECK_REQUIRED_COMPONENTS_MACRO
 )
 
+# Install our CMake package config files
 install(
     FILES "${PROJECT_BINARY_DIR}/${package}Config.cmake"
     DESTINATION "${libfork_INSTALL_CMAKEDIR}"
@@ -59,6 +61,7 @@ install(
   COMPONENT libfork_Development
 )
 
+# Export our targets
 install(
   EXPORT libforkTargets
   NAMESPACE libfork::

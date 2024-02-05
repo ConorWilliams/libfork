@@ -59,34 +59,19 @@ endif()
 
 # ---------------- hwloc---------------- 
 
-include(FindPkgConfig)
+find_package(Hwloc 2.5.0)
 
-if(PKG_CONFIG_EXECUTABLE)
-  unset(HWLOC_FOUND CACHE)
-  pkg_search_module(HWLOC hwloc)
-  if(HWLOC_FOUND)
-    # For debugging 
-    message(STATUS "HWLOC_INCLUDE_DIRS=${HWLOC_INCLUDE_DIRS}")
-    message(STATUS "HWLOC_CFLAGS=${HWLOC_CFLAGS}")
-    message(STATUS "HWLOC_LINK_LIBRARIES=${HWLOC_LINK_LIBRARIES}")
-    message(STATUS "HWLOC_LDFLAGS=${HWLOC_LDFLAGS}")
+if(HWLOC_FOUND)
+  # Instructs libfork to use hwloc.
+  target_compile_definitions(libfork_libfork INTERFACE LF_USE_HWLOC)
 
-    # Instructs libfork to use hwloc.
-    target_compile_definitions(libfork_libfork INTERFACE LF_USE_HWLOC)
+  # Provided headers
+  target_include_directories(libfork_libfork SYSTEM INTERFACE ${Hwloc_INCLUDE_DIRS})
 
-    # Provide headers
-    target_include_directories(libfork_libfork SYSTEM INTERFACE ${HWLOC_INCLUDE_DIRS})
-    target_compile_options(libfork_libfork INTERFACE ${HWLOC_CFLAGS})
-
-    # Provide libraries
-    target_link_libraries(libfork_libfork INTERFACE ${HWLOC_LINK_LIBRARIES})
-    target_link_options(libfork_libfork INTERFACE ${HWLOC_LDFLAGS})
-
-  else()
-    message(WARNING "HWLOC not found, support disabled! Add the path to hwloc.pc in PKG_CONFIG_PATH.")
-  endif()
+  # Provided libraries
+  target_link_libraries(libfork_libfork INTERFACE ${Hwloc_LINK_LIBRARIES})
 else()
-  message(WARNING "PKG_CONFIG_EXECUTABLE: not found, hwloc support disabled!")
+  message(WARNING "HWLOC not found, NUMA support disabled!")
 endif()
 
 # ---- Boost (for clang acceleration) ---- 

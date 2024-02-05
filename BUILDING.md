@@ -60,7 +60,9 @@ Hwloc enables libfork to determine the topology of the system and use this infor
 sudo apt install libhwloc-dev
 ```
 
-Libfork uses hwloc when `LF_USE_HWLOC` is defined, this must be defined (or undefined) in all translation units that use libfork. If `LF_USE_HWLOC` is defined then the `libhwloc` library must be visible to the linker. All of this is handled automatically by CMake if `pkg-config` can find hwloc. If you're using the single header file and want hwloc support then define `LF_USE_HWLOC` before including the header file and provide the compiler/linker flags as demonstrated in the [CMakeLists.txt](CMakeLists.txt) file.
+Libfork uses hwloc when `LF_USE_HWLOC` is defined, this must be defined (or undefined) in all translation units that use libfork. If you install hwloc using vcpkg then libfork will no longer be installable if vcpkg is in the source tree (which is likely if you are using vcpkg as a submodule), to overcome this you can disable the install targets with `CMAKE_SKIP_INSTALL_RULES` or use a different vcpkg installation outside the source tree.
+
+If you're using the single header file and want hwloc support then define `LF_USE_HWLOC` before including the header file and provide the compiler/linker flags as demonstrated in the [CMakeLists.txt](CMakeLists.txt) file.
 
 ### Compiler support
 
