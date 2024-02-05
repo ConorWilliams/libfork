@@ -1,12 +1,11 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO conorwilliams/libfork
-    REF fa60c93c8e6e3cfa7d7d7e9d89c359de1299a0b1
+    REF 2a4f7c9b09f201d438b85a2f6fbc1840fa9aa005
     # REF "v${VERSION}"
-    SHA512 6348660ba1ec801d69bb65f7bc61e009297accfa8cc33dd2385ce2b02e2b0b989efbd45cfb02a75c623b3db43e25579de8601cc8e9495754e7a9d654113902fb
+    SHA512 cdd7808a6f5b533148fcdf012710d0ddfa3af2374dc5c965ef364553f1a07894a195b1fc1f4c151da17bfcce5c327b4f0680ae2c82845fb1d2b34eb3dd059e36
     HEAD_REF cmake-sample-lib
 )
-
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
@@ -20,4 +19,4 @@ file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug")
 
 file(INSTALL "${SOURCE_PATH}/LICENSE.md" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
 
-configure_file("${CMAKE_CURRENT_LIST_DIR}/usage" "${CURRENT_PACKAGES_DIR}/share/${PORT}/usage" COPYONLY)
+configure_file("${CMAKE_CURRENT_LIST_DIR}/usage.cmake" "${CURRENT_PACKAGES_DIR}/share/${PORT}/usage" COPYONLY)

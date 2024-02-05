@@ -5,5 +5,11 @@
             "name": "dev",
             "binaryDir": "${sourceDir}/build"
         }
+    ],
+    "buildPresets": [
+        {
+            "name": "dev",
+            "configurePreset": "dev"
+        }
     ]
 }
