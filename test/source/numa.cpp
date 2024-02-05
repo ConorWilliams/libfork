@@ -10,7 +10,6 @@
 
 #include <catch2/catch_test_macros.hpp> // for operator==, operator""_catch_sr, AssertionHandler
 #include <cstddef>                      // for size_t
-#include <hwloc/bitmap.h>               // for hwloc_bitmap_compare, hwloc_bitmap_s
 #include <iostream>                     // for basic_ostream, char_traits, operator<<, cout
 #include <memory>                       // for shared_ptr, __shared_ptr_access, make_shared
 #include <set>                          // for set
@@ -41,8 +40,8 @@ TEST_CASE("make_topology", "[numa]") {
 namespace {
 
 struct comp {
-  auto operator()(numa_topology::numa_handle const &lhs, numa_topology::numa_handle const &rhs) const noexcept
-      -> bool {
+  auto operator()(numa_topology::numa_handle const &lhs,
+                  numa_topology::numa_handle const &rhs) const noexcept -> bool {
     return hwloc_bitmap_compare(lhs.cpup.get(), rhs.cpup.get()) < 0;
   }
 };
