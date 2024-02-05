@@ -10,7 +10,7 @@ read_version(${CMAKE_CURRENT_SOURCE_DIR}/include/libfork/core/macro.hpp)
 project(
   libfork
   VERSION ${version_major}.${version_minor}.${version_patch}
-  DESCRIPTION "A C++20 coroutine library for fork-join parallelism"
+  DESCRIPTION "A bleeding-edge, lock-free, wait-free, continuation-stealing fork-join library built on C++20's coroutines."
   HOMEPAGE_URL "https://github.com/ConorWilliams/libfork"
   LANGUAGES CXX C
 )

@@ -1,0 +1,5 @@
+{
+    "overlay-ports": [
+        "../vcpkg_port/custom-overlay/libfork"
+    ]
+}
