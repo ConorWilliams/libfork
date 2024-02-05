@@ -59,19 +59,30 @@ endif()
 
 # ---------------- hwloc---------------- 
 
-find_package(Hwloc 2.5.0)
+# Conan exports a proper target for hwloc, vcpkg does not.
+find_package(hwloc 2.5.0)
 
-if(HWLOC_FOUND)
+if (hwloc_FOUND)
   # Instructs libfork to use hwloc.
   target_compile_definitions(libfork_libfork INTERFACE LF_USE_HWLOC)
 
-  # Provided headers
-  target_include_directories(libfork_libfork SYSTEM INTERFACE ${Hwloc_INCLUDE_DIRS})
-
-  # Provided libraries
-  target_link_libraries(libfork_libfork INTERFACE ${Hwloc_LINK_LIBRARIES})
+  target_link_libraries(libfork_libfork INTERFACE hwloc::hwloc)
 else()
-  message(WARNING "HWLOC not found, NUMA support disabled!")
+  # Fallback to custom findHwloc.cmake
+  find_package(Hwloc 2.5.0)
+
+  if(HWLOC_FOUND)
+    # Instructs libfork to use hwloc.
+    target_compile_definitions(libfork_libfork INTERFACE LF_USE_HWLOC)
+
+    # Provided headers
+    target_include_directories(libfork_libfork SYSTEM INTERFACE ${Hwloc_INCLUDE_DIRS})
+
+    # Provided libraries
+    target_link_libraries(libfork_libfork INTERFACE ${Hwloc_LINK_LIBRARIES})
+  else()
+    message(WARNING "HWLOC not found, NUMA support disabled!")
+  endif()
 endif()
 
 # ---- Boost (for clang acceleration) ---- 
