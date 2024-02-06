@@ -6330,26 +6330,26 @@ consteval auto r_child_of(interval ival) -> interval {
  *
  * As an optimization over the basic algorithm we scan the chunks on the left of the tree.
  */
-template <std::random_access_iterator I,
-          std::sized_sentinel_for<I> S,
-          class Proj,
-          class Bop,
-          std::random_access_iterator O,
-          interval Ival = interval::all,
-          op Op = op::scan //
+template <std::random_access_iterator I, //
+          std::sized_sentinel_for<I> S,  //
+          class Proj,                    //
+          class Bop,                     //
+          std::random_access_iterator O, //
+          interval Ival = interval::all, //
+          op Op = op::scan               //
           >
-struct up_sweep {
+struct rise_sweep {
 
   using int_t = std::iter_difference_t<I>;
   using acc_t = std::iter_value_t<O>;
   using task_t = lf::task<std::conditional_t<Op == op::scan, I, void>>;
 
   // Propagate the operation to the left child.
-  using up_lhs = up_sweep<I, S, Proj, Bop, O, l_child_of(Ival), Op>;
+  using up_lhs = rise_sweep<I, S, Proj, Bop, O, l_child_of(Ival), Op>;
 
   // The right child's operation depends on the readiness of the left child.
   template <op OpChild>
-  using up_rhs = up_sweep<I, S, Proj, Bop, O, r_child_of(Ival), OpChild>;
+  using up_rhs = rise_sweep<I, S, Proj, Bop, O, r_child_of(Ival), OpChild>;
 
   /**
    * Return the end of the scanned range.
@@ -6367,6 +6367,8 @@ struct up_sweep {
       if constexpr (Op == op::fold) { // Equivalent to a fold over acc_t, left sibling not ready.
 
         static_assert(Ival != interval::lhs && Ival != interval::all, "left can always scan");
+
+        // std::cout << "fold" << '\n';
 
         if constexpr (Ival == interval::mid) {
           // Mid segment has a right sibling so do the fold.
@@ -6386,7 +6388,11 @@ struct up_sweep {
 
       } else { // A scan implies the left sibling (if it exists) is ready.
 
+        // std::transform_inclusive_scan(beg, end, out, bop, proj);
+
         constexpr bool has_left_carry = Ival == interval::mid || Ival == interval::rhs;
+
+        // std::cout << "has_left_carry: " << has_left_carry << '\n';
 
         acc_t acc = [&]() -> acc_t {
           if constexpr (has_left_carry) {
@@ -6396,7 +6402,7 @@ struct up_sweep {
           }
         }();
 
-        if constexpr (has_left_carry) {
+        if constexpr (!has_left_carry) {
           *out = acc;
           ++beg;
           ++out;
@@ -6422,21 +6428,26 @@ struct up_sweep {
     I left_out;
 
     if constexpr (Op == op::scan) {
-      // Unconditionally launch left child.
-
-      using mod = lf::modifier::sync_outside;
-
       // If we are a scan then left child is a scan,
-      // If the left child is ready then rhs can be a scan.
-      // Otherwise the rhs must be a fold.
-      if (co_await lf::dispatch<lf::tag::fork, mod>(&left_out, up_lhs{})(beg, beg + mid, n, bop, proj, out)) {
-        // TODO: needs to handle exceptions from fork!
 
+      // Unconditionally launch left child (scan).
+      using mod = lf::modifier::sync_outside;
+      using lf::tag::fork;
+      auto ready = co_await lf::dispatch<fork, mod>(&left_out, up_lhs{})(beg, beg + mid, n, bop, proj, out);
+
+      // auto r2 = rand() % 2 == 0;
+
+      // std::cout << "lhs ready: " << r2 << '\n';
+
+      // If the left child is ready and completely scanned then rhs can be a scan.
+      // Otherwise the rhs must be a fold.
+      if (ready && left_out == beg + mid) {
         // Effectively fused child trees into a single scan.
         // Right most scanned now from right child.
         co_return co_await lf::just(up_rhs<op::scan>{})(beg + mid, end, n, bop, proj, out + mid);
       }
     } else {
+      // std::cout << "fold-tree\n";
       co_await lf::fork(up_lhs{})(beg, beg + mid, n, bop, proj, out);
     }
 
@@ -6458,21 +6469,21 @@ struct up_sweep {
 /**
  * As some of the input is always scanned during the reduction sweep, we always have a left sibling.
  */
-template <std::random_access_iterator I,
-          std::sized_sentinel_for<I> S,
-          class Proj,
-          class Bop,
-          std::random_access_iterator O,
-          interval Ival = interval::mid //
+template <std::random_access_iterator I, //
+          std::sized_sentinel_for<I> S,  //
+          class Proj,                    //
+          class Bop,                     //
+          std::random_access_iterator O, //
+          interval Ival                  //
           >
   requires (Ival == interval::mid || Ival == interval::rhs)
-struct down_sweep_impl {
+struct fall_sweep_impl {
 
   using int_t = std::iter_difference_t<I>;
   using acc_t = std::iter_value_t<O>;
 
-  using down_lhs = down_sweep_impl<I, S, Proj, Bop, O, l_child_of(Ival)>;
-  using down_rhs = down_sweep_impl<I, S, Proj, Bop, O, r_child_of(Ival)>;
+  using down_lhs = fall_sweep_impl<I, S, Proj, Bop, O, l_child_of(Ival)>;
+  using down_rhs = fall_sweep_impl<I, S, Proj, Bop, O, r_child_of(Ival)>;
 
   LF_STATIC_CALL auto
   operator()(auto /* */, I beg, S end, int_t n, Bop bop, Proj proj, O out) LF_STATIC_CONST->lf::task<> {
@@ -6514,29 +6525,30 @@ struct down_sweep_impl {
 /**
  * As some of the input is always scanned during the reduction sweep, we always have a left sibling.
  */
-template <std::random_access_iterator I,
-          std::sized_sentinel_for<I> S,
-          class Proj,
-          class Bop,
-          std::random_access_iterator O,
-          interval Ival = interval::mid //
+template <std::random_access_iterator I, //
+          std::sized_sentinel_for<I> S,  //
+          class Proj,                    //
+          class Bop,                     //
+          std::random_access_iterator O, //
+          interval Ival = interval::all  //
           >
-  requires (Ival == interval::mid || Ival == interval::rhs)
-struct down_sweep {
+struct fall_sweep {
 
   using int_t = std::iter_difference_t<I>;
   using acc_t = std::iter_value_t<O>;
 
-  using recur_lhs = down_sweep<I, S, Proj, Bop, O, l_child_of(Ival)>;
-  using down_rhs = down_sweep_impl<I, S, Proj, Bop, O, r_child_of(Ival)>;
+  using recur_lhs = fall_sweep<I, S, Proj, Bop, O, l_child_of(Ival)>;
+  using recur_rhs = fall_sweep<I, S, Proj, Bop, O, r_child_of(Ival)>;
+
+  using down_rhs = fall_sweep_impl<I, S, Proj, Bop, O, r_child_of(Ival)>;
 
   /**
    * Options:
    *  left fully scanned and right fully scanned -> return (make this impossible).
    *
    *  left fully scanned, right part-scanned -> (invar holds) recurse on right.
-   *  left fully scanned, right un-scanned -> (invar holds), call down_sweep on right.
-   *  left part scanned, right un-scanned -> restore invar, recurse on left, call down_sweep on right.
+   *  left fully scanned, right un-scanned -> (invar holds), call fall_sweep on right.
+   *  left part scanned, right un-scanned -> restore invar, recurse on left, call fall_sweep on right.
    */
   LF_STATIC_CALL auto
   operator()(auto /* unused */, I beg, S end, int_t n, Bop bop, Proj proj, O out, I scan_end)
@@ -6554,33 +6566,82 @@ struct down_sweep {
       I split = beg + mid;
 
       if /*  */ (scan_end < split) {
+
+        // std::cout << "split less\n";
+
         // Left part-scanned, right un-scanned.
 
-        // Restore invariant: propagate the reduction (scan), we always have a left sibling.
-        *(out + mid - 1) = bop(*(out - 1), std::ranges::iter_move(out + mid - 1));
+        // // Restore invariant: propagate the reduction (scan), if we have a left sibling.
+        // if constexpr (Ival == interval::mid || Ival == interval::rhs) {
+        //   *(out + mid - 1) = bop(*(out - 1), std::ranges::iter_move(out + mid - 1));
+        // }
 
         co_await lf::fork(recur_lhs{})(beg, beg + mid, n, bop, proj, out, scan_end);
         co_await lf::call(down_rhs{})(beg + mid, end, n, bop, proj, out + mid);
         co_await lf::join;
         co_return;
       } else if (scan_end == split) {
+        // std::cout << "split equal\n";
         // Left fully scanned, right un-scanned.
         co_return co_await lf::just(down_rhs{})(beg + mid, end, n, bop, proj, out + mid);
       } else if (scan_end > split) {
+        // std::cout << "split greater\n";
         // Left fully scanned, right part-scanned.
-
-        // Recursion looks like: call(recur_rhs{})(beg + mid, end, n, bop, proj, out + mid, scan_end)
-        // Hence, we can loop.
-
-        static_assert(Ival == r_child_of(Ival), "recursion into different function");
-
-        beg = beg + mid;
-        out = out + mid;
-
-        continue;
+        if constexpr (!std::same_as<fall_sweep, recur_rhs>) {
+          co_return co_await lf::just(recur_rhs{})(beg + mid, end, n, bop, proj, out + mid, scan_end);
+        } else {
+          // Recursion looks like, -^, hence we can loop.
+          beg = beg + mid;
+          out = out + mid;
+          continue;
+        }
       } else {
         lf::impl::unreachable();
       }
+    }
+  }
+};
+
+/**
+ * @brief Calls the rise_sweep and fall_sweep algorithms, checks for empty input.
+ */
+template <std::random_access_iterator I,
+          std::sized_sentinel_for<I> S,
+          std::random_access_iterator O,
+          class Proj,
+          class Bop //
+          >
+struct scan_impl {
+
+  using int_t = std::iter_difference_t<I>;
+
+  static constexpr rise_sweep<I, S, Proj, Bop, O> rise = {};
+  static constexpr fall_sweep<I, S, Proj, Bop, O> fall = {};
+
+  LF_STATIC_CALL auto
+  operator()(auto /**/, I beg, S end, O out, int_t n, Bop bop, Proj proj) LF_STATIC_CONST->lf::task<> {
+
+    // Early exit required if the input is empty.
+    if (end == beg) {
+      co_return;
+    }
+
+    // Up-sweep the reduction.
+    I scan_end = co_await lf::just(rise)(beg, end, n, bop, proj, out);
+
+    // std::cout << "scanned: " << scan_end - beg << '\n';
+
+    // std::cout << "up: ";
+
+    for (auto it = out; it != out + (end - beg); ++it) {
+      // std::cout << *it << ' ';
+    }
+
+    // std::cout << '\n';
+
+    if (scan_end != end) {
+      // If some un-scanned input remains, fall-sweep it.
+      co_await lf::just(fall)(beg, end, n, bop, proj, out, scan_end);
     }
   }
 };
@@ -6668,7 +6729,8 @@ inline constexpr auto reduction_sweep =
  * @brief The down sweep of the scan.
  *
  * Here we recurse from the root to the leaves, at each stage if the sub-tree has a sibling to the left
- * we merge the reduction into the left child preserving the invariant that the left child has the prefix-sum
+ * we merge the reduction into the left child preserving the invariant that the left child has the
+ prefix-sum
  *
  *After an up-sweep/reduction:
 
@@ -6684,8 +6746,8 @@ inline constexpr auto reduction_sweep =
  *
  * Once we hit the chunk level update the first n - 1 elements of each chunk with the carried value.
  */
-inline constexpr auto rhs_down_sweep =
-    []<std::random_access_iterator O, std::sized_sentinel_for<O> S, typename Bop>(auto rhs_down_sweep, //
+inline constexpr auto rhs_fall_sweep =
+    []<std::random_access_iterator O, std::sized_sentinel_for<O> S, typename Bop>(auto rhs_fall_sweep, //
                                                                                   O beg,
                                                                                   S end,
                                                                                   std::iter_difference_t<O> n,
@@ -6729,10 +6791,10 @@ inline constexpr auto rhs_down_sweep =
   // clang-format off
 
   LF_TRY {
-    co_await lf::fork(rhs_down_sweep)(beg, mid, n, bop);
-    co_await lf::call(rhs_down_sweep)(mid, end, n, bop);
+    co_await lf::fork(rhs_fall_sweep)(beg, mid, n, bop);
+    co_await lf::call(rhs_fall_sweep)(mid, end, n, bop);
   } LF_CATCH_ALL {
-    rhs_down_sweep.stash_exception();
+    rhs_fall_sweep.stash_exception();
   }
 
   // clang-format on
@@ -6743,8 +6805,8 @@ inline constexpr auto rhs_down_sweep =
 /**
  * @brief Down-sweep of sub-tree with no left sibling.
  */
-inline constexpr auto lhs_down_sweep =
-    []<std::random_access_iterator O, std::sized_sentinel_for<O> S, typename Bop>(auto lhs_down_sweep, //
+inline constexpr auto lhs_fall_sweep =
+    []<std::random_access_iterator O, std::sized_sentinel_for<O> S, typename Bop>(auto lhs_fall_sweep, //
                                                                                   O beg,
                                                                                   S end,
                                                                                   std::iter_difference_t<O> n,
@@ -6757,10 +6819,10 @@ inline constexpr auto lhs_down_sweep =
     // clang-format off
      
         LF_TRY {
-          co_await lf::fork(lhs_down_sweep)(beg, mid, n, bop);
-          co_await lf::call(rhs_down_sweep)(mid, end, n, bop);
+          co_await lf::fork(lhs_fall_sweep)(beg, mid, n, bop);
+          co_await lf::call(rhs_fall_sweep)(mid, end, n, bop);
         } LF_CATCH_ALL {
-          lhs_down_sweep.stash_exception();
+          lhs_fall_sweep.stash_exception();
         }
 
     // clang-format on
@@ -6787,11 +6849,14 @@ struct scan_overload {
                                  O out,
                                  std::iter_difference_t<I> n,
                                  Bop bop,
-                                 Proj proj = {}) LF_STATIC_CONST->task<void> {
-    if (std::iter_difference_t<I> size = end - beg; size > 0) {
-      co_await lf::just(reduction_sweep<false>)(beg, end, n, bop, proj, out);
-      co_await lf::just(lhs_down_sweep)(out, out + size, n, bop);
-    }
+                                 Proj proj = {}) LF_STATIC_CONST->task<> {
+
+    co_return co_await lf::just(v2::scan_impl<I, S, O, Proj, Bop>{})(beg, end, out, n, bop, proj);
+
+    // if (std::iter_difference_t<I> size = end - beg; size > 0) {
+    //   co_await lf::just(reduction_sweep<false>)(beg, end, n, bop, proj, out);
+    //   co_await lf::just(lhs_fall_sweep)(out, out + size, n, bop);
+    // }
   }
   /**
    * @brief [iterator,n = 1,output] version (4-5)
@@ -6809,7 +6874,7 @@ struct scan_overload {
                                  Proj proj = {}) LF_STATIC_CONST->task<void> {
     if (std::iter_difference_t<I> size = end - beg; size > 0) {
       co_await lf::just(reduction_sweep<false>)(beg, end, std::iter_difference_t<I>(1), bop, proj, out);
-      co_await lf::just(lhs_down_sweep)(out, out + size, std::iter_difference_t<I>(1), bop);
+      co_await lf::just(lhs_fall_sweep)(out, out + size, std::iter_difference_t<I>(1), bop);
     }
   }
   /**
@@ -6833,7 +6898,7 @@ struct scan_overload {
                                                proj,
                                                beg //
       );
-      co_await lf::just(lhs_down_sweep)(beg, end, n, bop);
+      co_await lf::just(lhs_fall_sweep)(beg, end, n, bop);
     }
     co_return;
   }
@@ -6857,7 +6922,7 @@ struct scan_overload {
                                                proj,
                                                beg //
       );
-      co_await lf::just(lhs_down_sweep)(beg, end, std::iter_difference_t<I>(1), bop);
+      co_await lf::just(lhs_fall_sweep)(beg, end, std::iter_difference_t<I>(1), bop);
     }
   }
   /**
@@ -6878,7 +6943,7 @@ struct scan_overload {
       co_await lf::just(reduction_sweep<false>)(
           std::ranges::begin(range), std::ranges::end(range), n, bop, proj, out //
       );
-      co_await lf::just(lhs_down_sweep)(out, out + std::ranges::ssize(range), n, bop);
+      co_await lf::just(lhs_fall_sweep)(out, out + std::ranges::ssize(range), n, bop);
     }
   }
   /**
@@ -6902,7 +6967,7 @@ struct scan_overload {
                                                 proj,
                                                 out //
       );
-      co_await lf::just(lhs_down_sweep)(
+      co_await lf::just(lhs_fall_sweep)(
           out, out + std::ranges::ssize(range), std::ranges::range_difference_t<R>(1), bop //
       );
     }
@@ -6928,7 +6993,7 @@ struct scan_overload {
                                                proj,
                                                std::ranges::begin(range) //
       );
-      co_await lf::just(lhs_down_sweep)(std::ranges::begin(range), std::ranges::end(range), n, bop);
+      co_await lf::just(lhs_fall_sweep)(std::ranges::begin(range), std::ranges::end(range), n, bop);
     }
   }
   /**
@@ -6951,7 +7016,7 @@ struct scan_overload {
                                                proj,
                                                std::ranges::begin(range) //
       );
-      co_await lf::just(lhs_down_sweep)(
+      co_await lf::just(lhs_fall_sweep)(
           std::ranges::begin(range), std::ranges::end(range), std::ranges::range_difference_t<R>(1), bop //
       );
     }
