@@ -2,18 +2,18 @@
 #include <algorithm>                             // for min
 #include <catch2/catch_template_test_macros.hpp> // for TEMPLATE_TEST_CASE, TypeList
 #include <catch2/catch_test_macros.hpp>          // for operator<=, operator==, INTERNAL_CATCH_...
-#include <concepts>                              // for constructible_from
+#include <concepts>                              // for constructible_from, same_as
 #include <cstddef>                               // for size_t
 #include <functional>                            // for plus, identity, multiplies
-#include <iostream>
-#include <limits>      // for numeric_limits
-#include <numeric>     // for inclusive_scan
-#include <random>      // for random_device, uniform_int_distribution
-#include <string>      // for operator+, string, basic_string
-#include <thread>      // for thread
-#include <type_traits> // for type_identity
-#include <utility>     // for forward
-#include <vector>      // for operator==, vector
+#include <iostream>                              // for basic_ostream, operator<<, basic_ostrea...
+#include <limits>                                // for numeric_limits
+#include <numeric>                               // for inclusive_scan
+#include <random>                                // for random_device, uniform_int_distribution
+#include <string>                                // for char_traits, string, operator+, basic_s...
+#include <thread>                                // for thread
+#include <type_traits>                           // for type_identity
+#include <utility>                               // for forward
+#include <vector>                                // for operator==, vector
 
 #include "libfork/algorithm/scan.hpp" // for scan
 #include "libfork/core.hpp"           // for task, sync_wait
