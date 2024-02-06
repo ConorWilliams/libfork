@@ -12,40 +12,66 @@
 
 ### Meta  -->
 
-## [**Version 3.6.0**](https://github.com/ConorWilliams/libfork/compare/v2.1.1...3.6.0)
+## [**Version 3.6.0**](https://github.com/ConorWilliams/libfork/compare/v3.5.0...v3.6.0)
 
 ### Added
 
 - A new ``lf::dispatch`` higher order function object for fine grained exception control.
+- A new call `lf::just` to simplify `co_await lf::call[...](...); co_await lf::join;`.
 - A set of constrained algorithms `for_each`, `fold`, `scan`, etc.
+- `eventually` supports capturing exceptions via the `stash_exception` customization point.
+- Generalized the explicit scheduling mechanism.
+- A few new benchmarks for the new constrained algorithms.
 
 ### Changed
 
 - Improved memory safety of awaitables and made many type immovable to reduce erroneous use.
+- Improved the API for stack allocation.
+- The underlying types of `submit_handle` and `task_handle`.
+- Re-introduced exception handling and added a customization point for individual exception handling.
+
+### Bugfixes
+
+- Fixed a few bugs that could occur if an exception was thrown during a `co_await` expression.
 
 ### Meta
 
 - Package tests for conan/vcpkg/manual installs and some package bugfixes.
 
-## **Versions 3.5.0**
+## [**Versions 3.5.0**](https://github.com/ConorWilliams/libfork/compare/v2.1.1...v3.5.0)
 
 This release is a full overhaul of the API and implementation of libfork that should bring large performance improvements.
 
 ### Added
 
-- NUMA support for all schedulers.
+- NUMA support for all schedulers (using `hwloc` for topology discovery).
 - A segmented-stack backed cactus-stack to manage all coroutine allocations.
 - A new ``lf::lazy_pool`` scheduler.
 - A new concepts-centric design including concepts for invocability.
 - A new API for explicit scheduling.
 - The `lf::eventually` class template.
+- New benchmarks.
+- Exposed the `lf::defer` class template for handling cleanup.
 
 ### Changed
 
 - A new API for defining tasks.
 - A new API for forking/calling/joining tasks.
 - A new API for defining schedulers.
-- Re-introduced exception handling and added a customization point for individual exception handling.
+
+### Removed
+
+- Old benchmarks that are no longer relevant.
+- Allocator support -
+
+### Meta
+
+- Split CI into jobs for each major platform.
+- Use vcpkg for package management.
+
+## **Versions 3.0.0-3.4.0**
+
+No releases were made for libfork during the initial stages of the 3.x.x series as the API was in a state of flux.
 
 ## [**Version 2.1.1**](https://github.com/ConorWilliams/libfork/compare/v2.1.0...v2.1.1)
 
