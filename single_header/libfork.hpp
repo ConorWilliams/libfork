@@ -6566,26 +6566,15 @@ struct fall_sweep {
       I split = beg + mid;
 
       if /*  */ (scan_end < split) {
-
-        // std::cout << "split less\n";
-
         // Left part-scanned, right un-scanned.
-
-        // // Restore invariant: propagate the reduction (scan), if we have a left sibling.
-        // if constexpr (Ival == interval::mid || Ival == interval::rhs) {
-        //   *(out + mid - 1) = bop(*(out - 1), std::ranges::iter_move(out + mid - 1));
-        // }
-
         co_await lf::fork(recur_lhs{})(beg, beg + mid, n, bop, proj, out, scan_end);
         co_await lf::call(down_rhs{})(beg + mid, end, n, bop, proj, out + mid);
         co_await lf::join;
         co_return;
       } else if (scan_end == split) {
-        // std::cout << "split equal\n";
         // Left fully scanned, right un-scanned.
         co_return co_await lf::just(down_rhs{})(beg + mid, end, n, bop, proj, out + mid);
       } else if (scan_end > split) {
-        // std::cout << "split greater\n";
         // Left fully scanned, right part-scanned.
         if constexpr (!std::same_as<fall_sweep, recur_rhs>) {
           co_return co_await lf::just(recur_rhs{})(beg + mid, end, n, bop, proj, out + mid, scan_end);
@@ -6605,26 +6594,25 @@ struct fall_sweep {
 /**
  * @brief Calls the rise_sweep and fall_sweep algorithms, checks for empty input.
  */
-template <std::random_access_iterator I,
-          std::sized_sentinel_for<I> S,
-          std::random_access_iterator O,
-          class Proj,
-          class Bop //
-          >
+
 struct scan_impl {
-
-  using int_t = std::iter_difference_t<I>;
-
-  static constexpr rise_sweep<I, S, Proj, Bop, O> rise = {};
-  static constexpr fall_sweep<I, S, Proj, Bop, O> fall = {};
-
+  template <std::random_access_iterator I,
+            std::sized_sentinel_for<I> S,
+            std::random_access_iterator O,
+            class Proj,
+            class Bop //
+            >
   LF_STATIC_CALL auto
-  operator()(auto /**/, I beg, S end, O out, int_t n, Bop bop, Proj proj) LF_STATIC_CONST->lf::task<> {
+  operator()(auto /* unused */, I beg, S end, O out, std::iter_difference_t<I> n, Bop bop, Proj proj)
+      LF_STATIC_CONST->lf::task<> {
 
     // Early exit required if the input is empty.
     if (end == beg) {
       co_return;
     }
+
+    constexpr rise_sweep<I, S, Proj, Bop, O> rise = {};
+    constexpr fall_sweep<I, S, Proj, Bop, O> fall = {};
 
     // Up-sweep the reduction.
     I scan_end = co_await lf::just(rise)(beg, end, n, bop, proj, out);
@@ -6650,186 +6638,186 @@ struct scan_impl {
 
 namespace impl {
 
-template <bool InPlace>
-inline constexpr auto reduction_sweep =
-    []<std::random_access_iterator I,
-       std::sized_sentinel_for<I> S,
-       std::random_access_iterator O,
-       class Proj,
-       indirectly_scannable<O, projected<I, Proj>> Bop>(auto reduction_sweep, //
-                                                        I beg,
-                                                        S end,
-                                                        std::iter_difference_t<I> n,
-                                                        Bop bop,
-                                                        Proj proj,
-                                                        O out) LF_STATIC_CALL -> task<void> {
-  //
-  constexpr bool async_bop = !std::invocable<Bop &, std::iter_reference_t<O>, std::iter_reference_t<O>>;
-  std::iter_difference_t<I> size = end - beg;
-  //
-  if (size <= n) {
+// template <bool InPlace>
+// inline constexpr auto reduction_sweep =
+//     []<std::random_access_iterator I,
+//        std::sized_sentinel_for<I> S,
+//        std::random_access_iterator O,
+//        class Proj,
+//        indirectly_scannable<O, projected<I, Proj>> Bop>(auto reduction_sweep, //
+//                                                         I beg,
+//                                                         S end,
+//                                                         std::iter_difference_t<I> n,
+//                                                         Bop bop,
+//                                                         Proj proj,
+//                                                         O out) LF_STATIC_CALL -> task<void> {
+//   //
+//   constexpr bool async_bop = !std::invocable<Bop &, std::iter_reference_t<O>, std::iter_reference_t<O>>;
+//   std::iter_difference_t<I> size = end - beg;
+//   //
+//   if (size <= n) {
 
-    if constexpr (!(InPlace && std::is_same_v<std::identity, Proj>)) {
-      *out = co_await just(proj)(*beg);
-    }
+//     if constexpr (!(InPlace && std::is_same_v<std::identity, Proj>)) {
+//       *out = co_await just(proj)(*beg);
+//     }
 
-#pragma unroll(8)
-    for (++beg; beg != end; ++beg) {
+// #pragma unroll(8)
+//     for (++beg; beg != end; ++beg) {
 
-      auto prev = out;
-      ++out;
+//       auto prev = out;
+//       ++out;
 
-      if constexpr (InPlace) {
-        LF_ASSERT(out == beg.base());
-      }
+//       if constexpr (InPlace) {
+//         LF_ASSERT(out == beg.base());
+//       }
 
-      using mod = modifier::eager_throw_outside;
+//       using mod = modifier::eager_throw_outside;
 
-      if constexpr (async_bop) {
-        co_await lf::dispatch<tag::call, mod>(out, bop)(*prev, co_await just(proj)(*beg));
-      } else {
-        *out = std::invoke(bop, *prev, co_await just(proj)(*beg));
-      }
-    }
+//       if constexpr (async_bop) {
+//         co_await lf::dispatch<tag::call, mod>(out, bop)(*prev, co_await just(proj)(*beg));
+//       } else {
+//         *out = std::invoke(bop, *prev, co_await just(proj)(*beg));
+//       }
+//     }
 
-    co_return;
-  }
-  // Recurse to smaller chunks.
-  std::iter_difference_t<I> half = size / 2;
-  I mid = beg + half;
+//     co_return;
+//   }
+//   // Recurse to smaller chunks.
+//   std::iter_difference_t<I> half = size / 2;
+//   I mid = beg + half;
 
-  // clang-format off
+//   // clang-format off
 
-  LF_TRY {
-    co_await lf::fork(reduction_sweep)(beg, mid, n, bop, proj, out);
-    co_await lf::call(reduction_sweep)(mid, end, n, bop, proj, out + half);
-  } LF_CATCH_ALL {
-    reduction_sweep.stash_exception();
-  }
+//   LF_TRY {
+//     co_await lf::fork(reduction_sweep)(beg, mid, n, bop, proj, out);
+//     co_await lf::call(reduction_sweep)(mid, end, n, bop, proj, out + half);
+//   } LF_CATCH_ALL {
+//     reduction_sweep.stash_exception();
+//   }
 
-  // clang-format on
+//   // clang-format on
 
-  co_await lf::join;
+//   co_await lf::join;
 
-  // Accumulate in rhs of output chunk.
-  // Require bop is a common_semigroup over output iter with with l and r value refs.
-  O l_child = out + (half - 1);
-  O r_child = out + (size - 1);
+//   // Accumulate in rhs of output chunk.
+//   // Require bop is a common_semigroup over output iter with with l and r value refs.
+//   O l_child = out + (half - 1);
+//   O r_child = out + (size - 1);
 
-  using mod = modifier::eager_throw_outside;
+//   using mod = modifier::eager_throw_outside;
 
-  if constexpr (async_bop) {
-    co_await lf::dispatch<tag::call, mod>(r_child, bop)(*l_child, std::ranges::iter_move(r_child));
-  } else {
-    *r_child = bop(*l_child, std::ranges::iter_move(r_child));
-  }
-};
+//   if constexpr (async_bop) {
+//     co_await lf::dispatch<tag::call, mod>(r_child, bop)(*l_child, std::ranges::iter_move(r_child));
+//   } else {
+//     *r_child = bop(*l_child, std::ranges::iter_move(r_child));
+//   }
+// };
 
-/**
- * @brief The down sweep of the scan.
- *
- * Here we recurse from the root to the leaves, at each stage if the sub-tree has a sibling to the left
- * we merge the reduction into the left child preserving the invariant that the left child has the
- prefix-sum
- *
- *After an up-sweep/reduction:
+// /**
+//  * @brief The down sweep of the scan.
+//  *
+//  * Here we recurse from the root to the leaves, at each stage if the sub-tree has a sibling to the left
+//  * we merge the reduction into the left child preserving the invariant that the left child has the
+//  prefix-sum
+//  *
+//  *After an up-sweep/reduction:
 
- * Partition 0: [1, 1, 3, 1, 2, 1, 7] <- no left sibling
- * Partition 1: [1, 1, 3][1, 2, 1, 7] <- right sub-tree has left sibling, update left child
- * Partition 2: [1][1, 3][1, 2][1, 7]
- *
- * After update 2 -> 2 + 3 (left sibling carries over):
- *
- * Partition 0: [1, 1, 3, 1, 5, 1, 7]
- * Partition 1: [1, 1, 3][1, 5, 1, 7]
- * Partition 2: [1][1, 3][1, 5][1, 7]
- *
- * Once we hit the chunk level update the first n - 1 elements of each chunk with the carried value.
- */
-inline constexpr auto rhs_fall_sweep =
-    []<std::random_access_iterator O, std::sized_sentinel_for<O> S, typename Bop>(auto rhs_fall_sweep, //
-                                                                                  O beg,
-                                                                                  S end,
-                                                                                  std::iter_difference_t<O> n,
-                                                                                  Bop bop)
-        LF_STATIC_CALL -> task<void> {
-  /**
-   * Chunks looks like:
-   *
-   *  [a, b, c, acc_prev] [d, e, f, acc] [h, i, j, acc_next]
-   *                       ^- beg         ^- end
-   */
-  constexpr bool async_bop = !std::invocable<Bop &, std::iter_reference_t<O>, std::iter_reference_t<O>>;
-  std::iter_difference_t<O> size = end - beg;
-  O acc_prev = beg - 1; // Carried/previous accumulation
+//  * Partition 0: [1, 1, 3, 1, 2, 1, 7] <- no left sibling
+//  * Partition 1: [1, 1, 3][1, 2, 1, 7] <- right sub-tree has left sibling, update left child
+//  * Partition 2: [1][1, 3][1, 2][1, 7]
+//  *
+//  * After update 2 -> 2 + 3 (left sibling carries over):
+//  *
+//  * Partition 0: [1, 1, 3, 1, 5, 1, 7]
+//  * Partition 1: [1, 1, 3][1, 5, 1, 7]
+//  * Partition 2: [1][1, 3][1, 5][1, 7]
+//  *
+//  * Once we hit the chunk level update the first n - 1 elements of each chunk with the carried value.
+//  */
+// inline constexpr auto rhs_fall_sweep =
+//     []<std::random_access_iterator O, std::sized_sentinel_for<O> S, typename Bop>(auto rhs_fall_sweep, //
+//                                                                                   O beg,
+//                                                                                   S end,
+//                                                                                   std::iter_difference_t<O>
+//                                                                                   n, Bop bop)
+//         LF_STATIC_CALL -> task<void> {
+//   /**
+//    * Chunks looks like:
+//    *
+//    *  [a, b, c, acc_prev] [d, e, f, acc] [h, i, j, acc_next]
+//    *                       ^- beg         ^- end
+//    */
+//   constexpr bool async_bop = !std::invocable<Bop &, std::iter_reference_t<O>, std::iter_reference_t<O>>;
+//   std::iter_difference_t<O> size = end - beg;
+//   O acc_prev = beg - 1; // Carried/previous accumulation
 
-  using mod = modifier::eager_throw_outside;
+//   using mod = modifier::eager_throw_outside;
 
-  if (size <= n) {
-#pragma unroll(8)
-    for (; beg != end - 1; ++beg) {
-      if constexpr (async_bop) {
-        co_await lf::dispatch<tag::call, mod>(beg, bop)(*acc_prev, std::ranges::iter_move(beg));
-      } else {
-        *beg = bop(*acc_prev, std::ranges::iter_move(beg));
-      }
-    }
-    co_return;
-  }
+//   if (size <= n) {
+// #pragma unroll(8)
+//     for (; beg != end - 1; ++beg) {
+//       if constexpr (async_bop) {
+//         co_await lf::dispatch<tag::call, mod>(beg, bop)(*acc_prev, std::ranges::iter_move(beg));
+//       } else {
+//         *beg = bop(*acc_prev, std::ranges::iter_move(beg));
+//       }
+//     }
+//     co_return;
+//   }
 
-  std::iter_difference_t<O> half = size / 2; //
-  O rhs = beg + (half - 1);                  // This is the left child of the tree.
+//   std::iter_difference_t<O> half = size / 2; //
+//   O rhs = beg + (half - 1);                  // This is the left child of the tree.
 
-  if constexpr (async_bop) {
-    co_await lf::dispatch<tag::call, mod>(rhs, bop)(*acc_prev, std::ranges::iter_move(rhs));
-  } else {
-    *rhs = bop(*acc_prev, std::ranges::iter_move(rhs));
-  }
+//   if constexpr (async_bop) {
+//     co_await lf::dispatch<tag::call, mod>(rhs, bop)(*acc_prev, std::ranges::iter_move(rhs));
+//   } else {
+//     *rhs = bop(*acc_prev, std::ranges::iter_move(rhs));
+//   }
 
-  O mid = beg + half;
+//   O mid = beg + half;
 
-  // clang-format off
+//   // clang-format off
 
-  LF_TRY {
-    co_await lf::fork(rhs_fall_sweep)(beg, mid, n, bop);
-    co_await lf::call(rhs_fall_sweep)(mid, end, n, bop);
-  } LF_CATCH_ALL {
-    rhs_fall_sweep.stash_exception();
-  }
+//   LF_TRY {
+//     co_await lf::fork(rhs_fall_sweep)(beg, mid, n, bop);
+//     co_await lf::call(rhs_fall_sweep)(mid, end, n, bop);
+//   } LF_CATCH_ALL {
+//     rhs_fall_sweep.stash_exception();
+//   }
 
-  // clang-format on
+//   // clang-format on
 
-  co_await lf::join;
-};
+//   co_await lf::join;
+// };
 
-/**
- * @brief Down-sweep of sub-tree with no left sibling.
- */
-inline constexpr auto lhs_fall_sweep =
-    []<std::random_access_iterator O, std::sized_sentinel_for<O> S, typename Bop>(auto lhs_fall_sweep, //
-                                                                                  O beg,
-                                                                                  S end,
-                                                                                  std::iter_difference_t<O> n,
-                                                                                  Bop bop)
-        LF_STATIC_CALL -> task<void> {
-  if (auto size = end - beg; size > n) {
+// /**
+//  * @brief Down-sweep of sub-tree with no left sibling.
+//  */
+// inline constexpr auto lhs_fall_sweep =
+//     []<std::random_access_iterator O, std::sized_sentinel_for<O> S, typename Bop>(auto lhs_fall_sweep, //
+//                                                                                   O beg,
+//                                                                                   S end,
+//                                                                                   std::iter_difference_t<O>
+//                                                                                   n, Bop bop)
+//         LF_STATIC_CALL -> task<void> {
+//   if (auto size = end - beg; size > n) {
 
-    auto mid = beg + size / 2;
+//     auto mid = beg + size / 2;
 
-    // clang-format off
-     
-        LF_TRY {
-          co_await lf::fork(lhs_fall_sweep)(beg, mid, n, bop);
-          co_await lf::call(rhs_fall_sweep)(mid, end, n, bop);
-        } LF_CATCH_ALL {
-          lhs_fall_sweep.stash_exception();
-        }
+//     // clang-format off
 
-    // clang-format on
+//         LF_TRY {
+//           co_await lf::fork(lhs_fall_sweep)(beg, mid, n, bop);
+//           co_await lf::call(rhs_fall_sweep)(mid, end, n, bop);
+//         } LF_CATCH_ALL {
+//           lhs_fall_sweep.stash_exception();
+//         }
 
-    co_await lf::join;
-  }
-};
+//     // clang-format on
+
+//     co_await lf::join;
+//   }
+// };
 
 /**
  * @brief Eight overloads of scan for (iterator/range, chunk/in_place, n = 1/n != 1).
@@ -6850,13 +6838,7 @@ struct scan_overload {
                                  std::iter_difference_t<I> n,
                                  Bop bop,
                                  Proj proj = {}) LF_STATIC_CONST->task<> {
-
-    co_return co_await lf::just(v2::scan_impl<I, S, O, Proj, Bop>{})(beg, end, out, n, bop, proj);
-
-    // if (std::iter_difference_t<I> size = end - beg; size > 0) {
-    //   co_await lf::just(reduction_sweep<false>)(beg, end, n, bop, proj, out);
-    //   co_await lf::just(lhs_fall_sweep)(out, out + size, n, bop);
-    // }
+    co_return co_await lf::just(v2::scan_impl{})(beg, end, out, n, bop, proj);
   }
   /**
    * @brief [iterator,n = 1,output] version (4-5)
@@ -6872,10 +6854,7 @@ struct scan_overload {
                                  O out,
                                  Bop bop,
                                  Proj proj = {}) LF_STATIC_CONST->task<void> {
-    if (std::iter_difference_t<I> size = end - beg; size > 0) {
-      co_await lf::just(reduction_sweep<false>)(beg, end, std::iter_difference_t<I>(1), bop, proj, out);
-      co_await lf::just(lhs_fall_sweep)(out, out + size, std::iter_difference_t<I>(1), bop);
-    }
+    co_return co_await lf::just(v2::scan_impl{})(beg, end, out, 1, bop, proj);
   }
   /**
    * @brief [iterator,chunk,in_place] version (4-5)
@@ -6890,17 +6869,8 @@ struct scan_overload {
                                  std::iter_difference_t<I> n,
                                  Bop bop,
                                  Proj proj = {}) LF_STATIC_CONST->task<void> {
-    if (std::iter_difference_t<I> size = end - beg; size > 0) {
-      co_await lf::just(reduction_sweep<true>)(std::move_iterator(beg),
-                                               std::move_sentinel(end),
-                                               n,
-                                               bop,
-                                               proj,
-                                               beg //
-      );
-      co_await lf::just(lhs_fall_sweep)(beg, end, n, bop);
-    }
-    co_return;
+
+    co_return co_await lf::just(v2::scan_impl{})(beg, end, beg, n, bop, proj);
   }
   /**
    * @brief [iterator,n = 1,in_place] version.
@@ -6914,16 +6884,7 @@ struct scan_overload {
                                  S end,
                                  Bop bop,
                                  Proj proj = {}) LF_STATIC_CONST->task<void> {
-    if (std::iter_difference_t<I> size = end - beg; size > 0) {
-      co_await lf::just(reduction_sweep<true>)(std::move_iterator(beg),
-                                               std::move_sentinel(end),
-                                               std::iter_difference_t<I>(1),
-                                               bop,
-                                               proj,
-                                               beg //
-      );
-      co_await lf::just(lhs_fall_sweep)(beg, end, std::iter_difference_t<I>(1), bop);
-    }
+    co_return co_await lf::just(v2::scan_impl{})(beg, end, beg, 1, bop, proj);
   }
   /**
    * @brief [range,chunk,output] version (5-6)
@@ -6939,12 +6900,9 @@ struct scan_overload {
                                  std::ranges::range_difference_t<R> n,
                                  Bop bop,
                                  Proj proj = {}) LF_STATIC_CONST->task<void> {
-    if (!std::ranges::empty(range)) {
-      co_await lf::just(reduction_sweep<false>)(
-          std::ranges::begin(range), std::ranges::end(range), n, bop, proj, out //
-      );
-      co_await lf::just(lhs_fall_sweep)(out, out + std::ranges::ssize(range), n, bop);
-    }
+    co_return co_await lf::just(v2::scan_impl{})(
+        std::ranges::begin(range), std::ranges::end(range), out, n, bop, proj //
+    );
   }
   /**
    * @brief [range,n = 1,output] version (4-5)
@@ -6959,18 +6917,9 @@ struct scan_overload {
                                  O out,
                                  Bop bop,
                                  Proj proj = {}) LF_STATIC_CONST->task<void> {
-    if (!std::ranges::empty(range)) {
-      co_await lf::just(reduction_sweep<false>)(std::ranges::begin(range),
-                                                std::ranges::end(range),
-                                                std::ranges::range_difference_t<R>(1),
-                                                bop,
-                                                proj,
-                                                out //
-      );
-      co_await lf::just(lhs_fall_sweep)(
-          out, out + std::ranges::ssize(range), std::ranges::range_difference_t<R>(1), bop //
-      );
-    }
+    co_return co_await lf::just(v2::scan_impl{})(
+        std::ranges::begin(range), std::ranges::end(range), out, 1, bop, proj //
+    );
   }
   /**
    * @brief [range,chunk,in_place] version (4-5)
@@ -6985,16 +6934,9 @@ struct scan_overload {
                                  std::ranges::range_difference_t<R> n,
                                  Bop bop,
                                  Proj proj = {}) LF_STATIC_CONST->task<void> {
-    if (!std::ranges::empty(range)) {
-      co_await lf::just(reduction_sweep<true>)(std::move_iterator(std::ranges::begin(range)),
-                                               std::move_sentinel(std::ranges::end(range)),
-                                               n,
-                                               bop,
-                                               proj,
-                                               std::ranges::begin(range) //
-      );
-      co_await lf::just(lhs_fall_sweep)(std::ranges::begin(range), std::ranges::end(range), n, bop);
-    }
+    co_return co_await lf::just(v2::scan_impl{})(
+        std::ranges::begin(range), std::ranges::end(range), std::ranges::begin(range), n, bop, proj //
+    );
   }
   /**
    * @brief [range,n = 1,in_place] version.
@@ -7008,18 +6950,9 @@ struct scan_overload {
                                  R &&range,
                                  Bop bop,
                                  Proj proj = {}) LF_STATIC_CONST->task<void> {
-    if (!std::ranges::empty(range)) {
-      co_await lf::just(reduction_sweep<true>)(std::move_iterator(std::ranges::begin(range)),
-                                               std::move_sentinel(std::ranges::end(range)),
-                                               std::ranges::range_difference_t<R>(1),
-                                               bop,
-                                               proj,
-                                               std::ranges::begin(range) //
-      );
-      co_await lf::just(lhs_fall_sweep)(
-          std::ranges::begin(range), std::ranges::end(range), std::ranges::range_difference_t<R>(1), bop //
-      );
-    }
+    co_return co_await lf::just(v2::scan_impl{})(
+        std::ranges::begin(range), std::ranges::end(range), std::ranges::begin(range), 1, bop, proj //
+    );
   }
 };
 
