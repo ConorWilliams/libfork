@@ -5,62 +5,79 @@ project(bench_libfork LANGUAGES CXX C)
 include(../cmake/project-is-top-level.cmake)
 include(../cmake/folders.cmake)
 
-# ---- Dependencies ----
+# ---- Required dependencies ----
 
 if(PROJECT_IS_TOP_LEVEL)
   find_package(libfork REQUIRED)
 endif()
 
 find_package(benchmark REQUIRED)
-find_package(Taskflow REQUIRED)
-find_package(TBB REQUIRED)
-find_package(OpenMP REQUIRED)
-find_package(concurrencpp REQUIRED)
-
 
 # ---- Benchmarks ----
 
 file(GLOB_RECURSE BENCH_C_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/**/*.c")
-
-file(GLOB_RECURSE BENCH_CXX_FIB CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/fib/*.cpp")
-file(GLOB_RECURSE BENCH_CXX_REDUCE CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/reduce/*.cpp")
-file(GLOB_RECURSE BENCH_CXX_UTS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/uts/*.cpp")
-file(GLOB_RECURSE BENCH_CXX_NQUEENS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/nqueens/*.cpp")
-file(GLOB_RECURSE BENCH_CXX_MATMUL CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/matmul/*.cpp")
-file(GLOB_RECURSE BENCH_CXX_INTEGRATE CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/integrate/*.cpp")
-file(GLOB_RECURSE BENCH_CXX_PRIMES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/primes/*.cpp")
-file(GLOB_RECURSE BENCH_CXX_SCAN CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/scan/*.cpp")
-file(GLOB_RECURSE BENCH_CXX_FOLD CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/fold/*.cpp")
-
+file(GLOB_RECURSE BENCH_SERIAL CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/**/serial.cpp")
+file(GLOB_RECURSE BENCH_LIBFORK CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/**/libfork.cpp")
 
 add_executable(benchmark 
-  ${BENCH_C_SOURCES} 
-  ${BENCH_CXX_FIB} 
-  ${BENCH_CXX_REDUCE} 
-  ${BENCH_CXX_UTS} 
-  ${BENCH_CXX_NQUEENS}
-  ${BENCH_CXX_MATMUL}
-  ${BENCH_CXX_INTEGRATE}
-  ${BENCH_CXX_PRIMES}
-  ${BENCH_CXX_SCAN}
-  ${BENCH_CXX_FOLD}
+  ${BENCH_C_SOURCES}
+  ${BENCH_SERIAL} 
+  ${BENCH_LIBFORK} 
   ${CMAKE_CURRENT_SOURCE_DIR}/source/calibrate.cpp
 )
 
 target_link_libraries(benchmark 
     PRIVATE 
         libfork::libfork 
-        OpenMP::OpenMP_CXX 
-        TBB::tbb 
-        Taskflow::Taskflow 
         benchmark::benchmark_main
-        concurrencpp::concurrencpp
 )
 
 option(LF_NO_CHECK "Disable benchmark verifications to speed up the benchmarks " OFF)
 
 if(LF_NO_CHECK)
     target_compile_definitions(benchmark PRIVATE LF_NO_CHECK)
+endif()
+
+# --- Optional dependencies ---
+
+find_package(TBB QUIET)
+
+if(TBB_FOUND)
+    file(GLOB_RECURSE BENCH_TBB CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/**/tbb.cpp")
+    target_sources(benchmark PRIVATE ${BENCH_TBB})
+    target_link_libraries(benchmark PRIVATE TBB::tbb)
+else()
+    message(WARNING "TBB not found, skipping TBB benchmarks")
+endif()
+
+find_package(OpenMP QUIET)
+
+if(OpenMP_FOUND)
+    file(GLOB_RECURSE BENCH_OpenMP CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/**/omp.cpp")
+    target_sources(benchmark PRIVATE ${BENCH_OpenMP})
+    target_link_libraries(benchmark PRIVATE OpenMP::OpenMP_CXX )
+else()
+    message(WARNING "OpenMP not found, skipping OpenMP benchmarks")
+endif()
+
+find_package(Taskflow QUIET)
+
+if(Taskflow_FOUND)
+    file(GLOB_RECURSE BENCH_Taskflow CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/**/taskflow.cpp")
+    target_sources(benchmark PRIVATE ${BENCH_Taskflow})
+    target_link_libraries(benchmark PRIVATE Taskflow::Taskflow)
+else()
+    message(WARNING "Taskflow not found, skipping Taskflow benchmarks")
+endif()
+
+find_package(concurrencpp QUIET)
+
+if(concurrencpp_FOUND)
+    file(GLOB_RECURSE BENCH_concurrencpp CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/**/ccpp.cpp")
+    target_sources(benchmark PRIVATE ${BENCH_concurrencpp})
+    target_link_libraries(benchmark PRIVATE concurrencpp::concurrencpp)
+else()
+    message(WARNING "concurrencpp not found, skipping concurrencpp benchmarks")
 endif()
 
 # ---- Coro benchmarks ----

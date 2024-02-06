@@ -59,17 +59,72 @@ Libfork is engineered for performance and has a comprehensive [benchmark suit](b
 
 Libfork is a header-only library with full CMake support and zero required-dependencies. Refer to the [BUILDING](BUILDING.md) document for full details on compiling the tests/benchmarks/docs, installation, optional dependencies and, tools for developers. See below for the easiest ways to consume libfork in your CMake projects.
 
-### If you have installed libfork
+### Package managers
+
+We recommend consuming libfork via a package manager, this streamlines the management of optional dependencies.
+
+#### vcpkg
+
+Libfork is available via vcpkg.  Add the following to your `vcpkg.json`:
+
+```json
+"dependencies": [
+    "libfork"
+]
+```
+
+You may then use the library in your project's cmake:
 
 ```cmake
-find_package(libfork REQUIRED)
+find_package(libfork CONFIG REQUIRED)  
 
 target_link_libraries(
     project_target PRIVATE libfork::libfork
 )
 ```
 
-### Using CMake's ``FetchContent``
+#### Conan2
+
+Libfork is available via conancenter. Add the following line to your `conanfile.txt`
+
+```ini
+[requires]
+libfork/3.6.0
+```
+
+and install it to conan2 cache:
+
+```sh
+conan install .. --build missing
+```
+
+(Please make sure that you use a c++20 ready conan profile!)
+
+You may then use the library in your project's cmake:
+
+```cmake
+find_package(libfork CONFIG REQUIRED)  
+
+target_link_libraries(
+    project_target PRIVATE libfork::libfork
+)
+```
+
+### With CMake
+
+If you have installed libfork from source, following the [BUILDING](BUILDING.md) document, then you can use the following CMake code to consume libfork in your project:
+
+```cmake
+find_package(libfork CONFIG REQUIRED)
+
+target_link_libraries(
+    project_target PRIVATE libfork::libfork
+)
+```
+
+#### Using CMake's ``FetchContent``
+
+If you have not installed libfork you may use CMake's `FetchContent` to download and build libfork as part of your project:
 
 ```cmake
 include(FetchContent)
@@ -77,7 +132,7 @@ include(FetchContent)
 FetchContent_Declare(
     libfork
     GIT_REPOSITORY https://github.com/conorwilliams/libfork.git
-    GIT_TAG v3.0.0
+    GIT_TAG v3.6.0
     GIT_SHALLOW TRUE
 )
 
@@ -88,23 +143,11 @@ target_link_libraries(
 )
 ```
 
-### Using [CMP.cmake](https://github.com/cpm-cmake/CPM.cmake)
-
-```cmake
-# Assuming your ``CPM.cmake`` file is the ``cmake`` directory.
-include(cmake/CPM.cmake)
-
-CPMAddPackage("gh:conorwilliams/libfork#3.0.0")
-
-target_link_libraries(
-    project_target PRIVATE libfork::libfork
-)
-```
-
 ### Using git submodules
 
+You can incorporate libfork into your project as a git submodule. In this case, assuming you cloned libfork as a submodule into "external/libfork":
+
 ```cmake
-# Assuming you cloned libfork as a submodule into "external/libfork".
 add_subdirectory(external/libfork)
 
 target_link_libraries(
@@ -114,7 +157,7 @@ target_link_libraries(
 
 ### Single header
 
-Although this is __not recommend__ and primarily exist for easy integration with [godbolt](https://godbolt.org/z/nzTPKqrrq); libfork supplies a [single header](single_header/libfork.hpp) that you can copy-and-paste into your project. See the [BUILDING](BUILDING.md) document's note about hwloc integration.
+Although this is __not recommend__ and primarily exist for easy integration with [godbolt](https://godbolt.org/z/nzTPKqrrq); libfork supplies a [single header](single_header/libfork.hpp) that you can copy-and-paste into your project. See the [BUILDING](BUILDING.md) document's note about hwloc integration and compiler flags.
 
 <!-- TODO: godbolt with include. -->
 
