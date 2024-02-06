@@ -29,16 +29,23 @@ Groups
 
 .. doxygenconcept:: lf::semigroup
 
-.. doxygenconcept:: lf::common_semigroup
-
-.. doxygentypedef:: lf::semigroup_t
 
 Constraints
 -----------
 
+Foldability
+~~~~~~~~~~~
+
 .. doxygenconcept:: lf::foldable
 
 .. doxygenconcept:: lf::indirectly_foldable
+
+.. doxygentypedef:: lf::indirect_fold_acc_t
+
+Scannability
+~~~~~~~~~~~~
+
+.. doxygenconcept:: lf::scannable
 
 .. doxygenconcept:: lf::indirectly_scannable
     

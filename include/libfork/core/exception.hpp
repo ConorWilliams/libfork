@@ -43,6 +43,9 @@ concept stash_exception_in_return = quasi_pointer<I> && requires (I ptr) {
  * exception.
  */
 struct exception_before_join : std::exception {
+  /**
+   * @brief A diagnostic message.
+   */
   auto what() const noexcept -> char const * override { return "A child threw an exception!"; }
 };
 

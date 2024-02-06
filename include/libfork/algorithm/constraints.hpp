@@ -350,6 +350,15 @@ concept scannable_impl =
 
 } // namespace detail
 
+/**
+ * @brief Test if a binary operation supports a scan operation over a type.
+ *
+ * The binary operation must be associative but not necessarily commutative.
+ *
+ * @tparam Bop The binary operation.
+ * @tparam O The output iterator.
+ * @tparam T The value type to scan over.
+ */
 template <class Bop, class O, class T>
 concept scannable =                                       //
     std::indirectly_readable<O> &&                        //
@@ -357,6 +366,13 @@ concept scannable =                                       //
     detail::foldable_to<std::iter_value_t<O>, Bop, T> &&  // Regular reduction over T.
     detail::scannable_impl<std::iter_value_t<O>, Bop, O>; //
 
+/**
+ * @brief An indirect version of `lf::scannable` over an iterator.
+ *
+ * @tparam Bop The binary operation.
+ * @tparam O The output iterator.
+ * @tparam T The input iterator.
+ */
 template <class Bop, class O, class I>
 concept indirectly_scannable =
     std::indirectly_readable<O> &&                                  //

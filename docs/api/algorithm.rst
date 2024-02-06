@@ -30,10 +30,6 @@ Transformations with ``map``
 Reductions with ``fold``
 ------------------------
 
-.. doxygentypedef:: lf::indirect_fold_acc_t
-
------------------
-
 .. doxygenvariable:: lf::fold
 
 Generalized prefix sums with ``scan``

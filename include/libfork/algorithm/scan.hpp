@@ -151,23 +151,33 @@ template <std::random_access_iterator I, //
           op Op = op::scan               //
           >
 struct rise_sweep {
-
+  /**
+   * @brief The iterator difference type of I.
+   */
   using int_t = std::iter_difference_t<I>;
+  /**
+   * @brief The accumulator type of the reduction.
+   */
   using acc_t = std::iter_value_t<O>;
+  /**
+   * @brief The type of the task returned by the algorithm.
+   */
   using task_t = lf::task<std::conditional_t<Op == op::scan, I, void>>;
-
-  // Propagate the operation to the left child.
+  /**
+   * @brief Propagate the operation to the left child.
+   */
   using up_lhs = rise_sweep<I, S, Proj, Bop, O, l_child_of(Ival), Op>;
-
-  // The right child's operation depends on the readiness of the left child.
+  /**
+   * @brief The right child's operation depends on the readiness of the left child.
+   */
   template <op OpChild>
   using up_rhs = rise_sweep<I, S, Proj, Bop, O, r_child_of(Ival), OpChild>;
-
-  // Some optimizations can be done if it's not async.
-  static constexpr bool async_bop = async_invocable<Bop &, acc_t, acc_t>;
-
   /**
-   * Return the end of the scanned range.
+   * @brief If the binary operator is asynchronous, some optimizations can be done if it's not async.
+   */
+  static constexpr bool async_bop = async_invocable<Bop &, acc_t, acc_t>;
+  /**
+   * @brief Returns one-past-the-end of the scanned range.
    */
   LF_STATIC_CALL auto
   operator()(auto self, I beg, S end, int_t n, Bop bop, Proj proj, O out) LF_STATIC_CONST->task_t {
@@ -306,16 +316,29 @@ template <std::random_access_iterator I, //
           >
   requires (Ival == interval::mid || Ival == interval::rhs)
 struct fall_sweep_impl {
-
+  /**
+   * @brief The iterator difference type of I.
+   */
   using int_t = std::iter_difference_t<I>;
+  /**
+   * @brief The accumulator type of the reduction.
+   */
   using acc_t = std::iter_value_t<O>;
-
+  /**
+   * @brief Left child of the current interval.
+   */
   using down_lhs = fall_sweep_impl<I, S, Proj, Bop, O, l_child_of(Ival)>;
+  /**
+   * @brief Right child of the current interval.
+   */
   using down_rhs = fall_sweep_impl<I, S, Proj, Bop, O, r_child_of(Ival)>;
-
-  // Some optimizations can be done if it's not async.
+  /**
+   * @brief If the binary operator is asynchronous, some optimizations can be done if it's not async.
+   */
   static constexpr bool async_bop = async_invocable<Bop &, acc_t, acc_t>;
-
+  /**
+   * @brief Recursive implementation of `fall_sweep`, requires that `tail - head > 0`.
+   */
   LF_STATIC_CALL auto
   operator()(auto self, I beg, S end, int_t n, Bop bop, Proj proj, O out) LF_STATIC_CONST->lf::task<> {
 
@@ -377,16 +400,25 @@ template <std::random_access_iterator I, //
           interval Ival = interval::all  //
           >
 struct fall_sweep {
-
-  using int_t = std::iter_difference_t<I>;
-  using acc_t = std::iter_value_t<O>;
-
-  using recur_lhs = fall_sweep<I, S, Proj, Bop, O, l_child_of(Ival)>;
-  using recur_rhs = fall_sweep<I, S, Proj, Bop, O, r_child_of(Ival)>;
-
-  using down_rhs = fall_sweep_impl<I, S, Proj, Bop, O, r_child_of(Ival)>;
-
   /**
+   * @brief The iterator difference type of I.
+   */
+  using int_t = std::iter_difference_t<I>;
+  /**
+   * @brief Recursion to the left, computed interval.
+   */
+  using recur_lhs = fall_sweep<I, S, Proj, Bop, O, l_child_of(Ival)>;
+  /**
+   * @brief Recursion to the right, computed interval.
+   */
+  using recur_rhs = fall_sweep<I, S, Proj, Bop, O, r_child_of(Ival)>;
+  /**
+   * @brief Call the implementation, this can never be called on the left.
+   */
+  using down_rhs = fall_sweep_impl<I, S, Proj, Bop, O, r_child_of(Ival)>;
+  /**
+   * @brief Launch the implementation in the un-scanned chunks.
+   *
    * Options:
    *  left fully scanned and right fully scanned -> return (make this impossible).
    *
@@ -439,10 +471,12 @@ struct fall_sweep {
 };
 
 /**
- * @brief Calls the rise_sweep and fall_sweep algorithms, checks for empty input.
+ * @brief A wrapper around the rise/fall algorithms.
  */
-
 struct scan_impl {
+  /**
+   * @brief Calls the rise_sweep and fall_sweep algorithms, checks for empty input.
+   */
   template <std::random_access_iterator I, //
             std::sized_sentinel_for<I> S,  //
             std::random_access_iterator O, //
