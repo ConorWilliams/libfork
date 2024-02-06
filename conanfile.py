@@ -1,26 +1,46 @@
+import re
+
 from conan import ConanFile
 from conan.tools.cmake import CMakeToolchain, CMake, cmake_layout, CMakeDeps
 from conan.tools.build.cppstd import check_min_cppstd
 
 
-class libfork(ConanFile):
+def read_version():
+    try:
+        with open("./include/libfork/core/macro.hpp", "r") as file:
 
+            raw = file.read()
+
+            regex = "#define [A-Z_0-9]*{} ([0-9]*)"
+
+            major = re.search(regex.format("VERSION_MAJOR"), raw)
+            minor = re.search(regex.format("VERSION_MINOR"), raw)
+            patch = re.search(regex.format("VERSION_PATCH"), raw)
+
+            return f"{major.group(1)}.{minor.group(1)}.{patch.group(1)}"
+
+    except Exception as e:
+        # Post export this will fail as the file is not present.
+        return None
+
+
+class libfork(ConanFile):
+    # Mandatory fields
     name = "libfork"
-    version = "3.6.0"
+    version = read_version()
     package_type = "header-library"
 
     # Optional metadata
     license = "MPL-2.0"
     author = "Conor Williams"
-    url = "https://github.com/ConorWilliams/libfork"
-    description = (
-        "A bleeding-edge, lock-free, wait-free, continuation-stealing tasking library."
-    )
+    homepage = "https://github.com/ConorWilliams/libfork"
+    url = homepage
+    description = "A bleeding-edge, lock-free, wait-free, continuation-stealing fork-join library built on C++20's coroutines."
     topics = (
         "multithreading",
         "fork-join",
         "parallelism",
-        "framework",
+        "coroutine",
         "continuation-stealing",
         "lock-free",
         "wait-free",
