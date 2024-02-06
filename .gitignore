@@ -10,9 +10,10 @@ prefix/
 old/
 Testing/
 
+docs/index.rst
+
 bench/data/
 *.svg
-
 
 mem.log
 memory.csv

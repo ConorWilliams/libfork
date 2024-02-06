@@ -68,7 +68,7 @@ class libfork(ConanFile):
         # Mimic the packageConfig files written by the library
         # For header-only packages, libdirs and bindirs are not used
         # so it's necessary to set those as empty.
-        self.cpp.package.includedirs = ["include/libfork-3.6.0"]
+        self.cpp.package.includedirs = [f"include/libfork-{self.version}"]
         self.cpp.package.bindirs = []
         self.cpp.package.libdirs = []
         # By default, this package will be exported as libfork::libfork

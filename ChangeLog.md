@@ -29,6 +29,8 @@
 
 ### Meta
 
+- Package test for conan/vcpkg/manual installs and some package bugfixes.
+
 ## [**Versions 3.5.0**](https://github.com/ConorWilliams/libfork/compare/142edfb6711fad18d6035dd22774e90ec646b896...e641fb66fe869d962ecd816a51d4e6f5ecd543b3)
 
 This release is a full overhaul of the API and implementation of libfork that should bring large performance improvements.
