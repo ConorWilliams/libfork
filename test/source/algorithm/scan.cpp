@@ -230,29 +230,29 @@ TEMPLATE_TEST_CASE("scan (reg, reg)", "[scan][template]", unit_pool, busy_pool, 
   }
 }
 
-// TEMPLATE_TEST_CASE("scan <int> (co, reg)", "[scan][template]", unit_pool, busy_pool, lazy_pool) {
-//   SECTION("(+), (id)") {
-//     test<int>(make_scheduler<TestType>(), coro_plus, std::identity{}, check(std::plus{}, std::identity{}));
-//   }
-//   SECTION("(+), (2*)") {
-//     test<int>(make_scheduler<TestType>(), coro_plus, doubler, check(std::plus{}, doubler));
-//   }
-// }
+TEMPLATE_TEST_CASE("scan <int> (co, reg)", "[scan][template]", unit_pool, busy_pool, lazy_pool) {
+  SECTION("(+), (id)") {
+    test<int>(make_scheduler<TestType>(), coro_plus, std::identity{}, check(std::plus{}, std::identity{}));
+  }
+  SECTION("(+), (2*)") {
+    test<int>(make_scheduler<TestType>(), coro_plus, doubler, check(std::plus{}, doubler));
+  }
+}
 
-// TEMPLATE_TEST_CASE("scan <int> (reg, co)", "[scan][template]", unit_pool, busy_pool, lazy_pool) {
-//   SECTION("(+), (id)") {
-//     test<int>(make_scheduler<TestType>(), std::plus{}, coro_identity, check(std::plus{}, std::identity{}));
-//   }
-//   SECTION("(+), (2*)") {
-//     test<int>(make_scheduler<TestType>(), std::plus{}, coro_doubler, check(std::plus{}, doubler));
-//   }
-// }
+TEMPLATE_TEST_CASE("scan <int> (reg, co)", "[scan][template]", unit_pool, busy_pool, lazy_pool) {
+  SECTION("(+), (id)") {
+    test<int>(make_scheduler<TestType>(), std::plus{}, coro_identity, check(std::plus{}, std::identity{}));
+  }
+  SECTION("(+), (2*)") {
+    test<int>(make_scheduler<TestType>(), std::plus{}, coro_doubler, check(std::plus{}, doubler));
+  }
+}
 
-// TEMPLATE_TEST_CASE("scan <int> (co, co)", "[scan][template]", unit_pool, busy_pool, lazy_pool) {
-//   SECTION("(+), (id)") {
-//     test<int>(make_scheduler<TestType>(), coro_plus, coro_identity, check(std::plus{}, std::identity{}));
-//   }
-//   SECTION("(+), (2*)") {
-//     test<int>(make_scheduler<TestType>(), coro_plus, coro_doubler, check(std::plus{}, doubler));
-//   }
-// }
+TEMPLATE_TEST_CASE("scan <int> (co, co)", "[scan][template]", unit_pool, busy_pool, lazy_pool) {
+  SECTION("(+), (id)") {
+    test<int>(make_scheduler<TestType>(), coro_plus, coro_identity, check(std::plus{}, std::identity{}));
+  }
+  SECTION("(+), (2*)") {
+    test<int>(make_scheduler<TestType>(), coro_plus, coro_doubler, check(std::plus{}, doubler));
+  }
+}

@@ -357,8 +357,6 @@ concept scannable =                                       //
     detail::foldable_to<std::iter_value_t<O>, Bop, T> &&  // Regular reduction over T.
     detail::scannable_impl<std::iter_value_t<O>, Bop, O>; //
 
-// TODO requirements for last one once we fix such that the last element is used.
-
 template <class Bop, class O, class I>
 concept indirectly_scannable =
     std::indirectly_readable<O> &&                                  //
