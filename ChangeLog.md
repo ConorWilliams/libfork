@@ -12,7 +12,7 @@
 
 ### Meta  -->
 
-## [**Version 3.6.0**](https://github.com/ConorWilliams/libfork/compare/e641fb66fe869d962ecd816a51d4e6f5ecd543b3...dev)
+## [**Version 3.6.0**](https://github.com/ConorWilliams/libfork/compare/v2.1.1...3.6.0)
 
 ### Added
 
@@ -23,15 +23,11 @@
 
 - Improved memory safety of awaitables and made many type immovable to reduce erroneous use.
 
-### Removed
-
-### Bugfixes
-
 ### Meta
 
-- Package test for conan/vcpkg/manual installs and some package bugfixes.
+- Package tests for conan/vcpkg/manual installs and some package bugfixes.
 
-## [**Versions 3.5.0**](https://github.com/ConorWilliams/libfork/compare/142edfb6711fad18d6035dd22774e90ec646b896...e641fb66fe869d962ecd816a51d4e6f5ecd543b3)
+## **Versions 3.5.0**
 
 This release is a full overhaul of the API and implementation of libfork that should bring large performance improvements.
 
@@ -51,7 +47,7 @@ This release is a full overhaul of the API and implementation of libfork that sh
 - A new API for defining schedulers.
 - Re-introduced exception handling and added a customization point for individual exception handling.
 
-## [**Version 2.1.1**](https://github.com/ConorWilliams/libfork/compare/v2.1.0...142edfb6711fad18d6035dd22774e90ec646b896)
+## [**Version 2.1.1**](https://github.com/ConorWilliams/libfork/compare/v2.1.0...v2.1.1)
 
 ### Added
 
