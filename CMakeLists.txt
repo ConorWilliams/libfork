@@ -68,24 +68,21 @@ if(NOT LF_NO_HWLOC)
   if (hwloc_FOUND)
     # Instructs libfork to use hwloc.
     target_compile_definitions(libfork_libfork INTERFACE LF_USE_HWLOC)
-
+    # Link to exported target.
     target_link_libraries(libfork_libfork INTERFACE hwloc::hwloc)
-
-    # Used in package config to re-export hwloc if required.
-    set(libfork_DEPENDS_HWLOC)
   else()
-    # Fallback to custom findHwloc.cmake
-    find_package(Hwloc 2.5.0)
+    # Fallback to custom findHwlocLibfork.cmake
+    find_package(HwlocLibfork 2.5.0)
 
-    if(HWLOC_FOUND)
+    if(HwlocLibfork_FOUND)
       # Instructs libfork to use hwloc.
       target_compile_definitions(libfork_libfork INTERFACE LF_USE_HWLOC)
 
-      # Provided headers
-      target_include_directories(libfork_libfork SYSTEM INTERFACE ${Hwloc_INCLUDE_DIRS})
+      # Provided headers.
+      target_include_directories(libfork_libfork SYSTEM INTERFACE ${HwlocLibfork_INCLUDE_DIRS})
 
-      # Provided libraries
-      target_link_libraries(libfork_libfork INTERFACE ${Hwloc_LINK_LIBRARIES})
+      # Provided libraries.
+      target_link_libraries(libfork_libfork INTERFACE ${HwlocLibfork_LINK_LIBRARIES})
     else()
       message(WARNING "HWLOC not found, NUMA support disabled!")
     endif()

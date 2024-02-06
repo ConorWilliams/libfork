@@ -1,5 +1,4 @@
-#.rst:
-# FindHwloc
+# FindHwlocLibfork
 # ----------
 #
 # Try to find Portable Hardware Locality (hwloc) libraries.
@@ -10,16 +9,14 @@
 #
 # Once done this will define::
 #
-#   Hwloc_FOUND            - True if hwloc was found
-#   Hwloc_INCLUDE_DIRS     - include directories for hwloc
-#   Hwloc_LINK_LIBRARIES   - link against these libraries to use hwloc
-#   Hwloc_VERSION          - version
-#   Hwloc_CFLAGS           - include directories as compiler flags
-#   Hwloc_LDLFAGS          - link paths and libs as compiler flags
+#   HwlocLibfork_FOUND            - True if hwloc was found
+#   HwlocLibfork_INCLUDE_DIRS     - Include directories for hwloc
+#   HwlocLibfork_LINK_LIBRARIES   - Link against these libraries to use hwloc
+#   HwlocLibfork_VERSION          - Version
 #
 
 #=============================================================================
-# Copyright 2014 Mikael Lepistö
+# Copyright 2014 Mikael Lepistö, 2024 Conor J. Williams
 #
 # Distributed under the OSI-approved BSD License (the "License");
 #
@@ -30,7 +27,7 @@
 
 if(WIN32)
   
-  find_path(Hwloc_INCLUDE_DIR
+  find_path(HwlocLibfork_INCLUDE_DIR
     NAMES
       hwloc.h
     PATHS
@@ -40,7 +37,7 @@ if(WIN32)
       include
   )
 
-  find_library(Hwloc_LIBRARY
+  find_library(HwlocLibfork_LIBRARY
     NAMES
       hwloc
     PATHS
@@ -73,9 +70,9 @@ if(WIN32)
 
   TRY_COMPILE(_LINK_SUCCESS ${CMAKE_BINARY_DIR} "${_TEST_SOURCE}"
     CMAKE_FLAGS
-    "-DINCLUDE_DIRECTORIES:STRING=${Hwloc_INCLUDE_DIR}"
+    "-DINCLUDE_DIRECTORIES:STRING=${HwlocLibfork_INCLUDE_DIR}"
     CMAKE_FLAGS
-    "-DLINK_LIBRARIES:STRING=${Hwloc_LIBRARY}"
+    "-DLINK_LIBRARIES:STRING=${HwlocLibfork_LIBRARY}"
   )
 
   IF(NOT _LINK_SUCCESS)
@@ -105,7 +102,7 @@ if(WIN32)
       OUTPUT_VARIABLE HWLOC_VERSION_LINE 
       OUTPUT_STRIP_TRAILING_WHITESPACE
     )
-    string(REGEX MATCH "([0-9]+.[0-9]+)$" Hwloc_VERSION "${HWLOC_VERSION_LINE}")
+    string(REGEX MATCH "([0-9]+.[0-9]+)$" HwlocLibfork_VERSION "${HWLOC_VERSION_LINE}")
     unset(HWLOC_VERSION_LINE)
   endif()
   
@@ -113,25 +110,19 @@ if(WIN32)
   # All good
   #
 
-  set(Hwloc_LIBRARIES ${Hwloc_LIBRARY})
-  set(Hwloc_LINK_LIBRARIES ${Hwloc_LIBRARY})
-  set(Hwloc_INCLUDE_DIRS ${Hwloc_INCLUDE_DIR})
+  set(HwlocLibfork_LIBRARIES ${HwlocLibfork_LIBRARY})
+  set(HwlocLibfork_LINK_LIBRARIES ${HwlocLibfork_LIBRARY})
+  set(HwlocLibfork_INCLUDE_DIRS ${HwlocLibfork_INCLUDE_DIR})
 
   include(FindPackageHandleStandardArgs)
 
   find_package_handle_standard_args(
-    Hwloc
-    REQUIRED_VARS Hwloc_LIBRARIES Hwloc_INCLUDE_DIRS Hwloc_LINK_LIBRARIES
-    VERSION_VAR Hwloc_VERSION
+    HwlocLibfork
+    REQUIRED_VARS HwlocLibfork_LIBRARIES HwlocLibfork_INCLUDE_DIRS HwlocLibfork_LINK_LIBRARIES
+    VERSION_VAR HwlocLibfork_VERSION
   )
 
-  mark_as_advanced(Hwloc_INCLUDE_DIR Hwloc_LIBRARY Hwloc_LINK_LIBRARIES)
-
-  foreach(arg ${Hwloc_INCLUDE_DIRS})
-    set(Hwloc_CFLAGS "${Hwloc_CFLAGS} /I${arg}")
-  endforeach()
-
-  set(Hwloc_LDFLAGS "${Hwloc_LIBRARY}")
+  mark_as_advanced(HwlocLibfork_INCLUDE_DIR HwlocLibfork_LIBRARY HwlocLibfork_LINK_LIBRARIES)
 
 else()
 
@@ -156,36 +147,36 @@ else()
 
   if(hwloc_FIND_VERSION)
     if(hwloc_FIND_VERSION_EXACT)
-      pkg_check_modules(Hwloc ${_hwloc_OPTS} hwloc=${hwloc_FIND_VERSION})
+      pkg_check_modules(HwlocLibfork ${_hwloc_OPTS} hwloc=${hwloc_FIND_VERSION})
     else()
-      pkg_check_modules(Hwloc ${_hwloc_OPTS} hwloc>=${hwloc_FIND_VERSION})
+      pkg_check_modules(HwlocLibfork ${_hwloc_OPTS} hwloc>=${hwloc_FIND_VERSION})
     endif()
   else()
-    pkg_check_modules(Hwloc ${_hwloc_OPTS} hwloc)
+    pkg_check_modules(HwlocLibfork ${_hwloc_OPTS} hwloc)
   endif()
 
-  if(Hwloc_FOUND)
-    string(REPLACE "." ";" Hwloc_VERSION_PARSED "${Hwloc_VERSION}")
-    set(Hwloc_VERSION "${Hwloc_VERSION}" CACHE STRING "version of Hwloc as a list")
-    list(GET Hwloc_VERSION_PARSED 0 Hwloc_VERSION_MAJOR)
-    set(Hwloc_VERSION_MAJOR "${Hwloc_VERSION_MAJOR}" CACHE STRING "Major version of Hwloc")
-    list(GET Hwloc_VERSION_PARSED 1 Hwloc_VERSION_MINOR)
-    set(Hwloc_VERSION_MINOR "${Hwloc_VERSION_MINOR}" CACHE STRING "Minor version of Hwloc")
+  if(HwlocLibfork_FOUND)
+    string(REPLACE "." ";" HwlocLibfork_VERSION_PARSED "${HwlocLibfork_VERSION}")
+    set(HwlocLibfork_VERSION "${HwlocLibfork_VERSION}" CACHE STRING "version of HwlocLibfork as a list")
+    list(GET HwlocLibfork_VERSION_PARSED 0 HwlocLibfork_VERSION_MAJOR)
+    set(HwlocLibfork_VERSION_MAJOR "${HwlocLibfork_VERSION_MAJOR}" CACHE STRING "Major version of HwlocLibfork")
+    list(GET HwlocLibfork_VERSION_PARSED 1 HwlocLibfork_VERSION_MINOR)
+    set(HwlocLibfork_VERSION_MINOR "${HwlocLibfork_VERSION_MINOR}" CACHE STRING "Minor version of HwlocLibfork")
 
     include(FindPackageHandleStandardArgs)
 
     find_package_handle_standard_args(
-        Hwloc
-        REQUIRED_VARS Hwloc_LIBRARIES Hwloc_INCLUDE_DIRS Hwloc_LINK_LIBRARIES
-        VERSION_VAR Hwloc_VERSION
+        HwlocLibfork
+        REQUIRED_VARS HwlocLibfork_LIBRARIES HwlocLibfork_INCLUDE_DIRS HwlocLibfork_LINK_LIBRARIES
+        VERSION_VAR HwlocLibfork_VERSION
     )
 
-    if(NOT ${Hwloc_VERSION} VERSION_LESS 1.7.0)
-      set(Hwloc_GL_FOUND 1)
+    if(NOT ${HwlocLibfork_VERSION} VERSION_LESS 1.7.0)
+      set(HwlocLibfork_GL_FOUND 1)
     endif()
 
     if(_hwloc_output)
-      message(STATUS "Found hwloc ${Hwloc_VERSION} in ${Hwloc_INCLUDE_DIRS}:${Hwloc_LIBRARIES}")
+      message(STATUS "Found hwloc ${HwlocLibfork_VERSION} in ${HwlocLibfork_INCLUDE_DIRS}:${HwlocLibfork_LIBRARIES}")
     endif()
   endif()
 endif()

@@ -4,7 +4,7 @@ include(CMakeFindDependencyMacro)
 
 find_dependency(Threads)
 
-if (DEFINED @libfork_DEPENDS_HWLOC@)
+if (@hwloc_FOUND@)
     find_dependency(hwloc 2.5.0)
 endif()
 
