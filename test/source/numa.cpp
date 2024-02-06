@@ -40,8 +40,8 @@ TEST_CASE("make_topology", "[numa]") {
 namespace {
 
 struct comp {
-  auto operator()(numa_topology::numa_handle const &lhs, numa_topology::numa_handle const &rhs) const noexcept
-      -> bool {
+  auto operator()(numa_topology::numa_handle const &lhs,
+                  numa_topology::numa_handle const &rhs) const noexcept -> bool {
     return hwloc_bitmap_compare(lhs.cpup.get(), rhs.cpup.get()) < 0;
   }
 };
@@ -76,7 +76,7 @@ TEST_CASE("split", "[numa]") {
 
 namespace {
 
-void print_distances(lf::ext::detail::distance_matrix const &dist) {
+void print_distances(lf::impl::detail::distance_matrix const &dist) {
 
   std::cout << "distances [" << dist.size() << "." << dist.size() << "]:\n";
 
@@ -98,7 +98,7 @@ TEST_CASE("distances", "[numa]") {
 
   for (std::size_t n = 1; n <= 2 * max_unique; n++) {
 
-    ext::detail::distance_matrix dist{topo.split(n)};
+    impl::detail::distance_matrix dist{topo.split(n)};
 
     REQUIRE(dist.size() == n);
 

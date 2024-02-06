@@ -348,7 +348,7 @@ concept scannable_impl =
     std::constructible_from<Acc, std::iter_reference_t<O>> &&                      // Initialize acc in scan.
     std::convertible_to<std::iter_reference_t<O>, Acc>;                            // Same as -^.
 
-}
+} // namespace detail
 
 template <class Bop, class O, class T>
 concept scannable =                                       //

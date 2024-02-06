@@ -73,7 +73,9 @@ struct eager_throw_outside {};
 
 } // namespace modifier
 
-namespace detail {
+} // namespace core
+
+namespace impl::detail {
 
 template <typename Mod, tag T>
 struct valid_modifier_impl : std::false_type {
@@ -97,13 +99,15 @@ struct valid_modifier_impl<modifier::eager_throw, tag::call> : std::true_type {}
 template <>
 struct valid_modifier_impl<modifier::eager_throw_outside, tag::call> : std::true_type {};
 
-} // namespace detail
+} // namespace impl::detail
+
+inline namespace core {
 
 /**
  * @brief Test if a type is a valid modifier for a tag.
  */
 template <typename T, tag Tag>
-concept modifier_for = detail::valid_modifier_impl<T, Tag>::value;
+concept modifier_for = impl::detail::valid_modifier_impl<T, Tag>::value;
 
 } // namespace core
 

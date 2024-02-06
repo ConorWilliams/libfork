@@ -371,7 +371,9 @@ inline auto numa_topology::split(std::size_t n, numa_strategy strategy) const ->
   });
 }
 
-namespace detail {
+} // namespace ext
+
+namespace impl::detail {
 
 class distance_matrix {
 
@@ -436,7 +438,9 @@ class distance_matrix {
   std::vector<int> m_matrix;
 };
 
-} // namespace detail
+} // namespace impl::detail
+
+inline namespace ext {
 
 template <typename T>
 inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data, numa_strategy strategy)
@@ -446,7 +450,7 @@ inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &dat
 
   // Compute the topological distance between all pairs of objects.
 
-  detail::distance_matrix dist{handles};
+  impl::detail::distance_matrix dist{handles};
 
   std::vector<numa_node<T>> nodes = impl::map(std::move(handles), [](numa_handle &&handle) -> numa_node<T> {
     return {std::move(handle), {}};

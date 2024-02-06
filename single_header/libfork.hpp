@@ -3214,7 +3214,9 @@ struct eager_throw_outside {};
 
 } // namespace modifier
 
-namespace detail {
+} // namespace core
+
+namespace impl::detail {
 
 template <typename Mod, tag T>
 struct valid_modifier_impl : std::false_type {
@@ -3238,13 +3240,15 @@ struct valid_modifier_impl<modifier::eager_throw, tag::call> : std::true_type {}
 template <>
 struct valid_modifier_impl<modifier::eager_throw_outside, tag::call> : std::true_type {};
 
-} // namespace detail
+} // namespace impl::detail
+
+inline namespace core {
 
 /**
  * @brief Test if a type is a valid modifier for a tag.
  */
 template <typename T, tag Tag>
-concept modifier_for = detail::valid_modifier_impl<T, Tag>::value;
+concept modifier_for = impl::detail::valid_modifier_impl<T, Tag>::value;
 
 } // namespace core
 
@@ -4095,7 +4099,7 @@ concept scannable_impl =
     std::constructible_from<Acc, std::iter_reference_t<O>> &&                      // Initialize acc in scan.
     std::convertible_to<std::iter_reference_t<O>, Acc>;                            // Same as -^.
 
-}
+} // namespace detail
 
 template <class Bop, class O, class T>
 concept scannable =                                       //
@@ -8238,7 +8242,9 @@ inline auto numa_topology::split(std::size_t n, numa_strategy strategy) const ->
   });
 }
 
-namespace detail {
+} // namespace ext
+
+namespace impl::detail {
 
 class distance_matrix {
 
@@ -8303,7 +8309,9 @@ class distance_matrix {
   std::vector<int> m_matrix;
 };
 
-} // namespace detail
+} // namespace impl::detail
+
+inline namespace ext {
 
 template <typename T>
 inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data, numa_strategy strategy)
@@ -8313,7 +8321,7 @@ inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &dat
 
   // Compute the topological distance between all pairs of objects.
 
-  detail::distance_matrix dist{handles};
+  impl::detail::distance_matrix dist{handles};
 
   std::vector<numa_node<T>> nodes = impl::map(std::move(handles), [](numa_handle &&handle) -> numa_node<T> {
     return {std::move(handle), {}};
