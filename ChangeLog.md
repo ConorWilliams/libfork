@@ -12,6 +12,18 @@
 
 ### Meta  -->
 
+## [**Version 3.x.x**](https://github.com/ConorWilliams/libfork/compare/v3.6.0...v3.x.0)
+
+### Added
+
+### Changed
+
+### Removed
+
+### Bugfixes
+
+### Meta
+
 ## [**Version 3.6.0**](https://github.com/ConorWilliams/libfork/compare/v3.5.0...v3.6.0)
 
 ### Added

@@ -32,7 +32,7 @@ class libfork(ConanFile):
 
     # Optional metadata
     license = "MPL-2.0"
-    author = "Conor Williams"
+    author = "C. J. Williams"
     homepage = "https://github.com/ConorWilliams/libfork"
     url = homepage
     description = "A bleeding-edge, lock-free, wait-free, continuation-stealing fork-join library built on C++20's coroutines."
@@ -46,27 +46,29 @@ class libfork(ConanFile):
         "wait-free",
     )
 
-    # Binary configuration
     settings = "os", "compiler", "build_type", "arch"
 
-    #  Optimization for header only libs
+    #  Optimization for header only libs.
     no_copy_source = True
 
     # Sources are located in the same place as this recipe, copy them to the recipe
     exports_sources = "CMakeLists.txt", "include/**", "cmake/*", "LICENSE.md"
 
     def validate(self):
-        # We need coroutine support
+        # We need coroutine support.
         check_min_cppstd(self, "20")
 
     def build_requirements(self):
+        # Some traits like build=True, etc.. will be automatically inferred.
+        self.tool_requires("cmake/3.28.1")
+        # Opional dependencies that boost performance.
         self.requires("boost/1.83.0")
         self.requires("hwloc/2.9.3")
 
     def layout(self):
         cmake_layout(self)
-        # Mimic the packageConfig files written by the library
-        # For header-only packages, libdirs and bindirs are not used
+        # Mimic the packageConfig files written by the library.
+        # For header-only packages, libdirs and bindirs are not used.
         # so it's necessary to set those as empty.
         self.cpp.package.includedirs = [f"include/libfork-{self.version}"]
         self.cpp.package.bindirs = []
@@ -76,7 +78,7 @@ class libfork(ConanFile):
     def generate(self):
         deps = CMakeDeps(self)
         deps.generate()
-        # Generate build system
+        # Generate build system.
         tc = CMakeToolchain(self)
         tc.generate()
 
@@ -94,7 +96,7 @@ class libfork(ConanFile):
         self.info.clear()
 
     def package_info(self):
-
+        # Let libfork know about the optional dependencies.
         self.cpp_info.defines = [
             "LF_USE_HWLOC",
             "LF_USE_BOOST_ATOMIC",

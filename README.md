@@ -25,7 +25,7 @@
 
 <h3 align="center"> ** Now supplying 🌵! **  </h1>
 
-Libfork is primarily an abstraction for fully-portable, strict, [fork-join parallelism](https://en.wikipedia.org/wiki/Fork%E2%80%93join_model). This is made possible without the use of any macros/inline assembly using C++20's coroutines. Ultra-fine grained parallelism (the ability to spawn tasks with very low overhead) is enabled by an innovative implementation of an (almost) non-allocating [cactus-stack](https://en.wikipedia.org/wiki/Parent_pointer_tree) utilizing _segmented stacks_. Libfork presents a cross-platform API that decouples scheduling tasks (a customization point) from writing tasks. Additionally, libfork provides performant NUMA-aware work-stealing schedulers for general use. If you'd like to learn more check out [the tour of libfork](#a-tour-of-libfork) then try it on [compiler explorer](https://godbolt.org/z/nzTPKqrrq) or, just grok the __TLDR__:
+Libfork is primarily an abstraction for fully-portable, strict, [fork-join parallelism](https://en.wikipedia.org/wiki/Fork%E2%80%93join_model). This is made possible without the use of any macros/inline assembly using C++20's coroutines. Ultra-fine grained parallelism (the ability to spawn tasks with very low overhead) is enabled by an innovative implementation of an (almost) non-allocating [cactus-stack](https://en.wikipedia.org/wiki/Parent_pointer_tree) utilizing _segmented stacks_. Libfork presents a cross-platform API that decouples scheduling tasks (a customization point) from writing tasks. Additionally, libfork provides performant NUMA-aware work-stealing schedulers for general use. If you'd like to learn more check out [the tour of libfork](#a-tour-of-libfork) then try it on [compiler explorer](https://godbolt.org/z/MTdMorjav) or, just grok the __TLDR__:
 
 ```cpp
 #include "libfork/core.hpp"
@@ -157,7 +157,7 @@ target_link_libraries(
 
 ### Single header
 
-Although this is __not recommend__ and primarily exist for easy integration with [godbolt](https://godbolt.org/z/nzTPKqrrq); libfork supplies a [single header](single_header/libfork.hpp) that you can copy-and-paste into your project. See the [BUILDING](BUILDING.md) document's note about hwloc integration and compiler flags.
+Although this is __not recommend__ and primarily exist for easy integration with [godbolt](https://godbolt.org/z/MTdMorjav); libfork supplies a [single header](single_header/libfork.hpp) that you can copy-and-paste into your project. See the [BUILDING](BUILDING.md) document's note about hwloc integration and compiler flags.
 
 <!-- TODO: godbolt with include. -->
 
@@ -178,7 +178,7 @@ See the [ChangeLog](ChangeLog.md) document.
 
 ## A tour of libfork
 
-This section provides some background and highlights of the `core` API, for details on implementing your own schedulers on-top of libfork see the [extension documentation](https://conorwilliams.github.io/libfork/). Don't forget you can play around with libfork on [godbolt](https://godbolt.org/z/nzTPKqrrq).
+This section provides some background and highlights of the `core` API, for details on implementing your own schedulers on-top of libfork see the [extension documentation](https://conorwilliams.github.io/libfork/). Don't forget you can play around with libfork on [godbolt](https://godbolt.org/z/MTdMorjav).
 
 ### Contents
 
