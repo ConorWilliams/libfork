@@ -9,16 +9,16 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts> // for same_as
-#include <type_traits>
-#include <utility> // for as_const, forward
+#include <concepts>    // for same_as
+#include <type_traits> // for remove_cvref_t
+#include <utility>     // for forward, as_const
 
-#include "libfork/core/first_arg.hpp" // for quasi_pointer, async_function_object, first_arg_t
-#include "libfork/core/impl/unique_frame.hpp"
-#include "libfork/core/impl/utility.hpp"
-#include "libfork/core/invocable.hpp" // for async_result_t, return_address_for, async_tag_invo...
-#include "libfork/core/tag.hpp"       // for tag
-#include "libfork/core/task.hpp"      // for returnable, task
+#include "libfork/core/first_arg.hpp"         // for async_function_object, quasi_pointer, firs...
+#include "libfork/core/impl/unique_frame.hpp" // for unique_frame
+#include "libfork/core/impl/utility.hpp"      // for unqualified, immovable
+#include "libfork/core/invocable.hpp"         // for async_result_t, return_address_for, async_...
+#include "libfork/core/tag.hpp"               // for tag, modifier_for
+#include "libfork/core/task.hpp"              // for returnable, task
 
 /**
  * @file combinate.hpp
@@ -98,26 +98,20 @@ struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combin
  * @brief Build a combinator for `ret` and `fun`.
  */
 template <tag Tag, modifier_for<Tag> Mod, quasi_pointer I, async_function_object F>
-  requires std::is_rvalue_reference_v<I &&>
-auto combinate(I &&ret, F fun) -> y_combinate<I, Tag, Mod, F> {
-  return {std::forward<I>(ret), std::move(fun)};
-}
+auto combinate(I &&ret, F &&fun) {
 
-/**
- * @brief Build a combinator for `ret` and `fun`.
- *
- * This specialization prevents each layer wrapping the function in another `first_arg_t`.
- */
-template <tag Tag,
-          modifier_for<Tag> Mod,
-          tag OtherTag,
-          quasi_pointer I,
-          quasi_pointer OtherI,
-          async_function_object F,
-          typename... Args>
-  requires std::is_rvalue_reference_v<I &&>
-auto combinate(I &&ret, first_arg_t<OtherI, OtherTag, F, Args...> arg) -> y_combinate<I, Tag, Mod, F> {
-  return {std::forward<I>(ret), unwrap(std::move(arg))};
+  using II = std::remove_cvref_t<I>;
+  using FF = std::remove_cvref_t<F>;
+
+  if constexpr (first_arg_specialization<F>) {
+    // Must unwrap to prevent infinite type recursion.
+    return y_combinate<II, Tag, Mod, typename FF::async_function>{
+        std::forward<I>(ret),
+        unwrap(std::forward<F>(fun)),
+    };
+  } else {
+    return y_combinate<II, Tag, Mod, FF>{std::forward<I>(ret), std::forward<F>(fun)};
+  }
 }
 
 } // namespace lf::impl

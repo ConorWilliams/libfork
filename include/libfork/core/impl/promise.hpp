@@ -9,9 +9,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <atomic> // for atomic_thread_fence, memory_order_acquire
-#include <bit>    // for bit_cast
-#include <concepts>
+#include <atomic>      // for atomic_thread_fence, memory_order_acquire
+#include <bit>         // for bit_cast
 #include <coroutine>   // for coroutine_handle, noop_coroutine, coroutine_...
 #include <cstddef>     // for size_t
 #include <type_traits> // for true_type, false_type, remove_cvref_t
@@ -187,14 +186,17 @@ struct promise_base : frame {
   /**
    * @brief Transform a context_switch awaitable into a real awaitable.
    */
-  template <context_switcher A>
-  auto await_transform(A &&await) -> context_switch_awaitable<std::remove_cvref_t<A>> {
+  template <class A>
+    requires (!some_just<A>) && context_switcher<A>
+  auto await_transform(A &&await) {
 
     auto *submit = std::bit_cast<impl::submit_t *>(static_cast<frame *>(this));
 
     using node = typename intrusive_list<impl::submit_t *>::node;
 
-    return {std::forward<A>(await), node{submit}};
+    using awaitable = context_switch_awaitable<std::remove_cvref_t<A>>;
+
+    return awaitable{std::forward<A>(await), node{submit}};
   }
 
   // -------------------------------------------------------------- //
@@ -297,7 +299,7 @@ struct promise : promise_base, return_result<R, I> {
   /**
    * @brief Returned task stores a copy of the `this` pointer.
    */
-  auto get_return_object() noexcept -> task<R> { return {{}, {}, static_cast<void *>(this)}; }
+  auto get_return_object() noexcept -> task<R> { return {{}, {}, unique_frame{this}}; }
 
   /**
    * @brief Try to resume the parent.
@@ -435,7 +437,27 @@ inline constexpr bool safe_fork_v = detail::safe_fork<Tag, FromList, ToList>::va
 #ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
 
 /**
- * @brief Specialize coroutine_traits for task<...> from functions.
+ * @brief Specialize coroutine_traits for task<...> from member functions.
+ *
+ * We attach the `This` type to the back of the argument list, the terminal case will check
+ * that it is not an r-value reference.
+ */
+template <lf::returnable R, typename This, lf::impl::first_arg_specialization Head, typename... Tail>
+struct std::coroutine_traits<lf::task<R>, This, Head, Tail...>
+    : std::coroutine_traits<lf::task<R>, Head, Tail..., This> {};
+
+/**
+ * @brief Specialize coroutine_traits for task<...> that removes `const` from the first arg.
+ */
+template <lf::returnable R, lf::impl::first_arg_specialization Head, typename... Tail>
+  requires std::is_const_v<Head>
+struct std::coroutine_traits<lf::task<R>, Head, Tail...>
+    : std::coroutine_traits<lf::task<R>, std::remove_const_t<Head>, Tail...> {};
+
+/**
+ * @brief Specialize coroutine_traits for task<...>.
+ *
+ * This handles defaulted arguments in the `Args...` list and performs some static checks on `CallArgs...`.
  */
 template <lf::returnable R,
           lf::impl::return_address_for<R> I,
@@ -444,7 +466,6 @@ template <lf::returnable R,
           typename... CallArgs,
           typename... Args>
 struct std::coroutine_traits<lf::task<R>, lf::impl::first_arg_t<I, Tag, F, CallArgs...>, Args...> {
-
   // May have less if defaulted parameters are used.
   static_assert(sizeof...(CallArgs) <= sizeof...(Args));
 
@@ -455,17 +476,25 @@ struct std::coroutine_traits<lf::task<R>, lf::impl::first_arg_t<I, Tag, F, CallA
 };
 
 /**
- * @brief Specialize coroutine_traits for task<...> from member functions.
+ * @brief Specialize coroutine_traits for task<...> for reference first arguments.
+ *
+ * This is a hard-error as the first argument must be passed by value.
  */
-template <lf::returnable R,
-          typename This,
-          lf::impl::return_address_for<R> I,
-          lf::tag Tag,
-          lf::async_function_object F,
-          typename... CallArgs,
-          typename... Args>
-struct std::coroutine_traits<lf::task<R>, This, lf::impl::first_arg_t<I, Tag, F, CallArgs...>, Args...>
-    : std::coroutine_traits<lf::task<R>, lf::impl::first_arg_t<I, Tag, F, CallArgs...>, Args..., This> {};
+template <lf::returnable R, lf::impl::first_arg_specialization Head, typename... Tail>
+  requires std::is_reference_v<Head>
+struct std::coroutine_traits<lf::task<R>, Head, Tail...> {
+  static_assert(lf::impl::always_false<R, Head, Tail...>, "The first arg must be passed by value!");
+};
+
+/**
+ * @brief Specialize coroutine_traits for task<...> for bad invocations.
+ *
+ * This is a hard-error as the coroutine is being invoked directly with the wrong first-argument.
+ */
+template <lf::returnable R, typename... Args>
+struct std::coroutine_traits<lf::task<R>, Args...> {
+  static_assert(lf::impl::always_false<R, Args...>, "Don't invoke a coroutine directly!");
+};
 
 #endif
 

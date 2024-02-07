@@ -11,14 +11,13 @@
 
 #include <concepts> // for convertible_to
 #include <iterator> // for indirectly_writable
-#include <type_traits>
-#include <utility> // for forward
+#include <utility>  // for forward
 
-#include "libfork/core/exception.hpp"    // for stash_exception_in_return
-#include "libfork/core/first_arg.hpp"    // for quasi_pointer
-#include "libfork/core/impl/utility.hpp" // for safe_ref_bind_to
-#include "libfork/core/invocable.hpp"    // for return_address_for, discard_t
-#include "libfork/core/task.hpp"         // for returnable
+#include "libfork/core/exception.hpp"     // for stash_exception_in_return
+#include "libfork/core/first_arg.hpp"     // for quasi_pointer
+#include "libfork/core/impl/safe_ref.hpp" // for safe_ref_bind_to
+#include "libfork/core/invocable.hpp"     // for return_address_for, discard_t
+#include "libfork/core/task.hpp"          // for returnable
 
 /**
  * @file return.hpp

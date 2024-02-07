@@ -69,8 +69,77 @@
 #include <concepts>    // for constructible_from
 #include <exception>   // for exception_ptr, current_exception
 #include <memory>      // for destroy_at, construct_at
-#include <type_traits> // for add_lvalue_reference_t, add_pointer_t, type_ide...
+#include <type_traits> // for add_lvalue_reference_t, add_pointer_t, type_id...
 #include <utility>     // for addressof, forward
+
+#ifndef C258EF4A_BC44_487A_96BC_6E72746DAAFD
+#define C258EF4A_BC44_487A_96BC_6E72746DAAFD
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>    // for same_as
+#include <type_traits> // for true_type, false_type
+
+#ifndef DD0B4328_55BD_452B_A4A5_5A4670A6217B
+#define DD0B4328_55BD_452B_A4A5_5A4670A6217B
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>    // for invocable, constructible_from, convertible_to
+#include <functional>  // for invoke
+#include <type_traits> // for invoke_result_t, remove_cvref_t, false_type
+#include <utility>     // for forward
+
+#ifndef D66BBECE_E467_4EB6_B74A_AAA2E7256E02
+#define D66BBECE_E467_4EB6_B74A_AAA2E7256E02
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <functional> // for function
+#include <utility>    // for move
+#include <version>    // for __cpp_lib_move_only_function
+
+#ifndef C9703881_3D9C_41A5_A7A2_44615C4CFA6A
+#define C9703881_3D9C_41A5_A7A2_44615C4CFA6A
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <algorithm>   // for max
+#include <atomic>      // for atomic, atomic_thread_fence, memory_order, memo...
+#include <bit>         // for has_single_bit
+#include <concepts>    // for convertible_to, invocable, default_initializable
+#include <cstddef>     // for ptrdiff_t, size_t
+#include <functional>  // for invoke
+#include <memory>      // for unique_ptr, make_unique
+#include <optional>    // for optional
+#include <type_traits> // for invoke_result_t
+#include <utility>     // for addressof, forward, exchange
+#include <vector>      // for vector
+#include <version>     // for ptrdiff_t
 
 #ifndef DF63D333_F8C0_4BBA_97E1_32A78466B8B7
 #define DF63D333_F8C0_4BBA_97E1_32A78466B8B7
@@ -93,7 +162,7 @@
 #include <limits>          // for numeric_limits
 #include <new>             // for std::hardware_destructive_interference_size
 #include <source_location> // for source_location
-#include <type_traits>     // for invoke_result_t, type_identity, remove_cvref_t, true_type
+#include <type_traits>     // for invoke_result_t, remove_cvref_t, type_identity, is_emp...
 #include <utility>         // for forward
 #include <vector>          // for vector
 #include <version>         // for __cpp_lib_hardware_interference_size
@@ -592,49 +661,6 @@ static_assert(std::is_empty_v<immovable<void>>);
 // ---------------- Meta programming ---------------- //
 
 /**
- * @brief Test if we can form a reference to an instance of type T.
- */
-template <typename T>
-concept referenceable = requires () { typename std::type_identity_t<T &>; };
-
-// Ban constructs like (T && -> T const &) which would dangle.
-
-namespace detail {
-
-template <typename To, typename From>
-struct safe_ref_bind_impl : std::false_type {};
-
-// All reference types can bind to a non-dangling reference of the same kind without dangling.
-
-template <typename T>
-struct safe_ref_bind_impl<T, T> : std::true_type {};
-
-// `T const X` can additionally bind to `T X` without dangling//
-
-template <typename To, typename From>
-  requires (!std::same_as<To const &, From &>)
-struct safe_ref_bind_impl<To const &, From &> : std::true_type {};
-
-template <typename To, typename From>
-  requires (!std::same_as<To const &&, From &&>)
-struct safe_ref_bind_impl<To const &&, From &&> : std::true_type {};
-
-} // namespace detail
-
-/**
- * @brief Verify that ``To expr = From`` is valid and does not dangle.
- *
- * This requires that ``To`` and ``From`` are both the same reference type or that ``To`` is a
- * const qualified version of ``From``. This explicitly bans conversions like ``T && -> T const &``
- * which would dangle.
- */
-template <typename From, typename To>
-concept safe_ref_bind_to =                          //
-    std::is_reference_v<To> &&                      //
-    referenceable<From> &&                          //
-    detail::safe_ref_bind_impl<To, From &&>::value; //
-
-/**
  * @brief Check is a type is not ``void``.
  */
 template <typename T>
@@ -723,8 +749,8 @@ template <typename T>
     { ptr == nullptr } -> std::convertible_to<bool>;
   }
 constexpr auto
-non_null(T &&val,
-         [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept -> T && {
+non_null(T &&val, [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept
+    -> T && {
 #ifndef NDEBUG
   if (val == nullptr) {
     // NOLINTNEXTLINE
@@ -747,9 +773,477 @@ auto byte_cast(T *ptr) LF_HOF_RETURNS(std::bit_cast<forward_cv_t<T, std::byte> *
 
 #endif /* DF63D333_F8C0_4BBA_97E1_32A78466B8B7 */
 
- // for empty_t, else_empty_t, immovable, non_void, saf...        // for LF_ASSERT, unreachable, LF_COMPILER_EXCEPTIONS
-#ifndef AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
-#define AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
+ // for k_cache_line, immovable        // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST
+
+/**
+ * @file deque.hpp
+ *
+ * @brief A stand-alone, production-quality implementation of the Chase-Lev lock-free
+ * single-producer multiple-consumer deque.
+ */
+
+/**
+ * This is a workaround for clang generating bad codegen for ``std::atomic_thread_fence``.
+ */
+
+#if defined(LF_USE_BOOST_ATOMIC) && defined(__clang__) && defined(__has_include)
+  #if __has_include(<boost/atomic.hpp>)
+    #include <boost/atomic.hpp>
+
+    #define LF_ATOMIC_THREAD_FENCE_SEQ_CST boost::atomic_thread_fence(boost::memory_order_seq_cst)
+  #else
+    #warning "Boost.Atomic not found, falling back to std::atomic_thread_fence"
+    #define LF_ATOMIC_THREAD_FENCE_SEQ_CST std::atomic_thread_fence(std::memory_order_seq_cst)
+  #endif
+#else
+  #define LF_ATOMIC_THREAD_FENCE_SEQ_CST std::atomic_thread_fence(std::memory_order_seq_cst)
+#endif
+
+namespace lf {
+
+inline namespace ext {
+
+/**
+ * @brief Verify a type is suitable for use with `std::atomic`
+ *
+ * This requires a `TriviallyCopyable` type satisfying both `CopyConstructible` and `CopyAssignable`.
+ */
+template <typename T>
+concept atomicable = std::is_trivially_copyable_v<T> && //
+                     std::is_copy_constructible_v<T> && //
+                     std::is_move_constructible_v<T> && //
+                     std::is_copy_assignable_v<T> &&    //
+                     std::is_move_assignable_v<T>;      //
+
+/**
+ * @brief A concept that verifies a type is lock-free when used with `std::atomic`.
+ */
+template <typename T>
+concept lock_free = atomicable<T> && std::atomic<T>::is_always_lock_free;
+
+/**
+ * @brief Test is a type is suitable for use with `lf::deque`.
+ *
+ * This requires it to be `lf::ext::lock_free` and `std::default_initializable`.
+ */
+template <typename T>
+concept dequeable = lock_free<T> && std::default_initializable<T>;
+
+} // namespace ext
+
+namespace impl {
+
+/**
+ * @brief A basic wrapper around a c-style array that provides modulo load/stores.
+ *
+ * This class is designed for internal use only. It provides a c-style API that is
+ * used efficiently by deque for low level atomic operations.
+ *
+ * @tparam T The type of the elements in the array.
+ */
+template <dequeable T>
+struct atomic_ring_buf {
+  /**
+   * @brief Construct a new ring buff object
+   *
+   * @param cap The capacity of the buffer, MUST be a power of 2.
+   */
+  constexpr explicit atomic_ring_buf(std::ptrdiff_t cap) : m_cap{cap}, m_mask{cap - 1} {
+    LF_ASSERT(cap > 0 && std::has_single_bit(static_cast<std::size_t>(cap)));
+  }
+  /**
+   * @brief Get the capacity of the buffer.
+   */
+  [[nodiscard]] constexpr auto capacity() const noexcept -> std::ptrdiff_t { return m_cap; }
+  /**
+   * @brief Store ``val`` at ``index % this->capacity()``.
+   */
+  constexpr auto store(std::ptrdiff_t index, T const &val) noexcept -> void {
+    LF_ASSERT(index >= 0);
+    (m_buf.get() + (index & m_mask))->store(val, std::memory_order_relaxed); // NOLINT Avoid cast.
+  }
+  /**
+   * @brief Load value at ``index % this->capacity()``.
+   */
+  [[nodiscard]] constexpr auto load(std::ptrdiff_t index) const noexcept -> T {
+    LF_ASSERT(index >= 0);
+    return (m_buf.get() + (index & m_mask))->load(std::memory_order_relaxed); // NOLINT Avoid cast.
+  }
+  /**
+   * @brief Copies elements in range ``[bottom, top)`` into a new ring buffer.
+   *
+   * This function allocates a new buffer and returns a pointer to it.
+   * The caller is responsible for deallocating the memory.
+   *
+   * @param bot The bottom of the range to copy from (inclusive).
+   * @param top The top of the range to copy from (exclusive).
+   */
+  [[nodiscard]] constexpr auto resize(std::ptrdiff_t bot, std::ptrdiff_t top) const -> atomic_ring_buf<T> * {
+
+    auto *ptr = new atomic_ring_buf{2 * m_cap}; // NOLINT
+
+    for (std::ptrdiff_t i = top; i != bot; ++i) {
+      ptr->store(i, load(i));
+    }
+
+    return ptr;
+  }
+
+ private:
+  /**
+   * @brief An array of atomic elements.
+   */
+  using array_t = std::atomic<T>[]; // NOLINT
+  /**
+   * @brief Capacity of the buffer.
+   */
+  std::ptrdiff_t m_cap;
+  /**
+   * @brief Bit mask to perform modulo capacity operations.
+   */
+  std::ptrdiff_t m_mask;
+
+#ifdef __cpp_lib_smart_ptr_for_overwrite
+  std::unique_ptr<array_t> m_buf = std::make_unique_for_overwrite<array_t>(static_cast<std::size_t>(m_cap));
+#else
+  std::unique_ptr<array_t> m_buf = std::make_unique<array_t>(static_cast<std::size_t>(m_cap));
+#endif
+};
+
+} // namespace impl
+
+inline namespace ext {
+
+/**
+ * @brief Error codes for ``deque`` 's ``steal()`` operation.
+ */
+enum class err : int {
+  /**
+   * @brief The ``steal()`` operation succeeded.
+   */
+  none = 0,
+  /**
+   * @brief  Lost the ``steal()`` race hence, the ``steal()`` operation failed.
+   */
+  lost,
+  /**
+   * @brief The deque is empty and hence, the ``steal()`` operation failed.
+   */
+  empty,
+};
+
+/**
+ * @brief The return type of a `lf::deque` `steal()` operation.
+ *
+ * This type is suitable for structured bindings. We return a custom type instead of a
+ * `std::optional` to allow for more information to be returned as to why a steal may fail.
+ */
+template <typename T>
+struct steal_t {
+  /**
+   * @brief Check if the operation succeeded.
+   */
+  [[nodiscard]] constexpr explicit operator bool() const noexcept { return code == err::none; }
+  /**
+   * @brief Get the value like ``std::optional``.
+   *
+   * Requires ``code == err::none`` .
+   */
+  [[nodiscard]] constexpr auto operator*() noexcept -> T & {
+    LF_ASSERT(code == err::none);
+    return val;
+  }
+  /**
+   * @brief Get the value like ``std::optional``.
+   *
+   * Requires ``code == err::none`` .
+   */
+  [[nodiscard]] constexpr auto operator*() const noexcept -> T const & {
+    LF_ASSERT(code == err::none);
+    return val;
+  }
+  /**
+   * @brief Get the value ``like std::optional``.
+   *
+   * Requires ``code == err::none`` .
+   */
+  [[nodiscard]] constexpr auto operator->() noexcept -> T * {
+    LF_ASSERT(code == err::none);
+    return std::addressof(val);
+  }
+  /**
+   * @brief Get the value ``like std::optional``.
+   *
+   * Requires ``code == err::none`` .
+   */
+  [[nodiscard]] constexpr auto operator->() const noexcept -> T const * {
+    LF_ASSERT(code == err::none);
+    return std::addressof(val);
+  }
+
+  /**
+   * @brief The error code of the ``steal()`` operation.
+   */
+  err code;
+  /**
+   * @brief The value stolen from the deque, Only valid if ``code == err::stolen``.
+   */
+  T val;
+};
+
+/**
+ * @brief A functor that returns ``std::nullopt``.
+ */
+template <typename T>
+struct return_nullopt {
+  /**
+   * @brief Returns ``std::nullopt``.
+   */
+  LF_STATIC_CALL constexpr auto operator()() LF_STATIC_CONST noexcept -> std::optional<T> { return {}; }
+};
+
+/**
+ * @brief An unbounded lock-free single-producer multiple-consumer work-stealing deque.
+ *
+ * \rst
+ *
+ * Implements the "Chase-Lev" deque described in the papers, `"Dynamic Circular Work-Stealing deque"
+ * <https://doi.org/10.1145/1073970.1073974>`_ and `"Correct and Efficient Work-Stealing for Weak
+ * Memory Models" <https://doi.org/10.1145/2442516.2442524>`_.
+ *
+ * Only the deque owner can perform ``pop()`` and ``push()`` operations where the deque behaves
+ * like a LIFO stack. Others can (only) ``steal()`` data from the deque, they see a FIFO deque.
+ * All threads must have finished using the deque before it is destructed.
+ *
+ *
+ * Example:
+ *
+ * .. include:: ../../../test/source/core/deque.cpp
+ *    :code:
+ *    :start-after: // !BEGIN-EXAMPLE
+ *    :end-before: // !END-EXAMPLE
+ *
+ * \endrst
+ *
+ * @tparam T The type of the elements in the deque.
+ * @tparam Optional The type returned by ``pop()``.
+ */
+template <dequeable T>
+class deque : impl::immovable<deque<T>> {
+
+  static constexpr std::ptrdiff_t k_default_capacity = 1024;
+  static constexpr std::size_t k_garbage_reserve = 64;
+
+ public:
+  /**
+   * @brief The type of the elements in the deque.
+   */
+  using value_type = T;
+  /**
+   * @brief Construct a new empty deque object.
+   */
+  constexpr deque() : deque(k_default_capacity) {}
+  /**
+   * @brief Construct a new empty deque object.
+   *
+   * @param cap The capacity of the deque (must be a power of 2).
+   */
+  constexpr explicit deque(std::ptrdiff_t cap);
+  /**
+   * @brief Get the number of elements in the deque.
+   */
+  [[nodiscard]] constexpr auto size() const noexcept -> std::size_t;
+  /**
+   * @brief Get the number of elements in the deque as a signed integer.
+   */
+  [[nodiscard]] constexpr auto ssize() const noexcept -> ptrdiff_t;
+  /**
+   * @brief Get the capacity of the deque.
+   */
+  [[nodiscard]] constexpr auto capacity() const noexcept -> ptrdiff_t;
+  /**
+   * @brief Check if the deque is empty.
+   */
+  [[nodiscard]] constexpr auto empty() const noexcept -> bool;
+  /**
+   * @brief Push an item into the deque.
+   *
+   * Only the owner thread can insert an item into the deque.
+   * This operation can trigger the deque to resize if more space is required.
+   * This may throw if an allocation is required and then fails.
+   *
+   * @param val Value to add to the deque.
+   */
+  constexpr void push(T const &val);
+  /**
+   * @brief Pop an item from the deque.
+   *
+   * Only the owner thread can pop out an item from the deque. If the buffer is empty calls `when_empty` and
+   * returns the result. By default, `when_empty` is a no-op that returns a null `std::optional<T>`.
+   */
+  template <std::invocable F = return_nullopt<T>>
+    requires std::convertible_to<T, std::invoke_result_t<F>>
+  constexpr auto pop(F &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<F>) -> std::invoke_result_t<F>;
+
+  /**
+   * @brief Steal an item from the deque.
+   *
+   * Any threads can try to steal an item from the deque. This operation can fail if the deque is
+   * empty or if another thread simultaneously stole an item from the deque.
+   */
+  [[nodiscard]] constexpr auto steal() noexcept -> steal_t<T>;
+
+  /**
+   * @brief Destroy the deque object.
+   *
+   * All threads must have finished using the deque before it is destructed.
+   */
+  constexpr ~deque() noexcept;
+
+ private:
+  alignas(impl::k_cache_line) std::atomic<std::ptrdiff_t> m_top;
+  alignas(impl::k_cache_line) std::atomic<std::ptrdiff_t> m_bottom;
+  alignas(impl::k_cache_line) std::atomic<impl::atomic_ring_buf<T> *> m_buf;
+  std::vector<std::unique_ptr<impl::atomic_ring_buf<T>>> m_garbage;
+
+  // Convenience aliases.
+  static constexpr std::memory_order relaxed = std::memory_order_relaxed;
+  static constexpr std::memory_order consume = std::memory_order_consume;
+  static constexpr std::memory_order acquire = std::memory_order_acquire;
+  static constexpr std::memory_order release = std::memory_order_release;
+  static constexpr std::memory_order seq_cst = std::memory_order_seq_cst;
+};
+
+template <dequeable T>
+constexpr deque<T>::deque(std::ptrdiff_t cap)
+    : m_top(0),
+      m_bottom(0),
+      m_buf(new impl::atomic_ring_buf<T>{cap}) {
+  m_garbage.reserve(k_garbage_reserve);
+}
+
+template <dequeable T>
+constexpr auto deque<T>::size() const noexcept -> std::size_t {
+  return static_cast<std::size_t>(ssize());
+}
+
+template <dequeable T>
+constexpr auto deque<T>::ssize() const noexcept -> std::ptrdiff_t {
+  ptrdiff_t const bottom = m_bottom.load(relaxed);
+  ptrdiff_t const top = m_top.load(relaxed);
+  return std::max(bottom - top, ptrdiff_t{0});
+}
+
+template <dequeable T>
+constexpr auto deque<T>::capacity() const noexcept -> ptrdiff_t {
+  return m_buf.load(relaxed)->capacity();
+}
+
+template <dequeable T>
+constexpr auto deque<T>::empty() const noexcept -> bool {
+  ptrdiff_t const bottom = m_bottom.load(relaxed);
+  ptrdiff_t const top = m_top.load(relaxed);
+  return top >= bottom;
+}
+
+template <dequeable T>
+constexpr auto deque<T>::push(T const &val) -> void {
+  std::ptrdiff_t const bottom = m_bottom.load(relaxed);
+  std::ptrdiff_t const top = m_top.load(acquire);
+  impl::atomic_ring_buf<T> *buf = m_buf.load(relaxed);
+
+  if (buf->capacity() < (bottom - top) + 1) {
+    // Deque is full, build a new one.
+    impl::atomic_ring_buf<T> *bigger = buf->resize(bottom, top);
+
+    [&]() noexcept {
+      // This should never throw as we reserve 64 slots.
+      m_garbage.emplace_back(std::exchange(buf, bigger));
+    }();
+    m_buf.store(buf, relaxed);
+  }
+
+  // Construct new object, this does not have to be atomic as no one can steal this item until
+  // after we store the new value of bottom, ordering is maintained by surrounding atomics.
+  buf->store(bottom, val);
+
+  std::atomic_thread_fence(release);
+  m_bottom.store(bottom + 1, relaxed);
+}
+
+template <dequeable T>
+template <std::invocable F>
+  requires std::convertible_to<T, std::invoke_result_t<F>>
+constexpr auto
+deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_v<F>) -> std::invoke_result_t<F> {
+
+  std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1; //
+  impl::atomic_ring_buf<T> *buf = m_buf.load(relaxed);      //
+  m_bottom.store(bottom, relaxed);                          // Stealers can no longer steal.
+
+  LF_ATOMIC_THREAD_FENCE_SEQ_CST;
+
+  std::ptrdiff_t top = m_top.load(relaxed);
+
+  if (top <= bottom) {
+    // Non-empty deque
+    if (top == bottom) {
+      // The last item could get stolen, by a stealer that loaded bottom before our write above.
+      if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
+        // Failed race, thief got the last item.
+        m_bottom.store(bottom + 1, relaxed);
+        return std::invoke(std::forward<F>(when_empty));
+      }
+      m_bottom.store(bottom + 1, relaxed);
+    }
+    // Can delay load until after acquiring slot as only this thread can push(),
+    // This load is not required to be atomic as we are the exclusive writer.
+    return buf->load(bottom);
+  }
+  m_bottom.store(bottom + 1, relaxed);
+  return std::invoke(std::forward<F>(when_empty));
+}
+
+template <dequeable T>
+constexpr auto deque<T>::steal() noexcept -> steal_t<T> {
+  std::ptrdiff_t top = m_top.load(acquire);
+  LF_ATOMIC_THREAD_FENCE_SEQ_CST;
+  std::ptrdiff_t const bottom = m_bottom.load(acquire);
+
+  if (top < bottom) {
+    // Must load *before* acquiring the slot as slot may be overwritten immediately after
+    // acquiring. This load is NOT required to be atomic even-though it may race with an overwrite
+    // as we only return the value if we win the race below guaranteeing we had no race during our
+    // read. If we loose the race then 'x' could be corrupt due to read-during-write race but as T
+    // is trivially destructible this does not matter.
+    T tmp = m_buf.load(consume)->load(top);
+
+    static_assert(std::is_trivially_destructible_v<T>, "concept 'atomicable' should guarantee this already");
+
+    if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
+      return {.code = err::lost, .val = {}};
+    }
+    return {.code = err::none, .val = tmp};
+  }
+  return {.code = err::empty, .val = {}};
+}
+
+template <dequeable T>
+constexpr deque<T>::~deque() noexcept {
+  delete m_buf.load(); // NOLINT
+}
+
+} // namespace ext
+
+} // namespace lf
+
+#undef LF_ATOMIC_THREAD_FENCE_SEQ_CST
+
+#endif /* C9703881_3D9C_41A5_A7A2_44615C4CFA6A */
+
+    // for deque, steal_t
+#ifndef ACB944D8_08B6_4600_9302_602E847753FD
+#define ACB944D8_08B6_4600_9302_602E847753FD
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
 
@@ -759,14 +1253,134 @@ auto byte_cast(T *ptr) LF_HOF_RETURNS(std::bit_cast<forward_cv_t<T, std::byte> *
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>    // for movable
-#include <type_traits> // for type_identity
+#include <type_traits> // for is_standard_layout_v
+#include <version>     // for __cpp_lib_is_pointer_interconvertible_base_of
 
-#ifndef A7699F23_E799_46AB_B1E0_7EA36053AD41
-#define A7699F23_E799_46AB_B1E0_7EA36053AD41
+#ifndef BC7496D2_E762_43A4_92A3_F2AD10690569
+#define BC7496D2_E762_43A4_92A3_F2AD10690569
 
-#include <memory>
+// Copyright © Conor Williams <conorwilliams@outlook.com>
 
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <atomic>     // for atomic, memory_order_consume, memory_order_relaxed
+#include <concepts>   // for invocable
+#include <functional> // for invoke
+ // for immovable        // for LF_ASSERT
+
+/**
+ * @file list.hpp
+ *
+ * @brief Lock-free intrusive list for use when submitting tasks.
+ */
+
+namespace lf {
+
+inline namespace ext {
+
+/**
+ * @brief A multi-producer, single-consumer intrusive list.
+ *
+ * This implementation is lock-free, allocates no memory and is optimized for weak memory models.
+ */
+template <typename T>
+class intrusive_list : impl::immovable<intrusive_list<T>> {
+ public:
+  /**
+   * @brief An intruded node in the list.
+   */
+  class node : impl::immovable<node> {
+   public:
+    /**
+     * @brief Construct a node storing a copy of `data`.
+     */
+    explicit constexpr node(T const &data) noexcept(std::is_nothrow_copy_constructible_v<T>) : m_data(data) {}
+
+    /**
+     * @brief Access the value stored in a node of the list.
+     */
+    [[nodiscard]] friend constexpr auto unwrap(node *ptr) noexcept -> T & { return non_null(ptr)->m_data; }
+
+    /**
+     * @brief Call `func` on each unwrapped node linked in the list.
+     *
+     * This is a noop if `root` is `nullptr`.
+     */
+    template <std::invocable<T &> F>
+    friend constexpr void for_each_elem(node *root, F &&func) noexcept(std::is_nothrow_invocable_v<F, T &>) {
+      while (root) {
+        // Have to be very careful here, we can't deference `root` after
+        // we've called `func` as `func` could destroy the node so, we have
+        // to cache the next pointer before the function call.
+        auto next = root->m_next;
+        std::invoke(func, root->m_data);
+        root = next;
+      }
+    }
+
+   private:
+    friend class intrusive_list;
+
+    [[no_unique_address]] T m_data;
+    node *m_next = nullptr;
+  };
+
+  /**
+   * @brief Push a new node, this can be called concurrently from any number of threads.
+   *
+   * `new_node` should be an unlinked node e.g. not part of a list.
+   */
+  constexpr void push(node *new_node) noexcept {
+
+    LF_ASSERT(new_node && new_node->m_next == nullptr);
+
+    node *stale_head = m_head.load(std::memory_order_relaxed);
+
+    for (;;) {
+      non_null(new_node)->m_next = stale_head;
+
+      if (m_head.compare_exchange_weak(stale_head, new_node, std::memory_order_release)) {
+        return;
+      }
+    }
+  }
+
+  /**
+   * @brief Pop all the nodes from the list and return a pointer to the root (`nullptr` if empty).
+   *
+   * Only the owner (thread) of the list can call this function, this will reverse the direction of the list
+   * such that `for_each_elem` will operate if FIFO order.
+   */
+  constexpr auto try_pop_all() noexcept -> node * {
+
+    node *last = m_head.exchange(nullptr, std::memory_order_consume);
+    node *first = nullptr;
+
+    while (last) {
+      node *tmp = last;
+      last = last->m_next;
+      tmp->m_next = first;
+      first = tmp;
+    }
+
+    return first;
+  }
+
+ private:
+  std::atomic<node *> m_head = nullptr;
+};
+
+} // namespace ext
+
+} // namespace lf
+
+#endif /* BC7496D2_E762_43A4_92A3_F2AD10690569 */
+
+   // for intrusive_list
 #ifndef DD6F6C5C_C146_4C02_99B9_7D2D132C0844
 #define DD6F6C5C_C146_4C02_99B9_7D2D132C0844
 
@@ -1611,7 +2225,848 @@ static_assert(std::is_standard_layout_v<frame>);
 
 #endif /* DD6F6C5C_C146_4C02_99B9_7D2D132C0844 */
 
+ // for frame
 
+/**
+ * @file handles.hpp
+ *
+ * @brief Definitions of `libfork`'s handle types.
+ */
+
+namespace lf {
+
+namespace impl {
+
+/**
+ * @brief A type safe wrapper around a handle to a coroutine that is at a submission point.
+ *
+ * \rst
+ *
+ * .. note::
+ *
+ *    A pointer to an ``submit_h`` should never be deferenced, only passed to ``lf::ext::resume()``.
+ *
+ * \endrst
+ */
+class submit_t : impl::frame {};
+
+static_assert(std::is_standard_layout_v<submit_t>);
+
+#ifdef __cpp_lib_is_pointer_interconvertible
+static_assert(std::is_pointer_interconvertible_base_of_v<impl::frame, submit_t>);
+#endif
+
+/**
+ * @brief A type safe wrapper around a handle to a stealable coroutine.
+ *
+ * \rst
+ *
+ * .. note::
+ *
+ *    A pointer to an ``task_h`` should never be deferenced, only passed to ``lf::ext::resume()``.
+ *
+ * \endrst
+ */
+class task_t : impl::frame {};
+
+static_assert(std::is_standard_layout_v<task_t>);
+
+#ifdef __cpp_lib_is_pointer_interconvertible
+static_assert(std::is_pointer_interconvertible_base_of_v<impl::frame, task_t>);
+#endif
+
+} // namespace impl
+
+inline namespace ext {
+
+/**
+ * @brief An alias for a pointer to a `submit_t` wrapped in an intruded list.
+ */
+using submit_handle = typename intrusive_list<impl::submit_t *>::node *;
+
+/**
+ * @brief An alias for a pointer to a `task_t`.
+ */
+using task_handle = impl::task_t *;
+
+} // namespace ext
+
+} // namespace lf
+
+#endif /* ACB944D8_08B6_4600_9302_602E847753FD */
+
+  // for task_handle, submit_handle, submit_t     // for intrusive_list // for non_null, immovable        // for LF_ASSERT
+
+/**
+ * @file context.hpp
+ *
+ * @brief Provides the hierarchy of worker thread contexts.
+ */
+
+namespace lf {
+
+// ------------------ Context ------------------- //
+
+inline namespace ext {
+
+class context;        // Semi-User facing, (for submitting tasks).
+class worker_context; // API for worker threads.
+
+} // namespace ext
+
+namespace impl {
+
+class full_context; // Internal API
+
+} // namespace impl
+
+inline namespace ext {
+
+/**
+ * @brief A type-erased function object that takes no arguments.
+ */
+#ifdef __cpp_lib_move_only_function
+using nullary_function_t = std::move_only_function<void()>;
+#else
+using nullary_function_t = std::function<void()>;
+#endif
+
+/**
+ * @brief  Context for (extension) schedulers to interact with.
+ *
+ * Each worker thread stores a context object, this is managed by the library. Internally a context
+ * manages the work stealing queue and the submission queue. Submissions to the submission queue
+ * trigger a user-supplied notification.
+ */
+class worker_context : impl::immovable<context> {
+ public:
+  /**
+   * @brief schedule suspended tasks to the context, supports concurrent submission.
+   *
+   * This will trigger the notification function.
+   */
+  void schedule(submit_handle jobs) {
+
+    m_submit.push(non_null(jobs));
+
+    // Once we have pushed if this throws we cannot uphold the strong exception guarantee.
+    [&]() noexcept {
+      m_notify();
+    }();
+  }
+
+  /**
+   * @brief Fetch a linked-list of the submitted tasks, for use __only by the owning worker thread__.
+   *
+   * If there are no submitted tasks, then returned pointer will be null.
+   */
+  [[nodiscard]] auto try_pop_all() noexcept -> submit_handle { return m_submit.try_pop_all(); }
+
+  /**
+   * @brief Attempt a steal operation from this contexts task deque, supports concurrent stealing.
+   */
+  [[nodiscard]] auto try_steal() noexcept -> steal_t<task_handle> { return m_tasks.steal(); }
+
+ private:
+  friend class impl::full_context;
+
+  /**
+   * @brief Construct a context for a worker thread.
+   *
+   * Notify is a function that may be called concurrently by other workers to signal to the
+   * worker owning this context that a task has been submitted to a private queue.
+   */
+  explicit worker_context(nullary_function_t notify) noexcept : m_notify(std::move(notify)) {
+    LF_ASSERT(m_notify);
+  }
+
+  /**
+   * @brief All non-null.
+   */
+  deque<task_handle> m_tasks;
+  /**
+   * @brief All non-null.
+   */
+  intrusive_list<impl::submit_t *> m_submit;
+  /**
+   * @brief The user supplied notification function.
+   */
+  nullary_function_t m_notify;
+};
+
+} // namespace ext
+
+namespace impl {
+
+/**
+ * @brief Context for internal use, contains full-API for push/pop.
+ */
+class full_context : public worker_context {
+ public:
+  /**
+   * @brief Construct a new full context object, store a copy of the user provided notification function.
+   */
+  explicit full_context(nullary_function_t notify) noexcept : worker_context(std::move(notify)) {}
+
+  /**
+   * @brief Add a task to the work queue.
+   */
+  void push(task_handle task) { m_tasks.push(non_null(task)); }
+
+  /**
+   * @brief Remove a task from the work queue
+   */
+  [[nodiscard]] auto pop() noexcept -> task_handle {
+    return m_tasks.pop([]() -> task_handle {
+      return nullptr;
+    });
+  }
+
+  /**
+   * @brief Test if the work queue is empty.
+   */
+  [[nodiscard]] auto empty() const noexcept -> bool { return m_tasks.empty(); }
+};
+
+} // namespace impl
+
+} // namespace lf
+
+#endif /* D66BBECE_E467_4EB6_B74A_AAA2E7256E02 */
+
+  // for worker_context, full_context
+#ifndef CF97E524_27A6_4CD9_8967_39F1B1BE97B6
+#define CF97E524_27A6_4CD9_8967_39F1B1BE97B6
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <stdexcept> // for runtime_error
+#include <utility>   // for move
+          // for full_context, worker_context, nullary_f... // for manual_lifetime           // for stack                // for LF_CLANG_TLS_NOINLINE, LF_THROW, LF_ASSERT
+
+/**
+ * @file tls.hpp
+ *
+ * @brief The thread local variables used by libfork.
+ */
+
+namespace lf {
+
+namespace impl::tls {
+
+/**
+ * @brief Set when `impl::tls::thread_stack` is alive.
+ */
+inline thread_local bool has_stack = false;
+/**
+ * @brief A workers stack.
+ *
+ * This is wrapped in an `manual_lifetime` to make it trivially destructible/constructible such that it
+ * requires no construction checks to access.
+ *
+ * TODO: Find out why this is not constinit on MSVC.
+ */
+#ifndef _MSC_VER
+constinit
+#endif
+    inline thread_local manual_lifetime<stack>
+        thread_stack = {};
+/**
+ * @brief Set when `impl::tls::thread_stack` is alive.
+ */
+constinit inline thread_local bool has_context = false;
+/**
+ * @brief A workers context.
+ *
+ * This is wrapped in an `manual_lifetime` to make it trivially destructible/constructible such that it
+ * requires no construction checks to access.
+ */
+#ifndef _MSC_VER
+constinit
+#endif
+    inline thread_local manual_lifetime<full_context>
+        thread_context = {};
+
+/**
+ * @brief Checked access to a workers stack.
+ */
+[[nodiscard]] LF_CLANG_TLS_NOINLINE inline auto stack() noexcept -> stack * {
+  LF_ASSERT(has_stack);
+  return thread_stack.data();
+}
+
+/**
+ * @brief Checked access to a workers context.
+ */
+[[nodiscard]] LF_CLANG_TLS_NOINLINE inline auto context() noexcept -> full_context * {
+  LF_ASSERT(has_context);
+  return thread_context.data();
+}
+
+} // namespace impl::tls
+
+inline namespace ext {
+
+/**
+ * @brief Initialize thread-local variables for a worker.
+ *
+ * Returns a handle to the library-managed context for the worker, this context is associated exclusively with
+ * the thread that called this function.
+ *
+ * @param notify Called when a task is submitted to a worker, this may be called concurrently.
+ *
+ * \rst
+ *
+ * .. warning::
+ *    This return value should be cleaned up with ``lf::ext::finalize()``.
+ *
+ * \endrst
+ */
+[[nodiscard]] inline LF_CLANG_TLS_NOINLINE auto worker_init(nullary_function_t notify) -> worker_context * {
+
+  LF_LOG("Initializing worker");
+
+  if (impl::tls::has_context && impl::tls::has_stack) {
+    LF_THROW(std::runtime_error("Worker already initialized"));
+  }
+
+  worker_context *context = impl::tls::thread_context.construct(std::move(notify));
+
+  // clang-format off
+
+  LF_TRY {
+    impl::tls::thread_stack.construct();
+  } LF_CATCH_ALL {
+    impl::tls::thread_context.destroy();
+  }
+
+  impl::tls::has_stack = true;
+  impl::tls::has_context = true;
+
+  // clang-format on
+
+  return context;
+}
+
+/**
+ * @brief Clean-up thread-local variable before destructing a worker's context.
+ *
+ * This must be called by the same worker (thread) which called ``lf::ext::worker_init()``.
+ *
+ * \rst
+ *
+ * .. warning::
+ *    These must have been initialized with ``worker_init(...)``.
+ *
+ * \endrst
+ */
+inline LF_CLANG_TLS_NOINLINE void finalize(worker_context *worker) {
+
+  LF_LOG("Finalizing worker");
+
+  if (worker != impl::tls::thread_context.data()) {
+    LF_THROW(std::runtime_error("Finalize called on wrong thread"));
+  }
+
+  if (!impl::tls::has_context || !impl::tls::has_stack) {
+    LF_THROW(std::runtime_error("Finalize called before initialization or after finalization"));
+  }
+
+  impl::tls::thread_context.destroy();
+  impl::tls::thread_stack.destroy();
+
+  impl::tls::has_stack = false;
+  impl::tls::has_context = false;
+}
+
+} // namespace ext
+
+} // namespace lf
+
+#endif /* CF97E524_27A6_4CD9_8967_39F1B1BE97B6 */
+
+      // for context   // for frame // for unqualified, different_from        // for LF_COMPILER_EXCEPTIONS, LF_FORCEINLINE
+#ifndef A75DC3F0_D0C3_4669_A901_0B22556C873C
+#define A75DC3F0_D0C3_4669_A901_0B22556C873C
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <type_traits> // for true_type, false_type
+
+
+/**
+ * @file tag.hpp
+ *
+ * @brief Libfork's dispatch tags.
+ */
+
+namespace lf {
+
+inline namespace core {
+
+/**
+ * @brief An enumeration that determines the behavior of a coroutine's promise.
+ *
+ * You can inspect the first argument of an async function to determine the tag.
+ */
+enum class tag {
+  /**
+   * @brief This coroutine is a root task from an ``lf::sync_wait``.
+   */
+  root,
+  /**
+   * @brief Non root task from an ``lf::call``, completes synchronously.
+   */
+  call,
+  /**
+   * @brief Non root task from an ``lf::fork``, completes asynchronously.
+   */
+  fork,
+};
+
+/**
+ * @brief Modifier's for the dispatch tag, these do not effect the child's promise, only the awaitable.
+ *
+ * See `lf::core::dispatch` for more information and uses, these are low-level and most users should not need
+ * to use them. We use a namespace + types rather than an enumeration to allow for type-concepts.
+ */
+namespace modifier {
+/**
+ * @brief No modification to the dispatch category.
+ */
+struct none {};
+/**
+ * @brief The dispatch is `fork`, reports if the fork completed synchronously.
+ */
+struct sync {};
+/**
+ * @brief The dispatch is a `fork` outside a fork-join scope, reports if the fork completed synchronously.
+ */
+struct sync_outside {};
+/**
+ * @brief The dispatch is a `call`, the awaitable will throw eagerly.
+ */
+struct eager_throw {};
+/**
+ * @brief The dispatch is a `call` outside a fork-join scope, the awaitable will throw eagerly.
+ */
+struct eager_throw_outside {};
+
+} // namespace modifier
+
+} // namespace core
+
+namespace impl::detail {
+
+template <typename Mod, tag T>
+struct valid_modifier_impl : std::false_type {
+  static_assert(impl::always_false<Mod>, "Mod is not a valid modifier for tag T!");
+};
+
+template <tag T>
+struct valid_modifier_impl<modifier::none, T> : std::true_type {};
+
+template <>
+struct valid_modifier_impl<modifier::sync, tag::fork> : std::true_type {};
+
+template <>
+struct valid_modifier_impl<modifier::sync_outside, tag::fork> : std::true_type {};
+
+// TODO: in theory it is possible to extend eager to fork but you may as well just use sync[_outside]?
+
+template <>
+struct valid_modifier_impl<modifier::eager_throw, tag::call> : std::true_type {};
+
+template <>
+struct valid_modifier_impl<modifier::eager_throw_outside, tag::call> : std::true_type {};
+
+} // namespace impl::detail
+
+inline namespace core {
+
+/**
+ * @brief Test if a type is a valid modifier for a tag.
+ */
+template <typename T, tag Tag>
+concept modifier_for = impl::detail::valid_modifier_impl<T, Tag>::value;
+
+} // namespace core
+
+namespace impl {
+
+/**
+ * @brief An enumerator describing a statement's location wrt to a fork-join scope.
+ */
+enum class region {
+  /**
+   * @brief Unknown location wrt to a fork-join scope.
+   */
+  unknown,
+  /**
+   * @brief Outside a fork-join scope.
+   */
+  outside,
+  /**
+   * @brief Inside a fork-join scope
+   */
+  inside,
+  /**
+   * @brief First fork statement in a fork-join scope.
+   */
+  opening_fork,
+};
+
+} // namespace impl
+
+} // namespace lf
+
+#endif /* A75DC3F0_D0C3_4669_A901_0B22556C873C */
+
+          // for tag
+
+/**
+ * @file first_arg.hpp
+ *
+ * @brief Machinery for the (library-generated) first argument of async functions.
+ */
+
+namespace lf {
+
+inline namespace core {
+
+/**
+ * @brief Verify a forwarding reference is storable as a value type after removing `cvref` qualifiers.
+ */
+template <typename T>
+concept storable = std::constructible_from<std::remove_cvref_t<T>, T>;
+
+/**
+ * @brief Test if we can form a reference to an instance of type `T`.
+ */
+template <typename T>
+concept referenceable = requires () { typename std::type_identity_t<T &>; };
+
+/**
+ * @brief Test if the expression `*std::declval<T&>()` is valid and is `lf::core::referenceable`.
+ */
+template <typename I>
+concept dereferenceable = requires (I val) {
+  { *val } -> referenceable;
+};
+
+} // namespace core
+
+namespace impl::detail {
+
+/**
+ * @brief Test if a type could be a quasi-pointer.
+ *
+ * @tparam I The unqualified type.
+ * @tparam Qual The Qualified version of `I`.
+ */
+template <typename I, typename Qual>
+concept quasi_pointer_impl =                                //
+    std::default_initializable<I> &&                        //
+    std::movable<I> &&                                      //
+    dereferenceable<I> && std::constructible_from<I, Qual>; //
+
+} // namespace impl::detail
+
+inline namespace core {
+
+/**
+ * @brief A quasi-pointer if a movable type that can be dereferenced to a `lf::core::referenceable`.
+ *
+ * A quasi-pointer is assumed to be cheap-to-move like an iterator/legacy-pointer.
+ */
+template <typename I>
+concept quasi_pointer = impl::detail::quasi_pointer_impl<std::remove_cvref_t<I>, I>;
+
+} // namespace core
+
+namespace impl::detail {
+
+/**
+ * @brief Test if a type could be an async function object.
+ *
+ * @tparam F The unqualified type.
+ * @tparam Qual The Qualified version of `F`.
+ */
+template <typename F, typename Qual>
+concept async_function_object_impl =             //
+    unqualified<F> &&                            // We store the unqualified type.
+    (std::is_union_v<F> || std::is_class_v<F>)&& // Only classes/unions can have templated `operator()`.
+    std::move_constructible<F> &&                // Must be able to move a value.
+    std::copy_constructible<F>;                  // Must be able to copy a value.
+
+} // namespace impl::detail
+
+inline namespace core {
+
+/**
+ * @brief A concept that requires a type be a copyable [function
+ * object](https://en.cppreference.com/w/cpp/named_req/FunctionObject).
+ *
+ * An async function object is a function object that returns an `lf::task` when `operator()` is called.
+ * with appropriate arguments. The call to `operator()` must create a libfork coroutine. The first argument
+ * of an async function must accept a deduced templated-type that satisfies the `lf::core::first_arg` concept.
+ * The return type and invocability of an async function must be independent of the first argument except
+ * for its tag value.
+ *
+ * An async function may be copied, its copies must be equivalent to the original and support concurrent
+ * invocation from multiple threads. It is assumed that an async function is cheap-to-copy like
+ * an iterator/legacy-pointer.
+ */
+template <typename F>
+concept async_function_object =
+    storable<F> && impl::detail::async_function_object_impl<std::remove_cvref_t<F>, F>;
+
+/**
+ * @brief This describes the public-API of the first argument passed to an async function.
+ *
+ * An async functions' invocability and return type must be independent of their first argument except for
+ * its tag value. A user may query the first argument's static member `tagged` to obtain this value.
+ * Additionally, a user may query the first argument's static member function `context()` to obtain a
+ * pointer to the current workers context. Finally a user may cache an exception in-flight by calling
+ * `.stash_exception()`.
+ */
+template <typename T>
+concept first_arg = impl::unqualified<T> && async_function_object<T> && requires (T arg) {
+  { T::tagged } -> std::convertible_to<tag>;
+  typename T::async_function;
+  requires async_function_object<typename T::async_function>;
+  { T::context() } -> std::same_as<worker_context *>;
+  { arg.stash_exception() } noexcept;
+};
+
+} // namespace core
+
+namespace impl {
+
+/**
+ * @brief The type passed as the first argument to async functions.
+ *
+ * Its functions are:
+ *
+ * - Act as a y-combinator (expose same invocability as F).
+ * - Provide a handle to the coroutine frame for exception handling.
+ * - Statically inform the return pointer type.
+ * - Statically provide the tag.
+ * - Statically provide the calling argument types.
+ *
+ * Hence, a first argument is also an async function object.
+ */
+template <quasi_pointer I, tag Tag, async_function_object F, typename... CallArgs>
+  requires unqualified<F> && (std::is_reference_v<CallArgs> && ...)
+class first_arg_t {
+ public:
+  /**
+   * @brief Tag indicating how the async function was called.
+   */
+  static constexpr tag tagged = Tag;
+  /**
+   * @brief The underlying async function type.
+   */
+  using async_function = F;
+  /**
+   * @brief Get the current workers context.
+   */
+  [[nodiscard]] static auto context() -> worker_context * { return tls::context(); }
+  /**
+   * @brief Stash an exception that will be rethrown at the end of the next join.
+   */
+  void stash_exception() const noexcept {
+#if LF_COMPILER_EXCEPTIONS
+    m_frame->capture_exception();
+#endif
+  }
+
+  /**
+   * @brief Construct a first_arg_t from an async function object.
+   */
+  template <different_from<first_arg_t> T>
+    requires std::constructible_from<F, T>
+  explicit first_arg_t(T &&expr) noexcept(std::is_nothrow_constructible_v<F, T>)
+      : m_fun(std::forward<T>(expr)) {}
+
+  /**
+   * @brief Forward call to the underlying async function object.
+   */
+  template <typename... Args>
+    requires std::invocable<F &, Args...>
+  auto operator()(Args &&...args) & noexcept(std::is_nothrow_invocable_v<F &, Args...>)
+      -> std::invoke_result_t<F &, Args...> {
+    return std::invoke(m_fun, std::forward<Args>(args)...);
+  }
+
+  /**
+   * @brief Forward call to the underlying async function object.
+   */
+  template <typename... Args>
+    requires std::invocable<F const &, Args...>
+  auto operator()(Args &&...args) const & noexcept(std::is_nothrow_invocable_v<F &, Args...>)
+      -> std::invoke_result_t<F const &, Args...> {
+    return std::invoke(m_fun, std::forward<Args>(args)...);
+  }
+
+  /**
+   * @brief Forward call to the underlying async function object.
+   */
+  template <typename... Args>
+    requires std::invocable<F &&, Args...>
+  auto operator()(Args &&...args) && noexcept(std::is_nothrow_invocable_v<F &, Args...>)
+      -> std::invoke_result_t<F &&, Args...> {
+    return std::invoke(std::move(m_fun), std::forward<Args>(args)...);
+  }
+
+  /**
+   * @brief Forward call to the underlying async function object.
+   */
+  template <typename... Args>
+    requires std::invocable<F const &&, Args...>
+  auto operator()(Args &&...args) const && noexcept(std::is_nothrow_invocable_v<F &, Args...>)
+      -> std::invoke_result_t<F const &&, Args...> {
+    return std::invoke(std::move(m_fun), std::forward<Args>(args)...);
+  }
+
+ private:
+  /**
+   * @brief Hidden friend reduces discoverability, this is an implementation detail.
+   */
+  [[nodiscard]] friend auto unwrap(first_arg_t const &arg) noexcept -> F const & {
+    return std::move(arg.m_fun);
+  }
+
+  /**
+   * @brief Hidden friend reduces discoverability, this is an implementation detail.
+   */
+  [[nodiscard]] friend auto unwrap(first_arg_t &&arg) noexcept -> F && { return std::move(arg.m_fun); }
+
+  /**
+   * @brief Hidden friend reduces discoverability, this is an implementation detail.
+   */
+  LF_FORCEINLINE friend auto unsafe_set_frame(first_arg_t &arg, frame *frame) noexcept {
+#if LF_COMPILER_EXCEPTIONS
+    arg.m_frame = frame;
+#endif
+  }
+
+  /**
+   * @brief The stored async function object.
+   */
+  [[no_unique_address]] F m_fun;
+
+#if LF_COMPILER_EXCEPTIONS
+  /**
+   * @brief To allow access to the frame for exception handling.
+   */
+  frame *m_frame;
+#endif
+};
+
+namespace detail {
+
+template <typename T>
+struct is_first_arg_specialization : std::false_type {};
+
+template <tag Tag, quasi_pointer I, async_function_object F, typename... CallArgs>
+struct is_first_arg_specialization<first_arg_t<I, Tag, F, CallArgs...>> : std::true_type {};
+
+} // namespace detail
+
+template <typename T>
+concept first_arg_specialization = detail::is_first_arg_specialization<std::remove_cvref_t<T>>::value;
+
+} // namespace impl
+
+} // namespace lf
+
+#endif /* DD0B4328_55BD_452B_A4A5_5A4670A6217B */
+
+ // for referenceable
+
+/**
+ * @file safe_ref.hpp
+ *
+ * @brief A meta-function that verifies that a reference binding is safe.
+ */
+
+namespace lf::impl {
+
+// Ban constructs like (T && -> T const &) which would dangle.
+
+namespace detail {
+
+template <typename To, typename From>
+struct safe_ref_bind_impl : std::false_type {};
+
+// All reference types can bind to a non-dangling reference of the same kind without dangling.
+
+template <typename T>
+struct safe_ref_bind_impl<T, T> : std::true_type {};
+
+// `T const X` can additionally bind to `T X` without dangling//
+
+template <typename To, typename From>
+  requires (!std::same_as<To const &, From &>)
+struct safe_ref_bind_impl<To const &, From &> : std::true_type {};
+
+template <typename To, typename From>
+  requires (!std::same_as<To const &&, From &&>)
+struct safe_ref_bind_impl<To const &&, From &&> : std::true_type {};
+
+} // namespace detail
+
+/**
+ * @brief Verify that ``To expr = From`` is valid and does not dangle.
+ *
+ * This requires that ``To`` and ``From`` are both the same reference type or that ``To`` is a
+ * const qualified version of ``From``. This explicitly bans conversions like ``T && -> T const &``
+ * which would dangle.
+ */
+template <typename From, typename To>
+concept safe_ref_bind_to =                          //
+    std::is_reference_v<To> &&                      //
+    referenceable<From> &&                          //
+    detail::safe_ref_bind_impl<To, From &&>::value; //
+
+} // namespace lf::impl
+
+#endif /* C258EF4A_BC44_487A_96BC_6E72746DAAFD */
+
+ // for safe_ref_bind_to  // for empty_t, else_empty_t, immovable, non_void         // for LF_ASSERT, unreachable, LF_COMPILER_EXCEPTIONS
+#ifndef AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
+#define AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>    // for movable
+#include <type_traits> // for type_identity
+
+#ifndef A7699F23_E799_46AB_B1E0_7EA36053AD41
+#define A7699F23_E799_46AB_B1E0_7EA36053AD41
+
+#include <coroutine> // for coroutine_handle
+#include <memory>    // for unique_ptr
+   // for frame // for non_null        // for LF_STATIC_CALL
 
 /**
  * @file unique_frame.hpp
@@ -1687,7 +3142,7 @@ struct LF_CORO_ATTRIBUTES task : std::type_identity<T>, impl::immovable<task<T>>
 
 #endif /* AB8DC4EC_1EB3_4FFB_9A05_4D8A99CFF172 */
 
-         // for returnable
+          // for returnable
 
 /**
  * @file eventually.hpp
@@ -2143,1365 +3598,7 @@ using try_eventually = basic_eventually<T, true>;
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <exception>
-
-#ifndef DD0B4328_55BD_452B_A4A5_5A4670A6217B
-#define DD0B4328_55BD_452B_A4A5_5A4670A6217B
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>    // for invocable, constructible_from, convertible_to
-#include <functional>  // for invoke
-#include <type_traits> // for invoke_result_t, remove_cvref_t
-#include <utility>     // for forward
-
-#ifndef D66BBECE_E467_4EB6_B74A_AAA2E7256E02
-#define D66BBECE_E467_4EB6_B74A_AAA2E7256E02
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <functional> // for function
-#include <utility>    // for move
-#include <version>    // for __cpp_lib_move_only_function
-
-#ifndef C9703881_3D9C_41A5_A7A2_44615C4CFA6A
-#define C9703881_3D9C_41A5_A7A2_44615C4CFA6A
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <algorithm>   // for max
-#include <atomic>      // for atomic, atomic_thread_fence, memory_order, memo...
-#include <bit>         // for has_single_bit
-#include <concepts>    // for convertible_to, invocable, default_initializable
-#include <cstddef>     // for ptrdiff_t, size_t
-#include <functional>  // for invoke
-#include <memory>      // for unique_ptr, make_unique
-#include <optional>    // for optional
-#include <type_traits> // for invoke_result_t
-#include <utility>     // for addressof, forward, exchange
-#include <vector>      // for vector
-#include <version>     // for ptrdiff_t
- // for k_cache_line, immovable        // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST
-
-/**
- * @file deque.hpp
- *
- * @brief A stand-alone, production-quality implementation of the Chase-Lev lock-free
- * single-producer multiple-consumer deque.
- */
-
-/**
- * This is a workaround for clang generating bad codegen for ``std::atomic_thread_fence``.
- */
-
-#if defined(LF_USE_BOOST_ATOMIC) && defined(__clang__) && defined(__has_include)
-  #if __has_include(<boost/atomic.hpp>)
-    #include <boost/atomic.hpp>
-
-    #define LF_ATOMIC_THREAD_FENCE_SEQ_CST boost::atomic_thread_fence(boost::memory_order_seq_cst)
-  #else
-    #warning "Boost.Atomic not found, falling back to std::atomic_thread_fence"
-    #define LF_ATOMIC_THREAD_FENCE_SEQ_CST std::atomic_thread_fence(std::memory_order_seq_cst)
-  #endif
-#else
-  #define LF_ATOMIC_THREAD_FENCE_SEQ_CST std::atomic_thread_fence(std::memory_order_seq_cst)
-#endif
-
-namespace lf {
-
-inline namespace ext {
-
-/**
- * @brief Verify a type is suitable for use with `std::atomic`
- *
- * This requires a `TriviallyCopyable` type satisfying both `CopyConstructible` and `CopyAssignable`.
- */
-template <typename T>
-concept atomicable = std::is_trivially_copyable_v<T> && //
-                     std::is_copy_constructible_v<T> && //
-                     std::is_move_constructible_v<T> && //
-                     std::is_copy_assignable_v<T> &&    //
-                     std::is_move_assignable_v<T>;      //
-
-/**
- * @brief A concept that verifies a type is lock-free when used with `std::atomic`.
- */
-template <typename T>
-concept lock_free = atomicable<T> && std::atomic<T>::is_always_lock_free;
-
-/**
- * @brief Test is a type is suitable for use with `lf::deque`.
- *
- * This requires it to be `lf::ext::lock_free` and `std::default_initializable`.
- */
-template <typename T>
-concept dequeable = lock_free<T> && std::default_initializable<T>;
-
-} // namespace ext
-
-namespace impl {
-
-/**
- * @brief A basic wrapper around a c-style array that provides modulo load/stores.
- *
- * This class is designed for internal use only. It provides a c-style API that is
- * used efficiently by deque for low level atomic operations.
- *
- * @tparam T The type of the elements in the array.
- */
-template <dequeable T>
-struct atomic_ring_buf {
-  /**
-   * @brief Construct a new ring buff object
-   *
-   * @param cap The capacity of the buffer, MUST be a power of 2.
-   */
-  constexpr explicit atomic_ring_buf(std::ptrdiff_t cap) : m_cap{cap}, m_mask{cap - 1} {
-    LF_ASSERT(cap > 0 && std::has_single_bit(static_cast<std::size_t>(cap)));
-  }
-  /**
-   * @brief Get the capacity of the buffer.
-   */
-  [[nodiscard]] constexpr auto capacity() const noexcept -> std::ptrdiff_t { return m_cap; }
-  /**
-   * @brief Store ``val`` at ``index % this->capacity()``.
-   */
-  constexpr auto store(std::ptrdiff_t index, T const &val) noexcept -> void {
-    LF_ASSERT(index >= 0);
-    (m_buf.get() + (index & m_mask))->store(val, std::memory_order_relaxed); // NOLINT Avoid cast.
-  }
-  /**
-   * @brief Load value at ``index % this->capacity()``.
-   */
-  [[nodiscard]] constexpr auto load(std::ptrdiff_t index) const noexcept -> T {
-    LF_ASSERT(index >= 0);
-    return (m_buf.get() + (index & m_mask))->load(std::memory_order_relaxed); // NOLINT Avoid cast.
-  }
-  /**
-   * @brief Copies elements in range ``[bottom, top)`` into a new ring buffer.
-   *
-   * This function allocates a new buffer and returns a pointer to it.
-   * The caller is responsible for deallocating the memory.
-   *
-   * @param bot The bottom of the range to copy from (inclusive).
-   * @param top The top of the range to copy from (exclusive).
-   */
-  [[nodiscard]] constexpr auto resize(std::ptrdiff_t bot, std::ptrdiff_t top) const -> atomic_ring_buf<T> * {
-
-    auto *ptr = new atomic_ring_buf{2 * m_cap}; // NOLINT
-
-    for (std::ptrdiff_t i = top; i != bot; ++i) {
-      ptr->store(i, load(i));
-    }
-
-    return ptr;
-  }
-
- private:
-  /**
-   * @brief An array of atomic elements.
-   */
-  using array_t = std::atomic<T>[]; // NOLINT
-  /**
-   * @brief Capacity of the buffer.
-   */
-  std::ptrdiff_t m_cap;
-  /**
-   * @brief Bit mask to perform modulo capacity operations.
-   */
-  std::ptrdiff_t m_mask;
-
-#ifdef __cpp_lib_smart_ptr_for_overwrite
-  std::unique_ptr<array_t> m_buf = std::make_unique_for_overwrite<array_t>(static_cast<std::size_t>(m_cap));
-#else
-  std::unique_ptr<array_t> m_buf = std::make_unique<array_t>(static_cast<std::size_t>(m_cap));
-#endif
-};
-
-} // namespace impl
-
-inline namespace ext {
-
-/**
- * @brief Error codes for ``deque`` 's ``steal()`` operation.
- */
-enum class err : int {
-  /**
-   * @brief The ``steal()`` operation succeeded.
-   */
-  none = 0,
-  /**
-   * @brief  Lost the ``steal()`` race hence, the ``steal()`` operation failed.
-   */
-  lost,
-  /**
-   * @brief The deque is empty and hence, the ``steal()`` operation failed.
-   */
-  empty,
-};
-
-/**
- * @brief The return type of a `lf::deque` `steal()` operation.
- *
- * This type is suitable for structured bindings. We return a custom type instead of a
- * `std::optional` to allow for more information to be returned as to why a steal may fail.
- */
-template <typename T>
-struct steal_t {
-  /**
-   * @brief Check if the operation succeeded.
-   */
-  [[nodiscard]] constexpr explicit operator bool() const noexcept { return code == err::none; }
-  /**
-   * @brief Get the value like ``std::optional``.
-   *
-   * Requires ``code == err::none`` .
-   */
-  [[nodiscard]] constexpr auto operator*() noexcept -> T & {
-    LF_ASSERT(code == err::none);
-    return val;
-  }
-  /**
-   * @brief Get the value like ``std::optional``.
-   *
-   * Requires ``code == err::none`` .
-   */
-  [[nodiscard]] constexpr auto operator*() const noexcept -> T const & {
-    LF_ASSERT(code == err::none);
-    return val;
-  }
-  /**
-   * @brief Get the value ``like std::optional``.
-   *
-   * Requires ``code == err::none`` .
-   */
-  [[nodiscard]] constexpr auto operator->() noexcept -> T * {
-    LF_ASSERT(code == err::none);
-    return std::addressof(val);
-  }
-  /**
-   * @brief Get the value ``like std::optional``.
-   *
-   * Requires ``code == err::none`` .
-   */
-  [[nodiscard]] constexpr auto operator->() const noexcept -> T const * {
-    LF_ASSERT(code == err::none);
-    return std::addressof(val);
-  }
-
-  /**
-   * @brief The error code of the ``steal()`` operation.
-   */
-  err code;
-  /**
-   * @brief The value stolen from the deque, Only valid if ``code == err::stolen``.
-   */
-  T val;
-};
-
-/**
- * @brief A functor that returns ``std::nullopt``.
- */
-template <typename T>
-struct return_nullopt {
-  /**
-   * @brief Returns ``std::nullopt``.
-   */
-  LF_STATIC_CALL constexpr auto operator()() LF_STATIC_CONST noexcept -> std::optional<T> { return {}; }
-};
-
-/**
- * @brief An unbounded lock-free single-producer multiple-consumer work-stealing deque.
- *
- * \rst
- *
- * Implements the "Chase-Lev" deque described in the papers, `"Dynamic Circular Work-Stealing deque"
- * <https://doi.org/10.1145/1073970.1073974>`_ and `"Correct and Efficient Work-Stealing for Weak
- * Memory Models" <https://doi.org/10.1145/2442516.2442524>`_.
- *
- * Only the deque owner can perform ``pop()`` and ``push()`` operations where the deque behaves
- * like a LIFO stack. Others can (only) ``steal()`` data from the deque, they see a FIFO deque.
- * All threads must have finished using the deque before it is destructed.
- *
- *
- * Example:
- *
- * .. include:: ../../../test/source/core/deque.cpp
- *    :code:
- *    :start-after: // !BEGIN-EXAMPLE
- *    :end-before: // !END-EXAMPLE
- *
- * \endrst
- *
- * @tparam T The type of the elements in the deque.
- * @tparam Optional The type returned by ``pop()``.
- */
-template <dequeable T>
-class deque : impl::immovable<deque<T>> {
-
-  static constexpr std::ptrdiff_t k_default_capacity = 1024;
-  static constexpr std::size_t k_garbage_reserve = 64;
-
- public:
-  /**
-   * @brief The type of the elements in the deque.
-   */
-  using value_type = T;
-  /**
-   * @brief Construct a new empty deque object.
-   */
-  constexpr deque() : deque(k_default_capacity) {}
-  /**
-   * @brief Construct a new empty deque object.
-   *
-   * @param cap The capacity of the deque (must be a power of 2).
-   */
-  constexpr explicit deque(std::ptrdiff_t cap);
-  /**
-   * @brief Get the number of elements in the deque.
-   */
-  [[nodiscard]] constexpr auto size() const noexcept -> std::size_t;
-  /**
-   * @brief Get the number of elements in the deque as a signed integer.
-   */
-  [[nodiscard]] constexpr auto ssize() const noexcept -> ptrdiff_t;
-  /**
-   * @brief Get the capacity of the deque.
-   */
-  [[nodiscard]] constexpr auto capacity() const noexcept -> ptrdiff_t;
-  /**
-   * @brief Check if the deque is empty.
-   */
-  [[nodiscard]] constexpr auto empty() const noexcept -> bool;
-  /**
-   * @brief Push an item into the deque.
-   *
-   * Only the owner thread can insert an item into the deque.
-   * This operation can trigger the deque to resize if more space is required.
-   * This may throw if an allocation is required and then fails.
-   *
-   * @param val Value to add to the deque.
-   */
-  constexpr void push(T const &val);
-  /**
-   * @brief Pop an item from the deque.
-   *
-   * Only the owner thread can pop out an item from the deque. If the buffer is empty calls `when_empty` and
-   * returns the result. By default, `when_empty` is a no-op that returns a null `std::optional<T>`.
-   */
-  template <std::invocable F = return_nullopt<T>>
-    requires std::convertible_to<T, std::invoke_result_t<F>>
-  constexpr auto pop(F &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<F>) -> std::invoke_result_t<F>;
-
-  /**
-   * @brief Steal an item from the deque.
-   *
-   * Any threads can try to steal an item from the deque. This operation can fail if the deque is
-   * empty or if another thread simultaneously stole an item from the deque.
-   */
-  [[nodiscard]] constexpr auto steal() noexcept -> steal_t<T>;
-
-  /**
-   * @brief Destroy the deque object.
-   *
-   * All threads must have finished using the deque before it is destructed.
-   */
-  constexpr ~deque() noexcept;
-
- private:
-  alignas(impl::k_cache_line) std::atomic<std::ptrdiff_t> m_top;
-  alignas(impl::k_cache_line) std::atomic<std::ptrdiff_t> m_bottom;
-  alignas(impl::k_cache_line) std::atomic<impl::atomic_ring_buf<T> *> m_buf;
-  std::vector<std::unique_ptr<impl::atomic_ring_buf<T>>> m_garbage;
-
-  // Convenience aliases.
-  static constexpr std::memory_order relaxed = std::memory_order_relaxed;
-  static constexpr std::memory_order consume = std::memory_order_consume;
-  static constexpr std::memory_order acquire = std::memory_order_acquire;
-  static constexpr std::memory_order release = std::memory_order_release;
-  static constexpr std::memory_order seq_cst = std::memory_order_seq_cst;
-};
-
-template <dequeable T>
-constexpr deque<T>::deque(std::ptrdiff_t cap)
-    : m_top(0),
-      m_bottom(0),
-      m_buf(new impl::atomic_ring_buf<T>{cap}) {
-  m_garbage.reserve(k_garbage_reserve);
-}
-
-template <dequeable T>
-constexpr auto deque<T>::size() const noexcept -> std::size_t {
-  return static_cast<std::size_t>(ssize());
-}
-
-template <dequeable T>
-constexpr auto deque<T>::ssize() const noexcept -> std::ptrdiff_t {
-  ptrdiff_t const bottom = m_bottom.load(relaxed);
-  ptrdiff_t const top = m_top.load(relaxed);
-  return std::max(bottom - top, ptrdiff_t{0});
-}
-
-template <dequeable T>
-constexpr auto deque<T>::capacity() const noexcept -> ptrdiff_t {
-  return m_buf.load(relaxed)->capacity();
-}
-
-template <dequeable T>
-constexpr auto deque<T>::empty() const noexcept -> bool {
-  ptrdiff_t const bottom = m_bottom.load(relaxed);
-  ptrdiff_t const top = m_top.load(relaxed);
-  return top >= bottom;
-}
-
-template <dequeable T>
-constexpr auto deque<T>::push(T const &val) -> void {
-  std::ptrdiff_t const bottom = m_bottom.load(relaxed);
-  std::ptrdiff_t const top = m_top.load(acquire);
-  impl::atomic_ring_buf<T> *buf = m_buf.load(relaxed);
-
-  if (buf->capacity() < (bottom - top) + 1) {
-    // Deque is full, build a new one.
-    impl::atomic_ring_buf<T> *bigger = buf->resize(bottom, top);
-
-    [&]() noexcept {
-      // This should never throw as we reserve 64 slots.
-      m_garbage.emplace_back(std::exchange(buf, bigger));
-    }();
-    m_buf.store(buf, relaxed);
-  }
-
-  // Construct new object, this does not have to be atomic as no one can steal this item until
-  // after we store the new value of bottom, ordering is maintained by surrounding atomics.
-  buf->store(bottom, val);
-
-  std::atomic_thread_fence(release);
-  m_bottom.store(bottom + 1, relaxed);
-}
-
-template <dequeable T>
-template <std::invocable F>
-  requires std::convertible_to<T, std::invoke_result_t<F>>
-constexpr auto
-deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_v<F>) -> std::invoke_result_t<F> {
-
-  std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1; //
-  impl::atomic_ring_buf<T> *buf = m_buf.load(relaxed);      //
-  m_bottom.store(bottom, relaxed);                          // Stealers can no longer steal.
-
-  LF_ATOMIC_THREAD_FENCE_SEQ_CST;
-
-  std::ptrdiff_t top = m_top.load(relaxed);
-
-  if (top <= bottom) {
-    // Non-empty deque
-    if (top == bottom) {
-      // The last item could get stolen, by a stealer that loaded bottom before our write above.
-      if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
-        // Failed race, thief got the last item.
-        m_bottom.store(bottom + 1, relaxed);
-        return std::invoke(std::forward<F>(when_empty));
-      }
-      m_bottom.store(bottom + 1, relaxed);
-    }
-    // Can delay load until after acquiring slot as only this thread can push(),
-    // This load is not required to be atomic as we are the exclusive writer.
-    return buf->load(bottom);
-  }
-  m_bottom.store(bottom + 1, relaxed);
-  return std::invoke(std::forward<F>(when_empty));
-}
-
-template <dequeable T>
-constexpr auto deque<T>::steal() noexcept -> steal_t<T> {
-  std::ptrdiff_t top = m_top.load(acquire);
-  LF_ATOMIC_THREAD_FENCE_SEQ_CST;
-  std::ptrdiff_t const bottom = m_bottom.load(acquire);
-
-  if (top < bottom) {
-    // Must load *before* acquiring the slot as slot may be overwritten immediately after
-    // acquiring. This load is NOT required to be atomic even-though it may race with an overwrite
-    // as we only return the value if we win the race below guaranteeing we had no race during our
-    // read. If we loose the race then 'x' could be corrupt due to read-during-write race but as T
-    // is trivially destructible this does not matter.
-    T tmp = m_buf.load(consume)->load(top);
-
-    static_assert(std::is_trivially_destructible_v<T>, "concept 'atomicable' should guarantee this already");
-
-    if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
-      return {.code = err::lost, .val = {}};
-    }
-    return {.code = err::none, .val = tmp};
-  }
-  return {.code = err::empty, .val = {}};
-}
-
-template <dequeable T>
-constexpr deque<T>::~deque() noexcept {
-  delete m_buf.load(); // NOLINT
-}
-
-} // namespace ext
-
-} // namespace lf
-
-#undef LF_ATOMIC_THREAD_FENCE_SEQ_CST
-
-#endif /* C9703881_3D9C_41A5_A7A2_44615C4CFA6A */
-
-    // for deque, steal_t
-#ifndef ACB944D8_08B6_4600_9302_602E847753FD
-#define ACB944D8_08B6_4600_9302_602E847753FD
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <type_traits> // for is_standard_layout_v
-#include <version>     // for __cpp_lib_is_pointer_interconvertible_base_of
-
-#ifndef BC7496D2_E762_43A4_92A3_F2AD10690569
-#define BC7496D2_E762_43A4_92A3_F2AD10690569
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <atomic>     // for atomic, memory_order_consume, memory_order_relaxed
-#include <concepts>   // for invocable
-#include <functional> // for invoke
- // for immovable        // for LF_ASSERT
-
-/**
- * @file list.hpp
- *
- * @brief Lock-free intrusive list for use when submitting tasks.
- */
-
-namespace lf {
-
-inline namespace ext {
-
-/**
- * @brief A multi-producer, single-consumer intrusive list.
- *
- * This implementation is lock-free, allocates no memory and is optimized for weak memory models.
- */
-template <typename T>
-class intrusive_list : impl::immovable<intrusive_list<T>> {
- public:
-  /**
-   * @brief An intruded node in the list.
-   */
-  class node : impl::immovable<node> {
-   public:
-    /**
-     * @brief Construct a node storing a copy of `data`.
-     */
-    explicit constexpr node(T const &data) noexcept(std::is_nothrow_copy_constructible_v<T>) : m_data(data) {}
-
-    /**
-     * @brief Access the value stored in a node of the list.
-     */
-    [[nodiscard]] friend constexpr auto unwrap(node *ptr) noexcept -> T & { return non_null(ptr)->m_data; }
-
-    /**
-     * @brief Call `func` on each unwrapped node linked in the list.
-     *
-     * This is a noop if `root` is `nullptr`.
-     */
-    template <std::invocable<T &> F>
-    friend constexpr void for_each_elem(node *root, F &&func) noexcept(std::is_nothrow_invocable_v<F, T &>) {
-      while (root) {
-        // Have to be very careful here, we can't deference `root` after
-        // we've called `func` as `func` could destroy the node so, we have
-        // to cache the next pointer before the function call.
-        auto next = root->m_next;
-        std::invoke(func, root->m_data);
-        root = next;
-      }
-    }
-
-   private:
-    friend class intrusive_list;
-
-    [[no_unique_address]] T m_data;
-    node *m_next = nullptr;
-  };
-
-  /**
-   * @brief Push a new node, this can be called concurrently from any number of threads.
-   *
-   * `new_node` should be an unlinked node e.g. not part of a list.
-   */
-  constexpr void push(node *new_node) noexcept {
-
-    LF_ASSERT(new_node && new_node->m_next == nullptr);
-
-    node *stale_head = m_head.load(std::memory_order_relaxed);
-
-    for (;;) {
-      non_null(new_node)->m_next = stale_head;
-
-      if (m_head.compare_exchange_weak(stale_head, new_node, std::memory_order_release)) {
-        return;
-      }
-    }
-  }
-
-  /**
-   * @brief Pop all the nodes from the list and return a pointer to the root (`nullptr` if empty).
-   *
-   * Only the owner (thread) of the list can call this function, this will reverse the direction of the list
-   * such that `for_each_elem` will operate if FIFO order.
-   */
-  constexpr auto try_pop_all() noexcept -> node * {
-
-    node *last = m_head.exchange(nullptr, std::memory_order_consume);
-    node *first = nullptr;
-
-    while (last) {
-      node *tmp = last;
-      last = last->m_next;
-      tmp->m_next = first;
-      first = tmp;
-    }
-
-    return first;
-  }
-
- private:
-  std::atomic<node *> m_head = nullptr;
-};
-
-} // namespace ext
-
-} // namespace lf
-
-#endif /* BC7496D2_E762_43A4_92A3_F2AD10690569 */
-
-   // for intrusive_list // for frame
-
-/**
- * @file handles.hpp
- *
- * @brief Definitions of `libfork`'s handle types.
- */
-
-namespace lf {
-
-namespace impl {
-
-/**
- * @brief A type safe wrapper around a handle to a coroutine that is at a submission point.
- *
- * \rst
- *
- * .. note::
- *
- *    A pointer to an ``submit_h`` should never be deferenced, only passed to ``lf::ext::resume()``.
- *
- * \endrst
- */
-class submit_t : impl::frame {};
-
-static_assert(std::is_standard_layout_v<submit_t>);
-
-#ifdef __cpp_lib_is_pointer_interconvertible
-static_assert(std::is_pointer_interconvertible_base_of_v<impl::frame, submit_t>);
-#endif
-
-/**
- * @brief A type safe wrapper around a handle to a stealable coroutine.
- *
- * \rst
- *
- * .. note::
- *
- *    A pointer to an ``task_h`` should never be deferenced, only passed to ``lf::ext::resume()``.
- *
- * \endrst
- */
-class task_t : impl::frame {};
-
-static_assert(std::is_standard_layout_v<task_t>);
-
-#ifdef __cpp_lib_is_pointer_interconvertible
-static_assert(std::is_pointer_interconvertible_base_of_v<impl::frame, task_t>);
-#endif
-
-} // namespace impl
-
-inline namespace ext {
-
-/**
- * @brief An alias for a pointer to a `submit_t` wrapped in an intruded list.
- */
-using submit_handle = typename intrusive_list<impl::submit_t *>::node *;
-
-/**
- * @brief An alias for a pointer to a `task_t`.
- */
-using task_handle = impl::task_t *;
-
-} // namespace ext
-
-} // namespace lf
-
-#endif /* ACB944D8_08B6_4600_9302_602E847753FD */
-
-  // for task_handle, submit_handle, submit_t     // for intrusive_list // for non_null, immovable        // for LF_ASSERT
-
-/**
- * @file context.hpp
- *
- * @brief Provides the hierarchy of worker thread contexts.
- */
-
-namespace lf {
-
-// ------------------ Context ------------------- //
-
-inline namespace ext {
-
-class context;        // Semi-User facing, (for submitting tasks).
-class worker_context; // API for worker threads.
-
-} // namespace ext
-
-namespace impl {
-
-class full_context; // Internal API
-
-} // namespace impl
-
-inline namespace ext {
-
-/**
- * @brief A type-erased function object that takes no arguments.
- */
-#ifdef __cpp_lib_move_only_function
-using nullary_function_t = std::move_only_function<void()>;
-#else
-using nullary_function_t = std::function<void()>;
-#endif
-
-/**
- * @brief  Context for (extension) schedulers to interact with.
- *
- * Each worker thread stores a context object, this is managed by the library. Internally a context
- * manages the work stealing queue and the submission queue. Submissions to the submission queue
- * trigger a user-supplied notification.
- */
-class worker_context : impl::immovable<context> {
- public:
-  /**
-   * @brief schedule suspended tasks to the context, supports concurrent submission.
-   *
-   * This will trigger the notification function.
-   */
-  void schedule(submit_handle jobs) {
-
-    m_submit.push(non_null(jobs));
-
-    // Once we have pushed if this throws we cannot uphold the strong exception guarantee.
-    [&]() noexcept {
-      m_notify();
-    }();
-  }
-
-  /**
-   * @brief Fetch a linked-list of the submitted tasks, for use __only by the owning worker thread__.
-   *
-   * If there are no submitted tasks, then returned pointer will be null.
-   */
-  [[nodiscard]] auto try_pop_all() noexcept -> submit_handle { return m_submit.try_pop_all(); }
-
-  /**
-   * @brief Attempt a steal operation from this contexts task deque, supports concurrent stealing.
-   */
-  [[nodiscard]] auto try_steal() noexcept -> steal_t<task_handle> { return m_tasks.steal(); }
-
- private:
-  friend class impl::full_context;
-
-  /**
-   * @brief Construct a context for a worker thread.
-   *
-   * Notify is a function that may be called concurrently by other workers to signal to the
-   * worker owning this context that a task has been submitted to a private queue.
-   */
-  explicit worker_context(nullary_function_t notify) noexcept : m_notify(std::move(notify)) {
-    LF_ASSERT(m_notify);
-  }
-
-  /**
-   * @brief All non-null.
-   */
-  deque<task_handle> m_tasks;
-  /**
-   * @brief All non-null.
-   */
-  intrusive_list<impl::submit_t *> m_submit;
-  /**
-   * @brief The user supplied notification function.
-   */
-  nullary_function_t m_notify;
-};
-
-} // namespace ext
-
-namespace impl {
-
-/**
- * @brief Context for internal use, contains full-API for push/pop.
- */
-class full_context : public worker_context {
- public:
-  /**
-   * @brief Construct a new full context object, store a copy of the user provided notification function.
-   */
-  explicit full_context(nullary_function_t notify) noexcept : worker_context(std::move(notify)) {}
-
-  /**
-   * @brief Add a task to the work queue.
-   */
-  void push(task_handle task) { m_tasks.push(non_null(task)); }
-
-  /**
-   * @brief Remove a task from the work queue
-   */
-  [[nodiscard]] auto pop() noexcept -> task_handle {
-    return m_tasks.pop([]() -> task_handle {
-      return nullptr;
-    });
-  }
-
-  /**
-   * @brief Test if the work queue is empty.
-   */
-  [[nodiscard]] auto empty() const noexcept -> bool { return m_tasks.empty(); }
-};
-
-} // namespace impl
-
-} // namespace lf
-
-#endif /* D66BBECE_E467_4EB6_B74A_AAA2E7256E02 */
-
-  // for worker_context, full_context
-#ifndef CF97E524_27A6_4CD9_8967_39F1B1BE97B6
-#define CF97E524_27A6_4CD9_8967_39F1B1BE97B6
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <stdexcept> // for runtime_error
-#include <utility>   // for move
-          // for full_context, worker_context, nullary_f... // for manual_lifetime           // for stack                // for LF_CLANG_TLS_NOINLINE, LF_THROW, LF_ASSERT
-
-/**
- * @file tls.hpp
- *
- * @brief The thread local variables used by libfork.
- */
-
-namespace lf {
-
-namespace impl::tls {
-
-/**
- * @brief Set when `impl::tls::thread_stack` is alive.
- */
-inline thread_local bool has_stack = false;
-/**
- * @brief A workers stack.
- *
- * This is wrapped in an `manual_lifetime` to make it trivially destructible/constructible such that it
- * requires no construction checks to access.
- *
- * TODO: Find out why this is not constinit on MSVC.
- */
-#ifndef _MSC_VER
-constinit
-#endif
-    inline thread_local manual_lifetime<stack>
-        thread_stack = {};
-/**
- * @brief Set when `impl::tls::thread_stack` is alive.
- */
-constinit inline thread_local bool has_context = false;
-/**
- * @brief A workers context.
- *
- * This is wrapped in an `manual_lifetime` to make it trivially destructible/constructible such that it
- * requires no construction checks to access.
- */
-#ifndef _MSC_VER
-constinit
-#endif
-    inline thread_local manual_lifetime<full_context>
-        thread_context = {};
-
-/**
- * @brief Checked access to a workers stack.
- */
-[[nodiscard]] LF_CLANG_TLS_NOINLINE inline auto stack() noexcept -> stack * {
-  LF_ASSERT(has_stack);
-  return thread_stack.data();
-}
-
-/**
- * @brief Checked access to a workers context.
- */
-[[nodiscard]] LF_CLANG_TLS_NOINLINE inline auto context() noexcept -> full_context * {
-  LF_ASSERT(has_context);
-  return thread_context.data();
-}
-
-} // namespace impl::tls
-
-inline namespace ext {
-
-/**
- * @brief Initialize thread-local variables for a worker.
- *
- * Returns a handle to the library-managed context for the worker, this context is associated exclusively with
- * the thread that called this function.
- *
- * @param notify Called when a task is submitted to a worker, this may be called concurrently.
- *
- * \rst
- *
- * .. warning::
- *    This return value should be cleaned up with ``lf::ext::finalize()``.
- *
- * \endrst
- */
-[[nodiscard]] inline LF_CLANG_TLS_NOINLINE auto worker_init(nullary_function_t notify) -> worker_context * {
-
-  LF_LOG("Initializing worker");
-
-  if (impl::tls::has_context && impl::tls::has_stack) {
-    LF_THROW(std::runtime_error("Worker already initialized"));
-  }
-
-  worker_context *context = impl::tls::thread_context.construct(std::move(notify));
-
-  // clang-format off
-
-  LF_TRY {
-    impl::tls::thread_stack.construct();
-  } LF_CATCH_ALL {
-    impl::tls::thread_context.destroy();
-  }
-
-  impl::tls::has_stack = true;
-  impl::tls::has_context = true;
-
-  // clang-format on
-
-  return context;
-}
-
-/**
- * @brief Clean-up thread-local variable before destructing a worker's context.
- *
- * This must be called by the same worker (thread) which called ``lf::ext::worker_init()``.
- *
- * \rst
- *
- * .. warning::
- *    These must have been initialized with ``worker_init(...)``.
- *
- * \endrst
- */
-inline LF_CLANG_TLS_NOINLINE void finalize(worker_context *worker) {
-
-  LF_LOG("Finalizing worker");
-
-  if (worker != impl::tls::thread_context.data()) {
-    LF_THROW(std::runtime_error("Finalize called on wrong thread"));
-  }
-
-  if (!impl::tls::has_context || !impl::tls::has_stack) {
-    LF_THROW(std::runtime_error("Finalize called before initialization or after finalization"));
-  }
-
-  impl::tls::thread_context.destroy();
-  impl::tls::thread_stack.destroy();
-
-  impl::tls::has_stack = false;
-  impl::tls::has_context = false;
-}
-
-} // namespace ext
-
-} // namespace lf
-
-#endif /* CF97E524_27A6_4CD9_8967_39F1B1BE97B6 */
-
-      // for context   // for frame // for different_from, referenceable        // for LF_COMPILER_EXCEPTIONS, LF_FORCEINLINE
-#ifndef A75DC3F0_D0C3_4669_A901_0B22556C873C
-#define A75DC3F0_D0C3_4669_A901_0B22556C873C
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <type_traits>
-
-
-/**
- * @file tag.hpp
- *
- * @brief Libfork's dispatch tags.
- */
-
-namespace lf {
-
-inline namespace core {
-
-/**
- * @brief An enumeration that determines the behavior of a coroutine's promise.
- *
- * You can inspect the first argument of an async function to determine the tag.
- */
-enum class tag {
-  /**
-   * @brief This coroutine is a root task from an ``lf::sync_wait``.
-   */
-  root,
-  /**
-   * @brief Non root task from an ``lf::call``, completes synchronously.
-   */
-  call,
-  /**
-   * @brief Non root task from an ``lf::fork``, completes asynchronously.
-   */
-  fork,
-};
-
-/**
- * @brief Modifier's for the dispatch tag, these do not effect the child's promise, only the awaitable.
- *
- * See `lf::core::dispatch` for more information and uses, these are low-level and most users should not need
- * to use them. We use a namespace + types rather than an enumeration to allow for type-concepts.
- */
-namespace modifier {
-/**
- * @brief No modification to the dispatch category.
- */
-struct none {};
-/**
- * @brief The dispatch is `fork`, reports if the fork completed synchronously.
- */
-struct sync {};
-/**
- * @brief The dispatch is a `fork` outside a fork-join scope, reports if the fork completed synchronously.
- */
-struct sync_outside {};
-/**
- * @brief The dispatch is a `call`, the awaitable will throw eagerly.
- */
-struct eager_throw {};
-/**
- * @brief The dispatch is a `call` outside a fork-join scope, the awaitable will throw eagerly.
- */
-struct eager_throw_outside {};
-
-} // namespace modifier
-
-} // namespace core
-
-namespace impl::detail {
-
-template <typename Mod, tag T>
-struct valid_modifier_impl : std::false_type {
-  static_assert(impl::always_false<Mod>, "Mod is not a valid modifier for tag T!");
-};
-
-template <tag T>
-struct valid_modifier_impl<modifier::none, T> : std::true_type {};
-
-template <>
-struct valid_modifier_impl<modifier::sync, tag::fork> : std::true_type {};
-
-template <>
-struct valid_modifier_impl<modifier::sync_outside, tag::fork> : std::true_type {};
-
-// TODO: in theory it is possible to extend eager to fork but you may as well just use sync[_outside]?
-
-template <>
-struct valid_modifier_impl<modifier::eager_throw, tag::call> : std::true_type {};
-
-template <>
-struct valid_modifier_impl<modifier::eager_throw_outside, tag::call> : std::true_type {};
-
-} // namespace impl::detail
-
-inline namespace core {
-
-/**
- * @brief Test if a type is a valid modifier for a tag.
- */
-template <typename T, tag Tag>
-concept modifier_for = impl::detail::valid_modifier_impl<T, Tag>::value;
-
-} // namespace core
-
-namespace impl {
-
-/**
- * @brief An enumerator describing a statement's location wrt to a fork-join scope.
- */
-enum class region {
-  /**
-   * @brief Unknown location wrt to a fork-join scope.
-   */
-  unknown,
-  /**
-   * @brief Outside a fork-join scope.
-   */
-  outside,
-  /**
-   * @brief Inside a fork-join scope
-   */
-  inside,
-  /**
-   * @brief First fork statement in a fork-join scope.
-   */
-  opening_fork,
-};
-
-} // namespace impl
-
-} // namespace lf
-
-#endif /* A75DC3F0_D0C3_4669_A901_0B22556C873C */
-
-          // for tag
-
-/**
- * @file first_arg.hpp
- *
- * @brief Machinery for the (library-generated) first argument of async functions.
- */
-
-namespace lf {
-
-inline namespace core {
-
-/**
- * @brief Test if the expression `*std::declval<T&>()` is valid and has a referenceable type i.e. non-void.
- */
-template <typename I>
-concept dereferenceable = requires (I val) {
-  { *val } -> impl::referenceable;
-};
-
-/**
- * @brief A quasi-pointer if a movable type that can be dereferenced to a referenceable type type i.e.
- * non-void.
- *
- * A quasi-pointer is assumed to be cheap-to-move like an iterator/legacy-pointer.
- */
-template <typename I>
-concept quasi_pointer = std::default_initializable<I> && std::movable<I> && dereferenceable<I>;
-
-/**
- * @brief A concept that requires a type be a copyable [function
- * object](https://en.cppreference.com/w/cpp/named_req/FunctionObject).
- *
- * An async function object is a function object that returns an `lf::task` when `operator()` is called.
- * with appropriate arguments. The call to `operator()` must create a libfork coroutine. The first argument
- * of an async function must accept a deduced templated-type that satisfies the `lf::core::first_arg` concept.
- * The return type and invocability of an async function must be independent of the first argument except
- * for its tag value.
- *
- * An async function may be copied, its copies must be equivalent to the original and support concurrent
- * invocation from multiple threads. It is assumed that an async function is cheap-to-copy like
- * an iterator/legacy-pointer.
- */
-template <typename F>
-concept async_function_object =                         //
-    std::is_class_v<std::remove_cvref_t<F>> &&          // Only classes can have templated operator().
-    std::copy_constructible<std::remove_cvref_t<F>> &&  // Must be able to copy/move a value.
-    std::constructible_from<std::remove_cvref_t<F>, F>; // Must be able to convert to a value.
-
-/**
- * @brief This describes the public-API of the first argument passed to an async function.
- *
- * An async functions' invocability and return type must be independent of their first argument except for
- * its tag value. A user may query the first argument's static member `tagged` to obtain this value.
- * Additionally, a user may query the first argument's static member function `context()` to obtain a
- * pointer to the current workers context. Finally a user may cache an exception in-flight by calling
- * `.stash_exception()`.
- */
-template <typename T>
-concept first_arg = std::is_class_v<T> && async_function_object<T> && requires (T arg) {
-  { T::tagged } -> std::convertible_to<tag>;
-  { T::context() } -> std::same_as<worker_context *>;
-  { arg.stash_exception() } noexcept;
-};
-
-} // namespace core
-
-namespace impl {
-
-/**
- * @brief The type passed as the first argument to async functions.
- *
- * Its functions are:
- *
- * - Act as a y-combinator (expose same invocability as F).
- * - Provide a handle to the coroutine frame for exception handling.
- * - Statically inform the return pointer type.
- * - Statically provide the tag.
- * - Statically provide the calling argument types.
- *
- * Hence, a first argument is also an async function object.
- */
-template <quasi_pointer I, tag Tag, async_function_object F, typename... CallArgs>
-  requires unqualified<F> && (std::is_reference_v<CallArgs> && ...)
-class first_arg_t {
- public:
-  /**
-   * @brief Tag indicating how the async function was called.
-   */
-  static constexpr tag tagged = Tag;
-
-  /**
-   * @brief Get the current workers context.
-   */
-  [[nodiscard]] static auto context() -> worker_context * { return tls::context(); }
-
-  /**
-   * @brief Stash an exception that will be rethrown at the end of the next join.
-   */
-  void stash_exception() const noexcept {
-#if LF_COMPILER_EXCEPTIONS
-    m_frame->capture_exception();
-#endif
-  }
-
-  /**
-   * @brief Construct a first_arg_t from an async function object.
-   */
-  template <different_from<first_arg_t> T>
-    requires std::constructible_from<F, T>
-  explicit first_arg_t(T &&expr) noexcept(std::is_nothrow_constructible_v<F, T>)
-      : m_fun(std::forward<T>(expr)) {}
-
-  /**
-   * @brief Forward call to the underlying async function object.
-   */
-  template <typename... Args>
-    requires std::invocable<F &, Args...>
-  auto operator()(Args &&...args) & noexcept(std::is_nothrow_invocable_v<F &, Args...>)
-      -> std::invoke_result_t<F &, Args...> {
-    return std::invoke(m_fun, std::forward<Args>(args)...);
-  }
-
-  /**
-   * @brief Forward call to the underlying async function object.
-   */
-  template <typename... Args>
-    requires std::invocable<F const &, Args...>
-  auto operator()(Args &&...args) const & noexcept(std::is_nothrow_invocable_v<F &, Args...>)
-      -> std::invoke_result_t<F const &, Args...> {
-    return std::invoke(m_fun, std::forward<Args>(args)...);
-  }
-
-  /**
-   * @brief Forward call to the underlying async function object.
-   */
-  template <typename... Args>
-    requires std::invocable<F &&, Args...>
-  auto operator()(Args &&...args) && noexcept(std::is_nothrow_invocable_v<F &, Args...>)
-      -> std::invoke_result_t<F &&, Args...> {
-    return std::invoke(std::move(m_fun), std::forward<Args>(args)...);
-  }
-
-  /**
-   * @brief Forward call to the underlying async function object.
-   */
-  template <typename... Args>
-    requires std::invocable<F const &&, Args...>
-  auto operator()(Args &&...args) const && noexcept(std::is_nothrow_invocable_v<F &, Args...>)
-      -> std::invoke_result_t<F const &&, Args...> {
-    return std::invoke(std::move(m_fun), std::forward<Args>(args)...);
-  }
-
- private:
-  /**
-   * @brief Hidden friend reduces discoverability, this is an implementation detail.
-   */
-  [[nodiscard]] friend auto unwrap(first_arg_t &&arg) noexcept -> F && { return std::move(arg.m_fun); }
-
-  /**
-   * @brief Hidden friend reduces discoverability, this is an implementation detail.
-   */
-  LF_FORCEINLINE friend auto unsafe_set_frame(first_arg_t &arg, frame *frame) noexcept {
-#if LF_COMPILER_EXCEPTIONS
-    arg.m_frame = frame;
-#endif
-  }
-
-  /**
-   * @brief The stored async function object.
-   */
-  [[no_unique_address]] F m_fun;
-
-#if LF_COMPILER_EXCEPTIONS
-  /**
-   * @brief To allow access to the frame for exception handling.
-   */
-  frame *m_frame;
-#endif
-};
-
-} // namespace impl
-
-} // namespace lf
-
-#endif /* DD0B4328_55BD_452B_A4A5_5A4670A6217B */
-
+#include <exception> // for exception
  // for quasi_pointer
 
 /**
@@ -4199,7 +4296,7 @@ concept indirectly_scannable =
 #include <optional>    // for nullopt, optional
 #include <ranges>      // for begin, end, iterator_t, empty, random_acces...
 #include <type_traits> // for decay_t
- // for projected, indirectly_foldable, semigroup_t
+ // for projected, indirect_fold_acc_t, indirectly_...
 
 #ifndef E8D38B49_7170_41BC_90E9_6D6389714304
 #define E8D38B49_7170_41BC_90E9_6D6389714304
@@ -4212,7 +4309,7 @@ concept indirectly_scannable =
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <utility> // for move
+#include <utility> // for forward
 #include <version> // for __cpp_multidimensional_subscript
       // for async_function_object, quasi_pointer
 #ifndef AD9A2908_3043_4CEC_9A2A_A57DE168DF19
@@ -4226,10 +4323,10 @@ concept indirectly_scannable =
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts> // for same_as
-#include <type_traits>
-#include <utility> // for as_const, forward
- // for quasi_pointer, async_function_object, first_arg_t // for async_result_t, return_address_for, async_tag_invo...       // for tag      // for returnable, task
+#include <concepts>    // for same_as
+#include <type_traits> // for remove_cvref_t
+#include <utility>     // for forward, as_const
+         // for async_function_object, quasi_pointer, firs... // for unique_frame      // for unqualified, immovable         // for async_result_t, return_address_for, async_...               // for tag, modifier_for              // for returnable, task
 
 /**
  * @file combinate.hpp
@@ -4309,33 +4406,27 @@ struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combin
  * @brief Build a combinator for `ret` and `fun`.
  */
 template <tag Tag, modifier_for<Tag> Mod, quasi_pointer I, async_function_object F>
-  requires std::is_rvalue_reference_v<I &&>
-auto combinate(I &&ret, F fun) -> y_combinate<I, Tag, Mod, F> {
-  return {std::forward<I>(ret), std::move(fun)};
-}
+auto combinate(I &&ret, F &&fun) {
 
-/**
- * @brief Build a combinator for `ret` and `fun`.
- *
- * This specialization prevents each layer wrapping the function in another `first_arg_t`.
- */
-template <tag Tag,
-          modifier_for<Tag> Mod,
-          tag OtherTag,
-          quasi_pointer I,
-          quasi_pointer OtherI,
-          async_function_object F,
-          typename... Args>
-  requires std::is_rvalue_reference_v<I &&>
-auto combinate(I &&ret, first_arg_t<OtherI, OtherTag, F, Args...> arg) -> y_combinate<I, Tag, Mod, F> {
-  return {std::forward<I>(ret), unwrap(std::move(arg))};
+  using II = std::remove_cvref_t<I>;
+  using FF = std::remove_cvref_t<F>;
+
+  if constexpr (first_arg_specialization<F>) {
+    // Must unwrap to prevent infinite type recursion.
+    return y_combinate<II, Tag, Mod, typename FF::async_function>{
+        std::forward<I>(ret),
+        unwrap(std::forward<F>(fun)),
+    };
+  } else {
+    return y_combinate<II, Tag, Mod, FF>{std::forward<I>(ret), std::forward<F>(fun)};
+  }
 }
 
 } // namespace lf::impl
 
 #endif /* AD9A2908_3043_4CEC_9A2A_A57DE168DF19 */
 
- // for combinate      // for discard_t          // for LF_STATIC_CALL, LF_STATIC_CONST, LF_DEPRECATE...            // for tag
+ // for combinate      // for discard_t          // for LF_STATIC_CALL, LF_STATIC_CONST, LF_DEPRECATE...            // for tag, modifier_for, none
 
 /**
  * @file control_flow.hpp
@@ -4387,8 +4478,8 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <quasi_pointer I, async_function_object F>
-  LF_DEPRECATE_CALL [[nodiscard]] LF_STATIC_CALL auto operator()(I ret, F fun) LF_STATIC_CONST {
-    return combinate<Tag, Mod>(std::move(ret), std::move(fun));
+  LF_DEPRECATE_CALL [[nodiscard]] LF_STATIC_CALL auto operator()(I &&ret, F &&fun) LF_STATIC_CONST {
+    return combinate<Tag, Mod>(std::forward<I>(ret), std::forward<F>(fun));
   }
 
   /**
@@ -4397,8 +4488,8 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <async_function_object F>
-  LF_DEPRECATE_CALL [[nodiscard]] LF_STATIC_CALL auto operator()(F fun) LF_STATIC_CONST {
-    return combinate<Tag, Mod>(discard_t{}, std::move(fun));
+  LF_DEPRECATE_CALL [[nodiscard]] LF_STATIC_CALL auto operator()(F &&fun) LF_STATIC_CONST {
+    return combinate<Tag, Mod>(discard_t{}, std::forward<F>(fun));
   }
 
 #if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
@@ -4408,8 +4499,8 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <quasi_pointer I, async_function_object F>
-  [[nodiscard]] LF_STATIC_CALL auto operator[](I ret, F fun) LF_STATIC_CONST {
-    return combinate<Tag, Mod>(std::move(ret), std::move(fun));
+  [[nodiscard]] LF_STATIC_CALL auto operator[](I &&ret, F &&fun) LF_STATIC_CONST {
+    return combinate<Tag, Mod>(std::forward<I>(ret), std::forward<F>(fun));
   }
 
   /**
@@ -4418,8 +4509,8 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <async_function_object F>
-  [[nodiscard]] LF_STATIC_CALL auto operator[](F fun) LF_STATIC_CONST {
-    return combinate<Tag, Mod>(discard_t{}, std::move(fun));
+  [[nodiscard]] LF_STATIC_CALL auto operator[](F &&fun) LF_STATIC_CONST {
+    return combinate<Tag, Mod>(discard_t{}, std::forward<F>(fun));
   }
 #endif
 };
@@ -4507,7 +4598,7 @@ inline constexpr auto call = dispatch<tag::call>;
 
 #endif /* E8D38B49_7170_41BC_90E9_6D6389714304 */
 
- // for eventually
+     // for call, fork, join, dispatch       // for eventually
 #ifndef DE1C62F1_949F_48DC_BC2C_960C4439332D
 #define DE1C62F1_949F_48DC_BC2C_960C4439332D
 
@@ -4519,13 +4610,13 @@ inline constexpr auto call = dispatch<tag::call>;
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>    // for invocable
+#include <concepts>    // for constructible_from, invocable
 #include <coroutine>   // for suspend_never
 #include <exception>   // for rethrow_exception
 #include <functional>  // for invoke
-#include <type_traits> // for invoke_result_t
+#include <type_traits> // for decay_t, invoke_result_t, true_type, false_type
 #include <utility>     // for forward
-      // for try_eventually
+      // for try_eventually       // for async_function_object
 #ifndef CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
 #define CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
 
@@ -4537,13 +4628,14 @@ inline constexpr auto call = dispatch<tag::call>;
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <atomic>      // for memory_order_acquire, atomic_thread_fence, memo...
+#include <atomic>      // for memory_order_acquire, atomic_thread_fence
 #include <bit>         // for bit_cast
-#include <coroutine>   // for coroutine_handle, noop_coroutine, suspend_always
+#include <coroutine>   // for coroutine_handle, noop_coroutine, suspend_...
 #include <cstdint>     // for uint16_t
 #include <memory>      // for uninitialized_default_construct_n
 #include <span>        // for span
 #include <type_traits> // for remove_cvref_t
+#include <utility>     // for move
 
 #ifndef A951FB73_0FCF_4B7C_A997_42B7E87D21CB
 #define A951FB73_0FCF_4B7C_A997_42B7E87D21CB
@@ -4561,7 +4653,6 @@ inline constexpr auto call = dispatch<tag::call>;
 #include <memory>      // for destroy
 #include <span>        // for span
 #include <type_traits> // for integral_constant, type_identity
-#include <utility>
       // for stack   // for frame   // for stack // for immovable, k_new_align
 
 /**
@@ -4696,7 +4787,7 @@ template <co_allocable T>
 
 #endif /* A951FB73_0FCF_4B7C_A997_42B7E87D21CB */
 
-    // for co_allocable, co_new_t, stack_allocated // for full_context // for submit_handle, submit_t, task_handle    // for unwrap, intrusive_list     // for stack, context  // for frame  // for stack // for k_u16_max    // for ignore_t        // for LF_ASSERT, LF_LOG, LF_CATCH_ALL, LF_RETHROW
+          // for co_allocable, co_new_t, stack_allocated         // for exception_before_join       // for full_context       // for submit_handle, submit_t, task_handle          // for unwrap, intrusive_list           // for stack, context        // for frame        // for stack // for unique_frame, frame_deleter      // for k_u16_max         // for ignore_t             // for LF_ASSERT, LF_LOG, LF_THROW, LF_ASSERT_NO_...
 #ifndef BDE6CBCC_7576_4082_AAC5_2A207FEA9293
 #define BDE6CBCC_7576_4082_AAC5_2A207FEA9293
 
@@ -4708,10 +4799,10 @@ template <co_allocable T>
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>    // for constructible_from, convertible_to, same_as
+#include <concepts>    // for convertible_to, same_as
 #include <type_traits> // for remove_cvref_t
 #include <utility>     // for declval, forward
-  // for worker_context  // for submit_handle      // for context // for non_null
+  // for worker_context  // for submit_handle      // for context    // for storable // for non_null
 
 /**
  * @file scheduler.hpp
@@ -4720,16 +4811,6 @@ template <co_allocable T>
  */
 
 namespace lf {
-
-namespace impl {
-
-/**
- * @brief Verify a forwarding reference is storable as a value type.
- */
-template <typename T>
-concept storable = std::constructible_from<std::remove_cvref_t<T>, T &&>;
-
-} // namespace impl
 
 inline namespace core {
 
@@ -4754,12 +4835,11 @@ concept scheduler = requires (Sch &&sch, submit_handle handle) {
  * normal.
  */
 template <typename T>
-concept context_switcher =
-    impl::storable<T> && requires (std::remove_cvref_t<T> awaiter, submit_handle handle) {
-      { awaiter.await_ready() } -> std::convertible_to<bool>;
-      { awaiter.await_suspend(handle) } -> std::same_as<void>;
-      { awaiter.await_resume() };
-    };
+concept context_switcher = storable<T> && requires (std::remove_cvref_t<T> awaiter, submit_handle handle) {
+  { awaiter.await_ready() } -> std::convertible_to<bool>;
+  { awaiter.await_suspend(handle) } -> std::same_as<void>;
+  { awaiter.await_resume() };
+};
 
 template <scheduler Sch>
 struct resume_on_quasi_awaitable;
@@ -4814,7 +4894,7 @@ static_assert(context_switcher<resume_on_quasi_awaitable<worker_context>>);
 
 #endif /* BDE6CBCC_7576_4082_AAC5_2A207FEA9293 */
 
-    // for context_switcher
+         // for context_switcher               // for region
 
 /**
  * @file awaitables.hpp
@@ -5257,7 +5337,7 @@ struct join_awaitable {
 
 #endif /* CF3E6AC4_246A_4131_BF7A_FE5CD641A19B */
 
- // for call_awaitable  // for combinate      // for frame       // for async_invocable, async_result_t           // for LF_STATIC_CALL, LF_STATIC_CONST, LF_DEPRECAT...             // for tag            // for returnable
+ // for call_awaitable  // for combinate      // for frame    // for immovable, unqualified       // for async_invocable, async_result_t           // for LF_STATIC_CALL, LF_STATIC_CONST, LF_DEPRECAT...             // for tag, none            // for returnable
 
 /**
  * @file just.hpp
@@ -5292,11 +5372,12 @@ class [[nodiscard("co_await this!")]] just_awaitable : just_awaitable_base<R>, c
  /**
   * @brief Construct a new just awaitable binding the return address to an internal member.
   */
-  template <typename Fun, typename... Args>
-  explicit just_awaitable(Fun &&fun, Args &&...args)
+  template <async_function_object F, typename... Args>
+    requires async_invocable<F, Args...>
+  explicit just_awaitable(F &&fun, Args &&...args)
       : call_awaitable{
             {}, 
-            combinate<tag::call, modifier::none>(&this->ret, std::forward<Fun>(fun))(std::forward<Args>(args)...)
+            combinate<tag::call, modifier::none>(&this->ret, std::forward<F>(fun))(std::forward<Args>(args)...)
         } 
       {}
 
@@ -5341,7 +5422,6 @@ struct [[nodiscard("co_await this!")]] just_wrapped : std::suspend_never {
       return std::move(val);
     }
   }
-
   /**
    * @brief The value to be forwarded.
    */
@@ -5354,13 +5434,30 @@ struct [[nodiscard("co_await this!")]] just_wrapped : std::suspend_never {
 template <>
 struct just_wrapped<void> : std::suspend_never {};
 
+namespace detail {
+
+template <class>
+struct some_just_impl : std::false_type {};
+
+template <class T>
+struct some_just_impl<just_awaitable<T>> : std::true_type {};
+
+template <class T>
+struct some_just_impl<just_wrapped<T>> : std::true_type {};
+
+} // namespace detail
+
+/**
+ * @brief Test if a type is a ``just_awaitable`` or ``just_wrapped`` specialization.
+ */
+template <class T>
+concept some_just = detail::some_just_impl<std::remove_cvref_t<T>>::value;
+
 /**
  * @brief A wrapper that supplies an async function with a call operator.
  */
-template <typename F>
-  requires (!std::is_reference_v<F>)
+template <unqualified F>
 struct [[nodiscard("This should be immediately invoked!")]] call_just {
-
   /**
    * @brief Make an awaitable that will call the async function then immediately join.
    */
@@ -5369,7 +5466,6 @@ struct [[nodiscard("This should be immediately invoked!")]] call_just {
   auto operator()(Args &&...args) && -> just_awaitable<async_result_t<F, Args...>> {
     return just_awaitable<async_result_t<F, Args...>>(std::move(fun), std::forward<Args>(args)...);
   }
-
   /**
    * @brief Immediately invoke a regular function and wrap the result in an awaitable class.
    */
@@ -5383,7 +5479,6 @@ struct [[nodiscard("This should be immediately invoked!")]] call_just {
       return {{}, std::invoke(std::move(fun), std::forward<Args>(args)...)};
     }
   }
-
   /**
    * @brief The async or regular function.
    */
@@ -5397,22 +5492,28 @@ struct bind_just {
   /**
    * @brief Make an async function object immediate callable.
    *
+   * We use `std::decay_t` here as `F` may be a reference to function pointer.
+   *
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a call + join.
    */
   template <typename F>
-  LF_DEPRECATE_CALL LF_STATIC_CALL auto operator()(F fun) LF_STATIC_CONST->call_just<F> {
-    return {std::move(fun)};
+    requires std::constructible_from<std::decay_t<F>, F>
+  LF_DEPRECATE_CALL LF_STATIC_CALL auto operator()(F &&fun) LF_STATIC_CONST->call_just<std::decay_t<F>> {
+    return {std::forward<F>(fun)};
   }
 
 #if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
   /**
    * @brief Set a void return address for an asynchronous function.
    *
+   * We use `std::decay_t` here as `F` may be a reference to function pointer.
+   *
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a call + join.
    */
   template <typename F>
-  LF_STATIC_CALL auto operator[](F fun) LF_STATIC_CONST->call_just<F> {
-    return {std::move(fun)};
+    requires std::constructible_from<std::decay_t<F>, F>
+  LF_STATIC_CALL auto operator[](F &&fun) LF_STATIC_CONST->call_just<std::decay_t<F>> {
+    return {std::forward<F>(fun)};
   }
 #endif
 };
@@ -5432,7 +5533,7 @@ inline constexpr impl::bind_just just = {};
 
 #endif /* DE1C62F1_949F_48DC_BC2C_960C4439332D */
 
-       // for just      // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST // for task
+             // for just            // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST              // for tag, eager_throw_outside             // for task
 
 /**
  * @file fold.hpp
@@ -6233,11 +6334,12 @@ inline constexpr impl::map_overload map = {};
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>   // for invocable
-#include <functional> // for identity, invoke
-#include <iterator>   // for iter_difference_t, random_access_iterator
-#include <ranges>     // for begin, end, iterator_t, range_difference_t
- // for indirectly_scannable, projected     // for call, fork, join  // for just // for LF_STATIC_CALL, LF_STATIC_CONST, LF_CATCH_ALL // for task
+#include <concepts>    // for same_as
+#include <functional>  // for identity, invoke
+#include <iterator>    // for random_access_iterator, sized_sentinel_for
+#include <ranges>      // for begin, end, iterator_t, random_access_range
+#include <type_traits> // for conditional_t
+ // for indirectly_scannable, projected     // for call, dispatch, fork, join        // for async_invocable             // for just            // for LF_STATIC_CALL, LF_STATIC_CONST, LF_ASSERT              // for tag, eager_throw_outside, sync_outside             // for task
 
 /**
  * @file scan.hpp
@@ -6953,7 +7055,7 @@ inline constexpr impl::scan_overload scan = {};
 #include <semaphore>   // for binary_semaphore
 #include <type_traits> // for conditional_t
 #include <utility>     // for forward
-           // for basic_eventually          // for submit_t             // for intrusive_list              // for thread_stack, has_stack            // for async_function_object       // for quasi_awaitable, y_combinate           // for frame // for manual_lifetime           // for stack, swap            // for async_result_t, ignore_t, rootable                // for LF_LOG, LF_CLANG_TLS_NOINLINE            // for scheduler                  // for tag
+           // for basic_eventually          // for submit_t             // for intrusive_list              // for thread_stack, has_stack            // for async_function_object       // for quasi_awaitable, y_combinate           // for frame // for manual_lifetime           // for stack, swap            // for async_result_t, ignore_t, rootable                // for LF_LOG, LF_CLANG_TLS_NOINLINE            // for scheduler                  // for tag, none
 
 /**
  * @file sync_wait.hpp
@@ -7175,9 +7277,8 @@ inline void resume(task_handle ptr) {
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <atomic> // for atomic_thread_fence, memory_order_acquire
-#include <bit>    // for bit_cast
-#include <concepts>
+#include <atomic>      // for atomic_thread_fence, memory_order_acquire
+#include <bit>         // for bit_cast
 #include <coroutine>   // for coroutine_handle, noop_coroutine, coroutine_...
 #include <cstddef>     // for size_t
 #include <type_traits> // for true_type, false_type, remove_cvref_t
@@ -7196,9 +7297,8 @@ inline void resume(task_handle ptr) {
 
 #include <concepts> // for convertible_to
 #include <iterator> // for indirectly_writable
-#include <type_traits>
-#include <utility> // for forward
-    // for stash_exception_in_return    // for quasi_pointer // for safe_ref_bind_to    // for return_address_for, discard_t         // for returnable
+#include <utility>  // for forward
+     // for stash_exception_in_return     // for quasi_pointer // for safe_ref_bind_to     // for return_address_for, discard_t          // for returnable
 
 /**
  * @file return.hpp
@@ -7449,14 +7549,17 @@ struct promise_base : frame {
   /**
    * @brief Transform a context_switch awaitable into a real awaitable.
    */
-  template <context_switcher A>
-  auto await_transform(A &&await) -> context_switch_awaitable<std::remove_cvref_t<A>> {
+  template <class A>
+    requires (!some_just<A>) && context_switcher<A>
+  auto await_transform(A &&await) {
 
     auto *submit = std::bit_cast<impl::submit_t *>(static_cast<frame *>(this));
 
     using node = typename intrusive_list<impl::submit_t *>::node;
 
-    return {std::forward<A>(await), node{submit}};
+    using awaitable = context_switch_awaitable<std::remove_cvref_t<A>>;
+
+    return awaitable{std::forward<A>(await), node{submit}};
   }
 
   // -------------------------------------------------------------- //
@@ -7697,7 +7800,27 @@ inline constexpr bool safe_fork_v = detail::safe_fork<Tag, FromList, ToList>::va
 #ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
 
 /**
- * @brief Specialize coroutine_traits for task<...> from functions.
+ * @brief Specialize coroutine_traits for task<...> from member functions.
+ *
+ * We attach the `This` type to the back of the argument list, the terminal case will check
+ * that it is not an r-value reference.
+ */
+template <lf::returnable R, typename This, lf::impl::first_arg_specialization Head, typename... Tail>
+struct std::coroutine_traits<lf::task<R>, This, Head, Tail...>
+    : std::coroutine_traits<lf::task<R>, Head, Tail..., This> {};
+
+/**
+ * @brief Specialize coroutine_traits for task<...> that removes `const` from the first arg.
+ */
+template <lf::returnable R, lf::impl::first_arg_specialization Head, typename... Tail>
+  requires std::is_const_v<Head>
+struct std::coroutine_traits<lf::task<R>, Head, Tail...>
+    : std::coroutine_traits<lf::task<R>, std::remove_const_t<Head>, Tail...> {};
+
+/**
+ * @brief Specialize coroutine_traits for task<...>.
+ *
+ * This handles defaulted arguments in the `Args...` list and performs some static checks on `CallArgs...`.
  */
 template <lf::returnable R,
           lf::impl::return_address_for<R> I,
@@ -7706,7 +7829,6 @@ template <lf::returnable R,
           typename... CallArgs,
           typename... Args>
 struct std::coroutine_traits<lf::task<R>, lf::impl::first_arg_t<I, Tag, F, CallArgs...>, Args...> {
-
   // May have less if defaulted parameters are used.
   static_assert(sizeof...(CallArgs) <= sizeof...(Args));
 
@@ -7717,17 +7839,25 @@ struct std::coroutine_traits<lf::task<R>, lf::impl::first_arg_t<I, Tag, F, CallA
 };
 
 /**
- * @brief Specialize coroutine_traits for task<...> from member functions.
+ * @brief Specialize coroutine_traits for task<...> for reference first arguments.
+ *
+ * This is a hard-error as the first argument must be passed by value.
  */
-template <lf::returnable R,
-          typename This,
-          lf::impl::return_address_for<R> I,
-          lf::tag Tag,
-          lf::async_function_object F,
-          typename... CallArgs,
-          typename... Args>
-struct std::coroutine_traits<lf::task<R>, This, lf::impl::first_arg_t<I, Tag, F, CallArgs...>, Args...>
-    : std::coroutine_traits<lf::task<R>, lf::impl::first_arg_t<I, Tag, F, CallArgs...>, Args..., This> {};
+template <lf::returnable R, lf::impl::first_arg_specialization Head, typename... Tail>
+  requires std::is_reference_v<Head>
+struct std::coroutine_traits<lf::task<R>, Head, Tail...> {
+  static_assert(lf::impl::always_false<R, Head, Tail...>, "The first arg must be passed by value!");
+};
+
+/**
+ * @brief Specialize coroutine_traits for task<...> for bad invocations.
+ *
+ * This is a hard-error as the coroutine is being invoked directly with the wrong first-argument.
+ */
+template <lf::returnable R, typename... Args>
+struct std::coroutine_traits<lf::task<R>, Args...> {
+  static_assert(lf::impl::always_false<R, Args...>, "Don't invoke a coroutine directly!");
+};
 
 #endif
 

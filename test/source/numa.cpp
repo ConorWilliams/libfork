@@ -17,7 +17,6 @@
 #include <utility>                      // for move
 #include <vector>                       // for vector
 
-#include "libfork/core.hpp"     // for impl
 #include "libfork/schedule.hpp" // for distance_matrix, numa_topology
 
 using namespace lf;
@@ -40,8 +39,8 @@ TEST_CASE("make_topology", "[numa]") {
 namespace {
 
 struct comp {
-  auto operator()(numa_topology::numa_handle const &lhs, numa_topology::numa_handle const &rhs) const noexcept
-      -> bool {
+  auto operator()(numa_topology::numa_handle const &lhs,
+                  numa_topology::numa_handle const &rhs) const noexcept -> bool {
     return hwloc_bitmap_compare(lhs.cpup.get(), rhs.cpup.get()) < 0;
   }
 };

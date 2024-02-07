@@ -36,6 +36,7 @@
 #include "libfork/core/impl/manual_lifetime.hpp"
 #include "libfork/core/impl/promise.hpp"
 #include "libfork/core/impl/return.hpp"
+#include "libfork/core/impl/safe_ref.hpp"
 #include "libfork/core/impl/stack.hpp"
 #include "libfork/core/impl/unique_frame.hpp"
 #include "libfork/core/impl/utility.hpp"

@@ -14,7 +14,6 @@
 #include <memory>      // for destroy
 #include <span>        // for span
 #include <type_traits> // for integral_constant, type_identity
-#include <utility>
 
 #include "libfork/core/ext/tls.hpp"      // for stack
 #include "libfork/core/impl/frame.hpp"   // for frame

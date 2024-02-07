@@ -11,13 +11,13 @@
 
 #include <concepts>    // for invocable, constructible_from, convertible_to
 #include <functional>  // for invoke
-#include <type_traits> // for invoke_result_t, remove_cvref_t
+#include <type_traits> // for invoke_result_t, remove_cvref_t, false_type
 #include <utility>     // for forward
 
 #include "libfork/core/ext/context.hpp"  // for worker_context, full_context
 #include "libfork/core/ext/tls.hpp"      // for context
 #include "libfork/core/impl/frame.hpp"   // for frame
-#include "libfork/core/impl/utility.hpp" // for different_from, referenceable
+#include "libfork/core/impl/utility.hpp" // for unqualified, different_from
 #include "libfork/core/macro.hpp"        // for LF_COMPILER_EXCEPTIONS, LF_FORCEINLINE
 #include "libfork/core/tag.hpp"          // for tag
 
@@ -32,21 +32,73 @@ namespace lf {
 inline namespace core {
 
 /**
- * @brief Test if the expression `*std::declval<T&>()` is valid and has a referenceable type i.e. non-void.
+ * @brief Verify a forwarding reference is storable as a value type after removing `cvref` qualifiers.
+ */
+template <typename T>
+concept storable = std::constructible_from<std::remove_cvref_t<T>, T>;
+
+/**
+ * @brief Test if we can form a reference to an instance of type `T`.
+ */
+template <typename T>
+concept referenceable = requires () { typename std::type_identity_t<T &>; };
+
+/**
+ * @brief Test if the expression `*std::declval<T&>()` is valid and is `lf::core::referenceable`.
  */
 template <typename I>
 concept dereferenceable = requires (I val) {
-  { *val } -> impl::referenceable;
+  { *val } -> referenceable;
 };
 
+} // namespace core
+
+namespace impl::detail {
+
 /**
- * @brief A quasi-pointer if a movable type that can be dereferenced to a referenceable type type i.e.
- * non-void.
+ * @brief Test if a type could be a quasi-pointer.
+ *
+ * @tparam I The unqualified type.
+ * @tparam Qual The Qualified version of `I`.
+ */
+template <typename I, typename Qual>
+concept quasi_pointer_impl =                                //
+    std::default_initializable<I> &&                        //
+    std::movable<I> &&                                      //
+    dereferenceable<I> && std::constructible_from<I, Qual>; //
+
+} // namespace impl::detail
+
+inline namespace core {
+
+/**
+ * @brief A quasi-pointer if a movable type that can be dereferenced to a `lf::core::referenceable`.
  *
  * A quasi-pointer is assumed to be cheap-to-move like an iterator/legacy-pointer.
  */
 template <typename I>
-concept quasi_pointer = std::default_initializable<I> && std::movable<I> && dereferenceable<I>;
+concept quasi_pointer = impl::detail::quasi_pointer_impl<std::remove_cvref_t<I>, I>;
+
+} // namespace core
+
+namespace impl::detail {
+
+/**
+ * @brief Test if a type could be an async function object.
+ *
+ * @tparam F The unqualified type.
+ * @tparam Qual The Qualified version of `F`.
+ */
+template <typename F, typename Qual>
+concept async_function_object_impl =             //
+    unqualified<F> &&                            // We store the unqualified type.
+    (std::is_union_v<F> || std::is_class_v<F>)&& // Only classes/unions can have templated `operator()`.
+    std::move_constructible<F> &&                // Must be able to move a value.
+    std::copy_constructible<F>;                  // Must be able to copy a value.
+
+} // namespace impl::detail
+
+inline namespace core {
 
 /**
  * @brief A concept that requires a type be a copyable [function
@@ -63,10 +115,8 @@ concept quasi_pointer = std::default_initializable<I> && std::movable<I> && dere
  * an iterator/legacy-pointer.
  */
 template <typename F>
-concept async_function_object =                         //
-    std::is_class_v<std::remove_cvref_t<F>> &&          // Only classes can have templated operator().
-    std::copy_constructible<std::remove_cvref_t<F>> &&  // Must be able to copy/move a value.
-    std::constructible_from<std::remove_cvref_t<F>, F>; // Must be able to convert to a value.
+concept async_function_object =
+    storable<F> && impl::detail::async_function_object_impl<std::remove_cvref_t<F>, F>;
 
 /**
  * @brief This describes the public-API of the first argument passed to an async function.
@@ -78,8 +128,10 @@ concept async_function_object =                         //
  * `.stash_exception()`.
  */
 template <typename T>
-concept first_arg = std::is_class_v<T> && async_function_object<T> && requires (T arg) {
+concept first_arg = impl::unqualified<T> && async_function_object<T> && requires (T arg) {
   { T::tagged } -> std::convertible_to<tag>;
+  typename T::async_function;
+  requires async_function_object<typename T::async_function>;
   { T::context() } -> std::same_as<worker_context *>;
   { arg.stash_exception() } noexcept;
 };
@@ -102,19 +154,21 @@ namespace impl {
  * Hence, a first argument is also an async function object.
  */
 template <quasi_pointer I, tag Tag, async_function_object F, typename... CallArgs>
-  requires std::is_class_v<F> && (std::is_reference_v<CallArgs> && ...)
+  requires unqualified<F> && (std::is_reference_v<CallArgs> && ...)
 class first_arg_t {
  public:
   /**
    * @brief Tag indicating how the async function was called.
    */
   static constexpr tag tagged = Tag;
-
+  /**
+   * @brief The underlying async function type.
+   */
+  using async_function = F;
   /**
    * @brief Get the current workers context.
    */
   [[nodiscard]] static auto context() -> worker_context * { return tls::context(); }
-
   /**
    * @brief Stash an exception that will be rethrown at the end of the next join.
    */
@@ -176,6 +230,13 @@ class first_arg_t {
   /**
    * @brief Hidden friend reduces discoverability, this is an implementation detail.
    */
+  [[nodiscard]] friend auto unwrap(first_arg_t const &arg) noexcept -> F const & {
+    return std::move(arg.m_fun);
+  }
+
+  /**
+   * @brief Hidden friend reduces discoverability, this is an implementation detail.
+   */
   [[nodiscard]] friend auto unwrap(first_arg_t &&arg) noexcept -> F && { return std::move(arg.m_fun); }
 
   /**
@@ -187,11 +248,31 @@ class first_arg_t {
 #endif
   }
 
+  /**
+   * @brief The stored async function object.
+   */
   [[no_unique_address]] F m_fun;
+
 #if LF_COMPILER_EXCEPTIONS
+  /**
+   * @brief To allow access to the frame for exception handling.
+   */
   frame *m_frame;
 #endif
 };
+
+namespace detail {
+
+template <typename T>
+struct is_first_arg_specialization : std::false_type {};
+
+template <tag Tag, quasi_pointer I, async_function_object F, typename... CallArgs>
+struct is_first_arg_specialization<first_arg_t<I, Tag, F, CallArgs...>> : std::true_type {};
+
+} // namespace detail
+
+template <typename T>
+concept first_arg_specialization = detail::is_first_arg_specialization<std::remove_cvref_t<T>>::value;
 
 } // namespace impl
 

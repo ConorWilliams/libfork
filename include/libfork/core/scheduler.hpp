@@ -9,13 +9,14 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>    // for constructible_from, convertible_to, same_as
+#include <concepts>    // for convertible_to, same_as
 #include <type_traits> // for remove_cvref_t
 #include <utility>     // for declval, forward
 
 #include "libfork/core/ext/context.hpp"  // for worker_context
 #include "libfork/core/ext/handles.hpp"  // for submit_handle
 #include "libfork/core/ext/tls.hpp"      // for context
+#include "libfork/core/first_arg.hpp"    // for storable
 #include "libfork/core/impl/utility.hpp" // for non_null
 
 /**
@@ -25,16 +26,6 @@
  */
 
 namespace lf {
-
-namespace impl {
-
-/**
- * @brief Verify a forwarding reference is storable as a value type.
- */
-template <typename T>
-concept storable = std::constructible_from<std::remove_cvref_t<T>, T &&>;
-
-} // namespace impl
 
 inline namespace core {
 
@@ -59,12 +50,11 @@ concept scheduler = requires (Sch &&sch, submit_handle handle) {
  * normal.
  */
 template <typename T>
-concept context_switcher =
-    impl::storable<T> && requires (std::remove_cvref_t<T> awaiter, submit_handle handle) {
-      { awaiter.await_ready() } -> std::convertible_to<bool>;
-      { awaiter.await_suspend(handle) } -> std::same_as<void>;
-      { awaiter.await_resume() };
-    };
+concept context_switcher = storable<T> && requires (std::remove_cvref_t<T> awaiter, submit_handle handle) {
+  { awaiter.await_ready() } -> std::convertible_to<bool>;
+  { awaiter.await_suspend(handle) } -> std::same_as<void>;
+  { awaiter.await_resume() };
+};
 
 template <scheduler Sch>
 struct resume_on_quasi_awaitable;

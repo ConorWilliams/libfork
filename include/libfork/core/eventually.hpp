@@ -12,12 +12,13 @@
 #include <concepts>    // for constructible_from
 #include <exception>   // for exception_ptr, current_exception
 #include <memory>      // for destroy_at, construct_at
-#include <type_traits> // for add_lvalue_reference_t, add_pointer_t, type_ide...
+#include <type_traits> // for add_lvalue_reference_t, add_pointer_t, type_id...
 #include <utility>     // for addressof, forward
 
-#include "libfork/core/impl/utility.hpp" // for empty_t, else_empty_t, immovable, non_void, saf...
-#include "libfork/core/macro.hpp"        // for LF_ASSERT, unreachable, LF_COMPILER_EXCEPTIONS
-#include "libfork/core/task.hpp"         // for returnable
+#include "libfork/core/impl/safe_ref.hpp" // for safe_ref_bind_to
+#include "libfork/core/impl/utility.hpp"  // for empty_t, else_empty_t, immovable, non_void
+#include "libfork/core/macro.hpp"         // for LF_ASSERT, unreachable, LF_COMPILER_EXCEPTIONS
+#include "libfork/core/task.hpp"          // for returnable
 
 /**
  * @file eventually.hpp

@@ -28,7 +28,7 @@
 #include "libfork/core/invocable.hpp"            // for async_result_t, ignore_t, rootable
 #include "libfork/core/macro.hpp"                // for LF_LOG, LF_CLANG_TLS_NOINLINE
 #include "libfork/core/scheduler.hpp"            // for scheduler
-#include "libfork/core/tag.hpp"                  // for tag
+#include "libfork/core/tag.hpp"                  // for tag, none
 
 /**
  * @file sync_wait.hpp

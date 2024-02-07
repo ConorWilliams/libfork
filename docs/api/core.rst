@@ -24,7 +24,11 @@ Libfork has a concept-driven API, built upon the following concepts and traits.
 Building blocks
 ~~~~~~~~~~~~~~~
 
+.. doxygenconcept:: lf::core::storable
+
 .. doxygenconcept:: lf::core::returnable
+
+.. doxygenconcept:: lf::core::referenceable
 
 .. doxygenconcept:: lf::core::dereferenceable
 

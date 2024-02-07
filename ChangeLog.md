@@ -16,7 +16,14 @@
 
 ### Added
 
+- New static asserts for better error messages when passing or capturing the first argument incorrectly.
+
 ### Changed
+
+- Made `task` a RAII type.
+- Exposed the `referenceable` concept.
+- Exposed the `storable` concept.
+- Quasi-pointer and async function object concepts generalized to reference types to reduce the number of moves.
 
 ### Removed
 

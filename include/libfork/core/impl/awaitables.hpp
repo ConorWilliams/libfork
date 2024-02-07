@@ -9,26 +9,29 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <atomic>      // for memory_order_acquire, atomic_thread_fence, memo...
+#include <atomic>      // for memory_order_acquire, atomic_thread_fence
 #include <bit>         // for bit_cast
-#include <coroutine>   // for coroutine_handle, noop_coroutine, suspend_always
+#include <coroutine>   // for coroutine_handle, noop_coroutine, suspend_...
 #include <cstdint>     // for uint16_t
 #include <memory>      // for uninitialized_default_construct_n
 #include <span>        // for span
 #include <type_traits> // for remove_cvref_t
+#include <utility>     // for move
 
-#include "libfork/core/co_alloc.hpp"    // for co_allocable, co_new_t, stack_allocated
-#include "libfork/core/ext/context.hpp" // for full_context
-#include "libfork/core/ext/handles.hpp" // for submit_handle, submit_t, task_handle
-#include "libfork/core/ext/list.hpp"    // for unwrap, intrusive_list
-#include "libfork/core/ext/tls.hpp"     // for stack, context
-#include "libfork/core/impl/frame.hpp"  // for frame
-#include "libfork/core/impl/stack.hpp"  // for stack
-#include "libfork/core/impl/unique_frame.hpp"
-#include "libfork/core/impl/utility.hpp" // for k_u16_max
-#include "libfork/core/invocable.hpp"    // for ignore_t
-#include "libfork/core/macro.hpp"        // for LF_ASSERT, LF_LOG, LF_CATCH_ALL, LF_RETHROW
-#include "libfork/core/scheduler.hpp"    // for context_switcher
+#include "libfork/core/co_alloc.hpp"          // for co_allocable, co_new_t, stack_allocated
+#include "libfork/core/exception.hpp"         // for exception_before_join
+#include "libfork/core/ext/context.hpp"       // for full_context
+#include "libfork/core/ext/handles.hpp"       // for submit_handle, submit_t, task_handle
+#include "libfork/core/ext/list.hpp"          // for unwrap, intrusive_list
+#include "libfork/core/ext/tls.hpp"           // for stack, context
+#include "libfork/core/impl/frame.hpp"        // for frame
+#include "libfork/core/impl/stack.hpp"        // for stack
+#include "libfork/core/impl/unique_frame.hpp" // for unique_frame, frame_deleter
+#include "libfork/core/impl/utility.hpp"      // for k_u16_max
+#include "libfork/core/invocable.hpp"         // for ignore_t
+#include "libfork/core/macro.hpp"             // for LF_ASSERT, LF_LOG, LF_THROW, LF_ASSERT_NO_...
+#include "libfork/core/scheduler.hpp"         // for context_switcher
+#include "libfork/core/tag.hpp"               // for region
 
 /**
  * @file awaitables.hpp

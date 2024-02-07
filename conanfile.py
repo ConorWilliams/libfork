@@ -61,7 +61,7 @@ class libfork(ConanFile):
     def build_requirements(self):
         # Some traits like build=True, etc.. will be automatically inferred.
         self.tool_requires("cmake/3.28.1")
-        # Opional dependencies that boost performance.
+        # Optional dependencies that boost performance.
         self.requires("boost/1.83.0")
         self.requires("hwloc/2.9.3")
 

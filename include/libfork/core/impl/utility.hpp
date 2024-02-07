@@ -19,7 +19,7 @@
 #include <limits>          // for numeric_limits
 #include <new>             // for std::hardware_destructive_interference_size
 #include <source_location> // for source_location
-#include <type_traits>     // for invoke_result_t, type_identity, remove_cvref_t, true_type
+#include <type_traits>     // for invoke_result_t, remove_cvref_t, type_identity, is_emp...
 #include <utility>         // for forward
 #include <vector>          // for vector
 #include <version>         // for __cpp_lib_hardware_interference_size
@@ -165,49 +165,6 @@ static_assert(std::is_empty_v<immovable<void>>);
 // ---------------- Meta programming ---------------- //
 
 /**
- * @brief Test if we can form a reference to an instance of type T.
- */
-template <typename T>
-concept referenceable = requires () { typename std::type_identity_t<T &>; };
-
-// Ban constructs like (T && -> T const &) which would dangle.
-
-namespace detail {
-
-template <typename To, typename From>
-struct safe_ref_bind_impl : std::false_type {};
-
-// All reference types can bind to a non-dangling reference of the same kind without dangling.
-
-template <typename T>
-struct safe_ref_bind_impl<T, T> : std::true_type {};
-
-// `T const X` can additionally bind to `T X` without dangling//
-
-template <typename To, typename From>
-  requires (!std::same_as<To const &, From &>)
-struct safe_ref_bind_impl<To const &, From &> : std::true_type {};
-
-template <typename To, typename From>
-  requires (!std::same_as<To const &&, From &&>)
-struct safe_ref_bind_impl<To const &&, From &&> : std::true_type {};
-
-} // namespace detail
-
-/**
- * @brief Verify that ``To expr = From`` is valid and does not dangle.
- *
- * This requires that ``To`` and ``From`` are both the same reference type or that ``To`` is a
- * const qualified version of ``From``. This explicitly bans conversions like ``T && -> T const &``
- * which would dangle.
- */
-template <typename From, typename To>
-concept safe_ref_bind_to =                          //
-    std::is_reference_v<To> &&                      //
-    referenceable<From> &&                          //
-    detail::safe_ref_bind_impl<To, From &&>::value; //
-
-/**
  * @brief Check is a type is not ``void``.
  */
 template <typename T>
@@ -296,8 +253,8 @@ template <typename T>
     { ptr == nullptr } -> std::convertible_to<bool>;
   }
 constexpr auto
-non_null(T &&val,
-         [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept -> T && {
+non_null(T &&val, [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept
+    -> T && {
 #ifndef NDEBUG
   if (val == nullptr) {
     // NOLINTNEXTLINE

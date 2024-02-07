@@ -15,7 +15,7 @@
 #include <utility>                               // for move
 #include <vector>                                // for operator==, vector
 
-#include "libfork/core.hpp"     // for sync_wait, task, try_eventually, stash_...
+#include "libfork/core.hpp"     // for sync_wait, task, try_eventually, basic_...
 #include "libfork/schedule.hpp" // for unit_pool
 
 // NOLINTBEGIN No need to check the tests for style.

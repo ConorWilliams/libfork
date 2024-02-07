@@ -10,14 +10,14 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <utility> // for move
+#include <utility> // for forward
 #include <version> // for __cpp_multidimensional_subscript
 
 #include "libfork/core/first_arg.hpp"      // for async_function_object, quasi_pointer
 #include "libfork/core/impl/combinate.hpp" // for combinate
 #include "libfork/core/invocable.hpp"      // for discard_t
 #include "libfork/core/macro.hpp"          // for LF_STATIC_CALL, LF_STATIC_CONST, LF_DEPRECATE...
-#include "libfork/core/tag.hpp"            // for tag
+#include "libfork/core/tag.hpp"            // for tag, modifier_for, none
 
 /**
  * @file control_flow.hpp
@@ -69,8 +69,8 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <quasi_pointer I, async_function_object F>
-  LF_DEPRECATE_CALL [[nodiscard]] LF_STATIC_CALL auto operator()(I ret, F fun) LF_STATIC_CONST {
-    return combinate<Tag, Mod>(std::move(ret), std::move(fun));
+  LF_DEPRECATE_CALL [[nodiscard]] LF_STATIC_CALL auto operator()(I &&ret, F &&fun) LF_STATIC_CONST {
+    return combinate<Tag, Mod>(std::forward<I>(ret), std::forward<F>(fun));
   }
 
   /**
@@ -79,8 +79,8 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <async_function_object F>
-  LF_DEPRECATE_CALL [[nodiscard]] LF_STATIC_CALL auto operator()(F fun) LF_STATIC_CONST {
-    return combinate<Tag, Mod>(discard_t{}, std::move(fun));
+  LF_DEPRECATE_CALL [[nodiscard]] LF_STATIC_CALL auto operator()(F &&fun) LF_STATIC_CONST {
+    return combinate<Tag, Mod>(discard_t{}, std::forward<F>(fun));
   }
 
 #if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
@@ -90,8 +90,8 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <quasi_pointer I, async_function_object F>
-  [[nodiscard]] LF_STATIC_CALL auto operator[](I ret, F fun) LF_STATIC_CONST {
-    return combinate<Tag, Mod>(std::move(ret), std::move(fun));
+  [[nodiscard]] LF_STATIC_CALL auto operator[](I &&ret, F &&fun) LF_STATIC_CONST {
+    return combinate<Tag, Mod>(std::forward<I>(ret), std::forward<F>(fun));
   }
 
   /**
@@ -100,8 +100,8 @@ struct bind_task {
    * @return A functor, that will return an awaitable (in an ``lf::task``), that will trigger a fork/call .
    */
   template <async_function_object F>
-  [[nodiscard]] LF_STATIC_CALL auto operator[](F fun) LF_STATIC_CONST {
-    return combinate<Tag, Mod>(discard_t{}, std::move(fun));
+  [[nodiscard]] LF_STATIC_CALL auto operator[](F &&fun) LF_STATIC_CONST {
+    return combinate<Tag, Mod>(discard_t{}, std::forward<F>(fun));
   }
 #endif
 };

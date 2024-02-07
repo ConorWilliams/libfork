@@ -16,13 +16,13 @@
 #include <ranges>      // for begin, end, iterator_t, empty, random_acces...
 #include <type_traits> // for decay_t
 
-#include "libfork/algorithm/constraints.hpp" // for projected, indirectly_foldable, semigroup_t
-#include "libfork/core/control_flow.hpp"
-#include "libfork/core/eventually.hpp" // for eventually
-#include "libfork/core/just.hpp"       // for just
-#include "libfork/core/macro.hpp"      // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST
-#include "libfork/core/tag.hpp"
-#include "libfork/core/task.hpp" // for task
+#include "libfork/algorithm/constraints.hpp" // for projected, indirect_fold_acc_t, indirectly_...
+#include "libfork/core/control_flow.hpp"     // for call, fork, join, dispatch
+#include "libfork/core/eventually.hpp"       // for eventually
+#include "libfork/core/just.hpp"             // for just
+#include "libfork/core/macro.hpp"            // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST
+#include "libfork/core/tag.hpp"              // for tag, eager_throw_outside
+#include "libfork/core/task.hpp"             // for task
 
 /**
  * @file fold.hpp
