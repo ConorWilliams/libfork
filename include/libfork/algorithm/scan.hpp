@@ -19,7 +19,7 @@
 #include "libfork/core/control_flow.hpp"     // for call, dispatch, fork, join
 #include "libfork/core/invocable.hpp"        // for async_invocable
 #include "libfork/core/just.hpp"             // for just
-#include "libfork/core/macro.hpp"            // for LF_STATIC_CALL, LF_STATIC_CONST, LF_ASSERT
+#include "libfork/core/macro.hpp"            // for LF_STATIC_CALL, LF_STATIC_CONST, LF_PRAGMA_...
 #include "libfork/core/tag.hpp"              // for tag, eager_throw_outside, sync_outside
 #include "libfork/core/task.hpp"             // for task
 
@@ -198,7 +198,7 @@ struct rise_sweep {
           // Mid segment has a right sibling so do the fold.
           acc_t acc = acc_t(co_await lf::just(proj)(*beg));
           // The optimizer sometimes trips-up so we force a bit of unrolling.
-#pragma unroll(8)
+          LF_PRAGMA_UNROLL(8)
           for (++beg; beg != end; ++beg) {
             if constexpr (async_bop) {
               co_await eager_call_outside(&acc, bop)(std::move(acc), co_await lf::just(proj)(*beg));
@@ -218,7 +218,7 @@ struct rise_sweep {
 
         acc_t acc = acc_t(*(out - 1));
 
-#pragma unroll(8)
+        LF_PRAGMA_UNROLL(8)
         for (; beg != end; ++beg, ++out) {
           if constexpr (async_bop) {
             co_await eager_call_outside(&acc, bop)(std::move(acc), co_await lf::just(proj)(*beg));
@@ -237,7 +237,7 @@ struct rise_sweep {
         ++beg;
         ++out;
 
-#pragma unroll(8)
+        LF_PRAGMA_UNROLL(8)
         for (; beg != end; ++beg, ++out) {
           if constexpr (async_bop) {
             co_await eager_call_outside(&acc, bop)(std::move(acc), co_await lf::just(proj)(*beg));
@@ -356,7 +356,7 @@ struct fall_sweep_impl {
       // The furthest-right chunk has no reduction stored in it so we include it in the scan.
       I last = (Ival == interval::rhs) ? end : beg + size - 1;
 
-#pragma unroll(8)
+      LF_PRAGMA_UNROLL(8)
       for (; beg != last; ++beg, ++out) {
         if constexpr (async_bop) {
           co_await eager_call_outside(&acc, bop)(std::move(acc), co_await lf::just(proj)(*beg));

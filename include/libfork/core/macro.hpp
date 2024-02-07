@@ -347,6 +347,22 @@ using std::unreachable;
   #define LF_DEPRECATE_CALL
 #endif
 
+/**
+ * @brief Expands to ``_Pragma(#x)``.
+ */
+#define LF_AS_PRAGMA(x) _Pragma(#x)
+
+/**
+ * @brief Expands to `#pragma unroll n` or equivalent if the compiler supports it.
+ */
+#ifdef __clang__
+  #define LF_PRAGMA_UNROLL(n) LF_AS_PRAGMA(unroll n)
+#elif defined(__GNUC__)
+  #define LF_PRAGMA_UNROLL(n) LF_AS_PRAGMA(GCC unroll n)
+#else
+  #define LF_PRAGMA_UNROLL(n)
+#endif
+
 // NOLINTEND
 
 #endif /* C5DCA647_8269_46C2_B76F_5FA68738AEDA */

@@ -49,6 +49,16 @@ struct exception_before_join : std::exception {
   auto what() const noexcept -> char const * override { return "A child threw an exception!"; }
 };
 
+/**
+ * @brief Thrown when a worker attempts to call `sync_wait`.
+ */
+struct sync_wait_in_worker : std::exception {
+  /**
+   * @brief A diagnostic message.
+   */
+  auto what() const noexcept -> char const * override { return "sync_wait called from a worker thread!"; }
+};
+
 } // namespace core
 
 } // namespace lf

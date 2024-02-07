@@ -516,6 +516,22 @@ using std::unreachable;
   #define LF_DEPRECATE_CALL
 #endif
 
+/**
+ * @brief Expands to ``_Pragma(#x)``.
+ */
+#define LF_AS_PRAGMA(x) _Pragma(#x)
+
+/**
+ * @brief Expands to `#pragma unroll n` or equivalent if the compiler supports it.
+ */
+#ifdef __clang__
+  #define LF_PRAGMA_UNROLL(n) LF_AS_PRAGMA(unroll n)
+#elif defined(__GNUC__)
+  #define LF_PRAGMA_UNROLL(n) LF_AS_PRAGMA(GCC unroll n)
+#else
+  #define LF_PRAGMA_UNROLL(n)
+#endif
+
 // NOLINTEND
 
 #endif /* C5DCA647_8269_46C2_B76F_5FA68738AEDA */
@@ -2250,6 +2266,11 @@ namespace impl {
  */
 class submit_t : impl::frame {};
 
+/**
+ * @brief A linked-list node containing a pointer to a `submit_t`.
+ */
+using submit_node_t = typename intrusive_list<impl::submit_t *>::node;
+
 static_assert(std::is_standard_layout_v<submit_t>);
 
 #ifdef __cpp_lib_is_pointer_interconvertible
@@ -2282,7 +2303,7 @@ inline namespace ext {
 /**
  * @brief An alias for a pointer to a `submit_t` wrapped in an intruded list.
  */
-using submit_handle = typename intrusive_list<impl::submit_t *>::node *;
+using submit_handle = impl::submit_node_t *;
 
 /**
  * @brief An alias for a pointer to a `task_t`.
@@ -2957,9 +2978,11 @@ class first_arg_t {
   /**
    * @brief Hidden friend reduces discoverability, this is an implementation detail.
    */
-  LF_FORCEINLINE friend auto unsafe_set_frame(first_arg_t &arg, frame *frame) noexcept {
+  LF_FORCEINLINE friend auto unsafe_set_frame(first_arg_t const &arg, frame *frame) noexcept {
 #if LF_COMPILER_EXCEPTIONS
-    arg.m_frame = frame;
+    // Const cast is ok here, a user may want to declare the first argument as `auto const arg` but we
+    // still need to set the frame pointer before the user can touch the then-const object.
+    const_cast<first_arg_t &>(arg).m_frame = frame;
 #endif
   }
 
@@ -3635,6 +3658,16 @@ struct exception_before_join : std::exception {
    * @brief A diagnostic message.
    */
   auto what() const noexcept -> char const * override { return "A child threw an exception!"; }
+};
+
+/**
+ * @brief Thrown when a worker attempts to call `sync_wait`.
+ */
+struct sync_wait_in_worker : std::exception {
+  /**
+   * @brief A diagnostic message.
+   */
+  auto what() const noexcept -> char const * override { return "sync_wait called from a worker thread!"; }
 };
 
 } // namespace core
@@ -4787,7 +4820,7 @@ template <co_allocable T>
 
 #endif /* A951FB73_0FCF_4B7C_A997_42B7E87D21CB */
 
-          // for co_allocable, co_new_t, stack_allocated         // for exception_before_join       // for full_context       // for submit_handle, submit_t, task_handle          // for unwrap, intrusive_list           // for stack, context        // for frame        // for stack // for unique_frame, frame_deleter      // for k_u16_max         // for ignore_t             // for LF_ASSERT, LF_LOG, LF_THROW, LF_ASSERT_NO_...
+          // for co_allocable, co_new_t, stack_allocated         // for exception_before_join       // for full_context       // for submit_handle, submit_node_t, task_handle          // for unwrap           // for stack, context        // for frame        // for stack // for unique_frame, frame_deleter      // for k_u16_max         // for ignore_t             // for LF_ASSERT, LF_LOG, LF_THROW, LF_ASSERT_NO_...
 #ifndef BDE6CBCC_7576_4082_AAC5_2A207FEA9293
 #define BDE6CBCC_7576_4082_AAC5_2A207FEA9293
 
@@ -4818,7 +4851,7 @@ inline namespace core {
  * @brief A concept that schedulers must satisfy.
  *
  * This requires only a single method, `schedule` which accepts an `lf::submit_handle` and
- * promises to call `lf::resume()` on it. The `schedule method should fulfill the strong
+ * promises to call `lf::resume()` on it. The `schedule` method __must__ fulfill the strong
  * exception guarantee.
  */
 template <typename Sch>
@@ -5033,7 +5066,7 @@ struct context_switch_awaitable {
   /**
    * @brief The current coroutine's handle.
    */
-  intrusive_list<impl::submit_t *>::node self;
+  submit_node_t self;
 };
 
 // -------------------------------------------------------- //
@@ -6339,7 +6372,7 @@ inline constexpr impl::map_overload map = {};
 #include <iterator>    // for random_access_iterator, sized_sentinel_for
 #include <ranges>      // for begin, end, iterator_t, random_access_range
 #include <type_traits> // for conditional_t
- // for indirectly_scannable, projected     // for call, dispatch, fork, join        // for async_invocable             // for just            // for LF_STATIC_CALL, LF_STATIC_CONST, LF_ASSERT              // for tag, eager_throw_outside, sync_outside             // for task
+ // for indirectly_scannable, projected     // for call, dispatch, fork, join        // for async_invocable             // for just            // for LF_STATIC_CALL, LF_STATIC_CONST, LF_PRAGMA_...              // for tag, eager_throw_outside, sync_outside             // for task
 
 /**
  * @file scan.hpp
@@ -6516,7 +6549,7 @@ struct rise_sweep {
           // Mid segment has a right sibling so do the fold.
           acc_t acc = acc_t(co_await lf::just(proj)(*beg));
           // The optimizer sometimes trips-up so we force a bit of unrolling.
-#pragma unroll(8)
+          LF_PRAGMA_UNROLL(8)
           for (++beg; beg != end; ++beg) {
             if constexpr (async_bop) {
               co_await eager_call_outside(&acc, bop)(std::move(acc), co_await lf::just(proj)(*beg));
@@ -6536,7 +6569,7 @@ struct rise_sweep {
 
         acc_t acc = acc_t(*(out - 1));
 
-#pragma unroll(8)
+        LF_PRAGMA_UNROLL(8)
         for (; beg != end; ++beg, ++out) {
           if constexpr (async_bop) {
             co_await eager_call_outside(&acc, bop)(std::move(acc), co_await lf::just(proj)(*beg));
@@ -6555,7 +6588,7 @@ struct rise_sweep {
         ++beg;
         ++out;
 
-#pragma unroll(8)
+        LF_PRAGMA_UNROLL(8)
         for (; beg != end; ++beg, ++out) {
           if constexpr (async_bop) {
             co_await eager_call_outside(&acc, bop)(std::move(acc), co_await lf::just(proj)(*beg));
@@ -6674,7 +6707,7 @@ struct fall_sweep_impl {
       // The furthest-right chunk has no reduction stored in it so we include it in the scan.
       I last = (Ival == interval::rhs) ? end : beg + size - 1;
 
-#pragma unroll(8)
+      LF_PRAGMA_UNROLL(8)
       for (; beg != last; ++beg, ++out) {
         if constexpr (async_bop) {
           co_await eager_call_outside(&acc, bop)(std::move(acc), co_await lf::just(proj)(*beg));
@@ -7051,11 +7084,12 @@ inline constexpr impl::scan_overload scan = {};
 
 #include <bit>         // for bit_cast
 #include <exception>   // for rethrow_exception
-#include <optional>    // for optional, nullopt
+#include <memory>      // for make_shared
+#include <optional>    // for optional
 #include <semaphore>   // for binary_semaphore
 #include <type_traits> // for conditional_t
 #include <utility>     // for forward
-           // for basic_eventually          // for submit_t             // for intrusive_list              // for thread_stack, has_stack            // for async_function_object       // for quasi_awaitable, y_combinate           // for frame // for manual_lifetime           // for stack, swap            // for async_result_t, ignore_t, rootable                // for LF_LOG, LF_CLANG_TLS_NOINLINE            // for scheduler                  // for tag, none
+                // for LF_DEFER           // for try_eventually            // for sync_wait_in_worker          // for submit_node_t, submit_t             // for intrusive_list              // for has_stack, thread_stack, has_context            // for async_function_object       // for quasi_awaitable, y_combinate           // for frame // for manual_lifetime           // for stack            // for async_result_t, ignore_t, rootable                // for LF_CLANG_TLS_NOINLINE            // for scheduler                  // for tag, none
 
 /**
  * @file sync_wait.hpp
@@ -7111,9 +7145,9 @@ inline namespace core {
  * is expected to make a call from `main` into a scheduler/runtime by scheduling a single root-task with this
  * function.
  *
- * This will build a task from `fun` and dispatch it to `sch` via its `schedule` method. Sync wait should
- * __not__ be called by a worker thread (which are never allowed to block) unless the call to `schedule`
- * completes synchronously.
+ * This will build a task from `fun` and dispatch it to `sch` via its `schedule` method. If `sync_wait` is
+ * called by a worker thread (which are never allowed to block) then `lf::core::sync_wait_in_worker` will be
+ * thrown.
  */
 template <scheduler Sch, async_function_object F, class... Args>
   requires rootable<F, Args...>
@@ -7121,60 +7155,64 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_
 
   std::binary_semaphore sem{0};
 
-  // This is to support a worker sync waiting on work they will launch inline.
-  bool worker = impl::tls::has_stack;
-  // Will cache workers stack here.
-  std::optional<impl::stack> prev = std::nullopt;
-
-  basic_eventually<async_result_t<F, Args...>, true> result;
-
-  impl::y_combinate combinator = combinate<tag::root, modifier::none>(&result, std::move(fun));
-
-  if (!worker) {
-    LF_LOG("Sync wait from non-worker thread");
-    impl::tls::thread_stack.construct();
-    impl::tls::has_stack = true;
-  } else {
-    LF_LOG("Sync wait from worker thread");
-    prev.emplace();                        // Default construct.
-    swap(*prev, *impl::tls::thread_stack); // ADL call.
+  if (impl::tls::has_stack || impl::tls::has_context) {
+    throw sync_wait_in_worker{};
   }
 
+  // Initialize the non-workers stack.
+  impl::tls::thread_stack.construct();
+  impl::tls::has_stack = true;
+
+  // Clean up the stack on exit.
+  LF_DEFER {
+    impl::tls::thread_stack.destroy();
+    impl::tls::has_stack = false;
+  };
+
+  using eventually_t = try_eventually<async_result_t<F, Args...>>;
+
+  // If we fail to wait for the result to complete due to an exception we will need
+  // to detach the coroutine, this will require the node and the result to be stored
+  // on the heap such that returning from this function will not destroy them.
+  struct heap_alloc : eventually_t {
+
+    using eventually_t::operator=;
+
+    auto operator=(heap_alloc &&other) -> heap_alloc & = delete;
+    auto operator=(heap_alloc const &other) -> heap_alloc & = delete;
+
+    std::optional<impl::submit_node_t> node; // Make default constructible.
+  };
+
+  auto heap = std::make_shared<heap_alloc>();
+
+  // Build a combinator, copies heap shared_ptr.
+  impl::y_combinate combinator = combinate<tag::root, modifier::none>(heap, std::move(fun));
   // This allocates a coroutine on this threads stack.
   impl::quasi_awaitable await = std::move(combinator)(std::forward<Args>(args)...);
-
+  // Set the root semaphore.
   await->set_root_sem(&sem);
 
-  auto *handle = std::bit_cast<impl::submit_t *>(await.release()); // Ownership transferred!
+  // If this throws then `await` will clean up the coroutine.
+  impl::ignore_t{} = impl::tls::thread_stack->release();
 
-  // TODO: this could be made exception safe.
+  // We will pass a pointer to this to schedule.
+  heap->node.emplace(std::bit_cast<impl::submit_t *>(await.get()));
 
-  [&]() noexcept {
-    // If this threw we could clean up coroutine but we would need to repair the worker state.
-    impl::ignore_t{} = impl::tls::thread_stack->release();
+  // Schedule upholds the strong exception guarantee hence, if it throws `await` cleans up.
+  std::forward<Sch>(sch).schedule(&*heap->node);
+  // If -^ didn't throw then we release ownership of the coroutine.
+  impl::ignore_t{} = await.release();
 
-    if (!worker) {
-      impl::tls::thread_stack.destroy();
-      impl::tls::has_stack = false;
-    } else {
-      swap(*prev, *impl::tls::thread_stack);
-    }
+  // If this throws that's ok as `result` and `node` are on the heap.
+  sem.acquire();
 
-    typename intrusive_list<impl::submit_t *>::node node{handle};
-
-    // If this threw we could clean up the coroutine if we repaired the worker state.
-    std::forward<Sch>(sch).schedule(&node);
-
-    // If this threw we would have to terminate, unless the return variable was stored on the heap.
-    sem.acquire();
-  }();
-
-  if (result.has_exception()) {
-    std::rethrow_exception(std::move(result).exception());
+  if (heap->has_exception()) {
+    std::rethrow_exception(std::move(*heap).exception());
   }
 
   if constexpr (!std::is_void_v<async_result_t<F, Args...>>) {
-    return *std::move(result);
+    return *std::move(*heap);
   }
 }
 
@@ -7555,11 +7593,9 @@ struct promise_base : frame {
 
     auto *submit = std::bit_cast<impl::submit_t *>(static_cast<frame *>(this));
 
-    using node = typename intrusive_list<impl::submit_t *>::node;
-
     using awaitable = context_switch_awaitable<std::remove_cvref_t<A>>;
 
-    return awaitable{std::forward<A>(await), node{submit}};
+    return awaitable{std::forward<A>(await), submit_node_t{submit}};
   }
 
   // -------------------------------------------------------------- //
@@ -7645,7 +7681,7 @@ struct promise : promise_base, return_result<R, I> {
    * @brief Construct a new promise object, delegate to main constructor.
    */
   template <typename This, first_arg Arg, typename... Args>
-  promise(This const & /*unused*/, Arg &arg, Args const &.../*unused*/) noexcept : promise(arg) {}
+  promise(This const & /*unused*/, Arg const &arg, Args const &.../*unused*/) noexcept : promise(arg) {}
 
   /**
    * @brief Construct a new promise object.
@@ -7654,7 +7690,7 @@ struct promise : promise_base, return_result<R, I> {
    * and stores a pointer to the top fibril. Also sets the first argument's frame pointer.
    */
   template <first_arg Arg, typename... Args>
-  explicit promise(Arg &arg, Args const &.../*unused*/) noexcept
+  explicit promise(Arg const &arg, Args const &.../*unused*/) noexcept
       : promise_base{std::coroutine_handle<promise>::from_promise(*this), tls::stack()->top()} {
     unsafe_set_frame(arg, this);
   }
@@ -9666,6 +9702,9 @@ static_assert(scheduler<lazy_pool>);
 #ifndef C8EE9A0A_3B9F_4FFE_8FF5_910645E0C7CC
 #define C8EE9A0A_3B9F_4FFE_8FF5_910645E0C7CC
 
+#include <atomic> // for atomic_flag, ATOMIC_FLAG_INIT, memory_order_acq...
+#include <thread> // for thread
+
 // Copyright © Conor Williams <conorwilliams@outlook.com>
 
 // SPDX-License-Identifier: MPL-2.0
@@ -9673,32 +9712,69 @@ static_assert(scheduler<lazy_pool>);
 // Self Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
-  // for nullary_function_t, worker_context  // for submit_handle   // for resume      // for worker_init, finalize // for immovable
+        // for LF_DEFER  // for worker_context, nullary_function_t  // for submit_handle   // for resume      // for finalize, worker_init // for non_null, immovable
 
 /**
  * @file unit_pool.hpp
  *
- * @brief A scheduler that runs all tasks inline on the current thread.
+ * @brief A scheduler that runs all tasks on a single thread.
  */
 
 namespace lf {
 
 /**
- * @brief A scheduler that runs all tasks inline on the current thread.
+ * @brief A scheduler that runs all tasks on a single thread.
  *
  * This is useful for testing/debugging/benchmarking.
  */
 class unit_pool : impl::immovable<unit_pool> {
+
+  static void work(unit_pool *self) {
+
+    worker_context *me = lf::worker_init(lf::nullary_function_t{[]() {}});
+
+    LF_DEFER { lf::finalize(me); };
+
+    self->m_context = me;
+    self->m_ready.test_and_set(std::memory_order_release);
+    self->m_ready.notify_one();
+
+    while (!self->m_stop.test(std::memory_order_acquire)) {
+      if (auto *job = me->try_pop_all()) {
+        lf::resume(job);
+      }
+    }
+  }
+
  public:
+  /**
+   * @brief Construct a new unit pool.
+   */
+  unit_pool() : m_thread{work, this} {
+    // Wait until worker sets the context.
+    m_ready.wait(false, std::memory_order_acquire);
+  }
+
   /**
    * @brief Run a job inline.
    */
-  static void schedule(submit_handle job) { resume(job); }
+  void schedule(submit_handle job) { non_null(m_context)->schedule(job); }
 
-  ~unit_pool() noexcept { lf::finalize(m_context); }
+  /**
+   * @brief Destroy the unit pool object, waits for the worker to finish.
+   */
+  ~unit_pool() noexcept {
+    m_stop.test_and_set(std::memory_order_release);
+    m_thread.join();
+  }
 
  private:
-  lf::worker_context *m_context = lf::worker_init(lf::nullary_function_t{[]() {}});
+  std::atomic_flag m_stop = ATOMIC_FLAG_INIT;
+  std::atomic_flag m_ready = ATOMIC_FLAG_INIT;
+
+  lf::worker_context *m_context = nullptr;
+
+  std::thread m_thread;
 };
 
 } // namespace lf

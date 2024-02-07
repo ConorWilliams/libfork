@@ -17,6 +17,7 @@
 ### Added
 
 - New static asserts for better error messages when passing or capturing the first argument incorrectly.
+- New exception types.
 
 ### Changed
 
@@ -24,10 +25,17 @@
 - Exposed the `referenceable` concept.
 - Exposed the `storable` concept.
 - Quasi-pointer and async function object concepts generalized to reference types to reduce the number of moves.
+- `unit_pool` now uses a separate thread for running tasks instead of running them inline.
+- `sync_wait` now throws an exception if called from a worker thread.
+- `sync_wait` is now exception safe.
 
 ### Removed
 
+- Outdated tests.
+
 ### Bugfixes
+
+- Fixed `#pragma unroll` on GCC.
 
 ### Meta
 

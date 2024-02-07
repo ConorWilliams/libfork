@@ -136,6 +136,19 @@ Defer
     :undoc-members:
 
 
+Exceptions
+~~~~~~~~~~
+
+.. doxygenstruct:: lf::core::sync_wait_in_worker
+    :members:
+    :undoc-members:
+
+
+.. doxygenstruct:: lf::core::exception_before_join
+    :members:
+    :undoc-members:
+
+
 Stack allocation
 ------------------
 

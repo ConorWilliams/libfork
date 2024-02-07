@@ -33,7 +33,7 @@ inline namespace core {
  * @brief A concept that schedulers must satisfy.
  *
  * This requires only a single method, `schedule` which accepts an `lf::submit_handle` and
- * promises to call `lf::resume()` on it. The `schedule method should fulfill the strong
+ * promises to call `lf::resume()` on it. The `schedule` method __must__ fulfill the strong
  * exception guarantee.
  */
 template <typename Sch>

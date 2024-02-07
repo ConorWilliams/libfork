@@ -38,6 +38,11 @@ namespace impl {
  */
 class submit_t : impl::frame {};
 
+/**
+ * @brief A linked-list node containing a pointer to a `submit_t`.
+ */
+using submit_node_t = typename intrusive_list<impl::submit_t *>::node;
+
 static_assert(std::is_standard_layout_v<submit_t>);
 
 #ifdef __cpp_lib_is_pointer_interconvertible
@@ -70,7 +75,7 @@ inline namespace ext {
 /**
  * @brief An alias for a pointer to a `submit_t` wrapped in an intruded list.
  */
-using submit_handle = typename intrusive_list<impl::submit_t *>::node *;
+using submit_handle = impl::submit_node_t *;
 
 /**
  * @brief An alias for a pointer to a `task_t`.

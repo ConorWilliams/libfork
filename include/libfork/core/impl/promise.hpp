@@ -192,11 +192,9 @@ struct promise_base : frame {
 
     auto *submit = std::bit_cast<impl::submit_t *>(static_cast<frame *>(this));
 
-    using node = typename intrusive_list<impl::submit_t *>::node;
-
     using awaitable = context_switch_awaitable<std::remove_cvref_t<A>>;
 
-    return awaitable{std::forward<A>(await), node{submit}};
+    return awaitable{std::forward<A>(await), submit_node_t{submit}};
   }
 
   // -------------------------------------------------------------- //
@@ -282,7 +280,7 @@ struct promise : promise_base, return_result<R, I> {
    * @brief Construct a new promise object, delegate to main constructor.
    */
   template <typename This, first_arg Arg, typename... Args>
-  promise(This const & /*unused*/, Arg &arg, Args const &.../*unused*/) noexcept : promise(arg) {}
+  promise(This const & /*unused*/, Arg const &arg, Args const &.../*unused*/) noexcept : promise(arg) {}
 
   /**
    * @brief Construct a new promise object.
@@ -291,7 +289,7 @@ struct promise : promise_base, return_result<R, I> {
    * and stores a pointer to the top fibril. Also sets the first argument's frame pointer.
    */
   template <first_arg Arg, typename... Args>
-  explicit promise(Arg &arg, Args const &.../*unused*/) noexcept
+  explicit promise(Arg const &arg, Args const &.../*unused*/) noexcept
       : promise_base{std::coroutine_handle<promise>::from_promise(*this), tls::stack()->top()} {
     unsafe_set_frame(arg, this);
   }

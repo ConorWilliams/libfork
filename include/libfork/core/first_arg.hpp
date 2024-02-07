@@ -242,9 +242,11 @@ class first_arg_t {
   /**
    * @brief Hidden friend reduces discoverability, this is an implementation detail.
    */
-  LF_FORCEINLINE friend auto unsafe_set_frame(first_arg_t &arg, frame *frame) noexcept {
+  LF_FORCEINLINE friend auto unsafe_set_frame(first_arg_t const &arg, frame *frame) noexcept {
 #if LF_COMPILER_EXCEPTIONS
-    arg.m_frame = frame;
+    // Const cast is ok here, a user may want to declare the first argument as `auto const arg` but we
+    // still need to set the frame pointer before the user can touch the then-const object.
+    const_cast<first_arg_t &>(arg).m_frame = frame;
 #endif
   }
 

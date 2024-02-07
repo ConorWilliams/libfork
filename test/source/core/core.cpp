@@ -46,7 +46,7 @@ auto make_scheduler() -> T {
   }
 }
 
-inline constexpr auto noop = [](auto) -> task<> {
+inline constexpr auto noop = [](auto const) -> task<> {
   LF_LOG("nooop");
   co_return;
 };
