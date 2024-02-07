@@ -18,10 +18,9 @@
 
 #include "libfork/core/co_alloc.hpp"        // for co_allocable, co_new_t
 #include "libfork/core/control_flow.hpp"    // for join_type
-#include "libfork/core/exception.hpp"       // for stash_exception_in_return
+#include "libfork/core/exceptions.hpp"      // for stash_exception_in_return
 #include "libfork/core/ext/context.hpp"     // for full_context
 #include "libfork/core/ext/handles.hpp"     // for submit_t, task_handle
-#include "libfork/core/ext/list.hpp"        // for intrusive_list
 #include "libfork/core/ext/tls.hpp"         // for stack, context
 #include "libfork/core/first_arg.hpp"       // for first_arg_t, async_function_object, first_arg
 #include "libfork/core/impl/awaitables.hpp" // for alloc_awaitable, call_awaitable, context_swi...

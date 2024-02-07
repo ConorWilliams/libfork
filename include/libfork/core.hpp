@@ -13,7 +13,7 @@
 #include "libfork/core/control_flow.hpp"
 #include "libfork/core/defer.hpp"
 #include "libfork/core/eventually.hpp"
-#include "libfork/core/exception.hpp"
+#include "libfork/core/exceptions.hpp"
 #include "libfork/core/first_arg.hpp"
 #include "libfork/core/invocable.hpp"
 #include "libfork/core/just.hpp"

@@ -286,6 +286,9 @@ wake_up:
  *
  * This pool sleeps workers which cannot find any work, as such it should be the default choice for most
  * use cases. Additionally (if an installation of `hwloc` was found) this pool is NUMA aware.
+ *
+ * __Note:__ The `lazy_pool` must not be destructed until all submitted tasks have reached a point where they
+ * will submit no-more work to the pool.
  */
 class lazy_pool {
 
@@ -298,6 +301,23 @@ class lazy_pool {
   std::vector<worker_context *> m_contexts = {};
 
  public:
+  /**
+   * @brief Move construct a new lazy_pool object.
+   */
+  lazy_pool(lazy_pool &&other) noexcept = default;
+  /**
+   * @brief The lazy pool is not copyable.
+   */
+  lazy_pool(lazy_pool const &other) = delete;
+  /**
+   * @brief Move assign a lazy_pool object.
+   */
+  auto operator=(lazy_pool &&other) noexcept -> lazy_pool & = default;
+  /**
+   * @brief The lazy pool is not copy assignable.
+   */
+  auto operator=(lazy_pool const &other) -> lazy_pool & = delete;
+
   /**
    * @brief Construct a new lazy_pool object and `n` worker threads.
    *
@@ -355,6 +375,9 @@ class lazy_pool {
    */
   auto contexts() noexcept -> std::span<worker_context *> { return m_contexts; }
 
+  /**
+   * @brief Destroy the lazy pool object, stops all workers.
+   */
   ~lazy_pool() noexcept {
     LF_LOG("Requesting a stop");
 

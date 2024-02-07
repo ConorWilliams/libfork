@@ -162,7 +162,7 @@
 #include <limits>          // for numeric_limits
 #include <new>             // for std::hardware_destructive_interference_size
 #include <source_location> // for source_location
-#include <type_traits>     // for invoke_result_t, remove_cvref_t, type_identity, is_emp...
+#include <type_traits>     // for invoke_result_t, remove_cvref_t, type_identity, condit...
 #include <utility>         // for forward
 #include <vector>          // for vector
 #include <version>         // for __cpp_lib_hardware_interference_size
@@ -647,29 +647,6 @@ struct immovable {
   auto operator=(immovable &&) -> immovable & = delete;
 
   ~immovable() = default;
-};
-
-static_assert(std::is_empty_v<immovable<void>>);
-
-// -------------------------------- //
-
-/**
- * @brief An empty base class that is move-only.
- *
- * The template parameter prevents multiple empty bases when inheriting multiple classes.
- */
-template <typename CRTP>
-struct move_only {
-
-  move_only() = default;
-
-  move_only(move_only const &) = delete;
-  move_only(move_only &&) noexcept = default;
-
-  auto operator=(move_only const &) -> move_only & = delete;
-  auto operator=(move_only &&) noexcept -> move_only & = default;
-
-  ~move_only() = default;
 };
 
 static_assert(std::is_empty_v<immovable<void>>);
@@ -3660,23 +3637,13 @@ struct exception_before_join : std::exception {
   auto what() const noexcept -> char const * override { return "A child threw an exception!"; }
 };
 
-/**
- * @brief Thrown when a worker attempts to call `sync_wait`.
- */
-struct sync_wait_in_worker : std::exception {
-  /**
-   * @brief A diagnostic message.
-   */
-  auto what() const noexcept -> char const * override { return "sync_wait called from a worker thread!"; }
-};
-
 } // namespace core
 
 } // namespace lf
 
 #endif /* A090B92E_A266_42C9_BFB0_10681B6BD425 */
 
-  // for stash_exception_in_return  // for first_arg_t, quasi_pointer, async_function_object        // for tag       // for task, returnable
+ // for stash_exception_in_return  // for first_arg_t, quasi_pointer, async_function_object        // for tag       // for task, returnable
 
 /**
  * @file invocable.hpp
@@ -4820,7 +4787,7 @@ template <co_allocable T>
 
 #endif /* A951FB73_0FCF_4B7C_A997_42B7E87D21CB */
 
-          // for co_allocable, co_new_t, stack_allocated         // for exception_before_join       // for full_context       // for submit_handle, submit_node_t, task_handle          // for unwrap           // for stack, context        // for frame        // for stack // for unique_frame, frame_deleter      // for k_u16_max         // for ignore_t             // for LF_ASSERT, LF_LOG, LF_THROW, LF_ASSERT_NO_...
+          // for co_allocable, co_new_t, stack_allocated        // for exception_before_join       // for full_context       // for submit_handle, submit_node_t, task_handle          // for unwrap           // for stack, context        // for frame        // for stack // for unique_frame, frame_deleter      // for k_u16_max         // for ignore_t             // for LF_ASSERT, LF_LOG, LF_THROW, LF_ASSERT_NO_...
 #ifndef BDE6CBCC_7576_4082_AAC5_2A207FEA9293
 #define BDE6CBCC_7576_4082_AAC5_2A207FEA9293
 
@@ -7083,13 +7050,13 @@ inline constexpr impl::scan_overload scan = {};
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <bit>         // for bit_cast
-#include <exception>   // for rethrow_exception
-#include <memory>      // for make_shared
+#include <exception>   // for exception, rethrow_exception
+#include <memory>      // for make_shared, shared_ptr
 #include <optional>    // for optional
 #include <semaphore>   // for binary_semaphore
 #include <type_traits> // for conditional_t
-#include <utility>     // for forward
-                // for LF_DEFER           // for try_eventually            // for sync_wait_in_worker          // for submit_node_t, submit_t             // for intrusive_list              // for has_stack, thread_stack, has_context            // for async_function_object       // for quasi_awaitable, y_combinate           // for frame // for manual_lifetime           // for stack            // for async_result_t, ignore_t, rootable                // for LF_CLANG_TLS_NOINLINE            // for scheduler                  // for tag, none
+#include <utility>     // for forward, exchange
+                // for LF_DEFER           // for try_eventually           // for schedule_in_worker          // for submit_node_t, submit_t              // for has_stack, thread_stack, has_context            // for async_function_object       // for quasi_awaitable, y_combinate // for manual_lifetime           // for stack // for async_result_t, rootable, ignore_t     // for LF_THROW, LF_CLANG_TLS_NOINLINE // for scheduler       // for tag, none      // for returnable
 
 /**
  * @file sync_wait.hpp
@@ -7099,67 +7066,173 @@ inline constexpr impl::scan_overload scan = {};
 
 namespace lf {
 
-namespace impl {
-
-// struct tls_stack_swap : immovable<tls_stack_swap> {
-
-//   void make_stack_fresh() {
-//     if (stack_is_fresh) {
-//       return;
-//     }
-//     if (!m_this_thread_was_worker) {
-//       impl::tls::thread_stack.construct();
-//       impl::tls::has_stack = true;
-//       return;
-//     }
-//     m_cache.emplace();                        // Default construct.
-//     swap(*m_cache, *impl::tls::thread_stack); // ADL call.
-//   }
-
-//   void restore_stack() {
-//     if (!stack_is_fresh) {
-//       return;
-//     }
-//     if (!worker) {
-//       impl::tls::thread_stack.destroy();
-//       impl::tls::has_stack = false;
-//     } else {
-//       swap(*prev, *impl::tls::thread_stack);
-//     }
-//   }
-
-//  private:
-//   std::optional<impl::stack> m_cache;
-//   bool stack_is_fresh = false;
-//   bool const m_this_thread_was_worker = impl::tls::has_stack;
-// };
-
-} // namespace impl
-
 inline namespace core {
 
 /**
- * @brief Schedule execution of `fun` on `sch` and __block__ until the task is complete.
+ * @brief Thrown when a future has no shared state.
+ */
+struct broken_future : std::exception {
+  /**
+   * @brief A diagnostic message.
+   */
+  auto what() const noexcept -> char const * override { return "Broken future, no shared state!"; }
+};
+
+/**
+ * @brief Thrown when `.get()` is called more than once on a future.
+ */
+struct empty_future : std::exception {
+  /**
+   * @brief A diagnostic message.
+   */
+  auto what() const noexcept -> char const * override { return "future::get() called more than once!"; }
+};
+
+/**
+ * @brief A future is a handle to the result of an asynchronous operation.
+ */
+template <returnable R>
+class future {
+
+  future() = default;
+
+  using eventually_t = try_eventually<R>;
+
+  enum class state {
+    /**
+     * @brief Wait has not been called.
+     */
+    no_wait,
+    /**
+     * @brief The result is ready.
+     */
+    ready,
+    /**
+     * @brief The result has been retrievd.
+     */
+    retrievd,
+  };
+
+  struct heap : eventually_t {
+
+    using eventually_t::operator=;
+
+    std::optional<impl::submit_node_t> node; // Make default constructible.
+    std::binary_semaphore sem{0};            // Also needs to be on heap.
+    state status = state::no_wait;
+  };
+
+  /**
+   * @brief The other half of the promise-future pair.
+   */
+  std::shared_ptr<heap> m_heap = std::make_shared<heap>();
+
+  template <scheduler Sch, async_function_object F, class... Args>
+    requires rootable<F, Args...>
+  friend auto schedule(Sch &&sch, F &&fun, Args &&...args) -> future<async_result_t<F, Args...>>;
+
+ public:
+  /**
+   * @brief Move construct a new future.
+   */
+  future(future &&other) noexcept = default;
+  /**
+   * @brief Futures are not copyable.
+   */
+  future(future const &other) = delete;
+  /**
+   * @brief Move assign to a future.
+   */
+  auto operator=(future &&other) noexcept -> future & = default;
+  /**
+   * @brief Futures are not copy assignable.
+   */
+  auto operator=(future const &other) -> future & = delete;
+  /**
+   * @brief Wait (__block__) until the future completes if it has a shared state.
+   */
+  ~future() noexcept {
+    if (valid() && m_heap->status == state::no_wait) {
+      m_heap->sem.acquire();
+    }
+  }
+  /**
+   * @brief Test if the future has a shared state.
+   */
+  auto valid() const noexcept -> bool { return m_heap != nullptr; }
+  /**
+   * @brief Detach the shared state from this future.
+   *
+   * Following this operation the destructor is guaranteed to not block.
+   */
+  void detach() noexcept { std::exchange(m_heap, nullptr); }
+  /**
+   * @brief Wait (__block__) for the future to complete.
+   */
+  void wait() {
+
+    if (!valid()) {
+      LF_THROW(broken_future{});
+    }
+
+    if (m_heap->status == state::no_wait) {
+      m_heap->sem.acquire();
+      m_heap->status = state::ready;
+    }
+  }
+  /**
+   * @brief Wait (__block__) for the result to complete and then return it.
+   *
+   * If the task completed with an exception then that exception will be rethrown. If
+   * the future has no shared state then a `lf::core::future_error` will be thrown.
+   */
+  auto get() -> R {
+
+    wait();
+
+    if (m_heap->status == state::retrievd) {
+      LF_THROW(empty_future{});
+    }
+
+    m_heap->status = state::retrievd;
+
+    if (m_heap->has_exception()) {
+      std::rethrow_exception(std::move(*m_heap).exception());
+    }
+
+    if constexpr (!std::is_void_v<R>) {
+      return *std::move(*m_heap);
+    }
+  }
+};
+
+/**
+ * @brief Thrown when a worker thread attempts to call `lf::core::schedule`.
+ */
+struct schedule_in_worker : std::exception {
+  /**
+   * @brief A diagnostic message.
+   */
+  auto what() const noexcept -> char const * override { return "schedule(...) called from a worker thread!"; }
+};
+
+/**
+ * @brief Schedule execution of `fun` on `sch` and return a `lf::core::future` to the result.
  *
- * This is the primary entry point from the synchronous to the asynchronous world. A typical libfork program
- * is expected to make a call from `main` into a scheduler/runtime by scheduling a single root-task with this
- * function.
- *
- * This will build a task from `fun` and dispatch it to `sch` via its `schedule` method. If `sync_wait` is
- * called by a worker thread (which are never allowed to block) then `lf::core::sync_wait_in_worker` will be
+ * This will build a task from `fun` and dispatch it to `sch` via its `schedule` method. If `schedule` is
+ * called by a worker thread (which are never allowed to block) then `lf::core::schedule_in_worker` will be
  * thrown.
  */
 template <scheduler Sch, async_function_object F, class... Args>
   requires rootable<F, Args...>
-LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_result_t<F, Args...> {
-
-  std::binary_semaphore sem{0};
-
+LF_CLANG_TLS_NOINLINE auto
+schedule(Sch &&sch, F &&fun, Args &&...args) -> future<async_result_t<F, Args...>> {
+  //
   if (impl::tls::has_stack || impl::tls::has_context) {
-    throw sync_wait_in_worker{};
+    throw schedule_in_worker{};
   }
 
-  // Initialize the non-workers stack.
+  // Initialize the non-worker's stack.
   impl::tls::thread_stack.construct();
   impl::tls::has_stack = true;
 
@@ -7169,51 +7242,57 @@ LF_CLANG_TLS_NOINLINE auto sync_wait(Sch &&sch, F fun, Args &&...args) -> async_
     impl::tls::has_stack = false;
   };
 
-  using eventually_t = try_eventually<async_result_t<F, Args...>>;
-
-  // If we fail to wait for the result to complete due to an exception we will need
-  // to detach the coroutine, this will require the node and the result to be stored
-  // on the heap such that returning from this function will not destroy them.
-  struct heap_alloc : eventually_t {
-
-    using eventually_t::operator=;
-
-    auto operator=(heap_alloc &&other) -> heap_alloc & = delete;
-    auto operator=(heap_alloc const &other) -> heap_alloc & = delete;
-
-    std::optional<impl::submit_node_t> node; // Make default constructible.
-  };
-
-  auto heap = std::make_shared<heap_alloc>();
+  future<async_result_t<F, Args...>> fut = {};
 
   // Build a combinator, copies heap shared_ptr.
-  impl::y_combinate combinator = combinate<tag::root, modifier::none>(heap, std::move(fun));
+  impl::y_combinate combinator = combinate<tag::root, modifier::none>(fut.m_heap, std::forward<F>(fun));
   // This allocates a coroutine on this threads stack.
   impl::quasi_awaitable await = std::move(combinator)(std::forward<Args>(args)...);
   // Set the root semaphore.
-  await->set_root_sem(&sem);
+  await->set_root_sem(&fut.m_heap->sem);
 
   // If this throws then `await` will clean up the coroutine.
   impl::ignore_t{} = impl::tls::thread_stack->release();
 
-  // We will pass a pointer to this to schedule.
-  heap->node.emplace(std::bit_cast<impl::submit_t *>(await.get()));
+  // We will pass a pointer to this to .schedule()
+  fut.m_heap->node.emplace(std::bit_cast<impl::submit_t *>(await.get()));
 
   // Schedule upholds the strong exception guarantee hence, if it throws `await` cleans up.
-  std::forward<Sch>(sch).schedule(&*heap->node);
-  // If -^ didn't throw then we release ownership of the coroutine.
+  std::forward<Sch>(sch).schedule(&*fut.m_heap->node);
+  // If -^ didn't throw then we release ownership of the coroutine, it will be cleaned up by the worker.
   impl::ignore_t{} = await.release();
 
-  // If this throws that's ok as `result` and `node` are on the heap.
-  sem.acquire();
+  return fut;
+}
 
-  if (heap->has_exception()) {
-    std::rethrow_exception(std::move(*heap).exception());
-  }
+/**
+ * @brief Schedule execution of `fun` on `sch` and wait (__block__) until the task is complete.
+ *
+ * This is the primary entry point from the synchronous to the asynchronous world. A typical libfork program
+ * is expected to make a call from `main` into a scheduler/runtime by scheduling a single root-task with this
+ * function.
+ *
+ * This makes the appropriate call to `lf::core::schedule` and calls `get` on the returned `lf::core::future`.
+ */
+template <scheduler Sch, async_function_object F, class... Args>
+  requires rootable<F, Args...>
+auto sync_wait(Sch &&sch, F &&fun, Args &&...args) -> async_result_t<F, Args...> {
+  return schedule(std::forward<Sch>(sch), std::forward<F>(fun), std::forward<Args>(args)...).get();
+}
 
-  if constexpr (!std::is_void_v<async_result_t<F, Args...>>) {
-    return *std::move(*heap);
-  }
+/**
+ * @brief Schedule execution of `fun` on `sch` and detach the future.
+ *
+ * This is the secondary entry point from the synchronous to the asynchronous world. Similar to `sync_wait`
+ * but calls `detach` on the returned `lf::core::future`.
+ *
+ * __Note:__ Many schedulers (like `lf::lazy_pool` and `lf::busy_pool`) require all submitted work to
+ * (including detached work) to complete before they are destructed.
+ */
+template <scheduler Sch, async_function_object F, class... Args>
+  requires rootable<F, Args...>
+auto detach(Sch &&sch, F &&fun, Args &&...args) -> void {
+  return schedule(std::forward<Sch>(sch), std::forward<F>(fun), std::forward<Args>(args)...).detach();
 }
 
 } // namespace core
@@ -7321,7 +7400,7 @@ inline void resume(task_handle ptr) {
 #include <cstddef>     // for size_t
 #include <type_traits> // for true_type, false_type, remove_cvref_t
 #include <utility>     // for forward
-        // for co_allocable, co_new_t    // for join_type       // for stash_exception_in_return     // for full_context     // for submit_t, task_handle        // for intrusive_list         // for stack, context       // for first_arg_t, async_function_object, first_arg // for alloc_awaitable, call_awaitable, context_swi...  // for quasi_awaitable      // for frame
+        // for co_allocable, co_new_t    // for join_type      // for stash_exception_in_return     // for full_context     // for submit_t, task_handle         // for stack, context       // for first_arg_t, async_function_object, first_arg // for alloc_awaitable, call_awaitable, context_swi...  // for quasi_awaitable      // for frame
 #ifndef A896798B_7E3B_4854_9997_89EA5AE765EB
 #define A896798B_7E3B_4854_9997_89EA5AE765EB
 
@@ -7336,7 +7415,7 @@ inline void resume(task_handle ptr) {
 #include <concepts> // for convertible_to
 #include <iterator> // for indirectly_writable
 #include <utility>  // for forward
-     // for stash_exception_in_return     // for quasi_pointer // for safe_ref_bind_to     // for return_address_for, discard_t          // for returnable
+    // for stash_exception_in_return     // for quasi_pointer // for safe_ref_bind_to     // for return_address_for, discard_t          // for returnable
 
 /**
  * @file return.hpp
@@ -7949,7 +8028,7 @@ struct std::coroutine_traits<lf::task<R>, Args...> {
 #include <thread>  // for thread
 #include <utility> // for move
 #include <vector>  // for vector
-                 // for LF_DEFER           // for worker_context, nullary_function_t           // for submit_handle, task_handle            // for resume          // for k_cache_line, move_only                 // for LF_ASSERT, LF_ASSERT_NO_ASSUME, LF_LOG             // for scheduler
+                 // for LF_DEFER           // for worker_context, nullary_function_t           // for submit_handle, task_handle            // for resume          // for k_cache_line                 // for LF_ASSERT, LF_ASSERT_NO_ASSUME, LF_LOG             // for scheduler
 #ifndef D8877F11_1F66_4AD0_B949_C0DFF390C2DB
 #define D8877F11_1F66_4AD0_B949_C0DFF390C2DB
 
@@ -9003,6 +9082,11 @@ inline void busy_work(numa_topology::numa_node<impl::numa_context<busy_vars>> no
       resume(task);
     }
   };
+
+  // Finish up any remaining work.
+  while (submit_handle submissions = my_context->try_pop_all()) {
+    resume(submissions);
+  }
 }
 
 } // namespace impl
@@ -9014,8 +9098,11 @@ inline void busy_work(numa_topology::numa_node<impl::numa_context<busy_vars>> no
  * waste CPU cycles if sufficient work is not available. This is a good choice if the number
  * of threads is equal to the number of hardware cores and the multiplexer has no other load.
  * Additionally (if an installation of `hwloc` was found) this pool is NUMA aware.
+ *
+ * __Note:__ The `busy_pool` must not be destructed until all submitted tasks have reached a
+ * point where they will submit no-more work to the pool.
  */
-class busy_pool : impl::move_only<busy_pool> {
+class busy_pool {
 
   std::size_t m_num_threads;
   std::uniform_int_distribution<std::size_t> m_dist{0, m_num_threads - 1};
@@ -9026,6 +9113,23 @@ class busy_pool : impl::move_only<busy_pool> {
   std::vector<worker_context *> m_contexts = {};
 
  public:
+  /**
+   * @brief Move construct a new lazy_pool object.
+   */
+  busy_pool(busy_pool &&other) noexcept = default;
+  /**
+   * @brief The busy pool is not copyable.
+   */
+  busy_pool(busy_pool const &other) = delete;
+  /**
+   * @brief Move assign a lazy_pool object.
+   */
+  auto operator=(busy_pool &&other) noexcept -> busy_pool & = default;
+  /**
+   * @brief The busy pool is not copy assignable.
+   */
+  auto operator=(busy_pool const &other) -> busy_pool & = delete;
+
   /**
    * @brief Construct a new busy_pool object.
    *
@@ -9611,6 +9715,9 @@ wake_up:
  *
  * This pool sleeps workers which cannot find any work, as such it should be the default choice for most
  * use cases. Additionally (if an installation of `hwloc` was found) this pool is NUMA aware.
+ *
+ * __Note:__ The `lazy_pool` must not be destructed until all submitted tasks have reached a point where they
+ * will submit no-more work to the pool.
  */
 class lazy_pool {
 
@@ -9623,6 +9730,23 @@ class lazy_pool {
   std::vector<worker_context *> m_contexts = {};
 
  public:
+  /**
+   * @brief Move construct a new lazy_pool object.
+   */
+  lazy_pool(lazy_pool &&other) noexcept = default;
+  /**
+   * @brief The lazy pool is not copyable.
+   */
+  lazy_pool(lazy_pool const &other) = delete;
+  /**
+   * @brief Move assign a lazy_pool object.
+   */
+  auto operator=(lazy_pool &&other) noexcept -> lazy_pool & = default;
+  /**
+   * @brief The lazy pool is not copy assignable.
+   */
+  auto operator=(lazy_pool const &other) -> lazy_pool & = delete;
+
   /**
    * @brief Construct a new lazy_pool object and `n` worker threads.
    *
@@ -9680,6 +9804,9 @@ class lazy_pool {
    */
   auto contexts() noexcept -> std::span<worker_context *> { return m_contexts; }
 
+  /**
+   * @brief Destroy the lazy pool object, stops all workers.
+   */
   ~lazy_pool() noexcept {
     LF_LOG("Requesting a stop");
 
@@ -9729,7 +9856,8 @@ namespace lf {
 /**
  * @brief A scheduler that runs all tasks on a single thread.
  *
- * This is useful for testing/debugging/benchmarking.
+ * This is useful for testing/debugging/benchmarking as it is the only work-pool that can guarantee
+ * all the work completes if submitting detached work.
  */
 class unit_pool : impl::immovable<unit_pool> {
 
@@ -9747,6 +9875,11 @@ class unit_pool : impl::immovable<unit_pool> {
       if (auto *job = me->try_pop_all()) {
         lf::resume(job);
       }
+    }
+
+    // Drain the queue.
+    while (auto *job = me->try_pop_all()) {
+      lf::resume(job);
     }
   }
 

@@ -19,7 +19,7 @@
 #include <utility>     // for move
 
 #include "libfork/core/co_alloc.hpp"          // for co_allocable, co_new_t, stack_allocated
-#include "libfork/core/exception.hpp"         // for exception_before_join
+#include "libfork/core/exceptions.hpp"        // for exception_before_join
 #include "libfork/core/ext/context.hpp"       // for full_context
 #include "libfork/core/ext/handles.hpp"       // for submit_handle, submit_node_t, task_handle
 #include "libfork/core/ext/list.hpp"          // for unwrap

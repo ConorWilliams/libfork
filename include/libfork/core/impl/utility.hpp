@@ -19,7 +19,7 @@
 #include <limits>          // for numeric_limits
 #include <new>             // for std::hardware_destructive_interference_size
 #include <source_location> // for source_location
-#include <type_traits>     // for invoke_result_t, remove_cvref_t, type_identity, is_emp...
+#include <type_traits>     // for invoke_result_t, remove_cvref_t, type_identity, condit...
 #include <utility>         // for forward
 #include <vector>          // for vector
 #include <version>         // for __cpp_lib_hardware_interference_size
@@ -135,29 +135,6 @@ struct immovable {
   auto operator=(immovable &&) -> immovable & = delete;
 
   ~immovable() = default;
-};
-
-static_assert(std::is_empty_v<immovable<void>>);
-
-// -------------------------------- //
-
-/**
- * @brief An empty base class that is move-only.
- *
- * The template parameter prevents multiple empty bases when inheriting multiple classes.
- */
-template <typename CRTP>
-struct move_only {
-
-  move_only() = default;
-
-  move_only(move_only const &) = delete;
-  move_only(move_only &&) noexcept = default;
-
-  auto operator=(move_only const &) -> move_only & = delete;
-  auto operator=(move_only &&) noexcept -> move_only & = default;
-
-  ~move_only() = default;
 };
 
 static_assert(std::is_empty_v<immovable<void>>);

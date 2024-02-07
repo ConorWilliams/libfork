@@ -18,6 +18,10 @@
 
 - New static asserts for better error messages when passing or capturing the first argument incorrectly.
 - New exception types.
+- `schedule` now generalizes `sync_wait`.
+- The `future` class template.
+- The `detach` function as an alternative to `sync_wait`.
+- More exception handling tests.
 
 ### Changed
 
@@ -36,6 +40,7 @@
 ### Bugfixes
 
 - Fixed `#pragma unroll` on GCC.
+- Made `lazy_pool` and `busy_pool` movable.
 
 ### Meta
 

@@ -25,7 +25,6 @@ namespace {
 
 inline constexpr auto r_fib = [](auto fib, int n) -> lf::task<int> {
   //
-
   if (n < 2) {
     co_return n;
   }
@@ -90,8 +89,6 @@ inline constexpr auto loop = [](auto loop, int n, std::vector<worker_context *> 
 };
 
 } // namespace
-
-//  unit_pool, debug_pool, busy_pool, lazy_pool
 
 TEMPLATE_TEST_CASE("Explicit scheduling", "[explicit][template]", busy_pool, lazy_pool) {
 

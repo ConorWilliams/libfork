@@ -13,7 +13,7 @@
 #include <iterator> // for indirectly_writable
 #include <utility>  // for forward
 
-#include "libfork/core/exception.hpp"     // for stash_exception_in_return
+#include "libfork/core/exceptions.hpp"    // for stash_exception_in_return
 #include "libfork/core/first_arg.hpp"     // for quasi_pointer
 #include "libfork/core/impl/safe_ref.hpp" // for safe_ref_bind_to
 #include "libfork/core/invocable.hpp"     // for return_address_for, discard_t

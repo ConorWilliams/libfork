@@ -5,14 +5,13 @@
 #include <concepts>                              // for constructible_from, same_as
 #include <cstddef>                               // for size_t
 #include <functional>                            // for plus, identity, multiplies
-#include <iostream>                              // for basic_ostream, operator<<, basic_ostrea...
 #include <limits>                                // for numeric_limits
 #include <numeric>                               // for inclusive_scan
 #include <random>                                // for random_device, uniform_int_distribution
-#include <string>                                // for char_traits, string, operator+, basic_s...
+#include <string>                                // for string, operator+, basic_string
 #include <thread>                                // for thread
 #include <type_traits>                           // for type_identity
-#include <utility>                               // for forward
+#include <utility>                               // for cmp_greater, forward
 #include <vector>                                // for operator==, vector
 
 #include "libfork/algorithm/scan.hpp" // for scan
@@ -75,32 +74,20 @@ void test(Sch &&sch, F bop, Proj proj, Check check) {
 
     std::vector<T> in = random_vec(std::type_identity<T>{}, n);
 
-    // for (auto &&elem : in) {
-    //   elem = 1;
-    // }
-
     std::vector<T> const out_ok = check(in);
-
-    // for (auto &&elem : in) {
-    //   std::cout << elem << ' ';
-    // }
-    // std::cout << '\n';
-
-    // for (auto &&elem : out_ok) {
-    //   std::cout << elem << ' ';
-    // }
-    // std::cout << '\n';
 
     std::vector<int> chunks;
 
     if (n <= 10) {
-      for (int i = 1; i <= n; ++i) {
-        chunks.push_back(i);
+      for (std::size_t i = 1; i <= n; ++i) {
+        chunks.emplace_back(i);
       }
     } else {
-      int ch = 11;
+
+      std::size_t ch = 11;
+
       do {
-        chunks.push_back(ch);
+        chunks.emplace_back(ch);
         ch *= 11;
       } while (ch <= n);
     }
@@ -111,15 +98,15 @@ void test(Sch &&sch, F bop, Proj proj, Check check) {
         continue;
       }
 
-      if (chunk > n) {
+      if (std::cmp_greater(chunk, n)) {
         break;
       }
 
       // Test all eight overloads
 
-      std::cout << "n: " << n << " chunk: " << chunk << '\n';
+      // std::cout << "n: " << n << " chunk: " << chunk << '\n';
 
-      for (int ll = 0; ll < (n < 10 ? 10 : 1); ++ll) {
+      for (std::size_t ll = 0; ll < (n < 10 ? 10 : 1); ++ll) {
         /* [iterator,chunk,output] */ {
           std::vector<T> out(in.size());
           lf::sync_wait(sch, lf::scan, in.begin(), in.end(), out.begin(), chunk, bop, proj);

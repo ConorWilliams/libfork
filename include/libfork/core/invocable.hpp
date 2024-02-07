@@ -14,7 +14,7 @@
 #include <type_traits> // for remove_cvref_t, true_type, type_identity, invoke_...
 
 #include "libfork/core/eventually.hpp" // for basic_eventually
-#include "libfork/core/exception.hpp"  // for stash_exception_in_return
+#include "libfork/core/exceptions.hpp" // for stash_exception_in_return
 #include "libfork/core/first_arg.hpp"  // for first_arg_t, quasi_pointer, async_function_object
 #include "libfork/core/tag.hpp"        // for tag
 #include "libfork/core/task.hpp"       // for task, returnable

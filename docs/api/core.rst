@@ -70,11 +70,14 @@ Functional
 Control flow
 --------------------------------
 
-Blocking 
-~~~~~~~~~
+Sync to async
+~~~~~~~~~~~~~
+
+.. doxygenfunction:: lf::core::schedule
 
 .. doxygenfunction:: lf::core::sync_wait
 
+.. doxygenfunction:: lf::core::detach
 
 Fork-join
 ~~~~~~~~~~~~
@@ -113,6 +116,13 @@ Task
     :members:
     :undoc-members:
 
+Future
+~~~~~~
+
+.. doxygenclass:: lf::core::future
+    :members:
+    :undoc-members:
+
 Eventually
 ~~~~~~~~~~
 
@@ -121,12 +131,9 @@ Eventually
 
    eventually.rst
 
-
 .. doxygentypedef:: lf::core::eventually
 
 .. doxygentypedef:: lf::core::try_eventually
-
-
 
 Defer
 ~~~~~
@@ -139,15 +146,21 @@ Defer
 Exceptions
 ~~~~~~~~~~
 
-.. doxygenstruct:: lf::core::sync_wait_in_worker
-    :members:
-    :undoc-members:
-
-
 .. doxygenstruct:: lf::core::exception_before_join
     :members:
     :undoc-members:
 
+.. doxygenstruct:: lf::core::schedule_in_worker
+    :members:
+    :undoc-members:
+
+.. doxygenstruct:: lf::core::broken_future
+    :members:
+    :undoc-members:
+
+.. doxygenstruct:: lf::core::empty_future
+    :members:
+    :undoc-members:
 
 Stack allocation
 ------------------

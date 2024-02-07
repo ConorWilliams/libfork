@@ -23,7 +23,7 @@
 #include "libfork/core/ext/context.hpp"           // for worker_context, nullary_function_t
 #include "libfork/core/ext/handles.hpp"           // for submit_handle, task_handle
 #include "libfork/core/ext/resume.hpp"            // for resume
-#include "libfork/core/impl/utility.hpp"          // for k_cache_line, move_only
+#include "libfork/core/impl/utility.hpp"          // for k_cache_line
 #include "libfork/core/macro.hpp"                 // for LF_ASSERT, LF_ASSERT_NO_ASSUME, LF_LOG
 #include "libfork/core/scheduler.hpp"             // for scheduler
 #include "libfork/schedule/ext/numa.hpp"          // for numa_strategy, numa_topology
@@ -101,6 +101,11 @@ inline void busy_work(numa_topology::numa_node<impl::numa_context<busy_vars>> no
       resume(task);
     }
   };
+
+  // Finish up any remaining work.
+  while (submit_handle submissions = my_context->try_pop_all()) {
+    resume(submissions);
+  }
 }
 
 } // namespace impl
@@ -112,8 +117,11 @@ inline void busy_work(numa_topology::numa_node<impl::numa_context<busy_vars>> no
  * waste CPU cycles if sufficient work is not available. This is a good choice if the number
  * of threads is equal to the number of hardware cores and the multiplexer has no other load.
  * Additionally (if an installation of `hwloc` was found) this pool is NUMA aware.
+ *
+ * __Note:__ The `busy_pool` must not be destructed until all submitted tasks have reached a
+ * point where they will submit no-more work to the pool.
  */
-class busy_pool : impl::move_only<busy_pool> {
+class busy_pool {
 
   std::size_t m_num_threads;
   std::uniform_int_distribution<std::size_t> m_dist{0, m_num_threads - 1};
@@ -124,6 +132,23 @@ class busy_pool : impl::move_only<busy_pool> {
   std::vector<worker_context *> m_contexts = {};
 
  public:
+  /**
+   * @brief Move construct a new lazy_pool object.
+   */
+  busy_pool(busy_pool &&other) noexcept = default;
+  /**
+   * @brief The busy pool is not copyable.
+   */
+  busy_pool(busy_pool const &other) = delete;
+  /**
+   * @brief Move assign a lazy_pool object.
+   */
+  auto operator=(busy_pool &&other) noexcept -> busy_pool & = default;
+  /**
+   * @brief The busy pool is not copy assignable.
+   */
+  auto operator=(busy_pool const &other) -> busy_pool & = delete;
+
   /**
    * @brief Construct a new busy_pool object.
    *

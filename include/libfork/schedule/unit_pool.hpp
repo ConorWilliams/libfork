@@ -30,7 +30,8 @@ namespace lf {
 /**
  * @brief A scheduler that runs all tasks on a single thread.
  *
- * This is useful for testing/debugging/benchmarking.
+ * This is useful for testing/debugging/benchmarking as it is the only work-pool that can guarantee
+ * all the work completes if submitting detached work.
  */
 class unit_pool : impl::immovable<unit_pool> {
 
@@ -48,6 +49,11 @@ class unit_pool : impl::immovable<unit_pool> {
       if (auto *job = me->try_pop_all()) {
         lf::resume(job);
       }
+    }
+
+    // Drain the queue.
+    while (auto *job = me->try_pop_all()) {
+      lf::resume(job);
     }
   }
 
