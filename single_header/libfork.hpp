@@ -664,6 +664,12 @@ template <typename From, typename To>
 using forward_cv_t = typename detail::forward_cv<From, To>::type;
 
 /**
+ * @brief Test if the `T` has no `const`, `volatile` or reference qualifiers.
+ */
+template <typename T>
+concept unqualified = std::same_as<std::remove_cvref_t<T>, T>;
+
+/**
  * @brief True if the unqualified ``T`` and ``U`` refer to different types.
  *
  * This is useful for preventing ''T &&'' constructor/assignment from replacing the defaults.
@@ -717,8 +723,8 @@ template <typename T>
     { ptr == nullptr } -> std::convertible_to<bool>;
   }
 constexpr auto
-non_null(T &&val, [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept
-    -> T && {
+non_null(T &&val,
+         [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept -> T && {
 #ifndef NDEBUG
   if (val == nullptr) {
     // NOLINTNEXTLINE
@@ -755,7 +761,884 @@ auto byte_cast(T *ptr) LF_HOF_RETURNS(std::bit_cast<forward_cv_t<T, std::byte> *
 
 #include <concepts>    // for movable
 #include <type_traits> // for type_identity
- // for LF_CORO_ATTRIBUTES
+
+#ifndef A7699F23_E799_46AB_B1E0_7EA36053AD41
+#define A7699F23_E799_46AB_B1E0_7EA36053AD41
+
+#include <memory>
+
+#ifndef DD6F6C5C_C146_4C02_99B9_7D2D132C0844
+#define DD6F6C5C_C146_4C02_99B9_7D2D132C0844
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <atomic>      // for atomic_ref, memory_order, atomic_uint16_t
+#include <coroutine>   // for coroutine_handle
+#include <cstdint>     // for uint16_t
+#include <exception>   // for exception_ptr, operator==, current_exce...
+#include <memory>      // for construct_at
+#include <semaphore>   // for binary_semaphore
+#include <type_traits> // for is_standard_layout_v, is_trivially_dest...
+#include <utility>     // for exchange
+#include <version>     // for __cpp_lib_atomic_ref
+
+#ifndef B4EE570B_F5CF_42CB_9AF3_7376F45FDACC
+#define B4EE570B_F5CF_42CB_9AF3_7376F45FDACC
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <functional>  // for invoke
+#include <type_traits> // for is_nothrow_invocable_v, is_nothrow_constructible_v
+#include <utility>     // for forward
+ // for immovable        // for LF_CONCAT_OUTER, LF_FORCEINLINE
+
+/**
+ * @file defer.hpp
+ *
+ * @brief A Golang-like defer implemented via destructor calls.
+ */
+
+namespace lf {
+
+inline namespace core {
+
+/**
+ * @brief Basic implementation of a Golang-like defer.
+ *
+ * \rst
+ *
+ * Use like:
+ *
+ * .. code::
+ *
+ *    auto * ptr = c_api_init();
+ *
+ *    defer _ = [&ptr] () noexcept {
+ *      c_api_clean_up(ptr);
+ *    };
+ *
+ *    // Code that may throw
+ *
+ * \endrst
+ *
+ * You can also use the ``LF_DEFER`` macro to create an automatically named defer object.
+ *
+ */
+template <class F>
+  requires std::is_nothrow_invocable_v<F>
+class [[nodiscard("Defer will execute unless bound to a name!")]] defer : impl::immovable<defer<F>> {
+ public:
+  /**
+   * @brief Construct a new Defer object.
+   *
+   * @param f Nullary invocable forwarded into object and invoked by destructor.
+   */
+  constexpr defer(F &&f) noexcept(std::is_nothrow_constructible_v<F, F &&>) : m_f(std::forward<F>(f)) {}
+
+  /**
+   * @brief Calls the invocable.
+   */
+  LF_FORCEINLINE constexpr ~defer() noexcept { std::invoke(std::forward<F>(m_f)); }
+
+ private:
+  [[no_unique_address]] F m_f;
+};
+
+/**
+ * @brief A macro to create an automatically named defer object.
+ */
+#define LF_DEFER ::lf::defer LF_CONCAT_OUTER(at_exit_, __LINE__) = [&]() noexcept
+
+} // namespace core
+
+} // namespace lf
+
+#endif /* B4EE570B_F5CF_42CB_9AF3_7376F45FDACC */
+
+                // for LF_DEFER
+#ifndef F51F8998_9E69_458E_95E1_8592A49FA76C
+#define F51F8998_9E69_458E_95E1_8592A49FA76C
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <array>    // for array
+#include <concepts> // for constructible_from
+#include <cstddef>  // for byte
+#include <memory>   // for destroy_at
+#include <new>      // for launder, operator new
+#include <utility>  // for forward
+ // for immovable
+
+/**
+ * @file manual_lifetime.hpp
+ *
+ * @brief A utility class for explicitly managing the lifetime of an object.
+ */
+
+namespace lf::impl {
+
+/**
+ * @brief Provides storage for a single object of type ``T``.
+ *
+ * Every instance of manual_lifetime is trivially constructible/destructible.
+ */
+template <typename T>
+class manual_lifetime : immovable<manual_lifetime<T>> {
+ public:
+  /**
+   * @brief Start lifetime of object.
+   */
+  template <typename... Args>
+    requires std::constructible_from<T, Args...>
+  auto construct(Args &&...args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> T * {
+    return ::new (static_cast<void *>(m_buf.data())) T(std::forward<Args>(args)...);
+  }
+
+  /**
+   * @brief Start lifetime of object at assignment.
+   */
+  template <typename U>
+    requires std::constructible_from<T, U>
+  void operator=(U &&expr) noexcept(std::is_nothrow_constructible_v<T, U>) {
+    this->construct(std::forward<U>(expr));
+  }
+
+  /**
+   * @brief Destroy the contained object, must have been constructed first.
+   *
+   * A noop if ``T`` is trivially destructible.
+   */
+  void destroy() noexcept(std::is_nothrow_destructible_v<T>)
+    requires std::is_destructible_v<T>
+  {
+    if constexpr (!std::is_trivially_destructible_v<T>) {
+      std::destroy_at(data());
+    }
+  }
+
+  /**
+   * @brief Get a pointer to the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto data() noexcept -> T * { return std::launder(reinterpret_cast<T *>(m_buf.data())); }
+
+  /**
+   * @brief Get a pointer to the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto data() const noexcept -> T * {
+    return std::launder(reinterpret_cast<T const *>(m_buf.data()));
+  }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator->() noexcept -> T * { return data(); }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator->() const noexcept -> T const * { return data(); }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() & noexcept -> T & { return *data(); }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() const & noexcept -> T const & { return *data(); }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() && noexcept -> T && { return std::move(*data()); }
+
+  /**
+   * @brief Access the contained object, must have been constructed first.
+   */
+  [[nodiscard]] auto operator*() const && noexcept -> T const && { return std::move(*data()); }
+
+ private:
+  [[no_unique_address]] alignas(T) std::array<std::byte, sizeof(T)> m_buf;
+};
+
+} // namespace lf::impl
+
+#endif /* F51F8998_9E69_458E_95E1_8592A49FA76C */
+
+ // for manual_lifetime
+#ifndef F7577AB3_0439_404D_9D98_072AB84FBCD0
+#define F7577AB3_0439_404D_9D98_072AB84FBCD0
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <algorithm>   // for max
+#include <bit>         // for has_single_bit
+#include <cstddef>     // for size_t, byte, nullptr_t
+#include <cstdlib>     // for free, malloc
+#include <new>         // for bad_alloc
+#include <type_traits> // for is_trivially_default_constructible_v, is_trivia...
+#include <utility>     // for exchange, swap
+ // for byte_cast, k_new_align, non_null, immovable        // for LF_ASSERT, LF_LOG, LF_FORCEINLINE, LF_NOINLINE
+
+/**
+ * @file stack.hpp
+ *
+ * @brief Implementation of libfork's geometric segmented stacks.
+ */
+
+#ifndef LF_FIBRE_INIT_SIZE
+  /**
+   * @brief The initial size for a stack (in bytes).
+   *
+   * All stacklets will be round up to a multiple of the page size.
+   */
+  #define LF_FIBRE_INIT_SIZE 1
+#endif
+
+static_assert(LF_FIBRE_INIT_SIZE > 0, "Stacks must have a positive size");
+
+namespace lf::impl {
+
+/**
+ * @brief Round size close to a multiple of the page_size.
+ */
+[[nodiscard]] inline constexpr auto round_up_to_page_size(std::size_t size) noexcept -> std::size_t {
+
+  // Want calculate req such that:
+
+  // req + malloc_block_est is a multiple of the page size.
+  // req > size + stacklet_size
+
+  std::size_t constexpr page_size = 4096;                           // 4 KiB on most systems.
+  std::size_t constexpr malloc_meta_data_size = 6 * sizeof(void *); // An (over)estimate.
+
+  static_assert(std::has_single_bit(page_size));
+
+  std::size_t minimum = size + malloc_meta_data_size;
+  std::size_t rounded = (minimum + page_size - 1) & ~(page_size - 1);
+  std::size_t request = rounded - malloc_meta_data_size;
+
+  LF_ASSERT(minimum <= rounded);
+  LF_ASSERT(rounded % page_size == 0);
+  LF_ASSERT(request >= size);
+
+  return request;
+}
+
+/**
+ * @brief A stack is a user-space (geometric) segmented program stack.
+ *
+ * A stack stores the execution of a DAG from root (which may be a stolen task or true root) to suspend
+ * point. A stack is composed of stacklets, each stacklet is a contiguous region of stack space stored in a
+ * double-linked list. A stack tracks the top stacklet, the top stacklet contains the last allocation or the
+ * stack is empty. The top stacklet may have zero or one cached stacklets "ahead" of it.
+ */
+class stack {
+
+ public:
+  /**
+   * @brief A stacklet is a stack fragment that contains a segment of the stack.
+   *
+   * A chain of stacklets looks like `R <- F1 <- F2 <- F3 <- ... <- Fn` where `R` is the root stacklet.
+   *
+   * A stacklet is allocated as a contiguous chunk of memory, the first bytes of the chunk contain the
+   * stacklet object. Semantically, a stacklet is a dynamically sized object.
+   *
+   * Each stacklet also contains an exception pointer and atomic flag which stores exceptions thrown by
+   * children.
+   */
+  class alignas(impl::k_new_align) stacklet : impl::immovable<stacklet> {
+
+    friend class stack;
+
+    /**
+     * @brief Capacity of the current stacklet's stack.
+     */
+    [[nodiscard]] auto capacity() const noexcept -> std::size_t {
+      LF_ASSERT(m_hi - m_lo >= 0);
+      return m_hi - m_lo;
+    }
+
+    /**
+     * @brief Unused space on the current stacklet's stack.
+     */
+    [[nodiscard]] auto unused() const noexcept -> std::size_t {
+      LF_ASSERT(m_hi - m_sp >= 0);
+      return m_hi - m_sp;
+    }
+
+    /**
+     * @brief Check if stacklet's stack is empty.
+     */
+    [[nodiscard]] auto empty() const noexcept -> bool { return m_sp == m_lo; }
+
+    /**
+     * @brief Check is this stacklet is the top of a stack.
+     */
+    [[nodiscard]] auto is_top() const noexcept -> bool {
+      if (m_next != nullptr) {
+        // Accept a single cached stacklet above the top.
+        return m_next->empty() && m_next->m_next == nullptr;
+      }
+      return true;
+    }
+
+    /**
+     * @brief Set the next stacklet in the chain to 'new_next'.
+     *
+     * This requires that this is the top stacklet. If there is a cached stacklet ahead of the top stacklet
+     * then it will be freed before being replaced with 'new_next'.
+     */
+    void set_next(stacklet *new_next) noexcept {
+      LF_ASSERT(is_top());
+      std::free(std::exchange(m_next, new_next)); // NOLINT
+    }
+
+    /**
+     * @brief Allocate a new stacklet with a stack of size of at least`size` and attach it to the given
+     * stacklet chain.
+     *
+     * Requires that `prev` must be the top stacklet in a chain or `nullptr`. This will round size up to
+     */
+    [[nodiscard]] LF_NOINLINE static auto next_stacklet(std::size_t size, stacklet *prev) -> stacklet * {
+
+      LF_LOG("allocating a new stacklet");
+
+      LF_ASSERT(prev == nullptr || prev->is_top());
+
+      std::size_t request = impl::round_up_to_page_size(size + sizeof(stacklet));
+
+      LF_ASSERT(request >= sizeof(stacklet) + size);
+
+      stacklet *next = static_cast<stacklet *>(std::malloc(request)); // NOLINT
+
+      if (next == nullptr) {
+        LF_THROW(std::bad_alloc());
+      }
+
+      if (prev != nullptr) {
+        // Set next tidies up other next.
+        prev->set_next(next);
+      }
+
+      next->m_lo = impl::byte_cast(next) + sizeof(stacklet);
+      next->m_sp = next->m_lo;
+      next->m_hi = impl::byte_cast(next) + request;
+
+      next->m_prev = prev;
+      next->m_next = nullptr;
+
+      return next;
+    }
+
+    /**
+     * @brief Allocate an initial stacklet.
+     */
+    [[nodiscard]] static auto next_stacklet() -> stacklet * {
+      return stacklet::next_stacklet(LF_FIBRE_INIT_SIZE, nullptr);
+    }
+
+    /**
+     * @brief This stacklet's stack.
+     */
+    std::byte *m_lo;
+    /**
+     * @brief The current position of the stack pointer in the stack.
+     */
+    std::byte *m_sp;
+    /**
+     * @brief The one-past-the-end address of the stack.
+     */
+    std::byte *m_hi;
+    /**
+     * @brief Doubly linked list (past).
+     */
+    stacklet *m_prev;
+    /**
+     * @brief Doubly linked list (future).
+     */
+    stacklet *m_next;
+  };
+
+  // Keep stack aligned.
+  static_assert(sizeof(stacklet) >= impl::k_new_align);
+  static_assert(sizeof(stacklet) % impl::k_new_align == 0);
+  // Stacklet is implicit lifetime type
+  static_assert(std::is_trivially_default_constructible_v<stacklet>);
+  static_assert(std::is_trivially_destructible_v<stacklet>);
+
+  /**
+   * @brief Constructs a stack with a small empty stack.
+   */
+  stack() : m_fib(stacklet::next_stacklet()) { LF_LOG("Constructing a stack"); }
+
+  /**
+   * @brief Construct a new stack object taking ownership of the stack that `frag` is a top-of.
+   */
+  explicit stack(stacklet *frag) noexcept : m_fib(frag) {
+    LF_LOG("Constructing stack from stacklet");
+    LF_ASSERT(frag && frag->is_top());
+  }
+
+  stack(std::nullptr_t) = delete;
+
+  stack(stack const &) = delete;
+
+  auto operator=(stack const &) -> stack & = delete;
+
+  /**
+   * @brief Move-construct from `other` leaves `other` in the empty/default state.
+   */
+  stack(stack &&other) : stack() { swap(*this, other); }
+
+  /**
+   * @brief Swap this and `other`.
+   */
+  auto operator=(stack &&other) noexcept -> stack & {
+    swap(*this, other);
+    return *this;
+  }
+
+  /**
+   * @brief Swap `lhs` with `rhs.
+   */
+  inline friend void swap(stack &lhs, stack &rhs) noexcept {
+    using std::swap;
+    swap(lhs.m_fib, rhs.m_fib);
+  }
+
+  /**
+   * @brief Destroy the stack object.
+   */
+  ~stack() noexcept {
+    LF_ASSERT(m_fib);
+    LF_ASSERT(!m_fib->m_prev); // Should only be destructed at the root.
+    m_fib->set_next(nullptr);  // Free a cached stacklet.
+    std::free(m_fib);          // NOLINT
+  }
+
+  /**
+   * @brief Test if the stack is empty (has no allocations).
+   */
+  [[nodiscard]] auto empty() -> bool {
+    LF_ASSERT(m_fib && m_fib->is_top());
+    return m_fib->empty() && m_fib->m_prev == nullptr;
+  }
+
+  /**
+   * @brief Release the underlying storage of the current stack and re-initialize this one.
+   *
+   * A new stack can be constructed from the stacklet to continue the released stack.
+   */
+  [[nodiscard]] auto release() -> stacklet * {
+    LF_LOG("Releasing stack");
+    LF_ASSERT(m_fib);
+    return std::exchange(m_fib, stacklet::next_stacklet());
+  }
+
+  /**
+   * @brief Allocate `count` bytes of memory on a stacklet in the bundle.
+   *
+   * The memory will be aligned to a multiple of `__STDCPP_DEFAULT_NEW_ALIGNMENT__`.
+   *
+   * Deallocate the memory with `deallocate` in a FILO manor.
+   */
+  [[nodiscard]] LF_FORCEINLINE auto allocate(std::size_t size) -> void * {
+    //
+    LF_ASSERT(m_fib && m_fib->is_top());
+
+    // Round up to the next multiple of the alignment.
+    std::size_t ext_size = (size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
+
+    if (m_fib->unused() < ext_size) {
+      if (m_fib->m_next != nullptr && m_fib->m_next->capacity() >= ext_size) {
+        m_fib = m_fib->m_next;
+      } else {
+        m_fib = stacklet::next_stacklet(std::max(2 * m_fib->capacity(), ext_size), m_fib);
+      }
+    }
+
+    LF_ASSERT(m_fib && m_fib->is_top());
+
+    LF_LOG("Allocating {} bytes {}-{}", size, (void *)m_fib->m_sp, (void *)(m_fib->m_sp + ext_size));
+
+    return std::exchange(m_fib->m_sp, m_fib->m_sp + ext_size);
+  }
+
+  /**
+   * @brief Deallocate `count` bytes of memory from the current stack.
+   *
+   * This must be called in FILO order with `allocate`.
+   */
+  LF_FORCEINLINE void deallocate(void *ptr) noexcept {
+
+    LF_ASSERT(m_fib && m_fib->is_top());
+
+    LF_LOG("Deallocating {}", ptr);
+
+    m_fib->m_sp = static_cast<std::byte *>(ptr);
+
+    if (m_fib->empty()) {
+
+      if (m_fib->m_prev != nullptr) {
+        // Always free a second order cached stacklet if it exists.
+        m_fib->set_next(nullptr);
+        // Move to prev stacklet.
+        m_fib = m_fib->m_prev;
+      }
+
+      LF_ASSERT(m_fib);
+
+      // Guard against over-caching.
+      if (m_fib->m_next != nullptr) {
+        if (m_fib->m_next->capacity() > 8 * m_fib->capacity()) {
+          // Free oversized stacklet.
+          m_fib->set_next(nullptr);
+        }
+      }
+    }
+
+    LF_ASSERT(m_fib && m_fib->is_top());
+  }
+
+  /**
+   * @brief Get the stacklet that the last allocation was on, this is non-null.
+   */
+  [[nodiscard]] auto top() noexcept -> stacklet * {
+    LF_ASSERT(m_fib && m_fib->is_top());
+    return non_null(m_fib);
+  }
+
+ private:
+  /**
+   * @brief The allocation stacklet.
+   */
+  stacklet *m_fib;
+};
+
+} // namespace lf::impl
+
+#endif /* F7577AB3_0439_404D_9D98_072AB84FBCD0 */
+
+           // for stack         // for non_null, k_u16_max                // for LF_COMPILER_EXCEPTIONS, LF_ASSERT, LF_F...
+
+/**
+ * @file frame.hpp
+ *
+ * @brief A small bookkeeping struct which is a member of each task's promise.
+ */
+
+namespace lf::impl {
+
+/**
+ * @brief A small bookkeeping struct which is a member of each task's promise.
+ */
+class frame {
+
+#if LF_COMPILER_EXCEPTIONS
+  /**
+   * @brief Maybe an exception pointer.
+   */
+  manual_lifetime<std::exception_ptr> m_eptr;
+#endif
+
+#ifndef LF_COROUTINE_OFFSET
+  /**
+   * @brief Handle to this coroutine, inferred from `this` if `LF_COROUTINE_OFFSET` is set.
+   */
+  std::coroutine_handle<> m_this_coro;
+#endif
+  /**
+   * @brief This frames stacklet, needs to be in promise in case allocation elided (as does m_parent).
+   */
+  stack::stacklet *m_stacklet;
+
+  union {
+    /**
+     * @brief Non-root tasks store a pointer to their parent.
+     */
+    frame *m_parent;
+    /**
+     * @brief Root tasks store a pointer to a semaphore to notify the caller.
+     */
+    std::binary_semaphore *m_sem;
+  };
+
+  /**
+   * @brief  Number of children joined (with offset).
+   */
+  std::atomic_uint16_t m_join = k_u16_max;
+  /**
+   * @brief Number of times this frame has been stolen.
+   */
+  std::uint16_t m_steal = 0;
+
+/**
+ * @brief Flag to indicate if an exception has been set.
+ */
+#if LF_COMPILER_EXCEPTIONS
+  #ifdef __cpp_lib_atomic_ref
+  bool m_except = false;
+  #else
+  std::atomic_bool m_except = false;
+  #endif
+#endif
+
+  /**
+   * @brief Cold path in `rethrow_if_exception` in its own non-inline function.
+   */
+  LF_NOINLINE void rethrow() {
+#if LF_COMPILER_EXCEPTIONS
+
+    LF_ASSERT(*m_eptr != nullptr);
+
+    LF_DEFER {
+      LF_ASSERT(*m_eptr == nullptr);
+      m_eptr.destroy();
+  #ifdef __cpp_lib_atomic_ref
+      m_except = false;
+  #else
+      m_except.store(false, std::memory_order_relaxed);
+  #endif
+    };
+
+    std::rethrow_exception(std::exchange(*m_eptr, nullptr));
+#endif
+  }
+
+ public:
+  /**
+   * @brief Construct a frame block.
+   *
+   * Non-root tasks will need to call ``set_parent(...)``.
+   */
+#ifndef LF_COROUTINE_OFFSET
+  frame(std::coroutine_handle<> coro, stack::stacklet *stacklet) noexcept
+      : m_this_coro{coro},
+        m_stacklet(non_null(stacklet)) {
+    LF_ASSERT(coro);
+  }
+#else
+  frame(std::coroutine_handle<>, stack::stacklet *stacklet) noexcept : m_stacklet(non_null(stacklet)) {}
+#endif
+
+  /**
+   * @brief Set the pointer to the parent frame.
+   */
+  void set_parent(frame *parent) noexcept { m_parent = non_null(parent); }
+
+  /**
+   * @brief Set a root tasks parent.
+   */
+  void set_root_sem(std::binary_semaphore *sem) noexcept { m_sem = non_null(sem); }
+
+  /**
+   * @brief Set the stacklet object to point at a new stacklet.
+   *
+   * Returns the previous stacklet.
+   */
+  auto reset_stacklet(stack::stacklet *stacklet) noexcept -> stack::stacklet * {
+    return std::exchange(m_stacklet, non_null(stacklet));
+  }
+
+  /**
+   * @brief Get a pointer to the parent frame.
+   *
+   * Only valid if this is not a root frame.
+   */
+  [[nodiscard]] auto parent() const noexcept -> frame * { return m_parent; }
+
+  /**
+   * @brief Get a pointer to the semaphore for this root frame.
+   *
+   * Only valid if this is not a root frame.
+   */
+  [[nodiscard]] auto semaphore() const noexcept -> std::binary_semaphore * { return m_sem; }
+
+  /**
+   * @brief Get a pointer to the top of the top of the stack-stack this frame was allocated on.
+   */
+  [[nodiscard]] auto stacklet() const noexcept -> stack::stacklet * { return non_null(m_stacklet); }
+
+  /**
+   * @brief Get the coroutine handle for this frames coroutine.
+   */
+  [[nodiscard]] auto self() noexcept -> std::coroutine_handle<> {
+#ifndef LF_COROUTINE_OFFSET
+    return m_this_coro;
+#else
+    return std::coroutine_handle<>::from_address(byte_cast(this) - LF_COROUTINE_OFFSET);
+#endif
+  }
+
+  /**
+   * @brief Perform a `.load(order)` on the atomic join counter.
+   */
+  [[nodiscard]] auto load_joins(std::memory_order order) const noexcept -> std::uint16_t {
+    return m_join.load(order);
+  }
+
+  /**
+   * @brief Perform a `.fetch_sub(val, order)` on the atomic join counter.
+   */
+  auto fetch_sub_joins(std::uint16_t val, std::memory_order order) noexcept -> std::uint16_t {
+    return m_join.fetch_sub(val, order);
+  }
+
+  /**
+   * @brief Get the number of times this frame has been stolen.
+   */
+  [[nodiscard]] auto load_steals() const noexcept -> std::uint16_t { return m_steal; }
+
+  /**
+   * @brief Increase the steal counter by one and return the previous value.
+   */
+  auto fetch_add_steal() noexcept -> std::uint16_t { return m_steal++; }
+
+  /**
+   * @brief Reset the join and steal counters, must be outside a fork-join region.
+   */
+  void reset() noexcept {
+
+    m_steal = 0;
+
+    static_assert(std::is_trivially_destructible_v<decltype(m_join)>);
+    // Use construct_at(...) to set non-atomically as we know we are the
+    // only thread who can touch this control block until a steal which
+    // would provide the required memory synchronization.
+    std::construct_at(&m_join, k_u16_max);
+  }
+
+  /**
+   * @brief Capture the exception currently being thrown.
+   *
+   * Safe to call concurrently, first exception is saved.
+   */
+  void capture_exception() noexcept {
+#if LF_COMPILER_EXCEPTIONS
+  #ifdef __cpp_lib_atomic_ref
+    bool prev = std::atomic_ref{m_except}.exchange(true, std::memory_order_acq_rel);
+  #else
+    bool prev = m_except.exchange(true, std::memory_order_acq_rel);
+  #endif
+
+    if (!prev) {
+      m_eptr.construct(std::current_exception());
+    }
+#endif
+  }
+
+  /**
+   * @brief Test if the exception flag is set.
+   *
+   * Safe to call concurrently.
+   */
+  auto atomic_has_exception() const noexcept -> bool {
+#if LF_COMPILER_EXCEPTIONS
+  #ifdef __cpp_lib_atomic_ref
+    return std::atomic_ref{m_except}.load(std::memory_order_acquire);
+  #else
+    return m_except.load(std::memory_order_acquire);
+  #endif
+#else
+    return false;
+#endif
+  }
+
+  /**
+   * @brief If this contains an exception then it will be rethrown and this this object reset to the OK state.
+   *
+   * This can __only__ be called when the caller has exclusive ownership over this object.
+   */
+  LF_FORCEINLINE void rethrow_if_exception() {
+#if LF_COMPILER_EXCEPTIONS
+  #ifdef __cpp_lib_atomic_ref
+    if (m_except) {
+  #else
+    if (m_except.load(std::memory_order_relaxed)) {
+  #endif
+      rethrow();
+    }
+#endif
+  }
+
+  /**
+   * @brief Check if this contains an exception.
+   *
+   * This can __only__ be called when the caller has exclusive ownership over this object.
+   */
+  [[nodiscard]] auto has_exception() const noexcept -> bool {
+#if LF_COMPILER_EXCEPTIONS
+  #ifdef __cpp_lib_atomic_ref
+    return m_except;
+  #else
+    return m_except.load(std::memory_order_relaxed);
+  #endif
+#else
+    return false;
+#endif
+  }
+};
+
+static_assert(std::is_standard_layout_v<frame>);
+
+} // namespace lf::impl
+
+#endif /* DD6F6C5C_C146_4C02_99B9_7D2D132C0844 */
+
+
+
+/**
+ * @file unique_frame.hpp
+ *
+ * @brief A unique pointer that owns a coroutine frame.
+ */
+
+namespace lf::impl {
+
+namespace detail {
+
+struct frame_deleter {
+  LF_STATIC_CALL void operator()(frame *frame) noexcept { non_null(frame)->self().destroy(); }
+};
+
+} // namespace detail
+
+/**
+ * @brief A unique pointer (with a custom deleter) that owns a coroutine frame.
+ */
+using unique_frame = std::unique_ptr<frame, detail::frame_deleter>;
+
+} // namespace lf::impl
+
+#endif /* A7699F23_E799_46AB_B1E0_7EA36053AD41 */
+
+ // for unique_frame      // for immovable             // for LF_CORO_ATTRIBUTES
 
 /**
  * @file task.hpp
@@ -796,12 +1679,7 @@ concept returnable = std::is_void_v<T> || std::is_reference_v<T> || std::movable
  * \endrst
  */
 template <returnable T = void>
-struct LF_CORO_ATTRIBUTES task : std::type_identity<T>, impl::immovable<task<void>> {
-  /**
-   * @brief An opaque handle to the coroutine promise.
-   */
-  void *prom;
-};
+struct LF_CORO_ATTRIBUTES task : std::type_identity<T>, impl::immovable<task<T>>, impl::unique_frame {};
 
 } // namespace core
 
@@ -1928,852 +2806,7 @@ class intrusive_list : impl::immovable<intrusive_list<T>> {
 
 #endif /* BC7496D2_E762_43A4_92A3_F2AD10690569 */
 
-   // for intrusive_list
-#ifndef DD6F6C5C_C146_4C02_99B9_7D2D132C0844
-#define DD6F6C5C_C146_4C02_99B9_7D2D132C0844
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <atomic>      // for atomic_ref, memory_order, atomic_uint16_t
-#include <coroutine>   // for coroutine_handle
-#include <cstdint>     // for uint16_t
-#include <exception>   // for exception_ptr, operator==, current_exce...
-#include <memory>      // for construct_at
-#include <semaphore>   // for binary_semaphore
-#include <type_traits> // for is_standard_layout_v, is_trivially_dest...
-#include <utility>     // for exchange
-#include <version>     // for __cpp_lib_atomic_ref
-
-#ifndef B4EE570B_F5CF_42CB_9AF3_7376F45FDACC
-#define B4EE570B_F5CF_42CB_9AF3_7376F45FDACC
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <functional>  // for invoke
-#include <type_traits> // for is_nothrow_invocable_v, is_nothrow_constructible_v
-#include <utility>     // for forward
- // for immovable        // for LF_CONCAT_OUTER, LF_FORCEINLINE
-
-/**
- * @file defer.hpp
- *
- * @brief A Golang-like defer implemented via destructor calls.
- */
-
-namespace lf {
-
-inline namespace core {
-
-/**
- * @brief Basic implementation of a Golang-like defer.
- *
- * \rst
- *
- * Use like:
- *
- * .. code::
- *
- *    auto * ptr = c_api_init();
- *
- *    defer _ = [&ptr] () noexcept {
- *      c_api_clean_up(ptr);
- *    };
- *
- *    // Code that may throw
- *
- * \endrst
- *
- * You can also use the ``LF_DEFER`` macro to create an automatically named defer object.
- *
- */
-template <class F>
-  requires std::is_nothrow_invocable_v<F>
-class [[nodiscard("Defer will execute unless bound to a name!")]] defer : impl::immovable<defer<F>> {
- public:
-  /**
-   * @brief Construct a new Defer object.
-   *
-   * @param f Nullary invocable forwarded into object and invoked by destructor.
-   */
-  constexpr defer(F &&f) noexcept(std::is_nothrow_constructible_v<F, F &&>) : m_f(std::forward<F>(f)) {}
-
-  /**
-   * @brief Calls the invocable.
-   */
-  LF_FORCEINLINE constexpr ~defer() noexcept { std::invoke(std::forward<F>(m_f)); }
-
- private:
-  [[no_unique_address]] F m_f;
-};
-
-/**
- * @brief A macro to create an automatically named defer object.
- */
-#define LF_DEFER ::lf::defer LF_CONCAT_OUTER(at_exit_, __LINE__) = [&]() noexcept
-
-} // namespace core
-
-} // namespace lf
-
-#endif /* B4EE570B_F5CF_42CB_9AF3_7376F45FDACC */
-
-                // for LF_DEFER
-#ifndef F51F8998_9E69_458E_95E1_8592A49FA76C
-#define F51F8998_9E69_458E_95E1_8592A49FA76C
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <array>    // for array
-#include <concepts> // for constructible_from
-#include <cstddef>  // for byte
-#include <memory>   // for destroy_at
-#include <new>      // for launder, operator new
-#include <utility>  // for forward
- // for immovable
-
-/**
- * @file manual_lifetime.hpp
- *
- * @brief A utility class for explicitly managing the lifetime of an object.
- */
-
-namespace lf::impl {
-
-/**
- * @brief Provides storage for a single object of type ``T``.
- *
- * Every instance of manual_lifetime is trivially constructible/destructible.
- */
-template <typename T>
-class manual_lifetime : immovable<manual_lifetime<T>> {
- public:
-  /**
-   * @brief Start lifetime of object.
-   */
-  template <typename... Args>
-    requires std::constructible_from<T, Args...>
-  auto construct(Args &&...args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> T * {
-    return ::new (static_cast<void *>(m_buf.data())) T(std::forward<Args>(args)...);
-  }
-
-  /**
-   * @brief Start lifetime of object at assignment.
-   */
-  template <typename U>
-    requires std::constructible_from<T, U>
-  void operator=(U &&expr) noexcept(std::is_nothrow_constructible_v<T, U>) {
-    this->construct(std::forward<U>(expr));
-  }
-
-  /**
-   * @brief Destroy the contained object, must have been constructed first.
-   *
-   * A noop if ``T`` is trivially destructible.
-   */
-  void destroy() noexcept(std::is_nothrow_destructible_v<T>)
-    requires std::is_destructible_v<T>
-  {
-    if constexpr (!std::is_trivially_destructible_v<T>) {
-      std::destroy_at(data());
-    }
-  }
-
-  /**
-   * @brief Get a pointer to the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto data() noexcept -> T * { return std::launder(reinterpret_cast<T *>(m_buf.data())); }
-
-  /**
-   * @brief Get a pointer to the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto data() const noexcept -> T * {
-    return std::launder(reinterpret_cast<T const *>(m_buf.data()));
-  }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator->() noexcept -> T * { return data(); }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator->() const noexcept -> T const * { return data(); }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator*() & noexcept -> T & { return *data(); }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator*() const & noexcept -> T const & { return *data(); }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator*() && noexcept -> T && { return std::move(*data()); }
-
-  /**
-   * @brief Access the contained object, must have been constructed first.
-   */
-  [[nodiscard]] auto operator*() const && noexcept -> T const && { return std::move(*data()); }
-
- private:
-  [[no_unique_address]] alignas(T) std::array<std::byte, sizeof(T)> m_buf;
-};
-
-} // namespace lf::impl
-
-#endif /* F51F8998_9E69_458E_95E1_8592A49FA76C */
-
- // for manual_lifetime
-#ifndef F7577AB3_0439_404D_9D98_072AB84FBCD0
-#define F7577AB3_0439_404D_9D98_072AB84FBCD0
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <algorithm>   // for max
-#include <bit>         // for has_single_bit
-#include <cstddef>     // for size_t, byte, nullptr_t
-#include <cstdlib>     // for free, malloc
-#include <new>         // for bad_alloc
-#include <type_traits> // for is_trivially_default_constructible_v, is_trivia...
-#include <utility>     // for exchange, swap
- // for byte_cast, k_new_align, non_null, immovable        // for LF_ASSERT, LF_LOG, LF_FORCEINLINE, LF_NOINLINE
-
-/**
- * @file stack.hpp
- *
- * @brief Implementation of libfork's geometric segmented stacks.
- */
-
-#ifndef LF_FIBRE_INIT_SIZE
-  /**
-   * @brief The initial size for a stack (in bytes).
-   *
-   * All stacklets will be round up to a multiple of the page size.
-   */
-  #define LF_FIBRE_INIT_SIZE 1
-#endif
-
-static_assert(LF_FIBRE_INIT_SIZE > 0, "Stacks must have a positive size");
-
-namespace lf::impl {
-
-/**
- * @brief Round size close to a multiple of the page_size.
- */
-[[nodiscard]] inline constexpr auto round_up_to_page_size(std::size_t size) noexcept -> std::size_t {
-
-  // Want calculate req such that:
-
-  // req + malloc_block_est is a multiple of the page size.
-  // req > size + stacklet_size
-
-  std::size_t constexpr page_size = 4096;                           // 4 KiB on most systems.
-  std::size_t constexpr malloc_meta_data_size = 6 * sizeof(void *); // An (over)estimate.
-
-  static_assert(std::has_single_bit(page_size));
-
-  std::size_t minimum = size + malloc_meta_data_size;
-  std::size_t rounded = (minimum + page_size - 1) & ~(page_size - 1);
-  std::size_t request = rounded - malloc_meta_data_size;
-
-  LF_ASSERT(minimum <= rounded);
-  LF_ASSERT(rounded % page_size == 0);
-  LF_ASSERT(request >= size);
-
-  return request;
-}
-
-/**
- * @brief A stack is a user-space (geometric) segmented program stack.
- *
- * A stack stores the execution of a DAG from root (which may be a stolen task or true root) to suspend
- * point. A stack is composed of stacklets, each stacklet is a contiguous region of stack space stored in a
- * double-linked list. A stack tracks the top stacklet, the top stacklet contains the last allocation or the
- * stack is empty. The top stacklet may have zero or one cached stacklets "ahead" of it.
- */
-class stack {
-
- public:
-  /**
-   * @brief A stacklet is a stack fragment that contains a segment of the stack.
-   *
-   * A chain of stacklets looks like `R <- F1 <- F2 <- F3 <- ... <- Fn` where `R` is the root stacklet.
-   *
-   * A stacklet is allocated as a contiguous chunk of memory, the first bytes of the chunk contain the
-   * stacklet object. Semantically, a stacklet is a dynamically sized object.
-   *
-   * Each stacklet also contains an exception pointer and atomic flag which stores exceptions thrown by
-   * children.
-   */
-  class alignas(impl::k_new_align) stacklet : impl::immovable<stacklet> {
-
-    friend class stack;
-
-    /**
-     * @brief Capacity of the current stacklet's stack.
-     */
-    [[nodiscard]] auto capacity() const noexcept -> std::size_t {
-      LF_ASSERT(m_hi - m_lo >= 0);
-      return m_hi - m_lo;
-    }
-
-    /**
-     * @brief Unused space on the current stacklet's stack.
-     */
-    [[nodiscard]] auto unused() const noexcept -> std::size_t {
-      LF_ASSERT(m_hi - m_sp >= 0);
-      return m_hi - m_sp;
-    }
-
-    /**
-     * @brief Check if stacklet's stack is empty.
-     */
-    [[nodiscard]] auto empty() const noexcept -> bool { return m_sp == m_lo; }
-
-    /**
-     * @brief Check is this stacklet is the top of a stack.
-     */
-    [[nodiscard]] auto is_top() const noexcept -> bool {
-      if (m_next != nullptr) {
-        // Accept a single cached stacklet above the top.
-        return m_next->empty() && m_next->m_next == nullptr;
-      }
-      return true;
-    }
-
-    /**
-     * @brief Set the next stacklet in the chain to 'new_next'.
-     *
-     * This requires that this is the top stacklet. If there is a cached stacklet ahead of the top stacklet
-     * then it will be freed before being replaced with 'new_next'.
-     */
-    void set_next(stacklet *new_next) noexcept {
-      LF_ASSERT(is_top());
-      std::free(std::exchange(m_next, new_next)); // NOLINT
-    }
-
-    /**
-     * @brief Allocate a new stacklet with a stack of size of at least`size` and attach it to the given
-     * stacklet chain.
-     *
-     * Requires that `prev` must be the top stacklet in a chain or `nullptr`. This will round size up to
-     */
-    [[nodiscard]] LF_NOINLINE static auto next_stacklet(std::size_t size, stacklet *prev) -> stacklet * {
-
-      LF_LOG("allocating a new stacklet");
-
-      LF_ASSERT(prev == nullptr || prev->is_top());
-
-      std::size_t request = impl::round_up_to_page_size(size + sizeof(stacklet));
-
-      LF_ASSERT(request >= sizeof(stacklet) + size);
-
-      stacklet *next = static_cast<stacklet *>(std::malloc(request)); // NOLINT
-
-      if (next == nullptr) {
-        LF_THROW(std::bad_alloc());
-      }
-
-      if (prev != nullptr) {
-        // Set next tidies up other next.
-        prev->set_next(next);
-      }
-
-      next->m_lo = impl::byte_cast(next) + sizeof(stacklet);
-      next->m_sp = next->m_lo;
-      next->m_hi = impl::byte_cast(next) + request;
-
-      next->m_prev = prev;
-      next->m_next = nullptr;
-
-      return next;
-    }
-
-    /**
-     * @brief Allocate an initial stacklet.
-     */
-    [[nodiscard]] static auto next_stacklet() -> stacklet * {
-      return stacklet::next_stacklet(LF_FIBRE_INIT_SIZE, nullptr);
-    }
-
-    /**
-     * @brief This stacklet's stack.
-     */
-    std::byte *m_lo;
-    /**
-     * @brief The current position of the stack pointer in the stack.
-     */
-    std::byte *m_sp;
-    /**
-     * @brief The one-past-the-end address of the stack.
-     */
-    std::byte *m_hi;
-    /**
-     * @brief Doubly linked list (past).
-     */
-    stacklet *m_prev;
-    /**
-     * @brief Doubly linked list (future).
-     */
-    stacklet *m_next;
-  };
-
-  // Keep stack aligned.
-  static_assert(sizeof(stacklet) >= impl::k_new_align);
-  static_assert(sizeof(stacklet) % impl::k_new_align == 0);
-  // Stacklet is implicit lifetime type
-  static_assert(std::is_trivially_default_constructible_v<stacklet>);
-  static_assert(std::is_trivially_destructible_v<stacklet>);
-
-  /**
-   * @brief Constructs a stack with a small empty stack.
-   */
-  stack() : m_fib(stacklet::next_stacklet()) { LF_LOG("Constructing a stack"); }
-
-  /**
-   * @brief Construct a new stack object taking ownership of the stack that `frag` is a top-of.
-   */
-  explicit stack(stacklet *frag) noexcept : m_fib(frag) {
-    LF_LOG("Constructing stack from stacklet");
-    LF_ASSERT(frag && frag->is_top());
-  }
-
-  stack(std::nullptr_t) = delete;
-
-  stack(stack const &) = delete;
-
-  auto operator=(stack const &) -> stack & = delete;
-
-  /**
-   * @brief Move-construct from `other` leaves `other` in the empty/default state.
-   */
-  stack(stack &&other) : stack() { swap(*this, other); }
-
-  /**
-   * @brief Swap this and `other`.
-   */
-  auto operator=(stack &&other) noexcept -> stack & {
-    swap(*this, other);
-    return *this;
-  }
-
-  /**
-   * @brief Swap `lhs` with `rhs.
-   */
-  inline friend void swap(stack &lhs, stack &rhs) noexcept {
-    using std::swap;
-    swap(lhs.m_fib, rhs.m_fib);
-  }
-
-  /**
-   * @brief Destroy the stack object.
-   */
-  ~stack() noexcept {
-    LF_ASSERT(m_fib);
-    LF_ASSERT(!m_fib->m_prev); // Should only be destructed at the root.
-    m_fib->set_next(nullptr);  // Free a cached stacklet.
-    std::free(m_fib);          // NOLINT
-  }
-
-  /**
-   * @brief Test if the stack is empty (has no allocations).
-   */
-  [[nodiscard]] auto empty() -> bool {
-    LF_ASSERT(m_fib && m_fib->is_top());
-    return m_fib->empty() && m_fib->m_prev == nullptr;
-  }
-
-  /**
-   * @brief Release the underlying storage of the current stack and re-initialize this one.
-   *
-   * A new stack can be constructed from the stacklet to continue the released stack.
-   */
-  [[nodiscard]] auto release() -> stacklet * {
-    LF_LOG("Releasing stack");
-    LF_ASSERT(m_fib);
-    return std::exchange(m_fib, stacklet::next_stacklet());
-  }
-
-  /**
-   * @brief Allocate `count` bytes of memory on a stacklet in the bundle.
-   *
-   * The memory will be aligned to a multiple of `__STDCPP_DEFAULT_NEW_ALIGNMENT__`.
-   *
-   * Deallocate the memory with `deallocate` in a FILO manor.
-   */
-  [[nodiscard]] LF_FORCEINLINE auto allocate(std::size_t size) -> void * {
-    //
-    LF_ASSERT(m_fib && m_fib->is_top());
-
-    // Round up to the next multiple of the alignment.
-    std::size_t ext_size = (size + impl::k_new_align - 1) & ~(impl::k_new_align - 1);
-
-    if (m_fib->unused() < ext_size) {
-      if (m_fib->m_next != nullptr && m_fib->m_next->capacity() >= ext_size) {
-        m_fib = m_fib->m_next;
-      } else {
-        m_fib = stacklet::next_stacklet(std::max(2 * m_fib->capacity(), ext_size), m_fib);
-      }
-    }
-
-    LF_ASSERT(m_fib && m_fib->is_top());
-
-    LF_LOG("Allocating {} bytes {}-{}", size, (void *)m_fib->m_sp, (void *)(m_fib->m_sp + ext_size));
-
-    return std::exchange(m_fib->m_sp, m_fib->m_sp + ext_size);
-  }
-
-  /**
-   * @brief Deallocate `count` bytes of memory from the current stack.
-   *
-   * This must be called in FILO order with `allocate`.
-   */
-  LF_FORCEINLINE void deallocate(void *ptr) noexcept {
-
-    LF_ASSERT(m_fib && m_fib->is_top());
-
-    LF_LOG("Deallocating {}", ptr);
-
-    m_fib->m_sp = static_cast<std::byte *>(ptr);
-
-    if (m_fib->empty()) {
-
-      if (m_fib->m_prev != nullptr) {
-        // Always free a second order cached stacklet if it exists.
-        m_fib->set_next(nullptr);
-        // Move to prev stacklet.
-        m_fib = m_fib->m_prev;
-      }
-
-      LF_ASSERT(m_fib);
-
-      // Guard against over-caching.
-      if (m_fib->m_next != nullptr) {
-        if (m_fib->m_next->capacity() > 8 * m_fib->capacity()) {
-          // Free oversized stacklet.
-          m_fib->set_next(nullptr);
-        }
-      }
-    }
-
-    LF_ASSERT(m_fib && m_fib->is_top());
-  }
-
-  /**
-   * @brief Get the stacklet that the last allocation was on, this is non-null.
-   */
-  [[nodiscard]] auto top() noexcept -> stacklet * {
-    LF_ASSERT(m_fib && m_fib->is_top());
-    return non_null(m_fib);
-  }
-
- private:
-  /**
-   * @brief The allocation stacklet.
-   */
-  stacklet *m_fib;
-};
-
-} // namespace lf::impl
-
-#endif /* F7577AB3_0439_404D_9D98_072AB84FBCD0 */
-
-           // for stack         // for non_null, k_u16_max                // for LF_COMPILER_EXCEPTIONS, LF_ASSERT, LF_F...
-
-/**
- * @file frame.hpp
- *
- * @brief A small bookkeeping struct which is a member of each task's promise.
- */
-
-namespace lf::impl {
-
-/**
- * @brief A small bookkeeping struct which is a member of each task's promise.
- */
-class frame {
-
-#if LF_COMPILER_EXCEPTIONS
-  /**
-   * @brief Maybe an exception pointer.
-   */
-  manual_lifetime<std::exception_ptr> m_eptr;
-#endif
-
-#ifndef LF_COROUTINE_OFFSET
-  /**
-   * @brief Handle to this coroutine, inferred from `this` if `LF_COROUTINE_OFFSET` is set.
-   */
-  std::coroutine_handle<> m_this_coro;
-#endif
-  /**
-   * @brief This frames stacklet, needs to be in promise in case allocation elided (as does m_parent).
-   */
-  stack::stacklet *m_stacklet;
-
-  union {
-    /**
-     * @brief Non-root tasks store a pointer to their parent.
-     */
-    frame *m_parent;
-    /**
-     * @brief Root tasks store a pointer to a semaphore to notify the caller.
-     */
-    std::binary_semaphore *m_sem;
-  };
-
-  /**
-   * @brief  Number of children joined (with offset).
-   */
-  std::atomic_uint16_t m_join = k_u16_max;
-  /**
-   * @brief Number of times this frame has been stolen.
-   */
-  std::uint16_t m_steal = 0;
-
-/**
- * @brief Flag to indicate if an exception has been set.
- */
-#if LF_COMPILER_EXCEPTIONS
-  #ifdef __cpp_lib_atomic_ref
-  bool m_except = false;
-  #else
-  std::atomic_bool m_except = false;
-  #endif
-#endif
-
-  /**
-   * @brief Cold path in `rethrow_if_exception` in its own non-inline function.
-   */
-  LF_NOINLINE void rethrow() {
-#if LF_COMPILER_EXCEPTIONS
-
-    LF_ASSERT(*m_eptr != nullptr);
-
-    LF_DEFER {
-      LF_ASSERT(*m_eptr == nullptr);
-      m_eptr.destroy();
-  #ifdef __cpp_lib_atomic_ref
-      m_except = false;
-  #else
-      m_except.store(false, std::memory_order_relaxed);
-  #endif
-    };
-
-    std::rethrow_exception(std::exchange(*m_eptr, nullptr));
-#endif
-  }
-
- public:
-  /**
-   * @brief Construct a frame block.
-   *
-   * Non-root tasks will need to call ``set_parent(...)``.
-   */
-#ifndef LF_COROUTINE_OFFSET
-  frame(std::coroutine_handle<> coro, stack::stacklet *stacklet) noexcept
-      : m_this_coro{coro},
-        m_stacklet(non_null(stacklet)) {
-    LF_ASSERT(coro);
-  }
-#else
-  frame(std::coroutine_handle<>, stack::stacklet *stacklet) noexcept : m_stacklet(non_null(stacklet)) {}
-#endif
-
-  /**
-   * @brief Set the pointer to the parent frame.
-   */
-  void set_parent(frame *parent) noexcept { m_parent = non_null(parent); }
-
-  /**
-   * @brief Set a root tasks parent.
-   */
-  void set_root_sem(std::binary_semaphore *sem) noexcept { m_sem = non_null(sem); }
-
-  /**
-   * @brief Set the stacklet object to point at a new stacklet.
-   *
-   * Returns the previous stacklet.
-   */
-  auto reset_stacklet(stack::stacklet *stacklet) noexcept -> stack::stacklet * {
-    return std::exchange(m_stacklet, non_null(stacklet));
-  }
-
-  /**
-   * @brief Get a pointer to the parent frame.
-   *
-   * Only valid if this is not a root frame.
-   */
-  [[nodiscard]] auto parent() const noexcept -> frame * { return m_parent; }
-
-  /**
-   * @brief Get a pointer to the semaphore for this root frame.
-   *
-   * Only valid if this is not a root frame.
-   */
-  [[nodiscard]] auto semaphore() const noexcept -> std::binary_semaphore * { return m_sem; }
-
-  /**
-   * @brief Get a pointer to the top of the top of the stack-stack this frame was allocated on.
-   */
-  [[nodiscard]] auto stacklet() const noexcept -> stack::stacklet * { return non_null(m_stacklet); }
-
-  /**
-   * @brief Get the coroutine handle for this frames coroutine.
-   */
-  [[nodiscard]] auto self() noexcept -> std::coroutine_handle<> {
-#ifndef LF_COROUTINE_OFFSET
-    return m_this_coro;
-#else
-    return std::coroutine_handle<>::from_address(byte_cast(this) - LF_COROUTINE_OFFSET);
-#endif
-  }
-
-  /**
-   * @brief Perform a `.load(order)` on the atomic join counter.
-   */
-  [[nodiscard]] auto load_joins(std::memory_order order) const noexcept -> std::uint16_t {
-    return m_join.load(order);
-  }
-
-  /**
-   * @brief Perform a `.fetch_sub(val, order)` on the atomic join counter.
-   */
-  auto fetch_sub_joins(std::uint16_t val, std::memory_order order) noexcept -> std::uint16_t {
-    return m_join.fetch_sub(val, order);
-  }
-
-  /**
-   * @brief Get the number of times this frame has been stolen.
-   */
-  [[nodiscard]] auto load_steals() const noexcept -> std::uint16_t { return m_steal; }
-
-  /**
-   * @brief Increase the steal counter by one and return the previous value.
-   */
-  auto fetch_add_steal() noexcept -> std::uint16_t { return m_steal++; }
-
-  /**
-   * @brief Reset the join and steal counters, must be outside a fork-join region.
-   */
-  void reset() noexcept {
-
-    m_steal = 0;
-
-    static_assert(std::is_trivially_destructible_v<decltype(m_join)>);
-    // Use construct_at(...) to set non-atomically as we know we are the
-    // only thread who can touch this control block until a steal which
-    // would provide the required memory synchronization.
-    std::construct_at(&m_join, k_u16_max);
-  }
-
-  /**
-   * @brief Capture the exception currently being thrown.
-   *
-   * Safe to call concurrently, first exception is saved.
-   */
-  void capture_exception() noexcept {
-#if LF_COMPILER_EXCEPTIONS
-  #ifdef __cpp_lib_atomic_ref
-    bool prev = std::atomic_ref{m_except}.exchange(true, std::memory_order_acq_rel);
-  #else
-    bool prev = m_except.exchange(true, std::memory_order_acq_rel);
-  #endif
-
-    if (!prev) {
-      m_eptr.construct(std::current_exception());
-    }
-#endif
-  }
-
-  /**
-   * @brief Test if the exception flag is set.
-   *
-   * Safe to call concurrently.
-   */
-  auto atomic_has_exception() const noexcept -> bool {
-#if LF_COMPILER_EXCEPTIONS
-  #ifdef __cpp_lib_atomic_ref
-    return std::atomic_ref{m_except}.load(std::memory_order_acquire);
-  #else
-    return m_except.load(std::memory_order_acquire);
-  #endif
-#else
-    return false;
-#endif
-  }
-
-  /**
-   * @brief If this contains an exception then it will be rethrown and this this object reset to the OK state.
-   *
-   * This can __only__ be called when the caller has exclusive ownership over this object.
-   */
-  LF_FORCEINLINE void rethrow_if_exception() {
-#if LF_COMPILER_EXCEPTIONS
-  #ifdef __cpp_lib_atomic_ref
-    if (m_except) {
-  #else
-    if (m_except.load(std::memory_order_relaxed)) {
-  #endif
-      rethrow();
-    }
-#endif
-  }
-
-  /**
-   * @brief Check if this contains an exception.
-   *
-   * This can __only__ be called when the caller has exclusive ownership over this object.
-   */
-  [[nodiscard]] auto has_exception() const noexcept -> bool {
-#if LF_COMPILER_EXCEPTIONS
-  #ifdef __cpp_lib_atomic_ref
-    return m_except;
-  #else
-    return m_except.load(std::memory_order_relaxed);
-  #endif
-#else
-    return false;
-#endif
-  }
-};
-
-static_assert(std::is_standard_layout_v<frame>);
-
-} // namespace lf::impl
-
-#endif /* DD6F6C5C_C146_4C02_99B9_7D2D132C0844 */
-
- // for frame
+   // for intrusive_list // for frame
 
 /**
  * @file handles.hpp
@@ -3365,7 +3398,7 @@ namespace impl {
  * Hence, a first argument is also an async function object.
  */
 template <quasi_pointer I, tag Tag, async_function_object F, typename... CallArgs>
-  requires std::is_class_v<F> && (std::is_reference_v<CallArgs> && ...)
+  requires unqualified<F> && (std::is_reference_v<CallArgs> && ...)
 class first_arg_t {
  public:
   /**
@@ -3450,8 +3483,15 @@ class first_arg_t {
 #endif
   }
 
+  /**
+   * @brief The stored async function object.
+   */
   [[no_unique_address]] F m_fun;
+
 #if LF_COMPILER_EXCEPTIONS
+  /**
+   * @brief To allow access to the frame for exception handling.
+   */
   frame *m_frame;
 #endif
 };
@@ -4189,39 +4229,7 @@ concept indirectly_scannable =
 #include <concepts> // for same_as
 #include <type_traits>
 #include <utility> // for as_const, forward
- // for quasi_pointer, async_function_object, first_arg_t
-#ifndef A7699F23_E799_46AB_B1E0_7EA36053AD41
-#define A7699F23_E799_46AB_B1E0_7EA36053AD41
-
-#include <memory>
-
-
-/**
- * @file unique_frame.hpp
- *
- * @brief A unique pointer that owns a coroutine frame.
- */
-
-namespace lf::impl {
-
-namespace detail {
-
-struct frame_deleter {
-  LF_STATIC_CALL void operator()(frame *frame) noexcept { non_null(frame)->self().destroy(); }
-};
-
-} // namespace detail
-
-/**
- * @brief A unique pointer (with a custom deleter) that owns a coroutine frame.
- */
-using unique_frame = std::unique_ptr<frame, detail::frame_deleter>;
-
-} // namespace lf::impl
-
-#endif /* A7699F23_E799_46AB_B1E0_7EA36053AD41 */
-
- // for async_result_t, return_address_for, async_tag_invo...       // for tag      // for returnable, task
+ // for quasi_pointer, async_function_object, first_arg_t // for async_result_t, return_address_for, async_tag_invo...       // for tag      // for returnable, task
 
 /**
  * @file combinate.hpp
@@ -4243,6 +4251,8 @@ struct promise;
  *
  * This will be transformed by an `await_transform` and trigger a fork or call.
  *
+ * This is really just a `task<T>` with a bit more static information.
+ *
  * NOTE: This is created by `y_combinate`, the parent/semaphore needs to be set by the caller!
  */
 template <returnable R, return_address_for<R> I, tag Tag, modifier_for<Tag> Mod>
@@ -4250,12 +4260,15 @@ struct [[nodiscard]] quasi_awaitable : immovable<quasi_awaitable<R, I, Tag, Mod>
 
 // ---------------------------- //
 
+// TODO fixup the forwarding of types here.
+
 /**
  * @brief Call an async function with a synthesized first argument.
  *
  * The first argument will contain a copy of the function hence, this is a fixed-point combinator.
  */
 template <quasi_pointer I, tag Tag, modifier_for<Tag> Mod, async_function_object F>
+  requires unqualified<I> && unqualified<F>
 struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combinate {
 
   /**
@@ -4279,15 +4292,14 @@ struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combin
         std::forward<Args>(args)...                             //
     );
 
-    using prom_t = promise<async_result_t<F, Args...>, I, Tag>;
-
-    auto *prom = static_cast<prom_t *>(task.prom);
+    using promise = promise<async_result_t<F, Args...>, I, Tag>;
 
     if constexpr (!std::same_as<I, discard_t>) {
-      prom->set_return(std::move(ret));
+      // This upcast is safe as we know the real promise type.
+      static_cast<promise *>(task.get())->set_return(std::move(ret));
     }
 
-    return {{}, unique_frame{prom}};
+    return {{}, {std::move(task)}}; // This move just moves the base class.
   }
 };
 
@@ -7547,7 +7559,7 @@ struct promise : promise_base, return_result<R, I> {
   /**
    * @brief Returned task stores a copy of the `this` pointer.
    */
-  auto get_return_object() noexcept -> task<R> { return {{}, {}, static_cast<void *>(this)}; }
+  auto get_return_object() noexcept -> task<R> { return {{}, {}, unique_frame{this}}; }
 
   /**
    * @brief Try to resume the parent.

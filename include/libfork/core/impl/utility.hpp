@@ -237,6 +237,12 @@ template <typename From, typename To>
 using forward_cv_t = typename detail::forward_cv<From, To>::type;
 
 /**
+ * @brief Test if the `T` has no `const`, `volatile` or reference qualifiers.
+ */
+template <typename T>
+concept unqualified = std::same_as<std::remove_cvref_t<T>, T>;
+
+/**
  * @brief True if the unqualified ``T`` and ``U`` refer to different types.
  *
  * This is useful for preventing ''T &&'' constructor/assignment from replacing the defaults.
@@ -290,8 +296,8 @@ template <typename T>
     { ptr == nullptr } -> std::convertible_to<bool>;
   }
 constexpr auto
-non_null(T &&val, [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept
-    -> T && {
+non_null(T &&val,
+         [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept -> T && {
 #ifndef NDEBUG
   if (val == nullptr) {
     // NOLINTNEXTLINE

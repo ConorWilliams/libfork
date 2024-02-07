@@ -40,6 +40,8 @@ struct promise;
  *
  * This will be transformed by an `await_transform` and trigger a fork or call.
  *
+ * This is really just a `task<T>` with a bit more static information.
+ *
  * NOTE: This is created by `y_combinate`, the parent/semaphore needs to be set by the caller!
  */
 template <returnable R, return_address_for<R> I, tag Tag, modifier_for<Tag> Mod>
@@ -47,12 +49,15 @@ struct [[nodiscard]] quasi_awaitable : immovable<quasi_awaitable<R, I, Tag, Mod>
 
 // ---------------------------- //
 
+// TODO fixup the forwarding of types here.
+
 /**
  * @brief Call an async function with a synthesized first argument.
  *
  * The first argument will contain a copy of the function hence, this is a fixed-point combinator.
  */
 template <quasi_pointer I, tag Tag, modifier_for<Tag> Mod, async_function_object F>
+  requires unqualified<I> && unqualified<F>
 struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combinate {
 
   /**
@@ -76,15 +81,14 @@ struct [[nodiscard("A bound function SHOULD be immediately invoked!")]] y_combin
         std::forward<Args>(args)...                             //
     );
 
-    using prom_t = promise<async_result_t<F, Args...>, I, Tag>;
-
-    auto *prom = static_cast<prom_t *>(task.prom);
+    using promise = promise<async_result_t<F, Args...>, I, Tag>;
 
     if constexpr (!std::same_as<I, discard_t>) {
-      prom->set_return(std::move(ret));
+      // This upcast is safe as we know the real promise type.
+      static_cast<promise *>(task.get())->set_return(std::move(ret));
     }
 
-    return {{}, unique_frame{prom}};
+    return {{}, {std::move(task)}}; // This move just moves the base class.
   }
 };
 
