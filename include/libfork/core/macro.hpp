@@ -196,7 +196,7 @@ using std::unreachable;
  * @brief Macro to prevent a function to be inlined.
  */
 #if !defined(LF_NOINLINE)
-  #if defined(_MSC_VER)
+  #if defined(_MSC_VER) && !defined(__clang__)
     #define LF_NOINLINE __declspec(noinline)
   #elif defined(__GNUC__) && __GNUC__ > 3
   // Clang also defines __GNUC__ (as 4)
@@ -241,7 +241,7 @@ using std::unreachable;
  * \endrst
  */
 #if !defined(LF_FORCEINLINE)
-  #if defined(_MSC_VER)
+  #if defined(_MSC_VER) && !defined(__clang__)
     #define LF_FORCEINLINE __forceinline
   #elif defined(__GNUC__) && __GNUC__ > 3
   // Clang also defines __GNUC__ (as 4)

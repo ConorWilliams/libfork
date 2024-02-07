@@ -365,7 +365,7 @@ using std::unreachable;
  * @brief Macro to prevent a function to be inlined.
  */
 #if !defined(LF_NOINLINE)
-  #if defined(_MSC_VER)
+  #if defined(_MSC_VER) && !defined(__clang__)
     #define LF_NOINLINE __declspec(noinline)
   #elif defined(__GNUC__) && __GNUC__ > 3
   // Clang also defines __GNUC__ (as 4)
@@ -410,7 +410,7 @@ using std::unreachable;
  * \endrst
  */
 #if !defined(LF_FORCEINLINE)
-  #if defined(_MSC_VER)
+  #if defined(_MSC_VER) && !defined(__clang__)
     #define LF_FORCEINLINE __forceinline
   #elif defined(__GNUC__) && __GNUC__ > 3
   // Clang also defines __GNUC__ (as 4)
@@ -2493,7 +2493,7 @@ inline thread_local bool has_stack = false;
  *
  * TODO: Find out why this is not constinit on MSVC.
  */
-#ifndef _MSC_VER
+#if !defined(_MSC_VER) || defined(__clang__)
 constinit
 #endif
     inline thread_local manual_lifetime<stack>
@@ -2508,7 +2508,7 @@ constinit inline thread_local bool has_context = false;
  * This is wrapped in an `manual_lifetime` to make it trivially destructible/constructible such that it
  * requires no construction checks to access.
  */
-#ifndef _MSC_VER
+#if !defined(_MSC_VER) || defined(__clang__)
 constinit
 #endif
     inline thread_local manual_lifetime<full_context>
@@ -7853,6 +7853,21 @@ template <lf::returnable R, lf::impl::first_arg_specialization Head, typename...
 struct std::coroutine_traits<lf::task<R>, Head, Tail...>
     : std::coroutine_traits<lf::task<R>, std::remove_const_t<Head>, Tail...> {};
 
+  #if defined(__GNUC__) && !defined(__clang__) && __GNUC__ < 13
+    // Old GCC has problems with subsumption of std::is_const_v<Head> && std::is_reference_v<Head>
+  #else
+/**
+ * @brief Specialize coroutine_traits for task<...> for reference first arguments.
+ *
+ * This is a hard-error as the first argument must be passed by value.
+ */
+template <lf::returnable R, lf::impl::first_arg_specialization Head, typename... Tail>
+  requires std::is_reference_v<Head>
+struct std::coroutine_traits<lf::task<R>, Head, Tail...> {
+  static_assert(lf::impl::always_false<R, Head, Tail...>, "The first arg must be passed by value!");
+};
+  #endif
+
 /**
  * @brief Specialize coroutine_traits for task<...>.
  *
@@ -7872,17 +7887,6 @@ struct std::coroutine_traits<lf::task<R>, lf::impl::first_arg_t<I, Tag, F, CallA
   static_assert(lf::impl::safe_fork_v<Tag, lf::impl::list<CallArgs...>, lf::impl::list<Args...>>);
 
   using promise_type = lf::impl::promise<R, I, Tag>;
-};
-
-/**
- * @brief Specialize coroutine_traits for task<...> for reference first arguments.
- *
- * This is a hard-error as the first argument must be passed by value.
- */
-template <lf::returnable R, lf::impl::first_arg_specialization Head, typename... Tail>
-  requires std::is_reference_v<Head>
-struct std::coroutine_traits<lf::task<R>, Head, Tail...> {
-  static_assert(lf::impl::always_false<R, Head, Tail...>, "The first arg must be passed by value!");
 };
 
 /**

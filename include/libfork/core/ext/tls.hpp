@@ -39,7 +39,7 @@ inline thread_local bool has_stack = false;
  *
  * TODO: Find out why this is not constinit on MSVC.
  */
-#ifndef _MSC_VER
+#if !defined(_MSC_VER) || defined(__clang__)
 constinit
 #endif
     inline thread_local manual_lifetime<stack>
@@ -54,7 +54,7 @@ constinit inline thread_local bool has_context = false;
  * This is wrapped in an `manual_lifetime` to make it trivially destructible/constructible such that it
  * requires no construction checks to access.
  */
-#ifndef _MSC_VER
+#if !defined(_MSC_VER) || defined(__clang__)
 constinit
 #endif
     inline thread_local manual_lifetime<full_context>
