@@ -10,7 +10,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <atomic>  // for atomic_flag, memory_order_acquire, mem...
-#include <cstddef> // for size_t
+#include <cstddef> // for size_t, ptrdiff_t
 #include <latch>   // for latch
 #include <memory>  // for shared_ptr, __shared_ptr_access, make_...
 #include <random>  // for random_device, uniform_int_distribution
@@ -23,7 +23,7 @@
 #include "libfork/core/ext/context.hpp"           // for worker_context, nullary_function_t
 #include "libfork/core/ext/handles.hpp"           // for submit_handle, task_handle
 #include "libfork/core/ext/resume.hpp"            // for resume
-#include "libfork/core/impl/utility.hpp"          // for k_cache_line
+#include "libfork/core/impl/utility.hpp"          // for checked_cast, k_cache_line
 #include "libfork/core/macro.hpp"                 // for LF_ASSERT, LF_ASSERT_NO_ASSUME, LF_LOG
 #include "libfork/core/scheduler.hpp"             // for scheduler
 #include "libfork/schedule/ext/numa.hpp"          // for numa_strategy, numa_topology

@@ -10,7 +10,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <bit>             // for bit_cast, has_single_bit
-#include <concepts>        // for same_as, convertible_to
+#include <concepts>        // for same_as, integral, convertible_to
 #include <cstddef>         // for byte, size_t
 #include <cstdint>         // for uint16_t
 #include <cstdio>          // for fprintf, stderr
@@ -21,11 +21,11 @@
 #include <source_location> // for source_location
 #include <stdexcept>
 #include <type_traits> // for invoke_result_t, remove_cvref_t, type_identity, condit...
-#include <utility>     // for forward
+#include <utility>     // for cmp_greater, cmp_less, forward
 #include <vector>      // for vector
 #include <version>     // for __cpp_lib_hardware_interference_size
 
-#include "libfork/core/macro.hpp" // for LF_HOF_RETURNS
+#include "libfork/core/macro.hpp" // for LF_ASSERT, LF_HOF_RETURNS
 
 /**
  * @file utility.hpp
@@ -259,8 +259,8 @@ template <typename T>
     { ptr == nullptr } -> std::convertible_to<bool>;
   }
 constexpr auto
-non_null(T &&val,
-         [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept -> T && {
+non_null(T &&val, [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept
+    -> T && {
 #ifndef NDEBUG
   if (val == nullptr) {
     // NOLINTNEXTLINE

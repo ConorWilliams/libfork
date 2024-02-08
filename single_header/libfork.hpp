@@ -153,7 +153,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <bit>             // for bit_cast, has_single_bit
-#include <concepts>        // for same_as, convertible_to
+#include <concepts>        // for same_as, integral, convertible_to
 #include <cstddef>         // for byte, size_t
 #include <cstdint>         // for uint16_t
 #include <cstdio>          // for fprintf, stderr
@@ -164,7 +164,7 @@
 #include <source_location> // for source_location
 #include <stdexcept>
 #include <type_traits> // for invoke_result_t, remove_cvref_t, type_identity, condit...
-#include <utility>     // for forward
+#include <utility>     // for cmp_greater, cmp_less, forward
 #include <vector>      // for vector
 #include <version>     // for __cpp_lib_hardware_interference_size
 
@@ -537,7 +537,7 @@ using std::unreachable;
 
 #endif /* C5DCA647_8269_46C2_B76F_5FA68738AEDA */
 
- // for LF_HOF_RETURNS
+ // for LF_ASSERT, LF_HOF_RETURNS
 
 /**
  * @file utility.hpp
@@ -771,8 +771,8 @@ template <typename T>
     { ptr == nullptr } -> std::convertible_to<bool>;
   }
 constexpr auto
-non_null(T &&val,
-         [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept -> T && {
+non_null(T &&val, [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept
+    -> T && {
 #ifndef NDEBUG
   if (val == nullptr) {
     // NOLINTNEXTLINE
@@ -4655,10 +4655,11 @@ inline constexpr auto call = dispatch<tag::call>;
 #include <bit>         // for bit_cast
 #include <coroutine>   // for coroutine_handle, noop_coroutine, suspend_...
 #include <cstdint>     // for uint16_t
-#include <memory>      // for uninitialized_default_construct_n
+#include <iterator>    // for iter_difference_t
+#include <memory>      // for operator==, uninitialized_default_construct_n
 #include <span>        // for span
 #include <type_traits> // for remove_cvref_t
-#include <utility>     // for move
+#include <utility>     // for exchange
 
 #ifndef A951FB73_0FCF_4B7C_A997_42B7E87D21CB
 #define A951FB73_0FCF_4B7C_A997_42B7E87D21CB
@@ -4810,7 +4811,7 @@ template <co_allocable T>
 
 #endif /* A951FB73_0FCF_4B7C_A997_42B7E87D21CB */
 
-          // for co_allocable, co_new_t, stack_allocated        // for exception_before_join       // for full_context       // for submit_handle, submit_node_t, task_handle          // for unwrap           // for stack, context        // for frame        // for stack // for unique_frame, frame_deleter      // for k_u16_max         // for ignore_t             // for LF_ASSERT, LF_LOG, LF_THROW, LF_ASSERT_NO_...
+          // for co_allocable, co_new_t, stack_allocated        // for exception_before_join       // for full_context       // for submit_handle, submit_node_t, task_handle          // for unwrap           // for stack, context        // for frame        // for stack // for unique_frame, frame_deleter      // for k_u16_max, checked_cast         // for ignore_t             // for LF_ASSERT, LF_LOG, LF_FORCEINLINE, LF_THROW
 #ifndef BDE6CBCC_7576_4082_AAC5_2A207FEA9293
 #define BDE6CBCC_7576_4082_AAC5_2A207FEA9293
 
@@ -6392,7 +6393,7 @@ inline constexpr impl::map_overload map = {};
 #include <iterator>    // for random_access_iterator, sized_sentinel_for
 #include <ranges>      // for begin, end, iterator_t, random_access_range
 #include <type_traits> // for conditional_t
- // for indirectly_scannable, projected     // for call, dispatch, fork, join        // for async_invocable             // for just            // for LF_STATIC_CALL, LF_STATIC_CONST, LF_PRAGMA_...              // for tag, eager_throw_outside, sync_outside             // for task
+ // for indirectly_scannable, projected     // for call, dispatch, fork, join        // for async_invocable             // for just            // for LF_STATIC_CALL, LF_STATIC_CONST, unreachable              // for tag, eager_throw_outside, sync_outside             // for task
 
 /**
  * @file scan.hpp
@@ -8077,7 +8078,7 @@ struct std::coroutine_traits<lf::task<R>, Args...> {
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <atomic>  // for atomic_flag, memory_order_acquire, mem...
-#include <cstddef> // for size_t
+#include <cstddef> // for size_t, ptrdiff_t
 #include <latch>   // for latch
 #include <memory>  // for shared_ptr, __shared_ptr_access, make_...
 #include <random>  // for random_device, uniform_int_distribution
@@ -8085,7 +8086,7 @@ struct std::coroutine_traits<lf::task<R>, Args...> {
 #include <thread>  // for thread
 #include <utility> // for move
 #include <vector>  // for vector
-                 // for LF_DEFER           // for worker_context, nullary_function_t           // for submit_handle, task_handle            // for resume          // for k_cache_line                 // for LF_ASSERT, LF_ASSERT_NO_ASSUME, LF_LOG             // for scheduler
+                 // for LF_DEFER           // for worker_context, nullary_function_t           // for submit_handle, task_handle            // for resume          // for checked_cast, k_cache_line                 // for LF_ASSERT, LF_ASSERT_NO_ASSUME, LF_LOG             // for scheduler
 #ifndef D8877F11_1F66_4AD0_B949_C0DFF390C2DB
 #define D8877F11_1F66_4AD0_B949_C0DFF390C2DB
 

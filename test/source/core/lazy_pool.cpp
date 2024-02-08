@@ -7,7 +7,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <catch2/catch_test_macros.hpp> // for StringRef, TEST_CASE
-#include <iostream>                     // for char_traits, basic_ostream, operator<<, basic_os...
+#include <iostream>                     // for char_traits, basic_ostream, operator<<, cout
 #include <thread>                       // for thread
 
 #include "libfork/algorithm/lift.hpp" // for (anonymous), lift

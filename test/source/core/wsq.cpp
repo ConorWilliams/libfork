@@ -26,16 +26,16 @@
 
 #include <algorithm>                    // for min
 #include <catch2/catch_test_macros.hpp> // for operator""_catch_sr, AssertionHandler, REQUIRE
+#include <cstddef>                      // for size_t
 #include <deque>                        // for deque, operator==, _Deque_iterator
-#include <iostream>
-#include <optional> // for optional
-#include <set>      // for set, operator==, _Rb_tree_const_iterator
-#include <stdint.h> // for int64_t
-#include <stdlib.h> // for rand
-#include <thread>   // for thread
-#include <vector>   // for vector
+#include <optional>                     // for optional
+#include <set>                          // for set, operator==, _Rb_tree_const_iterator
+#include <stdint.h>                     // for int64_t
+#include <stdlib.h>                     // for rand
+#include <thread>                       // for thread
+#include <vector>                       // for vector
 
-#include "libfork/core.hpp" // for deque, steal_t, return_nullopt
+#include "libfork/core.hpp" // for deque, steal_t, checked_cast, return_nullopt
 
 // NOLINTBEGIN No linting in tests
 

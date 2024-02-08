@@ -19,7 +19,7 @@
 #include "libfork/core/control_flow.hpp"     // for call, dispatch, fork, join
 #include "libfork/core/invocable.hpp"        // for async_invocable
 #include "libfork/core/just.hpp"             // for just
-#include "libfork/core/macro.hpp"            // for LF_STATIC_CALL, LF_STATIC_CONST, LF_PRAGMA_...
+#include "libfork/core/macro.hpp"            // for LF_STATIC_CALL, LF_STATIC_CONST, unreachable
 #include "libfork/core/tag.hpp"              // for tag, eager_throw_outside, sync_outside
 #include "libfork/core/task.hpp"             // for task
 

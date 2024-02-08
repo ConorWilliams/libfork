@@ -13,10 +13,11 @@
 #include <bit>         // for bit_cast
 #include <coroutine>   // for coroutine_handle, noop_coroutine, suspend_...
 #include <cstdint>     // for uint16_t
-#include <memory>      // for uninitialized_default_construct_n
+#include <iterator>    // for iter_difference_t
+#include <memory>      // for operator==, uninitialized_default_construct_n
 #include <span>        // for span
 #include <type_traits> // for remove_cvref_t
-#include <utility>     // for move
+#include <utility>     // for exchange
 
 #include "libfork/core/co_alloc.hpp"          // for co_allocable, co_new_t, stack_allocated
 #include "libfork/core/exceptions.hpp"        // for exception_before_join
@@ -27,9 +28,9 @@
 #include "libfork/core/impl/frame.hpp"        // for frame
 #include "libfork/core/impl/stack.hpp"        // for stack
 #include "libfork/core/impl/unique_frame.hpp" // for unique_frame, frame_deleter
-#include "libfork/core/impl/utility.hpp"      // for k_u16_max
+#include "libfork/core/impl/utility.hpp"      // for k_u16_max, checked_cast
 #include "libfork/core/invocable.hpp"         // for ignore_t
-#include "libfork/core/macro.hpp"             // for LF_ASSERT, LF_LOG, LF_THROW, LF_ASSERT_NO_...
+#include "libfork/core/macro.hpp"             // for LF_ASSERT, LF_LOG, LF_FORCEINLINE, LF_THROW
 #include "libfork/core/scheduler.hpp"         // for context_switcher
 #include "libfork/core/tag.hpp"               // for region
 
