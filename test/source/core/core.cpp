@@ -116,7 +116,7 @@ inline constexpr auto r_fib = [](auto fib, int n) -> lf::task<int> {
     co_return n;
   }
 
-  int a, b;
+  int a = 0, b = 0;
 
   co_await lf::fork(&a, fib)(n - 1);
   co_await lf::call(&b, fib)(n - 2);
@@ -149,7 +149,7 @@ inline constexpr auto v_fib = [](auto fib, int &ret, int n) -> lf::task<void> {
     co_return;
   }
 
-  int a, b;
+  int a = 0, b = 0;
 
   for (int i = 0; i < 2; i++) {
     co_await lf::fork(fib)(a, n - 1);
@@ -190,7 +190,7 @@ inline constexpr auto v_fib_ignore = [](auto fib, int &ret, int n) -> lf::task<i
     co_return n;
   }
 
-  int a, b;
+  int a = 0, b = 0;
 
   std::optional<int> c;
 

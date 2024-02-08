@@ -717,11 +717,11 @@ auto safe_cast(From val) noexcept -> To {
    */
 
   if constexpr (std::cmp_greater(to_min, from_min)) {
-    LF_ASSERT(val >= static_cast<From>(to_min));
+    LF_ASSERT(val >= static_cast<From>(to_min) && "Underflow");
   }
 
   if constexpr (std::cmp_less(to_max, from_max)) {
-    LF_ASSERT(val <= static_cast<From>(to_max));
+    LF_ASSERT(val <= static_cast<From>(to_max) && "Overflow");
   }
 
   return static_cast<To>(val);
@@ -771,8 +771,8 @@ template <typename T>
     { ptr == nullptr } -> std::convertible_to<bool>;
   }
 constexpr auto
-non_null(T &&val, [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept
-    -> T && {
+non_null(T &&val,
+         [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept -> T && {
 #ifndef NDEBUG
   if (val == nullptr) {
     // NOLINTNEXTLINE

@@ -17,6 +17,8 @@
 
 #include "libfork/core.hpp" // for deque, err, steal_t, return_nullopt
 
+namespace {
+
 auto example() -> int {
   // Work-stealing deque of ints
   lf::deque<int> deque;
@@ -47,6 +49,8 @@ auto example() -> int {
 
   return 0;
 }
+
+} // namespace
 
 // !END-EXAMPLE
 

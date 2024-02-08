@@ -55,7 +55,7 @@ auto random_vec(std::type_identity<std::string>, std::size_t n) -> std::vector<s
   std::uniform_int_distribution<int> dist{'a', 'z'};
 
   for (auto &&elem : out) {
-    elem.push_back(dist(rng));
+    elem.push_back(static_cast<char>(dist(rng)));
   }
 
   return out;

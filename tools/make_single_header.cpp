@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
 #include <algorithm>
+#include <cstddef>
 #include <deque>
 #include <filesystem>
 #include <fstream>
@@ -14,6 +15,7 @@
 #include <string>
 #include <vector>
 
+#include "libfork/core/impl/utility.hpp"
 #include "libfork/core/macro.hpp"
 
 namespace fs = std::filesystem;
@@ -89,10 +91,11 @@ struct include_processor {
 
       replacements.pop_front();
 
-      str.replace(rep.pos, rep.len, rep.text);
+      str.replace(
+          lf::impl::safe_cast<std::size_t>(rep.pos), lf::impl::safe_cast<std::size_t>(rep.len), rep.text);
 
       for (auto &replace : replacements) {
-        replace.pos -= rep.len - rep.text.length();
+        replace.pos -= lf::impl::safe_cast<std::size_t>(rep.len) - rep.text.length();
       }
     }
   }

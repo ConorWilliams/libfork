@@ -44,6 +44,8 @@
 
 ### Meta
 
+- Fixed-up some extended warnings.
+
 ## [**Version 3.6.0**](https://github.com/ConorWilliams/libfork/compare/v3.5.0...v3.6.0)
 
 ### Added

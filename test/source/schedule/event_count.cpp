@@ -37,7 +37,7 @@ template <class T, class Random>
 void randomPartition(Random &random, T key, int n, std::vector<std::pair<T, int>> &out) {
   while (n != 0) {
     int m = std::min(n, 1000);
-    std::uniform_int_distribution<uint32_t> u(1, m);
+    std::uniform_int_distribution<int> u(1, m);
     int cut = u(random);
     out.emplace_back(key, cut);
     n -= cut;

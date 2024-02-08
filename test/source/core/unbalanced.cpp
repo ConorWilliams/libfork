@@ -171,7 +171,7 @@ inline constexpr auto search =
   co_return left || right;
 };
 
-}
+} // namespace
 
 TEMPLATE_TEST_CASE("tree search", "[tree][template]", unit_pool, busy_pool) {
 
@@ -237,7 +237,7 @@ inline constexpr auto transfer = [](auto self, tree const &root, int val) -> tas
   co_return res;
 };
 
-}
+} // namespace
 
 TEMPLATE_TEST_CASE("tree transfer", "[tree][template]", unit_pool, busy_pool) {
 
@@ -258,7 +258,7 @@ TEMPLATE_TEST_CASE("tree transfer", "[tree][template]", unit_pool, busy_pool) {
     for (int val : vals) {
       REQUIRE(sync_wait(sch, transfer, *build_tree(n, 0.5), val));
     }
-  };
+  }
 }
 
 // NOLINTEND

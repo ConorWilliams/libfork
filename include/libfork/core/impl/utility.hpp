@@ -259,8 +259,8 @@ template <typename T>
     { ptr == nullptr } -> std::convertible_to<bool>;
   }
 constexpr auto
-non_null(T &&val,
-         [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept -> T && {
+non_null(T &&val, [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept
+    -> T && {
 #ifndef NDEBUG
   if (val == nullptr) {
     // NOLINTNEXTLINE

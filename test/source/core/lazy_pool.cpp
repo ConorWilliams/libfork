@@ -25,15 +25,15 @@ auto fib(int n) -> int {
   return fib(n - 1) + fib(n - 2);
 }
 
-inline constexpr auto do_n_jobs = [](auto, int n, int size) -> task<> {
-  for (int i = 0; i < n; ++i) {
+inline constexpr auto do_n_jobs = [](auto, unsigned n, int size) -> task<> {
+  for (unsigned i = 0; i < n; ++i) {
     co_await lf::fork(lf::lift)(fib, size);
   }
   co_await lf::join;
 };
 
-inline constexpr auto cycle = [](auto, int n, int size) -> task<> {
-  for (int i = 1; i <= n; ++i) {
+inline constexpr auto cycle = [](auto, unsigned n, int size) -> task<> {
+  for (unsigned i = 1; i <= n; ++i) {
     std::cout << "Launching " << i << " jobs\n";
     co_await lf::call(do_n_jobs)(i, size);
   }
