@@ -88,7 +88,7 @@ class frame {
 #endif
 
   /**
-   * @brief Cold path in `rethrow_if_exception` in its own non-inline function.
+   * @brief Cold path in `unsafe_rethrow_if_exception` in its own non-inline function.
    */
   LF_NOINLINE void rethrow() {
 #if LF_COMPILER_EXCEPTIONS
@@ -253,7 +253,7 @@ class frame {
    *
    * This can __only__ be called when the caller has exclusive ownership over this object.
    */
-  LF_FORCEINLINE void rethrow_if_exception() {
+  LF_FORCEINLINE void unsafe_rethrow_if_exception() {
 #if LF_COMPILER_EXCEPTIONS
   #ifdef __cpp_lib_atomic_ref
     if (m_except) {
@@ -270,7 +270,7 @@ class frame {
    *
    * This can __only__ be called when the caller has exclusive ownership over this object.
    */
-  [[nodiscard]] auto has_exception() const noexcept -> bool {
+  [[nodiscard]] auto unsafe_has_exception() const noexcept -> bool {
 #if LF_COMPILER_EXCEPTIONS
   #ifdef __cpp_lib_atomic_ref
     return m_except;

@@ -309,7 +309,7 @@ struct promise : promise_base, return_result<R, I> {
 
     LF_ASSERT(this->load_steals() == 0);                                           // Fork without join.
     LF_ASSERT_NO_ASSUME(this->load_joins(std::memory_order_acquire) == k_u16_max); // Invalid state.
-    LF_ASSERT(!this->has_exception());                                             // Must have rethrown.
+    LF_ASSERT(!this->unsafe_has_exception());                                      // Must have rethrown.
 
     return final_awaitable{};
   }

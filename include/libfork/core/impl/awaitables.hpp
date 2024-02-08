@@ -237,7 +237,7 @@ struct fork_awaitable : std::suspend_always {
     // Need a copy (on stack) in case *this is destructed after push.
     // std::coroutine_handle stack_child = this->child->self();
 
-    unique_frame stack_child = std::move(child);
+    unique_frame stack_child = std::exchange(child, nullptr);
 
     // If await_suspend throws an exception then:
     //  - The exception is caught,
@@ -249,6 +249,17 @@ struct fork_awaitable : std::suspend_always {
 
     // If the above didn't throw we take ownership of child's lifetime.
     return stack_child.release()->self();
+  }
+
+  /**
+   * @brief A noop in release, provides hints to the optimizer.
+   */
+  LF_FORCEINLINE void await_resume() const noexcept {
+    // If the coroutine has been resumed then the child's ownership was transferred
+    // in the await suspend. However, the await_suspend cannot be inlined as it
+    // provides the symmetric transfer hence the compiler will probably not be able
+    // to optimize away the destructor of the child (unique_ptr) without this.
+    LF_ASSERT(child == nullptr);
   }
 
   /**
@@ -279,20 +290,26 @@ struct sync_fork_awaitable : fork_awaitable {
    * siblings.
    */
   auto await_resume() const noexcept(!ChildThrows) -> bool {
+    // Help the optimizer.
+    fork_awaitable::await_resume();
+
     // For it to be safe to consume the value from the child we justed forked it
     // must not have thrown an exception. We can check if __some__ child threw an
     // exception but we cannot (generally) retrieve it as exception is not safe
     // to touch until after a join.
     if (std::uint16_t steals_post = self->load_steals(); steals_post == steals_pre) {
+
+      // Then completed synchronously.
+
       if constexpr (ChildThrows) {
         if (R == region::opening_fork) {
           LF_ASSERT(steals_post == 0);
           // If the opening fork completed synchronously the we can rethrow.
-          self->rethrow_if_exception();
+          self->unsafe_rethrow_if_exception();
         } else if (steals_post == 0) {
           // No steals have happened hence, no one else could thrown an
           // exception hence, so we can touch the exception object.
-          self->rethrow_if_exception();
+          self->unsafe_rethrow_if_exception();
         } else {
           // Otherwise, we throw a substitute exception.
           if (self->atomic_has_exception()) {
@@ -327,6 +344,17 @@ struct call_awaitable : std::suspend_always {
   }
 
   /**
+   * @brief A noop in release, provides hints to the optimizer.
+   */
+  LF_FORCEINLINE void await_resume() const noexcept {
+    // If the coroutine has been resumed then the child's ownership was transferred
+    // in the await suspend. However, the await_suspend cannot be inlined as it
+    // provides the symmetric transfer hence the compiler will probably not be able
+    // to optimize away the destructor of the child (unique_ptr) without this.
+    LF_ASSERT(child == nullptr);
+  }
+
+  /**
    * @brief The suspended child coroutine's frame.
    */
   unique_frame child;
@@ -349,10 +377,10 @@ struct eager_call_awaitable : call_awaitable {
     if constexpr (R == region::outside) {
       LF_ASSERT(self->load_steals() == 0);
       // Outside fork-join we can touch the exception.
-      self->rethrow_if_exception();
+      self->unsafe_rethrow_if_exception();
     } else if (self->load_steals() == 0) {
       // Can throw the real exception.
-      self->rethrow_if_exception();
+      self->unsafe_rethrow_if_exception();
     } else {
       // Otherwise we throw a substitute.
       if (self->atomic_has_exception()) {
@@ -461,7 +489,7 @@ struct join_awaitable {
     LF_ASSERT_NO_ASSUME(self->load_joins(std::memory_order_acquire) == k_u16_max);
     LF_ASSERT(self->stacklet() == tls::stack()->top());
 
-    self->rethrow_if_exception();
+    self->unsafe_rethrow_if_exception();
   }
 
   /**
