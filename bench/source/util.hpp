@@ -24,4 +24,9 @@ inline void targs(benchmark::internal::Benchmark *bench) {
   }
 }
 
+/**
+ * @brief Tidy up warnings.
+ */
+inline auto ignore(auto &&.../* unused */) -> void {}
+
 #endif /* CE977DFD_3A46_4443_81E7_243C91B6B416 */

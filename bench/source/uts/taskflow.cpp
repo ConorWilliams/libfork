@@ -55,7 +55,7 @@ auto uts(int depth, Node *parent, tf::Subflow &sbf) -> result {
     r.leaves = 1;
   }
   return r;
-};
+}
 
 void uts_ztaskflow(benchmark::State &state, int tree) {
 

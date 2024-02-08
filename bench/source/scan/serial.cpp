@@ -28,6 +28,8 @@ void scan_serial(benchmark::State &state) {
   }
 
   sink = ou.back();
+
+  ignore(sink);
 }
 
 } // namespace

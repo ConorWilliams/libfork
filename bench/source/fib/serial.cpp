@@ -2,6 +2,7 @@
 
 #include <libfork.hpp>
 
+#include "../util.hpp"
 #include "config.hpp"
 
 namespace {
@@ -18,7 +19,7 @@ LF_NOINLINE constexpr auto fib(int &ret, int n) -> void {
   fib(b, n - 2);
 
   ret = a + b;
-};
+}
 
 void fib_serial(benchmark::State &state) {
 
@@ -26,13 +27,15 @@ void fib_serial(benchmark::State &state) {
   state.counters["fib(n)"] = work;
 
   volatile int secret = work;
-  volatile int output;
+  volatile int output = 0;
 
   for (auto _ : state) {
     int tmp;
     fib(tmp, secret);
     output = tmp;
   }
+
+  ignore(output);
 }
 
 } // namespace

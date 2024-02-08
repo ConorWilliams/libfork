@@ -97,7 +97,7 @@ void matmul_ztaskflow(benchmark::State &state) {
 #ifndef LF_NO_CHECK
   iter_matmul(A, B, C2, n);
 
-  if (maxerror(C1, C2, n) > 1e-6) {
+  if (maxerror(C1, C2, n) > 1e-6f) {
     std::cout << "taskflow maxerror: " << maxerror(C1, C2, n) << std::endl;
   }
 #endif
