@@ -1723,7 +1723,7 @@ class stack {
      */
     [[nodiscard]] auto unused() const noexcept -> std::size_t {
       LF_ASSERT(m_hi - m_sp >= 0);
-      return static_cast<std::size_t>(m_hi - m_lo);
+      return static_cast<std::size_t>(m_hi - m_sp);
     }
     /**
      * @brief Check if stacklet's stack is empty.
