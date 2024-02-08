@@ -91,11 +91,12 @@ struct include_processor {
 
       replacements.pop_front();
 
-      str.replace(
-          lf::impl::safe_cast<std::size_t>(rep.pos), lf::impl::safe_cast<std::size_t>(rep.len), rep.text);
+      str.replace(lf::impl::checked_cast<std::size_t>(rep.pos),
+                  lf::impl::checked_cast<std::size_t>(rep.len),
+                  rep.text);
 
       for (auto &replace : replacements) {
-        replace.pos -= lf::impl::safe_cast<std::size_t>(rep.len) - rep.text.length();
+        replace.pos -= lf::impl::checked_cast<std::size_t>(rep.len) - rep.text.length();
       }
     }
   }

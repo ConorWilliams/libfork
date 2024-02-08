@@ -57,7 +57,7 @@ inline constexpr auto sch_on = [](auto sch_on, worker_context *target) -> task<b
 inline constexpr auto loop = [](auto loop, int n, std::vector<worker_context *> neigh) -> task<bool> {
   //
 
-  auto [res] = co_await co_new<int>(n == 0 ? neigh.size() : impl::safe_cast<std::size_t>(n));
+  auto [res] = co_await co_new<int>(n == 0 ? neigh.size() : impl::checked_cast<std::size_t>(n));
 
   if (n == 0) {
     for (std::size_t i = 0; i < res.size(); ++i) {

@@ -703,7 +703,7 @@ concept different_from = !std::same_as<std::remove_cvref_t<U>, std::remove_cvref
  * @brief Safe integral cast, will terminate if the cast would overflow in debug.
  */
 template <std::integral To, std::integral From>
-auto safe_cast(From val) noexcept -> To {
+auto checked_cast(From val) noexcept -> To {
 
   constexpr auto to_min = std::numeric_limits<To>::min();
   constexpr auto to_max = std::numeric_limits<To>::max();
@@ -5084,7 +5084,7 @@ struct alloc_awaitable : std::suspend_never {
     // clang-format off
 
     LF_TRY {
-      std::ranges::uninitialized_default_construct_n(ptr, static_cast<int_t>(request.count));
+      std::ranges::uninitialized_default_construct_n(ptr, checked_cast<int_t>(request.count));
     } LF_CATCH_ALL {
       stack->deallocate(ptr);
       LF_RETHROW;
@@ -9085,8 +9085,8 @@ struct busy_vars {
    * @brief Construct a new busy vars object for synchronizing `n` workers with one master.
    */
   explicit busy_vars(std::size_t n)
-      : latch_start(safe_cast<std::ptrdiff_t>(n + 1)),
-        latch_stop(safe_cast<std::ptrdiff_t>(n)) {}
+      : latch_start(checked_cast<std::ptrdiff_t>(n + 1)),
+        latch_stop(checked_cast<std::ptrdiff_t>(n)) {}
 
   /**
    * @brief Synchronize construction.

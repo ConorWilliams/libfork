@@ -48,8 +48,8 @@ struct busy_vars {
    * @brief Construct a new busy vars object for synchronizing `n` workers with one master.
    */
   explicit busy_vars(std::size_t n)
-      : latch_start(safe_cast<std::ptrdiff_t>(n + 1)),
-        latch_stop(safe_cast<std::ptrdiff_t>(n)) {}
+      : latch_start(checked_cast<std::ptrdiff_t>(n + 1)),
+        latch_stop(checked_cast<std::ptrdiff_t>(n)) {}
 
   /**
    * @brief Synchronize construction.

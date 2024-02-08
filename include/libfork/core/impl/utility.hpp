@@ -191,7 +191,7 @@ concept different_from = !std::same_as<std::remove_cvref_t<U>, std::remove_cvref
  * @brief Safe integral cast, will terminate if the cast would overflow in debug.
  */
 template <std::integral To, std::integral From>
-auto safe_cast(From val) noexcept -> To {
+auto checked_cast(From val) noexcept -> To {
 
   constexpr auto to_min = std::numeric_limits<To>::min();
   constexpr auto to_max = std::numeric_limits<To>::max();

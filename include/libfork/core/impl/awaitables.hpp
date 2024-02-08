@@ -198,7 +198,7 @@ struct alloc_awaitable : std::suspend_never {
     // clang-format off
 
     LF_TRY {
-      std::ranges::uninitialized_default_construct_n(ptr, static_cast<int_t>(request.count));
+      std::ranges::uninitialized_default_construct_n(ptr, checked_cast<int_t>(request.count));
     } LF_CATCH_ALL {
       stack->deallocate(ptr);
       LF_RETHROW;

@@ -114,14 +114,14 @@ void wsq_test_owner() {
 
     REQUIRE(gold.empty());
 
-    REQUIRE(lf::impl::safe_cast<std::size_t>(deque.capacity()) == i);
+    REQUIRE(lf::impl::checked_cast<std::size_t>(deque.capacity()) == i);
   }
 }
 
 // Procedure: wsq_test_n_thieves
 void wsq_test_n_thieves(std::size_t N) {
 
-  using lf::impl::safe_cast;
+  using lf::impl::checked_cast;
 
   int64_t cap = 2;
 
@@ -178,7 +178,7 @@ void wsq_test_n_thieves(std::size_t N) {
     }
 
     REQUIRE(deque.empty());
-    REQUIRE(safe_cast<std::size_t>(deque.capacity()) <= i);
+    REQUIRE(checked_cast<std::size_t>(deque.capacity()) <= i);
 
     std::set<std::size_t> set;
 
