@@ -162,10 +162,11 @@
 #include <limits>          // for numeric_limits
 #include <new>             // for std::hardware_destructive_interference_size
 #include <source_location> // for source_location
-#include <type_traits>     // for invoke_result_t, remove_cvref_t, type_identity, condit...
-#include <utility>         // for forward
-#include <vector>          // for vector
-#include <version>         // for __cpp_lib_hardware_interference_size
+#include <stdexcept>
+#include <type_traits> // for invoke_result_t, remove_cvref_t, type_identity, condit...
+#include <utility>     // for forward
+#include <vector>      // for vector
+#include <version>     // for __cpp_lib_hardware_interference_size
 
 #ifndef C5DCA647_8269_46C2_B76F_5FA68738AEDA
 #define C5DCA647_8269_46C2_B76F_5FA68738AEDA
@@ -699,6 +700,34 @@ concept different_from = !std::same_as<std::remove_cvref_t<U>, std::remove_cvref
 // ---------------- Small functions ---------------- //
 
 /**
+ * @brief Safe integral cast, will terminate if the cast would overflow in debug.
+ */
+template <std::integral To, std::integral From>
+auto safe_cast(From val) noexcept -> To {
+
+  constexpr auto to_min = std::numeric_limits<To>::min();
+  constexpr auto to_max = std::numeric_limits<To>::max();
+
+  constexpr auto from_min = std::numeric_limits<From>::min();
+  constexpr auto from_max = std::numeric_limits<From>::max();
+
+  /**
+   *    [   from    ]
+   *     [   to   ]
+   */
+
+  if constexpr (std::cmp_greater(to_min, from_min)) {
+    LF_ASSERT(val >= static_cast<From>(to_min));
+  }
+
+  if constexpr (std::cmp_less(to_max, from_max)) {
+    LF_ASSERT(val <= static_cast<From>(to_max));
+  }
+
+  return static_cast<To>(val);
+}
+
+/**
  * @brief Transform `[a, b, c] -> [f(a), f(b), f(c)]`.
  */
 template <typename T, typename F>
@@ -1019,7 +1048,6 @@ struct return_nullopt {
  * \endrst
  *
  * @tparam T The type of the elements in the deque.
- * @tparam Optional The type returned by ``pop()``.
  */
 template <dequeable T>
 class deque : impl::immovable<deque<T>> {
@@ -1688,22 +1716,19 @@ class stack {
      */
     [[nodiscard]] auto capacity() const noexcept -> std::size_t {
       LF_ASSERT(m_hi - m_lo >= 0);
-      return m_hi - m_lo;
+      return static_cast<std::size_t>(m_hi - m_lo);
     }
-
     /**
      * @brief Unused space on the current stacklet's stack.
      */
     [[nodiscard]] auto unused() const noexcept -> std::size_t {
       LF_ASSERT(m_hi - m_sp >= 0);
-      return m_hi - m_sp;
+      return static_cast<std::size_t>(m_hi - m_lo);
     }
-
     /**
      * @brief Check if stacklet's stack is empty.
      */
     [[nodiscard]] auto empty() const noexcept -> bool { return m_sp == m_lo; }
-
     /**
      * @brief Check is this stacklet is the top of a stack.
      */
@@ -1714,7 +1739,6 @@ class stack {
       }
       return true;
     }
-
     /**
      * @brief Set the next stacklet in the chain to 'new_next'.
      *
@@ -1725,7 +1749,6 @@ class stack {
       LF_ASSERT(is_top());
       std::free(std::exchange(m_next, new_next)); // NOLINT
     }
-
     /**
      * @brief Allocate a new stacklet with a stack of size of at least`size` and attach it to the given
      * stacklet chain.
@@ -2017,9 +2040,9 @@ class frame {
 #endif
 
   /**
-   * @brief Cold path in `rethrow_if_exception` in its own non-inline function.
+   * @brief Cold path in `unsafe_rethrow_if_exception` in its own non-inline function.
    */
-  LF_NOINLINE void rethrow() {
+  [[noreturn]] LF_NOINLINE void rethrow() {
 #if LF_COMPILER_EXCEPTIONS
 
     LF_ASSERT(*m_eptr != nullptr);
@@ -2182,7 +2205,7 @@ class frame {
    *
    * This can __only__ be called when the caller has exclusive ownership over this object.
    */
-  LF_FORCEINLINE void rethrow_if_exception() {
+  LF_FORCEINLINE void unsafe_rethrow_if_exception() {
 #if LF_COMPILER_EXCEPTIONS
   #ifdef __cpp_lib_atomic_ref
     if (m_except) {
@@ -2199,7 +2222,7 @@ class frame {
    *
    * This can __only__ be called when the caller has exclusive ownership over this object.
    */
-  [[nodiscard]] auto has_exception() const noexcept -> bool {
+  [[nodiscard]] auto unsafe_has_exception() const noexcept -> bool {
 #if LF_COMPILER_EXCEPTIONS
   #ifdef __cpp_lib_atomic_ref
     return m_except;
@@ -3602,7 +3625,7 @@ using try_eventually = basic_eventually<T, true>;
  // for quasi_pointer
 
 /**
- * @file exception.hpp
+ * @file exceptions.hpp
  *
  * @brief Interface for individual exception handling.
  */
@@ -5056,10 +5079,12 @@ struct alloc_awaitable : std::suspend_never {
 
     T *ptr = static_cast<T *>(stack->allocate(request.count * sizeof(T)));
 
+    using int_t = std::iter_difference_t<T *>;
+
     // clang-format off
 
     LF_TRY {
-      std::ranges::uninitialized_default_construct_n(ptr, request.count);
+      std::ranges::uninitialized_default_construct_n(ptr, static_cast<int_t>(request.count));
     } LF_CATCH_ALL {
       stack->deallocate(ptr);
       LF_RETHROW;
@@ -5100,7 +5125,7 @@ struct fork_awaitable : std::suspend_always {
     // Need a copy (on stack) in case *this is destructed after push.
     // std::coroutine_handle stack_child = this->child->self();
 
-    unique_frame stack_child = std::move(child);
+    unique_frame stack_child = std::exchange(child, nullptr);
 
     // If await_suspend throws an exception then:
     //  - The exception is caught,
@@ -5112,6 +5137,17 @@ struct fork_awaitable : std::suspend_always {
 
     // If the above didn't throw we take ownership of child's lifetime.
     return stack_child.release()->self();
+  }
+
+  /**
+   * @brief A noop in release, provides hints to the optimizer.
+   */
+  LF_FORCEINLINE void await_resume() const noexcept {
+    // If the coroutine has been resumed then the child's ownership was transferred
+    // in the await suspend. However, the await_suspend cannot be inlined as it
+    // provides the symmetric transfer hence the compiler will probably not be able
+    // to optimize away the destructor of the child (unique_ptr) without this.
+    LF_ASSERT(child == nullptr);
   }
 
   /**
@@ -5142,20 +5178,26 @@ struct sync_fork_awaitable : fork_awaitable {
    * siblings.
    */
   auto await_resume() const noexcept(!ChildThrows) -> bool {
+    // Help the optimizer.
+    fork_awaitable::await_resume();
+
     // For it to be safe to consume the value from the child we justed forked it
     // must not have thrown an exception. We can check if __some__ child threw an
     // exception but we cannot (generally) retrieve it as exception is not safe
     // to touch until after a join.
     if (std::uint16_t steals_post = self->load_steals(); steals_post == steals_pre) {
+
+      // Then completed synchronously.
+
       if constexpr (ChildThrows) {
         if (R == region::opening_fork) {
           LF_ASSERT(steals_post == 0);
           // If the opening fork completed synchronously the we can rethrow.
-          self->rethrow_if_exception();
+          self->unsafe_rethrow_if_exception();
         } else if (steals_post == 0) {
           // No steals have happened hence, no one else could thrown an
           // exception hence, so we can touch the exception object.
-          self->rethrow_if_exception();
+          self->unsafe_rethrow_if_exception();
         } else {
           // Otherwise, we throw a substitute exception.
           if (self->atomic_has_exception()) {
@@ -5190,6 +5232,17 @@ struct call_awaitable : std::suspend_always {
   }
 
   /**
+   * @brief A noop in release, provides hints to the optimizer.
+   */
+  LF_FORCEINLINE void await_resume() const noexcept {
+    // If the coroutine has been resumed then the child's ownership was transferred
+    // in the await suspend. However, the await_suspend cannot be inlined as it
+    // provides the symmetric transfer hence the compiler will probably not be able
+    // to optimize away the destructor of the child (unique_ptr) without this.
+    LF_ASSERT(child == nullptr);
+  }
+
+  /**
    * @brief The suspended child coroutine's frame.
    */
   unique_frame child;
@@ -5212,10 +5265,10 @@ struct eager_call_awaitable : call_awaitable {
     if constexpr (R == region::outside) {
       LF_ASSERT(self->load_steals() == 0);
       // Outside fork-join we can touch the exception.
-      self->rethrow_if_exception();
+      self->unsafe_rethrow_if_exception();
     } else if (self->load_steals() == 0) {
       // Can throw the real exception.
-      self->rethrow_if_exception();
+      self->unsafe_rethrow_if_exception();
     } else {
       // Otherwise we throw a substitute.
       if (self->atomic_has_exception()) {
@@ -5324,7 +5377,7 @@ struct join_awaitable {
     LF_ASSERT_NO_ASSUME(self->load_joins(std::memory_order_acquire) == k_u16_max);
     LF_ASSERT(self->stacklet() == tls::stack()->top());
 
-    self->rethrow_if_exception();
+    self->unsafe_rethrow_if_exception();
   }
 
   /**
@@ -6399,6 +6452,8 @@ consteval auto l_child_of(interval ival) -> interval {
     case interval::mid:
     case interval::rhs:
       return interval::mid;
+    default:
+      unreachable();
   }
 }
 
@@ -6413,6 +6468,8 @@ consteval auto r_child_of(interval ival) -> interval {
     case interval::lhs:
     case interval::mid:
       return interval::mid;
+    default:
+      unreachable();
   }
 }
 
@@ -7790,7 +7847,7 @@ struct promise : promise_base, return_result<R, I> {
 
     LF_ASSERT(this->load_steals() == 0);                                           // Fork without join.
     LF_ASSERT_NO_ASSUME(this->load_joins(std::memory_order_acquire) == k_u16_max); // Invalid state.
-    LF_ASSERT(!this->has_exception());                                             // Must have rethrown.
+    LF_ASSERT(!this->unsafe_has_exception());                                      // Must have rethrown.
 
     return final_awaitable{};
   }
@@ -8285,7 +8342,7 @@ inline void numa_topology::numa_handle::bind() const {
           LF_THROW(hwloc_error{"hwloc cannot enforce the requested binding"});
         default:
           LF_THROW(hwloc_error{"hwloc cpu bind reported an unknown error"});
-      };
+      }
     default:
       LF_THROW(hwloc_error{"hwloc cpu bind returned un unexpected value"});
   }
@@ -8924,6 +8981,8 @@ struct numa_context {
       m_neigh.clear();
       LF_RETHROW;
     }
+
+    // clang-format on
   }
 
   /**
@@ -8946,47 +9005,44 @@ struct numa_context {
    *
    * If there are no submitted tasks, then returned pointer will be null.
    */
-  [[nodiscard]] auto try_pop_all() noexcept -> submit_handle {
-    return non_null(m_context)->try_pop_all();
-  }
+  [[nodiscard]] auto try_pop_all() noexcept -> submit_handle { return non_null(m_context)->try_pop_all(); }
 
   /**
    * @brief Try to steal a task from one of our friends, returns `nullptr` if we failed.
    */
   [[nodiscard]] auto try_steal() noexcept -> task_handle {
 
-    if (m_neigh.empty()){
+    if (m_neigh.empty()) {
       return nullptr;
     }
 
 #ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
 
-    #define LF_RETURN_OR_CONTINUE(expr) \
-      auto * context = expr;\
-      LF_ASSERT(context); \
-      LF_ASSERT(context->m_context);\
-      auto [err, task] = context->m_context->try_steal();\
-\
-      switch (err) {\
-        case lf::err::none:\
-          LF_LOG("Stole task from {}", (void *)context);\
-          return task;\
-\
-        case lf::err::lost:\
-          /* We don't retry here as we don't want to cause contention */ \
-          /* and we have multiple steal attempts anyway */ \
-        case lf::err::empty:\
-          continue;\
-\
-        default:\
-          LF_ASSERT(false && "Unreachable");\
-      }
-
+  #define LF_RETURN_OR_CONTINUE(expr)                                                                        \
+    do {                                                                                                     \
+      auto *context = expr;                                                                                  \
+      LF_ASSERT(context);                                                                                    \
+      LF_ASSERT(context->m_context);                                                                         \
+      auto [err, task] = context->m_context->try_steal();                                                    \
+                                                                                                             \
+      switch (err) {                                                                                         \
+        case lf::err::none:                                                                                  \
+          LF_LOG("Stole task from {}", (void *)context);                                                     \
+          return task;                                                                                       \
+        case lf::err::lost:                                                                                  \
+          /* We don't retry here as we don't want to cause contention */                                     \
+          /* and we have multiple steal attempts anyway */                                                   \
+        case lf::err::empty:                                                                                 \
+          continue;                                                                                          \
+        default:                                                                                             \
+          LF_ASSERT(false && "Unreachable");                                                                 \
+      }                                                                                                      \
+    } while (false)
 
     std::ranges::shuffle(m_close, m_rng);
 
     // Check all of the closest numa domain.
-    for (auto * neigh : m_close) {
+    for (auto *neigh : m_close) {
       LF_RETURN_OR_CONTINUE(neigh);
     }
 
@@ -8994,10 +9050,10 @@ struct numa_context {
 
     // Then work probabilistically.
     for (std::size_t i = 0; i < attempts; ++i) {
-       LF_RETURN_OR_CONTINUE(m_neigh[m_dist(m_rng)]);
+      LF_RETURN_OR_CONTINUE(m_neigh[m_dist(m_rng)]);
     }
 
-#undef LF_RETURN_OR_CONTINUE
+  #undef LF_RETURN_OR_CONTINUE
 
 #endif // LF_DOXYGEN_SHOULD_SKIP_THIS
 
@@ -9028,7 +9084,9 @@ struct busy_vars {
   /**
    * @brief Construct a new busy vars object for synchronizing `n` workers with one master.
    */
-  explicit busy_vars(std::size_t n) : latch_start(n + 1), latch_stop(n) { LF_ASSERT(n > 0); }
+  explicit busy_vars(std::size_t n)
+      : latch_start(safe_cast<std::ptrdiff_t>(n + 1)),
+        latch_stop(safe_cast<std::ptrdiff_t>(n)) {}
 
   /**
    * @brief Synchronize construction.
@@ -9081,7 +9139,7 @@ inline void busy_work(numa_topology::numa_node<impl::numa_context<busy_vars>> no
     if (task_handle task = my_context->try_steal()) {
       resume(task);
     }
-  };
+  }
 
   // Finish up any remaining work.
   while (submit_handle submissions = my_context->try_pop_all()) {

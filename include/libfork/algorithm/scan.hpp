@@ -81,6 +81,8 @@ consteval auto l_child_of(interval ival) -> interval {
     case interval::mid:
     case interval::rhs:
       return interval::mid;
+    default:
+      unreachable();
   }
 }
 
@@ -95,6 +97,8 @@ consteval auto r_child_of(interval ival) -> interval {
     case interval::lhs:
     case interval::mid:
       return interval::mid;
+    default:
+      unreachable();
   }
 }
 

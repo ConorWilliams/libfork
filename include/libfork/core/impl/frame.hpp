@@ -90,7 +90,7 @@ class frame {
   /**
    * @brief Cold path in `unsafe_rethrow_if_exception` in its own non-inline function.
    */
-  LF_NOINLINE void rethrow() {
+  [[noreturn]] LF_NOINLINE void rethrow() {
 #if LF_COMPILER_EXCEPTIONS
 
     LF_ASSERT(*m_eptr != nullptr);

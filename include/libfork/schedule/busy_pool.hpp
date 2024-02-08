@@ -47,7 +47,9 @@ struct busy_vars {
   /**
    * @brief Construct a new busy vars object for synchronizing `n` workers with one master.
    */
-  explicit busy_vars(std::size_t n) : latch_start(n + 1), latch_stop(n) { LF_ASSERT(n > 0); }
+  explicit busy_vars(std::size_t n)
+      : latch_start(safe_cast<std::ptrdiff_t>(n + 1)),
+        latch_stop(safe_cast<std::ptrdiff_t>(n)) {}
 
   /**
    * @brief Synchronize construction.
@@ -100,7 +102,7 @@ inline void busy_work(numa_topology::numa_node<impl::numa_context<busy_vars>> no
     if (task_handle task = my_context->try_steal()) {
       resume(task);
     }
-  };
+  }
 
   // Finish up any remaining work.
   while (submit_handle submissions = my_context->try_pop_all()) {

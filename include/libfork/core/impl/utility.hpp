@@ -19,10 +19,11 @@
 #include <limits>          // for numeric_limits
 #include <new>             // for std::hardware_destructive_interference_size
 #include <source_location> // for source_location
-#include <type_traits>     // for invoke_result_t, remove_cvref_t, type_identity, condit...
-#include <utility>         // for forward
-#include <vector>          // for vector
-#include <version>         // for __cpp_lib_hardware_interference_size
+#include <stdexcept>
+#include <type_traits> // for invoke_result_t, remove_cvref_t, type_identity, condit...
+#include <utility>     // for forward
+#include <vector>      // for vector
+#include <version>     // for __cpp_lib_hardware_interference_size
 
 #include "libfork/core/macro.hpp" // for LF_HOF_RETURNS
 
@@ -187,6 +188,34 @@ concept different_from = !std::same_as<std::remove_cvref_t<U>, std::remove_cvref
 // ---------------- Small functions ---------------- //
 
 /**
+ * @brief Safe integral cast, will terminate if the cast would overflow in debug.
+ */
+template <std::integral To, std::integral From>
+auto safe_cast(From val) noexcept -> To {
+
+  constexpr auto to_min = std::numeric_limits<To>::min();
+  constexpr auto to_max = std::numeric_limits<To>::max();
+
+  constexpr auto from_min = std::numeric_limits<From>::min();
+  constexpr auto from_max = std::numeric_limits<From>::max();
+
+  /**
+   *    [   from    ]
+   *     [   to   ]
+   */
+
+  if constexpr (std::cmp_greater(to_min, from_min)) {
+    LF_ASSERT(val >= static_cast<From>(to_min));
+  }
+
+  if constexpr (std::cmp_less(to_max, from_max)) {
+    LF_ASSERT(val <= static_cast<From>(to_max));
+  }
+
+  return static_cast<To>(val);
+}
+
+/**
  * @brief Transform `[a, b, c] -> [f(a), f(b), f(c)]`.
  */
 template <typename T, typename F>
@@ -230,8 +259,8 @@ template <typename T>
     { ptr == nullptr } -> std::convertible_to<bool>;
   }
 constexpr auto
-non_null(T &&val, [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept
-    -> T && {
+non_null(T &&val,
+         [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept -> T && {
 #ifndef NDEBUG
   if (val == nullptr) {
     // NOLINTNEXTLINE

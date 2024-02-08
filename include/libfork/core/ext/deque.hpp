@@ -276,7 +276,6 @@ struct return_nullopt {
  * \endrst
  *
  * @tparam T The type of the elements in the deque.
- * @tparam Optional The type returned by ``pop()``.
  */
 template <dequeable T>
 class deque : impl::immovable<deque<T>> {

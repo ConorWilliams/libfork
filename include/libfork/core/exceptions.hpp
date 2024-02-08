@@ -14,7 +14,7 @@
 #include "libfork/core/first_arg.hpp" // for quasi_pointer
 
 /**
- * @file exception.hpp
+ * @file exceptions.hpp
  *
  * @brief Interface for individual exception handling.
  */

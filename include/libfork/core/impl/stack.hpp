@@ -96,22 +96,19 @@ class stack {
      */
     [[nodiscard]] auto capacity() const noexcept -> std::size_t {
       LF_ASSERT(m_hi - m_lo >= 0);
-      return m_hi - m_lo;
+      return static_cast<std::size_t>(m_hi - m_lo);
     }
-
     /**
      * @brief Unused space on the current stacklet's stack.
      */
     [[nodiscard]] auto unused() const noexcept -> std::size_t {
       LF_ASSERT(m_hi - m_sp >= 0);
-      return m_hi - m_sp;
+      return static_cast<std::size_t>(m_hi - m_lo);
     }
-
     /**
      * @brief Check if stacklet's stack is empty.
      */
     [[nodiscard]] auto empty() const noexcept -> bool { return m_sp == m_lo; }
-
     /**
      * @brief Check is this stacklet is the top of a stack.
      */
@@ -122,7 +119,6 @@ class stack {
       }
       return true;
     }
-
     /**
      * @brief Set the next stacklet in the chain to 'new_next'.
      *
@@ -133,7 +129,6 @@ class stack {
       LF_ASSERT(is_top());
       std::free(std::exchange(m_next, new_next)); // NOLINT
     }
-
     /**
      * @brief Allocate a new stacklet with a stack of size of at least`size` and attach it to the given
      * stacklet chain.

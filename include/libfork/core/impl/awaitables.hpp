@@ -193,10 +193,12 @@ struct alloc_awaitable : std::suspend_never {
 
     T *ptr = static_cast<T *>(stack->allocate(request.count * sizeof(T)));
 
+    using int_t = std::iter_difference_t<T *>;
+
     // clang-format off
 
     LF_TRY {
-      std::ranges::uninitialized_default_construct_n(ptr, request.count);
+      std::ranges::uninitialized_default_construct_n(ptr, static_cast<int_t>(request.count));
     } LF_CATCH_ALL {
       stack->deallocate(ptr);
       LF_RETHROW;

@@ -147,6 +147,8 @@ struct numa_context {
       m_neigh.clear();
       LF_RETHROW;
     }
+
+    // clang-format on
   }
 
   /**
@@ -169,47 +171,44 @@ struct numa_context {
    *
    * If there are no submitted tasks, then returned pointer will be null.
    */
-  [[nodiscard]] auto try_pop_all() noexcept -> submit_handle {
-    return non_null(m_context)->try_pop_all();
-  }
+  [[nodiscard]] auto try_pop_all() noexcept -> submit_handle { return non_null(m_context)->try_pop_all(); }
 
   /**
    * @brief Try to steal a task from one of our friends, returns `nullptr` if we failed.
    */
   [[nodiscard]] auto try_steal() noexcept -> task_handle {
 
-    if (m_neigh.empty()){
+    if (m_neigh.empty()) {
       return nullptr;
     }
 
 #ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
 
-    #define LF_RETURN_OR_CONTINUE(expr) \
-      auto * context = expr;\
-      LF_ASSERT(context); \
-      LF_ASSERT(context->m_context);\
-      auto [err, task] = context->m_context->try_steal();\
-\
-      switch (err) {\
-        case lf::err::none:\
-          LF_LOG("Stole task from {}", (void *)context);\
-          return task;\
-\
-        case lf::err::lost:\
-          /* We don't retry here as we don't want to cause contention */ \
-          /* and we have multiple steal attempts anyway */ \
-        case lf::err::empty:\
-          continue;\
-\
-        default:\
-          LF_ASSERT(false && "Unreachable");\
-      }
-
+  #define LF_RETURN_OR_CONTINUE(expr)                                                                        \
+    do {                                                                                                     \
+      auto *context = expr;                                                                                  \
+      LF_ASSERT(context);                                                                                    \
+      LF_ASSERT(context->m_context);                                                                         \
+      auto [err, task] = context->m_context->try_steal();                                                    \
+                                                                                                             \
+      switch (err) {                                                                                         \
+        case lf::err::none:                                                                                  \
+          LF_LOG("Stole task from {}", (void *)context);                                                     \
+          return task;                                                                                       \
+        case lf::err::lost:                                                                                  \
+          /* We don't retry here as we don't want to cause contention */                                     \
+          /* and we have multiple steal attempts anyway */                                                   \
+        case lf::err::empty:                                                                                 \
+          continue;                                                                                          \
+        default:                                                                                             \
+          LF_ASSERT(false && "Unreachable");                                                                 \
+      }                                                                                                      \
+    } while (false)
 
     std::ranges::shuffle(m_close, m_rng);
 
     // Check all of the closest numa domain.
-    for (auto * neigh : m_close) {
+    for (auto *neigh : m_close) {
       LF_RETURN_OR_CONTINUE(neigh);
     }
 
@@ -217,10 +216,10 @@ struct numa_context {
 
     // Then work probabilistically.
     for (std::size_t i = 0; i < attempts; ++i) {
-       LF_RETURN_OR_CONTINUE(m_neigh[m_dist(m_rng)]);
+      LF_RETURN_OR_CONTINUE(m_neigh[m_dist(m_rng)]);
     }
 
-#undef LF_RETURN_OR_CONTINUE
+  #undef LF_RETURN_OR_CONTINUE
 
 #endif // LF_DOXYGEN_SHOULD_SKIP_THIS
 
