@@ -90,7 +90,7 @@ struct fib {
 
 } // namespace
 
-TEMPLATE_TEST_CASE("Bad user behavior", "[core][template]", unit_pool, busy_pool, lazy_pool) {
+TEMPLATE_TEST_CASE("Bad user behavior", "[bad][template]", unit_pool, busy_pool, lazy_pool) {
 
   auto sch = make_scheduler<TestType>();
 
@@ -111,9 +111,7 @@ TEMPLATE_TEST_CASE("Bad user behavior", "[core][template]", unit_pool, busy_pool
   }
 }
 
-// TODO, experiment with detach here a bit more.
-
-TEMPLATE_TEST_CASE("Bad user behavior, detached", "[core][template]", unit_pool) {
+TEMPLATE_TEST_CASE("Bad user behavior, detached", "[bad][template]", unit_pool) {
 
   auto sch = make_scheduler<TestType>();
 
@@ -132,18 +130,14 @@ struct noop {
 
   noop() = default;
 
-  noop(noop const &other) : count(other.count + 1) {
-    if (count > 1) {
-      LF_THROW(std::runtime_error("Too many copies"));
-    }
-  }
+  [[noreturn]] noop(noop const &) { LF_THROW(std::runtime_error("Too many copies")); }
 
   auto operator()(auto) -> lf::task<> { co_return; }
 };
 
 } // namespace
 
-TEMPLATE_TEST_CASE("Throw in sync wait", "[core][template]", unit_pool, busy_pool, lazy_pool) {
+TEMPLATE_TEST_CASE("Throw in sync wait", "[bad][template]", unit_pool, busy_pool, lazy_pool) {
 
   auto sch = make_scheduler<TestType>();
 
@@ -161,7 +155,7 @@ TEMPLATE_TEST_CASE("Throw in sync wait", "[core][template]", unit_pool, busy_poo
   // clang-format on
 }
 
-TEMPLATE_TEST_CASE("Throw in sync detach", "[core][template]", unit_pool, busy_pool, lazy_pool) {
+TEMPLATE_TEST_CASE("Throw in sync detach", "[bad][template]", unit_pool, busy_pool, lazy_pool) {
 
   auto sch = make_scheduler<TestType>();
 

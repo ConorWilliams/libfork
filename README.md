@@ -309,7 +309,18 @@ co_await lf::fork[process_string](std::string("32"));
 
 This would dangle if `process_string` accepted arguments by reference. Specifically a `process_string` accepting `std::string &` would not compile by the standard reference semantics while `std::string const &` and `std::string &&` would compile but would dangle. To avoid this libfork coroutines bans `std::string && -> std::string const &` conversions and r-value reference arguments for forked async-functions. If you want to move a value into a forked coroutine then pass by value.
 
-__Note:__ You can still dangle by ending the lifetime of an l-value referenced object __after__ a fork.
+__Note:__ You can still dangle by ending the lifetime of an l-value referenced object __after__ a fork e.g.:
+
+```cpp
+{
+  int x;
+
+  co_await lf::fork[&x, some_function]();
+
+} // Lifetime of x ends here, return address is now dangling!
+
+co_await lf::join; 
+```
 
 ### Delaying construction
 

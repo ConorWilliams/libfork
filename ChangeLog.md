@@ -12,7 +12,7 @@
 
 ### Meta  -->
 
-## [**Version 3.x.x**](https://github.com/ConorWilliams/libfork/compare/v3.6.0...v3.x.0)
+## [**Version 3.x.0**](https://github.com/ConorWilliams/libfork/compare/v3.6.0...v3.x.0)
 
 ### Added
 
@@ -22,6 +22,7 @@
 - The `future` class template.
 - The `detach` function as an alternative to `sync_wait`.
 - More exception handling tests.
+- New optional (macro based) mechanism for forward declaring async-functions to speed up compilation.
 
 ### Changed
 

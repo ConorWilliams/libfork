@@ -181,7 +181,7 @@ class first_arg_t {
   /**
    * @brief Construct a first_arg_t from an async function object.
    */
-  template <different_from<first_arg_t> T>
+  template <different_from<first_arg_t> T = F>
     requires std::constructible_from<F, T>
   explicit first_arg_t(T &&expr) noexcept(std::is_nothrow_constructible_v<F, T>)
       : m_fun(std::forward<T>(expr)) {}

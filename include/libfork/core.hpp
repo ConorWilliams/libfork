@@ -14,6 +14,7 @@
 #include "libfork/core/defer.hpp"
 #include "libfork/core/eventually.hpp"
 #include "libfork/core/exceptions.hpp"
+#include "libfork/core/extern.hpp"
 #include "libfork/core/first_arg.hpp"
 #include "libfork/core/invocable.hpp"
 #include "libfork/core/just.hpp"

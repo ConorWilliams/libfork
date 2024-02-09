@@ -176,3 +176,11 @@ Classes
 .. doxygenclass:: lf::core::stack_allocated
    :members:
 
+Forward declarations
+--------------------
+
+.. doxygendefine:: LF_FWD_DECL
+
+.. doxygendefine:: LF_IMPLEMENT
+
+.. doxygendefine:: LF_IMPLEMENT_NAMED

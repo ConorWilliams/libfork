@@ -290,6 +290,19 @@ using std::unreachable;
 #endif
 
 /**
+ * @brief Compiler specific attributes libfork uses for its coroutine types.
+ */
+#if defined(__clang__) && defined(__has_attribute)
+  #if __has_attribute(coro_wrapper)
+    #define LF_CORO_WRAPPER [[clang::coro_wrapper]]
+  #else
+    #define LF_CORO_WRAPPER
+  #endif
+#else
+  #define LF_CORO_WRAPPER
+#endif
+
+/**
  * @brief __[public]__ A customizable logging macro.
  *
  * By default this is a no-op. Defining ``LF_DEFAULT_LOGGING`` will enable a default

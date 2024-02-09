@@ -414,6 +414,19 @@ using std::unreachable;
 #endif
 
 /**
+ * @brief Compiler specific attributes libfork uses for its coroutine types.
+ */
+#if defined(__clang__) && defined(__has_attribute)
+  #if __has_attribute(coro_wrapper)
+    #define LF_CORO_WRAPPER [[clang::coro_wrapper]]
+  #else
+    #define LF_CORO_WRAPPER
+  #endif
+#else
+  #define LF_CORO_WRAPPER
+#endif
+
+/**
  * @brief __[public]__ A customizable logging macro.
  *
  * By default this is a no-op. Defining ``LF_DEFAULT_LOGGING`` will enable a default
@@ -2931,11 +2944,11 @@ namespace impl::detail {
  * @tparam Qual The Qualified version of `F`.
  */
 template <typename F, typename Qual>
-concept async_function_object_impl =              //
-    unqualified<F> &&                             // We store the unqualified type.
-    (std::is_union_v<F> || std::is_class_v<F>) && // Only classes/unions can have templated `operator()`.
-    std::move_constructible<F> &&                 // Must be able to move a value.
-    std::copy_constructible<F>;                   // Must be able to copy a value.
+concept async_function_object_impl =             //
+    unqualified<F> &&                            // We store the unqualified type.
+    (std::is_union_v<F> || std::is_class_v<F>)&& // Only classes/unions can have templated `operator()`.
+    std::move_constructible<F> &&                // Must be able to move a value.
+    std::copy_constructible<F>;                  // Must be able to copy a value.
 
 } // namespace impl::detail
 
@@ -4366,8 +4379,8 @@ inline constexpr auto call = dispatch<tag::call>;
 #endif /* E8D38B49_7170_41BC_90E9_6D6389714304 */
 
 
-#ifndef DE1C62F1_949F_48DC_BC2C_960C4439332D
-#define DE1C62F1_949F_48DC_BC2C_960C4439332D
+#ifndef E6A77A20_6653_4B56_9931_BA5B0987911A
+#define E6A77A20_6653_4B56_9931_BA5B0987911A
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
 
@@ -4377,15 +4390,11 @@ inline constexpr auto call = dispatch<tag::call>;
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>    // for constructible_from, invocable
-#include <coroutine>   // for suspend_never
-#include <exception>   // for rethrow_exception
-#include <functional>  // for invoke
-#include <type_traits> // for decay_t, invoke_result_t, true_type, false_type
+#include <type_traits> // for true_type, type_identity, false_type
 #include <utility>     // for forward
-      // for try_eventually       // for async_function_object
-#ifndef CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
-#define CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
+ // for eventually, try_eventually  // for quasi_pointer, first_arg_t, async_function_object  // for discard_t      // for LF_STATIC_CONST, LF_STATIC_CALL, LF_CORO_WRAPPER
+#ifndef AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A
+#define AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
 
@@ -4395,16 +4404,14 @@ inline constexpr auto call = dispatch<tag::call>;
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <atomic>      // for memory_order_acquire, atomic_thread_fence
 #include <bit>         // for bit_cast
-#include <coroutine>   // for coroutine_handle, noop_coroutine, suspend_...
-#include <cstdint>     // for uint16_t
-#include <iterator>    // for iter_difference_t
-#include <memory>      // for operator==, uninitialized_default_construct_n
-#include <span>        // for span
-#include <type_traits> // for remove_cvref_t
-#include <utility>     // for exchange
-          // for co_allocable, co_new_t, stack_allocated        // for exception_before_join       // for full_context       // for submit_handle, submit_node_t, task_handle          // for unwrap           // for stack, context        // for frame        // for stack // for unique_frame, frame_deleter      // for k_u16_max, checked_cast         // for ignore_t             // for LF_ASSERT, LF_LOG, LF_FORCEINLINE, LF_THROW
+#include <exception>   // for exception, rethrow_exception
+#include <memory>      // for make_shared, shared_ptr
+#include <optional>    // for optional
+#include <semaphore>   // for binary_semaphore
+#include <type_traits> // for is_trivially_destructible_v
+#include <utility>     // for forward, exchange
+                // for LF_DEFER           // for try_eventually           // for schedule_in_worker          // for submit_node_t, submit_t              // for has_stack, thread_stack, has_context            // for async_function_object       // for quasi_awaitable, y_combinate // for manual_lifetime           // for stack // for async_result_t, rootable, ignore_t     // for LF_THROW, LF_CLANG_TLS_NOINLINE
 #ifndef BDE6CBCC_7576_4082_AAC5_2A207FEA9293
 #define BDE6CBCC_7576_4082_AAC5_2A207FEA9293
 
@@ -4511,7 +4518,509 @@ static_assert(context_switcher<resume_on_quasi_awaitable<worker_context>>);
 
 #endif /* BDE6CBCC_7576_4082_AAC5_2A207FEA9293 */
 
-         // for context_switcher               // for region
+ // for scheduler       // for tag, none      // for returnable
+
+/**
+ * @file sync_wait.hpp
+ *
+ * @brief Functionally to enter coroutines from a non-worker thread.
+ */
+
+namespace lf {
+
+namespace impl {
+
+/**
+ * @brief State of a future.
+ */
+enum class future_state {
+  /**
+   * @brief Wait has not been called.
+   */
+  no_wait,
+  /**
+   * @brief The result is ready.
+   */
+  ready,
+  /**
+   * @brief The result has been retrievd.
+   */
+  retrievd,
+};
+
+/**
+ * @brief The shared state of a future.
+ */
+template <typename R>
+struct future_shared_state : try_eventually<R> {
+  /**
+   * @brief Inherit assignment operators.
+   */
+  using try_eventually<R>::operator=;
+
+  static_assert(std::is_trivially_destructible_v<submit_node_t>);
+  /**
+   * @brief The submit handle will point to this.
+   *
+   * We never call `.destroy()` on this but that is ok by the above `static_assert`.
+   */
+  manual_lifetime<submit_node_t> node;
+  /**
+   * @brief The root task's notification semaphore.
+   */
+  std::binary_semaphore sem{0};
+  /**
+   * @brief The state of the future.
+   */
+  future_state status = future_state::no_wait;
+};
+
+/**
+ * @brief An ``std::shared_pointer`` to a shared future state.
+ */
+template <typename R>
+using future_shared_state_ptr = std::shared_ptr<future_shared_state<R>>;
+
+} // namespace impl
+
+inline namespace core {
+
+/**
+ * @brief Thrown when a future has no shared state.
+ */
+struct broken_future : std::exception {
+  /**
+   * @brief A diagnostic message.
+   */
+  auto what() const noexcept -> char const * override { return "Broken future, no shared state!"; }
+};
+
+/**
+ * @brief Thrown when `.get()` is called more than once on a future.
+ */
+struct empty_future : std::exception {
+  /**
+   * @brief A diagnostic message.
+   */
+  auto what() const noexcept -> char const * override { return "future::get() called more than once!"; }
+};
+
+/**
+ * @brief A future is a handle to the result of an asynchronous operation.
+ */
+template <returnable R>
+class future {
+
+  using enum impl::future_state;
+
+  /**
+   * @brief The other half of the promise-future pair.
+   */
+  impl::future_shared_state_ptr<R> m_heap;
+
+  /**
+   * @brief Construct a new future object storing the shared state.
+   */
+  explicit future(impl::future_shared_state_ptr<R> &&heap) noexcept : m_heap{std::move(heap)} {
+    static_assert(std::is_nothrow_move_constructible_v<impl::future_shared_state_ptr<R>>);
+  }
+
+  template <scheduler Sch, async_function_object F, class... Args>
+    requires rootable<F, Args...>
+  friend auto schedule(Sch &&sch, F &&fun, Args &&...args) -> future<async_result_t<F, Args...>>;
+
+ public:
+  /**
+   * @brief Move construct a new future.
+   */
+  future(future &&other) noexcept = default;
+  /**
+   * @brief Futures are not copyable.
+   */
+  future(future const &other) = delete;
+  /**
+   * @brief Move assign to a future.
+   */
+  auto operator=(future &&other) noexcept -> future & = default;
+  /**
+   * @brief Futures are not copy assignable.
+   */
+  auto operator=(future const &other) -> future & = delete;
+  /**
+   * @brief Wait (__block__) until the future completes if it has a shared state.
+   */
+  ~future() noexcept {
+    if (valid() && m_heap->status == no_wait) {
+      m_heap->sem.acquire();
+    }
+  }
+  /**
+   * @brief Test if the future has a shared state.
+   */
+  auto valid() const noexcept -> bool { return m_heap != nullptr; }
+  /**
+   * @brief Detach the shared state from this future.
+   *
+   * Following this operation the destructor is guaranteed to not block.
+   */
+  void detach() noexcept { std::exchange(m_heap, nullptr); }
+  /**
+   * @brief Wait (__block__) for the future to complete.
+   */
+  void wait() {
+
+    if (!valid()) {
+      LF_THROW(broken_future{});
+    }
+
+    if (m_heap->status == no_wait) {
+      m_heap->sem.acquire();
+      m_heap->status = ready;
+    }
+  }
+  /**
+   * @brief Wait (__block__) for the result to complete and then return it.
+   *
+   * If the task completed with an exception then that exception will be rethrown. If
+   * the future has no shared state then a `lf::core::future_error` will be thrown.
+   */
+  auto get() -> R {
+
+    wait();
+
+    if (m_heap->status == retrievd) {
+      LF_THROW(empty_future{});
+    }
+
+    m_heap->status = retrievd;
+
+    if (m_heap->has_exception()) {
+      std::rethrow_exception(std::move(*m_heap).exception());
+    }
+
+    if constexpr (!std::is_void_v<R>) {
+      return *std::move(*m_heap);
+    }
+  }
+};
+
+/**
+ * @brief Thrown when a worker thread attempts to call `lf::core::schedule`.
+ */
+struct schedule_in_worker : std::exception {
+  /**
+   * @brief A diagnostic message.
+   */
+  auto what() const noexcept -> char const * override { return "schedule(...) called from a worker thread!"; }
+};
+
+/**
+ * @brief Schedule execution of `fun` on `sch` and return a `lf::core::future` to the result.
+ *
+ * This will build a task from `fun` and dispatch it to `sch` via its `schedule` method. If `schedule` is
+ * called by a worker thread (which are never allowed to block) then `lf::core::schedule_in_worker` will be
+ * thrown.
+ */
+template <scheduler Sch, async_function_object F, class... Args>
+  requires rootable<F, Args...>
+LF_CLANG_TLS_NOINLINE auto
+schedule(Sch &&sch, F &&fun, Args &&...args) -> future<async_result_t<F, Args...>> {
+  //
+  if (impl::tls::has_stack || impl::tls::has_context) {
+    throw schedule_in_worker{};
+  }
+
+  // Initialize the non-worker's stack.
+  impl::tls::thread_stack.construct();
+  impl::tls::has_stack = true;
+
+  // Clean up the stack on exit.
+  LF_DEFER {
+    impl::tls::thread_stack.destroy();
+    impl::tls::has_stack = false;
+  };
+
+  auto share_state = std::make_shared<impl::future_shared_state<async_result_t<F, Args...>>>();
+
+  // Build a combinator, copies heap shared_ptr.
+  impl::y_combinate combinator = combinate<tag::root, modifier::none>(share_state, std::forward<F>(fun));
+  // This allocates a coroutine on this threads stack.
+  impl::quasi_awaitable await = std::move(combinator)(std::forward<Args>(args)...);
+  // Set the root semaphore.
+  await->set_root_sem(&share_state->sem);
+
+  // If this throws then `await` will clean up the coroutine.
+  impl::ignore_t{} = impl::tls::thread_stack->release();
+
+  // We will pass a pointer to this to .schedule()
+  share_state->node.construct(std::bit_cast<impl::submit_t *>(await.get()));
+
+  // Schedule upholds the strong exception guarantee hence, if it throws `await` cleans up.
+  std::forward<Sch>(sch).schedule(share_state->node.data());
+  // If -^ didn't throw then we release ownership of the coroutine, it will be cleaned up by the worker.
+  impl::ignore_t{} = await.release();
+
+  return future<async_result_t<F, Args...>>{std::move(share_state)}; // Shared state ownership transferred.
+}
+
+/**
+ * @brief Schedule execution of `fun` on `sch` and wait (__block__) until the task is complete.
+ *
+ * This is the primary entry point from the synchronous to the asynchronous world. A typical libfork program
+ * is expected to make a call from `main` into a scheduler/runtime by scheduling a single root-task with this
+ * function.
+ *
+ * This makes the appropriate call to `lf::core::schedule` and calls `get` on the returned `lf::core::future`.
+ */
+template <scheduler Sch, async_function_object F, class... Args>
+  requires rootable<F, Args...>
+auto sync_wait(Sch &&sch, F &&fun, Args &&...args) -> async_result_t<F, Args...> {
+  return schedule(std::forward<Sch>(sch), std::forward<F>(fun), std::forward<Args>(args)...).get();
+}
+
+/**
+ * @brief Schedule execution of `fun` on `sch` and detach the future.
+ *
+ * This is the secondary entry point from the synchronous to the asynchronous world. Similar to `sync_wait`
+ * but calls `detach` on the returned `lf::core::future`.
+ *
+ * __Note:__ Many schedulers (like `lf::lazy_pool` and `lf::busy_pool`) require all submitted work to
+ * (including detached work) to complete before they are destructed.
+ */
+template <scheduler Sch, async_function_object F, class... Args>
+  requires rootable<F, Args...>
+auto detach(Sch &&sch, F &&fun, Args &&...args) -> void {
+  return schedule(std::forward<Sch>(sch), std::forward<F>(fun), std::forward<Args>(args)...).detach();
+}
+
+} // namespace core
+
+} // namespace lf
+
+#endif /* AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A */
+
+  // for future_shared_state_ptr        // for tag       // for returnable, task
+
+/**
+ * @file extern.hpp
+ *
+ * @brief Machinery for forward declaring async functions.
+ */
+
+namespace lf::impl {
+
+namespace detail {
+
+template <quasi_pointer I, returnable R, tag Tag>
+struct valid_extern_impl : std::false_type {};
+
+// ---
+
+template <returnable R, tag Tag>
+struct valid_extern_impl<discard_t, R, Tag> : std::true_type {};
+
+template <returnable R, tag Tag>
+  requires return_address_for<R *, R>
+struct valid_extern_impl<R *, R, Tag> : std::true_type {};
+
+template <returnable R, tag Tag>
+struct valid_extern_impl<eventually<R> *, R, Tag> : std::true_type {};
+
+template <returnable R, tag Tag>
+struct valid_extern_impl<try_eventually<R> *, R, Tag> : std::true_type {};
+
+// ---
+
+template <returnable R, tag Tag>
+struct valid_extern_impl<future_shared_state_ptr<R>, R, Tag> : std::true_type {};
+
+} // namespace detail
+
+/**
+ * @brief Verify that a return type is valid for an extern'ed function.
+ */
+template <typename I, typename R, tag Tag>
+concept valid_extern = quasi_pointer<I> && returnable<R> && detail::valid_extern_impl<I, R, Tag>::value;
+
+/**
+ * @brief A small shim/coroutine-wrapper that strips the `CallArgs` from an async dispatch.
+ */
+template <returnable R, async_function_object F>
+struct extern_shim {
+  /**
+   * @brief Strips `CallArgs` and forwards to `F`.
+   */
+  template <quasi_pointer I, tag Tag, typename... CallArgs, typename... Args>
+    requires valid_extern<I, R, Tag>
+  LF_CORO_WRAPPER LF_FORCEINLINE LF_STATIC_CALL auto
+  operator()(first_arg_t<I, Tag, extern_shim, CallArgs...> /**/, Args &&...args) LF_STATIC_CONST->task<R> {
+    return F{}(first_arg_t<I, Tag, F>{{}}, std::forward<Args>(args)...);
+  }
+};
+
+namespace detail {
+
+/**
+ * @brief We need another type to represent the discard_t in the extern_ret_ptr_t so we don't violate ORD.
+ */
+struct other_discard_t : discard_t {
+  using discard_t::operator*;
+};
+
+template <returnable R>
+struct extern_ret_ptr_impl : std::type_identity<other_discard_t> {};
+
+template <returnable R>
+  requires return_address_for<R *, R>
+struct extern_ret_ptr_impl<R> : std::type_identity<R *> {};
+
+} // namespace detail
+
+/**
+ * @brief If `R *` is a valid return address for `R` then `R *` else `discard_t`.
+ */
+template <returnable R>
+using extern_ret_ptr_t = detail::extern_ret_ptr_impl<R>::type;
+
+} // namespace lf::impl
+
+// ---------------------- Forward declare an external function ---------------------- //
+
+/**
+ * @brief Forward declare an extern'ed function.
+ */
+#define LF_EXTERN_FWD_DECL(R, f, ...)                                                                        \
+  namespace f##_impl {                                                                                       \
+    struct f##_fn {                                                                                          \
+      LF_STATIC_CALL auto operator()(auto __VA_OPT__(, ) __VA_ARGS__) LF_STATIC_CONST->::lf::task<R>;        \
+    };                                                                                                       \
+  }                                                                                                          \
+  inline constexpr auto f = ::lf::impl::extern_shim<R, f##_impl::f##_fn> {}
+/**
+ * @brief Instantiate the extern'ed function for a specific call type and return type.
+ */
+#define LF_INSTANTIATE_SELF(R, f, head, ...)                                                                 \
+  template auto f##_impl::f##_fn::operator()<head>(head __VA_OPT__(, ) __VA_ARGS__) -> ::lf::task<R>
+/**
+ * @brief Build the first argument for the extern'ed function.
+ */
+#define LF_FIRST_ARG(R, I, Tag, f) ::lf::impl::first_arg_t<I, Tag, f##_impl::f##_fn>
+/**
+ * @brief Instantiate the extern'ed function generating the appropriate first argument.
+ */
+#define LF_INSTANTIATE(R, f, I, Tag, ...)                                                                    \
+  LF_INSTANTIATE_SELF(R, f, LF_FIRST_ARG(R, I, Tag, f) __VA_OPT__(, ) __VA_ARGS__)
+/**
+ * @brief Instantiate for all valid return types.
+ */
+#define LF_INSTANTIATE_RETURNS(declspec, R, f, Tag, ...)                                                     \
+  declspec LF_INSTANTIATE(R, f, ::lf::impl::extern_ret_ptr_t<R>, Tag __VA_OPT__(, ) __VA_ARGS__);            \
+  declspec LF_INSTANTIATE(R, f, ::lf::impl::discard_t, Tag __VA_OPT__(, ) __VA_ARGS__);                      \
+  declspec LF_INSTANTIATE(R, f, ::lf::eventually<R> *, Tag __VA_OPT__(, ) __VA_ARGS__);                      \
+  declspec LF_INSTANTIATE(R, f, ::lf::try_eventually<R> *, Tag __VA_OPT__(, ) __VA_ARGS__)
+/**
+ * @brief Forward declare an async function.
+ *
+ * This is useful for speeding up compile times by allowing you to put the definition
+ * of an async function in a source file and only forward declare it in a header file.
+ *
+ * \rst
+ *
+ * Usage: in a header file (e.g. ``fib.hpp``), forward declare an async function:
+ *
+ * .. code::
+ *
+ *    LF_FWD_DECL(int, fib, int n);
+ *
+ * And in a corresponding source file (e.g. ``fib.cpp``), implement the function:
+ *
+ * .. code::
+ *
+ *    LF_IMPLEMENT(int, fib, int n) {
+ *
+ *      if (n < 2) {
+ *        co_return n;
+ *      }
+ *
+ *      int a, b;
+ *
+ *      co_await lf::fork(&a, fib)(n - 1);
+ *      co_await lf::call(&b, fib)(n - 2);
+ *
+ *      co_await lf::join;
+ *    }
+ *
+ * \endrst
+ *
+ * Now in some other file you can include ``fib.hpp`` and use ``fib`` as normal with the restriction
+ * that you must always bind the result of the extern'ed function to an ``lf::core::eventually<int> *``,
+ * ``lf::core::try_eventually<int> *`` or ``int *``.
+ */
+#define LF_FWD_DECL(R, f, ...)                                                                               \
+  LF_EXTERN_FWD_DECL(R, f __VA_OPT__(, ) __VA_ARGS__);                                                       \
+  LF_INSTANTIATE_RETURNS(extern, R, f, ::lf::tag::call __VA_OPT__(, ) __VA_ARGS__);                          \
+  LF_INSTANTIATE_RETURNS(extern, R, f, ::lf::tag::fork __VA_OPT__(, ) __VA_ARGS__);                          \
+  extern LF_INSTANTIATE(                                                                                     \
+      R, f, ::lf::impl::future_shared_state_ptr<R>, ::lf::tag::root __VA_OPT__(, ) __VA_ARGS__)
+
+// ---------------------- Implement a forward declared function ---------------------- //
+
+/**
+ * @brief An alternative to ``LF_IMPLEMENT`` that allows you to name the ``self`` parameter.
+ */
+#define LF_IMPLEMENT_NAMED(R, f, self, ...)                                                                  \
+  LF_INSTANTIATE_RETURNS(/* nodecl */, R, f, ::lf::tag::call __VA_OPT__(, ) __VA_ARGS__);                    \
+  LF_INSTANTIATE_RETURNS(/* nodecl */, R, f, ::lf::tag::fork __VA_OPT__(, ) __VA_ARGS__);                    \
+  LF_INSTANTIATE(R, f, ::lf::impl::future_shared_state_ptr<R>, ::lf::tag::root __VA_OPT__(, ) __VA_ARGS__);  \
+  auto f##_impl::f##_fn::operator() LF_STATIC_CONST(auto self __VA_OPT__(, ) __VA_ARGS__) -> ::lf::task<R>
+
+/**
+ * @brief See ``LF_FWD_DECL`` for usage.
+ */
+#define LF_IMPLEMENT(R, f, ...) LF_IMPLEMENT_NAMED(R, f, f __VA_OPT__(, ) __VA_ARGS__)
+
+#endif /* E6A77A20_6653_4B56_9931_BA5B0987911A */
+
+
+#ifndef DE1C62F1_949F_48DC_BC2C_960C4439332D
+#define DE1C62F1_949F_48DC_BC2C_960C4439332D
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>    // for constructible_from, invocable
+#include <coroutine>   // for suspend_never
+#include <exception>   // for rethrow_exception
+#include <functional>  // for invoke
+#include <type_traits> // for decay_t, invoke_result_t, true_type, false_type
+#include <utility>     // for forward
+      // for try_eventually       // for async_function_object
+#ifndef CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
+#define CF3E6AC4_246A_4131_BF7A_FE5CD641A19B
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <atomic>      // for memory_order_acquire, atomic_thread_fence
+#include <bit>         // for bit_cast
+#include <coroutine>   // for coroutine_handle, noop_coroutine, suspend_...
+#include <cstdint>     // for uint16_t
+#include <iterator>    // for iter_difference_t
+#include <memory>      // for operator==, uninitialized_default_construct_n
+#include <span>        // for span
+#include <type_traits> // for remove_cvref_t
+#include <utility>     // for exchange
+          // for co_allocable, co_new_t, stack_allocated        // for exception_before_join       // for full_context       // for submit_handle, submit_node_t, task_handle          // for unwrap           // for stack, context        // for frame        // for stack // for unique_frame, frame_deleter      // for k_u16_max, checked_cast         // for ignore_t             // for LF_ASSERT, LF_LOG, LF_FORCEINLINE, LF_THROW         // for context_switcher               // for region
 
 /**
  * @file awaitables.hpp
@@ -5181,278 +5690,6 @@ inline constexpr impl::bind_just just = {};
 #endif /* DE1C62F1_949F_48DC_BC2C_960C4439332D */
 
 
-#ifndef AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A
-#define AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <bit>         // for bit_cast
-#include <exception>   // for exception, rethrow_exception
-#include <memory>      // for make_shared, shared_ptr
-#include <optional>    // for optional
-#include <semaphore>   // for binary_semaphore
-#include <type_traits> // for conditional_t
-#include <utility>     // for forward, exchange
-                // for LF_DEFER           // for try_eventually           // for schedule_in_worker          // for submit_node_t, submit_t              // for has_stack, thread_stack, has_context            // for async_function_object       // for quasi_awaitable, y_combinate // for manual_lifetime           // for stack // for async_result_t, rootable, ignore_t     // for LF_THROW, LF_CLANG_TLS_NOINLINE // for scheduler       // for tag, none      // for returnable
-
-/**
- * @file sync_wait.hpp
- *
- * @brief Functionally to enter coroutines from a non-worker thread.
- */
-
-namespace lf {
-
-namespace impl {
-
-enum class future_state {
-  /**
-   * @brief Wait has not been called.
-   */
-  no_wait,
-  /**
-   * @brief The result is ready.
-   */
-  ready,
-  /**
-   * @brief The result has been retrievd.
-   */
-  retrievd,
-};
-
-template <typename R>
-struct root_heap : try_eventually<R> {
-
-  using try_eventually<R>::operator=;
-
-  std::optional<impl::submit_node_t> node;     // Make default constructible.
-  std::binary_semaphore sem{0};                // Also needs to be on heap.
-  future_state status = future_state::no_wait; // Track if the future waited, etc.
-};
-
-template <typename R>
-using root_shared_ptr = std::shared_ptr<root_heap<R>>;
-
-} // namespace impl
-
-inline namespace core {
-
-/**
- * @brief Thrown when a future has no shared state.
- */
-struct broken_future : std::exception {
-  /**
-   * @brief A diagnostic message.
-   */
-  auto what() const noexcept -> char const * override { return "Broken future, no shared state!"; }
-};
-
-/**
- * @brief Thrown when `.get()` is called more than once on a future.
- */
-struct empty_future : std::exception {
-  /**
-   * @brief A diagnostic message.
-   */
-  auto what() const noexcept -> char const * override { return "future::get() called more than once!"; }
-};
-
-/**
- * @brief A future is a handle to the result of an asynchronous operation.
- */
-template <returnable R>
-class future {
-
-  using enum impl::future_state;
-
-  future() = default;
-
-  /**
-   * @brief The other half of the promise-future pair.
-   */
-  impl::root_shared_ptr<R> m_heap = std::make_shared<impl::root_heap<R>>();
-
-  template <scheduler Sch, async_function_object F, class... Args>
-    requires rootable<F, Args...>
-  friend auto schedule(Sch &&sch, F &&fun, Args &&...args) -> future<async_result_t<F, Args...>>;
-
- public:
-  /**
-   * @brief Move construct a new future.
-   */
-  future(future &&other) noexcept = default;
-  /**
-   * @brief Futures are not copyable.
-   */
-  future(future const &other) = delete;
-  /**
-   * @brief Move assign to a future.
-   */
-  auto operator=(future &&other) noexcept -> future & = default;
-  /**
-   * @brief Futures are not copy assignable.
-   */
-  auto operator=(future const &other) -> future & = delete;
-  /**
-   * @brief Wait (__block__) until the future completes if it has a shared state.
-   */
-  ~future() noexcept {
-    if (valid() && m_heap->status == no_wait) {
-      m_heap->sem.acquire();
-    }
-  }
-  /**
-   * @brief Test if the future has a shared state.
-   */
-  auto valid() const noexcept -> bool { return m_heap != nullptr; }
-  /**
-   * @brief Detach the shared state from this future.
-   *
-   * Following this operation the destructor is guaranteed to not block.
-   */
-  void detach() noexcept { std::exchange(m_heap, nullptr); }
-  /**
-   * @brief Wait (__block__) for the future to complete.
-   */
-  void wait() {
-
-    if (!valid()) {
-      LF_THROW(broken_future{});
-    }
-
-    if (m_heap->status == no_wait) {
-      m_heap->sem.acquire();
-      m_heap->status = ready;
-    }
-  }
-  /**
-   * @brief Wait (__block__) for the result to complete and then return it.
-   *
-   * If the task completed with an exception then that exception will be rethrown. If
-   * the future has no shared state then a `lf::core::future_error` will be thrown.
-   */
-  auto get() -> R {
-
-    wait();
-
-    if (m_heap->status == retrievd) {
-      LF_THROW(empty_future{});
-    }
-
-    m_heap->status = retrievd;
-
-    if (m_heap->has_exception()) {
-      std::rethrow_exception(std::move(*m_heap).exception());
-    }
-
-    if constexpr (!std::is_void_v<R>) {
-      return *std::move(*m_heap);
-    }
-  }
-};
-
-/**
- * @brief Thrown when a worker thread attempts to call `lf::core::schedule`.
- */
-struct schedule_in_worker : std::exception {
-  /**
-   * @brief A diagnostic message.
-   */
-  auto what() const noexcept -> char const * override { return "schedule(...) called from a worker thread!"; }
-};
-
-/**
- * @brief Schedule execution of `fun` on `sch` and return a `lf::core::future` to the result.
- *
- * This will build a task from `fun` and dispatch it to `sch` via its `schedule` method. If `schedule` is
- * called by a worker thread (which are never allowed to block) then `lf::core::schedule_in_worker` will be
- * thrown.
- */
-template <scheduler Sch, async_function_object F, class... Args>
-  requires rootable<F, Args...>
-LF_CLANG_TLS_NOINLINE auto
-schedule(Sch &&sch, F &&fun, Args &&...args) -> future<async_result_t<F, Args...>> {
-  //
-  if (impl::tls::has_stack || impl::tls::has_context) {
-    throw schedule_in_worker{};
-  }
-
-  // Initialize the non-worker's stack.
-  impl::tls::thread_stack.construct();
-  impl::tls::has_stack = true;
-
-  // Clean up the stack on exit.
-  LF_DEFER {
-    impl::tls::thread_stack.destroy();
-    impl::tls::has_stack = false;
-  };
-
-  future<async_result_t<F, Args...>> fut = {};
-
-  // Build a combinator, copies heap shared_ptr.
-  impl::y_combinate combinator = combinate<tag::root, modifier::none>(fut.m_heap, std::forward<F>(fun));
-  // This allocates a coroutine on this threads stack.
-  impl::quasi_awaitable await = std::move(combinator)(std::forward<Args>(args)...);
-  // Set the root semaphore.
-  await->set_root_sem(&fut.m_heap->sem);
-
-  // If this throws then `await` will clean up the coroutine.
-  impl::ignore_t{} = impl::tls::thread_stack->release();
-
-  // We will pass a pointer to this to .schedule()
-  fut.m_heap->node.emplace(std::bit_cast<impl::submit_t *>(await.get()));
-
-  // Schedule upholds the strong exception guarantee hence, if it throws `await` cleans up.
-  std::forward<Sch>(sch).schedule(&*fut.m_heap->node);
-  // If -^ didn't throw then we release ownership of the coroutine, it will be cleaned up by the worker.
-  impl::ignore_t{} = await.release();
-
-  return fut;
-}
-
-/**
- * @brief Schedule execution of `fun` on `sch` and wait (__block__) until the task is complete.
- *
- * This is the primary entry point from the synchronous to the asynchronous world. A typical libfork program
- * is expected to make a call from `main` into a scheduler/runtime by scheduling a single root-task with this
- * function.
- *
- * This makes the appropriate call to `lf::core::schedule` and calls `get` on the returned `lf::core::future`.
- */
-template <scheduler Sch, async_function_object F, class... Args>
-  requires rootable<F, Args...>
-auto sync_wait(Sch &&sch, F &&fun, Args &&...args) -> async_result_t<F, Args...> {
-  return schedule(std::forward<Sch>(sch), std::forward<F>(fun), std::forward<Args>(args)...).get();
-}
-
-/**
- * @brief Schedule execution of `fun` on `sch` and detach the future.
- *
- * This is the secondary entry point from the synchronous to the asynchronous world. Similar to `sync_wait`
- * but calls `detach` on the returned `lf::core::future`.
- *
- * __Note:__ Many schedulers (like `lf::lazy_pool` and `lf::busy_pool`) require all submitted work to
- * (including detached work) to complete before they are destructed.
- */
-template <scheduler Sch, async_function_object F, class... Args>
-  requires rootable<F, Args...>
-auto detach(Sch &&sch, F &&fun, Args &&...args) -> void {
-  return schedule(std::forward<Sch>(sch), std::forward<F>(fun), std::forward<Args>(args)...).detach();
-}
-
-} // namespace core
-
-} // namespace lf
-
-#endif /* AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A */
-
-
 
 #ifndef DE9399DB_593B_4C5C_A9D7_89B9F2FAB920
 #define DE9399DB_593B_4C5C_A9D7_89B9F2FAB920
@@ -5905,8 +6142,6 @@ struct promise_base : frame {
 template <returnable R, return_address_for<R> I, tag Tag>
 struct promise : promise_base, return_result<R, I> {
 
-  static_assert(Tag != tag::root || stash_exception_in_return<I>);
-
   /**
    * @brief Construct a new promise object, delegate to main constructor.
    */
@@ -5952,6 +6187,11 @@ struct promise : promise_base, return_result<R, I> {
   void unhandled_exception() noexcept {
     if constexpr (stash_exception_in_return<I>) {
       stash_exception(*(this->get_return()));
+    } else if constexpr (Tag == tag::root) {
+      // A root task has no parent so this exception will terminate the program.
+      // We currently ensure this never happens so we have this static assert to
+      // make sure.
+      static_assert(always_false<I>, "Root task can't propagate exception!");
     } else {
       this->parent()->capture_exception();
     }

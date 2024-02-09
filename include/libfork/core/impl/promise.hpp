@@ -273,8 +273,6 @@ struct promise_base : frame {
 template <returnable R, return_address_for<R> I, tag Tag>
 struct promise : promise_base, return_result<R, I> {
 
-  static_assert(Tag != tag::root || stash_exception_in_return<I>);
-
   /**
    * @brief Construct a new promise object, delegate to main constructor.
    */
@@ -320,6 +318,11 @@ struct promise : promise_base, return_result<R, I> {
   void unhandled_exception() noexcept {
     if constexpr (stash_exception_in_return<I>) {
       stash_exception(*(this->get_return()));
+    } else if constexpr (Tag == tag::root) {
+      // A root task has no parent so this exception will terminate the program.
+      // We currently ensure this never happens so we have this static assert to
+      // make sure.
+      static_assert(always_false<I>, "Root task can't propagate exception!");
     } else {
       this->parent()->capture_exception();
     }

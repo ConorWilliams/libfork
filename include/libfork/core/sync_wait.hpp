@@ -14,7 +14,7 @@
 #include <memory>      // for make_shared, shared_ptr
 #include <optional>    // for optional
 #include <semaphore>   // for binary_semaphore
-#include <type_traits> // for conditional_t
+#include <type_traits> // for is_trivially_destructible_v
 #include <utility>     // for forward, exchange
 
 #include "libfork/core/defer.hpp"                // for LF_DEFER
@@ -40,6 +40,61 @@
  */
 
 namespace lf {
+
+namespace impl {
+
+/**
+ * @brief State of a future.
+ */
+enum class future_state {
+  /**
+   * @brief Wait has not been called.
+   */
+  no_wait,
+  /**
+   * @brief The result is ready.
+   */
+  ready,
+  /**
+   * @brief The result has been retrievd.
+   */
+  retrievd,
+};
+
+/**
+ * @brief The shared state of a future.
+ */
+template <typename R>
+struct future_shared_state : try_eventually<R> {
+  /**
+   * @brief Inherit assignment operators.
+   */
+  using try_eventually<R>::operator=;
+
+  static_assert(std::is_trivially_destructible_v<submit_node_t>);
+  /**
+   * @brief The submit handle will point to this.
+   *
+   * We never call `.destroy()` on this but that is ok by the above `static_assert`.
+   */
+  manual_lifetime<submit_node_t> node;
+  /**
+   * @brief The root task's notification semaphore.
+   */
+  std::binary_semaphore sem{0};
+  /**
+   * @brief The state of the future.
+   */
+  future_state status = future_state::no_wait;
+};
+
+/**
+ * @brief An ``std::shared_pointer`` to a shared future state.
+ */
+template <typename R>
+using future_shared_state_ptr = std::shared_ptr<future_shared_state<R>>;
+
+} // namespace impl
 
 inline namespace core {
 
@@ -69,38 +124,19 @@ struct empty_future : std::exception {
 template <returnable R>
 class future {
 
-  future() = default;
-
-  using eventually_t = try_eventually<R>;
-
-  enum class state {
-    /**
-     * @brief Wait has not been called.
-     */
-    no_wait,
-    /**
-     * @brief The result is ready.
-     */
-    ready,
-    /**
-     * @brief The result has been retrievd.
-     */
-    retrievd,
-  };
-
-  struct heap : eventually_t {
-
-    using eventually_t::operator=;
-
-    std::optional<impl::submit_node_t> node; // Make default constructible.
-    std::binary_semaphore sem{0};            // Also needs to be on heap.
-    state status = state::no_wait;
-  };
+  using enum impl::future_state;
 
   /**
    * @brief The other half of the promise-future pair.
    */
-  std::shared_ptr<heap> m_heap = std::make_shared<heap>();
+  impl::future_shared_state_ptr<R> m_heap;
+
+  /**
+   * @brief Construct a new future object storing the shared state.
+   */
+  explicit future(impl::future_shared_state_ptr<R> &&heap) noexcept : m_heap{std::move(heap)} {
+    static_assert(std::is_nothrow_move_constructible_v<impl::future_shared_state_ptr<R>>);
+  }
 
   template <scheduler Sch, async_function_object F, class... Args>
     requires rootable<F, Args...>
@@ -127,7 +163,7 @@ class future {
    * @brief Wait (__block__) until the future completes if it has a shared state.
    */
   ~future() noexcept {
-    if (valid() && m_heap->status == state::no_wait) {
+    if (valid() && m_heap->status == no_wait) {
       m_heap->sem.acquire();
     }
   }
@@ -150,9 +186,9 @@ class future {
       LF_THROW(broken_future{});
     }
 
-    if (m_heap->status == state::no_wait) {
+    if (m_heap->status == no_wait) {
       m_heap->sem.acquire();
-      m_heap->status = state::ready;
+      m_heap->status = ready;
     }
   }
   /**
@@ -165,11 +201,11 @@ class future {
 
     wait();
 
-    if (m_heap->status == state::retrievd) {
+    if (m_heap->status == retrievd) {
       LF_THROW(empty_future{});
     }
 
-    m_heap->status = state::retrievd;
+    m_heap->status = retrievd;
 
     if (m_heap->has_exception()) {
       std::rethrow_exception(std::move(*m_heap).exception());
@@ -217,27 +253,27 @@ schedule(Sch &&sch, F &&fun, Args &&...args) -> future<async_result_t<F, Args...
     impl::tls::has_stack = false;
   };
 
-  future<async_result_t<F, Args...>> fut = {};
+  auto share_state = std::make_shared<impl::future_shared_state<async_result_t<F, Args...>>>();
 
   // Build a combinator, copies heap shared_ptr.
-  impl::y_combinate combinator = combinate<tag::root, modifier::none>(fut.m_heap, std::forward<F>(fun));
+  impl::y_combinate combinator = combinate<tag::root, modifier::none>(share_state, std::forward<F>(fun));
   // This allocates a coroutine on this threads stack.
   impl::quasi_awaitable await = std::move(combinator)(std::forward<Args>(args)...);
   // Set the root semaphore.
-  await->set_root_sem(&fut.m_heap->sem);
+  await->set_root_sem(&share_state->sem);
 
   // If this throws then `await` will clean up the coroutine.
   impl::ignore_t{} = impl::tls::thread_stack->release();
 
   // We will pass a pointer to this to .schedule()
-  fut.m_heap->node.emplace(std::bit_cast<impl::submit_t *>(await.get()));
+  share_state->node.construct(std::bit_cast<impl::submit_t *>(await.get()));
 
   // Schedule upholds the strong exception guarantee hence, if it throws `await` cleans up.
-  std::forward<Sch>(sch).schedule(&*fut.m_heap->node);
+  std::forward<Sch>(sch).schedule(share_state->node.data());
   // If -^ didn't throw then we release ownership of the coroutine, it will be cleaned up by the worker.
   impl::ignore_t{} = await.release();
 
-  return fut;
+  return future<async_result_t<F, Args...>>{std::move(share_state)}; // Shared state ownership transferred.
 }
 
 /**
