@@ -111,7 +111,7 @@ using extern_ret_ptr_t = detail::extern_ret_ptr_impl<R>::type;
 #define LF_EXTERN_FWD_DECL(R, f, ...)                                                                        \
   namespace f##_impl {                                                                                       \
     struct f##_fn {                                                                                          \
-      LF_STATIC_CALL auto operator()(auto __VA_OPT__(, ) __VA_ARGS__) LF_STATIC_CONST->::lf::task<R>;        \
+      LF_STATIC_CALL ::lf::task<R> operator()(auto __VA_OPT__(, ) __VA_ARGS__) LF_STATIC_CONST;              \
     };                                                                                                       \
   }                                                                                                          \
   inline constexpr auto f = ::lf::impl::extern_shim<R, f##_impl::f##_fn> {}
@@ -119,7 +119,7 @@ using extern_ret_ptr_t = detail::extern_ret_ptr_impl<R>::type;
  * @brief Instantiate the extern'ed function for a specific call type and return type.
  */
 #define LF_INSTANTIATE_SELF(R, f, head, ...)                                                                 \
-  template auto f##_impl::f##_fn::operator()<head>(head __VA_OPT__(, ) __VA_ARGS__) -> ::lf::task<R>
+  template ::lf::task<R> f##_impl::f##_fn::operator()<head>(head __VA_OPT__(, ) __VA_ARGS__) LF_STATIC_CONST
 /**
  * @brief Build the first argument for the extern'ed function.
  */
@@ -191,7 +191,7 @@ using extern_ret_ptr_t = detail::extern_ret_ptr_impl<R>::type;
   LF_INSTANTIATE_RETURNS(/* nodecl */, R, f, ::lf::tag::call __VA_OPT__(, ) __VA_ARGS__);                    \
   LF_INSTANTIATE_RETURNS(/* nodecl */, R, f, ::lf::tag::fork __VA_OPT__(, ) __VA_ARGS__);                    \
   LF_INSTANTIATE(R, f, ::lf::impl::future_shared_state_ptr<R>, ::lf::tag::root __VA_OPT__(, ) __VA_ARGS__);  \
-  auto f##_impl::f##_fn::operator() LF_STATIC_CONST(auto self __VA_OPT__(, ) __VA_ARGS__) -> ::lf::task<R>
+  ::lf::task<R> f##_impl::f##_fn::operator()(auto self __VA_OPT__(, ) __VA_ARGS__) LF_STATIC_CONST
 
 /**
  * @brief See ``LF_FWD_DECL`` for usage.
