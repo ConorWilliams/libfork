@@ -14,8 +14,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#ifndef B3512749_D678_438A_8E60_B1E880CF6C23
-#define B3512749_D678_438A_8E60_B1E880CF6C23
+#ifndef A6BE090F_9077_40E8_9B57_9BAFD9620469
+#define A6BE090F_9077_40E8_9B57_9BAFD9620469
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
 
@@ -25,8 +25,25 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#ifndef D336C448_D1EE_4616_9277_E0D7D550A10A
-#define D336C448_D1EE_4616_9277_E0D7D550A10A
+#ifndef A951FB73_0FCF_4B7C_A997_42B7E87D21CB
+#define A951FB73_0FCF_4B7C_A997_42B7E87D21CB
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <array>       // for tuple_element, tuple_size
+#include <concepts>    // for default_initializable
+#include <cstddef>     // for size_t
+#include <memory>      // for destroy
+#include <span>        // for span
+#include <type_traits> // for integral_constant, type_identity
+
+#ifndef CF97E524_27A6_4CD9_8967_39F1B1BE97B6
+#define CF97E524_27A6_4CD9_8967_39F1B1BE97B6
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
 
@@ -36,71 +53,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <concepts>    // for copy_constructible, same_as, common_reference_with
-#include <iterator>    // for indirectly_readable, iter_reference_t, indirectly_...
-#include <type_traits> // for decay_t, false_type, invoke_result, remove_cvref_t
-
-#ifndef A5349E86_5BAA_48EF_94E9_F0EBF630DE04
-#define A5349E86_5BAA_48EF_94E9_F0EBF630DE04
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>    // for invocable, same_as
-#include <iterator>    // for indirectly_writable
-#include <type_traits> // for remove_cvref_t, true_type, type_identity, invoke_...
-
-#ifndef B7972761_4CBF_4B86_B195_F754295372BF
-#define B7972761_4CBF_4B86_B195_F754295372BF
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>    // for constructible_from
-#include <exception>   // for exception_ptr, current_exception
-#include <memory>      // for destroy_at, construct_at
-#include <type_traits> // for add_lvalue_reference_t, add_pointer_t, type_id...
-#include <utility>     // for addressof, forward
-
-#ifndef C258EF4A_BC44_487A_96BC_6E72746DAAFD
-#define C258EF4A_BC44_487A_96BC_6E72746DAAFD
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>    // for same_as
-#include <type_traits> // for true_type, false_type
-
-#ifndef DD0B4328_55BD_452B_A4A5_5A4670A6217B
-#define DD0B4328_55BD_452B_A4A5_5A4670A6217B
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>    // for invocable, constructible_from, convertible_to
-#include <functional>  // for invoke
-#include <type_traits> // for invoke_result_t, remove_cvref_t, false_type
-#include <utility>     // for forward
+#include <stdexcept> // for runtime_error
+#include <utility>   // for move
 
 #ifndef D66BBECE_E467_4EB6_B74A_AAA2E7256E02
 #define D66BBECE_E467_4EB6_B74A_AAA2E7256E02
@@ -2455,20 +2409,6 @@ class full_context : public worker_context {
 
 #endif /* D66BBECE_E467_4EB6_B74A_AAA2E7256E02 */
 
-  // for worker_context, full_context
-#ifndef CF97E524_27A6_4CD9_8967_39F1B1BE97B6
-#define CF97E524_27A6_4CD9_8967_39F1B1BE97B6
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <stdexcept> // for runtime_error
-#include <utility>   // for move
           // for full_context, worker_context, nullary_f... // for manual_lifetime           // for stack                // for LF_CLANG_TLS_NOINLINE, LF_THROW, LF_ASSERT
 
 /**
@@ -2612,7 +2552,172 @@ inline LF_CLANG_TLS_NOINLINE void finalize(worker_context *worker) {
 
 #endif /* CF97E524_27A6_4CD9_8967_39F1B1BE97B6 */
 
-      // for context   // for frame // for unqualified, different_from        // for LF_COMPILER_EXCEPTIONS, LF_FORCEINLINE
+      // for stack   // for frame   // for stack // for immovable, k_new_align
+
+/**
+ * @file co_alloc.hpp
+ *
+ * @brief Expert-only utilities to interact with a coroutines stack.
+ */
+
+namespace lf {
+
+inline namespace core {
+
+/**
+ * @brief Check is a type is suitable for allocation on libfork's stacks.
+ *
+ * This requires the type to be `std::default_initializable<T>` and have non-new-extended alignment.
+ */
+template <typename T>
+concept co_allocable = std::default_initializable<T> && alignof(T) <= impl::k_new_align;
+
+} // namespace core
+
+namespace impl {
+
+/**
+ * @brief An awaitable (in the context of an ``lf::task``) which triggers stack allocation.
+ */
+template <co_allocable T>
+struct [[nodiscard("This object should be co_awaited")]] co_new_t {
+  /**
+   * @brief The number of elements to allocate.
+   */
+  std::size_t count;
+};
+
+} // namespace impl
+
+inline namespace core {
+
+/**
+ * @brief The result of `co_await`ing the result of ``lf::core::co_new``.
+ *
+ * A raii wrapper around a ``std::span`` pointing to the memory allocated on the stack.
+ * This type can be destructured into a ``std::span`` to the allocated memory.
+ */
+template <co_allocable T>
+class stack_allocated : impl::immovable<stack_allocated<T>> {
+ public:
+  /**
+   * @brief Construct a new co allocated object.
+   */
+  stack_allocated(impl::frame *frame, std::span<T> span) noexcept : m_frame{frame}, m_span{span} {}
+
+  /**
+   * @brief Get a span over the allocated memory.
+   */
+  template <std::size_t I>
+    requires (I == 0)
+  [[nodiscard]] auto get() noexcept -> std::span<T> {
+    return m_span;
+  }
+
+  /**
+   * @brief Get a span over the allocated memory.
+   */
+  template <std::size_t I>
+    requires (I == 0)
+  [[nodiscard]] auto get() const noexcept -> std::span<T const> {
+    return m_span;
+  }
+
+  /**
+   * @brief Destroys objects and releases the memory.
+   */
+  ~stack_allocated() noexcept {
+    std::ranges::destroy(m_span);
+    auto *stack = impl::tls::stack();
+    stack->deallocate(m_span.data());
+    m_frame->reset_stacklet(stack->top());
+  }
+
+ private:
+  impl::frame *m_frame;
+  std::span<T> m_span;
+};
+
+} // namespace core
+
+} // namespace lf
+
+#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
+
+template <lf::co_allocable T>
+struct std::tuple_size<lf::stack_allocated<T>> : std::integral_constant<std::size_t, 1> {};
+
+template <lf::co_allocable T>
+struct std::tuple_size<lf::stack_allocated<T> const> : std::integral_constant<std::size_t, 1> {};
+
+template <lf::co_allocable T>
+struct std::tuple_element<0, lf::stack_allocated<T>> : std::type_identity<std::span<T>> {};
+
+template <lf::co_allocable T>
+struct std::tuple_element<0, lf::stack_allocated<T> const> : std::type_identity<std::span<T const>> {};
+
+#endif
+
+namespace lf {
+
+inline namespace core {
+
+/**
+ * @brief A function which returns an awaitable which triggers allocation on a worker's stack.
+ *
+ * Upon ``co_await``ing the result of this function an ``lf::stack_allocated`` object is returned.
+ *
+ * \rst
+ *
+ * .. warning::
+ *    This must be called __outside__ of a fork-join scope and is an expert only feature!
+ *
+ * \endrst
+ *
+ */
+template <co_allocable T>
+[[nodiscard]] auto co_new(std::size_t count) -> impl::co_new_t<T> {
+  return impl::co_new_t<T>{count};
+}
+
+} // namespace core
+
+} // namespace lf
+
+#endif /* A951FB73_0FCF_4B7C_A997_42B7E87D21CB */
+
+
+
+#ifndef E8D38B49_7170_41BC_90E9_6D6389714304
+#define E8D38B49_7170_41BC_90E9_6D6389714304
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <utility> // for forward
+#include <version> // for __cpp_multidimensional_subscript
+
+#ifndef DD0B4328_55BD_452B_A4A5_5A4670A6217B
+#define DD0B4328_55BD_452B_A4A5_5A4670A6217B
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>    // for invocable, constructible_from, convertible_to
+#include <functional>  // for invoke
+#include <type_traits> // for invoke_result_t, remove_cvref_t, false_type
+#include <utility>     // for forward
+  // for worker_context, full_context      // for context   // for frame // for unqualified, different_from        // for LF_COMPILER_EXCEPTIONS, LF_FORCEINLINE
 #ifndef A75DC3F0_D0C3_4669_A901_0B22556C873C
 #define A75DC3F0_D0C3_4669_A901_0B22556C873C
 
@@ -2826,11 +2931,11 @@ namespace impl::detail {
  * @tparam Qual The Qualified version of `F`.
  */
 template <typename F, typename Qual>
-concept async_function_object_impl =             //
-    unqualified<F> &&                            // We store the unqualified type.
-    (std::is_union_v<F> || std::is_class_v<F>)&& // Only classes/unions can have templated `operator()`.
-    std::move_constructible<F> &&                // Must be able to move a value.
-    std::copy_constructible<F>;                  // Must be able to copy a value.
+concept async_function_object_impl =              //
+    unqualified<F> &&                             // We store the unqualified type.
+    (std::is_union_v<F> || std::is_class_v<F>) && // Only classes/unions can have templated `operator()`.
+    std::move_constructible<F> &&                 // Must be able to move a value.
+    std::copy_constructible<F>;                   // Must be able to copy a value.
 
 } // namespace impl::detail
 
@@ -2917,7 +3022,7 @@ class first_arg_t {
   /**
    * @brief Construct a first_arg_t from an async function object.
    */
-  template <different_from<first_arg_t> T>
+  template <different_from<first_arg_t> T = F>
     requires std::constructible_from<F, T>
   explicit first_arg_t(T &&expr) noexcept(std::is_nothrow_constructible_v<F, T>)
       : m_fun(std::forward<T>(expr)) {}
@@ -3018,6 +3123,100 @@ concept first_arg_specialization = detail::is_first_arg_specialization<std::remo
 
 #endif /* DD0B4328_55BD_452B_A4A5_5A4670A6217B */
 
+      // for async_function_object, quasi_pointer
+#ifndef AD9A2908_3043_4CEC_9A2A_A57DE168DF19
+#define AD9A2908_3043_4CEC_9A2A_A57DE168DF19
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>    // for same_as
+#include <type_traits> // for remove_cvref_t
+#include <utility>     // for forward, as_const
+         // for async_function_object, quasi_pointer, firs...
+#ifndef A7699F23_E799_46AB_B1E0_7EA36053AD41
+#define A7699F23_E799_46AB_B1E0_7EA36053AD41
+
+#include <coroutine> // for coroutine_handle
+#include <memory>    // for unique_ptr
+   // for frame // for non_null        // for LF_STATIC_CALL
+
+/**
+ * @file unique_frame.hpp
+ *
+ * @brief A unique pointer that owns a coroutine frame.
+ */
+
+namespace lf::impl {
+
+namespace detail {
+
+struct frame_deleter {
+  LF_STATIC_CALL void operator()(frame *frame) noexcept { non_null(frame)->self().destroy(); }
+};
+
+} // namespace detail
+
+/**
+ * @brief A unique pointer (with a custom deleter) that owns a coroutine frame.
+ */
+using unique_frame = std::unique_ptr<frame, detail::frame_deleter>;
+
+} // namespace lf::impl
+
+#endif /* A7699F23_E799_46AB_B1E0_7EA36053AD41 */
+
+ // for unique_frame      // for unqualified, immovable
+#ifndef A5349E86_5BAA_48EF_94E9_F0EBF630DE04
+#define A5349E86_5BAA_48EF_94E9_F0EBF630DE04
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>    // for invocable, same_as
+#include <iterator>    // for indirectly_writable
+#include <type_traits> // for remove_cvref_t, true_type, type_identity, invoke_...
+
+#ifndef B7972761_4CBF_4B86_B195_F754295372BF
+#define B7972761_4CBF_4B86_B195_F754295372BF
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>    // for constructible_from
+#include <exception>   // for exception_ptr, current_exception
+#include <memory>      // for destroy_at, construct_at
+#include <type_traits> // for add_lvalue_reference_t, add_pointer_t, type_id...
+#include <utility>     // for addressof, forward
+
+#ifndef C258EF4A_BC44_487A_96BC_6E72746DAAFD
+#define C258EF4A_BC44_487A_96BC_6E72746DAAFD
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>    // for same_as
+#include <type_traits> // for true_type, false_type
  // for referenceable
 
 /**
@@ -3083,39 +3282,6 @@ concept safe_ref_bind_to =                          //
 
 #include <concepts>    // for movable
 #include <type_traits> // for type_identity
-
-#ifndef A7699F23_E799_46AB_B1E0_7EA36053AD41
-#define A7699F23_E799_46AB_B1E0_7EA36053AD41
-
-#include <coroutine> // for coroutine_handle
-#include <memory>    // for unique_ptr
-   // for frame // for non_null        // for LF_STATIC_CALL
-
-/**
- * @file unique_frame.hpp
- *
- * @brief A unique pointer that owns a coroutine frame.
- */
-
-namespace lf::impl {
-
-namespace detail {
-
-struct frame_deleter {
-  LF_STATIC_CALL void operator()(frame *frame) noexcept { non_null(frame)->self().destroy(); }
-};
-
-} // namespace detail
-
-/**
- * @brief A unique pointer (with a custom deleter) that owns a coroutine frame.
- */
-using unique_frame = std::unique_ptr<frame, detail::frame_deleter>;
-
-} // namespace lf::impl
-
-#endif /* A7699F23_E799_46AB_B1E0_7EA36053AD41 */
-
  // for unique_frame      // for immovable             // for LF_CORO_ATTRIBUTES
 
 /**
@@ -3927,429 +4093,7 @@ using async_result_t = typename async_result<F, Args...>::type;
 
 #endif /* A5349E86_5BAA_48EF_94E9_F0EBF630DE04 */
 
- // for async_invocable, async_regular_invocable, async_re...
-
-/**
- * @file constraints.hpp
- *
- * @brief Variations of the standard library's concepts used for constraining algorithms.
- */
-
-namespace lf {
-
-// ------------------------------------  either invocable ------------------------------------ //
-
-/**
- * @brief Test if "F" is async invocable __xor__ normally invocable with ``Args...``.
- */
-template <typename F, typename... Args>
-concept invocable = (std::invocable<F, Args...> || async_invocable<F, Args...>)&&!(
-    std::invocable<F, Args...> && async_invocable<F, Args...>);
-
-/**
- * @brief Test if "F" is regularly async invocable __xor__ normally invocable invocable with ``Args...``.
- */
-template <typename F, typename... Args>
-concept regular_invocable = (std::regular_invocable<F, Args...> || async_regular_invocable<F, Args...>)&&!(
-    std::regular_invocable<F, Args...> && async_regular_invocable<F, Args...>);
-
-// ------------------------------------  either result type ------------------------------------ //
-
-namespace detail {
-
-template <typename F, typename... Args>
-struct either_invocable_result;
-
-template <typename F, typename... Args>
-  requires async_invocable<F, Args...>
-struct either_invocable_result<F, Args...> : async_result<F, Args...> {};
-
-template <typename F, typename... Args>
-  requires std::invocable<F, Args...>
-struct either_invocable_result<F, Args...> : std::invoke_result<F, Args...> {};
-
-} // namespace detail
-
-/**
- * @brief The result of invoking a regular-or-async function.
- *
- * If F is a regular function then this is the same as `std::invoke_result<F, Args...>`. Otherwise,
- * if F is an async function then this is the same as `lf::core::invoke_result_t<F, Args...>`.
- */
-template <typename F, typename... Args>
-  requires invocable<F, Args...>
-using invoke_result_t = typename detail::either_invocable_result<F, Args...>::type;
-
-// ------------------------------------ indirect_value_t ------------------------------------ //
-
-namespace detail {
-
-/**
- * @brief Base case for regular iterators.
- */
-template <typename I>
-struct indirect_value_impl {
-  using type = std::iter_value_t<I> &;
-};
-
-/**
- * @brief Specialization for projected iterators.
- */
-template <typename Proj>
-  requires requires { typename Proj::secret_projected_indirect_value; }
-struct indirect_value_impl<Proj> : Proj::secret_projected_indirect_value {};
-
-} // namespace detail
-
-/**
- * @brief From [P2609R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2609r3.html), the
- * referenced value type.
- *
- * Relaxes some constraints for ``lf::core::indirectly_unary_invocable`` Specifically: `indirect_value_t<I>`
- * must be `std::iter_value_t<I> &` for an iterator and `invoke_result_t<Proj &, indirect_value_t<Iter>>` for
- * `projected<Proj, Iter>`.
- */
-template <std::indirectly_readable I>
-using indirect_value_t = typename detail::indirect_value_impl<I>::type;
-
-// ------------------------------- indirectly_unary_invocable ------------------------------- //
-
-/**
- * @brief ``std::indirectly_unary_invocable` that accepts async and regular function.
- *
- * This uses the relaxed version from
- * [P2997R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2997r0.html#ref-LWG3859) and the
- * further relaxation from [P2609R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2609r3.html)
- */
-template <class F, class I>
-concept indirectly_unary_invocable = std::indirectly_readable<I> &&                     //
-                                     std::copy_constructible<F> &&                      //
-                                     invocable<F &, indirect_value_t<I>> &&             //
-                                     invocable<F &, std::iter_reference_t<I>> &&        //
-                                     std::common_reference_with<                        //
-                                         invoke_result_t<F &, indirect_value_t<I>>,     //
-                                         invoke_result_t<F &, std::iter_reference_t<I>> //
-                                         >;
-
-/**
- * @brief ``std::indirectly_regular_unary_invocable` that accepts async and regular function.
- *
- * This uses the relaxed version from
- * [P2997R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2997r0.html#ref-LWG3859) and the
- * further relaxation from [P2609R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2609r3.html)
- *
- * __Hint:__ `indirect_value_t<I> = invoke_result_t<proj &, std::iter_value_t<I> &>` for 1-projected
- * iterators.
- */
-template <class F, class I>
-concept indirectly_regular_unary_invocable = std::indirectly_readable<I> &&                      //
-                                             std::copy_constructible<F> &&                       //
-                                             regular_invocable<F &, indirect_value_t<I>> &&      //
-                                             regular_invocable<F &, std::iter_reference_t<I>> && //
-                                             std::common_reference_with<                         //
-                                                 invoke_result_t<F &, indirect_value_t<I>>,      //
-                                                 invoke_result_t<F &, std::iter_reference_t<I>>  //
-                                                 >;
-
-// ------------------------------------ indirect_result_t ------------------------------------ //
-
-/**
- * @brief A variation of `std::indirect_result_t` that accepts async and regular function.
- */
-template <class F, class... Is>
-  requires (std::indirectly_readable<Is> && ...) && invocable<F, std::iter_reference_t<Is>...>
-using indirect_result_t = invoke_result_t<F, std::iter_reference_t<Is>...>;
-
-// ------------------------------------ projected ------------------------------------ //
-
-namespace detail {
-
-template <class I>
-struct conditional_difference_type {};
-
-template <std::weakly_incrementable I>
-struct conditional_difference_type<I> {
-  using difference_type = std::iter_difference_t<I>;
-};
-
-template <class I, class Proj>
-struct projected_impl {
-  /**
-   * @brief An ADL barrier.
-   */
-  struct projected_iterator : conditional_difference_type<I> {
-    /**
-     * @brief The value_type of the projected iterator.
-     */
-    using value_type = std::remove_cvref_t<indirect_result_t<Proj &, I>>;
-    /**
-     * @brief Not defined.
-     */
-    auto operator*() const -> indirect_result_t<Proj &, I>;
-    /**
-     * @brief For internal use only!
-     */
-    struct secret_projected_indirect_value {
-      using type = invoke_result_t<Proj &, indirect_value_t<I>>;
-    };
-  };
-};
-
-/**
- * @brief A variation of `std::projected` that accepts async/regular function.
- */
-template <std::indirectly_readable I, indirectly_regular_unary_invocable<I> Proj>
-using project_once = typename detail::projected_impl<I, Proj>::projected_iterator;
-
-template <typename...>
-struct compose_projection {};
-
-template <std::indirectly_readable I>
-struct compose_projection<I> : std::type_identity<I> {};
-
-template <std::indirectly_readable I, indirectly_regular_unary_invocable<I> Proj, typename... Other>
-struct compose_projection<I, Proj, Other...> : compose_projection<project_once<I, Proj>, Other...> {};
-
-//
-
-template <typename...>
-struct composable : std::false_type {};
-
-template <std::indirectly_readable I>
-struct composable<I> : std::true_type {};
-
-template <std::indirectly_readable I, indirectly_regular_unary_invocable<I> Proj, typename... Other>
-struct composable<I, Proj, Other...> : composable<project_once<I, Proj>, Other...> {};
-
-template <typename I, typename... Proj>
-concept indirectly_composable = std::indirectly_readable<I> && composable<I, Proj...>::value;
-
-} // namespace detail
-
-/**
- * @brief A variation of `std::projected` that accepts async/regular functions and composes projections.
- */
-template <std::indirectly_readable I, typename... Proj>
-  requires detail::indirectly_composable<I, Proj...>
-using projected = typename detail::compose_projection<I, Proj...>::type;
-
-// Quick test
-
-static_assert(std::same_as<indirect_value_t<int *>, int &>);
-static_assert(std::same_as<indirect_value_t<projected<int *, int (*)(int &)>>, int>);
-
-// ---------------------------------- Semigroup  helpers ---------------------------------- //
-
-namespace impl {
-
-/**
- * @brief Verify `F` is invocable with `Args...` and returns `R`.
- */
-template <typename R, typename F, typename... Args>
-concept regular_invocable_returns =
-    regular_invocable<F, Args...> && std::same_as<R, invoke_result_t<F, Args...>>;
-
-} // namespace impl
-
-// ---------------------------------- Semigroup ---------------------------------- //
-
-/**
- * @brief A semigroup is a set `S` and an associative binary operation `·`, such that `S` is closed under `·`.
- *
- * Associativity means that for all `a, b, c` in `S`, `(a · b) · c = a · (b · c)`.
- *
- * Example: `(Z, +)` is a semigroup, since we can add any two integers and the result is also an integer.
- *
- * Example: `(Z, /)` is not a semigroup, since `2/3` s not an integer.
- *
- * Example: `(Z, -)` is not a semigroup, since `(1 - 1) - 1 != 1 - (1 - 1)`.
- *
- * Let `t`, `u` and `bop` be objects of types `T`, `U` and `Bop` respectively. Then the following expressions
- * must be valid:
- *
- * 1. `bop(t, t)`
- * 2. `bop(u, u)`
- * 3. `bop(u, t)`
- * 4. `bop(t, u)`
- *
- * Additionally, the expressions must return the same type, `R`.
- *
- * __Note:__ A semigroup requires all invocations to be regular. This is a semantic requirement only.
- */
-template <class Bop, class T, class U>
-concept semigroup =
-    regular_invocable<Bop, T, T> &&                                           // Pure invocations
-    regular_invocable<Bop, U, U> &&                                           //
-    std::same_as<invoke_result_t<Bop, T, T>, invoke_result_t<Bop, U, U>> &&   //
-    impl::regular_invocable_returns<invoke_result_t<Bop, T, T>, Bop, T, U> && // Mixed invocations
-    impl::regular_invocable_returns<invoke_result_t<Bop, U, U>, Bop, U, T>;   //
-
-// ------------------------------------ Foldable ------------------------------------ //
-
-namespace detail {
-
-template <class Acc, class Bop, class T>
-concept foldable_to =                                        //
-    std::movable<Acc> &&                                     //
-    semigroup<Bop, Acc, T> &&                                //
-    std::constructible_from<Acc, T> &&                       //
-    std::convertible_to<T, Acc> &&                           //
-    std::assignable_from<Acc &, invoke_result_t<Bop, T, T>>; //
-
-template <class Acc, class Bop, class I>
-concept indirectly_foldable_to =                                       //
-    std::indirectly_readable<I> &&                                     //
-    std::copy_constructible<Bop> &&                                    //
-    semigroup<Bop &, indirect_value_t<I>, std::iter_reference_t<I>> && //
-    foldable_to<Acc, Bop &, indirect_value_t<I>> &&                    //
-    foldable_to<Acc, Bop &, std::iter_reference_t<I>>;                 //
-
-} // namespace detail
-
-/**
- * @brief Test if a binary operation supports a fold operation over a type.
- *
- * The binary operation must be associative but not necessarily commutative.
- *
- * This means a collection of one or more values of type `T` can be folded to a single value
- * of type `Acc` equal to `std::decay_t<semigroup_t<Bop, T>>` using `bop`, an operator of type `Bop`.
- *
- * For example using the infix notation `a · b` to mean `bop(a, b)`:
- *
- * 1. `fold bop [a] = a`
- * 2. `fold bop [a, b] = a · b`
- * 3. `fold bop [a, b, c] = a · b · c`
- * 4. `fold bop [a, b, c, ...] = a · b · c · ...`
- *
- * The order of evaluation is unspecified but the elements will not be reordered.
- *
- * @tparam Bop Associative binary operator.
- * @tparam I Input type
- */
-template <class Bop, class T>
-concept foldable =                                                         //
-    invocable<Bop, T, T> &&                                                //
-    detail::foldable_to<std::decay_t<invoke_result_t<Bop, T, T>>, Bop, T>; //
-
-/**
- * @brief An indirect version of `lf::foldable`.
- *
- * @tparam Bop Associative binary operator.
- * @tparam I Input iterator.
- */
-template <class Bop, class I>
-concept indirectly_foldable =                                                             //
-    std::indirectly_readable<I> &&                                                        //
-    std::copy_constructible<Bop> &&                                                       //
-    invocable<Bop &, std::iter_reference_t<I>, std::iter_reference_t<I>> &&               //
-    detail::indirectly_foldable_to<std::decay_t<indirect_result_t<Bop &, I, I>>, Bop, I>; //
-
-/**
- * @brief Compute the accumulator/result type for a fold operation.
- */
-template <class Bop, std::random_access_iterator I, class Proj>
-  requires indirectly_foldable<Bop, projected<I, Proj>>
-using indirect_fold_acc_t = std::decay_t<indirect_result_t<Bop &, projected<I, Proj>, projected<I, Proj>>>;
-
-namespace detail {
-
-template <class Acc, class Bop, class O>
-concept scannable_impl =
-    std::indirectly_writable<O, Acc> &&                                            // Write result of fold.
-    semigroup<Bop &, std::iter_reference_t<O>, std::iter_rvalue_reference_t<O>> && // Scan/reduce over O.
-    std::indirectly_writable<O, indirect_result_t<Bop &, O, O>> &&                 //   Write result of -^.
-    std::indirectly_writable<O, Acc &> &&                                          // Copy acc in scan.
-    std::constructible_from<Acc, std::iter_reference_t<O>> &&                      // Initialize acc in scan.
-    std::convertible_to<std::iter_reference_t<O>, Acc>;                            // Same as -^.
-
-} // namespace detail
-
-/**
- * @brief Test if a binary operation supports a scan operation over a type.
- *
- * The binary operation must be associative but not necessarily commutative.
- *
- * @tparam Bop The binary operation.
- * @tparam O The output iterator.
- * @tparam T The value type to scan over.
- */
-template <class Bop, class O, class T>
-concept scannable =                                       //
-    std::indirectly_readable<O> &&                        //
-    std::indirectly_writable<O, T> &&                     // n = 1 case.
-    detail::foldable_to<std::iter_value_t<O>, Bop, T> &&  // Regular reduction over T.
-    detail::scannable_impl<std::iter_value_t<O>, Bop, O>; //
-
-/**
- * @brief An indirect version of `lf::scannable` over an iterator.
- *
- * @tparam Bop The binary operation.
- * @tparam O The output iterator.
- * @tparam T The input iterator.
- */
-template <class Bop, class O, class I>
-concept indirectly_scannable =
-    std::indirectly_readable<O> &&                                  //
-    std::indirectly_readable<I> &&                                  //
-    std::copy_constructible<Bop> &&                                 //
-    std::indirectly_writable<O, indirect_value_t<I>> &&             // n = 1 case.
-    std::indirectly_writable<O, std::iter_reference_t<I>> &&        //   -^.
-    detail::indirectly_foldable_to<std::iter_value_t<O>, Bop, I> && // Regular reduction over T.
-    detail::scannable_impl<std::iter_value_t<O>, Bop, O>;
-
-} // namespace lf
-
-#endif /* D336C448_D1EE_4616_9277_E0D7D550A10A */
-
-
-#ifndef B29F7CE3_05ED_4A3D_A464_CBA0454226F0
-#define B29F7CE3_05ED_4A3D_A464_CBA0454226F0
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>    // for invocable
-#include <functional>  // for identity, invoke
-#include <iterator>    // for random_access_iterator, sized_sentinel_for
-#include <optional>    // for nullopt, optional
-#include <ranges>      // for begin, end, iterator_t, empty, random_acces...
-#include <type_traits> // for decay_t
- // for projected, indirect_fold_acc_t, indirectly_...
-
-#ifndef E8D38B49_7170_41BC_90E9_6D6389714304
-#define E8D38B49_7170_41BC_90E9_6D6389714304
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <utility> // for forward
-#include <version> // for __cpp_multidimensional_subscript
-      // for async_function_object, quasi_pointer
-#ifndef AD9A2908_3043_4CEC_9A2A_A57DE168DF19
-#define AD9A2908_3043_4CEC_9A2A_A57DE168DF19
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>    // for same_as
-#include <type_traits> // for remove_cvref_t
-#include <utility>     // for forward, as_const
-         // for async_function_object, quasi_pointer, firs... // for unique_frame      // for unqualified, immovable         // for async_result_t, return_address_for, async_...               // for tag, modifier_for              // for returnable, task
+         // for async_result_t, return_address_for, async_...               // for tag, modifier_for              // for returnable, task
 
 /**
  * @file combinate.hpp
@@ -4621,7 +4365,7 @@ inline constexpr auto call = dispatch<tag::call>;
 
 #endif /* E8D38B49_7170_41BC_90E9_6D6389714304 */
 
-     // for call, fork, join, dispatch       // for eventually
+
 #ifndef DE1C62F1_949F_48DC_BC2C_960C4439332D
 #define DE1C62F1_949F_48DC_BC2C_960C4439332D
 
@@ -4660,157 +4404,6 @@ inline constexpr auto call = dispatch<tag::call>;
 #include <span>        // for span
 #include <type_traits> // for remove_cvref_t
 #include <utility>     // for exchange
-
-#ifndef A951FB73_0FCF_4B7C_A997_42B7E87D21CB
-#define A951FB73_0FCF_4B7C_A997_42B7E87D21CB
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <array>       // for tuple_element, tuple_size
-#include <concepts>    // for default_initializable
-#include <cstddef>     // for size_t
-#include <memory>      // for destroy
-#include <span>        // for span
-#include <type_traits> // for integral_constant, type_identity
-      // for stack   // for frame   // for stack // for immovable, k_new_align
-
-/**
- * @file co_alloc.hpp
- *
- * @brief Expert-only utilities to interact with a coroutines stack.
- */
-
-namespace lf {
-
-inline namespace core {
-
-/**
- * @brief Check is a type is suitable for allocation on libfork's stacks.
- *
- * This requires the type to be `std::default_initializable<T>` and have non-new-extended alignment.
- */
-template <typename T>
-concept co_allocable = std::default_initializable<T> && alignof(T) <= impl::k_new_align;
-
-} // namespace core
-
-namespace impl {
-
-/**
- * @brief An awaitable (in the context of an ``lf::task``) which triggers stack allocation.
- */
-template <co_allocable T>
-struct [[nodiscard("This object should be co_awaited")]] co_new_t {
-  /**
-   * @brief The number of elements to allocate.
-   */
-  std::size_t count;
-};
-
-} // namespace impl
-
-inline namespace core {
-
-/**
- * @brief The result of `co_await`ing the result of ``lf::core::co_new``.
- *
- * A raii wrapper around a ``std::span`` pointing to the memory allocated on the stack.
- * This type can be destructured into a ``std::span`` to the allocated memory.
- */
-template <co_allocable T>
-class stack_allocated : impl::immovable<stack_allocated<T>> {
- public:
-  /**
-   * @brief Construct a new co allocated object.
-   */
-  stack_allocated(impl::frame *frame, std::span<T> span) noexcept : m_frame{frame}, m_span{span} {}
-
-  /**
-   * @brief Get a span over the allocated memory.
-   */
-  template <std::size_t I>
-    requires (I == 0)
-  [[nodiscard]] auto get() noexcept -> std::span<T> {
-    return m_span;
-  }
-
-  /**
-   * @brief Get a span over the allocated memory.
-   */
-  template <std::size_t I>
-    requires (I == 0)
-  [[nodiscard]] auto get() const noexcept -> std::span<T const> {
-    return m_span;
-  }
-
-  /**
-   * @brief Destroys objects and releases the memory.
-   */
-  ~stack_allocated() noexcept {
-    std::ranges::destroy(m_span);
-    auto *stack = impl::tls::stack();
-    stack->deallocate(m_span.data());
-    m_frame->reset_stacklet(stack->top());
-  }
-
- private:
-  impl::frame *m_frame;
-  std::span<T> m_span;
-};
-
-} // namespace core
-
-} // namespace lf
-
-#ifndef LF_DOXYGEN_SHOULD_SKIP_THIS
-
-template <lf::co_allocable T>
-struct std::tuple_size<lf::stack_allocated<T>> : std::integral_constant<std::size_t, 1> {};
-
-template <lf::co_allocable T>
-struct std::tuple_size<lf::stack_allocated<T> const> : std::integral_constant<std::size_t, 1> {};
-
-template <lf::co_allocable T>
-struct std::tuple_element<0, lf::stack_allocated<T>> : std::type_identity<std::span<T>> {};
-
-template <lf::co_allocable T>
-struct std::tuple_element<0, lf::stack_allocated<T> const> : std::type_identity<std::span<T const>> {};
-
-#endif
-
-namespace lf {
-
-inline namespace core {
-
-/**
- * @brief A function which returns an awaitable which triggers allocation on a worker's stack.
- *
- * Upon ``co_await``ing the result of this function an ``lf::stack_allocated`` object is returned.
- *
- * \rst
- *
- * .. warning::
- *    This must be called __outside__ of a fork-join scope and is an expert only feature!
- *
- * \endrst
- *
- */
-template <co_allocable T>
-[[nodiscard]] auto co_new(std::size_t count) -> impl::co_new_t<T> {
-  return impl::co_new_t<T>{count};
-}
-
-} // namespace core
-
-} // namespace lf
-
-#endif /* A951FB73_0FCF_4B7C_A997_42B7E87D21CB */
-
           // for co_allocable, co_new_t, stack_allocated        // for exception_before_join       // for full_context       // for submit_handle, submit_node_t, task_handle          // for unwrap           // for stack, context        // for frame        // for stack // for unique_frame, frame_deleter      // for k_u16_max, checked_cast         // for ignore_t             // for LF_ASSERT, LF_LOG, LF_FORCEINLINE, LF_THROW
 #ifndef BDE6CBCC_7576_4082_AAC5_2A207FEA9293
 #define BDE6CBCC_7576_4082_AAC5_2A207FEA9293
@@ -5587,1514 +5180,6 @@ inline constexpr impl::bind_just just = {};
 
 #endif /* DE1C62F1_949F_48DC_BC2C_960C4439332D */
 
-             // for just            // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST              // for tag, eager_throw_outside             // for task
-
-/**
- * @file fold.hpp
- *
- * @brief A parallel adaptation of the `std::fold_[...]` family.
- */
-
-namespace lf {
-
-namespace impl {
-
-namespace detail {
-
-template <std::random_access_iterator I,
-          std::sized_sentinel_for<I> S,
-          class Proj,
-          indirectly_foldable<projected<I, Proj>> Bop>
-struct fold_overload_impl {
-
-  using acc_t = indirect_fold_acc_t<Bop, I, Proj>;
-  using int_t = std::iter_difference_t<I>;
-
-  static constexpr bool async_bop = !std::invocable<Bop &, acc_t, std::iter_reference_t<projected<I, Proj>>>;
-
-  /**
-   * @brief Recursive implementation of `fold`, requires that `tail - head > 0`.
-   */
-  LF_STATIC_CALL auto
-  operator()(auto fold, I head, S tail, int_t n, Bop bop, Proj proj) LF_STATIC_CONST->lf::task<acc_t> {
-
-    LF_ASSERT(n > 1);
-
-    int_t len = tail - head;
-
-    LF_ASSERT(len > 0);
-
-    if (len <= n) {
-
-      acc_t lhs = acc_t(co_await just(proj)(*head)); // Require convertible to U
-
-      using mod = modifier::eager_throw_outside;
-
-      for (++head; head != tail; ++head) {
-        if constexpr (async_bop) {
-          co_await lf::dispatch<tag::call, mod>(&lhs, bop)(std::move(lhs), co_await just(proj)(*head));
-        } else {
-          lhs = std::invoke(bop, std::move(lhs), co_await just(proj)(*head));
-        }
-      }
-
-      co_return std::move(lhs);
-    }
-
-    auto mid = head + (len / 2);
-
-    LF_ASSERT(mid - head > 0);
-    LF_ASSERT(tail - mid > 0);
-
-    eventually<acc_t> lhs;
-    eventually<acc_t> rhs;
-
-    // clang-format off
-
-    co_await lf::fork(&lhs, fold)(head, mid, n, bop, proj);
-
-    LF_TRY {
-      co_await lf::call(&rhs, fold)(mid, tail, n, bop, proj);
-    } LF_CATCH_ALL {
-      fold.stash_exception();
-    }
-
-    // clang-format on
-
-    co_await lf::join;
-
-    co_return co_await just(std::move(bop))( //
-        *std::move(lhs),                     //
-        *std::move(rhs)                      //
-    );                                       //
-  }
-
-  /**
-   * @brief Recursive implementation of `fold` for `n = 1`, requires that `tail - head > 1`.
-   *
-   * You cannot parallelize a chunk smaller than or equal to size three, for example, `a + b + c`
-   * requires `a + b` to be evaluated before adding the result to `c`.
-   */
-  LF_STATIC_CALL auto
-  operator()(auto fold, I head, S tail, Bop bop, Proj proj) LF_STATIC_CONST->lf::task<acc_t> {
-
-    int_t len = tail - head;
-
-    LF_ASSERT(len >= 0);
-
-    switch (len) {
-      case 0:
-        LF_ASSERT(false && "Unreachable");
-      case 1:
-        co_return co_await lf::just(std::move(proj))(*head);
-      default:
-        auto mid = head + (len / 2);
-
-        LF_ASSERT(mid - head > 0);
-        LF_ASSERT(tail - mid > 0);
-
-        eventually<acc_t> lhs;
-        eventually<acc_t> rhs;
-
-        // clang-format off
-
-        co_await lf::fork(&lhs, fold)(head, mid, bop, proj);
-
-        LF_TRY {
-          co_await lf::call(&rhs, fold)(mid, tail, bop, proj);
-        } LF_CATCH_ALL {
-          fold.stash_exception();
-        }
-
-        // clang-format on
-
-        co_await lf::join;
-
-        co_return co_await just(std::move(bop))( //
-            *std::move(lhs),                     //
-            *std::move(rhs)                      //
-        );                                       //
-    }
-  }
-};
-
-} // namespace detail
-
-/**
- * @brief Overload set for `lf::fold`.
- */
-struct fold_overload {
-  /**
-   * @brief Recursive implementation of `fold` for `n = 1` case.
-   */
-  template <std::random_access_iterator I,
-            std::sized_sentinel_for<I> S,
-            class Proj = std::identity,
-            indirectly_foldable<projected<I, Proj>> Bop>
-  LF_STATIC_CALL auto operator()(auto /* unused */, I head, S tail, Bop bop, Proj proj = {})
-      LF_STATIC_CONST->lf::task<std::optional<indirect_fold_acc_t<Bop, I, Proj>>> {
-
-    if (head == tail) {
-      co_return std::nullopt;
-    }
-
-    co_return co_await lf::just(detail::fold_overload_impl<I, S, Proj, Bop>{})(
-        std::move(head), std::move(tail), std::move(bop), std::move(proj) //
-    );
-  }
-
-  /**
-   * @brief Recursive implementation of `fold`.
-   *
-   * This will dispatch to the `n = 1` case if `n <= 3`.
-   */
-  template <std::random_access_iterator I,
-            std::sized_sentinel_for<I> S,
-            class Proj = std::identity,
-            indirectly_foldable<projected<I, Proj>> Bop>
-  LF_STATIC_CALL auto
-  operator()(auto /* unused */, I head, S tail, std::iter_difference_t<I> n, Bop bop, Proj proj = {})
-      LF_STATIC_CONST->lf::task<std::optional<indirect_fold_acc_t<Bop, I, Proj>>> {
-
-    if (head == tail) {
-      co_return std::nullopt;
-    }
-
-    if (n == 1) {
-      co_return co_await lf::just(detail::fold_overload_impl<I, S, Proj, Bop>{})(
-          std::move(head), std::move(tail), std::move(bop), std::move(proj) //
-      );
-    }
-
-    co_return co_await lf::just(detail::fold_overload_impl<I, S, Proj, Bop>{})(
-        std::move(head), std::move(tail), n, std::move(bop), std::move(proj) //
-    );
-  }
-
-  /**
-   * @brief Range version.
-   */
-  template <std::ranges::random_access_range Range,
-            class Proj = std::identity,
-            indirectly_foldable<projected<std::ranges::iterator_t<Range>, Proj>> Bop>
-    requires std::ranges::sized_range<Range>
-  LF_STATIC_CALL auto operator()(auto /* unused */, Range &&range, Bop bop, Proj proj = {}) LF_STATIC_CONST
-      ->lf::task<std::optional<indirect_fold_acc_t<Bop, std::ranges::iterator_t<Range>, Proj>>> {
-
-    if (std::ranges::empty(range)) {
-      co_return std::nullopt;
-    }
-
-    using I = std::decay_t<decltype(std::ranges::begin(range))>;
-    using S = std::decay_t<decltype(std::ranges::end(range))>;
-
-    co_return co_await lf::just(detail::fold_overload_impl<I, S, Proj, Bop>{})(
-        std::ranges::begin(range), std::ranges::end(range), std::move(bop), std::move(proj) //
-    );
-  }
-
-  /**
-   * @brief Range version.
-   */
-  template <std::ranges::random_access_range Range,
-            class Proj = std::identity,
-            indirectly_foldable<projected<std::ranges::iterator_t<Range>, Proj>> Bop>
-    requires std::ranges::sized_range<Range>
-  LF_STATIC_CALL auto operator()(auto /* unused */,
-                                 Range &&range,
-                                 std::ranges::range_difference_t<Range> n,
-                                 Bop bop,
-                                 Proj proj = {}) LF_STATIC_CONST
-      ->lf::task<std::optional<indirect_fold_acc_t<Bop, std::ranges::iterator_t<Range>, Proj>>> {
-
-    if (std::ranges::empty(range)) {
-      co_return std::nullopt;
-    }
-
-    using I = std::decay_t<decltype(std::ranges::begin(range))>;
-    using S = std::decay_t<decltype(std::ranges::end(range))>;
-
-    if (n == 1) {
-      co_return co_await lf::just(detail::fold_overload_impl<I, S, Proj, Bop>{})(
-          std::ranges::begin(range), std::ranges::end(range), std::move(bop), std::move(proj) //
-      );
-    }
-
-    co_return co_await lf::just(detail::fold_overload_impl<I, S, Proj, Bop>{})(
-        std::ranges::begin(range), std::ranges::end(range), n, std::move(bop), std::move(proj) //
-    );
-  }
-};
-
-} // namespace impl
-
-// clang-format off
-
-/**
- * @brief A parallel implementation of `std::ranges::fold_left_first`.
- *
- * \rst
- *
- * Effective call signature:
- *
- * .. code ::
- *
- *    template <std::random_access_iterator I,
- *              std::sized_sentinel_for<I> S,
- *              typename Proj = std::identity,
- *              indirectly_foldable<projected<I, Proj>> Bop
- *              >
- *    auto fold(I head, S tail, std::iter_difference_t<I> n, Bop bop, Proj proj = {}) -> indirect_fold_acc_t<Bop, I, Proj>;
- *
- * Overloads exist for a random-access range (instead of ``head`` and ``tail``) and ``n`` can be omitted
- * (which will set ``n = 1``).
- *
- * Exemplary usage:
- *
- * .. code::
- *
- *    co_await just[fold](v, 10, std::plus<>{}, [](auto &elem) -> std::size_t {
- *      return elem % 2 == 0;
- *    });
- *
- * \endrst
- * 
- * This counts the number of even elements in `v` in parallel, using a chunk size of ``10``.
- *
- * If the binary operator or projection handed to `fold` are async functions, then they will be
- * invoked asynchronously, this allows you to launch further tasks recursively.
- *
- * Unlike the `std::ranges::fold` variations, this function will make an implementation defined number of copies
- * of the function objects and may invoke these copies concurrently.
- */
-inline constexpr impl::fold_overload fold = {};
-
-// clang-format on
-
-} // namespace lf
-
-#endif /* B29F7CE3_05ED_4A3D_A464_CBA0454226F0 */
-
-
-#ifndef C5165911_AD64_4DAC_ACEB_DDB9B718B3ED
-#define C5165911_AD64_4DAC_ACEB_DDB9B718B3ED
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <functional> // for identity
-#include <iterator>   // for iter_difference_t, random_access_iterator
-#include <ranges>     // for begin, end, iterator_t, random_access_range
- // for indirectly_unary_invocable, projected     // for call, fork, join             // for just            // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST             // for task
-
-/**
- * @file for_each.hpp
- *
- * @brief A parallel implementation of `std::for_each`.
- */
-
-namespace lf {
-
-namespace impl {
-
-/**
- * @brief Overload set for `lf::for_each`.
- */
-struct for_each_overload {
-
-  /**
-   * @brief Divide and conquer implementation.
-   */
-  template <std::random_access_iterator I,
-            std::sized_sentinel_for<I> S,
-            typename Proj = std::identity,
-            indirectly_unary_invocable<projected<I, Proj>> Fun>
-  LF_STATIC_CALL auto
-  operator()(auto for_each, I head, S tail, std::iter_difference_t<I> n, Fun fun, Proj proj = {})
-      LF_STATIC_CONST->lf::task<> {
-
-    LF_ASSERT(n > 0);
-
-    std::iter_difference_t<I> len = tail - head;
-
-    LF_ASSERT(len >= 0);
-
-    if (len == 0) {
-      co_return;
-    }
-
-    if (len <= n) {
-      for (; head != tail; ++head) {
-        co_await lf::just(fun)(co_await just(proj)(*head));
-      }
-      co_return;
-    }
-
-    auto mid = head + (len / 2);
-
-    // clang-format off
-
-    co_await lf::fork(for_each)(head, mid, n, fun, proj);
-
-    LF_TRY {
-      co_await lf::call(for_each)(mid, tail, n, fun, proj);
-    } LF_CATCH_ALL { 
-      for_each.stash_exception(); 
-    }
-
-    // clang-format on
-
-    co_await lf::join;
-  }
-
-  /**
-   * @brief Divide and conquer n = 1 version.
-   */
-  template <std::random_access_iterator I,
-            std::sized_sentinel_for<I> S,
-            typename Proj = std::identity,
-            indirectly_unary_invocable<projected<I, Proj>> Fun>
-  LF_STATIC_CALL auto
-  operator()(auto for_each, I head, S tail, Fun fun, Proj proj = {}) LF_STATIC_CONST->lf::task<> {
-
-    std::iter_difference_t<I> len = tail - head;
-
-    LF_ASSERT(len >= 0);
-
-    switch (len) {
-      case 0:
-        break;
-      case 1:
-        co_await lf::just(fun)(co_await just(proj)(*head));
-        break;
-      default:
-        auto mid = head + (len / 2);
-
-        // clang-format off
-
-        co_await lf::fork(for_each)(head, mid, fun, proj);
-
-        LF_TRY {
-          co_await lf::call(for_each)(mid, tail, fun, proj);
-        } LF_CATCH_ALL { 
-          for_each.stash_exception(); 
-        }
-
-        // clang-format on
-
-        co_await lf::join;
-    }
-  }
-
-  /**
-   * @brief Range version, dispatches to the iterator version.
-   *
-   * This will dispatch to `n = 1` specialization if `n = 1`
-   */
-  template <std::ranges::random_access_range Range,
-            typename Proj = std::identity,
-            indirectly_unary_invocable<projected<std::ranges::iterator_t<Range>, Proj>> Fun>
-    requires std::ranges::sized_range<Range>
-  LF_STATIC_CALL auto
-  operator()(auto for_each, Range &&range, std::ranges::range_difference_t<Range> n, Fun fun, Proj proj = {})
-      LF_STATIC_CONST->lf::task<> {
-
-    LF_ASSERT(n > 0);
-
-    if (n == 1) {
-      co_await just(for_each)(std::ranges::begin(range), std::ranges::end(range), fun, proj);
-    } else {
-      co_await just(for_each)(std::ranges::begin(range), std::ranges::end(range), n, fun, proj);
-    }
-  }
-
-  /**
-   * @brief Range n = 1, version, dispatches to the iterator version.
-   */
-  template <std::ranges::random_access_range Range,
-            typename Proj = std::identity,
-            indirectly_unary_invocable<projected<std::ranges::iterator_t<Range>, Proj>> Fun>
-    requires std::ranges::sized_range<Range>
-  LF_STATIC_CALL auto
-  operator()(auto for_each, Range &&range, Fun fun, Proj proj = {}) LF_STATIC_CONST->lf::task<> {
-    co_await lf::just(for_each)(
-        std::ranges::begin(range), std::ranges::end(range), std::move(fun), std::move(proj) //
-    );
-  }
-};
-
-} // namespace impl
-
-/**
- * @brief A parallel implementation of `std::ranges::for_each`.
- *
- * \rst
- *
- * Effective call signature:
- *
- * .. code ::
- *
- *    template <std::random_access_iterator I,
- *              std::sized_sentinel_for<I> S,
- *              typename Proj = std::identity,
- *              indirectly_unary_invocable<projected<I, Proj>> Fun
- *              >
- *    void for_each(I head, S tail, std::iter_difference_t<I> n, Fun fun, Proj proj = {});
- *
- * Overloads exist for a random-access range (instead of ``head`` and ``tail``) and ``n`` can be omitted
- * (which will set ``n = 1``).
- *
- * Exemplary usage:
- *
- * .. code::
- *
- *    co_await just[for_each](v, 10, [](auto &elem) {
- *      elem = 0;
- *    });
- *
- * \endrst
- *
- * This will set each element of `v` to `0` in parallel using a chunk size of ``10``.
- *
- * If the function or projection handed to `for_each` are async functions, then they will be
- * invoked asynchronously, this allows you to launch further tasks recursively.
- *
- * Unlike `std::ranges::for_each`, this function will make an implementation defined number of copies
- * of the function objects and may invoke these copies concurrently.
- */
-inline constexpr impl::for_each_overload for_each = {};
-
-} // namespace lf
-
-#endif /* C5165911_AD64_4DAC_ACEB_DDB9B718B3ED */
-
-
-#ifndef B13463FB_3CF9_46F1_AFAC_19CBCB99A23C
-#define B13463FB_3CF9_46F1_AFAC_19CBCB99A23C
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>    // for invocable
-#include <functional>  // for invoke
-#include <type_traits> // for invoke_result_t
-#include <utility>     // for forward
- // for LF_HOF_RETURNS, LF_STATIC_CALL  // for task
-
-/**
- * @file lift.hpp
- *
- * @brief Higher-order functions for lifting functions into async functions.
- */
-
-namespace lf {
-
-/**
- * @brief A higher-order function that lifts a function into an asynchronous function.
- *
- * \rst
- *
- * This is useful for when you want to fork a regular function:
- *
- * .. code::
- *
- *    auto work(int x) -> int;
- *
- * Then later in some async context you can do:
- *
- * .. code::
- *
- *    {
- *      int a, b;
- *
- *      co_await fork[a, lift](work, 42);
- *      co_await fork[b, lift](work, 007);
- *
- *      co_await join;
- *    }
- *
- * .. note::
- *
- *    The lifted function will accept arguments by forwarding reference.
- *
- * \endrst
- */
-inline constexpr auto lift = []<class F, class... Args>(auto, F &&func, Args &&...args)
-                                 LF_STATIC_CALL -> task<std::invoke_result_t<F, Args...>>
-  requires std::invocable<F, Args...>
-{
-  co_return std::invoke(std::forward<F>(func), std::forward<Args>(args)...);
-};
-
-/**
- * @brief Lift an overload-set/template into a constrained lambda.
- *
- * This is useful for passing overloaded/template names to higher order functions like `lf::fork`/`lf::call`.
- */
-#define LF_LOFT(name)                                                                                        \
-  [](auto &&...args) LF_STATIC_CALL LF_HOF_RETURNS(name(::std::forward<decltype(args)>(args)...))
-
-/**
- * @brief Lift an overload-set/template into a constrained capturing lambda.
- *
- * The variadic arguments are used as the lambda's capture.
- *
- * This is useful for passing overloaded/template names to higher order functions like `lf::fork`/`lf::call`.
- */
-#define LF_CLOFT(name, ...)                                                                                  \
-  [__VA_ARGS__](auto &&...args) LF_HOF_RETURNS(name(::std::forward<decltype(args)>(args)...))
-
-} // namespace lf
-
-#endif /* B13463FB_3CF9_46F1_AFAC_19CBCB99A23C */
-
-
-#ifndef DFB97DB6_8A5B_401E_AB7B_A386D71F4EE1
-#define DFB97DB6_8A5B_401E_AB7B_A386D71F4EE1
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <functional> // for identity
-#include <iterator>   // for random_access_iterator, indirectly_copyable
-#include <ranges>     // for iterator_t, begin, end, random_access_range
- // for projected, indirectly_unary_invocable     // for call, fork, join             // for just            // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST             // for task
-
-/**
- * @file map.hpp
- *
- * @brief A parallel implementation of `std::map`.
- */
-
-namespace lf {
-
-namespace impl {
-
-/**
- * @brief Overload set for `lf::map`.
- */
-struct map_overload {
-  /**
-   * @brief Divide and conquer implementation.
-   */
-  template <std::random_access_iterator I,
-            std::sized_sentinel_for<I> S,
-            std::random_access_iterator O,
-            typename Proj = std::identity,
-            indirectly_unary_invocable<projected<I, Proj>> Fun>
-    requires std::indirectly_copyable<projected<I, Proj, Fun>, O>
-  LF_STATIC_CALL auto
-  operator()(auto map, I head, S tail, O out, std::iter_difference_t<I> n, Fun fun, Proj proj = {})
-      LF_STATIC_CONST->lf::task<> {
-
-    LF_ASSERT(n > 0);
-
-    std::iter_difference_t<I> len = tail - head;
-
-    LF_ASSERT(len >= 0);
-
-    if (len == 0) {
-      co_return;
-    }
-
-    if (len <= n) {
-      for (; head != tail; ++head, ++out) {
-        *out = co_await lf::just(fun)(co_await just(proj)(*head));
-      }
-      co_return;
-    }
-
-    auto dif = (len / 2);
-    auto mid = head + dif;
-
-    // clang-format off
-
-    co_await lf::fork(map)(head, mid, out, n, fun, proj);
-
-    LF_TRY {
-      co_await lf::call(map)(mid, tail, out + dif, n, fun, proj);
-    } LF_CATCH_ALL { 
-      map.stash_exception(); 
-    }
-
-    // clang-format on
-
-    co_await lf::join;
-  }
-
-  /**
-   * @brief Divide and conquer n = 1 version.
-   */
-  template <std::random_access_iterator I,
-            std::sized_sentinel_for<I> S,
-            std::random_access_iterator O,
-            typename Proj = std::identity,
-            indirectly_unary_invocable<projected<I, Proj>> Fun>
-    requires std::indirectly_copyable<projected<I, Proj, Fun>, O>
-  LF_STATIC_CALL auto
-  operator()(auto map, I head, S tail, O out, Fun fun, Proj proj = {}) LF_STATIC_CONST->lf::task<> {
-
-    std::iter_difference_t<I> len = tail - head;
-
-    LF_ASSERT(len >= 0);
-
-    switch (len) {
-      case 0:
-        break;
-      case 1:
-        *out = co_await lf::just(fun)(co_await just(proj)(*head));
-        break;
-      default:
-        auto dif = (len / 2);
-        auto mid = head + dif;
-
-        // clang-format off
-
-        co_await lf::fork(map)(head, mid, out, fun, proj);
-
-        LF_TRY {  
-          co_await lf::call(map)(mid, tail, out + dif, fun, proj);
-        } LF_CATCH_ALL { 
-          map.stash_exception(); 
-        }
-
-        // clang-format on
-
-        co_await lf::join;
-    }
-  }
-
-  /**
-   * @brief Range version, dispatches to the iterator version.
-   *
-   * This will dispatch to `n = 1` specialization if `n = 1`
-   */
-  template <std::ranges::random_access_range Range,
-            std::random_access_iterator O,
-            typename Proj = std::identity,
-            indirectly_unary_invocable<projected<std::ranges::iterator_t<Range>, Proj>> Fun>
-    requires std::ranges::sized_range<Range> &&
-             std::indirectly_copyable<projected<std::ranges::iterator_t<Range>, Proj, Fun>, O>
-             LF_STATIC_CALL auto operator()(auto map,
-                                            Range &&range,
-                                            O out,
-                                            std::ranges::range_difference_t<Range> n,
-                                            Fun fun,
-                                            Proj proj = {}) LF_STATIC_CONST->lf::task<> {
-
-    LF_ASSERT(n > 0);
-
-    if (n == 1) {
-      co_await just(map)(std::ranges::begin(range), std::ranges::end(range), out, fun, proj);
-    } else {
-      co_await just(map)(std::ranges::begin(range), std::ranges::end(range), out, n, fun, proj);
-    }
-  }
-
-  /**
-   * @brief Range n = 1, version, dispatches to the iterator version.
-   */
-  template <std::ranges::random_access_range Range,
-            typename Proj = std::identity,
-            std::random_access_iterator O,
-            indirectly_unary_invocable<projected<std::ranges::iterator_t<Range>, Proj>> Fun>
-    requires std::ranges::sized_range<Range> &&
-             std::indirectly_copyable<projected<std::ranges::iterator_t<Range>, Proj, Fun>, O>
-             LF_STATIC_CALL auto
-             operator()(auto map, Range &&range, O out, Fun fun, Proj proj = {}) LF_STATIC_CONST->lf::task<> {
-    co_await lf::just(map)(
-        std::ranges::begin(range), std::ranges::end(range), out, std::move(fun), std::move(proj) //
-    );
-  }
-};
-
-} // namespace impl
-
-/**
- * @brief A parallel variation of `std::transform`.
- *
- * \rst
- *
- * Effective call signature:
- *
- * .. code ::
- *
- *    template <std::random_access_iterator I,
- *              std::sized_sentinel_for<I> S,
- *              std::random_access_iterator O
- *              typename Proj = std::identity,
- *              indirectly_unary_invocable<projected<I, Proj>> Fun
- *              >
- *      requires std::indirectly_copyable<projected<I, Proj, Fun>, O>
- *    void map(I head, S tail, O out, std::iter_difference_t<I> n, Fun fun, Proj proj = {});
- *
- * Overloads exist for a random-access range (instead of ``head`` and ``tail``) and ``n`` can be omitted
- * (which will set ``n = 1``).
- *
- * Exemplary usage:
- *
- * .. code::
- *
- *    std::vector<int> out(v.size());
- *
- *    co_await just[map](v, out.begin(), 10, [](int const& elem) {
- *      return elem + 1;
- *    });
- *
- * \endrst
- *
- * This will set each element of `out` to one more than corresponding element in `v` using
- * a chunk size of ``10``.
- *
- * The input and output ranges must either be distinct (i.e. non-overlapping) or the same range (hence the
- * transformation may be performed in-place).
- *
- * If the function or projection handed to `map` are async functions, then they will be
- * invoked asynchronously, this allows you to launch further tasks recursively.
- *
- * Unlike `std::transform`, this function will make an implementation defined number of copies
- * of the function objects and may invoke these copies concurrently.
- */
-inline constexpr impl::map_overload map = {};
-
-} // namespace lf
-
-#endif /* DFB97DB6_8A5B_401E_AB7B_A386D71F4EE1 */
-
-
-#ifndef BF260626_9180_496A_A893_A1A7F2B6781E
-#define BF260626_9180_496A_A893_A1A7F2B6781E
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-#include <concepts>    // for same_as
-#include <functional>  // for identity, invoke
-#include <iterator>    // for random_access_iterator, sized_sentinel_for
-#include <ranges>      // for begin, end, iterator_t, random_access_range
-#include <type_traits> // for conditional_t
- // for indirectly_scannable, projected     // for call, dispatch, fork, join        // for async_invocable             // for just            // for LF_STATIC_CALL, LF_STATIC_CONST, unreachable              // for tag, eager_throw_outside, sync_outside             // for task
-
-/**
- * @file scan.hpp
- *
- * @brief Implementation of a parallel scan.
- */
-
-namespace lf {
-
-namespace impl {
-
-/**
- * Operation propagates as:
- *
- * scan -> (scan, x)
- *    x can be scan if the left child completes synchronously, otherwise it must be a fold.
- *
- * fold -> (fold, fold)
- */
-enum class op {
-  scan,
-  fold,
-};
-
-/**
- * Possible intervals:
- *
- * Full range: (lhs, rhs)
- * Sub range: (lhs, mid), (mid, mid), (mid, rhs)
- *
- *
- * Transformations:
- *
- * (lhs, rhs) -> (lhs, mid), (mid, rhs)
- *
- * (lhs, mid) -> (lhs, mid), (mid, mid)
- * (mid, rhs) -> (mid, mid), (mid, rhs)
- *
- * (mid, mid) -> (mid, mid), (mid, mid)
- *
- */
-enum class interval {
-  all,
-  lhs,
-  mid,
-  rhs,
-};
-
-/**
- * @brief Get the interval to the left of the current interval.
- */
-consteval auto l_child_of(interval ival) -> interval {
-  switch (ival) {
-    case interval::all:
-    case interval::lhs:
-      return interval::lhs;
-    case interval::mid:
-    case interval::rhs:
-      return interval::mid;
-    default:
-      unreachable();
-  }
-}
-
-/**
- * @brief Get the interval to the right of the current interval.
- */
-consteval auto r_child_of(interval ival) -> interval {
-  switch (ival) {
-    case interval::all:
-    case interval::rhs:
-      return interval::rhs;
-    case interval::lhs:
-    case interval::mid:
-      return interval::mid;
-    default:
-      unreachable();
-  }
-}
-
-/**
- * @brief Reduction up-sweep of the scan.
- *
- * See https://en.wikipedia.org/wiki/Prefix_sum#Parallel_algorithms this computes the reduction stage of the
- * work-efficient algorithm. This is chunked and recursive. Essentially, we recursively divide the input into
- * smaller chunk (building an implicit balanced binary tree) until the chunk size is reached. Then we sweep
- * from the leaves of the tree (the chunks) to the root. At each tier we replace the right child with the sum
- * of the left and right child.
- *
- * Example:
- *
- * Input: [1, 1, 1, 1, 1, 1, 1]
- *
- * Build tree until n = 2:
- *
- * Partition 0: [1, 1, 1, 1, 1, 1, 1]
- *                     |- l_child  |- r_child
- * Partition 1: [1, 1, 1][1, 1, 1, 1]
- * Partition 2: [1][1, 1][1, 1][1, 1]
- *
- * At the leaves we compute the scan of each chunk:
- *
- * Partition 0: [1, 1, 2, 1, 2, 1, 2] <- views so they change as well
- * Partition 1: [1, 1, 2][1, 2, 1, 2] <- ^
- * Partition 2: [1][1, 2][1, 2][1, 2] <- Scan each chunk.
- *
- * Then we sweep up the tree:
- *
- * Partition 0: [1, 1, 3, 1, 2, 1, 4]
- * Partition 1: [1, 1, 3][1, 2, 1, 4] <- combining below into right child
- * Partition 2: [1][1, 2][1, 2][1, 2]
- *
- * Partition 0: [1, 1, 3, 1, 2, 1, 7] <- again combining below into right child
- * Partition 1: [1, 1, 3][1, 2, 1, 4]
- * Partition 2: [1][1, 2][1, 2][1, 2]
- *
- *
- * Final views at all partition levels:
- *
- * Partition 0: [1, 1, 3, 1, 2, 1, 7]
- * Partition 1: [1, 1, 3][1, 2, 1, 7]
- * Partition 2: [1][1, 3][1, 2][1, 7]
- *
- * As an optimization over the basic algorithm we scan the chunks on the left of the tree.
- */
-template <std::random_access_iterator I, //
-          std::sized_sentinel_for<I> S,  //
-          class Proj,                    //
-          class Bop,                     //
-          std::random_access_iterator O, //
-          interval Ival = interval::all, //
-          op Op = op::scan               //
-          >
-struct rise_sweep {
-  /**
-   * @brief The iterator difference type of I.
-   */
-  using int_t = std::iter_difference_t<I>;
-  /**
-   * @brief The accumulator type of the reduction.
-   */
-  using acc_t = std::iter_value_t<O>;
-  /**
-   * @brief The type of the task returned by the algorithm.
-   */
-  using task_t = lf::task<std::conditional_t<Op == op::scan, I, void>>;
-  /**
-   * @brief Propagate the operation to the left child.
-   */
-  using up_lhs = rise_sweep<I, S, Proj, Bop, O, l_child_of(Ival), Op>;
-  /**
-   * @brief The right child's operation depends on the readiness of the left child.
-   */
-  template <op OpChild>
-  using up_rhs = rise_sweep<I, S, Proj, Bop, O, r_child_of(Ival), OpChild>;
-  /**
-   * @brief If the binary operator is asynchronous, some optimizations can be done if it's not async.
-   */
-  static constexpr bool async_bop = async_invocable<Bop &, acc_t, acc_t>;
-  /**
-   * @brief Returns one-past-the-end of the scanned range.
-   */
-  LF_STATIC_CALL auto
-  operator()(auto self, I beg, S end, int_t n, Bop bop, Proj proj, O out) LF_STATIC_CONST->task_t {
-    //
-    int_t const size = end - beg;
-
-    LF_ASSERT(size >= 1);
-
-    static constexpr auto eager_call_outside = dispatch<tag::call, modifier::eager_throw_outside>;
-
-    if (size <= n) {
-      if constexpr (Op == op::fold) { // Equivalent to a fold over acc_t, left sibling not ready.
-
-        static_assert(Ival != interval::lhs && Ival != interval::all, "left can always scan");
-
-        if constexpr (Ival == interval::mid) {
-          // Mid segment has a right sibling so do the fold.
-          acc_t acc = acc_t(co_await lf::just(proj)(*beg));
-          // The optimizer sometimes trips-up so we force a bit of unrolling.
-          LF_PRAGMA_UNROLL(8)
-          for (++beg; beg != end; ++beg) {
-            if constexpr (async_bop) {
-              co_await eager_call_outside(&acc, bop)(std::move(acc), co_await lf::just(proj)(*beg));
-            } else {
-              acc = std::invoke(bop, std::move(acc), co_await lf::just(proj)(*beg));
-            }
-          }
-          // Store in the correct location in the output (in-case the scan is in-place).
-          *(out + size - 1) = std::move(acc);
-        } else {
-          static_assert(Ival == interval::rhs, "else rhs, which has no right sibling that consumes the fold");
-        }
-
-        co_return;
-
-      } else if constexpr (Ival == interval::mid || Ival == interval::rhs) { // A scan with left sibling.
-
-        acc_t acc = acc_t(*(out - 1));
-
-        LF_PRAGMA_UNROLL(8)
-        for (; beg != end; ++beg, ++out) {
-          if constexpr (async_bop) {
-            co_await eager_call_outside(&acc, bop)(std::move(acc), co_await lf::just(proj)(*beg));
-          } else {
-            acc = std::invoke(bop, std::move(acc), co_await lf::just(proj)(*beg));
-          }
-          *out = acc;
-        }
-
-        co_return end;
-
-      } else { // A scan with no left sibling.
-
-        acc_t acc = acc_t(co_await lf::just(proj)(*beg));
-        *out = acc;
-        ++beg;
-        ++out;
-
-        LF_PRAGMA_UNROLL(8)
-        for (; beg != end; ++beg, ++out) {
-          if constexpr (async_bop) {
-            co_await eager_call_outside(&acc, bop)(std::move(acc), co_await lf::just(proj)(*beg));
-          } else {
-            acc = std::invoke(bop, std::move(acc), co_await lf::just(proj)(*beg));
-          }
-          *out = acc;
-        }
-
-        co_return end;
-      }
-    }
-
-    // Divide and recurse.
-    int_t const mid = size / 2;
-
-    /**
-     * Specified through the following concept chain:
-     *  random_access_iterator -> bidirectional_iterator -> forward_iterator -> incrementable -> regular
-     */
-    I left_out;
-
-    if constexpr (Op == op::scan) {
-      // If we are a scan then left child is a scan,
-      static constexpr auto fork_sync = dispatch<tag::fork, modifier::sync_outside>;
-      // Unconditionally launch left child (scan).
-      auto ready = co_await fork_sync(&left_out, up_lhs{})(beg, beg + mid, n, bop, proj, out);
-      // If the left child is ready and completely scanned then rhs can be a scan.
-      // Otherwise the rhs must be a fold.
-      if (ready && left_out == beg + mid) {
-        // Effectively fused child trees into a single scan.
-        // Right most scanned now from right child.
-        co_return co_await lf::just(up_rhs<op::scan>{})(beg + mid, end, n, bop, proj, out + mid);
-      }
-    } else {
-      co_await lf::fork(up_lhs{})(beg, beg + mid, n, bop, proj, out);
-    }
-
-    // clang-format off
-    LF_TRY {
-      co_await lf::call(up_rhs<op::fold>{})(beg + mid, end, n, bop, proj, out + mid);
-    } LF_CATCH_ALL{
-      self.stash_exception();
-    }
-    // clang-format on
-    co_await lf::join;
-
-    // Restore invariant: propagate the reduction (scan), to the right sibling (if we have one).
-    if constexpr (Ival == interval::lhs || Ival == interval::mid) {
-
-      O l_child = out + mid - 1;
-      O r_child = out + size - 1;
-
-      if constexpr (async_bop) {
-        co_await eager_call_outside(r_child, bop)(*l_child, std::ranges::iter_move(r_child));
-      } else {
-        *r_child = std::invoke(bop, *l_child, std::ranges::iter_move(r_child));
-      }
-    }
-
-    // If we are a scan then we return the end of the scanned range which was in the left child.
-    if constexpr (Op == op::scan) {
-      co_return left_out;
-    }
-  }
-};
-
-/**
- * As some of the input is always scanned during the reduction sweep, we always have a left sibling.
- */
-template <std::random_access_iterator I, //
-          std::sized_sentinel_for<I> S,  //
-          class Proj,                    //
-          class Bop,                     //
-          std::random_access_iterator O, //
-          interval Ival                  //
-          >
-  requires (Ival == interval::mid || Ival == interval::rhs)
-struct fall_sweep_impl {
-  /**
-   * @brief The iterator difference type of I.
-   */
-  using int_t = std::iter_difference_t<I>;
-  /**
-   * @brief The accumulator type of the reduction.
-   */
-  using acc_t = std::iter_value_t<O>;
-  /**
-   * @brief Left child of the current interval.
-   */
-  using down_lhs = fall_sweep_impl<I, S, Proj, Bop, O, l_child_of(Ival)>;
-  /**
-   * @brief Right child of the current interval.
-   */
-  using down_rhs = fall_sweep_impl<I, S, Proj, Bop, O, r_child_of(Ival)>;
-  /**
-   * @brief If the binary operator is asynchronous, some optimizations can be done if it's not async.
-   */
-  static constexpr bool async_bop = async_invocable<Bop &, acc_t, acc_t>;
-  /**
-   * @brief Recursive implementation of `fall_sweep`, requires that `tail - head > 0`.
-   */
-  LF_STATIC_CALL auto
-  operator()(auto self, I beg, S end, int_t n, Bop bop, Proj proj, O out) LF_STATIC_CONST->lf::task<> {
-
-    int_t const size = end - beg;
-
-    LF_ASSERT(size > 0);
-
-    static constexpr auto eager_call_outside = dispatch<tag::call, modifier::eager_throw_outside>;
-
-    if (size <= n) { // Equivalent to a scan (maybe) with an initial value.
-
-      acc_t acc = acc_t(*(out - 1));
-
-      // The furthest-right chunk has no reduction stored in it so we include it in the scan.
-      I last = (Ival == interval::rhs) ? end : beg + size - 1;
-
-      LF_PRAGMA_UNROLL(8)
-      for (; beg != last; ++beg, ++out) {
-        if constexpr (async_bop) {
-          co_await eager_call_outside(&acc, bop)(std::move(acc), co_await lf::just(proj)(*beg));
-        } else {
-          acc = std::invoke(bop, std::move(acc), co_await lf::just(proj)(*beg));
-        }
-        *out = acc;
-      }
-      co_return;
-    }
-
-    int_t const mid = size / 2;
-
-    // Restore invariant: propagate the reduction (scan), we always have a left sibling.
-    if constexpr (async_bop) {
-      co_await eager_call_outside(out + mid - 1, bop)(*(out - 1), std::ranges::iter_move(out + mid - 1));
-    } else {
-      *(out + mid - 1) = std::invoke(bop, *(out - 1), std::ranges::iter_move(out + mid - 1));
-    }
-
-    // Divide and recurse.
-    co_await lf::fork(down_lhs{})(beg, beg + mid, n, bop, proj, out);
-    // clang-format off
-    LF_TRY {
-      co_await lf::call(down_rhs{})(beg + mid, end, n, bop, proj, out + mid);
-    } LF_CATCH_ALL{
-      self.stash_exception();
-    }
-    // clang-format on
-    co_await lf::join;
-  }
-};
-
-/**
- * As some of the input is always scanned during the reduction sweep, we always have a left sibling.
- */
-template <std::random_access_iterator I, //
-          std::sized_sentinel_for<I> S,  //
-          class Proj,                    //
-          class Bop,                     //
-          std::random_access_iterator O, //
-          interval Ival = interval::all  //
-          >
-struct fall_sweep {
-  /**
-   * @brief The iterator difference type of I.
-   */
-  using int_t = std::iter_difference_t<I>;
-  /**
-   * @brief Recursion to the left, computed interval.
-   */
-  using recur_lhs = fall_sweep<I, S, Proj, Bop, O, l_child_of(Ival)>;
-  /**
-   * @brief Recursion to the right, computed interval.
-   */
-  using recur_rhs = fall_sweep<I, S, Proj, Bop, O, r_child_of(Ival)>;
-  /**
-   * @brief Call the implementation, this can never be called on the left.
-   */
-  using down_rhs = fall_sweep_impl<I, S, Proj, Bop, O, r_child_of(Ival)>;
-  /**
-   * @brief Launch the implementation in the un-scanned chunks.
-   *
-   * Options:
-   *  left fully scanned and right fully scanned -> return (make this impossible).
-   *
-   *  left fully scanned, right part-scanned -> (invar holds) recurse on right.
-   *  left fully scanned, right un-scanned -> (invar holds), call fall_sweep on right.
-   *  left part scanned, right un-scanned -> restore invar, recurse on left, call fall_sweep on right.
-   */
-  LF_STATIC_CALL auto operator()(auto self, I beg, S end, int_t n, Bop bop, Proj proj, O out, I scan_end)
-      LF_STATIC_CONST->lf::task<> {
-
-    LF_ASSERT(scan_end < end);
-
-    for (;;) {
-
-      int_t size = end - beg;
-      int_t mid = size / 2;
-
-      I split = beg + mid;
-
-      if /*  */ (scan_end < split) {
-        // Left part-scanned, right un-scanned.
-        co_await lf::fork(recur_lhs{})(beg, beg + mid, n, bop, proj, out, scan_end);
-        // clang-format off
-        LF_TRY {  
-            co_await lf::call(down_rhs{})(beg + mid, end, n, bop, proj, out + mid);
-        } LF_CATCH_ALL{
-          self.stash_exception();
-        }
-        // clang-format on
-        co_await lf::join;
-        co_return;
-      } else if (scan_end == split) {
-        // Left fully scanned, right un-scanned.
-        co_return co_await lf::just(down_rhs{})(beg + mid, end, n, bop, proj, out + mid);
-      } else if (scan_end > split) {
-        // Left fully scanned, right part-scanned.
-        if constexpr (!std::same_as<fall_sweep, recur_rhs>) {
-          co_return co_await lf::just(recur_rhs{})(beg + mid, end, n, bop, proj, out + mid, scan_end);
-        } else {
-          // Recursion looks like, -^, hence we can loop.
-          beg = beg + mid;
-          out = out + mid;
-          continue;
-        }
-      } else {
-        unreachable();
-      }
-    }
-  }
-};
-
-/**
- * @brief A wrapper around the rise/fall algorithms.
- */
-struct scan_impl {
-  /**
-   * @brief Calls the rise_sweep and fall_sweep algorithms, checks for empty input.
-   */
-  template <std::random_access_iterator I, //
-            std::sized_sentinel_for<I> S,  //
-            std::random_access_iterator O, //
-            class Proj,                    //
-            class Bop                      //
-            >
-  LF_STATIC_CALL auto
-  operator()(auto /* unused */, I beg, S end, O out, std::iter_difference_t<I> n, Bop bop, Proj proj)
-      LF_STATIC_CONST->lf::task<> {
-
-    // Early exit required if the input is empty.
-    if (end == beg) {
-      co_return;
-    }
-
-    constexpr rise_sweep<I, S, Proj, Bop, O> rise = {};
-    constexpr fall_sweep<I, S, Proj, Bop, O> fall = {};
-
-    // Up-sweep the reduction.
-    I scan_end = co_await lf::just(rise)(beg, end, n, bop, proj, out);
-
-    if (scan_end != end) {
-      // If some un-scanned input remains, fall-sweep it.
-      co_await lf::just(fall)(beg, end, n, bop, proj, out, scan_end);
-    }
-  }
-};
-
-/**
- * @brief Eight overloads of scan for (iterator/range, chunk/in_place, n = 1/n != 1).
- */
-struct scan_overload {
-  /**
-   * @brief [iterator,chunk,output] version (5-6)
-   */
-  template <std::random_access_iterator I,                  //
-            std::sized_sentinel_for<I> S,                   //
-            std::random_access_iterator O,                  //
-            class Proj = std::identity,                     //
-            indirectly_scannable<O, projected<I, Proj>> Bop //
-            >
-  auto LF_STATIC_CALL operator()(auto /* unused */, //
-                                 I beg,
-                                 S end,
-                                 O out,
-                                 std::iter_difference_t<I> n,
-                                 Bop bop,
-                                 Proj proj = {}) LF_STATIC_CONST->task<> {
-    co_return co_await lf::just(impl::scan_impl{})(beg, end, out, n, bop, proj);
-  }
-  /**
-   * @brief [iterator,n = 1,output] version (4-5)
-   */
-  template <std::random_access_iterator I,                  //
-            std::sized_sentinel_for<I> S,                   //
-            std::random_access_iterator O,                  //
-            class Proj = std::identity,                     //
-            indirectly_scannable<O, projected<I, Proj>> Bop //
-            >
-  auto LF_STATIC_CALL operator()(auto /* unused */, //
-                                 I beg,
-                                 S end,
-                                 O out,
-                                 Bop bop,
-                                 Proj proj = {}) LF_STATIC_CONST->task<void> {
-    co_return co_await lf::just(impl::scan_impl{})(beg, end, out, 1, bop, proj);
-  }
-  /**
-   * @brief [iterator,chunk,in_place] version (4-5)
-   */
-  template <std::random_access_iterator I,                  //
-            std::sized_sentinel_for<I> S,                   //
-            class Proj = std::identity,                     //
-            indirectly_scannable<I, projected<I, Proj>> Bop //
-            >
-  auto LF_STATIC_CALL operator()(auto /* unused */, //
-                                 I beg,
-                                 S end,
-                                 std::iter_difference_t<I> n,
-                                 Bop bop,
-                                 Proj proj = {}) LF_STATIC_CONST->task<void> {
-
-    co_return co_await lf::just(impl::scan_impl{})(beg, end, beg, n, bop, proj);
-  }
-  /**
-   * @brief [iterator,n = 1,in_place] version.
-   */
-  template <std::random_access_iterator I,                  //
-            std::sized_sentinel_for<I> S,                   //
-            class Proj = std::identity,                     //
-            indirectly_scannable<I, projected<I, Proj>> Bop //
-            >
-  auto LF_STATIC_CALL operator()(auto /* unused */, //
-                                 I beg,
-                                 S end,
-                                 Bop bop,
-                                 Proj proj = {}) LF_STATIC_CONST->task<void> {
-    co_return co_await lf::just(impl::scan_impl{})(beg, end, beg, 1, bop, proj);
-  }
-  /**
-   * @brief [range,chunk,output] version (5-6)
-   */
-  template <std::ranges::random_access_range R,                                      //
-            std::random_access_iterator O,                                           //
-            class Proj = std::identity,                                              //
-            indirectly_scannable<O, projected<std::ranges::iterator_t<R>, Proj>> Bop //
-            >
-    requires std::ranges::sized_range<R>
-  auto LF_STATIC_CALL operator()(auto /* unused */, //
-                                 R &&range,
-                                 O out,
-                                 std::ranges::range_difference_t<R> n,
-                                 Bop bop,
-                                 Proj proj = {}) LF_STATIC_CONST->task<void> {
-    co_return co_await lf::just(impl::scan_impl{})(
-        std::ranges::begin(range), std::ranges::end(range), out, n, bop, proj //
-    );
-  }
-  /**
-   * @brief [range,n = 1,output] version (4-5)
-   */
-  template <std::ranges::random_access_range R,                                      //
-            std::random_access_iterator O,                                           //
-            class Proj = std::identity,                                              //
-            indirectly_scannable<O, projected<std::ranges::iterator_t<R>, Proj>> Bop //
-            >
-    requires std::ranges::sized_range<R>
-  auto LF_STATIC_CALL operator()(auto /* unused */, //
-                                 R &&range,
-                                 O out,
-                                 Bop bop,
-                                 Proj proj = {}) LF_STATIC_CONST->task<void> {
-    co_return co_await lf::just(impl::scan_impl{})(
-        std::ranges::begin(range), std::ranges::end(range), out, 1, bop, proj //
-    );
-  }
-  /**
-   * @brief [range,chunk,in_place] version (4-5)
-   */
-  template <
-      std::ranges::random_access_range R,                                                               //
-      class Proj = std::identity,                                                                       //
-      indirectly_scannable<std::ranges::iterator_t<R>, projected<std::ranges::iterator_t<R>, Proj>> Bop //
-      >
-    requires std::ranges::sized_range<R>
-  auto LF_STATIC_CALL operator()(auto /* unused */, //
-                                 R &&range,
-                                 std::ranges::range_difference_t<R> n,
-                                 Bop bop,
-                                 Proj proj = {}) LF_STATIC_CONST->task<void> {
-    co_return co_await lf::just(impl::scan_impl{})(
-        std::ranges::begin(range), std::ranges::end(range), std::ranges::begin(range), n, bop, proj //
-    );
-  }
-  /**
-   * @brief [range,n = 1,in_place] version.
-   */
-  template <
-      std::ranges::random_access_range R,                                                               //
-      class Proj = std::identity,                                                                       //
-      indirectly_scannable<std::ranges::iterator_t<R>, projected<std::ranges::iterator_t<R>, Proj>> Bop //
-      >
-    requires std::ranges::sized_range<R>
-  auto LF_STATIC_CALL operator()(auto /* unused */, //
-                                 R &&range,
-                                 Bop bop,
-                                 Proj proj = {}) LF_STATIC_CONST->task<void> {
-    co_return co_await lf::just(impl::scan_impl{})(
-        std::ranges::begin(range), std::ranges::end(range), std::ranges::begin(range), 1, bop, proj //
-    );
-  }
-};
-
-} // namespace impl
-
-/**
- * @brief A parallel implementation of `std::inclusive_scan` that accepts generalized ranges and projections.
- *
- * \rst
- *
- * Effective call signature:
- *
- * .. code ::
- *
- *    template <std::random_access_iterator I,
- *              std::sized_sentinel_for<I> S,
- *              std::random_access_iterator O,
- *              class Proj = std::identity,
- *              indirectly_scannable<O, projected<I, Proj>> Bop
- *              >
- *    void scan(I beg, S end, O out, std::iter_difference_t<I> n, Bop bop, Proj proj = {});
- *
- * Overloads exist for a random-access range (instead of ``head`` and ``tail``), in place scans (omit the
- * `out` iterator) and, the chunk size, ``n``, can be omitted (which will set ``n = 1``).
- *
- * Exemplary usage:
- *
- * .. code::
- *
- *    co_await just[scan](in, out.begin(), std::plus<>{});
- *
- * \endrst
- *
- * This computes the cumulative sum of the input and stores it in the output-range e.g. `[1, 2, 2, 1] -> [1,
- * 3, 5, 6]`.
- *
- * The input and output ranges must either be distinct (i.e. non-overlapping) or the same range.
- *
- * If the binary operator or projection handed to `scan` are async functions, then they will be
- * invoked asynchronously, this allows you to launch further tasks recursively.
- *
- * Unlike the `std::` variations, this function will make an implementation defined number of
- * copies of the function objects and may invoke these copies concurrently.
- */
-inline constexpr impl::scan_overload scan = {};
-
-} // namespace lf
-
-#endif /* BF260626_9180_496A_A893_A1A7F2B6781E */
-
-
-
-/**
- * @file algorithm.hpp
- *
- * @brief Meta header which includes all the algorithms in ``libfork/algorithm``.
- */
-
-#endif /* B3512749_D678_438A_8E60_B1E880CF6C23 */
-
-
-#ifndef A6BE090F_9077_40E8_9B57_9BAFD9620469
-#define A6BE090F_9077_40E8_9B57_9BAFD9620469
-
-// Copyright © Conor Williams <conorwilliams@outlook.com>
-
-// SPDX-License-Identifier: MPL-2.0
-
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #ifndef AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A
 #define AE259086_6D4B_433D_8EEB_A1E8DC6A5F7A
@@ -7124,6 +5209,38 @@ inline constexpr impl::scan_overload scan = {};
 
 namespace lf {
 
+namespace impl {
+
+enum class future_state {
+  /**
+   * @brief Wait has not been called.
+   */
+  no_wait,
+  /**
+   * @brief The result is ready.
+   */
+  ready,
+  /**
+   * @brief The result has been retrievd.
+   */
+  retrievd,
+};
+
+template <typename R>
+struct root_heap : try_eventually<R> {
+
+  using try_eventually<R>::operator=;
+
+  std::optional<impl::submit_node_t> node;     // Make default constructible.
+  std::binary_semaphore sem{0};                // Also needs to be on heap.
+  future_state status = future_state::no_wait; // Track if the future waited, etc.
+};
+
+template <typename R>
+using root_shared_ptr = std::shared_ptr<root_heap<R>>;
+
+} // namespace impl
+
 inline namespace core {
 
 /**
@@ -7152,38 +5269,14 @@ struct empty_future : std::exception {
 template <returnable R>
 class future {
 
+  using enum impl::future_state;
+
   future() = default;
-
-  using eventually_t = try_eventually<R>;
-
-  enum class state {
-    /**
-     * @brief Wait has not been called.
-     */
-    no_wait,
-    /**
-     * @brief The result is ready.
-     */
-    ready,
-    /**
-     * @brief The result has been retrievd.
-     */
-    retrievd,
-  };
-
-  struct heap : eventually_t {
-
-    using eventually_t::operator=;
-
-    std::optional<impl::submit_node_t> node; // Make default constructible.
-    std::binary_semaphore sem{0};            // Also needs to be on heap.
-    state status = state::no_wait;
-  };
 
   /**
    * @brief The other half of the promise-future pair.
    */
-  std::shared_ptr<heap> m_heap = std::make_shared<heap>();
+  impl::root_shared_ptr<R> m_heap = std::make_shared<impl::root_heap<R>>();
 
   template <scheduler Sch, async_function_object F, class... Args>
     requires rootable<F, Args...>
@@ -7210,7 +5303,7 @@ class future {
    * @brief Wait (__block__) until the future completes if it has a shared state.
    */
   ~future() noexcept {
-    if (valid() && m_heap->status == state::no_wait) {
+    if (valid() && m_heap->status == no_wait) {
       m_heap->sem.acquire();
     }
   }
@@ -7233,9 +5326,9 @@ class future {
       LF_THROW(broken_future{});
     }
 
-    if (m_heap->status == state::no_wait) {
+    if (m_heap->status == no_wait) {
       m_heap->sem.acquire();
-      m_heap->status = state::ready;
+      m_heap->status = ready;
     }
   }
   /**
@@ -7248,11 +5341,11 @@ class future {
 
     wait();
 
-    if (m_heap->status == state::retrievd) {
+    if (m_heap->status == retrievd) {
       LF_THROW(empty_future{});
     }
 
-    m_heap->status = state::retrievd;
+    m_heap->status = retrievd;
 
     if (m_heap->has_exception()) {
       std::rethrow_exception(std::move(*m_heap).exception());
@@ -9990,6 +8083,1901 @@ class unit_pool : impl::immovable<unit_pool> {
  */
 
 #endif /* A616E976_A92A_4CE4_B807_936EF8C5FBC4 */
+
+
+
+#ifndef D336C448_D1EE_4616_9277_E0D7D550A10A
+#define D336C448_D1EE_4616_9277_E0D7D550A10A
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>    // for copy_constructible, same_as, common_reference_with
+#include <iterator>    // for indirectly_readable, iter_reference_t, indirectly_...
+#include <type_traits> // for decay_t, false_type, invoke_result, remove_cvref_t
+ // for async_invocable, async_regular_invocable, async_re...
+
+/**
+ * @file constraints.hpp
+ *
+ * @brief Variations of the standard library's concepts used for constraining algorithms.
+ */
+
+namespace lf {
+
+// ------------------------------------  either invocable ------------------------------------ //
+
+/**
+ * @brief Test if "F" is async invocable __xor__ normally invocable with ``Args...``.
+ */
+template <typename F, typename... Args>
+concept invocable = (std::invocable<F, Args...> || async_invocable<F, Args...>)&&!(
+    std::invocable<F, Args...> && async_invocable<F, Args...>);
+
+/**
+ * @brief Test if "F" is regularly async invocable __xor__ normally invocable invocable with ``Args...``.
+ */
+template <typename F, typename... Args>
+concept regular_invocable = (std::regular_invocable<F, Args...> || async_regular_invocable<F, Args...>)&&!(
+    std::regular_invocable<F, Args...> && async_regular_invocable<F, Args...>);
+
+// ------------------------------------  either result type ------------------------------------ //
+
+namespace detail {
+
+template <typename F, typename... Args>
+struct either_invocable_result;
+
+template <typename F, typename... Args>
+  requires async_invocable<F, Args...>
+struct either_invocable_result<F, Args...> : async_result<F, Args...> {};
+
+template <typename F, typename... Args>
+  requires std::invocable<F, Args...>
+struct either_invocable_result<F, Args...> : std::invoke_result<F, Args...> {};
+
+} // namespace detail
+
+/**
+ * @brief The result of invoking a regular-or-async function.
+ *
+ * If F is a regular function then this is the same as `std::invoke_result<F, Args...>`. Otherwise,
+ * if F is an async function then this is the same as `lf::core::invoke_result_t<F, Args...>`.
+ */
+template <typename F, typename... Args>
+  requires invocable<F, Args...>
+using invoke_result_t = typename detail::either_invocable_result<F, Args...>::type;
+
+// ------------------------------------ indirect_value_t ------------------------------------ //
+
+namespace detail {
+
+/**
+ * @brief Base case for regular iterators.
+ */
+template <typename I>
+struct indirect_value_impl {
+  using type = std::iter_value_t<I> &;
+};
+
+/**
+ * @brief Specialization for projected iterators.
+ */
+template <typename Proj>
+  requires requires { typename Proj::secret_projected_indirect_value; }
+struct indirect_value_impl<Proj> : Proj::secret_projected_indirect_value {};
+
+} // namespace detail
+
+/**
+ * @brief From [P2609R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2609r3.html), the
+ * referenced value type.
+ *
+ * Relaxes some constraints for ``lf::core::indirectly_unary_invocable`` Specifically: `indirect_value_t<I>`
+ * must be `std::iter_value_t<I> &` for an iterator and `invoke_result_t<Proj &, indirect_value_t<Iter>>` for
+ * `projected<Proj, Iter>`.
+ */
+template <std::indirectly_readable I>
+using indirect_value_t = typename detail::indirect_value_impl<I>::type;
+
+// ------------------------------- indirectly_unary_invocable ------------------------------- //
+
+/**
+ * @brief ``std::indirectly_unary_invocable` that accepts async and regular function.
+ *
+ * This uses the relaxed version from
+ * [P2997R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2997r0.html#ref-LWG3859) and the
+ * further relaxation from [P2609R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2609r3.html)
+ */
+template <class F, class I>
+concept indirectly_unary_invocable = std::indirectly_readable<I> &&                     //
+                                     std::copy_constructible<F> &&                      //
+                                     invocable<F &, indirect_value_t<I>> &&             //
+                                     invocable<F &, std::iter_reference_t<I>> &&        //
+                                     std::common_reference_with<                        //
+                                         invoke_result_t<F &, indirect_value_t<I>>,     //
+                                         invoke_result_t<F &, std::iter_reference_t<I>> //
+                                         >;
+
+/**
+ * @brief ``std::indirectly_regular_unary_invocable` that accepts async and regular function.
+ *
+ * This uses the relaxed version from
+ * [P2997R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2997r0.html#ref-LWG3859) and the
+ * further relaxation from [P2609R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2609r3.html)
+ *
+ * __Hint:__ `indirect_value_t<I> = invoke_result_t<proj &, std::iter_value_t<I> &>` for 1-projected
+ * iterators.
+ */
+template <class F, class I>
+concept indirectly_regular_unary_invocable = std::indirectly_readable<I> &&                      //
+                                             std::copy_constructible<F> &&                       //
+                                             regular_invocable<F &, indirect_value_t<I>> &&      //
+                                             regular_invocable<F &, std::iter_reference_t<I>> && //
+                                             std::common_reference_with<                         //
+                                                 invoke_result_t<F &, indirect_value_t<I>>,      //
+                                                 invoke_result_t<F &, std::iter_reference_t<I>>  //
+                                                 >;
+
+// ------------------------------------ indirect_result_t ------------------------------------ //
+
+/**
+ * @brief A variation of `std::indirect_result_t` that accepts async and regular function.
+ */
+template <class F, class... Is>
+  requires (std::indirectly_readable<Is> && ...) && invocable<F, std::iter_reference_t<Is>...>
+using indirect_result_t = invoke_result_t<F, std::iter_reference_t<Is>...>;
+
+// ------------------------------------ projected ------------------------------------ //
+
+namespace detail {
+
+template <class I>
+struct conditional_difference_type {};
+
+template <std::weakly_incrementable I>
+struct conditional_difference_type<I> {
+  using difference_type = std::iter_difference_t<I>;
+};
+
+template <class I, class Proj>
+struct projected_impl {
+  /**
+   * @brief An ADL barrier.
+   */
+  struct projected_iterator : conditional_difference_type<I> {
+    /**
+     * @brief The value_type of the projected iterator.
+     */
+    using value_type = std::remove_cvref_t<indirect_result_t<Proj &, I>>;
+    /**
+     * @brief Not defined.
+     */
+    auto operator*() const -> indirect_result_t<Proj &, I>;
+    /**
+     * @brief For internal use only!
+     */
+    struct secret_projected_indirect_value {
+      using type = invoke_result_t<Proj &, indirect_value_t<I>>;
+    };
+  };
+};
+
+/**
+ * @brief A variation of `std::projected` that accepts async/regular function.
+ */
+template <std::indirectly_readable I, indirectly_regular_unary_invocable<I> Proj>
+using project_once = typename detail::projected_impl<I, Proj>::projected_iterator;
+
+template <typename...>
+struct compose_projection {};
+
+template <std::indirectly_readable I>
+struct compose_projection<I> : std::type_identity<I> {};
+
+template <std::indirectly_readable I, indirectly_regular_unary_invocable<I> Proj, typename... Other>
+struct compose_projection<I, Proj, Other...> : compose_projection<project_once<I, Proj>, Other...> {};
+
+//
+
+template <typename...>
+struct composable : std::false_type {};
+
+template <std::indirectly_readable I>
+struct composable<I> : std::true_type {};
+
+template <std::indirectly_readable I, indirectly_regular_unary_invocable<I> Proj, typename... Other>
+struct composable<I, Proj, Other...> : composable<project_once<I, Proj>, Other...> {};
+
+template <typename I, typename... Proj>
+concept indirectly_composable = std::indirectly_readable<I> && composable<I, Proj...>::value;
+
+} // namespace detail
+
+/**
+ * @brief A variation of `std::projected` that accepts async/regular functions and composes projections.
+ */
+template <std::indirectly_readable I, typename... Proj>
+  requires detail::indirectly_composable<I, Proj...>
+using projected = typename detail::compose_projection<I, Proj...>::type;
+
+// Quick test
+
+static_assert(std::same_as<indirect_value_t<int *>, int &>);
+static_assert(std::same_as<indirect_value_t<projected<int *, int (*)(int &)>>, int>);
+
+// ---------------------------------- Semigroup  helpers ---------------------------------- //
+
+namespace impl {
+
+/**
+ * @brief Verify `F` is invocable with `Args...` and returns `R`.
+ */
+template <typename R, typename F, typename... Args>
+concept regular_invocable_returns =
+    regular_invocable<F, Args...> && std::same_as<R, invoke_result_t<F, Args...>>;
+
+} // namespace impl
+
+// ---------------------------------- Semigroup ---------------------------------- //
+
+/**
+ * @brief A semigroup is a set `S` and an associative binary operation `·`, such that `S` is closed under `·`.
+ *
+ * Associativity means that for all `a, b, c` in `S`, `(a · b) · c = a · (b · c)`.
+ *
+ * Example: `(Z, +)` is a semigroup, since we can add any two integers and the result is also an integer.
+ *
+ * Example: `(Z, /)` is not a semigroup, since `2/3` s not an integer.
+ *
+ * Example: `(Z, -)` is not a semigroup, since `(1 - 1) - 1 != 1 - (1 - 1)`.
+ *
+ * Let `t`, `u` and `bop` be objects of types `T`, `U` and `Bop` respectively. Then the following expressions
+ * must be valid:
+ *
+ * 1. `bop(t, t)`
+ * 2. `bop(u, u)`
+ * 3. `bop(u, t)`
+ * 4. `bop(t, u)`
+ *
+ * Additionally, the expressions must return the same type, `R`.
+ *
+ * __Note:__ A semigroup requires all invocations to be regular. This is a semantic requirement only.
+ */
+template <class Bop, class T, class U>
+concept semigroup =
+    regular_invocable<Bop, T, T> &&                                           // Pure invocations
+    regular_invocable<Bop, U, U> &&                                           //
+    std::same_as<invoke_result_t<Bop, T, T>, invoke_result_t<Bop, U, U>> &&   //
+    impl::regular_invocable_returns<invoke_result_t<Bop, T, T>, Bop, T, U> && // Mixed invocations
+    impl::regular_invocable_returns<invoke_result_t<Bop, U, U>, Bop, U, T>;   //
+
+// ------------------------------------ Foldable ------------------------------------ //
+
+namespace detail {
+
+template <class Acc, class Bop, class T>
+concept foldable_to =                                        //
+    std::movable<Acc> &&                                     //
+    semigroup<Bop, Acc, T> &&                                //
+    std::constructible_from<Acc, T> &&                       //
+    std::convertible_to<T, Acc> &&                           //
+    std::assignable_from<Acc &, invoke_result_t<Bop, T, T>>; //
+
+template <class Acc, class Bop, class I>
+concept indirectly_foldable_to =                                       //
+    std::indirectly_readable<I> &&                                     //
+    std::copy_constructible<Bop> &&                                    //
+    semigroup<Bop &, indirect_value_t<I>, std::iter_reference_t<I>> && //
+    foldable_to<Acc, Bop &, indirect_value_t<I>> &&                    //
+    foldable_to<Acc, Bop &, std::iter_reference_t<I>>;                 //
+
+} // namespace detail
+
+/**
+ * @brief Test if a binary operation supports a fold operation over a type.
+ *
+ * The binary operation must be associative but not necessarily commutative.
+ *
+ * This means a collection of one or more values of type `T` can be folded to a single value
+ * of type `Acc` equal to `std::decay_t<semigroup_t<Bop, T>>` using `bop`, an operator of type `Bop`.
+ *
+ * For example using the infix notation `a · b` to mean `bop(a, b)`:
+ *
+ * 1. `fold bop [a] = a`
+ * 2. `fold bop [a, b] = a · b`
+ * 3. `fold bop [a, b, c] = a · b · c`
+ * 4. `fold bop [a, b, c, ...] = a · b · c · ...`
+ *
+ * The order of evaluation is unspecified but the elements will not be reordered.
+ *
+ * @tparam Bop Associative binary operator.
+ * @tparam I Input type
+ */
+template <class Bop, class T>
+concept foldable =                                                         //
+    invocable<Bop, T, T> &&                                                //
+    detail::foldable_to<std::decay_t<invoke_result_t<Bop, T, T>>, Bop, T>; //
+
+/**
+ * @brief An indirect version of `lf::foldable`.
+ *
+ * @tparam Bop Associative binary operator.
+ * @tparam I Input iterator.
+ */
+template <class Bop, class I>
+concept indirectly_foldable =                                                             //
+    std::indirectly_readable<I> &&                                                        //
+    std::copy_constructible<Bop> &&                                                       //
+    invocable<Bop &, std::iter_reference_t<I>, std::iter_reference_t<I>> &&               //
+    detail::indirectly_foldable_to<std::decay_t<indirect_result_t<Bop &, I, I>>, Bop, I>; //
+
+/**
+ * @brief Compute the accumulator/result type for a fold operation.
+ */
+template <class Bop, std::random_access_iterator I, class Proj>
+  requires indirectly_foldable<Bop, projected<I, Proj>>
+using indirect_fold_acc_t = std::decay_t<indirect_result_t<Bop &, projected<I, Proj>, projected<I, Proj>>>;
+
+namespace detail {
+
+template <class Acc, class Bop, class O>
+concept scannable_impl =
+    std::indirectly_writable<O, Acc> &&                                            // Write result of fold.
+    semigroup<Bop &, std::iter_reference_t<O>, std::iter_rvalue_reference_t<O>> && // Scan/reduce over O.
+    std::indirectly_writable<O, indirect_result_t<Bop &, O, O>> &&                 //   Write result of -^.
+    std::indirectly_writable<O, Acc &> &&                                          // Copy acc in scan.
+    std::constructible_from<Acc, std::iter_reference_t<O>> &&                      // Initialize acc in scan.
+    std::convertible_to<std::iter_reference_t<O>, Acc>;                            // Same as -^.
+
+} // namespace detail
+
+/**
+ * @brief Test if a binary operation supports a scan operation over a type.
+ *
+ * The binary operation must be associative but not necessarily commutative.
+ *
+ * @tparam Bop The binary operation.
+ * @tparam O The output iterator.
+ * @tparam T The value type to scan over.
+ */
+template <class Bop, class O, class T>
+concept scannable =                                       //
+    std::indirectly_readable<O> &&                        //
+    std::indirectly_writable<O, T> &&                     // n = 1 case.
+    detail::foldable_to<std::iter_value_t<O>, Bop, T> &&  // Regular reduction over T.
+    detail::scannable_impl<std::iter_value_t<O>, Bop, O>; //
+
+/**
+ * @brief An indirect version of `lf::scannable` over an iterator.
+ *
+ * @tparam Bop The binary operation.
+ * @tparam O The output iterator.
+ * @tparam T The input iterator.
+ */
+template <class Bop, class O, class I>
+concept indirectly_scannable =
+    std::indirectly_readable<O> &&                                  //
+    std::indirectly_readable<I> &&                                  //
+    std::copy_constructible<Bop> &&                                 //
+    std::indirectly_writable<O, indirect_value_t<I>> &&             // n = 1 case.
+    std::indirectly_writable<O, std::iter_reference_t<I>> &&        //   -^.
+    detail::indirectly_foldable_to<std::iter_value_t<O>, Bop, I> && // Regular reduction over T.
+    detail::scannable_impl<std::iter_value_t<O>, Bop, O>;
+
+} // namespace lf
+
+#endif /* D336C448_D1EE_4616_9277_E0D7D550A10A */
+
+
+#ifndef B29F7CE3_05ED_4A3D_A464_CBA0454226F0
+#define B29F7CE3_05ED_4A3D_A464_CBA0454226F0
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>    // for invocable
+#include <functional>  // for identity, invoke
+#include <iterator>    // for random_access_iterator, sized_sentinel_for
+#include <optional>    // for nullopt, optional
+#include <ranges>      // for begin, end, iterator_t, empty, random_acces...
+#include <type_traits> // for decay_t
+ // for projected, indirect_fold_acc_t, indirectly_...     // for call, fork, join, dispatch       // for eventually             // for just            // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST              // for tag, eager_throw_outside             // for task
+
+/**
+ * @file fold.hpp
+ *
+ * @brief A parallel adaptation of the `std::fold_[...]` family.
+ */
+
+namespace lf {
+
+namespace impl {
+
+namespace detail {
+
+template <std::random_access_iterator I,
+          std::sized_sentinel_for<I> S,
+          class Proj,
+          indirectly_foldable<projected<I, Proj>> Bop>
+struct fold_overload_impl {
+
+  using acc_t = indirect_fold_acc_t<Bop, I, Proj>;
+  using int_t = std::iter_difference_t<I>;
+
+  static constexpr bool async_bop = !std::invocable<Bop &, acc_t, std::iter_reference_t<projected<I, Proj>>>;
+
+  /**
+   * @brief Recursive implementation of `fold`, requires that `tail - head > 0`.
+   */
+  LF_STATIC_CALL auto
+  operator()(auto fold, I head, S tail, int_t n, Bop bop, Proj proj) LF_STATIC_CONST->lf::task<acc_t> {
+
+    LF_ASSERT(n > 1);
+
+    int_t len = tail - head;
+
+    LF_ASSERT(len > 0);
+
+    if (len <= n) {
+
+      acc_t lhs = acc_t(co_await just(proj)(*head)); // Require convertible to U
+
+      using mod = modifier::eager_throw_outside;
+
+      for (++head; head != tail; ++head) {
+        if constexpr (async_bop) {
+          co_await lf::dispatch<tag::call, mod>(&lhs, bop)(std::move(lhs), co_await just(proj)(*head));
+        } else {
+          lhs = std::invoke(bop, std::move(lhs), co_await just(proj)(*head));
+        }
+      }
+
+      co_return std::move(lhs);
+    }
+
+    auto mid = head + (len / 2);
+
+    LF_ASSERT(mid - head > 0);
+    LF_ASSERT(tail - mid > 0);
+
+    eventually<acc_t> lhs;
+    eventually<acc_t> rhs;
+
+    // clang-format off
+
+    co_await lf::fork(&lhs, fold)(head, mid, n, bop, proj);
+
+    LF_TRY {
+      co_await lf::call(&rhs, fold)(mid, tail, n, bop, proj);
+    } LF_CATCH_ALL {
+      fold.stash_exception();
+    }
+
+    // clang-format on
+
+    co_await lf::join;
+
+    co_return co_await just(std::move(bop))( //
+        *std::move(lhs),                     //
+        *std::move(rhs)                      //
+    );                                       //
+  }
+
+  /**
+   * @brief Recursive implementation of `fold` for `n = 1`, requires that `tail - head > 1`.
+   *
+   * You cannot parallelize a chunk smaller than or equal to size three, for example, `a + b + c`
+   * requires `a + b` to be evaluated before adding the result to `c`.
+   */
+  LF_STATIC_CALL auto
+  operator()(auto fold, I head, S tail, Bop bop, Proj proj) LF_STATIC_CONST->lf::task<acc_t> {
+
+    int_t len = tail - head;
+
+    LF_ASSERT(len >= 0);
+
+    switch (len) {
+      case 0:
+        LF_ASSERT(false && "Unreachable");
+      case 1:
+        co_return co_await lf::just(std::move(proj))(*head);
+      default:
+        auto mid = head + (len / 2);
+
+        LF_ASSERT(mid - head > 0);
+        LF_ASSERT(tail - mid > 0);
+
+        eventually<acc_t> lhs;
+        eventually<acc_t> rhs;
+
+        // clang-format off
+
+        co_await lf::fork(&lhs, fold)(head, mid, bop, proj);
+
+        LF_TRY {
+          co_await lf::call(&rhs, fold)(mid, tail, bop, proj);
+        } LF_CATCH_ALL {
+          fold.stash_exception();
+        }
+
+        // clang-format on
+
+        co_await lf::join;
+
+        co_return co_await just(std::move(bop))( //
+            *std::move(lhs),                     //
+            *std::move(rhs)                      //
+        );                                       //
+    }
+  }
+};
+
+} // namespace detail
+
+/**
+ * @brief Overload set for `lf::fold`.
+ */
+struct fold_overload {
+  /**
+   * @brief Recursive implementation of `fold` for `n = 1` case.
+   */
+  template <std::random_access_iterator I,
+            std::sized_sentinel_for<I> S,
+            class Proj = std::identity,
+            indirectly_foldable<projected<I, Proj>> Bop>
+  LF_STATIC_CALL auto operator()(auto /* unused */, I head, S tail, Bop bop, Proj proj = {})
+      LF_STATIC_CONST->lf::task<std::optional<indirect_fold_acc_t<Bop, I, Proj>>> {
+
+    if (head == tail) {
+      co_return std::nullopt;
+    }
+
+    co_return co_await lf::just(detail::fold_overload_impl<I, S, Proj, Bop>{})(
+        std::move(head), std::move(tail), std::move(bop), std::move(proj) //
+    );
+  }
+
+  /**
+   * @brief Recursive implementation of `fold`.
+   *
+   * This will dispatch to the `n = 1` case if `n <= 3`.
+   */
+  template <std::random_access_iterator I,
+            std::sized_sentinel_for<I> S,
+            class Proj = std::identity,
+            indirectly_foldable<projected<I, Proj>> Bop>
+  LF_STATIC_CALL auto
+  operator()(auto /* unused */, I head, S tail, std::iter_difference_t<I> n, Bop bop, Proj proj = {})
+      LF_STATIC_CONST->lf::task<std::optional<indirect_fold_acc_t<Bop, I, Proj>>> {
+
+    if (head == tail) {
+      co_return std::nullopt;
+    }
+
+    if (n == 1) {
+      co_return co_await lf::just(detail::fold_overload_impl<I, S, Proj, Bop>{})(
+          std::move(head), std::move(tail), std::move(bop), std::move(proj) //
+      );
+    }
+
+    co_return co_await lf::just(detail::fold_overload_impl<I, S, Proj, Bop>{})(
+        std::move(head), std::move(tail), n, std::move(bop), std::move(proj) //
+    );
+  }
+
+  /**
+   * @brief Range version.
+   */
+  template <std::ranges::random_access_range Range,
+            class Proj = std::identity,
+            indirectly_foldable<projected<std::ranges::iterator_t<Range>, Proj>> Bop>
+    requires std::ranges::sized_range<Range>
+  LF_STATIC_CALL auto operator()(auto /* unused */, Range &&range, Bop bop, Proj proj = {}) LF_STATIC_CONST
+      ->lf::task<std::optional<indirect_fold_acc_t<Bop, std::ranges::iterator_t<Range>, Proj>>> {
+
+    if (std::ranges::empty(range)) {
+      co_return std::nullopt;
+    }
+
+    using I = std::decay_t<decltype(std::ranges::begin(range))>;
+    using S = std::decay_t<decltype(std::ranges::end(range))>;
+
+    co_return co_await lf::just(detail::fold_overload_impl<I, S, Proj, Bop>{})(
+        std::ranges::begin(range), std::ranges::end(range), std::move(bop), std::move(proj) //
+    );
+  }
+
+  /**
+   * @brief Range version.
+   */
+  template <std::ranges::random_access_range Range,
+            class Proj = std::identity,
+            indirectly_foldable<projected<std::ranges::iterator_t<Range>, Proj>> Bop>
+    requires std::ranges::sized_range<Range>
+  LF_STATIC_CALL auto operator()(auto /* unused */,
+                                 Range &&range,
+                                 std::ranges::range_difference_t<Range> n,
+                                 Bop bop,
+                                 Proj proj = {}) LF_STATIC_CONST
+      ->lf::task<std::optional<indirect_fold_acc_t<Bop, std::ranges::iterator_t<Range>, Proj>>> {
+
+    if (std::ranges::empty(range)) {
+      co_return std::nullopt;
+    }
+
+    using I = std::decay_t<decltype(std::ranges::begin(range))>;
+    using S = std::decay_t<decltype(std::ranges::end(range))>;
+
+    if (n == 1) {
+      co_return co_await lf::just(detail::fold_overload_impl<I, S, Proj, Bop>{})(
+          std::ranges::begin(range), std::ranges::end(range), std::move(bop), std::move(proj) //
+      );
+    }
+
+    co_return co_await lf::just(detail::fold_overload_impl<I, S, Proj, Bop>{})(
+        std::ranges::begin(range), std::ranges::end(range), n, std::move(bop), std::move(proj) //
+    );
+  }
+};
+
+} // namespace impl
+
+// clang-format off
+
+/**
+ * @brief A parallel implementation of `std::ranges::fold_left_first`.
+ *
+ * \rst
+ *
+ * Effective call signature:
+ *
+ * .. code ::
+ *
+ *    template <std::random_access_iterator I,
+ *              std::sized_sentinel_for<I> S,
+ *              typename Proj = std::identity,
+ *              indirectly_foldable<projected<I, Proj>> Bop
+ *              >
+ *    auto fold(I head, S tail, std::iter_difference_t<I> n, Bop bop, Proj proj = {}) -> indirect_fold_acc_t<Bop, I, Proj>;
+ *
+ * Overloads exist for a random-access range (instead of ``head`` and ``tail``) and ``n`` can be omitted
+ * (which will set ``n = 1``).
+ *
+ * Exemplary usage:
+ *
+ * .. code::
+ *
+ *    co_await just[fold](v, 10, std::plus<>{}, [](auto &elem) -> std::size_t {
+ *      return elem % 2 == 0;
+ *    });
+ *
+ * \endrst
+ * 
+ * This counts the number of even elements in `v` in parallel, using a chunk size of ``10``.
+ *
+ * If the binary operator or projection handed to `fold` are async functions, then they will be
+ * invoked asynchronously, this allows you to launch further tasks recursively.
+ *
+ * Unlike the `std::ranges::fold` variations, this function will make an implementation defined number of copies
+ * of the function objects and may invoke these copies concurrently.
+ */
+inline constexpr impl::fold_overload fold = {};
+
+// clang-format on
+
+} // namespace lf
+
+#endif /* B29F7CE3_05ED_4A3D_A464_CBA0454226F0 */
+
+
+#ifndef C5165911_AD64_4DAC_ACEB_DDB9B718B3ED
+#define C5165911_AD64_4DAC_ACEB_DDB9B718B3ED
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <functional> // for identity
+#include <iterator>   // for iter_difference_t, random_access_iterator
+#include <ranges>     // for begin, end, iterator_t, random_access_range
+ // for indirectly_unary_invocable, projected     // for call, fork, join             // for just            // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST             // for task
+
+/**
+ * @file for_each.hpp
+ *
+ * @brief A parallel implementation of `std::for_each`.
+ */
+
+namespace lf {
+
+namespace impl {
+
+/**
+ * @brief Overload set for `lf::for_each`.
+ */
+struct for_each_overload {
+
+  /**
+   * @brief Divide and conquer implementation.
+   */
+  template <std::random_access_iterator I,
+            std::sized_sentinel_for<I> S,
+            typename Proj = std::identity,
+            indirectly_unary_invocable<projected<I, Proj>> Fun>
+  LF_STATIC_CALL auto
+  operator()(auto for_each, I head, S tail, std::iter_difference_t<I> n, Fun fun, Proj proj = {})
+      LF_STATIC_CONST->lf::task<> {
+
+    LF_ASSERT(n > 0);
+
+    std::iter_difference_t<I> len = tail - head;
+
+    LF_ASSERT(len >= 0);
+
+    if (len == 0) {
+      co_return;
+    }
+
+    if (len <= n) {
+      for (; head != tail; ++head) {
+        co_await lf::just(fun)(co_await just(proj)(*head));
+      }
+      co_return;
+    }
+
+    auto mid = head + (len / 2);
+
+    // clang-format off
+
+    co_await lf::fork(for_each)(head, mid, n, fun, proj);
+
+    LF_TRY {
+      co_await lf::call(for_each)(mid, tail, n, fun, proj);
+    } LF_CATCH_ALL { 
+      for_each.stash_exception(); 
+    }
+
+    // clang-format on
+
+    co_await lf::join;
+  }
+
+  /**
+   * @brief Divide and conquer n = 1 version.
+   */
+  template <std::random_access_iterator I,
+            std::sized_sentinel_for<I> S,
+            typename Proj = std::identity,
+            indirectly_unary_invocable<projected<I, Proj>> Fun>
+  LF_STATIC_CALL auto
+  operator()(auto for_each, I head, S tail, Fun fun, Proj proj = {}) LF_STATIC_CONST->lf::task<> {
+
+    std::iter_difference_t<I> len = tail - head;
+
+    LF_ASSERT(len >= 0);
+
+    switch (len) {
+      case 0:
+        break;
+      case 1:
+        co_await lf::just(fun)(co_await just(proj)(*head));
+        break;
+      default:
+        auto mid = head + (len / 2);
+
+        // clang-format off
+
+        co_await lf::fork(for_each)(head, mid, fun, proj);
+
+        LF_TRY {
+          co_await lf::call(for_each)(mid, tail, fun, proj);
+        } LF_CATCH_ALL { 
+          for_each.stash_exception(); 
+        }
+
+        // clang-format on
+
+        co_await lf::join;
+    }
+  }
+
+  /**
+   * @brief Range version, dispatches to the iterator version.
+   *
+   * This will dispatch to `n = 1` specialization if `n = 1`
+   */
+  template <std::ranges::random_access_range Range,
+            typename Proj = std::identity,
+            indirectly_unary_invocable<projected<std::ranges::iterator_t<Range>, Proj>> Fun>
+    requires std::ranges::sized_range<Range>
+  LF_STATIC_CALL auto
+  operator()(auto for_each, Range &&range, std::ranges::range_difference_t<Range> n, Fun fun, Proj proj = {})
+      LF_STATIC_CONST->lf::task<> {
+
+    LF_ASSERT(n > 0);
+
+    if (n == 1) {
+      co_await just(for_each)(std::ranges::begin(range), std::ranges::end(range), fun, proj);
+    } else {
+      co_await just(for_each)(std::ranges::begin(range), std::ranges::end(range), n, fun, proj);
+    }
+  }
+
+  /**
+   * @brief Range n = 1, version, dispatches to the iterator version.
+   */
+  template <std::ranges::random_access_range Range,
+            typename Proj = std::identity,
+            indirectly_unary_invocable<projected<std::ranges::iterator_t<Range>, Proj>> Fun>
+    requires std::ranges::sized_range<Range>
+  LF_STATIC_CALL auto
+  operator()(auto for_each, Range &&range, Fun fun, Proj proj = {}) LF_STATIC_CONST->lf::task<> {
+    co_await lf::just(for_each)(
+        std::ranges::begin(range), std::ranges::end(range), std::move(fun), std::move(proj) //
+    );
+  }
+};
+
+} // namespace impl
+
+/**
+ * @brief A parallel implementation of `std::ranges::for_each`.
+ *
+ * \rst
+ *
+ * Effective call signature:
+ *
+ * .. code ::
+ *
+ *    template <std::random_access_iterator I,
+ *              std::sized_sentinel_for<I> S,
+ *              typename Proj = std::identity,
+ *              indirectly_unary_invocable<projected<I, Proj>> Fun
+ *              >
+ *    void for_each(I head, S tail, std::iter_difference_t<I> n, Fun fun, Proj proj = {});
+ *
+ * Overloads exist for a random-access range (instead of ``head`` and ``tail``) and ``n`` can be omitted
+ * (which will set ``n = 1``).
+ *
+ * Exemplary usage:
+ *
+ * .. code::
+ *
+ *    co_await just[for_each](v, 10, [](auto &elem) {
+ *      elem = 0;
+ *    });
+ *
+ * \endrst
+ *
+ * This will set each element of `v` to `0` in parallel using a chunk size of ``10``.
+ *
+ * If the function or projection handed to `for_each` are async functions, then they will be
+ * invoked asynchronously, this allows you to launch further tasks recursively.
+ *
+ * Unlike `std::ranges::for_each`, this function will make an implementation defined number of copies
+ * of the function objects and may invoke these copies concurrently.
+ */
+inline constexpr impl::for_each_overload for_each = {};
+
+} // namespace lf
+
+#endif /* C5165911_AD64_4DAC_ACEB_DDB9B718B3ED */
+
+
+#ifndef B13463FB_3CF9_46F1_AFAC_19CBCB99A23C
+#define B13463FB_3CF9_46F1_AFAC_19CBCB99A23C
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>    // for invocable
+#include <functional>  // for invoke
+#include <type_traits> // for invoke_result_t
+#include <utility>     // for forward
+ // for LF_HOF_RETURNS, LF_STATIC_CALL  // for task
+
+/**
+ * @file lift.hpp
+ *
+ * @brief Higher-order functions for lifting functions into async functions.
+ */
+
+namespace lf {
+
+/**
+ * @brief A higher-order function that lifts a function into an asynchronous function.
+ *
+ * \rst
+ *
+ * This is useful for when you want to fork a regular function:
+ *
+ * .. code::
+ *
+ *    auto work(int x) -> int;
+ *
+ * Then later in some async context you can do:
+ *
+ * .. code::
+ *
+ *    {
+ *      int a, b;
+ *
+ *      co_await fork[a, lift](work, 42);
+ *      co_await fork[b, lift](work, 007);
+ *
+ *      co_await join;
+ *    }
+ *
+ * .. note::
+ *
+ *    The lifted function will accept arguments by forwarding reference.
+ *
+ * \endrst
+ */
+inline constexpr auto lift = []<class F, class... Args>(auto, F &&func, Args &&...args)
+                                 LF_STATIC_CALL -> task<std::invoke_result_t<F, Args...>>
+  requires std::invocable<F, Args...>
+{
+  co_return std::invoke(std::forward<F>(func), std::forward<Args>(args)...);
+};
+
+/**
+ * @brief Lift an overload-set/template into a constrained lambda.
+ *
+ * This is useful for passing overloaded/template names to higher order functions like `lf::fork`/`lf::call`.
+ */
+#define LF_LOFT(name)                                                                                        \
+  [](auto &&...args) LF_STATIC_CALL LF_HOF_RETURNS(name(::std::forward<decltype(args)>(args)...))
+
+/**
+ * @brief Lift an overload-set/template into a constrained capturing lambda.
+ *
+ * The variadic arguments are used as the lambda's capture.
+ *
+ * This is useful for passing overloaded/template names to higher order functions like `lf::fork`/`lf::call`.
+ */
+#define LF_CLOFT(name, ...)                                                                                  \
+  [__VA_ARGS__](auto &&...args) LF_HOF_RETURNS(name(::std::forward<decltype(args)>(args)...))
+
+} // namespace lf
+
+#endif /* B13463FB_3CF9_46F1_AFAC_19CBCB99A23C */
+
+
+#ifndef DFB97DB6_8A5B_401E_AB7B_A386D71F4EE1
+#define DFB97DB6_8A5B_401E_AB7B_A386D71F4EE1
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <functional> // for identity
+#include <iterator>   // for random_access_iterator, indirectly_copyable
+#include <ranges>     // for iterator_t, begin, end, random_access_range
+ // for projected, indirectly_unary_invocable     // for call, fork, join             // for just            // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST             // for task
+
+/**
+ * @file map.hpp
+ *
+ * @brief A parallel implementation of `std::map`.
+ */
+
+namespace lf {
+
+namespace impl {
+
+/**
+ * @brief Overload set for `lf::map`.
+ */
+struct map_overload {
+  /**
+   * @brief Divide and conquer implementation.
+   */
+  template <std::random_access_iterator I,
+            std::sized_sentinel_for<I> S,
+            std::random_access_iterator O,
+            typename Proj = std::identity,
+            indirectly_unary_invocable<projected<I, Proj>> Fun>
+    requires std::indirectly_copyable<projected<I, Proj, Fun>, O>
+  LF_STATIC_CALL auto
+  operator()(auto map, I head, S tail, O out, std::iter_difference_t<I> n, Fun fun, Proj proj = {})
+      LF_STATIC_CONST->lf::task<> {
+
+    LF_ASSERT(n > 0);
+
+    std::iter_difference_t<I> len = tail - head;
+
+    LF_ASSERT(len >= 0);
+
+    if (len == 0) {
+      co_return;
+    }
+
+    if (len <= n) {
+      for (; head != tail; ++head, ++out) {
+        *out = co_await lf::just(fun)(co_await just(proj)(*head));
+      }
+      co_return;
+    }
+
+    auto dif = (len / 2);
+    auto mid = head + dif;
+
+    // clang-format off
+
+    co_await lf::fork(map)(head, mid, out, n, fun, proj);
+
+    LF_TRY {
+      co_await lf::call(map)(mid, tail, out + dif, n, fun, proj);
+    } LF_CATCH_ALL { 
+      map.stash_exception(); 
+    }
+
+    // clang-format on
+
+    co_await lf::join;
+  }
+
+  /**
+   * @brief Divide and conquer n = 1 version.
+   */
+  template <std::random_access_iterator I,
+            std::sized_sentinel_for<I> S,
+            std::random_access_iterator O,
+            typename Proj = std::identity,
+            indirectly_unary_invocable<projected<I, Proj>> Fun>
+    requires std::indirectly_copyable<projected<I, Proj, Fun>, O>
+  LF_STATIC_CALL auto
+  operator()(auto map, I head, S tail, O out, Fun fun, Proj proj = {}) LF_STATIC_CONST->lf::task<> {
+
+    std::iter_difference_t<I> len = tail - head;
+
+    LF_ASSERT(len >= 0);
+
+    switch (len) {
+      case 0:
+        break;
+      case 1:
+        *out = co_await lf::just(fun)(co_await just(proj)(*head));
+        break;
+      default:
+        auto dif = (len / 2);
+        auto mid = head + dif;
+
+        // clang-format off
+
+        co_await lf::fork(map)(head, mid, out, fun, proj);
+
+        LF_TRY {  
+          co_await lf::call(map)(mid, tail, out + dif, fun, proj);
+        } LF_CATCH_ALL { 
+          map.stash_exception(); 
+        }
+
+        // clang-format on
+
+        co_await lf::join;
+    }
+  }
+
+  /**
+   * @brief Range version, dispatches to the iterator version.
+   *
+   * This will dispatch to `n = 1` specialization if `n = 1`
+   */
+  template <std::ranges::random_access_range Range,
+            std::random_access_iterator O,
+            typename Proj = std::identity,
+            indirectly_unary_invocable<projected<std::ranges::iterator_t<Range>, Proj>> Fun>
+    requires std::ranges::sized_range<Range> &&
+             std::indirectly_copyable<projected<std::ranges::iterator_t<Range>, Proj, Fun>, O>
+             LF_STATIC_CALL auto operator()(auto map,
+                                            Range &&range,
+                                            O out,
+                                            std::ranges::range_difference_t<Range> n,
+                                            Fun fun,
+                                            Proj proj = {}) LF_STATIC_CONST->lf::task<> {
+
+    LF_ASSERT(n > 0);
+
+    if (n == 1) {
+      co_await just(map)(std::ranges::begin(range), std::ranges::end(range), out, fun, proj);
+    } else {
+      co_await just(map)(std::ranges::begin(range), std::ranges::end(range), out, n, fun, proj);
+    }
+  }
+
+  /**
+   * @brief Range n = 1, version, dispatches to the iterator version.
+   */
+  template <std::ranges::random_access_range Range,
+            typename Proj = std::identity,
+            std::random_access_iterator O,
+            indirectly_unary_invocable<projected<std::ranges::iterator_t<Range>, Proj>> Fun>
+    requires std::ranges::sized_range<Range> &&
+             std::indirectly_copyable<projected<std::ranges::iterator_t<Range>, Proj, Fun>, O>
+             LF_STATIC_CALL auto
+             operator()(auto map, Range &&range, O out, Fun fun, Proj proj = {}) LF_STATIC_CONST->lf::task<> {
+    co_await lf::just(map)(
+        std::ranges::begin(range), std::ranges::end(range), out, std::move(fun), std::move(proj) //
+    );
+  }
+};
+
+} // namespace impl
+
+/**
+ * @brief A parallel variation of `std::transform`.
+ *
+ * \rst
+ *
+ * Effective call signature:
+ *
+ * .. code ::
+ *
+ *    template <std::random_access_iterator I,
+ *              std::sized_sentinel_for<I> S,
+ *              std::random_access_iterator O
+ *              typename Proj = std::identity,
+ *              indirectly_unary_invocable<projected<I, Proj>> Fun
+ *              >
+ *      requires std::indirectly_copyable<projected<I, Proj, Fun>, O>
+ *    void map(I head, S tail, O out, std::iter_difference_t<I> n, Fun fun, Proj proj = {});
+ *
+ * Overloads exist for a random-access range (instead of ``head`` and ``tail``) and ``n`` can be omitted
+ * (which will set ``n = 1``).
+ *
+ * Exemplary usage:
+ *
+ * .. code::
+ *
+ *    std::vector<int> out(v.size());
+ *
+ *    co_await just[map](v, out.begin(), 10, [](int const& elem) {
+ *      return elem + 1;
+ *    });
+ *
+ * \endrst
+ *
+ * This will set each element of `out` to one more than corresponding element in `v` using
+ * a chunk size of ``10``.
+ *
+ * The input and output ranges must either be distinct (i.e. non-overlapping) or the same range (hence the
+ * transformation may be performed in-place).
+ *
+ * If the function or projection handed to `map` are async functions, then they will be
+ * invoked asynchronously, this allows you to launch further tasks recursively.
+ *
+ * Unlike `std::transform`, this function will make an implementation defined number of copies
+ * of the function objects and may invoke these copies concurrently.
+ */
+inline constexpr impl::map_overload map = {};
+
+} // namespace lf
+
+#endif /* DFB97DB6_8A5B_401E_AB7B_A386D71F4EE1 */
+
+
+#ifndef BF260626_9180_496A_A893_A1A7F2B6781E
+#define BF260626_9180_496A_A893_A1A7F2B6781E
+
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
+// SPDX-License-Identifier: MPL-2.0
+
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#include <concepts>    // for same_as
+#include <functional>  // for identity, invoke
+#include <iterator>    // for random_access_iterator, sized_sentinel_for
+#include <ranges>      // for begin, end, iterator_t, random_access_range
+#include <type_traits> // for conditional_t
+ // for indirectly_scannable, projected     // for call, dispatch, fork, join        // for async_invocable             // for just            // for LF_STATIC_CALL, LF_STATIC_CONST, unreachable              // for tag, eager_throw_outside, sync_outside             // for task
+
+/**
+ * @file scan.hpp
+ *
+ * @brief Implementation of a parallel scan.
+ */
+
+namespace lf {
+
+namespace impl {
+
+/**
+ * Operation propagates as:
+ *
+ * scan -> (scan, x)
+ *    x can be scan if the left child completes synchronously, otherwise it must be a fold.
+ *
+ * fold -> (fold, fold)
+ */
+enum class op {
+  scan,
+  fold,
+};
+
+/**
+ * Possible intervals:
+ *
+ * Full range: (lhs, rhs)
+ * Sub range: (lhs, mid), (mid, mid), (mid, rhs)
+ *
+ *
+ * Transformations:
+ *
+ * (lhs, rhs) -> (lhs, mid), (mid, rhs)
+ *
+ * (lhs, mid) -> (lhs, mid), (mid, mid)
+ * (mid, rhs) -> (mid, mid), (mid, rhs)
+ *
+ * (mid, mid) -> (mid, mid), (mid, mid)
+ *
+ */
+enum class interval {
+  all,
+  lhs,
+  mid,
+  rhs,
+};
+
+/**
+ * @brief Get the interval to the left of the current interval.
+ */
+consteval auto l_child_of(interval ival) -> interval {
+  switch (ival) {
+    case interval::all:
+    case interval::lhs:
+      return interval::lhs;
+    case interval::mid:
+    case interval::rhs:
+      return interval::mid;
+    default:
+      unreachable();
+  }
+}
+
+/**
+ * @brief Get the interval to the right of the current interval.
+ */
+consteval auto r_child_of(interval ival) -> interval {
+  switch (ival) {
+    case interval::all:
+    case interval::rhs:
+      return interval::rhs;
+    case interval::lhs:
+    case interval::mid:
+      return interval::mid;
+    default:
+      unreachable();
+  }
+}
+
+/**
+ * @brief Reduction up-sweep of the scan.
+ *
+ * See https://en.wikipedia.org/wiki/Prefix_sum#Parallel_algorithms this computes the reduction stage of the
+ * work-efficient algorithm. This is chunked and recursive. Essentially, we recursively divide the input into
+ * smaller chunk (building an implicit balanced binary tree) until the chunk size is reached. Then we sweep
+ * from the leaves of the tree (the chunks) to the root. At each tier we replace the right child with the sum
+ * of the left and right child.
+ *
+ * Example:
+ *
+ * Input: [1, 1, 1, 1, 1, 1, 1]
+ *
+ * Build tree until n = 2:
+ *
+ * Partition 0: [1, 1, 1, 1, 1, 1, 1]
+ *                     |- l_child  |- r_child
+ * Partition 1: [1, 1, 1][1, 1, 1, 1]
+ * Partition 2: [1][1, 1][1, 1][1, 1]
+ *
+ * At the leaves we compute the scan of each chunk:
+ *
+ * Partition 0: [1, 1, 2, 1, 2, 1, 2] <- views so they change as well
+ * Partition 1: [1, 1, 2][1, 2, 1, 2] <- ^
+ * Partition 2: [1][1, 2][1, 2][1, 2] <- Scan each chunk.
+ *
+ * Then we sweep up the tree:
+ *
+ * Partition 0: [1, 1, 3, 1, 2, 1, 4]
+ * Partition 1: [1, 1, 3][1, 2, 1, 4] <- combining below into right child
+ * Partition 2: [1][1, 2][1, 2][1, 2]
+ *
+ * Partition 0: [1, 1, 3, 1, 2, 1, 7] <- again combining below into right child
+ * Partition 1: [1, 1, 3][1, 2, 1, 4]
+ * Partition 2: [1][1, 2][1, 2][1, 2]
+ *
+ *
+ * Final views at all partition levels:
+ *
+ * Partition 0: [1, 1, 3, 1, 2, 1, 7]
+ * Partition 1: [1, 1, 3][1, 2, 1, 7]
+ * Partition 2: [1][1, 3][1, 2][1, 7]
+ *
+ * As an optimization over the basic algorithm we scan the chunks on the left of the tree.
+ */
+template <std::random_access_iterator I, //
+          std::sized_sentinel_for<I> S,  //
+          class Proj,                    //
+          class Bop,                     //
+          std::random_access_iterator O, //
+          interval Ival = interval::all, //
+          op Op = op::scan               //
+          >
+struct rise_sweep {
+  /**
+   * @brief The iterator difference type of I.
+   */
+  using int_t = std::iter_difference_t<I>;
+  /**
+   * @brief The accumulator type of the reduction.
+   */
+  using acc_t = std::iter_value_t<O>;
+  /**
+   * @brief The type of the task returned by the algorithm.
+   */
+  using task_t = lf::task<std::conditional_t<Op == op::scan, I, void>>;
+  /**
+   * @brief Propagate the operation to the left child.
+   */
+  using up_lhs = rise_sweep<I, S, Proj, Bop, O, l_child_of(Ival), Op>;
+  /**
+   * @brief The right child's operation depends on the readiness of the left child.
+   */
+  template <op OpChild>
+  using up_rhs = rise_sweep<I, S, Proj, Bop, O, r_child_of(Ival), OpChild>;
+  /**
+   * @brief If the binary operator is asynchronous, some optimizations can be done if it's not async.
+   */
+  static constexpr bool async_bop = async_invocable<Bop &, acc_t, acc_t>;
+  /**
+   * @brief Returns one-past-the-end of the scanned range.
+   */
+  LF_STATIC_CALL auto
+  operator()(auto self, I beg, S end, int_t n, Bop bop, Proj proj, O out) LF_STATIC_CONST->task_t {
+    //
+    int_t const size = end - beg;
+
+    LF_ASSERT(size >= 1);
+
+    static constexpr auto eager_call_outside = dispatch<tag::call, modifier::eager_throw_outside>;
+
+    if (size <= n) {
+      if constexpr (Op == op::fold) { // Equivalent to a fold over acc_t, left sibling not ready.
+
+        static_assert(Ival != interval::lhs && Ival != interval::all, "left can always scan");
+
+        if constexpr (Ival == interval::mid) {
+          // Mid segment has a right sibling so do the fold.
+          acc_t acc = acc_t(co_await lf::just(proj)(*beg));
+          // The optimizer sometimes trips-up so we force a bit of unrolling.
+          LF_PRAGMA_UNROLL(8)
+          for (++beg; beg != end; ++beg) {
+            if constexpr (async_bop) {
+              co_await eager_call_outside(&acc, bop)(std::move(acc), co_await lf::just(proj)(*beg));
+            } else {
+              acc = std::invoke(bop, std::move(acc), co_await lf::just(proj)(*beg));
+            }
+          }
+          // Store in the correct location in the output (in-case the scan is in-place).
+          *(out + size - 1) = std::move(acc);
+        } else {
+          static_assert(Ival == interval::rhs, "else rhs, which has no right sibling that consumes the fold");
+        }
+
+        co_return;
+
+      } else if constexpr (Ival == interval::mid || Ival == interval::rhs) { // A scan with left sibling.
+
+        acc_t acc = acc_t(*(out - 1));
+
+        LF_PRAGMA_UNROLL(8)
+        for (; beg != end; ++beg, ++out) {
+          if constexpr (async_bop) {
+            co_await eager_call_outside(&acc, bop)(std::move(acc), co_await lf::just(proj)(*beg));
+          } else {
+            acc = std::invoke(bop, std::move(acc), co_await lf::just(proj)(*beg));
+          }
+          *out = acc;
+        }
+
+        co_return end;
+
+      } else { // A scan with no left sibling.
+
+        acc_t acc = acc_t(co_await lf::just(proj)(*beg));
+        *out = acc;
+        ++beg;
+        ++out;
+
+        LF_PRAGMA_UNROLL(8)
+        for (; beg != end; ++beg, ++out) {
+          if constexpr (async_bop) {
+            co_await eager_call_outside(&acc, bop)(std::move(acc), co_await lf::just(proj)(*beg));
+          } else {
+            acc = std::invoke(bop, std::move(acc), co_await lf::just(proj)(*beg));
+          }
+          *out = acc;
+        }
+
+        co_return end;
+      }
+    }
+
+    // Divide and recurse.
+    int_t const mid = size / 2;
+
+    /**
+     * Specified through the following concept chain:
+     *  random_access_iterator -> bidirectional_iterator -> forward_iterator -> incrementable -> regular
+     */
+    I left_out;
+
+    if constexpr (Op == op::scan) {
+      // If we are a scan then left child is a scan,
+      static constexpr auto fork_sync = dispatch<tag::fork, modifier::sync_outside>;
+      // Unconditionally launch left child (scan).
+      auto ready = co_await fork_sync(&left_out, up_lhs{})(beg, beg + mid, n, bop, proj, out);
+      // If the left child is ready and completely scanned then rhs can be a scan.
+      // Otherwise the rhs must be a fold.
+      if (ready && left_out == beg + mid) {
+        // Effectively fused child trees into a single scan.
+        // Right most scanned now from right child.
+        co_return co_await lf::just(up_rhs<op::scan>{})(beg + mid, end, n, bop, proj, out + mid);
+      }
+    } else {
+      co_await lf::fork(up_lhs{})(beg, beg + mid, n, bop, proj, out);
+    }
+
+    // clang-format off
+    LF_TRY {
+      co_await lf::call(up_rhs<op::fold>{})(beg + mid, end, n, bop, proj, out + mid);
+    } LF_CATCH_ALL{
+      self.stash_exception();
+    }
+    // clang-format on
+    co_await lf::join;
+
+    // Restore invariant: propagate the reduction (scan), to the right sibling (if we have one).
+    if constexpr (Ival == interval::lhs || Ival == interval::mid) {
+
+      O l_child = out + mid - 1;
+      O r_child = out + size - 1;
+
+      if constexpr (async_bop) {
+        co_await eager_call_outside(r_child, bop)(*l_child, std::ranges::iter_move(r_child));
+      } else {
+        *r_child = std::invoke(bop, *l_child, std::ranges::iter_move(r_child));
+      }
+    }
+
+    // If we are a scan then we return the end of the scanned range which was in the left child.
+    if constexpr (Op == op::scan) {
+      co_return left_out;
+    }
+  }
+};
+
+/**
+ * As some of the input is always scanned during the reduction sweep, we always have a left sibling.
+ */
+template <std::random_access_iterator I, //
+          std::sized_sentinel_for<I> S,  //
+          class Proj,                    //
+          class Bop,                     //
+          std::random_access_iterator O, //
+          interval Ival                  //
+          >
+  requires (Ival == interval::mid || Ival == interval::rhs)
+struct fall_sweep_impl {
+  /**
+   * @brief The iterator difference type of I.
+   */
+  using int_t = std::iter_difference_t<I>;
+  /**
+   * @brief The accumulator type of the reduction.
+   */
+  using acc_t = std::iter_value_t<O>;
+  /**
+   * @brief Left child of the current interval.
+   */
+  using down_lhs = fall_sweep_impl<I, S, Proj, Bop, O, l_child_of(Ival)>;
+  /**
+   * @brief Right child of the current interval.
+   */
+  using down_rhs = fall_sweep_impl<I, S, Proj, Bop, O, r_child_of(Ival)>;
+  /**
+   * @brief If the binary operator is asynchronous, some optimizations can be done if it's not async.
+   */
+  static constexpr bool async_bop = async_invocable<Bop &, acc_t, acc_t>;
+  /**
+   * @brief Recursive implementation of `fall_sweep`, requires that `tail - head > 0`.
+   */
+  LF_STATIC_CALL auto
+  operator()(auto self, I beg, S end, int_t n, Bop bop, Proj proj, O out) LF_STATIC_CONST->lf::task<> {
+
+    int_t const size = end - beg;
+
+    LF_ASSERT(size > 0);
+
+    static constexpr auto eager_call_outside = dispatch<tag::call, modifier::eager_throw_outside>;
+
+    if (size <= n) { // Equivalent to a scan (maybe) with an initial value.
+
+      acc_t acc = acc_t(*(out - 1));
+
+      // The furthest-right chunk has no reduction stored in it so we include it in the scan.
+      I last = (Ival == interval::rhs) ? end : beg + size - 1;
+
+      LF_PRAGMA_UNROLL(8)
+      for (; beg != last; ++beg, ++out) {
+        if constexpr (async_bop) {
+          co_await eager_call_outside(&acc, bop)(std::move(acc), co_await lf::just(proj)(*beg));
+        } else {
+          acc = std::invoke(bop, std::move(acc), co_await lf::just(proj)(*beg));
+        }
+        *out = acc;
+      }
+      co_return;
+    }
+
+    int_t const mid = size / 2;
+
+    // Restore invariant: propagate the reduction (scan), we always have a left sibling.
+    if constexpr (async_bop) {
+      co_await eager_call_outside(out + mid - 1, bop)(*(out - 1), std::ranges::iter_move(out + mid - 1));
+    } else {
+      *(out + mid - 1) = std::invoke(bop, *(out - 1), std::ranges::iter_move(out + mid - 1));
+    }
+
+    // Divide and recurse.
+    co_await lf::fork(down_lhs{})(beg, beg + mid, n, bop, proj, out);
+    // clang-format off
+    LF_TRY {
+      co_await lf::call(down_rhs{})(beg + mid, end, n, bop, proj, out + mid);
+    } LF_CATCH_ALL{
+      self.stash_exception();
+    }
+    // clang-format on
+    co_await lf::join;
+  }
+};
+
+/**
+ * As some of the input is always scanned during the reduction sweep, we always have a left sibling.
+ */
+template <std::random_access_iterator I, //
+          std::sized_sentinel_for<I> S,  //
+          class Proj,                    //
+          class Bop,                     //
+          std::random_access_iterator O, //
+          interval Ival = interval::all  //
+          >
+struct fall_sweep {
+  /**
+   * @brief The iterator difference type of I.
+   */
+  using int_t = std::iter_difference_t<I>;
+  /**
+   * @brief Recursion to the left, computed interval.
+   */
+  using recur_lhs = fall_sweep<I, S, Proj, Bop, O, l_child_of(Ival)>;
+  /**
+   * @brief Recursion to the right, computed interval.
+   */
+  using recur_rhs = fall_sweep<I, S, Proj, Bop, O, r_child_of(Ival)>;
+  /**
+   * @brief Call the implementation, this can never be called on the left.
+   */
+  using down_rhs = fall_sweep_impl<I, S, Proj, Bop, O, r_child_of(Ival)>;
+  /**
+   * @brief Launch the implementation in the un-scanned chunks.
+   *
+   * Options:
+   *  left fully scanned and right fully scanned -> return (make this impossible).
+   *
+   *  left fully scanned, right part-scanned -> (invar holds) recurse on right.
+   *  left fully scanned, right un-scanned -> (invar holds), call fall_sweep on right.
+   *  left part scanned, right un-scanned -> restore invar, recurse on left, call fall_sweep on right.
+   */
+  LF_STATIC_CALL auto operator()(auto self, I beg, S end, int_t n, Bop bop, Proj proj, O out, I scan_end)
+      LF_STATIC_CONST->lf::task<> {
+
+    LF_ASSERT(scan_end < end);
+
+    for (;;) {
+
+      int_t size = end - beg;
+      int_t mid = size / 2;
+
+      I split = beg + mid;
+
+      if /*  */ (scan_end < split) {
+        // Left part-scanned, right un-scanned.
+        co_await lf::fork(recur_lhs{})(beg, beg + mid, n, bop, proj, out, scan_end);
+        // clang-format off
+        LF_TRY {  
+            co_await lf::call(down_rhs{})(beg + mid, end, n, bop, proj, out + mid);
+        } LF_CATCH_ALL{
+          self.stash_exception();
+        }
+        // clang-format on
+        co_await lf::join;
+        co_return;
+      } else if (scan_end == split) {
+        // Left fully scanned, right un-scanned.
+        co_return co_await lf::just(down_rhs{})(beg + mid, end, n, bop, proj, out + mid);
+      } else if (scan_end > split) {
+        // Left fully scanned, right part-scanned.
+        if constexpr (!std::same_as<fall_sweep, recur_rhs>) {
+          co_return co_await lf::just(recur_rhs{})(beg + mid, end, n, bop, proj, out + mid, scan_end);
+        } else {
+          // Recursion looks like, -^, hence we can loop.
+          beg = beg + mid;
+          out = out + mid;
+          continue;
+        }
+      } else {
+        unreachable();
+      }
+    }
+  }
+};
+
+/**
+ * @brief A wrapper around the rise/fall algorithms.
+ */
+struct scan_impl {
+  /**
+   * @brief Calls the rise_sweep and fall_sweep algorithms, checks for empty input.
+   */
+  template <std::random_access_iterator I, //
+            std::sized_sentinel_for<I> S,  //
+            std::random_access_iterator O, //
+            class Proj,                    //
+            class Bop                      //
+            >
+  LF_STATIC_CALL auto
+  operator()(auto /* unused */, I beg, S end, O out, std::iter_difference_t<I> n, Bop bop, Proj proj)
+      LF_STATIC_CONST->lf::task<> {
+
+    // Early exit required if the input is empty.
+    if (end == beg) {
+      co_return;
+    }
+
+    constexpr rise_sweep<I, S, Proj, Bop, O> rise = {};
+    constexpr fall_sweep<I, S, Proj, Bop, O> fall = {};
+
+    // Up-sweep the reduction.
+    I scan_end = co_await lf::just(rise)(beg, end, n, bop, proj, out);
+
+    if (scan_end != end) {
+      // If some un-scanned input remains, fall-sweep it.
+      co_await lf::just(fall)(beg, end, n, bop, proj, out, scan_end);
+    }
+  }
+};
+
+/**
+ * @brief Eight overloads of scan for (iterator/range, chunk/in_place, n = 1/n != 1).
+ */
+struct scan_overload {
+  /**
+   * @brief [iterator,chunk,output] version (5-6)
+   */
+  template <std::random_access_iterator I,                  //
+            std::sized_sentinel_for<I> S,                   //
+            std::random_access_iterator O,                  //
+            class Proj = std::identity,                     //
+            indirectly_scannable<O, projected<I, Proj>> Bop //
+            >
+  auto LF_STATIC_CALL operator()(auto /* unused */, //
+                                 I beg,
+                                 S end,
+                                 O out,
+                                 std::iter_difference_t<I> n,
+                                 Bop bop,
+                                 Proj proj = {}) LF_STATIC_CONST->task<> {
+    co_return co_await lf::just(impl::scan_impl{})(beg, end, out, n, bop, proj);
+  }
+  /**
+   * @brief [iterator,n = 1,output] version (4-5)
+   */
+  template <std::random_access_iterator I,                  //
+            std::sized_sentinel_for<I> S,                   //
+            std::random_access_iterator O,                  //
+            class Proj = std::identity,                     //
+            indirectly_scannable<O, projected<I, Proj>> Bop //
+            >
+  auto LF_STATIC_CALL operator()(auto /* unused */, //
+                                 I beg,
+                                 S end,
+                                 O out,
+                                 Bop bop,
+                                 Proj proj = {}) LF_STATIC_CONST->task<void> {
+    co_return co_await lf::just(impl::scan_impl{})(beg, end, out, 1, bop, proj);
+  }
+  /**
+   * @brief [iterator,chunk,in_place] version (4-5)
+   */
+  template <std::random_access_iterator I,                  //
+            std::sized_sentinel_for<I> S,                   //
+            class Proj = std::identity,                     //
+            indirectly_scannable<I, projected<I, Proj>> Bop //
+            >
+  auto LF_STATIC_CALL operator()(auto /* unused */, //
+                                 I beg,
+                                 S end,
+                                 std::iter_difference_t<I> n,
+                                 Bop bop,
+                                 Proj proj = {}) LF_STATIC_CONST->task<void> {
+
+    co_return co_await lf::just(impl::scan_impl{})(beg, end, beg, n, bop, proj);
+  }
+  /**
+   * @brief [iterator,n = 1,in_place] version.
+   */
+  template <std::random_access_iterator I,                  //
+            std::sized_sentinel_for<I> S,                   //
+            class Proj = std::identity,                     //
+            indirectly_scannable<I, projected<I, Proj>> Bop //
+            >
+  auto LF_STATIC_CALL operator()(auto /* unused */, //
+                                 I beg,
+                                 S end,
+                                 Bop bop,
+                                 Proj proj = {}) LF_STATIC_CONST->task<void> {
+    co_return co_await lf::just(impl::scan_impl{})(beg, end, beg, 1, bop, proj);
+  }
+  /**
+   * @brief [range,chunk,output] version (5-6)
+   */
+  template <std::ranges::random_access_range R,                                      //
+            std::random_access_iterator O,                                           //
+            class Proj = std::identity,                                              //
+            indirectly_scannable<O, projected<std::ranges::iterator_t<R>, Proj>> Bop //
+            >
+    requires std::ranges::sized_range<R>
+  auto LF_STATIC_CALL operator()(auto /* unused */, //
+                                 R &&range,
+                                 O out,
+                                 std::ranges::range_difference_t<R> n,
+                                 Bop bop,
+                                 Proj proj = {}) LF_STATIC_CONST->task<void> {
+    co_return co_await lf::just(impl::scan_impl{})(
+        std::ranges::begin(range), std::ranges::end(range), out, n, bop, proj //
+    );
+  }
+  /**
+   * @brief [range,n = 1,output] version (4-5)
+   */
+  template <std::ranges::random_access_range R,                                      //
+            std::random_access_iterator O,                                           //
+            class Proj = std::identity,                                              //
+            indirectly_scannable<O, projected<std::ranges::iterator_t<R>, Proj>> Bop //
+            >
+    requires std::ranges::sized_range<R>
+  auto LF_STATIC_CALL operator()(auto /* unused */, //
+                                 R &&range,
+                                 O out,
+                                 Bop bop,
+                                 Proj proj = {}) LF_STATIC_CONST->task<void> {
+    co_return co_await lf::just(impl::scan_impl{})(
+        std::ranges::begin(range), std::ranges::end(range), out, 1, bop, proj //
+    );
+  }
+  /**
+   * @brief [range,chunk,in_place] version (4-5)
+   */
+  template <
+      std::ranges::random_access_range R,                                                               //
+      class Proj = std::identity,                                                                       //
+      indirectly_scannable<std::ranges::iterator_t<R>, projected<std::ranges::iterator_t<R>, Proj>> Bop //
+      >
+    requires std::ranges::sized_range<R>
+  auto LF_STATIC_CALL operator()(auto /* unused */, //
+                                 R &&range,
+                                 std::ranges::range_difference_t<R> n,
+                                 Bop bop,
+                                 Proj proj = {}) LF_STATIC_CONST->task<void> {
+    co_return co_await lf::just(impl::scan_impl{})(
+        std::ranges::begin(range), std::ranges::end(range), std::ranges::begin(range), n, bop, proj //
+    );
+  }
+  /**
+   * @brief [range,n = 1,in_place] version.
+   */
+  template <
+      std::ranges::random_access_range R,                                                               //
+      class Proj = std::identity,                                                                       //
+      indirectly_scannable<std::ranges::iterator_t<R>, projected<std::ranges::iterator_t<R>, Proj>> Bop //
+      >
+    requires std::ranges::sized_range<R>
+  auto LF_STATIC_CALL operator()(auto /* unused */, //
+                                 R &&range,
+                                 Bop bop,
+                                 Proj proj = {}) LF_STATIC_CONST->task<void> {
+    co_return co_await lf::just(impl::scan_impl{})(
+        std::ranges::begin(range), std::ranges::end(range), std::ranges::begin(range), 1, bop, proj //
+    );
+  }
+};
+
+} // namespace impl
+
+/**
+ * @brief A parallel implementation of `std::inclusive_scan` that accepts generalized ranges and projections.
+ *
+ * \rst
+ *
+ * Effective call signature:
+ *
+ * .. code ::
+ *
+ *    template <std::random_access_iterator I,
+ *              std::sized_sentinel_for<I> S,
+ *              std::random_access_iterator O,
+ *              class Proj = std::identity,
+ *              indirectly_scannable<O, projected<I, Proj>> Bop
+ *              >
+ *    void scan(I beg, S end, O out, std::iter_difference_t<I> n, Bop bop, Proj proj = {});
+ *
+ * Overloads exist for a random-access range (instead of ``head`` and ``tail``), in place scans (omit the
+ * `out` iterator) and, the chunk size, ``n``, can be omitted (which will set ``n = 1``).
+ *
+ * Exemplary usage:
+ *
+ * .. code::
+ *
+ *    co_await just[scan](in, out.begin(), std::plus<>{});
+ *
+ * \endrst
+ *
+ * This computes the cumulative sum of the input and stores it in the output-range e.g. `[1, 2, 2, 1] -> [1,
+ * 3, 5, 6]`.
+ *
+ * The input and output ranges must either be distinct (i.e. non-overlapping) or the same range.
+ *
+ * If the binary operator or projection handed to `scan` are async functions, then they will be
+ * invoked asynchronously, this allows you to launch further tasks recursively.
+ *
+ * Unlike the `std::` variations, this function will make an implementation defined number of
+ * copies of the function objects and may invoke these copies concurrently.
+ */
+inline constexpr impl::scan_overload scan = {};
+
+} // namespace lf
+
+#endif /* BF260626_9180_496A_A893_A1A7F2B6781E */
 
 
 

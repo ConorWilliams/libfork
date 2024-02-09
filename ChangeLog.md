@@ -36,6 +36,7 @@
 ### Removed
 
 - Outdated tests.
+- The `algorithm.hpp` meta-header (this was encouraging users to include all the algorithms).
 
 ### Bugfixes
 
