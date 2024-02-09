@@ -294,7 +294,7 @@ struct promise : promise_base, return_result<R, I> {
   /**
    * @brief Returned task stores a copy of the `this` pointer.
    */
-  auto get_return_object() noexcept -> task<R> { return {{}, {}, unique_frame{this}}; }
+  auto get_return_object() noexcept -> task<R> { return {{}, unique_frame{this}}; }
 
   /**
    * @brief Try to resume the parent.

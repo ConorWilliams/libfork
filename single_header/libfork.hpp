@@ -3336,7 +3336,7 @@ concept returnable = std::is_void_v<T> || std::is_reference_v<T> || std::movable
  * \endrst
  */
 template <returnable T = void>
-struct LF_CORO_ATTRIBUTES task : std::type_identity<T>, impl::immovable<task<T>>, impl::unique_frame {};
+struct LF_CORO_ATTRIBUTES task : std::type_identity<T>, impl::unique_frame {};
 
 } // namespace core
 
@@ -6163,7 +6163,7 @@ struct promise : promise_base, return_result<R, I> {
   /**
    * @brief Returned task stores a copy of the `this` pointer.
    */
-  auto get_return_object() noexcept -> task<R> { return {{}, {}, unique_frame{this}}; }
+  auto get_return_object() noexcept -> task<R> { return {{}, unique_frame{this}}; }
 
   /**
    * @brief Try to resume the parent.
