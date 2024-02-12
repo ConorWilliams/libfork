@@ -4622,10 +4622,10 @@ class future {
 #if defined(__clang__)
   #if defined(__apple_build_version__)
     #if __clang_major__ == 15
- public
+ public:
     #endif
   #elif __clang_major__ == 16
- public
+ public:
   #endif
 #endif
   /**
