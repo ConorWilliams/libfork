@@ -136,8 +136,14 @@ class future {
   friend auto schedule(Sch &&sch, F &&fun, Args &&...args) -> future<async_result_t<F, Args...>>;
 
 // Work-around: https://github.com/llvm/llvm-project/issues/63536
-#if defined(__clang__) && __clang_major__ == 16
- public:
+#if defined(__clang__)
+  #if defined(__apple_build_version__)
+    #if __clang_major__ == 17
+ public
+    #endif
+  #elif __clang_major__ == 16
+ public
+  #endif
 #endif
   /**
    * @brief Construct a new future object storing the shared state.
