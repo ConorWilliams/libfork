@@ -138,7 +138,7 @@ class future {
 // Work-around: https://github.com/llvm/llvm-project/issues/63536
 #if defined(__clang__)
   #if defined(__apple_build_version__)
-    #if __clang_major__ == 17
+    #if __clang_major__ == 15
  public
     #endif
   #elif __clang_major__ == 16
