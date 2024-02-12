@@ -392,19 +392,11 @@ using std::unreachable;
   #else
     #define LF_CORO_ONLY_DESTROY_WHEN_COMPLETE
   #endif
-  /**
-   * @brief Compiler specific attribute.
-   */
-  #if __has_attribute(coro_lifetimebound)
-    #define LF_CORO_LIFETIMEBOUND [[clang::coro_lifetimebound]]
-  #else
-    #define LF_CORO_LIFETIMEBOUND
-  #endif
 
   /**
    * @brief Compiler specific attributes libfork uses for its coroutine types.
    */
-  #define LF_CORO_ATTRIBUTES LF_CORO_RETURN_TYPE LF_CORO_ONLY_DESTROY_WHEN_COMPLETE LF_CORO_LIFETIMEBOUND
+  #define LF_CORO_ATTRIBUTES LF_CORO_RETURN_TYPE LF_CORO_ONLY_DESTROY_WHEN_COMPLETE
 
 #else
   /**
@@ -743,7 +735,11 @@ non_null(T &&val, [[maybe_unused]] std::source_location loc = std::source_locati
 #ifndef NDEBUG
   if (val == nullptr) {
     // NOLINTNEXTLINE
-    std::fprintf(stderr, "%s:%d: Null check failed: %s\n", loc.file_name(), loc.line(), loc.function_name());
+    std::fprintf(stderr,
+                 "%s:%u: Null check failed: %s\n",
+                 loc.file_name(),
+                 checked_cast<unsigned>(loc.line()),
+                 loc.function_name());
     std::terminate();
   }
 #endif
@@ -3327,7 +3323,7 @@ concept returnable = std::is_void_v<T> || std::is_reference_v<T> || std::movable
  *
  * .. note::
  *
- *    No consumer of this library should never touch an instance of this type, it is used for specifying the
+ *    No consumer of this library should ever touch an instance of this type, it is used for specifying the
  *    return type of an `async` function only.
  *
  * .. warning::
@@ -4618,16 +4614,20 @@ class future {
    */
   impl::future_shared_state_ptr<R> m_heap;
 
+  template <scheduler Sch, async_function_object F, class... Args>
+    requires rootable<F, Args...>
+  friend auto schedule(Sch &&sch, F &&fun, Args &&...args) -> future<async_result_t<F, Args...>>;
+
+// Work-around: https://github.com/llvm/llvm-project/issues/63536
+#if defined(__clang__) && __clang_major__ == 16
+ public:
+#endif
   /**
    * @brief Construct a new future object storing the shared state.
    */
   explicit future(impl::future_shared_state_ptr<R> &&heap) noexcept : m_heap{std::move(heap)} {
     static_assert(std::is_nothrow_move_constructible_v<impl::future_shared_state_ptr<R>>);
   }
-
-  template <scheduler Sch, async_function_object F, class... Args>
-    requires rootable<F, Args...>
-  friend auto schedule(Sch &&sch, F &&fun, Args &&...args) -> future<async_result_t<F, Args...>>;
 
  public:
   /**
@@ -4880,7 +4880,7 @@ struct extern_ret_ptr_impl<R> : std::type_identity<R *> {};
  * @brief If `R *` is a valid return address for `R` then `R *` else `discard_t`.
  */
 template <returnable R>
-using extern_ret_ptr_t = detail::extern_ret_ptr_impl<R>::type;
+using extern_ret_ptr_t = typename detail::extern_ret_ptr_impl<R>::type;
 
 } // namespace lf::impl
 

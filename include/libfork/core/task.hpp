@@ -46,7 +46,7 @@ concept returnable = std::is_void_v<T> || std::is_reference_v<T> || std::movable
  *
  * .. note::
  *
- *    No consumer of this library should never touch an instance of this type, it is used for specifying the
+ *    No consumer of this library should ever touch an instance of this type, it is used for specifying the
  *    return type of an `async` function only.
  *
  * .. warning::

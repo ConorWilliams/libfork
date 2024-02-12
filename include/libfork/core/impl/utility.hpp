@@ -264,7 +264,11 @@ non_null(T &&val, [[maybe_unused]] std::source_location loc = std::source_locati
 #ifndef NDEBUG
   if (val == nullptr) {
     // NOLINTNEXTLINE
-    std::fprintf(stderr, "%s:%d: Null check failed: %s\n", loc.file_name(), loc.line(), loc.function_name());
+    std::fprintf(stderr,
+                 "%s:%u: Null check failed: %s\n",
+                 loc.file_name(),
+                 checked_cast<unsigned>(loc.line()),
+                 loc.function_name());
     std::terminate();
   }
 #endif

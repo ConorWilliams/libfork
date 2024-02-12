@@ -99,7 +99,7 @@ struct extern_ret_ptr_impl<R> : std::type_identity<R *> {};
  * @brief If `R *` is a valid return address for `R` then `R *` else `discard_t`.
  */
 template <returnable R>
-using extern_ret_ptr_t = detail::extern_ret_ptr_impl<R>::type;
+using extern_ret_ptr_t = typename detail::extern_ret_ptr_impl<R>::type;
 
 } // namespace lf::impl
 

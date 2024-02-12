@@ -131,16 +131,20 @@ class future {
    */
   impl::future_shared_state_ptr<R> m_heap;
 
+  template <scheduler Sch, async_function_object F, class... Args>
+    requires rootable<F, Args...>
+  friend auto schedule(Sch &&sch, F &&fun, Args &&...args) -> future<async_result_t<F, Args...>>;
+
+// Work-around: https://github.com/llvm/llvm-project/issues/63536
+#if defined(__clang__) && __clang_major__ == 16
+ public:
+#endif
   /**
    * @brief Construct a new future object storing the shared state.
    */
   explicit future(impl::future_shared_state_ptr<R> &&heap) noexcept : m_heap{std::move(heap)} {
     static_assert(std::is_nothrow_move_constructible_v<impl::future_shared_state_ptr<R>>);
   }
-
-  template <scheduler Sch, async_function_object F, class... Args>
-    requires rootable<F, Args...>
-  friend auto schedule(Sch &&sch, F &&fun, Args &&...args) -> future<async_result_t<F, Args...>>;
 
  public:
   /**

@@ -268,19 +268,11 @@ using std::unreachable;
   #else
     #define LF_CORO_ONLY_DESTROY_WHEN_COMPLETE
   #endif
-  /**
-   * @brief Compiler specific attribute.
-   */
-  #if __has_attribute(coro_lifetimebound)
-    #define LF_CORO_LIFETIMEBOUND [[clang::coro_lifetimebound]]
-  #else
-    #define LF_CORO_LIFETIMEBOUND
-  #endif
 
   /**
    * @brief Compiler specific attributes libfork uses for its coroutine types.
    */
-  #define LF_CORO_ATTRIBUTES LF_CORO_RETURN_TYPE LF_CORO_ONLY_DESTROY_WHEN_COMPLETE LF_CORO_LIFETIMEBOUND
+  #define LF_CORO_ATTRIBUTES LF_CORO_RETURN_TYPE LF_CORO_ONLY_DESTROY_WHEN_COMPLETE
 
 #else
   /**
