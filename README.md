@@ -11,8 +11,8 @@
 <a href="https://github.com/ConorWilliams/libfork/actions/workflows/macos.yml">
     <img src="https://github.com/ConorWilliams/libfork/actions/workflows/macos.yml/badge.svg">
 </a>
-<a href="https://github.com/ConorWilliams/openFLY/actions/workflows/pages/pages-build-deployment">
-    <img src="https://github.com/ConorWilliams/openFLY/actions/workflows/pages/pages-build-deployment/badge.svg">
+<a href="https://github.com/ConorWilliams/libfork/actions/workflows/pages/pages-build-deployment">
+    <img src="https://github.com/ConorWilliams/libfork/actions/workflows/pages/pages-build-deployment/badge.svg">
 </a>
 <a href="https://codecov.io/gh/ConorWilliams/libfork">
     <img src="https://codecov.io/gh/ConorWilliams/libfork/branch/main/graph/badge.svg?token=89MTSXI85F)">

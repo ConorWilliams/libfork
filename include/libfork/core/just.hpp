@@ -22,7 +22,7 @@
 #include "libfork/core/impl/combinate.hpp"  // for combinate
 #include "libfork/core/impl/frame.hpp"      // for frame
 #include "libfork/core/impl/utility.hpp"    // for immovable, unqualified
-#include "libfork/core/invocable.hpp"       // for async_invocable, async_result_t
+#include "libfork/core/invocable.hpp"       // for callable, async_result_t
 #include "libfork/core/macro.hpp"           // for LF_STATIC_CALL, LF_STATIC_CONST, LF_DEPRECAT...
 #include "libfork/core/tag.hpp"             // for tag, none
 #include "libfork/core/task.hpp"            // for returnable
@@ -61,7 +61,7 @@ class [[nodiscard("co_await this!")]] just_awaitable : just_awaitable_base<R>, c
   * @brief Construct a new just awaitable binding the return address to an internal member.
   */
   template <async_function_object F, typename... Args>
-    requires async_invocable<F, Args...>
+    requires callable<F, Args...>
   explicit just_awaitable(F &&fun, Args &&...args)
       : call_awaitable{
             {}, 
@@ -150,7 +150,7 @@ struct [[nodiscard("This should be immediately invoked!")]] call_just {
    * @brief Make an awaitable that will call the async function then immediately join.
    */
   template <typename... Args>
-    requires async_invocable<F, Args...>
+    requires callable<F, Args...>
   auto operator()(Args &&...args) && -> just_awaitable<async_result_t<F, Args...>> {
     return just_awaitable<async_result_t<F, Args...>>(std::move(fun), std::forward<Args>(args)...);
   }
@@ -158,7 +158,7 @@ struct [[nodiscard("This should be immediately invoked!")]] call_just {
    * @brief Immediately invoke a regular function and wrap the result in an awaitable class.
    */
   template <typename... Args>
-    requires std::invocable<F, Args...> && (!async_invocable<F, Args...>)
+    requires std::invocable<F, Args...> && (!callable<F, Args...>)
   auto operator()(Args &&...args) && -> just_wrapped<std::invoke_result_t<F, Args...>> {
     if constexpr (std::is_void_v<std::invoke_result_t<F, Args...>>) {
       std::invoke(std::move(fun), std::forward<Args>(args)...);

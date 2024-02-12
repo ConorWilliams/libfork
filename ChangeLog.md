@@ -22,6 +22,8 @@
 
 ### Bugfixes
 
+Relaxed `just` from `async_invocable` to `callable`.
+
 ### Meta
 
 ## [**Version 3.7.0**](https://github.com/ConorWilliams/libfork/compare/v3.6.0...v3.7.0)

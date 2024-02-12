@@ -5499,7 +5499,7 @@ struct join_awaitable {
 
 #endif /* CF3E6AC4_246A_4131_BF7A_FE5CD641A19B */
 
- // for call_awaitable  // for combinate      // for frame    // for immovable, unqualified       // for async_invocable, async_result_t           // for LF_STATIC_CALL, LF_STATIC_CONST, LF_DEPRECAT...             // for tag, none            // for returnable
+ // for call_awaitable  // for combinate      // for frame    // for immovable, unqualified       // for callable, async_result_t           // for LF_STATIC_CALL, LF_STATIC_CONST, LF_DEPRECAT...             // for tag, none            // for returnable
 
 /**
  * @file just.hpp
@@ -5535,7 +5535,7 @@ class [[nodiscard("co_await this!")]] just_awaitable : just_awaitable_base<R>, c
   * @brief Construct a new just awaitable binding the return address to an internal member.
   */
   template <async_function_object F, typename... Args>
-    requires async_invocable<F, Args...>
+    requires callable<F, Args...>
   explicit just_awaitable(F &&fun, Args &&...args)
       : call_awaitable{
             {}, 
@@ -5624,7 +5624,7 @@ struct [[nodiscard("This should be immediately invoked!")]] call_just {
    * @brief Make an awaitable that will call the async function then immediately join.
    */
   template <typename... Args>
-    requires async_invocable<F, Args...>
+    requires callable<F, Args...>
   auto operator()(Args &&...args) && -> just_awaitable<async_result_t<F, Args...>> {
     return just_awaitable<async_result_t<F, Args...>>(std::move(fun), std::forward<Args>(args)...);
   }
@@ -5632,7 +5632,7 @@ struct [[nodiscard("This should be immediately invoked!")]] call_just {
    * @brief Immediately invoke a regular function and wrap the result in an awaitable class.
    */
   template <typename... Args>
-    requires std::invocable<F, Args...> && (!async_invocable<F, Args...>)
+    requires std::invocable<F, Args...> && (!callable<F, Args...>)
   auto operator()(Args &&...args) && -> just_wrapped<std::invoke_result_t<F, Args...>> {
     if constexpr (std::is_void_v<std::invoke_result_t<F, Args...>>) {
       std::invoke(std::move(fun), std::forward<Args>(args)...);
