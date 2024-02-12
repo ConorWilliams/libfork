@@ -1,6 +1,6 @@
 {
     "name": "libfork",
-    "version": "3.6.0",
+    "version": "3.7.0",
     "homepage": "https://github.com/conorwilliams/libfork",
     "description": "A bleeding-edge, lock-free, wait-free, continuation-stealing fork-join library built on C++20's coroutines.",
     "license": "MPL-2.0",

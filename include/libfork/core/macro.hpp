@@ -26,19 +26,19 @@
 /**
  * @brief __[public]__ The major version of libfork.
  *
- * Changes with incompatible API changes.
+ * Increments with incompatible API changes.
  */
 #define LF_VERSION_MAJOR 3
 /**
  * @brief __[public]__ The minor version of libfork.
  *
- * Changes when functionality is added in an API backward compatible manner.
+ * Increments when functionality is added in an API backward compatible manner.
  */
-#define LF_VERSION_MINOR 6
+#define LF_VERSION_MINOR 7
 /**
  * @brief __[public]__ The patch version of libfork.
  *
- * Changes when bug fixes are made in an API backward compatible manner.
+ * Increments when bug fixes are made in an API backward compatible manner.
  */
 #define LF_VERSION_PATCH 0
 

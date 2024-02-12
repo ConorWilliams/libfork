@@ -12,7 +12,21 @@
 
 ### Meta  -->
 
-## [**Version 3.x.0**](https://github.com/ConorWilliams/libfork/compare/v3.6.0...v3.x.0)
+## [**Version 3.x.0**](https://github.com/ConorWilliams/libfork/compare/v3.7.0...v3.x.0)
+
+### Added
+
+### Changed
+
+### Removed
+
+### Bugfixes
+
+### Meta
+
+## [**Version 3.7.0**](https://github.com/ConorWilliams/libfork/compare/v3.6.0...v3.7.0)
+
+This version of libfork introduces futures as a way to generalize `sync_wait` and makes many small implementation changes to enhance safety.
 
 ### Added
 
@@ -49,6 +63,8 @@
 - Fixed-up some extended warnings.
 
 ## [**Version 3.6.0**](https://github.com/ConorWilliams/libfork/compare/v3.5.0...v3.6.0)
+
+This version of libfork expands the algorithm suite and introduces the generalized ``lf::dispatch`` call for niche exception handling.
 
 ### Added
 
