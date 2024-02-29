@@ -49,11 +49,11 @@ inline constexpr auto fib = [](auto fib, int n) -> lf::task<int> {
 
 ## Performance
 
-Libfork is engineered for performance and has a comprehensive [benchmark suit](bench). For a detailed review of libfork see the [paper](TODO), the headline results are linear time/memory scaling:
+Libfork is engineered for performance and has a comprehensive [benchmark suit](bench). For a detailed review of libfork see the [paper](https://arxiv.org/abs/2402.18480), the headline results are linear time/memory scaling, this translates to:
 
-- Up to 7.5× faster and 19× less memory than OneTBB.
-- Up to 24× faster an 24× less memory than openMP (libomp).
-- Up to 100× faster and >100× less memory than taskflow.
+- Up to 7.5× faster and 19× less memory consumption than OneTBB.
+- Up to 24× faster an 24× less memory consumption than openMP (libomp).
+- Up to 100× faster and >100× less memory consumption than taskflow.
 
 ## Using libfork
 
@@ -83,6 +83,9 @@ target_link_libraries(
 )
 ```
 
+__NOTE:__ libfork is not currently up-streamed into vcpkg, see `packages/vcpkg` for an example of how to incorporate libfork as a custom overlay.
+
+<!-- 
 #### Conan2
 
 Libfork is available via conancenter. Add the following line to your `conanfile.txt`
@@ -108,7 +111,7 @@ find_package(libfork CONFIG REQUIRED)
 target_link_libraries(
     project_target PRIVATE libfork::libfork
 )
-```
+``` -->
 
 ### With CMake
 

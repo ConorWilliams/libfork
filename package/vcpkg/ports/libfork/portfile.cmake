@@ -2,8 +2,8 @@ vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO conorwilliams/libfork
     REF "v${VERSION}"
-    SHA512 7e8eb8fb073a6da3865330b99b5d4edfd2d2feb4ad68264b5a06fcb845053c251170e0b9750d8e36373754b4a42b9da9456acd22e3c209354ed3858a9c0b030e
-    HEAD_REF cmake-sample-lib
+    SHA512 dcd1c81833deda519da7483b1b35087856c118db7de8b780018fa251d4b6ef4f02c9d3a7e60d61607bbe0946e157e382d3023baedf9254e42f614080e4b43069
+    HEAD_REF main
 )
 
 vcpkg_cmake_configure(

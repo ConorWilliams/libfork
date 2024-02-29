@@ -2,6 +2,7 @@ import argparse
 import numpy as np
 
 from matplotlib import pyplot as plt
+from matplotlib import ticker
 
 from math import sqrt
 
@@ -178,12 +179,26 @@ for (ax), p, data, i in zip(cycle(axs.flatten()), patterns, Benchmarks, range(10
         ax.set_title(f"\\textit{{{p}}}")
         ax.set_xticks(range(0, int(112 + 1.5), 28))
         ax.set_xlim(0, 112)
+        ax.tick_params("x", rotation=90)
 
         # ax.set_xlim(0, 112)
         # ax.set_ylim(bottom=0)
 
-        ax.set_yscale("log", base=10)
         # ax.set_xscale("log", base=10)
+        ax.set_yscale("log", base=10)
+
+        base = 100 if i <= 5 else 10
+
+        locmajy = ticker.LogLocator(base=base, numticks=100)
+        locminy = ticker.LogLocator(
+            base=base, subs=np.arange(0, 10) * 0.1, numticks=100
+        )
+
+        ax.yaxis.set_major_locator(locmajy)
+        ax.yaxis.set_minor_locator(locminy)
+        ax.yaxis.set_minor_formatter(ticker.NullFormatter())
+
+        # ax.xaxis.set_ticks_position("left")
 
 
 fig.supxlabel("\\textbf{{Cores}}")
@@ -196,7 +211,7 @@ fig.legend(
     frameon=False,
 )
 
-fig.tight_layout(rect=(0, 0, 1, 0.925), h_pad=0.5, w_pad=0.1)
+fig.tight_layout(rect=(0, 0, 1, 0.925), h_pad=0.5, w_pad=0.3)
 
 if args.output_file is not None:
     plt.savefig(args.output_file, bbox_inches="tight")
