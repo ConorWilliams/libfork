@@ -1,17 +1,17 @@
 <!doctype html>
-<html class="no-js" lang="en">
+<html class="no-js" lang="en" data-content_root="">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="immediate.hpp" href="immediate.html" /><link rel="prev" title="task.hpp" href="task.html" />
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Algorithms" href="algorithm.html" /><link rel="prev" title="Basic eventually" href="eventually.html" />
 
-    <link rel="shortcut icon" href="../_static/favicon.ico"/><!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 -->
-        <title>schedule/ - libfork documentation</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
-    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css" />
+    <link rel="shortcut icon" href="../_static/favicon.ico"/><!-- Generated with Sphinx 7.1.2 and Furo 2024.01.29 -->
+        <title>Schedulers - libfork documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=36a5483c" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=87344451" />
     
     
 
@@ -136,7 +136,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
         <div class="visually-hidden">Toggle table of contents sidebar</div>
         <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
       </label>
@@ -159,17 +159,33 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <p class="caption" role="heading"><span class="caption-text">Files</span></p>
-<ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="task.html">task.hpp</a></li>
-<li class="toctree-l1 current has-children current-page"><a class="current reference internal" href="#">schedule/</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="immediate.html">immediate.hpp</a></li>
-<li class="toctree-l2"><a class="reference internal" href="busy_pool.html">busy_pool.hpp</a></li>
+  <ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="core.html">Core API</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of Core API</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="eventually.html">Basic eventually</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="unique_handle.html">unique_handle.hpp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="queue.html">queue.hpp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="event_count.html">event_count.hpp</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Schedulers</a></li>
+</ul>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="algorithm.html">Algorithms</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of Algorithms</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="concepts.html">Concepts and type traits</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="ext.html">Extension API</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of Extension API</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="ext/list.html">Intrusive linked list</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ext/deque.html">Work stealing queue</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ext/event_count.html">Event count</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ext/random.html">Xoshiro C++ implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ext/numa.html">Numa abstraction</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="impl.html">Internal docs</a></li>
 </ul>
 
 </div>
@@ -206,20 +222,158 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
             <div class="visually-hidden">Toggle table of contents sidebar</div>
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
         <article role="main">
-          <section id="schedule">
-<h1>schedule/<a class="headerlink" href="#schedule" title="Permalink to this heading">#</a></h1>
-<div class="toctree-wrapper compound">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="immediate.html">immediate.hpp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="busy_pool.html">busy_pool.hpp</a></li>
+          <section id="schedulers">
+<h1>Schedulers<a class="headerlink" href="#schedulers" title="Permalink to this heading">#</a></h1>
+<section id="lazy-pool">
+<h2>Lazy pool<a class="headerlink" href="#lazy-pool" title="Permalink to this heading">#</a></h2>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf9lazy_poolE">
+<span id="_CPPv3N2lf9lazy_poolE"></span><span id="_CPPv2N2lf9lazy_poolE"></span><span id="lf::lazy_pool"></span><span class="target" id="classlf_1_1lazy__pool"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">lazy_pool</span></span></span><a class="headerlink" href="#_CPPv4N2lf9lazy_poolE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>A scheduler based on a <a class="reference external" href="https://doi.org/10.1109/icpads51040.2020.00018">An Efficient Work-Stealing Scheduler for Task Dependency Graph</a></p>
+<p>This pool sleeps workers which cannot find any work, as such it should be the default choice for most use cases. Additionally (if an installation of <code class="docutils literal notranslate"><span class="pre">hwloc</span></code> was found) this pool is NUMA aware.</p>
+<p><strong>Note:</strong> The <code class="docutils literal notranslate"><a class="reference internal" href="#classlf_1_1lazy__pool"><span class="std std-ref"><span class="pre">lazy_pool</span></span></a></code> must not be destructed until all submitted tasks have reached a point where they will submit no-more work to the pool. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf9lazy_pool9lazy_poolERR9lazy_pool">
+<span id="_CPPv3N2lf9lazy_pool9lazy_poolERR9lazy_pool"></span><span id="_CPPv2N2lf9lazy_pool9lazy_poolERR9lazy_pool"></span><span id="lf::lazy_pool::lazy_pool__lazy_poolRR"></span><span class="target" id="classlf_1_1lazy__pool_1ae2b5bf8a52aaf87b1fdc2af745768a93"></span><span class="sig-name descname"><span class="n"><span class="pre">lazy_pool</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N2lf9lazy_pool9lazy_poolERR9lazy_pool" title="lf::lazy_pool::lazy_pool"><span class="n"><span class="pre">lazy_pool</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N2lf9lazy_pool9lazy_poolERR9lazy_pool" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Move construct a new <a class="reference internal" href="#classlf_1_1lazy__pool"><span class="std std-ref">lazy_pool</span></a> object. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf9lazy_pool9lazy_poolERK9lazy_pool">
+<span id="_CPPv3N2lf9lazy_pool9lazy_poolERK9lazy_pool"></span><span id="_CPPv2N2lf9lazy_pool9lazy_poolERK9lazy_pool"></span><span id="lf::lazy_pool::lazy_pool__lazy_poolCR"></span><span class="target" id="classlf_1_1lazy__pool_1a3cc533d7eff7735597d5f28618e5056b"></span><span class="sig-name descname"><span class="n"><span class="pre">lazy_pool</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N2lf9lazy_pool9lazy_poolERK9lazy_pool" title="lf::lazy_pool::lazy_pool"><span class="n"><span class="pre">lazy_pool</span></span></a><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N2lf9lazy_pool9lazy_poolERK9lazy_pool" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>The lazy pool is not copyable. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf9lazy_pool9lazy_poolENSt6size_tE13numa_strategy">
+<span id="_CPPv3N2lf9lazy_pool9lazy_poolENSt6size_tE13numa_strategy"></span><span id="_CPPv2N2lf9lazy_pool9lazy_poolENSt6size_tE13numa_strategy"></span><span id="lf::lazy_pool::lazy_pool__std::s.numa_strategy"></span><span class="target" id="classlf_1_1lazy__pool_1ad429a2a78ab223e4e03558d4cf6d5e74"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">explicit</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">lazy_pool</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">n</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">thread</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">hardware_concurrency</span></span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">)</span></span>, <a class="reference internal" href="ext/numa.html#_CPPv4N2lf13numa_strategyE" title="lf::numa_strategy"><span class="n"><span class="pre">numa_strategy</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">strategy</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="ext/numa.html#_CPPv4N2lf13numa_strategyE" title="lf::numa_strategy"><span class="n"><span class="pre">numa_strategy</span></span></a><span class="p"><span class="pre">::</span></span><a class="reference internal" href="ext/numa.html#_CPPv4N2lf13numa_strategy3fanE" title="lf::numa_strategy::fan"><span class="n"><span class="pre">fan</span></span></a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2lf9lazy_pool9lazy_poolENSt6size_tE13numa_strategy" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Construct a new <a class="reference internal" href="#classlf_1_1lazy__pool"><span class="std std-ref">lazy_pool</span></a> object and <code class="docutils literal notranslate"><span class="pre">n</span></code> worker threads. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong> – The number of worker threads to create, defaults to the number of hardware threads. </p></li>
+<li><p><strong>strategy</strong> – The numa strategy for distributing workers. </p></li>
 </ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf9lazy_poolD0Ev">
+<span id="_CPPv3N2lf9lazy_poolD0Ev"></span><span id="_CPPv2N2lf9lazy_poolD0Ev"></span><span id="lf::lazy_pool::~lazy_pool"></span><span class="target" id="classlf_1_1lazy__pool_1a4052799a8cd0f2f15e5e0148f0ff217c"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">~lazy_pool</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N2lf9lazy_poolD0Ev" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Destroy the lazy pool object, stops all workers. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf9lazy_pool8contextsEv">
+<span id="_CPPv3N2lf9lazy_pool8contextsEv"></span><span id="_CPPv2N2lf9lazy_pool8contextsEv"></span><span id="lf::lazy_pool::contexts"></span><span class="target" id="classlf_1_1lazy__pool_1aa502f2435933635b0a8d6ebe9845ebaa"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">contexts</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">span</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="ext.html#_CPPv4N2lf14worker_contextE" title="lf::worker_context"><span class="n"><span class="pre">worker_context</span></span></a><span class="p"><span class="pre">*</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N2lf9lazy_pool8contextsEv" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Get a view of the worker’s contexts. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf9lazy_poolaSERR9lazy_pool">
+<span id="_CPPv3N2lf9lazy_poolaSERR9lazy_pool"></span><span id="_CPPv2N2lf9lazy_poolaSERR9lazy_pool"></span><span id="lf::lazy_pool::assign-operator__lazy_poolRR"></span><span class="target" id="classlf_1_1lazy__pool_1ac6cd8d38e1a507543c840b36be3560e1"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N2lf9lazy_poolE" title="lf::lazy_pool"><span class="n"><span class="pre">lazy_pool</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N2lf9lazy_poolE" title="lf::lazy_pool"><span class="n"><span class="pre">lazy_pool</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N2lf9lazy_poolaSERR9lazy_pool" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Move assign a <a class="reference internal" href="#classlf_1_1lazy__pool"><span class="std std-ref">lazy_pool</span></a> object. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf9lazy_poolaSERK9lazy_pool">
+<span id="_CPPv3N2lf9lazy_poolaSERK9lazy_pool"></span><span id="_CPPv2N2lf9lazy_poolaSERK9lazy_pool"></span><span id="lf::lazy_pool::assign-operator__lazy_poolCR"></span><span class="target" id="classlf_1_1lazy__pool_1a92a0e2d8a06e64fdc7664fdb3196c113"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N2lf9lazy_poolE" title="lf::lazy_pool"><span class="n"><span class="pre">lazy_pool</span></span></a><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N2lf9lazy_poolE" title="lf::lazy_pool"><span class="n"><span class="pre">lazy_pool</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N2lf9lazy_poolaSERK9lazy_pool" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>The lazy pool is not copy assignable. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf9lazy_pool8scheduleE13submit_handle">
+<span id="_CPPv3N2lf9lazy_pool8scheduleE13submit_handle"></span><span id="_CPPv2N2lf9lazy_pool8scheduleE13submit_handle"></span><span id="lf::lazy_pool::schedule__submit_handle"></span><span class="target" id="classlf_1_1lazy__pool_1ab9b8d2978ae19c6c6dcab44ebb1e6c63"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">schedule</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">submit_handle</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">job</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2lf9lazy_pool8scheduleE13submit_handle" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Schedule a job on a random worker. </p>
+</dd></dl>
+
 </div>
+</dd></dl>
+
+</section>
+<section id="busy-pool">
+<h2>Busy pool<a class="headerlink" href="#busy-pool" title="Permalink to this heading">#</a></h2>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf9busy_poolE">
+<span id="_CPPv3N2lf9busy_poolE"></span><span id="_CPPv2N2lf9busy_poolE"></span><span id="lf::busy_pool"></span><span class="target" id="classlf_1_1busy__pool"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">busy_pool</span></span></span><a class="headerlink" href="#_CPPv4N2lf9busy_poolE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>A scheduler based on a traditional work-stealing thread pool. </p>
+<p>Worker threads continuously try to steal tasks from other worker threads hence, they waste CPU cycles if sufficient work is not available. This is a good choice if the number of threads is equal to the number of hardware cores and the multiplexer has no other load. Additionally (if an installation of <code class="docutils literal notranslate"><span class="pre">hwloc</span></code> was found) this pool is NUMA aware.</p>
+<p><strong>Note:</strong> The <code class="docutils literal notranslate"><a class="reference internal" href="#classlf_1_1busy__pool"><span class="std std-ref"><span class="pre">busy_pool</span></span></a></code> must not be destructed until all submitted tasks have reached a point where they will submit no-more work to the pool. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf9busy_pool9busy_poolERR9busy_pool">
+<span id="_CPPv3N2lf9busy_pool9busy_poolERR9busy_pool"></span><span id="_CPPv2N2lf9busy_pool9busy_poolERR9busy_pool"></span><span id="lf::busy_pool::busy_pool__busy_poolRR"></span><span class="target" id="classlf_1_1busy__pool_1aaae77559037f6e069f9d79dd64d10f7a"></span><span class="sig-name descname"><span class="n"><span class="pre">busy_pool</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N2lf9busy_pool9busy_poolERR9busy_pool" title="lf::busy_pool::busy_pool"><span class="n"><span class="pre">busy_pool</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N2lf9busy_pool9busy_poolERR9busy_pool" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Move construct a new <a class="reference internal" href="#classlf_1_1lazy__pool"><span class="std std-ref">lazy_pool</span></a> object. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf9busy_pool9busy_poolERK9busy_pool">
+<span id="_CPPv3N2lf9busy_pool9busy_poolERK9busy_pool"></span><span id="_CPPv2N2lf9busy_pool9busy_poolERK9busy_pool"></span><span id="lf::busy_pool::busy_pool__busy_poolCR"></span><span class="target" id="classlf_1_1busy__pool_1a573e7509b39016cef4f1ecba3b468ba2"></span><span class="sig-name descname"><span class="n"><span class="pre">busy_pool</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N2lf9busy_pool9busy_poolERK9busy_pool" title="lf::busy_pool::busy_pool"><span class="n"><span class="pre">busy_pool</span></span></a><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N2lf9busy_pool9busy_poolERK9busy_pool" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>The busy pool is not copyable. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf9busy_pool9busy_poolENSt6size_tE13numa_strategy">
+<span id="_CPPv3N2lf9busy_pool9busy_poolENSt6size_tE13numa_strategy"></span><span id="_CPPv2N2lf9busy_pool9busy_poolENSt6size_tE13numa_strategy"></span><span id="lf::busy_pool::busy_pool__std::s.numa_strategy"></span><span class="target" id="classlf_1_1busy__pool_1a1d324eeca2163bf25b9fa2234350aff5"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">explicit</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">busy_pool</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">n</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">thread</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">hardware_concurrency</span></span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">)</span></span>, <a class="reference internal" href="ext/numa.html#_CPPv4N2lf13numa_strategyE" title="lf::numa_strategy"><span class="n"><span class="pre">numa_strategy</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">strategy</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="ext/numa.html#_CPPv4N2lf13numa_strategyE" title="lf::numa_strategy"><span class="n"><span class="pre">numa_strategy</span></span></a><span class="p"><span class="pre">::</span></span><a class="reference internal" href="ext/numa.html#_CPPv4N2lf13numa_strategy3fanE" title="lf::numa_strategy::fan"><span class="n"><span class="pre">fan</span></span></a><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2lf9busy_pool9busy_poolENSt6size_tE13numa_strategy" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Construct a new <a class="reference internal" href="#classlf_1_1busy__pool"><span class="std std-ref">busy_pool</span></a> object. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong> – The number of worker threads to create, defaults to the number of hardware threads. </p></li>
+<li><p><strong>strategy</strong> – The numa strategy for distributing workers. </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf9busy_pool8contextsEv">
+<span id="_CPPv3N2lf9busy_pool8contextsEv"></span><span id="_CPPv2N2lf9busy_pool8contextsEv"></span><span id="lf::busy_pool::contexts"></span><span class="target" id="classlf_1_1busy__pool_1a78ae761701fd63d90b7647d9ec6498ba"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">contexts</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">span</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="ext.html#_CPPv4N2lf14worker_contextE" title="lf::worker_context"><span class="n"><span class="pre">worker_context</span></span></a><span class="p"><span class="pre">*</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N2lf9busy_pool8contextsEv" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Get a view of the worker’s contexts. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf9busy_poolaSERR9busy_pool">
+<span id="_CPPv3N2lf9busy_poolaSERR9busy_pool"></span><span id="_CPPv2N2lf9busy_poolaSERR9busy_pool"></span><span id="lf::busy_pool::assign-operator__busy_poolRR"></span><span class="target" id="classlf_1_1busy__pool_1ac0f6533a6c104901982815a519789003"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N2lf9busy_poolE" title="lf::busy_pool"><span class="n"><span class="pre">busy_pool</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N2lf9busy_poolE" title="lf::busy_pool"><span class="n"><span class="pre">busy_pool</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N2lf9busy_poolaSERR9busy_pool" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Move assign a <a class="reference internal" href="#classlf_1_1lazy__pool"><span class="std std-ref">lazy_pool</span></a> object. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf9busy_poolaSERK9busy_pool">
+<span id="_CPPv3N2lf9busy_poolaSERK9busy_pool"></span><span id="_CPPv2N2lf9busy_poolaSERK9busy_pool"></span><span id="lf::busy_pool::assign-operator__busy_poolCR"></span><span class="target" id="classlf_1_1busy__pool_1ae2967112fdd26dd98fa7692e8fea42c3"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N2lf9busy_poolE" title="lf::busy_pool"><span class="n"><span class="pre">busy_pool</span></span></a><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N2lf9busy_poolE" title="lf::busy_pool"><span class="n"><span class="pre">busy_pool</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N2lf9busy_poolaSERK9busy_pool" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>The busy pool is not copy assignable. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf9busy_pool8scheduleE13submit_handle">
+<span id="_CPPv3N2lf9busy_pool8scheduleE13submit_handle"></span><span id="_CPPv2N2lf9busy_pool8scheduleE13submit_handle"></span><span id="lf::busy_pool::schedule__submit_handle"></span><span class="target" id="classlf_1_1busy__pool_1aba431ae981a6eb8780c15157e8d7455e"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">schedule</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">submit_handle</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">job</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2lf9busy_pool8scheduleE13submit_handle" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Schedule a task for execution. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</section>
+<section id="unit-pool">
+<h2>Unit pool<a class="headerlink" href="#unit-pool" title="Permalink to this heading">#</a></h2>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf9unit_poolE">
+<span id="_CPPv3N2lf9unit_poolE"></span><span id="_CPPv2N2lf9unit_poolE"></span><span id="lf::unit_pool"></span><span class="target" id="classlf_1_1unit__pool"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">unit_pool</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">private</span></span><span class="w"> </span><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="../index.html#_CPPv4N2lf4implE" title="lf::impl"><span class="n"><span class="pre">impl</span></span></a><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">immovable</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4N2lf9unit_poolE" title="lf::unit_pool"><span class="n"><span class="pre">unit_pool</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N2lf9unit_poolE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>A scheduler that runs all tasks on a single thread. </p>
+<p>This is useful for testing/debugging/benchmarking as it is the only work-pool that can guarantee all the work completes if submitting detached work. </p>
+</dd></dl>
+
+</section>
 </section>
 
         </article>
@@ -227,23 +381,23 @@
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="immediate.html">
+          <a class="next-page" href="algorithm.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">immediate.hpp</div>
+                <div class="title">Algorithms</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="task.html">
+          <a class="prev-page" href="eventually.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">task.hpp</div>
+                <div class="title">Basic eventually</div>
                 
               </div>
             </a>
@@ -251,7 +405,7 @@
         <div class="bottom-of-page">
           <div class="left-details">
             <div class="copyright">
-                Copyright &#169; 2022, ConorWilliams
+                Copyright &#169; 2023, ConorWilliams
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
             
@@ -272,20 +426,38 @@
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Schedulers</a><ul>
+<li><a class="reference internal" href="#lazy-pool">Lazy pool</a></li>
+<li><a class="reference internal" href="#busy-pool">Busy pool</a></li>
+<li><a class="reference internal" href="#unit-pool">Unit pool</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>
   </div>
-</div><script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
-    <script src="../_static/jquery.js"></script>
-    <script src="../_static/underscore.js"></script>
-    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
-    <script src="../_static/doctools.js"></script>
-    <script src="../_static/sphinx_highlight.js"></script>
-    <script src="../_static/scripts/furo.js"></script>
-    <script src="../_static/clipboard.min.js"></script>
-    <script src="../_static/copybutton.js"></script>
+</div><script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=ccbe24c1"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../_static/scripts/furo.js?v=32e29ea5"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
     </body>
 </html>

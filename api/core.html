@@ -1,0 +1,1047 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Basic eventually" href="eventually.html" /><link rel="prev" title="Welcome to libfork - v.." href="../index.html" />
+
+    <link rel="shortcut icon" href="../_static/favicon.ico"/><!-- Generated with Sphinx 7.1.2 and Furo 2024.01.29 -->
+        <title>Core API - libfork documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=36a5483c" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=87344451" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #eeffcc;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-half" viewBox="0 0 24 24">
+    <title>Auto light/dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M13 12h5" />
+      <path d="M13 15h4" />
+      <path d="M13 18h1" />
+      <path d="M13 9h4" />
+      <path d="M13 6h1" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">libfork  documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../_static/fork_light.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../_static/fork_light.svg" alt="Dark Logo"/>
+  </div>
+  
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 current has-children current-page"><a class="current reference internal" href="#">Core API</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of Core API</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="eventually.html">Basic eventually</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="schedule.html">Schedulers</a></li>
+</ul>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="algorithm.html">Algorithms</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of Algorithms</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="concepts.html">Concepts and type traits</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="ext.html">Extension API</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of Extension API</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="ext/list.html">Intrusive linked list</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ext/deque.html">Work stealing queue</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ext/event_count.html">Event count</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ext/random.html">Xoshiro C++ implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ext/numa.html">Numa abstraction</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="impl.html">Internal docs</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="edit-this-page">
+  <a class="muted-link" href="https://github.com/ConorWilliams/libfork/edit/main/docs/api/core.rst" title="Edit this page">
+    <svg aria-hidden="true" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <path d="M4 20h4l10.5 -10.5a1.5 1.5 0 0 0 -4 -4l-10.5 10.5v4" />
+      <line x1="13.5" y1="6.5" x2="17.5" y2="10.5" />
+    </svg>
+    <span class="visually-hidden">Edit this page</span>
+  </a>
+</div><div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main">
+          <section id="core-api">
+<h1>Core API<a class="headerlink" href="#core-api" title="Permalink to this heading">#</a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">core</span></code> subfolder/namespace contains the basic building blocks of the library, this is the API to describe DAG’s and internal/backend machinery for memory management. To include just libfork’s core use <code class="docutils literal notranslate"><span class="pre">#include</span> <span class="pre">&lt;libfork/core.hpp&gt;</span></code>.</p>
+<section id="enums-and-tags">
+<h2>Enums and tags<a class="headerlink" href="#enums-and-tags" title="Permalink to this heading">#</a></h2>
+<section id="dispatch-tags">
+<h3>Dispatch tags<a class="headerlink" href="#dispatch-tags" title="Permalink to this heading">#</a></h3>
+<dl class="cpp enum-class">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf4core3tagE">
+<span id="_CPPv3N2lf4core3tagE"></span><span id="_CPPv2N2lf4core3tagE"></span><span class="target" id="namespacelf_1_1core_1a7d4d8db8053e10b595b4c827e80c7dae"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="../index.html#_CPPv4N2lf4coreE" title="lf::core"><span class="n"><span class="pre">core</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">tag</span></span></span><a class="headerlink" href="#_CPPv4N2lf4core3tagE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>An enumeration that determines the behavior of a coroutine’s promise. </p>
+<p>You can inspect the first argument of an async function to determine the tag. </p>
+<p><em>Values:</em></p>
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf4core3tag4rootE">
+<span id="_CPPv3N2lf4core3tag4rootE"></span><span id="_CPPv2N2lf4core3tag4rootE"></span><span class="target" id="namespacelf_1_1core_1a7d4d8db8053e10b595b4c827e80c7daea63a9f0ea7bb98050796b649e85481845"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">root</span></span></span><a class="headerlink" href="#_CPPv4N2lf4core3tag4rootE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>This coroutine is a root task from an <code class="docutils literal notranslate"><a class="reference internal" href="#namespacelf_1_1core_1ad9774f0bbadd9f9266557149b3f5da8d"><span class="std std-ref"><span class="pre">lf::sync_wait</span></span></a></code>. </p>
+</dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf4core3tag4callE">
+<span id="_CPPv3N2lf4core3tag4callE"></span><span id="_CPPv2N2lf4core3tag4callE"></span><span class="target" id="namespacelf_1_1core_1a7d4d8db8053e10b595b4c827e80c7daea53b9e9679a8ea25880376080b76f98ad"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">call</span></span></span><a class="headerlink" href="#_CPPv4N2lf4core3tag4callE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Non root task from an <code class="docutils literal notranslate"><a class="reference internal" href="#namespacelf_1_1core_1af1dc0512bd3f0656a76261d96d7cebdc"><span class="std std-ref"><span class="pre">lf::call</span></span></a></code>, completes synchronously. </p>
+</dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf4core3tag4forkE">
+<span id="_CPPv3N2lf4core3tag4forkE"></span><span id="_CPPv2N2lf4core3tag4forkE"></span><span class="target" id="namespacelf_1_1core_1a7d4d8db8053e10b595b4c827e80c7daeab2fcb4ba898f479790076dbd5daa133f"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">fork</span></span></span><a class="headerlink" href="#_CPPv4N2lf4core3tag4forkE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Non root task from an <code class="docutils literal notranslate"><a class="reference internal" href="#namespacelf_1_1core_1a92670c4ac9383f64e1d05151245d1ea2"><span class="std std-ref"><span class="pre">lf::fork</span></span></a></code>, completes asynchronously. </p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="dispatch-modifiers">
+<h3>Dispatch modifiers<a class="headerlink" href="#dispatch-modifiers" title="Permalink to this heading">#</a></h3>
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf8modifierE">
+<span id="_CPPv3N2lf8modifierE"></span><span id="_CPPv2N2lf8modifierE"></span><span id="lf::modifier"></span><span class="target" id="namespacelf_1_1core_1_1modifier"></span><span class="k"><span class="pre">namespace</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">modifier</span></span></span><a class="headerlink" href="#_CPPv4N2lf8modifierE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Modifier’s for the dispatch tag, these do not effect the child’s promise, only the awaitable. </p>
+<p>See <code class="docutils literal notranslate"><a class="reference internal" href="#namespacelf_1_1core_1ae69e03000b770190dd3e22635d05eb7f"><span class="std std-ref"><span class="pre">lf::core::dispatch</span></span></a></code> for more information and uses, these are low-level and most users should not need to use them. We use a namespace + types rather than an enumeration to allow for type-concepts. </p>
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf8modifier11eager_throwE">
+<span id="_CPPv3N2lf8modifier11eager_throwE"></span><span id="_CPPv2N2lf8modifier11eager_throwE"></span><span id="lf::modifier::eager_throw"></span><span class="target" id="structlf_1_1core_1_1modifier_1_1eager__throw"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">eager_throw</span></span></span><a class="headerlink" href="#_CPPv4N2lf8modifier11eager_throwE" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;libfork/core/tag.hpp&gt;</em></div>
+<p>The dispatch is a <code class="docutils literal notranslate"><span class="pre">call</span></code>, the awaitable will throw eagerly. </p>
+</dd></dl>
+
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf8modifier19eager_throw_outsideE">
+<span id="_CPPv3N2lf8modifier19eager_throw_outsideE"></span><span id="_CPPv2N2lf8modifier19eager_throw_outsideE"></span><span id="lf::modifier::eager_throw_outside"></span><span class="target" id="structlf_1_1core_1_1modifier_1_1eager__throw__outside"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">eager_throw_outside</span></span></span><a class="headerlink" href="#_CPPv4N2lf8modifier19eager_throw_outsideE" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;libfork/core/tag.hpp&gt;</em></div>
+<p>The dispatch is a <code class="docutils literal notranslate"><span class="pre">call</span></code> outside a fork-join scope, the awaitable will throw eagerly. </p>
+</dd></dl>
+
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf8modifier4noneE">
+<span id="_CPPv3N2lf8modifier4noneE"></span><span id="_CPPv2N2lf8modifier4noneE"></span><span id="lf::modifier::none"></span><span class="target" id="structlf_1_1core_1_1modifier_1_1none"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">none</span></span></span><a class="headerlink" href="#_CPPv4N2lf8modifier4noneE" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;libfork/core/tag.hpp&gt;</em></div>
+<p>No modification to the dispatch category. </p>
+</dd></dl>
+
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf8modifier4syncE">
+<span id="_CPPv3N2lf8modifier4syncE"></span><span id="_CPPv2N2lf8modifier4syncE"></span><span id="lf::modifier::sync"></span><span class="target" id="structlf_1_1core_1_1modifier_1_1sync"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">sync</span></span></span><a class="headerlink" href="#_CPPv4N2lf8modifier4syncE" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;libfork/core/tag.hpp&gt;</em></div>
+<p>The dispatch is <code class="docutils literal notranslate"><span class="pre">fork</span></code>, reports if the fork completed synchronously. </p>
+</dd></dl>
+
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf8modifier12sync_outsideE">
+<span id="_CPPv3N2lf8modifier12sync_outsideE"></span><span id="_CPPv2N2lf8modifier12sync_outsideE"></span><span id="lf::modifier::sync_outside"></span><span class="target" id="structlf_1_1core_1_1modifier_1_1sync__outside"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">sync_outside</span></span></span><a class="headerlink" href="#_CPPv4N2lf8modifier12sync_outsideE" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;libfork/core/tag.hpp&gt;</em></div>
+<p>The dispatch is a <code class="docutils literal notranslate"><span class="pre">fork</span></code> outside a fork-join scope, reports if the fork completed synchronously. </p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+<section id="concepts-and-traits">
+<h2>Concepts and traits<a class="headerlink" href="#concepts-and-traits" title="Permalink to this heading">#</a></h2>
+<p>Libfork has a concept-driven API, built upon the following concepts and traits.</p>
+<section id="building-blocks">
+<h3>Building blocks<a class="headerlink" href="#building-blocks" title="Permalink to this heading">#</a></h3>
+<dl class="cpp concept">
+<dt class="sig sig-object cpp" id="_CPPv4I0EN2lf4core8storableE">
+<span id="_CPPv3I0EN2lf4core8storableE"></span><span id="_CPPv2I0EN2lf4core8storableE"></span><span class="target" id="conceptlf_1_1core_1_1storable"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">concept</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">storable</span></span></span><a class="headerlink" href="#_CPPv4I0EN2lf4core8storableE" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;libfork/core/first_arg.hpp&gt;</em></div>
+<p>Verify a forwarding reference is storable as a value type after removing <code class="docutils literal notranslate"><span class="pre">cvref</span></code> qualifiers. </p>
+</dd></dl>
+
+<dl class="cpp concept">
+<dt class="sig sig-object cpp" id="_CPPv4I0EN2lf4core10returnableE">
+<span id="_CPPv3I0EN2lf4core10returnableE"></span><span id="_CPPv2I0EN2lf4core10returnableE"></span><span class="target" id="conceptlf_1_1core_1_1returnable"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">concept</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">returnable</span></span></span><a class="headerlink" href="#_CPPv4I0EN2lf4core10returnableE" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;libfork/core/task.hpp&gt;</em></div>
+<p>A type returnable from libfork’s async functions/coroutines. </p>
+<p>This requires that <code class="docutils literal notranslate"><span class="pre">T</span></code> is <code class="docutils literal notranslate"><span class="pre">void</span></code> a reference or a <code class="docutils literal notranslate"><span class="pre">std::movable</span></code> type. </p>
+</dd></dl>
+
+<dl class="cpp concept">
+<dt class="sig sig-object cpp" id="_CPPv4I0EN2lf4core13referenceableE">
+<span id="_CPPv3I0EN2lf4core13referenceableE"></span><span id="_CPPv2I0EN2lf4core13referenceableE"></span><span class="target" id="conceptlf_1_1core_1_1referenceable"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">concept</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">referenceable</span></span></span><a class="headerlink" href="#_CPPv4I0EN2lf4core13referenceableE" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;libfork/core/first_arg.hpp&gt;</em></div>
+<p>Test if we can form a reference to an instance of type <code class="docutils literal notranslate"><span class="pre">T</span></code>. </p>
+</dd></dl>
+
+<dl class="cpp concept">
+<dt class="sig sig-object cpp" id="_CPPv4I0EN2lf4core15dereferenceableE">
+<span id="_CPPv3I0EN2lf4core15dereferenceableE"></span><span id="_CPPv2I0EN2lf4core15dereferenceableE"></span><span class="target" id="conceptlf_1_1core_1_1dereferenceable"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">I</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">concept</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">dereferenceable</span></span></span><a class="headerlink" href="#_CPPv4I0EN2lf4core15dereferenceableE" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;libfork/core/first_arg.hpp&gt;</em></div>
+<p>Test if the expression <code class="docutils literal notranslate"><span class="pre">*std::declval&lt;T&amp;&gt;()</span></code> is valid and is <code class="docutils literal notranslate"><a class="reference internal" href="#conceptlf_1_1core_1_1referenceable"><span class="std std-ref"><span class="pre">lf::core::referenceable</span></span></a></code>. </p>
+</dd></dl>
+
+<dl class="cpp concept">
+<dt class="sig sig-object cpp" id="_CPPv4I0EN2lf4core13quasi_pointerE">
+<span id="_CPPv3I0EN2lf4core13quasi_pointerE"></span><span id="_CPPv2I0EN2lf4core13quasi_pointerE"></span><span class="target" id="conceptlf_1_1core_1_1quasi__pointer"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">I</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">concept</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">quasi_pointer</span></span></span><a class="headerlink" href="#_CPPv4I0EN2lf4core13quasi_pointerE" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;libfork/core/first_arg.hpp&gt;</em></div>
+<p>A quasi-pointer if a movable type that can be dereferenced to a <code class="docutils literal notranslate"><a class="reference internal" href="#conceptlf_1_1core_1_1referenceable"><span class="std std-ref"><span class="pre">lf::core::referenceable</span></span></a></code>. </p>
+<p>A quasi-pointer is assumed to be cheap-to-move like an iterator/legacy-pointer. </p>
+</dd></dl>
+
+<dl class="cpp concept">
+<dt class="sig sig-object cpp" id="_CPPv4I0EN2lf4core21async_function_objectE">
+<span id="_CPPv3I0EN2lf4core21async_function_objectE"></span><span id="_CPPv2I0EN2lf4core21async_function_objectE"></span><span class="target" id="conceptlf_1_1core_1_1async__function__object"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">F</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">concept</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">async_function_object</span></span></span><a class="headerlink" href="#_CPPv4I0EN2lf4core21async_function_objectE" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;libfork/core/first_arg.hpp&gt;</em></div>
+<p>A concept that requires a type be a copyable <a class="reference external" href="https://en.cppreference.com/w/cpp/named_req/FunctionObject">function object</a>. </p>
+<p>An async function object is a function object that returns an <code class="docutils literal notranslate"><a class="reference internal" href="#structlf_1_1core_1_1task"><span class="std std-ref"><span class="pre">lf::task</span></span></a></code> when <code class="docutils literal notranslate"><span class="pre">operator()</span></code> is called. with appropriate arguments. The call to <code class="docutils literal notranslate"><span class="pre">operator()</span></code> must create a libfork coroutine. The first argument of an async function must accept a deduced templated-type that satisfies the <code class="docutils literal notranslate"><a class="reference internal" href="#conceptlf_1_1core_1_1first__arg"><span class="std std-ref"><span class="pre">lf::core::first_arg</span></span></a></code> concept. The return type and invocability of an async function must be independent of the first argument except for its tag value.</p>
+<p>An async function may be copied, its copies must be equivalent to the original and support concurrent invocation from multiple threads. It is assumed that an async function is cheap-to-copy like an iterator/legacy-pointer. </p>
+</dd></dl>
+
+</section>
+<section id="api">
+<h3>API<a class="headerlink" href="#api" title="Permalink to this heading">#</a></h3>
+<dl class="cpp concept">
+<dt class="sig sig-object cpp" id="_CPPv4I0EN2lf4core9first_argE">
+<span id="_CPPv3I0EN2lf4core9first_argE"></span><span id="_CPPv2I0EN2lf4core9first_argE"></span><span class="target" id="conceptlf_1_1core_1_1first__arg"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">concept</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">first_arg</span></span></span><a class="headerlink" href="#_CPPv4I0EN2lf4core9first_argE" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;libfork/core/first_arg.hpp&gt;</em></div>
+<p>This describes the public-API of the first argument passed to an async function. </p>
+<p>An async functions’ invocability and return type must be independent of their first argument except for its tag value. A user may query the first argument’s static member <code class="docutils literal notranslate"><span class="pre">tagged</span></code> to obtain this value. Additionally, a user may query the first argument’s static member function <code class="docutils literal notranslate"><span class="pre">context()</span></code> to obtain a pointer to the current workers context. Finally a user may cache an exception in-flight by calling <code class="docutils literal notranslate"><span class="pre">.stash_exception()</span></code>. </p>
+</dd></dl>
+
+<dl class="cpp concept">
+<dt class="sig sig-object cpp" id="_CPPv4I0EN2lf4core9schedulerE">
+<span id="_CPPv3I0EN2lf4core9schedulerE"></span><span id="_CPPv2I0EN2lf4core9schedulerE"></span><span class="target" id="conceptlf_1_1core_1_1scheduler"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Sch</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">concept</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">scheduler</span></span></span><a class="headerlink" href="#_CPPv4I0EN2lf4core9schedulerE" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;libfork/core/scheduler.hpp&gt;</em></div>
+<p>A concept that schedulers must satisfy. </p>
+<p>This requires only a single method, <code class="docutils literal notranslate"><span class="pre">schedule</span></code> which accepts an <code class="docutils literal notranslate"><a class="reference internal" href="ext.html#namespacelf_1_1ext_1a2b0f838374fbe4fb861bb997485f55c1"><span class="std std-ref"><span class="pre">lf::submit_handle</span></span></a></code> and promises to call <code class="docutils literal notranslate"><a class="reference internal" href="ext.html#namespacelf_1_1ext_1a9aa41b4e819f25b0eba9ee10b4c94fbd"><span class="std std-ref"><span class="pre">lf::resume()</span></span></a></code> on it. The <code class="docutils literal notranslate"><span class="pre">schedule</span></code> method <strong>must</strong> fulfill the strong exception guarantee. </p>
+</dd></dl>
+
+<dl class="cpp concept">
+<dt class="sig sig-object cpp" id="_CPPv4I0EN2lf4core16context_switcherE">
+<span id="_CPPv3I0EN2lf4core16context_switcherE"></span><span id="_CPPv2I0EN2lf4core16context_switcherE"></span><span class="target" id="conceptlf_1_1core_1_1context__switcher"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">concept</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">context_switcher</span></span></span><a class="headerlink" href="#_CPPv4I0EN2lf4core16context_switcherE" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;libfork/core/scheduler.hpp&gt;</em></div>
+<p>Defines the interface for awaitables that may trigger a context switch. </p>
+<p>A <code class="docutils literal notranslate"><span class="pre">context_switcher</span></code> can be awaited inside a libfork coroutine. If the awaitable is not ready then the coroutine will be suspended and a submit_handle will be passed to the context switcher’s <code class="docutils literal notranslate"><span class="pre">await_suspend()</span></code> function. This can then be resumed by any worker as normal. </p>
+</dd></dl>
+
+<dl class="cpp concept">
+<dt class="sig sig-object cpp" id="_CPPv4I0EN2lf4core12co_allocableE">
+<span id="_CPPv3I0EN2lf4core12co_allocableE"></span><span id="_CPPv2I0EN2lf4core12co_allocableE"></span><span class="target" id="conceptlf_1_1core_1_1co__allocable"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">concept</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">co_allocable</span></span></span><a class="headerlink" href="#_CPPv4I0EN2lf4core12co_allocableE" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;libfork/core/co_alloc.hpp&gt;</em></div>
+<p>Check is a type is suitable for allocation on libfork’s stacks. </p>
+<p>This requires the type to be <code class="docutils literal notranslate"><span class="pre">std::default_initializable&lt;T&gt;</span></code> and have non-new-extended alignment. </p>
+</dd></dl>
+
+<dl class="cpp concept">
+<dt class="sig sig-object cpp" id="_CPPv4I0EN2lf4core25stash_exception_in_returnE">
+<span id="_CPPv3I0EN2lf4core25stash_exception_in_returnE"></span><span id="_CPPv2I0EN2lf4core25stash_exception_in_returnE"></span><span class="target" id="conceptlf_1_1core_1_1stash__exception__in__return"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">I</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">concept</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">stash_exception_in_return</span></span></span><a class="headerlink" href="#_CPPv4I0EN2lf4core25stash_exception_in_returnE" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;libfork/core/exceptions.hpp&gt;</em></div>
+<p>A concept that checks if a quasi-pointer can be used to stash an exception. </p>
+<p>If the expression <code class="docutils literal notranslate"><span class="pre">stash_exception(*ptr)</span></code> is well-formed and <code class="docutils literal notranslate"><span class="pre">noexcept</span></code> and <code class="docutils literal notranslate"><span class="pre">ptr</span></code> is used as the return address of an async function, then if that function terminates with an exception, the exception will be stored in the quasi-pointer via a call to <code class="docutils literal notranslate"><span class="pre">stash_exception</span></code>. </p>
+</dd></dl>
+
+<dl class="cpp concept">
+<dt class="sig sig-object cpp" id="_CPPv4I0_3tagEN2lf4core12modifier_forE">
+<span id="_CPPv3I0_3tagEN2lf4core12modifier_forE"></span><span id="_CPPv2I0_3tagEN2lf4core12modifier_forE"></span><span class="target" id="conceptlf_1_1core_1_1modifier__for"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N2lf4core3tagE" title="lf::core::tag"><span class="n"><span class="pre">tag</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Tag</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">concept</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">modifier_for</span></span></span><a class="headerlink" href="#_CPPv4I0_3tagEN2lf4core12modifier_forE" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;libfork/core/tag.hpp&gt;</em></div>
+<p>Test if a type is a valid modifier for a tag. </p>
+</dd></dl>
+
+</section>
+<section id="functional">
+<h3>Functional<a class="headerlink" href="#functional" title="Permalink to this heading">#</a></h3>
+<dl class="cpp concept">
+<dt class="sig sig-object cpp" id="_CPPv4I0_3tag0DpEN2lf4core19async_tag_invocableE">
+<span id="_CPPv3I0_3tag0DpEN2lf4core19async_tag_invocableE"></span><span id="_CPPv2I0_3tag0DpEN2lf4core19async_tag_invocableE"></span><span class="target" id="conceptlf_1_1core_1_1async__tag__invocable"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">I</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N2lf4core3tagE" title="lf::core::tag"><span class="n"><span class="pre">tag</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Tag</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">F</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="sig-name descname"><span class="n"><span class="pre">Args</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">concept</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">async_tag_invocable</span></span></span><a class="headerlink" href="#_CPPv4I0_3tag0DpEN2lf4core19async_tag_invocableE" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;libfork/core/invocable.hpp&gt;</em></div>
+<p>Check <code class="docutils literal notranslate"><span class="pre">F</span></code> is <code class="docutils literal notranslate"><span class="pre">Tag</span></code>-invocable with <code class="docutils literal notranslate"><span class="pre">Args...</span></code> and returns an <code class="docutils literal notranslate"><a class="reference internal" href="#structlf_1_1core_1_1task"><span class="std std-ref"><span class="pre">lf::task</span></span></a></code> who’s result is returnable via <code class="docutils literal notranslate"><span class="pre">I</span></code>. </p>
+<p>In the following description “invoking” or “async invoking” means to call <code class="docutils literal notranslate"><span class="pre">F</span></code> with <code class="docutils literal notranslate"><span class="pre">Args...</span></code> via the appropriate libfork function i.e. <code class="docutils literal notranslate"><span class="pre">fork</span></code> corresponds to <code class="docutils literal notranslate"><a class="reference internal" href="#namespacelf_1_1core_1a92670c4ac9383f64e1d05151245d1ea2"><span class="std std-ref"><span class="pre">lf::fork</span></span></a><span class="pre">[r,</span> <span class="pre">f](args...)</span></code> and the library will generate the appropriate (opaque) first-argument.</p>
+<p>This requires:<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">F</span></code> is an async function object.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">F</span></code> is ‘Tag’/call invocable with <code class="docutils literal notranslate"><span class="pre">Args...</span></code> when writing the result to <code class="docutils literal notranslate"><span class="pre">I</span></code> or discarding it.</p></li>
+<li><p>The result of all of these calls has the same type.</p></li>
+<li><p>The result of all of these calls is an instance of type <code class="docutils literal notranslate"><a class="reference internal" href="#structlf_1_1core_1_1task"><span class="std std-ref"><span class="pre">lf::task</span></span></a><span class="pre">&lt;R&gt;</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">I</span></code> is movable and dereferenceable.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">I</span></code> is indirectly writable from <code class="docutils literal notranslate"><span class="pre">R</span></code> or <code class="docutils literal notranslate"><span class="pre">R</span></code> is <code class="docutils literal notranslate"><span class="pre">void</span></code> while <code class="docutils literal notranslate"><span class="pre">I</span></code> is <code class="docutils literal notranslate"><span class="pre">discard_t</span></code>.</p></li>
+<li><p>If <code class="docutils literal notranslate"><span class="pre">R</span></code> is non-void then <code class="docutils literal notranslate"><span class="pre">F</span></code> is <code class="docutils literal notranslate"><a class="reference internal" href="#conceptlf_1_1core_1_1async__tag__invocable"><span class="std std-ref"><span class="pre">lf::core::async_tag_invocable</span></span></a></code> when <code class="docutils literal notranslate"><span class="pre">I</span></code> is <code class="docutils literal notranslate"><a class="reference internal" href="#namespacelf_1_1core_1a184320903da8dfcd9da778578151049b"><span class="std std-ref"><span class="pre">lf::eventually</span></span></a><span class="pre">&lt;R&gt;</span> <span class="pre">*</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">F</span></code> is <code class="docutils literal notranslate"><a class="reference internal" href="#conceptlf_1_1core_1_1async__tag__invocable"><span class="std std-ref"><span class="pre">lf::core::async_tag_invocable</span></span></a></code> when <code class="docutils literal notranslate"><span class="pre">I</span></code> is <code class="docutils literal notranslate"><a class="reference internal" href="#namespacelf_1_1core_1a5508747c0fc92b4edad4e56489913f57"><span class="std std-ref"><span class="pre">lf::try_eventually</span></span></a><span class="pre">&lt;R&gt;</span> <span class="pre">*</span></code>.</p></li>
+</ul>
+</p>
+<p>This concept is provided as a building block for higher-level concepts. </p>
+</dd></dl>
+
+<dl class="cpp concept">
+<dt class="sig sig-object cpp" id="_CPPv4I0DpEN2lf4core8callableE">
+<span id="_CPPv3I0DpEN2lf4core8callableE"></span><span id="_CPPv2I0DpEN2lf4core8callableE"></span><span class="target" id="conceptlf_1_1core_1_1callable"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">F</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="sig-name descname"><span class="n"><span class="pre">Args</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">concept</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">callable</span></span></span><a class="headerlink" href="#_CPPv4I0DpEN2lf4core8callableE" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;libfork/core/invocable.hpp&gt;</em></div>
+<p>Alias for <code class="docutils literal notranslate"><a class="reference internal" href="#conceptlf_1_1core_1_1async__tag__invocable"><span class="std std-ref"><span class="pre">lf::core::async_tag_invocable</span></span></a><span class="pre">&lt;</span><span class="pre">lf::impl::discard_t</span><span class="pre">,</span> <a class="reference internal" href="#namespacelf_1_1core_1a7d4d8db8053e10b595b4c827e80c7daea53b9e9679a8ea25880376080b76f98ad"><span class="std std-ref"><span class="pre">lf::core::tag::call</span></span></a><span class="pre">,</span> <span class="pre">F,</span> <span class="pre">Args...&gt;</span></code>. </p>
+</dd></dl>
+
+<dl class="cpp concept">
+<dt class="sig sig-object cpp" id="_CPPv4I0DpEN2lf4core8rootableE">
+<span id="_CPPv3I0DpEN2lf4core8rootableE"></span><span id="_CPPv2I0DpEN2lf4core8rootableE"></span><span class="target" id="conceptlf_1_1core_1_1rootable"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">F</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="sig-name descname"><span class="n"><span class="pre">Args</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">concept</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">rootable</span></span></span><a class="headerlink" href="#_CPPv4I0DpEN2lf4core8rootableE" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;libfork/core/invocable.hpp&gt;</em></div>
+<p>Test if an async function is root-invocable and call-invocable, subsumes <code class="docutils literal notranslate"><a class="reference internal" href="#conceptlf_1_1core_1_1callable"><span class="std std-ref"><span class="pre">lf::core::callable</span></span></a></code>. </p>
+</dd></dl>
+
+<dl class="cpp concept">
+<dt class="sig sig-object cpp" id="_CPPv4I0DpEN2lf4core8forkableE">
+<span id="_CPPv3I0DpEN2lf4core8forkableE"></span><span id="_CPPv2I0DpEN2lf4core8forkableE"></span><span class="target" id="conceptlf_1_1core_1_1forkable"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">F</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="sig-name descname"><span class="n"><span class="pre">Args</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">concept</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">forkable</span></span></span><a class="headerlink" href="#_CPPv4I0DpEN2lf4core8forkableE" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;libfork/core/invocable.hpp&gt;</em></div>
+<p>Test if an async function is fork-invocable and call-invocable, subsumes <code class="docutils literal notranslate"><a class="reference internal" href="#conceptlf_1_1core_1_1callable"><span class="std std-ref"><span class="pre">lf::core::callable</span></span></a></code>. </p>
+</dd></dl>
+
+<dl class="cpp concept">
+<dt class="sig sig-object cpp" id="_CPPv4I0DpEN2lf4core15async_invocableE">
+<span id="_CPPv3I0DpEN2lf4core15async_invocableE"></span><span id="_CPPv2I0DpEN2lf4core15async_invocableE"></span><span class="target" id="conceptlf_1_1core_1_1async__invocable"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">F</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="sig-name descname"><span class="n"><span class="pre">Args</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">concept</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">async_invocable</span></span></span><a class="headerlink" href="#_CPPv4I0DpEN2lf4core15async_invocableE" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;libfork/core/invocable.hpp&gt;</em></div>
+<p>Test if an async function is <code class="docutils literal notranslate"><a class="reference internal" href="#conceptlf_1_1core_1_1forkable"><span class="std std-ref"><span class="pre">lf::core::forkable</span></span></a></code> and <code class="docutils literal notranslate"><a class="reference internal" href="#conceptlf_1_1core_1_1rootable"><span class="std std-ref"><span class="pre">lf::core::rootable</span></span></a></code>, subsumes both. </p>
+</dd></dl>
+
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv4I0DpEN2lf14async_result_tE">
+<span id="_CPPv3I0DpEN2lf14async_result_tE"></span><span id="_CPPv2I0DpEN2lf14async_result_tE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">F</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="sig-name descname"><span class="n"><span class="pre">Args</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="namespacelf_1_1core_1a8f0d96b57d409019cf2e1142e071b114"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">async_result_t</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="n"><span class="pre">async_result</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0DpEN2lf14async_result_tE" title="lf::async_result_t::F"><span class="n"><span class="pre">F</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0DpEN2lf14async_result_tE" title="lf::async_result_t::Args"><span class="n"><span class="pre">Args</span></span></a><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">type</span></span><a class="headerlink" href="#_CPPv4I0DpEN2lf14async_result_tE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Fetch <code class="docutils literal notranslate"><span class="pre">R</span></code> when the async function <code class="docutils literal notranslate"><span class="pre">F</span></code> returns <code class="docutils literal notranslate"><a class="reference internal" href="#structlf_1_1core_1_1task"><span class="std std-ref"><span class="pre">lf::task</span></span></a><span class="pre">&lt;R&gt;</span></code>. </p>
+</dd></dl>
+
+</section>
+</section>
+<section id="control-flow">
+<h2>Control flow<a class="headerlink" href="#control-flow" title="Permalink to this heading">#</a></h2>
+<section id="sync-to-async">
+<h3>Sync to async<a class="headerlink" href="#sync-to-async" title="Permalink to this heading">#</a></h3>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4I_9scheduler_21async_function_objectDpEN2lf4core8scheduleE6futureI14async_result_tI1FDp4ArgsEERR3SchRR1FDpRR4Args">
+<span id="_CPPv3I_9scheduler_21async_function_objectDpEN2lf4core8scheduleERR3SchRR1FDpRR4Args"></span><span id="_CPPv2I_9scheduler_21async_function_objectDpEN2lf4core8scheduleERR3SchRR1FDpRR4Args"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN2lf4core9schedulerE" title="lf::core::scheduler"><span class="n"><span class="pre">scheduler</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Sch</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN2lf4core21async_function_objectE" title="lf::core::async_function_object"><span class="n"><span class="pre">async_function_object</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">F</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="sig-name descname"><span class="n"><span class="pre">Args</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="namespacelf_1_1core_1ae7a4703b5c4b49762d75cbc99265a446"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="../index.html#_CPPv4N2lf4coreE" title="lf::core"><span class="n"><span class="pre">core</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">schedule</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I_9scheduler_21async_function_objectDpEN2lf4core8scheduleE6futureI14async_result_tI1FDp4ArgsEERR3SchRR1FDpRR4Args" title="lf::core::schedule::Sch"><span class="n"><span class="pre">Sch</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">sch</span></span>, <a class="reference internal" href="#_CPPv4I_9scheduler_21async_function_objectDpEN2lf4core8scheduleE6futureI14async_result_tI1FDp4ArgsEERR3SchRR1FDpRR4Args" title="lf::core::schedule::F"><span class="n"><span class="pre">F</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">fun</span></span>, <a class="reference internal" href="#_CPPv4I_9scheduler_21async_function_objectDpEN2lf4core8scheduleE6futureI14async_result_tI1FDp4ArgsEERR3SchRR1FDpRR4Args" title="lf::core::schedule::Args"><span class="n"><span class="pre">Args</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">...</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">args</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_10returnableEN2lf6futureE" title="lf::future"><span class="n"><span class="pre">future</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0DpEN2lf14async_result_tE" title="lf::async_result_t"><span class="n"><span class="pre">async_result_t</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_9scheduler_21async_function_objectDpEN2lf4core8scheduleE6futureI14async_result_tI1FDp4ArgsEERR3SchRR1FDpRR4Args" title="lf::core::schedule::F"><span class="n"><span class="pre">F</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_9scheduler_21async_function_objectDpEN2lf4core8scheduleE6futureI14async_result_tI1FDp4ArgsEERR3SchRR1FDpRR4Args" title="lf::core::schedule::Args"><span class="n"><span class="pre">Args</span></span></a><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4I_9scheduler_21async_function_objectDpEN2lf4core8scheduleE6futureI14async_result_tI1FDp4ArgsEERR3SchRR1FDpRR4Args" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Schedule execution of <code class="docutils literal notranslate"><span class="pre">fun</span></code> on <code class="docutils literal notranslate"><span class="pre">sch</span></code> and return a <code class="docutils literal notranslate"><a class="reference internal" href="#classlf_1_1core_1_1future"><span class="std std-ref"><span class="pre">lf::core::future</span></span></a></code> to the result. </p>
+<p>This will build a task from <code class="docutils literal notranslate"><span class="pre">fun</span></code> and dispatch it to <code class="docutils literal notranslate"><span class="pre">sch</span></code> via its <code class="docutils literal notranslate"><span class="pre">schedule</span></code> method. If <code class="docutils literal notranslate"><span class="pre">schedule</span></code> is called by a worker thread (which are never allowed to block) then <code class="docutils literal notranslate"><a class="reference internal" href="#structlf_1_1core_1_1schedule__in__worker"><span class="std std-ref"><span class="pre">lf::core::schedule_in_worker</span></span></a></code> will be thrown. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4I_9scheduler_21async_function_objectDpEN2lf4core9sync_waitE14async_result_tI1FDp4ArgsERR3SchRR1FDpRR4Args">
+<span id="_CPPv3I_9scheduler_21async_function_objectDpEN2lf4core9sync_waitERR3SchRR1FDpRR4Args"></span><span id="_CPPv2I_9scheduler_21async_function_objectDpEN2lf4core9sync_waitERR3SchRR1FDpRR4Args"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN2lf4core9schedulerE" title="lf::core::scheduler"><span class="n"><span class="pre">scheduler</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Sch</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN2lf4core21async_function_objectE" title="lf::core::async_function_object"><span class="n"><span class="pre">async_function_object</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">F</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="sig-name descname"><span class="n"><span class="pre">Args</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="namespacelf_1_1core_1ad9774f0bbadd9f9266557149b3f5da8d"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="../index.html#_CPPv4N2lf4coreE" title="lf::core"><span class="n"><span class="pre">core</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">sync_wait</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I_9scheduler_21async_function_objectDpEN2lf4core9sync_waitE14async_result_tI1FDp4ArgsERR3SchRR1FDpRR4Args" title="lf::core::sync_wait::Sch"><span class="n"><span class="pre">Sch</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">sch</span></span>, <a class="reference internal" href="#_CPPv4I_9scheduler_21async_function_objectDpEN2lf4core9sync_waitE14async_result_tI1FDp4ArgsERR3SchRR1FDpRR4Args" title="lf::core::sync_wait::F"><span class="n"><span class="pre">F</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">fun</span></span>, <a class="reference internal" href="#_CPPv4I_9scheduler_21async_function_objectDpEN2lf4core9sync_waitE14async_result_tI1FDp4ArgsERR3SchRR1FDpRR4Args" title="lf::core::sync_wait::Args"><span class="n"><span class="pre">Args</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">...</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">args</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0DpEN2lf14async_result_tE" title="lf::async_result_t"><span class="n"><span class="pre">async_result_t</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_9scheduler_21async_function_objectDpEN2lf4core9sync_waitE14async_result_tI1FDp4ArgsERR3SchRR1FDpRR4Args" title="lf::core::sync_wait::F"><span class="n"><span class="pre">F</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_9scheduler_21async_function_objectDpEN2lf4core9sync_waitE14async_result_tI1FDp4ArgsERR3SchRR1FDpRR4Args" title="lf::core::sync_wait::Args"><span class="n"><span class="pre">Args</span></span></a><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4I_9scheduler_21async_function_objectDpEN2lf4core9sync_waitE14async_result_tI1FDp4ArgsERR3SchRR1FDpRR4Args" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Schedule execution of <code class="docutils literal notranslate"><span class="pre">fun</span></code> on <code class="docutils literal notranslate"><span class="pre">sch</span></code> and wait (<strong>block</strong>) until the task is complete. </p>
+<p>This is the primary entry point from the synchronous to the asynchronous world. A typical libfork program is expected to make a call from <code class="docutils literal notranslate"><span class="pre">main</span></code> into a scheduler/runtime by scheduling a single root-task with this function.</p>
+<p>This makes the appropriate call to <code class="docutils literal notranslate"><a class="reference internal" href="#namespacelf_1_1core_1ae7a4703b5c4b49762d75cbc99265a446"><span class="std std-ref"><span class="pre">lf::core::schedule</span></span></a></code> and calls <code class="docutils literal notranslate"><span class="pre">get</span></code> on the returned <code class="docutils literal notranslate"><a class="reference internal" href="#classlf_1_1core_1_1future"><span class="std std-ref"><span class="pre">lf::core::future</span></span></a></code>. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4I_9scheduler_21async_function_objectDpEN2lf4core6detachEvRR3SchRR1FDpRR4Args">
+<span id="_CPPv3I_9scheduler_21async_function_objectDpEN2lf4core6detachERR3SchRR1FDpRR4Args"></span><span id="_CPPv2I_9scheduler_21async_function_objectDpEN2lf4core6detachERR3SchRR1FDpRR4Args"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN2lf4core9schedulerE" title="lf::core::scheduler"><span class="n"><span class="pre">scheduler</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Sch</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN2lf4core21async_function_objectE" title="lf::core::async_function_object"><span class="n"><span class="pre">async_function_object</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">F</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="sig-name descname"><span class="n"><span class="pre">Args</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="namespacelf_1_1core_1a7c1a4c6a470cc2f626f40e7d8fa86afd"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="../index.html#_CPPv4N2lf4coreE" title="lf::core"><span class="n"><span class="pre">core</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">detach</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I_9scheduler_21async_function_objectDpEN2lf4core6detachEvRR3SchRR1FDpRR4Args" title="lf::core::detach::Sch"><span class="n"><span class="pre">Sch</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">sch</span></span>, <a class="reference internal" href="#_CPPv4I_9scheduler_21async_function_objectDpEN2lf4core6detachEvRR3SchRR1FDpRR4Args" title="lf::core::detach::F"><span class="n"><span class="pre">F</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">fun</span></span>, <a class="reference internal" href="#_CPPv4I_9scheduler_21async_function_objectDpEN2lf4core6detachEvRR3SchRR1FDpRR4Args" title="lf::core::detach::Args"><span class="n"><span class="pre">Args</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">...</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">args</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><a class="headerlink" href="#_CPPv4I_9scheduler_21async_function_objectDpEN2lf4core6detachEvRR3SchRR1FDpRR4Args" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Schedule execution of <code class="docutils literal notranslate"><span class="pre">fun</span></code> on <code class="docutils literal notranslate"><span class="pre">sch</span></code> and detach the future. </p>
+<p>This is the secondary entry point from the synchronous to the asynchronous world. Similar to <code class="docutils literal notranslate"><span class="pre">sync_wait</span></code> but calls <code class="docutils literal notranslate"><span class="pre">detach</span></code> on the returned <code class="docutils literal notranslate"><a class="reference internal" href="#classlf_1_1core_1_1future"><span class="std std-ref"><span class="pre">lf::core::future</span></span></a></code>.</p>
+<p><strong>Note:</strong> Many schedulers (like <code class="docutils literal notranslate"><a class="reference internal" href="schedule.html#classlf_1_1lazy__pool"><span class="std std-ref"><span class="pre">lf::lazy_pool</span></span></a></code> and <code class="docutils literal notranslate"><a class="reference internal" href="schedule.html#classlf_1_1busy__pool"><span class="std std-ref"><span class="pre">lf::busy_pool</span></span></a></code>) require all submitted work to (including detached work) to complete before they are destructed. </p>
+</dd></dl>
+
+</section>
+<section id="fork-join">
+<h3>Fork-join<a class="headerlink" href="#fork-join" title="Permalink to this heading">#</a></h3>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf4core4forkE">
+<span id="_CPPv3N2lf4core4forkE"></span><span id="_CPPv2N2lf4core4forkE"></span><span id="lf::core::fork__auto"></span><span class="target" id="namespacelf_1_1core_1a92670c4ac9383f64e1d05151245d1ea2"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="../index.html#_CPPv4N2lf4coreE" title="lf::core"><span class="n"><span class="pre">core</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">fork</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_3tag_12modifier_forI3TagEEN2lf4core8dispatchE" title="lf::core::dispatch"><span class="n"><span class="pre">dispatch</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4N2lf4core3tagE" title="lf::core::tag"><span class="n"><span class="pre">tag</span></span></a><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N2lf4core3tag4forkE" title="lf::core::tag::fork"><span class="n"><span class="pre">fork</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N2lf4core4forkE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>A second-order functor used to produce an awaitable (in an <code class="docutils literal notranslate"><a class="reference internal" href="#structlf_1_1core_1_1task"><span class="std std-ref"><span class="pre">lf::task</span></span></a></code>) that will trigger a fork. </p>
+<p>Conceptually the forked/child task can be executed anywhere at anytime and in parallel with its continuation.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>There is no guaranteed relationship between the thread that executes the <code class="docutils literal notranslate"><span class="pre">lf::fork</span></code>
+and the thread(s) that execute the continuation/child. However, currently <code class="docutils literal notranslate"><span class="pre">libfork</span></code>
+uses continuation stealing so the thread that calls <code class="docutils literal notranslate"><span class="pre">lf::fork</span></code> will immediately begin
+executing the child.</p>
+</div>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf4core4callE">
+<span id="_CPPv3N2lf4core4callE"></span><span id="_CPPv2N2lf4core4callE"></span><span id="lf::core::call__auto"></span><span class="target" id="namespacelf_1_1core_1af1dc0512bd3f0656a76261d96d7cebdc"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="../index.html#_CPPv4N2lf4coreE" title="lf::core"><span class="n"><span class="pre">core</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">call</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_3tag_12modifier_forI3TagEEN2lf4core8dispatchE" title="lf::core::dispatch"><span class="n"><span class="pre">dispatch</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4N2lf4core3tagE" title="lf::core::tag"><span class="n"><span class="pre">tag</span></span></a><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N2lf4core3tag4callE" title="lf::core::tag::call"><span class="n"><span class="pre">call</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N2lf4core4callE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>A second-order functor used to produce an awaitable (in an <code class="docutils literal notranslate"><a class="reference internal" href="#structlf_1_1core_1_1task"><span class="std std-ref"><span class="pre">lf::task</span></span></a></code>) that will trigger a call. </p>
+<p>Conceptually the called/child task can be executed anywhere at anytime but, its continuation is guaranteed to be sequenced after the child returns.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>There is no relationship between the thread that executes the <code class="docutils literal notranslate"><span class="pre">lf::call</span></code> and
+the thread(s) that execute the continuation/child. However, currently <code class="docutils literal notranslate"><span class="pre">libfork</span></code>
+uses continuation stealing so the thread that calls <code class="docutils literal notranslate"><span class="pre">lf::call</span></code> will immediately
+begin executing the child.</p>
+</div>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf4core4joinE">
+<span id="_CPPv3N2lf4core4joinE"></span><span id="_CPPv2N2lf4core4joinE"></span><span id="lf::core::join__impl::join_type"></span><span class="target" id="namespacelf_1_1core_1a02f3987661d0a270dc413517f2edeb3e"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><a class="reference internal" href="../index.html#_CPPv4N2lf4implE" title="lf::impl"><span class="n"><span class="pre">impl</span></span></a><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">join_type</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="../index.html#_CPPv4N2lf4coreE" title="lf::core"><span class="n"><span class="pre">core</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">join</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N2lf4core4joinE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>An awaitable (in a <code class="docutils literal notranslate"><a class="reference internal" href="#structlf_1_1core_1_1task"><span class="std std-ref"><span class="pre">lf::task</span></span></a></code>) that triggers a join. </p>
+<p>After a join is resumed it is guaranteed that all forked child tasks will have completed.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>There is no relationship between the thread that executes the <code class="docutils literal notranslate"><span class="pre">lf::join</span></code>
+and the thread that resumes the coroutine.</p>
+</div>
+</dd></dl>
+
+</section>
+<section id="invocation">
+<h3>Invocation<a class="headerlink" href="#invocation" title="Permalink to this heading">#</a></h3>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf4core4justE">
+<span id="_CPPv3N2lf4core4justE"></span><span id="_CPPv2N2lf4core4justE"></span><span id="lf::core::just__impl::bind_just"></span><span class="target" id="namespacelf_1_1core_1ae1aa7c321e4c6376c7a1f9ab67a90f28"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><a class="reference internal" href="../index.html#_CPPv4N2lf4implE" title="lf::impl"><span class="n"><span class="pre">impl</span></span></a><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bind_just</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="../index.html#_CPPv4N2lf4coreE" title="lf::core"><span class="n"><span class="pre">core</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">just</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N2lf4core4justE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>A second-order functor, produces an awaitable (in an <code class="docutils literal notranslate"><a class="reference internal" href="#structlf_1_1core_1_1task"><span class="std std-ref"><span class="pre">lf::task</span></span></a></code>) that will trigger a call + join. </p>
+</dd></dl>
+
+</section>
+<section id="explicit">
+<h3>Explicit<a class="headerlink" href="#explicit" title="Permalink to this heading">#</a></h3>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4I_9schedulerEN2lf4core9resume_onE25resume_on_quasi_awaitableI3SchEP3Sch">
+<span id="_CPPv3I_9schedulerEN2lf4core9resume_onEP3Sch"></span><span id="_CPPv2I_9schedulerEN2lf4core9resume_onEP3Sch"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN2lf4core9schedulerE" title="lf::core::scheduler"><span class="n"><span class="pre">scheduler</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Sch</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="namespacelf_1_1core_1a864be7a22f615f1a85debf24768ee691"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="../index.html#_CPPv4N2lf4coreE" title="lf::core"><span class="n"><span class="pre">core</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">resume_on</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I_9schedulerEN2lf4core9resume_onE25resume_on_quasi_awaitableI3SchEP3Sch" title="lf::core::resume_on::Sch"><span class="n"><span class="pre">Sch</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">dest</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_9schedulerEN2lf25resume_on_quasi_awaitableE" title="lf::resume_on_quasi_awaitable"><span class="n"><span class="pre">resume_on_quasi_awaitable</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_9schedulerEN2lf4core9resume_onE25resume_on_quasi_awaitableI3SchEP3Sch" title="lf::core::resume_on::Sch"><span class="n"><span class="pre">Sch</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4I_9schedulerEN2lf4core9resume_onE25resume_on_quasi_awaitableI3SchEP3Sch" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Create an <code class="docutils literal notranslate"><a class="reference internal" href="#conceptlf_1_1core_1_1context__switcher"><span class="std std-ref"><span class="pre">lf::core::context_switcher</span></span></a></code> to explicitly transfer execution to <code class="docutils literal notranslate"><span class="pre">dest</span></code>. </p>
+<p><code class="docutils literal notranslate"><span class="pre">dest</span></code> must be non-null. </p>
+</dd></dl>
+
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv4I_9schedulerEN2lf25resume_on_quasi_awaitableE">
+<span id="_CPPv3I_9schedulerEN2lf25resume_on_quasi_awaitableE"></span><span id="_CPPv2I_9schedulerEN2lf25resume_on_quasi_awaitableE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">scheduler</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Sch</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="structlf_1_1core_1_1resume__on__quasi__awaitable"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">resume_on_quasi_awaitable</span></span></span><a class="headerlink" href="#_CPPv4I_9schedulerEN2lf25resume_on_quasi_awaitableE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>An <code class="docutils literal notranslate"><a class="reference internal" href="#conceptlf_1_1core_1_1context__switcher"><span class="std std-ref"><span class="pre">lf::core::context_switcher</span></span></a></code> that just transfers execution to a new scheduler. </p>
+</dd></dl>
+
+</section>
+<section id="advanced-generic">
+<h3>Advanced/generic<a class="headerlink" href="#advanced-generic" title="Permalink to this heading">#</a></h3>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4I_3tag_12modifier_forI3TagEEN2lf4core8dispatchE">
+<span id="_CPPv3I_3tag_12modifier_forI3TagEEN2lf4core8dispatchE"></span><span id="_CPPv2I_3tag_12modifier_forI3TagEEN2lf4core8dispatchE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4N2lf4core3tagE" title="lf::core::tag"><span class="n"><span class="pre">tag</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Tag</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0_3tagEN2lf4core12modifier_forE" title="lf::core::modifier_for"><span class="n"><span class="pre">modifier_for</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_3tag_12modifier_forI3TagEEN2lf4core8dispatchE" title="lf::core::dispatch::Tag"><span class="n"><span class="pre">Tag</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Mod</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N2lf8modifierE" title="lf::modifier"><span class="n"><span class="pre">modifier</span></span></a><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N2lf8modifier4noneE" title="lf::modifier::none"><span class="n"><span class="pre">none</span></span></a><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="namespacelf_1_1core_1ae69e03000b770190dd3e22635d05eb7f"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="../index.html#_CPPv4N2lf4coreE" title="lf::core"><span class="n"><span class="pre">core</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">dispatch</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="../index.html#_CPPv4N2lf4implE" title="lf::impl"><span class="n"><span class="pre">impl</span></span></a><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">bind_task</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_3tag_12modifier_forI3TagEEN2lf4core8dispatchE" title="lf::core::dispatch::Tag"><span class="n"><span class="pre">Tag</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_3tag_12modifier_forI3TagEEN2lf4core8dispatchE" title="lf::core::dispatch::Mod"><span class="n"><span class="pre">Mod</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4I_3tag_12modifier_forI3TagEEN2lf4core8dispatchE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>A second-order function for advanced control of <code class="docutils literal notranslate"><span class="pre">fork</span></code>/<code class="docutils literal notranslate"><span class="pre">call</span></code>. </p>
+<p>Users should prefer <code class="docutils literal notranslate"><a class="reference internal" href="#namespacelf_1_1core_1a92670c4ac9383f64e1d05151245d1ea2"><span class="std std-ref"><span class="pre">lf::core::fork</span></span></a></code> and <code class="docutils literal notranslate"><a class="reference internal" href="#namespacelf_1_1core_1af1dc0512bd3f0656a76261d96d7cebdc"><span class="std std-ref"><span class="pre">lf::core::call</span></span></a></code> over this function. <code class="docutils literal notranslate"><a class="reference internal" href="#namespacelf_1_1core_1ae69e03000b770190dd3e22635d05eb7f"><span class="std std-ref"><span class="pre">lf::core::dispatch</span></span></a></code> primarily caters for niche exception handling use-cases and has more stringent requirements on when/where it can be used.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">Tag</span> <span class="pre">==</span> <a class="reference internal" href="#namespacelf_1_1core_1a7d4d8db8053e10b595b4c827e80c7daea53b9e9679a8ea25880376080b76f98ad"><span class="std std-ref"><span class="pre">lf::core::tag::call</span></span></a></code> then dispatches like <code class="docutils literal notranslate"><a class="reference internal" href="#namespacelf_1_1core_1af1dc0512bd3f0656a76261d96d7cebdc"><span class="std std-ref"><span class="pre">lf::core::call</span></span></a></code>, i.e. the parent cannot be stolen. If <code class="docutils literal notranslate"><span class="pre">Tag</span> <span class="pre">==</span> <a class="reference internal" href="#namespacelf_1_1core_1a7d4d8db8053e10b595b4c827e80c7daeab2fcb4ba898f479790076dbd5daa133f"><span class="std std-ref"><span class="pre">lf::core::tag::fork</span></span></a></code> then dispatches like <code class="docutils literal notranslate"><a class="reference internal" href="#namespacelf_1_1core_1a92670c4ac9383f64e1d05151245d1ea2"><span class="std std-ref"><span class="pre">lf::core::fork</span></span></a></code>, i.e. the parent can be stolen.</p>
+<p>The modifiers perform the following actions:</p>
+<p><ul class="simple">
+<li><p><code class="docutils literal notranslate"><a class="reference internal" href="#structlf_1_1core_1_1modifier_1_1none"><span class="std std-ref"><span class="pre">lf::core::modifier::none</span></span></a></code> - No modification to the call category.</p></li>
+<li><p><code class="docutils literal notranslate"><a class="reference internal" href="#structlf_1_1core_1_1modifier_1_1sync"><span class="std std-ref"><span class="pre">lf::core::modifier::sync</span></span></a></code> - The tag is <code class="docutils literal notranslate"><span class="pre">fork</span></code>, but the awaitable reports if the call was synchronous, if the call was synchronous then this fork does not count as opening a fork-join scope and the internal exception will be checked, if it was set (either by the child of a sibling) then either that exception will be rethrown or a new exception will be thrown. In either case this does not count as a join. If this is inside a fork-join scope the thrown exception <strong>must</strong> be caught and a call to <code class="docutils literal notranslate"><span class="pre">co_await</span> <a class="reference internal" href="#namespacelf_1_1core_1a02f3987661d0a270dc413517f2edeb3e"><span class="std std-ref"><span class="pre">lf::join</span></span></a></code> <strong>must</strong> be made.</p></li>
+<li><p><code class="docutils literal notranslate"><a class="reference internal" href="#structlf_1_1core_1_1modifier_1_1sync__outside"><span class="std std-ref"><span class="pre">lf::core::modifier::sync_outside</span></span></a></code> - Same as <code class="docutils literal notranslate"><span class="pre">sync</span></code> but guarantees that the fork statement is outside a fork-join scope. Hence, if the the call completes synchronously, the exception of the forked child will be rethrown and a fork-join scope will not have been opened (hence a join is not required).</p></li>
+<li><p><code class="docutils literal notranslate"><a class="reference internal" href="#structlf_1_1core_1_1modifier_1_1eager__throw"><span class="std std-ref"><span class="pre">lf::core::modifier::eager_throw</span></span></a></code> - The tag is <code class="docutils literal notranslate"><span class="pre">call</span></code> after resuming the awaitable the internal exception is checked, if it is set (either from the child or by a sibling) then it or a new exception will be (re)thrown.</p></li>
+<li><p><code class="docutils literal notranslate"><a class="reference internal" href="#structlf_1_1core_1_1modifier_1_1eager__throw__outside"><span class="std std-ref"><span class="pre">lf::core::modifier::eager_throw_outside</span></span></a></code> - Same as <code class="docutils literal notranslate"><span class="pre">eager_throw</span></code> but guarantees that the call statement is outside a fork-join scope hence, the child’s exception will be rethrown.</p></li>
+</ul>
+</p>
+<dl class="field-list simple">
+<dt class="field-odd">Template Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>Tag</strong> – The tag of the dispatched task. </p></li>
+<li><p><strong>Mod</strong> – A modifier for the dispatched sequence. </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+<section id="classes">
+<h2>Classes<a class="headerlink" href="#classes" title="Permalink to this heading">#</a></h2>
+<section id="task">
+<h3>Task<a class="headerlink" href="#task" title="Permalink to this heading">#</a></h3>
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv4I_10returnableEN2lf4taskE">
+<span id="_CPPv3I_10returnableEN2lf4taskE"></span><span id="_CPPv2I_10returnableEN2lf4taskE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">returnable</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="structlf_1_1core_1_1task"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">task</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">type_identity</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">void</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><a class="reference internal" href="../index.html#_CPPv4N2lf4implE" title="lf::impl"><span class="n"><span class="pre">impl</span></span></a><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">unique_frame</span></span><a class="headerlink" href="#_CPPv4I_10returnableEN2lf4taskE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>The return type for libfork’s async functions/coroutines. </p>
+<p>This predominantly exists to disambiguate <code class="docutils literal notranslate"><span class="pre">libfork</span></code>s coroutines from other coroutines and specify <code class="docutils literal notranslate"><span class="pre">T</span></code> the async function’s return type which is required to be <code class="docutils literal notranslate"><span class="pre">void</span></code>, a reference, or a <code class="docutils literal notranslate"><span class="pre">std::movable</span></code> type.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>No consumer of this library should ever touch an instance of this type, it is used for specifying the
+return type of an <cite>async</cite> function only.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The value type <code class="docutils literal notranslate"><span class="pre">T</span></code> of a coroutine should be independent of the coroutines first-argument.</p>
+</div>
+</dd></dl>
+
+</section>
+<section id="future">
+<h3>Future<a class="headerlink" href="#future" title="Permalink to this heading">#</a></h3>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4I_10returnableEN2lf6futureE">
+<span id="_CPPv3I_10returnableEN2lf6futureE"></span><span id="_CPPv2I_10returnableEN2lf6futureE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">returnable</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">R</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classlf_1_1core_1_1future"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">future</span></span></span><a class="headerlink" href="#_CPPv4I_10returnableEN2lf6futureE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>A future is a handle to the result of an asynchronous operation. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf6future6futureERR6future">
+<span id="_CPPv3N2lf6future6futureERR6future"></span><span id="_CPPv2N2lf6future6futureERR6future"></span><span id="lf::future::future__futureRR"></span><span class="target" id="classlf_1_1core_1_1future_1a37313d49c30fbfa0fedd2536ea197f22"></span><span class="sig-name descname"><span class="n"><span class="pre">future</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N2lf6future6futureERR6future" title="lf::future::future"><span class="n"><span class="pre">future</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N2lf6future6futureERR6future" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Move construct a new future. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf6future6futureERK6future">
+<span id="_CPPv3N2lf6future6futureERK6future"></span><span id="_CPPv2N2lf6future6futureERK6future"></span><span id="lf::future::future__futureCR"></span><span class="target" id="classlf_1_1core_1_1future_1ac93520a7998b2fe589e2ec68456ce225"></span><span class="sig-name descname"><span class="n"><span class="pre">future</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N2lf6future6futureERK6future" title="lf::future::future"><span class="n"><span class="pre">future</span></span></a><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N2lf6future6futureERK6future" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Futures are not copyable. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf6futureD0Ev">
+<span id="_CPPv3N2lf6futureD0Ev"></span><span id="_CPPv2N2lf6futureD0Ev"></span><span id="lf::future::~future"></span><span class="target" id="classlf_1_1core_1_1future_1ac2346fcdb14f943cc8c86b8e1aa135c5"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">~future</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N2lf6futureD0Ev" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Wait (<strong>block</strong>) until the future completes if it has a shared state. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf6future6detachEv">
+<span id="_CPPv3N2lf6future6detachEv"></span><span id="_CPPv2N2lf6future6detachEv"></span><span id="lf::future::detach"></span><span class="target" id="classlf_1_1core_1_1future_1a5cb41020cda26d487aff3f3c41011eeb"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">detach</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N2lf6future6detachEv" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Detach the shared state from this future. </p>
+<p>Following this operation the destructor is guaranteed to not block. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf6future3getEv">
+<span id="_CPPv3N2lf6future3getEv"></span><span id="_CPPv2N2lf6future3getEv"></span><span id="lf::future::get"></span><span class="target" id="classlf_1_1core_1_1future_1ac1fac2235a7208f3e85b7915b043bbd5"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_10returnableEN2lf6futureE" title="lf::future::R"><span class="n"><span class="pre">R</span></span></a><a class="headerlink" href="#_CPPv4N2lf6future3getEv" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Wait (<strong>block</strong>) for the result to complete and then return it. </p>
+<p>If the task completed with an exception then that exception will be rethrown. If the future has no shared state then a <code class="docutils literal notranslate"><span class="pre">lf::core::future_error</span></code> will be thrown. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf6futureaSERR6future">
+<span id="_CPPv3N2lf6futureaSERR6future"></span><span id="_CPPv2N2lf6futureaSERR6future"></span><span id="lf::future::assign-operator__futureRR"></span><span class="target" id="classlf_1_1core_1_1future_1a9a937c68deb6315323fd7271a1ee5e4b"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I_10returnableEN2lf6futureE" title="lf::future"><span class="n"><span class="pre">future</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_10returnableEN2lf6futureE" title="lf::future"><span class="n"><span class="pre">future</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N2lf6futureaSERR6future" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Move assign to a future. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf6futureaSERK6future">
+<span id="_CPPv3N2lf6futureaSERK6future"></span><span id="_CPPv2N2lf6futureaSERK6future"></span><span id="lf::future::assign-operator__futureCR"></span><span class="target" id="classlf_1_1core_1_1future_1ab84ae845540e7fd38688abce805be6b6"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I_10returnableEN2lf6futureE" title="lf::future"><span class="n"><span class="pre">future</span></span></a><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_10returnableEN2lf6futureE" title="lf::future"><span class="n"><span class="pre">future</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N2lf6futureaSERK6future" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Futures are not copy assignable. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK2lf6future5validEv">
+<span id="_CPPv3NK2lf6future5validEv"></span><span id="_CPPv2NK2lf6future5validEv"></span><span id="lf::future::validC"></span><span class="target" id="classlf_1_1core_1_1future_1a9eef80a8f8ea2ea8f5dc8a92098e29cc"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">valid</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><a class="headerlink" href="#_CPPv4NK2lf6future5validEv" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Test if the future has a shared state. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf6future4waitEv">
+<span id="_CPPv3N2lf6future4waitEv"></span><span id="_CPPv2N2lf6future4waitEv"></span><span id="lf::future::wait"></span><span class="target" id="classlf_1_1core_1_1future_1ab74d9479990aa551c03cf18918204d4c"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">wait</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2lf6future4waitEv" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Wait (<strong>block</strong>) for the future to complete. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</section>
+<section id="eventually">
+<h3>Eventually<a class="headerlink" href="#eventually" title="Permalink to this heading">#</a></h3>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="eventually.html">Basic eventually</a></li>
+</ul>
+</div>
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv4I_10returnableEN2lf4core10eventuallyE">
+<span id="_CPPv3I_10returnableEN2lf4core10eventuallyE"></span><span id="_CPPv2I_10returnableEN2lf4core10eventuallyE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN2lf4core10returnableE" title="lf::core::returnable"><span class="n"><span class="pre">returnable</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="namespacelf_1_1core_1a184320903da8dfcd9da778578151049b"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="../index.html#_CPPv4N2lf4coreE" title="lf::core"><span class="n"><span class="pre">core</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">eventually</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="eventually.html#_CPPv4I_10returnable_bEN2lf4core16basic_eventuallyE" title="lf::core::basic_eventually"><span class="n"><span class="pre">basic_eventually</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_10returnableEN2lf4core10eventuallyE" title="lf::core::eventually::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">false</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4I_10returnableEN2lf4core10eventuallyE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>An alias for <code class="docutils literal notranslate"><a class="reference internal" href="eventually.html#classlf_1_1core_1_1basic__eventually"><span class="std std-ref"><span class="pre">lf::core::basic_eventually</span></span></a><span class="pre">&lt;T,</span> <span class="pre">false&gt;</span></code>. </p>
+</dd></dl>
+
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv4I_10returnableEN2lf4core14try_eventuallyE">
+<span id="_CPPv3I_10returnableEN2lf4core14try_eventuallyE"></span><span id="_CPPv2I_10returnableEN2lf4core14try_eventuallyE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN2lf4core10returnableE" title="lf::core::returnable"><span class="n"><span class="pre">returnable</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="namespacelf_1_1core_1a5508747c0fc92b4edad4e56489913f57"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="../index.html#_CPPv4N2lf4coreE" title="lf::core"><span class="n"><span class="pre">core</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">try_eventually</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="eventually.html#_CPPv4I_10returnable_bEN2lf4core16basic_eventuallyE" title="lf::core::basic_eventually"><span class="n"><span class="pre">basic_eventually</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_10returnableEN2lf4core14try_eventuallyE" title="lf::core::try_eventually::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">true</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4I_10returnableEN2lf4core14try_eventuallyE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>An alias for <code class="docutils literal notranslate"><a class="reference internal" href="eventually.html#classlf_1_1core_1_1basic__eventually"><span class="std std-ref"><span class="pre">lf::core::basic_eventually</span></span></a><span class="pre">&lt;T,</span> <span class="pre">true&gt;</span></code>. </p>
+</dd></dl>
+
+</section>
+<section id="defer">
+<h3>Defer<a class="headerlink" href="#defer" title="Permalink to this heading">#</a></h3>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4I0EN2lf5deferE">
+<span id="_CPPv3I0EN2lf5deferE"></span><span id="_CPPv2I0EN2lf5deferE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">F</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classlf_1_1core_1_1defer"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">defer</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">private</span></span><span class="w"> </span><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="../index.html#_CPPv4N2lf4implE" title="lf::impl"><span class="n"><span class="pre">impl</span></span></a><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">immovable</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN2lf5deferE" title="lf::defer"><span class="n"><span class="pre">defer</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN2lf5deferE" title="lf::defer::F"><span class="n"><span class="pre">F</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4I0EN2lf5deferE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Basic implementation of a Golang-like defer. </p>
+<p><p>Use like:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">auto</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">ptr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">c_api_init</span><span class="p">();</span>
+
+<span class="n">defer</span><span class="w"> </span><span class="n">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="o">&amp;</span><span class="n">ptr</span><span class="p">]</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="k">noexcept</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">c_api_clean_up</span><span class="p">(</span><span class="n">ptr</span><span class="p">);</span>
+<span class="p">};</span>
+
+<span class="c1">// Code that may throw</span>
+</pre></div>
+</div>
+</p>
+<p>You can also use the <code class="docutils literal notranslate"><span class="pre">LF_DEFER</span></code> macro to create an automatically named defer object. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf5defer5deferERR1F">
+<span id="_CPPv3N2lf5defer5deferERR1F"></span><span id="_CPPv2N2lf5defer5deferERR1F"></span><span id="lf::defer::defer__FRRCE"></span><span class="target" id="classlf_1_1core_1_1defer_1ab635fcb5e2e386ec209621f509581fcf"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">defer</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN2lf5deferE" title="lf::defer::F"><span class="n"><span class="pre">F</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">f</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">is_nothrow_constructible_v</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN2lf5deferE" title="lf::defer::F"><span class="n"><span class="pre">F</span></span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN2lf5deferE" title="lf::defer::F"><span class="n"><span class="pre">F</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">)</span></span><a class="headerlink" href="#_CPPv4N2lf5defer5deferERR1F" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Construct a new Defer object. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>f</strong> – Nullary invocable forwarded into object and invoked by destructor. </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf5deferD0Ev">
+<span id="_CPPv3N2lf5deferD0Ev"></span><span id="_CPPv2N2lf5deferD0Ev"></span><span id="lf::defer::~deferCE"></span><span class="target" id="classlf_1_1core_1_1defer_1af3eb00f41c611d4f05ca81f8a46e6691"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">~defer</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N2lf5deferD0Ev" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Calls the invocable. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</section>
+<section id="exceptions">
+<h3>Exceptions<a class="headerlink" href="#exceptions" title="Permalink to this heading">#</a></h3>
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf21exception_before_joinE">
+<span id="_CPPv3N2lf21exception_before_joinE"></span><span id="_CPPv2N2lf21exception_before_joinE"></span><span id="lf::exception_before_join"></span><span class="target" id="structlf_1_1core_1_1exception__before__join"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">exception_before_join</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">exception</span></span><a class="headerlink" href="#_CPPv4N2lf21exception_before_joinE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Thrown when a parent knows a child threw an exception but before a join point has been reached. </p>
+<p>This exception <strong>must</strong> be caught and then <strong>join must be called</strong>, which will rethrow the child’s exception. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK2lf21exception_before_join4whatEv">
+<span id="_CPPv3NK2lf21exception_before_join4whatEv"></span><span id="_CPPv2NK2lf21exception_before_join4whatEv"></span><span id="lf::exception_before_join::whatC"></span><span class="target" id="structlf_1_1core_1_1exception__before__join_1a772f40ab897441b0675c5499c8e4a687"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">what</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">*</span></span><span class="w"> </span><span class="k"><span class="pre">override</span></span><a class="headerlink" href="#_CPPv4NK2lf21exception_before_join4whatEv" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>A diagnostic message. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf18schedule_in_workerE">
+<span id="_CPPv3N2lf18schedule_in_workerE"></span><span id="_CPPv2N2lf18schedule_in_workerE"></span><span id="lf::schedule_in_worker"></span><span class="target" id="structlf_1_1core_1_1schedule__in__worker"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">schedule_in_worker</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">exception</span></span><a class="headerlink" href="#_CPPv4N2lf18schedule_in_workerE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Thrown when a worker thread attempts to call <code class="docutils literal notranslate"><a class="reference internal" href="#namespacelf_1_1core_1ae7a4703b5c4b49762d75cbc99265a446"><span class="std std-ref"><span class="pre">lf::core::schedule</span></span></a></code>. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK2lf18schedule_in_worker4whatEv">
+<span id="_CPPv3NK2lf18schedule_in_worker4whatEv"></span><span id="_CPPv2NK2lf18schedule_in_worker4whatEv"></span><span id="lf::schedule_in_worker::whatC"></span><span class="target" id="structlf_1_1core_1_1schedule__in__worker_1afd760bc3da8626a1106478720cc5478e"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">what</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">*</span></span><span class="w"> </span><span class="k"><span class="pre">override</span></span><a class="headerlink" href="#_CPPv4NK2lf18schedule_in_worker4whatEv" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>A diagnostic message. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf4core13broken_futureE">
+<span id="_CPPv3N2lf4core13broken_futureE"></span><span id="_CPPv2N2lf4core13broken_futureE"></span><span id="lf::core::broken_future"></span><span class="target" id="structlf_1_1core_1_1broken__future"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">broken_future</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">exception</span></span><a class="headerlink" href="#_CPPv4N2lf4core13broken_futureE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Thrown when a future has no shared state. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK2lf4core13broken_future4whatEv">
+<span id="_CPPv3NK2lf4core13broken_future4whatEv"></span><span id="_CPPv2NK2lf4core13broken_future4whatEv"></span><span id="lf::core::broken_future::whatC"></span><span class="target" id="structlf_1_1core_1_1broken__future_1a3c6bc1204b3092e47f824d69e5716748"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">what</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">*</span></span><span class="w"> </span><span class="k"><span class="pre">override</span></span><a class="headerlink" href="#_CPPv4NK2lf4core13broken_future4whatEv" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>A diagnostic message. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf12empty_futureE">
+<span id="_CPPv3N2lf12empty_futureE"></span><span id="_CPPv2N2lf12empty_futureE"></span><span id="lf::empty_future"></span><span class="target" id="structlf_1_1core_1_1empty__future"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">empty_future</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">exception</span></span><a class="headerlink" href="#_CPPv4N2lf12empty_futureE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Thrown when <code class="docutils literal notranslate"><span class="pre">.get()</span></code> is called more than once on a future. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK2lf12empty_future4whatEv">
+<span id="_CPPv3NK2lf12empty_future4whatEv"></span><span id="_CPPv2NK2lf12empty_future4whatEv"></span><span id="lf::empty_future::whatC"></span><span class="target" id="structlf_1_1core_1_1empty__future_1ac8aa6f3e8fa8d3ce24a9daa464a400b4"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">what</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">*</span></span><span class="w"> </span><span class="k"><span class="pre">override</span></span><a class="headerlink" href="#_CPPv4NK2lf12empty_future4whatEv" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>A diagnostic message. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</section>
+</section>
+<section id="stack-allocation">
+<h2>Stack allocation<a class="headerlink" href="#stack-allocation" title="Permalink to this heading">#</a></h2>
+<section id="functions">
+<h3>Functions<a class="headerlink" href="#functions" title="Permalink to this heading">#</a></h3>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4I_12co_allocableEN2lf4core6co_newEN4impl8co_new_tI1TEENSt6size_tE">
+<span id="_CPPv3I_12co_allocableEN2lf4core6co_newENSt6size_tE"></span><span id="_CPPv2I_12co_allocableEN2lf4core6co_newENSt6size_tE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN2lf4core12co_allocableE" title="lf::core::co_allocable"><span class="n"><span class="pre">co_allocable</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="namespacelf_1_1core_1a6efaa464f3187288969907f18c7d4995"></span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="../index.html#_CPPv4N2lf4coreE" title="lf::core"><span class="n"><span class="pre">core</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">co_new</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">count</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="../index.html#_CPPv4N2lf4implE" title="lf::impl"><span class="n"><span class="pre">impl</span></span></a><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">co_new_t</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_12co_allocableEN2lf4core6co_newEN4impl8co_new_tI1TEENSt6size_tE" title="lf::core::co_new::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4I_12co_allocableEN2lf4core6co_newEN4impl8co_new_tI1TEENSt6size_tE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>A function which returns an awaitable which triggers allocation on a worker’s stack. </p>
+<p>Upon <code class="docutils literal notranslate"><span class="pre">co_await</span></code>ing the result of this function an <code class="docutils literal notranslate"><a class="reference internal" href="#classlf_1_1core_1_1stack__allocated"><span class="std std-ref"><span class="pre">lf::stack_allocated</span></span></a></code> object is returned.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This must be called __outside__ of a fork-join scope and is an expert only feature!</p>
+</div>
+</dd></dl>
+
+</section>
+<section id="id1">
+<h3>Classes<a class="headerlink" href="#id1" title="Permalink to this heading">#</a></h3>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4I_12co_allocableEN2lf15stack_allocatedE">
+<span id="_CPPv3I_12co_allocableEN2lf15stack_allocatedE"></span><span id="_CPPv2I_12co_allocableEN2lf15stack_allocatedE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">co_allocable</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classlf_1_1core_1_1stack__allocated"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">stack_allocated</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">private</span></span><span class="w"> </span><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="../index.html#_CPPv4N2lf4implE" title="lf::impl"><span class="n"><span class="pre">impl</span></span></a><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">immovable</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_12co_allocableEN2lf15stack_allocatedE" title="lf::stack_allocated"><span class="n"><span class="pre">stack_allocated</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_12co_allocableEN2lf15stack_allocatedE" title="lf::stack_allocated::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4I_12co_allocableEN2lf15stack_allocatedE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>The result of <code class="docutils literal notranslate"><span class="pre">co_await</span></code>ing the result of <code class="docutils literal notranslate"><span class="pre">lf::core::co_new</span></code>. </p>
+<p>A raii wrapper around a <code class="docutils literal notranslate"><span class="pre">std::span</span></code> pointing to the memory allocated on the stack. This type can be destructured into a <code class="docutils literal notranslate"><span class="pre">std::span</span></code> to the allocated memory. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf15stack_allocated15stack_allocatedEPN4impl5frameENSt4spanI1TEE">
+<span id="_CPPv3N2lf15stack_allocated15stack_allocatedEPN4impl5frameENSt4spanI1TEE"></span><span id="_CPPv2N2lf15stack_allocated15stack_allocatedEPN4impl5frameENSt4spanI1TEE"></span><span id="lf::stack_allocated::stack_allocated__impl::frameP.std::span:T:"></span><span class="target" id="classlf_1_1core_1_1stack__allocated_1a7ddfafcb4f3969d2cff534cb445a69b9"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">stack_allocated</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="../index.html#_CPPv4N2lf4implE" title="lf::impl"><span class="n"><span class="pre">impl</span></span></a><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">frame</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">frame</span></span>, <span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">span</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_12co_allocableEN2lf15stack_allocatedE" title="lf::stack_allocated::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">span</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N2lf15stack_allocated15stack_allocatedEPN4impl5frameENSt4spanI1TEE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Construct a new co allocated object. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf15stack_allocatedD0Ev">
+<span id="_CPPv3N2lf15stack_allocatedD0Ev"></span><span id="_CPPv2N2lf15stack_allocatedD0Ev"></span><span id="lf::stack_allocated::~stack_allocated"></span><span class="target" id="classlf_1_1core_1_1stack__allocated_1a643ee2e0650ab2bcc239069624657cf4"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">~stack_allocated</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N2lf15stack_allocatedD0Ev" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Destroys objects and releases the memory. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4I_NSt6size_tEENK2lf15stack_allocated3getENSt4spanIK1TEEv">
+<span id="_CPPv3I_NSt6size_tEENK2lf15stack_allocated3getEv"></span><span id="_CPPv2I_NSt6size_tEENK2lf15stack_allocated3getEv"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">I</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classlf_1_1core_1_1stack__allocated_1a9e45ec1722aeb6f265aaa38ec19f3367"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">span</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_12co_allocableEN2lf15stack_allocatedE" title="lf::stack_allocated::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4I_NSt6size_tEENK2lf15stack_allocated3getENSt4spanIK1TEEv" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Get a span over the allocated memory. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4I_NSt6size_tEEN2lf15stack_allocated3getENSt4spanI1TEEv">
+<span id="_CPPv3I_NSt6size_tEEN2lf15stack_allocated3getEv"></span><span id="_CPPv2I_NSt6size_tEEN2lf15stack_allocated3getEv"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">I</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classlf_1_1core_1_1stack__allocated_1af72cb5234babaaa6ab09eab4c37c943f"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">span</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_12co_allocableEN2lf15stack_allocatedE" title="lf::stack_allocated::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4I_NSt6size_tEEN2lf15stack_allocated3getENSt4spanI1TEEv" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Get a span over the allocated memory. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</section>
+</section>
+<section id="forward-declarations">
+<h2>Forward declarations<a class="headerlink" href="#forward-declarations" title="Permalink to this heading">#</a></h2>
+<dl class="cpp macro">
+<dt class="sig sig-object cpp" id="c.LF_FWD_DECL">
+<span class="target" id="extern_8hpp_1adfe46d205eaf74fa100ada6dce7653b2"></span><span class="sig-name descname"><span class="n"><span class="pre">LF_FWD_DECL</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">R</span></span>, <span class="n"><span class="pre">f</span></span>, <span class="p"><span class="pre">...</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.LF_FWD_DECL" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Forward declare an async function. </p>
+<p>This is useful for speeding up compile times by allowing you to put the definition of an async function in a source file and only forward declare it in a header file.</p>
+<p><p>Usage: in a header file (e.g. <code class="docutils literal notranslate"><span class="pre">fib.hpp</span></code>), forward declare an async function:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">LF_FWD_DECL</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="n">fib</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">n</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>And in a corresponding source file (e.g. <code class="docutils literal notranslate"><span class="pre">fib.cpp</span></code>), implement the function:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">LF_IMPLEMENT</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="n">fib</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">n</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">n</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">co_return</span><span class="w"> </span><span class="n">n</span><span class="p">;</span>
+<span class="w">  </span><span class="p">}</span>
+
+<span class="w">  </span><span class="kt">int</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">;</span>
+
+<span class="w">  </span><span class="k">co_await</span><span class="w"> </span><span class="n">lf</span><span class="o">::</span><span class="n">fork</span><span class="p">(</span><span class="o">&amp;</span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">fib</span><span class="p">)(</span><span class="n">n</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+<span class="w">  </span><span class="k">co_await</span><span class="w"> </span><span class="n">lf</span><span class="o">::</span><span class="n">call</span><span class="p">(</span><span class="o">&amp;</span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="n">fib</span><span class="p">)(</span><span class="n">n</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span>
+
+<span class="w">  </span><span class="k">co_await</span><span class="w"> </span><span class="n">lf</span><span class="o">::</span><span class="n">join</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</p>
+<p>Now in some other file you can include <code class="docutils literal notranslate"><span class="pre">fib.hpp</span></code> and use <code class="docutils literal notranslate"><span class="pre">fib</span></code> as normal with the restriction that you must always bind the result of the extern’ed function to an <code class="docutils literal notranslate"><a class="reference internal" href="#namespacelf_1_1core_1a184320903da8dfcd9da778578151049b"><span class="std std-ref"><span class="pre">lf::core::eventually</span></span></a><span class="pre">&lt;int&gt;</span> <span class="pre">*</span></code>, <code class="docutils literal notranslate"><a class="reference internal" href="#namespacelf_1_1core_1a5508747c0fc92b4edad4e56489913f57"><span class="std std-ref"><span class="pre">lf::core::try_eventually</span></span></a><span class="pre">&lt;int&gt;</span> <span class="pre">*</span></code> or <code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">*</span></code>. </p>
+</dd></dl>
+
+<dl class="cpp macro">
+<dt class="sig sig-object cpp" id="c.LF_IMPLEMENT">
+<span class="target" id="extern_8hpp_1a1382db6a4cbe24ac7fa05ff036ffbeba"></span><span class="sig-name descname"><span class="n"><span class="pre">LF_IMPLEMENT</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">R</span></span>, <span class="n"><span class="pre">f</span></span>, <span class="p"><span class="pre">...</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.LF_IMPLEMENT" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>See <code class="docutils literal notranslate"><span class="pre">LF_FWD_DECL</span></code> for usage. </p>
+</dd></dl>
+
+<dl class="cpp macro">
+<dt class="sig sig-object cpp" id="c.LF_IMPLEMENT_NAMED">
+<span class="target" id="extern_8hpp_1a89e3c32698fc2be4ee8894fc4470ee44"></span><span class="sig-name descname"><span class="n"><span class="pre">LF_IMPLEMENT_NAMED</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">R</span></span>, <span class="n"><span class="pre">f</span></span>, <span class="n"><span class="pre">self</span></span>, <span class="p"><span class="pre">...</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.LF_IMPLEMENT_NAMED" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>An alternative to <code class="docutils literal notranslate"><span class="pre">LF_IMPLEMENT</span></code> that allows you to name the <code class="docutils literal notranslate"><span class="pre">self</span></code> parameter. </p>
+</dd></dl>
+
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="eventually.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Basic eventually</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="../index.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Home</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2023, ConorWilliams
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              <a class="muted-link " href="https://github.com/ConorWilliams/libfork" aria-label="GitHub">
+                <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path>
+                </svg>
+            </a>
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Core API</a><ul>
+<li><a class="reference internal" href="#enums-and-tags">Enums and tags</a><ul>
+<li><a class="reference internal" href="#dispatch-tags">Dispatch tags</a></li>
+<li><a class="reference internal" href="#dispatch-modifiers">Dispatch modifiers</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#concepts-and-traits">Concepts and traits</a><ul>
+<li><a class="reference internal" href="#building-blocks">Building blocks</a></li>
+<li><a class="reference internal" href="#api">API</a></li>
+<li><a class="reference internal" href="#functional">Functional</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#control-flow">Control flow</a><ul>
+<li><a class="reference internal" href="#sync-to-async">Sync to async</a></li>
+<li><a class="reference internal" href="#fork-join">Fork-join</a></li>
+<li><a class="reference internal" href="#invocation">Invocation</a></li>
+<li><a class="reference internal" href="#explicit">Explicit</a></li>
+<li><a class="reference internal" href="#advanced-generic">Advanced/generic</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#classes">Classes</a><ul>
+<li><a class="reference internal" href="#task">Task</a></li>
+<li><a class="reference internal" href="#future">Future</a></li>
+<li><a class="reference internal" href="#eventually">Eventually</a></li>
+<li><a class="reference internal" href="#defer">Defer</a></li>
+<li><a class="reference internal" href="#exceptions">Exceptions</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#stack-allocation">Stack allocation</a><ul>
+<li><a class="reference internal" href="#functions">Functions</a></li>
+<li><a class="reference internal" href="#id1">Classes</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#forward-declarations">Forward declarations</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=ccbe24c1"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../_static/scripts/furo.js?v=32e29ea5"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    </body>
+</html>

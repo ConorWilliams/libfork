@@ -1,17 +1,17 @@
 <!doctype html>
-<html class="no-js" lang="en">
+<html class="no-js" lang="en" data-content_root="">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="task.hpp" href="api/task.html" />
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Core API" href="api/core.html" />
 
-    <link rel="shortcut icon" href="_static/favicon.ico"/><!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 -->
+    <link rel="shortcut icon" href="_static/favicon.ico"/><!-- Generated with Sphinx 7.1.2 and Furo 2024.01.29 -->
         <title>libfork documentation</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
-    <link rel="stylesheet" type="text/css" href="_static/copybutton.css" />
-    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css" />
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=87344451" />
     
     
 
@@ -136,7 +136,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
         <div class="visually-hidden">Toggle table of contents sidebar</div>
         <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
       </label>
@@ -159,17 +159,33 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <p class="caption" role="heading"><span class="caption-text">Files</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="api/task.html">task.hpp</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="api/schedule.html">schedule/</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="api/immediate.html">immediate.hpp</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/busy_pool.html">busy_pool.hpp</a></li>
+  <ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="api/core.html">Core API</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of Core API</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/eventually.html">Basic eventually</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="api/unique_handle.html">unique_handle.hpp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api/queue.html">queue.hpp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api/event_count.html">event_count.hpp</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/schedule.html">Schedulers</a></li>
+</ul>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="api/algorithm.html">Algorithms</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of Algorithms</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/concepts.html">Concepts and type traits</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="api/ext.html">Extension API</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of Extension API</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/ext/list.html">Intrusive linked list</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/ext/deque.html">Work stealing queue</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/ext/event_count.html">Event count</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/ext/random.html">Xoshiro C++ implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/ext/numa.html">Numa abstraction</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/impl.html">Internal docs</a></li>
 </ul>
 
 </div>
@@ -206,35 +222,140 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
             <div class="visually-hidden">Toggle table of contents sidebar</div>
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
         <article role="main">
-          <section id="welcome-to-libfork-v2-1-1">
-<h1>Welcome to libfork v2.1.1<a class="headerlink" href="#welcome-to-libfork-v2-1-1" title="Permalink to this heading">#</a></h1>
+          <section id="welcome-to-libfork-v">
+<h1>Welcome to libfork - v..<a class="headerlink" href="#welcome-to-libfork-v" title="Permalink to this heading">#</a></h1>
 <p>This is libfork’s API documentation, for info on building and installing please see the <a class="reference external" href="https://github.com/ConorWilliams/libfork">README.md</a>.</p>
+<section id="core-api">
+<h2>Core API<a class="headerlink" href="#core-api" title="Permalink to this heading">#</a></h2>
+<dl class="cpp type">
+<dt class="sig sig-object cpp">
+<span class="k"><span class="pre">namespace</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">core</span></span></span><br /></dt>
+<dd><p>An inline namespace that wraps core functionality. </p>
+<p>This is the namespace that contains the minimal user-facing API of <code class="docutils literal notranslate"><span class="pre">libfork</span></code>, notably this excludes schedulers and algorithms. </p>
+</dd></dl>
+
 <div class="toctree-wrapper compound">
-<p class="caption" role="heading"><span class="caption-text">Files</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="api/task.html">task.hpp</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="api/task.html#tasks">Tasks</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/task.html#futures">Futures</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/task.html#handles">Handles</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/task.html#functions">Functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/core.html">Core API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/core.html#enums-and-tags">Enums and tags</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/core.html#dispatch-tags">Dispatch tags</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/core.html#dispatch-modifiers">Dispatch modifiers</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="api/schedule.html">schedule/</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="api/immediate.html">immediate.hpp</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/busy_pool.html">busy_pool.hpp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/core.html#concepts-and-traits">Concepts and traits</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/core.html#building-blocks">Building blocks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/core.html#api">API</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/core.html#functional">Functional</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="api/unique_handle.html">unique_handle.hpp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api/queue.html">queue.hpp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api/event_count.html">event_count.hpp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/core.html#control-flow">Control flow</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/core.html#sync-to-async">Sync to async</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/core.html#fork-join">Fork-join</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/core.html#invocation">Invocation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/core.html#explicit">Explicit</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/core.html#advanced-generic">Advanced/generic</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/core.html#classes">Classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/core.html#task">Task</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/core.html#future">Future</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/core.html#eventually">Eventually</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/core.html#defer">Defer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/core.html#exceptions">Exceptions</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/core.html#stack-allocation">Stack allocation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/core.html#functions">Functions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/core.html#id1">Classes</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/core.html#forward-declarations">Forward declarations</a></li>
+</ul>
+</li>
 </ul>
 </div>
+</section>
+<section id="schedulers">
+<h2>Schedulers<a class="headerlink" href="#schedulers" title="Permalink to this heading">#</a></h2>
+<p>Schedulers are objects that map the computation graph to worker threads, <code class="docutils literal notranslate"><span class="pre">libfork</span></code> supplies a selection of useful defaults.</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/schedule.html">Schedulers</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/schedule.html#lazy-pool">Lazy pool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/schedule.html#busy-pool">Busy pool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/schedule.html#unit-pool">Unit pool</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="algorithms">
+<h2>Algorithms<a class="headerlink" href="#algorithms" title="Permalink to this heading">#</a></h2>
+<p>Algorithms operate at a higher level of abstraction than pure fork-join, currently <code class="docutils literal notranslate"><span class="pre">libfork</span></code> does not have many but watch this space…</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/algorithm.html">Algorithms</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/concepts.html">Concepts and type traits</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/concepts.html#asynchronous-std-concepts">Asynchronous <code class="docutils literal notranslate"><span class="pre">std</span></code> concepts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/concepts.html#asynchronous-std-traits">Asynchronous <code class="docutils literal notranslate"><span class="pre">std</span></code> traits</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/concepts.html#groups">Groups</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/concepts.html#constraints">Constraints</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/algorithm.html#lifting-functions">Lifting functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/algorithm.html#iteration-with-for-each">Iteration with <code class="docutils literal notranslate"><span class="pre">for_each</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/algorithm.html#transformations-with-map">Transformations with <code class="docutils literal notranslate"><span class="pre">map</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/algorithm.html#reductions-with-fold">Reductions with <code class="docutils literal notranslate"><span class="pre">fold</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/algorithm.html#generalized-prefix-sums-with-scan">Generalized prefix sums with <code class="docutils literal notranslate"><span class="pre">scan</span></code></a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="extension-api">
+<h2>Extension API<a class="headerlink" href="#extension-api" title="Permalink to this heading">#</a></h2>
+<dl class="cpp type">
+<dt class="sig sig-object cpp">
+<span class="k"><span class="pre">namespace</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ext</span></span></span><br /></dt>
+<dd><p>An inline namespace that wraps extension functionality. </p>
+<p>This namespace is part of <code class="docutils literal notranslate"><span class="pre">libfork</span></code>s public API but is intended for advanced users writing schedulers, It exposes the scheduler/context API’s alongside some implementation details (such as lock-free dequeues, a <code class="docutils literal notranslate"><span class="pre">hwloc</span></code> abstraction, and synchronization primitives) that could be useful when implementing custom schedulers. </p>
+</dd></dl>
+
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/ext.html">Extension API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/ext.html#worker-api">Worker API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/ext.html#containers">Containers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/ext.html#components">Components</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="internal-documentation">
+<h2>Internal documentation<a class="headerlink" href="#internal-documentation" title="Permalink to this heading">#</a></h2>
+<dl class="cpp type">
+<dt class="sig sig-object cpp">
+<span class="k"><span class="pre">namespace</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">impl</span></span></span><br /></dt>
+<dd><p>An internal namespace that wraps implementation details. </p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This is exposed as internal documentation only it is not part of the public facing API.</p>
+</div>
+</dd></dl>
+
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/impl.html">Internal docs</a></li>
+</ul>
+</div>
+</section>
 </section>
 
         </article>
@@ -242,12 +363,12 @@
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="api/task.html">
+          <a class="next-page" href="api/core.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">task.hpp</div>
+                <div class="title">Core API</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -256,7 +377,7 @@
         <div class="bottom-of-page">
           <div class="left-details">
             <div class="copyright">
-                Copyright &#169; 2022, ConorWilliams
+                Copyright &#169; 2023, ConorWilliams
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
             
@@ -277,20 +398,40 @@
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Welcome to libfork - v..</a><ul>
+<li><a class="reference internal" href="#core-api">Core API</a></li>
+<li><a class="reference internal" href="#schedulers">Schedulers</a></li>
+<li><a class="reference internal" href="#algorithms">Algorithms</a></li>
+<li><a class="reference internal" href="#extension-api">Extension API</a></li>
+<li><a class="reference internal" href="#internal-documentation">Internal documentation</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>
   </div>
-</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-    <script src="_static/jquery.js"></script>
-    <script src="_static/underscore.js"></script>
-    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
-    <script src="_static/doctools.js"></script>
-    <script src="_static/sphinx_highlight.js"></script>
-    <script src="_static/scripts/furo.js"></script>
-    <script src="_static/clipboard.min.js"></script>
-    <script src="_static/copybutton.js"></script>
+</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=ccbe24c1"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/scripts/furo.js?v=32e29ea5"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
     </body>
 </html>

@@ -1,0 +1,506 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Concepts and type traits" href="concepts.html" /><link rel="prev" title="Schedulers" href="schedule.html" />
+
+    <link rel="shortcut icon" href="../_static/favicon.ico"/><!-- Generated with Sphinx 7.1.2 and Furo 2024.01.29 -->
+        <title>Algorithms - libfork documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=36a5483c" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=87344451" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #eeffcc;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-half" viewBox="0 0 24 24">
+    <title>Auto light/dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M13 12h5" />
+      <path d="M13 15h4" />
+      <path d="M13 18h1" />
+      <path d="M13 9h4" />
+      <path d="M13 6h1" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">libfork  documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo only-light" src="../_static/fork_light.svg" alt="Light Logo"/>
+    <img class="sidebar-logo only-dark" src="../_static/fork_light.svg" alt="Dark Logo"/>
+  </div>
+  
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="core.html">Core API</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of Core API</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="eventually.html">Basic eventually</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="schedule.html">Schedulers</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current has-children current-page"><a class="current reference internal" href="#">Algorithms</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of Algorithms</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="concepts.html">Concepts and type traits</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="ext.html">Extension API</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of Extension API</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="ext/list.html">Intrusive linked list</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ext/deque.html">Work stealing queue</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ext/event_count.html">Event count</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ext/random.html">Xoshiro C++ implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ext/numa.html">Numa abstraction</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="impl.html">Internal docs</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="edit-this-page">
+  <a class="muted-link" href="https://github.com/ConorWilliams/libfork/edit/main/docs/api/algorithm.rst" title="Edit this page">
+    <svg aria-hidden="true" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <path d="M4 20h4l10.5 -10.5a1.5 1.5 0 0 0 -4 -4l-10.5 10.5v4" />
+      <line x1="13.5" y1="6.5" x2="17.5" y2="10.5" />
+    </svg>
+    <span class="visually-hidden">Edit this page</span>
+  </a>
+</div><div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main">
+          <section id="algorithms">
+<h1>Algorithms<a class="headerlink" href="#algorithms" title="Permalink to this heading">#</a></h1>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="concepts.html">Concepts and type traits</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="concepts.html#asynchronous-std-concepts">Asynchronous <code class="docutils literal notranslate"><span class="pre">std</span></code> concepts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts.html#asynchronous-std-traits">Asynchronous <code class="docutils literal notranslate"><span class="pre">std</span></code> traits</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts.html#groups">Groups</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts.html#constraints">Constraints</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="concepts.html#foldability">Foldability</a></li>
+<li class="toctree-l3"><a class="reference internal" href="concepts.html#scannability">Scannability</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+<section id="lifting-functions">
+<h2>Lifting functions<a class="headerlink" href="#lifting-functions" title="Permalink to this heading">#</a></h2>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf4liftE">
+<span id="_CPPv3N2lf4liftE"></span><span id="_CPPv2N2lf4liftE"></span><span id="lf::lift__auto"></span><span class="target" id="namespacelf_1a159f389aecf6232aacf582204ff71870"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">lift</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><code class="docutils literal notranslate"><span class="pre">[]&lt;class</span> <span class="pre">F,</span> <span class="pre">class...</span> <span class="pre">Args&gt;(auto,</span> <span class="pre">F</span> <span class="pre">&amp;&amp;func,</span> <span class="pre">Args</span> <span class="pre">&amp;&amp;...args)static</span> <span class="pre">-&gt;task&lt;std::invoke_result_t&lt;F,</span> <span class="pre">Args...&gt;&gt;requires</span> <span class="pre">std::invocable&lt;F,</span> <span class="pre">Args...&gt;{co_return</span> <span class="pre">std::invoke(std::forward&lt;F&gt;(func),</span> <span class="pre">std::forward&lt;Args&gt;(args)...);}</span></code><a class="headerlink" href="#_CPPv4N2lf4liftE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>A higher-order function that lifts a function into an asynchronous function. </p>
+<p><p>This is useful for when you want to fork a regular function:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">auto</span><span class="w"> </span><span class="n">work</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">x</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="kt">int</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>Then later in some async context you can do:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="kt">int</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">;</span>
+
+<span class="w">  </span><span class="k">co_await</span><span class="w"> </span><span class="n">fork</span><span class="p">[</span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">lift</span><span class="p">](</span><span class="n">work</span><span class="p">,</span><span class="w"> </span><span class="mi">42</span><span class="p">);</span>
+<span class="w">  </span><span class="k">co_await</span><span class="w"> </span><span class="n">fork</span><span class="p">[</span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="n">lift</span><span class="p">](</span><span class="n">work</span><span class="p">,</span><span class="w"> </span><span class="mo">007</span><span class="p">);</span>
+
+<span class="w">  </span><span class="k">co_await</span><span class="w"> </span><span class="n">join</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The lifted function will accept arguments by forwarding reference.</p>
+</div>
+</dd></dl>
+
+<hr class="docutils" />
+<dl class="cpp macro">
+<dt class="sig sig-object cpp" id="c.LF_LOFT">
+<span class="target" id="lift_8hpp_1a8d00b954d714f0ce3fa5990d6f43f1b7"></span><span class="sig-name descname"><span class="n"><span class="pre">LF_LOFT</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">name</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.LF_LOFT" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Lift an overload-set/template into a constrained lambda. </p>
+<p>This is useful for passing overloaded/template names to higher order functions like <code class="docutils literal notranslate"><a class="reference internal" href="core.html#namespacelf_1_1core_1a92670c4ac9383f64e1d05151245d1ea2"><span class="std std-ref"><span class="pre">lf::fork</span></span></a></code>/<code class="docutils literal notranslate"><a class="reference internal" href="core.html#namespacelf_1_1core_1af1dc0512bd3f0656a76261d96d7cebdc"><span class="std std-ref"><span class="pre">lf::call</span></span></a></code>. </p>
+</dd></dl>
+
+<dl class="cpp macro">
+<dt class="sig sig-object cpp" id="c.LF_CLOFT">
+<span class="target" id="lift_8hpp_1abbca242a9e4ff3b32380450d5685eca6"></span><span class="sig-name descname"><span class="n"><span class="pre">LF_CLOFT</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">name</span></span>, <span class="p"><span class="pre">...</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.LF_CLOFT" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Lift an overload-set/template into a constrained capturing lambda. </p>
+<p>The variadic arguments are used as the lambda’s capture.</p>
+<p>This is useful for passing overloaded/template names to higher order functions like <code class="docutils literal notranslate"><a class="reference internal" href="core.html#namespacelf_1_1core_1a92670c4ac9383f64e1d05151245d1ea2"><span class="std std-ref"><span class="pre">lf::fork</span></span></a></code>/<code class="docutils literal notranslate"><a class="reference internal" href="core.html#namespacelf_1_1core_1af1dc0512bd3f0656a76261d96d7cebdc"><span class="std std-ref"><span class="pre">lf::call</span></span></a></code>. </p>
+</dd></dl>
+
+</section>
+<section id="iteration-with-for-each">
+<h2>Iteration with <code class="docutils literal notranslate"><span class="pre">for_each</span></code><a class="headerlink" href="#iteration-with-for-each" title="Permalink to this heading">#</a></h2>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf8for_eachE">
+<span id="_CPPv3N2lf8for_eachE"></span><span id="_CPPv2N2lf8for_eachE"></span><span id="lf::for_each__impl::for_each_overload"></span><span class="target" id="namespacelf_1a73a2e02b3893314c0ba3013ec377d5cc"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><a class="reference internal" href="../index.html#_CPPv4N2lf4implE" title="lf::impl"><span class="n"><span class="pre">impl</span></span></a><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">for_each_overload</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">for_each</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N2lf8for_eachE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>A parallel implementation of <code class="docutils literal notranslate"><span class="pre">std::ranges::for_each</span></code>. </p>
+<p><p>Effective call signature:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">template</span><span class="w"> </span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">random_access_iterator</span><span class="w"> </span><span class="n">I</span><span class="p">,</span>
+<span class="w">          </span><span class="n">std</span><span class="o">::</span><span class="n">sized_sentinel_for</span><span class="o">&lt;</span><span class="n">I</span><span class="o">&gt;</span><span class="w"> </span><span class="n">S</span><span class="p">,</span>
+<span class="w">          </span><span class="k">typename</span><span class="w"> </span><span class="nc">Proj</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">identity</span><span class="p">,</span>
+<span class="w">          </span><span class="n">indirectly_unary_invocable</span><span class="o">&lt;</span><span class="n">projected</span><span class="o">&lt;</span><span class="n">I</span><span class="p">,</span><span class="w"> </span><span class="n">Proj</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">Fun</span>
+<span class="w">          </span><span class="o">&gt;</span>
+<span class="kt">void</span><span class="w"> </span><span class="n">for_each</span><span class="p">(</span><span class="n">I</span><span class="w"> </span><span class="n">head</span><span class="p">,</span><span class="w"> </span><span class="n">S</span><span class="w"> </span><span class="n">tail</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">iter_difference_t</span><span class="o">&lt;</span><span class="n">I</span><span class="o">&gt;</span><span class="w"> </span><span class="n">n</span><span class="p">,</span><span class="w"> </span><span class="n">Fun</span><span class="w"> </span><span class="n">fun</span><span class="p">,</span><span class="w"> </span><span class="n">Proj</span><span class="w"> </span><span class="n">proj</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{});</span>
+</pre></div>
+</div>
+<p>Overloads exist for a random-access range (instead of <code class="docutils literal notranslate"><span class="pre">head</span></code> and <code class="docutils literal notranslate"><span class="pre">tail</span></code>) and <code class="docutils literal notranslate"><span class="pre">n</span></code> can be omitted
+(which will set <code class="docutils literal notranslate"><span class="pre">n</span> <span class="pre">=</span> <span class="pre">1</span></code>).</p>
+<p>Exemplary usage:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">co_await</span><span class="w"> </span><span class="n">just</span><span class="p">[</span><span class="n">for_each</span><span class="p">](</span><span class="n">v</span><span class="p">,</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="p">[](</span><span class="k">auto</span><span class="w"> </span><span class="o">&amp;</span><span class="n">elem</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">elem</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="p">});</span>
+</pre></div>
+</div>
+</p>
+<p>This will set each element of <code class="docutils literal notranslate"><span class="pre">v</span></code> to <code class="docutils literal notranslate"><span class="pre">0</span></code> in parallel using a chunk size of <code class="docutils literal notranslate"><span class="pre">10</span></code>.</p>
+<p>If the function or projection handed to <code class="docutils literal notranslate"><span class="pre">for_each</span></code> are async functions, then they will be invoked asynchronously, this allows you to launch further tasks recursively.</p>
+<p>Unlike <code class="docutils literal notranslate"><span class="pre">std::ranges::for_each</span></code>, this function will make an implementation defined number of copies of the function objects and may invoke these copies concurrently. </p>
+</dd></dl>
+
+</section>
+<section id="transformations-with-map">
+<h2>Transformations with <code class="docutils literal notranslate"><span class="pre">map</span></code><a class="headerlink" href="#transformations-with-map" title="Permalink to this heading">#</a></h2>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf3mapE">
+<span id="_CPPv3N2lf3mapE"></span><span id="_CPPv2N2lf3mapE"></span><span id="lf::map__impl::map_overload"></span><span class="target" id="namespacelf_1ad048db296039f86c00c774d673a44635"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><a class="reference internal" href="../index.html#_CPPv4N2lf4implE" title="lf::impl"><span class="n"><span class="pre">impl</span></span></a><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">map_overload</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">map</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N2lf3mapE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>A parallel variation of <code class="docutils literal notranslate"><span class="pre">std::transform</span></code>. </p>
+<p><p>Effective call signature:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">template</span><span class="w"> </span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">random_access_iterator</span><span class="w"> </span><span class="n">I</span><span class="p">,</span>
+<span class="w">          </span><span class="n">std</span><span class="o">::</span><span class="n">sized_sentinel_for</span><span class="o">&lt;</span><span class="n">I</span><span class="o">&gt;</span><span class="w"> </span><span class="n">S</span><span class="p">,</span>
+<span class="w">          </span><span class="n">std</span><span class="o">::</span><span class="n">random_access_iterator</span><span class="w"> </span><span class="n">O</span>
+<span class="w">          </span><span class="k">typename</span><span class="w"> </span><span class="nc">Proj</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">identity</span><span class="p">,</span>
+<span class="w">          </span><span class="n">indirectly_unary_invocable</span><span class="o">&lt;</span><span class="n">projected</span><span class="o">&lt;</span><span class="n">I</span><span class="p">,</span><span class="w"> </span><span class="n">Proj</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">Fun</span>
+<span class="w">          </span><span class="o">&gt;</span>
+<span class="w">  </span><span class="k">requires</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">indirectly_copyable</span><span class="o">&lt;</span><span class="n">projected</span><span class="o">&lt;</span><span class="n">I</span><span class="p">,</span><span class="w"> </span><span class="n">Proj</span><span class="p">,</span><span class="w"> </span><span class="n">Fun</span><span class="o">&gt;</span><span class="p">,</span><span class="w"> </span><span class="n">O</span><span class="o">&gt;</span>
+<span class="kt">void</span><span class="w"> </span><span class="n">map</span><span class="p">(</span><span class="n">I</span><span class="w"> </span><span class="n">head</span><span class="p">,</span><span class="w"> </span><span class="n">S</span><span class="w"> </span><span class="n">tail</span><span class="p">,</span><span class="w"> </span><span class="n">O</span><span class="w"> </span><span class="n">out</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">iter_difference_t</span><span class="o">&lt;</span><span class="n">I</span><span class="o">&gt;</span><span class="w"> </span><span class="n">n</span><span class="p">,</span><span class="w"> </span><span class="n">Fun</span><span class="w"> </span><span class="n">fun</span><span class="p">,</span><span class="w"> </span><span class="n">Proj</span><span class="w"> </span><span class="n">proj</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{});</span>
+</pre></div>
+</div>
+<p>Overloads exist for a random-access range (instead of <code class="docutils literal notranslate"><span class="pre">head</span></code> and <code class="docutils literal notranslate"><span class="pre">tail</span></code>) and <code class="docutils literal notranslate"><span class="pre">n</span></code> can be omitted
+(which will set <code class="docutils literal notranslate"><span class="pre">n</span> <span class="pre">=</span> <span class="pre">1</span></code>).</p>
+<p>Exemplary usage:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">out</span><span class="p">(</span><span class="n">v</span><span class="p">.</span><span class="n">size</span><span class="p">());</span>
+
+<span class="k">co_await</span><span class="w"> </span><span class="n">just</span><span class="p">[</span><span class="n">map</span><span class="p">](</span><span class="n">v</span><span class="p">,</span><span class="w"> </span><span class="n">out</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="p">[](</span><span class="kt">int</span><span class="w"> </span><span class="k">const</span><span class="o">&amp;</span><span class="w"> </span><span class="n">elem</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="n">elem</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="p">});</span>
+</pre></div>
+</div>
+</p>
+<p>This will set each element of <code class="docutils literal notranslate"><span class="pre">out</span></code> to one more than corresponding element in <code class="docutils literal notranslate"><span class="pre">v</span></code> using a chunk size of <code class="docutils literal notranslate"><span class="pre">10</span></code>.</p>
+<p>The input and output ranges must either be distinct (i.e. non-overlapping) or the same range (hence the transformation may be performed in-place).</p>
+<p>If the function or projection handed to <code class="docutils literal notranslate"><span class="pre">map</span></code> are async functions, then they will be invoked asynchronously, this allows you to launch further tasks recursively.</p>
+<p>Unlike <code class="docutils literal notranslate"><span class="pre">std::transform</span></code>, this function will make an implementation defined number of copies of the function objects and may invoke these copies concurrently. </p>
+</dd></dl>
+
+</section>
+<section id="reductions-with-fold">
+<h2>Reductions with <code class="docutils literal notranslate"><span class="pre">fold</span></code><a class="headerlink" href="#reductions-with-fold" title="Permalink to this heading">#</a></h2>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf4foldE">
+<span id="_CPPv3N2lf4foldE"></span><span id="_CPPv2N2lf4foldE"></span><span id="lf::fold__impl::fold_overload"></span><span class="target" id="namespacelf_1ada24b0f21e8c773e12df1e88999d634f"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><a class="reference internal" href="../index.html#_CPPv4N2lf4implE" title="lf::impl"><span class="n"><span class="pre">impl</span></span></a><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">fold_overload</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">fold</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N2lf4foldE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>A parallel implementation of <code class="docutils literal notranslate"><span class="pre">std::ranges::fold_left_first</span></code>. </p>
+<p><p>Effective call signature:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">template</span><span class="w"> </span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">random_access_iterator</span><span class="w"> </span><span class="n">I</span><span class="p">,</span>
+<span class="w">          </span><span class="n">std</span><span class="o">::</span><span class="n">sized_sentinel_for</span><span class="o">&lt;</span><span class="n">I</span><span class="o">&gt;</span><span class="w"> </span><span class="n">S</span><span class="p">,</span>
+<span class="w">          </span><span class="k">typename</span><span class="w"> </span><span class="nc">Proj</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">identity</span><span class="p">,</span>
+<span class="w">          </span><span class="n">indirectly_foldable</span><span class="o">&lt;</span><span class="n">projected</span><span class="o">&lt;</span><span class="n">I</span><span class="p">,</span><span class="w"> </span><span class="n">Proj</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">Bop</span>
+<span class="w">          </span><span class="o">&gt;</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">fold</span><span class="p">(</span><span class="n">I</span><span class="w"> </span><span class="n">head</span><span class="p">,</span><span class="w"> </span><span class="n">S</span><span class="w"> </span><span class="n">tail</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">iter_difference_t</span><span class="o">&lt;</span><span class="n">I</span><span class="o">&gt;</span><span class="w"> </span><span class="n">n</span><span class="p">,</span><span class="w"> </span><span class="n">Bop</span><span class="w"> </span><span class="n">bop</span><span class="p">,</span><span class="w"> </span><span class="n">Proj</span><span class="w"> </span><span class="n">proj</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{})</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">indirect_fold_acc_t</span><span class="o">&lt;</span><span class="n">Bop</span><span class="p">,</span><span class="w"> </span><span class="n">I</span><span class="p">,</span><span class="w"> </span><span class="n">Proj</span><span class="o">&gt;</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>Overloads exist for a random-access range (instead of <code class="docutils literal notranslate"><span class="pre">head</span></code> and <code class="docutils literal notranslate"><span class="pre">tail</span></code>) and <code class="docutils literal notranslate"><span class="pre">n</span></code> can be omitted
+(which will set <code class="docutils literal notranslate"><span class="pre">n</span> <span class="pre">=</span> <span class="pre">1</span></code>).</p>
+<p>Exemplary usage:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">co_await</span><span class="w"> </span><span class="n">just</span><span class="p">[</span><span class="n">fold</span><span class="p">](</span><span class="n">v</span><span class="p">,</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">plus</span><span class="o">&lt;&gt;</span><span class="p">{},</span><span class="w"> </span><span class="p">[](</span><span class="k">auto</span><span class="w"> </span><span class="o">&amp;</span><span class="n">elem</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="kt">size_t</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="n">elem</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="p">});</span>
+</pre></div>
+</div>
+</p>
+<p>This counts the number of even elements in <code class="docutils literal notranslate"><span class="pre">v</span></code> in parallel, using a chunk size of <code class="docutils literal notranslate"><span class="pre">10</span></code>.</p>
+<p>If the binary operator or projection handed to <code class="docutils literal notranslate"><span class="pre">fold</span></code> are async functions, then they will be invoked asynchronously, this allows you to launch further tasks recursively.</p>
+<p>Unlike the <code class="docutils literal notranslate"><span class="pre">std::ranges::fold</span></code> variations, this function will make an implementation defined number of copies of the function objects and may invoke these copies concurrently. </p>
+</dd></dl>
+
+</section>
+<section id="generalized-prefix-sums-with-scan">
+<h2>Generalized prefix sums with <code class="docutils literal notranslate"><span class="pre">scan</span></code><a class="headerlink" href="#generalized-prefix-sums-with-scan" title="Permalink to this heading">#</a></h2>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N2lf4scanE">
+<span id="_CPPv3N2lf4scanE"></span><span id="_CPPv2N2lf4scanE"></span><span id="lf::scan__impl::scan_overload"></span><span class="target" id="namespacelf_1a7ca98e0af1ead90805b32ee11e0a0fa2"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><a class="reference internal" href="../index.html#_CPPv4N2lf4implE" title="lf::impl"><span class="n"><span class="pre">impl</span></span></a><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">scan_overload</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">scan</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N2lf4scanE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>A parallel implementation of <code class="docutils literal notranslate"><span class="pre">std::inclusive_scan</span></code> that accepts generalized ranges and projections. </p>
+<p><p>Effective call signature:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">template</span><span class="w"> </span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">random_access_iterator</span><span class="w"> </span><span class="n">I</span><span class="p">,</span>
+<span class="w">          </span><span class="n">std</span><span class="o">::</span><span class="n">sized_sentinel_for</span><span class="o">&lt;</span><span class="n">I</span><span class="o">&gt;</span><span class="w"> </span><span class="n">S</span><span class="p">,</span>
+<span class="w">          </span><span class="n">std</span><span class="o">::</span><span class="n">random_access_iterator</span><span class="w"> </span><span class="n">O</span><span class="p">,</span>
+<span class="w">          </span><span class="k">class</span><span class="w"> </span><span class="nc">Proj</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">identity</span><span class="p">,</span>
+<span class="w">          </span><span class="n">indirectly_scannable</span><span class="o">&lt;</span><span class="n">O</span><span class="p">,</span><span class="w"> </span><span class="n">projected</span><span class="o">&lt;</span><span class="n">I</span><span class="p">,</span><span class="w"> </span><span class="n">Proj</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">Bop</span>
+<span class="w">          </span><span class="o">&gt;</span>
+<span class="kt">void</span><span class="w"> </span><span class="n">scan</span><span class="p">(</span><span class="n">I</span><span class="w"> </span><span class="n">beg</span><span class="p">,</span><span class="w"> </span><span class="n">S</span><span class="w"> </span><span class="n">end</span><span class="p">,</span><span class="w"> </span><span class="n">O</span><span class="w"> </span><span class="n">out</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">iter_difference_t</span><span class="o">&lt;</span><span class="n">I</span><span class="o">&gt;</span><span class="w"> </span><span class="n">n</span><span class="p">,</span><span class="w"> </span><span class="n">Bop</span><span class="w"> </span><span class="n">bop</span><span class="p">,</span><span class="w"> </span><span class="n">Proj</span><span class="w"> </span><span class="n">proj</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{});</span>
+</pre></div>
+</div>
+<p>Overloads exist for a random-access range (instead of <code class="docutils literal notranslate"><span class="pre">head</span></code> and <code class="docutils literal notranslate"><span class="pre">tail</span></code>), in place scans (omit the
+<cite>out</cite> iterator) and, the chunk size, <code class="docutils literal notranslate"><span class="pre">n</span></code>, can be omitted (which will set <code class="docutils literal notranslate"><span class="pre">n</span> <span class="pre">=</span> <span class="pre">1</span></code>).</p>
+<p>Exemplary usage:</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">co_await</span><span class="w"> </span><span class="n">just</span><span class="p">[</span><span class="n">scan</span><span class="p">](</span><span class="n">in</span><span class="p">,</span><span class="w"> </span><span class="n">out</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">plus</span><span class="o">&lt;&gt;</span><span class="p">{});</span>
+</pre></div>
+</div>
+</p>
+<p>This computes the cumulative sum of the input and stores it in the output-range e.g. <code class="docutils literal notranslate"><span class="pre">[1,</span> <span class="pre">2,</span> <span class="pre">2,</span> <span class="pre">1]</span> <span class="pre">-&gt;</span> <span class="pre">[1,</span> <span class="pre">3,</span> <span class="pre">5,</span> <span class="pre">6]</span></code>.</p>
+<p>The input and output ranges must either be distinct (i.e. non-overlapping) or the same range.</p>
+<p>If the binary operator or projection handed to <code class="docutils literal notranslate"><span class="pre">scan</span></code> are async functions, then they will be invoked asynchronously, this allows you to launch further tasks recursively.</p>
+<p>Unlike the <code class="docutils literal notranslate"><span class="pre">std::</span></code> variations, this function will make an implementation defined number of copies of the function objects and may invoke these copies concurrently. </p>
+</dd></dl>
+
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="concepts.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Concepts and type traits</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="schedule.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Schedulers</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2023, ConorWilliams
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              <a class="muted-link " href="https://github.com/ConorWilliams/libfork" aria-label="GitHub">
+                <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path>
+                </svg>
+            </a>
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Algorithms</a><ul>
+<li><a class="reference internal" href="#lifting-functions">Lifting functions</a></li>
+<li><a class="reference internal" href="#iteration-with-for-each">Iteration with <code class="docutils literal notranslate"><span class="pre">for_each</span></code></a></li>
+<li><a class="reference internal" href="#transformations-with-map">Transformations with <code class="docutils literal notranslate"><span class="pre">map</span></code></a></li>
+<li><a class="reference internal" href="#reductions-with-fold">Reductions with <code class="docutils literal notranslate"><span class="pre">fold</span></code></a></li>
+<li><a class="reference internal" href="#generalized-prefix-sums-with-scan">Generalized prefix sums with <code class="docutils literal notranslate"><span class="pre">scan</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=ccbe24c1"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../_static/scripts/furo.js?v=32e29ea5"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    </body>
+</html>

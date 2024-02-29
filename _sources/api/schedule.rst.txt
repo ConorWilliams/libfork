@@ -1,7 +1,23 @@
-schedule/
-=====================
+Schedulers
+==============
 
-.. toctree::
+Lazy pool
+-------------------
 
-   immediate.rst
-   busy_pool.rst
+.. doxygenclass:: lf::lazy_pool
+    :members:
+  
+Busy pool
+-------------------
+
+.. doxygenclass:: lf::busy_pool
+    :members:
+
+Unit pool
+-------------------
+
+.. doxygenclass:: lf::unit_pool
+
+
+
+

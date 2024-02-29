@@ -1,9 +1,8 @@
-event_count.hpp
-=====================
+Event count
+~~~~~~~~~~~~~~~~~~~
 
 .. doxygenfile:: event_count.hpp
     :sections: briefdescription detaileddescription
 
-.. doxygenclass:: lf::event_count
+.. doxygenclass:: lf::ext::event_count
     :members:
-    :undoc-members:

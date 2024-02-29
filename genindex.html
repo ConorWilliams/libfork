@@ -1,15 +1,15 @@
 <!doctype html>
-<html class="no-js" lang="en">
+<html class="no-js" lang="en" data-content_root="">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="#" /><link rel="search" title="Search" href="search.html" />
 
-    <link rel="shortcut icon" href="_static/favicon.ico"/><!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 --><title>Index - libfork documentation</title>
-<link rel="stylesheet" type="text/css" href="_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
-    <link rel="stylesheet" type="text/css" href="_static/copybutton.css" />
-    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css" />
+    <link rel="shortcut icon" href="_static/favicon.ico"/><!-- Generated with Sphinx 7.1.2 and Furo 2024.01.29 --><title>Index - libfork documentation</title>
+<link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=87344451" />
     
     
 
@@ -157,17 +157,33 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <p class="caption" role="heading"><span class="caption-text">Files</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="api/task.html">task.hpp</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="api/schedule.html">schedule/</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="api/immediate.html">immediate.hpp</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/busy_pool.html">busy_pool.hpp</a></li>
+  <ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="api/core.html">Core API</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of Core API</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/eventually.html">Basic eventually</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="api/unique_handle.html">unique_handle.hpp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api/queue.html">queue.hpp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api/event_count.html">event_count.hpp</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/schedule.html">Schedulers</a></li>
+</ul>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="api/algorithm.html">Algorithms</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of Algorithms</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/concepts.html">Concepts and type traits</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="api/ext.html">Extension API</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of Extension API</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/ext/list.html">Intrusive linked list</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/ext/deque.html">Work stealing queue</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/ext/event_count.html">Event count</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/ext/random.html">Xoshiro C++ implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/ext/numa.html">Numa abstraction</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/impl.html">Internal docs</a></li>
 </ul>
 
 </div>
@@ -210,161 +226,391 @@
   <h2>L</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="api/task.html#_CPPv4I000EN2lf7as_rootE10basic_taskI1T7Context9AllocatorXL1EEERR10basic_taskI1T7Context9AllocatorXL0EEE">lf::as_root (C++ function)</a>, <a href="api/task.html#_CPPv4I000EN2lf7as_rootERR10basic_taskI1T7Context9AllocatorXL0EEERR10basic_taskI1T7Context9AllocatorXL1EEE">[1]</a>
+        <li><a href="api/core.html#_CPPv4I0DpEN2lf14async_result_tE">lf::async_result_t (C++ type)</a>
 </li>
-        <li><a href="api/task.html#_CPPv4I0_7context0_bEN2lf12basic_futureE">lf::basic_future (C++ class)</a>
+        <li><a href="api/schedule.html#_CPPv4N2lf9busy_poolE">lf::busy_pool (C++ class)</a>
 </li>
-        <li><a href="api/task.html#_CPPv4N2lf12basic_future12basic_futureERR13unique_handleI12promise_typeE">lf::basic_future::basic_future (C++ function)</a>, <a href="api/task.html#_CPPv4N2lf12basic_future12basic_futureEv">[1]</a>
+        <li><a href="api/schedule.html#_CPPv4N2lf9busy_pool9busy_poolENSt6size_tE13numa_strategy">lf::busy_pool::busy_pool (C++ function)</a>, <a href="api/schedule.html#_CPPv4N2lf9busy_pool9busy_poolERK9busy_pool">[1]</a>, <a href="api/schedule.html#_CPPv4N2lf9busy_pool9busy_poolERR9busy_pool">[2]</a>
 </li>
-        <li><a href="api/task.html#_CPPv4N2lf12basic_future12context_typeE">lf::basic_future::context_type (C++ type)</a>
+        <li><a href="api/schedule.html#_CPPv4N2lf9busy_pool8contextsEv">lf::busy_pool::contexts (C++ function)</a>
 </li>
-        <li><a href="api/task.html#_CPPv4IQ4RootEN2lf12basic_future8is_readyEv">lf::basic_future::is_ready (C++ function)</a>
+        <li><a href="api/schedule.html#_CPPv4N2lf9busy_poolaSERK9busy_pool">lf::busy_pool::operator= (C++ function)</a>, <a href="api/schedule.html#_CPPv4N2lf9busy_poolaSERR9busy_pool">[1]</a>
 </li>
-        <li><a href="api/task.html#_CPPv4IQntNSt9is_void_vI1TEEENKO2lf12basic_futuremlEv">lf::basic_future::operator* (C++ function)</a>, <a href="api/task.html#_CPPv4IQntNSt9is_void_vI1TEEENKR2lf12basic_futuremlEv">[1]</a>, <a href="api/task.html#_CPPv4IQntNSt9is_void_vI1TEEENO2lf12basic_futuremlEv">[2]</a>, <a href="api/task.html#_CPPv4IQntNSt9is_void_vI1TEEENR2lf12basic_futuremlEv">[3]</a>
+        <li><a href="api/schedule.html#_CPPv4N2lf9busy_pool8scheduleE13submit_handle">lf::busy_pool::schedule (C++ function)</a>
 </li>
-        <li><a href="api/task.html#_CPPv4N2lf12basic_future12promise_typeE">lf::basic_future::promise_type (C++ type)</a>
+        <li><a href="api/core.html#_CPPv4I0EN2lf4core21async_function_objectE">lf::core::async_function_object (C++ concept)</a>
 </li>
-        <li><a href="api/task.html#_CPPv4N2lf12basic_future10value_typeE">lf::basic_future::value_type (C++ type)</a>
+        <li><a href="api/core.html#_CPPv4I0DpEN2lf4core15async_invocableE">lf::core::async_invocable (C++ concept)</a>
 </li>
-        <li><a href="api/task.html#_CPPv4IQ4RootEN2lf12basic_future4waitEv">lf::basic_future::wait (C++ function)</a>
+        <li><a href="api/core.html#_CPPv4I0_3tag0DpEN2lf4core19async_tag_invocableE">lf::core::async_tag_invocable (C++ concept)</a>
 </li>
-        <li><a href="api/task.html#_CPPv4I0_7context0_bEN2lf10basic_taskE">lf::basic_task (C++ class)</a>
+        <li><a href="api/eventually.html#_CPPv4I_10returnable_bEN2lf4core16basic_eventuallyE">lf::core::basic_eventually (C++ class)</a>
 </li>
-        <li><a href="api/task.html#_CPPv4N2lf10basic_task12context_typeE">lf::basic_task::context_type (C++ type)</a>
+        <li><a href="api/eventually.html#_CPPv4N2lf4core16basic_eventually16basic_eventuallyEv">lf::core::basic_eventually::basic_eventually (C++ function)</a>, <a href="api/eventually.html#_CPPv4N2lf4core16basic_eventually16basic_eventuallyEv">[1]</a>, <a href="api/eventually.html#_CPPv4N2lf4core16basic_eventually16basic_eventuallyEv">[2]</a>
 </li>
-        <li><a href="api/task.html#_CPPv4NO2lf10basic_task4forkEv">lf::basic_task::fork (C++ function)</a>
+        <li><a href="api/eventually.html#_CPPv4NK2lf4core16basic_eventually5emptyEv">lf::core::basic_eventually::empty (C++ function)</a>
 </li>
-        <li><a href="api/task.html#_CPPv4N2lf10basic_task11future_typeE">lf::basic_task::future_type (C++ type)</a>
+        <li><a href="api/eventually.html#_CPPv4NKO2lf4core16basic_eventually9exceptionEv">lf::core::basic_eventually::exception (C++ function)</a>, <a href="api/eventually.html#_CPPv4NKR2lf4core16basic_eventually9exceptionEv">[1]</a>, <a href="api/eventually.html#_CPPv4NO2lf4core16basic_eventually9exceptionEv">[2]</a>, <a href="api/eventually.html#_CPPv4NR2lf4core16basic_eventually9exceptionEv">[3]</a>
 </li>
-        <li><a href="api/task.html#_CPPv4N2lf10basic_task11handle_typeE">lf::basic_task::handle_type (C++ type)</a>
+        <li><a href="api/eventually.html#_CPPv4NK2lf4core16basic_eventually13has_exceptionEv">lf::core::basic_eventually::has_exception (C++ function)</a>
 </li>
-        <li><a href="api/task.html#_CPPv4IQ4RootENO2lf10basic_task12make_promiseEv">lf::basic_task::make_promise (C++ function)</a>
+        <li><a href="api/eventually.html#_CPPv4NK2lf4core16basic_eventually9has_valueEv">lf::core::basic_eventually::has_value (C++ function)</a>
 </li>
-        <li><a href="api/task.html#_CPPv4N2lf10basic_task10named_pairE">lf::basic_task::named_pair (C++ struct)</a>
+        <li><a href="api/eventually.html#_CPPv4N2lf4core16basic_eventually7m_emptyE">lf::core::basic_eventually::m_empty (C++ member)</a>
 </li>
-        <li><a href="api/task.html#_CPPv4N2lf10basic_task10named_pair6futureE">lf::basic_task::named_pair::future (C++ member)</a>
+        <li><a href="api/eventually.html#_CPPv4N2lf4core16basic_eventually11m_exceptionE">lf::core::basic_eventually::m_exception (C++ member)</a>
 </li>
-        <li><a href="api/task.html#_CPPv4N2lf10basic_task10named_pair6handleE">lf::basic_task::named_pair::handle (C++ member)</a>
+        <li><a href="api/eventually.html#_CPPv4N2lf4core16basic_eventually7m_valueE">lf::core::basic_eventually::m_value (C++ member)</a>
 </li>
-        <li><a href="api/task.html#_CPPv4N2lf10basic_task12promise_typeE">lf::basic_task::promise_type (C++ type)</a>
+        <li><a href="api/eventually.html#_CPPv4NKO2lf4core16basic_eventuallymlEv">lf::core::basic_eventually::operator* (C++ function)</a>, <a href="api/eventually.html#_CPPv4NKO2lf4core16basic_eventuallymlEv">[1]</a>, <a href="api/eventually.html#_CPPv4NKR2lf4core16basic_eventuallymlEv">[2]</a>, <a href="api/eventually.html#_CPPv4NKR2lf4core16basic_eventuallymlEv">[3]</a>, <a href="api/eventually.html#_CPPv4NO2lf4core16basic_eventuallymlEv">[4]</a>, <a href="api/eventually.html#_CPPv4NR2lf4core16basic_eventuallymlEv">[5]</a>
 </li>
-        <li><a href="api/task.html#_CPPv4N2lf10basic_task10value_typeE">lf::basic_task::value_type (C++ type)</a>
+        <li><a href="api/eventually.html#_CPPv4N2lf4core16basic_eventuallyptEv">lf::core::basic_eventually::operator-&gt; (C++ function)</a>, <a href="api/eventually.html#_CPPv4NK2lf4core16basic_eventuallyptEv">[1]</a>, <a href="api/eventually.html#_CPPv4NK2lf4core16basic_eventuallyptEv">[2]</a>
 </li>
-        <li><a href="api/task.html#_CPPv4N2lf10basic_taskD0Ev">lf::basic_task::~basic_task (C++ function)</a>
+        <li><a href="api/eventually.html#_CPPv4I0EN2lf4core16basic_eventuallyaSER16basic_eventuallyRR1U">lf::core::basic_eventually::operator= (C++ function)</a>, <a href="api/eventually.html#_CPPv4I_N4impl16safe_ref_bind_toI1TEEEN2lf4core16basic_eventuallyaSER16basic_eventuallyRR1U">[1]</a>
 </li>
-        <li><a href="api/busy_pool.html#_CPPv4N2lf9busy_poolE">lf::busy_pool (C++ class)</a>
+        <li><a href="api/eventually.html#_CPPv4N2lf4core16basic_eventually10value_typeE">lf::core::basic_eventually::value_type (C++ type)</a>
 </li>
-        <li><a href="api/busy_pool.html#_CPPv4N2lf9busy_pool9busy_poolENSt6size_tE">lf::busy_pool::busy_pool (C++ function)</a>, <a href="api/busy_pool.html#_CPPv4N2lf9busy_pool9busy_poolERK9busy_pool">[1]</a>, <a href="api/busy_pool.html#_CPPv4N2lf9busy_pool9busy_poolERR9busy_pool">[2]</a>
+        <li><a href="api/eventually.html#_CPPv4N2lf4core16basic_eventuallyD0Ev">lf::core::basic_eventually::~basic_eventually (C++ function)</a>
 </li>
-        <li><a href="api/busy_pool.html#_CPPv4N2lf9busy_pool7contextE">lf::busy_pool::context (C++ class)</a>
+        <li><a href="api/core.html#_CPPv4N2lf4core13broken_futureE">lf::core::broken_future (C++ struct)</a>
 </li>
-        <li><a href="api/busy_pool.html#_CPPv4N2lf9busy_poolaSERK9busy_pool">lf::busy_pool::operator= (C++ function)</a>, <a href="api/busy_pool.html#_CPPv4N2lf9busy_poolaSERR9busy_pool">[1]</a>
+        <li><a href="api/core.html#_CPPv4NK2lf4core13broken_future4whatEv">lf::core::broken_future::what (C++ function)</a>
 </li>
-        <li><a href="api/busy_pool.html#_CPPv4I00_bEN2lf9busy_pool8scheduleE1TRR10basic_taskI1T7context9Allocator4RootE">lf::busy_pool::schedule (C++ function)</a>
+        <li><a href="api/core.html#_CPPv4N2lf4core4callE">lf::core::call (C++ member)</a>
 </li>
-        <li><a href="api/busy_pool.html#_CPPv4N2lf9busy_poolD0Ev">lf::busy_pool::~busy_pool (C++ function)</a>
+        <li><a href="api/core.html#_CPPv4I0DpEN2lf4core8callableE">lf::core::callable (C++ concept)</a>
 </li>
-        <li><a href="api/event_count.html#_CPPv4N2lf11event_countE">lf::event_count (C++ class)</a>
+        <li><a href="api/core.html#_CPPv4I0EN2lf4core12co_allocableE">lf::core::co_allocable (C++ concept)</a>
 </li>
-        <li><a href="api/event_count.html#_CPPv4I0EIQNSt16is_invocable_r_vIbRK4PredEEEN2lf11event_count5awaitEvRK4Pred">lf::event_count::await (C++ function)</a>
+        <li><a href="api/core.html#_CPPv4I_12co_allocableEN2lf4core6co_newEN4impl8co_new_tI1TEENSt6size_tE">lf::core::co_new (C++ function)</a>
 </li>
-        <li><a href="api/event_count.html#_CPPv4N2lf11event_count11cancel_waitEv">lf::event_count::cancel_wait (C++ function)</a>
+        <li><a href="api/core.html#_CPPv4I0EN2lf4core16context_switcherE">lf::core::context_switcher (C++ concept)</a>
 </li>
-        <li><a href="api/event_count.html#_CPPv4N2lf11event_count11event_countERK11event_count">lf::event_count::event_count (C++ function)</a>, <a href="api/event_count.html#_CPPv4N2lf11event_count11event_countERR11event_count">[1]</a>, <a href="api/event_count.html#_CPPv4N2lf11event_count11event_countEv">[2]</a>
+        <li><a href="api/core.html#_CPPv4I0EN2lf4core15dereferenceableE">lf::core::dereferenceable (C++ concept)</a>
 </li>
-        <li><a href="api/event_count.html#_CPPv4N2lf11event_count3keyE">lf::event_count::key (C++ class)</a>
+        <li><a href="api/core.html#_CPPv4I_9scheduler_21async_function_objectDpEN2lf4core6detachEvRR3SchRR1FDpRR4Args">lf::core::detach (C++ function)</a>
 </li>
-        <li><a href="api/event_count.html#_CPPv4N2lf11event_count10notify_allEv">lf::event_count::notify_all (C++ function)</a>
+        <li><a href="api/core.html#_CPPv4I_3tag_12modifier_forI3TagEEN2lf4core8dispatchE">lf::core::dispatch (C++ member)</a>
 </li>
-        <li><a href="api/event_count.html#_CPPv4N2lf11event_count10notify_oneEv">lf::event_count::notify_one (C++ function)</a>
+        <li><a href="api/core.html#_CPPv4I_10returnableEN2lf4core10eventuallyE">lf::core::eventually (C++ type)</a>
 </li>
-        <li><a href="api/event_count.html#_CPPv4N2lf11event_countaSERK11event_count">lf::event_count::operator= (C++ function)</a>, <a href="api/event_count.html#_CPPv4N2lf11event_countaSERR11event_count">[1]</a>
+        <li><a href="api/core.html#_CPPv4I0EN2lf4core9first_argE">lf::core::first_arg (C++ concept)</a>
 </li>
-        <li><a href="api/event_count.html#_CPPv4N2lf11event_count12prepare_waitEv">lf::event_count::prepare_wait (C++ function)</a>
+        <li><a href="api/core.html#_CPPv4N2lf4core4forkE">lf::core::fork (C++ member)</a>
 </li>
-        <li><a href="api/event_count.html#_CPPv4N2lf11event_count4waitE3key">lf::event_count::wait (C++ function)</a>
+        <li><a href="api/core.html#_CPPv4I0DpEN2lf4core8forkableE">lf::core::forkable (C++ concept)</a>
 </li>
-        <li><a href="api/event_count.html#_CPPv4N2lf11event_countD0Ev">lf::event_count::~event_count (C++ function)</a>
+        <li><a href="api/core.html#_CPPv4N2lf4core4joinE">lf::core::join (C++ member)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4N2lf4core4justE">lf::core::just (C++ member)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4I0_3tagEN2lf4core12modifier_forE">lf::core::modifier_for (C++ concept)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4I0EN2lf4core13quasi_pointerE">lf::core::quasi_pointer (C++ concept)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4I0EN2lf4core13referenceableE">lf::core::referenceable (C++ concept)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4I_9schedulerEN2lf4core9resume_onE25resume_on_quasi_awaitableI3SchEP3Sch">lf::core::resume_on (C++ function)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4I0EN2lf4core10returnableE">lf::core::returnable (C++ concept)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4I0DpEN2lf4core8rootableE">lf::core::rootable (C++ concept)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4I_9scheduler_21async_function_objectDpEN2lf4core8scheduleE6futureI14async_result_tI1FDp4ArgsEERR3SchRR1FDpRR4Args">lf::core::schedule (C++ function)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4I0EN2lf4core9schedulerE">lf::core::scheduler (C++ concept)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4I0EN2lf4core25stash_exception_in_returnE">lf::core::stash_exception_in_return (C++ concept)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4I0EN2lf4core8storableE">lf::core::storable (C++ concept)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4I_9scheduler_21async_function_objectDpEN2lf4core9sync_waitE14async_result_tI1FDp4ArgsERR3SchRR1FDpRR4Args">lf::core::sync_wait (C++ function)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4N2lf4core3tagE">lf::core::tag (C++ enum)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4N2lf4core3tag4callE">lf::core::tag::call (C++ enumerator)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4N2lf4core3tag4forkE">lf::core::tag::fork (C++ enumerator)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4N2lf4core3tag4rootE">lf::core::tag::root (C++ enumerator)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4I_10returnableEN2lf4core14try_eventuallyE">lf::core::try_eventually (C++ type)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4I0EN2lf5deferE">lf::defer (C++ class)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4N2lf5defer5deferERR1F">lf::defer::defer (C++ function)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4N2lf5deferD0Ev">lf::defer::~defer (C++ function)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4N2lf12empty_futureE">lf::empty_future (C++ struct)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4NK2lf12empty_future4whatEv">lf::empty_future::what (C++ function)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4N2lf21exception_before_joinE">lf::exception_before_join (C++ struct)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4NK2lf21exception_before_join4whatEv">lf::exception_before_join::what (C++ function)</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4I0EN2lf3ext10atomicableE">lf::ext::atomicable (C++ concept)</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4I_9dequeableEN2lf3ext5dequeE">lf::ext::deque (C++ class)</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4NK2lf3ext5deque8capacityEv">lf::ext::deque::capacity (C++ function)</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4N2lf3ext5deque5dequeENSt9ptrdiff_tE">lf::ext::deque::deque (C++ function)</a>, <a href="api/ext/deque.html#_CPPv4N2lf3ext5deque5dequeEv">[1]</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4NK2lf3ext5deque5emptyEv">lf::ext::deque::empty (C++ function)</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4I_NSt9invocableEEN2lf3ext5deque3popENSt15invoke_result_tI1FEERR1F">lf::ext::deque::pop (C++ function)</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4N2lf3ext5deque4pushERK1T">lf::ext::deque::push (C++ function)</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4NK2lf3ext5deque4sizeEv">lf::ext::deque::size (C++ function)</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4NK2lf3ext5deque5ssizeEv">lf::ext::deque::ssize (C++ function)</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4N2lf3ext5deque5stealEv">lf::ext::deque::steal (C++ function)</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4N2lf3ext5deque10value_typeE">lf::ext::deque::value_type (C++ type)</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4N2lf3ext5dequeD0Ev">lf::ext::deque::~deque (C++ function)</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4I0EN2lf3ext9dequeableE">lf::ext::dequeable (C++ concept)</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4N2lf3ext3errE">lf::ext::err (C++ enum)</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4N2lf3ext3err5emptyE">lf::ext::err::empty (C++ enumerator)</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4N2lf3ext3err4lostE">lf::ext::err::lost (C++ enumerator)</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4N2lf3ext3err4noneE">lf::ext::err::none (C++ enumerator)</a>
+</li>
+        <li><a href="api/ext/event_count.html#_CPPv4N2lf3ext11event_countE">lf::ext::event_count (C++ class)</a>
+</li>
+        <li><a href="api/ext/event_count.html#_CPPv4I0EN2lf3ext11event_count5awaitEvRK4Pred">lf::ext::event_count::await (C++ function)</a>
+</li>
+        <li><a href="api/ext/event_count.html#_CPPv4N2lf3ext11event_count11cancel_waitEv">lf::ext::event_count::cancel_wait (C++ function)</a>
+</li>
+        <li><a href="api/ext/event_count.html#_CPPv4N2lf3ext11event_count3keyE">lf::ext::event_count::key (C++ class)</a>
+</li>
+        <li><a href="api/ext/event_count.html#_CPPv4N2lf3ext11event_count10notify_allEv">lf::ext::event_count::notify_all (C++ function)</a>
+</li>
+        <li><a href="api/ext/event_count.html#_CPPv4N2lf3ext11event_count10notify_oneEv">lf::ext::event_count::notify_one (C++ function)</a>
+</li>
+        <li><a href="api/ext/event_count.html#_CPPv4N2lf3ext11event_count12prepare_waitEv">lf::ext::event_count::prepare_wait (C++ function)</a>
+</li>
+        <li><a href="api/ext/event_count.html#_CPPv4N2lf3ext11event_count4waitE3key">lf::ext::event_count::wait (C++ function)</a>
+</li>
+        <li><a href="api/ext.html#_CPPv4N2lf3ext8finalizeEP14worker_context">lf::ext::finalize (C++ function)</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4I0EN2lf3ext9lock_freeE">lf::ext::lock_free (C++ concept)</a>
+</li>
+        <li><a href="api/ext.html#_CPPv4N2lf3ext18nullary_function_tE">lf::ext::nullary_function_t (C++ type)</a>
+</li>
+        <li><a href="api/ext.html#_CPPv4N2lf3ext6resumeE11task_handle">lf::ext::resume (C++ function)</a>, <a href="api/ext.html#_CPPv4N2lf3ext6resumeE13submit_handle">[1]</a>
+</li>
+        <li><a href="api/ext/random.html#_CPPv4N2lf3ext4seedE">lf::ext::seed (C++ member)</a>
+</li>
+        <li><a href="api/ext.html#_CPPv4N2lf3ext13submit_handleE">lf::ext::submit_handle (C++ type)</a>
+</li>
+        <li><a href="api/ext.html#_CPPv4N2lf3ext11task_handleE">lf::ext::task_handle (C++ type)</a>
+</li>
+        <li><a href="api/ext/random.html#_CPPv4I0EN2lf3ext28uniform_random_bit_generatorE">lf::ext::uniform_random_bit_generator (C++ concept)</a>
+</li>
+        <li><a href="api/ext.html#_CPPv4N2lf3ext11worker_initE18nullary_function_t">lf::ext::worker_init (C++ function)</a>
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="api/task.html#_CPPv4N2lf11get_contextEv">lf::get_context (C++ function)</a>
+        <li><a href="api/algorithm.html#_CPPv4N2lf4foldE">lf::fold (C++ member)</a>
 </li>
-        <li><a href="api/immediate.html#_CPPv4N2lf9immediateE">lf::immediate (C++ class)</a>
+        <li><a href="api/concepts.html#_CPPv4I00EN2lf8foldableE">lf::foldable (C++ concept)</a>
 </li>
-        <li><a href="api/immediate.html#_CPPv4N2lf9immediate7contextE">lf::immediate::context (C++ class)</a>
+        <li><a href="api/algorithm.html#_CPPv4N2lf8for_eachE">lf::for_each (C++ member)</a>
 </li>
-        <li><a href="api/immediate.html#_CPPv4N2lf9immediate7context3popEv">lf::immediate::context::pop (C++ function)</a>
+        <li><a href="api/core.html#_CPPv4I_10returnableEN2lf6futureE">lf::future (C++ class)</a>
 </li>
-        <li><a href="api/immediate.html#_CPPv4N2lf9immediate7context4pushE11work_handleI7contextE">lf::immediate::context::push (C++ function)</a>
+        <li><a href="api/core.html#_CPPv4N2lf6future6detachEv">lf::future::detach (C++ function)</a>
 </li>
-        <li><a href="api/immediate.html#_CPPv4NK2lf9immediate5emptyEv">lf::immediate::empty (C++ function)</a>
+        <li><a href="api/core.html#_CPPv4N2lf6future6futureERK6future">lf::future::future (C++ function)</a>, <a href="api/core.html#_CPPv4N2lf6future6futureERR6future">[1]</a>
 </li>
-        <li><a href="api/immediate.html#_CPPv4I00_bEN2lf9immediate8scheduleE1TRR10basic_taskI1T7context9Allocator4RootE">lf::immediate::schedule (C++ function)</a>
+        <li><a href="api/core.html#_CPPv4N2lf6future3getEv">lf::future::get (C++ function)</a>
 </li>
-        <li><a href="api/task.html#_CPPv4N2lf4joinEv">lf::join (C++ function)</a>
+        <li><a href="api/core.html#_CPPv4N2lf6futureaSERK6future">lf::future::operator= (C++ function)</a>, <a href="api/core.html#_CPPv4N2lf6futureaSERR6future">[1]</a>
 </li>
-        <li><a href="api/queue.html#_CPPv4I_6simpleEN2lf5queueE">lf::queue (C++ class)</a>
+        <li><a href="api/core.html#_CPPv4NK2lf6future5validEv">lf::future::valid (C++ function)</a>
 </li>
-        <li><a href="api/queue.html#_CPPv4NK2lf5queue8capacityEv">lf::queue::capacity (C++ function)</a>
+        <li><a href="api/core.html#_CPPv4N2lf6future4waitEv">lf::future::wait (C++ function)</a>
 </li>
-        <li><a href="api/queue.html#_CPPv4NK2lf5queue5emptyEv">lf::queue::empty (C++ function)</a>
+        <li><a href="api/core.html#_CPPv4N2lf6futureD0Ev">lf::future::~future (C++ function)</a>
 </li>
-        <li><a href="api/queue.html#_CPPv4N2lf5queueaSERK5queue">lf::queue::operator= (C++ function)</a>, <a href="api/queue.html#_CPPv4N2lf5queueaSERR5queue">[1]</a>
+        <li><a href="api/ext/numa.html#_CPPv4N2lf11hwloc_errorE">lf::hwloc_error (C++ struct)</a>
 </li>
-        <li><a href="api/queue.html#_CPPv4N2lf5queue3popEv">lf::queue::pop (C++ function)</a>
+        <li><a href="api/concepts.html#_CPPv4I0_NSt22random_access_iteratorE0EN2lf19indirect_fold_acc_tE">lf::indirect_fold_acc_t (C++ type)</a>
 </li>
-        <li><a href="api/queue.html#_CPPv4N2lf5queue4pushERK1T">lf::queue::push (C++ function)</a>
+        <li><a href="api/concepts.html#_CPPv4I0DpEN2lf17indirect_result_tE">lf::indirect_result_t (C++ type)</a>
 </li>
-        <li><a href="api/queue.html#_CPPv4N2lf5queue5queueENSt9ptrdiff_tE">lf::queue::queue (C++ function)</a>, <a href="api/queue.html#_CPPv4N2lf5queue5queueERK5queue">[1]</a>, <a href="api/queue.html#_CPPv4N2lf5queue5queueERR5queue">[2]</a>, <a href="api/queue.html#_CPPv4N2lf5queue5queueEv">[3]</a>
+        <li><a href="api/concepts.html#_CPPv4I_NSt19indirectly_readableEEN2lf16indirect_value_tE">lf::indirect_value_t (C++ type)</a>
 </li>
-        <li><a href="api/queue.html#_CPPv4NK2lf5queue4sizeEv">lf::queue::size (C++ function)</a>
+        <li><a href="api/concepts.html#_CPPv4I00EN2lf19indirectly_foldableE">lf::indirectly_foldable (C++ concept)</a>
 </li>
-        <li><a href="api/queue.html#_CPPv4NK2lf5queue5ssizeEv">lf::queue::ssize (C++ function)</a>
+        <li><a href="api/concepts.html#_CPPv4I00EN2lf34indirectly_regular_unary_invocableE">lf::indirectly_regular_unary_invocable (C++ concept)</a>
 </li>
-        <li><a href="api/queue.html#_CPPv4N2lf5queue5stealEv">lf::queue::steal (C++ function)</a>
+        <li><a href="api/concepts.html#_CPPv4I000EN2lf20indirectly_scannableE">lf::indirectly_scannable (C++ concept)</a>
 </li>
-        <li><a href="api/queue.html#_CPPv4N2lf5queue7steal_tE">lf::queue::steal_t (C++ struct)</a>
+        <li><a href="api/concepts.html#_CPPv4I00EN2lf26indirectly_unary_invocableE">lf::indirectly_unary_invocable (C++ concept)</a>
 </li>
-        <li><a href="api/queue.html#_CPPv4N2lf5queue7steal_t4codeE">lf::queue::steal_t::code (C++ member)</a>
+        <li><a href="api/ext/list.html#_CPPv4I0EN2lf14intrusive_listE">lf::intrusive_list (C++ class)</a>
 </li>
-        <li><a href="api/queue.html#_CPPv4NK2lf5queue7steal_tcvbEv">lf::queue::steal_t::operator bool (C++ function)</a>
+        <li><a href="api/ext/list.html#_CPPv4N2lf14intrusive_list4nodeE">lf::intrusive_list::node (C++ class)</a>
 </li>
-        <li><a href="api/queue.html#_CPPv4N2lf5queue7steal_tmlEv">lf::queue::steal_t::operator* (C++ function)</a>
+        <li><a href="api/ext/list.html#_CPPv4I_NSt9invocableIR1TEEEN2lf14intrusive_list4node13for_each_elemEvP4nodeRR1F">lf::intrusive_list::node::for_each_elem (C++ function)</a>
 </li>
-        <li><a href="api/queue.html#_CPPv4N2lf5queue7steal_tptEv">lf::queue::steal_t::operator-&gt; (C++ function)</a>, <a href="api/queue.html#_CPPv4NK2lf5queue7steal_tptEv">[1]</a>
+        <li><a href="api/ext/list.html#_CPPv4N2lf14intrusive_list4node4nodeERK1T">lf::intrusive_list::node::node (C++ function)</a>
 </li>
-        <li><a href="api/queue.html#_CPPv4N2lf5queue7steal_t3valE">lf::queue::steal_t::val (C++ member)</a>
+        <li><a href="api/ext/list.html#_CPPv4N2lf14intrusive_list4node6unwrapEP4node">lf::intrusive_list::node::unwrap (C++ function)</a>
 </li>
-        <li><a href="api/queue.html#_CPPv4N2lf5queue10value_typeE">lf::queue::value_type (C++ type)</a>
+        <li><a href="api/ext/list.html#_CPPv4N2lf14intrusive_list4pushEP4node">lf::intrusive_list::push (C++ function)</a>
 </li>
-        <li><a href="api/queue.html#_CPPv4N2lf5queueD0Ev">lf::queue::~queue (C++ function)</a>
+        <li><a href="api/ext/list.html#_CPPv4N2lf14intrusive_list11try_pop_allEv">lf::intrusive_list::try_pop_all (C++ function)</a>
 </li>
-        <li><a href="api/task.html#_CPPv4I0EN2lf11root_handleE">lf::root_handle (C++ type)</a>
+        <li><a href="api/concepts.html#_CPPv4I0DpEN2lf9invocableE">lf::invocable (C++ concept)</a>
 </li>
-        <li><a href="api/task.html#_CPPv4I0_bEN2lf11task_handleE">lf::task_handle (C++ class)</a>
+        <li><a href="api/concepts.html#_CPPv4I0DpEN2lf15invoke_result_tE">lf::invoke_result_t (C++ type)</a>
 </li>
-        <li><a href="api/task.html#_CPPv4NK2lf11task_handle6resumeER7Context">lf::task_handle::resume (C++ function)</a>
+        <li><a href="api/schedule.html#_CPPv4N2lf9lazy_poolE">lf::lazy_pool (C++ class)</a>
 </li>
-        <li><a href="api/task.html#_CPPv4N2lf11task_handle11task_handleEv">lf::task_handle::task_handle (C++ function)</a>
+        <li><a href="api/schedule.html#_CPPv4N2lf9lazy_pool8contextsEv">lf::lazy_pool::contexts (C++ function)</a>
 </li>
-        <li><a href="api/unique_handle.html#_CPPv4I0EN2lf13unique_handleE">lf::unique_handle (C++ class)</a>
+        <li><a href="api/schedule.html#_CPPv4N2lf9lazy_pool9lazy_poolENSt6size_tE13numa_strategy">lf::lazy_pool::lazy_pool (C++ function)</a>, <a href="api/schedule.html#_CPPv4N2lf9lazy_pool9lazy_poolERK9lazy_pool">[1]</a>, <a href="api/schedule.html#_CPPv4N2lf9lazy_pool9lazy_poolERR9lazy_pool">[2]</a>
 </li>
-        <li><a href="api/unique_handle.html#_CPPv4NK2lf13unique_handlecvbEv">lf::unique_handle::operator bool (C++ function)</a>
+        <li><a href="api/schedule.html#_CPPv4N2lf9lazy_poolaSERK9lazy_pool">lf::lazy_pool::operator= (C++ function)</a>, <a href="api/schedule.html#_CPPv4N2lf9lazy_poolaSERR9lazy_pool">[1]</a>
 </li>
-        <li><a href="api/unique_handle.html#_CPPv4NK2lf13unique_handlemlEv">lf::unique_handle::operator* (C++ function)</a>
+        <li><a href="api/schedule.html#_CPPv4N2lf9lazy_pool8scheduleE13submit_handle">lf::lazy_pool::schedule (C++ function)</a>
 </li>
-        <li><a href="api/unique_handle.html#_CPPv4NK2lf13unique_handleptEv">lf::unique_handle::operator-&gt; (C++ function)</a>
+        <li><a href="api/schedule.html#_CPPv4N2lf9lazy_poolD0Ev">lf::lazy_pool::~lazy_pool (C++ function)</a>
 </li>
-        <li><a href="api/unique_handle.html#_CPPv4N2lf13unique_handleaSERK13unique_handle">lf::unique_handle::operator= (C++ function)</a>, <a href="api/unique_handle.html#_CPPv4N2lf13unique_handleaSERR13unique_handle">[1]</a>
+        <li><a href="api/algorithm.html#_CPPv4N2lf4liftE">lf::lift (C++ member)</a>
 </li>
-        <li><a href="api/unique_handle.html#_CPPv4N2lf13unique_handle7releaseEv">lf::unique_handle::release (C++ function)</a>
+        <li><a href="api/algorithm.html#_CPPv4N2lf3mapE">lf::map (C++ member)</a>
 </li>
-        <li><a href="api/unique_handle.html#_CPPv4N2lf13unique_handle13unique_handleE16coroutine_handleI1PE">lf::unique_handle::unique_handle (C++ function)</a>, <a href="api/unique_handle.html#_CPPv4N2lf13unique_handle13unique_handleERK13unique_handle">[1]</a>, <a href="api/unique_handle.html#_CPPv4N2lf13unique_handle13unique_handleERR13unique_handle">[2]</a>, <a href="api/unique_handle.html#_CPPv4N2lf13unique_handle13unique_handleEv">[3]</a>
+        <li><a href="api/core.html#_CPPv4N2lf8modifierE">lf::modifier (C++ type)</a>
 </li>
-        <li><a href="api/unique_handle.html#_CPPv4N2lf13unique_handleD0Ev">lf::unique_handle::~unique_handle (C++ function)</a>
+        <li><a href="api/core.html#_CPPv4N2lf8modifier11eager_throwE">lf::modifier::eager_throw (C++ struct)</a>
 </li>
-        <li><a href="api/task.html#_CPPv4I0EN2lf11work_handleE">lf::work_handle (C++ type)</a>
+        <li><a href="api/core.html#_CPPv4N2lf8modifier19eager_throw_outsideE">lf::modifier::eager_throw_outside (C++ struct)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4N2lf8modifier4noneE">lf::modifier::none (C++ struct)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4N2lf8modifier4syncE">lf::modifier::sync (C++ struct)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4N2lf8modifier12sync_outsideE">lf::modifier::sync_outside (C++ struct)</a>
+</li>
+        <li><a href="api/ext/numa.html#_CPPv4N2lf13numa_strategyE">lf::numa_strategy (C++ enum)</a>
+</li>
+        <li><a href="api/ext/numa.html#_CPPv4N2lf13numa_strategy3fanE">lf::numa_strategy::fan (C++ enumerator)</a>
+</li>
+        <li><a href="api/ext/numa.html#_CPPv4N2lf13numa_strategy3seqE">lf::numa_strategy::seq (C++ enumerator)</a>
+</li>
+        <li><a href="api/ext/numa.html#_CPPv4N2lf13numa_topologyE">lf::numa_topology (C++ class)</a>
+</li>
+        <li><a href="api/ext/numa.html#_CPPv4I0EN2lf13numa_topology10distributeENSt6vectorI9numa_nodeI1TEEERKNSt6vectorINSt10shared_ptrI1TEEEE13numa_strategy">lf::numa_topology::distribute (C++ function)</a>
+</li>
+        <li><a href="api/ext/numa.html#_CPPv4N2lf13numa_topology11numa_handleE">lf::numa_topology::numa_handle (C++ class)</a>
+</li>
+        <li><a href="api/ext/numa.html#_CPPv4NK2lf13numa_topology11numa_handle4bindEv">lf::numa_topology::numa_handle::bind (C++ function)</a>
+</li>
+        <li><a href="api/ext/numa.html#_CPPv4N2lf13numa_topology11numa_handle4cpupE">lf::numa_topology::numa_handle::cpup (C++ member)</a>
+</li>
+        <li><a href="api/ext/numa.html#_CPPv4N2lf13numa_topology11numa_handle4numaE">lf::numa_topology::numa_handle::numa (C++ member)</a>
+</li>
+        <li><a href="api/ext/numa.html#_CPPv4N2lf13numa_topology11numa_handle4topoE">lf::numa_topology::numa_handle::topo (C++ member)</a>
+</li>
+        <li><a href="api/ext/numa.html#_CPPv4I0EN2lf13numa_topology9numa_nodeE">lf::numa_topology::numa_node (C++ struct)</a>
+</li>
+        <li><a href="api/ext/numa.html#_CPPv4N2lf13numa_topology9numa_node9neighborsE">lf::numa_topology::numa_node::neighbors (C++ member)</a>
+</li>
+        <li><a href="api/ext/numa.html#_CPPv4N2lf13numa_topology13numa_topologyEv">lf::numa_topology::numa_topology (C++ function)</a>
+</li>
+        <li><a href="api/ext/numa.html#_CPPv4NK2lf13numa_topologycvbEv">lf::numa_topology::operator bool (C++ function)</a>
+</li>
+        <li><a href="api/ext/numa.html#_CPPv4NK2lf13numa_topology5splitENSt6size_tE13numa_strategy">lf::numa_topology::split (C++ function)</a>
+</li>
+        <li><a href="api/concepts.html#_CPPv4I_NSt19indirectly_readableEDpEN2lf9projectedE">lf::projected (C++ type)</a>
+</li>
+        <li><a href="api/concepts.html#_CPPv4I0DpEN2lf17regular_invocableE">lf::regular_invocable (C++ concept)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4I_9schedulerEN2lf25resume_on_quasi_awaitableE">lf::resume_on_quasi_awaitable (C++ struct)</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4I0EN2lf14return_nulloptE">lf::return_nullopt (C++ struct)</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4N2lf14return_nulloptclEv">lf::return_nullopt::operator() (C++ function)</a>
+</li>
+        <li><a href="api/algorithm.html#_CPPv4N2lf4scanE">lf::scan (C++ member)</a>
+</li>
+        <li><a href="api/concepts.html#_CPPv4I000EN2lf9scannableE">lf::scannable (C++ concept)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4N2lf18schedule_in_workerE">lf::schedule_in_worker (C++ struct)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4NK2lf18schedule_in_worker4whatEv">lf::schedule_in_worker::what (C++ function)</a>
+</li>
+        <li><a href="api/concepts.html#_CPPv4I000EN2lf9semigroupE">lf::semigroup (C++ concept)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4I_12co_allocableEN2lf15stack_allocatedE">lf::stack_allocated (C++ class)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4I_NSt6size_tEEN2lf15stack_allocated3getENSt4spanI1TEEv">lf::stack_allocated::get (C++ function)</a>, <a href="api/core.html#_CPPv4I_NSt6size_tEENK2lf15stack_allocated3getENSt4spanIK1TEEv">[1]</a>
+</li>
+        <li><a href="api/core.html#_CPPv4N2lf15stack_allocated15stack_allocatedEPN4impl5frameENSt4spanI1TEE">lf::stack_allocated::stack_allocated (C++ function)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4N2lf15stack_allocatedD0Ev">lf::stack_allocated::~stack_allocated (C++ function)</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4I0EN2lf7steal_tE">lf::steal_t (C++ struct)</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4N2lf7steal_t4codeE">lf::steal_t::code (C++ member)</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4NK2lf7steal_tcvbEv">lf::steal_t::operator bool (C++ function)</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4N2lf7steal_tmlEv">lf::steal_t::operator* (C++ function)</a>, <a href="api/ext/deque.html#_CPPv4NK2lf7steal_tmlEv">[1]</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4N2lf7steal_tptEv">lf::steal_t::operator-&gt; (C++ function)</a>, <a href="api/ext/deque.html#_CPPv4NK2lf7steal_tptEv">[1]</a>
+</li>
+        <li><a href="api/ext/deque.html#_CPPv4N2lf7steal_t3valE">lf::steal_t::val (C++ member)</a>
+</li>
+        <li><a href="api/core.html#_CPPv4I_10returnableEN2lf4taskE">lf::task (C++ struct)</a>
+</li>
+        <li><a href="api/schedule.html#_CPPv4N2lf9unit_poolE">lf::unit_pool (C++ class)</a>
+</li>
+        <li><a href="api/ext.html#_CPPv4N2lf14worker_contextE">lf::worker_context (C++ class)</a>
+</li>
+        <li><a href="api/ext.html#_CPPv4N2lf14worker_context8scheduleE13submit_handle">lf::worker_context::schedule (C++ function)</a>
+</li>
+        <li><a href="api/ext.html#_CPPv4N2lf14worker_context11try_pop_allEv">lf::worker_context::try_pop_all (C++ function)</a>
+</li>
+        <li><a href="api/ext.html#_CPPv4N2lf14worker_context9try_stealEv">lf::worker_context::try_steal (C++ function)</a>
+</li>
+        <li><a href="api/ext/random.html#_CPPv4N2lf7xoshiroE">lf::xoshiro (C++ class)</a>
+</li>
+        <li><a href="api/ext/random.html#_CPPv4N2lf7xoshiro4jumpEv">lf::xoshiro::jump (C++ function)</a>
+</li>
+        <li><a href="api/ext/random.html#_CPPv4N2lf7xoshiro9long_jumpEv">lf::xoshiro::long_jump (C++ function)</a>
+</li>
+        <li><a href="api/ext/random.html#_CPPv4N2lf7xoshiro3maxEv">lf::xoshiro::max (C++ function)</a>
+</li>
+        <li><a href="api/ext/random.html#_CPPv4N2lf7xoshiro3minEv">lf::xoshiro::min (C++ function)</a>
+</li>
+        <li><a href="api/ext/random.html#_CPPv4N2lf7xoshiroclEv">lf::xoshiro::operator() (C++ function)</a>
+</li>
+        <li><a href="api/ext/random.html#_CPPv4N2lf7xoshiro11result_typeE">lf::xoshiro::result_type (C++ type)</a>
+</li>
+        <li><a href="api/ext/random.html#_CPPv4I_28uniform_random_bit_generatorEN2lf7xoshiro7xoshiroEN4impl6seed_tERR4PRNG">lf::xoshiro::xoshiro (C++ function)</a>, <a href="api/ext/random.html#_CPPv4N2lf7xoshiro7xoshiroERKNSt5arrayI11result_typeXL4EEEE">[1]</a>, <a href="api/ext/random.html#_CPPv4N2lf7xoshiro7xoshiroEv">[2]</a>
+</li>
+        <li><a href="api/algorithm.html#c.LF_CLOFT">LF_CLOFT (C macro)</a>
+</li>
+        <li><a href="api/core.html#c.LF_FWD_DECL">LF_FWD_DECL (C macro)</a>
+</li>
+        <li><a href="api/core.html#c.LF_IMPLEMENT">LF_IMPLEMENT (C macro)</a>
+</li>
+        <li><a href="api/core.html#c.LF_IMPLEMENT_NAMED">LF_IMPLEMENT_NAMED (C macro)</a>
+</li>
+        <li><a href="api/algorithm.html#c.LF_LOFT">LF_LOFT (C macro)</a>
 </li>
     </ul></td>
   </tr></table>
@@ -382,7 +628,7 @@
         <div class="bottom-of-page">
           <div class="left-details">
             <div class="copyright">
-                Copyright &#169; 2022, ConorWilliams
+                Copyright &#169; 2023, ConorWilliams
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
             
@@ -409,14 +655,11 @@
       
     </aside>
   </div>
-</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-    <script src="_static/jquery.js"></script>
-    <script src="_static/underscore.js"></script>
-    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
-    <script src="_static/doctools.js"></script>
-    <script src="_static/sphinx_highlight.js"></script>
-    <script src="_static/scripts/furo.js"></script>
-    <script src="_static/clipboard.min.js"></script>
-    <script src="_static/copybutton.js"></script>
+</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=ccbe24c1"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/scripts/furo.js?v=32e29ea5"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
     </body>
 </html>
