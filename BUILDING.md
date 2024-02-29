@@ -19,10 +19,10 @@ cmake -B libfork/build -S libfork
 Build and install:
 
 ```sh
-/home/linuxbrew/.linuxbrew/bin/cmake --install libfork/build
+cmake --install libfork/build
 ```
 
-Note: this step may need `sudo` privileges if you are installing to a system directory.
+Note: The last step may need `sudo` privileges if you are installing to a system directory.
 
 ## Pre-requisites
 

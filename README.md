@@ -92,7 +92,7 @@ Libfork is available via conancenter. Add the following line to your `conanfile.
 
 ```ini
 [requires]
-libfork/3.7.0
+libfork/3.7.1
 ```
 
 and install it to conan2 cache:
@@ -135,7 +135,7 @@ include(FetchContent)
 FetchContent_Declare(
     libfork
     GIT_REPOSITORY https://github.com/conorwilliams/libfork.git
-    GIT_TAG v3.7.0
+    GIT_TAG v3.7.1
     GIT_SHALLOW TRUE
 )
 
