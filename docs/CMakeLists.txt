@@ -5,6 +5,8 @@ project(libforkDocs)
 include(../cmake/folders.cmake)
 include(../cmake/read_version.cmake)
 
+read_version(${CMAKE_CURRENT_SOURCE_DIR}/../include/libfork/core/macro.hpp)
+
 get_filename_component(ABSOLUTE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../include ABSOLUTE)
 
 if(NOT DEFINED CMAKE_MODULE_PATH)
