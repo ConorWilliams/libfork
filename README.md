@@ -49,10 +49,10 @@ inline constexpr auto fib = [](auto fib, int n) -> lf::task<int> {
 
 ## Performance
 
-Libfork is engineered for performance and has a comprehensive [benchmark suit](bench). For a detailed review of libfork see the [paper](https://arxiv.org/abs/2402.18480), the headline results are linear time/memory scaling, this translates to:
+Libfork is engineered for performance and has a comprehensive [benchmark suit](bench). For a detailed review of libfork see the [paper](https://arxiv.org/abs/2402.18480), the headline results are __linear time/memory scaling__, this translates to:
 
 - Up to 7.5× faster and 19× less memory consumption than OneTBB.
-- Up to 24× faster an 24× less memory consumption than openMP (libomp).
+- Up to 24× faster and 24× less memory consumption than openMP (libomp).
 - Up to 100× faster and >100× less memory consumption than taskflow.
 
 ## Using libfork
@@ -83,7 +83,7 @@ target_link_libraries(
 )
 ```
 
-__NOTE:__ libfork is not currently up-streamed into vcpkg, see `packages/vcpkg` for an example of how to incorporate libfork as a custom overlay.
+__NOTE:__ libfork is currently [under review](https://github.com/microsoft/vcpkg/pull/37048) to be up-streamed into vcpkg. For now see `packages/vcpkg` for an example of how to incorporate libfork as a custom overlay.
 
 <!-- 
 #### Conan2
@@ -281,7 +281,7 @@ co_await lf::call[fib](n - 2);
 
 Normally each call to a coroutine would allocate on the heap. However, libfork implements a cactus-stack - supported by segmented-stacks - which allows each coroutine to be allocated on a fragment of linear stack, this has almost the same overhead as allocating on the real stack. This means the overhead of a fork/call in libfork is very low compared to most traditional library-based implementations (about 10x the overhead of a bare function call).
 
-The internal cactus-stack is exposed to the user vi the `co_new` function:
+The internal cactus-stack is exposed to the user via the `co_new` function:
 
 ```cpp
 inline constexpr auto co_new_demo = [](auto co_new_demo, std::span<int> inputs) -> lf::task<int> {
@@ -291,7 +291,7 @@ inline constexpr auto co_new_demo = [](auto co_new_demo, std::span<int> inputs) 
 
   // Launch a task for each input.
   for(std::size_t i = 0; i < inputs.size(); ++i) {
-    co_await lf::fork[&a[i], some_function](inputs[i]);
+    co_await lf::fork[&outputs[i], some_function](inputs[i]);
   }
 
   co_await lf::join; // Wait for all tasks to complete.
@@ -472,7 +472,7 @@ This is used by libfork's `template<scheduler T> auto resume_on(T *)` to enable 
 
 ### Contexts and schedulers
 
-We have already encountered a scheduler in the [fork-join](#fork-join) however, we have not yet discussed what a scheduler is or how to implement one. A scheduler is a type that implements the `lf::scheduler` concept, this is a customization point that allows you to implement your own scheduling strategy. This makes a type suitable for use with `lf::sync_wait`. Have a look at the [extensions api](https://conorwilliams.github.io/libfork/) for further details.
+We have already encountered a scheduler in the [fork-join](#fork-join) however, we have not yet discussed what a scheduler is or how to implement one. A scheduler is a type that conforms to the `lf::scheduler` concept, this is a customization point that allows you to implement your own scheduling strategy. This makes a type suitable for use with `lf::sync_wait`. Have a look at the [extensions api](https://conorwilliams.github.io/libfork/) for further details.
 
 Three schedulers are provided by libfork:
 

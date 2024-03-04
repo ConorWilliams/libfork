@@ -1,14 +1,19 @@
 cff-version: 1.2.0
 title: Libfork
 message: >-
-  If you use this software, please cite it using the metadata from this file.
+  If you use this software, please cite it using the
+  metadata from this file.
 type: software
 authors:
   - given-names: Conor John
     family-names: Williams
     email: conorwilliams@outlook.com
-    name-particle: Conor
     affiliation: University of Cambridge
     orcid: 'https://orcid.org/0000-0001-7830-7473'
+identifiers:
+  - type: doi
+    value: 10.48550/arXiv.2402.18480
+    description: Preprint
 repository-code: 'https://github.com/ConorWilliams/libfork'
+url: 'https://conorwilliams.github.io/libfork/'
 license: MPL-2.0
