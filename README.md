@@ -65,7 +65,7 @@ We recommend consuming libfork via a package manager, this streamlines the manag
 
 #### vcpkg
 
-Libfork is available via vcpkg.  Add the following to your `vcpkg.json`:
+Libfork is available via vcpkg. Add the following to your `vcpkg.json`:
 
 ```json
 "dependencies": [
@@ -83,12 +83,11 @@ target_link_libraries(
 )
 ```
 
-__NOTE:__ libfork is currently [under review](https://github.com/microsoft/vcpkg/pull/37048) to be up-streamed into vcpkg. For now see `packages/vcpkg` for an example of how to incorporate libfork as a custom overlay.
+__NOTE:__ The libfork port in vcpkg is kept up to date by Microsoft team members and community contributors. If the version is out of date, please [create an issue or pull request](https://github.com/Microsoft/vcpkg) on the vcpkg repository.
 
-<!-- 
 #### Conan2
 
-Libfork is available via conancenter. Add the following line to your `conanfile.txt`
+Libfork has best effort support for Conan2 and supplies a `conanfile.py`. Libfork is not yet available via conan-center, After building the package locally add the following line to your `conanfile.txt`
 
 ```ini
 [requires]
@@ -111,7 +110,7 @@ find_package(libfork CONFIG REQUIRED)
 target_link_libraries(
     project_target PRIVATE libfork::libfork
 )
-``` -->
+```
 
 ### With CMake
 
