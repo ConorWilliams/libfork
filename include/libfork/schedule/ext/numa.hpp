@@ -206,8 +206,8 @@ class numa_topology {
    * hierarchical view of the elements in `data`.
    */
   template <typename T>
-  auto distribute(std::vector<std::shared_ptr<T>> const &data, numa_strategy strategy = numa_strategy::fan)
-      -> std::vector<numa_node<T>>;
+  auto distribute(std::vector<std::shared_ptr<T>> const &data,
+                  numa_strategy strategy = numa_strategy::fan) -> std::vector<numa_node<T>>;
 
  private:
   shared_topo m_topology = nullptr;
@@ -443,8 +443,8 @@ class distance_matrix {
 inline namespace ext {
 
 template <typename T>
-inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data, numa_strategy strategy)
-    -> std::vector<numa_node<T>> {
+inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data,
+                                      numa_strategy strategy) -> std::vector<numa_node<T>> {
 
   std::vector handles = split(data.size(), strategy);
 
@@ -502,8 +502,8 @@ numa_topology::split(std::size_t n, numa_strategy /* strategy */) const -> std::
 }
 
 template <typename T>
-inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data, numa_strategy strategy)
-    -> std::vector<numa_node<T>> {
+inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data,
+                                      numa_strategy strategy) -> std::vector<numa_node<T>> {
 
   std::vector<numa_handle> handles = split(data.size(), strategy);
 

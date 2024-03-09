@@ -29,15 +29,15 @@ namespace lf {
  * @brief Test if "F" is async invocable __xor__ normally invocable with ``Args...``.
  */
 template <typename F, typename... Args>
-concept invocable = (std::invocable<F, Args...> || async_invocable<F, Args...>)&&!(
-    std::invocable<F, Args...> && async_invocable<F, Args...>);
+concept invocable = (std::invocable<F, Args...> || async_invocable<F, Args...>) &&
+                    !(std::invocable<F, Args...> && async_invocable<F, Args...>);
 
 /**
  * @brief Test if "F" is regularly async invocable __xor__ normally invocable invocable with ``Args...``.
  */
 template <typename F, typename... Args>
-concept regular_invocable = (std::regular_invocable<F, Args...> || async_regular_invocable<F, Args...>)&&!(
-    std::regular_invocable<F, Args...> && async_regular_invocable<F, Args...>);
+concept regular_invocable = (std::regular_invocable<F, Args...> || async_regular_invocable<F, Args...>) &&
+                            !(std::regular_invocable<F, Args...> && async_regular_invocable<F, Args...>);
 
 // ------------------------------------  either result type ------------------------------------ //
 

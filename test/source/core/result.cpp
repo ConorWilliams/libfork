@@ -53,7 +53,7 @@ struct coro {
 // T = non-reference
 
 #define trivial(name, type)                                                                                  \
-  [[maybe_unused]] auto name##_name() -> coro<int, type> {                                                   \
+  [[maybe_unused]] auto name##_name()->coro<int, type> {                                                     \
     int x = 23;                                                                                              \
     co_return 23;                                                                                            \
     co_return x;                                                                                             \
@@ -65,7 +65,7 @@ trivial(discard_t, discard_t) trivial(int, int *) trivial(double, double *)
     trivial(int_o, std::optional<int> *) trivial(int_e, eventually<int> *)
 
 #define vector(name, type)                                                                                   \
-  [[maybe_unused]] auto vector_##name() -> coro<std::vector<int>, type> {                                    \
+  [[maybe_unused]] auto vector_##name()->coro<std::vector<int>, type> {                                      \
     std::vector<int> x;                                                                                      \
     co_return x;                                                                                             \
     co_return std::vector<int>{};                                                                            \
@@ -82,10 +82,10 @@ trivial(discard_t, discard_t) trivial(int, int *) trivial(double, double *)
     int x = 23;
 
 #define reference(name, type)                                                                                \
-  [[maybe_unused]] auto reference_##name() -> coro<int &, type> { co_return x; }
+  [[maybe_unused]] auto reference_##name()->coro<int &, type> { co_return x; }
 
 #define rvalue_ref(name, type)                                                                               \
-  [[maybe_unused]] auto rvalue_ref_##name() -> coro<int &&, type> {                                          \
+  [[maybe_unused]] auto rvalue_ref_##name()->coro<int &&, type> {                                            \
     co_return 23;                                                                                            \
     co_return std::move(x);                                                                                  \
   }

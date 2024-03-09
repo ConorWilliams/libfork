@@ -90,11 +90,11 @@ namespace impl::detail {
  * @tparam Qual The Qualified version of `F`.
  */
 template <typename F, typename Qual>
-concept async_function_object_impl =             //
-    unqualified<F> &&                            // We store the unqualified type.
-    (std::is_union_v<F> || std::is_class_v<F>)&& // Only classes/unions can have templated `operator()`.
-    std::move_constructible<F> &&                // Must be able to move a value.
-    std::copy_constructible<F>;                  // Must be able to copy a value.
+concept async_function_object_impl =              //
+    unqualified<F> &&                             // We store the unqualified type.
+    (std::is_union_v<F> || std::is_class_v<F>) && // Only classes/unions can have templated `operator()`.
+    std::move_constructible<F> &&                 // Must be able to move a value.
+    std::copy_constructible<F>;                   // Must be able to copy a value.
 
 } // namespace impl::detail
 

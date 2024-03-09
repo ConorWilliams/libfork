@@ -730,8 +730,8 @@ template <typename T>
     { ptr == nullptr } -> std::convertible_to<bool>;
   }
 constexpr auto
-non_null(T &&val, [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept
-    -> T && {
+non_null(T &&val,
+         [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept -> T && {
 #ifndef NDEBUG
   if (val == nullptr) {
     // NOLINTNEXTLINE
@@ -2940,11 +2940,11 @@ namespace impl::detail {
  * @tparam Qual The Qualified version of `F`.
  */
 template <typename F, typename Qual>
-concept async_function_object_impl =             //
-    unqualified<F> &&                            // We store the unqualified type.
-    (std::is_union_v<F> || std::is_class_v<F>)&& // Only classes/unions can have templated `operator()`.
-    std::move_constructible<F> &&                // Must be able to move a value.
-    std::copy_constructible<F>;                  // Must be able to copy a value.
+concept async_function_object_impl =              //
+    unqualified<F> &&                             // We store the unqualified type.
+    (std::is_union_v<F> || std::is_class_v<F>) && // Only classes/unions can have templated `operator()`.
+    std::move_constructible<F> &&                 // Must be able to move a value.
+    std::copy_constructible<F>;                   // Must be able to copy a value.
 
 } // namespace impl::detail
 
@@ -6632,8 +6632,8 @@ class numa_topology {
    * hierarchical view of the elements in `data`.
    */
   template <typename T>
-  auto distribute(std::vector<std::shared_ptr<T>> const &data, numa_strategy strategy = numa_strategy::fan)
-      -> std::vector<numa_node<T>>;
+  auto distribute(std::vector<std::shared_ptr<T>> const &data,
+                  numa_strategy strategy = numa_strategy::fan) -> std::vector<numa_node<T>>;
 
  private:
   shared_topo m_topology = nullptr;
@@ -6869,8 +6869,8 @@ class distance_matrix {
 inline namespace ext {
 
 template <typename T>
-inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data, numa_strategy strategy)
-    -> std::vector<numa_node<T>> {
+inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data,
+                                      numa_strategy strategy) -> std::vector<numa_node<T>> {
 
   std::vector handles = split(data.size(), strategy);
 
@@ -6928,8 +6928,8 @@ numa_topology::split(std::size_t n, numa_strategy /* strategy */) const -> std::
 }
 
 template <typename T>
-inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data, numa_strategy strategy)
-    -> std::vector<numa_node<T>> {
+inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data,
+                                      numa_strategy strategy) -> std::vector<numa_node<T>> {
 
   std::vector<numa_handle> handles = split(data.size(), strategy);
 
@@ -8362,15 +8362,15 @@ namespace lf {
  * @brief Test if "F" is async invocable __xor__ normally invocable with ``Args...``.
  */
 template <typename F, typename... Args>
-concept invocable = (std::invocable<F, Args...> || async_invocable<F, Args...>)&&!(
-    std::invocable<F, Args...> && async_invocable<F, Args...>);
+concept invocable = (std::invocable<F, Args...> || async_invocable<F, Args...>) &&
+                    !(std::invocable<F, Args...> && async_invocable<F, Args...>);
 
 /**
  * @brief Test if "F" is regularly async invocable __xor__ normally invocable invocable with ``Args...``.
  */
 template <typename F, typename... Args>
-concept regular_invocable = (std::regular_invocable<F, Args...> || async_regular_invocable<F, Args...>)&&!(
-    std::regular_invocable<F, Args...> && async_regular_invocable<F, Args...>);
+concept regular_invocable = (std::regular_invocable<F, Args...> || async_regular_invocable<F, Args...>) &&
+                            !(std::regular_invocable<F, Args...> && async_regular_invocable<F, Args...>);
 
 // ------------------------------------  either result type ------------------------------------ //
 
