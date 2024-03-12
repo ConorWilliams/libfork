@@ -250,7 +250,7 @@ LF_CLANG_TLS_NOINLINE auto
 schedule(Sch &&sch, F &&fun, Args &&...args) -> future<async_result_t<F, Args...>> {
   //
   if (impl::tls::has_stack || impl::tls::has_context) {
-    throw schedule_in_worker{};
+    LF_THROW(schedule_in_worker{});
   }
 
   // Initialize the non-worker's stack.
