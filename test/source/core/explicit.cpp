@@ -51,6 +51,8 @@ inline constexpr auto sch_on = [](auto sch_on, worker_context *target) -> task<b
 
   co_await lf::call(&n, r_fib)(6);
 
+  co_await lf::join;
+
   co_return n == 8;
 };
 

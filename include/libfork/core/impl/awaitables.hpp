@@ -124,6 +124,8 @@ struct context_switch_awaitable {
     // Schedule this coroutine for execution, cannot touch underlying after this.
     external.await_suspend(&self);
 
+    // TODO: can we re-order these to such that an exception is ok?
+
     if (steals == 0) {
       // Dest will take this stack upon resumption hence, we must release it.
 

@@ -4733,7 +4733,7 @@ LF_CLANG_TLS_NOINLINE auto
 schedule(Sch &&sch, F &&fun, Args &&...args) -> future<async_result_t<F, Args...>> {
   //
   if (impl::tls::has_stack || impl::tls::has_context) {
-    throw schedule_in_worker{};
+    LF_THROW(schedule_in_worker{});
   }
 
   // Initialize the non-worker's stack.
@@ -5117,6 +5117,8 @@ struct context_switch_awaitable {
 
     // Schedule this coroutine for execution, cannot touch underlying after this.
     external.await_suspend(&self);
+
+    // TODO: can we re-order these to such that an exception is ok?
 
     if (steals == 0) {
       // Dest will take this stack upon resumption hence, we must release it.
