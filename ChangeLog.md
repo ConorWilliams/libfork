@@ -12,11 +12,17 @@
 
 ### Meta  -->
 
-## [**Version 3.x.0**](https://github.com/ConorWilliams/libfork/compare/v3.7.0...v3.7.1)
+## [**Version 3.7.2**](https://github.com/ConorWilliams/libfork/compare/v3.7.1...v3.7.2)
 
 ### Bugfixes
 
-Relaxed `just` from `async_invocable` to `callable`.
+- Compiles under `-fno-exceptions` and `-fno-rtti` flags.
+
+## [**Version 3.7.1**](https://github.com/ConorWilliams/libfork/compare/v3.7.0...v3.7.1)
+
+### Bugfixes
+
+- Relaxed `just` from `async_invocable` to `callable`.
 
 ## [**Version 3.7.0**](https://github.com/ConorWilliams/libfork/compare/v3.6.0...v3.7.0)
 

@@ -40,7 +40,7 @@
  *
  * Increments when bug fixes are made in an API backward compatible manner.
  */
-#define LF_VERSION_PATCH 1
+#define LF_VERSION_PATCH 2
 
 /**
  * @brief Use to conditionally decorate lambdas and ``operator()`` (alongside ``LF_STATIC_CONST``) with

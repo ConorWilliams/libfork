@@ -91,7 +91,7 @@ Libfork has best effort support for Conan2 and supplies a `conanfile.py`. Libfor
 
 ```ini
 [requires]
-libfork/3.7.1
+libfork/3.7.2
 ```
 
 and install it to conan2 cache:
@@ -134,7 +134,7 @@ include(FetchContent)
 FetchContent_Declare(
     libfork
     GIT_REPOSITORY https://github.com/conorwilliams/libfork.git
-    GIT_TAG v3.7.1
+    GIT_TAG v3.7.2
     GIT_SHALLOW TRUE
 )
 
