@@ -106,6 +106,8 @@ class frame {
     };
 
     std::rethrow_exception(std::exchange(*m_eptr, nullptr));
+#else
+    std::terminate();
 #endif
   }
 
