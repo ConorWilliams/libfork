@@ -1,4 +1,4 @@
-Welcome to libfork - v3.7.1
+Welcome to libfork - v3.7.2
 ===========================================
 
 This is libfork's API documentation, for info on building and installing please see the `README.md <https://github.com/ConorWilliams/libfork>`_.  
