@@ -42,3 +42,7 @@ jobs:
 
       - name: Install
         run: cmake --install build --config ${{ matrix.build-type }} --prefix prefix
+
+      - name: Test
+        working-directory: build
+        run: ctest --output-on-failure --no-tests=error -C ${{ matrix.build-type }}
