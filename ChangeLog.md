@@ -20,7 +20,7 @@
 
 ### Changed
 
-- HWLOC is now a required dependancy
+- HWLOC is now a required dependency
 
 ### Removed
 
@@ -30,7 +30,7 @@
 
 ### Meta 
 
-- Changed HWLOC dependancy handling
+- Changed HWLOC dependency handling
 
 ## [**Version 3.7.2**](https://github.com/ConorWilliams/libfork/compare/v3.7.1...v3.7.2)
 

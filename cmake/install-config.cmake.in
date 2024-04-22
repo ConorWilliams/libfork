@@ -4,9 +4,27 @@ include(CMakeFindDependencyMacro)
 
 find_dependency(Threads)
 
-include(FindPkgConfig)
+find_dependency(PkgConfig)
 
-if (NOT @LF_NO_BOOST_ATOMIC@)
+if(PKG_CONFIG_EXECUTABLE)
+
+  unset(HWLOC_FOUND CACHE)
+
+  pkg_search_module(HWLOC REQUIRED IMPORTED_TARGET hwloc)
+
+  if(HWLOC_FOUND)
+    message(STATUS "pkg-config found HWLOC version ${HWLOC_VERSION}")
+  else()
+    message(
+      FATAL_ERROR "HWLOC not found with pkg-config, add the path to hwloc.pc in PKG_CONFIG_PATH."
+    )
+  endif()
+
+else()
+  message(FATAL_ERROR "PKG_CONFIG_EXECUTABLE: not found.")
+endif()
+
+if (@Boost_FOUND@)
     find_dependency(Boost 1.83.0 COMPONENTS atomic)
 endif()
 

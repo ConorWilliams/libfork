@@ -10,7 +10,8 @@ read_version(${CMAKE_CURRENT_SOURCE_DIR}/include/libfork/core/macro.hpp)
 project(
   libfork
   VERSION ${version_major}.${version_minor}.${version_patch}
-  DESCRIPTION "A bleeding-edge, lock-free, wait-free, continuation-stealing fork-join library built on C++20's coroutines."
+  DESCRIPTION
+    "A bleeding-edge, lock-free, wait-free, continuation-stealing fork-join library built on C++20's coroutines."
   HOMEPAGE_URL "https://github.com/ConorWilliams/libfork"
   LANGUAGES CXX C
 )
@@ -20,16 +21,35 @@ include(cmake/variables.cmake)
 
 message(STATUS "CMAKE_BUILD_TYPE is set to '${CMAKE_BUILD_TYPE}'")
 
-# ---- System dependencies ----
+# ------------ Dependencies ------------
 
 find_package(Threads REQUIRED)
+
+include(FindPkgConfig)
+
+if(PKG_CONFIG_EXECUTABLE)
+
+  unset(HWLOC_FOUND CACHE)
+
+  pkg_search_module(HWLOC REQUIRED IMPORTED_TARGET hwloc)
+
+  if(HWLOC_FOUND)
+    message(STATUS "pkg-config found HWLOC version ${HWLOC_VERSION}")
+  else()
+    message(
+      FATAL_ERROR "HWLOC not found with pkg-config, add the path to hwloc.pc in PKG_CONFIG_PATH."
+    )
+  endif()
+else()
+  message(FATAL_ERROR "PKG_CONFIG_EXECUTABLE: not found.")
+endif()
 
 # ------ Declare library ------
 
 add_library(libfork_libfork INTERFACE)
 add_library(libfork::libfork ALIAS libfork_libfork)
 
-target_link_libraries(libfork_libfork INTERFACE Threads::Threads)
+target_link_libraries(libfork_libfork INTERFACE Threads::Threads PkgConfig::HWLOC)
 
 set_property(TARGET libfork_libfork PROPERTY EXPORT_NAME libfork)
 
@@ -55,29 +75,9 @@ if(LF_COROUTINE_OFFSET)
   target_compile_definitions(libfork_libfork INTERFACE LF_COROUTINE_OFFSET=${LF_COROUTINE_OFFSET})
 endif()
 
-# ---------------- hwloc---------------- 
+# --------------- Optional dependancies---------------
 
-include(FindPkgConfig)
-
-if(PKG_CONFIG_EXECUTABLE)
-    
-  pkg_search_module(HWLOC REQUIRED IMPORTED_TARGET hwloc)
-  
-  if(HWLOC_FOUND)
-    message(STATUS "pkg-config found HWLOC version ${HWLOC_VERSION}")
-  else()
-    message(FATAL_ERROR "HWLOC not found with pkg-config, add the path to hwloc.pc in PKG_CONFIG_PATH.")
-  endif()
-
-  target_link_libraries(libfork_libfork INTERFACE PkgConfig::HWLOC) 
-else()
-  message(FATAL_ERROR "PKG_CONFIG_EXECUTABLE: not found.")
-endif()
-
-
-# --------------- Optional dependancies--------------- 
-
-# ---- Boost (for clang acceleration) ---- 
+# ---- Boost (for clang acceleration) ----
 
 option(LF_NO_BOOST_ATOMIC "Libfork will use std::atomic even if boost is found" OFF)
 
