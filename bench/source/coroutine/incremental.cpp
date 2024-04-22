@@ -15,8 +15,6 @@
 inline constexpr volatile int work = 24;
 volatile int output;
 
-static_assert(LF_USE_HWLOC, "numa support is disabled");
-
 // ----------------------- Baseline ----------------------- //
 
 // Fibonacci as fast as possible single threaded.

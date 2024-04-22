@@ -26,15 +26,11 @@ using namespace impl;
 TEST_CASE("make_topology", "[numa]") {
   for (int i = 0; i < 10; i++) {
     numa_topology topo = {};
-#ifdef LF_USE_HWLOC
     REQUIRE(topo);
-#else
-    REQUIRE(!topo);
-#endif
   }
 }
 
-#ifdef LF_USE_HWLOC
+
 
 namespace {
 
@@ -114,8 +110,6 @@ TEST_CASE("distances", "[numa]") {
     }
   }
 }
-
-#endif
 
 TEST_CASE("distribute", "[numa]") {
 

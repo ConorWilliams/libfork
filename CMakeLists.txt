@@ -55,39 +55,27 @@ if(LF_COROUTINE_OFFSET)
   target_compile_definitions(libfork_libfork INTERFACE LF_COROUTINE_OFFSET=${LF_COROUTINE_OFFSET})
 endif()
 
-# --------------- Optional dependancies--------------- 
-
 # ---------------- hwloc---------------- 
 
-option(LF_NO_HWLOC "Disable hwloc support" OFF)
+include(FindPkgConfig)
 
-if(NOT LF_NO_HWLOC)
-  # Conan exports a proper target for hwloc, vcpkg does not.
-  find_package(hwloc 2.5.0 QUIET)
-
-  if (hwloc_FOUND)
-    # Instructs libfork to use hwloc.
-    target_compile_definitions(libfork_libfork INTERFACE LF_USE_HWLOC)
-    # Link to exported target.
-    target_link_libraries(libfork_libfork INTERFACE hwloc::hwloc)
+if(PKG_CONFIG_EXECUTABLE)
+    
+  pkg_search_module(HWLOC REQUIRED IMPORTED_TARGET hwloc)
+  
+  if(HWLOC_FOUND)
+    message(STATUS "pkg-config found HWLOC version ${HWLOC_VERSION}")
   else()
-    # Fallback to custom findHwlocLibfork.cmake
-    find_package(HwlocLibfork 2.5.0)
-
-    if(HwlocLibfork_FOUND)
-      # Instructs libfork to use hwloc.
-      target_compile_definitions(libfork_libfork INTERFACE LF_USE_HWLOC)
-
-      # Provided headers.
-      target_include_directories(libfork_libfork SYSTEM INTERFACE ${HwlocLibfork_INCLUDE_DIRS})
-
-      # Provided libraries.
-      target_link_libraries(libfork_libfork INTERFACE ${HwlocLibfork_LINK_LIBRARIES})
-    else()
-      message(WARNING "HWLOC not found, NUMA support disabled!")
-    endif()
+    message(FATAL_ERROR "HWLOC not found with pkg-config, add the path to hwloc.pc in PKG_CONFIG_PATH.")
   endif()
+
+  target_link_libraries(libfork_libfork INTERFACE PkgConfig::HWLOC) 
+else()
+  message(FATAL_ERROR "PKG_CONFIG_EXECUTABLE: not found.")
 endif()
+
+
+# --------------- Optional dependancies--------------- 
 
 # ---- Boost (for clang acceleration) ---- 
 
