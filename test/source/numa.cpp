@@ -30,8 +30,6 @@ TEST_CASE("make_topology", "[numa]") {
   }
 }
 
-
-
 namespace {
 
 struct comp {

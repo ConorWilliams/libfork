@@ -51,7 +51,7 @@
           "type": "FILEPATH",
           "value": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake"
         },
-        "VCPKG_MANIFEST_FEATURES": "benchmark;test"
+        "VCPKG_MANIFEST_FEATURES": "benchmark;test;hwloc"
       }
     },
     {

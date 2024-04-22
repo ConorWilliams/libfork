@@ -34,7 +34,6 @@
 
 static_assert(HWLOC_VERSION_MAJOR == 2, "hwloc too old");
 
-
 /**
  * @brief An opaque description of a set of processing units.
  *
@@ -98,9 +97,7 @@ enum class numa_strategy {
 class numa_topology {
 
   struct bitmap_deleter {
-    LF_STATIC_CALL void operator()(hwloc_bitmap_s *ptr) LF_STATIC_CONST noexcept {
-      hwloc_bitmap_free(ptr);
-    }
+    LF_STATIC_CALL void operator()(hwloc_bitmap_s *ptr) LF_STATIC_CONST noexcept { hwloc_bitmap_free(ptr); }
   };
 
   using unique_cpup = std::unique_ptr<hwloc_bitmap_s, bitmap_deleter>;

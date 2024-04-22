@@ -83,10 +83,6 @@ Hwloc enables libfork to determine the topology of the system and use this infor
 sudo apt install libhwloc-dev
 ```
 
-TODO: test?
-
-If you installed hwloc using vcpkg then libfork will no longer be installable if vcpkg is in the source tree (which is likely if you are using vcpkg as a submodule), to overcome this you can disable the install targets with `CMAKE_SKIP_INSTALL_RULES` or use a different vcpkg installation outside the source tree.
-
 ### Compiler support
 
 Some very new C++ features are used in libfork, most compilers have buggy implementations of coroutines, we do our best to work around known bugs/deficiencies:
