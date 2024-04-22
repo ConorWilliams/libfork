@@ -25,7 +25,10 @@ void fib_ccpp(benchmark::State &state) {
   state.counters["green_threads"] = state.range(0);
   state.counters["fib(n)"] = work;
 
-  concurrencpp::runtime runtime;
+  concurrencpp::runtime_options opt;
+  opt.max_cpu_threads = state.range(0);
+  concurrencpp::runtime runtime(opt);
+
   auto tpe = runtime.thread_pool_executor();
 
   volatile int secret = work;
