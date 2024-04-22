@@ -98,6 +98,5 @@ class libfork(ConanFile):
     def package_info(self):
         # Let libfork know about the optional dependencies.
         self.cpp_info.defines = [
-            "LF_USE_HWLOC",
             "LF_USE_BOOST_ATOMIC",
         ]

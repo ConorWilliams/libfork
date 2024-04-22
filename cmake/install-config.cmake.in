@@ -4,9 +4,7 @@ include(CMakeFindDependencyMacro)
 
 find_dependency(Threads)
 
-if (@hwloc_FOUND@)
-    find_dependency(hwloc 2.5.0)
-endif()
+include(FindPkgConfig)
 
 if (NOT @LF_NO_BOOST_ATOMIC@)
     find_dependency(Boost 1.83.0 COMPONENTS atomic)

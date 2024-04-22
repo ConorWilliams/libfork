@@ -3,12 +3,6 @@
 #include "libfork/core.hpp"
 #include "libfork/schedule/lazy_pool.hpp"
 
-#ifndef LF_USE_HWLOC
-static_assert(false, "libfork requires HWLOC support");
-#endif
-
-#include <hwloc.h>
-
 namespace {
 
 constexpr auto hello_async_world = [](auto /* self */) -> lf::task<int> {
