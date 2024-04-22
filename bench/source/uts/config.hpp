@@ -206,15 +206,13 @@ inline auto result_tree(int i) -> result {
     case 12:
       return {13, 102181082, 81746377};
     case 13:
-      // TODO: what is the result?
-      return {0, 0, 0};
+      return {15, 4230646601, 3384495738};
     case 31:
       return {1572, 4112897, 3599034};
     case 32:
       return {17844, 111345631, 89076904};
     case 33:
-      // TODO: what is the result?
-      return {0, 0, 0};
+      return {99049, 2793220501, 1396611250};
     default:
       assert(false && "Invalid tree id");
   }
