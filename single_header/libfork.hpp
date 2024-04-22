@@ -6460,19 +6460,10 @@ struct std::coroutine_traits<lf::task<R>, Args...> {
  * @brief An abstraction over `hwloc`.
  */
 
-#ifdef __has_include
-  #if defined(LF_USE_HWLOC) && not __has_include(<hwloc.h>)
-    #error "LF_USE_HWLOC is defined but <hwloc.h> is not available"
-  #endif
-#endif
+#include <hwloc.h> // for hwloc_obj, hwloc_obj_t, hwl...
 
-#ifdef LF_USE_HWLOC
-  #include <hwloc.h> // for hwloc_obj, hwloc_obj_t, hwl...
-#endif
-
-#ifdef LF_USE_HWLOC
 static_assert(HWLOC_VERSION_MAJOR == 2, "hwloc too old");
-#endif
+
 
 /**
  * @brief An opaque description of a set of processing units.
@@ -6502,17 +6493,6 @@ struct hwloc_topology;
 namespace lf {
 
 inline namespace ext {
-
-/**
- * @brief Returns `true` if libfork is using `hwloc` and numa support is enabled.
- */
-inline auto hwloc_numa_support() -> bool {
-#ifdef LF_USE_HWLOC
-  return true;
-#else
-  return false;
-#endif
-}
 
 // ------------- hwloc can go wrong in a lot of ways... ------------- //
 
@@ -6549,11 +6529,7 @@ class numa_topology {
 
   struct bitmap_deleter {
     LF_STATIC_CALL void operator()(hwloc_bitmap_s *ptr) LF_STATIC_CONST noexcept {
-#ifdef LF_USE_HWLOC
       hwloc_bitmap_free(ptr);
-#else
-      LF_ASSERT(!ptr);
-#endif
     }
   };
 
@@ -6644,8 +6620,6 @@ class numa_topology {
 };
 
 // ---------------------------- Topology implementation ---------------------------- //
-
-#ifdef LF_USE_HWLOC
 
 inline numa_topology::numa_topology() {
 
@@ -6913,56 +6887,6 @@ inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &dat
 
   return nodes;
 }
-
-#else
-
-inline numa_topology::numa_topology()
-    : m_topology{nullptr, [](hwloc_topology *ptr) {
-                   LF_ASSERT(!ptr);
-                 }} {}
-
-inline void numa_topology::numa_handle::bind() const {
-  LF_ASSERT(!topo);
-  LF_ASSERT(!cpup);
-}
-
-inline auto
-numa_topology::split(std::size_t n, numa_strategy /* strategy */) const -> std::vector<numa_handle> {
-  return std::vector<numa_handle>(n);
-}
-
-template <typename T>
-inline auto numa_topology::distribute(std::vector<std::shared_ptr<T>> const &data,
-                                      numa_strategy strategy) -> std::vector<numa_node<T>> {
-
-  std::vector<numa_handle> handles = split(data.size(), strategy);
-
-  std::vector<numa_node<T>> views;
-
-  for (std::size_t i = 0; i < data.size(); i++) {
-
-    numa_node<T> node{
-        std::move(handles[i]), {{data[i]}}, // The first neighbors-list contains
-                                            // only the object itself.
-    };
-
-    if (data.size() > 1) {
-      node.neighbors.push_back({});
-    }
-
-    for (auto const &neigh : data) {
-      if (neigh != data[i]) {
-        node.neighbors[1].push_back(neigh);
-      }
-    }
-
-    views.push_back(std::move(node));
-  }
-
-  return views;
-}
-
-#endif
 
 } // namespace ext
 
