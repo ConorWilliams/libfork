@@ -1,6 +1,8 @@
 #ifndef DD1EB460_E250_4A8C_B35B_C99A803E5301
 #define DD1EB460_E250_4A8C_B35B_C99A803E5301
 
+#include <exception>
+#include <iostream>
 #include <stdexcept>
 
 #include "../util.hpp"
@@ -198,31 +200,25 @@ inline void setup_tree(int i) {
 
 inline auto result_tree(int i) -> result {
 
-  return {0, 0, 0};
-
   switch (i) {
-    case 1:
+    case 11:
       return {10, 4130071, 3305118};
-    case 2:
-      return {81, 4117769, 2342762};
-    case 3:
-      return {1572, 4112897, 3599034};
-    case 4:
-      return {134, 4132453, 3108986};
-    case 5:
-      return {20, 4147582, 2181318};
-    case 6:
+    case 12:
       return {13, 102181082, 81746377};
-    case 7:
-      return {67, 96793510, 53791152};
-    case 8:
+    case 13:
+      // TODO: what is the result?
+      return {0, 0, 0};
+    case 31:
+      return {1572, 4112897, 3599034};
+    case 32:
       return {17844, 111345631, 89076904};
-    case 9:
+    case 33:
+      // TODO: what is the result?
       return {0, 0, 0};
     default:
       assert(false && "Invalid tree id");
-      break;
   }
+  std::terminate();
 }
 
 #define MAKE_UTS_FOR(some_type)                                                                              \

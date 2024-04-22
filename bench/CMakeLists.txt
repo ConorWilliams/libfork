@@ -100,7 +100,10 @@ endif()
 target_compile_definitions(benchmark PRIVATE TMC_WORK_ITEM=CORO)
 target_compile_definitions(benchmark PRIVATE TMC_PRIORITY_COUNT=1)
 target_compile_definitions(benchmark PRIVATE TMC_USE_HWLOC)
-target_compile_definitions(benchmark PRIVATE TMC_TRIVIAL_TASK)
+
+# TMC_TRIVIAL_TASK causes asserts to fail in debug builds...
+
+# target_compile_definitions(benchmark PRIVATE TMC_TRIVIAL_TASK)
 
 target_include_directories(benchmark PRIVATE ${tmc_SOURCE_DIR}/include)
 
