@@ -10,11 +10,6 @@ if(PROJECT_IS_TOP_LEVEL)
   enable_testing()
 endif()
 
-# ----- Single header -----
-
-add_executable(libfork_test_single_header ${CMAKE_CURRENT_SOURCE_DIR}/single_header/main.cpp)
-target_link_libraries(libfork_test_single_header PRIVATE libfork::libfork)
-
 # ---- Dependencies ----
 
 find_package(Catch2 REQUIRED)
