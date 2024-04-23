@@ -257,7 +257,7 @@ threads your CPU has. You may also want to add that to your preset using the
 
 ### Git hooks
 
-If you have set up the above developer presets and enabled the `BUILD_TOOLS` option then you may want to use the provided git-hook to check your commits before pushing to CI. To do this run the following command from the project root:
+If you have set up the above developer presets then you may want to use the provided git-hook to check your commits before pushing to CI. To do this run the following command from the project root:
 
 ```sh
 cp git-hooks/pre-push .git/hooks/pre-push; chmod 700 .git/hooks/pre-push
