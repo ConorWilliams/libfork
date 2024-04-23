@@ -1,6 +1,6 @@
 {
   "name": "libfork",
-  "builtin-baseline": "fecdd89f28ed883b26a48c2b30085f6384070bb8",
+  "builtin-baseline": "da4b78d35084ec4e9808aa02017028da03b8d2ab",
   "features": {
     "hwloc": {
       "description": "This an OPTIONAL dependency, it is used for cpu topology detection, it is recommended to use the system distribution if available.",
