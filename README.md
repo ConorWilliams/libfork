@@ -59,10 +59,7 @@ Libfork is engineered for performance and has a comprehensive [benchmark suit](b
 
 For a quick comparison with other libraries, the average time to spawn/run a task during the recursive Fibonacci benchmark gives a good approximation to the scheduling overhead (lower is better):
 
-<p align="center">
-  <img src="bench/basic/f40.svg" alt="Fibonacci task benchmark results" width=100%/>
-</p>
-
+![Fibonacci task benchmark results](bench/basic/f40.svg)
 
 ### Memory consumption
 
@@ -72,9 +69,7 @@ Libfork is competitive with other libraries in terms of memory consumption; belo
 
 <summary>View graph</summary>
 
-<p align="center">
-  <img src="bench/basic/mem.svg" alt="Fibonacci task benchmark results" width=100%/>
-</p>
+![T3L benchmark results](bench/basic/mem.svg)
 
 </details>
 
