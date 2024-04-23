@@ -12,26 +12,6 @@
 
 ### Meta  -->
 
-## [**Version 3.8.0**](https://github.com/ConorWilliams/libfork/compare/v3.7.2...v3.8.0)
-
-### Added
-
-- New benchmarks against TooManyCooks and concurrencpp
-
-### Changed
-
-- HWLOC is now a required dependency
-
-### Removed
-
-- No HWLOC fallback
-
-### Bugfixes
-
-### Meta 
-
-- Changed HWLOC dependency handling
-
 ## [**Version 3.7.2**](https://github.com/ConorWilliams/libfork/compare/v3.7.1...v3.7.2)
 
 ### Bugfixes
