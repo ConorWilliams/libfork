@@ -29,10 +29,11 @@ with open(args.input_file) as file:
         data[name][2].append(float(dev) / 1024.0)
 
 
-fig, ax = plt.subplots(figsize=(8, 4))
+fig, ax = plt.subplots(figsize=(8, 5))
 
 
 y_calib = data["calibrate"][1][0]
+
 y_calib_err = (
     data["calibrate"][2][0] * 5
 )  # x5 because this is a standard error not a standard deviation
@@ -40,6 +41,8 @@ y_calib_err = (
 y_serial = max(4 / 1024.0, data["serial"][1][0] - y_calib)  # must be at least 4 KiB
 
 first = True
+
+data = dict(sorted(data.items()))
 
 for k, v in data.items():
 
@@ -53,6 +56,7 @@ for k, v in data.items():
         label = "OneTBB"
         mark = "s"
     elif "taskflow" in k:
+        continue
         label = "Taskflow"
         mark = "d"
     elif "libfork" in k:
@@ -106,38 +110,38 @@ for k, v in data.items():
         capsize=2,
         marker=mark,
         markersize=4,
-        linestyle="None",
+        # linestyle="None",
     )
 
-    # if "*" not in label:
-    ax.plot(
-        x,
-        func(x, *popt),
-        "k-",
-        # linewidth=0.75,
-        # label="Fit" if first else None,
-    )
+    # # if "*" not in label:
+    # ax.plot(
+    #     x,
+    #     func(x, *popt),
+    #     "k-",
+    #     # linewidth=0.75,
+    #     # label="Fit" if first else None,
+    # )
 
     first = False
 
-    ax.set_xticks(range(0, int(112 + 1.5), 28))
-    ax.set_xlim(0, max(x))
-    ax.tick_params("x", rotation=90)
+    ax.set_xticks(range(0, int(32 + 1.5), 4))
+    # ax.set_xlim(0, max(x))
+    # ax.tick_params("x", rotation=90)
 
     # ax.set_xlim(0, 112)
-    # ax.set_ylim(bottom=0)
+    ax.set_ylim(bottom=6, top=400)
 
     # ax.set_xscale("log", base=10)
     ax.set_yscale("log", base=10)
 
-    base = 100
+    # base = 100
 
-    locmajy = ticker.LogLocator(base=base, numticks=100)
-    locminy = ticker.LogLocator(base=base, subs=np.arange(0, 10) * 0.1, numticks=100)
+    # locmajy = ticker.LogLocator(base=base, numticks=100)
+    # locminy = ticker.LogLocator(base=base, subs=np.arange(0, 10) * 0.1, numticks=100)
 
-    ax.yaxis.set_major_locator(locmajy)
-    ax.yaxis.set_minor_locator(locminy)
-    ax.yaxis.set_minor_formatter(ticker.NullFormatter())
+    # ax.yaxis.set_major_locator(locmajy)
+    # ax.yaxis.set_minor_locator(locminy)
+    # ax.yaxis.set_minor_formatter(ticker.NullFormatter())
 
     # ax.xaxis.set_ticks_position("left")
 
@@ -148,11 +152,11 @@ ax.set_ylabel("Memory/MiB")
 fig.legend(
     loc="upper center",
     # bbox_to_anchor=(0, 0),
-    ncol=3,
+    ncol=5,
     frameon=False,
 )
 
-fig.tight_layout(rect=(0, 0, 1, 0.925), h_pad=0.5, w_pad=0.3)
+fig.tight_layout(rect=(0, 0, 1, 0.95))
 
 if args.output_file is not None:
     plt.savefig(args.output_file, bbox_inches="tight")

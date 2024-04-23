@@ -49,11 +49,34 @@ inline constexpr auto fib = [](auto fib, int n) -> lf::task<int> {
 
 ## Performance
 
-Libfork is engineered for performance and has a comprehensive [benchmark suit](bench). For a detailed review of libfork see the [paper](https://arxiv.org/abs/2402.18480), the headline results are __linear time/memory scaling__, this translates to:
+Libfork is engineered for performance and has a comprehensive [benchmark suit](bench). For a detailed review of libfork on  1-112 cores see the [paper](https://arxiv.org/abs/2402.18480), the headline results are __linear time/memory scaling__, this translates to:
 
 - Up to 7.5× faster and 19× less memory consumption than OneTBB.
 - Up to 24× faster and 24× less memory consumption than openMP (libomp).
 - Up to 100× faster and >100× less memory consumption than taskflow.
+
+### Scheduler overhead 
+
+For a quick comparison with other libraries, the average time to spawn/run a task during the recursive Fibonacci benchmark gives a good approximation to the scheduling overhead (lower is better):
+
+<p align="center">
+  <img src="bench/basic/f40.svg" alt="Fibonacci task benchmark results" width=100%/>
+</p>
+
+
+### Memory consumption
+
+Libfork is competitive with other libraries in terms of memory consumption; below is the peak (physical) memory allocation during the T3L [unbalanced tree search](https://doi.org/10.1007/978-3-540-72521-3_18) benchmark:
+
+<details>
+
+<summary>View graph</summary>
+
+<p align="center">
+  <img src="bench/basic/mem.svg" alt="Fibonacci task benchmark results" width=100%/>
+</p>
+
+</details>
 
 ## Using libfork
 
@@ -386,7 +409,7 @@ inline constexpr auto bad_code = [](auto) -> lf::task<> {
 };
 ```
 
-Instead ypu must wrap your potentially throwing code in a try-catch block and call `lf::join`.
+Instead you must wrap your potentially throwing code in a try-catch block and call `lf::join`.
 
 ```cpp
 inline constexpr auto good_code = [](auto good_code) -> lf::task<> { 

@@ -5,8 +5,6 @@ import json
 import re
 from statistics import mean, stdev, median, geometric_mean
 
-plt.rcParams["text.usetex"] = True
-
 """
 
 cmake --build --preset=rel && ./build/rel/bench/benchmark  --benchmark_time_unit=ms --benchmark_filter="fib_[^l]|fib_libfork<lazy_pool, numa_strategy::fan>" --benchmark_out_format=json --benchmark_out=bench/data/laptop/fib.json --benchmark_repetitions=5
@@ -67,6 +65,9 @@ for bench in data["benchmarks"]:
 
     num_threads = int(bench["green_threads"] + 0.5)
 
+    if num_threads > 32:
+        continue
+
     if num_threads not in benchmarks[name]:
         benchmarks[name][num_threads] = []
 
@@ -77,7 +78,7 @@ benchmarks = [(k, sorted(v.items())) for k, v in benchmarks.items()]
 benchmarks.sort()
 
 
-fig, ax = plt.subplots(figsize=(6, 5))
+fig, ax = plt.subplots(figsize=(8, 5))
 
 count = 0
 
@@ -150,14 +151,12 @@ for k, v in benchmarks:
     if tS < 0:
         continue
 
-    t = fib_tasks(args.fib) / y
+    t = y / fib_tasks(args.fib) * x
+
+    # t = tS / y
 
     f_yerr = err / y
     terr = t * f_yerr
-
-    if args.rel:
-        t /= x
-        terr /= x
 
     if count == 0:
         ax.errorbar(x, t, yerr=terr, label=label, capsize=2, marker=mark, markersize=4)
@@ -167,49 +166,36 @@ for k, v in benchmarks:
     ymax = max(ymax, max(t))
     ymin = min(ymin, min(t))
 
-# ax_abs.set_ylim(ymin, 112)
 
-# print(f"ymax: {ymax}")
-# print(f"xmax: {xmax}")
-
-# ideal = range(1, int(ymax + 1.5)) if not args.rel else x
-
-# ax_abs.plot(
-#     ideal,
-#     ideal if not args.rel else [1] * len(ideal),
-#     color="black",
-#     linestyle="dashed",
-#     label="Ideal" if count == 0 else None,
-# )
-
-ax.set_xticks(range(0, int(xmax + 1.5), 14))
+ax.set_xticks(range(0, int(32 + 1.5), 4))
 
 # ax.set_title(f"\\textit{{{p}}}")
 
 # if count < 2:
-# ax_abs.set_yscale("log", base=2)
-# ax_abs.set_xscale("log", base=2)
+ax.set_yscale("log", base=10)
+# ax.set_yscale("symlog", linthresh=50)
 
 # ax_abs.yaxis.set_label_position("right")
 
-ax.set_xlim(0, max(x))
+ax.set_ylim(bottom=10, top=1000)
+# ax.set_xlim(1, 32)
 
 
 count += 1
 
 
 ax.set_xlabel("Cores")
-ax.set_ylabel("Tasks per second")
+ax.set_ylabel("Nanoseconds per Task")
 
 
 fig.legend(
     loc="upper center",
     # bbox_to_anchor=(0, 0),
-    ncol=3,
+    ncol=6,
     frameon=False,
 )
 
-fig.tight_layout(rect=(0, 0, 1, 0.90))
+fig.tight_layout(rect=(0, 0, 1, 0.95))
 
 if args.output_file is not None:
     plt.savefig(args.output_file, bbox_inches="tight")
