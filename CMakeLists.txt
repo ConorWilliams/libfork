@@ -31,10 +31,19 @@ if(PKG_CONFIG_EXECUTABLE)
 
   unset(HWLOC_FOUND CACHE)
 
-  pkg_search_module(HWLOC REQUIRED IMPORTED_TARGET hwloc)
+  pkg_search_module(HWLOC REQUIRED IMPORTED_TARGET GLOBAL hwloc)
 
   if(HWLOC_FOUND)
     message(STATUS "pkg-config found HWLOC version ${HWLOC_VERSION}")
+
+    message(STATUS "HWLOC_LIBRARIES=${HWLOC_LIBRARIES}")
+    message(STATUS "HWLOC_LINK_LIBRARIES=${HWLOC_LINK_LIBRARIES}")
+    message(STATUS "HWLOC_LIBRARY_DIRS=${HWLOC_LIBRARY_DIRS}")
+    message(STATUS "HWLOC_LDFLAGS=${HWLOC_LDFLAGS}")
+    message(STATUS "HWLOC_LDFLAGS_OTHERS=${HWLOC_LDFLAGS_OTHERS}")
+    message(STATUS "HWLOC_INCLUDE_DIRS=${HWLOC_INCLUDE_DIRS}")
+    message(STATUS "HWLOC_CFLAGS=${HWLOC_CFLAGS}")
+    message(STATUS "HWLOC_CFLAGS_OTHER=${HWLOC_CFLAGS_OTHER}")
   else()
     message(
       FATAL_ERROR "HWLOC not found with pkg-config, add the path to hwloc.pc in PKG_CONFIG_PATH."
