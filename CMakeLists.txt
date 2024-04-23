@@ -10,8 +10,7 @@ read_version(${CMAKE_CURRENT_SOURCE_DIR}/include/libfork/core/macro.hpp)
 project(
   libfork
   VERSION ${version_major}.${version_minor}.${version_patch}
-  DESCRIPTION
-    "A bleeding-edge, lock-free, wait-free, continuation-stealing fork-join library built on C++20's coroutines."
+  DESCRIPTION "A bleeding-edge, lock-free, wait-free, continuation-stealing fork-join library built on C++20's coroutines."
   HOMEPAGE_URL "https://github.com/ConorWilliams/libfork"
   LANGUAGES CXX C
 )
@@ -21,44 +20,16 @@ include(cmake/variables.cmake)
 
 message(STATUS "CMAKE_BUILD_TYPE is set to '${CMAKE_BUILD_TYPE}'")
 
-# ------------ Dependencies ------------
+# ---- System dependencies ----
 
 find_package(Threads REQUIRED)
-
-include(FindPkgConfig)
-
-if(PKG_CONFIG_EXECUTABLE)
-
-  unset(HWLOC_FOUND CACHE)
-
-  pkg_search_module(HWLOC REQUIRED IMPORTED_TARGET GLOBAL hwloc)
-
-  if(HWLOC_FOUND)
-    message(STATUS "pkg-config found HWLOC version ${HWLOC_VERSION}")
-
-    message(STATUS "HWLOC_LIBRARIES=${HWLOC_LIBRARIES}")
-    message(STATUS "HWLOC_LINK_LIBRARIES=${HWLOC_LINK_LIBRARIES}")
-    message(STATUS "HWLOC_LIBRARY_DIRS=${HWLOC_LIBRARY_DIRS}")
-    message(STATUS "HWLOC_LDFLAGS=${HWLOC_LDFLAGS}")
-    message(STATUS "HWLOC_LDFLAGS_OTHERS=${HWLOC_LDFLAGS_OTHERS}")
-    message(STATUS "HWLOC_INCLUDE_DIRS=${HWLOC_INCLUDE_DIRS}")
-    message(STATUS "HWLOC_CFLAGS=${HWLOC_CFLAGS}")
-    message(STATUS "HWLOC_CFLAGS_OTHER=${HWLOC_CFLAGS_OTHER}")
-  else()
-    message(
-      FATAL_ERROR "HWLOC not found with pkg-config, add the path to hwloc.pc in PKG_CONFIG_PATH."
-    )
-  endif()
-else()
-  message(FATAL_ERROR "PKG_CONFIG_EXECUTABLE: not found.")
-endif()
 
 # ------ Declare library ------
 
 add_library(libfork_libfork INTERFACE)
 add_library(libfork::libfork ALIAS libfork_libfork)
 
-target_link_libraries(libfork_libfork INTERFACE Threads::Threads PkgConfig::HWLOC)
+target_link_libraries(libfork_libfork INTERFACE Threads::Threads)
 
 set_property(TARGET libfork_libfork PROPERTY EXPORT_NAME libfork)
 
@@ -84,9 +55,41 @@ if(LF_COROUTINE_OFFSET)
   target_compile_definitions(libfork_libfork INTERFACE LF_COROUTINE_OFFSET=${LF_COROUTINE_OFFSET})
 endif()
 
-# --------------- Optional dependancies---------------
+# --------------- Optional dependancies--------------- 
 
-# ---- Boost (for clang acceleration) ----
+# ---------------- hwloc---------------- 
+
+option(LF_NO_HWLOC "Disable hwloc support" OFF)
+
+if(NOT LF_NO_HWLOC)
+  # Conan exports a proper target for hwloc, vcpkg does not.
+  find_package(hwloc 2.5.0 QUIET)
+
+  if (hwloc_FOUND)
+    # Instructs libfork to use hwloc.
+    target_compile_definitions(libfork_libfork INTERFACE LF_USE_HWLOC)
+    # Link to exported target.
+    target_link_libraries(libfork_libfork INTERFACE hwloc::hwloc)
+  else()
+    # Fallback to custom findHwlocLibfork.cmake
+    find_package(HwlocLibfork 2.5.0)
+
+    if(HwlocLibfork_FOUND)
+      # Instructs libfork to use hwloc.
+      target_compile_definitions(libfork_libfork INTERFACE LF_USE_HWLOC)
+
+      # Provided headers.
+      target_include_directories(libfork_libfork SYSTEM INTERFACE ${HwlocLibfork_INCLUDE_DIRS})
+
+      # Provided libraries.
+      target_link_libraries(libfork_libfork INTERFACE ${HwlocLibfork_LINK_LIBRARIES})
+    else()
+      message(WARNING "HWLOC not found, NUMA support disabled!")
+    endif()
+  endif()
+endif()
+
+# ---- Boost (for clang acceleration) ---- 
 
 option(LF_NO_BOOST_ATOMIC "Libfork will use std::atomic even if boost is found" OFF)
 

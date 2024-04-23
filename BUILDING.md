@@ -28,7 +28,7 @@ Note: The last step may need `sudo` privileges if you are installing to a system
 
 ### Dependencies
 
-Outside of hwloc, libfork has no more required dependencies. However, libfork can use some optional dependencies to enable additional features, the tests/benchmarks/docs have their own dependencies and, the developer's lint and miscellaneous targets need a few additional dependencies. A complete list of libfork's dependencies are as follows:
+Outside of a compiler, libfork has no required dependencies. However, libfork can use some optional dependencies to enable additional features, the tests/benchmarks/docs have their own dependencies and, the developer's lint and miscellaneous targets need a few additional dependencies. A complete list of libfork's dependencies are as follows:
 
 <!-- TODO: test with a fresh wsl ubuntu -->
 
@@ -36,10 +36,10 @@ Core:
 
 - __CMake__ 3.14 or greater (version 3.28 is recommended).
 - __C++20 compiler__ (C++23 is preferred) - see [compiler support](#compiler-support) section.
-- __hwloc__ - see [below](#hwloc).
 
 Optional:
 
+- __hwloc__ - see [below](#hwloc).
 - __boost-atomic__ - recommended for performance if using the clang compiler.
 
 Docs:
@@ -73,7 +73,7 @@ The easiest way to manage libfork's main dependencies (some of which are require
 -DCMAKE_TOOLCHAIN_FILE=<path to vcpkg>/scripts/buildsystems/vcpkg.cmake -DVCPKG_MANIFEST_FEATURES="<features>"
 ```
 
-where `<path to vcpkg>` is the path to your vcpkg installation and ``<features>`` is a colon-separated list of one or more of the available features: `test`, `benchmark`, `boost` and, `hwloc`. The `test` and `benchmark` features include the dependencies __required__  for the test and benchmark suits respectively. 
+where `<path to vcpkg>` is the path to your vcpkg installation and ``<features>`` is a colon-separated list of one or more of the available features: `test`, `benchmark`, `boost` and, `hwloc`. The `test` and `benchmark` features include the dependencies __required__  for the test and benchmark suits respectively. Alternatively, the `boost` and `hwloc` features are recommended - but optional - dependencies.
 
 #### Hwloc
 
@@ -82,6 +82,10 @@ Hwloc enables libfork to determine the topology of the system and use this infor
 ```sh
 sudo apt install libhwloc-dev
 ```
+
+Libfork uses hwloc when `LF_USE_HWLOC` is defined, this must be defined (or undefined) in all translation units that use libfork. If you installed hwloc using vcpkg then libfork will no longer be installable if vcpkg is in the source tree (which is likely if you are using vcpkg as a submodule), to overcome this you can disable the install targets with `CMAKE_SKIP_INSTALL_RULES` or use a different vcpkg installation outside the source tree.
+
+If you're using the single header file and want hwloc support then define `LF_USE_HWLOC` before including the header file and provide the compiler/linker flags as demonstrated in the [CMakeLists.txt](CMakeLists.txt) file.
 
 ### Compiler support
 
@@ -257,7 +261,7 @@ threads your CPU has. You may also want to add that to your preset using the
 
 ### Git hooks
 
-If you have set up the above developer presets then you may want to use the provided git-hook to check your commits before pushing to CI. To do this run the following command from the project root:
+If you have set up the above developer presets and enabled the `BUILD_TOOLS` option then you may want to use the provided git-hook to check your commits before pushing to CI. To do this run the following command from the project root:
 
 ```sh
 cp git-hooks/pre-push .git/hooks/pre-push; chmod 700 .git/hooks/pre-push

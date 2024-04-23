@@ -34,13 +34,13 @@
  *
  * Increments when functionality is added in an API backward compatible manner.
  */
-#define LF_VERSION_MINOR 8
+#define LF_VERSION_MINOR 7
 /**
  * @brief __[public]__ The patch version of libfork.
  *
  * Increments when bug fixes are made in an API backward compatible manner.
  */
-#define LF_VERSION_PATCH 0
+#define LF_VERSION_PATCH 2
 
 /**
  * @brief Use to conditionally decorate lambdas and ``operator()`` (alongside ``LF_STATIC_CONST``) with
