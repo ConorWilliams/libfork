@@ -78,7 +78,7 @@ benchmarks = [(k, sorted(v.items())) for k, v in benchmarks.items()]
 benchmarks.sort()
 
 
-fig, ax = plt.subplots(figsize=(8, 5))
+fig, (ax, bx) = plt.subplots(1, 2, figsize=(8, 4))
 
 count = 0
 
@@ -151,23 +151,28 @@ for k, v in benchmarks:
     if tS < 0:
         continue
 
+    # nanoseconds per task
     t = y / fib_tasks(args.fib) * x
+    # Tasks per second
+    g = fib_tasks(args.fib) / y * 1e9
 
     # t = tS / y
 
     f_yerr = err / y
-    terr = t * f_yerr
 
-    if count == 0:
-        ax.errorbar(x, t, yerr=terr, label=label, capsize=2, marker=mark, markersize=4)
-    else:
-        ax.errorbar(x, t, yerr=terr, capsize=2, marker=mark, markersize=4)
+    terr = t * f_yerr
+    gerr = g * f_yerr
+
+    ax.errorbar(x, t, yerr=terr, label=label, capsize=2, marker=mark, markersize=4)
+
+    bx.errorbar(x, g, yerr=gerr, capsize=2, marker=mark, markersize=4)
 
     ymax = max(ymax, max(t))
     ymin = min(ymin, min(t))
 
 
 ax.set_xticks(range(0, int(32 + 1.5), 4))
+bx.set_xticks(range(0, int(32 + 1.5), 4))
 
 # ax.set_title(f"\\textit{{{p}}}")
 
@@ -178,24 +183,34 @@ ax.set_yscale("log", base=10)
 # ax_abs.yaxis.set_label_position("right")
 
 ax.set_ylim(bottom=10, top=1000)
-# ax.set_xlim(1, 32)
+bx.set_ylim(bottom=3e6, top=2e9)
 
 
 count += 1
 
 
-ax.set_xlabel("Cores")
-ax.set_ylabel("Nanoseconds per Task")
+# ax.set_xlabel()
+ax.set_ylabel("Nanoseconds per task")
+bx.set_ylabel("Tasks per second")
 
+bx.set_yscale("log", base=10)
+
+
+ax.set_title("Latency")
+bx.set_title("Throughput")
+
+fig.supxlabel("Cores")
 
 fig.legend(
     loc="upper center",
-    # bbox_to_anchor=(0, 0),
+    # bbox_to_anchor=(0.5, 0.9),
     ncol=6,
     frameon=False,
 )
 
-fig.tight_layout(rect=(0, 0, 1, 0.95))
+# fig.suptitle(f"Fibonacci({args.fib})")
+
+fig.tight_layout(rect=(0, 0, 1, 0.925))
 
 if args.output_file is not None:
     plt.savefig(args.output_file, bbox_inches="tight")
