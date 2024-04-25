@@ -30,8 +30,10 @@ auto fob(int n) -> experimental::task<int> {
 
   auto sc = co_await experimental::make_scope_t{};
 
-  co_await sc.call(&a, fob, n - 1);
+  co_await sc.fork(&a, fob, n - 1);
   co_await sc.call(&b, fob, n - 2);
+
+  co_await sc;
 
   co_return a + b;
 }
@@ -43,31 +45,12 @@ auto fib(int n) -> int {
   return fib(n - 1) + fib(n - 2);
 }
 
-inline constexpr auto r_fib = [](auto fib, int n) -> lf::task<int> {
-  //
-
-  if (n < 2) {
-    co_return n;
-  }
-
-  int a = 0, b = 0;
-
-  co_await lf::fork(&a, fib)(n - 1);
-  co_await lf::call(&b, fib)(n - 2);
-
-  co_await lf::join;
-
-  co_return a + b;
-};
-
 } // namespace
 
 TEST_CASE("Experimental", "[exp][template]") {
   for (int j = 0; j < 100; ++j) {
     //
     auto schedule = experimental::unit_pool{};
-
-    ;
 
     for (int i = 1; i < 20; ++i) {
       REQUIRE(fib(i) == experimental::schedule(schedule, fob, i));

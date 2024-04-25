@@ -145,6 +145,76 @@ struct scope_t {
 
     return {{}, std::move(tsk)};
   }
+
+  void take_stack_reset_frame() noexcept {
+    // Steals have happened so we cannot currently own this tasks stack.
+    LF_ASSERT(m_steal != 0);
+    LF_ASSERT(impl::tls::stack()->empty());
+    *impl::tls::stack() = impl::stack{stacklet};
+    // Some steals have happened, need to reset the control block.
+    reset();
+  }
+
+  /**
+   * @brief Perform a `.load(order)` on the atomic join counter.
+   */
+  [[nodiscard]] auto load_joins(std::memory_order order) const noexcept -> std::uint16_t {
+    return std::atomic_ref{n_joins}.load(order);
+  }
+
+ public:
+  /**
+   * @brief Shortcut if children are ready.
+   */
+  auto await_ready() noexcept -> bool {
+    // If no steals then we are the only owner of the parent and we are ready to join.
+    if (m_steal == 0) {
+      LF_LOG("Sync ready (no steals)");
+      // Therefore no need to reset the control block.
+      return true;
+    }
+    // Currently:            joins() = k_u16_max - num_joined
+    // Hence:       k_u16_max - joins() = num_joined
+
+    // Could use (relaxed) + (fence(acquire) in truthy branch) but, it's
+    // better if we see all the decrements to joins() and avoid suspending
+    // the coroutine if possible. Cannot fetch_sub() here and write to frame
+    // as coroutine must be suspended first.
+    auto joined = impl::k_u16_max - load_joins(std::memory_order_acquire);
+
+    if (m_steal == joined) {
+      LF_LOG("Sync is ready");
+      take_stack_reset_frame();
+      return true;
+    }
+
+    LF_LOG("Sync not ready");
+    return false;
+  }
+
+  /**
+   * @brief Mark at join point then yield to scheduler or resume if children are done.
+   */
+  auto await_suspend(std::coroutine_handle<> task) const noexcept -> std::coroutine_handle<> {
+    std::terminate();
+  }
+
+  /**
+   * @brief Propagate exceptions.
+   */
+  void await_resume() const {
+    LF_LOG("join resumes");
+    // Check we have been reset.
+    LF_ASSERT(m_steal == 0);
+    LF_ASSERT(n_joins == impl::k_u16_max);
+    LF_ASSERT(stacklet == impl::tls::stack()->top());
+
+    if (tagged != 0) {
+      throw "bigbad";
+    }
+
+    // self->unsafe_rethrow_if_exception();
+  }
 };
 
 struct make_scope_t {};

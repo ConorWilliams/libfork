@@ -12,6 +12,8 @@
 #include <libfork/core/impl/promise.hpp>
 #include <libfork/core/macro.hpp>
 
+#include <libfork/experimental/task.hpp>
+
 inline constexpr volatile int work = 24;
 volatile int output;
 
@@ -661,6 +663,39 @@ void fib(benchmark::State &state) {
 } // namespace segmented_stack_libfork
 
 BENCHMARK(segmented_stack_libfork::fib);
+
+// ----------------------- experimental libfork ----------------------- //
+
+namespace experimental_fork {
+
+auto fib_impl(int n) -> lf::experimental::task<int> {
+  //
+  if (n < 2) {
+    co_return n;
+  }
+
+  int a = 0, b = 0;
+
+  auto sc = co_await lf::experimental::make_scope_t{};
+
+  co_await sc.fork(&a, fib_impl, n - 1);
+  co_await sc.call(&b, fib_impl, n - 2);
+
+  co_return a + b;
+};
+
+void fib(benchmark::State &state) {
+
+  lf::experimental::unit_pool p{};
+
+  for (auto _ : state) {
+    output = lf::experimental::schedule(p, fib_impl, work);
+  }
+}
+
+} // namespace experimental_fork
+
+BENCHMARK(experimental_fork::fib);
 
 // ----------------------- libfork void ----------------------- //
 
