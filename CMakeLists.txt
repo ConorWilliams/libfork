@@ -10,7 +10,8 @@ read_version(${CMAKE_CURRENT_SOURCE_DIR}/include/libfork/core/macro.hpp)
 project(
   libfork
   VERSION ${version_major}.${version_minor}.${version_patch}
-  DESCRIPTION "A bleeding-edge, lock-free, wait-free, continuation-stealing fork-join library built on C++20's coroutines."
+  DESCRIPTION
+    "A bleeding-edge, lock-free, wait-free, continuation-stealing fork-join library built on C++20's coroutines."
   HOMEPAGE_URL "https://github.com/ConorWilliams/libfork"
   LANGUAGES CXX C
 )
@@ -55,9 +56,9 @@ if(LF_COROUTINE_OFFSET)
   target_compile_definitions(libfork_libfork INTERFACE LF_COROUTINE_OFFSET=${LF_COROUTINE_OFFSET})
 endif()
 
-# --------------- Optional dependancies--------------- 
+# --------------- Optional dependancies---------------
 
-# ---------------- hwloc---------------- 
+# ---------------- hwloc----------------
 
 option(LF_NO_HWLOC "Disable hwloc support" OFF)
 
@@ -65,7 +66,7 @@ if(NOT LF_NO_HWLOC)
   # Conan exports a proper target for hwloc, vcpkg does not.
   find_package(hwloc 2.5.0 QUIET)
 
-  if (hwloc_FOUND)
+  if(hwloc_FOUND)
     # Instructs libfork to use hwloc.
     target_compile_definitions(libfork_libfork INTERFACE LF_USE_HWLOC)
     # Link to exported target.
@@ -86,22 +87,6 @@ if(NOT LF_NO_HWLOC)
     else()
       message(WARNING "HWLOC not found, NUMA support disabled!")
     endif()
-  endif()
-endif()
-
-# ---- Boost (for clang acceleration) ---- 
-
-option(LF_NO_BOOST_ATOMIC "Libfork will use std::atomic even if boost is found" OFF)
-
-if(NOT LF_NO_BOOST_ATOMIC)
-
-  find_package(Boost 1.83.0 COMPONENTS atomic)
-
-  if(Boost_FOUND)
-    # Instructs libfork to use boost atomic (clang only)
-    target_compile_definitions(libfork_libfork INTERFACE LF_USE_BOOST_ATOMIC)
-
-    target_link_libraries(libfork_libfork INTERFACE Boost::atomic)
   endif()
 endif()
 

@@ -11,15 +11,6 @@
         }
       ]
     },
-    "boost": {
-      "description": "This an OPTIONAL dependency, fetches a modern boost-atomic to make up for clangs bad std::atomic codegen, this is recommended for clang users, it is recommended to use the system distribution if available.",
-      "dependencies": [
-        {
-          "name": "boost-atomic",
-          "version>=": "1.83.0"
-        }
-      ]
-    },
     "test": {
       "description": "These are libfork's test-suite dependencies.",
       "dependencies": [
