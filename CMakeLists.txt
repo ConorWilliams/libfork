@@ -64,7 +64,7 @@ option(LF_NO_HWLOC "Disable hwloc support" OFF)
 
 if(NOT LF_NO_HWLOC)
   # Conan exports a proper target for hwloc, vcpkg does not.
-  find_package(hwloc 2.5.0 QUIET)
+  find_package(hwloc 2.0 QUIET)
 
   if(hwloc_FOUND)
     # Instructs libfork to use hwloc.
@@ -72,20 +72,25 @@ if(NOT LF_NO_HWLOC)
     # Link to exported target.
     target_link_libraries(libfork_libfork INTERFACE hwloc::hwloc)
   else()
-    # Fallback to custom findHwlocLibfork.cmake
-    find_package(HwlocLibfork 2.5.0)
 
-    if(HwlocLibfork_FOUND)
-      # Instructs libfork to use hwloc.
-      target_compile_definitions(libfork_libfork INTERFACE LF_USE_HWLOC)
+    find_package(PkgConfig)
 
-      # Provided headers.
-      target_include_directories(libfork_libfork SYSTEM INTERFACE ${HwlocLibfork_INCLUDE_DIRS})
+    if(PKG_CONFIG_EXECUTABLE)
 
-      # Provided libraries.
-      target_link_libraries(libfork_libfork INTERFACE ${HwlocLibfork_LINK_LIBRARIES})
+      unset(HWLOC_FOUND CACHE) # Prevent dirty cache
+
+      pkg_search_module(HWLOC IMPORTED_TARGET hwloc>=2.0)
+
+      if(HWLOC_FOUND)
+        # Instructs libfork to use hwloc.
+        target_compile_definitions(libfork_libfork INTERFACE LF_USE_HWLOC)
+        # Link to imported target.
+        target_link_libraries(libfork_libfork INTERFACE PkgConfig::HWLOC)
+      else()
+        message(WARNING "HWLOC: not found, NUMA support disabled!")
+      endif()
     else()
-      message(WARNING "HWLOC not found, NUMA support disabled!")
+      message(WARNING "PKG_CONFIG_EXECUTABLE: not found, NUMA support disabled!")
     endif()
   endif()
 endif()
