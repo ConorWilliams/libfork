@@ -34,7 +34,7 @@
  *
  * Increments when functionality is added in an API backward compatible manner.
  */
-#define LF_VERSION_MINOR 7
+#define LF_VERSION_MINOR 8
 /**
  * @brief __[public]__ The patch version of libfork.
  *
