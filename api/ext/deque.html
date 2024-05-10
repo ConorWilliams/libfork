@@ -5,10 +5,10 @@
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="Event count" href="event_count.html" /><link rel="prev" title="Intrusive linked list" href="list.html" />
 
-    <link rel="shortcut icon" href="../../_static/favicon.ico"/><!-- Generated with Sphinx 7.1.2 and Furo 2024.01.29 -->
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/><!-- Generated with Sphinx 7.1.2 and Furo 2024.05.06 -->
         <title>Work stealing queue - libfork documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
-    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=387cc868" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?v=36a5483c" />
     <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=87344451" />
@@ -70,7 +70,7 @@
   <symbol id="svg-sun" viewBox="0 0 24 24">
     <title>Light mode</title>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
       <circle cx="12" cy="12" r="5"></circle>
       <line x1="12" y1="1" x2="12" y2="3"></line>
       <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -85,7 +85,7 @@
   <symbol id="svg-moon" viewBox="0 0 24 24">
     <title>Dark mode</title>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
       <path stroke="none" d="M0 0h24v24H0z" fill="none" />
       <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
     </svg>
@@ -93,7 +93,7 @@
   <symbol id="svg-sun-half" viewBox="0 0 24 24">
     <title>Auto light/dark mode</title>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
       <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
       <circle cx="12" cy="12" r="9" />
       <path d="M13 12h5" />
@@ -101,6 +101,60 @@
       <path d="M13 18h1" />
       <path d="M13 9h4" />
       <path d="M13 6h1" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" /
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
     </svg>
   </symbol>
 </svg>
@@ -113,6 +167,8 @@
 <label class="overlay toc-overlay" for="__toc">
   <div class="visually-hidden">Hide table of contents sidebar</div>
 </label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
 
 
 
@@ -131,7 +187,8 @@
       <div class="theme-toggle-container theme-toggle-header">
         <button class="theme-toggle">
           <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
-          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
           <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
@@ -205,19 +262,21 @@
           <span>Back to top</span>
         </a>
         <div class="content-icon-container">
-          <div class="edit-this-page">
+          <div class="view-this-page">
+  <a class="muted-link" href="https://github.com/ConorWilliams/libfork/blob/main/docs/api/ext/deque.rst?plain=true" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div><div class="edit-this-page">
   <a class="muted-link" href="https://github.com/ConorWilliams/libfork/edit/main/docs/api/ext/deque.rst" title="Edit this page">
-    <svg aria-hidden="true" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-      <path d="M4 20h4l10.5 -10.5a1.5 1.5 0 0 0 -4 -4l-10.5 10.5v4" />
-      <line x1="13.5" y1="6.5" x2="17.5" y2="10.5" />
-    </svg>
+    <svg><use href="#svg-pencil"></use></svg>
     <span class="visually-hidden">Edit this page</span>
   </a>
 </div><div class="theme-toggle-container theme-toggle-content">
             <button class="theme-toggle">
               <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
-              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
               <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
@@ -227,15 +286,15 @@
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
-        <article role="main">
+        <article role="main" id="furo-main-content">
           <section id="work-stealing-queue">
-<h1>Work stealing queue<a class="headerlink" href="#work-stealing-queue" title="Permalink to this heading">#</a></h1>
-<p>A stand-alone, production-quality implementation of the Chase-Lev lock-free single-producer multiple-consumer deque. </p>
+<h1>Work stealing queue<a class="headerlink" href="#work-stealing-queue" title="Permalink to this heading">¶</a></h1>
+<p>A production-quality implementation of the Chase-Lev lock-free SPMC deque. </p>
 <section id="concepts">
-<h2>Concepts<a class="headerlink" href="#concepts" title="Permalink to this heading">#</a></h2>
+<h2>Concepts<a class="headerlink" href="#concepts" title="Permalink to this heading">¶</a></h2>
 <dl class="cpp concept">
 <dt class="sig sig-object cpp" id="_CPPv4I0EN2lf3ext10atomicableE">
-<span id="_CPPv3I0EN2lf3ext10atomicableE"></span><span id="_CPPv2I0EN2lf3ext10atomicableE"></span><span class="target" id="conceptlf_1_1ext_1_1atomicable"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">concept</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">atomicable</span></span></span><a class="headerlink" href="#_CPPv4I0EN2lf3ext10atomicableE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3I0EN2lf3ext10atomicableE"></span><span id="_CPPv2I0EN2lf3ext10atomicableE"></span><span class="target" id="conceptlf_1_1ext_1_1atomicable"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">concept</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">atomicable</span></span></span><a class="headerlink" href="#_CPPv4I0EN2lf3ext10atomicableE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><div class="docutils container">
 <em>#include &lt;libfork/core/ext/deque.hpp&gt;</em></div>
 <p>Verify a type is suitable for use with <code class="docutils literal notranslate"><span class="pre">std::atomic</span></code></p>
@@ -244,7 +303,7 @@
 
 <dl class="cpp concept">
 <dt class="sig sig-object cpp" id="_CPPv4I0EN2lf3ext9lock_freeE">
-<span id="_CPPv3I0EN2lf3ext9lock_freeE"></span><span id="_CPPv2I0EN2lf3ext9lock_freeE"></span><span class="target" id="conceptlf_1_1ext_1_1lock__free"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">concept</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">lock_free</span></span></span><a class="headerlink" href="#_CPPv4I0EN2lf3ext9lock_freeE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3I0EN2lf3ext9lock_freeE"></span><span id="_CPPv2I0EN2lf3ext9lock_freeE"></span><span class="target" id="conceptlf_1_1ext_1_1lock__free"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">concept</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">lock_free</span></span></span><a class="headerlink" href="#_CPPv4I0EN2lf3ext9lock_freeE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><div class="docutils container">
 <em>#include &lt;libfork/core/ext/deque.hpp&gt;</em></div>
 <p>A concept that verifies a type is lock-free when used with <code class="docutils literal notranslate"><span class="pre">std::atomic</span></code>. </p>
@@ -252,7 +311,7 @@
 
 <dl class="cpp concept">
 <dt class="sig sig-object cpp" id="_CPPv4I0EN2lf3ext9dequeableE">
-<span id="_CPPv3I0EN2lf3ext9dequeableE"></span><span id="_CPPv2I0EN2lf3ext9dequeableE"></span><span class="target" id="conceptlf_1_1ext_1_1dequeable"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">concept</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">dequeable</span></span></span><a class="headerlink" href="#_CPPv4I0EN2lf3ext9dequeableE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3I0EN2lf3ext9dequeableE"></span><span id="_CPPv2I0EN2lf3ext9dequeableE"></span><span class="target" id="conceptlf_1_1ext_1_1dequeable"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="k"><span class="pre">concept</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">dequeable</span></span></span><a class="headerlink" href="#_CPPv4I0EN2lf3ext9dequeableE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><div class="docutils container">
 <em>#include &lt;libfork/core/ext/deque.hpp&gt;</em></div>
 <p>Test is a type is suitable for use with <code class="docutils literal notranslate"><span class="pre">lf::deque</span></code>. </p>
@@ -261,27 +320,27 @@
 
 </section>
 <section id="helpers">
-<h2>Helpers<a class="headerlink" href="#helpers" title="Permalink to this heading">#</a></h2>
+<h2>Helpers<a class="headerlink" href="#helpers" title="Permalink to this heading">¶</a></h2>
 <dl class="cpp enum-class">
 <dt class="sig sig-object cpp" id="_CPPv4N2lf3ext3errE">
-<span id="_CPPv3N2lf3ext3errE"></span><span id="_CPPv2N2lf3ext3errE"></span><span class="target" id="namespacelf_1_1ext_1ae59feaefcee8ed18b17cb16838b687b2"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="../../index.html#_CPPv4N2lf3extE" title="lf::ext"><span class="n"><span class="pre">ext</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">err</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><a class="headerlink" href="#_CPPv4N2lf3ext3errE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N2lf3ext3errE"></span><span id="_CPPv2N2lf3ext3errE"></span><span class="target" id="namespacelf_1_1ext_1ae59feaefcee8ed18b17cb16838b687b2"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="../../index.html#_CPPv4N2lf3extE" title="lf::ext"><span class="n"><span class="pre">ext</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">err</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><a class="headerlink" href="#_CPPv4N2lf3ext3errE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Error codes for <code class="docutils literal notranslate"><span class="pre">deque</span></code> ‘s <code class="docutils literal notranslate"><span class="pre">steal()</span></code> operation. </p>
 <p><em>Values:</em></p>
 <dl class="cpp enumerator">
 <dt class="sig sig-object cpp" id="_CPPv4N2lf3ext3err4noneE">
-<span id="_CPPv3N2lf3ext3err4noneE"></span><span id="_CPPv2N2lf3ext3err4noneE"></span><span class="target" id="namespacelf_1_1ext_1ae59feaefcee8ed18b17cb16838b687b2a334c4a4c42fdb79d7ebc3e73b517e6f8"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">none</span></span></span><a class="headerlink" href="#_CPPv4N2lf3ext3err4noneE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N2lf3ext3err4noneE"></span><span id="_CPPv2N2lf3ext3err4noneE"></span><span class="target" id="namespacelf_1_1ext_1ae59feaefcee8ed18b17cb16838b687b2a334c4a4c42fdb79d7ebc3e73b517e6f8"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">none</span></span></span><a class="headerlink" href="#_CPPv4N2lf3ext3err4noneE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>The <code class="docutils literal notranslate"><span class="pre">steal()</span></code> operation succeeded. </p>
 </dd></dl>
 
 <dl class="cpp enumerator">
 <dt class="sig sig-object cpp" id="_CPPv4N2lf3ext3err4lostE">
-<span id="_CPPv3N2lf3ext3err4lostE"></span><span id="_CPPv2N2lf3ext3err4lostE"></span><span class="target" id="namespacelf_1_1ext_1ae59feaefcee8ed18b17cb16838b687b2a1c9a44eb2e8eaf3da1eb551da310cce7"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">lost</span></span></span><a class="headerlink" href="#_CPPv4N2lf3ext3err4lostE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N2lf3ext3err4lostE"></span><span id="_CPPv2N2lf3ext3err4lostE"></span><span class="target" id="namespacelf_1_1ext_1ae59feaefcee8ed18b17cb16838b687b2a1c9a44eb2e8eaf3da1eb551da310cce7"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">lost</span></span></span><a class="headerlink" href="#_CPPv4N2lf3ext3err4lostE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Lost the <code class="docutils literal notranslate"><span class="pre">steal()</span></code> race hence, the <code class="docutils literal notranslate"><span class="pre">steal()</span></code> operation failed. </p>
 </dd></dl>
 
 <dl class="cpp enumerator">
 <dt class="sig sig-object cpp" id="_CPPv4N2lf3ext3err5emptyE">
-<span id="_CPPv3N2lf3ext3err5emptyE"></span><span id="_CPPv2N2lf3ext3err5emptyE"></span><span class="target" id="namespacelf_1_1ext_1ae59feaefcee8ed18b17cb16838b687b2aa2e4822a98337283e39f7b60acf85ec9"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">empty</span></span></span><a class="headerlink" href="#_CPPv4N2lf3ext3err5emptyE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N2lf3ext3err5emptyE"></span><span id="_CPPv2N2lf3ext3err5emptyE"></span><span class="target" id="namespacelf_1_1ext_1ae59feaefcee8ed18b17cb16838b687b2aa2e4822a98337283e39f7b60acf85ec9"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">empty</span></span></span><a class="headerlink" href="#_CPPv4N2lf3ext3err5emptyE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>The deque is empty and hence, the <code class="docutils literal notranslate"><span class="pre">steal()</span></code> operation failed. </p>
 </dd></dl>
 
@@ -289,41 +348,41 @@
 
 <dl class="cpp struct">
 <dt class="sig sig-object cpp" id="_CPPv4I0EN2lf7steal_tE">
-<span id="_CPPv3I0EN2lf7steal_tE"></span><span id="_CPPv2I0EN2lf7steal_tE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="structlf_1_1ext_1_1steal__t"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">steal_t</span></span></span><a class="headerlink" href="#_CPPv4I0EN2lf7steal_tE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3I0EN2lf7steal_tE"></span><span id="_CPPv2I0EN2lf7steal_tE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="structlf_1_1ext_1_1steal__t"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">steal_t</span></span></span><a class="headerlink" href="#_CPPv4I0EN2lf7steal_tE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>The return type of a <code class="docutils literal notranslate"><span class="pre">lf::deque</span></code> <code class="docutils literal notranslate"><span class="pre">steal()</span></code> operation. </p>
 <p>This type is suitable for structured bindings. We return a custom type instead of a <code class="docutils literal notranslate"><span class="pre">std::optional</span></code> to allow for more information to be returned as to why a steal may fail. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4NK2lf7steal_tcvbEv">
-<span id="_CPPv3NK2lf7steal_tcvbEv"></span><span id="_CPPv2NK2lf7steal_tcvbEv"></span><span id="lf::steal_t::castto-b-operatorCCE"></span><span class="target" id="structlf_1_1ext_1_1steal__t_1a0825153beb780c19d3e77a09563c8376"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">explicit</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4NK2lf7steal_tcvbEv" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3NK2lf7steal_tcvbEv"></span><span id="_CPPv2NK2lf7steal_tcvbEv"></span><span id="lf::steal_t::castto-b-operatorCCE"></span><span class="target" id="structlf_1_1ext_1_1steal__t_1a0825153beb780c19d3e77a09563c8376"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">explicit</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4NK2lf7steal_tcvbEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Check if the operation succeeded. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4NK2lf7steal_tmlEv">
-<span id="_CPPv3NK2lf7steal_tmlEv"></span><span id="_CPPv2NK2lf7steal_tmlEv"></span><span id="lf::steal_t::mul-operatorCCE"></span><span class="target" id="structlf_1_1ext_1_1steal__t_1adab74cb02968a755fdc4a7b4150201cc"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">*</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN2lf7steal_tE" title="lf::steal_t::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">&amp;</span></span><a class="headerlink" href="#_CPPv4NK2lf7steal_tmlEv" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3NK2lf7steal_tmlEv"></span><span id="_CPPv2NK2lf7steal_tmlEv"></span><span id="lf::steal_t::mul-operatorCCE"></span><span class="target" id="structlf_1_1ext_1_1steal__t_1adab74cb02968a755fdc4a7b4150201cc"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">*</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN2lf7steal_tE" title="lf::steal_t::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">&amp;</span></span><a class="headerlink" href="#_CPPv4NK2lf7steal_tmlEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Get the value like <code class="docutils literal notranslate"><span class="pre">std::optional</span></code>. </p>
 <p>Requires <code class="docutils literal notranslate"><span class="pre">code</span> <span class="pre">==</span> <span class="pre">err::none</span></code> . </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N2lf7steal_tmlEv">
-<span id="_CPPv3N2lf7steal_tmlEv"></span><span id="_CPPv2N2lf7steal_tmlEv"></span><span id="lf::steal_t::mul-operatorCE"></span><span class="target" id="structlf_1_1ext_1_1steal__t_1a9781487a0a8769f6b4ba33f1db26022f"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">*</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN2lf7steal_tE" title="lf::steal_t::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">&amp;</span></span><a class="headerlink" href="#_CPPv4N2lf7steal_tmlEv" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N2lf7steal_tmlEv"></span><span id="_CPPv2N2lf7steal_tmlEv"></span><span id="lf::steal_t::mul-operatorCE"></span><span class="target" id="structlf_1_1ext_1_1steal__t_1a9781487a0a8769f6b4ba33f1db26022f"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">*</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN2lf7steal_tE" title="lf::steal_t::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">&amp;</span></span><a class="headerlink" href="#_CPPv4N2lf7steal_tmlEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Get the value like <code class="docutils literal notranslate"><span class="pre">std::optional</span></code>. </p>
 <p>Requires <code class="docutils literal notranslate"><span class="pre">code</span> <span class="pre">==</span> <span class="pre">err::none</span></code> . </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4NK2lf7steal_tptEv">
-<span id="_CPPv3NK2lf7steal_tptEv"></span><span id="_CPPv2NK2lf7steal_tptEv"></span><span id="lf::steal_t::pointer-operatorCCE"></span><span class="target" id="structlf_1_1ext_1_1steal__t_1ac26a28ef54331c12008d19909a02b9e5"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">-&gt;</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN2lf7steal_tE" title="lf::steal_t::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">*</span></span><a class="headerlink" href="#_CPPv4NK2lf7steal_tptEv" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3NK2lf7steal_tptEv"></span><span id="_CPPv2NK2lf7steal_tptEv"></span><span id="lf::steal_t::pointer-operatorCCE"></span><span class="target" id="structlf_1_1ext_1_1steal__t_1ac26a28ef54331c12008d19909a02b9e5"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">-&gt;</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN2lf7steal_tE" title="lf::steal_t::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="p"><span class="pre">*</span></span><a class="headerlink" href="#_CPPv4NK2lf7steal_tptEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Get the value <code class="docutils literal notranslate"><span class="pre">like</span> <span class="pre">std::optional</span></code>. </p>
 <p>Requires <code class="docutils literal notranslate"><span class="pre">code</span> <span class="pre">==</span> <span class="pre">err::none</span></code> . </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N2lf7steal_tptEv">
-<span id="_CPPv3N2lf7steal_tptEv"></span><span id="_CPPv2N2lf7steal_tptEv"></span><span id="lf::steal_t::pointer-operatorCE"></span><span class="target" id="structlf_1_1ext_1_1steal__t_1a47b0087b7e78de5ee0657d48a0e3f335"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">-&gt;</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN2lf7steal_tE" title="lf::steal_t::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">*</span></span><a class="headerlink" href="#_CPPv4N2lf7steal_tptEv" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N2lf7steal_tptEv"></span><span id="_CPPv2N2lf7steal_tptEv"></span><span id="lf::steal_t::pointer-operatorCE"></span><span class="target" id="structlf_1_1ext_1_1steal__t_1a47b0087b7e78de5ee0657d48a0e3f335"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">-&gt;</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN2lf7steal_tE" title="lf::steal_t::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">*</span></span><a class="headerlink" href="#_CPPv4N2lf7steal_tptEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Get the value <code class="docutils literal notranslate"><span class="pre">like</span> <span class="pre">std::optional</span></code>. </p>
 <p>Requires <code class="docutils literal notranslate"><span class="pre">code</span> <span class="pre">==</span> <span class="pre">err::none</span></code> . </p>
 </dd></dl>
@@ -333,13 +392,13 @@
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
 <dl class="cpp var">
 <dt class="sig sig-object cpp" id="_CPPv4N2lf7steal_t4codeE">
-<span id="_CPPv3N2lf7steal_t4codeE"></span><span id="_CPPv2N2lf7steal_t4codeE"></span><span id="lf::steal_t::code__err"></span><span class="target" id="structlf_1_1ext_1_1steal__t_1a63b2467f641bf45bf5e52ba659b6ebcc"></span><span class="n"><span class="pre">err</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">code</span></span></span><a class="headerlink" href="#_CPPv4N2lf7steal_t4codeE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N2lf7steal_t4codeE"></span><span id="_CPPv2N2lf7steal_t4codeE"></span><span id="lf::steal_t::code__err"></span><span class="target" id="structlf_1_1ext_1_1steal__t_1a63b2467f641bf45bf5e52ba659b6ebcc"></span><span class="n"><span class="pre">err</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">code</span></span></span><a class="headerlink" href="#_CPPv4N2lf7steal_t4codeE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>The error code of the <code class="docutils literal notranslate"><span class="pre">steal()</span></code> operation. </p>
 </dd></dl>
 
 <dl class="cpp var">
 <dt class="sig sig-object cpp" id="_CPPv4N2lf7steal_t3valE">
-<span id="_CPPv3N2lf7steal_t3valE"></span><span id="_CPPv2N2lf7steal_t3valE"></span><span id="lf::steal_t::val__T"></span><span class="target" id="structlf_1_1ext_1_1steal__t_1a42629756ecbbc4dc6b95d9f046a5a761"></span><a class="reference internal" href="#_CPPv4I0EN2lf7steal_tE" title="lf::steal_t::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">val</span></span></span><a class="headerlink" href="#_CPPv4N2lf7steal_t3valE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N2lf7steal_t3valE"></span><span id="_CPPv2N2lf7steal_t3valE"></span><span id="lf::steal_t::val__T"></span><span class="target" id="structlf_1_1ext_1_1steal__t_1a42629756ecbbc4dc6b95d9f046a5a761"></span><a class="reference internal" href="#_CPPv4I0EN2lf7steal_tE" title="lf::steal_t::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">val</span></span></span><a class="headerlink" href="#_CPPv4N2lf7steal_t3valE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>The value stolen from the deque, Only valid if <code class="docutils literal notranslate"><span class="pre">code</span> <span class="pre">==</span> <span class="pre">err::stolen</span></code>. </p>
 </dd></dl>
 
@@ -348,13 +407,13 @@
 
 <dl class="cpp struct">
 <dt class="sig sig-object cpp" id="_CPPv4I0EN2lf14return_nulloptE">
-<span id="_CPPv3I0EN2lf14return_nulloptE"></span><span id="_CPPv2I0EN2lf14return_nulloptE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="structlf_1_1ext_1_1return__nullopt"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">return_nullopt</span></span></span><a class="headerlink" href="#_CPPv4I0EN2lf14return_nulloptE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3I0EN2lf14return_nulloptE"></span><span id="_CPPv2I0EN2lf14return_nulloptE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="structlf_1_1ext_1_1return__nullopt"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">return_nullopt</span></span></span><a class="headerlink" href="#_CPPv4I0EN2lf14return_nulloptE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>A functor that returns <code class="docutils literal notranslate"><span class="pre">std::nullopt</span></code>. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-static-functions">Public Static Functions</p>
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N2lf14return_nulloptclEv">
-<span id="_CPPv3N2lf14return_nulloptclEv"></span><span id="_CPPv2N2lf14return_nulloptclEv"></span><span id="lf::return_nullopt::call-operatorCE"></span><span class="target" id="structlf_1_1ext_1_1return__nullopt_1adb49ca08440d9220b4da5b96ba9cb108"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">()</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">optional</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN2lf14return_nulloptE" title="lf::return_nullopt::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N2lf14return_nulloptclEv" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N2lf14return_nulloptclEv"></span><span id="_CPPv2N2lf14return_nulloptclEv"></span><span id="lf::return_nullopt::call-operatorCE"></span><span class="target" id="structlf_1_1ext_1_1return__nullopt_1adb49ca08440d9220b4da5b96ba9cb108"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">()</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">optional</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN2lf14return_nulloptE" title="lf::return_nullopt::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N2lf14return_nulloptclEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Returns <code class="docutils literal notranslate"><span class="pre">std::nullopt</span></code>. </p>
 </dd></dl>
 
@@ -363,10 +422,10 @@
 
 </section>
 <section id="wsq">
-<h2>WSQ<a class="headerlink" href="#wsq" title="Permalink to this heading">#</a></h2>
+<h2>WSQ<a class="headerlink" href="#wsq" title="Permalink to this heading">¶</a></h2>
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4I_9dequeableEN2lf3ext5dequeE">
-<span id="_CPPv3I_9dequeableEN2lf3ext5dequeE"></span><span id="_CPPv2I_9dequeableEN2lf3ext5dequeE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN2lf3ext9dequeableE" title="lf::ext::dequeable"><span class="n"><span class="pre">dequeable</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classlf_1_1ext_1_1deque"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">deque</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">private</span></span><span class="w"> </span><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="../../index.html#_CPPv4N2lf4implE" title="lf::impl"><span class="n"><span class="pre">impl</span></span></a><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">immovable</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_9dequeableEN2lf3ext5dequeE" title="lf::ext::deque"><span class="n"><span class="pre">deque</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_9dequeableEN2lf3ext5dequeE" title="lf::ext::deque::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4I_9dequeableEN2lf3ext5dequeE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3I_9dequeableEN2lf3ext5dequeE"></span><span id="_CPPv2I_9dequeableEN2lf3ext5dequeE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I0EN2lf3ext9dequeableE" title="lf::ext::dequeable"><span class="n"><span class="pre">dequeable</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classlf_1_1ext_1_1deque"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">deque</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">private</span></span><span class="w"> </span><span class="n"><span class="pre">lf</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="../../index.html#_CPPv4N2lf4implE" title="lf::impl"><span class="n"><span class="pre">impl</span></span></a><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">immovable</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_9dequeableEN2lf3ext5dequeE" title="lf::ext::deque"><span class="n"><span class="pre">deque</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_9dequeableEN2lf3ext5dequeE" title="lf::ext::deque::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4I_9dequeableEN2lf3ext5dequeE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>An unbounded lock-free single-producer multiple-consumer work-stealing deque. </p>
 <p><p>Implements the “Chase-Lev” deque described in the papers, <a class="reference external" href="https://doi.org/10.1145/1073970.1073974">“Dynamic Circular Work-Stealing deque”</a> and <a class="reference external" href="https://doi.org/10.1145/2442516.2442524">“Correct and Efficient Work-Stealing for Weak
 Memory Models”</a>.</p>
@@ -427,7 +486,7 @@ All threads must have finished using the deque before it is destructed.</p>
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-types">Public Types</p>
 <dl class="cpp type">
 <dt class="sig sig-object cpp" id="_CPPv4N2lf3ext5deque10value_typeE">
-<span id="_CPPv3N2lf3ext5deque10value_typeE"></span><span id="_CPPv2N2lf3ext5deque10value_typeE"></span><span class="target" id="classlf_1_1ext_1_1deque_1a4a60073491a389e5280efd99209eccb2"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">value_type</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_9dequeableEN2lf3ext5dequeE" title="lf::ext::deque::T"><span class="n"><span class="pre">T</span></span></a><a class="headerlink" href="#_CPPv4N2lf3ext5deque10value_typeE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N2lf3ext5deque10value_typeE"></span><span id="_CPPv2N2lf3ext5deque10value_typeE"></span><span class="target" id="classlf_1_1ext_1_1deque_1a4a60073491a389e5280efd99209eccb2"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">value_type</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I_9dequeableEN2lf3ext5dequeE" title="lf::ext::deque::T"><span class="n"><span class="pre">T</span></span></a><a class="headerlink" href="#_CPPv4N2lf3ext5deque10value_typeE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>The type of the elements in the deque. </p>
 </dd></dl>
 
@@ -436,13 +495,13 @@ All threads must have finished using the deque before it is destructed.</p>
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N2lf3ext5deque5dequeEv">
-<span id="_CPPv3N2lf3ext5deque5dequeEv"></span><span id="_CPPv2N2lf3ext5deque5dequeEv"></span><span id="lf::ext::deque::dequeCE"></span><span class="target" id="classlf_1_1ext_1_1deque_1ad1ec9de308ddaf02ea27b731340324db"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">deque</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2lf3ext5deque5dequeEv" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N2lf3ext5deque5dequeEv"></span><span id="_CPPv2N2lf3ext5deque5dequeEv"></span><span id="lf::ext::deque::dequeCE"></span><span class="target" id="classlf_1_1ext_1_1deque_1ad1ec9de308ddaf02ea27b731340324db"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">deque</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2lf3ext5deque5dequeEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Construct a new empty deque object. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N2lf3ext5deque5dequeENSt9ptrdiff_tE">
-<span id="_CPPv3N2lf3ext5deque5dequeENSt9ptrdiff_tE"></span><span id="_CPPv2N2lf3ext5deque5dequeENSt9ptrdiff_tE"></span><span id="lf::ext::deque::deque__std::ptrdiff_tCE"></span><span class="target" id="classlf_1_1ext_1_1deque_1ab25368a0efa2ad4885c38ba278be6be8"></span><span class="k"><span class="pre">explicit</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">deque</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ptrdiff_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">cap</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2lf3ext5deque5dequeENSt9ptrdiff_tE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N2lf3ext5deque5dequeENSt9ptrdiff_tE"></span><span id="_CPPv2N2lf3ext5deque5dequeENSt9ptrdiff_tE"></span><span id="lf::ext::deque::deque__std::ptrdiff_tCE"></span><span class="target" id="classlf_1_1ext_1_1deque_1ab25368a0efa2ad4885c38ba278be6be8"></span><span class="k"><span class="pre">explicit</span></span><span class="w"> </span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">deque</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ptrdiff_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">cap</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2lf3ext5deque5dequeENSt9ptrdiff_tE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Construct a new empty deque object. </p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -453,33 +512,33 @@ All threads must have finished using the deque before it is destructed.</p>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N2lf3ext5dequeD0Ev">
-<span id="_CPPv3N2lf3ext5dequeD0Ev"></span><span id="_CPPv2N2lf3ext5dequeD0Ev"></span><span id="lf::ext::deque::~dequeCE"></span><span class="target" id="classlf_1_1ext_1_1deque_1ad9973016a8edfaa18d8486a4f7c756cb"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">~deque</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N2lf3ext5dequeD0Ev" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N2lf3ext5dequeD0Ev"></span><span id="_CPPv2N2lf3ext5dequeD0Ev"></span><span id="lf::ext::deque::~dequeCE"></span><span class="target" id="classlf_1_1ext_1_1deque_1ad9973016a8edfaa18d8486a4f7c756cb"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">~deque</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N2lf3ext5dequeD0Ev" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Destroy the deque object. </p>
 <p>All threads must have finished using the deque before it is destructed. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4NK2lf3ext5deque8capacityEv">
-<span id="_CPPv3NK2lf3ext5deque8capacityEv"></span><span id="_CPPv2NK2lf3ext5deque8capacityEv"></span><span id="lf::ext::deque::capacityCCE"></span><span class="target" id="classlf_1_1ext_1_1deque_1a032dd34bd0480d43ad92deba7dd03d34"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">capacity</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="n"><span class="pre">ptrdiff_t</span></span><a class="headerlink" href="#_CPPv4NK2lf3ext5deque8capacityEv" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3NK2lf3ext5deque8capacityEv"></span><span id="_CPPv2NK2lf3ext5deque8capacityEv"></span><span id="lf::ext::deque::capacityCCE"></span><span class="target" id="classlf_1_1ext_1_1deque_1a032dd34bd0480d43ad92deba7dd03d34"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">capacity</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="n"><span class="pre">ptrdiff_t</span></span><a class="headerlink" href="#_CPPv4NK2lf3ext5deque8capacityEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Get the capacity of the deque. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4NK2lf3ext5deque5emptyEv">
-<span id="_CPPv3NK2lf3ext5deque5emptyEv"></span><span id="_CPPv2NK2lf3ext5deque5emptyEv"></span><span id="lf::ext::deque::emptyCCE"></span><span class="target" id="classlf_1_1ext_1_1deque_1a7c39895173b5122eca9e4efae5b2d5e0"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">empty</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><a class="headerlink" href="#_CPPv4NK2lf3ext5deque5emptyEv" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3NK2lf3ext5deque5emptyEv"></span><span id="_CPPv2NK2lf3ext5deque5emptyEv"></span><span id="lf::ext::deque::emptyCCE"></span><span class="target" id="classlf_1_1ext_1_1deque_1a7c39895173b5122eca9e4efae5b2d5e0"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">empty</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><a class="headerlink" href="#_CPPv4NK2lf3ext5deque5emptyEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Check if the deque is empty. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4I_NSt9invocableEEN2lf3ext5deque3popENSt15invoke_result_tI1FEERR1F">
-<span id="_CPPv3I_NSt9invocableEEN2lf3ext5deque3popERR1F"></span><span id="_CPPv2I_NSt9invocableEEN2lf3ext5deque3popERR1F"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">invocable</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">F</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN2lf14return_nulloptE" title="lf::return_nullopt"><span class="n"><span class="pre">return_nullopt</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_9dequeableEN2lf3ext5dequeE" title="lf::ext::deque::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classlf_1_1ext_1_1deque_1ae4373debb06d5af2e03c7d94334c1ba8"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">pop</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I_NSt9invocableEEN2lf3ext5deque3popENSt15invoke_result_tI1FEERR1F" title="lf::ext::deque::pop::F"><span class="n"><span class="pre">F</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">when_empty</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">is_nothrow_invocable_v</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_NSt9invocableEEN2lf3ext5deque3popENSt15invoke_result_tI1FEERR1F" title="lf::ext::deque::pop::F"><span class="n"><span class="pre">F</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">)</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">invoke_result_t</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_NSt9invocableEEN2lf3ext5deque3popENSt15invoke_result_tI1FEERR1F" title="lf::ext::deque::pop::F"><span class="n"><span class="pre">F</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4I_NSt9invocableEEN2lf3ext5deque3popENSt15invoke_result_tI1FEERR1F" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3I_NSt9invocableEEN2lf3ext5deque3popERR1F"></span><span id="_CPPv2I_NSt9invocableEEN2lf3ext5deque3popERR1F"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">invocable</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">F</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN2lf14return_nulloptE" title="lf::return_nullopt"><span class="n"><span class="pre">return_nullopt</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_9dequeableEN2lf3ext5dequeE" title="lf::ext::deque::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classlf_1_1ext_1_1deque_1ae4373debb06d5af2e03c7d94334c1ba8"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">pop</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I_NSt9invocableEEN2lf3ext5deque3popENSt15invoke_result_tI1FEERR1F" title="lf::ext::deque::pop::F"><span class="n"><span class="pre">F</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">when_empty</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">is_nothrow_invocable_v</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_NSt9invocableEEN2lf3ext5deque3popENSt15invoke_result_tI1FEERR1F" title="lf::ext::deque::pop::F"><span class="n"><span class="pre">F</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">)</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">invoke_result_t</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_NSt9invocableEEN2lf3ext5deque3popENSt15invoke_result_tI1FEERR1F" title="lf::ext::deque::pop::F"><span class="n"><span class="pre">F</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4I_NSt9invocableEEN2lf3ext5deque3popENSt15invoke_result_tI1FEERR1F" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Pop an item from the deque. </p>
 <p>Only the owner thread can pop out an item from the deque. If the buffer is empty calls <code class="docutils literal notranslate"><span class="pre">when_empty</span></code> and returns the result. By default, <code class="docutils literal notranslate"><span class="pre">when_empty</span></code> is a no-op that returns a null <code class="docutils literal notranslate"><span class="pre">std::optional&lt;T&gt;</span></code>. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N2lf3ext5deque4pushERK1T">
-<span id="_CPPv3N2lf3ext5deque4pushERK1T"></span><span id="_CPPv2N2lf3ext5deque4pushERK1T"></span><span id="lf::ext::deque::push__TCRCE"></span><span class="target" id="classlf_1_1ext_1_1deque_1a21b59ecb51784baa2f56a6fa268b17bd"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">push</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I_9dequeableEN2lf3ext5dequeE" title="lf::ext::deque::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">val</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2lf3ext5deque4pushERK1T" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N2lf3ext5deque4pushERK1T"></span><span id="_CPPv2N2lf3ext5deque4pushERK1T"></span><span id="lf::ext::deque::push__TCRCE"></span><span class="target" id="classlf_1_1ext_1_1deque_1a21b59ecb51784baa2f56a6fa268b17bd"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">push</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I_9dequeableEN2lf3ext5dequeE" title="lf::ext::deque::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">val</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N2lf3ext5deque4pushERK1T" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Push an item into the deque. </p>
 <p>Only the owner thread can insert an item into the deque. This operation can trigger the deque to resize if more space is required. This may throw if an allocation is required and then fails.</p>
 <dl class="field-list simple">
@@ -491,19 +550,19 @@ All threads must have finished using the deque before it is destructed.</p>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4NK2lf3ext5deque4sizeEv">
-<span id="_CPPv3NK2lf3ext5deque4sizeEv"></span><span id="_CPPv2NK2lf3ext5deque4sizeEv"></span><span id="lf::ext::deque::sizeCCE"></span><span class="target" id="classlf_1_1ext_1_1deque_1a6e1e7f682b3c8b60013c8f59933667f3"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">size</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><a class="headerlink" href="#_CPPv4NK2lf3ext5deque4sizeEv" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3NK2lf3ext5deque4sizeEv"></span><span id="_CPPv2NK2lf3ext5deque4sizeEv"></span><span id="lf::ext::deque::sizeCCE"></span><span class="target" id="classlf_1_1ext_1_1deque_1a6e1e7f682b3c8b60013c8f59933667f3"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">size</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><a class="headerlink" href="#_CPPv4NK2lf3ext5deque4sizeEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Get the number of elements in the deque. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4NK2lf3ext5deque5ssizeEv">
-<span id="_CPPv3NK2lf3ext5deque5ssizeEv"></span><span id="_CPPv2NK2lf3ext5deque5ssizeEv"></span><span id="lf::ext::deque::ssizeCCE"></span><span class="target" id="classlf_1_1ext_1_1deque_1a897070f6dd6aa3daedcdd11909a284c6"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ssize</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="n"><span class="pre">ptrdiff_t</span></span><a class="headerlink" href="#_CPPv4NK2lf3ext5deque5ssizeEv" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3NK2lf3ext5deque5ssizeEv"></span><span id="_CPPv2NK2lf3ext5deque5ssizeEv"></span><span id="lf::ext::deque::ssizeCCE"></span><span class="target" id="classlf_1_1ext_1_1deque_1a897070f6dd6aa3daedcdd11909a284c6"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ssize</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><span class="n"><span class="pre">ptrdiff_t</span></span><a class="headerlink" href="#_CPPv4NK2lf3ext5deque5ssizeEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Get the number of elements in the deque as a signed integer. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N2lf3ext5deque5stealEv">
-<span id="_CPPv3N2lf3ext5deque5stealEv"></span><span id="_CPPv2N2lf3ext5deque5stealEv"></span><span id="lf::ext::deque::stealCE"></span><span class="target" id="classlf_1_1ext_1_1deque_1ab48b338b7d7e023b7ec4dcbe6dfe765d"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">steal</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN2lf7steal_tE" title="lf::steal_t"><span class="n"><span class="pre">steal_t</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_9dequeableEN2lf3ext5dequeE" title="lf::ext::deque::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N2lf3ext5deque5stealEv" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N2lf3ext5deque5stealEv"></span><span id="_CPPv2N2lf3ext5deque5stealEv"></span><span id="lf::ext::deque::stealCE"></span><span class="target" id="classlf_1_1ext_1_1deque_1ab48b338b7d7e023b7ec4dcbe6dfe765d"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="kt"><span class="pre">auto</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">steal</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><span class="w"> </span><span class="o"><span class="pre">-&gt;</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN2lf7steal_tE" title="lf::steal_t"><span class="n"><span class="pre">steal_t</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4I_9dequeableEN2lf3ext5dequeE" title="lf::ext::deque::T"><span class="n"><span class="pre">T</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N2lf3ext5deque5stealEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Steal an item from the deque. </p>
 <p>Any threads can try to steal an item from the deque. This operation can fail if the deque is empty or if another thread simultaneously stole an item from the deque. </p>
 </dd></dl>
@@ -594,7 +653,7 @@ All threads must have finished using the deque before it is destructed.</p>
 </div><script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=ccbe24c1"></script>
     <script src="../../_static/doctools.js?v=888ff710"></script>
     <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
-    <script src="../../_static/scripts/furo.js?v=32e29ea5"></script>
+    <script src="../../_static/scripts/furo.js?v=4e2eecee"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=f281be69"></script>
     </body>
