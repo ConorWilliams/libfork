@@ -22,32 +22,15 @@
 #include <vector>      // for vector
 #include <version>     // for ptrdiff_t
 
+#include "libfork/core/impl/atomics.hpp" // for thread_fence_seq_cst
 #include "libfork/core/impl/utility.hpp" // for k_cache_line, immovable
 #include "libfork/core/macro.hpp"        // for LF_ASSERT, LF_STATIC_CALL, LF_STATIC_CONST
 
 /**
  * @file deque.hpp
  *
- * @brief A stand-alone, production-quality implementation of the Chase-Lev lock-free
- * single-producer multiple-consumer deque.
+ * @brief A production-quality implementation of the Chase-Lev lock-free SPMC deque.
  */
-
-/**
- * This is a workaround for clang generating bad codegen for ``std::atomic_thread_fence``.
- */
-
-#if defined(LF_USE_BOOST_ATOMIC) && defined(__clang__) && defined(__has_include)
-  #if __has_include(<boost/atomic.hpp>)
-    #include <boost/atomic.hpp>
-
-    #define LF_ATOMIC_THREAD_FENCE_SEQ_CST boost::atomic_thread_fence(boost::memory_order_seq_cst)
-  #else
-    #warning "Boost.Atomic not found, falling back to std::atomic_thread_fence"
-    #define LF_ATOMIC_THREAD_FENCE_SEQ_CST std::atomic_thread_fence(std::memory_order_seq_cst)
-  #endif
-#else
-  #define LF_ATOMIC_THREAD_FENCE_SEQ_CST std::atomic_thread_fence(std::memory_order_seq_cst)
-#endif
 
 namespace lf {
 
@@ -430,7 +413,7 @@ deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_v<F>) -> std::i
   impl::atomic_ring_buf<T> *buf = m_buf.load(relaxed);      //
   m_bottom.store(bottom, relaxed);                          // Stealers can no longer steal.
 
-  LF_ATOMIC_THREAD_FENCE_SEQ_CST;
+  impl::thread_fence_seq_cst();
 
   std::ptrdiff_t top = m_top.load(relaxed);
 
@@ -456,7 +439,7 @@ deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_v<F>) -> std::i
 template <dequeable T>
 constexpr auto deque<T>::steal() noexcept -> steal_t<T> {
   std::ptrdiff_t top = m_top.load(acquire);
-  LF_ATOMIC_THREAD_FENCE_SEQ_CST;
+  impl::thread_fence_seq_cst();
   std::ptrdiff_t const bottom = m_bottom.load(acquire);
 
   if (top < bottom) {
@@ -485,7 +468,5 @@ constexpr deque<T>::~deque() noexcept {
 } // namespace ext
 
 } // namespace lf
-
-#undef LF_ATOMIC_THREAD_FENCE_SEQ_CST
 
 #endif /* C9703881_3D9C_41A5_A7A2_44615C4CFA6A */
