@@ -71,6 +71,8 @@ if(NOT LF_NO_HWLOC)
     target_compile_definitions(libfork_libfork INTERFACE LF_USE_HWLOC)
     # Link to exported target.
     target_link_libraries(libfork_libfork INTERFACE hwloc::hwloc)
+    # Let user know version
+    message(STATUS "Found HWLOC version ${hwloc_VERSION}, NUMA support enabled!")
   else()
 
     find_package(PkgConfig)
@@ -79,13 +81,15 @@ if(NOT LF_NO_HWLOC)
 
       unset(HWLOC_FOUND CACHE) # Prevent dirty cache
 
-      pkg_search_module(HWLOC IMPORTED_TARGET hwloc>=2.0)
+      pkg_search_module(HWLOC QUIET IMPORTED_TARGET hwloc>=2.0)
 
       if(HWLOC_FOUND)
         # Instructs libfork to use hwloc.
         target_compile_definitions(libfork_libfork INTERFACE LF_USE_HWLOC)
         # Link to imported target.
         target_link_libraries(libfork_libfork INTERFACE PkgConfig::HWLOC)
+        # Let user know version
+        message(STATUS "Found HWLOC version ${HWLOC_VERSION}, NUMA support enabled!")
       else()
         message(WARNING "HWLOC: not found, NUMA support disabled!")
       endif()
