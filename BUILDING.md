@@ -40,7 +40,6 @@ Core:
 Optional:
 
 - __hwloc__ - see [below](#hwloc).
-- __boost-atomic__ - recommended for performance if using the clang compiler.
 
 Docs:
 
@@ -73,7 +72,7 @@ The easiest way to manage libfork's main dependencies (some of which are require
 -DCMAKE_TOOLCHAIN_FILE=<path to vcpkg>/scripts/buildsystems/vcpkg.cmake -DVCPKG_MANIFEST_FEATURES="<features>"
 ```
 
-where `<path to vcpkg>` is the path to your vcpkg installation and ``<features>`` is a colon-separated list of one or more of the available features: `test`, `benchmark`, `boost` and, `hwloc`. The `test` and `benchmark` features include the dependencies __required__  for the test and benchmark suits respectively. Alternatively, the `boost` and `hwloc` features are recommended - but optional - dependencies.
+where `<path to vcpkg>` is the path to your vcpkg installation and ``<features>`` is a colon-separated list of one or more of the available features: `test`, `benchmark` and, `hwloc`. The `test` and `benchmark` features include the dependencies __required__  for the test and benchmark suits respectively. Alternatively, the `hwloc` feature is a recommended - but optional - dependency.
 
 #### Hwloc
 
