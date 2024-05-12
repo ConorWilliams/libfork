@@ -110,20 +110,14 @@ __NOTE:__ The libfork port in vcpkg is kept up to date by Microsoft team members
 
 #### Conan2
 
-Libfork has best effort support for Conan2 and supplies a `conanfile.py`. Libfork is not yet available via conan-center, After building the package locally add the following line to your `conanfile.txt`
-
-```ini
-[requires]
-libfork/3.7.2
-```
-
-and install it to conan2 cache:
+Libfork is available in Conan Center Index, to install it run (Please make sure that you use a c++20 ready conan profile!):
 
 ```sh
-conan install .. --build missing
+conan install --requires=libfork/3.7.2 --build=missing
 ```
 
-(Please make sure that you use a c++20 ready conan profile!)
+Or add `libfork/3.7.2` to your conanfile recipe requirements.
+
 
 You may then use the library in your project's cmake:
 
@@ -134,6 +128,8 @@ target_link_libraries(
     project_target PRIVATE libfork::libfork
 )
 ```
+
+__NOTE:__ The libfork recipe in Conan is kept up to date by Conan team members and community contributors. If the version is out of date, please [create an issue or pull request](https://github.com/conan-io/conan-center-index) on the Conan repository.
 
 ### With CMake
 
