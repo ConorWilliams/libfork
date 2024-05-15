@@ -64,7 +64,7 @@ option(LF_NO_HWLOC "Disable hwloc support" OFF)
 
 if(NOT LF_NO_HWLOC)
   # Conan exports a proper target for hwloc, vcpkg does not.
-  find_package(hwloc 2.0 QUIET)
+  find_package(hwloc QUIET)
 
   if(hwloc_FOUND)
     # Instructs libfork to use hwloc.
@@ -81,7 +81,7 @@ if(NOT LF_NO_HWLOC)
 
       unset(HWLOC_FOUND CACHE) # Prevent dirty cache
 
-      pkg_search_module(HWLOC QUIET IMPORTED_TARGET hwloc>=2.0)
+      pkg_search_module(HWLOC QUIET IMPORTED_TARGET hwloc)
 
       if(HWLOC_FOUND)
         # Instructs libfork to use hwloc.

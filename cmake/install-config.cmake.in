@@ -5,7 +5,7 @@ include(CMakeFindDependencyMacro)
 find_dependency(Threads)
 
 if (@hwloc_FOUND@)
-    find_dependency(hwloc 2.0)
+    find_dependency(REQUIRED hwloc)
 elseif(@HWLOC_FOUND@)
     find_dependency(PkgConfig)
     pkg_search_module(HWLOC REQUIRED IMPORTED_TARGET hwloc)
