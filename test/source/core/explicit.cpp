@@ -90,7 +90,54 @@ inline constexpr auto loop = [](auto loop, int n, std::vector<worker_context *> 
   co_return std::ranges::all_of(res, std::identity{});
 };
 
+inline constexpr auto loop2 = [](auto loop, int n, std::vector<worker_context *> neigh) -> task<bool> {
+  //
+
+  std::vector<int> res(n == 0 ? neigh.size() : impl::checked_cast<std::size_t>(n));
+
+  if (n == 0) {
+    for (std::size_t i = 0; i < res.size(); ++i) {
+      if (n % 2 == 0) {
+        co_await lf::fork(&res[i], sch_on)(neigh[i]);
+      } else {
+        co_await lf::call(&res[i], sch_on)(neigh[i]);
+      }
+    }
+  } else {
+
+    lf::xoshiro rng{seed, std::random_device{}};
+
+    for (std::size_t i = 0; i < res.size(); ++i) {
+
+      std::ranges::shuffle(neigh, rng);
+
+      if (n % 2 == 0) {
+        co_await lf::fork(&res[i], loop)(n - 1, neigh);
+      } else {
+        co_await lf::call(&res[i], loop)(n - 1, neigh);
+      }
+    }
+  }
+
+  co_await lf::join;
+
+  co_return std::ranges::all_of(res, std::identity{});
+};
+
 } // namespace
+
+TEMPLATE_TEST_CASE("Explicit scheduling no alloc", "[explicit][template]", busy_pool, lazy_pool) {
+
+  TestType sch{std::min(4U, std::thread::hardware_concurrency())};
+
+  std::vector contexts(sch.contexts().begin(), sch.contexts().end());
+
+  for (int i = 0; i < 100; ++i) {
+    for (int j = 0; j < 5; ++j) {
+      REQUIRE(sync_wait(sch, loop2, j, contexts));
+    }
+  }
+}
 
 TEMPLATE_TEST_CASE("Explicit scheduling", "[explicit][template]", busy_pool, lazy_pool) {
 
