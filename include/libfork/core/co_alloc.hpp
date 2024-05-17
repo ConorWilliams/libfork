@@ -93,6 +93,7 @@ class stack_allocated : impl::immovable<stack_allocated<T>> {
    * @brief Destroys objects and releases the memory.
    */
   ~stack_allocated() noexcept {
+    LF_ASSERT(m_frame->stacklet() == impl::tls::stack()->top());
     std::ranges::destroy(m_span);
     auto *stack = impl::tls::stack();
     stack->deallocate(m_span.data());
