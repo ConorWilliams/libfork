@@ -21,7 +21,7 @@ jobs:
   test:
     name: macos-test-${{ matrix.build-type }}
 
-    runs-on: macos-13
+    runs-on: macos-14
 
     strategy:
       fail-fast: false
@@ -31,20 +31,22 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install the real clang
-        shell: pwsh
-        run: |
-          brew install llvm
+      # - name: Install the real clang
+      #   shell: pwsh
+      #   run: |
+      #     brew install llvm
       
-      # - uses: maxim-lobanov/setup-xcode@v1
-      #   with:
-      #     xcode-version: latest
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest
   
       - uses: ./.github/actions/setup
 
+      # -DCMAKE_CXX_COMPILER=/usr/local/opt/llvm/bin/clang++
+
       - name: Restore from cache the dependencies and generate project files
         shell: pwsh
-        run: cmake --preset=ci-macos -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DCMAKE_CXX_COMPILER=/usr/local/opt/llvm/bin/clang++
+        run: cmake --preset=ci-macos -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} 
 
       - name: Build
         run: cmake --build build --config ${{ matrix.build-type }} -j 2
