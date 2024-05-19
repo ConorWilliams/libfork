@@ -44,7 +44,7 @@ jobs:
 
       - name: Restore from cache the dependencies and generate project files
         shell: pwsh
-        run: cmake --preset=ci-macos -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} 
+        run: cmake --preset=ci-macos -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DCMAKE_CXX_COMPILER=/usr/local/opt/llvm/bin/clang++
 
       - name: Build
         run: cmake --build build --config ${{ matrix.build-type }} -j 2
