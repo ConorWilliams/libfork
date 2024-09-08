@@ -1,4 +1,0 @@
-breathe
-furo
-sphinx-copybutton
-

@@ -1,34 +1,23 @@
 {
   "name": "libfork",
-  "builtin-baseline": "da4b78d35084ec4e9808aa02017028da03b8d2ab",
+  "version-semver": "0.1.0",
+  "dependencies": [
+    {
+      "name": "fmt",
+      "version>=": "10.2.1#2"
+    }
+  ],
+  "default-features": [],
   "features": {
-    "hwloc": {
-      "description": "This an OPTIONAL dependency, it is used for cpu topology detection, it is recommended to use the system distribution if available.",
+    "test": {
+      "description": "Dependencies for testing",
       "dependencies": [
         {
-          "name": "hwloc",
-          "version>=": "2.5.0"
-        },
-        {
-          "name": "pkgconf",
-          "version>=": "2.2.0"
+          "name": "catch2",
+          "version>=": "3.6.0"
         }
       ]
-    },
-    "test": {
-      "description": "These are libfork's test-suite dependencies.",
-      "dependencies": [
-        "catch2"
-      ]
-    },
-    "benchmark": {
-      "description": "These are libfork's benchmarking dependencies.",
-      "dependencies": [
-        "benchmark",
-        "taskflow",
-        "tbb",
-        "concurrencpp"
-      ]
     }
-  }
+  },
+  "builtin-baseline": "ad25766aefb5313b6bc4e2a4b78a2946f84fbf66"
 }
