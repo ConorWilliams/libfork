@@ -17,12 +17,16 @@ include(Catch)
 
 # ---- Tests ----
 
-add_executable(libfork_test source/libfork_test.cpp)
+file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/test_*.cpp")
+
+add_executable(libfork_test ${TEST_SOURCES})
+
 target_link_libraries(
     libfork_test PRIVATE
     libfork::libfork
     Catch2::Catch2WithMain
 )
+
 target_compile_features(libfork_test PRIVATE cxx_std_20)
 
 catch_discover_tests(libfork_test)

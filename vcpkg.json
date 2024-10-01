@@ -5,6 +5,14 @@
     {
       "name": "fmt",
       "version>=": "10.2.1#2"
+    },
+    {
+      "name": "libassert",
+      "version>=": "2.1.0"
+    },
+    {
+      "name": "quill",
+      "version>=": "6.1.2"
     }
   ],
   "default-features": [],

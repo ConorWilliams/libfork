@@ -18,6 +18,7 @@ include(cmake/variables.cmake)
 add_library(
     libfork_libfork
     source/libfork.cpp
+    source/stack.cpp
 )
 add_library(libfork::libfork ALIAS libfork_libfork)
 
@@ -57,7 +58,15 @@ target_include_directories(
 
 target_compile_features(libfork_libfork PUBLIC cxx_std_20)
 
+# ---- Libs ----
+
+find_package(libassert REQUIRED)
+
+target_link_libraries(libfork_libfork PUBLIC libassert::assert)
+
+
 find_package(fmt REQUIRED)
+
 target_link_libraries(libfork_libfork PRIVATE fmt::fmt)
 
 # ---- Install rules ----
