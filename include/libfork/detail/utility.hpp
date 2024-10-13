@@ -217,22 +217,10 @@ auto map(std::vector<T> &&from, F &&func) -> std::vector<std::invoke_result_t<F 
  */
 template <typename T>
   requires requires (T &&ptr) {
-    { ptr == nullptr } -> std::convertible_to<bool>;
+    { ptr != nullptr } -> std::convertible_to<bool>;
   }
-constexpr auto
-non_null(T &&val,
-         [[maybe_unused]] std::source_location loc = std::source_location::current()) noexcept -> T && {
-#ifndef NDEBUG
-  if (val == nullptr) {
-    // NOLINTNEXTLINE
-    std::fprintf(stderr,
-                 "%s:%u: Null check failed: %s\n",
-                 loc.file_name(),
-                 checked_cast<unsigned>(loc.line()),
-                 loc.function_name());
-    std::terminate();
-  }
-#endif
+constexpr auto non_null(T &&val) noexcept -> T && {
+  LF_ASSERT(val != nullptr, "Value is null");
   return std::forward<T>(val);
 }
 
