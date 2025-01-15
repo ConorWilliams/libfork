@@ -6,10 +6,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include <algorithm>   // for max
-#include <bit>         // for has_single_bit
-#include <cstddef>     // for size_t, byte, nullptr_t
-#include <cstdlib>     // for free, malloc
+#include <algorithm> // for max
+#include <bit>       // for has_single_bit
+#include <cstddef>   // for size_t, byte, nullptr_t
+#include <cstdlib>   // for free, malloc
+#include <memory>
 #include <new>         // for bad_alloc
 #include <type_traits> // for is_trivially_default_constructible_v, is_trivia...
 #include <utility>     // for exchange, swap
@@ -56,7 +57,13 @@ namespace lf {
 
 namespace detail {
 
-void root_stacklet::pop_stacklet() noexcept {
+void root_stacklet::deleter::operator()(root_stacklet *ptr) noexcept {
+  LF_ASSERT(ptr);
+  LF_ASSERT(static_cast<link_stacklet *>(ptr->m_top) == ptr);
+  ptr->pop_stacklet();
+}
+
+void root_stacklet::pop_stacklet() {
 
   LF_ASSERT(m_top, "m_top should never be null");
   LF_ASSERT(!m_top->is_root(), "Root stacklet cannot pop itself");
@@ -68,7 +75,45 @@ void root_stacklet::pop_stacklet() noexcept {
   std::free(prev_top); // NOLINT
 }
 
-auto root_stacklet::next_zip_stacklet(std::size_t count, link_stacklet *prev) -> link_stacklet * {}
+auto root_stacklet::push_stacklet(std::size_t count) -> link_stacklet * {
+
+  count += sizeof(link_stacklet);
+  count = round_up_to_page_size(count);
+
+  void *ptr = std::malloc(count); // NOLINT
+
+  if (ptr == nullptr) {
+    LF_THROW(std::bad_alloc());
+  }
+
+  std::byte *lo = byte_cast(ptr) + sizeof(link_stacklet);
+  std::byte *hi = byte_cast(ptr) + count;
+
+  auto *new_top = new (ptr) link_stacklet{.lo = lo, .hi = hi, .prev = m_top}; // NOLINT
+
+  m_top = new_top;
+
+  return new_top;
+}
+
+auto push_stacklet(std::size_t count) -> root_stacklet * {
+
+  count += sizeof(root_stacklet);
+  count = round_up_to_page_size(count);
+
+  void *ptr = std::malloc(count); // NOLINT
+
+  if (ptr == nullptr) {
+    LF_THROW(std::bad_alloc());
+  }
+
+  std::byte *lo = byte_cast(ptr) + sizeof(root_stacklet);
+  std::byte *hi = byte_cast(ptr) + count;
+
+  auto *new_top = new (ptr) root_stacklet{.lo = lo, .hi = hi, .prev = nullptr}; // NOLINT
+
+  return new_top;
+}
 
 } // namespace detail
 
