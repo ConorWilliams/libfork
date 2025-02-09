@@ -175,8 +175,7 @@ using std::unreachable;
 
 /**
  * @brief If ``NDEBUG`` is defined then ``LF_ASSERT(expr)`` is
- * ``LF_ASSUME(expr)`` otherwise
- * ``assert(expr)``.
+ * ``LF_ASSUME(expr)`` otherwise ``assert(expr)``.
  */
 #ifndef NDEBUG
   #define LF_ASSERT(expr, ...) assert(expr)

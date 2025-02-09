@@ -1,6 +1,8 @@
 gtest_dep = dependency('gtest')
 gtest_main_dep = dependency('gtest_main')
 
+catch2_dep = dependency('catch2')
+
 sources = [
   'src/stack.cpp',
 ]
