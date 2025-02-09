@@ -18,7 +18,7 @@
 
 #include "libfork/zip_stack.hpp"
 
-#include "libfork/macro.hpp" // for LF_ASSERT, LF_LOG, LF_FORCEINLINE, LF_NOINLINE
+#include "libfork/macro.hpp"   // for LF_ASSERT, LF_LOG, LF_FORCEINLINE, LF_NOINLINE
 #include "libfork/utility.hpp" // for byte_cast, k_new_align, non_null, immovable
 
 namespace {
@@ -29,17 +29,15 @@ namespace {
  * Returns a new size that is at least `size` bytes and is close to a multiple
  * of the page size.
  */
-[[nodiscard]] constexpr auto
-round_up_to_page_size(std::size_t size) noexcept -> std::size_t {
+[[nodiscard]] constexpr auto round_up_to_page_size(std::size_t size) noexcept -> std::size_t {
 
   // Want to calculate req such that:
 
   // req + malloc_block_est is a multiple of the page size.
   // req > size + stacklet_size
 
-  constexpr std::size_t page_size = 4096; // 4 KiB on most systems.
-  constexpr std::size_t malloc_meta_data_size =
-      4 * sizeof(void *); // (over)estimate.
+  constexpr std::size_t page_size = 4096;                           // 4 KiB on most systems.
+  constexpr std::size_t malloc_meta_data_size = 4 * sizeof(void *); // (over)estimate.
 
   static_assert(std::has_single_bit(page_size));
 
@@ -54,74 +52,57 @@ round_up_to_page_size(std::size_t size) noexcept -> std::size_t {
   return request;
 }
 
+struct Alloc {
+  void *ptr;
+  std::byte *lo;
+  std::byte *hi;
+};
+
+auto alloc(std::size_t count, std::size_t plus) -> Alloc {
+
+  std::size_t tot = round_up_to_page_size(plus + count);
+
+  void *ptr = std::malloc(tot);
+
+  if (ptr == nullptr) {
+    LF_THROW(std::bad_alloc());
+  }
+
+  std::byte *lo = lf::detail::byte_cast(ptr) + sizeof(plus);
+  std::byte *hi = lf::detail::byte_cast(ptr) + tot;
+
+  return {ptr, lo, hi};
+}
+
 } // namespace
 
 namespace lf {
 
-namespace detail {
-
-void root_stacklet::deleter::operator()(root_stacklet *ptr) noexcept {
-  LF_ASSERT(ptr);
-  LF_ASSERT(static_cast<link_stacklet *>(ptr->m_top) == ptr);
-  ptr->pop_stacklet();
+auto root(std::size_t count) -> stack * {
+  auto [ptr, lo, hi] = alloc(count, sizeof(stack));
+  return new (ptr) stack{lo, hi};
 }
 
-void root_stacklet::pop_stacklet() {
+auto stack::push(std::size_t count) -> stacklet * {
+  auto [ptr, lo, hi] = alloc(count, sizeof(stacklet));
+  stacklet *new_stacklet = new (ptr) stacklet{lo, hi, m_top};
+  m_top = new_stacklet;
+  return new_stacklet;
+}
 
+void stack::pop() noexcept {
   LF_ASSERT(m_top, "m_top should never be null");
   LF_ASSERT(!m_top->is_root(), "Root stacklet cannot pop itself");
 
   auto *prev_top = std::exchange(m_top, m_top->prev);
-
   std::destroy_at(prev_top);
-
-  std::free(prev_top); // NOLINT
+  std::free(prev_top);
 }
 
-auto root_stacklet::push_stacklet(std::size_t count) -> link_stacklet * {
-
-  count += sizeof(link_stacklet);
-  count = round_up_to_page_size(count);
-
-  void *ptr = std::malloc(count); // NOLINT
-
-  if (ptr == nullptr) {
-    LF_THROW(std::bad_alloc());
-  }
-
-  std::byte *lo = byte_cast(ptr) + sizeof(link_stacklet);
-  std::byte *hi = byte_cast(ptr) + count;
-
-  // std::construct_at requires a T* not void*
-  auto *new_top =
-      new (ptr) link_stacklet{.lo = lo, .hi = hi, .prev = m_top}; // NOLINT
-
-  m_top = new_top;
-
-  return new_top;
+void stack::handle::deleter::operator()(stack *ptr) noexcept {
+  std::destroy_at(ptr);
+  std::free(ptr);
 }
-
-auto push_stacklet(std::size_t count) -> root_stacklet * {
-
-  count += sizeof(root_stacklet);
-  count = round_up_to_page_size(count);
-
-  void *ptr = std::malloc(count); // NOLINT
-
-  if (ptr == nullptr) {
-    LF_THROW(std::bad_alloc());
-  }
-
-  std::byte *lo = byte_cast(ptr) + sizeof(root_stacklet);
-  std::byte *hi = byte_cast(ptr) + count;
-
-  auto *new_top =
-      new (ptr) root_stacklet{.lo = lo, .hi = hi, .prev = nullptr}; // NOLINT
-
-  return new_top;
-}
-
-} // namespace detail
 
 void zip_stack::pop_stacklet() noexcept {
 
@@ -134,34 +115,42 @@ void zip_stack::pop_stacklet() noexcept {
   m_ctrl->pop_stacklet();
 }
 
-void zip_stack::next_stacklet(std::size_t count) {
+void stack::handle::make_space(std::size_t count) {
 
-  // If the current stacklet is empty we replace it.
+  // If the current stacklet is empty we remove it so that the previous
+  // allocation is always on the previous stacklet.
+
+  if (!m_root) {
+    *this = stack::handle{root(count)};
+    return;
+  }
+
+  // TODO: design tests to hit all of these
 
   if (empty()) {
-    // If top == root we need a new root, else we can just allocate,
-    pop_stacklet();
+    if (m_root->m_top->is_root()) {
+      *this = stack::handle{root(count)};
+      return;
+    }
+    m_root->pop();
   }
 
   constexpr std::size_t growth_factor = 2;
-
   std::size_t const cap = capacity();
 
-  LF_ASSERT(cap % 2 == 0, "Capacity is not even", capacity());
+  // Next stacklet should support undeflow of: cap / 2
+  // Undeflow must be multiple of k_new_align to maintain alignment.
+  auto underflow = round(cap / 2);
+  count = std::max(count, underflow + cap * growth_factor);
 
-  // Half prev capacity below
-  count = std::max(count, cap * growth_factor + cap / 2);
+  stacklet *next = m_root->push(count);
 
-  auto *next = detail::root_stacklet::next_zip_stacklet(count, m_ctrl.get());
+  m_lo = next->lo;
+  m_sp = next->lo + underflow;
+  m_hi = next->hi;
 
-  if (!m_ctrl) {
-    // We just allocated a root stacklet, take ownership.
-    m_ctrl = std::unique_ptr<root_t>{static_cast<root_t *>(next)};
-  }
-
-  LF_ASSERT(m_ctrl, "Post condition failed: zip-stack is null");
-  LF_ASSERT(unused() >= count,
-            "Post condition failed: insufficient space on stacklet");
+  LF_ASSERT(m_root, "Post condition failed: zip-stack is null");
+  LF_ASSERT(unused() >= count, "Post condition failed: insufficient space on stacklet");
 }
 
 } // namespace lf

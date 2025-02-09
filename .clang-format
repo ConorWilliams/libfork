@@ -1,20 +1,19 @@
 ---
 Language: Cpp
-ColumnLimit: 80
+ColumnLimit: 100
 IndentPPDirectives: BeforeHash
-AlwaysBreakTemplateDeclarations : true
-PackConstructorInitializers : CurrentLine
+AlwaysBreakTemplateDeclarations: true
+PackConstructorInitializers: CurrentLine
 AccessModifierOffset: -1
-IndentCaseLabels : true
+IndentCaseLabels: true
 AllowShortLambdasOnASingleLine: Empty
 RequiresExpressionIndentation: OuterScope
-BinPackArguments : false
-BinPackParameters : false
-LambdaBodyIndentation : Signature
-PenaltyReturnTypeOnItsOwnLine : 1
+BinPackArguments: false
+BinPackParameters: false
+LambdaBodyIndentation: Signature
+PenaltyReturnTypeOnItsOwnLine: 1
 
 SpaceBeforeParens: Custom
 SpaceBeforeParensOptions:
-    AfterRequiresInClause: true
-    AfterRequiresInExpression : true
-...
+  AfterRequiresInClause: true
+  AfterRequiresInExpression: true

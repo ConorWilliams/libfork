@@ -21,9 +21,9 @@
 #include <source_location> // for source_location
 #include <stdexcept>
 #include <type_traits> // for invoke_result_t, remove_cvref_t, type_identity, condit...
-#include <utility> // for cmp_greater, cmp_less, forward
-#include <vector>  // for vector
-#include <version> // for __cpp_lib_hardware_interference_size
+#include <utility>     // for cmp_greater, cmp_less, forward
+#include <vector>      // for vector
+#include <version>     // for __cpp_lib_hardware_interference_size
 
 #include "libfork/macro.hpp" // for LF_ASSERT, LF_HOF_RETURNS
 
@@ -63,20 +63,21 @@ static_assert(std::has_single_bit(k_new_align));
 /**
  * @brief Shorthand for `std::numeric_limits<std::unt32_t>::max()`.
  */
-static constexpr std::uint16_t k_u16_max =
-    std::numeric_limits<std::uint16_t>::max();
+static constexpr std::uint16_t k_u16_max = std::numeric_limits<std::uint16_t>::max();
 
 /**
  * @brief A dependent value to emulate `static_assert(false)` pre c++26.
  */
-template <typename...> inline constexpr bool always_false = false;
+template <typename...>
+inline constexpr bool always_false = false;
 
 // ---------------- Utility classes ---------------- //
 
 /**
  * @brief An empty type.
  */
-template <std::size_t = 0> struct empty_t {};
+template <std::size_t = 0>
+struct empty_t {};
 
 /**
  * If `Cond` is `true` then `T` otherwise an empty type.
@@ -92,7 +93,8 @@ using else_empty_t = std::conditional_t<Cond, T, empty_t<N>>;
  * The template parameter prevents multiple empty bases when inheriting multiple
  * classes.
  */
-template <typename CRTP> struct immovable {
+template <typename CRTP>
+struct immovable {
   immovable() = default;
 
   immovable(const immovable &) = delete;
@@ -120,8 +122,7 @@ template <typename From, typename To>
 struct forward_cv<From volatile, To> : std::type_identity<To volatile> {};
 
 template <typename From, typename To>
-struct forward_cv<From const volatile, To>
-    : std::type_identity<To const volatile> {};
+struct forward_cv<From const volatile, To> : std::type_identity<To const volatile> {};
 
 } // namespace detail
 
@@ -129,8 +130,7 @@ struct forward_cv<From const volatile, To>
  * @brief Copy the ``const``/``volatile`` qualifiers from ``From`` to ``To``.
  */
 template <typename From, typename To>
-  requires(!std::is_reference_v<From> &&
-           std::same_as<std::remove_cvref_t<To>, To>)
+  requires (!std::is_reference_v<From> && std::same_as<std::remove_cvref_t<To>, To>)
 using forward_cv_t = typename detail::forward_cv<From, To>::type;
 
 /**
@@ -146,14 +146,12 @@ concept unqualified = std::same_as<std::remove_cvref_t<T>, T>;
  * the defaults.
  */
 template <typename T, typename U>
-concept different_from =
-    !std::same_as<std::remove_cvref_t<U>, std::remove_cvref_t<T>>;
+concept different_from = !std::same_as<std::remove_cvref_t<U>, std::remove_cvref_t<T>>;
 
 // ---------------- Small functions ---------------- //
 
 /**
- * @brief Safe integral cast, will terminate if the cast would overflow in
- * debug.
+ * @brief Safe integral cast, will terminate if the cast would overflow in debug.
  */
 template <std::integral To, std::integral From>
 auto checked_cast(From val) noexcept -> To {
@@ -164,17 +162,12 @@ auto checked_cast(From val) noexcept -> To {
   constexpr auto from_min = std::numeric_limits<From>::min();
   constexpr auto from_max = std::numeric_limits<From>::max();
 
-  /**
-   *    [   from    ]
-   *     [   to   ]
-   */
-
   if constexpr (std::cmp_greater(to_min, from_min)) {
-    LF_ASSERT(val >= static_cast<From>(to_min) && "Underflow");
+    LF_ASSERT(val >= static_cast<From>(to_min), "Underflow");
   }
 
   if constexpr (std::cmp_less(to_max, from_max)) {
-    LF_ASSERT(val <= static_cast<From>(to_max) && "Overflow");
+    LF_ASSERT(val <= static_cast<From>(to_max), "Overflow");
   }
 
   return static_cast<To>(val);
@@ -202,8 +195,7 @@ auto map(std::vector<T> const &from, F &&func)
  * @brief Transform `[a, b, c] -> [f(a), f(b), f(c)]`.
  */
 template <typename T, typename F>
-auto map(std::vector<T> &&from, F &&func)
-    -> std::vector<std::invoke_result_t<F &, T>> {
+auto map(std::vector<T> &&from, F &&func) -> std::vector<std::invoke_result_t<F &, T>> {
 
   std::vector<std::invoke_result_t<F &, T>> out;
 
@@ -222,7 +214,7 @@ auto map(std::vector<T> &&from, F &&func)
  * @brief Returns ``ptr`` and asserts it is non-null in debug builds.
  */
 template <typename T>
-  requires requires(T &&ptr) {
+  requires requires (T &&ptr) {
     { ptr != nullptr } -> std::convertible_to<bool>;
   }
 constexpr auto non_null(T &&val) noexcept -> T && {
@@ -236,8 +228,7 @@ constexpr auto non_null(T &&val) noexcept -> T && {
  * @brief Cast a pointer to a byte pointer.
  */
 template <typename T>
-auto byte_cast(T *ptr)
-    LF_HOF_RETURNS(std::bit_cast<forward_cv_t<T, std::byte> *>(ptr))
+auto byte_cast(T *ptr) LF_HOF_RETURNS(std::bit_cast<forward_cv_t<T, std::byte> *>(ptr))
 
 } // namespace lf::detail
 

@@ -23,27 +23,6 @@
 
 // NOLINTBEGIN Sometime macros are the only way to do things...
 
-/**
- * @brief Use to conditionally decorate lambdas and ``operator()`` (alongside
- * ``LF_STATIC_CONST``) with
- * ``static``.
- */
-#ifdef __cpp_static_call_operator
-  #define LF_STATIC_CALL static
-#else
-  #define LF_STATIC_CALL
-#endif
-
-/**
- * @brief Use with ``LF_STATIC_CALL`` to conditionally decorate ``operator()``
- * with ``const``.
- */
-#ifdef __cpp_static_call_operator
-  #define LF_STATIC_CONST
-#else
-  #define LF_STATIC_CONST const
-#endif
-
 // clang-format off
 
 /**
@@ -166,9 +145,9 @@ using std::unreachable;
  * This is for expressions with side-effects.
  */
 #ifndef NDEBUG
-  #define LF_ASSERT_NO_ASSUME(expr) assert(expr)
+  #define LF_JUST_ASSERT(expr, ...) assert(expr)
 #else
-  #define LF_ASSERT_NO_ASSUME(expr)                                            \
+  #define LF_JUST_ASSERT(...)                                                  \
     do {                                                                       \
     } while (false)
 #endif
@@ -246,14 +225,6 @@ using std::unreachable;
 #endif
 
 #if defined(__clang__) && defined(__has_attribute)
-  /**
-   * @brief Compiler specific attribute.
-   */
-  #if __has_attribute(coro_return_type)
-    #define LF_CORO_RETURN_TYPE [[clang::coro_return_type]]
-  #else
-    #define LF_CORO_RETURN_TYPE
-  #endif
   /**
    * @brief Compiler specific attribute.
    */

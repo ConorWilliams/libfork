@@ -15,7 +15,6 @@
 #include <vector>
 
 #include "libfork/macro.hpp"
-#include "libfork/stack.hpp"
 #include "libfork/utility.hpp"
 
 /**
@@ -77,7 +76,7 @@ struct stack_debug {
 
   std::vector<allocation_record> allocations; ///< Order of allocations.
   int weak_count = 0;                         ///< Number of weak pointers.
-  bool owned = true; ///< If a zip_stack exists then this is owned.
+  bool owned = true;                          ///< If a zip_stack exists then this is owned.
 
   ~stack_debug() {
     LF_ASSERT(weak_count == 0, "Weak count is non-zero at destruction");
@@ -85,6 +84,10 @@ struct stack_debug {
     LF_ASSERT(owned, "Root stacklet is not owned at destruction");
   }
 };
+
+// Keep stack aligned.
+static_assert(sizeof(stacklet) >= k_new_align);
+static_assert(sizeof(stacklet) % k_new_align == 0);
 
 } // namespace detail
 
@@ -114,6 +117,12 @@ class stack : detail::stacklet {
         m_top{this} {}
 
   /**
+   * @brief Allocate a new zip-stacklet with a stack of size of at least `count`
+   * bytes.
+   */
+  friend auto root(std::size_t count) -> stack *;
+
+  /**
    * @brief Allocate a new zip-stacklet with a stack of size of at least
    * `count` bytes and attach it to the top of this zip-stacklet chain.
    *
@@ -128,17 +137,13 @@ class stack : detail::stacklet {
    */
   void pop() noexcept;
 
-  /**
-   * @brief Allocate a new zip-stacklet with a stack of size of at least `count`
-   * bytes.
-   */
-  friend auto root(std::size_t count) -> stack *;
-
  public:
   stack(stack const &) = delete;
   stack(stack &&) = delete;
   auto operator=(stack const &) -> stack & = delete;
   auto operator=(stack &&) -> stack & = delete;
+
+  ~stack() { LF_ASSERT(m_top == static_cast<stacklet *>(this), "destroyed with allocations"); }
 
   // Forward decl
   class handle;
@@ -162,14 +167,11 @@ class stack : detail::stacklet {
      * Requires the underlying zip-stack has been released and is unowned.
      */
     [[nodiscard]] auto acquire() && noexcept -> handle {
-
       // Will drop weak count via RAII
       std::unique_ptr root = std::move(m_root);
 
-      LF_ASSERT(root, "Cannot convert a null handle");
-      // TODO: SEMANTICS of assert outside debug?
-      LF_ASSERT(!std::exchange(root->m_debug.owned, true),
-                "Acquiring an owned root stacklet");
+      LF_ASSERT(root, "acquire on null");
+      LF_JUST_ASSERT(!std::exchange(root->m_debug.owned, true), "acquire on owned");
 
       return handle{root.get()};
     }
@@ -187,8 +189,8 @@ class stack : detail::stacklet {
      * @brief Construct a new weak handle.
      */
     explicit weak_handle(stack *ptr) noexcept : m_root{ptr} {
-      LF_ASSERT(m_root, "Cannot create a weak handle to a null zip-stack");
-      LF_ASSERT(++m_root->m_debug.weak_count > 0, "Weak count is negative");
+      LF_ASSERT(m_root, "weak handle must be non-null");
+      LF_JUST_ASSERT(++m_root->m_debug.weak_count > 0);
     }
 
     /**
@@ -196,8 +198,7 @@ class stack : detail::stacklet {
      */
     struct deleter {
       static void operator()(stack *ptr) noexcept {
-        LF_ASSERT(ptr);
-        LF_ASSERT(--ptr->m_debug.weak_count >= 0, "No weak handle to drop");
+        LF_JUST_ASSERT(--ptr->m_debug.weak_count >= 0);
       }
     };
 
@@ -217,18 +218,14 @@ class stack : detail::stacklet {
     /**
      * @brief Check if the zip-stack is null.
      */
-    [[nodiscard]] operator bool() const noexcept -> bool {
-      return static_cast<bool>(m_root);
-    }
+    [[nodiscard]] operator bool() const noexcept -> bool { return static_cast<bool>(m_root); }
 
     /**
      * @brief Construct a weak handle to this zip-stack.
      *
      * Requires that this zip-stack is non-null.
      */
-    [[nodiscard]] auto weak() noexcept -> weak_handle {
-      return weak_handle{m_root.get()};
-    }
+    [[nodiscard]] auto weak() noexcept -> weak_handle { return weak_handle{m_root.get()}; }
 
     /**
      * @brief Release ownership of the zip-stack.
@@ -240,45 +237,55 @@ class stack : detail::stacklet {
      */
 
     void release() && noexcept {
-      LF_ASSERT(ptr, "Cannot release a null handle");
-      LF_ASSERT(std::exchange(ptr->m_debug.owned, true),
-                "Releasing an unowned root stacklet");
-      ptr->m_sp = sp;
-      ptr.release();
+      LF_ASSERT(m_root, "release of null");
+      LF_JUST_ASSERT(std::exchange(m_root->m_debug.owned, true), "release unowned");
+      m_root->m_sp = m_sp;
+      // Ok to ignore return, it is the callers responsibility to have made a weak handle.
+      auto _ = m_root.release();
     }
 
     /**
      * @brief Allocate `count` bytes of memory on the zip-stack.
      *
-     * The zip stack may be null.
+     * The zip stack may be null, the count must be greater than zero.
      *
-     * The memory will be aligned to a multiple of
-     * `__STDCPP_DEFAULT_NEW_ALIGNMENT__`.
+     * The memory will be aligned to a multiple of `__STDCPP_DEFAULT_NEW_ALIGNMENT__`.
      *
      * Deallocate the memory with `deallocate` in a FILO manor.
      */
     [[nodiscard]] auto allocate(std::size_t count) -> void * {
 
-      // TODO: assert null implies empty
+      LF_ASSERT(count > 0, "Cannot allocate zero bytes");
+      LF_ASSERT(!m_root || empty(), "Null implies empty");
+      LF_ASSERT(!m_root || unused() == 0, "Null implies allocate");
 
-      count = round(count);
+      std::size_t rounded = round(count);
 
-      if (unused() < count) {
-        next_stacklet(count);
+      if (unused() < rounded) {
+        make_space(rounded);
       }
 
-      return std::exchange(m_sp, m_sp + count); // NOLINT
+      void *ptr = std::exchange(m_sp, m_sp + rounded);
+
+#ifndef NDEBUG
+      m_root->m_debug.allocations.push_back({ptr, count});
+#endif
+
+      return ptr;
     }
 
     /**
      * @brief Deallocate memory allocated on the zip-stack.
      *
      * The zip stack must not be null.
-     *
+
      * The memory must have been allocated with `allocate` and must be
      * deallocated in a FILO manor.
      */
-    void deallocate(void *ptr, std::size_t) noexcept;
+    void deallocate(void *ptr, std::size_t) noexcept {
+      //
+      LF_ASSERT(m_root, "deallocate on null");
+    }
 
    private:
     friend class weak_handle;
@@ -303,11 +310,7 @@ class stack : detail::stacklet {
      * @brief Properly delete the paired allocation.
      */
     struct deleter {
-      static void operator()(stack *ptr) noexcept {
-        LF_ASSERT(ptr);
-        std::destroy_at(ptr);
-        std::free(ptr); // NOLINT
-      }
+      static void operator()(stack *ptr) noexcept;
     };
 
     /**
@@ -343,13 +346,17 @@ class stack : detail::stacklet {
      * @brief Check if top stack is empty.
      */
     [[nodiscard]] auto empty() const noexcept -> bool { return m_sp == m_lo; }
-  };
 
-  ~stack() {
-    LF_ASSERT(m_top == static_cast<stacklet *>(this),
-              "Root stacklet destroyed with a top");
-  }
+    /**
+     * @brief Allocate new stacklet cleaningig up possibly empty top
+     */
+    auto make_space(std::size_t count) -> void;
+  };
 };
+
+// Keep stack aligned.
+static_assert(sizeof(stack) >= detail::k_new_align);
+static_assert(sizeof(stack) % detail::k_new_align == 0);
 
 } // namespace lf
 
