@@ -239,9 +239,18 @@ class stack : detail::stacklet {
     void release() && noexcept {
       LF_ASSERT(m_root, "release of null");
       LF_JUST_ASSERT(std::exchange(m_root->m_debug.owned, true), "release unowned");
+
       m_root->m_sp = m_sp;
-      // Ok to ignore return, it is the callers responsibility to have made a weak handle.
+      // Ok to ignore return, it is the callers responsibility to have made a
+      // weak handle.
       auto _ = m_root.release();
+
+      // Reset to ensure empty.
+      m_lo = nullptr;
+      m_sp = nullptr;
+      m_hi = nullptr;
+      LF_ASSERT(empty());
+      LF_ASSERT(unused() == 0);
     }
 
     /**
@@ -249,7 +258,8 @@ class stack : detail::stacklet {
      *
      * The zip stack may be null, the count must be greater than zero.
      *
-     * The memory will be aligned to a multiple of `__STDCPP_DEFAULT_NEW_ALIGNMENT__`.
+     * The memory will be aligned to a multiple of
+     * `__STDCPP_DEFAULT_NEW_ALIGNMENT__`.
      *
      * Deallocate the memory with `deallocate` in a FILO manor.
      */
@@ -262,13 +272,19 @@ class stack : detail::stacklet {
       std::size_t rounded = round(count);
 
       if (unused() < rounded) {
-        make_space(rounded);
+        // Cold path
+        push_stacklet(rounded);
       }
 
       void *ptr = std::exchange(m_sp, m_sp + rounded);
 
 #ifndef NDEBUG
-      m_root->m_debug.allocations.push_back({ptr, count});
+      LF_TRY {
+        m_root->m_debug.allocations.push_back({ptr, count});
+      } LF_CATCH_ALL {
+        deallocate(ptr, count);
+        LF_RETHROW;
+      }
 #endif
 
       return ptr;
@@ -282,9 +298,26 @@ class stack : detail::stacklet {
      * The memory must have been allocated with `allocate` and must be
      * deallocated in a FILO manor.
      */
-    void deallocate(void *ptr, std::size_t) noexcept {
+    void deallocate(void *ptr, std::size_t count) noexcept {
       //
       LF_ASSERT(m_root, "deallocate on null");
+
+#ifndef NDEBUG
+      LF_ASSERT(!m_root->m_debug.allocations.empty(), "deallocate on empty");
+      auto &last = m_root->m_debug.allocations.back();
+      LF_ASSERT(last.ptr == ptr, "deallocate on wrong ptr");
+      LF_ASSERT(last.count == count, "deallocate with wrong count");
+      m_root->m_debug.allocations.pop_back();
+#endif
+
+      std::size_t rounded = round(count);
+
+      if (used() < rounded) {
+        // Slow path
+        return pop_stacklet(ptr);
+      }
+
+      m_sp -= rounded;
     }
 
    private:
@@ -343,14 +376,24 @@ class stack : detail::stacklet {
       return detail::checked_cast<std::size_t>(m_hi - m_sp);
     }
     /**
+     * @brief Used space on the top stacklet's stack.
+     */
+    [[nodiscard]] auto used() const noexcept -> std::size_t {
+      return detail::checked_cast<std::size_t>(m_sp - m_lo);
+    }
+    /**
      * @brief Check if top stack is empty.
      */
     [[nodiscard]] auto empty() const noexcept -> bool { return m_sp == m_lo; }
 
     /**
-     * @brief Allocate new stacklet cleaningig up possibly empty top
+     * @brief Allocate new stacklet cleaningig up possibly empty top.
      */
-    auto make_space(std::size_t count) -> void;
+    auto push_stacklet(std::size_t count) -> void;
+    /**
+     * @brief Drop empty top stacklet.
+     */
+    auto pop_stacklet(void *ptr) noexcept -> void;
   };
 };
 

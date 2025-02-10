@@ -104,18 +104,18 @@ void stack::handle::deleter::operator()(stack *ptr) noexcept {
   std::free(ptr);
 }
 
-void zip_stack::pop_stacklet() noexcept {
+void stack::handle::pop_stacklet(void *ptr) noexcept {
 
-  LF_ASSERT(empty(), "Precondition failed: top stacklet is not empty");
+  m_root->pop();
 
-  if (!m_ctrl) {
-    return;
-  }
+  // TODO: Rename byte_cast -> as_byte_ptr
 
-  m_ctrl->pop_stacklet();
+  m_lo = m_root->m_top->lo;
+  m_sp = detail::byte_cast(ptr);
+  m_hi = m_root->m_top->hi;
 }
 
-void stack::handle::make_space(std::size_t count) {
+void stack::handle::push_stacklet(std::size_t count) {
 
   // If the current stacklet is empty we remove it so that the previous
   // allocation is always on the previous stacklet.
