@@ -13,6 +13,10 @@ BinPackParameters : false
 LambdaBodyIndentation : Signature
 PenaltyReturnTypeOnItsOwnLine : 1
 
+Macros:
+  - LF_TRY=if
+  - LF_CATCH_ALL=else
+
 SpaceBeforeParens: Custom
 SpaceBeforeParensOptions:
     AfterRequiresInClause: true
