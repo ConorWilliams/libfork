@@ -21,6 +21,7 @@ install_subdir('include/libfork', install_dir: 'include')
 
 libfork_sources = [
   'src/stack.cpp',
+  'src/zip_stack.cpp',
 ]
 
 libfork_lib = library(
@@ -29,6 +30,8 @@ libfork_lib = library(
   include_directories: inc,
   dependencies: [hwloc_dep, thread_dep],
   install: true,
+  version: meson.project_version(),
+  soversion: meson.project_version().split('.')[0],
 )
 
 # === Optional ===

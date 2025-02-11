@@ -1,18 +1,18 @@
-gtest_dep = dependency('gtest')
-gtest_main_dep = dependency('gtest_main')
-
 catch2_dep = dependency('catch2')
+catch2_with_main_dep = dependency('catch2-with-main')
 
 sources = [
-  'src/stack.cpp',
+  'src/zip.cpp',
 ]
 
+test_name = '@0@_test'.format(meson.project_name())
+
 libfork_test_exe = executable(
-  'libfork_test',
+  test_name,
   sources,
   include_directories: inc,
   link_with: libfork_lib,
-  dependencies: [gtest_dep, gtest_main_dep],
+  dependencies: [catch2_dep, catch2_with_main_dep],
 )
 
-test('libfork_test', libfork_test_exe)
+test(test_name, libfork_test_exe)

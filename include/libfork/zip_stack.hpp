@@ -218,7 +218,7 @@ class stack : detail::stacklet {
     /**
      * @brief Check if the zip-stack is null.
      */
-    [[nodiscard]] operator bool() const noexcept -> bool { return static_cast<bool>(m_root); }
+    [[nodiscard]] explicit operator bool() const noexcept { return static_cast<bool>(m_root); }
 
     /**
      * @brief Construct a weak handle to this zip-stack.
