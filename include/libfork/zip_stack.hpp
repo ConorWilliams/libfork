@@ -238,7 +238,7 @@ class stack : detail::stacklet {
 
     void release() && noexcept {
       LF_ASSERT(m_root, "release of null");
-      LF_JUST_ASSERT(std::exchange(m_root->m_debug.owned, true), "release unowned");
+      LF_JUST_ASSERT(std::exchange(m_root->m_debug.owned, false), "release unowned");
 
       m_root->m_sp = m_sp;
       // Ok to ignore return, it is the callers responsibility to have made a
