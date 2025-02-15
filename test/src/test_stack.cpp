@@ -44,8 +44,6 @@ TEST_CASE("Multiple allocs", "[stack]") {
 
   std::size_t k_allocs = GENERATE(1z, 2z, 10z, 100z, 1000z);
 
-  std::println("k_allocs={}", k_allocs);
-
   std::vector<alloc> allocs;
 
   for (std::size_t i = 0; i < k_allocs; i++) {
@@ -60,30 +58,18 @@ TEST_CASE("Multiple allocs", "[stack]") {
   }
 }
 
-namespace {
-
-void random_allocations(std::size_t k_allocs);
-
-} // namespace
-
 TEST_CASE("Random allocations", "[stack]") {
-  for (std::size_t allocs : {0U, 1U, 10U, 100U, 1000U, 10000U, 100000U}) {
-    random_allocations(allocs);
-  }
-}
-
-namespace {
-
-void random_allocations(std::size_t k_allocs) {
   //
   using lf::stack;
 
   stack::handle stack = {};
 
-  // Generate a list of random numbers
+  // Generate a list of random numbers.
 
   constexpr int low = -100;
-  constexpr int high = 200;
+  constexpr int high = 800;
+
+  std::size_t k_allocs = GENERATE(0, 1, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6);
 
   std::vector<int> sizes(k_allocs);
 
@@ -98,7 +84,6 @@ void random_allocations(std::size_t k_allocs) {
   std::vector<alloc> allocs;
 
   for (int size : sizes) {
-    std::println("size={}", size);
     if (size < 0 && !allocs.empty()) {
       auto [ptr, size] = allocs.back();
       allocs.pop_back();
@@ -115,5 +100,3 @@ void random_allocations(std::size_t k_allocs) {
     stack.deallocate(ptr, size);
   }
 }
-
-} // namespace
