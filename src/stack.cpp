@@ -83,9 +83,11 @@ auto root(std::size_t count) -> stack * {
 }
 
 auto stack::push(std::size_t count) -> stacklet * {
+  LF_LOG("push adds a new stacklet");
   auto [ptr, lo, hi] = alloc(count, sizeof(stacklet));
   auto *new_stacklet = new (ptr) stacklet{.lo = lo, .hi = hi, .prev = m_top};
   m_top = new_stacklet;
+  LF_ASSERT(!m_top->is_root(), "Post failed, m_top should be non-root");
   return new_stacklet;
 }
 
@@ -118,6 +120,7 @@ void stack::handle::push_stacklet(std::size_t count) {
   // allocation is always on the previous stacklet.
 
   if (!m_root) {
+    LF_LOG("push_stacklet makes root");
     *this = stack::handle{root(count)};
     return;
   }
@@ -126,9 +129,11 @@ void stack::handle::push_stacklet(std::size_t count) {
 
   if (empty()) {
     if (m_root->m_top->is_root()) {
+      LF_LOG("push_stacklet replaces root");
       *this = stack::handle{root(count)};
       return;
     }
+    LF_LOG("push_stacklet removes empty top");
     m_root->pop();
   }
 
@@ -138,9 +143,9 @@ void stack::handle::push_stacklet(std::size_t count) {
   // Next stacklet should support undeflow of: cap / 2
   // Undeflow must be multiple of k_new_align to maintain alignment.
   auto underflow = round(cap / 2);
-  count = std::max(count, underflow + (cap * growth_factor));
+  std::size_t extended_count = std::max(count, underflow + (cap * growth_factor));
 
-  stacklet *next = m_root->push(count);
+  stacklet *next = m_root->push(extended_count);
 
   m_lo = next->lo;
   m_sp = next->lo + underflow;
