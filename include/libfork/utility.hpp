@@ -24,7 +24,7 @@
 #include <vector>      // for vector
 #include <version>     // for __cpp_lib_hardware_interference_size
 
-#include "libfork/macro.hpp" // for LF_ASSERT, LF_HOF_RETURNS
+#include "libfork/macros/utility.hpp" // for LF_ASSERT, LF_HOF_RETURNS
 
 /**
  * @file utility.hpp
