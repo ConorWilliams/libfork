@@ -3,28 +3,8 @@
 .vscode/
 .cache/
 
-build/
-_build/
-cmake-build-*/
-prefix/
-old/
-Testing/
-
-docs/index.rst
-
-bench/data/
-*.svg
-
-mem.log
-memory.csv
-memory.*.csv
-test.pdf
-gmon.out
-out.png
-output.png
-
 **/.DS_Store
 
-compile_commands.json
-CMakeLists.txt.user
-CMakeUserPresets.json
+build*/
+
+
