@@ -1,5 +1,6 @@
 #!/bin/bash
-for file in $(find . -name '*.cpp' -o -name '*.hpp'); do
+
+for file in $(find . \( -name '*.cpp' -o -name '*.hpp' \) -not -path "./.*"); do
   if [ "${FIX:-false}" = "true" ]; then
     clang-format -i "$file"
   else
