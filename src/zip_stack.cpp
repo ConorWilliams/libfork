@@ -71,7 +71,7 @@ auto alloc(std::size_t count, std::size_t plus) -> Alloc {
   std::byte *lo = lf::detail::as_byte_ptr(ptr) + sizeof(plus);
   std::byte *hi = lf::detail::as_byte_ptr(ptr) + tot;
 
-  return {ptr, lo, hi};
+  return {.ptr = ptr, .lo = lo, .hi = hi};
 }
 
 } // namespace
@@ -85,7 +85,7 @@ auto root(std::size_t count) -> stack * {
 
 auto stack::push(std::size_t count) -> stacklet * {
   auto [ptr, lo, hi] = alloc(count, sizeof(stacklet));
-  stacklet *new_stacklet = new (ptr) stacklet{lo, hi, m_top};
+  auto *new_stacklet = new (ptr) stacklet{.lo = lo, .hi = hi, .prev = m_top};
   m_top = new_stacklet;
   return new_stacklet;
 }
@@ -139,7 +139,7 @@ void stack::handle::push_stacklet(std::size_t count) {
   // Next stacklet should support undeflow of: cap / 2
   // Undeflow must be multiple of k_new_align to maintain alignment.
   auto underflow = round(cap / 2);
-  count = std::max(count, underflow + cap * growth_factor);
+  count = std::max(count, underflow + (cap * growth_factor));
 
   stacklet *next = m_root->push(count);
 

@@ -1,5 +1,4 @@
-#ifndef DF63D333_F8C0_4BBA_97E1_32A78466B8B7
-#define DF63D333_F8C0_4BBA_97E1_32A78466B8B7
+#pragma once
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
 
@@ -231,5 +230,3 @@ template <typename T>
 auto as_byte_ptr(T *ptr) LF_HOF_RETURNS(std::bit_cast<forward_cv_t<T, std::byte> *>(ptr))
 
 } // namespace lf::detail
-
-#endif /* DF63D333_F8C0_4BBA_97E1_32A78466B8B7 */

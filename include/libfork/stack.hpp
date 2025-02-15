@@ -1,5 +1,4 @@
-#ifndef F7577AB3_0439_404D_9D98_072AB84FBCD0
-#define F7577AB3_0439_404D_9D98_072AB84FBCD0
+#pragma once
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
 
@@ -282,5 +281,3 @@ class stack_ptr : std::unique_ptr<stacklet, detail::stacklet_deleter> {
 };
 
 } // namespace lf
-
-#endif /* F7577AB3_0439_404D_9D98_072AB84FBCD0 */

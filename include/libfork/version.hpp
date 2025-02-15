@@ -1,7 +1,6 @@
 
 
-#ifndef LF_VERSION_HPP
-#define LF_VERSION_HPP
+#pragma once
 
 /**
  * @brief __[public]__ The major version of libfork.
@@ -27,5 +26,3 @@
  * ABI breaks are made.
  */
 #define LF_VERSION_PATCH 0
-
-#endif

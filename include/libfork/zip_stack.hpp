@@ -1,5 +1,4 @@
-#ifndef C4F946B7_9F01_49F3_B8F7_B9235E901BD7
-#define C4F946B7_9F01_49F3_B8F7_B9235E901BD7
+#pragma once
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
 
@@ -14,7 +13,8 @@
 #include <utility>
 #include <vector>
 
-#include "libfork/macro.hpp"
+#include "libfork/macros/assert.hpp"
+#include "libfork/macros/exceptions.hpp"
 #include "libfork/utility.hpp"
 
 /**
@@ -403,5 +403,3 @@ static_assert(sizeof(stack) >= detail::k_new_align);
 static_assert(sizeof(stack) % detail::k_new_align == 0);
 
 } // namespace lf
-
-#endif /* C4F946B7_9F01_49F3_B8F7_B9235E901BD7 */
