@@ -40,8 +40,8 @@
  * Overridable by defining ``LF_COMPILER_EXCEPTIONS``.
  */
 #ifndef LF_COMPILER_EXCEPTIONS
-  #if defined(__cpp_exceptions) ||                                             \
-      (defined(_MSC_VER) && defined(_CPPUNWIND)) || defined(__EXCEPTIONS)
+  #if defined(__cpp_exceptions) || (defined(_MSC_VER) && defined(_CPPUNWIND)) ||                   \
+      defined(__EXCEPTIONS)
     #define LF_COMPILER_EXCEPTIONS 1
   #else
     #define LF_COMPILER_EXCEPTIONS 0
@@ -81,8 +81,7 @@
     #define LF_THROW(X) std::terminate()
   #endif
   #ifndef NDEBUG
-    #define LF_RETHROW                                                         \
-      assert(false && "Tried to rethrow without compiler exceptions")
+    #define LF_RETHROW assert(false && "Tried to rethrow without compiler exceptions")
   #else
     #define LF_RETHROW std::terminate()
   #endif
@@ -131,11 +130,11 @@ using std::unreachable;
  * \endrst
  */
 
-#define LF_ASSUME(expr)                                                        \
-  do {                                                                         \
-    if (!(expr)) {                                                             \
-      ::lf::impl::unreachable();                                               \
-    }                                                                          \
+#define LF_ASSUME(expr)                                                                            \
+  do {                                                                                             \
+    if (!(expr)) {                                                                                 \
+      ::lf::impl::unreachable();                                                                   \
+    }                                                                                              \
   } while (false)
 
 /**
@@ -147,8 +146,8 @@ using std::unreachable;
 #ifndef NDEBUG
   #define LF_JUST_ASSERT(expr, ...) assert(expr)
 #else
-  #define LF_JUST_ASSERT(...)                                                  \
-    do {                                                                       \
+  #define LF_JUST_ASSERT(...)                                                                      \
+    do {                                                                                           \
     } while (false)
 #endif
 
@@ -229,8 +228,7 @@ using std::unreachable;
    * @brief Compiler specific attribute.
    */
   #if __has_attribute(coro_only_destroy_when_complete)
-    #define LF_CORO_ONLY_DESTROY_WHEN_COMPLETE                                 \
-      [[clang::coro_only_destroy_when_complete]]
+    #define LF_CORO_ONLY_DESTROY_WHEN_COMPLETE [[clang::coro_only_destroy_when_complete]]
   #else
     #define LF_CORO_ONLY_DESTROY_WHEN_COMPLETE
   #endif
@@ -238,8 +236,7 @@ using std::unreachable;
   /**
    * @brief Compiler specific attributes libfork uses for its coroutine types.
    */
-  #define LF_CORO_ATTRIBUTES                                                   \
-    LF_CORO_RETURN_TYPE LF_CORO_ONLY_DESTROY_WHEN_COMPLETE
+  #define LF_CORO_ATTRIBUTES LF_CORO_RETURN_TYPE LF_CORO_ONLY_DESTROY_WHEN_COMPLETE
 
 #else
   /**
@@ -281,8 +278,7 @@ using std::unreachable;
     #ifdef __cpp_lib_format
       #include <format>
 
-      #define LF_FORMAT(message, ...)                                          \
-        std::format((message)__VA_OPT__(, ) __VA_ARGS__)
+      #define LF_FORMAT(message, ...) std::format((message)__VA_OPT__(, ) __VA_ARGS__)
     #else
       #define LF_FORMAT(message, ...) (message)
     #endif
@@ -290,19 +286,16 @@ using std::unreachable;
     #ifdef __cpp_lib_syncbuf
       #include <syncstream>
 
-      #define LF_SYNC_COUT                                                     \
-        std::osyncstream(std::cout) << std::this_thread::get_id()
+      #define LF_SYNC_COUT std::osyncstream(std::cout) << std::this_thread::get_id()
     #else
       #define LF_SYNC_COUT std::cout << std::this_thread::get_id()
     #endif
 
-    #define LF_LOG(message, ...)                                               \
-      do {                                                                     \
-        if (!std::is_constant_evaluated()) {                                   \
-          LF_SYNC_COUT << ": "                                                 \
-                       << LF_FORMAT(message __VA_OPT__(, ) __VA_ARGS__)        \
-                       << '\n';                                                \
-        }                                                                      \
+    #define LF_LOG(message, ...)                                                                   \
+      do {                                                                                         \
+        if (!std::is_constant_evaluated()) {                                                       \
+          LF_SYNC_COUT << ": " << LF_FORMAT(message __VA_OPT__(, ) __VA_ARGS__) << '\n';           \
+        }                                                                                          \
       } while (false)
   #else
     #define LF_LOG(head, ...)
@@ -322,10 +315,8 @@ using std::unreachable;
  * @brief Depreciate operator() in favor of operator[] if multidimensional
  * subscript is available.
  */
-#if defined(__cpp_multidimensional_subscript) &&                               \
-    __cpp_multidimensional_subscript >= 202211L
-  #define LF_DEPRECATE_CALL                                                    \
-    [[deprecated("Use operator[] instead of operator()")]]
+#if defined(__cpp_multidimensional_subscript) && __cpp_multidimensional_subscript >= 202211L
+  #define LF_DEPRECATE_CALL [[deprecated("Use operator[] instead of operator()")]]
 #else
   #define LF_DEPRECATE_CALL
 #endif

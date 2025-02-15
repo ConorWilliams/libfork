@@ -6,7 +6,9 @@
 
 #include "libfork/stack.hpp"
 
-void test_alloc(std::size_t k_allocs) {
+void 
+
+test_alloc(std::size_t k_allocs) {
   //
   lf::stack_ptr stack = lf::make_stack();
 
@@ -33,8 +35,7 @@ void test_alloc(std::size_t k_allocs) {
       allocs.pop_back();
       stack.deallocate(last);
     } else if (size > 0) {
-      allocs.push_back(
-          stack.allocate(lf::detail::checked_cast<std::size_t>(size)));
+      allocs.push_back(stack.allocate(lf::detail::checked_cast<std::size_t>(size)));
     }
   }
 

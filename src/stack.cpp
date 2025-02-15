@@ -17,13 +17,13 @@
 
 #include "libfork/stack.hpp"
 
-#include "libfork/macro.hpp" // for LF_ASSERT, LF_LOG, LF_FORCEINLINE, LF_NOINLINE
+#include "libfork/macro.hpp"   // for LF_ASSERT, LF_LOG, LF_FORCEINLINE, LF_NOINLINE
 #include "libfork/utility.hpp" // for byte_cast, k_new_align, non_null, immovable
 
 namespace {
 
 #ifndef LF_FIBRE_INIT_SIZE
-#define LF_FIBRE_INIT_SIZE 1 // NOLINT
+  #define LF_FIBRE_INIT_SIZE 1 // NOLINT
 #endif
 
 /**
@@ -36,17 +36,15 @@ constexpr std::size_t fibre_init_size{LF_FIBRE_INIT_SIZE};
 /**
  * @brief Round size close to a multiple of the page_size.
  */
-[[nodiscard]] constexpr auto round_up_to_page_size(std::size_t size) noexcept
-    -> std::size_t {
+[[nodiscard]] constexpr auto round_up_to_page_size(std::size_t size) noexcept -> std::size_t {
 
   // Want calculate req such that:
 
   // req + malloc_block_est is a multiple of the page size.
   // req > size + stacklet_size
 
-  constexpr std::size_t page_size = 4096; // 4 KiB on most systems.
-  constexpr std::size_t malloc_meta_data_size =
-      6 * sizeof(void *); // An (over)estimate.
+  constexpr std::size_t page_size = 4096;                           // 4 KiB on most systems.
+  constexpr std::size_t malloc_meta_data_size = 6 * sizeof(void *); // An (over)estimate.
 
   static_assert(std::has_single_bit(page_size));
 
@@ -103,8 +101,7 @@ void stacklet::set_next(stacklet *new_next) noexcept {
   std::free(prev); // NOLINT
 }
 
-[[nodiscard]] auto stacklet::next_stacklet(std::size_t size, stacklet *prev)
-    -> stacklet * {
+[[nodiscard]] auto stacklet::next_stacklet(std::size_t size, stacklet *prev) -> stacklet * {
 
   LF_LOG("Allocating a new stacklet");
 
@@ -154,8 +151,7 @@ void stack_ptr::next_stacklet(std::size_t ext_size) {
   if (top->m_next != nullptr && top->m_next->capacity() >= ext_size) {
     *this = stack_ptr{top->m_next};
   } else {
-    *this = stack_ptr{
-        stacklet::next_stacklet(std::max(2 * top->capacity(), ext_size), top)};
+    *this = stack_ptr{stacklet::next_stacklet(std::max(2 * top->capacity(), ext_size), top)};
   }
 }
 

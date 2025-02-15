@@ -15,7 +15,7 @@
 #include <utility> // for exchange, swap
 #include <version>
 
-#include "libfork/macro.hpp" // for LF_ASSERT, LF_LOG, LF_FORCEINLINE, LF_NOINLINE
+#include "libfork/macro.hpp"   // for LF_ASSERT, LF_LOG, LF_FORCEINLINE, LF_NOINLINE
 #include "libfork/utility.hpp" // for byte_cast, k_new_align, non_null, immovable
 
 /**
@@ -131,8 +131,7 @@ class alignas(detail::k_new_align) stacklet : public detail::stack_span {
    *
    * Returns a pointer to the newly allocated stacklet.
    */
-  [[nodiscard]] static auto
-  next_stacklet(std::size_t size, stacklet *prev) -> stacklet *;
+  [[nodiscard]] static auto next_stacklet(std::size_t size, stacklet *prev) -> stacklet *;
 
   /**
    * @brief Doubly linked list (past).
