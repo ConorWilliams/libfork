@@ -1,5 +1,4 @@
-#ifndef C5DCA647_8269_46C2_B76F_5FA68738AEDA
-#define C5DCA647_8269_46C2_B76F_5FA68738AEDA
+#pragma once
 
 // Copyright © Conor Williams <conorwilliams@outlook.com>
 
@@ -10,6 +9,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include <cassert> // for assert
+#include <utility> // for unreachable
 #include <version> // for __cpp_lib_unreachable, ...
 
 /**
@@ -87,85 +87,6 @@
   #endif
 #endif
 
-#ifdef __cpp_lib_unreachable
-  #include <utility>
-#endif
-
-namespace lf::impl {
-
-#ifdef __cpp_lib_unreachable
-using std::unreachable;
-#else
-/**
- * @brief A homebrew version of `std::unreachable`, see
- * https://en.cppreference.com/w/cpp/utility/unreachable
- */
-[[noreturn]] inline void unreachable() {
-  // Uses compiler specific extensions if possible.
-  #if defined(_MSC_VER) && !defined(__clang__) // MSVC
-  __assume(false);
-  #else                                        // GCC, Clang
-  __builtin_unreachable();
-  #endif
-  // Even if no extension is used, undefined behavior is still raised by
-  // infinite loop.
-  for (;;) {
-  }
-}
-#endif
-
-} // namespace lf::impl
-
-/**
- * @brief Assume that A implies B.
- */
-#define LF_ASSERT_IMPLIES(a, b, ...) LF_ASSERT((!(a) || (b)) __VA_OPT__(, ) __VA_ARGS__)
-
-/**
- * @brief Invokes undefined behavior if ``expr`` evaluates to `false`.
- *
- * \rst
- *
- *  .. warning::
- *
- *    This has different semantics than ``[[assume(expr)]]`` as it WILL evaluate
- * the expression at runtime. Hence you should conservatively only use this
- * macro if ``expr`` is side-effect free and cheap to evaluate.
- *
- * \endrst
- */
-
-#define LF_ASSUME(expr)                                                                            \
-  do {                                                                                             \
-    if (!(expr)) {                                                                                 \
-      ::lf::impl::unreachable();                                                                   \
-    }                                                                                              \
-  } while (false)
-
-/**
- * @brief If ``NDEBUG`` is defined then ``LF_ASSERT(expr)`` is  `` `` otherwise
- * ``assert(expr)``.
- *
- * This is for expressions with side-effects.
- */
-#ifndef NDEBUG
-  #define LF_JUST_ASSERT(expr, ...) assert(expr)
-#else
-  #define LF_JUST_ASSERT(...)                                                                      \
-    do {                                                                                           \
-    } while (false)
-#endif
-
-/**
- * @brief If ``NDEBUG`` is defined then ``LF_ASSERT(expr)`` is
- * ``LF_ASSUME(expr)`` otherwise ``assert(expr)``.
- */
-#ifndef NDEBUG
-  #define LF_ASSERT(expr, ...) assert(expr)
-#else
-  #define LF_ASSERT(...) LF_ASSUME(__VA_ARGS__)
-#endif
-
 /**
  * @brief Macro to prevent a function to be inlined.
  */
@@ -173,13 +94,13 @@ using std::unreachable;
   #if defined(_MSC_VER) && !defined(__clang__)
     #define LF_NOINLINE __declspec(noinline)
   #elif defined(__GNUC__) && __GNUC__ > 3
-  // Clang also defines __GNUC__ (as 4)
+    // Clang also defines __GNUC__ (as 4)
     #if defined(__CUDACC__)
-  // nvcc doesn't always parse __noinline__, see:
-  // https://svn.boost.org/trac/boost/ticket/9392
+      // nvcc doesn't always parse __noinline__, see:
+      // https://svn.boost.org/trac/boost/ticket/9392
       #define LF_NOINLINE __attribute__((noinline))
     #elif defined(__HIP__)
-  // See https://github.com/boostorg/config/issues/392
+      // See https://github.com/boostorg/config/issues/392
       #define LF_NOINLINE __attribute__((noinline))
     #else
       #define LF_NOINLINE __attribute__((__noinline__))
@@ -221,7 +142,7 @@ using std::unreachable;
   #if defined(_MSC_VER) && !defined(__clang__)
     #define LF_FORCEINLINE __forceinline
   #elif defined(__GNUC__) && __GNUC__ > 3
-  // Clang also defines __GNUC__ (as 4)
+    // Clang also defines __GNUC__ (as 4)
     #define LF_FORCEINLINE __attribute__((__always_inline__))
   #else
     #define LF_FORCEINLINE
@@ -344,5 +265,3 @@ using std::unreachable;
 #endif
 
 // NOLINTEND
-
-#endif /* C5DCA647_8269_46C2_B76F_5FA68738AEDA */
