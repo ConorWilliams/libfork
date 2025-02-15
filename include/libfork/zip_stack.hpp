@@ -266,8 +266,8 @@ class stack : detail::stacklet {
     [[nodiscard]] auto allocate(std::size_t count) -> void * {
 
       LF_ASSERT(count > 0, "Cannot allocate zero bytes");
-      LF_ASSERT(!m_root || empty(), "Null implies empty");
-      LF_ASSERT(!m_root || unused() == 0, "Null implies allocate");
+      LF_ASSERT_IMPLIES(!m_root, empty(), "Null implies empty");
+      LF_ASSERT_IMPLIES(!m_root, unused() == 0, "Null implies allocate");
 
       std::size_t rounded = round(count);
 

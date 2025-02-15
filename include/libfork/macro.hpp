@@ -117,6 +117,11 @@ using std::unreachable;
 } // namespace lf::impl
 
 /**
+ * @brief Assume that A implies B.
+ */
+#define LF_ASSERT_IMPLIES(a, b, ...) LF_ASSERT((!(a) || (b)) __VA_OPT__(, ) __VA_ARGS__)
+
+/**
  * @brief Invokes undefined behavior if ``expr`` evaluates to `false`.
  *
  * \rst
