@@ -197,7 +197,9 @@ class stack : detail::stacklet {
      * @brief Decrements internal counters.
      */
     struct deleter {
-      static void operator()(stack *ptr) noexcept { LF_JUST_ASSERT(--ptr->m_debug.weak_count >= 0); }
+      static void operator()(stack *ptr) noexcept {
+        LF_JUST_ASSERT(--ptr->m_debug.weak_count >= 0);
+      }
     };
 
     std::unique_ptr<stack, deleter> m_root;
@@ -277,8 +279,9 @@ class stack : detail::stacklet {
       void *ptr = std::exchange(m_sp, m_sp + rounded);
 
 #ifndef NDEBUG
-      LF_TRY { m_root->m_debug.allocations.push_back({ptr, count}); }
-      LF_CATCH_ALL {
+      LF_TRY {
+        m_root->m_debug.allocations.push_back({ptr, count});
+      } LF_CATCH_ALL {
         deallocate(ptr, count);
         LF_RETHROW;
       }
@@ -311,7 +314,8 @@ class stack : detail::stacklet {
 
       if (used() < rounded) {
         // Slow path
-        return pop_stacklet(ptr);
+        pop_stacklet(ptr);
+        return;
       }
 
       m_sp -= rounded;
@@ -323,7 +327,11 @@ class stack : detail::stacklet {
     /**
      * @brief Construct a new handle object taking ownership of the zip-stack.
      */
-    explicit handle(stack *ptr) noexcept : m_root{ptr}, m_lo{ptr->lo}, m_sp{ptr->m_sp}, m_hi{ptr->hi} {}
+    explicit handle(stack *ptr) noexcept
+        : m_root{ptr},
+          m_lo{ptr->lo},
+          m_sp{ptr->m_sp},
+          m_hi{ptr->hi} {}
 
     /**
      * @brief Round to a multiple of '__STDCPP_DEFAULT_NEW_ALIGNMENT__'.
