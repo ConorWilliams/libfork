@@ -16,6 +16,7 @@ hwloc_dep = dependency('hwloc')
 thread_dep = dependency('threads')
 
 assert_dep = dependency('libassert', modules: ['libassert::assert'], required: false)
+dwarf_dep = dependency('libdwarf', required: false)
 
 # === Libfork ===
 
@@ -37,7 +38,7 @@ libfork_lib = library(
   meson.project_name(),
   libfork_sources,
   include_directories: inc,
-  dependencies: [hwloc_dep, thread_dep, assert_dep],
+  dependencies: [hwloc_dep, thread_dep, assert_dep, dwarf_dep],
   install: true,
   version: meson.project_version(),
   soversion: meson.project_version().split('.')[0],
@@ -47,7 +48,7 @@ libfork_lib = library(
 libfork_dep = declare_dependency(
   include_directories: inc,
   link_with: libfork_lib,
-  dependencies: [hwloc_dep, thread_dep, assert_dep],
+  dependencies: [hwloc_dep, thread_dep, assert_dep, dwarf_dep],
   compile_args: lib_args,
 )
 
