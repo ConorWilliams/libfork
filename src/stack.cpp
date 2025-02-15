@@ -16,7 +16,7 @@
 #include <utility>     // for exchange, swap
 #include <version>
 
-#include "libfork/zip_stack.hpp"
+#include "libfork/stack.hpp"
 
 #include "libfork/macro.hpp"   // for LF_ASSERT, LF_LOG, LF_FORCEINLINE, LF_NOINLINE
 #include "libfork/utility.hpp" // for byte_cast, k_new_align, non_null, immovable
