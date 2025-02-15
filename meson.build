@@ -25,7 +25,7 @@ inc = include_directories('include')
 install_subdir('include/libfork', install_dir: 'include')
 
 libfork_sources = [
-  'src/zip_stack.cpp',
+  'src/stack.cpp',
 ]
 
 lib_args = []
