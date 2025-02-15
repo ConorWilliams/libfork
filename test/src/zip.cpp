@@ -7,7 +7,9 @@ TEST_CASE("Basic stack ops", "[stack]") {
   lf::stack::handle h;
   REQUIRE(!h);
 
-  auto *ptr = h.allocate(32);
+  constexpr std::size_t size = 32;
+
+  auto *ptr = h.allocate(size);
   REQUIRE(h);
 
   auto w = h.weak();
@@ -16,5 +18,7 @@ TEST_CASE("Basic stack ops", "[stack]") {
   REQUIRE(!h);
 
   auto h2 = std::move(w).acquire();
-  h2.deallocate(ptr, 32);
+  h2.deallocate(ptr, size);
 }
+
+TEST_CASE() {}
