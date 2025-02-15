@@ -15,6 +15,8 @@
 
 #include "libfork/macros/assert.hpp"
 #include "libfork/macros/exceptions.hpp"
+#include "libfork/macros/logging.hpp"
+
 #include "libfork/utility.hpp"
 
 /**
@@ -264,6 +266,8 @@ class stack : detail::stacklet {
      * Deallocate the memory with `deallocate` in a FILO manor.
      */
     [[nodiscard]] auto allocate(std::size_t count) -> void * {
+
+      LF_LOG("allocate({})", count);
 
       LF_ASSERT(count > 0, "Cannot allocate zero bytes");
       LF_ASSERT_IMPLIES(!m_root, empty(), "Null implies empty");
