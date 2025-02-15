@@ -276,7 +276,7 @@ class stack : detail::stacklet {
         push_stacklet(rounded);
       }
 
-      void *ptr = std::exchange(m_sp, m_sp + rounded);
+      void *ptr = std::exchange(m_sp, m_sp + rounded); // NOLINT
 
 #ifndef NDEBUG
       LF_TRY {
@@ -318,7 +318,7 @@ class stack : detail::stacklet {
         return;
       }
 
-      m_sp -= rounded;
+      m_sp -= rounded; // NOLINT
     }
 
    private:
