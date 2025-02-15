@@ -1,2 +1,2 @@
 # Option to enable or disable tests
-option('test', type: 'boolean', value: true, description: 'Build test suite')
+option('lf_test', type: 'boolean', value: true, description: 'Build test suite')

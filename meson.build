@@ -54,7 +54,7 @@ libfork_dep = declare_dependency(
 
 # === Optional ===
 
-if get_option('test')
+if get_option('lf_test')
   subdir('test')
 endif
 
