@@ -68,8 +68,8 @@ auto alloc(std::size_t count, std::size_t plus) -> Alloc {
     LF_THROW(std::bad_alloc());
   }
 
-  std::byte *lo = lf::detail::byte_cast(ptr) + sizeof(plus);
-  std::byte *hi = lf::detail::byte_cast(ptr) + tot;
+  std::byte *lo = lf::detail::as_byte_ptr(ptr) + sizeof(plus);
+  std::byte *hi = lf::detail::as_byte_ptr(ptr) + tot;
 
   return {ptr, lo, hi};
 }
@@ -108,10 +108,8 @@ void stack::handle::pop_stacklet(void *ptr) noexcept {
 
   m_root->pop();
 
-  // TODO: Rename byte_cast -> as_byte_ptr
-
   m_lo = m_root->m_top->lo;
-  m_sp = detail::byte_cast(ptr);
+  m_sp = detail::as_byte_ptr(ptr);
   m_hi = m_root->m_top->hi;
 }
 

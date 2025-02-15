@@ -228,7 +228,7 @@ constexpr auto non_null(T &&val) noexcept -> T && {
  * @brief Cast a pointer to a byte pointer.
  */
 template <typename T>
-auto byte_cast(T *ptr) LF_HOF_RETURNS(std::bit_cast<forward_cv_t<T, std::byte> *>(ptr))
+auto as_byte_ptr(T *ptr) LF_HOF_RETURNS(std::bit_cast<forward_cv_t<T, std::byte> *>(ptr))
 
 } // namespace lf::detail
 

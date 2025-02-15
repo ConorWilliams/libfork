@@ -122,9 +122,9 @@ void stacklet::set_next(stacklet *new_next) noexcept {
     prev->set_next(next);
   }
 
-  next->lo = byte_cast(next) + sizeof(stacklet);
+  next->lo = as_byte_ptr(next) + sizeof(stacklet);
   next->sp = next->lo;
-  next->hi = byte_cast(next) + request;
+  next->hi = as_byte_ptr(next) + request;
 
   next->m_prev = prev;
   next->m_next = nullptr;
