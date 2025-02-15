@@ -55,7 +55,7 @@ namespace detail {
  */
 struct alignas(k_new_align) stacklet {
 
-  auto is_root() const noexcept -> bool { return prev != nullptr; }
+  auto is_root() const noexcept -> bool { return prev == nullptr; }
 
   std::byte *lo; ///< The start of the stacklet's stack.
   std::byte *hi; ///< The end of the stacklet's stack.
@@ -267,7 +267,7 @@ class stack : detail::stacklet {
      */
     [[nodiscard]] auto allocate(std::size_t count) -> void * {
 
-      LF_LOG("allocate({})", count);
+      LF_LOG("stack::allocate({})", count);
 
       LF_ASSERT(count > 0, "Cannot allocate zero bytes");
       LF_ASSERT_IMPLIES(!m_root, empty(), "Null implies empty");
@@ -277,8 +277,11 @@ class stack : detail::stacklet {
 
       if (unused() < rounded) {
         // Cold path
+        LF_LOG("stack::allocate pushes");
         push_stacklet(rounded);
       }
+
+      LF_ASSERT(m_root);
 
       void *ptr = std::exchange(m_sp, m_sp + rounded); // NOLINT
 
@@ -304,6 +307,8 @@ class stack : detail::stacklet {
      */
     void deallocate(void *ptr, std::size_t count) noexcept {
       //
+      LF_LOG("stack::deallocate({})", count);
+
       LF_ASSERT(m_root, "deallocate on null");
 
 #ifndef NDEBUG
@@ -318,6 +323,7 @@ class stack : detail::stacklet {
 
       if (used() < rounded) {
         // Slow path
+        LF_LOG("stack::deallocate pops");
         pop_stacklet(ptr);
         return;
       }
