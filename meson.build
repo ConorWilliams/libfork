@@ -63,6 +63,7 @@ endif
 # TODO: Ensure that consumers of libfork have assert_dep
 
 pkg_mod = import('pkgconfig')
+
 pkg_mod.generate(
   libfork_lib,
   extra_cflags: lib_args,

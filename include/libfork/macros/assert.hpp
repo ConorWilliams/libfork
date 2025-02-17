@@ -42,9 +42,9 @@
  *
  *  .. warning::
  *
- * This has different semantics than ``[[assume(expr)]]`` as it WILL evaluate
- * the expression at runtime. Hence you should conservatively only use this
- * macro if ``expr`` is side-effect free and cheap to evaluate.
+ *    This has different semantics than ``[[assume(expr)]]`` as it WILL evaluate
+ *    the expression at runtime. Hence you should conservatively only use this
+ *    macro if ``expr`` is side-effect free and cheap to evaluate.
  *
  * \endrst
  */

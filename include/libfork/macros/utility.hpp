@@ -69,7 +69,7 @@
  * .. note::
  *
  *    This does not imply the c++'s `inline` keyword which also has an effect on
- * linkage.
+ *    linkage.
  *
  * \endrst
  */
