@@ -8,12 +8,31 @@
 #include "libfork/macros/utility.hpp"
 #include "libfork/utility.hpp"
 
+/**
+ * @file ev.hpp
+ *
+ * @brief The wrapper class for return values from libfork's coroutines.
+ */
+
 namespace lf {
 
+/**
+ * @brief Test if a type is both trivially default constructible and trivially destructible.
+ *
+ * @tparam T The type to test.
+ */
 template <typename T>
-concept simple =
+concept trivial_return =
     std::is_trivially_default_constructible_v<T> && std::is_trivially_destructible_v<T>;
 
+/**
+ * @brief A wrapper for return values from libfork's coroutines.
+ *
+ * Essentially an immovable `std::optional` with a massivly reduced interface.
+ * Special handling for `trivial_return` types.
+ *
+ * @tparam T The type of the value to wrap.
+ */
 template <typename T>
 class ev : detail::immovable<ev<T>> {
  public:
@@ -36,8 +55,8 @@ class ev : detail::immovable<ev<T>> {
 
 // Specialization for simple types.
 
-template <simple T>
-class ev<T> {
+template <trivial_return T>
+class ev<T> : detail::immovable<ev<T>> {
  public:
   template <typename Self>
   constexpr auto operator*(this Self &&self) noexcept -> auto && {
