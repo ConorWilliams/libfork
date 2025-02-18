@@ -29,7 +29,7 @@ concept trivial_return =
  * @brief A wrapper for return values from libfork's coroutines.
  *
  * Essentially an immovable `std::optional` with a massivly reduced interface.
- * Special handling for `trivial_return` types.
+ * Special handling for `trivial_return` types and reference types.
  *
  * @tparam T The type of the value to wrap.
  */
@@ -37,10 +37,11 @@ template <typename T>
 class ev : detail::immovable<ev<T>> {
  public:
   template <typename Self>
-  constexpr auto operator*(this Self &&self) LF_HOF_RETURNS(*std::forward<Self>(self).m_value)
+  [[nodiscard]] constexpr auto operator*(this Self &&self)
+      LF_HOF_RETURNS(*std::forward<Self>(self).m_value)
 
   template <typename Self>
-  constexpr auto operator->(this Self &self) LF_HOF_RETURNS(self.m_value.operator->())
+  [[nodiscard]] constexpr auto operator->(this Self &self) LF_HOF_RETURNS(self.m_value.operator->())
 
  private:
   template <typename... Args>
@@ -53,18 +54,20 @@ class ev : detail::immovable<ev<T>> {
   std::optional<T> m_value;
 };
 
-// Specialization for simple types.
-
+/**
+ * @brief Specialisation of `ev` for `trivial_return` types.
+ */
 template <trivial_return T>
 class ev<T> : detail::immovable<ev<T>> {
  public:
   template <typename Self>
-  constexpr auto operator*(this Self &&self) noexcept -> auto && {
+  [[nodiscard]] constexpr auto operator*(this Self &&self) noexcept -> auto && {
     return std::forward<Self>(self).m_value;
   }
 
   template <typename Self>
-  constexpr auto operator->(this Self &self) LF_HOF_RETURNS(std::addressof(self.m_value))
+  [[nodiscard]] constexpr auto operator->(this Self &self)
+      LF_HOF_RETURNS(std::addressof(self.m_value))
 
  private:
   constexpr auto get() & -> T * { return std::addressof(m_value); }
