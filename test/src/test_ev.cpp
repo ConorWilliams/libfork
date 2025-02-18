@@ -51,11 +51,13 @@ TEMPLATE_TEST_CASE("Ev operator *", "[ev]", nt, int, int &, int &&, int const &,
   static_assert(std::same_as<decltype(*std::move(cval)), U const &&>);
 }
 
-TEMPLATE_TEST_CASE("Eventually operator ->", "[ev]", nt, int) {
+TEMPLATE_TEST_CASE("Eventually operator ->", "[ev]", nt, int, int &) {
+
+  using U = std::remove_reference_t<TestType>;
 
   lf::ev<TestType> val{};
-  static_assert(std::same_as<decltype(val.operator->()), TestType *>);
+  static_assert(std::same_as<decltype(val.operator->()), U *>);
 
   lf::ev<TestType> const cval{};
-  static_assert(std::same_as<decltype(cval.operator->()), TestType const *>);
+  static_assert(std::same_as<decltype(cval.operator->()), U const *>);
 }

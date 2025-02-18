@@ -69,6 +69,13 @@ class ev<T> : detail::immovable<ev<T>> {
   [[nodiscard]] constexpr auto operator->(this Self &self)
       LF_HOF_RETURNS(std::addressof(self.m_value))
 
+  // TODO: support oprator->() for this&& self param
+
+  // [[nodiscard]] constexpr auto operator->() noexcept -> T * { return std::addressof(m_value); }
+  // [[nodiscard]] constexpr auto operator->() const noexcept -> T * {
+  //   return std::addressof(m_value);
+  // }
+
  private:
   constexpr auto get() & -> T * { return std::addressof(m_value); }
 
@@ -85,6 +92,14 @@ class ev<T> {
   template <typename Self>
   [[nodiscard]] constexpr auto operator*(this Self &&self) noexcept -> auto && {
     return std::forward_like<Self>(*self.m_ptr);
+  }
+
+  [[nodiscard]] constexpr auto operator->() noexcept -> std::remove_reference_t<T> * {
+    return m_ptr;
+  }
+
+  [[nodiscard]] constexpr auto operator->() const noexcept -> std::remove_reference_t<T> const * {
+    return m_ptr;
   }
 
  private:
