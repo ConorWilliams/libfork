@@ -18,6 +18,7 @@ PenaltyReturnTypeOnItsOwnLine: 1
 Macros:
   - LF_TRY=if
   - LF_CATCH_ALL=else
+  - LF_HOF_RETURNS(x)={x}
 
 SpaceBeforeParens: Custom
 SpaceBeforeParensOptions:
