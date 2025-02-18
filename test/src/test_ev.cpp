@@ -6,7 +6,7 @@
 
 #include "libfork/ev.hpp"
 
-TEMPLATE_TEST_CASE("Eventually basics", "[ev]", int) {
+TEMPLATE_TEST_CASE("Eventually basics", "[ev]", int, std::string) {
 
   lf::ev<TestType> val{};
   static_assert(std::same_as<decltype(*val), TestType &>);
