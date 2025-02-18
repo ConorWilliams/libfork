@@ -75,4 +75,20 @@ class ev<T> : detail::immovable<ev<T>> {
   T m_value;
 };
 
+/**
+ * @brief A specialisation of `ev` for reference types.
+ */
+template <typename T>
+  requires std::is_reference_v<T>
+class ev<T> {
+ public:
+  template <typename Self>
+  [[nodiscard]] constexpr auto operator*(this Self &&self) noexcept -> auto && {
+    return std::forward_like<Self>(*self.m_ptr);
+  }
+
+ private:
+  std::add_pointer_t<std::remove_reference_t<T>> m_ptr;
+};
+
 } // namespace lf
