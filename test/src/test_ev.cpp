@@ -6,7 +6,7 @@
 
 #include "libfork/ev.hpp"
 
-TEMPLATE_TEST_CASE("Eventually basics", "[ev]", int, std::string) {
+TEMPLATE_TEST_CASE("Eventually operator *", "[ev]", int, std::string) {
 
   lf::ev<TestType> val{};
   static_assert(std::same_as<decltype(*val), TestType &>);
@@ -15,4 +15,13 @@ TEMPLATE_TEST_CASE("Eventually basics", "[ev]", int, std::string) {
   lf::ev<TestType> const cval{};
   static_assert(std::same_as<decltype(*cval), TestType const &>);
   static_assert(std::same_as<decltype(*std::move(cval)), TestType const &&>);
+}
+
+TEMPLATE_TEST_CASE("Eventually operator ->", "[ev]", int, std::string) {
+
+  lf::ev<TestType> val{};
+  static_assert(std::same_as<decltype(val.operator->()), TestType *>);
+
+  lf::ev<TestType> const cval{};
+  static_assert(std::same_as<decltype(cval.operator->()), TestType const *>);
 }
