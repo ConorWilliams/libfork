@@ -24,7 +24,7 @@ namespace lf {
  * @tparam T The type to test.
  */
 template <typename T>
-concept trivial_return = std::default_initializable<T> && std::is_trivially_destructible_v<T>;
+concept trivial_return = std::constructible_from<T> && std::is_trivially_destructible_v<T>;
 
 /**
  * @brief A wrapper for return values from libfork's coroutines.
@@ -61,6 +61,18 @@ class ev : detail::immovable<ev<T>> {
 template <trivial_return T>
 class ev<T> : detail::immovable<ev<T>> {
  public:
+  constexpr ev() = default;
+
+  /*
+   * @brief Default construct
+   *
+   * This is required to subsume the trivial constuctor for
+   * non default-initializable types like `int const`.
+   */
+  constexpr ev() noexcept
+    requires (!requires { ::new T; })
+      : m_value() {}
+
   template <typename Self>
   [[nodiscard]] constexpr auto operator*(this Self &&self) noexcept -> auto && {
     return std::forward<Self>(self).m_value;

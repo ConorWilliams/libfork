@@ -9,13 +9,8 @@
 
 namespace {
 
-template <typename T, typename Ref>
-concept deref_like = requires (T val, Ref ref) {
-  { *val } -> std::same_as<decltype((ref))>;
-  { *std::move(val) } -> std::same_as<decltype(std::move(ref))>;
-};
-
 struct non_trivial {
+  int x;
   constexpr ~non_trivial() {}
 };
 
@@ -25,17 +20,23 @@ consteval auto const_test() -> bool {
 
   {
     lf::ev<non_trivial const> x;
-    x.emplace();
+    x.emplace(5);
   }
 
   {
-    lf::ev<int> x;
+    lf::ev<int const> x;
     int const *p = x.get();
     std::construct_at(p, 3);
   }
 
   return true;
 }
+
+template <typename T, typename Ref>
+concept deref_like = requires (T val, Ref ref) {
+  { *val } -> std::same_as<decltype((ref))>;
+  { *std::move(val) } -> std::same_as<decltype(std::move(ref))>;
+};
 
 } // namespace
 
