@@ -32,6 +32,12 @@ consteval auto const_test() -> bool {
   return true;
 }
 
+} // namespace
+
+TEST_CASE("Ev constexpr tests", "[ev]") { REQUIRE(const_test()); }
+
+namespace {
+
 template <typename T, typename Ref>
 concept deref_like = requires (T val, Ref ref) {
   { *val } -> std::same_as<decltype((ref))>;
@@ -39,8 +45,6 @@ concept deref_like = requires (T val, Ref ref) {
 };
 
 } // namespace
-
-TEST_CASE("Ev constexpr tests", "[ev]") { REQUIRE(const_test()); }
 
 TEMPLATE_TEST_CASE("Ev operator *", "[ev]", non_trivial, int) {
 
@@ -65,13 +69,28 @@ TEMPLATE_TEST_CASE("Ev operator *", "[ev]", non_trivial, int) {
   static_assert(deref_like<ev<TestType const &&> const, TestType const &&>);
 }
 
-TEMPLATE_TEST_CASE("Eventually operator ->", "[ev]", non_trivial, non_trivial &, int, int &) {
+namespace {
 
-  using deref = std::remove_reference_t<TestType>;
+template <typename T, typename Ptr>
+concept points_like = requires (T val) { requires std::same_as<decltype(val.operator->()), Ptr>; };
 
-  lf::ev<TestType> val{};
-  static_assert(std::same_as<decltype(val.operator->()), deref *>);
+} // namespace
 
-  lf::ev<TestType> const cval{};
-  static_assert(std::same_as<decltype(cval.operator->()), deref const *>);
+TEMPLATE_TEST_CASE("Eventually operator ->", "[ev]", non_trivial, int) {
+
+  using lf::ev;
+
+  static_assert(points_like<ev<TestType>, TestType *>);
+  static_assert(points_like<ev<TestType> const, TestType const *>);
+
+  static_assert(points_like<ev<TestType const>, TestType const *>);
+  static_assert(points_like<ev<TestType const> const, TestType const *>);
+
+  static_assert(points_like<ev<TestType &>, TestType *>);
+  static_assert(points_like<ev<TestType &> const, TestType const *>);
+
+  static_assert(points_like<ev<TestType const &>, TestType const *>);
+  static_assert(points_like<ev<TestType const &> const, TestType const *>);
+
+  // TODO: &&
 }
