@@ -1,10 +1,12 @@
 #pragma once
 
+#include <concepts>
 #include <memory>
 #include <optional>
 #include <type_traits>
 #include <utility>
 
+#include "libfork/macros/assert.hpp"
 #include "libfork/macros/utility.hpp"
 #include "libfork/utility.hpp"
 
@@ -22,8 +24,7 @@ namespace lf {
  * @tparam T The type to test.
  */
 template <typename T>
-concept trivial_return =
-    std::is_trivially_default_constructible_v<T> && std::is_trivially_destructible_v<T>;
+concept trivial_return = std::default_initializable<T> && std::is_trivially_destructible_v<T>;
 
 /**
  * @brief A wrapper for return values from libfork's coroutines.
@@ -43,7 +44,6 @@ class ev : detail::immovable<ev<T>> {
   template <typename Self>
   [[nodiscard]] constexpr auto operator->(this Self &self) LF_HOF_RETURNS(self.m_value.operator->())
 
- private:
   template <typename... Args>
     requires std::constructible_from<T, Args...>
   constexpr void emplace(Args &&...args) & {
@@ -51,6 +51,7 @@ class ev : detail::immovable<ev<T>> {
     m_value.emplace(std::forward<Args>(args)...);
   }
 
+ private:
   std::optional<T> m_value;
 };
 
@@ -76,9 +77,9 @@ class ev<T> : detail::immovable<ev<T>> {
   //   return std::addressof(m_value);
   // }
 
- private:
   constexpr auto get() & -> T * { return std::addressof(m_value); }
 
+ private:
   T m_value;
 };
 
