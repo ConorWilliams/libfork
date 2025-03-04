@@ -42,7 +42,8 @@ class ev : detail::immovable<ev<T>> {
       LF_HOF_RETURNS(*std::forward<Self>(self).m_value)
 
   template <typename Self>
-  [[nodiscard]] constexpr auto operator->(this Self &self) LF_HOF_RETURNS(self.m_value.operator->())
+  [[nodiscard]] constexpr auto operator->(this Self &&self)
+      LF_HOF_RETURNS(std::forward<Self>(self).m_value.operator->())
 
   template <typename... Args>
     requires std::constructible_from<T, Args...>
@@ -79,15 +80,8 @@ class ev<T> : detail::immovable<ev<T>> {
   }
 
   template <typename Self>
-  [[nodiscard]] constexpr auto operator->(this Self &self)
+  [[nodiscard]] constexpr auto operator->(this Self &&self)
       LF_HOF_RETURNS(std::addressof(self.m_value))
-
-  // TODO: support oprator->() for this&& self param
-
-  // [[nodiscard]] constexpr auto operator->() noexcept -> T * { return std::addressof(m_value); }
-  // [[nodiscard]] constexpr auto operator->() const noexcept -> T * {
-  //   return std::addressof(m_value);
-  // }
 
   constexpr auto get() & -> T * { return std::addressof(m_value); }
 

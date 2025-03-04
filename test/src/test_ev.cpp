@@ -72,7 +72,10 @@ TEMPLATE_TEST_CASE("Ev operator *", "[ev]", non_trivial, int) {
 namespace {
 
 template <typename T, typename Ptr>
-concept points_like = requires (T val) { requires std::same_as<decltype(val.operator->()), Ptr>; };
+concept points_like = requires (T val, Ptr ref) {
+  { val.operator->() } -> std::same_as<Ptr>;
+  { std::move(val).operator->() } -> std::same_as<Ptr>;
+};
 
 } // namespace
 
@@ -92,5 +95,9 @@ TEMPLATE_TEST_CASE("Eventually operator ->", "[ev]", non_trivial, int) {
   static_assert(points_like<ev<TestType const &>, TestType const *>);
   static_assert(points_like<ev<TestType const &> const, TestType const *>);
 
-  // TODO: &&
+  static_assert(points_like<ev<TestType &&>, TestType *>);
+  static_assert(points_like<ev<TestType &&> const, TestType const *>);
+
+  static_assert(points_like<ev<TestType const &&>, TestType const *>);
+  static_assert(points_like<ev<TestType const &&> const, TestType const *>);
 }
