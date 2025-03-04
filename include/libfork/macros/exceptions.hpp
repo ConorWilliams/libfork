@@ -1,5 +1,7 @@
 #pragma once
 
+// Copyright © Conor Williams <conorwilliams@outlook.com>
+
 // SPDX-License-Identifier: MPL-2.0
 
 // This Source Code Form is subject to the terms of the Mozilla Public

@@ -20,7 +20,7 @@ consteval auto const_test() -> bool {
 
   {
     lf::ev<non_trivial const> x;
-    x.emplace(5);
+    x.emplace(1);
   }
 
   {
