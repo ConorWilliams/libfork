@@ -10,7 +10,7 @@ namespace {
 using namespace concurrencpp;
 
 auto fibonacci(executor_tag, thread_pool_executor *tpe, const int n) -> result<int> {
-  if (n <= 2) {
+  if (n < 2) {
     co_return n;
   }
 
