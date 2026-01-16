@@ -25,12 +25,16 @@ message(STATUS "CMAKE_BUILD_TYPE is set to '${CMAKE_BUILD_TYPE}'")
 
 find_package(Threads REQUIRED)
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  include(cmake/atomic.cmake)
+endif()
+
 # ------ Declare library ------
 
 add_library(libfork_libfork INTERFACE)
 add_library(libfork::libfork ALIAS libfork_libfork)
 
-target_link_libraries(libfork_libfork INTERFACE Threads::Threads)
+target_link_libraries(libfork_libfork INTERFACE Threads::Threads ${LIBFORK_EXTRA_LIBS})
 
 set_property(TARGET libfork_libfork PROPERTY EXPORT_NAME libfork)
 
