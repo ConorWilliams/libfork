@@ -7,8 +7,8 @@
       "description": "Use Homebrew LLVM compilers",
       "binaryDir": "${sourceDir}/build/llvm-brew",
       "generator": "Ninja",
+      "toolchainFile": "${sourceDir}/cmake/llvm-brew-toolchain.cmake",
       "cacheVariables": {
-        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/llvm-brew-toolchain.cmake",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
     }
