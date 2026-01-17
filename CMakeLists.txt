@@ -19,13 +19,28 @@ project(
 # TODO: set property per target
 set(CMAKE_CXX_MODULE_STD 1)
 
-# Make a library.
-add_library(libfork STATIC)
+# ---- System dependencies ----
+
+find_package(Threads REQUIRED)
+
+# ===========================
+
+add_library(libfork_libfork)
+add_library(libfork::libfork ALIAS libfork_libfork)
+
+target_link_libraries(libfork_libfork PUBLIC Threads::Threads)
+
+set_property(TARGET libfork_libfork PROPERTY EXPORT_NAME libfork)
+
+# target_include_directories(
+#   libfork_libfork ${warning_guard} INTERFACE "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
+# )
+
 
 # Add sources.
-target_sources(libfork PRIVATE src/libfork.cxx)
+target_sources(libfork_libfork PRIVATE src/libfork.cxx)
 
-target_compile_features(libfork PUBLIC cxx_std_23)
+target_compile_features(libfork_libfork PUBLIC cxx_std_23)
 
 # TODO: gate below this point behind a dev mode
 
@@ -49,9 +64,6 @@ endif()
 #
 # message(STATUS "CMAKE_BUILD_TYPE is set to '${CMAKE_BUILD_TYPE}'")
 #
-# # ---- System dependencies ----
-#
-# find_package(Threads REQUIRED)
 #
 # # ------ Declare library ------
 #
