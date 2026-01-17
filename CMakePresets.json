@@ -1,0 +1,26 @@
+{
+  "version": 10,
+  "configurePresets": [
+    {
+      "name": "llvm-brew",
+      "displayName": "LLVM (Homebrew)",
+      "description": "Use Homebrew LLVM compilers",
+      "binaryDir": "${sourceDir}/build/llvm-brew",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "/opt/homebrew/opt/llvm/bin/clang++",
+        "CMAKE_C_COMPILER": "/opt/homebrew/opt/llvm/bin/clang",
+        "CMAKE_PREFIX_PATH": "/opt/homebrew/opt/llvm",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_CXX_STDLIB_MODULES_JSON": "/opt/homebrew/opt/llvm@21/lib/c++/libc++.modules.json",
+        "CMAKE_OSX_SYSROOT": "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "llvm-brew",
+      "configurePreset": "llvm-brew"
+    }
+  ]
+}
