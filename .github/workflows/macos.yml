@@ -1,0 +1,24 @@
+name: macOS
+
+on:
+  push:
+    branches: ["modules"]
+  pull_request:
+    branches: ["modules"]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+
+      - name: Install Dependencies
+        run: brew bundle
+
+      - name: Configure, Build, and Test
+        run: cmake --workflow --preset llvm-brew
