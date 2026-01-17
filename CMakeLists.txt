@@ -5,7 +5,7 @@ set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
 
 include(cmake/read_version.cmake)
 
-read_version(${CMAKE_CURRENT_SOURCE_DIR}/include/libfork/core/macro.hpp)
+read_version(${CMAKE_CURRENT_SOURCE_DIR}/include/libfork/version.hpp)
 
 project(
   libfork
