@@ -1,6 +1,16 @@
+// Global module fragment where #includes can happen
+module;
+export module libfork;
+
 import std;
 
-void hello_world(std::string const &name) {
-  // hi
-  std::cout << "Hello World! My name is " << name << std::endl;
-}
+export class foo {
+ public:
+  foo();
+  ~foo();
+  void helloworld();
+};
+
+foo::foo() = default;
+foo::~foo() = default;
+void foo::helloworld() { std::cout << "hello world\n"; }

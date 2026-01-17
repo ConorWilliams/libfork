@@ -37,8 +37,12 @@ set_property(TARGET libfork_libfork PROPERTY EXPORT_NAME libfork)
 # )
 
 
-# Add sources.
-target_sources(libfork_libfork PRIVATE src/libfork.cxx)
+# Add the module file to the library
+target_sources(libfork_libfork
+  PUBLIC
+    FILE_SET CXX_MODULES FILES
+      src/libfork.cxx
+)
 
 target_compile_features(libfork_libfork PUBLIC cxx_std_23)
 

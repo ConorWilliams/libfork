@@ -1,8 +1,7 @@
-#include <string>
 
-void hello_world(std::string const &name);
+import libfork;
 
 int main(int argc, char *argv[]) {
-  hello_world(argv[0] ? argv[0] : "Voldemort?");
+  foo{}.helloworld();
   return 0;
 }
