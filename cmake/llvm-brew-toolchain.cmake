@@ -30,10 +30,12 @@ else()
   message(WARNING "Could not automatically find libc++.modules.json in ${LLVM_PREFIX}")
 endif()
 
-# Get macOS SDK path
-execute_process(
-  COMMAND xcrun --show-sdk-path
-  OUTPUT_VARIABLE CMAKE_OSX_SYSROOT
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-  COMMAND_ERROR_IS_FATAL ANY
-)
+# Get macOS SDK path (only on macOS)
+if(APPLE)
+  execute_process(
+    COMMAND xcrun --show-sdk-path
+    OUTPUT_VARIABLE CMAKE_OSX_SYSROOT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    COMMAND_ERROR_IS_FATAL ANY
+  )
+endif()
