@@ -18,5 +18,22 @@
       "name": "llvm-brew",
       "configurePreset": "llvm-brew"
     }
+  ],
+  "workflowPresets": [
+    {
+      "name": "llvm-brew",
+      "displayName": "LLVM (Homebrew) Workflow",
+      "description": "Configure and build using Homebrew LLVM",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "llvm-brew"
+        },
+        {
+          "type": "build",
+          "name": "llvm-brew"
+        }
+      ]
+    }
   ]
 }

@@ -27,6 +27,8 @@ target_sources(libfork PRIVATE src/libfork.cxx)
 
 target_compile_features(libfork PUBLIC cxx_std_23)
 
+# TODO: gate below this point behind a dev mode
+
 # ======================
 
 include(CTest) # Enables the BUILD_TESTING option
