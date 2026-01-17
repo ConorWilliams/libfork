@@ -19,6 +19,18 @@
       "configurePreset": "llvm-brew"
     }
   ],
+  "testPresets": [
+    {
+      "name": "llvm-brew",
+      "configurePreset": "llvm-brew",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "stopOnFailure": true
+      }
+    }
+  ],
   "workflowPresets": [
     {
       "name": "llvm-brew",
@@ -31,6 +43,10 @@
         },
         {
           "type": "build",
+          "name": "llvm-brew"
+        },
+        {
+          "type": "test",
           "name": "llvm-brew"
         }
       ]
