@@ -28,6 +28,7 @@ find_package(Threads REQUIRED)
 add_library(libfork_libfork)
 add_library(libfork::libfork ALIAS libfork_libfork)
 
+# TODO: could threads be private if we move all schedule into a lib?
 target_link_libraries(libfork_libfork PUBLIC Threads::Threads)
 
 set_property(TARGET libfork_libfork PROPERTY EXPORT_NAME libfork)
