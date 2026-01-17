@@ -55,14 +55,13 @@ Libfork is engineered for performance and has a comprehensive [benchmark suit](b
 - Up to 24× faster and 24× less memory consumption than openMP (libomp).
 - Up to 100× faster and >100× less memory consumption than taskflow.
 
-### Scheduler overhead 
+### Scheduler overhead
 
 For a quick comparison with other libraries, the average time to spawn/run a task during the recursive Fibonacci benchmark gives a good approximation to the tasking overhead and peak throughput:
 
 <p align="center">
   <img src="bench/basic/f40.svg" alt="Fibonacci task benchmark results" width=100%/>
 </p>
-
 
 ### Memory consumption
 
@@ -118,7 +117,6 @@ conan install --requires="libfork/[*]" --build=missing
 
 Or add `libfork/[*]` to your conanfile recipe requirements.
 
-
 You may then use the library in your project's cmake:
 
 ```cmake
@@ -163,24 +161,6 @@ target_link_libraries(
     project_target PRIVATE libfork::libfork
 )
 ```
-
-### Using git submodules
-
-You can incorporate libfork into your project as a git submodule. In this case, assuming you cloned libfork as a submodule into "external/libfork":
-
-```cmake
-add_subdirectory(external/libfork)
-
-target_link_libraries(
-    project_target PRIVATE libfork::libfork
-)
-```
-
-### Single header
-
-Although this is __not recommend__ and primarily exist for easy integration with [godbolt](https://godbolt.org/z/nTeGT34Gv); libfork supplies a [single header](single_header/libfork.hpp) that you can copy-and-paste into your project. See the [BUILDING](BUILDING.md) document's note about hwloc integration and compiler flags.
-
-<!-- TODO: godbolt with include. -->
 
 ## API reference
 
