@@ -3212,7 +3212,7 @@ concept first_arg_specialization = detail::is_first_arg_specialization<std::remo
 #include <concepts>    // for same_as
 #include <type_traits> // for remove_cvref_t
 #include <utility>     // for forward, as_const
-         // for async_function_object, quasi_pointer, firs...
+         // for async_function_object, quasi_pointer, first...
 #ifndef A7699F23_E799_46AB_B1E0_7EA36053AD41
 #define A7699F23_E799_46AB_B1E0_7EA36053AD41
 
