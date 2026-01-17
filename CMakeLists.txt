@@ -16,21 +16,27 @@ project(
 
 # Tell CMake that we explicitly want `import std`. This will initialize the
 # property on all targets declared after this to 1
+# TODO: set property per target
 set(CMAKE_CXX_MODULE_STD 1)
 
 # Make a library.
-add_library(uses_std STATIC)
+add_library(libfork STATIC)
 
 # Add sources.
-target_sources(uses_std PRIVATE uses_std.cxx)
+target_sources(libfork PRIVATE src/libfork.cxx)
 
-target_compile_features(uses_std PUBLIC cxx_std_23)
+target_compile_features(libfork PUBLIC cxx_std_23)
 
-# Make an executable.
-add_executable(main)
+# ======================
 
-target_sources(main PRIVATE main.cxx)
-target_link_libraries(main PRIVATE uses_std)
+include(CTest) # Enables the BUILD_TESTING option
+
+if(BUILD_TESTING)
+  add_subdirectory(test)
+endif()
+
+
+
 
 # list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 #
