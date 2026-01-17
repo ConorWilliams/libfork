@@ -24,12 +24,7 @@ file(GLOB_RECURSE LIBCXX_MODULES_JSON "${LLVM_PREFIX}/lib/**/libc++.modules.json
 if(LIBCXX_MODULES_JSON)
   set(CMAKE_CXX_STDLIB_MODULES_JSON "${LIBCXX_MODULES_JSON}")
 else()
-  message(WARNING "Could not automatically find libc++.modules.json in ${LLVM_PREFIX}")
-endif()
-
-find_program(NINJA_EXE ninja)
-if(NINJA_EXE)
-  set(CMAKE_MAKE_PROGRAM "${NINJA_EXE}")
+  message(FATAL_ERROR "Could not automatically find libc++.modules.json in ${LLVM_PREFIX}")
 endif()
 
 # Get macOS SDK path (only on macOS)
