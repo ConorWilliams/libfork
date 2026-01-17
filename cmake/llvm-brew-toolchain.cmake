@@ -16,7 +16,7 @@ execute_process(
 
 set(CMAKE_C_COMPILER "${LLVM_PREFIX}/bin/clang")
 set(CMAKE_CXX_COMPILER "${LLVM_PREFIX}/bin/clang++")
-set(CMAKE_PREFIX_PATH "${LLVM_PREFIX}")
+# set(CMAKE_PREFIX_PATH "${LLVM_PREFIX}")
 
 # Dynamically find the standard library modules JSON, brew puts it in the wrong place
 file(GLOB_RECURSE LIBCXX_MODULES_JSON "${LLVM_PREFIX}/lib/**/libc++.modules.json")
