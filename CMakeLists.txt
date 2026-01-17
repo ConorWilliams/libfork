@@ -5,7 +5,7 @@ set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
 
 include(cmake/read_version.cmake)
 
-read_version(${CMAKE_CURRENT_SOURCE_DIR}/include/libfork/core/macro.hpp)
+read_version(${CMAKE_CURRENT_SOURCE_DIR}/include/libfork/version.hpp)
 
 project(
   libfork
@@ -19,20 +19,52 @@ project(
 # TODO: set property per target
 set(CMAKE_CXX_MODULE_STD 1)
 
-# Make a library.
-add_library(uses_std STATIC)
+# ---- System dependencies ----
 
-# Add sources.
-target_sources(uses_std PRIVATE uses_std.cxx)
+find_package(Threads REQUIRED)
 
-# Tell CMake we're using C++23 but only C++20 is needed to consume it.
-target_compile_features(uses_std INTERFACE cxx_std_23)
+# ===========================
 
-# Make an executable.
-add_executable(main)
+add_library(libfork_libfork)
+add_library(libfork::libfork ALIAS libfork_libfork)
 
-target_sources(main PRIVATE main.cxx)
-target_link_libraries(main PRIVATE uses_std)
+# target_link_libraries(libfork_libfork PRIVATE Threads::Threads)
+
+set_property(TARGET libfork_libfork PROPERTY EXPORT_NAME libfork)
+
+target_compile_features(libfork_libfork PUBLIC cxx_std_23)
+
+# Public headers
+target_sources(libfork_libfork
+  PUBLIC
+    FILE_SET HEADERS FILES
+      include/libfork/version.hpp
+    BASE_DIRS
+      include
+)
+
+# Add the module files to the library, must be public because
+# consumers will need bo build the BMI
+target_sources(libfork_libfork
+  PUBLIC
+    FILE_SET CXX_MODULES FILES
+      src/libfork.cxx
+    PRIVATE
+      src/libfork.cpp
+)
+
+# ======================
+
+# TODO: gate below this point behind a dev mode
+
+include(CTest) # Enables the BUILD_TESTING option
+
+if(BUILD_TESTING)
+  add_subdirectory(test)
+endif()
+
+
+
 
 # list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 #
@@ -43,9 +75,6 @@ target_link_libraries(main PRIVATE uses_std)
 #
 # message(STATUS "CMAKE_BUILD_TYPE is set to '${CMAKE_BUILD_TYPE}'")
 #
-# # ---- System dependencies ----
-#
-# find_package(Threads REQUIRED)
 #
 # # ------ Declare library ------
 #

@@ -1,0 +1,99 @@
+{
+  "version": 10,
+  "configurePresets": [
+    {
+      "name": "llvm-brew",
+      "displayName": "LLVM (Homebrew)",
+      "description": "Use Homebrew LLVM compilers",
+      "binaryDir": "${sourceDir}/build/llvm-brew",
+      "generator": "Ninja",
+      "toolchainFile": "${sourceDir}/cmake/llvm-brew-toolchain.cmake",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "gcc-brew",
+      "displayName": "GCC (Homebrew)",
+      "description": "Use Homebrew GCC compilers",
+      "binaryDir": "${sourceDir}/build/gcc-brew",
+      "generator": "Ninja",
+      "toolchainFile": "${sourceDir}/cmake/gcc-brew-toolchain.cmake",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "llvm-brew",
+      "configurePreset": "llvm-brew"
+    },
+    {
+      "name": "gcc-brew",
+      "configurePreset": "gcc-brew"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "llvm-brew",
+      "configurePreset": "llvm-brew",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "gcc-brew",
+      "configurePreset": "gcc-brew",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "stopOnFailure": true
+      }
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "llvm-brew",
+      "displayName": "LLVM (Homebrew) Workflow",
+      "description": "Configure and build using Homebrew LLVM",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "llvm-brew"
+        },
+        {
+          "type": "build",
+          "name": "llvm-brew"
+        },
+        {
+          "type": "test",
+          "name": "llvm-brew"
+        }
+      ]
+    },
+    {
+      "name": "gcc-brew",
+      "displayName": "GCC (Homebrew) Workflow",
+      "description": "Configure and build using Homebrew GCC",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "gcc-brew"
+        },
+        {
+          "type": "build",
+          "name": "gcc-brew"
+        },
+        {
+          "type": "test",
+          "name": "gcc-brew"
+        }
+      ]
+    }
+  ]
+}

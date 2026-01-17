@@ -1,0 +1,24 @@
+name: Linux
+
+on:
+  push:
+    branches: ["modules"]
+  pull_request:
+    branches: ["modules"]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+
+      - name: Install Dependencies
+        run: brew install cmake ninja gcc
+
+      - name: Configure, Build, and Test
+        run: cmake --workflow --preset gcc-brew
