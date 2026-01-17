@@ -16,7 +16,6 @@ project(
 
 # Tell CMake that we explicitly want `import std`. This will initialize the
 # property on all targets declared after this to 1
-# TODO: set property per target
 set(CMAKE_CXX_MODULE_STD 1)
 
 # Make a library.
@@ -25,7 +24,6 @@ add_library(uses_std STATIC)
 # Add sources.
 target_sources(uses_std PRIVATE uses_std.cxx)
 
-# Tell CMake we're using C++23 but only C++20 is needed to consume it.
 target_compile_features(uses_std PUBLIC cxx_std_23)
 
 # Make an executable.
