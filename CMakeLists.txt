@@ -28,28 +28,34 @@ find_package(Threads REQUIRED)
 add_library(libfork_libfork)
 add_library(libfork::libfork ALIAS libfork_libfork)
 
-# TODO: could threads be private if we move all schedule into a lib?
-target_link_libraries(libfork_libfork PUBLIC Threads::Threads)
+# target_link_libraries(libfork_libfork PRIVATE Threads::Threads)
 
 set_property(TARGET libfork_libfork PROPERTY EXPORT_NAME libfork)
 
-# target_include_directories(
-#   libfork_libfork ${warning_guard} INTERFACE "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
-# )
+target_compile_features(libfork_libfork PUBLIC cxx_std_23)
 
+# Public headers
+target_sources(libfork_libfork
+  PUBLIC
+    FILE_SET HEADERS FILES
+      include/libfork/version.hpp
+    BASE_DIRS
+      include
+)
 
-# Add the module file to the library
+# Add the module files to the library, must be public because
+# consumers will need bo build the BMI
 target_sources(libfork_libfork
   PUBLIC
     FILE_SET CXX_MODULES FILES
       src/libfork.cxx
+    PRIVATE
+      src/libfork.cpp
 )
 
-target_compile_features(libfork_libfork PUBLIC cxx_std_23)
+# ======================
 
 # TODO: gate below this point behind a dev mode
-
-# ======================
 
 include(CTest) # Enables the BUILD_TESTING option
 

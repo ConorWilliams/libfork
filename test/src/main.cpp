@@ -1,4 +1,5 @@
 
+#include "libfork/version.hpp"
 
 import libfork;
 
