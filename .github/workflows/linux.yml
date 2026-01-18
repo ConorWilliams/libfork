@@ -18,7 +18,7 @@ jobs:
         uses: Homebrew/actions/setup-homebrew@master
 
       - name: Install Dependencies
-        run: brew install cmake ninja gcc
+        run: brew install cmake ninja gcc catch2
 
       - name: Configure, Build, and Test
         run: cmake --workflow --preset gcc-brew
