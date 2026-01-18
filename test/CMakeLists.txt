@@ -6,7 +6,6 @@ project(libfork_test LANGUAGES CXX)
 
 find_package(Catch2 REQUIRED)
 
-
 # --------- Tests ---------
 
 file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
@@ -20,8 +19,3 @@ list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/extras)
 include(Catch)
 
 catch_discover_tests(libfork_test)
-# target_sources(main PRIVATE src/main.cpp)
-#
-# target_link_libraries(main PRIVATE libfork::libfork)
-#
-# add_test(NAME main COMMAND main)
