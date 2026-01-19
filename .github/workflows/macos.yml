@@ -10,6 +10,10 @@ on:
 jobs:
   build-and-test:
     runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [ci-debug-hardened, ci-release, ci-no-except-rtti]
 
     steps:
       - uses: actions/checkout@v6
@@ -20,5 +24,11 @@ jobs:
       - name: Install Dependencies
         run: brew install cmake ninja llvm catch2
 
-      - name: Configure, Build, and Test
-        run: cmake --workflow --preset llvm-brew
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }} -DCMAKE_TOOLCHAIN_FILE=cmake/llvm-brew-toolchain.cmake
+
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }}
+
+      - name: Test
+        run: ctest --preset ${{ matrix.preset }}

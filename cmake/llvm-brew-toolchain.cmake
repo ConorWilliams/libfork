@@ -8,7 +8,8 @@ if(NOT BREW_EXE)
   message(FATAL_ERROR "Could not find 'brew' executable. Please install Homebrew.")
 endif()
 
-# Get Ninja prefix
+# --- Ninja
+
 execute_process(
   COMMAND ${BREW_EXE} --prefix ninja
   OUTPUT_VARIABLE NINJA_PREFIX
@@ -20,9 +21,11 @@ find_program(CMAKE_MAKE_PROGRAM
   NAMES ninja
   HINTS "${NINJA_PREFIX}/bin"
   NO_DEFAULT_PATH
+  REQUIRED
 )
 
-# Get LLVM prefix
+# --- LLVM
+
 execute_process(
   COMMAND ${BREW_EXE} --prefix llvm
   OUTPUT_VARIABLE LLVM_PREFIX
@@ -34,21 +37,36 @@ find_program(CMAKE_C_COMPILER
   NAMES clang
   HINTS "${LLVM_PREFIX}/bin"
   NO_DEFAULT_PATH
+  REQUIRED
 )
 
 find_program(CMAKE_CXX_COMPILER
   NAMES clang++
   HINTS "${LLVM_PREFIX}/bin"
   NO_DEFAULT_PATH
+  REQUIRED
 )
 
-if(NOT CMAKE_C_COMPILER)
-  message(FATAL_ERROR "Could not find clang executable in ${LLVM_PREFIX}/bin")
-endif()
+find_program(CMAKE_AR
+  NAMES llvm-ar
+  HINTS "${LLVM_PREFIX}/bin"
+  NO_DEFAULT_PATH
+  REQUIRED
+)
 
-if(NOT CMAKE_CXX_COMPILER)
-  message(FATAL_ERROR "Could not find clang++ executable in ${LLVM_PREFIX}/bin")
-endif()
+find_program(CMAKE_RANLIB
+  NAMES llvm-ranlib
+  HINTS "${LLVM_PREFIX}/bin"
+  NO_DEFAULT_PATH
+  REQUIRED
+)
+
+find_program(CMAKE_NM
+  NAMES llvm-nm
+  HINTS "${LLVM_PREFIX}/bin"
+  NO_DEFAULT_PATH
+  REQUIRED
+)
 
 # Dynamically find the standard library modules JSON, brew puts it in the wrong place
 file(GLOB_RECURSE LIBCXX_MODULES_JSON "${LLVM_PREFIX}/lib/**/libc++.modules.json")

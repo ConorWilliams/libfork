@@ -1,3 +1,2 @@
 CompileFlags:
-  CompilationDatabase: build/llvm-brew
-
+  CompilationDatabase: build/dev
