@@ -15,7 +15,7 @@
     {
       "name": "ci-debug-hardened",
       "inherits": "ci-base",
-      "displayName": "CI Debug Hardened",
+      "displayName": "Debug with warnings and hardening",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_CXX_FLAGS": "-O2 -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wcast-qual -Wformat -Wformat=2 -Wundef -Werror=float-equal -Wshadow -Wcast-align -Wunused -Wnull-dereference -Wdouble-promotion -Wimplicit-fallthrough -Wextra-semi -Woverloaded-virtual -Wnon-virtual-dtor -Wold-style-cast -Werror=format-security -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS -fstrict-flex-arrays=3 -fstack-protector-strong"
@@ -24,16 +24,25 @@
     {
       "name": "ci-release",
       "inherits": "ci-base",
-      "displayName": "CI Release",
+      "displayName": "Release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_CXX_FLAGS": "-O3 -DNDEBUG -flto"
+        "CMAKE_CXX_FLAGS": "-O3 -DNDEBUG -flto -fno-plt -march=native"
       }
     },
     {
       "name": "ci-no-except-rtti",
       "inherits": "ci-base",
-      "displayName": "CI No Exceptions/RTTI",
+      "displayName": "Release no RTTI or exceptions",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_FLAGS": "-O3 -DNDEBUG -flto -fno-plt -march=native -fno-exceptions -fno-rtti"
+      }
+    },
+    {
+      "name": "ci-sanitize",
+      "inherits": "ci-base",
+      "displayName": "Debug with sanitizers",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_CXX_FLAGS": "-O3 -DNDEBUG -fno-exceptions -fno-rtti"
