@@ -14,7 +14,9 @@ add_executable(libfork_test ${TEST_SOURCES})
 target_link_libraries(libfork_test PRIVATE libfork::libfork Catch2::Catch2WithMain)
 target_compile_features(libfork_test PRIVATE cxx_std_23)
 
-list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/extras)
+if(DEFINED Catch2_SOURCE_DIR)
+  list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/extras)
+endif()
 
 include(Catch)
 
