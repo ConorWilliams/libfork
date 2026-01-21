@@ -22,7 +22,7 @@ jobs:
         uses: Homebrew/actions/setup-homebrew@master
 
       - name: Install Dependencies
-        run: brew install cmake ninja llvm catch2
+        run: brew install cmake ninja llvm catch2 google-benchmark
 
       - name: Configure
         run: cmake --preset ${{ matrix.preset }} -DCMAKE_TOOLCHAIN_FILE=cmake/llvm-brew-toolchain.cmake
