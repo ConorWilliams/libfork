@@ -26,5 +26,3 @@ output.png
 **/.DS_Store
 
 compile_commands.json
-CMakeLists.txt.user
-CMakeUserPresets.json

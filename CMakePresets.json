@@ -2,42 +2,88 @@
   "version": 10,
   "configurePresets": [
     {
-      "name": "llvm-brew",
-      "displayName": "LLVM (Homebrew)",
-      "description": "Use Homebrew LLVM compilers",
-      "binaryDir": "${sourceDir}/build/llvm-brew",
+      "name": "cmake-pedantic",
+      "hidden": true,
+      "warnings": {
+        "dev": true,
+        "deprecated": true,
+        "uninitialized": true,
+        "unusedCli": true,
+        "systemVars": false
+      },
+      "errors": {
+        "deprecated": true
+      }
+    },
+    {
+      "name": "ci-base",
+      "inherits": "cmake-pedantic",
+      "hidden": true,
       "generator": "Ninja",
-      "toolchainFile": "${sourceDir}/cmake/llvm-brew-toolchain.cmake",
+      "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
     },
     {
-      "name": "gcc-brew",
-      "displayName": "GCC (Homebrew)",
-      "description": "Use Homebrew GCC compilers",
-      "binaryDir": "${sourceDir}/build/gcc-brew",
-      "generator": "Ninja",
-      "toolchainFile": "${sourceDir}/cmake/gcc-brew-toolchain.cmake",
+      "name": "ci-hardened",
+      "inherits": "ci-base",
+      "displayName": "Debug with warnings and hardening",
       "cacheVariables": {
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS": "-O2 -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wcast-qual -Wformat -Wformat=2 -Wundef -Werror=float-equal -Wshadow -Wcast-align -Wunused -Wnull-dereference -Wdouble-promotion -Wimplicit-fallthrough -Wextra-semi -Woverloaded-virtual -Wnon-virtual-dtor -Wold-style-cast -Werror=format-security -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS -fstrict-flex-arrays=3 -fstack-protector-strong"
+      }
+    },
+    {
+      "name": "ci-release",
+      "inherits": "ci-base",
+      "displayName": "Release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_FLAGS": "-O3 -DNDEBUG -flto -fno-plt -march=native"
+      }
+    },
+    {
+      "name": "ci-no-except-rtti",
+      "inherits": "ci-base",
+      "displayName": "Release no RTTI or exceptions",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_FLAGS": "-O3 -DNDEBUG -flto -fno-plt -march=native -fno-exceptions -fno-rtti"
+      }
+    },
+    {
+      "name": "ci-sanitize",
+      "inherits": "ci-base",
+      "displayName": "Debug with sanitizers",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Sanitize",
+        "CMAKE_CXX_FLAGS": "-O2 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-common -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
       }
     }
   ],
   "buildPresets": [
     {
-      "name": "llvm-brew",
-      "configurePreset": "llvm-brew"
+      "name": "ci-hardened",
+      "configurePreset": "ci-hardened"
     },
     {
-      "name": "gcc-brew",
-      "configurePreset": "gcc-brew"
+      "name": "ci-release",
+      "configurePreset": "ci-release"
+    },
+    {
+      "name": "ci-no-except-rtti",
+      "configurePreset": "ci-no-except-rtti"
+    },
+    {
+      "name": "ci-sanitize",
+      "configurePreset": "ci-sanitize"
     }
   ],
   "testPresets": [
     {
-      "name": "llvm-brew",
-      "configurePreset": "llvm-brew",
+      "name": "ci-hardened",
+      "configurePreset": "ci-hardened",
       "output": {
         "outputOnFailure": true
       },
@@ -46,54 +92,34 @@
       }
     },
     {
-      "name": "gcc-brew",
-      "configurePreset": "gcc-brew",
+      "name": "ci-release",
+      "configurePreset": "ci-release",
       "output": {
         "outputOnFailure": true
       },
       "execution": {
         "stopOnFailure": true
       }
-    }
-  ],
-  "workflowPresets": [
-    {
-      "name": "llvm-brew",
-      "displayName": "LLVM (Homebrew) Workflow",
-      "description": "Configure and build using Homebrew LLVM",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "llvm-brew"
-        },
-        {
-          "type": "build",
-          "name": "llvm-brew"
-        },
-        {
-          "type": "test",
-          "name": "llvm-brew"
-        }
-      ]
     },
     {
-      "name": "gcc-brew",
-      "displayName": "GCC (Homebrew) Workflow",
-      "description": "Configure and build using Homebrew GCC",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "gcc-brew"
-        },
-        {
-          "type": "build",
-          "name": "gcc-brew"
-        },
-        {
-          "type": "test",
-          "name": "gcc-brew"
-        }
-      ]
+      "name": "ci-no-except-rtti",
+      "configurePreset": "ci-no-except-rtti",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "ci-sanitize",
+      "configurePreset": "ci-sanitize",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "stopOnFailure": true
+      }
     }
   ]
 }

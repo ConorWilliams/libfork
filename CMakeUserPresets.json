@@ -1,0 +1,49 @@
+{
+  "version": 10,
+  "configurePresets": [
+    {
+      "name": "dev",
+      "inherits": "ci-hardened",
+      "displayName": "Hardened development build",
+      "toolchainFile": "${sourceDir}/cmake/llvm-brew-toolchain.cmake"
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "stopOnFailure": true
+      }
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "dev",
+      "displayName": "Development Debug Hardened Workflow",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "dev"
+        },
+        {
+          "type": "build",
+          "name": "dev"
+        },
+        {
+          "type": "test",
+          "name": "dev"
+        }
+      ]
+    }
+  ]
+}
