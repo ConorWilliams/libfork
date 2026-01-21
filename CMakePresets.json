@@ -4,8 +4,6 @@
     {
       "name": "ci-base",
       "hidden": true,
-      "displayName": "CI Base",
-      "description": "Base configuration for CI",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
@@ -13,7 +11,7 @@
       }
     },
     {
-      "name": "ci-debug-hardened",
+      "name": "ci-hardened",
       "inherits": "ci-base",
       "displayName": "Debug with warnings and hardening",
       "cacheVariables": {
@@ -51,8 +49,8 @@
   ],
   "buildPresets": [
     {
-      "name": "ci-debug-hardened",
-      "configurePreset": "ci-debug-hardened"
+      "name": "ci-hardened",
+      "configurePreset": "ci-hardened"
     },
     {
       "name": "ci-release",
@@ -65,8 +63,8 @@
   ],
   "testPresets": [
     {
-      "name": "ci-debug-hardened",
-      "configurePreset": "ci-debug-hardened",
+      "name": "ci-hardened",
+      "configurePreset": "ci-hardened",
       "output": {
         "outputOnFailure": true
       },

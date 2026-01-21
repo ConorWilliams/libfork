@@ -3,8 +3,8 @@
   "configurePresets": [
     {
       "name": "dev",
-      "inherits": "ci-debug-hardened",
-      "displayName": "Development",
+      "inherits": "ci-hardened",
+      "displayName": "Hardened development build",
       "toolchainFile": "${sourceDir}/cmake/llvm-brew-toolchain.cmake"
     }
   ],

@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        preset: [ci-debug-hardened, ci-release, ci-no-except-rtti]
+        preset: [ci-hardened, ci-release, ci-no-except-rtti]
 
     steps:
       - uses: actions/checkout@v6
@@ -22,7 +22,7 @@ jobs:
         uses: Homebrew/actions/setup-homebrew@master
 
       - name: Install Dependencies
-        run: brew install cmake ninja gcc catch2
+        run: brew install cmake ninja gcc binutils catch2
 
       - name: Configure
         run: cmake --preset ${{ matrix.preset }} -DCMAKE_TOOLCHAIN_FILE=cmake/gcc-brew-toolchain.cmake
@@ -32,3 +32,4 @@ jobs:
 
       - name: Test
         run: ctest --preset ${{ matrix.preset }}
+
