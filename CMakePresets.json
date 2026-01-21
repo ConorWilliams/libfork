@@ -42,8 +42,8 @@
       "inherits": "ci-base",
       "displayName": "Debug with sanitizers",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_CXX_FLAGS": "-O3 -DNDEBUG -fno-exceptions -fno-rtti"
+        "CMAKE_BUILD_TYPE": "Sanitize",
+        "CMAKE_CXX_FLAGS": "-O2 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-common -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
       }
     }
   ],
