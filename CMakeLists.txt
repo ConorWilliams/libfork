@@ -10,20 +10,24 @@ read_version(${CMAKE_CURRENT_SOURCE_DIR}/include/libfork/version.hpp)
 project(
   libfork
   VERSION ${version_major}.${version_minor}.${version_patch}
-  DESCRIPTION "A bleeding-edge, lock-free, wait-free, continuation-stealing fork-join library built on C++20's coroutines."
   LANGUAGES CXX
 )
 
-# Tell CMake that we explicitly want `import std`. This will initialize the
-# property on all targets declared after this to 1
-# TODO: set property per target
-set(CMAKE_CXX_MODULE_STD 1)
+# ---- Project options ----
+
+option(libfork_DEV_MODE "Enable developer build (tests/benchmarks/etc) for libfork" OFF)
 
 # ---- System dependencies ----
 
 find_package(Threads REQUIRED)
 
 # ===========================
+
+# Tell CMake that we explicitly want `import std`. This will initialize the
+# property on all targets declared after this to 1
+# TODO: set property per target
+set(CMAKE_CXX_MODULE_STD 1)
+
 
 add_library(libfork_libfork)
 add_library(libfork::libfork ALIAS libfork_libfork)
@@ -56,14 +60,16 @@ target_sources(libfork_libfork
 
 # ======================
 
-# TODO: gate below this point behind a dev mode
+if(libfork_DEV_MODE)
 
-include(CTest) # Enables the BUILD_TESTING option
+  include(CTest) # Enables the BUILD_TESTING option
 
-if(BUILD_TESTING)
-  add_subdirectory(test)
+  if(BUILD_TESTING)
+    add_subdirectory(test)
+  endif()
+
+  add_subdirectory(benchmark)
 endif()
-
 
 
 
