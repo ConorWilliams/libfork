@@ -74,6 +74,10 @@
     {
       "name": "ci-no-except-rtti",
       "configurePreset": "ci-no-except-rtti"
+    },
+    {
+      "name": "ci-sanitize",
+      "configurePreset": "ci-sanitize"
     }
   ],
   "testPresets": [
@@ -100,6 +104,16 @@
     {
       "name": "ci-no-except-rtti",
       "configurePreset": "ci-no-except-rtti",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "ci-sanitize",
+      "configurePreset": "ci-sanitize",
       "output": {
         "outputOnFailure": true
       },
