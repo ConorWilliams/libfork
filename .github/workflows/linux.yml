@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        preset: [ci-hardened, ci-release, ci-no-except-rtti]
+        preset: [ci-hardened, ci-release, ci-no-except-rtti, ci-sanitize]
 
     steps:
       - uses: actions/checkout@v6
