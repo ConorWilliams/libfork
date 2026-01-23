@@ -21,16 +21,16 @@ target_link_libraries(libfork_benchmark
 target_sources(libfork_benchmark
   PRIVATE
     FILE_SET HEADERS FILES
-      src/libfork_benchmark/common.hpp
+      benchmark/src/libfork_benchmark/common.hpp
     BASE_DIRS
-      src
+      benchmark/src
 )
 
 # ---- Libfork ----
 
 target_sources(libfork_benchmark
   PRIVATE
-    src/libfork_benchmark/benchmark_libfork/fib/lf.cpp
+    benchmark/src/libfork_benchmark/fib/lf.cpp
 )
 
 target_link_libraries(libfork_benchmark
