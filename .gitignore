@@ -25,4 +25,4 @@ output.png
 
 **/.DS_Store
 
-compile_commands.json
+compile_commands.json_codeql_detected_source_root
