@@ -32,7 +32,7 @@ target_sources(libfork_benchmark
 if(BUILD_TESTING)
   add_test(NAME Benchmark
     COMMAND
-      libfork_benchmark --benchmark_dry_run
+      libfork_benchmark --benchmark_dry_run --benchmark_filter=^test/
   )
 endif()
 

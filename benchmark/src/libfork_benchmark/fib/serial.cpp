@@ -1,37 +1,43 @@
 #include <benchmark/benchmark.h>
 
+#include "libfork_benchmark/common.hpp"
+#include "libfork_benchmark/fib/fib.hpp"
+
 namespace {
 
-auto fib(int &ret, int n) -> void {
+auto fib(std::int64_t &ret, std::int64_t n) -> void {
   if (n < 2) {
     ret = n;
     return;
   }
 
-  int a = 0;
-  int b = 0;
+  std::int64_t lhs = 0;
+  std::int64_t rhs = 0;
 
-  fib(a, n - 1);
-  fib(b, n - 2);
+  fib(lhs, n - 1);
+  fib(rhs, n - 2);
 
-  ret = a + b;
+  ret = lhs + rhs;
 }
 
 void fib_serial(benchmark::State &state) {
-  const int n = static_cast<int>(state.range(0));
 
-  state.counters["threads"] = 1;
+  std::int64_t const n = state.range(0);
+  std::int64_t const r = fib_ref(n);
+
   state.counters["n"] = n;
 
   for (auto _ : state) {
-    int result = 0;
+    std::int64_t result = 0;
     fib(result, n);
     benchmark::DoNotOptimize(result);
+    if (result != r) {
+      throw result_doesnt_match{};
+    }
   }
-
-  state.SetComplexityN(n);
 }
 
 } // namespace
 
-BENCHMARK(fib_serial)->Arg(10)->Arg(20)->Arg(30)->Arg(40)->Complexity()->UseRealTime();
+BENCHMARK(fib_serial)->Name("test/fib/serial")->Arg(fib_test);
+BENCHMARK(fib_serial)->Name("base/fib/serial")->Arg(fib_base);
