@@ -6,16 +6,36 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
   message(WARNING "It is recommended to build benchmarks in Release mode for accurate results.")
 endif()
 
-# ---- Required dependencies ----
+# ---- Benchmarks ----
 
 find_package(benchmark REQUIRED)
 
-# ---- Benchmarks ----
+add_executable(libfork_benchmark)
 
-file(GLOB_RECURSE BENCH_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+target_link_libraries(libfork_benchmark
+  PRIVATE
+    benchmark::benchmark_main
+)
 
-add_executable(libfork_benchmark ${BENCH_SOURCES})
+# Headers (shared between all benchmarks)
+target_sources(libfork_benchmark
+  PRIVATE
+    FILE_SET HEADERS FILES
+      src/libfork_benchmark/common.hpp
+    BASE_DIRS
+      src
+)
 
-target_link_libraries(libfork_benchmark PRIVATE libfork::libfork benchmark::benchmark_main)
+# ---- Libfork ----
+
+target_sources(libfork_benchmark
+  PRIVATE
+    src/libfork_benchmark/benchmark_libfork/fib/lf.cpp
+)
+
+target_link_libraries(libfork_benchmark
+  PRIVATE
+    libfork::libfork
+)
 
 

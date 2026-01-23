@@ -28,7 +28,6 @@ find_package(Threads REQUIRED)
 # TODO: set property per target
 set(CMAKE_CXX_MODULE_STD 1)
 
-
 add_library(libfork_libfork)
 add_library(libfork::libfork ALIAS libfork_libfork)
 
@@ -69,6 +68,7 @@ if(libfork_DEV_MODE)
   endif()
 
   add_subdirectory(benchmark)
+
 endif()
 
 
