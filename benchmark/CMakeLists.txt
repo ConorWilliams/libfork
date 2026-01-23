@@ -39,6 +39,7 @@ endif()
 target_sources(libfork_benchmark
   PRIVATE
     src/libfork_benchmark/fib/serial.cpp
+    src/libfork_benchmark/fib/serial_return.cpp
 )
 
 # ---- Libfork ----
