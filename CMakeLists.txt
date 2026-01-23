@@ -71,9 +71,6 @@ if(libfork_DEV_MODE)
 
 endif()
 
-# TODO: --benchmark_dry_run
-
-
 # list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 #
 # include(cmake/prelude.cmake)

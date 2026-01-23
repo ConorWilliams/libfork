@@ -27,8 +27,6 @@ target_sources(libfork_benchmark
       src
 )
 
-# TODO: --size test
-
 if(BUILD_TESTING)
   add_test(NAME Benchmark
     COMMAND
