@@ -1,7 +1,5 @@
 #include <benchmark/benchmark.h>
 
-#include "libfork/macros.hpp"
-
 #include "libfork_benchmark/common.hpp"
 #include "libfork_benchmark/fib/fib.hpp"
 
@@ -25,17 +23,15 @@ auto fib(std::int64_t &ret, std::int64_t n) -> void {
 void fib_serial(benchmark::State &state) {
 
   std::int64_t const n = state.range(0);
-  std::int64_t const r = fib_ref(n);
+  std::int64_t const expect = fib_ref(n);
 
   state.counters["n"] = n;
 
   for (auto _ : state) {
     std::int64_t result = 0;
     fib(result, n);
+    CHECK_RESULT(result, expect);
     benchmark::DoNotOptimize(result);
-    if (result != r) {
-      LF_THROW(incorrect_result("{} != {}", result, r));
-    }
   }
 }
 

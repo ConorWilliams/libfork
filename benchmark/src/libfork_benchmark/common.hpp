@@ -1,8 +1,20 @@
+#pragma once
+
 #include <format>
 #include <stdexcept>
 
+/**
+ * @class incorrect_result
+ * @brief A wrapper around std::runtime_error to indicate an incorrect result.
+ *
+ */
 struct incorrect_result : public std::runtime_error {
-  template <class... Args>
-  explicit constexpr incorrect_result(std::format_string<Args...> fmt, Args &&...args)
-      : std::runtime_error(std::format(fmt, std::forward<Args>(args)...)) {}
+  using std::runtime_error::runtime_error;
 };
+
+#define CHECK_RESULT(result, expected)                                                                       \
+  do {                                                                                                       \
+    if ((result) != (expected)) {                                                                            \
+      throw incorrect_result(std::format("{}={} != {}={}", #expected, (expected), #result, (result)));       \
+    }                                                                                                        \
+  } while (0)
