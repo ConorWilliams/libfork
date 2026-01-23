@@ -26,3 +26,5 @@ output.png
 **/.DS_Store
 
 compile_commands.json
+
+_codeql_detected_source_root
