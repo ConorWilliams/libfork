@@ -41,7 +41,7 @@
       "displayName": "Release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_CXX_FLAGS": "-O3 -DNDEBUG -flto -fno-plt -march=native"
+        "CMAKE_CXX_FLAGS": "-O3 -DNDEBUG -flto -march=native"
       }
     },
     {
@@ -50,7 +50,7 @@
       "displayName": "Release no RTTI or exceptions",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_CXX_FLAGS": "-O3 -DNDEBUG -flto -fno-plt -march=native -fno-exceptions -fno-rtti"
+        "CMAKE_CXX_FLAGS": "-O3 -DNDEBUG -flto -march=native -fno-exceptions -fno-rtti"
       }
     },
     {
