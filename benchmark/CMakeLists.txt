@@ -22,6 +22,7 @@ target_sources(libfork_benchmark
   PRIVATE
     FILE_SET HEADERS FILES
       src/libfork_benchmark/common.hpp
+      src/libfork_benchmark/fib/fib.hpp
     BASE_DIRS
       src
 )
@@ -29,20 +30,27 @@ target_sources(libfork_benchmark
 # TODO: --size test
 
 if(BUILD_TESTING)
-  add_test(NAME benchmark
+  add_test(NAME Benchmark
     COMMAND
       libfork_benchmark --benchmark_dry_run
   )
 endif()
 
-# ---- Libfork ----
+# ---- Serial ----
 
 target_sources(libfork_benchmark
   PRIVATE
-    src/libfork_benchmark/fib/lf.cpp
+    src/libfork_benchmark/fib/serial.cpp
 )
 
-target_link_libraries(libfork_benchmark
-  PRIVATE
-    libfork::libfork
-)
+# ---- Libfork ----
+#
+# target_sources(libfork_benchmark
+#   PRIVATE
+#     src/libfork_benchmark/fib/fib.cpp
+# )
+#
+# target_link_libraries(libfork_benchmark
+#   PRIVATE
+#     libfork::libfork
+# )
