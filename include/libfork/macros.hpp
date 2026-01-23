@@ -13,7 +13,7 @@
   #endif
 #endif
 
-#if LF_COMPILER_EXCEPTIONS || defined(LF_DOXYGEN_SHOULD_SKIP_THIS)
+#if LF_COMPILER_EXCEPTIONS
   /**
    * @brief Expands to ``try`` if exceptions are enabled, otherwise expands to ``if constexpr (true)``.
    */
