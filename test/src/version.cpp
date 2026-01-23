@@ -3,15 +3,15 @@
 #include "libfork/version.hpp"
 
 #ifndef LF_VERSION_MAJOR
-  #error Expected macro is missing
+  #error LF_VERSION_MAJOR macro is missing
 #endif
 
 #ifndef LF_VERSION_MINOR
-  #error Expected macro is missing
+  #error LF_VERSION_MINOR macro is missing
 #endif
 
 #ifndef LF_VERSION_PATCH
-  #error Expected macro is missing
+  #error LF_VERSION_PATCH macro is missing
 #endif
 
 TEST_CASE("Version header", "[version]") {

@@ -1,3 +1,5 @@
+#pragma once
+
 /**
  * @brief __[public]__ Detects if the compiler has exceptions enabled.
  *
@@ -31,6 +33,7 @@
   #define LF_RETHROW throw
 #else
 
+  #include <cassert>
   #include <exception>
 
   #define LF_TRY if constexpr (true)
