@@ -1,5 +1,7 @@
 #include <benchmark/benchmark.h>
 
+#include "libfork/macros.hpp"
+
 #include "libfork_benchmark/common.hpp"
 #include "libfork_benchmark/fib/fib.hpp"
 
@@ -32,7 +34,7 @@ void fib_serial(benchmark::State &state) {
     fib(result, n);
     benchmark::DoNotOptimize(result);
     if (result != r) {
-      throw result_doesnt_match{};
+      LF_THROW(result_doesnt_match{});
     }
   }
 }
