@@ -34,7 +34,7 @@ void fib_serial(benchmark::State &state) {
     fib(result, n);
     benchmark::DoNotOptimize(result);
     if (result != r) {
-      LF_THROW(result_doesnt_match{});
+      LF_THROW(incorrect_result("{} != {}", result, r));
     }
   }
 }

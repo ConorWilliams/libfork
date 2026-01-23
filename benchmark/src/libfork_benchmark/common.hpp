@@ -1,7 +1,8 @@
-#include <exception>
+#include <format>
+#include <stdexcept>
 
-struct result_doesnt_match : public std::exception {
-  auto what() const noexcept -> char const * override {
-    return "Benchmark result doesn't match reference value!";
-  }
+struct incorrect_result : public std::runtime_error {
+  template <class... Args>
+  explicit constexpr incorrect_result(std::format_string<Args...> fmt, Args &&...args)
+      : std::runtime_error(std::format(fmt, std::forward<Args>(args)...)) {}
 };
