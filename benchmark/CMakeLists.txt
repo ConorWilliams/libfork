@@ -26,6 +26,13 @@ target_sources(libfork_benchmark
       src
 )
 
+if(BUILD_TESTING)
+  add_test(NAME benchmark
+    COMMAND
+      libfork_benchmark --size test --benchmark_dry_run
+  )
+endif()
+
 # ---- Libfork ----
 
 target_sources(libfork_benchmark
@@ -37,5 +44,3 @@ target_link_libraries(libfork_benchmark
   PRIVATE
     libfork::libfork
 )
-
-
