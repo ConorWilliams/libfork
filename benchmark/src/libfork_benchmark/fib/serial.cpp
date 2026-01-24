@@ -37,5 +37,5 @@ void fib_serial(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(fib_serial)->Name("test/fib/serial")->Arg(fib_test);
-BENCHMARK(fib_serial)->Name("base/fib/serial")->Arg(fib_base);
+BENCHMARK(fib_serial)->Name("test/serial/fib")->Arg(fib_test);
+BENCHMARK(fib_serial)->Name("base/serial/fib")->Arg(fib_base);

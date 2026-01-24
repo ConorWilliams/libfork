@@ -32,5 +32,5 @@ void fib_serial_return(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(fib_serial_return)->Name("test/fib/serial_return")->Arg(fib_test);
-BENCHMARK(fib_serial_return)->Name("base/fib/serial_return")->Arg(fib_base);
+BENCHMARK(fib_serial_return)->Name("test/serial/fib/return")->Arg(fib_test);
+BENCHMARK(fib_serial_return)->Name("base/serial/fib/return")->Arg(fib_base);
