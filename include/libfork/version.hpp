@@ -1,3 +1,5 @@
+#pragma once
+
 /**
  * @brief __[public]__ The major version of libfork.
  *
