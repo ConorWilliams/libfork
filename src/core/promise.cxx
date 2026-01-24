@@ -6,7 +6,34 @@ export module libfork.core:promise;
 
 import std;
 
+import :concepts;
+
 namespace lf {
+
+// =============== Task =============== //
+
+/**
+ * @brief The return type for libfork's async functions/coroutines.
+ *
+ * This predominantly exists to disambiguate `libfork`s coroutines from other
+ * coroutines and specify `T` the async function's return type which is
+ * required to be `void` or a `std::movable` type.
+ *
+ * \rst
+ *
+ * .. note::
+ *
+ *    No consumer of this library should ever touch an instance of this type,
+ *    it is used for specifying the return type of an `async` function only.
+ *
+ * .. warning::
+ *    The value type ``T`` of a coroutine should be independent of the
+ *    coroutines first-argument.
+ *
+ * \endrst
+ */
+export template <returnable T = void>
+class task {};
 
 // =============== Frame =============== //
 
@@ -19,7 +46,31 @@ static_assert(std::is_standard_layout_v<frame_type>);
 // =============== Frame-mixin =============== //
 
 struct mixin_frame {
-  auto self(this auto &&self) LF_HOF(LF_FWD(self).frame)
+  auto self(this auto &&self)
+      LF_HOF(LF_FWD(self).frame)
+
+  // auto get_return_object() -> task_of { return {handle<promise_type>::from_promise(*this)}; }
+  //
+  // auto initial_suspend() -> std::suspend_always { return {}; }
+  //
+  // auto final_suspend() noexcept {
+  //   struct final_awaitable : std::suspend_always {
+  //     auto await_suspend(handle<promise_type> h) noexcept -> handle<> {
+  //
+  //       handle continue_ = h.promise().continue_;
+  //
+  //       h.destroy();
+  //
+  //       if (continue_) {
+  //         return continue_;
+  //       }
+  //
+  //       return std::noop_coroutine();
+  //     }
+  //   };
+  //
+  //   return final_awaitable{};
+  // }
 };
 
 static_assert(std::is_empty_v<mixin_frame>);

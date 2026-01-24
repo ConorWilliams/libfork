@@ -54,6 +54,7 @@ target_sources(libfork_libfork
     FILE_SET CXX_MODULES FILES
       src/core/core.cxx
       src/core/promise.cxx
+      src/core/concepts.cxx
     PRIVATE
       # src/libfork.cpp
 )
