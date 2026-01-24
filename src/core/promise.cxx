@@ -94,6 +94,10 @@ struct final_awaitable : std::suspend_always {
 
 struct mixin_frame {
 
+  template <typename Self>
+    requires (!std::is_const_v<Self>)
+  constexpr auto handle(this Self &self) LF_HOF(std::coroutine_handle<Self>::from_promise(self))
+
   constexpr auto self(this auto &&self) LF_HOF(LF_FWD(self).frame)
 
   constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
@@ -109,6 +113,7 @@ static_assert(std::is_empty_v<mixin_frame>);
 
 template <>
 struct promise_type<void> : mixin_frame {
+
   frame_type frame;
 
   constexpr auto get_return_object() -> task<void> { return {this, {}}; }
