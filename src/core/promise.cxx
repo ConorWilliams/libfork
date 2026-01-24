@@ -59,13 +59,11 @@ using unique_promise = std::unique_ptr<T, promise_deleter>;
  * \endrst
  */
 export template <returnable T = void>
-struct task {
-  unique_promise<promise_type<T>> promise;
+struct task final : unique_promise<promise_type<T>> {
+  using unique_promise<promise_type<T>>::unique_promise;
 };
 
 // =============== Frame-mixin =============== //
-
-namespace {
 
 constexpr auto final_suspend(frame_type *frame) -> std::coroutine_handle<> {
 
@@ -86,8 +84,6 @@ constexpr auto final_suspend(frame_type *frame) -> std::coroutine_handle<> {
   return std::noop_coroutine();
 }
 
-} // namespace
-
 struct final_awaitable : std::suspend_always {
   template <typename T>
   constexpr auto
@@ -100,11 +96,11 @@ struct mixin_frame {
 
   constexpr auto self(this auto &&self) LF_HOF(LF_FWD(self).frame)
 
-  constexpr static auto initial_suspend() -> std::suspend_always { return {}; }
+  constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
 
-  constexpr static auto final_suspend() -> final_awaitable { return {}; }
+  constexpr static auto final_suspend() noexcept -> final_awaitable { return {}; }
 
-  constexpr static auto unhandled_exception() -> void { std::terminate(); }
+  constexpr static auto unhandled_exception() noexcept -> void { std::terminate(); }
 };
 
 static_assert(std::is_empty_v<mixin_frame>);
@@ -115,7 +111,7 @@ template <>
 struct promise_type<void> : mixin_frame {
   frame_type frame;
 
-  constexpr auto get_return_object() -> unique_promise<promise_type<void>> { return {this, {}}; }
+  constexpr auto get_return_object() -> task<void> { return {this, {}}; }
 
   constexpr static auto return_void() -> void {}
 };
@@ -143,3 +139,8 @@ static_assert(std::is_standard_layout_v<promise_type<int>>);
 #endif
 
 } // namespace lf
+
+template <typename R, typename... Args>
+struct std::coroutine_traits<lf::task<R>, Args...> {
+  using promise_type = ::lf::promise_type<R>;
+};
