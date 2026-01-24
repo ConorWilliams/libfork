@@ -14,12 +14,12 @@ LambdaBodyIndentation: Signature
 PenaltyReturnTypeOnItsOwnLine: 1
 
 Macros:
-  - BAT_HOF(x)={x;}
-  - BAT_HOF(x,y)={x,y;}
-  - BAT_HOF(x,y,z)={x,y,z;}
-  - BAT_HOF(x,y,z,w)={x,y,z,w;}
-  - BAT_HOF(a,b,c,d,e)={a;}
-  - BAT_HOF(a,b,c,d,e,f)={a,b,c,d,e,f;}
+  - LF_HOF(x)={x;}
+  - LF_HOF(x,y)={x,y;}
+  - LF_HOF(x,y,z)={x,y,z;}
+  - LF_HOF(x,y,z,w)={x,y,z,w;}
+  - LF_HOF(a,b,c,d,e)={a;}
+  - LF_HOF(a,b,c,d,e,f)={a,b,c,d,e,f;}
 
 SpaceBeforeParens: Custom
 SpaceBeforeParensOptions:
