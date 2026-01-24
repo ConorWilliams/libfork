@@ -7,8 +7,6 @@ strict fork-join parallelism using C++20 coroutines.
 
 - **Type**: C++ library with module/`import std` support
 - **Languages**: C++23
-- **Branch**: `modules` (experimental, requires linear history - no merge commits)
-- **Version**: 4.0.0 (defined in `include/libfork/version.hpp`)
 
 ## Critical Build Requirements
 
@@ -72,7 +70,7 @@ Always use presets with the toolchain file:
 cmake --preset <preset-name> -DCMAKE_TOOLCHAIN_FILE=cmake/<toolchain>.cmake
 ```
 
-**Available presets** (from `CMakePresets.json`):
+**Relevant available presets** (from `CMakePresets.json`):
 
 - `ci-hardened` - Debug build with warnings and hardening flags
 - `ci-release` - Optimized release build
@@ -145,12 +143,12 @@ libfork/
 │   ├── *.cxx                 # Module files
 │   └── *.cpp                 # Source files
 ├── test/src/**/              # Test suite (Catch2)
-│   ├── *.cpp                 # Test source files
+│   └── *.cpp                 # Test source files
 ├── benchmark/                # Benchmarking suite (google-benchmark)
 │   └── libfork_benchmark/    # Merged source/header files for benchmarks
-        └── fib/              # Each benchmark in its own subdir
-│           ├── *.hpp         # Benchmark header files
-│           └── *.cpp         # Benchmark source files
+│          └── fib/           # Each benchmark in its own sub-directory
+│              ├── *.hpp      # Benchmark header files
+│              └── *.cpp      # Benchmark source files
 ├── .github/workflows/        # CI workflows
 │   ├── linux.yml             # Linux builds
 │   ├── macos.yml             # MacOS builds
@@ -180,28 +178,27 @@ All workflows follow this pattern:
 2. **Rebuild**: `cmake --build --preset <your-preset>`
 3. **Test**: `ctest --preset <your-preset>`
 4. **Lint**: Run codespell and clang-format checks
-5. **Verify**: Test with at least one preset that CI uses (e.g., ci-release)
+
+#### Adding/removing files from `src/` or `include/`
+
+- Update the root `CMakeLists.txt` with new/removed files.
+
+#### Adding/removing files from `benchmark/src/`
+
+- Update the root `benchmark/CMakeLists.txt` with new/removed files.
 
 ### Adding Tests
 
+Strive to add tests for new features/bug fixes.
+
 - Add `.cpp` files to `test/src/`
 - Tests auto-discovered by CMake (GLOB_RECURSE)
-- Link against `libfork::libfork` and `Catch2::Catch2WithMain`
-- Use `cxx_std_23` feature requirement
+- Links against `libfork::libfork` and `Catch2::Catch2WithMain`
+- Uses `cxx_std_23` feature requirement
 
 ### Modifying Build Configuration
 
 **Warning**: Module-related changes are complex. Test thoroughly with clean builds.
-
-### Version Updates
-
-Edit `include/libfork/version.hpp` macros:
-
-- `LF_VERSION_MAJOR` - Incompatible API changes
-- `LF_VERSION_MINOR` - Backward compatible features
-- `LF_VERSION_PATCH` - Backward compatible fixes
-
-Version is read by `cmake/read_version.cmake` during configuration.
 
 ## Troubleshooting
 
