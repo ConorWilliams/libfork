@@ -119,7 +119,7 @@ Should produce no output if passing.
 ### clang-format (code formatting)
 
 ```bash
-find src include test benchmark -name "*.cpp" -o -name "*.hpp" -o -name "*.cxx" | xargs clang-format --dry-run --Werror
+find src include test benchmark/src -name "*.cpp" -o -name "*.hpp" -o -name "*.cxx" | xargs clang-format --dry-run --Werror
 ```
 
 Config: `.clang-format` (110 column limit, specific style)
@@ -128,7 +128,7 @@ Should produce no output if passing.
 **To auto-fix formatting**:
 
 ```bash
-find src include test benchmark -name "*.cpp" -o -name "*.hpp" -o -name "*.cxx" | xargs clang-format -i
+find src include test benchmark/src -name "*.cpp" -o -name "*.hpp" -o -name "*.cxx" | xargs clang-format -i
 ```
 
 ## Project Structure
@@ -144,7 +144,7 @@ libfork/
 │   └── *.cpp                 # Source files
 ├── test/src/**/              # Test suite (Catch2)
 │   └── *.cpp                 # Test source files
-├── benchmark/                # Benchmarking suite (google-benchmark)
+├── benchmark/src/            # Benchmarking suite (google-benchmark)
 │   └── libfork_benchmark/    # Merged source/header files for benchmarks
 │          └── fib/           # Each benchmark in its own sub-directory
 │              ├── *.hpp      # Benchmark header files
@@ -185,7 +185,7 @@ All workflows follow this pattern:
 
 #### Adding/removing files from `benchmark/src/`
 
-- Update the root `benchmark/CMakeLists.txt` with new/removed files.
+- Update `benchmark/CMakeLists.txt` with new/removed files.
 
 ### Adding Tests
 
