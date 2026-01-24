@@ -1,11 +1,13 @@
 #include <benchmark/benchmark.h>
 
+#include "libfork/macros.hpp"
+
 #include "libfork_benchmark/common.hpp"
 #include "libfork_benchmark/fib/fib.hpp"
 
 namespace {
 
-auto fib(std::int64_t &ret, std::int64_t n) -> void {
+LF_NO_INLINE auto fib(std::int64_t &ret, std::int64_t n) -> void {
   if (n < 2) {
     ret = n;
     return;

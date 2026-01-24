@@ -5,7 +5,7 @@
 
 namespace {
 
-auto fib(std::int64_t n) -> std::int64_t {
+LF_NO_INLINE auto fib(std::int64_t n) -> std::int64_t {
   if (n < 2) {
     return n;
   }
@@ -18,12 +18,13 @@ auto fib(std::int64_t n) -> std::int64_t {
 
 void fib_serial_return(benchmark::State &state) {
 
-  std::int64_t const n = state.range(0);
-  std::int64_t const expect = fib_ref(n);
+  std::int64_t n = state.range(0);
+  std::int64_t expect = fib_ref(n);
 
   state.counters["n"] = n;
 
   for (auto _ : state) {
+    benchmark::DoNotOptimize(n);
     std::int64_t result = fib(n);
     CHECK_RESULT(result, expect);
     benchmark::DoNotOptimize(result);
