@@ -37,8 +37,7 @@ void fib_alloc(benchmark::State &state) {
     benchmark::DoNotOptimize(n);
     std::int64_t result = 0;
 
-    lf::task task = fib(&result, n);
-    task.release()->handle().resume();
+    fib(&result, n).release()->handle().resume();
 
     CHECK_RESULT(result, expect);
     benchmark::DoNotOptimize(result);
