@@ -10,7 +10,33 @@ import :concepts;
 
 namespace lf {
 
+// =============== Frame =============== //
+
+struct frame_type {
+  frame_type *parent = nullptr;
+};
+
+static_assert(std::is_standard_layout_v<frame_type>);
+
+// =============== Forward-decl =============== //
+
+template <typename T>
+struct promise_type;
+
 // =============== Task =============== //
+
+/**
+ * @brief `std::unique_ptr` compatible deleter for coroutine promises.
+ */
+struct promise_deleter {
+  template <typename T>
+  constexpr static void operator()(T *ptr) noexcept {
+    std::coroutine_handle<T>::from_promise(*ptr).destroy();
+  }
+};
+
+template <typename T>
+using unique_promise = std::unique_ptr<T, promise_deleter>;
 
 /**
  * @brief The return type for libfork's async functions/coroutines.
@@ -33,56 +59,65 @@ namespace lf {
  * \endrst
  */
 export template <returnable T = void>
-class task {};
-
-// =============== Frame =============== //
-
-struct frame_type {
-  frame_type *parent;
+struct task {
+  unique_promise<promise_type<T>> promise;
 };
-
-static_assert(std::is_standard_layout_v<frame_type>);
 
 // =============== Frame-mixin =============== //
 
-struct mixin_frame {
-  auto self(this auto &&self)
-      LF_HOF(LF_FWD(self).frame)
+namespace {
 
-  // auto get_return_object() -> task_of { return {handle<promise_type>::from_promise(*this)}; }
-  //
-  // auto initial_suspend() -> std::suspend_always { return {}; }
-  //
-  // auto final_suspend() noexcept {
-  //   struct final_awaitable : std::suspend_always {
-  //     auto await_suspend(handle<promise_type> h) noexcept -> handle<> {
-  //
-  //       handle continue_ = h.promise().continue_;
-  //
-  //       h.destroy();
-  //
-  //       if (continue_) {
-  //         return continue_;
-  //       }
-  //
-  //       return std::noop_coroutine();
-  //     }
-  //   };
-  //
-  //   return final_awaitable{};
-  // }
+constexpr auto final_suspend(frame_type *frame) -> std::coroutine_handle<> {
+
+  // tmp
+  // ASSUME(frame != nullptr);
+
+  frame_type *parent_frame = frame->parent;
+
+  {
+    // Destroy the child frame
+    unique_promise<frame_type> _{frame};
+  }
+
+  if (parent_frame != nullptr) {
+    return std::coroutine_handle<frame_type>::from_promise(*parent_frame);
+  }
+
+  return std::noop_coroutine();
+}
+
+} // namespace
+
+struct final_awaitable : std::suspend_always {
+  template <typename T>
+  constexpr auto
+  await_suspend(std::coroutine_handle<promise_type<T>> handle) noexcept -> std::coroutine_handle<> {
+    return final_suspend(&handle.promise().frame);
+  }
+};
+
+struct mixin_frame {
+
+  constexpr auto self(this auto &&self) LF_HOF(LF_FWD(self).frame)
+
+  constexpr static auto initial_suspend() -> std::suspend_always { return {}; }
+
+  constexpr static auto final_suspend() -> final_awaitable { return {}; }
+
+  constexpr static auto unhandled_exception() -> void { std::terminate(); }
 };
 
 static_assert(std::is_empty_v<mixin_frame>);
 
 // =============== Promises =============== //
 
-template <typename T>
-struct promise_type;
-
 template <>
 struct promise_type<void> : mixin_frame {
   frame_type frame;
+
+  constexpr auto get_return_object() -> unique_promise<promise_type<void>> { return {this, {}}; }
+
+  constexpr static auto return_void() -> void {}
 };
 
 static_assert(alignof(promise_type<void>) == alignof(frame_type));
