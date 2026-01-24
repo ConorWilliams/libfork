@@ -9,7 +9,7 @@
  * however, only macros that are marked as __[public]__ should be consumed.
  */
 
-// =============== Inlining/optimisation =============== //
+// =============== Inlining/optimization =============== //
 
 /**
  * @brief Macro to use next to 'inline' to force a function to be inlined.
