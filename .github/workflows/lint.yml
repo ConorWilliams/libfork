@@ -25,4 +25,4 @@ jobs:
 
       - name: Run clang-format
         run: |
-          find src include test -name "*.cpp" -o -name "*.hpp" -o -name "*.cxx" | xargs clang-format --dry-run --Werror
+          find src include test benchmark/src -name "*.cpp" -o -name "*.hpp" -o -name "*.cxx" | xargs clang-format --dry-run --Werror
