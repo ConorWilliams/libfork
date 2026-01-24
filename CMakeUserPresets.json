@@ -6,18 +6,38 @@
       "inherits": "ci-hardened",
       "displayName": "Hardened development build",
       "toolchainFile": "${sourceDir}/cmake/llvm-brew-toolchain.cmake"
+    },
+    {
+      "name": "bench",
+      "inherits": "ci-release",
+      "displayName": "Release build for benchmarks",
+      "toolchainFile": "${sourceDir}/cmake/llvm-brew-toolchain.cmake"
     }
   ],
   "buildPresets": [
     {
       "name": "dev",
       "configurePreset": "dev"
+    },
+    {
+      "name": "bench",
+      "configurePreset": "bench"
     }
   ],
   "testPresets": [
     {
       "name": "dev",
       "configurePreset": "dev",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "bench",
+      "configurePreset": "bench",
       "output": {
         "outputOnFailure": true
       },
@@ -42,6 +62,24 @@
         {
           "type": "test",
           "name": "dev"
+        }
+      ]
+    },
+    {
+      "name": "bench",
+      "displayName": "Release Build (including Benchmarks)",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "bench"
+        },
+        {
+          "type": "build",
+          "name": "bench"
+        },
+        {
+          "type": "test",
+          "name": "bench"
         }
       ]
     }
