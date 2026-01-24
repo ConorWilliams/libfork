@@ -14,7 +14,7 @@
 // clang-format off
 
 /**
- * @brief Use like `BOOST_HOF_RETURNS` to define a function/lambda with all the noexcept/requires/decltype specifiers.
+ * @brief Use like `BOOST_HOF_RETURNS` to define a function/lambda with all the noexcept/decltype specifiers.
  *
  * This macro is not truly variadic but the ``...`` allows commas in the macro argument.
  */
