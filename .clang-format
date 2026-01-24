@@ -2,19 +2,27 @@
 Language: Cpp
 ColumnLimit: 110
 IndentPPDirectives: BeforeHash
-AlwaysBreakTemplateDeclarations : true
-PackConstructorInitializers : CurrentLine
+AlwaysBreakTemplateDeclarations: Yes
+PackConstructorInitializers: CurrentLine
 AccessModifierOffset: -1
-IndentCaseLabels : true
+IndentCaseLabels: true
 AllowShortLambdasOnASingleLine: Empty
 RequiresExpressionIndentation: OuterScope
-BinPackArguments : false
-BinPackParameters : false
-LambdaBodyIndentation : Signature
-PenaltyReturnTypeOnItsOwnLine : 1
+BinPackArguments: false
+# BinPackParameters: false
+LambdaBodyIndentation: Signature
+PenaltyReturnTypeOnItsOwnLine: 1
+
+Macros:
+  - LF_HOF(x)={x;}
+  - LF_HOF(x,y)={x,y;}
+  - LF_HOF(x,y,z)={x,y,z;}
+  - LF_HOF(x,y,z,w)={x,y,z,w;}
+  - LF_HOF(a,b,c,d,e)={a;}
+  - LF_HOF(a,b,c,d,e,f)={a,b,c,d,e,f;}
 
 SpaceBeforeParens: Custom
 SpaceBeforeParensOptions:
-    AfterRequiresInClause: true
-    AfterRequiresInExpression : true
+  AfterRequiresInClause: true
+  AfterRequiresInExpression: true
 ...
