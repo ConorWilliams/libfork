@@ -19,8 +19,7 @@
    */
   #define LF_TRY try
   /**
-   * @brief Expands to ``catch (...)`` if exceptions are enabled, otherwise expands to ``if constexpr
-   * (false)``.
+   * @brief Expands to ``catch (...)`` if exceptions are enabled, otherwise ``if constexpr (false)``.
    */
   #define LF_CATCH_ALL catch (...)
   /**
