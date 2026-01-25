@@ -43,5 +43,5 @@ void fib_alloc(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(fib_alloc)->Name("test/libfork/fib/alloc")->Arg(fib_test);
-BENCHMARK(fib_alloc)->Name("base/libfork/fib/alloc")->Arg(fib_base);
+BENCHMARK(fib_alloc)->Name("test/libfork/fib/alloc/no_sym_transfer")->Arg(fib_test);
+BENCHMARK(fib_alloc)->Name("base/libfork/fib/alloc/no_sym_transfer")->Arg(fib_base);
