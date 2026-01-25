@@ -117,8 +117,8 @@ struct mixin_frame {
 
   // === Called by the compiler === //
 
-  static constexpr auto await_transform(task<void> child) {
-    return just_awaitable<void>{.child = std::move(child)};
+  static constexpr auto await_transform(task<void> child) -> just_awaitable<void> {
+    return {.child = std::move(child)};
   }
 
   constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
