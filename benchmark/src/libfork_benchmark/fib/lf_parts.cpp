@@ -4,6 +4,8 @@
 
 #include <benchmark/benchmark.h>
 
+#include "libfork/__impl/assume.hpp"
+
 #include "libfork_benchmark/fib/fib.hpp"
 
 import libfork.core;
@@ -17,7 +19,6 @@ struct stack_on_heap {
   }
 };
 
-thread_local static std::byte buffer[1024 * 8];
 thread_local static std::byte *sp = nullptr;
 
 [[nodiscard]]
@@ -79,7 +80,9 @@ void fib(benchmark::State &state) {
 
   state.counters["n"] = static_cast<double>(n);
 
-  sp = buffer;
+  std::unique_ptr buffer = std::make_unique<std::byte[]>(1024 * 1024);
+
+  sp = buffer.get();
 
   for (auto _ : state) {
     benchmark::DoNotOptimize(n);
@@ -91,8 +94,8 @@ void fib(benchmark::State &state) {
     benchmark::DoNotOptimize(result);
   }
 
-  if (sp != buffer) {
-    state.SkipWithError("stack leak detected");
+  if (sp != buffer.get()) {
+    LF_TERMINATE("Stack leak detected");
   }
 }
 

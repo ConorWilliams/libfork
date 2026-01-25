@@ -11,6 +11,18 @@
  */
 
 /**
+ * @brief If expr evaluates to `false`, terminates the program with an error message.
+ *
+ * This macro is always active, regardless of optimization settings or `NDEBUG`.
+ */
+#define LF_ASSERT(expr)                                                                                      \
+  do {                                                                                                       \
+    if (!(expr)) {                                                                                           \
+      LF_TERMINATE("Assumption '" #expr "' failed!");                                                        \
+    }                                                                                                        \
+  } while (false)
+
+/**
  * @brief Invokes undefined behavior if ``expr`` evaluates to `false`.
  *
  * \rst
@@ -29,10 +41,5 @@
       ::std::unreachable();                                                                                  \
     }
 #else
-  #define LF_ASSUME(expr)                                                                                    \
-    do {                                                                                                     \
-      if (!(expr)) {                                                                                         \
-        LF_TERMINATE("Assumption '" #expr "' failed!");                                                      \
-      }                                                                                                      \
-    } while (false)
+  #define LF_ASSUME(expr) LF_ASSERT(expr)
 #endif
