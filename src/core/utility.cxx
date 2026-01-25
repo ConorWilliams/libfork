@@ -5,7 +5,7 @@ import std;
 namespace lf {
 
 /**
- * @brief An immovable, empty type.
+ * @brief An immovable, empty type, use as a mixin.
  */
 export struct immovable {
   immovable() = default;
@@ -17,7 +17,7 @@ export struct immovable {
 };
 
 /**
- * @brief A move-only, empty type.
+ * @brief A move-only, empty type, use as a mixin.
  */
 export struct move_only {
   move_only() = default;
