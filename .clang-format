@@ -9,7 +9,6 @@ IndentCaseLabels: true
 AllowShortLambdasOnASingleLine: Empty
 RequiresExpressionIndentation: OuterScope
 BinPackArguments: false
-# BinPackParameters: false
 LambdaBodyIndentation: Signature
 PenaltyReturnTypeOnItsOwnLine: 1
 
