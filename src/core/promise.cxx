@@ -53,9 +53,7 @@ using unique_promise = std::unique_ptr<T, promise_deleter>;
  * \endrst
  */
 export template <returnable T = void>
-struct task final : unique_promise<promise_type<T>> {
-  using unique_promise<promise_type<T>>::unique_promise;
-};
+struct task final : immovable, unique_promise<promise_type<T>> {};
 
 // =============== Frame-mixin =============== //
 
@@ -110,7 +108,7 @@ struct promise_type<void> : mixin_frame {
 
   frame_type frame;
 
-  constexpr auto get_return_object() -> task<void> { return {this, {}}; }
+  constexpr auto get_return_object() -> task<void> { return {{}, {this, {}}}; }
 
   constexpr static auto return_void() -> void {}
 };
