@@ -8,7 +8,7 @@ import libfork.core;
 
 namespace {
 
-auto fib(std::int64_t *ret, std::int64_t n) -> lf::task<void> {
+constexpr auto no_sym = [](this auto fib, std::int64_t *ret, std::int64_t n) -> lf::task<void> {
   if (n < 2) {
     *ret = n;
     co_return;
@@ -21,9 +21,25 @@ auto fib(std::int64_t *ret, std::int64_t n) -> lf::task<void> {
   fib(&rhs, n - 2).release()->handle().resume();
 
   *ret = lhs + rhs;
-}
+};
 
-void fib_alloc(benchmark::State &state) {
+constexpr auto sym = [](this auto fib, std::int64_t *ret, std::int64_t n) -> lf::task<void> {
+  if (n < 2) {
+    *ret = n;
+    co_return;
+  }
+
+  std::int64_t lhs = 0;
+  std::int64_t rhs = 0;
+
+  co_await fib(&lhs, n - 1);
+  co_await fib(&rhs, n - 2);
+
+  *ret = lhs + rhs;
+};
+
+template <auto Fn>
+void fib(benchmark::State &state) {
 
   std::int64_t n = state.range(0);
   std::int64_t expect = fib_ref(n);
@@ -34,7 +50,7 @@ void fib_alloc(benchmark::State &state) {
     benchmark::DoNotOptimize(n);
     std::int64_t result = 0;
 
-    fib(&result, n).release()->handle().resume();
+    Fn(&result, n).release()->handle().resume();
 
     CHECK_RESULT(result, expect);
     benchmark::DoNotOptimize(result);
@@ -43,5 +59,8 @@ void fib_alloc(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(fib_alloc)->Name("test/libfork/fib/alloc/no_sym_transfer")->Arg(fib_test);
-BENCHMARK(fib_alloc)->Name("base/libfork/fib/alloc/no_sym_transfer")->Arg(fib_base);
+BENCHMARK(fib<no_sym>)->Name("test/libfork/fib/alloc/no_sym_transfer")->Arg(fib_test);
+BENCHMARK(fib<no_sym>)->Name("base/libfork/fib/alloc/no_sym_transfer")->Arg(fib_base);
+
+BENCHMARK(fib<sym>)->Name("test/libfork/fib/alloc/sym_transfer")->Arg(fib_test);
+BENCHMARK(fib<sym>)->Name("base/libfork/fib/alloc/sym_transfer")->Arg(fib_base);

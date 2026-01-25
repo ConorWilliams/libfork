@@ -1,6 +1,7 @@
 module;
 #include <version>
 
+#include "libfork/__impl/compiler.hpp"
 #include "libfork/__impl/utils.hpp"
 export module libfork.core:promise;
 
@@ -85,6 +86,23 @@ struct final_awaitable : std::suspend_always {
   }
 };
 
+template <typename T>
+struct just_awaitable : std::suspend_always {
+
+  unique_promise<promise_type<T>> child;
+
+  template <typename U>
+  auto await_suspend(std::coroutine_handle<promise_type<U>> parent) noexcept -> std::coroutine_handle<> {
+
+    LF_ASSUME(child != nullptr);
+    LF_ASSUME(child->frame.parent == nullptr);
+
+    child->frame.parent = &parent.promise().frame;
+
+    return child.release()->handle();
+  }
+};
+
 struct mixin_frame {
 
   template <typename Self>
@@ -93,7 +111,11 @@ struct mixin_frame {
   constexpr auto handle(this Self &self) LF_HOF(std::coroutine_handle<Self>::from_promise(self))
 
   [[nodiscard]]
-  constexpr auto self(this auto &&self) LF_HOF(LF_FWD(self).frame)
+  constexpr auto get_frame(this auto &&self) LF_HOF(LF_FWD(self).frame)
+
+  static constexpr auto await_transform(task<void> &&child) {
+    return just_awaitable<void>{.child = std::move(child)};
+  }
 
   constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
 
