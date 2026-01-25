@@ -59,8 +59,8 @@ void fib(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(fib<no_sym>)->Name("test/libfork/fib/alloc/no_sym_transfer")->Arg(fib_test);
-BENCHMARK(fib<no_sym>)->Name("base/libfork/fib/alloc/no_sym_transfer")->Arg(fib_base);
+BENCHMARK(fib<no_sym>)->Name("test/libfork/fib/heap/no_sym_transfer")->Arg(fib_test);
+BENCHMARK(fib<no_sym>)->Name("base/libfork/fib/heap/no_sym_transfer")->Arg(fib_base);
 
-BENCHMARK(fib<sym>)->Name("test/libfork/fib/alloc/sym_transfer")->Arg(fib_test);
-BENCHMARK(fib<sym>)->Name("base/libfork/fib/alloc/sym_transfer")->Arg(fib_base);
+BENCHMARK(fib<sym>)->Name("test/libfork/fib/heap/sym_transfer")->Arg(fib_test);
+BENCHMARK(fib<sym>)->Name("base/libfork/fib/heap/sym_transfer")->Arg(fib_base);

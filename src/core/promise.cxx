@@ -15,7 +15,7 @@ namespace lf {
 
 // =============== Forward-decl =============== //
 
-template <typename T>
+template <typename T, alloc_mixin StackPolicy>
 struct promise_type;
 
 // =============== Task =============== //
@@ -32,6 +32,11 @@ struct promise_deleter {
 
 template <typename T>
 using unique_promise = std::unique_ptr<T, promise_deleter>;
+
+struct stack_on_heap {
+  static auto operator new(std::size_t sz) -> void * { return ::operator new(sz); }
+  static auto operator delete(void *p) noexcept -> void { ::operator delete(p); }
+};
 
 /**
  * @brief The return type for libfork's async functions/coroutines.
@@ -53,8 +58,8 @@ using unique_promise = std::unique_ptr<T, promise_deleter>;
  *
  * \endrst
  */
-export template <returnable T = void>
-struct task final : unique_promise<promise_type<T>> {};
+export template <returnable T = void, alloc_mixin Stack = stack_on_heap>
+struct task final : unique_promise<promise_type<T, Stack>> {};
 
 // =============== Frame-mixin =============== //
 
@@ -78,9 +83,9 @@ constexpr auto final_suspend(frame_type *frame) -> std::coroutine_handle<> {
 }
 
 struct final_awaitable : std::suspend_always {
-  template <typename T>
+  template <typename... Ts>
   constexpr auto
-  await_suspend(std::coroutine_handle<promise_type<T>> handle) noexcept -> std::coroutine_handle<> {
+  await_suspend(std::coroutine_handle<promise_type<Ts...>> handle) noexcept -> std::coroutine_handle<> {
     return final_suspend(&handle.promise().frame);
   }
 };
@@ -90,8 +95,8 @@ struct just_awaitable : std::suspend_always {
 
   task<T> child;
 
-  template <typename U>
-  auto await_suspend(std::coroutine_handle<promise_type<U>> parent) noexcept -> std::coroutine_handle<> {
+  template <typename... Us>
+  auto await_suspend(std::coroutine_handle<promise_type<Us...>> parent) noexcept -> std::coroutine_handle<> {
 
     LF_ASSUME(child != nullptr);
     LF_ASSUME(child->frame.parent == nullptr);
@@ -132,8 +137,8 @@ static_assert(std::is_empty_v<mixin_frame>);
 
 // =============== Promises =============== //
 
-template <>
-struct promise_type<void> : mixin_frame {
+template <alloc_mixin StackPolicy>
+struct promise_type<void, StackPolicy> : mixin_frame {
 
   frame_type frame;
 
@@ -142,31 +147,31 @@ struct promise_type<void> : mixin_frame {
   constexpr static void return_void() {}
 };
 
-static_assert(alignof(promise_type<void>) == alignof(frame_type));
+static_assert(alignof(promise_type<void, stack_on_heap>) == alignof(frame_type));
 
 #ifdef __cpp_lib_is_pointer_interconvertible
 static_assert(std::is_pointer_interconvertible_with_class(&promise_type<void>::frame));
 #else
-static_assert(std::is_standard_layout_v<promise_type<void>>);
+static_assert(std::is_standard_layout_v<promise_type<void, stack_on_heap>>);
 #endif
 
-template <typename T>
+template <typename T, alloc_mixin StackPolicy>
 struct promise_type : mixin_frame {
   frame_type frame;
   T *return_address;
 };
 
-static_assert(alignof(promise_type<int>) == alignof(frame_type));
+static_assert(alignof(promise_type<int, stack_on_heap>) == alignof(frame_type));
 
 #ifdef __cpp_lib_is_pointer_interconvertible
 static_assert(std::is_pointer_interconvertible_with_class(&promise_type<int>::frame));
 #else
-static_assert(std::is_standard_layout_v<promise_type<int>>);
+static_assert(std::is_standard_layout_v<promise_type<int, stack_on_heap>>);
 #endif
 
 } // namespace lf
 
-template <typename R, typename... Args>
-struct std::coroutine_traits<lf::task<R>, Args...> {
-  using promise_type = ::lf::promise_type<R>;
+template <typename R, typename... Policy, typename... Args>
+struct std::coroutine_traits<lf::task<R, Policy...>, Args...> {
+  using promise_type = ::lf::promise_type<R, Policy...>;
 };
