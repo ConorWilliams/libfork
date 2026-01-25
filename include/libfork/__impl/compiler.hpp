@@ -55,16 +55,3 @@
     #define LF_NO_INLINE
   #endif
 #endif
-
-// =============== Assert =============== //
-
-// #ifdef NDEBUG
-//   #define LF_ASSUME(expr)
-// #else
-#define LF_ASSUME(expr)                                                                                      \
-  do {                                                                                                       \
-    if (!(expr)) {                                                                                           \
-      LF_TERMINATE("Assumption '" #expr "' failed!");                                                        \
-    }                                                                                                        \
-  } while (false)
-// #endif

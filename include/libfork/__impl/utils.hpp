@@ -24,4 +24,4 @@
 /**
  * @brief Use like `std::forward` to perfectly forward an expression.
  */
-#define LF_FWD(...) std::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
+#define LF_FWD(...) ::std::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)

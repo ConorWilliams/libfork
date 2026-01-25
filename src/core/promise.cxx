@@ -1,7 +1,7 @@
 module;
 #include <version>
 
-#include "libfork/__impl/compiler.hpp"
+#include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/utils.hpp"
 export module libfork.core:promise;
 
