@@ -19,7 +19,7 @@ concept mixinable = std::is_empty_v<T> && !std::is_final_v<T>;
 export template <typename T>
 concept alloc_mixin = mixinable<T> && requires (std::size_t n, T *ptr) {
   { T::operator new(n) } -> std::same_as<void *>;
-  { T::operator delete(ptr) } noexcept -> std::same_as<void>;
+  { T::operator delete(ptr, n) } noexcept -> std::same_as<void>;
 };
 
 } // namespace lf

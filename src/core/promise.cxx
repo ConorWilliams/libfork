@@ -146,8 +146,8 @@ struct promise_type<void, StackPolicy> : StackPolicy, mixin_frame {
 };
 
 struct dummy_alloc {
-  static auto operator new(std::size_t sz) -> void *;
-  static auto operator delete(void *p) noexcept -> void;
+  static auto operator new(std::size_t) -> void *;
+  static auto operator delete(void *, std::size_t) noexcept -> void;
 };
 
 static_assert(alignof(promise_type<void, dummy_alloc>) == alignof(frame_type));

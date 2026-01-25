@@ -12,7 +12,9 @@ namespace {
 
 struct stack_on_heap {
   static constexpr auto operator new(std::size_t sz) -> void * { return ::operator new(sz); }
-  static constexpr auto operator delete(void *p) noexcept -> void { ::operator delete(p); }
+  static constexpr auto operator delete(void *p, [[maybe_unused]] std::size_t sz) noexcept -> void {
+    ::operator delete(p);
+  }
 };
 
 struct stack_on_data {
@@ -29,8 +31,6 @@ struct stack_on_data {
     offset += sz;
     return ptr;
   }
-
-  static auto operator delete([[maybe_unused]] void *p) noexcept -> void {}
 
   static auto operator delete([[maybe_unused]] void *p, std::size_t sz) noexcept -> void {
     sz = (sz + 15uz) & ~15uz;
