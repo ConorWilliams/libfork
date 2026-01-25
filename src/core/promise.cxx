@@ -54,7 +54,7 @@ using unique_promise = std::unique_ptr<T, promise_deleter>;
  * \endrst
  */
 export template <returnable T = void>
-struct task final : immovable, unique_promise<promise_type<T>> {};
+struct task final : unique_promise<promise_type<T>> {};
 
 // =============== Frame-mixin =============== //
 
@@ -88,7 +88,7 @@ struct final_awaitable : std::suspend_always {
 template <typename T>
 struct just_awaitable : std::suspend_always {
 
-  unique_promise<promise_type<T>> child;
+  task<T> child;
 
   template <typename U>
   auto await_suspend(std::coroutine_handle<promise_type<U>> parent) noexcept -> std::coroutine_handle<> {
@@ -104,15 +104,20 @@ struct just_awaitable : std::suspend_always {
 
 struct mixin_frame {
 
+  // === For internal use === //
+
   template <typename Self>
     requires (!std::is_const_v<Self>)
   [[nodiscard]]
   constexpr auto handle(this Self &self) LF_HOF(std::coroutine_handle<Self>::from_promise(self))
 
   [[nodiscard]]
-  constexpr auto get_frame(this auto &&self) LF_HOF(LF_FWD(self).frame)
+  constexpr auto get_frame(this auto &&self)
+      LF_HOF(LF_FWD(self).frame)
 
-  static constexpr auto await_transform(task<void> &&child) {
+  // === Called by the compiler === //
+
+  static constexpr auto await_transform(task<void> child) {
     return just_awaitable<void>{.child = std::move(child)};
   }
 
@@ -132,7 +137,7 @@ struct promise_type<void> : mixin_frame {
 
   frame_type frame;
 
-  constexpr auto get_return_object() -> task<void> { return {{}, {this, {}}}; }
+  constexpr auto get_return_object() -> task<void> { return {{this, {}}}; }
 
   constexpr static void return_void() {}
 };
