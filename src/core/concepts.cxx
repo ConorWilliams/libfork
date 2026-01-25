@@ -16,7 +16,7 @@ concept returnable = std::is_void_v<T> || std::movable<T>;
 template <typename T>
 concept mixinable = std::is_empty_v<T> && !std::is_final_v<T>;
 
-template <typename T>
+export template <typename T>
 concept alloc_mixin = mixinable<T> && requires (std::size_t n, T *ptr) {
   { T::operator new(n) } -> std::same_as<void *>;
   { T::operator delete(ptr) } noexcept -> std::same_as<void>;

@@ -33,11 +33,6 @@ struct promise_deleter {
 template <typename T>
 using unique_promise = std::unique_ptr<T, promise_deleter>;
 
-struct stack_on_heap {
-  static auto operator new(std::size_t sz) -> void * { return ::operator new(sz); }
-  static auto operator delete(void *p) noexcept -> void { ::operator delete(p); }
-};
-
 /**
  * @brief The return type for libfork's async functions/coroutines.
  *
@@ -58,7 +53,7 @@ struct stack_on_heap {
  *
  * \endrst
  */
-export template <returnable T = void, alloc_mixin Stack = stack_on_heap>
+export template <returnable T, alloc_mixin Stack>
 struct task final : unique_promise<promise_type<T, Stack>> {};
 
 // =============== Frame-mixin =============== //
@@ -90,10 +85,12 @@ struct final_awaitable : std::suspend_always {
   }
 };
 
-template <typename T>
+// TODO: can we type-erase T/Policy here?
+
+template <typename T, alloc_mixin StackPolicy>
 struct just_awaitable : std::suspend_always {
 
-  task<T> child;
+  task<T, StackPolicy> child;
 
   template <typename... Us>
   auto await_suspend(std::coroutine_handle<promise_type<Us...>> parent) noexcept -> std::coroutine_handle<> {
@@ -122,7 +119,8 @@ struct mixin_frame {
 
   // === Called by the compiler === //
 
-  static constexpr auto await_transform(task<void> child) -> just_awaitable<void> {
+  template <alloc_mixin P>
+  static constexpr auto await_transform(task<void, P> child) -> just_awaitable<void, P> {
     return {.child = std::move(child)};
   }
 
@@ -135,25 +133,32 @@ struct mixin_frame {
 
 static_assert(std::is_empty_v<mixin_frame>);
 
-// =============== Promises =============== //
+// =============== Promise (void) =============== //
 
 template <alloc_mixin StackPolicy>
 struct promise_type<void, StackPolicy> : mixin_frame {
 
   frame_type frame;
 
-  constexpr auto get_return_object() -> task<void> { return {{this, {}}}; }
+  constexpr auto get_return_object() -> task<void, StackPolicy> { return {{this, {}}}; }
 
   constexpr static void return_void() {}
 };
 
-static_assert(alignof(promise_type<void, stack_on_heap>) == alignof(frame_type));
+struct dummy_alloc {
+  static auto operator new(std::size_t sz) -> void *;
+  static auto operator delete(void *p) noexcept -> void;
+};
+
+static_assert(alignof(promise_type<void, dummy_alloc>) == alignof(frame_type));
 
 #ifdef __cpp_lib_is_pointer_interconvertible
 static_assert(std::is_pointer_interconvertible_with_class(&promise_type<void>::frame));
 #else
-static_assert(std::is_standard_layout_v<promise_type<void, stack_on_heap>>);
+static_assert(std::is_standard_layout_v<promise_type<void, dummy_alloc>>);
 #endif
+
+// =============== Promise (non-void) =============== //
 
 template <typename T, alloc_mixin StackPolicy>
 struct promise_type : mixin_frame {
@@ -161,15 +166,17 @@ struct promise_type : mixin_frame {
   T *return_address;
 };
 
-static_assert(alignof(promise_type<int, stack_on_heap>) == alignof(frame_type));
+static_assert(alignof(promise_type<int, dummy_alloc>) == alignof(frame_type));
 
 #ifdef __cpp_lib_is_pointer_interconvertible
 static_assert(std::is_pointer_interconvertible_with_class(&promise_type<int>::frame));
 #else
-static_assert(std::is_standard_layout_v<promise_type<int, stack_on_heap>>);
+static_assert(std::is_standard_layout_v<promise_type<int, dummy_alloc>>);
 #endif
 
 } // namespace lf
+
+// =============== std specialzation =============== //
 
 template <typename R, typename... Policy, typename... Args>
 struct std::coroutine_traits<lf::task<R, Policy...>, Args...> {
