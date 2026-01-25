@@ -44,7 +44,7 @@ target_sources(libfork_libfork
       include/libfork/version.hpp
       include/libfork/__impl/compiler.hpp
       include/libfork/__impl/exception.hpp
-      include/libfork/__impl/macros.hpp
+      include/libfork/__impl/utils.hpp
     BASE_DIRS
       include
 )

@@ -1,7 +1,7 @@
 module;
 #include <version>
 
-#include "libfork/__impl/macros.hpp"
+#include "libfork/__impl/utils.hpp"
 export module libfork.core:promise;
 
 import std;

@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file macros.hpp
+ * @file utils.hpp
  *
  * @brief A collection of internal utility macros.
  *
