@@ -17,29 +17,26 @@ struct stack_on_heap {
   }
 };
 
+thread_local static std::byte buffer[1024 * 8];
+thread_local static std::byte *sp = nullptr;
+
+[[nodiscard]]
+auto align(std::size_t n) -> std::size_t {
+  return (n + lf::k_new_align - 1) & ~(lf::k_new_align - 1);
+}
+
 struct tls_stack {
-  static constexpr std::size_t capacity = 1024 * 1024 * 4;
-  thread_local static std::byte buffer[capacity];
-  thread_local static std::size_t offset;
 
   static auto operator new(std::size_t sz) -> void * {
-    sz = (sz + 15uz) & ~15uz;
-    if (offset + sz > capacity) {
-      throw std::bad_alloc();
-    }
-    void *ptr = &buffer[offset];
-    offset += sz;
-    return ptr;
+    auto *prev = sp;
+    sp += align(sz);
+    return prev;
   }
 
-  static auto operator delete([[maybe_unused]] void *p, std::size_t sz) noexcept -> void {
-    sz = (sz + 15uz) & ~15uz;
-    offset -= sz;
+  static auto operator delete([[maybe_unused]] void *p, [[maybe_unused]] std::size_t sz) noexcept -> void {
+    sp = std::bit_cast<std::byte *>(p);
   }
 };
-
-thread_local std::byte tls_stack::buffer[tls_stack::capacity];
-thread_local std::size_t tls_stack::offset = 0;
 
 template <lf::alloc_mixin StackPolicy>
 constexpr auto no_await =
@@ -82,6 +79,8 @@ void fib(benchmark::State &state) {
 
   state.counters["n"] = static_cast<double>(n);
 
+  sp = buffer;
+
   for (auto _ : state) {
     benchmark::DoNotOptimize(n);
     std::int64_t result = 0;
@@ -90,6 +89,10 @@ void fib(benchmark::State &state) {
 
     CHECK_RESULT(result, expect);
     benchmark::DoNotOptimize(result);
+  }
+
+  if (sp != buffer) {
+    state.SkipWithError("stack leak detected");
   }
 }
 
