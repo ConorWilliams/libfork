@@ -9,8 +9,8 @@ import libfork.core;
 namespace {
 
 struct stack_on_heap {
-  static auto operator new(std::size_t sz) -> void * { return ::operator new(sz); }
-  static auto operator delete(void *p) noexcept -> void { ::operator delete(p); }
+  static constexpr auto operator new(std::size_t sz) -> void * { return ::operator new(sz); }
+  static constexpr auto operator delete(void *p) noexcept -> void { ::operator delete(p); }
 };
 
 template <lf::alloc_mixin StackPolicy>

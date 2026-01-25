@@ -136,7 +136,7 @@ static_assert(std::is_empty_v<mixin_frame>);
 // =============== Promise (void) =============== //
 
 template <alloc_mixin StackPolicy>
-struct promise_type<void, StackPolicy> : mixin_frame {
+struct promise_type<void, StackPolicy> : StackPolicy, mixin_frame {
 
   frame_type frame;
 
@@ -161,7 +161,7 @@ static_assert(std::is_standard_layout_v<promise_type<void, dummy_alloc>>);
 // =============== Promise (non-void) =============== //
 
 template <typename T, alloc_mixin StackPolicy>
-struct promise_type : mixin_frame {
+struct promise_type : StackPolicy, mixin_frame {
   frame_type frame;
   T *return_address;
 };
