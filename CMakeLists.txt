@@ -59,6 +59,7 @@ target_sources(libfork_libfork
       src/core/concepts.cxx
       src/core/utility.cxx
       src/core/frame.cxx
+      src/core/constants.cxx
     PRIVATE
       src/exception.cpp
 )
