@@ -21,14 +21,16 @@
   #endif
 #endif
 
-namespace lf {
+namespace lf::impl {
 
 /**
  * @brief Calls `std::terminate` after printing `msg`.
  */
-[[noreturn]] void terminate_with(char const *msg);
+[[noreturn]] void terminate_with(char const *message, char const *file, int line) noexcept;
 
-} // namespace lf
+} // namespace lf::impl
+
+#define LF_TERMINATE(message) ::lf::impl::terminate_with((message), __FILE__, __LINE__)
 
 #if LF_COMPILER_EXCEPTIONS
   /**
@@ -59,9 +61,9 @@ namespace lf {
   /**
    * @brief Expands to ``throw X`` if exceptions are enabled, otherwise terminates the program.
    */
-  #define LF_THROW(X) ::tf::terminate_with("Tried to throw '" #X "' without compiler exceptions")
+  #define LF_THROW(X) LF_TERMINATE("Tried to throw '" #X "' without compiler exceptions")
   /**
    * @brief Expands to ``throw`` if exceptions are enabled, otherwise terminates the program.
    */
-  #define LF_RETHROW ::tf::terminate_with("Tried to rethrow without compiler exceptions")
+  #define LF_RETHROW LF_TERLF_TERMINATE("Tried to rethrow without compiler exceptions")
 #endif

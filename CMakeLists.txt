@@ -58,7 +58,7 @@ target_sources(libfork_libfork
       src/core/promise.cxx
       src/core/concepts.cxx
     PRIVATE
-      # src/libfork.cpp
+      src/exception.cpp
 )
 
 # ======================
