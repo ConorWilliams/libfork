@@ -57,6 +57,7 @@ struct task final : immovable, unique_promise<promise_type<T>> {};
 
 // =============== Frame-mixin =============== //
 
+[[nodiscard]]
 constexpr auto final_suspend(frame_type *frame) -> std::coroutine_handle<> {
 
   // tmp
@@ -88,15 +89,17 @@ struct mixin_frame {
 
   template <typename Self>
     requires (!std::is_const_v<Self>)
+  [[nodiscard]]
   constexpr auto handle(this Self &self) LF_HOF(std::coroutine_handle<Self>::from_promise(self))
 
+  [[nodiscard]]
   constexpr auto self(this auto &&self) LF_HOF(LF_FWD(self).frame)
 
   constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
 
   constexpr static auto final_suspend() noexcept -> final_awaitable { return {}; }
 
-  constexpr static auto unhandled_exception() noexcept -> void { std::terminate(); }
+  constexpr static void unhandled_exception() noexcept { std::terminate(); }
 };
 
 static_assert(std::is_empty_v<mixin_frame>);
@@ -110,7 +113,7 @@ struct promise_type<void> : mixin_frame {
 
   constexpr auto get_return_object() -> task<void> { return {{}, {this, {}}}; }
 
-  constexpr static auto return_void() -> void {}
+  constexpr static void return_void() {}
 };
 
 static_assert(alignof(promise_type<void>) == alignof(frame_type));
