@@ -153,7 +153,7 @@ struct dummy_alloc {
 static_assert(alignof(promise_type<void, dummy_alloc>) == alignof(frame_type));
 
 #ifdef __cpp_lib_is_pointer_interconvertible
-static_assert(std::is_pointer_interconvertible_with_class(&promise_type<void>::frame));
+static_assert(std::is_pointer_interconvertible_with_class(&promise_type<void, dummy_alloc>::frame));
 #else
 static_assert(std::is_standard_layout_v<promise_type<void, dummy_alloc>>);
 #endif
@@ -169,7 +169,7 @@ struct promise_type : StackPolicy, mixin_frame {
 static_assert(alignof(promise_type<int, dummy_alloc>) == alignof(frame_type));
 
 #ifdef __cpp_lib_is_pointer_interconvertible
-static_assert(std::is_pointer_interconvertible_with_class(&promise_type<int>::frame));
+static_assert(std::is_pointer_interconvertible_with_class(&promise_type<int, dummy_alloc>::frame));
 #else
 static_assert(std::is_standard_layout_v<promise_type<int, dummy_alloc>>);
 #endif
