@@ -3,6 +3,7 @@ Language: Cpp
 ColumnLimit: 110
 IndentPPDirectives: BeforeHash
 AlwaysBreakTemplateDeclarations: Yes
+BreakAfterAttributes: Always
 PackConstructorInitializers: CurrentLine
 AccessModifierOffset: -1
 IndentCaseLabels: true

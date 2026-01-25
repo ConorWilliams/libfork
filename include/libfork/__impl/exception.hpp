@@ -26,7 +26,8 @@ namespace lf::impl {
 /**
  * @brief Calls `std::terminate` after printing `msg`.
  */
-[[noreturn]] void terminate_with(char const *message, char const *file, int line) noexcept;
+[[noreturn]]
+void terminate_with(char const *message, char const *file, int line) noexcept;
 
 } // namespace lf::impl
 
