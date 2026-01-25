@@ -42,11 +42,12 @@ target_sources(libfork_benchmark
     src/libfork_benchmark/fib/serial_return.cpp
 )
 
-# ---- Libfork ----
+# ---- Libfork/Coroutine ----
 
 target_sources(libfork_benchmark
   PRIVATE
     src/libfork_benchmark/fib/lf_parts.cpp
+    src/libfork_benchmark/fib/minimal.cpp
 )
 
 target_link_libraries(libfork_benchmark

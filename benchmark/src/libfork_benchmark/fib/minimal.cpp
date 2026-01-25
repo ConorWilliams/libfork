@@ -1,11 +1,12 @@
-#include <bit>
 #include <coroutine>
 #include <cstddef>
 #include <exception>
-#include <memory>
-#include <print>
 
 #include <benchmark/benchmark.h>
+
+#include "libfork_benchmark/fib/fib.hpp"
+
+import libfork.core;
 
 void sink(int &x) { benchmark::DoNotOptimize(x); }
 
@@ -77,7 +78,7 @@ struct task_of {
     return *this;
   }
 
-  bool await_ready() noexcept { return false; }
+  auto await_ready() noexcept -> bool { return false; }
 
   auto await_suspend(handle<> h) -> handle<promise_type> {
     coro_.promise().continue_ = h;
@@ -103,6 +104,8 @@ void fib_coro_no_queue(benchmark::State &state) {
 
   stk = new unsigned char[k_stack_size];
 
+  volatile int n_fib = fib_base;
+
   for (auto _ : state) {
     int x;
     fib(n_fib).set(x).coro_.resume();
@@ -112,115 +115,6 @@ void fib_coro_no_queue(benchmark::State &state) {
   delete[] stk;
 }
 
-inline thread_local lf::deque<int *> *ctx;
-
-template <typename Mixin>
-auto fib_q(int n) -> task_of<Mixin> {
-  if (n <= 1) {
-    co_return n;
-  }
-
-  int a, b;
-
-  ctx->push(&a);
-  co_await fib_q<Mixin>(n - 1).set(a);
-  ctx->pop();
-
-  ctx->push(&b);
-  co_await fib_q<Mixin>(n - 2).set(b);
-  ctx->pop();
-
-  co_return a + b;
-}
-
-void fib_coro_with_queue(benchmark::State &state) {
-
-  stk = new unsigned char[k_stack_size];
-  lf::deque<int *> q;
-  ctx = &q;
-
-  for (auto _ : state) {
-    int x;
-    fib_q<global_fixed>(n_fib).set(x).coro_.resume();
-    sink(x);
-  }
-
-  delete[] stk;
-}
-
-auto fib_fn_with_queue(int &x, int n) {
-  if (n <= 1) {
-    x = n;
-    return;
-  }
-  int a, b;
-
-  ctx->push(&a);
-  fib_fn_with_queue(a, n - 1);
-  ctx->pop();
-
-  ctx->push(&b);
-  fib_fn_with_queue(b, n - 2);
-  ctx->pop();
-
-  x = a + b;
-}
-
-void fib_with_queue(benchmark::State &state) {
-
-  lf::deque<int *> q;
-  ctx = &q;
-
-  for (auto _ : state) {
-    int x;
-    fib_fn_with_queue(x, n_fib);
-    sink(x);
-  }
-}
-
 } // namespace
 
-BENCHMARK(fib_with_queue);
-BENCHMARK(fib_coro_no_queue);
-BENCHMARK(fib_coro_with_queue);
-
-namespace {
-
-inline thread_local memory::stacklet *_stl = nullptr;
-inline thread_local std::byte *_sp = nullptr;
-
-struct mixin_dynstack {
-  static auto operator new(std::size_t sz) -> void * {
-    // std::println("allocating {}", sz);
-    auto [stl, ex, sp] = memory::push(_stl, _sp, sz);
-    _stl = stl;
-    _sp = sp;
-    return ex;
-  }
-
-  static auto operator delete(void *p) -> void {
-    // std::println("deallocating");
-    auto [stl, sp] = memory::pop(_stl, std::bit_cast<std::byte *>(p), 0);
-    _stl = stl;
-    _sp = sp;
-  }
-};
-
-void a_simple_queue(benchmark::State &state) {
-  _stl = memory::new_stacklet(nullptr);
-  _sp = _stl->data.data();
-  lf::deque<int *> q;
-  ctx = &q;
-
-  for (auto _ : state) {
-    int x;
-    fib_q<mixin_dynstack>(n_fib).set(x).coro_.resume();
-    sink(x);
-  }
-
-  delete[] _stl;
-}
-
-} // namespace
-
-BENCHMARK(a_simple_queue);
+BENCHMARK(fib_coro_no_queue)->Name("base/libfork_standalone/fib");
