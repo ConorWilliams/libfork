@@ -61,8 +61,7 @@ struct task final : immovable, unique_promise<promise_type<T>> {};
 [[nodiscard]]
 constexpr auto final_suspend(frame_type *frame) -> std::coroutine_handle<> {
 
-  // tmp
-  // ASSUME(frame != nullptr);
+  LF_ASSUME(frame != nullptr);
 
   frame_type *parent_frame = frame->parent;
 

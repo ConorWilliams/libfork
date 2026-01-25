@@ -64,7 +64,7 @@
 #define LF_ASSUME(expr)                                                                                      \
   do {                                                                                                       \
     if (!(expr)) {                                                                                           \
-      LF_TERMINATE("Assumption '" #expr "' failed");                                                         \
+      LF_TERMINATE("Assumption '" #expr "' failed!");                                                        \
     }                                                                                                        \
   } while (false)
 // #endif
