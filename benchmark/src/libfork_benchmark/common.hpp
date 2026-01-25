@@ -3,7 +3,7 @@
 #include <format>
 #include <stdexcept>
 
-#include "libfork/macros.hpp"
+#include "libfork/__impl/exception.hpp"
 
 struct incorrect_result : public std::runtime_error {
   using std::runtime_error::runtime_error;

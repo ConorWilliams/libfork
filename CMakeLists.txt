@@ -42,7 +42,9 @@ target_sources(libfork_libfork
   PUBLIC
     FILE_SET HEADERS FILES
       include/libfork/version.hpp
-      include/libfork/macros.hpp
+      include/libfork/__impl/compiler.hpp
+      include/libfork/__impl/exception.hpp
+      include/libfork/__impl/macros.hpp
     BASE_DIRS
       include
 )
