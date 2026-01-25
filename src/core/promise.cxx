@@ -7,16 +7,10 @@ export module libfork.core:promise;
 import std;
 
 import :concepts;
+import :utility;
+import :frame;
 
 namespace lf {
-
-// =============== Frame =============== //
-
-struct frame_type {
-  frame_type *parent = nullptr;
-};
-
-static_assert(std::is_standard_layout_v<frame_type>);
 
 // =============== Forward-decl =============== //
 
