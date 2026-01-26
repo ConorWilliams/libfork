@@ -117,4 +117,4 @@ void fib_coro_no_queue(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(fib_coro_no_queue)->Name("base/libfork_standalone/fib");
+BENCHMARK(fib_coro_no_queue)->Name("base/baremetal/fib");
