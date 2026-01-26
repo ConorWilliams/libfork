@@ -176,7 +176,7 @@ static_assert(std::is_standard_layout_v<promise_type<int, dummy_alloc>>);
 
 } // namespace lf
 
-// =============== std specialzation =============== //
+// =============== std specialization =============== //
 
 template <typename R, typename... Policy, typename... Args>
 struct std::coroutine_traits<lf::task<R, Policy...>, Args...> {
