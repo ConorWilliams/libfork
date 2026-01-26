@@ -47,10 +47,6 @@ using unique_promise = std::unique_ptr<T, promise_deleter>;
  *    No consumer of this library should ever touch an instance of this type,
  *    it is used for specifying the return type of an `async` function only.
  *
- * .. warning::
- *    The value type ``T`` of a coroutine should be independent of the
- *    coroutines first-argument.
- *
  * \endrst
  */
 export template <returnable T, alloc_mixin Stack>
