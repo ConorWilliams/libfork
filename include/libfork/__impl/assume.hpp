@@ -37,9 +37,11 @@
  */
 #ifdef NDEBUG
   #define LF_ASSUME(expr)                                                                                    \
-    if (!(expr)) {                                                                                           \
-      ::std::unreachable();                                                                                  \
-    }
+    do {                                                                                                     \
+      if (!(expr)) {                                                                                         \
+        ::std::unreachable();                                                                                \
+      }                                                                                                      \
+    } while (false)
 #else
   #define LF_ASSUME(expr) LF_ASSERT(expr)
 #endif
