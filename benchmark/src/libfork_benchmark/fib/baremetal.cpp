@@ -1,6 +1,7 @@
 #include <coroutine>
 #include <cstddef>
 #include <exception>
+#include <memory>
 
 #include <benchmark/benchmark.h>
 
@@ -8,53 +9,28 @@
 
 import libfork.core;
 
-void sink(int &x) { benchmark::DoNotOptimize(x); }
-
 // === Coroutine
 
-template <typename T = void>
-using handle = std::coroutine_handle<T>;
-
 namespace {
-
-constexpr std::size_t k_new_align = 2 * sizeof(void *);
-constexpr std::size_t k_stack_size = 1024 * 1024 * 8;
-
-static constexpr auto align(std::size_t n) -> std::size_t {
-  return (n + k_new_align - 1) & ~(k_new_align - 1);
-}
-
-static thread_local unsigned char *stk = nullptr;
-
-struct global_fixed {
-
-  static auto operator new(std::size_t sz) -> void * {
-    auto *tmp_stk = stk;
-    stk += align(sz);
-    return tmp_stk;
-  }
-
-  static auto operator delete(void *p) -> void { stk = static_cast<unsigned char *>(p); }
-};
 
 template <typename Mixin>
 struct task_of {
   struct promise_type : Mixin {
 
-    auto get_return_object() -> task_of { return {handle<promise_type>::from_promise(*this)}; }
+    auto get_return_object() -> task_of { return {std::coroutine_handle<promise_type>::from_promise(*this)}; }
 
     auto initial_suspend() -> std::suspend_always { return {}; }
 
     auto final_suspend() noexcept {
       struct final_awaitable : std::suspend_always {
-        auto await_suspend(handle<promise_type> h) noexcept -> handle<> {
+        auto await_suspend(std::coroutine_handle<promise_type> h) noexcept -> std::coroutine_handle<> {
 
-          handle continue_ = h.promise().continue_;
+          std::coroutine_handle<> cont = h.promise().continuation;
 
           h.destroy();
 
-          if (continue_) {
-            return continue_;
+          if (cont) {
+            return cont;
           }
 
           return std::noop_coroutine();
@@ -64,37 +40,38 @@ struct task_of {
       return final_awaitable{};
     }
 
-    void return_value(int value) { *value_ = value; }
+    void return_value(std::int64_t val) { *value = val; }
     void unhandled_exception() { std::terminate(); }
 
-    int *value_;
-    std::coroutine_handle<> continue_ = nullptr;
+    std::int64_t *value;
+    std::coroutine_handle<> continuation = nullptr;
   };
 
-  std::coroutine_handle<promise_type> coro_;
+  std::coroutine_handle<promise_type> coro;
 
-  auto set(int &out) -> task_of & {
-    coro_.promise().value_ = &out;
+  auto set(std::int64_t &out) -> task_of & {
+    coro.promise().value = &out;
     return *this;
   }
 
   auto await_ready() noexcept -> bool { return false; }
 
-  auto await_suspend(handle<> h) -> handle<promise_type> {
-    coro_.promise().continue_ = h;
-    return coro_;
+  auto await_suspend(std::coroutine_handle<> h) -> std::coroutine_handle<promise_type> {
+    coro.promise().continuation = h;
+    return coro;
   }
 
   void await_resume() noexcept {}
 };
 
-using task = task_of<global_fixed>;
+using task = task_of<fib_bump_allocator>;
 
-auto fib(int n) -> task {
+auto fib(std::int64_t n) -> task {
   if (n <= 1) {
     co_return n;
   }
-  int a, b;
+  std::int64_t a;
+  std::int64_t b;
   co_await fib(n - 1).set(a);
   co_await fib(n - 2).set(b);
   co_return a + b;
@@ -102,19 +79,29 @@ auto fib(int n) -> task {
 
 void fib_coro_no_queue(benchmark::State &state) {
 
-  stk = new unsigned char[k_stack_size];
+  std::int64_t n = state.range(0);
+  std::int64_t expect = fib_ref(n);
 
-  volatile int n_fib = fib_base;
+  state.counters["n"] = static_cast<double>(n);
+
+  // 8MB stack
+  std::unique_ptr buffer = std::make_unique<std::byte[]>(1024 * 1024 * 8);
+  fib_bump_ptr = buffer.get();
 
   for (auto _ : state) {
-    int x;
-    fib(n_fib).set(x).coro_.resume();
-    sink(x);
+    benchmark::DoNotOptimize(n);
+    std::int64_t result = 0;
+    fib(n).set(result).coro.resume();
+    CHECK_RESULT(result, expect);
+    benchmark::DoNotOptimize(result);
   }
 
-  delete[] stk;
+  if (fib_bump_ptr != buffer.get()) {
+    std::terminate(); // Stack leak
+  }
 }
 
 } // namespace
 
-BENCHMARK(fib_coro_no_queue)->Name("base/baremetal/fib");
+BENCHMARK(fib_coro_no_queue)->Name("test/baremetal/fib")->Arg(fib_test);
+BENCHMARK(fib_coro_no_queue)->Name("base/baremetal/fib")->Arg(fib_base);
