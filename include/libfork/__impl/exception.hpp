@@ -66,5 +66,5 @@ void terminate_with(char const *message, char const *file, int line) noexcept;
   /**
    * @brief Expands to ``throw`` if exceptions are enabled, otherwise terminates the program.
    */
-  #define LF_RETHROW LF_TERLF_TERMINATE("Tried to rethrow without compiler exceptions")
+  #define LF_RETHROW LF_TERMINATE("Tried to rethrow without compiler exceptions")
 #endif
