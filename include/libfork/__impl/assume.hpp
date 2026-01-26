@@ -3,7 +3,7 @@
 #include "libfork/__impl/exception.hpp"
 
 /**
- * @file compiler.hpp
+ * @file assume.hpp
  *
  * @brief A collection of internal macros.
  *
