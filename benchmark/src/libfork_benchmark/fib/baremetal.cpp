@@ -7,8 +7,6 @@
 
 #include "libfork_benchmark/fib/fib.hpp"
 
-import libfork.core;
-
 // === Coroutine
 
 namespace {
