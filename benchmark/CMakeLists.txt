@@ -44,10 +44,10 @@ target_sources(libfork_benchmark
 
 # ---- Libfork ----
 
-# target_sources(libfork_benchmark
-#   PRIVATE
-#     src/libfork_benchmark/fib/fib.cpp
-# )
+target_sources(libfork_benchmark
+  PRIVATE
+    src/libfork_benchmark/fib/lf_parts.cpp
+)
 
 target_link_libraries(libfork_benchmark
   PRIVATE

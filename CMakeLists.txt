@@ -42,7 +42,10 @@ target_sources(libfork_libfork
   PUBLIC
     FILE_SET HEADERS FILES
       include/libfork/version.hpp
-      include/libfork/macros.hpp
+      include/libfork/__impl/compiler.hpp
+      include/libfork/__impl/exception.hpp
+      include/libfork/__impl/utils.hpp
+      include/libfork/__impl/assume.hpp
     BASE_DIRS
       include
 )
@@ -54,8 +57,12 @@ target_sources(libfork_libfork
     FILE_SET CXX_MODULES FILES
       src/core/core.cxx
       src/core/promise.cxx
+      src/core/concepts.cxx
+      src/core/utility.cxx
+      src/core/frame.cxx
+      src/core/constants.cxx
     PRIVATE
-      # src/libfork.cpp
+      src/exception.cpp
 )
 
 # ======================

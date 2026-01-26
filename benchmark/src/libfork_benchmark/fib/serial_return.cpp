@@ -1,6 +1,7 @@
 #include <benchmark/benchmark.h>
 
-#include "libfork_benchmark/common.hpp"
+#include "libfork/__impl/compiler.hpp"
+
 #include "libfork_benchmark/fib/fib.hpp"
 
 namespace {
@@ -21,7 +22,7 @@ void fib_serial_return(benchmark::State &state) {
   std::int64_t n = state.range(0);
   std::int64_t expect = fib_ref(n);
 
-  state.counters["n"] = n;
+  state.counters["n"] = static_cast<double>(n);
 
   for (auto _ : state) {
     benchmark::DoNotOptimize(n);

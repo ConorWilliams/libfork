@@ -2,8 +2,10 @@
 
 #include <cstdint>
 
+#include "libfork_benchmark/common.hpp"
+
 inline constexpr int fib_test = 3;
-inline constexpr int fib_base = 40;
+inline constexpr int fib_base = 37;
 
 /**
  * @brief Non-recursive Fibonacci calculation
