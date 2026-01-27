@@ -11,11 +11,10 @@
 
 namespace {
 
-template <typename Mixin>
-struct task_of {
-  struct promise_type : Mixin {
+struct task {
+  struct promise_type : fib_bump_allocator {
 
-    auto get_return_object() -> task_of { return {std::coroutine_handle<promise_type>::from_promise(*this)}; }
+    auto get_return_object() -> task { return {std::coroutine_handle<promise_type>::from_promise(*this)}; }
 
     auto initial_suspend() -> std::suspend_always { return {}; }
 
@@ -41,13 +40,13 @@ struct task_of {
     void return_value(std::int64_t val) { *value = val; }
     void unhandled_exception() { std::terminate(); }
 
-    std::int64_t *value;
+    std::int64_t *value = nullptr;
     std::coroutine_handle<> continuation = nullptr;
   };
 
   std::coroutine_handle<promise_type> coro;
 
-  auto set(std::int64_t &out) -> task_of & {
+  auto set(std::int64_t &out) -> task & {
     coro.promise().value = &out;
     return *this;
   }
@@ -62,14 +61,12 @@ struct task_of {
   void await_resume() noexcept {}
 };
 
-using task = task_of<fib_bump_allocator>;
-
 auto fib(std::int64_t n) -> task {
   if (n <= 1) {
     co_return n;
   }
-  std::int64_t a;
-  std::int64_t b;
+  std::int64_t a = 0;
+  std::int64_t b = 0;
   co_await fib(n - 1).set(a);
   co_await fib(n - 2).set(b);
   co_return a + b;
