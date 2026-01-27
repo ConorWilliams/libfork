@@ -30,8 +30,19 @@ struct promise_deleter {
   }
 };
 
+// template <typename T>
+// using unique_promise = std::unique_ptr<T, promise_deleter>;
+
 template <typename T>
-using unique_promise = std::unique_ptr<T, promise_deleter>;
+struct unique_promise {
+  T *a;
+
+  constexpr auto operator*() noexcept -> T & { return *a; }
+  constexpr auto operator->() noexcept -> T * { return a; }
+  constexpr operator bool() const noexcept { return a != nullptr; }
+  constexpr auto release() noexcept -> T * { return a; }
+  constexpr auto operator==(std::nullptr_t) const noexcept -> bool { return a == nullptr; }
+};
 
 /**
  * @brief The return type for libfork's async functions/coroutines.
@@ -63,7 +74,7 @@ constexpr auto final_suspend(frame_type *frame) -> std::coroutine_handle<> {
 
   {
     // Destroy the child frame
-    unique_promise<frame_type> _{frame};
+    promise_deleter::operator()(frame);
   }
 
   if (parent_frame != nullptr) {
@@ -136,7 +147,7 @@ struct promise_type<void, StackPolicy> : StackPolicy, mixin_frame {
 
   frame_type frame;
 
-  constexpr auto get_return_object() -> task<void, StackPolicy> { return {{this, {}}}; }
+  constexpr auto get_return_object() -> task<void, StackPolicy> { return {{this}}; }
 
   constexpr static void return_void() {}
 };
