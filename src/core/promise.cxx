@@ -21,19 +21,6 @@ struct promise_type;
 // =============== Task =============== //
 
 /**
- * @brief `std::unique_ptr` compatible deleter for coroutine promises.
- */
-struct promise_deleter {
-  template <typename T>
-  constexpr static void operator()(T *ptr) noexcept {
-    std::coroutine_handle<T>::from_promise(*ptr).destroy();
-  }
-};
-
-template <typename T>
-using unique_promise = std::unique_ptr<T, promise_deleter>;
-
-/**
  * @brief The return type for libfork's async functions/coroutines.
  *
  * This predominantly exists to disambiguate `libfork`s coroutines from other
@@ -63,13 +50,11 @@ constexpr auto final_suspend(frame_type *frame) -> std::coroutine_handle<> {
 
   frame_type *parent_frame = frame->parent;
 
-  {
-    // Destroy the child frame
-    unique_promise<frame_type> _{frame};
-  }
+  // Destroy the child frame
+  frame->handle().destroy();
 
   if (parent_frame != nullptr) {
-    return std::coroutine_handle<frame_type>::from_promise(*parent_frame);
+    return parent_frame->handle();
   }
 
   return std::noop_coroutine();
@@ -83,9 +68,6 @@ struct final_awaitable : std::suspend_always {
   }
 };
 
-// TODO: can we type-erase T/Policy here?
-
-template <typename T, alloc_mixin StackPolicy>
 struct just_awaitable : std::suspend_always {
 
   frame_type *child;
@@ -98,7 +80,7 @@ struct just_awaitable : std::suspend_always {
 
     child->parent = &parent.promise().frame;
 
-    return std::coroutine_handle<frame_type>::from_promise(*child);
+    return child->handle();
   }
 };
 
@@ -118,8 +100,8 @@ struct mixin_frame {
   // === Called by the compiler === //
 
   template <alloc_mixin P>
-  static constexpr auto await_transform(task<void, P> child) noexcept -> just_awaitable<void, P> {
-    return {.child = &child.promise->frame}; // TODO: direct cast
+  static constexpr auto await_transform(task<void, P> child) noexcept -> just_awaitable {
+    return {.child = &child.promise->frame};
   }
 
   constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
