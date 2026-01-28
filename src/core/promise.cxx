@@ -50,7 +50,9 @@ using unique_promise = std::unique_ptr<T, promise_deleter>;
  * \endrst
  */
 export template <returnable T, alloc_mixin Stack>
-struct task final : unique_promise<promise_type<T, Stack>> {};
+struct task {
+  promise_type<T, Stack> *promise;
+};
 
 // =============== Frame-mixin =============== //
 
@@ -86,17 +88,17 @@ struct final_awaitable : std::suspend_always {
 template <typename T, alloc_mixin StackPolicy>
 struct just_awaitable : std::suspend_always {
 
-  task<T, StackPolicy> child;
+  frame_type *child;
 
   template <typename... Us>
   auto await_suspend(std::coroutine_handle<promise_type<Us...>> parent) noexcept -> std::coroutine_handle<> {
 
     LF_ASSUME(child != nullptr);
-    LF_ASSUME(child->frame.parent == nullptr);
+    LF_ASSUME(child->parent == nullptr);
 
-    child->frame.parent = &parent.promise().frame;
+    child->parent = &parent.promise().frame;
 
-    return child.release()->handle();
+    return std::coroutine_handle<frame_type>::from_promise(*child);
   }
 };
 
@@ -116,8 +118,8 @@ struct mixin_frame {
   // === Called by the compiler === //
 
   template <alloc_mixin P>
-  static constexpr auto await_transform(task<void, P> child) -> just_awaitable<void, P> {
-    return {.child = std::move(child)};
+  static constexpr auto await_transform(task<void, P> child) noexcept -> just_awaitable<void, P> {
+    return {.child = &child.promise->frame}; // TODO: direct cast
   }
 
   constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
@@ -136,7 +138,7 @@ struct promise_type<void, StackPolicy> : StackPolicy, mixin_frame {
 
   frame_type frame;
 
-  constexpr auto get_return_object() -> task<void, StackPolicy> { return {{this, {}}}; }
+  constexpr auto get_return_object() -> task<void, StackPolicy> { return {.promise = this}; }
 
   constexpr static void return_void() {}
 };

@@ -30,8 +30,8 @@ constexpr auto no_await =
   std::int64_t lhs = 0;
   std::int64_t rhs = 0;
 
-  fib(&lhs, n - 1).release()->handle().resume();
-  fib(&rhs, n - 2).release()->handle().resume();
+  fib(&lhs, n - 1).promise->handle().resume();
+  fib(&rhs, n - 2).promise->handle().resume();
 
   *ret = lhs + rhs;
 };
@@ -68,7 +68,7 @@ void fib(benchmark::State &state) {
     benchmark::DoNotOptimize(n);
     std::int64_t result = 0;
 
-    Fn(&result, n).release()->handle().resume();
+    Fn(&result, n).promise->handle().resume();
 
     CHECK_RESULT(result, expect);
     benchmark::DoNotOptimize(result);
