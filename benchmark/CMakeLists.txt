@@ -42,6 +42,13 @@ target_sources(libfork_benchmark
     src/libfork_benchmark/fib/serial_return.cpp
 )
 
+# ---- Baremetal ----
+
+target_sources(libfork_benchmark
+  PRIVATE
+    src/libfork_benchmark/fib/baremetal.cpp
+)
+
 # ---- Libfork ----
 
 target_sources(libfork_benchmark

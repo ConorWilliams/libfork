@@ -21,19 +21,6 @@ struct promise_type;
 // =============== Task =============== //
 
 /**
- * @brief `std::unique_ptr` compatible deleter for coroutine promises.
- */
-struct promise_deleter {
-  template <typename T>
-  constexpr static void operator()(T *ptr) noexcept {
-    std::coroutine_handle<T>::from_promise(*ptr).destroy();
-  }
-};
-
-template <typename T>
-using unique_promise = std::unique_ptr<T, promise_deleter>;
-
-/**
  * @brief The return type for libfork's async functions/coroutines.
  *
  * This predominantly exists to disambiguate `libfork`s coroutines from other
@@ -50,7 +37,9 @@ using unique_promise = std::unique_ptr<T, promise_deleter>;
  * \endrst
  */
 export template <returnable T, alloc_mixin Stack>
-struct task final : unique_promise<promise_type<T, Stack>> {};
+struct task {
+  promise_type<T, Stack> *promise;
+};
 
 // =============== Frame-mixin =============== //
 
@@ -61,13 +50,11 @@ constexpr auto final_suspend(frame_type *frame) -> std::coroutine_handle<> {
 
   frame_type *parent_frame = frame->parent;
 
-  {
-    // Destroy the child frame
-    unique_promise<frame_type> _{frame};
-  }
+  // Destroy the child frame
+  frame->handle().destroy();
 
   if (parent_frame != nullptr) {
-    return std::coroutine_handle<frame_type>::from_promise(*parent_frame);
+    return parent_frame->handle();
   }
 
   return std::noop_coroutine();
@@ -81,22 +68,19 @@ struct final_awaitable : std::suspend_always {
   }
 };
 
-// TODO: can we type-erase T/Policy here?
-
-template <typename T, alloc_mixin StackPolicy>
 struct just_awaitable : std::suspend_always {
 
-  task<T, StackPolicy> child;
+  frame_type *child;
 
   template <typename... Us>
   auto await_suspend(std::coroutine_handle<promise_type<Us...>> parent) noexcept -> std::coroutine_handle<> {
 
     LF_ASSUME(child != nullptr);
-    LF_ASSUME(child->frame.parent == nullptr);
+    LF_ASSUME(child->parent == nullptr);
 
-    child->frame.parent = &parent.promise().frame;
+    child->parent = &parent.promise().frame;
 
-    return child.release()->handle();
+    return child->handle();
   }
 };
 
@@ -116,8 +100,8 @@ struct mixin_frame {
   // === Called by the compiler === //
 
   template <alloc_mixin P>
-  static constexpr auto await_transform(task<void, P> child) -> just_awaitable<void, P> {
-    return {.child = std::move(child)};
+  constexpr static auto await_transform(task<void, P> child) noexcept -> just_awaitable {
+    return {.child = &child.promise->frame};
   }
 
   constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
@@ -136,7 +120,7 @@ struct promise_type<void, StackPolicy> : StackPolicy, mixin_frame {
 
   frame_type frame;
 
-  constexpr auto get_return_object() -> task<void, StackPolicy> { return {{this, {}}}; }
+  constexpr auto get_return_object() -> task<void, StackPolicy> { return {.promise = this}; }
 
   constexpr static void return_void() {}
 };
