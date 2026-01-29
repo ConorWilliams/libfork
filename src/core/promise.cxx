@@ -100,7 +100,7 @@ struct mixin_frame {
   // === Called by the compiler === //
 
   template <alloc_mixin P>
-  static constexpr auto await_transform(task<void, P> child) noexcept -> just_awaitable {
+  constexpr static auto await_transform(task<void, P> child) noexcept -> just_awaitable {
     return {.child = &child.promise->frame};
   }
 
