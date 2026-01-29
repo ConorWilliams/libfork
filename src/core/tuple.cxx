@@ -13,15 +13,14 @@ namespace lf {
 template <typename T, typename U>
 struct copy_cvref {
  private:
-  using R = std::remove_reference_t<T>;
-
-  using U1 = std::conditional_t<std::is_const_v<R>, std::add_const_t<U>, U>;
-  using U2 = std::conditional_t<std::is_volatile_v<R>, std::add_volatile_t<U1>, U1>;
-  using U3 = std::conditional_t<std::is_lvalue_reference_v<T>, std::add_lvalue_reference_t<U2>, U2>;
-  using U4 = std::conditional_t<std::is_rvalue_reference_v<T>, std::add_rvalue_reference_t<U3>, U3>;
+  using u0 = std::remove_reference_t<T>;
+  using u1 = std::conditional_t<std::is_const_v<u0>, std::add_const_t<U>, U>;
+  using u2 = std::conditional_t<std::is_volatile_v<u0>, std::add_volatile_t<u1>, u1>;
+  using u3 = std::conditional_t<std::is_lvalue_reference_v<T>, std::add_lvalue_reference_t<u2>, u2>;
+  using u4 = std::conditional_t<std::is_rvalue_reference_v<T>, std::add_rvalue_reference_t<u3>, u3>;
 
  public:
-  using type = U4;
+  using type = u4;
 };
 
 /**
@@ -47,7 +46,7 @@ struct tuple_impl<std::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
   template <std::size_t I, typename Self>
   [[nodiscard]]
   constexpr auto get(this Self &&self)
-      LF_HOF(static_cast<copy_cvref_t<Self &&, tuple_leaf<Is...[I], Ts...[I]>>>(self).elem)
+      LF_HOF(static_cast<copy_cvref_t<Self &&, tuple_leaf<Is...[I], Ts...[I]>>>(LF_FWD(self)).elem)
 
   [[nodiscard]]
   constexpr auto apply(this auto &&self, auto &&fn)
@@ -77,7 +76,7 @@ tuple(Ts &&...) -> tuple<Ts...>;
 } // namespace lf
 
 template <typename... Ts>
-struct std::tuple_size<bat::tuple<Ts...>> : integral_constant<size_t, sizeof...(Ts)> {};
+struct std::tuple_size<lf::tuple<Ts...>> : integral_constant<size_t, sizeof...(Ts)> {};
 
 template <std::size_t I, typename... Ts>
-struct std::tuple_element<I, bat::tuple<Ts...>> : type_identity<Ts... [I]> {};
+struct std::tuple_element<I, lf::tuple<Ts...>> : type_identity<Ts... [I]> {};
