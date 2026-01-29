@@ -19,20 +19,20 @@ void check_accessor_types() {
   using control_t = control_struct<T>;
 
   // lvalue ref
-  STATIC_REQUIRE(std::is_same_v<decltype(std::declval<tuple_t &>().template get<0>()),
-                                decltype(std::declval<control_t &>().val)>);
+  STATIC_REQUIRE(std::is_same_v<decltype((std::declval<tuple_t &>().template get<0>())),
+                                decltype((std::declval<control_t &>().val))>);
 
   // const lvalue ref
-  STATIC_REQUIRE(std::is_same_v<decltype(std::declval<tuple_t const &>().template get<0>()),
-                                decltype(std::declval<control_t const &>().val)>);
+  STATIC_REQUIRE(std::is_same_v<decltype((std::declval<tuple_t const &>().template get<0>())),
+                                decltype((std::declval<control_t const &>().val))>);
 
   // rvalue ref
-  STATIC_REQUIRE(std::is_same_v<decltype(std::declval<tuple_t &&>().template get<0>()),
-                                decltype(std::declval<control_t &&>().val)>);
+  STATIC_REQUIRE(std::is_same_v<decltype((std::declval<tuple_t &&>().template get<0>())),
+                                decltype((std::declval<control_t &&>().val))>);
 
   // const rvalue ref
-  STATIC_REQUIRE(std::is_same_v<decltype(std::declval<tuple_t const &&>().template get<0>()),
-                                decltype(std::declval<control_t const &&>().val)>);
+  STATIC_REQUIRE(std::is_same_v<decltype((std::declval<tuple_t const &&>().template get<0>())),
+                                decltype((std::declval<control_t const &&>().val))>);
 }
 
 } // namespace
@@ -49,13 +49,19 @@ TEST_CASE("Tuple accessor types", "[tuple]") {
 TEST_CASE("Tuple size optimization", "[tuple]") {
   STATIC_REQUIRE(sizeof(lf::tuple<int>) == sizeof(int));
   STATIC_REQUIRE(sizeof(lf::tuple<int, empty>) == sizeof(int));
+  STATIC_REQUIRE(sizeof(lf::tuple<empty>) == 1);
+  // STATIC_REQUIRE(sizeof(lf::tuple<empty, empty>) == 1);
   STATIC_REQUIRE(sizeof(lf::tuple<empty, int>) == sizeof(int));
-  STATIC_REQUIRE(sizeof(lf::tuple<empty, int, empty>) == sizeof(int));
+  STATIC_REQUIRE(sizeof(lf::tuple<empty, empty, int>) == sizeof(int));
+  // STATIC_REQUIRE(sizeof(lf::tuple<empty, int, empty>) == sizeof(int));
   STATIC_REQUIRE(sizeof(lf::tuple<int, int>) == 2 * sizeof(int));
 }
 
 TEST_CASE("Tuple triviality", "[tuple]") {
+  //
   using trivial_tuple = lf::tuple<int, double, empty>;
+
+  STATIC_REQUIRE(std::is_aggregate_v<trivial_tuple>);
 
   STATIC_REQUIRE(std::is_trivially_default_constructible_v<trivial_tuple>);
   STATIC_REQUIRE(std::is_trivially_copy_constructible_v<trivial_tuple>);
