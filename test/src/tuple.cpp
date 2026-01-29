@@ -1,7 +1,9 @@
-#include <catch2/catch_test_macros.hpp>
 #include <type_traits>
 
+#include <catch2/catch_test_macros.hpp>
+
 import std;
+
 import libfork.core;
 
 namespace {
@@ -11,23 +13,23 @@ struct control_struct {
   T val;
 };
 
-struct empty {};
+struct nil {};
 
 template <typename T>
 using get = decltype(std::declval<T>().template get<0>());
 
 template <typename T>
-using ref = decltype((std::declval<T>().val));
+using val = decltype((std::declval<T>().val));
 
 template <typename T>
 void check_accessor_types() {
   using tupl_t = lf::tuple<T>;
   using ctrl_t = control_struct<T>;
 
-  STATIC_REQUIRE(std::same_as<get<tupl_t &>, ref<ctrl_t &>>);
-  STATIC_REQUIRE(std::same_as<get<tupl_t const &>, ref<ctrl_t const &>>);
-  STATIC_REQUIRE(std::same_as<get<tupl_t &&>, ref<ctrl_t &&>>);
-  STATIC_REQUIRE(std::same_as<get<tupl_t const &&>, ref<ctrl_t const &&>>);
+  STATIC_REQUIRE(std::same_as<get<tupl_t &>, val<ctrl_t &>>);
+  STATIC_REQUIRE(std::same_as<get<tupl_t const &>, val<ctrl_t const &>>);
+  STATIC_REQUIRE(std::same_as<get<tupl_t &&>, val<ctrl_t &&>>);
+  STATIC_REQUIRE(std::same_as<get<tupl_t const &&>, val<ctrl_t const &&>>);
 }
 
 } // namespace
@@ -43,19 +45,23 @@ TEST_CASE("Tuple accessor types", "[tuple]") {
 }
 
 TEST_CASE("Tuple size optimization", "[tuple]") {
+
   STATIC_REQUIRE(sizeof(lf::tuple<int>) == sizeof(int));
-  STATIC_REQUIRE(sizeof(lf::tuple<int, empty>) == sizeof(int));
-  STATIC_REQUIRE(sizeof(lf::tuple<empty>) == 1);
-  // STATIC_REQUIRE(sizeof(lf::tuple<empty, empty>) == 1);
-  STATIC_REQUIRE(sizeof(lf::tuple<empty, int>) == sizeof(int));
-  STATIC_REQUIRE(sizeof(lf::tuple<empty, empty, int>) == sizeof(int));
-  // STATIC_REQUIRE(sizeof(lf::tuple<empty, int, empty>) == sizeof(int));
+  STATIC_REQUIRE(sizeof(lf::tuple<nil>) == 1);
+
+  STATIC_REQUIRE(sizeof(lf::tuple<int, nil>) == sizeof(int));
+  STATIC_REQUIRE(sizeof(lf::tuple<nil, int>) == sizeof(int));
+  STATIC_REQUIRE(sizeof(lf::tuple<int, nil>) == sizeof(int));
   STATIC_REQUIRE(sizeof(lf::tuple<int, int>) == 2 * sizeof(int));
+
+  STATIC_REQUIRE(sizeof(lf::tuple<nil, nil, int>) == sizeof(int));
+  STATIC_REQUIRE(sizeof(lf::tuple<nil, nil, int>) == sizeof(int));
+  // STATIC_REQUIRE(sizeof(lf::tuple<empty, int, empty>) == sizeof(int));
 }
 
 TEST_CASE("Tuple triviality", "[tuple]") {
   //
-  using trivial_tuple = lf::tuple<int, double, empty>;
+  using trivial_tuple = lf::tuple<int, double, nil>;
 
   STATIC_REQUIRE(std::is_aggregate_v<trivial_tuple>);
 
@@ -68,6 +74,6 @@ TEST_CASE("Tuple triviality", "[tuple]") {
 }
 
 TEST_CASE("Tuple construction", "[tuple]") {
-  lf::tuple<int, double> _{1, 1.1};
-  lf::tuple<empty, int, empty> _{empty{}, 2, empty{}};
+  lf::tuple<int, double> _{1, 0.};
+  lf::tuple<nil, int, nil> _{nil{}, 2, nil{}};
 }
