@@ -41,27 +41,29 @@ template <std::size_t... Is, typename... Ts>
 struct tuple_impl<std::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
   template <std::size_t I, typename Self>
   [[nodiscard]]
-  constexpr auto get(this Self &&self) noexcept -> copy_cvref_t<Self &&, Ts... [I]> {
-    return static_cast<copy_cvref_t<Self &&, tuple_leaf<Is...[I], Ts...[I]>>>(self).elem;
-  }
+  constexpr auto get(this Self &&self)
+      LF_HOF(static_cast<copy_cvref_t<Self &&, tuple_leaf<Is...[I], Ts...[I]>>>(self).elem)
 };
 
 /**
  * @brief A minimal non-recursive tuple implementation.
  *
- * This is a very stripped back tuple that only: supports movable types,
- * provides `.get<I>()` and, supports structured bindings.
+ * This is a very stripped back tuple that only:
+ *
+ * - Provides `.get<I>()`
+ * - Provides an apply
+ * - Supports structured bindings.
  *
  * This is has the advantage of significantly faster compilation times
  * compared to the standard library's `std::tuple`. In addition it is an
  * aggregate type hence, is trivially copyable/constructable/destructible
  * conditional on the types it contains. It even works as an NTTP.
  */
-export template <movable... Ts>
-struct tuple : tuple_impl<std::index_sequence_for<Ts...>, Ts...> {};
+export template <typename... Ts>
+struct tuple final : tuple_impl<std::index_sequence_for<Ts...>, Ts...> {};
 
-template <movable... Ts>
-tuple(Ts...) -> tuple<Ts...>;
+template <typename... Ts>
+tuple(Ts &&...) -> tuple<Ts...>;
 
 } // namespace lf
 
