@@ -14,25 +14,20 @@ struct control_struct {
 struct empty {};
 
 template <typename T>
+using get = decltype(std::declval<T>().template get<0>());
+
+template <typename T>
+using ref = decltype((std::declval<T>().val));
+
+template <typename T>
 void check_accessor_types() {
-  using tuple_t = lf::tuple<T>;
-  using control_t = control_struct<T>;
+  using tupl_t = lf::tuple<T>;
+  using ctrl_t = control_struct<T>;
 
-  // lvalue ref
-  STATIC_REQUIRE(std::is_same_v<decltype((std::declval<tuple_t &>().template get<0>())),
-                                decltype((std::declval<control_t &>().val))>);
-
-  // const lvalue ref
-  STATIC_REQUIRE(std::is_same_v<decltype((std::declval<tuple_t const &>().template get<0>())),
-                                decltype((std::declval<control_t const &>().val))>);
-
-  // rvalue ref
-  STATIC_REQUIRE(std::is_same_v<decltype((std::declval<tuple_t &&>().template get<0>())),
-                                decltype((std::declval<control_t &&>().val))>);
-
-  // const rvalue ref
-  STATIC_REQUIRE(std::is_same_v<decltype((std::declval<tuple_t const &&>().template get<0>())),
-                                decltype((std::declval<control_t const &&>().val))>);
+  STATIC_REQUIRE(std::same_as<get<tupl_t &>, ref<ctrl_t &>>);
+  STATIC_REQUIRE(std::same_as<get<tupl_t const &>, ref<ctrl_t const &>>);
+  STATIC_REQUIRE(std::same_as<get<tupl_t &&>, ref<ctrl_t &&>>);
+  STATIC_REQUIRE(std::same_as<get<tupl_t const &&>, ref<ctrl_t const &&>>);
 }
 
 } // namespace
