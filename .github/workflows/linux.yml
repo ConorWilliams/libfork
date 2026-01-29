@@ -1,0 +1,34 @@
+name: Linux
+
+on:
+  push:
+    branches: ["modules"]
+  pull_request:
+    branches: ["modules"]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [ci-hardened, ci-release, ci-no-except-rtti]
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+
+      - name: Install Dependencies
+        run: brew install cmake ninja gcc binutils catch2 google-benchmark
+
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }} -DCMAKE_TOOLCHAIN_FILE=cmake/gcc-brew-toolchain.cmake
+
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }}
+
+      - name: Test
+        run: ctest --preset ${{ matrix.preset }}
