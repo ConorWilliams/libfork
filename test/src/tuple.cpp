@@ -55,8 +55,8 @@ TEST_CASE("Tuple size optimization", "[tuple]") {
   STATIC_REQUIRE(sizeof(lf::tuple<int, int>) == 2 * sizeof(int));
 
   STATIC_REQUIRE(sizeof(lf::tuple<nil, nil, int>) == sizeof(int));
-  STATIC_REQUIRE(sizeof(lf::tuple<int, nil, nil>) == 2 * sizeof(int)); // TODO: fixable?
-  STATIC_REQUIRE(sizeof(lf::tuple<nil, int, nil>) == 2 * sizeof(int));
+  STATIC_REQUIRE(sizeof(lf::tuple<int, nil, nil>) == sizeof(int)); // TODO: fixable?
+  STATIC_REQUIRE(sizeof(lf::tuple<nil, int, nil>) == sizeof(int));
 }
 
 TEST_CASE("Tuple triviality", "[tuple]") {
