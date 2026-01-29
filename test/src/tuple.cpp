@@ -66,3 +66,8 @@ TEST_CASE("Tuple triviality", "[tuple]") {
   STATIC_REQUIRE(std::is_trivially_move_assignable_v<trivial_tuple>);
   STATIC_REQUIRE(std::is_trivially_destructible_v<trivial_tuple>);
 }
+
+TEST_CASE("Tuple construction", "[tuple]") {
+  lf::tuple<int, double> _{1, 1.1};
+  lf::tuple<empty, int, empty> _{empty{}, 2, empty{}};
+}
