@@ -46,8 +46,8 @@ TEST_CASE("Tuple accessor types", "[tuple]") {
 
 TEST_CASE("Tuple size optimization", "[tuple]") {
 
-  STATIC_REQUIRE(sizeof(lf::tuple<int>) == sizeof(int));
   STATIC_REQUIRE(sizeof(lf::tuple<nil>) == 1);
+  STATIC_REQUIRE(sizeof(lf::tuple<int>) == sizeof(int));
 
   STATIC_REQUIRE(sizeof(lf::tuple<int, nil>) == sizeof(int));
   STATIC_REQUIRE(sizeof(lf::tuple<nil, int>) == sizeof(int));
@@ -55,8 +55,8 @@ TEST_CASE("Tuple size optimization", "[tuple]") {
   STATIC_REQUIRE(sizeof(lf::tuple<int, int>) == 2 * sizeof(int));
 
   STATIC_REQUIRE(sizeof(lf::tuple<nil, nil, int>) == sizeof(int));
-  STATIC_REQUIRE(sizeof(lf::tuple<nil, nil, int>) == sizeof(int));
-  // STATIC_REQUIRE(sizeof(lf::tuple<empty, int, empty>) == sizeof(int));
+  STATIC_REQUIRE(sizeof(lf::tuple<int, nil, nil>) == 2 * sizeof(int)); // TODO: fixable?
+  STATIC_REQUIRE(sizeof(lf::tuple<nil, int, nil>) == 2 * sizeof(int));
 }
 
 TEST_CASE("Tuple triviality", "[tuple]") {
@@ -76,4 +76,13 @@ TEST_CASE("Tuple triviality", "[tuple]") {
 TEST_CASE("Tuple construction", "[tuple]") {
   lf::tuple<int, double> _{1, 0.};
   lf::tuple<nil, int, nil> _{nil{}, 2, nil{}};
+}
+
+TEST_CASE("Tuple apply", "[tuple]") {
+
+  lf::tuple<int, lf::move_only> val{{{1}}};
+
+  REQUIRE(std::move(val).apply([](int x, lf::move_only) -> bool {
+    return x == 1;
+  }));
 }
