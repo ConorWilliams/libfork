@@ -35,9 +35,10 @@ void check_accessor_types() {
 TEST_CASE("Tuple accessor types", "[tuple]") {
   check_accessor_types<int>();
   check_accessor_types<int &>();
+  check_accessor_types<int &&>();
+
   check_accessor_types<int const>();
   check_accessor_types<int const &>();
-  check_accessor_types<int &&>();
   check_accessor_types<int const &&>();
 }
 
