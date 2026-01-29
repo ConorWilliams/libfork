@@ -1,9 +1,12 @@
-
+module;
+#include "libfork/__impl/utils.hpp"
 export module libfork.core:tuple;
 
 import std;
 
 namespace lf {
+
+// TODO: Replace with reflection tuple?
 
 //========== Copy Qualifiers =============//
 
@@ -34,6 +37,8 @@ struct tuple_leaf {
   T elem;
 };
 
+//========== Tuple =============//
+
 template <typename, typename...>
 struct tuple_impl;
 
@@ -45,8 +50,8 @@ struct tuple_impl<std::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
       LF_HOF(static_cast<copy_cvref_t<Self &&, tuple_leaf<Is...[I], Ts...[I]>>>(self).elem)
 
   [[nodiscard]]
-  constexpr auto apply(this auto &&self, auto &&f)
-      LF_HOF(std::invoke(LF_FWD(f), LF_FWD(self).template get<Is>()...))
+  constexpr auto apply(this auto &&self, auto &&fn)
+      LF_HOF(std::invoke(LF_FWD(fn), LF_FWD(self).template get<Is>()...))
 };
 
 /**
@@ -54,8 +59,8 @@ struct tuple_impl<std::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
  *
  * This is a very stripped back tuple that only:
  *
- * - Provides `.get<I>()`
- * - Provides an apply
+ * - Provides `.get<I>()` member function.
+ * - Provides an apply member function.
  * - Supports structured bindings.
  *
  * This is has the advantage of significantly faster compilation times
