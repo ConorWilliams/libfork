@@ -59,7 +59,7 @@ struct tuple_impl<std::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
  * This is a very stripped back tuple that only:
  *
  * - Provides `.get<I>()` member function.
- * - Provides an apply member function.
+ * - Provides an `apply(fn)` member function.
  * - Supports structured bindings.
  *
  * This is has the advantage of significantly faster compilation times

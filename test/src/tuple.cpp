@@ -86,3 +86,17 @@ TEST_CASE("Tuple apply", "[tuple]") {
     return x == 1;
   }));
 }
+
+TEST_CASE("Tuple structured bindings", "[tuple]") {
+
+  lf::tuple<int, nil> tup{1, nil{}};
+
+  auto &&[i, n] = tup;
+
+  REQUIRE(i == 1);
+  REQUIRE(std::is_same_v<decltype(n), nil>);
+
+  i += 1;
+
+  REQUIRE(tup.get<0>() == 2);
+}
