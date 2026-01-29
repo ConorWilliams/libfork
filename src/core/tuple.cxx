@@ -26,12 +26,12 @@ struct copy_cvref {
  */
 export template <typename From, typename To>
   requires std::is_object_v<To>
-using cq = copy_cvref<From, To>::type;
+using copy_cvref_t = copy_cvref<From, To>::type;
 
 template <int I, typename T>
 struct tuple_leaf {
   [[no_unique_address]]
-  T elem; // TODO: use reflection to give this a nice name
+  T elem;
 };
 
 template <typename, typename...>
@@ -41,8 +41,8 @@ template <std::size_t... Is, typename... Ts>
 struct tuple_impl<std::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
   template <std::size_t I, typename Self>
   [[nodiscard]]
-  constexpr auto get(this Self &&self) noexcept -> cq<Self &&, Ts... [I]> {
-    return static_cast<cq<Self &&, tuple_leaf<Is...[I], Ts...[I]>>>(self).elem;
+  constexpr auto get(this Self &&self) noexcept -> copy_cvref_t<Self &&, Ts... [I]> {
+    return static_cast<copy_cvref_t<Self &&, tuple_leaf<Is...[I], Ts...[I]>>>(self).elem;
   }
 };
 
