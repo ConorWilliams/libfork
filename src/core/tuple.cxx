@@ -36,53 +36,13 @@ struct tuple_leaf {
   T elem;
 };
 
-// ========= Order ============ //
-
-template <typename... Ts>
-consteval auto argsort() -> std::array<std::size_t, sizeof...(Ts)> {
-
-  // Per-type properties
-  constexpr std::array is_empty{std::is_empty_v<Ts>...};
-  constexpr std::array align{alignof(Ts)...};
-  constexpr std::array size{sizeof(Ts)...};
-
-  // Initial indices
-  std::array<std::size_t, sizeof...(Ts)> idx{};
-
-  for (std::size_t i = 0; i < sizeof...(Ts); ++i) {
-    idx[i] = i;
-  }
-
-  std::sort(idx.begin(), idx.end(), [&](std::size_t a, std::size_t b) -> bool {
-    if (is_empty[a] != is_empty[b]) {
-      return is_empty[a];
-    }
-
-    if (align[a] != align[b]) {
-      return align[a] > align[b];
-    }
-
-    if (size[a] != size[b]) {
-      return size[a] > size[b];
-    }
-
-    // Stable sort
-    return a < b;
-  });
-
-  return idx;
-}
-
-template <std::size_t I, typename... Ts>
-using order = tuple_leaf<argsort<Ts...>()[I], Ts...[argsort<Ts...>()[I]]>;
-
 //========== Tuple =============//
 
 template <typename, typename...>
 struct tuple_impl;
 
 template <std::size_t... Is, typename... Ts>
-struct tuple_impl<std::index_sequence<Is...>, Ts...> : order<Is, Ts...>... {
+struct tuple_impl<std::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
   template <std::size_t I, typename Self>
   [[nodiscard]]
   constexpr auto get(this Self &&self)
