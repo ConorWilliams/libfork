@@ -100,3 +100,122 @@ TEST_CASE("Tuple structured bindings", "[tuple]") {
 
   REQUIRE(tup.get<0>() == 2);
 }
+
+TEST_CASE("Tuple CTAD", "[tuple]") {
+  int x = 42;
+  lf::tuple t_lval{x};
+  STATIC_REQUIRE(std::is_same_v<decltype(t_lval), lf::tuple<int &>>);
+
+  lf::tuple t_rval{42};
+  STATIC_REQUIRE(std::is_same_v<decltype(t_rval), lf::tuple<int>>);
+
+  const int cx = 42;
+  lf::tuple t_clval{cx};
+  STATIC_REQUIRE(std::is_same_v<decltype(t_clval), lf::tuple<const int &>>);
+}
+
+TEST_CASE("Tuple reference semantics", "[tuple]") {
+  int x = 1;
+  lf::tuple<int &> t{x};
+  t.get<0>() = 2;
+  REQUIRE(x == 2);
+
+  auto &[ref] = t;
+  ref = 3;
+  REQUIRE(x == 3);
+}
+
+TEST_CASE("Tuple rvalue reference semantics", "[tuple]") {
+  int x = 1;
+  // tuple holding rvalue ref to x (cast to rvalue)
+  lf::tuple<int &&> t{std::move(x)};
+
+  // Accessing lvalue tuple -> lvalue ref to member (which is rvalue ref) -> int&
+  STATIC_REQUIRE(std::is_same_v<decltype(t.get<0>()), int &>);
+
+  // Modifying via the stored rvalue ref
+  t.get<0>() = 2;
+  REQUIRE(x == 2);
+
+  control_struct<int &&> y{std::move(x)};
+  // Accessing rvalue tuple -> xvalue member -> int&&
+  // STATIC_REQUIRE(std::is_same_v<decltype(std::move(t).get<0>()), int &&>);
+}
+
+TEST_CASE("Tuple apply value categories", "[tuple]") {
+  lf::tuple<int> t{42};
+
+  // Check lvalue arg
+  bool called_lvalue = false;
+  t.apply([&](int &x) {
+    called_lvalue = true;
+    REQUIRE(x == 42);
+  });
+  REQUIRE(called_lvalue);
+
+  // Check rvalue arg
+  bool called_rvalue = false;
+  std::move(t).apply([&](int &&x) {
+    called_rvalue = true;
+    REQUIRE(x == 42);
+  });
+  REQUIRE(called_rvalue);
+
+  // Check const lvalue arg
+  const lf::tuple<int> ct{42};
+  bool called_const_lvalue = false;
+  ct.apply([&](const int &x) {
+    called_const_lvalue = true;
+    REQUIRE(x == 42);
+  });
+  REQUIRE(called_const_lvalue);
+}
+
+TEST_CASE("Tuple empty", "[tuple]") {
+  lf::tuple<> t{};
+  STATIC_REQUIRE(sizeof(t) == 1);
+  STATIC_REQUIRE(std::tuple_size_v<decltype(t)> == 0);
+}
+
+TEST_CASE("Tuple move-only types", "[tuple]") {
+  auto ptr = std::make_unique<int>(42);
+  lf::tuple<std::unique_ptr<int>> t{std::move(ptr)};
+
+  REQUIRE(ptr == nullptr);
+  REQUIRE(*t.get<0>() == 42);
+
+  // Move out
+  auto ptr2 = std::move(t.get<0>());
+  REQUIRE(*ptr2 == 42);
+  REQUIRE(t.get<0>() == nullptr);
+}
+
+// TEST_CASE("Tuple nested", "[tuple]") {
+//   lf::tuple<lf::tuple<int, int>, int> t{{1, 2}, 3};
+//
+//   REQUIRE(t.get<0>().get<0>() == 1);
+//   REQUIRE(t.get<0>().get<1>() == 2);
+//   REQUIRE(t.get<1>() == 3);
+// }
+
+TEST_CASE("Tuple const structured bindings", "[tuple]") {
+  lf::tuple<int, int> t{10, 20};
+  const auto &[x, y] = t;
+
+  STATIC_REQUIRE(std::is_same_v<decltype(x), const int>);
+  STATIC_REQUIRE(std::is_same_v<decltype(y), const int>);
+
+  t.get<0>() = 0;
+  t.get<1>() = 1;
+
+  REQUIRE(x == 0);
+  REQUIRE(y == 1);
+}
+
+TEST_CASE("Tuple traits", "[tuple]") {
+  using T = lf::tuple<int, double, char>;
+  STATIC_REQUIRE(std::tuple_size_v<T> == 3);
+  STATIC_REQUIRE(std::is_same_v<std::tuple_element_t<0, T>, int>);
+  STATIC_REQUIRE(std::is_same_v<std::tuple_element_t<1, T>, double>);
+  STATIC_REQUIRE(std::is_same_v<std::tuple_element_t<2, T>, char>);
+}
