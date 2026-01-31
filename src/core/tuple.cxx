@@ -35,6 +35,10 @@ struct tuple_leaf {
   T elem;
 };
 
+// In GCC 15 name mangling is not implemented for function signatures
+// with 'deducing this' yet, so we fall back to the old implementation.
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ <= 15)
+
 template <std::size_t I, typename... Ts>
 struct index;
 
@@ -43,6 +47,12 @@ struct index<0, T, Ts...> : std::type_identity<T> {};
 
 template <std::size_t I, typename T, typename... Ts>
 struct index<I, T, Ts...> : index<I - 1, Ts...> {};
+
+  #define INDEX_HACK(I, Pack) typename index<I, Pack>::type
+
+#else
+  #define INDEX_HACK(I, Pack) Pack[I]
+#endif
 
 //========== Tuple =============//
 
@@ -53,7 +63,7 @@ template <std::size_t... Is, typename... Ts>
 struct tuple_impl<std::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
   template <std::size_t I, typename Self>
   [[nodiscard]]
-  constexpr auto get(this Self &&self) noexcept -> copy_cvref_t<Self &&, typename index<I, Ts...>::type> {
+  constexpr auto get(this Self &&self) noexcept -> copy_cvref_t<Self &&, INDEX_HACK(I, Ts...)> {
     return LF_FWD(self).template tuple_leaf<I, Ts...[I]>::elem;
   }
 
