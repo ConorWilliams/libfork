@@ -35,6 +35,9 @@ struct tuple_leaf {
   T elem;
 };
 
+template <std::size_t I, typename Self, typename... Ts>
+using get_result_t = copy_cvref_t<Self, Ts...[I]>;
+
 //========== Tuple =============//
 
 template <typename, typename...>
@@ -44,11 +47,12 @@ template <std::size_t... Is, typename... Ts>
 struct tuple_impl<std::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
   template <std::size_t I, typename Self>
   [[nodiscard]]
-  constexpr auto get(this Self &&self) -> copy_cvref_t<Self &&, Ts... [I]> {
+  constexpr auto get(this Self &&self) -> get_result_t<I, Self &&, Ts...> {
     return LF_FWD(self).template tuple_leaf<I, Ts...[I]>::elem;
   }
 
-  [[nodiscard]] constexpr auto apply(this auto &&self, auto &&fn)
+  [[nodiscard]]
+  constexpr auto apply(this auto &&self, auto &&fn)
       LF_HOF(std::invoke(LF_FWD(fn), LF_FWD(self).template get<Is>()...))
 };
 
