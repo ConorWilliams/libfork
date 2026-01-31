@@ -35,6 +35,15 @@ struct tuple_leaf {
   T elem;
 };
 
+template <std::size_t I, typename... Ts>
+struct index;
+
+template <typename T, typename... Ts>
+struct index<0, T, Ts...> : std::type_identity<T> {};
+
+template <std::size_t I, typename T, typename... Ts>
+struct index<I, T, Ts...> : index<I - 1, Ts...> {};
+
 //========== Tuple =============//
 
 template <typename, typename...>
@@ -44,11 +53,12 @@ template <std::size_t... Is, typename... Ts>
 struct tuple_impl<std::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
   template <std::size_t I, typename Self>
   [[nodiscard]]
-  constexpr auto get(this Self &&self) noexcept -> copy_cvref_t<Self &&, Ts... [I]> {
+  constexpr auto get(this Self &&self) noexcept -> copy_cvref_t<Self &&, typename index<I, Ts...>::type> {
     return LF_FWD(self).template tuple_leaf<I, Ts...[I]>::elem;
   }
 
-  [[nodiscard]] constexpr auto apply(this auto &&self, auto &&fn)
+  [[nodiscard]]
+  constexpr auto apply(this auto &&self, auto &&fn)
       LF_HOF(std::invoke(LF_FWD(fn), LF_FWD(self).template get<Is>()...))
 };
 
