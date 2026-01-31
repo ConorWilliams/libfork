@@ -72,14 +72,8 @@ struct tuple_impl<std::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
       LF_HOF(std::invoke(LF_FWD(fn), LF_FWD(self).template get<Is>()...))
 };
 
-// template <>
-// struct tuple_impl<std::index_sequence<>> {
-//   [[nodiscard]]
-//   static constexpr auto apply(auto &&fn) LF_HOF(std::invoke(LF_FWD(fn)))
-// };
-
 /**
- * @brief A minimal non-recursive tuple implementation.
+ * @brief A minimal non-recursive tuple-as-aggregate implementation.
  *
  * This is a very stripped back tuple that only:
  *

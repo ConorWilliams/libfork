@@ -190,13 +190,13 @@ TEST_CASE("Tuple move-only types", "[tuple]") {
   REQUIRE(t.get<0>() == nullptr);
 }
 
-// TEST_CASE("Tuple nested", "[tuple]") {
-//   lf::tuple<lf::tuple<int, int>, int> t{{1, 2}, 3};
-//
-//   REQUIRE(t.get<0>().get<0>() == 1);
-//   REQUIRE(t.get<0>().get<1>() == 2);
-//   REQUIRE(t.get<1>() == 3);
-// }
+TEST_CASE("Tuple nested", "[tuple]") {
+  lf::tuple<lf::tuple<int, int>, int> t{1, 2, 3};
+
+  REQUIRE(t.get<0>().get<0>() == 1);
+  REQUIRE(t.get<0>().get<1>() == 2);
+  REQUIRE(t.get<1>() == 3);
+}
 
 TEST_CASE("Tuple const structured bindings", "[tuple]") {
   lf::tuple<int, int> t{10, 20};
