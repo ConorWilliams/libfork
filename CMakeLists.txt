@@ -35,7 +35,7 @@ add_library(libfork::libfork ALIAS libfork_libfork)
 
 set_property(TARGET libfork_libfork PROPERTY EXPORT_NAME libfork)
 
-target_compile_features(libfork_libfork PUBLIC cxx_std_23)
+target_compile_features(libfork_libfork PUBLIC cxx_std_26)
 
 # Public headers
 target_sources(libfork_libfork
@@ -61,6 +61,7 @@ target_sources(libfork_libfork
       src/core/utility.cxx
       src/core/frame.cxx
       src/core/constants.cxx
+      src/core/tuple.cxx
     PRIVATE
       src/exception.cpp
 )

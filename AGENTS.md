@@ -6,7 +6,7 @@
 strict fork-join parallelism using C++20 coroutines.
 
 - **Type**: C++ library with module/`import std` support
-- **Languages**: C++23
+- **Languages**: C++26
 
 ## Critical Build Requirements
 
@@ -194,7 +194,6 @@ Strive to add tests for new features/bug fixes.
 - Add `.cpp` files to `test/src/`
 - Tests auto-discovered by CMake (GLOB_RECURSE)
 - Links against `libfork::libfork` and `Catch2::Catch2WithMain`
-- Uses `cxx_std_23` feature requirement
 
 ### Modifying Build Configuration
 

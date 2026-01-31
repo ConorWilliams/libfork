@@ -10,6 +10,7 @@ import std;
 import :concepts;
 import :utility;
 import :frame;
+import :tuple;
 
 namespace lf {
 
@@ -83,6 +84,25 @@ struct just_awaitable : std::suspend_always {
     return child->handle();
   }
 };
+
+struct key {};
+
+export struct lock {
+  explicit constexpr lock(key) noexcept {}
+};
+
+template <typename Fn, typename... Args>
+struct packaged_call {
+  [[no_unique_address]]
+  Fn fn;
+  [[no_unique_address]]
+  tuple<Args...> args;
+};
+
+template <typename Fn, typename... Args>
+constexpr auto call(Fn &&fn, Args &&...args) -> packaged_call<Fn, key, Args &&...> {
+  return {LF_FWD(fn), {key{}, LF_FWD(args)...}};
+}
 
 struct mixin_frame {
 
