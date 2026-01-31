@@ -29,7 +29,7 @@ void check_accessor_types() {
   STATIC_REQUIRE(std::same_as<get<tupl_t &>, val<ctrl_t &>>);
   STATIC_REQUIRE(std::same_as<get<tupl_t const &>, val<ctrl_t const &>>);
   STATIC_REQUIRE(std::same_as<get<tupl_t &&>, val<ctrl_t &&>>);
-  //   STATIC_REQUIRE(std::same_as<get<tupl_t const &&>, val<ctrl_t const &&>>);
+  STATIC_REQUIRE(std::same_as<get<tupl_t const &&>, val<ctrl_t const &&>>);
 }
 
 } // namespace
