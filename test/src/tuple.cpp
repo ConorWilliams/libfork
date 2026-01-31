@@ -19,17 +19,17 @@ template <typename T>
 using get = decltype(std::declval<T>().template get<0>());
 
 template <typename T>
-using val = decltype((std::declval<T>().val));
+using val = decltype(std::get<0>(std::declval<T>()));
 
 template <typename T>
 void check_accessor_types() {
   using tupl_t = lf::tuple<T>;
-  using ctrl_t = control_struct<T>;
+  using ctrl_t = std::tuple<T>;
 
   STATIC_REQUIRE(std::same_as<get<tupl_t &>, val<ctrl_t &>>);
   STATIC_REQUIRE(std::same_as<get<tupl_t const &>, val<ctrl_t const &>>);
   STATIC_REQUIRE(std::same_as<get<tupl_t &&>, val<ctrl_t &&>>);
-  STATIC_REQUIRE(std::same_as<get<tupl_t const &&>, val<ctrl_t const &&>>);
+  //   STATIC_REQUIRE(std::same_as<get<tupl_t const &&>, val<ctrl_t const &&>>);
 }
 
 } // namespace

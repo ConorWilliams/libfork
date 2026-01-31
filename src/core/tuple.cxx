@@ -45,8 +45,7 @@ template <std::size_t... Is, typename... Ts>
 struct tuple_impl<std::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
   template <std::size_t I, typename Self>
   [[nodiscard]]
-  constexpr auto get(this Self &&self)
-      LF_HOF((static_cast<copy_cvref_t<Self &&, tuple_leaf<Is...[I], Ts...[I]>>>(LF_FWD(self)).elem))
+  constexpr auto get(this Self &&self) {}
 
   [[nodiscard]]
   constexpr auto apply(this auto &&self, auto &&fn)
