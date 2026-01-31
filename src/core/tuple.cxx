@@ -35,6 +35,8 @@ struct tuple_leaf {
   T elem;
 };
 
+// This wrapper is required on GCC because having 'Ts...[I]' directly in
+// the function signature throws a compilation error.
 template <std::size_t I, typename Self, typename... Ts>
 using get_result_t = copy_cvref_t<Self, Ts...[I]>;
 
@@ -54,6 +56,12 @@ struct tuple_impl<std::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
   [[nodiscard]]
   constexpr auto apply(this auto &&self, auto &&fn)
       LF_HOF(std::invoke(LF_FWD(fn), LF_FWD(self).template get<Is>()...))
+};
+
+template <>
+struct tuple_impl<std::index_sequence<>> {
+  [[nodiscard]]
+  static constexpr auto apply(auto &&fn) LF_HOF(std::invoke(LF_FWD(fn)))
 };
 
 /**
