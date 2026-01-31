@@ -2,6 +2,7 @@ module;
 #include <version>
 
 #include "libfork/__impl/assume.hpp"
+#include "libfork/__impl/exception.hpp"
 #include "libfork/__impl/utils.hpp"
 export module libfork.core:promise;
 
@@ -99,9 +100,9 @@ struct packaged_call {
   tuple<Args...> args;
 };
 
-template <typename Fn, typename... Args>
-constexpr auto call(Fn &&fn, Args &&...args) -> packaged_call<Fn, key, Args &&...> {
-  return {LF_FWD(fn), {key{}, LF_FWD(args)...}};
+export template <typename Fn, typename... Args>
+constexpr auto call(Fn &&fn, Args &&...args) -> packaged_call<Fn, Args &&...> {
+  return {LF_FWD(fn), {LF_FWD(args)...}};
 }
 
 struct mixin_frame {
@@ -122,6 +123,27 @@ struct mixin_frame {
   template <alloc_mixin P>
   constexpr static auto await_transform(task<void, P> child) noexcept -> just_awaitable {
     return {.child = &child.promise->frame};
+  }
+
+  template <typename Fn, typename... Args>
+  constexpr static auto await_transform(packaged_call<Fn, Args...> &&pkg) -> just_awaitable {
+
+    // std::move(pkg).args.apply([]<typename... Ts>(Ts &&...args) {
+    //   int i = std::type_identity<lf::tuple<Ts &&...>>{};
+    // });
+
+    task child = std::move(pkg.args).apply(std::move(pkg.fn));
+
+    LF_TRY {
+
+      // Create the child frame;
+
+    } LF_CATCH_ALL {
+
+      LF_RETHROW;
+    }
+
+    // return {.child = &child.promise->frame};
   }
 
   constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
