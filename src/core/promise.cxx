@@ -22,6 +22,9 @@ struct promise_type;
 
 // =============== Task =============== //
 
+// Non-exported used to restrict construction of task
+struct key {};
+
 /**
  * @brief The return type for libfork's async functions/coroutines.
  *
@@ -39,8 +42,17 @@ struct promise_type;
  * \endrst
  */
 export template <returnable T, alloc_mixin Stack>
-struct task : std::type_identity<T>, immovable {
-  promise_type<T, Stack> *promise;
+class task : immovable {
+ public:
+  using value_type = T;
+
+  friend struct promise_type<T, Stack>;
+  friend struct mixin_frame;
+
+ private:
+  promise_type<T, Stack> *m_promise;
+
+  constexpr task([[maybe_unused]] key key, promise_type<T, Stack> *promise) noexcept : m_promise(promise) {}
 };
 
 // =============== Frame-mixin =============== //
@@ -88,12 +100,6 @@ struct call_awaitable : std::suspend_always {
 
     return child->handle();
   }
-};
-
-struct key {};
-
-export struct lock : immovable {
-  explicit constexpr lock(key) noexcept {}
 };
 
 // clang-format off
@@ -147,10 +153,10 @@ struct mixin_frame {
     task child = std::move(pkg.args).apply(std::move(pkg.fn));
 
     if constexpr (!std::is_void_v<R>) {
-      child.promise->return_address = pkg.return_address;
+      child.m_promise->return_address = pkg.return_address;
     }
 
-    return {.child = &child.promise->frame};
+    return {.child = &child.m_promise->frame};
   }
 
   constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
@@ -169,7 +175,7 @@ struct promise_type<void, StackPolicy> : StackPolicy, mixin_frame {
 
   frame_type frame;
 
-  constexpr auto get_return_object() noexcept -> task<void, StackPolicy> { return {.promise = this}; }
+  constexpr auto get_return_object() noexcept -> task<void, StackPolicy> { return {key{}, this}; }
 
   constexpr static void return_void() noexcept {}
 };
@@ -195,7 +201,7 @@ struct promise_type : StackPolicy, mixin_frame {
   frame_type frame;
   T *return_address;
 
-  constexpr auto get_return_object() noexcept -> task<T, StackPolicy> { return {.promise = this}; }
+  constexpr auto get_return_object() noexcept -> task<T, StackPolicy> { return {key{}, this}; }
 
   template <typename U = T>
     requires std::assignable_from<T &, U &&>
