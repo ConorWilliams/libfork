@@ -93,15 +93,18 @@ export struct lock {
 };
 
 template <typename Fn, typename... Args>
-struct packaged_call {
+struct package {
   [[no_unique_address]]
   Fn fn;
   [[no_unique_address]]
   tuple<Args...> args;
 };
 
+template <typename Fn, typename... Args>
+struct call_pkg : package<Fn, Args...> {};
+
 export template <typename Fn, typename... Args>
-constexpr auto call(Fn &&fn, Args &&...args) -> packaged_call<Fn, Args &&...> {
+constexpr auto call(Fn &&fn, Args &&...args) -> call_pkg<Fn, Args &&...> {
   return {LF_FWD(fn), {LF_FWD(args)...}};
 }
 
@@ -126,7 +129,7 @@ struct mixin_frame {
   }
 
   template <typename Fn, typename... Args>
-  constexpr static auto await_transform(packaged_call<Fn, Args...> &&pkg) -> just_awaitable {
+  constexpr static auto await_transform(call_pkg<Fn, Args...> &&pkg) -> just_awaitable {
 
     task child = std::move(pkg.args).apply(std::move(pkg.fn));
 
