@@ -53,7 +53,7 @@ struct task : immovable, std::type_identity<T> {
 // =============== Final =============== //
 
 [[nodiscard]]
-constexpr auto final_suspend(frame_type *frame) -> coro<> {
+constexpr auto final_suspend(frame_type *frame) noexcept -> coro<> {
 
   // TODO: noexcept
 
