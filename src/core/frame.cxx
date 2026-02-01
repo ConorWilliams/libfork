@@ -6,7 +6,7 @@ import std;
 
 namespace lf {
 
-enum catagory : std::uint8_t {
+enum category : std::uint8_t {
   fork,
   call,
 };
