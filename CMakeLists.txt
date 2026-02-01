@@ -63,6 +63,7 @@ target_sources(libfork_libfork
       src/core/constants.cxx
       src/core/tuple.cxx
       src/core/ops.cxx
+      src/core/context.cxx
     PRIVATE
       src/exception.cpp
 )

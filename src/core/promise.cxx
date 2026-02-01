@@ -12,6 +12,7 @@ import :concepts;
 import :utility;
 import :frame;
 import :ops;
+import :context;
 
 namespace lf {
 
@@ -69,7 +70,7 @@ constexpr auto final_suspend(frame_type *frame) -> coro<> {
 
 struct final_awaitable : std::suspend_always {
   template <typename... Ts>
-  constexpr auto await_suspend(coro<promise_type<Ts...>> handle) noexcept -> coro<> {
+  constexpr static auto await_suspend(coro<promise_type<Ts...>> handle) noexcept -> coro<> {
     return final_suspend(&handle.promise().frame);
   }
 };
@@ -100,8 +101,8 @@ struct fork_awaitable : std::suspend_always {
 
   frame_type *child;
 
-  template <typename T, alloc_mixin S>
-  auto await_suspend(coro<promise_type<T, S>> parent) noexcept -> coro<> {
+  template <typename T, alloc_mixin S, typename Context>
+  auto await_suspend(coro<promise_type<T, S, Context>> parent) noexcept -> coro<> {
 
     // TODO: destroy on child if cannot launch i.e. scheduling failure
 
@@ -110,7 +111,20 @@ struct fork_awaitable : std::suspend_always {
 
     child->parent = &parent.promise().frame;
 
-    return child->handle();
+    // Make a copy on the stack, this object may be destroyed
+    // after the push to the scheduler's queue
+    frame_type *local_child = child;
+
+    LF_ASSUME(thread_context<Context> != nullptr);
+
+    LF_TRY {
+      thread_context<Context>->push(work_handle{.frame = local_child});
+    } LF_CATCH_ALL {
+      local_child->handle().destroy();
+      LF_RETHROW;
+    }
+
+    return local_child->handle();
   }
 };
 
