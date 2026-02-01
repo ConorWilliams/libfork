@@ -193,7 +193,7 @@ struct promise_type : StackPolicy, mixin_frame {
 
   template <typename U = T>
     requires std::assignable_from<T &, U &&>
-  constexpr void return_value(U &&value) noexcept {
+  constexpr void return_value(U &&value) noexcept(std::is_nothrow_assignable_v<T &, U &&>) {
     *return_address = LF_FWD(value);
   }
 };
