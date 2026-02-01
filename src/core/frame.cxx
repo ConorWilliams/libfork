@@ -6,12 +6,12 @@ import std;
 
 namespace lf {
 
-enum catagory : std::uint8_t {
-  ffork,
-  call,
-};
+// enum catagory : std::uint8_t {
+//   ffork,
+//   call,
+// };
 
-struct cancellation {};
+// struct cancellation {};
 
 struct frame_type {
 
