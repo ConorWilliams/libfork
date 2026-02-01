@@ -90,12 +90,6 @@ struct call_awaitable : std::suspend_always {
   }
 };
 
-struct key {};
-
-export struct lock : immovable {
-  explicit constexpr lock(key) noexcept {}
-};
-
 // clang-format off
 
 template <typename R, typename Fn, typename... Args>
