@@ -21,7 +21,7 @@ using coro = std::coroutine_handle<T>;
 
 // =============== Forward-decl =============== //
 
-template <typename T, alloc_mixin StackPolicy>
+template <returnable T, alloc_mixin StackPolicy, context Context = polymorphic_context>
 struct promise_type;
 
 // =============== Task =============== //
@@ -209,7 +209,7 @@ static_assert(std::is_standard_layout_v<promise_type<void, dummy_alloc>>);
 
 // =============== Promise (non-void) =============== //
 
-template <typename T, alloc_mixin StackPolicy>
+template <returnable T, alloc_mixin StackPolicy, context Context>
 struct promise_type : StackPolicy, mixin_frame {
 
   frame_type frame;
