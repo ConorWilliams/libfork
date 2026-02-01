@@ -19,9 +19,8 @@ struct stack_on_heap {
   }
 };
 
-template <lf::alloc_mixin StackPolicy>
-constexpr auto no_await =
-    [](this auto fib, std::int64_t *ret, std::int64_t n) -> lf::task<void, StackPolicy> {
+template <lf::alloc_mixin Stack>
+constexpr auto no_await = [](this auto fib, std::int64_t *ret, std::int64_t n) -> lf::task<void, Stack> {
   if (n < 2) {
     *ret = n;
     co_return;
@@ -36,8 +35,8 @@ constexpr auto no_await =
   *ret = lhs + rhs;
 };
 
-template <lf::alloc_mixin StackPolicy>
-constexpr auto await = [](this auto fib, std::int64_t *ret, std::int64_t n) -> lf::task<void, StackPolicy> {
+template <lf::alloc_mixin Stack>
+constexpr auto await = [](this auto fib, std::int64_t *ret, std::int64_t n) -> lf::task<void, Stack> {
   if (n < 2) {
     *ret = n;
     co_return;
@@ -85,8 +84,8 @@ void fib(benchmark::State &state) {
   }
 }
 
-template <lf::alloc_mixin StackPolicy>
-constexpr auto ret = [](this auto fib, std::int64_t n) -> lf::task<std::int64_t, StackPolicy> {
+template <lf::alloc_mixin Stack>
+constexpr auto ret = [](this auto fib, std::int64_t n) -> lf::task<std::int64_t, Stack> {
   if (n < 2) {
     co_return n;
   }

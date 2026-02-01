@@ -21,7 +21,7 @@ using coro = std::coroutine_handle<T>;
 
 // =============== Forward-decl =============== //
 
-template <returnable T, alloc_mixin StackPolicy, context Context = polymorphic_context>
+template <returnable T, alloc_mixin Stack, context Context = polymorphic_context>
 struct promise_type;
 
 // =============== Task =============== //
@@ -184,12 +184,12 @@ static_assert(std::is_empty_v<mixin_frame>);
 
 // =============== Promise (void) =============== //
 
-template <alloc_mixin StackPolicy>
-struct promise_type<void, StackPolicy> : StackPolicy, mixin_frame {
+template <alloc_mixin Stack>
+struct promise_type<void, Stack> : Stack, mixin_frame {
 
   frame_type frame;
 
-  constexpr auto get_return_object() noexcept -> task<void, StackPolicy> { return {.promise = this}; }
+  constexpr auto get_return_object() noexcept -> task<void, Stack> { return {.promise = this}; }
 
   constexpr static void return_void() noexcept {}
 };
@@ -209,13 +209,13 @@ static_assert(std::is_standard_layout_v<promise_type<void, dummy_alloc>>);
 
 // =============== Promise (non-void) =============== //
 
-template <returnable T, alloc_mixin StackPolicy, context Context>
-struct promise_type : StackPolicy, mixin_frame {
+template <returnable T, alloc_mixin Stack, context Context>
+struct promise_type : Stack, mixin_frame {
 
   frame_type frame;
   T *return_address;
 
-  constexpr auto get_return_object() noexcept -> task<T, StackPolicy> { return {.promise = this}; }
+  constexpr auto get_return_object() noexcept -> task<T, Stack> { return {.promise = this}; }
 
   template <typename U = T>
     requires std::assignable_from<T &, U &&>
