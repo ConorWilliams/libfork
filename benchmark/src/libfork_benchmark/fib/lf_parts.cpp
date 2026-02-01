@@ -68,7 +68,13 @@ void fib(benchmark::State &state) {
     benchmark::DoNotOptimize(n);
     std::int64_t result = 0;
 
-    Fn(&result, n).promise->handle().resume();
+    if constexpr (requires { Fn(&result, n); }) {
+      Fn(&result, n).promise->handle().resume();
+    } else {
+      auto task = Fn(n);
+      task.promise->return_address = &result;
+      task.promise->handle().resume();
+    }
 
     CHECK_RESULT(result, expect);
     benchmark::DoNotOptimize(result);
@@ -107,3 +113,6 @@ BENCHMARK(fib<no_await<fib_bump_allocator>>)->Name("base/libfork/fib/bump_alloc/
 
 BENCHMARK(fib<await<fib_bump_allocator>>)->Name("test/libfork/fib/bump_alloc/await")->Arg(fib_test);
 BENCHMARK(fib<await<fib_bump_allocator>>)->Name("base/libfork/fib/bump_alloc/await")->Arg(fib_base);
+
+BENCHMARK(fib<ret<fib_bump_allocator>>)->Name("test/libfork/fib/bump_alloc/return")->Arg(fib_test);
+BENCHMARK(fib<ret<fib_bump_allocator>>)->Name("base/libfork/fib/bump_alloc/return")->Arg(fib_base);
