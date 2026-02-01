@@ -11,7 +11,7 @@ enum catagory : std::uint8_t {
   call,
 };
 
-struct cancellation;
+struct cancellation {};
 
 struct frame_type {
 
