@@ -15,7 +15,7 @@ struct cancellation;
 
 struct frame_type {
 
-  frame_type *parent = nullptr;
+  frame_type *parent = nullptr; // TODO: set as at root
   cancellation *cancel;
 
   std::uint32_t merges;       // Atomic is 32 bits for speed
