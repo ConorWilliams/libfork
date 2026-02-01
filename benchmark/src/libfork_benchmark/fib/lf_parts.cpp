@@ -21,7 +21,7 @@ struct stack_on_heap {
 
 template <lf::alloc_mixin StackPolicy>
 constexpr auto no_await =
-    [](this auto fib, std::int64_t *ret, std::int64_t n) -> lf::task<void, StackPolicy> {
+    [](this auto fib, lf::lock, std::int64_t *ret, std::int64_t n) -> lf::task<void, StackPolicy> {
   if (n < 2) {
     *ret = n;
     co_return;
@@ -30,14 +30,15 @@ constexpr auto no_await =
   std::int64_t lhs = 0;
   std::int64_t rhs = 0;
 
-  fib(&lhs, n - 1).promise->handle().resume();
-  fib(&rhs, n - 2).promise->handle().resume();
+  fib(lf::key{}, &lhs, n - 1).promise->handle().resume();
+  fib(lf::key{}, &rhs, n - 2).promise->handle().resume();
 
   *ret = lhs + rhs;
 };
 
 template <lf::alloc_mixin StackPolicy>
-constexpr auto await = [](this auto fib, std::int64_t *ret, std::int64_t n) -> lf::task<void, StackPolicy> {
+constexpr auto await =
+    [](this auto fib, lf::lock, std::int64_t *ret, std::int64_t n) -> lf::task<void, StackPolicy> {
   if (n < 2) {
     *ret = n;
     co_return;
@@ -68,10 +69,10 @@ void fib(benchmark::State &state) {
     benchmark::DoNotOptimize(n);
     std::int64_t result = 0;
 
-    if constexpr (requires { Fn(&result, n); }) {
-      Fn(&result, n).promise->handle().resume();
+    if constexpr (requires { Fn(lf::key{}, &result, n); }) {
+      Fn(lf::key{}, &result, n).promise->handle().resume();
     } else {
-      auto task = Fn(n);
+      auto task = Fn(lf::key{}, n);
       task.promise->return_address = &result;
       task.promise->handle().resume();
     }
@@ -86,7 +87,7 @@ void fib(benchmark::State &state) {
 }
 
 template <lf::alloc_mixin StackPolicy>
-constexpr auto ret = [](this auto fib, std::int64_t n) -> lf::task<std::int64_t, StackPolicy> {
+constexpr auto ret = [](this auto fib, lf::lock, std::int64_t n) -> lf::task<std::int64_t, StackPolicy> {
   if (n < 2) {
     co_return n;
   }

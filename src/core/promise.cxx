@@ -90,12 +90,6 @@ struct call_awaitable : std::suspend_always {
   }
 };
 
-struct key {};
-
-export struct lock : immovable {
-  explicit constexpr lock(key) noexcept {}
-};
-
 // clang-format off
 
 template <typename R, typename Fn, typename... Args>
@@ -144,7 +138,9 @@ struct mixin_frame {
   template <typename R, typename Fn, typename... Args>
   constexpr static auto await_transform(call_pkg<R, Fn, Args...> &&pkg) noexcept -> call_awaitable {
 
-    task child = std::move(pkg.args).apply(std::move(pkg.fn));
+    task child = std::move(pkg.args).apply([&](auto &&...args) {
+      return std::invoke(std::move(pkg.fn), key{}, LF_FWD(args)...);
+    });
 
     if constexpr (!std::is_void_v<R>) {
       child.promise->return_address = pkg.return_address;

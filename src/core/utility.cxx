@@ -28,4 +28,10 @@ export struct move_only {
   ~move_only() = default;
 };
 
+export struct key {};
+
+export struct lock : immovable {
+  constexpr lock(key) noexcept {}
+};
+
 } // namespace lf
