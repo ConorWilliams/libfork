@@ -1,10 +1,14 @@
 export module libfork.core;
 
-// All partitions
-export import :promise;
+// T1 partitions
 export import :concepts;
-export import :utility;
-export import :frame;
 export import :constants;
+export import :frame;
+export import :utility;
 export import :tuple;
-export import :ops;
+
+// T2 partitions
+export import :ops; // concepts, tuple, utility
+
+// T3 partitions
+export import :promise; // frame, ops
