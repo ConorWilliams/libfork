@@ -6,7 +6,7 @@ import std;
 
 namespace lf {
 
-enum category : std::uint8_t {
+enum class category : std::uint8_t {
   fork,
   call,
 };
@@ -20,7 +20,7 @@ struct frame_type {
 
   std::uint32_t merges;       // Atomic is 32 bits for speed
   std::uint16_t steals;       // In debug do overflow checking
-  std::uint8_t kind;          // Fork/Call/Just/Root
+  category kind;              // Fork/Call/Just/Root
   std::uint8_t exception_bit; // Atomically set
 
   [[nodiscard]]
