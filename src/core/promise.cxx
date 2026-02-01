@@ -124,7 +124,7 @@ struct fork_awaitable : std::suspend_always {
       thread_context<Context>->push(work_handle{.frame = local_child});
     } LF_CATCH_ALL {
       local_child->handle().destroy();
-      // TODO: stash in parent frame
+      // TODO: stash in parent frame (should not throw)
       LF_RETHROW;
     }
 
