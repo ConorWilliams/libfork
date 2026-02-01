@@ -22,4 +22,37 @@ concept alloc_mixin = mixinable<T> && requires (std::size_t n, T *ptr) {
   { T::operator delete(ptr, n) } noexcept -> std::same_as<void>;
 };
 
+template <typename T, template <typename...> typename Template>
+struct is_specialization_of : std::false_type {};
+
+template <template <typename...> typename Template, typename... Args>
+struct is_specialization_of<Template<Args...>, Template> : std::true_type {};
+
+/**
+ * @brief Test if `T` is a specialization of the template `Template`.
+ */
+template <typename T, template <typename...> typename Template>
+concept specialization_of = is_specialization_of<std::remove_cvref_t<T>, Template>::value;
+
+// Forward-decl
+export template <returnable T, alloc_mixin Stack>
+struct task;
+
+/**
+ * @brief Test if a callable `Fn` when invoked with `Args...` returns an `lf::task`.
+ */
+export template <typename Fn, typename... Args>
+concept async_invocable =
+    std::invocable<Fn, Args...> && specialization_of<std::invoke_result_t<Fn, Args...>, task>;
+
+/**
+ * @brief The result type of invoking an async function `Fn` with `Args...`.
+ */
+export template <typename Fn, typename... Args>
+  requires async_invocable<Fn, Args...>
+using async_result_t = std::invoke_result_t<Fn, Args...>::type;
+
+template <typename Fn, typename R, typename... Args>
+concept async_invocable_to = async_invocable<Fn, Args...> && std::same_as<async_result_t<Fn, Args...>, R>;
+
 } // namespace lf

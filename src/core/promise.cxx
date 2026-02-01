@@ -2,6 +2,7 @@ module;
 #include <version>
 
 #include "libfork/__impl/assume.hpp"
+#include "libfork/__impl/exception.hpp"
 #include "libfork/__impl/utils.hpp"
 export module libfork.core:promise;
 
@@ -10,6 +11,7 @@ import std;
 import :concepts;
 import :utility;
 import :frame;
+import :tuple;
 
 namespace lf {
 
@@ -37,7 +39,7 @@ struct promise_type;
  * \endrst
  */
 export template <returnable T, alloc_mixin Stack>
-struct task {
+struct task : immovable, std::type_identity<T> {
   promise_type<T, Stack> *promise;
 };
 
@@ -45,6 +47,8 @@ struct task {
 
 [[nodiscard]]
 constexpr auto final_suspend(frame_type *frame) -> std::coroutine_handle<> {
+
+  // TODO: noexcept
 
   LF_ASSUME(frame != nullptr);
 
@@ -68,12 +72,14 @@ struct final_awaitable : std::suspend_always {
   }
 };
 
-struct just_awaitable : std::suspend_always {
+struct call_awaitable : std::suspend_always {
 
   frame_type *child;
 
   template <typename... Us>
   auto await_suspend(std::coroutine_handle<promise_type<Us...>> parent) noexcept -> std::coroutine_handle<> {
+
+    // TODO: destroy on child if cannot launch i.e. scheduling failure
 
     LF_ASSUME(child != nullptr);
     LF_ASSUME(child->parent == nullptr);
@@ -83,6 +89,36 @@ struct just_awaitable : std::suspend_always {
     return child->handle();
   }
 };
+
+// clang-format off
+
+template <typename R, typename Fn, typename... Args>
+struct pkg {
+  R *return_address;
+  [[no_unique_address]] Fn fn;
+  [[no_unique_address]] tuple<Args...> args;
+};
+
+template <typename Fn, typename... Args>
+struct pkg<void, Fn, Args...> {
+  [[no_unique_address]] Fn fn;
+  [[no_unique_address]] tuple<Args...> args;
+};
+
+// clang-format on
+
+template <typename R, typename Fn, typename... Args>
+struct [[nodiscard("You should immediately co_await this!")]] call_pkg : pkg<R, Fn, Args...>, immovable {};
+
+export template <typename... Args, async_invocable_to<void, Args...> Fn>
+constexpr auto call(Fn &&fn, Args &&...args) noexcept -> call_pkg<void, Fn, Args &&...> {
+  return {LF_FWD(fn), {LF_FWD(args)...}};
+}
+
+export template <typename R, typename... Args, async_invocable_to<R, Args...> Fn>
+constexpr auto call(R *ret, Fn &&fn, Args &&...args) noexcept -> call_pkg<R, Fn, Args &&...> {
+  return {ret, LF_FWD(fn), {LF_FWD(args)...}};
+}
 
 struct mixin_frame {
 
@@ -99,8 +135,15 @@ struct mixin_frame {
 
   // === Called by the compiler === //
 
-  template <alloc_mixin P>
-  constexpr static auto await_transform(task<void, P> child) noexcept -> just_awaitable {
+  template <typename R, typename Fn, typename... Args>
+  constexpr static auto await_transform(call_pkg<R, Fn, Args...> &&pkg) noexcept -> call_awaitable {
+
+    task child = std::move(pkg.args).apply(std::move(pkg.fn));
+
+    if constexpr (!std::is_void_v<R>) {
+      child.promise->return_address = pkg.return_address;
+    }
+
     return {.child = &child.promise->frame};
   }
 
@@ -120,9 +163,9 @@ struct promise_type<void, StackPolicy> : StackPolicy, mixin_frame {
 
   frame_type frame;
 
-  constexpr auto get_return_object() -> task<void, StackPolicy> { return {.promise = this}; }
+  constexpr auto get_return_object() noexcept -> task<void, StackPolicy> { return {.promise = this}; }
 
-  constexpr static void return_void() {}
+  constexpr static void return_void() noexcept {}
 };
 
 struct dummy_alloc {
@@ -142,8 +185,17 @@ static_assert(std::is_standard_layout_v<promise_type<void, dummy_alloc>>);
 
 template <typename T, alloc_mixin StackPolicy>
 struct promise_type : StackPolicy, mixin_frame {
+
   frame_type frame;
   T *return_address;
+
+  constexpr auto get_return_object() noexcept -> task<T, StackPolicy> { return {.promise = this}; }
+
+  template <typename U = T>
+    requires std::assignable_from<T &, U &&>
+  constexpr void return_value(U &&value) noexcept(std::is_nothrow_assignable_v<T &, U &&>) {
+    *return_address = LF_FWD(value);
+  }
 };
 
 static_assert(alignof(promise_type<int, dummy_alloc>) == alignof(frame_type));

@@ -46,8 +46,8 @@ constexpr auto await = [](this auto fib, std::int64_t *ret, std::int64_t n) -> l
   std::int64_t lhs = 0;
   std::int64_t rhs = 0;
 
-  co_await fib(&lhs, n - 1);
-  co_await fib(&rhs, n - 2);
+  co_await lf::call(fib, &lhs, n - 1);
+  co_await lf::call(fib, &rhs, n - 2);
 
   *ret = lhs + rhs;
 };
@@ -68,7 +68,13 @@ void fib(benchmark::State &state) {
     benchmark::DoNotOptimize(n);
     std::int64_t result = 0;
 
-    Fn(&result, n).promise->handle().resume();
+    if constexpr (requires { Fn(&result, n); }) {
+      Fn(&result, n).promise->handle().resume();
+    } else {
+      auto task = Fn(n);
+      task.promise->return_address = &result;
+      task.promise->handle().resume();
+    }
 
     CHECK_RESULT(result, expect);
     benchmark::DoNotOptimize(result);
@@ -79,6 +85,21 @@ void fib(benchmark::State &state) {
   }
 }
 
+template <lf::alloc_mixin StackPolicy>
+constexpr auto ret = [](this auto fib, std::int64_t n) -> lf::task<std::int64_t, StackPolicy> {
+  if (n < 2) {
+    co_return n;
+  }
+
+  std::int64_t lhs = 0;
+  std::int64_t rhs = 0;
+
+  co_await lf::call(&lhs, fib, n - 1);
+  co_await lf::call(&rhs, fib, n - 2);
+
+  co_return lhs + rhs;
+};
+
 } // namespace
 
 BENCHMARK(fib<no_await<stack_on_heap>>)->Name("test/libfork/fib/heap/no_await")->Arg(fib_test);
@@ -87,8 +108,11 @@ BENCHMARK(fib<no_await<stack_on_heap>>)->Name("base/libfork/fib/heap/no_await")-
 BENCHMARK(fib<await<stack_on_heap>>)->Name("test/libfork/fib/heap/await")->Arg(fib_test);
 BENCHMARK(fib<await<stack_on_heap>>)->Name("base/libfork/fib/heap/await")->Arg(fib_base);
 
-BENCHMARK(fib<no_await<fib_bump_allocator>>)->Name("test/libfork/fib/data/no_await")->Arg(fib_test);
-BENCHMARK(fib<no_await<fib_bump_allocator>>)->Name("base/libfork/fib/data/no_await")->Arg(fib_base);
+BENCHMARK(fib<no_await<fib_bump_allocator>>)->Name("test/libfork/fib/bump_alloc/no_await")->Arg(fib_test);
+BENCHMARK(fib<no_await<fib_bump_allocator>>)->Name("base/libfork/fib/bump_alloc/no_await")->Arg(fib_base);
 
-BENCHMARK(fib<await<fib_bump_allocator>>)->Name("test/libfork/fib/data/await")->Arg(fib_test);
-BENCHMARK(fib<await<fib_bump_allocator>>)->Name("base/libfork/fib/data/await")->Arg(fib_base);
+BENCHMARK(fib<await<fib_bump_allocator>>)->Name("test/libfork/fib/bump_alloc/await")->Arg(fib_test);
+BENCHMARK(fib<await<fib_bump_allocator>>)->Name("base/libfork/fib/bump_alloc/await")->Arg(fib_base);
+
+BENCHMARK(fib<ret<fib_bump_allocator>>)->Name("test/libfork/fib/bump_alloc/return")->Arg(fib_test);
+BENCHMARK(fib<ret<fib_bump_allocator>>)->Name("base/libfork/fib/bump_alloc/return")->Arg(fib_base);
