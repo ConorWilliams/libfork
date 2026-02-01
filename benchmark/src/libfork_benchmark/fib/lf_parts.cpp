@@ -47,7 +47,7 @@ constexpr auto await = [](this auto fib, std::int64_t *ret, std::int64_t n) -> l
   std::int64_t rhs = 0;
 
   co_await lf::call(fib, &lhs, n - 1);
-  co_await fib(&rhs, n - 2);
+  co_await lf::call(fib, &rhs, n - 2);
 
   *ret = lhs + rhs;
 };
