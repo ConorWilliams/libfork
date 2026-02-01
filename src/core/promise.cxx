@@ -150,7 +150,7 @@ struct mixin_frame {
 
     task child = std::move(pkg.args).apply(std::move(pkg.fn));
 
-    child.promise->frame.kind = catagory::call;
+    child.promise->frame.kind = catagory::fork;
 
     if constexpr (!std::is_void_v<R>) {
       child.promise->return_address = pkg.return_address;
