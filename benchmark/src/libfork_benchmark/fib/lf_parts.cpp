@@ -79,6 +79,21 @@ void fib(benchmark::State &state) {
   }
 }
 
+template <lf::alloc_mixin StackPolicy>
+constexpr auto ret = [](this auto fib, std::int64_t n) -> lf::task<std::int64_t, StackPolicy> {
+  if (n < 2) {
+    co_return n;
+  }
+
+  std::int64_t lhs = 0;
+  std::int64_t rhs = 0;
+
+  co_await lf::call(&lhs, fib, n - 1);
+  co_await lf::call(&rhs, fib, n - 2);
+
+  co_return lhs + rhs;
+};
+
 } // namespace
 
 BENCHMARK(fib<no_await<stack_on_heap>>)->Name("test/libfork/fib/heap/no_await")->Arg(fib_test);
@@ -87,8 +102,8 @@ BENCHMARK(fib<no_await<stack_on_heap>>)->Name("base/libfork/fib/heap/no_await")-
 BENCHMARK(fib<await<stack_on_heap>>)->Name("test/libfork/fib/heap/await")->Arg(fib_test);
 BENCHMARK(fib<await<stack_on_heap>>)->Name("base/libfork/fib/heap/await")->Arg(fib_base);
 
-BENCHMARK(fib<no_await<fib_bump_allocator>>)->Name("test/libfork/fib/data/no_await")->Arg(fib_test);
-BENCHMARK(fib<no_await<fib_bump_allocator>>)->Name("base/libfork/fib/data/no_await")->Arg(fib_base);
+BENCHMARK(fib<no_await<fib_bump_allocator>>)->Name("test/libfork/fib/bump_alloc/no_await")->Arg(fib_test);
+BENCHMARK(fib<no_await<fib_bump_allocator>>)->Name("base/libfork/fib/bump_alloc/no_await")->Arg(fib_base);
 
-BENCHMARK(fib<await<fib_bump_allocator>>)->Name("test/libfork/fib/data/await")->Arg(fib_test);
-BENCHMARK(fib<await<fib_bump_allocator>>)->Name("base/libfork/fib/data/await")->Arg(fib_base);
+BENCHMARK(fib<await<fib_bump_allocator>>)->Name("test/libfork/fib/bump_alloc/await")->Arg(fib_test);
+BENCHMARK(fib<await<fib_bump_allocator>>)->Name("base/libfork/fib/bump_alloc/await")->Arg(fib_base);
