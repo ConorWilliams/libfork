@@ -80,7 +80,7 @@ TEST_CASE("Tuple construction", "[tuple]") {
 
 TEST_CASE("Tuple apply", "[tuple]") {
 
-  lf::tuple<int, lf::move_only> val{{{1}}};
+  lf::tuple<int, lf::move_only> val{1, lf::move_only{}};
 
   REQUIRE(std::move(val).apply([](int x, lf::move_only) -> bool {
     return x == 1;
