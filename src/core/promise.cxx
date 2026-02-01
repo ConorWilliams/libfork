@@ -8,9 +8,6 @@ export module libfork.core:promise;
 
 import std;
 
-import :concepts;
-import :utility;
-import :frame;
 import :ops;
 import :context;
 
