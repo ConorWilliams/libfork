@@ -70,7 +70,7 @@ struct final_awaitable : std::suspend_always {
   }
 };
 
-struct just_awaitable : std::suspend_always {
+struct call_awaitable : std::suspend_always {
 
   frame_type *child;
 
@@ -92,30 +92,34 @@ export struct lock {
   explicit constexpr lock(key) noexcept {}
 };
 
+// clang-format off
+
 template <typename R, typename Fn, typename... Args>
 struct package {
   R *return_address;
-  [[no_unique_address]]
-  Fn fn;
-  [[no_unique_address]]
-  tuple<Args...> args;
+  [[no_unique_address]] Fn fn;
+  [[no_unique_address]] tuple<Args...> args;
 };
 
 template <typename Fn, typename... Args>
 struct package<void, Fn, Args...> {
-  [[no_unique_address]]
-  Fn fn;
-  [[no_unique_address]]
-  tuple<Args...> args;
+  [[no_unique_address]] Fn fn;
+  [[no_unique_address]] tuple<Args...> args;
 };
+
+// clang-format on
 
 template <typename R, typename Fn, typename... Args>
 struct call_pkg : package<R, Fn, Args...> {};
 
-export template <typename Fn, typename... Args>
-  requires std::is_void_v<async_result_t<Fn, Args...>>
+export template <typename... Args, async_invocable_to<void, Args...> Fn>
 constexpr auto call(Fn &&fn, Args &&...args) -> call_pkg<void, Fn, Args &&...> {
   return {LF_FWD(fn), {LF_FWD(args)...}};
+}
+
+export template <typename R, typename... Args, async_invocable_to<R, Args...> Fn>
+constexpr auto call(R *ret, Fn &&fn, Args &&...args) -> call_pkg<R, Fn, Args &&...> {
+  return {ret, LF_FWD(fn), {LF_FWD(args)...}};
 }
 
 struct mixin_frame {
@@ -133,17 +137,14 @@ struct mixin_frame {
 
   // === Called by the compiler === //
 
-  template <alloc_mixin P>
-  constexpr static auto await_transform(task<void, P> child) noexcept -> just_awaitable {
-    return {.child = &child.promise->frame};
-  }
-
-  template <typename Fn, typename... Args>
-  constexpr static auto await_transform(call_pkg<Fn, Args...> &&pkg) -> just_awaitable {
+  template <typename R, typename Fn, typename... Args>
+  constexpr static auto await_transform(call_pkg<R, Fn, Args...> &&pkg) -> call_awaitable {
 
     task child = std::move(pkg.args).apply(std::move(pkg.fn));
 
-    // TODO: set return address
+    if constexpr (!std::is_void_v<R>) {
+      child.promise->return_address = pkg.return_address;
+    }
 
     return {.child = &child.promise->frame};
   }
@@ -186,8 +187,17 @@ static_assert(std::is_standard_layout_v<promise_type<void, dummy_alloc>>);
 
 template <typename T, alloc_mixin StackPolicy>
 struct promise_type : StackPolicy, mixin_frame {
+
   frame_type frame;
   T *return_address;
+
+  constexpr auto get_return_object() -> task<T, StackPolicy> { return {.promise = this}; }
+
+  template <typename U = T>
+    requires std::assignable_from<T &, U &&>
+  constexpr void return_value(U &&value) {
+    *return_address = LF_FWD(value);
+  }
 };
 
 static_assert(alignof(promise_type<int, dummy_alloc>) == alignof(frame_type));

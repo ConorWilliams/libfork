@@ -52,4 +52,7 @@ template <typename Fn, typename... Args>
   requires async_invocable<Fn, Args...>
 using async_result_t = std::invoke_result_t<Fn, Args...>::type;
 
+template <typename Fn, typename R, typename... Args>
+concept async_invocable_to = async_invocable<Fn, Args...> && std::same_as<async_result_t<Fn, Args...>, R>;
+
 } // namespace lf
