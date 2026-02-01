@@ -39,7 +39,7 @@ struct promise_type;
  * \endrst
  */
 export template <returnable T, alloc_mixin Stack>
-struct task : std::type_identity<T>, immovable {
+struct task : immovable, std::type_identity<T> {
   promise_type<T, Stack> *promise;
 };
 
