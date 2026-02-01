@@ -114,7 +114,7 @@ struct package<void, Fn, Args...> {
 // clang-format on
 
 template <typename R, typename Fn, typename... Args>
-struct call_pkg : package<R, Fn, Args...> {};
+struct [[nodiscard("You should immediatly co_await this!")]] call_pkg : package<R, Fn, Args...>, immovable {};
 
 export template <typename... Args, async_invocable_to<void, Args...> Fn>
 constexpr auto call(Fn &&fn, Args &&...args) noexcept -> call_pkg<void, Fn, Args &&...> {
