@@ -93,14 +93,14 @@ struct call_awaitable : std::suspend_always {
 // clang-format off
 
 template <typename R, typename Fn, typename... Args>
-struct package {
+struct pkg {
   R *return_address;
   [[no_unique_address]] Fn fn;
   [[no_unique_address]] tuple<Args...> args;
 };
 
 template <typename Fn, typename... Args>
-struct package<void, Fn, Args...> {
+struct pkg<void, Fn, Args...> {
   [[no_unique_address]] Fn fn;
   [[no_unique_address]] tuple<Args...> args;
 };
@@ -108,7 +108,7 @@ struct package<void, Fn, Args...> {
 // clang-format on
 
 template <typename R, typename Fn, typename... Args>
-struct [[nodiscard("You should immediately co_await this!")]] call_pkg : package<R, Fn, Args...>, immovable {};
+struct [[nodiscard("You should immediately co_await this!")]] call_pkg : pkg<R, Fn, Args...>, immovable {};
 
 export template <typename... Args, async_invocable_to<void, Args...> Fn>
 constexpr auto call(Fn &&fn, Args &&...args) noexcept -> call_pkg<void, Fn, Args &&...> {
