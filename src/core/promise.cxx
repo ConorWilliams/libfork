@@ -13,9 +13,6 @@ import :ops;
 
 namespace lf {
 
-template <typename T = void>
-using coro = std::coroutine_handle<T>;
-
 // =============== Forward-decl =============== //
 
 template <typename T, alloc_mixin StackPolicy>
@@ -44,10 +41,10 @@ struct task : immovable, std::type_identity<T> {
   promise_type<T, Stack> *promise;
 };
 
-// =============== Final =============== //
+// =============== Frame-mixin =============== //
 
 [[nodiscard]]
-constexpr auto final_suspend(frame_type *frame) -> coro<> {
+constexpr auto final_suspend(frame_type *frame) -> std::coroutine_handle<> {
 
   // TODO: noexcept
 
@@ -67,19 +64,18 @@ constexpr auto final_suspend(frame_type *frame) -> coro<> {
 
 struct final_awaitable : std::suspend_always {
   template <typename... Ts>
-  constexpr auto await_suspend(coro<promise_type<Ts...>> handle) noexcept -> coro<> {
+  constexpr auto
+  await_suspend(std::coroutine_handle<promise_type<Ts...>> handle) noexcept -> std::coroutine_handle<> {
     return final_suspend(&handle.promise().frame);
   }
 };
-
-// =============== Call =============== //
 
 struct call_awaitable : std::suspend_always {
 
   frame_type *child;
 
   template <typename... Us>
-  auto await_suspend(coro<promise_type<Us...>> parent) noexcept -> coro<> {
+  auto await_suspend(std::coroutine_handle<promise_type<Us...>> parent) noexcept -> std::coroutine_handle<> {
 
     // TODO: destroy on child if cannot launch i.e. scheduling failure
 
@@ -91,28 +87,6 @@ struct call_awaitable : std::suspend_always {
     return child->handle();
   }
 };
-
-// =============== Fork =============== //
-
-struct fork_awaitable : std::suspend_always {
-
-  frame_type *child;
-
-  template <typename T, alloc_mixin S>
-  auto await_suspend(coro<promise_type<T, S>> parent) noexcept -> coro<> {
-
-    // TODO: destroy on child if cannot launch i.e. scheduling failure
-
-    LF_ASSUME(child != nullptr);
-    LF_ASSUME(child->parent == nullptr);
-
-    child->parent = &parent.promise().frame;
-
-    return child->handle();
-  }
-};
-
-// =============== Frame mixin =============== //
 
 struct mixin_frame {
 
@@ -121,7 +95,7 @@ struct mixin_frame {
   template <typename Self>
     requires (!std::is_const_v<Self>)
   [[nodiscard]]
-  constexpr auto handle(this Self &self) LF_HOF(coro<Self>::from_promise(self))
+  constexpr auto handle(this Self &self) LF_HOF(std::coroutine_handle<Self>::from_promise(self))
 
   [[nodiscard]]
   constexpr auto get_frame(this auto &&self)
@@ -133,22 +107,6 @@ struct mixin_frame {
   constexpr static auto await_transform(call_pkg<R, Fn, Args...> &&pkg) noexcept -> call_awaitable {
 
     task child = std::move(pkg.args).apply(std::move(pkg.fn));
-
-    child.promise->frame.kind = catagory::call;
-
-    if constexpr (!std::is_void_v<R>) {
-      child.promise->return_address = pkg.return_address;
-    }
-
-    return {.child = &child.promise->frame};
-  }
-
-  template <typename R, typename Fn, typename... Args>
-  constexpr static auto await_transform(fork_pkg<R, Fn, Args...> &&pkg) noexcept -> fork_awaitable {
-
-    task child = std::move(pkg.args).apply(std::move(pkg.fn));
-
-    child.promise->frame.kind = catagory::call;
 
     if constexpr (!std::is_void_v<R>) {
       child.promise->return_address = pkg.return_address;
