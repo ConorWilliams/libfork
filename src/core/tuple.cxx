@@ -64,7 +64,9 @@ struct tuple_impl<std::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
   template <std::size_t I, typename Self>
   [[nodiscard]]
   constexpr auto get(this Self &&self) noexcept -> copy_cvref_t<Self &&, INDEX_HACK(I, Ts...)> {
-    return LF_FWD(self).template tuple_leaf<I, Ts...[I]>::elem;
+
+    using Result = copy_cvref_t<Self &&, INDEX_HACK(I, Ts...)>;
+    return static_cast<Result>(LF_FWD(self).template tuple_leaf<I, Ts...[I]>::elem);
   }
 
   [[nodiscard]]
