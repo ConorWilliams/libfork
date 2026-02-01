@@ -81,7 +81,7 @@ struct tuple_impl<std::index_sequence<Is...>, Ts...> : tuple_leaf<Is, Ts>... {
  * - Provides an `apply(fn)` member function.
  * - Supports structured bindings.
  *
- * This is has the advantage of significantly faster compilation times
+ * This has the advantage of significantly faster compilation times
  * compared to the standard library's `std::tuple`. In addition it is an
  * aggregate type hence, is trivially copyable/constructable/destructible
  * conditional on the types it contains. It even works as an NTTP.
