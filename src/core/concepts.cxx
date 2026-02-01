@@ -36,7 +36,7 @@ concept specialization_of = is_specialization_of<std::remove_cvref_t<T>, Templat
 
 // Forward-decl
 export template <returnable T, alloc_mixin Stack>
-class task;
+struct task;
 
 /**
  * @brief Test if a callable `Fn` when invoked with `Args...` returns an `lf::task`.
@@ -50,7 +50,7 @@ concept async_invocable =
  */
 template <typename Fn, typename... Args>
   requires async_invocable<Fn, Args...>
-using async_result_t = std::invoke_result_t<Fn, Args...>::value_type;
+using async_result_t = std::invoke_result_t<Fn, Args...>::type;
 
 template <typename Fn, typename R, typename... Args>
 concept async_invocable_to = async_invocable<Fn, Args...> && std::same_as<async_result_t<Fn, Args...>, R>;
