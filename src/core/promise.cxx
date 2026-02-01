@@ -39,7 +39,7 @@ struct promise_type;
  * \endrst
  */
 export template <returnable T, alloc_mixin Stack>
-struct task : std::type_identity<T> {
+struct task : std::type_identity<T>, immovable {
   promise_type<T, Stack> *promise;
 };
 
@@ -47,6 +47,8 @@ struct task : std::type_identity<T> {
 
 [[nodiscard]]
 constexpr auto final_suspend(frame_type *frame) -> std::coroutine_handle<> {
+
+  // TODO: noexcept
 
   LF_ASSUME(frame != nullptr);
 
@@ -77,6 +79,8 @@ struct call_awaitable : std::suspend_always {
   template <typename... Us>
   auto await_suspend(std::coroutine_handle<promise_type<Us...>> parent) noexcept -> std::coroutine_handle<> {
 
+    // TODO: destroy on child if cannot launch i.e. scheduling failure
+
     LF_ASSUME(child != nullptr);
     LF_ASSUME(child->parent == nullptr);
 
@@ -88,7 +92,7 @@ struct call_awaitable : std::suspend_always {
 
 struct key {};
 
-export struct lock {
+export struct lock : immovable {
   explicit constexpr lock(key) noexcept {}
 };
 
@@ -113,12 +117,12 @@ template <typename R, typename Fn, typename... Args>
 struct call_pkg : package<R, Fn, Args...> {};
 
 export template <typename... Args, async_invocable_to<void, Args...> Fn>
-constexpr auto call(Fn &&fn, Args &&...args) -> call_pkg<void, Fn, Args &&...> {
+constexpr auto call(Fn &&fn, Args &&...args) noexcept -> call_pkg<void, Fn, Args &&...> {
   return {LF_FWD(fn), {LF_FWD(args)...}};
 }
 
 export template <typename R, typename... Args, async_invocable_to<R, Args...> Fn>
-constexpr auto call(R *ret, Fn &&fn, Args &&...args) -> call_pkg<R, Fn, Args &&...> {
+constexpr auto call(R *ret, Fn &&fn, Args &&...args) noexcept -> call_pkg<R, Fn, Args &&...> {
   return {ret, LF_FWD(fn), {LF_FWD(args)...}};
 }
 
@@ -138,7 +142,7 @@ struct mixin_frame {
   // === Called by the compiler === //
 
   template <typename R, typename Fn, typename... Args>
-  constexpr static auto await_transform(call_pkg<R, Fn, Args...> &&pkg) -> call_awaitable {
+  constexpr static auto await_transform(call_pkg<R, Fn, Args...> &&pkg) noexcept -> call_awaitable {
 
     task child = std::move(pkg.args).apply(std::move(pkg.fn));
 
@@ -165,9 +169,9 @@ struct promise_type<void, StackPolicy> : StackPolicy, mixin_frame {
 
   frame_type frame;
 
-  constexpr auto get_return_object() -> task<void, StackPolicy> { return {.promise = this}; }
+  constexpr auto get_return_object() noexcept -> task<void, StackPolicy> { return {.promise = this}; }
 
-  constexpr static void return_void() {}
+  constexpr static void return_void() noexcept {}
 };
 
 struct dummy_alloc {
@@ -191,11 +195,11 @@ struct promise_type : StackPolicy, mixin_frame {
   frame_type frame;
   T *return_address;
 
-  constexpr auto get_return_object() -> task<T, StackPolicy> { return {.promise = this}; }
+  constexpr auto get_return_object() noexcept -> task<T, StackPolicy> { return {.promise = this}; }
 
   template <typename U = T>
     requires std::assignable_from<T &, U &&>
-  constexpr void return_value(U &&value) {
+  constexpr void return_value(U &&value) noexcept {
     *return_address = LF_FWD(value);
   }
 };
