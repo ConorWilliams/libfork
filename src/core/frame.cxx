@@ -7,7 +7,7 @@ import std;
 namespace lf {
 
 enum catagory : std::uint8_t {
-  fork,
+  ffork,
   call,
 };
 
