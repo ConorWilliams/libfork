@@ -137,9 +137,8 @@ TEST_CASE("Tuple rvalue reference semantics", "[tuple]") {
   t.get<0>() = 2;
   REQUIRE(x == 2);
 
-  control_struct<int &&> y{std::move(x)};
   // Accessing rvalue tuple -> xvalue member -> int&&
-  // STATIC_REQUIRE(std::is_same_v<decltype(std::move(t).get<0>()), int &&>);
+  STATIC_REQUIRE(std::is_same_v<decltype(std::move(t).get<0>()), int &&>);
 }
 
 TEST_CASE("Tuple apply value categories", "[tuple]") {
