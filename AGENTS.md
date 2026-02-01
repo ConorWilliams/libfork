@@ -12,7 +12,7 @@ strict fork-join parallelism using C++20 coroutines.
 
 ### Compiler & Module Support
 
-This project **requires C++23 `import std`** and **MUST** use the appropriate
+This project **requires C++23's `import std`** and **MUST** use the appropriate
 toolchain file:
 
 - **MacOS**: Use `-DCMAKE_TOOLCHAIN_FILE=cmake/llvm-brew-toolchain.cmake`
@@ -89,7 +89,7 @@ cmake --build --preset <preset-name>
 **Build warnings** (expected and safe):
 
 - "It is recommended to build benchmarks in Release mode" - only relevant for `ci-hardened`
-- CMake experimental `import std;` warning - expected for C++23 modules
+- CMake experimental `import std;` warning - expected for C++23's `import std`
 
 ### 3. Test
 
