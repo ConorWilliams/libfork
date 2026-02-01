@@ -128,22 +128,11 @@ struct mixin_frame {
   template <typename Fn, typename... Args>
   constexpr static auto await_transform(packaged_call<Fn, Args...> &&pkg) -> just_awaitable {
 
-    // std::move(pkg).args.apply([]<typename... Ts>(Ts &&...args) {
-    //   int i = std::type_identity<lf::tuple<Ts &&...>>{};
-    // });
-
     task child = std::move(pkg.args).apply(std::move(pkg.fn));
 
-    LF_TRY {
+    // TODO: set return address
 
-      // Create the child frame;
-
-    } LF_CATCH_ALL {
-
-      LF_RETHROW;
-    }
-
-    // return {.child = &child.promise->frame};
+    return {.child = &child.promise->frame};
   }
 
   constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
