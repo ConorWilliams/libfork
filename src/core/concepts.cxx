@@ -48,7 +48,7 @@ concept async_invocable =
 /**
  * @brief The result type of invoking an async function `Fn` with `Args...`.
  */
-template <typename Fn, typename... Args>
+export template <typename Fn, typename... Args>
   requires async_invocable<Fn, Args...>
 using async_result_t = std::invoke_result_t<Fn, Args...>::type;
 
