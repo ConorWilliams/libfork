@@ -8,8 +8,14 @@ export module libfork.core:promise;
 
 import std;
 
-import :ops;
+import :concepts;
+import :constants;
+import :frame;
+import :utility;
+import :tuple;
+
 import :context;
+import :ops;
 
 namespace lf {
 
