@@ -3,8 +3,6 @@ export module libfork.core:concepts;
 
 import std;
 
-import :utility;
-
 namespace lf {
 
 /**
@@ -45,14 +43,14 @@ struct task;
  */
 export template <typename Fn, typename... Args>
 concept async_invocable =
-    std::invocable<Fn, key, Args...> && specialization_of<std::invoke_result_t<Fn, key, Args...>, task>;
+    std::invocable<Fn, Args...> && specialization_of<std::invoke_result_t<Fn, Args...>, task>;
 
 /**
  * @brief The result type of invoking an async function `Fn` with `Args...`.
  */
 template <typename Fn, typename... Args>
   requires async_invocable<Fn, Args...>
-using async_result_t = std::invoke_result_t<Fn, key, Args...>::type;
+using async_result_t = std::invoke_result_t<Fn, Args...>::type;
 
 template <typename Fn, typename R, typename... Args>
 concept async_invocable_to = async_invocable<Fn, Args...> && std::same_as<async_result_t<Fn, Args...>, R>;
