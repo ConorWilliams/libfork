@@ -39,7 +39,7 @@ struct promise_type;
  * \endrst
  */
 export template <returnable T, alloc_mixin Stack>
-struct task {
+struct task : std::type_identity<T> {
   promise_type<T, Stack> *promise;
 };
 
@@ -92,8 +92,9 @@ export struct lock {
   explicit constexpr lock(key) noexcept {}
 };
 
-template <typename Fn, typename... Args>
+template <typename R, typename Fn, typename... Args>
 struct package {
+  R *return_address;
   [[no_unique_address]]
   Fn fn;
   [[no_unique_address]]
@@ -101,10 +102,19 @@ struct package {
 };
 
 template <typename Fn, typename... Args>
-struct call_pkg : package<Fn, Args...> {};
+struct package<void, Fn, Args...> {
+  [[no_unique_address]]
+  Fn fn;
+  [[no_unique_address]]
+  tuple<Args...> args;
+};
+
+template <typename R, typename Fn, typename... Args>
+struct call_pkg : package<R, Fn, Args...> {};
 
 export template <typename Fn, typename... Args>
-constexpr auto call(Fn &&fn, Args &&...args) -> call_pkg<Fn, Args &&...> {
+  requires std::is_void_v<async_result_t<Fn, Args...>>
+constexpr auto call(Fn &&fn, Args &&...args) -> call_pkg<void, Fn, Args &&...> {
   return {LF_FWD(fn), {LF_FWD(args)...}};
 }
 
