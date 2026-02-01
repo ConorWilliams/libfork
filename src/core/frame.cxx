@@ -16,13 +16,13 @@ struct cancellation {};
 struct frame_type {
 
   frame_type *parent = nullptr;
-  cancellation *cancel;
-
-  std::uint32_t merges;       // Atomic is 32 bits for speed
-  std::uint16_t steals;       // In debug do overflow checking
-  std::uint8_t kind;          // Fork/Call/Just/Root
-  std::uint8_t exception_bit; // Atomically set
-
+  // cancellation *cancel;
+  //
+  // std::uint32_t merges;       // Atomic is 32 bits for speed
+  // std::uint16_t steals;       // In debug do overflow checking
+  // std::uint8_t kind;          // Fork/Call/Just/Root
+  // std::uint8_t exception_bit; // Atomically set
+  //
   [[nodiscard]]
   constexpr auto handle() LF_HOF(std::coroutine_handle<frame_type>::from_promise(*this))
 };
