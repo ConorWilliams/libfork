@@ -6,9 +6,9 @@ import std;
 
 namespace lf {
 
-enum catagory : std::uint8_t {
+enum class catagory : std::uint8_t {
   ffork,
-  ccall,
+  call,
 };
 
 // struct cancellation {};
