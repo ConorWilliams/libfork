@@ -8,7 +8,7 @@ namespace lf {
 
 enum catagory : std::uint8_t {
   ffork,
-  call,
+  ccall,
 };
 
 // struct cancellation {};
