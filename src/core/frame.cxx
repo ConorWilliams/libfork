@@ -16,9 +16,9 @@ struct cancellation;
 struct frame_type {
 
   frame_type *parent = nullptr; // TODO: set as at root
-  cancellation *cancel;
+  cancellation *cancel = nullptr;
 
-  std::uint32_t merges = 31;      // Atomic is 32 bits for speed
+  std::uint32_t merges = 0;       // Atomic is 32 bits for speed
   std::uint16_t steals = 0;       // In debug do overflow checking
   category kind = category::call; // Fork/Call/Just/Root
   std::uint8_t exception_bit = 0; // Atomically set
