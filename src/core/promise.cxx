@@ -154,7 +154,8 @@ struct mixin_frame {
 
     task child = std::move(pkg.args).apply(std::move(pkg.fn));
 
-    child.promise->frame.kind = category::call;
+    // ::call is the default value
+    LF_ASSUME(child.promise->frame.kind == category::call);
 
     if constexpr (!std::is_void_v<R>) {
       child.promise->return_address = pkg.return_address;
