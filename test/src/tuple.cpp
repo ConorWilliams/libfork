@@ -41,10 +41,10 @@ void check_accessor_types() {
   // Force instantiation
   tupl_t t{static_cast<T>(val)};
 
-  std::ignore = static_cast<tupl_t &>(t).get<0>();
-  std::ignore = static_cast<tupl_t const &>(t).get<0>();
-  std::ignore = static_cast<tupl_t &&>(t).get<0>();
-  std::ignore = static_cast<tupl_t const &&>(t).get<0>();
+  std::ignore = static_cast<tupl_t &>(t).template get<0>();
+  std::ignore = static_cast<tupl_t const &>(t).template get<0>();
+  std::ignore = static_cast<tupl_t &&>(t).template get<0>();
+  std::ignore = static_cast<tupl_t const &&>(t).template get<0>();
 }
 
 } // namespace
