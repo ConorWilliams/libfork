@@ -21,6 +21,11 @@ using get = decltype(std::declval<T>().template get<0>());
 template <typename T>
 using val = decltype(std::get<0>(std::declval<T>()));
 
+struct any {
+  template <typename T>
+  constexpr operator T() const noexcept {}
+};
+
 template <typename T>
 void check_accessor_types() {
   using tupl_t = lf::tuple<T>;
@@ -30,6 +35,16 @@ void check_accessor_types() {
   STATIC_REQUIRE(std::same_as<get<tupl_t const &>, val<ctrl_t const &>>);
   STATIC_REQUIRE(std::same_as<get<tupl_t &&>, val<ctrl_t &&>>);
   STATIC_REQUIRE(std::same_as<get<tupl_t const &&>, val<ctrl_t const &&>>);
+
+  int val = 0;
+
+  // Force instantiation
+  tupl_t t{static_cast<T>(val)};
+
+  std::ignore = static_cast<tupl_t &>(t).get<0>();
+  std::ignore = static_cast<tupl_t const &>(t).get<0>();
+  std::ignore = static_cast<tupl_t &&>(t).get<0>();
+  std::ignore = static_cast<tupl_t const &&>(t).get<0>();
 }
 
 } // namespace
