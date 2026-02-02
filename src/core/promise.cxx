@@ -77,10 +77,12 @@ constexpr auto final_suspend(frame_type *frame) noexcept -> coro<> {
   frame_type *parent = not_null(frame->parent);
 
   if (frame_type *last_push = context->pop().frame) {
-    // No-one stole continuation, we are the exclusive owner of parent, just keep ripping!
+    // No-one stole continuation, we are the exclusive owner of parent, so we
+    // just keep ripping!
     LF_ASSUME(last_push == parent);
-    // This must be the same thread that created the parent so it already owns the stack.
-    // No steals have occurred so we do not need to call reset().
+    // This must be the same thread that created the parent so it already owns
+    // the stack. No steals have occurred so we do not need to call reset().
+    // TODO: assert about the stack
     return parent->handle();
   }
 
