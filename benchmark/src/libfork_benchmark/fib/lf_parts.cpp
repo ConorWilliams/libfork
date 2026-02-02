@@ -29,8 +29,13 @@ constexpr auto no_await = [](this auto fib, std::int64_t *ret, std::int64_t n) -
   std::int64_t lhs = 0;
   std::int64_t rhs = 0;
 
-  fib(&lhs, n - 1).promise->handle().resume();
-  fib(&rhs, n - 2).promise->handle().resume();
+  auto t1 = fib(&lhs, n - 1);
+  t1.promise->frame.kind = lf::category::root;
+  t1.promise->handle().resume();
+
+  auto t2 = fib(&rhs, n - 2);
+  t2.promise->frame.kind = lf::category::root;
+  t2.promise->handle().resume();
 
   *ret = lhs + rhs;
 };
@@ -68,9 +73,12 @@ void fib(benchmark::State &state) {
     std::int64_t result = 0;
 
     if constexpr (requires { Fn(&result, n); }) {
-      Fn(&result, n).promise->handle().resume();
+      auto task = Fn(&result, n);
+      task.promise->frame.kind = lf::category::root;
+      task.promise->handle().resume();
     } else {
       auto task = Fn(n);
+      task.promise->frame.kind = lf::category::root;
       task.promise->return_address = &result;
       task.promise->handle().resume();
     }

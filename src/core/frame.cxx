@@ -6,8 +6,10 @@ import std;
 
 namespace lf {
 
-enum class category : std::uint8_t {
+// TODO: remove this and other exports
+export enum class category : std::uint8_t {
   call,
+  root,
   fork,
 };
 
