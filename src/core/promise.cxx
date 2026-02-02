@@ -56,8 +56,6 @@ template <context Context>
 [[nodiscard]]
 constexpr auto final_suspend(frame_type *frame) noexcept -> coro<> {
 
-  LF_ASSUME(frame);
-
   defer _ = [frame]() noexcept -> void {
     frame->handle().destroy();
   };
@@ -69,7 +67,6 @@ constexpr auto final_suspend(frame_type *frame) noexcept -> coro<> {
       // TODO: root handling
       return std::noop_coroutine();
     case category::fork:
-      LF_ASSUME(false);
       break;
     default:
       LF_ASSUME(false);
@@ -77,7 +74,93 @@ constexpr auto final_suspend(frame_type *frame) noexcept -> coro<> {
 
   context auto *context = not_null(thread_context<Context>);
 
-  LF_ASSUME(context);
+  frame_type *parent = not_null(frame->parent);
+
+  if (frame_type *last_push = context->pop().frame) {
+    // No-one stole continuation, we are the exclusive owner of parent, just keep ripping!
+    LF_ASSUME(last_push == parent);
+    // This must be the same thread that created the parent so it already owns the stack.
+    // No steals have occurred so we do not need to call reset().
+    return parent->handle();
+  }
+
+  /**
+   * An owner is a worker who:
+   *
+   * - Created the task.
+   * - Had the task submitted to them.
+   * - Won the task at a join.
+   *
+   * An owner of a task owns the stack the task is on.
+   *
+   * As the worker who completed the child task this thread owns the stack the child task was on.
+   *
+   * Either:
+   *
+   * 1. The parent is on the same stack as the child.
+   * 2. The parent is on a different stack to the child.
+   *
+   * Case (1) implies: we owned the parent; forked the child task; then the parent was then stolen.
+   * Case (2) implies: we stole the parent task; then forked the child; then the parent was stolen.
+   *
+   * In case (2) the workers stack has no allocations on it.
+   */
+
+  // LF_LOG("Task's parent was stolen");
+  //
+  // stack *tls_stack = tls::stack();
+  //
+  // stack::stacklet *p_stacklet = parent->stacklet(); //
+  // stack::stacklet *c_stacklet = tls_stack->top();   // Need to call while we own tls_stack.
+  //
+  // // Register with parent we have completed this child task, this may release ownership of our stack.
+  // if (parent->fetch_sub_joins(1, std::memory_order_release) == 1) {
+  //   // Acquire all writes before resuming.
+  //   std::atomic_thread_fence(std::memory_order_acquire);
+  //
+  //   // Parent has reached join and we are the last child task to complete.
+  //   // We are the exclusive owner of the parent therefore, we must continue parent.
+  //
+  //   LF_LOG("Task is last child to join, resumes parent");
+  //
+  //   if (p_stacklet != c_stacklet) {
+  //     // Case (2), the tls_stack has no allocations on it.
+  //
+  //     LF_ASSERT(tls_stack->empty());
+  //
+  //     // TODO: stack.splice()? Here the old stack is empty and thrown away, if it is larger
+  //     // then we could splice it onto the parents one? Or we could attempt to cache the old one.
+  //     *tls_stack = stack{p_stacklet};
+  //   }
+  //
+  //   // Must reset parents control block before resuming parent.
+  //   parent->reset();
+  //
+  //   return parent->self();
+  // }
+  //
+  // // We did not win the join-race, we cannot deference the parent pointer now as
+  // // the frame may now be freed by the winner.
+  //
+  // // Parent has not reached join or we are not the last child to complete.
+  // // We are now out of jobs, must yield to executor.
+  //
+  // LF_LOG("Task is not last to join");
+  //
+  // if (p_stacklet == c_stacklet) {
+  //   // We are unable to resume the parent and where its owner, as the resuming
+  //   // thread will take ownership of the parent's we must give it up.
+  //   LF_LOG("Thread releases control of parent's stack");
+  //
+  //   // If this throw an exception then the worker must die as it does not have a stack.
+  //   // Hence, program termination is appropriate.
+  //   ignore_t{} = tls_stack->release();
+  //
+  // } else {
+  //   // Case (2) the tls_stack has no allocations on it, it may be used later.
+  // }
+
+  return std::noop_coroutine();
 }
 
 struct final_awaitable : std::suspend_always {
