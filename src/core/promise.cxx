@@ -61,14 +61,25 @@ constexpr auto final_suspend(frame_type *frame) noexcept -> coro<> {
 
   frame_type *parent_frame = frame->parent;
 
-  // Destroy the child frame
-  frame->handle().destroy();
+  // TODO: DEFER {frame->handle(destory)}
 
-  if (parent_frame != nullptr) {
-    return parent_frame->handle();
+  switch (frame->kind) {
+    case category::call:
+      // Destroy the child frame
+      frame->handle().destroy();
+      LF_ASSUME(parent_frame != nullptr);
+      return parent_frame->handle();
+    case category::root:
+      // TODO: root handling
+      frame->handle().destroy();
+      return std::noop_coroutine();
+    case category::fork:
+      LF_ASSUME(false);
+      break;
+    default:
+      LF_ASSUME(false);
   }
-
-  return std::noop_coroutine();
+  LF_ASSUME(false);
 }
 
 struct final_awaitable : std::suspend_always {
