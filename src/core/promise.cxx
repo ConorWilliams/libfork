@@ -55,23 +55,18 @@ struct task : immovable, std::type_identity<T> {
 [[nodiscard]]
 constexpr auto final_suspend(frame_type *frame) noexcept -> coro<> {
 
-  // TODO: noexcept
-
   LF_ASSUME(frame != nullptr);
 
-  frame_type *parent_frame = frame->parent;
-
-  // TODO: DEFER {frame->handle(destory)}
+  defer _ = [frame]() noexcept -> void {
+    frame->handle().destroy();
+  };
 
   switch (frame->kind) {
     case category::call:
-      // Destroy the child frame
-      frame->handle().destroy();
-      LF_ASSUME(parent_frame != nullptr);
-      return parent_frame->handle();
+      LF_ASSUME(frame->parent != nullptr);
+      return frame->parent->handle();
     case category::root:
       // TODO: root handling
-      frame->handle().destroy();
       return std::noop_coroutine();
     case category::fork:
       LF_ASSUME(false);
