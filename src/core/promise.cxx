@@ -52,19 +52,19 @@ struct task : immovable, std::type_identity<T> {
 
 // =============== Final =============== //
 
+template <context Context>
 [[nodiscard]]
 constexpr auto final_suspend(frame_type *frame) noexcept -> coro<> {
 
-  LF_ASSUME(frame != nullptr);
+  LF_ASSUME(frame);
 
   defer _ = [frame]() noexcept -> void {
     frame->handle().destroy();
   };
 
-  switch (frame->kind) {
+  switch (not_null(frame)->kind) {
     case category::call:
-      LF_ASSUME(frame->parent != nullptr);
-      return frame->parent->handle();
+      return not_null(frame->parent)->handle();
     case category::root:
       // TODO: root handling
       return std::noop_coroutine();
@@ -74,13 +74,16 @@ constexpr auto final_suspend(frame_type *frame) noexcept -> coro<> {
     default:
       LF_ASSUME(false);
   }
-  LF_ASSUME(false);
+
+  context auto *context = not_null(thread_context<Context>);
+
+  LF_ASSUME(context);
 }
 
 struct final_awaitable : std::suspend_always {
-  template <typename... Ts>
-  constexpr static auto await_suspend(coro<promise_type<Ts...>> handle) noexcept -> coro<> {
-    return final_suspend(&handle.promise().frame);
+  template <typename T, alloc_mixin S, typename Context>
+  constexpr static auto await_suspend(coro<promise_type<T, S, Context>> handle) noexcept -> coro<> {
+    return final_suspend<Context>(&handle.promise().frame);
   }
 };
 
