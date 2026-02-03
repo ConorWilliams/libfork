@@ -56,7 +56,7 @@ constexpr auto await = [](this auto fib, std::int64_t *ret, std::int64_t n) -> l
   *ret = lhs + rhs;
 };
 
-constexpr auto ret = [](this auto fib, std::int64_t n) -> lf::task<std::int64_t, fib_bump_allocator> {
+constexpr auto ret = [](this auto fib, std::int64_t n) -> lf::task<std::int64_t, tls_bump> {
   if (n < 2) {
     co_return n;
   }
@@ -70,7 +70,7 @@ constexpr auto ret = [](this auto fib, std::int64_t n) -> lf::task<std::int64_t,
   co_return lhs + rhs;
 };
 
-template <typename Ctx, typename A = fib_bump_allocator>
+template <typename Ctx, typename A = tls_bump>
 constexpr auto fork_call = [](this auto fib, std::int64_t n) -> lf::task<std::int64_t, A, Ctx> {
   if (n < 2) {
     co_return n;
@@ -95,11 +95,11 @@ void fib(benchmark::State &state) {
 
   // Set bump allocator buffer
   std::unique_ptr buf = std::make_unique<std::byte[]>(1024 * 1024);
-  fib_bump_ptr = buf.get();
+  tls_bump_ptr = buf.get();
 
   // Set both context and poly context
-  std::unique_ptr ctx = std::make_unique<fib_vector_ctx>();
-  lf::thread_context<fib_vector_ctx> = ctx.get();
+  std::unique_ptr ctx = std::make_unique<vector_ctx>();
+  lf::thread_context<vector_ctx> = ctx.get();
   lf::thread_context<lf::polymorphic_context> = ctx.get();
 
   for (auto _ : state) {
@@ -121,7 +121,7 @@ void fib(benchmark::State &state) {
     benchmark::DoNotOptimize(result);
   }
 
-  if (fib_bump_ptr != buf.get()) {
+  if (tls_bump_ptr != buf.get()) {
     LF_TERMINATE("Stack leak detected");
   }
 }
@@ -133,8 +133,8 @@ BENCHMARK(fib<no_await<stack_on_heap>>)->Name("test/libfork/fib/heap/no_await")-
 BENCHMARK(fib<no_await<stack_on_heap>>)->Name("base/libfork/fib/heap/no_await")->Arg(fib_base);
 
 // Same as above but uses bump allocator
-BENCHMARK(fib<no_await<fib_bump_allocator>>)->Name("test/libfork/fib/bump_alloc/no_await")->Arg(fib_test);
-BENCHMARK(fib<no_await<fib_bump_allocator>>)->Name("base/libfork/fib/bump_alloc/no_await")->Arg(fib_base);
+BENCHMARK(fib<no_await<tls_bump>>)->Name("test/libfork/fib/bump_alloc/no_await")->Arg(fib_test);
+BENCHMARK(fib<no_await<tls_bump>>)->Name("base/libfork/fib/bump_alloc/no_await")->Arg(fib_base);
 
 // TODO: no_await with segmented stack allocator?
 
@@ -143,8 +143,8 @@ BENCHMARK(fib<await<stack_on_heap>>)->Name("test/libfork/fib/heap/await")->Arg(f
 BENCHMARK(fib<await<stack_on_heap>>)->Name("base/libfork/fib/heap/await")->Arg(fib_base);
 
 // Same as above but uses bump allocator
-BENCHMARK(fib<await<fib_bump_allocator>>)->Name("test/libfork/fib/bump_alloc/await")->Arg(fib_test);
-BENCHMARK(fib<await<fib_bump_allocator>>)->Name("base/libfork/fib/bump_alloc/await")->Arg(fib_base);
+BENCHMARK(fib<await<tls_bump>>)->Name("test/libfork/fib/bump_alloc/await")->Arg(fib_test);
+BENCHMARK(fib<await<tls_bump>>)->Name("base/libfork/fib/bump_alloc/await")->Arg(fib_base);
 
 // Same as above but return by value in lf::task
 BENCHMARK(fib<ret>)->Name("test/libfork/fib/bump_alloc/return")->Arg(fib_test);
@@ -153,8 +153,8 @@ BENCHMARK(fib<ret>)->Name("base/libfork/fib/bump_alloc/return")->Arg(fib_base);
 // Return by value
 // libfork call/fork (no join)
 // Non-polymorphic vector-backed context
-BENCHMARK(fib<fork_call<fib_vector_ctx>>)->Name("test/libfork/fib/vector_ctx")->Arg(fib_test);
-BENCHMARK(fib<fork_call<fib_vector_ctx>>)->Name("base/libfork/fib/vector_ctx")->Arg(fib_base);
+BENCHMARK(fib<fork_call<vector_ctx>>)->Name("test/libfork/fib/vector_ctx")->Arg(fib_test);
+BENCHMARK(fib<fork_call<vector_ctx>>)->Name("base/libfork/fib/vector_ctx")->Arg(fib_base);
 
 BENCHMARK(fib<fork_call<lf::polymorphic_context>>)->Name("test/libfork/fib/poly_vector_ctx")->Arg(fib_test);
 BENCHMARK(fib<fork_call<lf::polymorphic_context>>)->Name("base/libfork/fib/poly_vector_ctx")->Arg(fib_base);
