@@ -20,16 +20,15 @@ concept context = requires (T &ctx, work_handle h) {
   { ctx.pop() } noexcept -> std::same_as<work_handle>;
 };
 
-struct polymorphic_context {
+export struct polymorphic_context {
   virtual void push(work_handle h) = 0;
-  virtual work_handle pop() noexcept = 0;
-
+  virtual auto pop() noexcept -> work_handle = 0;
   virtual ~polymorphic_context() = default;
 };
 
 static_assert(context<polymorphic_context>);
 
-template <typename Context>
+export template <typename Context>
 constinit inline thread_local Context *thread_context = nullptr;
 
 } // namespace lf
