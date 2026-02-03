@@ -56,6 +56,20 @@ constexpr auto await = [](this auto fib, std::int64_t *ret, std::int64_t n) -> l
   *ret = lhs + rhs;
 };
 
+constexpr auto ret = [](this auto fib, std::int64_t n) -> lf::task<std::int64_t, fib_bump_allocator> {
+  if (n < 2) {
+    co_return n;
+  }
+
+  std::int64_t lhs = 0;
+  std::int64_t rhs = 0;
+
+  co_await lf::call(&lhs, fib, n - 1);
+  co_await lf::call(&rhs, fib, n - 2);
+
+  co_return lhs + rhs;
+};
+
 template <auto Fn>
 void fib(benchmark::State &state) {
 
@@ -92,34 +106,24 @@ void fib(benchmark::State &state) {
   }
 }
 
-template <lf::alloc_mixin Stack>
-constexpr auto ret = [](this auto fib, std::int64_t n) -> lf::task<std::int64_t, Stack> {
-  if (n < 2) {
-    co_return n;
-  }
-
-  std::int64_t lhs = 0;
-  std::int64_t rhs = 0;
-
-  co_await lf::call(&lhs, fib, n - 1);
-  co_await lf::call(&rhs, fib, n - 2);
-
-  co_return lhs + rhs;
-};
-
 } // namespace
 
+// Return by ref-arg, test direct root, no co-await, direct resumes, uses new/delete for alloc
 BENCHMARK(fib<no_await<stack_on_heap>>)->Name("test/libfork/fib/heap/no_await")->Arg(fib_test);
 BENCHMARK(fib<no_await<stack_on_heap>>)->Name("base/libfork/fib/heap/no_await")->Arg(fib_base);
 
-BENCHMARK(fib<await<stack_on_heap>>)->Name("test/libfork/fib/heap/await")->Arg(fib_test);
-BENCHMARK(fib<await<stack_on_heap>>)->Name("base/libfork/fib/heap/await")->Arg(fib_base);
-
+// Same as above but uses bump allocator
 BENCHMARK(fib<no_await<fib_bump_allocator>>)->Name("test/libfork/fib/bump_alloc/no_await")->Arg(fib_test);
 BENCHMARK(fib<no_await<fib_bump_allocator>>)->Name("base/libfork/fib/bump_alloc/no_await")->Arg(fib_base);
 
+// Return by ref-arg, libfork call/call with co-await, uses new/delete for alloc
+BENCHMARK(fib<await<stack_on_heap>>)->Name("test/libfork/fib/heap/await")->Arg(fib_test);
+BENCHMARK(fib<await<stack_on_heap>>)->Name("base/libfork/fib/heap/await")->Arg(fib_base);
+
+// Same as above but uses bump allocator
 BENCHMARK(fib<await<fib_bump_allocator>>)->Name("test/libfork/fib/bump_alloc/await")->Arg(fib_test);
 BENCHMARK(fib<await<fib_bump_allocator>>)->Name("base/libfork/fib/bump_alloc/await")->Arg(fib_base);
 
-BENCHMARK(fib<ret<fib_bump_allocator>>)->Name("test/libfork/fib/bump_alloc/return")->Arg(fib_test);
-BENCHMARK(fib<ret<fib_bump_allocator>>)->Name("base/libfork/fib/bump_alloc/return")->Arg(fib_base);
+// Same as above but return by value in lf::task
+BENCHMARK(fib<ret>)->Name("test/libfork/fib/bump_alloc/return")->Arg(fib_test);
+BENCHMARK(fib<ret>)->Name("base/libfork/fib/bump_alloc/return")->Arg(fib_base);
