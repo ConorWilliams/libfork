@@ -6,6 +6,8 @@
 
 #include "libfork_benchmark/common.hpp"
 
+import libfork.core;
+
 inline constexpr int fib_test = 3;
 inline constexpr int fib_base = 37;
 
@@ -51,5 +53,20 @@ struct fib_bump_allocator {
 
   static auto operator delete(void *p, [[maybe_unused]] std::size_t sz) noexcept -> void {
     fib_bump_ptr = std::bit_cast<std::byte *>(p);
+  }
+};
+
+// === Shared Context Logic ===
+
+struct fib_vector_ctx final : lf::polymorphic_context {
+
+  std::vector<lf::work_handle> work;
+
+  void push(lf::work_handle handle) override { work.push_back(handle); }
+
+  auto pop() noexcept -> lf::work_handle override {
+    auto handle = work.back();
+    work.pop_back();
+    return handle;
   }
 };
