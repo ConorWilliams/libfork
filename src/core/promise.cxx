@@ -45,9 +45,9 @@ struct promise_type;
  *
  * \endrst
  */
-export template <returnable T, alloc_mixin Stack>
+export template <returnable T, alloc_mixin Stack, typename Context = polymorphic_context>
 struct task : immovable, std::type_identity<T> {
-  promise_type<T, Stack> *promise;
+  promise_type<T, Stack, Context> *promise;
 };
 
 // =============== Final =============== //
@@ -287,12 +287,12 @@ static_assert(std::is_empty_v<mixin_frame>);
 
 // =============== Promise (void) =============== //
 
-template <alloc_mixin Stack>
-struct promise_type<void, Stack> : Stack, mixin_frame {
+template <alloc_mixin Stack, context Context>
+struct promise_type<void, Stack, Context> : Stack, mixin_frame {
 
   frame_type frame;
 
-  constexpr auto get_return_object() noexcept -> task<void, Stack> { return {.promise = this}; }
+  constexpr auto get_return_object() noexcept -> task<void, Stack, Context> { return {.promise = this}; }
 
   constexpr static void return_void() noexcept {}
 };
@@ -318,7 +318,7 @@ struct promise_type : Stack, mixin_frame {
   frame_type frame;
   T *return_address;
 
-  constexpr auto get_return_object() noexcept -> task<T, Stack> { return {.promise = this}; }
+  constexpr auto get_return_object() noexcept -> task<T, Stack, Context> { return {.promise = this}; }
 
   template <typename U = T>
     requires std::assignable_from<T &, U &&>

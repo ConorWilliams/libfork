@@ -35,7 +35,7 @@ template <typename T, template <typename...> typename Template>
 concept specialization_of = is_specialization_of<std::remove_cvref_t<T>, Template>::value;
 
 // Forward-decl
-export template <returnable T, alloc_mixin Stack>
+export template <returnable T, alloc_mixin Stack, typename Context>
 struct task;
 
 /**
