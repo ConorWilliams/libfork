@@ -183,16 +183,11 @@ struct call_awaitable : std::suspend_always {
   frame_type *child;
 
   template <typename... Us>
-  auto await_suspend(coro<promise_type<Us...>> parent) noexcept -> coro<> {
+  auto await_suspend(this auto self, coro<promise_type<Us...>> parent) noexcept -> coro<> {
+    // Connect child to parent
+    not_null(self.child)->parent = &parent.promise().frame;
 
-    // TODO: destroy on child if cannot launch i.e. scheduling failure
-
-    LF_ASSUME(child != nullptr);
-    LF_ASSUME(child->parent == nullptr);
-
-    child->parent = &parent.promise().frame;
-
-    return child->handle();
+    return self.child->handle();
   }
 };
 
@@ -203,30 +198,25 @@ struct fork_awaitable : std::suspend_always {
   frame_type *child;
 
   template <typename T, alloc_mixin S, typename Context>
-  auto await_suspend(coro<promise_type<T, S, Context>> parent) noexcept -> coro<> {
+  auto await_suspend(this auto self, coro<promise_type<T, S, Context>> parent) noexcept -> coro<> {
+
+    // It is critical to pass self by-value here, after the call to push()
+    // the object may be destroyed, if passing by ref it would be use
+    // after-free to then access self
 
     // TODO: destroy on child if cannot launch i.e. scheduling failure
 
-    LF_ASSUME(child != nullptr);
-    LF_ASSUME(child->parent == nullptr);
-
-    child->parent = &parent.promise().frame;
-
-    // Make a copy on the stack, this object may be destroyed
-    // after the push to the scheduler's queue
-    frame_type *local_child = child;
-
-    LF_ASSUME(thread_context<Context> != nullptr);
+    not_null(self.child)->parent = &parent.promise().frame;
 
     LF_TRY {
-      thread_context<Context>->push(work_handle{.frame = local_child});
+      not_null(thread_context<Context>)->push(work_handle{.frame = &parent.promise().frame});
     } LF_CATCH_ALL {
-      local_child->handle().destroy();
+      self.child->handle().destroy();
       // TODO: stash in parent frame (should not throw)
       LF_RETHROW;
     }
 
-    return local_child->handle();
+    return self.child->handle();
   }
 };
 

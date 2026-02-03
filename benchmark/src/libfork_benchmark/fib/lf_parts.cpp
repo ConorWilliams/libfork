@@ -70,6 +70,21 @@ constexpr auto ret = [](this auto fib, std::int64_t n) -> lf::task<std::int64_t,
   co_return lhs + rhs;
 };
 
+template <typename Ctx, typename A = fib_bump_allocator>
+constexpr auto fork_call = [](this auto fib, std::int64_t n) -> lf::task<std::int64_t, A, Ctx> {
+  if (n < 2) {
+    co_return n;
+  }
+
+  std::int64_t lhs = 0;
+  std::int64_t rhs = 0;
+
+  co_await lf::fork(&rhs, fib, n - 2);
+  co_await lf::call(&lhs, fib, n - 1);
+
+  co_return lhs + rhs;
+};
+
 template <auto Fn>
 void fib(benchmark::State &state) {
 
@@ -78,9 +93,14 @@ void fib(benchmark::State &state) {
 
   state.counters["n"] = static_cast<double>(n);
 
-  std::unique_ptr buffer = std::make_unique<std::byte[]>(1024 * 1024);
+  // Set bump allocator buffer
+  std::unique_ptr buf = std::make_unique<std::byte[]>(1024 * 1024);
+  fib_bump_ptr = buf.get();
 
-  fib_bump_ptr = buffer.get();
+  // Set both context and poly context
+  std::unique_ptr ctx = std::make_unique<fib_vector_ctx>();
+  lf::thread_context<fib_vector_ctx> = ctx.get();
+  lf::thread_context<lf::polymorphic_context> = ctx.get();
 
   for (auto _ : state) {
     benchmark::DoNotOptimize(n);
@@ -101,7 +121,7 @@ void fib(benchmark::State &state) {
     benchmark::DoNotOptimize(result);
   }
 
-  if (fib_bump_ptr != buffer.get()) {
+  if (fib_bump_ptr != buf.get()) {
     LF_TERMINATE("Stack leak detected");
   }
 }
@@ -127,3 +147,12 @@ BENCHMARK(fib<await<fib_bump_allocator>>)->Name("base/libfork/fib/bump_alloc/awa
 // Same as above but return by value in lf::task
 BENCHMARK(fib<ret>)->Name("test/libfork/fib/bump_alloc/return")->Arg(fib_test);
 BENCHMARK(fib<ret>)->Name("base/libfork/fib/bump_alloc/return")->Arg(fib_base);
+
+// Return by value
+// libfork call/fork (no join)
+// Non-polymorphic vector-backed context
+BENCHMARK(fib<fork_call<fib_vector_ctx>>)->Name("test/libfork/fib/vector_ctx")->Arg(fib_test);
+BENCHMARK(fib<fork_call<fib_vector_ctx>>)->Name("base/libfork/fib/vector_ctx")->Arg(fib_base);
+
+BENCHMARK(fib<fork_call<lf::polymorphic_context>>)->Name("test/libfork/fib/poly_vector_ctx")->Arg(fib_test);
+BENCHMARK(fib<fork_call<lf::polymorphic_context>>)->Name("base/libfork/fib/poly_vector_ctx")->Arg(fib_base);

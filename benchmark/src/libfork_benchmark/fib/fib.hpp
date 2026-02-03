@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "libfork/__impl/compiler.hpp"
+
 #include "libfork_benchmark/common.hpp"
 
 import libfork.core;
@@ -61,6 +63,8 @@ struct fib_bump_allocator {
 struct fib_vector_ctx final : lf::polymorphic_context {
 
   std::vector<lf::work_handle> work;
+
+  fib_vector_ctx() { work.reserve(1024); }
 
   void push(lf::work_handle handle) override { work.push_back(handle); }
 
