@@ -96,6 +96,7 @@ void fib(benchmark::State &state) {
   // Set bump allocator buffer
   std::unique_ptr buf = std::make_unique<std::byte[]>(1024 * 1024);
   tls_bump_ptr = buf.get();
+  bump_ptr = buf.get();
 
   // Set both context and poly context
   std::unique_ptr ctx = std::make_unique<vector_ctx>();
@@ -132,9 +133,13 @@ void fib(benchmark::State &state) {
 BENCHMARK(fib<no_await<stack_on_heap>>)->Name("test/libfork/fib/heap/no_await")->Arg(fib_test);
 BENCHMARK(fib<no_await<stack_on_heap>>)->Name("base/libfork/fib/heap/no_await")->Arg(fib_base);
 
-// Same as above but uses bump allocator
-BENCHMARK(fib<no_await<tls_bump>>)->Name("test/libfork/fib/bump_alloc/no_await")->Arg(fib_test);
-BENCHMARK(fib<no_await<tls_bump>>)->Name("base/libfork/fib/bump_alloc/no_await")->Arg(fib_base);
+// Same as above but uses tls bump allocator
+BENCHMARK(fib<no_await<tls_bump>>)->Name("test/libfork/fib/tls_bump/no_await")->Arg(fib_test);
+BENCHMARK(fib<no_await<tls_bump>>)->Name("base/libfork/fib/tls_bump/no_await")->Arg(fib_base);
+
+// Same as above but with global bump allocator
+BENCHMARK(fib<no_await<global_bump>>)->Name("test/libfork/fib/global_bump/no_await")->Arg(fib_test);
+BENCHMARK(fib<no_await<global_bump>>)->Name("base/libfork/fib/global_bump/no_await")->Arg(fib_base);
 
 // TODO: no_await with segmented stack allocator?
 
@@ -142,13 +147,18 @@ BENCHMARK(fib<no_await<tls_bump>>)->Name("base/libfork/fib/bump_alloc/no_await")
 BENCHMARK(fib<await<stack_on_heap>>)->Name("test/libfork/fib/heap/await")->Arg(fib_test);
 BENCHMARK(fib<await<stack_on_heap>>)->Name("base/libfork/fib/heap/await")->Arg(fib_base);
 
-// Same as above but uses bump allocator
-BENCHMARK(fib<await<tls_bump>>)->Name("test/libfork/fib/bump_alloc/await")->Arg(fib_test);
-BENCHMARK(fib<await<tls_bump>>)->Name("base/libfork/fib/bump_alloc/await")->Arg(fib_base);
+// Same as above but uses tls bump allocator
+BENCHMARK(fib<await<tls_bump>>)->Name("test/libfork/fib/tls_bump/await")->Arg(fib_test);
+BENCHMARK(fib<await<tls_bump>>)->Name("base/libfork/fib/tls_bump/await")->Arg(fib_base);
 
-// Same as above but return by value in lf::task
-BENCHMARK(fib<ret>)->Name("test/libfork/fib/bump_alloc/return")->Arg(fib_test);
-BENCHMARK(fib<ret>)->Name("base/libfork/fib/bump_alloc/return")->Arg(fib_base);
+// Same as above but with global bump allocator
+BENCHMARK(fib<await<global_bump>>)->Name("test/libfork/fib/global_bump/await")->Arg(fib_test);
+BENCHMARK(fib<await<global_bump>>)->Name("base/libfork/fib/global_bump/await")->Arg(fib_base);
+
+// Return by value
+// libfork call/call with co-await
+BENCHMARK(fib<ret>)->Name("test/libfork/fib/tls_bump/return")->Arg(fib_test);
+BENCHMARK(fib<ret>)->Name("base/libfork/fib/tls_bump/return")->Arg(fib_base);
 
 // Return by value
 // libfork call/fork (no join)
