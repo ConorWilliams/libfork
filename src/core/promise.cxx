@@ -80,11 +80,15 @@ constexpr auto final_suspend(frame_type *frame) noexcept -> coro<> {
     // No-one stole continuation, we are the exclusive owner of parent, so we
     // just keep ripping!
     LF_ASSUME(last_push == parent);
-    // This must be the same thread that created the parent so it already owns
-    // the stack. No steals have occurred so we do not need to call reset().
+    // If no-one stole the parent then this child can also never have been
+    // stolen. Hence, this must be the same thread that created the parent so
+    // it already owns the stack. No steals have occurred so we do not need to
+    // call reset().
     // TODO: assert about the stack
     return parent->handle();
   }
+
+  LF_TERMINATE("oops");
 
   /**
    * An owner is a worker who:
