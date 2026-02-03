@@ -136,6 +136,8 @@ BENCHMARK(fib<no_await<stack_on_heap>>)->Name("base/libfork/fib/heap/no_await")-
 BENCHMARK(fib<no_await<fib_bump_allocator>>)->Name("test/libfork/fib/bump_alloc/no_await")->Arg(fib_test);
 BENCHMARK(fib<no_await<fib_bump_allocator>>)->Name("base/libfork/fib/bump_alloc/no_await")->Arg(fib_base);
 
+// TODO: no_await with segmented stack allocator?
+
 // Return by ref-arg, libfork call/call with co-await, uses new/delete for alloc
 BENCHMARK(fib<await<stack_on_heap>>)->Name("test/libfork/fib/heap/await")->Arg(fib_test);
 BENCHMARK(fib<await<stack_on_heap>>)->Name("base/libfork/fib/heap/await")->Arg(fib_base);
