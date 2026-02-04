@@ -16,7 +16,7 @@ static_assert(std::atomic<work_handle>::is_always_lock_free);
 
 template <typename T>
 concept context = requires (T &ctx, work_handle h) {
-  { ctx.push(h) };
+  { ctx.push(h) } -> std::same_as<void>;
   { ctx.pop() } noexcept -> std::same_as<work_handle>;
 };
 
