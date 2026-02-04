@@ -3,6 +3,7 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <vector>
 
 #include "libfork/__impl/compiler.hpp"
 
