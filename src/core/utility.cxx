@@ -91,9 +91,6 @@ export struct move_only {
  *    // Code that may throw
  *
  * \endrst
- *
- * You can also use the ``LF_DEFER`` macro to create an automatically named defer object.
- *
  */
 template <class F>
   requires std::is_nothrow_invocable_v<F>
