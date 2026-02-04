@@ -21,11 +21,6 @@ using get = decltype(std::declval<T>().template get<0>());
 template <typename T>
 using val = decltype(std::get<0>(std::declval<T>()));
 
-struct any {
-  template <typename T>
-  constexpr operator T() const noexcept {}
-};
-
 template <typename T>
 void check_accessor_types() {
   using tupl_t = lf::tuple<T>;
