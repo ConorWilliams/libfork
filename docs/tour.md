@@ -25,7 +25,7 @@ Definitions:
 - __Parent:__ A task that spawns other tasks.
 - __Child:__ A task that is spawned by another task.
 
-The tasking/fork-join interface is designed to mirror [Cilk](https://en.wikipedia.org/wiki/Cilk) and other fork-join frameworks. The best way to learn is by example, lets start with the canonical introduction to fork-join, the recursive Fibonacci function, in regular C++ it looks like this:
+The tasking/fork-join interface is designed to mirror [Cilk](https://en.wikipedia.org/wiki/Cilk) and other fork-join frameworks. The best way to learn is by example, let's start with the canonical introduction to fork-join, the recursive Fibonacci function, in regular C++ it looks like this:
 
 ```cpp
 auto fib(int n) -> int {
