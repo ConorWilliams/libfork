@@ -15,7 +15,7 @@
  *
  * This macro is always active, regardless of optimization settings or `NDEBUG`.
  */
-#define LF_ASSERT(expr)                                                                                      \
+#define LF_ENSURE(expr)                                                                                      \
   do {                                                                                                       \
     if (!(expr)) {                                                                                           \
       LF_TERMINATE("Assumption '" #expr "' failed!");                                                        \
@@ -43,5 +43,5 @@
       }                                                                                                      \
     } while (false)
 #else
-  #define LF_ASSUME(expr) LF_ASSERT(expr)
+  #define LF_ASSUME(expr) LF_ENSURE(expr)
 #endif

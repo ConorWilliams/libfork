@@ -30,6 +30,16 @@ void check_accessor_types() {
   STATIC_REQUIRE(std::same_as<get<tupl_t const &>, val<ctrl_t const &>>);
   STATIC_REQUIRE(std::same_as<get<tupl_t &&>, val<ctrl_t &&>>);
   STATIC_REQUIRE(std::same_as<get<tupl_t const &&>, val<ctrl_t const &&>>);
+
+  // Force instantiation of above
+
+  int x = 0;
+  tupl_t t{static_cast<T>(x)};
+
+  std::ignore = static_cast<tupl_t &>(t).template get<0>();
+  std::ignore = static_cast<tupl_t const &>(t).template get<0>();
+  std::ignore = static_cast<tupl_t &&>(t).template get<0>();
+  std::ignore = static_cast<tupl_t const &&>(t).template get<0>();
 }
 
 } // namespace

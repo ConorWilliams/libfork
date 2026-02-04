@@ -12,7 +12,7 @@
 namespace {
 
 struct task {
-  struct promise_type : fib_bump_allocator {
+  struct promise_type : tls_bump {
 
     auto get_return_object() -> task { return {std::coroutine_handle<promise_type>::from_promise(*this)}; }
 
@@ -81,7 +81,7 @@ void fib_coro_no_queue(benchmark::State &state) {
 
   // 8MB stack
   std::unique_ptr buffer = std::make_unique<std::byte[]>(1024 * 1024 * 8);
-  fib_bump_ptr = buffer.get();
+  tls_bump_ptr = buffer.get();
 
   for (auto _ : state) {
     benchmark::DoNotOptimize(n);
@@ -91,7 +91,7 @@ void fib_coro_no_queue(benchmark::State &state) {
     benchmark::DoNotOptimize(result);
   }
 
-  if (fib_bump_ptr != buffer.get()) {
+  if (tls_bump_ptr != buffer.get()) {
     std::terminate(); // Stack leak
   }
 }

@@ -5,13 +5,19 @@
       "name": "dev",
       "inherits": "ci-hardened",
       "displayName": "Hardened development build",
-      "toolchainFile": "${sourceDir}/cmake/llvm-brew-toolchain.cmake"
+      "toolchainFile": "${sourceDir}/cmake/llvm-brew-toolchain.cmake",
+      "cacheVariables": {
+        "CMAKE_COLOR_DIAGNOSTICS": "ON"
+      }
     },
     {
       "name": "bench",
       "inherits": "ci-release",
       "displayName": "Release build for benchmarks",
-      "toolchainFile": "${sourceDir}/cmake/llvm-brew-toolchain.cmake"
+      "toolchainFile": "${sourceDir}/cmake/llvm-brew-toolchain.cmake",
+      "cacheVariables": {
+        "CMAKE_COLOR_DIAGNOSTICS": "ON"
+      }
     }
   ],
   "buildPresets": [
