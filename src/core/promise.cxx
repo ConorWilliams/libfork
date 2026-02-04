@@ -72,11 +72,11 @@ constexpr auto final_suspend(frame_type *frame) noexcept -> coro<> {
       LF_ASSUME(false);
   }
 
-  context auto *context = not_null(thread_context<Context>);
+  context auto *ctx = not_null(thread_context<Context>);
 
   frame_type *parent = not_null(frame->parent);
 
-  if (frame_type *last_push = context->pop().frame) {
+  if (frame_type *last_push = ctx->pop().frame) {
     // No-one stole continuation, we are the exclusive owner of parent, so we
     // just keep ripping!
     LF_ASSUME(last_push == parent);
