@@ -122,9 +122,14 @@ void fib(benchmark::State &state) {
     benchmark::DoNotOptimize(result);
   }
 
-  if (tls_bump_ptr != buf.get()) {
+  if (tls_bump_ptr != buf.get() || bump_ptr != buf.get()) {
     LF_TERMINATE("Stack leak detected");
   }
+
+  tls_bump_ptr = nullptr;
+  bump_ptr = nullptr;
+  lf::thread_context<vector_ctx> = nullptr;
+  lf::thread_context<lf::polymorphic_context> = nullptr;
 }
 
 } // namespace
