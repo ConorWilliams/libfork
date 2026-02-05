@@ -5,20 +5,6 @@ import std;
 
 namespace lf {
 
-// ========== Specialization ========== //
-
-template <typename T, template <typename...> typename Template>
-struct is_specialization_of : std::false_type {};
-
-template <template <typename...> typename Template, typename... Args>
-struct is_specialization_of<Template<Args...>, Template> : std::true_type {};
-
-/**
- * @brief Test if `T` is a specialization of the template `Template`.
- */
-template <typename T, template <typename...> typename Template>
-concept specialization_of = is_specialization_of<std::remove_cvref_t<T>, Template>::value;
-
 // ========== Task constraint related concepts ========== //
 
 // ==== Returnable
@@ -38,19 +24,6 @@ concept default_movable = std::movable<T> && std::default_initializable<T>;
 
 // clang-format off
 
-template <typename Alloc>
-concept stack_allocator_help =
-  requires (Alloc alloc, std::size_t n, void *ptr) {
-    { alloc.empty()                     } noexcept -> std::same_as<bool>;
-    { alloc.push(n)                     }          -> std::same_as<void *>;
-    { alloc.pop(ptr, n)                 } noexcept -> std::same_as<void>;
-    { alloc.checkpoint()                } noexcept -> default_movable;
-    { alloc.release()                   } noexcept -> std::same_as<void>;
-    { alloc.acquire(alloc.checkpoint()) } noexcept -> std::same_as<void>;
-  };
-
-// clang-format on
-
 /**
  * @brief Defines the API for a libfork compatible stack allocator.
  *
@@ -61,103 +34,85 @@ concept stack_allocator_help =
  * - Release makes the stack empty.
  * - Acquire is only called when the stack is empty
  */
-template <typename Alloc>
-concept stack_allocator = default_movable<Alloc> && stack_allocator_help<Alloc>;
+template <typename T>
+concept stack_allocator =
+  requires (T x, std::size_t n, void *ptr) {
+    { x.empty()                 } noexcept -> std::same_as<bool>;
+    { x.push(n)                 }          -> std::same_as<void *>;
+    { x.pop(ptr, n)             } noexcept -> std::same_as<void>;
+    { x.checkpoint()            } noexcept -> default_movable;
+    { x.release()               } noexcept -> std::same_as<void>;
+    { x.acquire(x.checkpoint()) } noexcept -> std::same_as<void>;
+  };
+
+// clang-format on
 
 template <stack_allocator T>
 using checkpoint_t = decltype(std::declval<T>().checkpoint());
 
-template <stack_allocator Alloc>
-using handle_to_t = frame_handle<checkpoint_t<Alloc>>;
-
 // ==== Context
 
-template <stack_allocator T>
-struct type_erased_context;
-
-// template <stack_allocator T>
-// constexpr erase()
-//
-// Store's a type-erased context as void*
-// TODO: just changed from default_movable to stack_allocator
 export template <stack_allocator T>
-struct frame_type;
+class frame_handle;
 
-struct lock {};
-
-inline constexpr lock key = {};
-
-// TODO: api + test this is lock-free
-//
-// What is the API:
-//  - You can push/pop it
-//  - You can convert it to a "steal handle" -> which you can/must resume?
-//
-// What properties does it have:
-//  - It is trivially copyable/constructible/destructible
-//  - It has a null value, you can test if it is null
-//  - You can store it in an atomic and it is lock-free
-export template <default_movable T>
-class frame_handle {
-  constexpr frame_handle() = default;
-  constexpr frame_handle(std::nullptr_t) noexcept : ptr(nullptr) {}
-  constexpr frame_handle(lock, frame_type<T> *ptr) noexcept : ptr(ptr) {}
-
- private:
-  frame_type<T> *ptr;
+template <typename T, typename U>
+concept context_of = stack_allocator<U> && requires (T ctx, frame_handle<U> handle) {
+  { ctx.alloc() } noexcept -> std::same_as<U &>;
+  { ctx.push(handle) } -> std::same_as<void>;
+  { ctx.pop() } noexcept -> std::same_as<frame_handle<U>>;
 };
 
-export template <typename T, typename Alloc>
-concept context_of = stack_allocator<Alloc> && requires (T *ctx, handle_to_t<Alloc> handle) {
-  { ctx->alloc() } noexcept -> std::same_as<Alloc &>;
-  { ctx->push(handle) } -> std::same_as<void>;
-  { ctx->pop() } noexcept -> std::same_as<handle_to_t<Alloc>>;
+template <typename T>
+concept has_allocator = requires (T x) {
+  { x.alloc() } noexcept -> stack_allocator;
 };
+
+template <typename T>
+using allocator_of_t = std::remove_cvref_t<decltype(std::declval<T>().alloc())>;
+
+export template <typename T>
+concept context = std::is_object_v<T> && has_allocator<T> && context_of<T, allocator_of_t<T>>;
+
+template <context T>
+class arg;
 
 // ==== Forward-decl
 
-// Forward-decl
-export template <returnable T, stack_allocator Alloc, context_of<Alloc> Ctx>
+export template <returnable T, context Context>
 struct task;
 
-template <typename T>
-struct task_deducer : std::false_type {};
+template <typename, typename>
+struct task_help : std::false_type {};
 
-template <returnable T, stack_allocator Alloc, context_of<Alloc> Ctx>
-struct task_deducer<task<T, Alloc, Ctx>> : std::true_type {
+template <typename T, typename Context>
+struct task_help<Context, task<T, Context>> : std::true_type {
   using value_type = T;
-  using stack_allocator_type = Alloc;
-  using context_type = Ctx;
 };
 
-auto fib(context_arg, ) -> task<int> {}
+template <typename Fn, typename Context, typename... Args>
+struct task_info : task_help<Context, std::invoke_result_t<Fn, arg<Context>, Args...>> {};
 
-template <typename T>
-class basic_context_arg {
- public:
-  constexpr basic_context_arg(lock);
-  constexpr basic_context_arg(lock, T *ctx) noexcept : context(ctx) {}
-
- private:
-  T *context;
-}
+template <typename Fn, typename Context, typename... Args>
+concept returns_task = task_info<Fn, Context, Args...>::value;
 
 // ========== Invocability ========== //
 
 /**
  * @brief Test if a callable `Fn` when invoked with `Args...` returns an `lf::task`.
  */
-export template <typename Fn, typename... Args>
+export template <typename Fn, typename Context, typename... Args>
 concept async_invocable =
-    std::invocable<Fn, Args...> && specialization_of<std::invoke_result_t<Fn, Args...>, task>;
+    context<Context> && std::invocable<Fn, arg<Context>, Args...> && returns_task<Fn, Context, Args...>;
 
 /**
  * @brief The result type of invoking an async function `Fn` with `Args...`.
  */
-export template <typename Fn, typename... Args>
-  requires async_invocable<Fn, Args...>
-using async_result_t = std::invoke_result_t<Fn, Args...>::type;
+export template <typename Fn, typename Context, typename... Args>
+  requires async_invocable<Fn, Context, Args...>
+using async_result_t = task_info<Fn, Context, Args...>::value_type;
 
-template <typename Fn, typename R, typename... Args>
-concept async_invocable_to = async_invocable<Fn, Args...> && std::same_as<async_result_t<Fn, Args...>, R>;
+export template <typename Fn, typename R, typename Context, typename... Args>
+concept async_invocable_to =
+    async_invocable<Fn, Context, Args...> && std::same_as<R, async_result_t<Fn, Context, Args...>>;
+
 } // namespace lf

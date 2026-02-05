@@ -4,7 +4,45 @@ export module libfork.core:frame;
 
 import std;
 
+import :concepts;
+
 namespace lf {
+
+template <stack_allocator T>
+struct type_erased_context;
+
+// template <stack_allocator T>
+// constexpr erase()
+//
+// Store's a type-erased context as void*
+// TODO: just changed from default_movable to stack_allocator
+export template <stack_allocator T>
+struct frame_type;
+
+struct lock {};
+
+inline constexpr lock key = {};
+
+// TODO: api + test this is lock-free
+//
+// What is the API:
+//  - You can push/pop it
+//  - You can convert it to a "steal handle" -> which you can/must resume?
+//
+// What properties does it have:
+//  - It is trivially copyable/constructible/destructible
+//  - It has a null value, you can test if it is null
+//  - You can store it in an atomic and it is lock-free
+export template <default_movable T>
+class frame_handle {
+ public:
+  constexpr frame_handle() = default;
+  constexpr frame_handle(std::nullptr_t) noexcept : m_ptr(nullptr) {}
+  constexpr frame_handle(lock, frame_type<T> *ptr) noexcept : m_ptr(ptr) {}
+
+ private:
+  frame_type<T> *m_ptr;
+};
 
 // TODO: remove this and other exports
 export enum class category : std::uint8_t {
