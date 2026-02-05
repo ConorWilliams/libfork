@@ -72,7 +72,15 @@ using handle_to_t = frame_handle<checkpoint_t<Alloc>>;
 
 // ==== Context
 
-export template <default_moveable T>
+template <stack_allocator T>
+struct type_erased_context;
+
+// template <stack_allocator T>
+// constexpr erase()
+//
+// Store's a type-erased context as void*
+// TODO: just changed from default_movable to stack_allocator
+export template <stack_allocator T>
 struct frame_type;
 
 struct lock {};
@@ -87,7 +95,7 @@ inline constexpr lock key = {};
 //
 // What properties does it have:
 //  - It is trivially copyable/constructible/destructible
-//  - It has a null value
+//  - It has a null value, you can test if it is null
 //  - You can store it in an atomic and it is lock-free
 export template <default_movable T>
 class frame_handle {
@@ -111,6 +119,28 @@ concept context_of = stack_allocator<Alloc> && requires (T *ctx, handle_to_t<All
 // Forward-decl
 export template <returnable T, stack_allocator Alloc, context_of<Alloc> Ctx>
 struct task;
+
+template <typename T>
+struct task_deducer : std::false_type {};
+
+template <returnable T, stack_allocator Alloc, context_of<Alloc> Ctx>
+struct task_deducer<task<T, Alloc, Ctx>> : std::true_type {
+  using value_type = T;
+  using stack_allocator_type = Alloc;
+  using context_type = Ctx;
+};
+
+auto fib(context_arg, ) -> task<int> {}
+
+template <typename T>
+class basic_context_arg {
+ public:
+  constexpr basic_context_arg(lock);
+  constexpr basic_context_arg(lock, T *ctx) noexcept : context(ctx) {}
+
+ private:
+  T *context;
+}
 
 // ========== Invocability ========== //
 
