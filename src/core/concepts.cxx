@@ -34,7 +34,22 @@ concept returnable = std::is_void_v<T> || std::movable<T>;
 // ==== Stack
 
 template <typename T>
-concept quasiregular = std::movable<T> && std::default_initializable<T>;
+concept default_movable = std::movable<T> && std::default_initializable<T>;
+
+// clang-format off
+
+template <typename Alloc>
+concept stack_allocator_help =
+  requires (Alloc alloc, std::size_t n, void *ptr) {
+    { alloc.empty()                     } noexcept -> std::same_as<bool>;
+    { alloc.push(n)                     }          -> std::same_as<void *>;
+    { alloc.pop(ptr, n)                 } noexcept -> std::same_as<void>;
+    { alloc.checkpoint()                } noexcept -> default_movable;
+    { alloc.release()                   } noexcept -> std::same_as<void>;
+    { alloc.acquire(alloc.checkpoint()) } noexcept -> std::same_as<void>;
+  };
+
+// clang-format on
 
 /**
  * @brief Defines the API for a libfork compatible stack allocator.
@@ -46,26 +61,37 @@ concept quasiregular = std::movable<T> && std::default_initializable<T>;
  * - Release makes the stack empty.
  * - Acquire is only called when the stack is empty
  */
-template <typename T>
-concept stack_allocator = quasiregular<T> && requires (T stack, std::size_t n, void *ptr) {
-  // Memory
-  { stack.push(n) } -> std::same_as<void *>;
-  { stack.pop(ptr, n) } noexcept -> std::same_as<void>;
-  { stack.empty() } noexcept -> std::same_as<bool>;
-
-  // Checkpointing
-  { stack.checkpoint() } noexcept -> std::quasi_regular;
-  { stack.release() } noexcept -> std::same_as<void>;
-  { stack.acquire(stack.checkpoint()) } noexcept -> std::same_as<void>;
-};
+template <typename Alloc>
+concept stack_allocator = default_movable<Alloc> && stack_allocator_help<Alloc>;
 
 template <stack_allocator T>
 using checkpoint_t = decltype(std::declval<T>().checkpoint());
 
 // ==== Context
 
-template <typename T, typename Stack>
-concept context_of = stack<Stack> == true;
+template <default_moveable T>
+struct frame_type;
+
+struct lock {};
+
+inline constexpr lock key = {};
+
+// TODO: api, test this is lock-free
+template <default_movable T>
+class frame_handle {
+  constexpr frame_handle(lock, frame_type<T> *ptr) noexcept : ptr(ptr) {}
+
+ private:
+  frame_type<T> *ptr;
+};
+
+template <stack_allocator Alloc>
+using handle_to_t = frame_handle<checkpoint_t<Alloc>>;
+
+template <typename T, typename Alloc>
+concept context_of = stack_allocator<Alloc> && requires (T context) {
+  { context.alloc() } -> std::same_as<Alloc &>;
+};
 
 // ==== Forward-decl
 
@@ -91,5 +117,4 @@ using async_result_t = std::invoke_result_t<Fn, Args...>::type;
 
 template <typename Fn, typename R, typename... Args>
 concept async_invocable_to = async_invocable<Fn, Args...> && std::same_as<async_result_t<Fn, Args...>, R>;
-
 } // namespace lf
