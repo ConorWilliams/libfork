@@ -67,9 +67,12 @@ concept stack_allocator = default_movable<Alloc> && stack_allocator_help<Alloc>;
 template <stack_allocator T>
 using checkpoint_t = decltype(std::declval<T>().checkpoint());
 
+template <stack_allocator Alloc>
+using handle_to_t = frame_handle<checkpoint_t<Alloc>>;
+
 // ==== Context
 
-template <default_moveable T>
+export template <default_moveable T>
 struct frame_type;
 
 struct lock {};
@@ -77,18 +80,26 @@ struct lock {};
 inline constexpr lock key = {};
 
 // TODO: api + test this is lock-free
-template <default_movable T>
+//
+// What is the API:
+//  - You can push/pop it
+//  - You can convert it to a "steal handle" -> which you can/must resume?
+//
+// What properties does it have:
+//  - It is trivially copyable/constructible/destructible
+//  - It has a null value
+//  - You can store it in an atomic and it is lock-free
+export template <default_movable T>
 class frame_handle {
+  constexpr frame_handle() = default;
+  constexpr frame_handle(std::nullptr_t) noexcept : ptr(nullptr) {}
   constexpr frame_handle(lock, frame_type<T> *ptr) noexcept : ptr(ptr) {}
 
  private:
   frame_type<T> *ptr;
 };
 
-template <stack_allocator Alloc>
-using handle_to_t = frame_handle<checkpoint_t<Alloc>>;
-
-template <typename T, typename Alloc>
+export template <typename T, typename Alloc>
 concept context_of = stack_allocator<Alloc> && requires (T *ctx, handle_to_t<Alloc> handle) {
   { ctx->alloc() } noexcept -> std::same_as<Alloc &>;
   { ctx->push(handle) } -> std::same_as<void>;
