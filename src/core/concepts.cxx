@@ -76,7 +76,7 @@ struct lock {};
 
 inline constexpr lock key = {};
 
-// TODO: api, test this is lock-free
+// TODO: api + test this is lock-free
 template <default_movable T>
 class frame_handle {
   constexpr frame_handle(lock, frame_type<T> *ptr) noexcept : ptr(ptr) {}
@@ -89,14 +89,16 @@ template <stack_allocator Alloc>
 using handle_to_t = frame_handle<checkpoint_t<Alloc>>;
 
 template <typename T, typename Alloc>
-concept context_of = stack_allocator<Alloc> && requires (T context) {
-  { context.alloc() } -> std::same_as<Alloc &>;
+concept context_of = stack_allocator<Alloc> && requires (T *ctx, handle_to_t<Alloc> handle) {
+  { ctx->alloc() } noexcept -> std::same_as<Alloc &>;
+  { ctx->push(handle) } -> std::same_as<void>;
+  { ctx->pop() } noexcept -> std::same_as<handle_to_t<Alloc>>;
 };
 
 // ==== Forward-decl
 
 // Forward-decl
-export template <returnable T, alloc_mixin Stack, typename Context>
+export template <returnable T, stack_allocator Alloc, context_of<Alloc> Ctx>
 struct task;
 
 // ========== Invocability ========== //
