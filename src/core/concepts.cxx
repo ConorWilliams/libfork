@@ -69,7 +69,7 @@ concept context = std::is_object_v<T> && requires (T ctx, frame_handle<T> handle
 };
 
 template <context T>
-using allocator_of_t = std::remove_reference_t<decltype(std::declval<T &>().alloc())>;
+using allocator_t = std::remove_reference_t<decltype(std::declval<T &>().alloc())>;
 
 template <context T>
 class arg;
