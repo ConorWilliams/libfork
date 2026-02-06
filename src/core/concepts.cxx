@@ -20,7 +20,10 @@ concept returnable = std::is_void_v<T> || std::movable<T>;
 // ==== Stack
 
 template <typename T>
-concept default_movable = std::movable<T> && std::default_initializable<T>;
+  requires std::is_object_v<T>
+consteval auto constify(T &&x) noexcept -> std::add_const_t<T> & {
+  return x;
+}
 
 // clang-format off
 
@@ -30,19 +33,22 @@ concept default_movable = std::movable<T> && std::default_initializable<T>;
  * - After construction push is valid.
  * - Pop is valid provided the FILO order is respected.
  * - Destruction is expected to only occur when the stack is empty.
- * - Result of `.checkpoint()` is expected to be "cheap to move".
- * - Release makes the stack empty.
- * - Acquire is only called when the stack is empty
+ * - Result of `.checkpoint()` is expected to be "cheap to copy".
+ * - Switch releases the current stack and resumes from the checkpoint:
+ *     - This is a noop if the checkpoint is from this stack.
+ *     - If the checkpoint is default-constructed it is expected to switch to a new stack.
+ *
+ * Fast-path operations: empty, push, pop, checkpoint
+ * Slow-path operations: switch
  */
 template <typename T>
 concept stack_allocator = std::is_object_v<T> && requires (T alloc, std::size_t n, void *ptr) {
-    { alloc.empty()                 } noexcept -> std::same_as<bool>;
-    { alloc.push(n)                 }          -> std::same_as<void *>;
-    { alloc.pop(ptr, n)             } noexcept -> std::same_as<void>;
-    { alloc.checkpoint()            } noexcept -> default_movable;
-    { alloc.release()               } noexcept -> std::same_as<void>;
-    { alloc.acquire(x.checkpoint()) } noexcept -> std::same_as<void>;
-    // TODO: test-if-token-on-stack
+    { alloc.empty()                           } noexcept -> std::same_as<bool>;
+    { alloc.push(n)                           }          -> std::same_as<void *>;
+    { alloc.pop(ptr, n)                       } noexcept -> std::same_as<void>;
+    { alloc.checkpoint()                      } noexcept -> std::semiregular;
+    { alloc.switch({})                        } noexcept -> std::same_as<void>;
+    { alloc.switch(constify(x.checkpoint()))  } noexcept -> std::same_as<void>;
   };
 
 // clang-format on
@@ -52,23 +58,22 @@ using checkpoint_t = decltype(std::declval<T &>().checkpoint());
 
 // ==== Context
 
-export template <stack_allocator T>
+export template <typename T>
 class frame_handle;
+
+tepmlate<typename T> concept lvalue_ref_to_stack_allocator =
+    std::is_lvalue_reference<T> && stack_allocator<std::remove_reference_t<T>>;
 
 // clang-format off
 
-template <typename T, typename U>
-concept context_of = std::is_object_v<T> && stack_allocator<U> && requires (T ctx, frame_handle<U> handle) {
-  { ctx.alloc()      } noexcept -> std::same_as<U &>;
+template <typename T>
+concept context = std::is_object_v<T> && requires (T ctx, frame_handle<T> handle) {
+  { ctx.alloc()      } noexcept -> lvalue_ref_to_stack_allocator;
   { ctx.push(handle) }          -> std::same_as<void>;
   { ctx.pop()        } noexcept -> std::same_as<frame_handle<U>>;
 };
 
 // TODO: shouldn't frame_handle/push/pop be typed on the context?
-
-
-tepmlate <typename T>
-concept lvalue_ref_to_stack_allocator = std::is_lvalue_reference<T> && stack_allocator<std::remove_reference_t<T>>;
 
 // clang-format on
 
@@ -109,7 +114,7 @@ concept returns_task = task_info<Fn, Context, Args...>::value;
 // ========== Invocability ========== //
 
 /**
- * @brief Test if a callable `Fn` when invoked with `Args...` returns an `lf::task`.
+ * @brief Test if a callable `Fn` when invoked with `Args...` in `Context` returns an `lf::task`.
  */
 export template <typename Fn, typename Context, typename... Args>
 concept async_invocable =
