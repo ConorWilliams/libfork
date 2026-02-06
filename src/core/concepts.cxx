@@ -91,7 +91,7 @@ template <typename Fn, typename Context, typename... Args>
 struct task_info : task_help<Context, std::invoke_result_t<Fn, arg<Context>, Args...>> {};
 
 template <typename Fn, typename Context, typename... Args>
-concept returns_task = task_info<Fn, Context, Args...>::value;
+concept returns_task = std::invocable<Fn, arg<Context>, Args...> && task_info<Fn, Context, Args...>::value;
 
 // ========== Invocability ========== //
 
@@ -99,8 +99,7 @@ concept returns_task = task_info<Fn, Context, Args...>::value;
  * @brief Test if a callable `Fn` when invoked with `Args...` in `Context` returns an `lf::task<_, Context>`.
  */
 export template <typename Fn, typename Context, typename... Args>
-concept async_invocable = worker_context<Context> && std::invocable<Fn, arg<Context>, Args...> &&
-                          returns_task<Fn, Context, Args...>;
+concept async_invocable = worker_context<Context> && returns_task<Fn, Context, Args...>;
 
 /**
  * @brief The result type of invoking an async function `Fn` with `Args...`.
