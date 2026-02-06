@@ -25,8 +25,6 @@ consteval auto constify(T &&x) noexcept -> std::add_const_t<T> & {
   return x;
 }
 
-// clang-format off
-
 /**
  * @brief Defines the API for a libfork compatible stack allocator.
  *
@@ -43,15 +41,13 @@ consteval auto constify(T &&x) noexcept -> std::add_const_t<T> & {
  */
 template <typename T>
 concept stack_allocator = std::is_object_v<T> && requires (T alloc, std::size_t n, void *ptr) {
-    { alloc.empty()                           } noexcept -> std::same_as<bool>;
-    { alloc.push(n)                           }          -> std::same_as<void *>;
-    { alloc.pop(ptr, n)                       } noexcept -> std::same_as<void>;
-    { alloc.checkpoint()                      } noexcept -> std::semiregular;
-    { alloc.switch({})                        } noexcept -> std::same_as<void>;
-    { alloc.switch(constify(x.checkpoint()))  } noexcept -> std::same_as<void>;
-  };
-
-// clang-format on
+  { alloc.empty() } noexcept -> std::same_as<bool>;
+  { alloc.push(n) } -> std::same_as<void *>;
+  { alloc.pop(ptr, n) } noexcept -> std::same_as<void>;
+  { alloc.checkpoint() } noexcept -> std::semiregular;
+  { alloc.switch ({}) } noexcept -> std::same_as<void>;
+  { alloc.switch (constify(x.checkpoint())) } noexcept -> std::same_as<void>;
+};
 
 template <stack_allocator T>
 using checkpoint_t = decltype(std::declval<T &>().checkpoint());
@@ -64,18 +60,14 @@ class frame_handle;
 tepmlate<typename T> concept lvalue_ref_to_stack_allocator =
     std::is_lvalue_reference<T> && stack_allocator<std::remove_reference_t<T>>;
 
-// clang-format off
-
 template <typename T>
 concept context = std::is_object_v<T> && requires (T ctx, frame_handle<T> handle) {
-  { ctx.alloc()      } noexcept -> lvalue_ref_to_stack_allocator;
-  { ctx.push(handle) }          -> std::same_as<void>;
-  { ctx.pop()        } noexcept -> std::same_as<frame_handle<U>>;
+  { ctx.alloc() } noexcept -> lvalue_ref_to_stack_allocator;
+  { ctx.push(handle) } -> std::same_as<void>;
+  { ctx.pop() } noexcept -> std::same_as<frame_handle<U>>;
 };
 
 // TODO: shouldn't frame_handle/push/pop be typed on the context?
-
-// clang-format on
 
 template <typename T>
 concept has_allocator = requires (T x) {
