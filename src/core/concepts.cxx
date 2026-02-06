@@ -35,40 +35,51 @@ concept default_movable = std::movable<T> && std::default_initializable<T>;
  * - Acquire is only called when the stack is empty
  */
 template <typename T>
-concept stack_allocator =
-  requires (T x, std::size_t n, void *ptr) {
-    { x.empty()                 } noexcept -> std::same_as<bool>;
-    { x.push(n)                 }          -> std::same_as<void *>;
-    { x.pop(ptr, n)             } noexcept -> std::same_as<void>;
-    { x.checkpoint()            } noexcept -> default_movable;
-    { x.release()               } noexcept -> std::same_as<void>;
-    { x.acquire(x.checkpoint()) } noexcept -> std::same_as<void>;
+concept stack_allocator = std::is_object_v<T> && requires (T alloc, std::size_t n, void *ptr) {
+    { alloc.empty()                 } noexcept -> std::same_as<bool>;
+    { alloc.push(n)                 }          -> std::same_as<void *>;
+    { alloc.pop(ptr, n)             } noexcept -> std::same_as<void>;
+    { alloc.checkpoint()            } noexcept -> default_movable;
+    { alloc.release()               } noexcept -> std::same_as<void>;
+    { alloc.acquire(x.checkpoint()) } noexcept -> std::same_as<void>;
+    // TODO: test-if-token-on-stack
   };
 
 // clang-format on
 
 template <stack_allocator T>
-using checkpoint_t = decltype(std::declval<T>().checkpoint());
+using checkpoint_t = decltype(std::declval<T &>().checkpoint());
 
 // ==== Context
 
 export template <stack_allocator T>
 class frame_handle;
 
+// clang-format off
+
 template <typename T, typename U>
-concept context_of = stack_allocator<U> && requires (T ctx, frame_handle<U> handle) {
-  { ctx.alloc() } noexcept -> std::same_as<U &>;
-  { ctx.push(handle) } -> std::same_as<void>;
-  { ctx.pop() } noexcept -> std::same_as<frame_handle<U>>;
+concept context_of = std::is_object_v<T> && stack_allocator<U> && requires (T ctx, frame_handle<U> handle) {
+  { ctx.alloc()      } noexcept -> std::same_as<U &>;
+  { ctx.push(handle) }          -> std::same_as<void>;
+  { ctx.pop()        } noexcept -> std::same_as<frame_handle<U>>;
 };
+
+// TODO: shouldn't frame_handle/push/pop be typed on the context?
+
+
+tepmlate <typename T>
+concept lvalue_ref_to_stack_allocator = std::is_lvalue_reference<T> && stack_allocator<std::remove_reference_t<T>>;
+
+// clang-format on
 
 template <typename T>
 concept has_allocator = requires (T x) {
-  { x.alloc() } noexcept -> stack_allocator;
+  { x.alloc() } noexcept -> lvalue_ref_to_stack_allocator;
 };
 
 template <typename T>
-using allocator_of_t = std::remove_cvref_t<decltype(std::declval<T>().alloc())>;
+  requires std::is_object_v<T> && has_allocator<T>
+using allocator_of_t = std::remove_reference_t<decltype(std::declval<T &>().alloc())>;
 
 export template <typename T>
 concept context = std::is_object_v<T> && has_allocator<T> && context_of<T, allocator_of_t<T>>;
