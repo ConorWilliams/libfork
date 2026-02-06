@@ -64,22 +64,11 @@ template <typename T>
 concept context = std::is_object_v<T> && requires (T ctx, frame_handle<T> handle) {
   { ctx.alloc() } noexcept -> lvalue_ref_to_stack_allocator;
   { ctx.push(handle) } -> std::same_as<void>;
-  { ctx.pop() } noexcept -> std::same_as<frame_handle<U>>;
+  { ctx.pop() } noexcept -> std::same_as<frame_handle<T>>;
 };
 
-// TODO: shouldn't frame_handle/push/pop be typed on the context?
-
-template <typename T>
-concept has_allocator = requires (T x) {
-  { x.alloc() } noexcept -> lvalue_ref_to_stack_allocator;
-};
-
-template <typename T>
-  requires std::is_object_v<T> && has_allocator<T>
+template <context T>
 using allocator_of_t = std::remove_reference_t<decltype(std::declval<T &>().alloc())>;
-
-export template <typename T>
-concept context = std::is_object_v<T> && has_allocator<T> && context_of<T, allocator_of_t<T>>;
 
 template <context T>
 class arg;
@@ -106,7 +95,7 @@ concept returns_task = task_info<Fn, Context, Args...>::value;
 // ========== Invocability ========== //
 
 /**
- * @brief Test if a callable `Fn` when invoked with `Args...` in `Context` returns an `lf::task`.
+ * @brief Test if a callable `Fn` when invoked with `Args...` in `Context` returns an `lf::task<_, Context>`.
  */
 export template <typename Fn, typename Context, typename... Args>
 concept async_invocable =
