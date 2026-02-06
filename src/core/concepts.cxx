@@ -108,6 +108,9 @@ export template <typename Fn, typename Context, typename... Args>
   requires async_invocable<Fn, Context, Args...>
 using async_result_t = task_info<Fn, Context, Args...>::value_type;
 
+/**
+ * @brief Subsumes `async_invocable` and checks the result type is `R`.
+ */
 export template <typename Fn, typename R, typename Context, typename... Args>
 concept async_invocable_to =
     async_invocable<Fn, Context, Args...> && std::same_as<R, async_result_t<Fn, Context, Args...>>;
