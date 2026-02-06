@@ -62,21 +62,21 @@ tepmlate<typename T> concept lvalue_ref_to_stack_allocator =
     std::is_lvalue_reference<T> && stack_allocator<std::remove_reference_t<T>>;
 
 template <typename T>
-concept context = std::is_object_v<T> && requires (T ctx, frame_handle<T> handle) {
+concept worker_context = std::is_object_v<T> && requires (T ctx, frame_handle<T> handle) {
   { ctx.alloc() } noexcept -> lvalue_ref_to_stack_allocator;
   { ctx.push(handle) } -> std::same_as<void>;
   { ctx.pop() } noexcept -> std::same_as<frame_handle<T>>;
 };
 
-template <context T>
+template <worker_context T>
 using allocator_t = std::remove_reference_t<decltype(std::declval<T &>().alloc())>;
 
-template <context T>
+template <worker_context T>
 class arg;
 
 // ==== Forward-decl
 
-export template <returnable T, context Context>
+export template <returnable T, worker_context Context>
 struct task;
 
 template <typename, typename>
@@ -99,8 +99,8 @@ concept returns_task = task_info<Fn, Context, Args...>::value;
  * @brief Test if a callable `Fn` when invoked with `Args...` in `Context` returns an `lf::task<_, Context>`.
  */
 export template <typename Fn, typename Context, typename... Args>
-concept async_invocable =
-    context<Context> && std::invocable<Fn, arg<Context>, Args...> && returns_task<Fn, Context, Args...>;
+concept async_invocable = worker_context<Context> && std::invocable<Fn, arg<Context>, Args...> &&
+                          returns_task<Fn, Context, Args...>;
 
 /**
  * @brief The result type of invoking an async function `Fn` with `Args...`.
