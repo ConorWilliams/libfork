@@ -6,7 +6,7 @@ export import :constants;
 export import :utility;
 export import :tuple;
 
-export import :frame;
+export import :frame; // concepts
 
 // T2 partitions
 export import :ops;
