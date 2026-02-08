@@ -17,7 +17,7 @@ export enum class category : std::uint8_t {
 
 struct cancellation {};
 
-template <worker_context Context>
+template <typename Context>
 struct frame_type {
 
   using context_type = Context;
@@ -41,29 +41,29 @@ struct frame_type {
 
 // static_assert(std::is_standard_layout_v<frame_type<int>>);
 
-// struct lock {};
+struct lock {};
+
+inline constexpr lock key = {};
+
+// TODO: api + test this is lock-free
 //
-// inline constexpr lock key = {};
+// What is the API:
+//  - You can push/pop it
+//  - You can convert it to a "steal handle" -> which you can/must resume?
 //
-// // TODO: api + test this is lock-free
-// //
-// // What is the API:
-// //  - You can push/pop it
-// //  - You can convert it to a "steal handle" -> which you can/must resume?
-// //
-// // What properties does it have:
-// //  - It is trivially copyable/constructible/destructible
-// //  - It has a null value, you can test if it is null
-// //  - You can store it in an atomic and it is lock-free
-// export template <typename T>
-// class frame_handle {
-//  public:
-//   constexpr frame_handle() = default;
-//   // constexpr frame_handle(std::nullptr_t) noexcept : m_ptr(nullptr) {}
-//   // constexpr frame_handle(lock, frame_type<T> *ptr) noexcept : m_ptr(ptr) {}
-//
-//  private:
-//   frame_type<T> *m_ptr;
-// };
+// What properties does it have:
+//  - It is trivially copyable/constructible/destructible
+//  - It has a null value, you can test if it is null
+//  - You can store it in an atomic and it is lock-free
+export template <typename T>
+class frame_handle {
+ public:
+  constexpr frame_handle() = default;
+  // constexpr frame_handle(std::nullptr_t) noexcept : m_ptr(nullptr) {}
+  // constexpr frame_handle(lock, frame_type<T> *ptr) noexcept : m_ptr(ptr) {}
+
+ private:
+  frame_type<T> *m_ptr;
+};
 
 } // namespace lf
