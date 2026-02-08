@@ -222,6 +222,9 @@ struct fork_awaitable : std::suspend_always {
 
 // =============== Frame mixin =============== //
 
+export template <worker_context Context>
+inline thread_local Context *g_thread_context;
+
 template <worker_context Context>
 struct mixin_frame {
 
@@ -247,10 +250,13 @@ struct mixin_frame {
 
   // Member functions
   static auto operator new(std::size_t sz, auto const &self, arg<Context> arg, auto const &...) -> void * {
-    return arg.alloc->push(sz);
+    // return arg.alloc->push(sz);
+    return g_thread_context<Context>->alloc().push(sz);
   }
 
-  static auto operator delete(void *p, std::size_t sz) noexcept -> void {}
+  static auto operator delete(void *p, std::size_t sz) noexcept -> void {
+    g_thread_context<Context>->alloc().pop(p, sz);
+  }
 
   // --- Await transformation
 

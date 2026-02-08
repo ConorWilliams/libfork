@@ -1,6 +1,7 @@
 #include <coroutine>
 #include <cstddef>
 #include <new>
+#include <print>
 
 #include <benchmark/benchmark.h>
 
@@ -42,7 +43,7 @@ struct linear_allocator {
     ptr += fib_align_size(sz);
     return prev;
   }
-  constexpr static auto pop(void *ptr, std::size_t) noexcept -> void { ptr = static_cast<std::byte *>(ptr); }
+  constexpr auto pop(void *p, std::size_t) noexcept -> void { ptr = static_cast<std::byte *>(p); }
 
   constexpr static auto checkpoint() noexcept -> empty { return {}; }
   constexpr static auto switch_to(empty) noexcept -> void {}
@@ -133,6 +134,8 @@ void fib(benchmark::State &state) {
   T context;
   arg<T> root_arg{&context.alloc()};
 
+  lf::g_thread_context<T> = &context;
+
   for (auto _ : state) {
     benchmark::DoNotOptimize(n);
     std::int64_t result = 0;
@@ -164,12 +167,8 @@ BENCHMARK(fib<no_await<global_alloc>, global_alloc>)->Name("test/libfork/fib/hea
 BENCHMARK(fib<no_await<global_alloc>, global_alloc>)->Name("base/libfork/fib/heap/no_await")->Arg(fib_base);
 
 // Same as above but uses bump allocator
-BENCHMARK(fib<no_await<linear_alloc>, linear_alloc>)
-    ->Name("test/libfork/fib/tls_bump/no_await")
-    ->Arg(fib_test);
-BENCHMARK(fib<no_await<linear_alloc>, linear_alloc>)
-    ->Name("base/libfork/fib/tls_bump/no_await")
-    ->Arg(fib_base);
+BENCHMARK(fib<no_await<linear_alloc>, linear_alloc>)->Name("test/libfork/fib/bump/no_await")->Arg(fib_test);
+BENCHMARK(fib<no_await<linear_alloc>, linear_alloc>)->Name("base/libfork/fib/bump/no_await")->Arg(fib_base);
 //
 // // Same as above but with global bump allocator
 // BENCHMARK(fib<no_await<global_bump>>)->Name("test/libfork/fib/global_bump/no_await")->Arg(fib_test);
