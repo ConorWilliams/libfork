@@ -17,6 +17,8 @@ export enum class category : std::uint8_t {
 
 struct cancellation {};
 
+// =================== Frame =================== //
+
 template <typename Context>
 struct frame_type {
 
@@ -40,6 +42,8 @@ struct frame_type {
 };
 
 // static_assert(std::is_standard_layout_v<frame_type<int>>);
+
+// =================== Handle =================== //
 
 struct lock {};
 
@@ -65,5 +69,7 @@ class frame_handle {
  private:
   frame_type<T> *m_ptr;
 };
+
+// =================== First arg =================== //
 
 } // namespace lf

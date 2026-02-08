@@ -34,7 +34,7 @@ struct linear_allocator {
 
   struct empty {};
 
-  std::unique_ptr<std::byte[]> data = std::make_unique<std::byte[]>(1024 * 1024);
+  std::unique_ptr<std::byte[]> data = std::make_unique<std::byte[]>(1024 * 1024 * 1024);
   std::byte *ptr = data.get();
 
   constexpr auto push(std::size_t sz) -> void * {
@@ -50,8 +50,11 @@ struct linear_allocator {
 
 static_assert(lf::stack_allocator<linear_allocator>);
 
-template <lf::worker_context Context>
-constexpr auto no_await = [](this auto fib, std::int64_t *ret, std::int64_t n) -> lf::task<void, Context> {
+using lf::arg;
+using lf::task;
+
+template <lf::worker_context T>
+constexpr auto no_await = [](this auto fib, arg<T> ctx, std::int64_t *ret, std::int64_t n) -> task<void, T> {
   if (n < 2) {
     *ret = n;
     co_return;
@@ -60,11 +63,11 @@ constexpr auto no_await = [](this auto fib, std::int64_t *ret, std::int64_t n) -
   std::int64_t lhs = 0;
   std::int64_t rhs = 0;
 
-  auto t1 = fib(&lhs, n - 1);
+  auto t1 = fib(ctx, &lhs, n - 1);
   t1.promise->frame.kind = lf::category::root;
   t1.promise->handle().resume();
 
-  auto t2 = fib(&rhs, n - 2);
+  auto t2 = fib(ctx, &rhs, n - 2);
   t2.promise->frame.kind = lf::category::root;
   t2.promise->handle().resume();
 
@@ -116,7 +119,10 @@ constexpr auto no_await = [](this auto fib, std::int64_t *ret, std::int64_t n) -
 //   co_return lhs + rhs;
 // };
 
-template <auto Fn>
+using global_alloc = vector_ctx<global_allocator>;
+using linear_alloc = vector_ctx<linear_allocator>;
+
+template <auto Fn, lf::worker_context T>
 void fib(benchmark::State &state) {
 
   std::int64_t n = state.range(0);
@@ -124,59 +130,46 @@ void fib(benchmark::State &state) {
 
   state.counters["n"] = static_cast<double>(n);
 
-  // Set bump allocator buffer
-  std::unique_ptr buf = std::make_unique<std::byte[]>(1024 * 1024);
-  tls_bump_ptr = buf.get();
-  bump_ptr = buf.get();
-
-  // Set both context and poly context
-  // std::unique_ptr ctx = std::make_unique<vector_ctx>();
-  // lf::thread_context<vector_ctx> = ctx.get();
-  // lf::thread_context<lf::polymorphic_context> = ctx.get();
+  T context;
+  arg<T> root_arg{&context.alloc()};
 
   for (auto _ : state) {
     benchmark::DoNotOptimize(n);
     std::int64_t result = 0;
 
-    if constexpr (requires { Fn(&result, n); }) {
-      auto task = Fn(&result, n);
-      task.promise->frame.kind = lf::category::root;
-      task.promise->handle().resume();
-    } else {
-      auto task = Fn(n);
-      task.promise->frame.kind = lf::category::root;
-      task.promise->return_address = &result;
-      task.promise->handle().resume();
-    }
+    // if constexpr (requires { Fn(root_arg, &result, n); }) {
+    auto task = Fn(root_arg, &result, n);
+    task.promise->frame.kind = lf::category::root;
+    task.promise->handle().resume();
+    // }
+
+    // else {
+    //   auto task = Fn(n);
+    //   task.promise->frame.kind = lf::category::root;
+    //   task.promise->return_address = &result;
+    //   task.promise->handle().resume();
+    // }
 
     CHECK_RESULT(result, expect);
     benchmark::DoNotOptimize(result);
   }
-
-  if (tls_bump_ptr != buf.get() || bump_ptr != buf.get()) {
-    LF_TERMINATE("Stack leak detected");
-  }
-
-  tls_bump_ptr = nullptr;
-  bump_ptr = nullptr;
-  // lf::thread_context<vector_ctx> = nullptr;
-  // lf::thread_context<lf::polymorphic_context> = nullptr;
 }
 
 } // namespace
 
-using global_alloc = vector_ctx<global_allocator>;
-using linear_alloc = vector_ctx<linear_allocator>;
-
 static_assert(lf::worker_context<global_alloc>);
 
 // Return by ref-arg, test direct root, no co-await, direct resumes, uses new/delete for alloc
-BENCHMARK(fib<no_await<global_alloc>>)->Name("test/libfork/fib/heap/no_await")->Arg(fib_test);
-BENCHMARK(fib<no_await<global_alloc>>)->Name("base/libfork/fib/heap/no_await")->Arg(fib_base);
+BENCHMARK(fib<no_await<global_alloc>, global_alloc>)->Name("test/libfork/fib/heap/no_await")->Arg(fib_test);
+BENCHMARK(fib<no_await<global_alloc>, global_alloc>)->Name("base/libfork/fib/heap/no_await")->Arg(fib_base);
 
 // Same as above but uses bump allocator
-BENCHMARK(fib<no_await<linear_alloc>>)->Name("test/libfork/fib/tls_bump/no_await")->Arg(fib_test);
-BENCHMARK(fib<no_await<linear_alloc>>)->Name("base/libfork/fib/tls_bump/no_await")->Arg(fib_base);
+BENCHMARK(fib<no_await<linear_alloc>, linear_alloc>)
+    ->Name("test/libfork/fib/tls_bump/no_await")
+    ->Arg(fib_test);
+BENCHMARK(fib<no_await<linear_alloc>, linear_alloc>)
+    ->Name("base/libfork/fib/tls_bump/no_await")
+    ->Arg(fib_base);
 //
 // // Same as above but with global bump allocator
 // BENCHMARK(fib<no_await<global_bump>>)->Name("test/libfork/fib/global_bump/no_await")->Arg(fib_test);

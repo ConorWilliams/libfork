@@ -238,6 +238,22 @@ struct mixin_frame {
 
   // === Called by the compiler === //
 
+  // --- Allcation
+
+  // Regular functions
+  static auto operator new(std::size_t sz, arg<Context> arg, auto const &...) -> void * {
+    return arg.alloc->push(sz);
+  }
+
+  // Member functions
+  static auto operator new(std::size_t sz, auto const &self, arg<Context> arg, auto const &...) -> void * {
+    return arg.alloc->push(sz);
+  }
+
+  static auto operator delete(void *p, std::size_t sz) noexcept -> void {}
+
+  // --- Await transformation
+
   template <typename R, typename Fn, typename... Args>
   constexpr static auto await_transform(call_pkg<R, Fn, Args...> &&pkg) noexcept -> call_awaitable<Context> {
 

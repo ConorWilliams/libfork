@@ -72,8 +72,11 @@ concept worker_context = std::is_object_v<T> && requires (T ctx, frame_handle<T>
 template <worker_context T>
 using allocator_t = std::remove_reference_t<decltype(std::declval<T &>().alloc())>;
 
-template <worker_context T>
-class arg;
+export template <worker_context T>
+class arg {
+ public:
+  allocator_t<T> *alloc;
+};
 
 // ==== Forward-decl
 
