@@ -5,6 +5,10 @@ import std;
 
 namespace lf {
 
+// ========== Task constraint related concepts ========== //
+
+// ==== Returnable
+
 /**
  * @brief A type returnable from libfork's async functions/coroutines.
  *
@@ -13,46 +17,103 @@ namespace lf {
 template <typename T>
 concept returnable = std::is_void_v<T> || std::movable<T>;
 
-template <typename T>
-concept mixinable = std::is_empty_v<T> && !std::is_final_v<T>;
+// ==== Stack
 
+template <typename T>
+  requires std::is_object_v<T>
+consteval auto constify(T &&x) noexcept -> std::add_const_t<T> & {
+  return x;
+}
+
+/**
+ * @brief Defines the API for a libfork compatible stack allocator.
+ *
+ * - After construction push is valid.
+ * - Pop is valid provided the FILO order is respected.
+ * - Destruction is expected to only occur when the stack is empty.
+ * - Result of `.checkpoint()` is expected to be "cheap to copy".
+ * - Switch releases the current stack and resumes from the checkpoint:
+ *     - This is a noop if the checkpoint is from this stack.
+ *     - If the checkpoint is default-constructed it is expected to switch to a new stack.
+ *
+ * Fast-path operations: empty, push, pop, checkpoint
+ * Slow-path operations: switch
+ */
 export template <typename T>
-concept alloc_mixin = mixinable<T> && requires (std::size_t n, T *ptr) {
-  { T::operator new(n) } -> std::same_as<void *>;
-  { T::operator delete(ptr, n) } noexcept -> std::same_as<void>;
+concept stack_allocator = std::is_object_v<T> && requires (T alloc, std::size_t n, void *ptr) {
+  // { alloc.empty() } noexcept -> std::same_as<bool>;
+  { alloc.push(n) } -> std::same_as<void *>;
+  { alloc.pop(ptr, n) } noexcept -> std::same_as<void>;
+  { alloc.checkpoint() } noexcept -> std::semiregular;
+  { alloc.switch_to({}) } noexcept -> std::same_as<void>;
+  { alloc.switch_to(constify(alloc.checkpoint())) } noexcept -> std::same_as<void>;
 };
 
-template <typename T, template <typename...> typename Template>
-struct is_specialization_of : std::false_type {};
+template <stack_allocator T>
+using checkpoint_t = decltype(std::declval<T &>().checkpoint());
 
-template <template <typename...> typename Template, typename... Args>
-struct is_specialization_of<Template<Args...>, Template> : std::true_type {};
+// ==== Context
 
-/**
- * @brief Test if `T` is a specialization of the template `Template`.
- */
-template <typename T, template <typename...> typename Template>
-concept specialization_of = is_specialization_of<std::remove_cvref_t<T>, Template>::value;
+// TODO: impl in frame + assert that it is lock-free etc
+export template <typename T>
+class frame_handle;
 
-// Forward-decl
-export template <returnable T, alloc_mixin Stack, typename Context>
+template <typename T>
+concept lvalue_ref_to_stack_allocator =
+    std::is_lvalue_reference_v<T> && stack_allocator<std::remove_reference_t<T>>;
+
+export template <typename T>
+concept worker_context = std::is_object_v<T> && requires (T ctx, frame_handle<T> handle) {
+  { ctx.alloc() } noexcept -> lvalue_ref_to_stack_allocator;
+  { ctx.push(handle) } -> std::same_as<void>;
+  { ctx.pop() } noexcept -> std::same_as<frame_handle<T>>;
+};
+
+template <worker_context T>
+using allocator_t = std::remove_reference_t<decltype(std::declval<T &>().alloc())>;
+
+template <worker_context T>
+class arg;
+
+// ==== Forward-decl
+
+export template <returnable T, worker_context Context>
 struct task;
 
+template <typename, typename>
+struct task_help : std::false_type {};
+
+template <typename T, typename Context>
+struct task_help<Context, task<T, Context>> : std::true_type {
+  using value_type = T;
+};
+
+template <typename Fn, typename Context, typename... Args>
+struct task_info : task_help<Context, std::invoke_result_t<Fn, arg<Context>, Args...>> {};
+
+template <typename Fn, typename Context, typename... Args>
+concept returns_task = std::invocable<Fn, arg<Context>, Args...> && task_info<Fn, Context, Args...>::value;
+
+// ========== Invocability ========== //
+
 /**
- * @brief Test if a callable `Fn` when invoked with `Args...` returns an `lf::task`.
+ * @brief Test if a callable `Fn` when invoked with `Args...` in `Context` returns an `lf::task<_, Context>`.
  */
-export template <typename Fn, typename... Args>
-concept async_invocable =
-    std::invocable<Fn, Args...> && specialization_of<std::invoke_result_t<Fn, Args...>, task>;
+export template <typename Fn, typename Context, typename... Args>
+concept async_invocable = worker_context<Context> && returns_task<Fn, Context, Args...>;
 
 /**
  * @brief The result type of invoking an async function `Fn` with `Args...`.
  */
-export template <typename Fn, typename... Args>
-  requires async_invocable<Fn, Args...>
-using async_result_t = std::invoke_result_t<Fn, Args...>::type;
+export template <typename Fn, typename Context, typename... Args>
+  requires async_invocable<Fn, Context, Args...>
+using async_result_t = task_info<Fn, Context, Args...>::value_type;
 
-template <typename Fn, typename R, typename... Args>
-concept async_invocable_to = async_invocable<Fn, Args...> && std::same_as<async_result_t<Fn, Args...>, R>;
+/**
+ * @brief Subsumes `async_invocable` and checks the result type is `R`.
+ */
+export template <typename Fn, typename R, typename Context, typename... Args>
+concept async_invocable_to =
+    async_invocable<Fn, Context, Args...> && std::same_as<R, async_result_t<Fn, Context, Args...>>;
 
 } // namespace lf
