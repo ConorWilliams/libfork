@@ -241,7 +241,7 @@ struct mixin_frame {
 
   // === Called by the compiler === //
 
-  // --- Allcation
+  // --- Allocation
 
   // Regular functions
   static auto operator new(std::size_t sz, arg<Context> arg, auto const &...) -> void * {
