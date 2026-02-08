@@ -10,15 +10,15 @@
 
 import libfork.core;
 
-// namespace {
-//
-// struct stack_on_heap {
-//   static constexpr auto operator new(std::size_t sz) -> void * { return ::operator new(sz); }
-//   static constexpr auto operator delete(void *p, [[maybe_unused]] std::size_t sz) noexcept -> void {
-//     ::operator delete(p, sz);
-//   }
-// };
-//
+namespace {
+
+struct stack_on_heap {
+  static constexpr auto operator new(std::size_t sz) -> void * { return ::operator new(sz); }
+  static constexpr auto operator delete(void *p, [[maybe_unused]] std::size_t sz) noexcept -> void {
+    ::operator delete(p, sz);
+  }
+};
+
 // template <lf::alloc_mixin Stack>
 // constexpr auto no_await = [](this auto fib, std::int64_t *ret, std::int64_t n) -> lf::task<void, Stack> {
 //   if (n < 2) {
@@ -84,56 +84,56 @@ import libfork.core;
 //
 //   co_return lhs + rhs;
 // };
-//
-// template <auto Fn>
-// void fib(benchmark::State &state) {
-//
-//   std::int64_t n = state.range(0);
-//   std::int64_t expect = fib_ref(n);
-//
-//   state.counters["n"] = static_cast<double>(n);
-//
-//   // Set bump allocator buffer
-//   std::unique_ptr buf = std::make_unique<std::byte[]>(1024 * 1024);
-//   tls_bump_ptr = buf.get();
-//   bump_ptr = buf.get();
-//
-//   // Set both context and poly context
-//   std::unique_ptr ctx = std::make_unique<vector_ctx>();
-//   lf::thread_context<vector_ctx> = ctx.get();
-//   lf::thread_context<lf::polymorphic_context> = ctx.get();
-//
-//   for (auto _ : state) {
-//     benchmark::DoNotOptimize(n);
-//     std::int64_t result = 0;
-//
-//     if constexpr (requires { Fn(&result, n); }) {
-//       auto task = Fn(&result, n);
-//       task.promise->frame.kind = lf::category::root;
-//       task.promise->handle().resume();
-//     } else {
-//       auto task = Fn(n);
-//       task.promise->frame.kind = lf::category::root;
-//       task.promise->return_address = &result;
-//       task.promise->handle().resume();
-//     }
-//
-//     CHECK_RESULT(result, expect);
-//     benchmark::DoNotOptimize(result);
-//   }
-//
-//   if (tls_bump_ptr != buf.get() || bump_ptr != buf.get()) {
-//     LF_TERMINATE("Stack leak detected");
-//   }
-//
-//   tls_bump_ptr = nullptr;
-//   bump_ptr = nullptr;
-//   lf::thread_context<vector_ctx> = nullptr;
-//   lf::thread_context<lf::polymorphic_context> = nullptr;
-// }
-//
-// } // namespace
-//
+
+template <auto Fn>
+void fib(benchmark::State &state) {
+
+  std::int64_t n = state.range(0);
+  std::int64_t expect = fib_ref(n);
+
+  state.counters["n"] = static_cast<double>(n);
+
+  // Set bump allocator buffer
+  std::unique_ptr buf = std::make_unique<std::byte[]>(1024 * 1024);
+  tls_bump_ptr = buf.get();
+  bump_ptr = buf.get();
+
+  // Set both context and poly context
+  // std::unique_ptr ctx = std::make_unique<vector_ctx>();
+  // lf::thread_context<vector_ctx> = ctx.get();
+  // lf::thread_context<lf::polymorphic_context> = ctx.get();
+
+  for (auto _ : state) {
+    benchmark::DoNotOptimize(n);
+    std::int64_t result = 0;
+
+    if constexpr (requires { Fn(&result, n); }) {
+      auto task = Fn(&result, n);
+      task.promise->frame.kind = lf::category::root;
+      task.promise->handle().resume();
+    } else {
+      auto task = Fn(n);
+      task.promise->frame.kind = lf::category::root;
+      task.promise->return_address = &result;
+      task.promise->handle().resume();
+    }
+
+    CHECK_RESULT(result, expect);
+    benchmark::DoNotOptimize(result);
+  }
+
+  if (tls_bump_ptr != buf.get() || bump_ptr != buf.get()) {
+    LF_TERMINATE("Stack leak detected");
+  }
+
+  tls_bump_ptr = nullptr;
+  bump_ptr = nullptr;
+  // lf::thread_context<vector_ctx> = nullptr;
+  // lf::thread_context<lf::polymorphic_context> = nullptr;
+}
+
+} // namespace
+
 // // Return by ref-arg, test direct root, no co-await, direct resumes, uses new/delete for alloc
 // BENCHMARK(fib<no_await<stack_on_heap>>)->Name("test/libfork/fib/heap/no_await")->Arg(fib_test);
 // BENCHMARK(fib<no_await<stack_on_heap>>)->Name("base/libfork/fib/heap/no_await")->Arg(fib_base);
