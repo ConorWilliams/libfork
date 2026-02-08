@@ -250,12 +250,15 @@ struct mixin_frame {
 
   // Member functions
   static auto operator new(std::size_t sz, auto const &self, arg<Context> arg, auto const &...) -> void * {
-    // return arg.alloc->push(sz);
-    return g_thread_context<Context>->alloc().push(sz);
+    void *extra = arg.alloc->push(sz + 8);
+    auto *bp = std::bit_cast<std::byte *>(extra) + sz;
+    *std::bit_cast<allocator_t<Context> **>(bp) = arg.alloc;
+    return extra;
   }
 
   static auto operator delete(void *p, std::size_t sz) noexcept -> void {
-    g_thread_context<Context>->alloc().pop(p, sz);
+    auto *alloc = *std::bit_cast<allocator_t<Context> **>(std::bit_cast<std::byte *>(p) + sz);
+    alloc->pop(p, sz + 8);
   }
 
   // --- Await transformation
