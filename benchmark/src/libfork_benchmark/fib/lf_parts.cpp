@@ -75,22 +75,24 @@ constexpr auto no_await = [](this auto fib, arg<T> ctx, std::int64_t *ret, std::
   *ret = lhs + rhs;
 };
 
-// template <lf::alloc_mixin Stack>
-// constexpr auto await = [](this auto fib, std::int64_t *ret, std::int64_t n) -> lf::task<void, Stack> {
-//   if (n < 2) {
-//     *ret = n;
-//     co_return;
-//   }
-//
-//   std::int64_t lhs = 0;
-//   std::int64_t rhs = 0;
-//
-//   co_await lf::call(fib, &lhs, n - 1);
-//   co_await lf::call(fib, &rhs, n - 2);
-//
-//   *ret = lhs + rhs;
-// };
-//
+template <lf::worker_context T>
+constexpr auto await = [](this auto fib, arg<T>, std::int64_t *ret, std::int64_t n) -> lf::task<void, T> {
+  if (n < 2) {
+    *ret = n;
+    co_return;
+  }
+
+  std::int64_t lhs = 0;
+  std::int64_t rhs = 0;
+
+  lf::scope<T> sc{};
+
+  co_await sc.call(fib, &lhs, n - 1);
+  co_await sc.call(fib, &rhs, n - 2);
+
+  *ret = lhs + rhs;
+};
+
 // constexpr auto ret = [](this auto fib, std::int64_t n) -> lf::task<std::int64_t, tls_bump> {
 //   if (n < 2) {
 //     co_return n;
@@ -143,6 +145,7 @@ void fib(benchmark::State &state) {
     // if constexpr (requires { Fn(root_arg, &result, n); }) {
     auto task = Fn(root_arg, &result, n);
     task.promise->frame.kind = lf::category::root;
+    task.promise->frame.thread_context = &context;
     task.promise->handle().resume();
     // }
 
@@ -169,16 +172,12 @@ BENCHMARK(fib<no_await<global_alloc>, global_alloc>)->Name("base/libfork/fib/hea
 // Same as above but uses bump allocator
 BENCHMARK(fib<no_await<linear_alloc>, linear_alloc>)->Name("test/libfork/fib/bump/no_await")->Arg(fib_test);
 BENCHMARK(fib<no_await<linear_alloc>, linear_alloc>)->Name("base/libfork/fib/bump/no_await")->Arg(fib_base);
-//
-// // Same as above but with global bump allocator
-// BENCHMARK(fib<no_await<global_bump>>)->Name("test/libfork/fib/global_bump/no_await")->Arg(fib_test);
-// BENCHMARK(fib<no_await<global_bump>>)->Name("base/libfork/fib/global_bump/no_await")->Arg(fib_base);
-//
-// // TODO: no_await with segmented stack allocator?
-//
-// // Return by ref-arg, libfork call/call with co-await, uses new/delete for alloc
-// BENCHMARK(fib<await<stack_on_heap>>)->Name("test/libfork/fib/heap/await")->Arg(fib_test);
-// BENCHMARK(fib<await<stack_on_heap>>)->Name("base/libfork/fib/heap/await")->Arg(fib_base);
+
+// TODO: no_await with segmented stack allocator?
+
+// Return by ref-arg, libfork call/call with co-await, uses new/delete for alloc
+BENCHMARK(fib<await<linear_alloc>, linear_alloc>)->Name("test/libfork/fib/bump/await")->Arg(fib_test);
+BENCHMARK(fib<await<linear_alloc>, linear_alloc>)->Name("base/libfork/fib/bump/await")->Arg(fib_base);
 //
 // // Same as above but uses tls bump allocator
 // BENCHMARK(fib<await<tls_bump>>)->Name("test/libfork/fib/tls_bump/await")->Arg(fib_test);

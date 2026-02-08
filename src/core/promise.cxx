@@ -263,12 +263,18 @@ struct mixin_frame {
   // --- Await transformation
 
   template <typename R, typename Fn, typename... Args>
-  constexpr static auto await_transform(call_pkg<R, Fn, Args...> &&pkg) noexcept -> call_awaitable<Context> {
+  constexpr auto
+  await_transform(this auto const &self, call_pkg<R, Fn, Args...> &&pkg) noexcept -> call_awaitable<Context> {
 
-    task child = std::move(pkg.args).apply(std::move(pkg.fn));
+    auto *ctx = &self.frame.thread_context->alloc();
+
+    task child = std::move(pkg.args).apply([&](auto &&...args) -> auto {
+      return pkg.fn(arg<Context>{ctx}, LF_FWD(args)...);
+    });
 
     // ::call is the default value
     LF_ASSUME(child.promise->frame.kind == category::call);
+    child.promise->frame.thread_context = self.frame.thread_context;
 
     if constexpr (!std::is_void_v<R>) {
       child.promise->return_address = pkg.return_address;
