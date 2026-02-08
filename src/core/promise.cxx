@@ -60,6 +60,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
 
   switch (not_null(frame)->kind) {
     case category::call:
+      frame->parent->thread_context = not_null(frame->thread_context);
       return not_null(frame->parent)->handle();
     case category::root:
       // TODO: root handling
@@ -69,8 +70,8 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
     default:
       LF_ASSUME(false);
   }
-
   auto *context = not_null(frame->thread_context);
+
   auto *parent = not_null(frame->parent);
 
   if (frame_handle last_pushed = context->pop()) {
