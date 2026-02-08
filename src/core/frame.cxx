@@ -66,7 +66,9 @@ class frame_handle {
   // constexpr frame_handle(std::nullptr_t) noexcept : m_ptr(nullptr) {}
   // constexpr frame_handle(lock, frame_type<T> *ptr) noexcept : m_ptr(ptr) {}
 
- private:
+  explicit operator bool() const noexcept { return m_ptr != nullptr; }
+
+  // private:
   frame_type<T> *m_ptr;
 };
 
