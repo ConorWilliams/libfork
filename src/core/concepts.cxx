@@ -56,7 +56,7 @@ using checkpoint_t = decltype(std::declval<T &>().checkpoint());
 
 // TODO: impl in frame + assert that it is lock-free etc
 export template <typename T>
-class frame_handle;
+class frame_handle {};
 
 template <typename T>
 concept lvalue_ref_to_stack_allocator =

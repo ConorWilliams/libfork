@@ -30,27 +30,27 @@ struct global_allocator {
 
 static_assert(lf::stack_allocator<global_allocator>);
 
-// template <lf::alloc_mixin Stack>
-// constexpr auto no_await = [](this auto fib, std::int64_t *ret, std::int64_t n) -> lf::task<void, Stack> {
-//   if (n < 2) {
-//     *ret = n;
-//     co_return;
-//   }
-//
-//   std::int64_t lhs = 0;
-//   std::int64_t rhs = 0;
-//
-//   auto t1 = fib(&lhs, n - 1);
-//   t1.promise->frame.kind = lf::category::root;
-//   t1.promise->handle().resume();
-//
-//   auto t2 = fib(&rhs, n - 2);
-//   t2.promise->frame.kind = lf::category::root;
-//   t2.promise->handle().resume();
-//
-//   *ret = lhs + rhs;
-// };
-//
+template <lf::worker_context Context>
+constexpr auto no_await = [](this auto fib, std::int64_t *ret, std::int64_t n) -> lf::task<void, Context> {
+  if (n < 2) {
+    *ret = n;
+    co_return;
+  }
+
+  std::int64_t lhs = 0;
+  std::int64_t rhs = 0;
+
+  auto t1 = fib(&lhs, n - 1);
+  t1.promise->frame.kind = lf::category::root;
+  t1.promise->handle().resume();
+
+  auto t2 = fib(&rhs, n - 2);
+  t2.promise->frame.kind = lf::category::root;
+  t2.promise->handle().resume();
+
+  *ret = lhs + rhs;
+};
+
 // template <lf::alloc_mixin Stack>
 // constexpr auto await = [](this auto fib, std::int64_t *ret, std::int64_t n) -> lf::task<void, Stack> {
 //   if (n < 2) {
@@ -145,11 +145,15 @@ void fib(benchmark::State &state) {
 
 } // namespace
 
-// // Return by ref-arg, test direct root, no co-await, direct resumes, uses new/delete for alloc
-// BENCHMARK(fib<no_await<stack_on_heap>>)->Name("test/libfork/fib/heap/no_await")->Arg(fib_test);
-// BENCHMARK(fib<no_await<stack_on_heap>>)->Name("base/libfork/fib/heap/no_await")->Arg(fib_base);
-//
-// // Same as above but uses tls bump allocator
+using global_alloc = vector_ctx<global_allocator>;
+
+static_assert(lf::worker_context<global_alloc>);
+
+// Return by ref-arg, test direct root, no co-await, direct resumes, uses new/delete for alloc
+BENCHMARK(fib<no_await<global_alloc>>)->Name("test/libfork/fib/heap/no_await")->Arg(fib_test);
+BENCHMARK(fib<no_await<global_alloc>>)->Name("base/libfork/fib/heap/no_await")->Arg(fib_base);
+
+// Same as above but uses tls bump allocator
 // BENCHMARK(fib<no_await<tls_bump>>)->Name("test/libfork/fib/tls_bump/no_await")->Arg(fib_test);
 // BENCHMARK(fib<no_await<tls_bump>>)->Name("base/libfork/fib/tls_bump/no_await")->Arg(fib_base);
 //

@@ -77,15 +77,20 @@ struct global_bump {
 // === Shared Context Logic ===
 
 template <lf::stack_allocator Alloc>
-struct vector_ctx final : lf::polymorphic_context<Alloc> {
+struct vector_ctx {
 
-  std::vector<lf::frame_handle<vector_ctx>> work;
+  using handle_type = lf::frame_handle<vector_ctx>;
+
+  std::vector<handle_type> work;
+  Alloc allocator;
 
   vector_ctx() { work.reserve(1024); }
 
-  void push(lf::frame_handle<vector_ctx> handle) override { work.push_back(handle); }
+  auto alloc() noexcept -> Alloc & { return allocator; }
 
-  auto pop() noexcept -> lf::frame_handle<vector_ctx> override {
+  void push(handle_type handle) { work.push_back(handle); }
+
+  auto pop() noexcept -> handle_type {
     auto handle = work.back();
     work.pop_back();
     return handle;
