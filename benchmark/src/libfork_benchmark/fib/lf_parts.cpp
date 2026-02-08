@@ -30,6 +30,26 @@ struct global_allocator {
 
 static_assert(lf::stack_allocator<global_allocator>);
 
+struct linear_allocator {
+
+  struct empty {};
+
+  std::unique_ptr<std::byte[]> data = std::make_unique<std::byte[]>(1024 * 1024);
+  std::byte *ptr = data.get();
+
+  constexpr auto push(std::size_t sz) -> void * {
+    auto *prev = ptr;
+    ptr += fib_align_size(sz);
+    return prev;
+  }
+  constexpr static auto pop(void *ptr, std::size_t) noexcept -> void { ptr = static_cast<std::byte *>(ptr); }
+
+  constexpr static auto checkpoint() noexcept -> empty { return {}; }
+  constexpr static auto switch_to(empty) noexcept -> void {}
+};
+
+static_assert(lf::stack_allocator<linear_allocator>);
+
 template <lf::worker_context Context>
 constexpr auto no_await = [](this auto fib, std::int64_t *ret, std::int64_t n) -> lf::task<void, Context> {
   if (n < 2) {
@@ -146,6 +166,7 @@ void fib(benchmark::State &state) {
 } // namespace
 
 using global_alloc = vector_ctx<global_allocator>;
+using linear_alloc = vector_ctx<linear_allocator>;
 
 static_assert(lf::worker_context<global_alloc>);
 
@@ -153,9 +174,9 @@ static_assert(lf::worker_context<global_alloc>);
 BENCHMARK(fib<no_await<global_alloc>>)->Name("test/libfork/fib/heap/no_await")->Arg(fib_test);
 BENCHMARK(fib<no_await<global_alloc>>)->Name("base/libfork/fib/heap/no_await")->Arg(fib_base);
 
-// Same as above but uses tls bump allocator
-// BENCHMARK(fib<no_await<tls_bump>>)->Name("test/libfork/fib/tls_bump/no_await")->Arg(fib_test);
-// BENCHMARK(fib<no_await<tls_bump>>)->Name("base/libfork/fib/tls_bump/no_await")->Arg(fib_base);
+// Same as above but uses bump allocator
+BENCHMARK(fib<no_await<linear_alloc>>)->Name("test/libfork/fib/tls_bump/no_await")->Arg(fib_test);
+BENCHMARK(fib<no_await<linear_alloc>>)->Name("base/libfork/fib/tls_bump/no_await")->Arg(fib_base);
 //
 // // Same as above but with global bump allocator
 // BENCHMARK(fib<no_await<global_bump>>)->Name("test/libfork/fib/global_bump/no_await")->Arg(fib_test);
