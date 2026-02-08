@@ -39,9 +39,9 @@ consteval auto constify(T &&x) noexcept -> std::add_const_t<T> & {
  * Fast-path operations: empty, push, pop, checkpoint
  * Slow-path operations: switch
  */
-template <typename T>
+export template <typename T>
 concept stack_allocator = std::is_object_v<T> && requires (T alloc, std::size_t n, void *ptr) {
-  { alloc.empty() } noexcept -> std::same_as<bool>;
+  // { alloc.empty() } noexcept -> std::same_as<bool>;
   { alloc.push(n) } -> std::same_as<void *>;
   { alloc.pop(ptr, n) } noexcept -> std::same_as<void>;
   { alloc.checkpoint() } noexcept -> std::semiregular;
@@ -62,7 +62,7 @@ template <typename T>
 concept lvalue_ref_to_stack_allocator =
     std::is_lvalue_reference_v<T> && stack_allocator<std::remove_reference_t<T>>;
 
-template <typename T>
+export template <typename T>
 concept worker_context = std::is_object_v<T> && requires (T ctx, frame_handle<T> handle) {
   { ctx.alloc() } noexcept -> lvalue_ref_to_stack_allocator;
   { ctx.push(handle) } -> std::same_as<void>;

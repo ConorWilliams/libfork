@@ -6,11 +6,10 @@ export import :constants;
 export import :utility;
 export import :tuple;
 
-export import :frame; // concepts
-
 // T2 partitions
-export import :ops;
-export import :context;
+export import :frame;   // concepts
+export import :context; // concepts
+export import :ops;     // concepts, tuple, utility
 
 // T3 partitions
 export import :promise;

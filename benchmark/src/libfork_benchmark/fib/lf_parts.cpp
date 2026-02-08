@@ -12,12 +12,23 @@ import libfork.core;
 
 namespace {
 
-struct stack_on_heap {
-  static constexpr auto operator new(std::size_t sz) -> void * { return ::operator new(sz); }
-  static constexpr auto operator delete(void *p, [[maybe_unused]] std::size_t sz) noexcept -> void {
-    ::operator delete(p, sz);
-  }
+// { alloc.push(n) } -> std::same_as<void *>;
+// { alloc.pop(ptr, n) } noexcept -> std::same_as<void>;
+// { alloc.checkpoint() } noexcept -> std::semiregular;
+// { alloc.switch_to({}) } noexcept -> std::same_as<void>;
+// { alloc.switch_to(constify(alloc.checkpoint())) } noexcept -> std::same_as<void>;
+
+struct global_allocator {
+
+  struct empty {};
+
+  constexpr static auto push(std::size_t sz) -> void * { return ::operator new(sz); }
+  constexpr static auto pop(void *p, std::size_t sz) noexcept -> void { ::operator delete(p, sz); }
+  constexpr static auto checkpoint() noexcept -> empty { return {}; }
+  constexpr static auto switch_to(empty) noexcept -> void {}
 };
+
+static_assert(lf::stack_allocator<global_allocator>);
 
 // template <lf::alloc_mixin Stack>
 // constexpr auto no_await = [](this auto fib, std::int64_t *ret, std::int64_t n) -> lf::task<void, Stack> {

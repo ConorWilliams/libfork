@@ -75,18 +75,19 @@ struct global_bump {
 };
 
 // === Shared Context Logic ===
-//
-// struct vector_ctx final : lf::polymorphic_context {
-//
-//   std::vector<lf::work_handle> work;
-//
-//   vector_ctx() { work.reserve(1024); }
-//
-//   void push(lf::work_handle handle) override { work.push_back(handle); }
-//
-//   auto pop() noexcept -> lf::work_handle override {
-//     auto handle = work.back();
-//     work.pop_back();
-//     return handle;
-//   }
-// };
+
+template <lf::stack_allocator Alloc>
+struct vector_ctx final : lf::polymorphic_context<Alloc> {
+
+  std::vector<lf::frame_handle<vector_ctx>> work;
+
+  vector_ctx() { work.reserve(1024); }
+
+  void push(lf::frame_handle<vector_ctx> handle) override { work.push_back(handle); }
+
+  auto pop() noexcept -> lf::frame_handle<vector_ctx> override {
+    auto handle = work.back();
+    work.pop_back();
+    return handle;
+  }
+};
