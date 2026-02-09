@@ -212,13 +212,13 @@ struct fork_awaitable : std::suspend_always {
 
     not_null(self.child)->parent = &parent.promise().frame;
 
-    // LF_TRY {
-    //   not_null(thread_context<Context>)->push(work_handle{.frame = &parent.promise().frame});
-    // } LF_CATCH_ALL {
-    //   self.child->handle().destroy();
-    //   // TODO: stash in parent frame (should not throw)
-    //   LF_RETHROW;
-    // }
+    LF_TRY {
+      not_null(thread_context<Context>)->push(frame_handle<Context>{key, &parent.promise().frame});
+    } LF_CATCH_ALL {
+      self.child->handle().destroy();
+      // TODO: stash in parent frame (should not throw)
+      LF_RETHROW;
+    }
 
     return self.child->handle();
   }
