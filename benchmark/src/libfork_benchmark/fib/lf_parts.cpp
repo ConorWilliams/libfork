@@ -11,12 +11,6 @@ import libfork.core;
 
 namespace {
 
-// { alloc.push(n) } -> std::same_as<void *>;
-// { alloc.pop(ptr, n) } noexcept -> std::same_as<void>;
-// { alloc.checkpoint() } noexcept -> std::semiregular;
-// { alloc.switch_to({}) } noexcept -> std::same_as<void>;
-// { alloc.switch_to(constify(alloc.checkpoint())) } noexcept -> std::same_as<void>;
-
 struct global_allocator {
 
   struct empty {};
