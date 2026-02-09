@@ -19,8 +19,6 @@ struct cancellation {};
 
 // =================== Frame =================== //
 
-// TODO: reduce codegen by templating this only on checkpoint type
-
 template <typename Context>
 struct frame_type {
 
