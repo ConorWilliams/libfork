@@ -21,4 +21,7 @@ class polymorphic_context {
 
 // static_assert(context<polymorphic_context>);
 
+export template <worker_context Context>
+constinit inline thread_local Context *thread_context = nullptr;
+
 } // namespace lf

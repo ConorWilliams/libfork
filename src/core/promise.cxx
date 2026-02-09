@@ -66,7 +66,6 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
 
   switch (not_null(frame)->kind) {
     case category::call:
-      frame->parent->thread_context = not_null(frame->thread_context);
       return not_null(frame->parent)->handle();
     case category::root:
       // TODO: root handling
@@ -76,8 +75,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
     default:
       LF_ASSUME(false);
   }
-  auto *context = not_null(frame->thread_context);
-
+  auto *context = not_null(thread_context<Context>);
   auto *parent = not_null(frame->parent);
 
   if (frame_handle last_pushed = context->pop()) {
@@ -249,22 +247,12 @@ struct mixin_frame {
 
   // --- Allocation
 
-  // Regular functions
-  static auto operator new(std::size_t sz, arg<Context> arg, auto const &...) -> void * {
-    return arg.alloc->push(sz);
-  }
-
-  // Member functions
-  static auto operator new(std::size_t sz, auto const &self, arg<Context> arg, auto const &...) -> void * {
-    void *extra = arg.alloc->push(sz + 8);
-    auto *bp = std::bit_cast<std::byte *>(extra) + sz;
-    *std::bit_cast<allocator_t<Context> **>(bp) = arg.alloc;
-    return extra;
+  static auto operator new(std::size_t sz) -> void * {
+    return not_null(thread_context<Context>)->alloc().push(sz);
   }
 
   static auto operator delete(void *p, std::size_t sz) noexcept -> void {
-    auto *alloc = *std::bit_cast<allocator_t<Context> **>(std::bit_cast<std::byte *>(p) + sz);
-    alloc->pop(p, sz + 8);
+    not_null(thread_context<Context>)->alloc().pop(p, sz);
   }
 
   // --- Await transformation
@@ -273,15 +261,10 @@ struct mixin_frame {
   constexpr auto
   await_transform(this auto const &self, call_pkg<R, Fn, Args...> &&pkg) noexcept -> call_awaitable<Context> {
 
-    auto *ctx = &self.frame.thread_context->alloc();
-
-    task child = std::move(pkg.args).apply([&](auto &&...args) -> auto {
-      return pkg.fn(arg<Context>{ctx}, LF_FWD(args)...);
-    });
+    task child = std::move(pkg.args).apply(std::move(pkg.fn));
 
     // ::call is the default value
     LF_ASSUME(child.promise->frame.kind == category::call);
-    child.promise->frame.thread_context = self.frame.thread_context;
 
     if constexpr (!std::is_void_v<R>) {
       child.promise->return_address = pkg.return_address;
@@ -325,10 +308,12 @@ struct promise_type<void, Context> : mixin_frame<Context> {
   constexpr static void return_void() noexcept {}
 };
 
-struct dummy_alloc {
-  static auto operator new(std::size_t) -> void *;
-  static auto operator delete(void *, std::size_t) noexcept -> void;
-};
+// TODO: move this and other static_asserts to a test file
+
+// struct dummy_alloc {
+//   static auto operator new(std::size_t) -> void *;
+//   static auto operator delete(void *, std::size_t) noexcept -> void;
+// };
 
 // static_assert(alignof(promise_type<void, dummy_alloc>) == alignof(frame_type));
 //

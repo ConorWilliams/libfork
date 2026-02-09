@@ -10,7 +10,7 @@ namespace lf {
 
 // TODO: remove this and other exports
 export enum class category : std::uint8_t {
-  call,
+  call = 0,
   root,
   fork,
 };
@@ -19,6 +19,8 @@ struct cancellation {};
 
 // =================== Frame =================== //
 
+// TODO: reduce codegen by templating this only on checkpoint type
+
 template <typename Context>
 struct frame_type {
 
@@ -26,9 +28,8 @@ struct frame_type {
   using allocator_type = allocator_t<Context>;
   using checkpoint_type = checkpoint_t<allocator_type>;
 
-  frame_type *parent = nullptr;      //
-  cancellation *cancel = nullptr;    //
-  Context *thread_context = nullptr; //
+  frame_type *parent = nullptr;
+  cancellation *cancel = nullptr;
   [[no_unique_address]]
   checkpoint_type stack_token;
 
