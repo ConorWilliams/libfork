@@ -98,7 +98,7 @@ struct vector_ctx {
 };
 
 template <lf::stack_allocator Alloc>
-struct poly_vector_ctx : lf::polymorphic_context<Alloc> {
+struct poly_vector_ctx final : lf::polymorphic_context<Alloc> {
 
   using handle_type = lf::frame_handle<lf::polymorphic_context<Alloc>>;
 
