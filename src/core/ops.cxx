@@ -32,31 +32,28 @@ struct pkg<void, Fn, Args...> {
 template <typename R, typename Fn, typename... Args>
 struct [[nodiscard("You should immediately co_await this!")]] fork_pkg : pkg<R, Fn, Args...>, immovable {};
 
+export template <typename... Args, async_invocable_to<void, Args...> Fn>
+constexpr auto fork(Fn &&fn, Args &&...args) noexcept -> fork_pkg<void, Fn, Args &&...> {
+  return {LF_FWD(fn), {LF_FWD(args)...}};
+}
+
+export template <typename R, typename... Args, async_invocable_to<R, Args...> Fn>
+constexpr auto fork(R *ret, Fn &&fn, Args &&...args) noexcept -> fork_pkg<R, Fn, Args &&...> {
+  return {ret, LF_FWD(fn), {LF_FWD(args)...}};
+}
+// ======== Call ======== //
+
 template <typename R, typename Fn, typename... Args>
 struct [[nodiscard("You should immediately co_await this!")]] call_pkg : pkg<R, Fn, Args...>, immovable {};
 
-export template <worker_context Context>
-struct scope {
+export template <typename... Args, async_invocable_to<void, Args...> Fn>
+constexpr auto call(Fn &&fn, Args &&...args) noexcept -> call_pkg<void, Fn, Args &&...> {
+  return {LF_FWD(fn), {LF_FWD(args)...}};
+}
 
-  template <typename... Args, async_invocable_to<void, Context, Args...> Fn>
-  constexpr auto fork(Fn &&fn, Args &&...args) noexcept -> fork_pkg<void, Fn, Args &&...> {
-    return {LF_FWD(fn), {LF_FWD(args)...}};
-  }
-
-  template <typename R, typename... Args, async_invocable_to<R, Context, Args...> Fn>
-  constexpr auto fork(R *ret, Fn &&fn, Args &&...args) noexcept -> fork_pkg<R, Fn, Args &&...> {
-    return {ret, LF_FWD(fn), {LF_FWD(args)...}};
-  }
-
-  template <typename... Args, async_invocable_to<void, Context, Args...> Fn>
-  constexpr auto call(Fn &&fn, Args &&...args) noexcept -> call_pkg<void, Fn, Args &&...> {
-    return {LF_FWD(fn), {LF_FWD(args)...}};
-  }
-
-  template <typename R, typename... Args, async_invocable_to<R, Context, Args...> Fn>
-  constexpr auto call(R *ret, Fn &&fn, Args &&...args) noexcept -> call_pkg<R, Fn, Args &&...> {
-    return {ret, LF_FWD(fn), {LF_FWD(args)...}};
-  }
-};
+export template <typename R, typename... Args, async_invocable_to<R, Args...> Fn>
+constexpr auto call(R *ret, Fn &&fn, Args &&...args) noexcept -> call_pkg<R, Fn, Args &&...> {
+  return {ret, LF_FWD(fn), {LF_FWD(args)...}};
+}
 
 } // namespace lf
