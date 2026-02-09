@@ -164,7 +164,7 @@ BENCHMARK(fib<no_await<linear_alloc>, linear_alloc>)->Name("base/libfork/fib/bum
 BENCHMARK(fib<await<global_alloc>, global_alloc>)->Name("test/libfork/fib/heap/await")->Arg(fib_test);
 BENCHMARK(fib<await<global_alloc>, global_alloc>)->Name("base/libfork/fib/heap/await")->Arg(fib_base);
 
-// // Same as above but uses tls bump allocator
+// // Same as above but uses bump allocator
 BENCHMARK(fib<await<linear_alloc>, linear_alloc>)->Name("test/libfork/fib/bump/await")->Arg(fib_test);
 BENCHMARK(fib<await<linear_alloc>, linear_alloc>)->Name("base/libfork/fib/bump/await")->Arg(fib_base);
 
@@ -182,5 +182,6 @@ BENCHMARK(fib<fork_call<linear_alloc>, linear_alloc>)->Name("base/libfork/fib/ve
 using A = poly_vector_ctx<linear_allocator>;
 using B = lf::polymorphic_context<linear_allocator>;
 
+// Same as above but with polymorphic contexts.
 BENCHMARK(fib<fork_call<B>, A, B>)->Name("test/libfork/fib/poly_vector_ctx")->Arg(fib_test);
 BENCHMARK(fib<fork_call<B>, A, B>)->Name("base/libfork/fib/poly_vector_ctx")->Arg(fib_base);
