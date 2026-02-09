@@ -59,12 +59,11 @@ export template <typename T>
 class frame_handle;
 
 template <typename T>
-concept lvalue_ref_to_stack_allocator =
-    std::is_lvalue_reference_v<T> && stack_allocator<std::remove_reference_t<T>>;
+concept ref_to_stack_allocator = std::is_lvalue_reference_v<T> && stack_allocator<std::remove_reference_t<T>>;
 
 export template <typename T>
 concept worker_context = std::is_object_v<T> && requires (T ctx, frame_handle<T> handle) {
-  { ctx.alloc() } noexcept -> lvalue_ref_to_stack_allocator;
+  { ctx.alloc() } noexcept -> ref_to_stack_allocator;
   { ctx.push(handle) } -> std::same_as<void>;
   { ctx.pop() } noexcept -> std::same_as<frame_handle<T>>;
 };
