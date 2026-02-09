@@ -74,6 +74,8 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
 
   auto *parent = not_null(frame->parent);
 
+  auto volatile x = frame->stack_token;
+
   if (frame_handle last_pushed = context->pop()) {
     // No-one stole continuation, we are the exclusive owner of parent, so we
     // just keep ripping!
@@ -276,6 +278,7 @@ struct mixin_frame {
     // ::call is the default value
     LF_ASSUME(child.promise->frame.kind == category::call);
     child.promise->frame.thread_context = self.frame.thread_context;
+    child.promise->frame.stack_token = ctx->checkpoint();
 
     if constexpr (!std::is_void_v<R>) {
       child.promise->return_address = pkg.return_address;

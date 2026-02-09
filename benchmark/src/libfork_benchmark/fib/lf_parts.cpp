@@ -33,8 +33,6 @@ static_assert(lf::stack_allocator<global_allocator>);
 
 struct linear_allocator {
 
-  struct empty {};
-
   std::unique_ptr<std::byte[]> data = std::make_unique<std::byte[]>(1024 * 1024 * 1024);
   std::byte *ptr = data.get();
 
@@ -45,8 +43,8 @@ struct linear_allocator {
   }
   constexpr auto pop(void *p, std::size_t) noexcept -> void { ptr = static_cast<std::byte *>(p); }
 
-  constexpr static auto checkpoint() noexcept -> empty { return {}; }
-  constexpr static auto switch_to(empty) noexcept -> void {}
+  constexpr auto checkpoint() noexcept -> std::byte * { return data.get(); }
+  constexpr static auto switch_to(std::byte *) noexcept -> void {}
 };
 
 static_assert(lf::stack_allocator<linear_allocator>);
