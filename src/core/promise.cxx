@@ -259,6 +259,8 @@ struct mixin_frame {
     // ::call is the default value
     LF_ASSUME(child.promise->frame.kind == category::call);
 
+    child.promise->frame.stack_ckpt = not_null(thread_context<Context>)->alloc().checkpoint();
+
     if constexpr (!std::is_void_v<R>) {
       child.promise->return_address = pkg.return_address;
     }
@@ -272,6 +274,8 @@ struct mixin_frame {
     task child = std::move(pkg.args).apply(std::move(pkg.fn));
 
     child.promise->frame.kind = category::fork;
+
+    child.promise->frame.stack_ckpt = not_null(thread_context<Context>)->alloc().checkpoint();
 
     if constexpr (!std::is_void_v<R>) {
       child.promise->return_address = pkg.return_address;

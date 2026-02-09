@@ -31,7 +31,7 @@ struct frame_type {
   frame_type *parent = nullptr;
   cancellation *cancel = nullptr;
   [[no_unique_address]]
-  checkpoint_type stack_token;
+  checkpoint_type stack_ckpt;
 
   std::uint32_t merges = 0;       // Atomic is 32 bits for speed
   std::uint16_t steals = 0;       // In debug do overflow checking
