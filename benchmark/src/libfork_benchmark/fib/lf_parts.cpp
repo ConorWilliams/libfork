@@ -51,11 +51,10 @@ struct linear_allocator {
 
 static_assert(lf::stack_allocator<linear_allocator>);
 
-using lf::arg;
 using lf::task;
 
 template <lf::worker_context T>
-constexpr auto no_await = [](this auto fib, arg<T> ctx, std::int64_t *ret, std::int64_t n) -> task<void, T> {
+constexpr auto no_await = [](this auto fib, std::int64_t *ret, std::int64_t n) -> task<void, T> {
   if (n < 2) {
     *ret = n;
     co_return;
@@ -64,11 +63,11 @@ constexpr auto no_await = [](this auto fib, arg<T> ctx, std::int64_t *ret, std::
   std::int64_t lhs = 0;
   std::int64_t rhs = 0;
 
-  auto t1 = fib(ctx, &lhs, n - 1);
+  auto t1 = fib(&lhs, n - 1);
   t1.promise->frame.kind = lf::category::root;
   t1.promise->handle().resume();
 
-  auto t2 = fib(ctx, &rhs, n - 2);
+  auto t2 = fib(&rhs, n - 2);
   t2.promise->frame.kind = lf::category::root;
   t2.promise->handle().resume();
 
@@ -76,7 +75,7 @@ constexpr auto no_await = [](this auto fib, arg<T> ctx, std::int64_t *ret, std::
 };
 
 template <lf::worker_context T>
-constexpr auto await = [](this auto fib, arg<T>, std::int64_t *ret, std::int64_t n) -> lf::task<void, T> {
+constexpr auto await = [](this auto fib, std::int64_t *ret, std::int64_t n) -> lf::task<void, T> {
   if (n < 2) {
     *ret = n;
     co_return;
@@ -85,10 +84,8 @@ constexpr auto await = [](this auto fib, arg<T>, std::int64_t *ret, std::int64_t
   std::int64_t lhs = 0;
   std::int64_t rhs = 0;
 
-  lf::scope<T> sc{};
-
-  co_await sc.call(fib, &lhs, n - 1);
-  co_await sc.call(fib, &rhs, n - 2);
+  co_await lf::call(fib, &lhs, n - 1);
+  co_await lf::call(fib, &rhs, n - 2);
 
   *ret = lhs + rhs;
 };
@@ -134,18 +131,16 @@ void fib(benchmark::State &state) {
   state.counters["n"] = static_cast<double>(n);
 
   T context;
-  arg<T> root_arg{&context.alloc()};
 
-  lf::g_thread_context<T> = &context;
+  lf::thread_context<T> = &context;
 
   for (auto _ : state) {
     benchmark::DoNotOptimize(n);
     std::int64_t result = 0;
 
     // if constexpr (requires { Fn(root_arg, &result, n); }) {
-    auto task = Fn(root_arg, &result, n);
+    auto task = Fn(&result, n);
     task.promise->frame.kind = lf::category::root;
-    task.promise->frame.thread_context = &context;
     task.promise->handle().resume();
     // }
 
