@@ -123,7 +123,7 @@ constexpr auto fork_call = [](this auto fib, std::int64_t n) -> lf::task<std::in
 using global_alloc = vector_ctx<global_allocator>;
 using linear_alloc = vector_ctx<linear_allocator>;
 
-template <auto Fn, lf::worker_context T>
+template <auto Fn, typename T, typename U = T>
 void fib(benchmark::State &state) {
 
   std::int64_t n = state.range(0);
@@ -133,7 +133,7 @@ void fib(benchmark::State &state) {
 
   T context;
 
-  lf::thread_context<T> = &context;
+  lf::thread_context<U> = static_cast<U *>(&context);
 
   for (auto _ : state) {
     benchmark::DoNotOptimize(n);
@@ -188,5 +188,8 @@ BENCHMARK(fib<ret<linear_alloc>, linear_alloc>)->Name("base/libfork/fib/bump/ret
 BENCHMARK(fib<fork_call<linear_alloc>, linear_alloc>)->Name("test/libfork/fib/vector_ctx")->Arg(fib_test);
 BENCHMARK(fib<fork_call<linear_alloc>, linear_alloc>)->Name("base/libfork/fib/vector_ctx")->Arg(fib_base);
 
-// BENCHMARK(fib<fork_call<lf::polymorphic_context>>)->Name("test/libfork/fib/poly_vector_ctx")->Arg(fib_test);
-// BENCHMARK(fib<fork_call<lf::polymorphic_context>>)->Name("base/libfork/fib/poly_vector_ctx")->Arg(fib_base);
+using A = poly_vector_ctx<linear_allocator>;
+using B = lf::polymorphic_context<linear_allocator>;
+
+BENCHMARK(fib<fork_call<B>, A, B>)->Name("test/libfork/fib/poly_vector_ctx")->Arg(fib_test);
+BENCHMARK(fib<fork_call<B>, A, B>)->Name("base/libfork/fib/poly_vector_ctx")->Arg(fib_base);

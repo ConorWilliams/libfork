@@ -96,3 +96,21 @@ struct vector_ctx {
     return handle;
   }
 };
+
+template <lf::stack_allocator Alloc>
+struct poly_vector_ctx : lf::polymorphic_context<Alloc> {
+
+  using handle_type = lf::frame_handle<lf::polymorphic_context<Alloc>>;
+
+  std::vector<handle_type> work;
+
+  poly_vector_ctx() { work.reserve(1024); }
+
+  void push(handle_type handle) override { work.push_back(handle); }
+
+  auto pop() noexcept -> handle_type override {
+    auto handle = work.back();
+    work.pop_back();
+    return handle;
+  };
+};
