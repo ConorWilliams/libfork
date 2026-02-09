@@ -59,21 +59,6 @@ struct tls_bump {
   }
 };
 
-constinit inline std::byte *bump_ptr = nullptr;
-
-struct global_bump {
-
-  static auto operator new(std::size_t sz) -> void * {
-    auto *prev = bump_ptr;
-    bump_ptr += fib_align_size(sz);
-    return prev;
-  }
-
-  static auto operator delete(void *p, [[maybe_unused]] std::size_t sz) noexcept -> void {
-    bump_ptr = std::bit_cast<std::byte *>(p);
-  }
-};
-
 // === Shared Context Logic ===
 
 template <lf::stack_allocator Alloc>
