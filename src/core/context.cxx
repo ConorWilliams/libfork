@@ -11,7 +11,7 @@ export template <stack_allocator Alloc>
 class polymorphic_context {
  public:
   auto alloc() noexcept -> Alloc & { return m_allocator; }
-  virtual void push(frame_handle<polymorphic_context> h) = 0;
+  virtual void push(frame_handle<polymorphic_context>) = 0;
   virtual auto pop() noexcept -> frame_handle<polymorphic_context> = 0;
   virtual ~polymorphic_context() = default;
 

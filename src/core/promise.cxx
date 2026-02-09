@@ -226,9 +226,6 @@ struct fork_awaitable : std::suspend_always {
 
 // =============== Frame mixin =============== //
 
-export template <worker_context Context>
-inline thread_local Context *g_thread_context;
-
 template <worker_context Context>
 struct mixin_frame {
 
@@ -255,11 +252,10 @@ struct mixin_frame {
     not_null(thread_context<Context>)->alloc().pop(p, sz);
   }
 
-  // --- Await transformation
+  // --- Await transformations
 
   template <typename R, typename Fn, typename... Args>
-  constexpr auto
-  await_transform(this auto const &self, call_pkg<R, Fn, Args...> &&pkg) noexcept -> call_awaitable<Context> {
+  static constexpr auto await_transform(call_pkg<R, Fn, Args...> &&pkg) noexcept -> call_awaitable<Context> {
 
     task child = std::move(pkg.args).apply(std::move(pkg.fn));
 

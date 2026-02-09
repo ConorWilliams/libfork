@@ -112,5 +112,5 @@ struct poly_vector_ctx final : lf::polymorphic_context<Alloc> {
     auto handle = work.back();
     work.pop_back();
     return handle;
-  };
+  }
 };
