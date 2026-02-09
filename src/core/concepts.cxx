@@ -5,6 +5,20 @@ import std;
 
 namespace lf {
 
+// ========== Specialization ========== //
+
+template <typename T, template <typename...> typename Template>
+struct is_specialization_of : std::false_type {};
+
+template <template <typename...> typename Template, typename... Args>
+struct is_specialization_of<Template<Args...>, Template> : std::true_type {};
+
+/**
+ * @brief Test if `T` is a specialization of the template `Template`.
+ */
+export template <typename T, template <typename...> typename Template>
+concept specialization_of = is_specialization_of<std::remove_cvref_t<T>, Template>::value;
+
 // ========== Task constraint related concepts ========== //
 
 // ==== Returnable
@@ -71,51 +85,31 @@ concept worker_context = std::is_object_v<T> && requires (T ctx, frame_handle<T>
 template <worker_context T>
 using allocator_t = std::remove_reference_t<decltype(std::declval<T &>().alloc())>;
 
-export template <worker_context T>
-class arg {
- public:
-  allocator_t<T> *alloc;
-};
-
 // ==== Forward-decl
 
 export template <returnable T, worker_context Context>
 struct task;
 
-template <typename, typename>
-struct task_help : std::false_type {};
-
-template <typename T, typename Context>
-struct task_help<Context, task<T, Context>> : std::true_type {
-  using value_type = T;
-};
-
-template <typename Fn, typename Context, typename... Args>
-struct task_info : task_help<Context, std::invoke_result_t<Fn, arg<Context>, Args...>> {};
-
-template <typename Fn, typename Context, typename... Args>
-concept returns_task = std::invocable<Fn, arg<Context>, Args...> && task_info<Fn, Context, Args...>::value;
-
 // ========== Invocability ========== //
 
 /**
- * @brief Test if a callable `Fn` when invoked with `Args...` in `Context` returns an `lf::task<_, Context>`.
+ * @brief Test if a callable `Fn` when invoked with `Args...` returns an `lf::task`.
  */
-export template <typename Fn, typename Context, typename... Args>
-concept async_invocable = worker_context<Context> && returns_task<Fn, Context, Args...>;
+export template <typename Fn, typename... Args>
+concept async_invocable =
+    std::invocable<Fn, Args...> && specialization_of<std::invoke_result_t<Fn, Args...>, task>;
 
 /**
  * @brief The result type of invoking an async function `Fn` with `Args...`.
  */
-export template <typename Fn, typename Context, typename... Args>
-  requires async_invocable<Fn, Context, Args...>
-using async_result_t = task_info<Fn, Context, Args...>::value_type;
+export template <typename Fn, typename... Args>
+  requires async_invocable<Fn, Args...>
+using async_result_t = std::invoke_result_t<Fn, Args...>::value_type;
 
 /**
  * @brief Subsumes `async_invocable` and checks the result type is `R`.
  */
-export template <typename Fn, typename R, typename Context, typename... Args>
-concept async_invocable_to =
-    async_invocable<Fn, Context, Args...> && std::same_as<R, async_result_t<Fn, Context, Args...>>;
+export template <typename Fn, typename R, typename... Args>
+concept async_invocable_to = async_invocable<Fn, Args...> && std::same_as<R, async_result_t<Fn, Args...>>;
 
 } // namespace lf

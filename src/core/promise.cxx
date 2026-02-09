@@ -44,7 +44,13 @@ struct promise_type;
  * \endrst
  */
 export template <returnable T, worker_context Context>
-struct task : immovable, std::type_identity<T> {
+struct task : immovable {
+
+  // TODO: public private split here and elsewhere
+
+  using value_type = T;
+  using context_type = Context;
+
   promise_type<T, Context> *promise;
 };
 
