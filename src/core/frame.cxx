@@ -19,7 +19,7 @@ struct cancellation {};
 
 // =================== Frame =================== //
 
-template <typename Context>
+export template <typename Context>
 struct frame_type {
 
   using context_type = Context;
@@ -39,8 +39,6 @@ struct frame_type {
   [[nodiscard]]
   constexpr auto handle() LF_HOF(std::coroutine_handle<frame_type>::from_promise(*this))
 };
-
-// static_assert(std::is_standard_layout_v<frame_type<int>>);
 
 // =================== Handle =================== //
 

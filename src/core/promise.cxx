@@ -22,7 +22,7 @@ using coro = std::coroutine_handle<T>;
 
 // =============== Forward-decl =============== //
 
-template <returnable T, worker_context Context>
+export template <returnable T, worker_context Context>
 struct promise_type;
 
 // =============== Task =============== //
@@ -291,8 +291,6 @@ struct mixin_frame {
   constexpr static void unhandled_exception() noexcept { std::terminate(); }
 };
 
-// static_assert(std::is_empty_v<mixin_frame>);
-
 // =============== Promise (void) =============== //
 
 template <worker_context Context>
@@ -304,21 +302,6 @@ struct promise_type<void, Context> : mixin_frame<Context> {
 
   constexpr static void return_void() noexcept {}
 };
-
-// TODO: move this and other static_asserts to a test file
-
-// struct dummy_alloc {
-//   static auto operator new(std::size_t) -> void *;
-//   static auto operator delete(void *, std::size_t) noexcept -> void;
-// };
-
-// static_assert(alignof(promise_type<void, dummy_alloc>) == alignof(frame_type));
-//
-// #ifdef __cpp_lib_is_pointer_interconvertible
-// static_assert(std::is_pointer_interconvertible_with_class(&promise_type<void, dummy_alloc>::frame));
-// #else
-// static_assert(std::is_standard_layout_v<promise_type<void, dummy_alloc>>);
-// #endif
 
 // =============== Promise (non-void) =============== //
 
@@ -336,14 +319,6 @@ struct promise_type : mixin_frame<Context> {
     *return_address = LF_FWD(value);
   }
 };
-
-// static_assert(alignof(promise_type<int, dummy_alloc>) == alignof(frame_type));
-//
-// #ifdef __cpp_lib_is_pointer_interconvertible
-// static_assert(std::is_pointer_interconvertible_with_class(&promise_type<int, dummy_alloc>::frame));
-// #else
-// static_assert(std::is_standard_layout_v<promise_type<int, dummy_alloc>>);
-// #endif
 
 } // namespace lf
 
