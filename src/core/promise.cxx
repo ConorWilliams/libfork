@@ -234,11 +234,8 @@ struct mixin_frame {
   template <typename Self>
     requires (!std::is_const_v<Self>)
   [[nodiscard]]
-  constexpr auto handle(this Self &self) LF_HOF(coro<Self>::from_promise(self))
-
-  [[nodiscard]]
-  constexpr auto get_frame(this auto &&self)
-      LF_HOF(LF_FWD(self).frame)
+  constexpr auto handle(this Self &self)
+      LF_HOF(coro<Self>::from_promise(self))
 
   // === Called by the compiler === //
 
