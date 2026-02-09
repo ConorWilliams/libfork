@@ -7,6 +7,9 @@ import :concepts;
 
 namespace lf {
 
+/**
+ * @brief A worker context polymorphic in push/pop.
+ */
 export template <stack_allocator Alloc>
 class polymorphic_context {
  public:
@@ -18,8 +21,6 @@ class polymorphic_context {
  private:
   Alloc m_allocator;
 };
-
-// static_assert(context<polymorphic_context>);
 
 export template <worker_context Context>
 constinit inline thread_local Context *thread_context = nullptr;

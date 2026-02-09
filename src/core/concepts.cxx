@@ -63,18 +63,28 @@ concept stack_allocator = std::is_object_v<T> && requires (T alloc, std::size_t 
   { alloc.switch_to(constify(alloc.checkpoint())) } noexcept -> std::same_as<void>;
 };
 
+/**
+ * @brief Fetch the checkpoint type of a stack allocator `T`.
+ */
 template <stack_allocator T>
 using checkpoint_t = decltype(std::declval<T &>().checkpoint());
 
 // ==== Context
 
-// TODO: impl in frame + assert that it is lock-free etc
 export template <typename T>
 class frame_handle;
 
 template <typename T>
 concept ref_to_stack_allocator = std::is_lvalue_reference_v<T> && stack_allocator<std::remove_reference_t<T>>;
 
+/**
+ * @brief Defines the API for a libfork compatible worker context.
+ *
+ * This requires that `T` is an object type and supports the following operations:
+ *
+ * - Push/pop a frame handle onto the context in a LIFO manner.
+ * - Have a `stack_allocator` that can be accessed via `alloc()`.
+ */
 export template <typename T>
 concept worker_context = std::is_object_v<T> && requires (T ctx, frame_handle<T> handle) {
   { ctx.alloc() } noexcept -> ref_to_stack_allocator;
@@ -82,6 +92,9 @@ concept worker_context = std::is_object_v<T> && requires (T ctx, frame_handle<T>
   { ctx.pop() } noexcept -> std::same_as<frame_handle<T>>;
 };
 
+/**
+ * @brief Fetch the allocator type of a worker context `T`.
+ */
 template <worker_context T>
 using allocator_t = std::remove_reference_t<decltype(std::declval<T &>().alloc())>;
 
