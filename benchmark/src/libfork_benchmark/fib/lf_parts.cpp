@@ -90,34 +90,35 @@ constexpr auto await = [](this auto fib, std::int64_t *ret, std::int64_t n) -> l
   *ret = lhs + rhs;
 };
 
-// constexpr auto ret = [](this auto fib, std::int64_t n) -> lf::task<std::int64_t, tls_bump> {
-//   if (n < 2) {
-//     co_return n;
-//   }
-//
-//   std::int64_t lhs = 0;
-//   std::int64_t rhs = 0;
-//
-//   co_await lf::call(&lhs, fib, n - 1);
-//   co_await lf::call(&rhs, fib, n - 2);
-//
-//   co_return lhs + rhs;
-// };
-//
-// template <typename Ctx, typename A = tls_bump>
-// constexpr auto fork_call = [](this auto fib, std::int64_t n) -> lf::task<std::int64_t, A, Ctx> {
-//   if (n < 2) {
-//     co_return n;
-//   }
-//
-//   std::int64_t lhs = 0;
-//   std::int64_t rhs = 0;
-//
-//   co_await lf::fork(&rhs, fib, n - 2);
-//   co_await lf::call(&lhs, fib, n - 1);
-//
-//   co_return lhs + rhs;
-// };
+template <lf::worker_context T>
+constexpr auto ret = [](this auto fib, std::int64_t n) -> lf::task<std::int64_t, T> {
+  if (n < 2) {
+    co_return n;
+  }
+
+  std::int64_t lhs = 0;
+  std::int64_t rhs = 0;
+
+  co_await lf::call(&lhs, fib, n - 1);
+  co_await lf::call(&rhs, fib, n - 2);
+
+  co_return lhs + rhs;
+};
+
+template <typename T>
+constexpr auto fork_call = [](this auto fib, std::int64_t n) -> lf::task<std::int64_t, T> {
+  if (n < 2) {
+    co_return n;
+  }
+
+  std::int64_t lhs = 0;
+  std::int64_t rhs = 0;
+
+  co_await lf::fork(&rhs, fib, n - 2);
+  co_await lf::call(&lhs, fib, n - 1);
+
+  co_return lhs + rhs;
+};
 
 using global_alloc = vector_ctx<global_allocator>;
 using linear_alloc = vector_ctx<linear_allocator>;
@@ -138,18 +139,16 @@ void fib(benchmark::State &state) {
     benchmark::DoNotOptimize(n);
     std::int64_t result = 0;
 
-    // if constexpr (requires { Fn(root_arg, &result, n); }) {
-    auto task = Fn(&result, n);
-    task.promise->frame.kind = lf::category::root;
-    task.promise->handle().resume();
-    // }
-
-    // else {
-    //   auto task = Fn(n);
-    //   task.promise->frame.kind = lf::category::root;
-    //   task.promise->return_address = &result;
-    //   task.promise->handle().resume();
-    // }
+    if constexpr (requires { Fn(&result, n); }) {
+      auto task = Fn(&result, n);
+      task.promise->frame.kind = lf::category::root;
+      task.promise->handle().resume();
+    } else {
+      auto task = Fn(n);
+      task.promise->frame.kind = lf::category::root;
+      task.promise->return_address = &result;
+      task.promise->handle().resume();
+    }
 
     CHECK_RESULT(result, expect);
     benchmark::DoNotOptimize(result);
@@ -171,27 +170,23 @@ BENCHMARK(fib<no_await<linear_alloc>, linear_alloc>)->Name("base/libfork/fib/bum
 // TODO: no_await with segmented stack allocator?
 
 // Return by ref-arg, libfork call/call with co-await, uses new/delete for alloc
+BENCHMARK(fib<await<global_alloc>, global_alloc>)->Name("test/libfork/fib/heap/await")->Arg(fib_test);
+BENCHMARK(fib<await<global_alloc>, global_alloc>)->Name("base/libfork/fib/heap/await")->Arg(fib_base);
+
+// // Same as above but uses tls bump allocator
 BENCHMARK(fib<await<linear_alloc>, linear_alloc>)->Name("test/libfork/fib/bump/await")->Arg(fib_test);
 BENCHMARK(fib<await<linear_alloc>, linear_alloc>)->Name("base/libfork/fib/bump/await")->Arg(fib_base);
-//
-// // Same as above but uses tls bump allocator
-// BENCHMARK(fib<await<tls_bump>>)->Name("test/libfork/fib/tls_bump/await")->Arg(fib_test);
-// BENCHMARK(fib<await<tls_bump>>)->Name("base/libfork/fib/tls_bump/await")->Arg(fib_base);
-//
-// // Same as above but with global bump allocator
-// BENCHMARK(fib<await<global_bump>>)->Name("test/libfork/fib/global_bump/await")->Arg(fib_test);
-// BENCHMARK(fib<await<global_bump>>)->Name("base/libfork/fib/global_bump/await")->Arg(fib_base);
-//
-// // Return by value
-// // libfork call/call with co-await
-// BENCHMARK(fib<ret>)->Name("test/libfork/fib/tls_bump/return")->Arg(fib_test);
-// BENCHMARK(fib<ret>)->Name("base/libfork/fib/tls_bump/return")->Arg(fib_base);
-//
-// // Return by value
-// // libfork call/fork (no join)
-// // Non-polymorphic vector-backed context
-// BENCHMARK(fib<fork_call<vector_ctx>>)->Name("test/libfork/fib/vector_ctx")->Arg(fib_test);
-// BENCHMARK(fib<fork_call<vector_ctx>>)->Name("base/libfork/fib/vector_ctx")->Arg(fib_base);
-//
+
+// Return by value
+// libfork call/call with co-await
+BENCHMARK(fib<ret<linear_alloc>, linear_alloc>)->Name("test/libfork/fib/bump/return")->Arg(fib_test);
+BENCHMARK(fib<ret<linear_alloc>, linear_alloc>)->Name("base/libfork/fib/bump/return")->Arg(fib_base);
+
+// Return by value
+// libfork call/fork (no join)
+// Non-polymorphic vector-backed context
+BENCHMARK(fib<fork_call<linear_alloc>, linear_alloc>)->Name("test/libfork/fib/vector_ctx")->Arg(fib_test);
+BENCHMARK(fib<fork_call<linear_alloc>, linear_alloc>)->Name("base/libfork/fib/vector_ctx")->Arg(fib_base);
+
 // BENCHMARK(fib<fork_call<lf::polymorphic_context>>)->Name("test/libfork/fib/poly_vector_ctx")->Arg(fib_test);
 // BENCHMARK(fib<fork_call<lf::polymorphic_context>>)->Name("base/libfork/fib/poly_vector_ctx")->Arg(fib_base);
