@@ -66,7 +66,7 @@ class frame_handle {
   explicit operator bool() const noexcept { return m_ptr != nullptr; }
 
   // private:
-  frame_type<T> *m_ptr;
+  frame_type<T> *m_ptr = nullptr;
 };
 
 // =================== First arg =================== //
