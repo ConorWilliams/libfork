@@ -266,7 +266,7 @@ struct mixin_frame {
 
   template <category Cat, typename R, typename Fn, typename... Args>
   static constexpr auto transform(pkg<R, Fn, Args...> &&pkg) noexcept -> frame_type<Context> * {
-    try {
+    LF_TRY {
       task child = std::move(pkg.args).apply(std::move(pkg.fn));
 
       LF_ASSUME(child.promise);
@@ -276,10 +276,8 @@ struct mixin_frame {
       }
 
       return &child.promise->frame;
-    } catch (...) {
-
+    } LF_CATCH_ALL {
       // TODO: stash exception
-
       return nullptr;
     }
   }
