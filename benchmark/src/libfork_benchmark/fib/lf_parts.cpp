@@ -1,5 +1,6 @@
 #include <coroutine>
 #include <cstddef>
+#include <new>
 
 #include <benchmark/benchmark.h>
 
