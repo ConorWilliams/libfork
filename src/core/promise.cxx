@@ -9,10 +9,8 @@ export module libfork.core:promise;
 import std;
 
 import :concepts;
-import :constants;
 import :frame;
 import :utility;
-import :tuple;
 
 import :context;
 import :ops;
@@ -24,7 +22,7 @@ using coro = std::coroutine_handle<T>;
 
 // =============== Forward-decl =============== //
 
-template <returnable T, alloc_mixin Stack, context Context = polymorphic_context>
+export template <returnable T, worker_context Context>
 struct promise_type;
 
 // =============== Task =============== //
@@ -45,18 +43,24 @@ struct promise_type;
  *
  * \endrst
  */
-export template <returnable T, alloc_mixin Stack, typename Context = polymorphic_context>
-struct task : immovable, std::type_identity<T> {
-  promise_type<T, Stack, Context> *promise;
+export template <returnable T, worker_context Context>
+struct task : immovable {
+
+  // TODO: public private split here and elsewhere
+
+  using value_type = T;
+  using context_type = Context;
+
+  promise_type<T, Context> *promise;
 };
 
 // =============== Final =============== //
 
-template <context Context>
+template <worker_context Context>
 [[nodiscard]]
-constexpr auto final_suspend(frame_type *frame) noexcept -> coro<> {
+constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
 
-  defer _ = [frame]() noexcept -> void {
+  defer _ = [frame] noexcept -> void {
     frame->handle().destroy();
   };
 
@@ -71,15 +75,13 @@ constexpr auto final_suspend(frame_type *frame) noexcept -> coro<> {
     default:
       LF_ASSUME(false);
   }
+  auto *context = not_null(thread_context<Context>);
+  auto *parent = not_null(frame->parent);
 
-  context auto *ctx = not_null(thread_context<Context>);
-
-  frame_type *parent = not_null(frame->parent);
-
-  if (frame_type *last_push = ctx->pop().frame) {
+  if (frame_handle last_pushed = context->pop()) {
     // No-one stole continuation, we are the exclusive owner of parent, so we
     // just keep ripping!
-    LF_ASSUME(last_push == parent);
+    LF_ASSUME(last_pushed.m_ptr == parent);
     // If no-one stole the parent then this child can also never have been
     // stolen. Hence, this must be the same thread that created the parent so
     // it already owns the stack. No steals have occurred so we do not need to
@@ -170,20 +172,21 @@ constexpr auto final_suspend(frame_type *frame) noexcept -> coro<> {
 }
 
 struct final_awaitable : std::suspend_always {
-  template <typename T, alloc_mixin S, typename Context>
-  constexpr static auto await_suspend(coro<promise_type<T, S, Context>> handle) noexcept -> coro<> {
+  template <returnable T, worker_context Context>
+  constexpr static auto await_suspend(coro<promise_type<T, Context>> handle) noexcept -> coro<> {
     return final_suspend<Context>(&handle.promise().frame);
   }
 };
 
 // =============== Call =============== //
 
+template <worker_context Context>
 struct call_awaitable : std::suspend_always {
 
-  frame_type *child;
+  frame_type<Context> *child;
 
-  template <typename... Us>
-  auto await_suspend(this auto self, coro<promise_type<Us...>> parent) noexcept -> coro<> {
+  template <returnable T>
+  auto await_suspend(this auto self, coro<promise_type<T, Context>> parent) noexcept -> coro<> {
     // Connect child to parent
     not_null(self.child)->parent = &parent.promise().frame;
 
@@ -193,12 +196,13 @@ struct call_awaitable : std::suspend_always {
 
 // =============== Fork =============== //
 
+template <worker_context Context>
 struct fork_awaitable : std::suspend_always {
 
-  frame_type *child;
+  frame_type<Context> *child;
 
-  template <typename T, alloc_mixin S, typename Context>
-  auto await_suspend(this auto self, coro<promise_type<T, S, Context>> parent) noexcept -> coro<> {
+  template <typename T>
+  auto await_suspend(this auto self, coro<promise_type<T, Context>> parent) noexcept -> coro<> {
 
     // It is critical to pass self by-value here, after the call to push()
     // the object may be destroyed, if passing by ref it would be use
@@ -209,7 +213,7 @@ struct fork_awaitable : std::suspend_always {
     not_null(self.child)->parent = &parent.promise().frame;
 
     LF_TRY {
-      not_null(thread_context<Context>)->push(work_handle{.frame = &parent.promise().frame});
+      not_null(thread_context<Context>)->push(frame_handle<Context>{key, &parent.promise().frame});
     } LF_CATCH_ALL {
       self.child->handle().destroy();
       // TODO: stash in parent frame (should not throw)
@@ -222,6 +226,7 @@ struct fork_awaitable : std::suspend_always {
 
 // =============== Frame mixin =============== //
 
+template <worker_context Context>
 struct mixin_frame {
 
   // === For internal use === //
@@ -229,21 +234,32 @@ struct mixin_frame {
   template <typename Self>
     requires (!std::is_const_v<Self>)
   [[nodiscard]]
-  constexpr auto handle(this Self &self) LF_HOF(coro<Self>::from_promise(self))
-
-  [[nodiscard]]
-  constexpr auto get_frame(this auto &&self)
-      LF_HOF(LF_FWD(self).frame)
+  constexpr auto handle(this Self &self)
+      LF_HOF(coro<Self>::from_promise(self))
 
   // === Called by the compiler === //
 
+  // --- Allocation
+
+  static auto operator new(std::size_t sz) -> void * {
+    return not_null(thread_context<Context>)->alloc().push(sz);
+  }
+
+  static auto operator delete(void *p, std::size_t sz) noexcept -> void {
+    not_null(thread_context<Context>)->alloc().pop(p, sz);
+  }
+
+  // --- Await transformations
+
   template <typename R, typename Fn, typename... Args>
-  constexpr static auto await_transform(call_pkg<R, Fn, Args...> &&pkg) noexcept -> call_awaitable {
+  static constexpr auto await_transform(call_pkg<R, Fn, Args...> &&pkg) noexcept -> call_awaitable<Context> {
 
     task child = std::move(pkg.args).apply(std::move(pkg.fn));
 
     // ::call is the default value
     LF_ASSUME(child.promise->frame.kind == category::call);
+
+    child.promise->frame.stack_ckpt = not_null(thread_context<Context>)->alloc().checkpoint();
 
     if constexpr (!std::is_void_v<R>) {
       child.promise->return_address = pkg.return_address;
@@ -253,11 +269,13 @@ struct mixin_frame {
   }
 
   template <typename R, typename Fn, typename... Args>
-  constexpr static auto await_transform(fork_pkg<R, Fn, Args...> &&pkg) noexcept -> fork_awaitable {
+  constexpr static auto await_transform(fork_pkg<R, Fn, Args...> &&pkg) noexcept -> fork_awaitable<Context> {
 
     task child = std::move(pkg.args).apply(std::move(pkg.fn));
 
     child.promise->frame.kind = category::fork;
+
+    child.promise->frame.stack_ckpt = not_null(thread_context<Context>)->alloc().checkpoint();
 
     if constexpr (!std::is_void_v<R>) {
       child.promise->return_address = pkg.return_address;
@@ -273,42 +291,27 @@ struct mixin_frame {
   constexpr static void unhandled_exception() noexcept { std::terminate(); }
 };
 
-static_assert(std::is_empty_v<mixin_frame>);
-
 // =============== Promise (void) =============== //
 
-template <alloc_mixin Stack, context Context>
-struct promise_type<void, Stack, Context> : Stack, mixin_frame {
+template <worker_context Context>
+struct promise_type<void, Context> : mixin_frame<Context> {
 
-  frame_type frame;
+  frame_type<Context> frame;
 
-  constexpr auto get_return_object() noexcept -> task<void, Stack, Context> { return {.promise = this}; }
+  constexpr auto get_return_object() noexcept -> task<void, Context> { return {.promise = this}; }
 
   constexpr static void return_void() noexcept {}
 };
 
-struct dummy_alloc {
-  static auto operator new(std::size_t) -> void *;
-  static auto operator delete(void *, std::size_t) noexcept -> void;
-};
-
-static_assert(alignof(promise_type<void, dummy_alloc>) == alignof(frame_type));
-
-#ifdef __cpp_lib_is_pointer_interconvertible
-static_assert(std::is_pointer_interconvertible_with_class(&promise_type<void, dummy_alloc>::frame));
-#else
-static_assert(std::is_standard_layout_v<promise_type<void, dummy_alloc>>);
-#endif
-
 // =============== Promise (non-void) =============== //
 
-template <returnable T, alloc_mixin Stack, context Context>
-struct promise_type : Stack, mixin_frame {
+template <returnable T, worker_context Context>
+struct promise_type : mixin_frame<Context> {
 
-  frame_type frame;
+  frame_type<Context> frame;
   T *return_address;
 
-  constexpr auto get_return_object() noexcept -> task<T, Stack, Context> { return {.promise = this}; }
+  constexpr auto get_return_object() noexcept -> task<T, Context> { return {.promise = this}; }
 
   template <typename U = T>
     requires std::assignable_from<T &, U &&>
@@ -316,14 +319,6 @@ struct promise_type : Stack, mixin_frame {
     *return_address = LF_FWD(value);
   }
 };
-
-static_assert(alignof(promise_type<int, dummy_alloc>) == alignof(frame_type));
-
-#ifdef __cpp_lib_is_pointer_interconvertible
-static_assert(std::is_pointer_interconvertible_with_class(&promise_type<int, dummy_alloc>::frame));
-#else
-static_assert(std::is_standard_layout_v<promise_type<int, dummy_alloc>>);
-#endif
 
 } // namespace lf
 

@@ -3,32 +3,31 @@ export module libfork.core:context;
 
 import std;
 
-import :frame;
+import :concepts;
 
 namespace lf {
 
-// TODO: private bits / split
-export struct work_handle {
-  frame_type *frame;
-};
+/**
+ * @brief A worker context polymorphic in push/pop.
+ */
+export template <stack_allocator Alloc>
+class polymorphic_context {
+ public:
+  constexpr polymorphic_context() = default;
 
-static_assert(std::atomic<work_handle>::is_always_lock_free);
+  explicit constexpr polymorphic_context(Alloc alloc) noexcept(std::is_nothrow_move_constructible_v<Alloc>)
+      : m_allocator(std::move(alloc)) {}
 
-template <typename T>
-concept context = requires (T &ctx, work_handle h) {
-  { ctx.push(h) } -> std::same_as<void>;
-  { ctx.pop() } noexcept -> std::same_as<work_handle>;
-};
-
-export struct polymorphic_context {
-  virtual void push(work_handle h) = 0;
-  virtual auto pop() noexcept -> work_handle = 0;
+  auto alloc() noexcept -> Alloc & { return m_allocator; }
+  virtual void push(frame_handle<polymorphic_context>) = 0;
+  virtual auto pop() noexcept -> frame_handle<polymorphic_context> = 0;
   virtual ~polymorphic_context() = default;
+
+ private:
+  Alloc m_allocator;
 };
 
-static_assert(context<polymorphic_context>);
-
-export template <typename Context>
+export template <worker_context Context>
 constinit inline thread_local Context *thread_context = nullptr;
 
 } // namespace lf

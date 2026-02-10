@@ -59,32 +59,41 @@ struct tls_bump {
   }
 };
 
-constinit inline std::byte *bump_ptr = nullptr;
-
-struct global_bump {
-
-  static auto operator new(std::size_t sz) -> void * {
-    auto *prev = bump_ptr;
-    bump_ptr += fib_align_size(sz);
-    return prev;
-  }
-
-  static auto operator delete(void *p, [[maybe_unused]] std::size_t sz) noexcept -> void {
-    bump_ptr = std::bit_cast<std::byte *>(p);
-  }
-};
-
 // === Shared Context Logic ===
 
-struct vector_ctx final : lf::polymorphic_context {
+template <lf::stack_allocator Alloc>
+struct vector_ctx {
 
-  std::vector<lf::work_handle> work;
+  using handle_type = lf::frame_handle<vector_ctx>;
+
+  std::vector<handle_type> work;
+  Alloc allocator;
 
   vector_ctx() { work.reserve(1024); }
 
-  void push(lf::work_handle handle) override { work.push_back(handle); }
+  auto alloc() noexcept -> Alloc & { return allocator; }
 
-  auto pop() noexcept -> lf::work_handle override {
+  void push(handle_type handle) { work.push_back(handle); }
+
+  auto pop() noexcept -> handle_type {
+    auto handle = work.back();
+    work.pop_back();
+    return handle;
+  }
+};
+
+template <lf::stack_allocator Alloc>
+struct poly_vector_ctx final : lf::polymorphic_context<Alloc> {
+
+  using handle_type = lf::frame_handle<lf::polymorphic_context<Alloc>>;
+
+  std::vector<handle_type> work;
+
+  poly_vector_ctx() { work.reserve(1024); }
+
+  void push(handle_type handle) override { work.push_back(handle); }
+
+  auto pop() noexcept -> handle_type override {
     auto handle = work.back();
     work.pop_back();
     return handle;

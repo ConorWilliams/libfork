@@ -84,7 +84,7 @@ export struct move_only {
  *
  *    auto * ptr = c_api_init();
  *
- *    defer _ = [&ptr] () noexcept {
+ *    defer _ = [&ptr] noexcept {
  *      c_api_clean_up(ptr);
  *    };
  *
@@ -92,7 +92,7 @@ export struct move_only {
  *
  * \endrst
  */
-template <class F>
+export template <class F>
   requires std::is_nothrow_invocable_v<F>
 class [[nodiscard("Defer will execute unless bound to a name!")]] defer : immovable {
  public:
