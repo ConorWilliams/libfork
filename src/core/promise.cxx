@@ -60,7 +60,7 @@ template <worker_context Context>
 [[nodiscard]]
 constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
 
-  defer _ = [frame]() noexcept -> void {
+  defer _ = [frame] noexcept -> void {
     frame->handle().destroy();
   };
 

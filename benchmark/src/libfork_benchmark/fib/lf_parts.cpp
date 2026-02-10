@@ -127,6 +127,10 @@ void fib(benchmark::State &state) {
 
   lf::thread_context<U> = static_cast<U *>(&context);
 
+  lf::defer _ = [] static noexcept {
+    lf::thread_context<U> = nullptr;
+  };
+
   for (auto _ : state) {
     benchmark::DoNotOptimize(n);
     std::int64_t result = 0;
