@@ -2,6 +2,7 @@ module;
 #include <version>
 
 #include "libfork/__impl/assume.hpp"
+#include "libfork/__impl/compiler.hpp"
 #include "libfork/__impl/exception.hpp"
 #include "libfork/__impl/utils.hpp"
 export module libfork.core:promise;
@@ -178,34 +179,10 @@ struct final_awaitable : std::suspend_always {
   }
 };
 
-// =============== Call =============== //
+// =============== Fork/Call =============== //
 
-template <worker_context Context>
-struct call_awaitable : std::suspend_always {
-
-  frame_type<Context> *child;
-
-  template <returnable T>
-  auto await_suspend(this auto self, coro<promise_type<T, Context>> parent) noexcept -> coro<> {
-
-    if (!self.child) [[unlikely]] {
-      // Noop if an exception was thrown
-      return parent;
-    }
-
-    // Connect child to parent
-    self.child->parent = &parent.promise().frame;
-    self.child->kind = category::call;
-    self.child->stack_ckpt = not_null(thread_context<Context>)->alloc().checkpoint();
-
-    return self.child->handle();
-  }
-};
-
-// =============== Fork =============== //
-
-template <worker_context Context>
-struct fork_awaitable : std::suspend_always {
+template <category Cat, worker_context Context>
+struct awaitable : std::suspend_always {
 
   frame_type<Context> *child;
 
@@ -218,7 +195,7 @@ struct fork_awaitable : std::suspend_always {
     }
 
     self.child->parent = &parent.promise().frame;
-    self.child->kind = category::fork;
+    self.child->kind = Cat;
     self.child->stack_ckpt = not_null(thread_context<Context>)->alloc().checkpoint();
 
     // It is critical to pass self by-value here, after the call to push() the
@@ -226,12 +203,14 @@ struct fork_awaitable : std::suspend_always {
     // use-after-free to then access self in the following line to fetch the
     // handle.
 
-    LF_TRY {
-      not_null(thread_context<Context>)->push(frame_handle<Context>{key, &parent.promise().frame});
-    } LF_CATCH_ALL {
-      self.child->handle().destroy();
-      // TODO: stash in parent frame (should not throw)
-      LF_RETHROW;
+    if constexpr (Cat == category::fork) {
+      LF_TRY {
+        not_null(thread_context<Context>)->push(frame_handle<Context>{key, &parent.promise().frame});
+      } LF_CATCH_ALL {
+        self.child->handle().destroy();
+        // TODO: stash in parent frame (should not throw)
+        LF_RETHROW;
+      }
     }
 
     return self.child->handle();
@@ -285,12 +264,14 @@ struct mixin_frame {
   }
 
   template <typename R, typename Fn, typename... Args>
-  constexpr static auto await_transform(call_pkg<R, Fn, Args...> &&pkg) noexcept -> call_awaitable<Context> {
+  constexpr static auto
+  await_transform(call_pkg<R, Fn, Args...> &&pkg) noexcept -> awaitable<category::call, Context> {
     return {.child = transform<category::call>(std::move(pkg))};
   }
 
   template <typename R, typename Fn, typename... Args>
-  constexpr static auto await_transform(fork_pkg<R, Fn, Args...> &&pkg) noexcept -> fork_awaitable<Context> {
+  constexpr static auto
+  await_transform(fork_pkg<R, Fn, Args...> &&pkg) noexcept -> awaitable<category::fork, Context> {
     return {.child = transform<category::fork>(std::move(pkg))};
   }
 
