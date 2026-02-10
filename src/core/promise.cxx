@@ -217,13 +217,14 @@ struct fork_awaitable : std::suspend_always {
       return parent;
     }
 
-    // It is critical to pass self by-value here, after the call to push()
-    // the object may be destroyed, if passing by ref it would be use
-    // after-free to then access self
-
     self.child->parent = &parent.promise().frame;
     self.child->kind = category::fork;
     self.child->stack_ckpt = not_null(thread_context<Context>)->alloc().checkpoint();
+
+    // It is critical to pass self by-value here, after the call to push() the
+    // object `*this` may be destroyed, if passing by ref it would be
+    // use-after-free to then access self in the following line to fetch the
+    // handle.
 
     LF_TRY {
       not_null(thread_context<Context>)->push(frame_handle<Context>{key, &parent.promise().frame});
@@ -265,6 +266,7 @@ struct mixin_frame {
   // --- Await transformations
 
   template <category Cat, typename R, typename Fn, typename... Args>
+  [[nodiscard]]
   static constexpr auto transform(pkg<R, Fn, Args...> &&pkg) noexcept -> frame_type<Context> * {
     LF_TRY {
       task child = std::move(pkg.args).apply(std::move(pkg.fn));
@@ -283,7 +285,7 @@ struct mixin_frame {
   }
 
   template <typename R, typename Fn, typename... Args>
-  static constexpr auto await_transform(call_pkg<R, Fn, Args...> &&pkg) noexcept -> call_awaitable<Context> {
+  constexpr static auto await_transform(call_pkg<R, Fn, Args...> &&pkg) noexcept -> call_awaitable<Context> {
     return {.child = transform<category::call>(std::move(pkg))};
   }
 
