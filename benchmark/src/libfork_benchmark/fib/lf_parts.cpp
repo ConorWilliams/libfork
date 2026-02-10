@@ -26,7 +26,7 @@ static_assert(lf::stack_allocator<global_allocator>);
 
 struct linear_allocator {
 
-  std::unique_ptr<std::byte[]> data = std::make_unique<std::byte[]>(1024 * 1024 * 1024);
+  std::unique_ptr<std::byte[]> data = std::make_unique<std::byte[]>(1024 * 1024);
   std::byte *ptr = data.get();
 
   constexpr auto push(std::size_t sz) -> void * {
