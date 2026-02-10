@@ -35,9 +35,7 @@ concept returnable = std::is_void_v<T> || std::movable<T>;
 
 template <typename T>
   requires std::is_object_v<T>
-consteval auto constify(T &&x) noexcept -> std::add_const_t<T> & {
-  return x;
-}
+consteval auto constify(T &&x) noexcept -> std::add_const_t<T> &;
 
 /**
  * @brief Defines the API for a libfork compatible stack allocator.
