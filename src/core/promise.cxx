@@ -187,8 +187,16 @@ struct call_awaitable : std::suspend_always {
 
   template <returnable T>
   auto await_suspend(this auto self, coro<promise_type<T, Context>> parent) noexcept -> coro<> {
+
+    if (!self.child) [[unlikely]] {
+      // Noop if an exception was thrown
+      return parent;
+    }
+
     // Connect child to parent
-    not_null(self.child)->parent = &parent.promise().frame;
+    self.child->parent = &parent.promise().frame;
+    self.child->kind = category::call;
+    self.child->stack_ckpt = not_null(thread_context<Context>)->alloc().checkpoint();
 
     return self.child->handle();
   }
@@ -204,11 +212,18 @@ struct fork_awaitable : std::suspend_always {
   template <typename T>
   auto await_suspend(this auto self, coro<promise_type<T, Context>> parent) noexcept -> coro<> {
 
+    if (!self.child) [[unlikely]] {
+      // Noop if an exception was thrown
+      return parent;
+    }
+
     // It is critical to pass self by-value here, after the call to push()
     // the object may be destroyed, if passing by ref it would be use
     // after-free to then access self
 
-    not_null(self.child)->parent = &parent.promise().frame;
+    self.child->parent = &parent.promise().frame;
+    self.child->kind = category::fork;
+    self.child->stack_ckpt = not_null(thread_context<Context>)->alloc().checkpoint();
 
     LF_TRY {
       not_null(thread_context<Context>)->push(frame_handle<Context>{key, &parent.promise().frame});
@@ -249,37 +264,34 @@ struct mixin_frame {
 
   // --- Await transformations
 
+  template <category Cat, typename R, typename Fn, typename... Args>
+  static constexpr auto transform(pkg<R, Fn, Args...> &&pkg) noexcept -> frame_type<Context> * {
+    try {
+      task child = std::move(pkg.args).apply(std::move(pkg.fn));
+
+      LF_ASSUME(child.promise);
+
+      if constexpr (!std::is_void_v<R>) {
+        child.promise->return_address = pkg.return_address;
+      }
+
+      return &child.promise->frame;
+    } catch (...) {
+
+      // TODO: stash exception
+
+      return nullptr;
+    }
+  }
+
   template <typename R, typename Fn, typename... Args>
   static constexpr auto await_transform(call_pkg<R, Fn, Args...> &&pkg) noexcept -> call_awaitable<Context> {
-
-    task child = std::move(pkg.args).apply(std::move(pkg.fn));
-
-    // ::call is the default value
-    LF_ASSUME(child.promise->frame.kind == category::call);
-
-    child.promise->frame.stack_ckpt = not_null(thread_context<Context>)->alloc().checkpoint();
-
-    if constexpr (!std::is_void_v<R>) {
-      child.promise->return_address = pkg.return_address;
-    }
-
-    return {.child = &child.promise->frame};
+    return {.child = transform<category::call>(std::move(pkg))};
   }
 
   template <typename R, typename Fn, typename... Args>
   constexpr static auto await_transform(fork_pkg<R, Fn, Args...> &&pkg) noexcept -> fork_awaitable<Context> {
-
-    task child = std::move(pkg.args).apply(std::move(pkg.fn));
-
-    child.promise->frame.kind = category::fork;
-
-    child.promise->frame.stack_ckpt = not_null(thread_context<Context>)->alloc().checkpoint();
-
-    if constexpr (!std::is_void_v<R>) {
-      child.promise->return_address = pkg.return_address;
-    }
-
-    return {.child = &child.promise->frame};
+    return {.child = transform<category::fork>(std::move(pkg))};
   }
 
   constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
