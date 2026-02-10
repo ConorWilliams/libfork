@@ -96,8 +96,8 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
    * An owner is a worker who:
    *
    * - Created the task.
-   * - Had the task submitted to them.
-   * - Won the task at a join.
+   * - OR had the task submitted to them.
+   * - OR won the task at a join.
    *
    * An owner of a task owns the stack the task is on.
    *
@@ -207,8 +207,6 @@ struct fork_awaitable : std::suspend_always {
     // It is critical to pass self by-value here, after the call to push()
     // the object may be destroyed, if passing by ref it would be use
     // after-free to then access self
-
-    // TODO: destroy on child if cannot launch i.e. scheduling failure
 
     not_null(self.child)->parent = &parent.promise().frame;
 
