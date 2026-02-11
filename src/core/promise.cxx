@@ -195,8 +195,9 @@ struct awaitable : std::suspend_always {
     }
 
     self.child->parent = &parent.promise().frame;
-    self.child->kind = Cat;
+    self.child->cancel = parent.promise().frame.cancel;
     self.child->stack_ckpt = not_null(thread_context<Context>)->alloc().checkpoint();
+    self.child->kind = Cat;
 
     // It is critical to pass self by-value here, after the call to push() the
     // object `*this` may be destroyed, if passing by ref it would be
