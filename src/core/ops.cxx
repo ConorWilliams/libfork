@@ -27,6 +27,9 @@ struct pkg<void, Fn, Args...> : immovable {
 
 // clang-format on
 
+// TODO: consider a prelude namespace for these ops + task
+// TODO: consider neibloids to block ADL
+
 // ======== Fork ======== //
 
 template <typename R, typename Fn, typename... Args>
@@ -55,5 +58,11 @@ export template <typename R, typename... Args, async_invocable_to<R, Args...> Fn
 constexpr auto call(R *ret, Fn &&fn, Args &&...args) noexcept -> call_pkg<R, Fn, Args &&...> {
   return {{.return_address = ret, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}}};
 }
+
+// =============== Join =============== //
+
+struct [[nodiscard("You should immediately co_await this!")]] join_type {};
+
+export constexpr auto join() noexcept -> join_type { return {}; }
 
 } // namespace lf
