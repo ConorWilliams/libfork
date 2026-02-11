@@ -186,6 +186,8 @@ struct awaitable : std::suspend_always {
 
   frame_type<Context> *child;
 
+  // TODO: optional cancelation token
+
   template <typename T>
   constexpr auto await_suspend(this auto self, coro<promise_type<T, Context>> parent) noexcept -> coro<> {
 
@@ -194,17 +196,20 @@ struct awaitable : std::suspend_always {
       return parent;
     }
 
+    // TODO: handle cancellation
+
+    // Propagate parent->child relationships
     self.child->parent = &parent.promise().frame;
     self.child->cancel = parent.promise().frame.cancel;
     self.child->stack_ckpt = not_null(thread_context<Context>)->alloc().checkpoint();
     self.child->kind = Cat;
 
-    // It is critical to pass self by-value here, after the call to push() the
-    // object `*this` may be destroyed, if passing by ref it would be
-    // use-after-free to then access self in the following line to fetch the
-    // handle.
-
     if constexpr (Cat == category::fork) {
+      // It is critical to pass self by-value here, after the call to push()
+      // the object `*this` may be destroyed, if passing by ref it would be
+      // use-after-free to then access self in the following line to fetch the
+      // handle.
+
       LF_TRY {
         not_null(thread_context<Context>)->push(frame_handle<Context>{key, &parent.promise().frame});
       } LF_CATCH_ALL {
