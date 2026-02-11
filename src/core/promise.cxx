@@ -187,7 +187,7 @@ struct awaitable : std::suspend_always {
   frame_type<Context> *child;
 
   template <typename T>
-  auto await_suspend(this auto self, coro<promise_type<T, Context>> parent) noexcept -> coro<> {
+  constexpr auto await_suspend(this auto self, coro<promise_type<T, Context>> parent) noexcept -> coro<> {
 
     if (!self.child) [[unlikely]] {
       // Noop if an exception was thrown
