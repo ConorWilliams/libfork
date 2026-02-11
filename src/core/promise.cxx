@@ -210,7 +210,7 @@ struct awaitable : std::suspend_always {
       } LF_CATCH_ALL {
         self.child->handle().destroy();
         // TODO: stash in parent frame (should not throw)
-        LF_RETHROW;
+        return parent;
       }
     }
 
