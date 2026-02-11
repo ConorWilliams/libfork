@@ -184,12 +184,15 @@ struct final_awaitable : std::suspend_always {
 template <category Cat, worker_context Context>
 struct awaitable : std::suspend_always {
 
+  using enum category;
+
   frame_type<Context> *child;
 
   // TODO: optional cancelation token
 
   template <typename T>
-  constexpr auto await_suspend(this auto self, coro<promise_type<T, Context>> parent) noexcept -> coro<> {
+  constexpr auto
+  await_suspend(this auto self, coro<promise_type<T, Context>> parent) noexcept(Cat == call) -> coro<> {
 
     if (!self.child) [[unlikely]] {
       // Noop if an exception was thrown
@@ -204,18 +207,17 @@ struct awaitable : std::suspend_always {
     self.child->stack_ckpt = not_null(thread_context<Context>)->alloc().checkpoint();
     self.child->kind = Cat;
 
-    if constexpr (Cat == category::fork) {
+    if constexpr (Cat == fork) {
       // It is critical to pass self by-value here, after the call to push()
       // the object `*this` may be destroyed, if passing by ref it would be
       // use-after-free to then access self in the following line to fetch the
       // handle.
-
       LF_TRY {
         not_null(thread_context<Context>)->push(frame_handle<Context>{key, &parent.promise().frame});
       } LF_CATCH_ALL {
         self.child->handle().destroy();
-        // TODO: stash in parent frame (should not throw)
-        return parent;
+        // TODO: stash in parent frame
+        LF_RETHROW;
       }
     }
 
@@ -285,7 +287,10 @@ struct mixin_frame {
 
   constexpr static auto final_suspend() noexcept -> final_awaitable { return {}; }
 
-  constexpr static void unhandled_exception() noexcept { std::terminate(); }
+  constexpr static void unhandled_exception() noexcept {
+    // TODO: stash exception in parent
+    std::terminate();
+  }
 };
 
 // =============== Promise (void) =============== //
