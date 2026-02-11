@@ -26,8 +26,8 @@ struct frame_type {
   using allocator_type = allocator_t<Context>;
   using checkpoint_type = checkpoint_t<allocator_type>;
 
-  frame_type *parent = nullptr;
-  cancellation *cancel = nullptr;
+  frame_type *parent;
+  cancellation *cancel;
   [[no_unique_address]]
   checkpoint_type stack_ckpt;
 
