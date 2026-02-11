@@ -31,13 +31,18 @@ struct frame_type {
   [[no_unique_address]]
   checkpoint_type stack_ckpt;
 
-  std::uint32_t merges = 0;       // Atomic is 32 bits for speed
-  std::uint16_t steals = 0;       // In debug do overflow checking
-  category kind = category::call; // Fork/Call/Just/Root
-  std::uint8_t exception_bit = 0; // Atomically set
+  ATOMIC_ALIGN(std::uint32_t) joins = 0;        // Atomic is 32 bits for speed
+  std::uint16_t steals = 0;                     // In debug do overflow checking
+  category kind = category::call;               // Fork/Call/Just/Root
+  ATOMIC_ALIGN(std::uint8_t) exception_bit = 0; // Atomically set
 
   [[nodiscard]]
   constexpr auto handle() LF_HOF(std::coroutine_handle<frame_type>::from_promise(*this))
+
+  [[nodiscard]]
+  constexpr auto atomic_fetch_sub_joins(std::uint32_t n, std::memory_order order) noexcept -> std::uint32_t {
+    return std::atomic_ref{joins}.fetch_sub(n, order);
+  }
 };
 
 // =================== Handle =================== //
