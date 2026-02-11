@@ -76,8 +76,10 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
     default:
       LF_ASSUME(false);
   }
-  auto *context = not_null(thread_context<Context>);
-  auto *parent = not_null(frame->parent);
+
+  Context *context = not_null(thread_context<Context>);
+
+  frame_type<Context> *parent = not_null(frame->parent);
 
   if (frame_handle last_pushed = context->pop()) {
     // No-one stole continuation, we are the exclusive owner of parent, so we
@@ -91,83 +93,60 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
     return parent->handle();
   }
 
-  LF_TERMINATE("oops");
+  // An owner is a worker who:
+  //
+  // - Created the task.
+  // - OR had the task submitted to them.
+  // - OR won the task at a join.
+  //
+  // An owner of a task owns the stack the task is on.
+  //
+  // As the worker who completed the child task this thread owns the stack the child task was on.
+  //
+  // Either:
+  //
+  // 1. The parent is on the same stack as the child.
+  // 2. The parent is on a different stack to the child.
+  //
+  // Case (1) implies: we owned the parent; forked the child task; then the parent was then stolen.
+  // Case (2) implies: we stole the parent task; then forked the child; then the parent was stolen.
+  //
+  // In case (2) the workers stack has no allocations on it.
 
-  /**
-   * An owner is a worker who:
-   *
-   * - Created the task.
-   * - OR had the task submitted to them.
-   * - OR won the task at a join.
-   *
-   * An owner of a task owns the stack the task is on.
-   *
-   * As the worker who completed the child task this thread owns the stack the child task was on.
-   *
-   * Either:
-   *
-   * 1. The parent is on the same stack as the child.
-   * 2. The parent is on a different stack to the child.
-   *
-   * Case (1) implies: we owned the parent; forked the child task; then the parent was then stolen.
-   * Case (2) implies: we stole the parent task; then forked the child; then the parent was stolen.
-   *
-   * In case (2) the workers stack has no allocations on it.
-   */
+  // As soon as we do the `fetch_sub` below the parent task is no longer safe
+  // to access as it may be resumed and then destroyed by another thread. Hence
+  // we must make copies on-the-stack of any data we maye need if we loose the
+  // join race.
+  auto const checkpoint = parent->stack_ckpt;
 
-  // LF_LOG("Task's parent was stolen");
-  //
-  // stack *tls_stack = tls::stack();
-  //
-  // stack::stacklet *p_stacklet = parent->stacklet(); //
-  // stack::stacklet *c_stacklet = tls_stack->top();   // Need to call while we own tls_stack.
-  //
-  // // Register with parent we have completed this child task, this may release ownership of our stack.
-  // if (parent->fetch_sub_joins(1, std::memory_order_release) == 1) {
-  //   // Acquire all writes before resuming.
-  //   std::atomic_thread_fence(std::memory_order_acquire);
-  //
-  //   // Parent has reached join and we are the last child task to complete.
-  //   // We are the exclusive owner of the parent therefore, we must continue parent.
-  //
-  //   LF_LOG("Task is last child to join, resumes parent");
-  //
-  //   if (p_stacklet != c_stacklet) {
-  //     // Case (2), the tls_stack has no allocations on it.
-  //
-  //     LF_ASSERT(tls_stack->empty());
-  //
-  //     // TODO: stack.splice()? Here the old stack is empty and thrown away, if it is larger
-  //     // then we could splice it onto the parents one? Or we could attempt to cache the old one.
-  //     *tls_stack = stack{p_stacklet};
-  //   }
-  //
-  //   // Must reset parents control block before resuming parent.
-  //   parent->reset();
-  //
-  //   return parent->self();
-  // }
-  //
-  // // We did not win the join-race, we cannot deference the parent pointer now as
-  // // the frame may now be freed by the winner.
-  //
-  // // Parent has not reached join or we are not the last child to complete.
-  // // We are now out of jobs, must yield to executor.
-  //
-  // LF_LOG("Task is not last to join");
-  //
-  // if (p_stacklet == c_stacklet) {
-  //   // We are unable to resume the parent and where its owner, as the resuming
-  //   // thread will take ownership of the parent's we must give it up.
-  //   LF_LOG("Thread releases control of parent's stack");
-  //
-  //   // If this throw an exception then the worker must die as it does not have a stack.
-  //   // Hence, program termination is appropriate.
-  //   ignore_t{} = tls_stack->release();
-  //
-  // } else {
-  //   // Case (2) the tls_stack has no allocations on it, it may be used later.
-  // }
+  // Register with parent we have completed this child task.
+  if (parent->atomic_fetch_sub_joins(1, std::memory_order_release) == 1) {
+    // Parent has reached join and we are the last child task to complete. We
+    // are the exclusive owner of the parent and therefore, we must continue
+    // parent. As we won the race, acquire all writes before resuming.
+    std::atomic_thread_fence(std::memory_order_acquire);
+
+    // In case of secnario (2) we must acquire the parent's stack.
+    context->alloc().acquire(checkpoint);
+
+    // Must reset parent's control block before resuming parent.
+    parent->reset();
+
+    return parent->handle();
+  }
+
+  // We did not win the join-race, we cannot deference the parent pointer now
+  // as the frame may now be freed by the winner. Parent has not reached join
+  // or we are not the last child to complete. We are now out of jobs, we must
+  // yield to the executor.
+
+  if (checkpoint == context->alloc().checkpoint()) {
+    // We were unable to resume the parent and we were its owner, as the
+    // resuming thread will take ownership of the parent's we must give it up.
+    context->alloc().release();
+  }
+
+  // Else, case (2), our stack has no allocations on it, it may be used later.
 
   return std::noop_coroutine();
 }
