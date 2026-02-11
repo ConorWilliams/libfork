@@ -5,6 +5,7 @@ export module libfork.core:frame;
 import std;
 
 import :concepts;
+import :constants;
 
 namespace lf {
 
@@ -28,13 +29,19 @@ struct frame_type {
 
   frame_type *parent;
   cancellation *cancel;
+
   [[no_unique_address]]
   checkpoint_type stack_ckpt;
 
   ATOMIC_ALIGN(std::uint32_t) joins = 0;        // Atomic is 32 bits for speed
   std::uint16_t steals = 0;                     // In debug do overflow checking
-  category kind = category::call;               // Fork/Call/Just/Root
+  category kind = static_cast<category>(0);     // Fork/Call/Just/Root
   ATOMIC_ALIGN(std::uint8_t) exception_bit = 0; // Atomically set
+
+  // Explicitly post construction, this allows the compiler to emit a single
+  // instruction for the zero init then an instruction for the joins init,
+  // instead of three instructions.
+  constexpr frame_type() noexcept { joins = k_u16_max; }
 
   [[nodiscard]]
   constexpr auto handle() LF_HOF(std::coroutine_handle<frame_type>::from_promise(*this))
@@ -42,6 +49,11 @@ struct frame_type {
   [[nodiscard]]
   constexpr auto atomic_fetch_sub_joins(std::uint32_t n, std::memory_order order) noexcept -> std::uint32_t {
     return std::atomic_ref{joins}.fetch_sub(n, order);
+  }
+
+  constexpr void reset() noexcept {
+    joins = k_u16_max;
+    steals = 0;
   }
 };
 
