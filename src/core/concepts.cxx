@@ -57,6 +57,9 @@ concept stack_allocator = std::is_object_v<T> && requires (T alloc, std::size_t 
   { alloc.push(n) } -> std::same_as<void *>;
   { alloc.pop(ptr, n) } noexcept -> std::same_as<void>;
   { alloc.checkpoint() } noexcept -> std::semiregular;
+  // TODO: use this API:
+  // { alloc.release() } noexcept -> std::same_as<void>;
+  // { alloc.resume(constify(alloc.checkpoint())) } noexcept -> std::same_as<void>;
   { alloc.switch_to({}) } noexcept -> std::same_as<void>;
   { alloc.switch_to(constify(alloc.checkpoint())) } noexcept -> std::same_as<void>;
 };
