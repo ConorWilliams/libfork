@@ -19,7 +19,8 @@ struct global_allocator {
   constexpr static auto push(std::size_t sz) -> void * { return ::operator new(sz); }
   constexpr static auto pop(void *p, std::size_t sz) noexcept -> void { ::operator delete(p, sz); }
   constexpr static auto checkpoint() noexcept -> empty { return {}; }
-  constexpr static auto switch_to(empty) noexcept -> void {}
+  constexpr static auto release() noexcept -> void {}
+  constexpr static auto acquire(empty) noexcept -> void {}
 };
 
 static_assert(lf::stack_allocator<global_allocator>);
@@ -37,8 +38,8 @@ struct linear_allocator {
   constexpr auto pop(void *p, std::size_t) noexcept -> void { ptr = static_cast<std::byte *>(p); }
 
   constexpr auto checkpoint() noexcept -> std::byte * { return data.get(); }
-
-  constexpr static auto switch_to(std::byte *) noexcept -> void {}
+  constexpr auto release() noexcept -> void {}
+  constexpr auto acquire(std::byte *) noexcept -> void {}
 };
 
 static_assert(lf::stack_allocator<linear_allocator>);
