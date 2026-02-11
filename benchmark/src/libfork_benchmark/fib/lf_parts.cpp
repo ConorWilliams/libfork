@@ -14,7 +14,9 @@ namespace {
 
 struct global_allocator {
 
-  struct empty {};
+  struct empty {
+    auto operator==(empty const &) const -> bool = default;
+  };
 
   constexpr static auto push(std::size_t sz) -> void * { return ::operator new(sz); }
   constexpr static auto pop(void *p, std::size_t sz) noexcept -> void { ::operator delete(p, sz); }

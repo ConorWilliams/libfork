@@ -6,7 +6,9 @@ namespace {
 
 struct dummy_allocator {
 
-  struct ckpt {};
+  struct ckpt {
+    auto operator==(ckpt const &) const -> bool = default;
+  };
 
   constexpr static auto push(std::size_t sz) -> void *;
   constexpr static auto pop(void *p, std::size_t sz) noexcept -> void;
