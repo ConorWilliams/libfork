@@ -126,7 +126,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
     // parent. As we won the race, acquire all writes before resuming.
     std::atomic_thread_fence(std::memory_order_acquire);
 
-    // In case of secnario (2) we must acquire the parent's stack.
+    // In case of scenario (2) we must acquire the parent's stack.
     context->alloc().acquire(checkpoint);
 
     // Must reset parent's control block before resuming parent.
