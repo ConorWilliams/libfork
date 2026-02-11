@@ -188,7 +188,7 @@ struct awaitable : std::suspend_always {
 
   frame_type<Context> *child;
 
-  // TODO: optional cancelation token
+  // TODO: optional cancellation token
 
   template <typename T>
   constexpr auto

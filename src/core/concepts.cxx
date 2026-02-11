@@ -45,7 +45,7 @@ consteval auto constify(T &&x) noexcept -> std::add_const_t<T> &;
  * - Destruction is expected to only occur when the stack is empty.
  * - Result of `.checkpoint()` is expected to be "cheap to copy".
  * - Release detaches the current stack and leaves `this` in the empty state.
- * - Acquire attatches to the stack that the checkpoint came from:
+ * - Acquire attaches to the stack that the checkpoint came from:
  *     - This is a noop if the checkpoint is from the current stack.
  *     - Otherwise `this` is empty.
  *
