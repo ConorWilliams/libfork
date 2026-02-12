@@ -89,7 +89,9 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
     // stolen. Hence, this must be the same thread that created the parent so
     // it already owns the stack. No steals have occurred so we do not need to
     // call reset().
-    // TODO: assert about the stack
+    LF_ASSUME(parent->stack_ckpt == context->alloc().checkpoint());
+    LF_ASSUME(parent->steals == 0);
+    LF_ASSUME(parent->joins == k_u16_max);
     return parent->handle();
   }
 
