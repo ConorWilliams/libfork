@@ -267,8 +267,8 @@ struct join_awaitable {
     //         k_u16_max - joined = num_joined
 
     std::uint32_t steals = self.frame->steals;
-    std::uint32_t joined =
-        self.frame->atomic_joins().fetch_sub(k_u16_max - steals, std::memory_order_release);
+    std::uint32_t offset = k_u16_max - steals;
+    std::uint32_t joined = self.frame->atomic_joins().fetch_sub(offset, std::memory_order_release);
 
     if (steals == k_u16_max - joined) {
       // We set joins after all children had completed therefore we can resume the task.
