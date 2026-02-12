@@ -73,7 +73,7 @@ struct vector_ctx {
 
   auto alloc() noexcept -> Alloc & { return allocator; }
 
-  // TODO: try LF_NO_INLINE for final alocator
+  // TODO: try LF_NO_INLINE for final allocator
   LF_NO_INLINE
   void push(handle_type handle) { work.push_back(handle); }
 
