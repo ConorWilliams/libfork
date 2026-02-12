@@ -117,7 +117,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
 
   // As soon as we do the `fetch_sub` below the parent task is no longer safe
   // to access as it may be resumed and then destroyed by another thread. Hence
-  // we must make copies on-the-stack of any data we may need if we loose the
+  // we must make copies on-the-stack of any data we may need if we lose the
   // join race.
   auto const checkpoint = parent->stack_ckpt;
 
