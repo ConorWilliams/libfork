@@ -252,8 +252,6 @@ struct join_awaitable {
     return false;
   }
 
-  // TODO: benchmark if this no-inline is worth it (it helps on GCC)
-  LF_NO_INLINE
   constexpr auto await_suspend(this join_awaitable self, std::coroutine_handle<> task) noexcept -> coro<> {
     // Currently   self.joins  = k_u16_max  - num_joined
     // We set           joins  = self->joins - (k_u16_max - num_steals)
