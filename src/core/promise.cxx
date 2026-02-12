@@ -115,9 +115,6 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
   //
   // Case (2) implies that our stack is empty.
 
-  // TODO: explain why case (2) means we are always the exclusive owner,
-  // and add switch into the mix!
-
   // As soon as we do the `fetch_sub` below the parent task is no longer safe
   // to access as it may be resumed and then destroyed by another thread. Hence
   // we must make copies on-the-stack of any data we maye need if we loose the
@@ -152,6 +149,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
   }
 
   // Else, case (2), our stack has no allocations on it, it may be used later.
+  // TODO: assert empty
 
   return std::noop_coroutine();
 }
