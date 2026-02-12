@@ -191,6 +191,14 @@ BENCHMARK(fib<ret<linear_alloc>, linear_alloc>)->Name("base/libfork/fib/bump/ret
 BENCHMARK(fib<fork_call<linear_alloc>, linear_alloc>)->Name("test/libfork/fib/vector_ctx")->Arg(fib_test);
 BENCHMARK(fib<fork_call<linear_alloc>, linear_alloc>)->Name("base/libfork/fib/vector_ctx")->Arg(fib_base);
 
+// Same as above but with join.
+BENCHMARK(fib<fork_call<linear_alloc, true>, linear_alloc>)
+    ->Name("test/libfork/fib/vector_ctx/join")
+    ->Arg(fib_test);
+BENCHMARK(fib<fork_call<linear_alloc, true>, linear_alloc>)
+    ->Name("base/libfork/fib/vector_ctx/join")
+    ->Arg(fib_base);
+
 using A = poly_vector_ctx<linear_allocator>;
 using B = lf::polymorphic_context<linear_allocator>;
 
@@ -199,5 +207,5 @@ BENCHMARK(fib<fork_call<B>, A, B>)->Name("test/libfork/fib/poly_vector_ctx")->Ar
 BENCHMARK(fib<fork_call<B>, A, B>)->Name("base/libfork/fib/poly_vector_ctx")->Arg(fib_base);
 
 // Same as above but with join.
-BENCHMARK(fib<fork_call<B, true>, A, B>)->Name("test/libfork/fib/vector_ctx_join")->Arg(fib_test);
-BENCHMARK(fib<fork_call<B, true>, A, B>)->Name("base/libfork/fib/vector_ctx_join")->Arg(fib_base);
+BENCHMARK(fib<fork_call<B, true>, A, B>)->Name("test/libfork/fib/poly_vector_ctx/join")->Arg(fib_test);
+BENCHMARK(fib<fork_call<B, true>, A, B>)->Name("base/libfork/fib/poly_vector_ctx/join")->Arg(fib_base);
