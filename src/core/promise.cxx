@@ -214,7 +214,7 @@ struct join_awaitable {
 
   frame_type<Context> *self;
 
-  void take_stack_reset_frame() const noexcept {
+  constexpr void take_stack_reset_frame() const noexcept {
     // Steals have happened so we cannot currently own this tasks stack.
     LF_ASSUME(self->steals != 0);
     // LF_ASSERT()
@@ -224,7 +224,7 @@ struct join_awaitable {
     // self->reset();
   }
 
-  auto await_ready() const noexcept -> bool {
+  constexpr auto await_ready() const noexcept -> bool {
     // If no steals then we are the only owner of the parent and we are ready to join.
     if (self->steals == 0) [[likely]] {
       // Therefore no need to reset the control block.
@@ -255,7 +255,7 @@ struct join_awaitable {
   /**
    * @brief Mark at join point then yield to scheduler or resume if children are done.
    */
-  auto await_suspend(std::coroutine_handle<> task) const noexcept -> std::coroutine_handle<> {
+  constexpr auto await_suspend(std::coroutine_handle<> task) const noexcept -> std::coroutine_handle<> {
     // Currently   self.joins  = k_u16_max  - num_joined
     // We set           joins  = self->joins - (k_u16_max - num_steals)
     //                         = num_steals - num_joined
@@ -290,7 +290,7 @@ struct join_awaitable {
   /**
    * @brief Propagate exceptions.
    */
-  void await_resume() const {
+  constexpr void await_resume() const {
     // We should have been reset
     LF_ASSUME(self->steals == 0);
     LF_ASSUME(self->joins == k_u16_max);
