@@ -214,21 +214,17 @@ struct join_awaitable {
 
   frame_type<Context> *frame;
 
-  constexpr void take_stack_reset_frame(this join_awaitable self) noexcept {
-    // Steals have happened so we cannot currently own this tasks stack.
-    LF_ASSUME(self.frame->steals != 0);
-    // LF_ASSERT()
-    // LF_ASSERT(tls::stack()->empty());
-    // *tls::stack() = stack{self->stacklet()};
-    // Some steals have happened, need to reset the control block.
-    // self->reset();
+  constexpr auto take_stack_and_reset(this join_awaitable self) noexcept -> void {
+    Context *context = not_null(thread_context<Context>);
+    LF_ASSUME(self.frame->stack_ckpt != context->alloc().checkpoint());
+    context->alloc().acquire(std::as_const(self.frame->stack_ckpt));
+    self.frame->reset();
   }
 
-  constexpr auto await_ready() const noexcept -> bool {
-    // If no steals then we are the only owner of the parent and we are ready to join.
-    if (frame->steals == 0) [[likely]] {
-      // Therefore no need to reset the control block.
-      LF_ASSUME(frame->joins == k_u16_max);
+  constexpr auto await_ready(this join_awaitable self) noexcept -> bool {
+    if (not_null(self.frame)->steals == 0) [[likely]] {
+      // If no steals then we are the only owner of the parent and we are ready
+      // to join. Therefore, no need to reset the control block.
       return true;
     }
 
@@ -244,20 +240,21 @@ struct join_awaitable {
     // coroutine if possible. Cannot fetch_sub() here and write to frame as
     // coroutine must be suspended first.
 
-    // std::uint32_t steals = frame->steals;
-    // std::uint32_t joined = k_u16_max - frame->atomic_joins().load(std::memory_order_acquire);
-    //
-    // if (steals == joined) {
-    //   // take_stack_reset_frame();
-    //   return true;
-    // }
+    std::uint32_t steals = self.frame->steals;
+    std::uint32_t joined = k_u16_max - self.frame->atomic_joins().load(std::memory_order_acquire);
+
+    if (steals == joined) {
+      // We must reset the control block and take the stack. We should never
+      // own the stack at this point because we must have stolen the stack.
+      self.take_stack_and_reset();
+      return true;
+    }
 
     return false;
   }
 
-  /**
-   * @brief Mark at join point then yield to scheduler or resume if children are done.
-   */
+  // TODO: benchmark if this no-inline is worth it (it helps on GCC)
+  LF_NO_INLINE
   constexpr auto await_suspend(this join_awaitable self, std::coroutine_handle<> task) noexcept -> coro<> {
     // Currently   self.joins  = k_u16_max  - num_joined
     // We set           joins  = self->joins - (k_u16_max - num_steals)
@@ -265,6 +262,8 @@ struct join_awaitable {
 
     // Hence               joined = k_u16_max - num_joined
     //         k_u16_max - joined = num_joined
+
+    LF_ASSUME(self.frame);
 
     std::uint32_t steals = self.frame->steals;
     std::uint32_t offset = k_u16_max - steals;
@@ -274,7 +273,10 @@ struct join_awaitable {
       // We set joins after all children had completed therefore we can resume the task.
       // Need to acquire to ensure we see all writes by other threads to the result.
       std::atomic_thread_fence(std::memory_order_acquire);
-      self.take_stack_reset_frame();
+
+      // We must reset the control block and take the stack. We should never
+      // own the stack at this point because we must have stolen the stack.
+      self.take_stack_and_reset();
       return task;
     }
 
@@ -291,9 +293,6 @@ struct join_awaitable {
     return std::noop_coroutine();
   }
 
-  /**
-   * @brief Propagate exceptions.
-   */
   constexpr void await_resume(this join_awaitable self) {
     // We should have been reset
     LF_ASSUME(self.frame->steals == 0);
