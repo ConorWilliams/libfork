@@ -212,11 +212,11 @@ struct awaitable : std::suspend_always {
 template <worker_context Context>
 struct join_awaitable {
 
-  frame_type<Context> *self;
+  frame_type<Context> *frame;
 
-  constexpr void take_stack_reset_frame() const noexcept {
+  constexpr void take_stack_reset_frame(this join_awaitable self) noexcept {
     // Steals have happened so we cannot currently own this tasks stack.
-    LF_ASSUME(self->steals != 0);
+    LF_ASSUME(self.frame->steals != 0);
     // LF_ASSERT()
     // LF_ASSERT(tls::stack()->empty());
     // *tls::stack() = stack{self->stacklet()};
@@ -226,11 +226,16 @@ struct join_awaitable {
 
   constexpr auto await_ready() const noexcept -> bool {
     // If no steals then we are the only owner of the parent and we are ready to join.
-    if (self->steals == 0) [[likely]] {
+    if (frame->steals == 0) [[likely]] {
       // Therefore no need to reset the control block.
-      LF_ASSUME(self->joins == k_u16_max);
+      LF_ASSUME(frame->joins == k_u16_max);
       return true;
     }
+
+    // TODO: benchmark if including the below check (returning false here) in
+    // multithreaded case helps performance enough to justify the extra
+    // instructions along the fast path
+
     // Currently:               joins() = k_u16_max - num_joined
     // Hence:       k_u16_max - joins() = num_joined
 
@@ -239,15 +244,13 @@ struct join_awaitable {
     // coroutine if possible. Cannot fetch_sub() here and write to frame as
     // coroutine must be suspended first.
 
-    // TODO: benchmark if removing this check (returning false here) in
-    // multithreaded case
-    std::uint32_t steals = self->steals;
-    std::uint32_t joined = k_u16_max - self->atomic_joins().load(std::memory_order_acquire);
-
-    if (steals == joined) {
-      // take_stack_reset_frame();
-      return true;
-    }
+    // std::uint32_t steals = frame->steals;
+    // std::uint32_t joined = k_u16_max - frame->atomic_joins().load(std::memory_order_acquire);
+    //
+    // if (steals == joined) {
+    //   // take_stack_reset_frame();
+    //   return true;
+    // }
 
     return false;
   }
@@ -255,7 +258,7 @@ struct join_awaitable {
   /**
    * @brief Mark at join point then yield to scheduler or resume if children are done.
    */
-  constexpr auto await_suspend(std::coroutine_handle<> task) const noexcept -> std::coroutine_handle<> {
+  constexpr auto await_suspend(this join_awaitable self, std::coroutine_handle<> task) noexcept -> coro<> {
     // Currently   self.joins  = k_u16_max  - num_joined
     // We set           joins  = self->joins - (k_u16_max - num_steals)
     //                         = num_steals - num_joined
@@ -263,14 +266,15 @@ struct join_awaitable {
     // Hence               joined = k_u16_max - num_joined
     //         k_u16_max - joined = num_joined
 
-    std::uint32_t steals = self->steals;
-    std::uint32_t joined = self->atomic_joins().fetch_sub(k_u16_max - steals, std::memory_order_release);
+    std::uint32_t steals = self.frame->steals;
+    std::uint32_t joined =
+        self.frame->atomic_joins().fetch_sub(k_u16_max - steals, std::memory_order_release);
 
     if (steals == k_u16_max - joined) {
       // We set joins after all children had completed therefore we can resume the task.
       // Need to acquire to ensure we see all writes by other threads to the result.
       std::atomic_thread_fence(std::memory_order_acquire);
-      take_stack_reset_frame();
+      self.take_stack_reset_frame();
       return task;
     }
 
@@ -290,12 +294,12 @@ struct join_awaitable {
   /**
    * @brief Propagate exceptions.
    */
-  constexpr void await_resume() const {
+  constexpr void await_resume(this join_awaitable self) {
     // We should have been reset
-    LF_ASSUME(self->steals == 0);
-    LF_ASSUME(self->joins == k_u16_max);
+    LF_ASSUME(self.frame->steals == 0);
+    LF_ASSUME(self.frame->joins == k_u16_max);
 
-    if (self->exception_bit) {
+    if (self.frame->exception_bit) {
       LF_THROW(std::runtime_error{"Child task threw an exception"});
     }
   }
@@ -361,7 +365,7 @@ struct mixin_frame {
 
   constexpr auto
   await_transform(this auto &self, join_type tag [[maybe_unused]]) noexcept -> join_awaitable<Context> {
-    return {.self = &self.frame};
+    return {.frame = &self.frame};
   }
 
   constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
