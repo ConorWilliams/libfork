@@ -290,6 +290,7 @@ struct join_awaitable {
 
     if constexpr (LF_COMPILER_EXCEPTIONS) {
       if (self.frame->exception_bit) {
+        // TODO: rest exception but as part of handling
         LF_THROW(std::runtime_error{"Child task threw an exception"});
       }
     }
