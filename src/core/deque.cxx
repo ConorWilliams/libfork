@@ -1,11 +1,15 @@
 module;
-// #include "libfork/__impl/assume.hpp"
+#include "libfork/__impl/assume.hpp"
 // #include "libfork/__impl/compiler.hpp"
 // #include "libfork/__impl/exception.hpp"
 // #include "libfork/__impl/utils.hpp"
 export module libfork.core:deque;
 
 import std;
+
+import :utility;
+import :concepts;
+import :constants;
 
 namespace lf {
 
@@ -36,8 +40,6 @@ concept lock_free = atomicable<T> && std::atomic<T>::is_always_lock_free;
 template <typename T>
 concept dequeable = lock_free<T> && std::default_initializable<T>;
 
-namespace impl {
-
 /**
  * @brief A basic wrapper around a c-style array that provides modulo load/stores.
  *
@@ -54,7 +56,7 @@ struct atomic_ring_buf {
    * @param cap The capacity of the buffer, MUST be a power of 2.
    */
   constexpr explicit atomic_ring_buf(std::ptrdiff_t cap) : m_cap{cap}, m_mask{cap - 1} {
-    LF_ASSERT(cap > 0 && std::has_single_bit(static_cast<std::size_t>(cap)));
+    LF_ASSUME(cap > 0 && std::has_single_bit(static_cast<std::size_t>(cap)));
   }
   /**
    * @brief Get the capacity of the buffer.
@@ -67,7 +69,7 @@ struct atomic_ring_buf {
    * @brief Store ``val`` at ``index % this->capacity()``.
    */
   constexpr auto store(std::ptrdiff_t index, T const &val) noexcept -> void {
-    LF_ASSERT(index >= 0);
+    LF_ASSUME(index >= 0);
     (m_buf.get() + (index & m_mask))->store(val, std::memory_order_relaxed); // NOLINT Avoid cast.
   }
   /**
@@ -75,7 +77,7 @@ struct atomic_ring_buf {
    */
   [[nodiscard]]
   constexpr auto load(std::ptrdiff_t index) const noexcept -> T {
-    LF_ASSERT(index >= 0);
+    LF_ASSUME(index >= 0);
     return (m_buf.get() + (index & m_mask))->load(std::memory_order_relaxed); // NOLINT Avoid cast.
   }
   /**
@@ -120,8 +122,6 @@ struct atomic_ring_buf {
 #endif
 };
 
-} // namespace impl
-
 /**
  * @brief Error codes for ``deque`` 's ``steal()`` operation.
  */
@@ -162,7 +162,7 @@ struct steal_t {
    */
   [[nodiscard]]
   constexpr auto operator*() noexcept -> T & {
-    LF_ASSERT(code == err::none);
+    LF_ASSUME(code == err::none);
     return val;
   }
   /**
@@ -172,7 +172,7 @@ struct steal_t {
    */
   [[nodiscard]]
   constexpr auto operator*() const noexcept -> T const & {
-    LF_ASSERT(code == err::none);
+    LF_ASSUME(code == err::none);
     return val;
   }
   /**
@@ -182,7 +182,7 @@ struct steal_t {
    */
   [[nodiscard]]
   constexpr auto operator->() noexcept -> T * {
-    LF_ASSERT(code == err::none);
+    LF_ASSUME(code == err::none);
     return std::addressof(val);
   }
   /**
@@ -192,7 +192,7 @@ struct steal_t {
    */
   [[nodiscard]]
   constexpr auto operator->() const noexcept -> T const * {
-    LF_ASSERT(code == err::none);
+    LF_ASSUME(code == err::none);
     return std::addressof(val);
   }
 
@@ -214,7 +214,7 @@ struct return_nullopt {
   /**
    * @brief Returns ``std::nullopt``.
    */
-  LF_STATIC_CALL constexpr auto operator()() LF_STATIC_CONST noexcept -> std::optional<T> { return {}; }
+  static constexpr auto operator()() noexcept -> std::optional<T> { return {}; }
 };
 
 /**
@@ -243,7 +243,7 @@ struct return_nullopt {
  * @tparam T The type of the elements in the deque.
  */
 template <dequeable T>
-class deque : impl::immovable<deque<T>> {
+class deque : immovable {
 
   static constexpr std::ptrdiff_t k_default_capacity = 1024;
   static constexpr std::size_t k_garbage_reserve = 64;
@@ -272,12 +272,12 @@ class deque : impl::immovable<deque<T>> {
    * @brief Get the number of elements in the deque as a signed integer.
    */
   [[nodiscard]]
-  constexpr auto ssize() const noexcept -> ptrdiff_t;
+  constexpr auto ssize() const noexcept -> std::ptrdiff_t;
   /**
    * @brief Get the capacity of the deque.
    */
   [[nodiscard]]
-  constexpr auto capacity() const noexcept -> ptrdiff_t;
+  constexpr auto capacity() const noexcept -> std::ptrdiff_t;
   /**
    * @brief Check if the deque is empty.
    */
@@ -320,10 +320,10 @@ class deque : impl::immovable<deque<T>> {
   constexpr ~deque() noexcept;
 
  private:
-  alignas(impl::k_cache_line) std::atomic<std::ptrdiff_t> m_top;
-  alignas(impl::k_cache_line) std::atomic<std::ptrdiff_t> m_bottom;
-  alignas(impl::k_cache_line) std::atomic<impl::atomic_ring_buf<T> *> m_buf;
-  std::vector<std::unique_ptr<impl::atomic_ring_buf<T>>> m_garbage;
+  alignas(k_cache_line) std::atomic<std::ptrdiff_t> m_top;
+  alignas(k_cache_line) std::atomic<std::ptrdiff_t> m_bottom;
+  alignas(k_cache_line) std::atomic<atomic_ring_buf<T> *> m_buf;
+  std::vector<std::unique_ptr<atomic_ring_buf<T>>> m_garbage;
 
   // Convenience aliases.
   static constexpr std::memory_order relaxed = std::memory_order_relaxed;
@@ -334,10 +334,9 @@ class deque : impl::immovable<deque<T>> {
 };
 
 template <dequeable T>
-constexpr deque<T>::deque(std::ptrdiff_t cap)
-    : m_top(0),
-      m_bottom(0),
-      m_buf(new impl::atomic_ring_buf<T>{cap}) {
+constexpr deque<T>::deque(std::ptrdiff_t cap) : m_top(0),
+                                                m_bottom(0),
+                                                m_buf(new atomic_ring_buf<T>{cap}) {
   m_garbage.reserve(k_garbage_reserve);
 }
 
@@ -348,20 +347,20 @@ constexpr auto deque<T>::size() const noexcept -> std::size_t {
 
 template <dequeable T>
 constexpr auto deque<T>::ssize() const noexcept -> std::ptrdiff_t {
-  ptrdiff_t const bottom = m_bottom.load(relaxed);
-  ptrdiff_t const top = m_top.load(relaxed);
-  return std::max(bottom - top, ptrdiff_t{0});
+  std::ptrdiff_t const bottom = m_bottom.load(relaxed);
+  std::ptrdiff_t const top = m_top.load(relaxed);
+  return std::max(bottom - top, std::ptrdiff_t{0});
 }
 
 template <dequeable T>
-constexpr auto deque<T>::capacity() const noexcept -> ptrdiff_t {
+constexpr auto deque<T>::capacity() const noexcept -> std::ptrdiff_t {
   return m_buf.load(relaxed)->capacity();
 }
 
 template <dequeable T>
 constexpr auto deque<T>::empty() const noexcept -> bool {
-  ptrdiff_t const bottom = m_bottom.load(relaxed);
-  ptrdiff_t const top = m_top.load(relaxed);
+  std::ptrdiff_t const bottom = m_bottom.load(relaxed);
+  std::ptrdiff_t const top = m_top.load(relaxed);
   return top >= bottom;
 }
 
@@ -369,11 +368,11 @@ template <dequeable T>
 constexpr auto deque<T>::push(T const &val) -> void {
   std::ptrdiff_t const bottom = m_bottom.load(relaxed);
   std::ptrdiff_t const top = m_top.load(acquire);
-  impl::atomic_ring_buf<T> *buf = m_buf.load(relaxed);
+  atomic_ring_buf<T> *buf = m_buf.load(relaxed);
 
   if (buf->capacity() < (bottom - top) + 1) {
     // Deque is full, build a new one.
-    impl::atomic_ring_buf<T> *bigger = buf->resize(bottom, top);
+    atomic_ring_buf<T> *bigger = buf->resize(bottom, top);
 
     [&]() noexcept {
       // This should never throw as we reserve 64 slots.
@@ -397,10 +396,10 @@ constexpr auto
 deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_v<F>) -> std::invoke_result_t<F> {
 
   std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1; //
-  impl::atomic_ring_buf<T> *buf = m_buf.load(relaxed);      //
+  atomic_ring_buf<T> *buf = m_buf.load(relaxed);            //
   m_bottom.store(bottom, relaxed);                          // Stealers can no longer steal.
 
-  impl::thread_fence_seq_cst();
+  std::atomic_thread_fence(seq_cst);
 
   std::ptrdiff_t top = m_top.load(relaxed);
 
@@ -426,7 +425,7 @@ deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_v<F>) -> std::i
 template <dequeable T>
 constexpr auto deque<T>::steal() noexcept -> steal_t<T> {
   std::ptrdiff_t top = m_top.load(acquire);
-  impl::thread_fence_seq_cst();
+  std::atomic_thread_fence(seq_cst);
   std::ptrdiff_t const bottom = m_bottom.load(acquire);
 
   if (top < bottom) {
