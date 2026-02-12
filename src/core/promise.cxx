@@ -277,7 +277,7 @@ struct join_awaitable {
     }
 
     // Someone else is responsible for running this task.
-    // We cannot touch *this or deference self as someone may have resumed already!
+    // We cannot touch *this or dereference self as someone may have resumed already!
     // We cannot currently own this stack (checking would violate above).
 
     // If no explicit scheduling then we must have an empty WSQ as we stole this task.
