@@ -56,7 +56,7 @@ struct frame_type {
     return std::atomic_ref{exception_bit};
   }
 
-  constexpr void reset() noexcept {
+  constexpr void reset_counters() noexcept {
     joins = k_u16_max;
     steals = 0;
   }
