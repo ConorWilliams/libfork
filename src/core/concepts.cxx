@@ -52,7 +52,7 @@ consteval auto constify(T &&x) noexcept -> std::add_const_t<T> &;
  *     - Otherwise `this` is empty.
  *
  * Fast-path operations: empty, push, pop, checkpoint
- * Slow-path operations: release, resume
+ * Slow-path operations: release, acquire
  */
 export template <typename T>
 concept stack_allocator = std::is_object_v<T> && requires (T alloc, std::size_t n, void *ptr) {
