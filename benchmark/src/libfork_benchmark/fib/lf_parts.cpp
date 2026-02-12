@@ -67,7 +67,7 @@ constexpr auto no_await = [](this auto fib, std::int64_t *ret, std::int64_t n) -
   auto t2 = fib(&rhs, n - 2);
   t2.promise->frame.kind = lf::category::root;
   t2.promise->frame.stack_ckpt = lf::thread_context<T>->alloc().checkpoint();
-  t1.promise->frame.cancel = nullptr;
+  t2.promise->frame.cancel = nullptr;
   t2.promise->handle().resume();
 
   *ret = lhs + rhs;
