@@ -137,7 +137,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
     return parent->handle();
   }
 
-  // We did not win the join-race, we cannot deference the parent pointer now
+  // We did not win the join-race, we cannot dereference the parent pointer now
   // as the frame may now be freed by the winner. Parent has not reached join
   // or we are not the last child to complete. We are now out of jobs, we must
   // yield to the executor.
