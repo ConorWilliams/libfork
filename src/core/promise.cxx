@@ -85,12 +85,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
     // No-one stole continuation, we are the exclusive owner of parent, so we
     // just keep ripping!
     LF_ASSUME(last_pushed.m_ptr == parent);
-    // If no-one stole the parent then this child can also never have been
-    // stolen. Hence, this must be the same thread that created the parent so
-    // it already owns the stack.
-    LF_ASSUME(parent->stack_ckpt == context->alloc().checkpoint());
-    LF_ASSUME(parent->steals == 0);
-    LF_ASSUME(parent->joins == k_u16_max);
+    // This is not a join point so no state (i.e. counters) is gaurenteed.
     return parent->handle();
   }
 
