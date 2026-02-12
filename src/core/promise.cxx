@@ -246,8 +246,7 @@ struct join_awaitable {
     if (steals == joined) {
       // We must reset the control block and take the stack. We should never
       // own the stack at this point because we must have stolen the stack.
-      self.take_stack_and_reset();
-      return true;
+      return self.take_stack_and_reset(), true;
     }
 
     return false;
@@ -276,8 +275,7 @@ struct join_awaitable {
 
       // We must reset the control block and take the stack. We should never
       // own the stack at this point because we must have stolen the stack.
-      self.take_stack_and_reset();
-      return task;
+      return self.take_stack_and_reset(), task;
     }
 
     // Someone else is responsible for running this task.
