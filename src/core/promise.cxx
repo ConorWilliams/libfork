@@ -250,6 +250,7 @@ struct join_awaitable {
     //
     // LF_LOG("Sync not ready");
     // return false;
+    return true;
   }
 
   /**
@@ -362,7 +363,7 @@ struct mixin_frame {
 
   constexpr auto
   await_transform(this auto &self, join_type tag [[maybe_unused]]) noexcept -> join_awaitable<Context> {
-    return {.parent = &self.frame};
+    return {.self = &self.frame};
   }
 
   constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }

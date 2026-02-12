@@ -100,7 +100,7 @@ constexpr auto ret = [](this auto fib, std::int64_t n) -> lf::task<std::int64_t,
   co_return lhs + rhs;
 };
 
-template <typename T>
+template <typename T, bool Join = false>
 constexpr auto fork_call = [](this auto fib, std::int64_t n) -> lf::task<std::int64_t, T> {
   if (n < 2) {
     co_return n;
@@ -111,6 +111,10 @@ constexpr auto fork_call = [](this auto fib, std::int64_t n) -> lf::task<std::in
 
   co_await lf::fork(&rhs, fib, n - 2);
   co_await lf::call(&lhs, fib, n - 1);
+
+  if constexpr (Join) {
+    co_await lf::join();
+  }
 
   co_return lhs + rhs;
 };
@@ -193,3 +197,7 @@ using B = lf::polymorphic_context<linear_allocator>;
 // Same as above but with polymorphic contexts.
 BENCHMARK(fib<fork_call<B>, A, B>)->Name("test/libfork/fib/poly_vector_ctx")->Arg(fib_test);
 BENCHMARK(fib<fork_call<B>, A, B>)->Name("base/libfork/fib/poly_vector_ctx")->Arg(fib_base);
+
+// Same as above but with join.
+BENCHMARK(fib<fork_call<B, true>, A, B>)->Name("test/libfork/fib/vector_ctx_join")->Arg(fib_test);
+BENCHMARK(fib<fork_call<B, true>, A, B>)->Name("base/libfork/fib/vector_ctx_join")->Arg(fib_base);
