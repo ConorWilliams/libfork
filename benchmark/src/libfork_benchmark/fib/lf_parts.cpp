@@ -61,11 +61,13 @@ constexpr auto no_await = [](this auto fib, std::int64_t *ret, std::int64_t n) -
   auto t1 = fib(&lhs, n - 1);
   t1.promise->frame.kind = lf::category::root;
   t1.promise->frame.stack_ckpt = lf::thread_context<T>->alloc().checkpoint();
+  t1.promise->frame.cancel = nullptr;
   t1.promise->handle().resume();
 
   auto t2 = fib(&rhs, n - 2);
   t2.promise->frame.kind = lf::category::root;
   t2.promise->frame.stack_ckpt = lf::thread_context<T>->alloc().checkpoint();
+  t1.promise->frame.cancel = nullptr;
   t2.promise->handle().resume();
 
   *ret = lhs + rhs;
@@ -147,11 +149,13 @@ void fib(benchmark::State &state) {
     if constexpr (requires { Fn(&result, n); }) {
       auto task = Fn(&result, n);
       task.promise->frame.kind = lf::category::root;
+      task.promise->frame.cancel = nullptr;
       task.promise->frame.stack_ckpt = lf::thread_context<U>->alloc().checkpoint();
       task.promise->handle().resume();
     } else {
       auto task = Fn(n);
       task.promise->frame.kind = lf::category::root;
+      task.promise->frame.cancel = nullptr;
       task.promise->return_address = &result;
       task.promise->frame.stack_ckpt = lf::thread_context<U>->alloc().checkpoint();
       task.promise->handle().resume();
