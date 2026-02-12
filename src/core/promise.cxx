@@ -85,7 +85,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
     // No-one stole continuation, we are the exclusive owner of parent, so we
     // just keep ripping!
     LF_ASSUME(last_pushed.m_ptr == parent);
-    // This is not a join point so no state (i.e. counters) is gaurenteed.
+    // This is not a join point so no state (i.e. counters) is guaranteed.
     return parent->handle();
   }
 
