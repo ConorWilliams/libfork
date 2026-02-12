@@ -5,6 +5,7 @@ export module libfork.core:frame;
 import std;
 
 import :concepts;
+import :constants;
 
 namespace lf {
 
@@ -26,18 +27,39 @@ struct frame_type {
   using allocator_type = allocator_t<Context>;
   using checkpoint_type = checkpoint_t<allocator_type>;
 
-  frame_type *parent = nullptr;
-  cancellation *cancel = nullptr;
+  frame_type *parent;
+  cancellation *cancel;
+
   [[no_unique_address]]
   checkpoint_type stack_ckpt;
 
-  std::uint32_t merges = 0;       // Atomic is 32 bits for speed
-  std::uint16_t steals = 0;       // In debug do overflow checking
-  category kind = category::call; // Fork/Call/Just/Root
-  std::uint8_t exception_bit = 0; // Atomically set
+  ATOMIC_ALIGN(std::uint32_t) joins = 0;        // Atomic is 32 bits for speed
+  std::uint16_t steals = 0;                     // In debug do overflow checking
+  category kind = static_cast<category>(0);     // Fork/Call/Just/Root
+  ATOMIC_ALIGN(std::uint8_t) exception_bit = 0; // Atomically set
+
+  // Explicitly post construction, this allows the compiler to emit a single
+  // instruction for the zero init then an instruction for the joins init,
+  // instead of three instructions.
+  constexpr frame_type() noexcept { joins = k_u16_max; }
 
   [[nodiscard]]
   constexpr auto handle() LF_HOF(std::coroutine_handle<frame_type>::from_promise(*this))
+
+  [[nodiscard]]
+  constexpr auto atomic_joins() noexcept -> std::atomic_ref<std::uint32_t> {
+    return std::atomic_ref{joins};
+  }
+
+  [[nodiscard]]
+  constexpr auto atomic_except() noexcept -> std::atomic_ref<std::uint8_t> {
+    return std::atomic_ref{exception_bit};
+  }
+
+  constexpr void reset_counters() noexcept {
+    joins = k_u16_max;
+    steals = 0;
+  }
 };
 
 // =================== Handle =================== //

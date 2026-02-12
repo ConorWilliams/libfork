@@ -40,25 +40,28 @@ consteval auto constify(T &&x) noexcept -> std::add_const_t<T> &;
 /**
  * @brief Defines the API for a libfork compatible stack allocator.
  *
- * - After construction push is valid.
+ * - After construction `this` is in the empty state and push is valid.
  * - Pop is valid provided the FILO order is respected.
  * - Destruction is expected to only occur when the stack is empty.
- * - Result of `.checkpoint()` is expected to be "cheap to copy".
- * - Switch releases the current stack and resumes from the checkpoint:
- *     - This is a noop if the checkpoint is from this stack.
- *     - If the checkpoint is default-constructed it is expected to switch to a new stack.
+ * - Result of `.checkpoint()` is expected to:
+ *     - Be "cheap to copy".
+ *     - Compare equal if they belong to the same stack.
+ * - Release detaches the current stack and leaves `this` in the empty state.
+ * - Acquire attaches to the stack that the checkpoint came from:
+ *     - This is a noop if the checkpoint is from the current stack.
+ *     - Otherwise `this` is empty.
  *
  * Fast-path operations: empty, push, pop, checkpoint
- * Slow-path operations: switch
+ * Slow-path operations: release, acquire
  */
 export template <typename T>
 concept stack_allocator = std::is_object_v<T> && requires (T alloc, std::size_t n, void *ptr) {
   // { alloc.empty() } noexcept -> std::same_as<bool>;
   { alloc.push(n) } -> std::same_as<void *>;
   { alloc.pop(ptr, n) } noexcept -> std::same_as<void>;
-  { alloc.checkpoint() } noexcept -> std::semiregular;
-  { alloc.switch_to({}) } noexcept -> std::same_as<void>;
-  { alloc.switch_to(constify(alloc.checkpoint())) } noexcept -> std::same_as<void>;
+  { alloc.checkpoint() } noexcept -> std::regular;
+  { alloc.release() } noexcept -> std::same_as<void>;
+  { alloc.acquire(constify(alloc.checkpoint())) } noexcept -> std::same_as<void>;
 };
 
 /**

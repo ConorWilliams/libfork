@@ -2,6 +2,7 @@ module;
 #include <version>
 
 #include "libfork/__impl/assume.hpp"
+#include "libfork/__impl/compiler.hpp"
 #include "libfork/__impl/exception.hpp"
 #include "libfork/__impl/utils.hpp"
 export module libfork.core:promise;
@@ -75,98 +76,74 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
     default:
       LF_ASSUME(false);
   }
-  auto *context = not_null(thread_context<Context>);
-  auto *parent = not_null(frame->parent);
+
+  Context *context = not_null(thread_context<Context>);
+
+  frame_type<Context> *parent = not_null(frame->parent);
 
   if (frame_handle last_pushed = context->pop()) {
     // No-one stole continuation, we are the exclusive owner of parent, so we
     // just keep ripping!
     LF_ASSUME(last_pushed.m_ptr == parent);
-    // If no-one stole the parent then this child can also never have been
-    // stolen. Hence, this must be the same thread that created the parent so
-    // it already owns the stack. No steals have occurred so we do not need to
-    // call reset().
-    // TODO: assert about the stack
+    // This is not a join point so no state (i.e. counters) is guaranteed.
     return parent->handle();
   }
 
-  LF_TERMINATE("oops");
+  // An owner is a worker who:
+  //
+  // - Created the task.
+  // - OR had the task submitted to them.
+  // - OR won the task at a join.
+  //
+  // An owner of a task owns the stack the task is on.
+  //
+  // As the worker who completed the child task this thread owns the stack the child task was on.
+  //
+  // Either:
+  //
+  // 1. The parent is on the same stack as the child.
+  // 2. OR the parent is on a different stack to the child.
+  //
+  // Case (1) implies: we owned the parent; forked the child task; then the parent was then stolen.
+  // Case (2) implies: we stole the parent task; then forked the child; then the parent was stolen.
+  //
+  // Case (2) implies that our stack is empty.
 
-  /**
-   * An owner is a worker who:
-   *
-   * - Created the task.
-   * - Had the task submitted to them.
-   * - Won the task at a join.
-   *
-   * An owner of a task owns the stack the task is on.
-   *
-   * As the worker who completed the child task this thread owns the stack the child task was on.
-   *
-   * Either:
-   *
-   * 1. The parent is on the same stack as the child.
-   * 2. The parent is on a different stack to the child.
-   *
-   * Case (1) implies: we owned the parent; forked the child task; then the parent was then stolen.
-   * Case (2) implies: we stole the parent task; then forked the child; then the parent was stolen.
-   *
-   * In case (2) the workers stack has no allocations on it.
-   */
+  // As soon as we do the `fetch_sub` below the parent task is no longer safe
+  // to access as it may be resumed and then destroyed by another thread. Hence
+  // we must make copies on-the-stack of any data we may need if we lose the
+  // join race.
+  auto const checkpoint = parent->stack_ckpt;
 
-  // LF_LOG("Task's parent was stolen");
-  //
-  // stack *tls_stack = tls::stack();
-  //
-  // stack::stacklet *p_stacklet = parent->stacklet(); //
-  // stack::stacklet *c_stacklet = tls_stack->top();   // Need to call while we own tls_stack.
-  //
-  // // Register with parent we have completed this child task, this may release ownership of our stack.
-  // if (parent->fetch_sub_joins(1, std::memory_order_release) == 1) {
-  //   // Acquire all writes before resuming.
-  //   std::atomic_thread_fence(std::memory_order_acquire);
-  //
-  //   // Parent has reached join and we are the last child task to complete.
-  //   // We are the exclusive owner of the parent therefore, we must continue parent.
-  //
-  //   LF_LOG("Task is last child to join, resumes parent");
-  //
-  //   if (p_stacklet != c_stacklet) {
-  //     // Case (2), the tls_stack has no allocations on it.
-  //
-  //     LF_ASSERT(tls_stack->empty());
-  //
-  //     // TODO: stack.splice()? Here the old stack is empty and thrown away, if it is larger
-  //     // then we could splice it onto the parents one? Or we could attempt to cache the old one.
-  //     *tls_stack = stack{p_stacklet};
-  //   }
-  //
-  //   // Must reset parents control block before resuming parent.
-  //   parent->reset();
-  //
-  //   return parent->self();
-  // }
-  //
-  // // We did not win the join-race, we cannot deference the parent pointer now as
-  // // the frame may now be freed by the winner.
-  //
-  // // Parent has not reached join or we are not the last child to complete.
-  // // We are now out of jobs, must yield to executor.
-  //
-  // LF_LOG("Task is not last to join");
-  //
-  // if (p_stacklet == c_stacklet) {
-  //   // We are unable to resume the parent and where its owner, as the resuming
-  //   // thread will take ownership of the parent's we must give it up.
-  //   LF_LOG("Thread releases control of parent's stack");
-  //
-  //   // If this throw an exception then the worker must die as it does not have a stack.
-  //   // Hence, program termination is appropriate.
-  //   ignore_t{} = tls_stack->release();
-  //
-  // } else {
-  //   // Case (2) the tls_stack has no allocations on it, it may be used later.
-  // }
+  // Register with parent we have completed this child task.
+  if (parent->atomic_joins().fetch_sub(1, std::memory_order_release) == 1) {
+    // Parent has reached join and we are the last child task to complete. We
+    // are the exclusive owner of the parent and therefore, we must continue
+    // parent. As we won the race, acquire all writes before resuming.
+    std::atomic_thread_fence(std::memory_order_acquire);
+
+    // In case of scenario (2) we must acquire the parent's stack.
+    context->alloc().acquire(checkpoint);
+
+    // Must reset parent's control block before resuming parent.
+    parent->reset_counters();
+
+    return parent->handle();
+  }
+
+  // We did not win the join-race, we cannot dereference the parent pointer now
+  // as the frame may now be freed by the winner. Parent has not reached join
+  // or we are not the last child to complete. We are now out of jobs, we must
+  // yield to the executor.
+
+  if (checkpoint == context->alloc().checkpoint()) {
+    // We were unable to resume the parent and we were its owner, as the
+    // resuming thread will take ownership of the parent's we must give it up.
+    context->alloc().release();
+  }
+
+  // Else, case (2), our stack has no allocations on it, it may be used later.
+  // TODO: assert empty
 
   return std::noop_coroutine();
 }
@@ -178,49 +155,145 @@ struct final_awaitable : std::suspend_always {
   }
 };
 
-// =============== Call =============== //
+// =============== Fork/Call =============== //
 
-template <worker_context Context>
-struct call_awaitable : std::suspend_always {
+template <category Cat, worker_context Context>
+struct awaitable : std::suspend_always {
+
+  using enum category;
 
   frame_type<Context> *child;
 
-  template <returnable T>
-  auto await_suspend(this auto self, coro<promise_type<T, Context>> parent) noexcept -> coro<> {
-    // Connect child to parent
-    not_null(self.child)->parent = &parent.promise().frame;
+  // TODO: optional cancellation token
+
+  template <typename T>
+  constexpr auto
+  await_suspend(this auto self, coro<promise_type<T, Context>> parent) noexcept(Cat == call) -> coro<> {
+
+    if (!self.child) [[unlikely]] {
+      // Noop if an exception was thrown
+      return parent;
+    }
+
+    // TODO: handle cancellation
+
+    // Propagate parent->child relationships
+    self.child->parent = &parent.promise().frame;
+    self.child->cancel = parent.promise().frame.cancel;
+    self.child->stack_ckpt = not_null(thread_context<Context>)->alloc().checkpoint();
+    self.child->kind = Cat;
+
+    if constexpr (Cat == fork) {
+      // It is critical to pass self by-value here, after the call to push()
+      // the object `*this` may be destroyed, if passing by ref it would be
+      // use-after-free to then access self in the following line to fetch the
+      // handle.
+      LF_TRY {
+        not_null(thread_context<Context>)->push(frame_handle<Context>{key, &parent.promise().frame});
+      } LF_CATCH_ALL {
+        self.child->handle().destroy();
+        // TODO: stash in parent frame
+        LF_RETHROW;
+      }
+    }
 
     return self.child->handle();
   }
 };
 
-// =============== Fork =============== //
+// =============== Join =============== //
 
 template <worker_context Context>
-struct fork_awaitable : std::suspend_always {
+struct join_awaitable {
 
-  frame_type<Context> *child;
+  frame_type<Context> *frame;
 
-  template <typename T>
-  auto await_suspend(this auto self, coro<promise_type<T, Context>> parent) noexcept -> coro<> {
+  constexpr auto take_stack_and_reset(this join_awaitable self) noexcept -> void {
+    Context *context = not_null(thread_context<Context>);
+    LF_ASSUME(self.frame->stack_ckpt != context->alloc().checkpoint());
+    context->alloc().acquire(std::as_const(self.frame->stack_ckpt));
+    self.frame->reset_counters();
+  }
 
-    // It is critical to pass self by-value here, after the call to push()
-    // the object may be destroyed, if passing by ref it would be use
-    // after-free to then access self
-
-    // TODO: destroy on child if cannot launch i.e. scheduling failure
-
-    not_null(self.child)->parent = &parent.promise().frame;
-
-    LF_TRY {
-      not_null(thread_context<Context>)->push(frame_handle<Context>{key, &parent.promise().frame});
-    } LF_CATCH_ALL {
-      self.child->handle().destroy();
-      // TODO: stash in parent frame (should not throw)
-      LF_RETHROW;
+  constexpr auto await_ready(this join_awaitable self) noexcept -> bool {
+    if (not_null(self.frame)->steals == 0) [[likely]] {
+      // If no steals then we are the only owner of the parent and we are ready
+      // to join. Therefore, no need to reset the control block.
+      return true;
     }
 
-    return self.child->handle();
+    // TODO: benchmark if including the below check (returning false here) in
+    // multithreaded case helps performance enough to justify the extra
+    // instructions along the fast path
+
+    // Currently:               joins() = k_u16_max - num_joined
+    // Hence:       k_u16_max - joins() = num_joined
+
+    // Could use (relaxed here) + (fence(acquire) in truthy branch) but, it's
+    // better if we see all the decrements to joins() and avoid suspending the
+    // coroutine if possible. Cannot fetch_sub() here and write to frame as
+    // coroutine must be suspended first.
+
+    std::uint32_t steals = self.frame->steals;
+    std::uint32_t joined = k_u16_max - self.frame->atomic_joins().load(std::memory_order_acquire);
+
+    if (steals == joined) {
+      // We must reset the control block and take the stack. We should never
+      // own the stack at this point because we must have stolen the stack.
+      return self.take_stack_and_reset(), true;
+    }
+
+    return false;
+  }
+
+  constexpr auto await_suspend(this join_awaitable self, std::coroutine_handle<> task) noexcept -> coro<> {
+    // Currently   self.joins  = k_u16_max  - num_joined
+    // We set           joins  = self->joins - (k_u16_max - num_steals)
+    //                         = num_steals - num_joined
+
+    // Hence               joined = k_u16_max - num_joined
+    //         k_u16_max - joined = num_joined
+
+    LF_ASSUME(self.frame);
+
+    std::uint32_t steals = self.frame->steals;
+    std::uint32_t offset = k_u16_max - steals;
+    std::uint32_t joined = self.frame->atomic_joins().fetch_sub(offset, std::memory_order_release);
+
+    if (steals == k_u16_max - joined) {
+      // We set joins after all children had completed therefore we can resume the task.
+      // Need to acquire to ensure we see all writes by other threads to the result.
+      std::atomic_thread_fence(std::memory_order_acquire);
+
+      // We must reset the control block and take the stack. We should never
+      // own the stack at this point because we must have stolen the stack.
+      return self.take_stack_and_reset(), task;
+    }
+
+    // Someone else is responsible for running this task.
+    // We cannot touch *this or dereference self as someone may have resumed already!
+    // We cannot currently own this stack (checking would violate above).
+
+    // If no explicit scheduling then we must have an empty WSQ as we stole this task.
+
+    // If explicit scheduling then we may have tasks on our WSQ if we performed a self-steal
+    // in a switch awaitable. In this case we can/must do another self-steal.
+
+    // return try_self_stealing();
+    return std::noop_coroutine();
+  }
+
+  constexpr void await_resume(this join_awaitable self) {
+    // We should have been reset
+    LF_ASSUME(self.frame->steals == 0);
+    LF_ASSUME(self.frame->joins == k_u16_max);
+
+    if constexpr (LF_COMPILER_EXCEPTIONS) {
+      if (self.frame->exception_bit) {
+        // TODO: rest exception but as part of handling
+        LF_THROW(std::runtime_error{"Child task threw an exception"});
+      }
+    }
   }
 };
 
@@ -251,44 +324,50 @@ struct mixin_frame {
 
   // --- Await transformations
 
-  template <typename R, typename Fn, typename... Args>
-  static constexpr auto await_transform(call_pkg<R, Fn, Args...> &&pkg) noexcept -> call_awaitable<Context> {
+  template <category Cat, typename R, typename Fn, typename... Args>
+  [[nodiscard]]
+  static constexpr auto transform(pkg<R, Fn, Args...> &&pkg) noexcept -> frame_type<Context> * {
+    LF_TRY {
+      task child = std::move(pkg.args).apply(std::move(pkg.fn));
 
-    task child = std::move(pkg.args).apply(std::move(pkg.fn));
+      LF_ASSUME(child.promise);
 
-    // ::call is the default value
-    LF_ASSUME(child.promise->frame.kind == category::call);
+      if constexpr (!std::is_void_v<R>) {
+        child.promise->return_address = pkg.return_address;
+      }
 
-    child.promise->frame.stack_ckpt = not_null(thread_context<Context>)->alloc().checkpoint();
-
-    if constexpr (!std::is_void_v<R>) {
-      child.promise->return_address = pkg.return_address;
+      return &child.promise->frame;
+    } LF_CATCH_ALL {
+      // TODO: stash exception
+      return nullptr;
     }
-
-    return {.child = &child.promise->frame};
   }
 
   template <typename R, typename Fn, typename... Args>
-  constexpr static auto await_transform(fork_pkg<R, Fn, Args...> &&pkg) noexcept -> fork_awaitable<Context> {
+  constexpr static auto
+  await_transform(call_pkg<R, Fn, Args...> &&pkg) noexcept -> awaitable<category::call, Context> {
+    return {.child = transform<category::call>(std::move(pkg))};
+  }
 
-    task child = std::move(pkg.args).apply(std::move(pkg.fn));
+  template <typename R, typename Fn, typename... Args>
+  constexpr static auto
+  await_transform(fork_pkg<R, Fn, Args...> &&pkg) noexcept -> awaitable<category::fork, Context> {
+    return {.child = transform<category::fork>(std::move(pkg))};
+  }
 
-    child.promise->frame.kind = category::fork;
-
-    child.promise->frame.stack_ckpt = not_null(thread_context<Context>)->alloc().checkpoint();
-
-    if constexpr (!std::is_void_v<R>) {
-      child.promise->return_address = pkg.return_address;
-    }
-
-    return {.child = &child.promise->frame};
+  constexpr auto
+  await_transform(this auto &self, join_type tag [[maybe_unused]]) noexcept -> join_awaitable<Context> {
+    return {.frame = &self.frame};
   }
 
   constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
 
   constexpr static auto final_suspend() noexcept -> final_awaitable { return {}; }
 
-  constexpr static void unhandled_exception() noexcept { std::terminate(); }
+  constexpr static void unhandled_exception() noexcept {
+    // TODO: stash exception in parent
+    std::terminate();
+  }
 };
 
 // =============== Promise (void) =============== //

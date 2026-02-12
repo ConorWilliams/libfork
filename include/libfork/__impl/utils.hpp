@@ -25,3 +25,8 @@
  * @brief Use like `std::forward` to perfectly forward an expression.
  */
 #define LF_FWD(...) ::std::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
+
+/**
+ * @brief Use to define a `T` that is aligned to the required alignment of `std::atomic_ref<T>`.
+ */
+#define ATOMIC_ALIGN(T) alignas(std::atomic_ref<T>::required_alignment) T
