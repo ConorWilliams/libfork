@@ -47,8 +47,13 @@ struct frame_type {
   constexpr auto handle() LF_HOF(std::coroutine_handle<frame_type>::from_promise(*this))
 
   [[nodiscard]]
-  constexpr auto atomic_fetch_sub_joins(std::uint32_t n, std::memory_order order) noexcept -> std::uint32_t {
-    return std::atomic_ref{joins}.fetch_sub(n, order);
+  constexpr auto atomic_joins() noexcept -> std::atomic_ref<std::uint32_t> {
+    return std::atomic_ref{joins};
+  }
+
+  [[nodiscard]]
+  constexpr auto atomic_except() noexcept -> std::atomic_ref<std::uint8_t> {
+    return std::atomic_ref{exception_bit};
   }
 
   constexpr void reset() noexcept {

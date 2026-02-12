@@ -123,7 +123,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
   auto const checkpoint = parent->stack_ckpt;
 
   // Register with parent we have completed this child task.
-  if (parent->atomic_fetch_sub_joins(1, std::memory_order_release) == 1) {
+  if (parent->atomic_joins().fetch_sub(1, std::memory_order_release) == 1) {
     // Parent has reached join and we are the last child task to complete. We
     // are the exclusive owner of the parent and therefore, we must continue
     // parent. As we won the race, acquire all writes before resuming.
@@ -214,68 +214,65 @@ struct join_awaitable {
 
   frame_type<Context> *self;
 
-  // void take_stack_reset_frame() const noexcept {
-  //   // Steals have happened so we cannot currently own this tasks stack.
-  //   LF_ASSERT(self->load_steals() != 0);
-  //   LF_ASSERT(tls::stack()->empty());
-  //   *tls::stack() = stack{self->stacklet()};
-  //   // Some steals have happened, need to reset the control block.
-  //   self->reset();
-  // }
+  void take_stack_reset_frame() const noexcept {
+    // Steals have happened so we cannot currently own this tasks stack.
+    LF_ASSUME(self->steals != 0);
+    // LF_ASSERT()
+    // LF_ASSERT(tls::stack()->empty());
+    // *tls::stack() = stack{self->stacklet()};
+    // Some steals have happened, need to reset the control block.
+    // self->reset();
+  }
 
-  /**
-   * @brief Shortcut if children are ready.
-   */
   auto await_ready() const noexcept -> bool {
-    // // If no steals then we are the only owner of the parent and we are ready to join.
-    // if (self->load_steals() == 0) {
-    //   LF_LOG("Sync ready (no steals)");
-    //   // Therefore no need to reset the control block.
-    //   return true;
-    // }
-    // // Currently:            joins() = k_u16_max - num_joined
-    // // Hence:       k_u16_max - joins() = num_joined
-    //
-    // // Could use (relaxed) + (fence(acquire) in truthy branch) but, it's
-    // // better if we see all the decrements to joins() and avoid suspending
-    // // the coroutine if possible. Cannot fetch_sub() here and write to frame
-    // // as coroutine must be suspended first.
-    // auto joined = k_u16_max - self->load_joins(std::memory_order_acquire);
-    //
-    // if (self->load_steals() == joined) {
-    //   LF_LOG("Sync is ready");
-    //   take_stack_reset_frame();
-    //   return true;
-    // }
-    //
-    // LF_LOG("Sync not ready");
-    // return false;
-    return true;
+    // If no steals then we are the only owner of the parent and we are ready to join.
+    if (self->steals == 0) [[likely]] {
+      // Therefore no need to reset the control block.
+      LF_ASSUME(self->joins == k_u16_max);
+      return true;
+    }
+    // Currently:               joins() = k_u16_max - num_joined
+    // Hence:       k_u16_max - joins() = num_joined
+
+    // Could use (relaxed here) + (fence(acquire) in truthy branch) but, it's
+    // better if we see all the decrements to joins() and avoid suspending the
+    // coroutine if possible. Cannot fetch_sub() here and write to frame as
+    // coroutine must be suspended first.
+
+    // TODO: benchmark if removing this check (returning false here) in
+    // multithreaded case
+    std::uint32_t steals = self->steals;
+    std::uint32_t joined = k_u16_max - self->atomic_joins().load(std::memory_order_acquire);
+
+    if (steals == joined) {
+      // take_stack_reset_frame();
+      return true;
+    }
+
+    return false;
   }
 
   /**
    * @brief Mark at join point then yield to scheduler or resume if children are done.
    */
   auto await_suspend(std::coroutine_handle<> task) const noexcept -> std::coroutine_handle<> {
-    // Currently        joins  = k_u16_max  - num_joined
-    // We set           joins  = joins()    - (k_u16_max - num_steals)
+    // Currently   self.joins  = k_u16_max  - num_joined
+    // We set           joins  = self->joins - (k_u16_max - num_steals)
     //                         = num_steals - num_joined
 
     // Hence               joined = k_u16_max - num_joined
     //         k_u16_max - joined = num_joined
 
-    // auto steals = self->load_steals();
-    // auto joined = self->fetch_sub_joins(k_u16_max - steals, std::memory_order_release);
-    //
-    // if (steals == k_u16_max - joined) {
-    //   // We set joins after all children had completed therefore we can resume the task.
-    //   // Need to acquire to ensure we see all writes by other threads to the result.
-    //   std::atomic_thread_fence(std::memory_order_acquire);
-    //   LF_LOG("Wins join race");
-    //   take_stack_reset_frame();
-    //   return task;
-    // }
-    // LF_LOG("Looses join race");
+    std::uint32_t steals = self->steals;
+    std::uint32_t joined = self->atomic_joins().fetch_sub(k_u16_max - steals, std::memory_order_release);
+
+    if (steals == k_u16_max - joined) {
+      // We set joins after all children had completed therefore we can resume the task.
+      // Need to acquire to ensure we see all writes by other threads to the result.
+      std::atomic_thread_fence(std::memory_order_acquire);
+      take_stack_reset_frame();
+      return task;
+    }
 
     // Someone else is responsible for running this task.
     // We cannot touch *this or deference self as someone may have resumed already!
@@ -287,19 +284,20 @@ struct join_awaitable {
     // in a switch awaitable. In this case we can/must do another self-steal.
 
     // return try_self_stealing();
+    return std::noop_coroutine();
   }
 
   /**
    * @brief Propagate exceptions.
    */
   void await_resume() const {
-    // LF_LOG("join resumes");
-    // // Check we have been reset.
-    // LF_ASSERT(self->load_steals() == 0);
-    // LF_ASSERT_NO_ASSUME(self->load_joins(std::memory_order_acquire) == k_u16_max);
-    // LF_ASSERT(self->stacklet() == tls::stack()->top());
-    //
-    // self->unsafe_rethrow_if_exception();
+    // We should have been reset
+    LF_ASSUME(self->steals == 0);
+    LF_ASSUME(self->joins == k_u16_max);
+
+    if (self->exception_bit) {
+      LF_THROW(std::runtime_error{"Child task threw an exception"});
+    }
   }
 };
 
