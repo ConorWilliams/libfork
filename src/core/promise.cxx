@@ -294,8 +294,10 @@ struct join_awaitable {
     LF_ASSUME(self.frame->steals == 0);
     LF_ASSUME(self.frame->joins == k_u16_max);
 
-    if (self.frame->exception_bit) {
-      LF_THROW(std::runtime_error{"Child task threw an exception"});
+    if constexpr (LF_COMPILER_EXCEPTIONS) {
+      if (self.frame->exception_bit) {
+        LF_THROW(std::runtime_error{"Child task threw an exception"});
+      }
     }
   }
 };
