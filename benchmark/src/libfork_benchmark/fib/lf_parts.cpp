@@ -95,7 +95,11 @@ struct poly_deque_ctx final : lf::polymorphic_context<linear_allocator> {
 
   void push(handle_type handle) override { work.push(handle); }
 
-  auto pop() noexcept -> handle_type override { return *work.pop(); }
+  auto pop() noexcept -> handle_type override {
+    return work.pop([] static -> handle_type {
+      return {};
+    });
+  }
 };
 
 using lf::task;
