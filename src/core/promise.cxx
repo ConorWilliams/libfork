@@ -361,8 +361,7 @@ struct mixin_frame {
     return {.child = transform<category::fork>(std::move(pkg))};
   }
 
-  constexpr auto
-  await_transform(this auto &self, join_type tag [[maybe_unused]]) noexcept -> join_awaitable<Context> {
+  constexpr auto await_transform(this auto &self, join_type) noexcept -> join_awaitable<Context> {
     return {.frame = &self.frame};
   }
 
