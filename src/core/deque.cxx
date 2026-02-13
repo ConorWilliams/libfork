@@ -14,25 +14,6 @@ import :constants;
 namespace lf {
 
 /**
- * @brief Verify a type is suitable for use with `std::atomic`
- *
- * This requires a `TriviallyCopyable` type satisfying both `CopyConstructible` and `CopyAssignable`.
- */
-export template <typename T>
-concept atomicable = std::is_trivially_copyable_v<T> &&    //
-                     std::is_copy_constructible_v<T> &&    //
-                     std::is_move_constructible_v<T> &&    //
-                     std::is_copy_assignable_v<T> &&       //
-                     std::is_move_assignable_v<T> &&       //
-                     std::same_as<T, std::remove_cv_t<T>>; //
-
-/**
- * @brief A concept that verifies a type is lock-free when used with `std::atomic`.
- */
-export template <typename T>
-concept lock_free = atomicable<T> && std::atomic<T>::is_always_lock_free;
-
-/**
  * @brief Test is a type is suitable for use with `lf::deque`.
  *
  * This requires it to be `lf::lock_free` and `std::default_initializable`.
@@ -56,7 +37,8 @@ struct atomic_ring_buf {
    * @param cap The capacity of the buffer, MUST be a power of 2.
    */
   constexpr explicit atomic_ring_buf(std::ptrdiff_t cap) : m_cap{cap}, m_mask{cap - 1} {
-    LF_ASSUME(cap > 0 && std::has_single_bit(static_cast<std::size_t>(cap)));
+    LF_ASSUME(cap > 0);
+    LF_ASSUME(std::has_single_bit(static_cast<std::size_t>(cap)));
   }
   /**
    * @brief Get the capacity of the buffer.
@@ -161,29 +143,9 @@ struct steal_t {
    * Requires ``code == err::none`` .
    */
   [[nodiscard]]
-  constexpr auto operator*() noexcept -> T & {
+  constexpr auto operator*() const noexcept -> T {
     LF_ASSUME(code == err::none);
     return val;
-  }
-  /**
-   * @brief Get the value like ``std::optional``.
-   *
-   * Requires ``code == err::none`` .
-   */
-  [[nodiscard]]
-  constexpr auto operator*() const noexcept -> T const & {
-    LF_ASSUME(code == err::none);
-    return val;
-  }
-  /**
-   * @brief Get the value ``like std::optional``.
-   *
-   * Requires ``code == err::none`` .
-   */
-  [[nodiscard]]
-  constexpr auto operator->() noexcept -> T * {
-    LF_ASSUME(code == err::none);
-    return std::addressof(val);
   }
   /**
    * @brief Get the value ``like std::optional``.
@@ -195,7 +157,6 @@ struct steal_t {
     LF_ASSUME(code == err::none);
     return std::addressof(val);
   }
-
   /**
    * @brief The error code of the ``steal()`` operation.
    */
@@ -220,8 +181,6 @@ struct return_nullopt {
 /**
  * @brief An unbounded lock-free single-producer multiple-consumer work-stealing deque.
  *
- * \rst
- *
  * Implements the "Chase-Lev" deque described in the papers, `"Dynamic Circular Work-Stealing deque"
  * <https://doi.org/10.1145/1073970.1073974>`_ and `"Correct and Efficient Work-Stealing for Weak
  * Memory Models" <https://doi.org/10.1145/2442516.2442524>`_.
@@ -229,16 +188,6 @@ struct return_nullopt {
  * Only the deque owner can perform ``pop()`` and ``push()`` operations where the deque behaves
  * like a LIFO stack. Others can (only) ``steal()`` data from the deque, they see a FIFO deque.
  * All threads must have finished using the deque before it is destructed.
- *
- *
- * Example:
- *
- * .. include:: ../../../test/source/core/deque.cpp
- *    :code:
- *    :start-after: // !BEGIN-EXAMPLE
- *    :end-before: // !END-EXAMPLE
- *
- * \endrst
  *
  * @tparam T The type of the elements in the deque.
  */
