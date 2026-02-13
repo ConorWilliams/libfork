@@ -51,259 +51,158 @@ TEST_CASE("Deque: Custom pop when_empty", "[deque]") {
   REQUIRE(result == -1);
 }
 
-TEST_CASE("Deque: Single producer, single consumer", "[deque]") {
-  lf::deque<int> deque;
-
-  constexpr int tot = 100;
-
-  std::thread thief([&] {
-    int count = 0;
-    while (count < tot) {
-      if (auto [err, item] = deque.steal(); err == lf::err::none) {
-        REQUIRE(item == count++);
-      } else {
-        REQUIRE(err == lf::err::empty);
-      }
-    }
-  });
-
-  for (int i = 0; i < tot; ++i) {
-    deque.push(i);
-  }
-
-  thief.join();
-
-  REQUIRE(deque.empty());
-}
-
-TEST_CASE("Deque: Single producer, multiple consumer", "[deque]") {
-  lf::deque<int> deque;
-
-  constexpr auto max = 10000;
-  unsigned int nthreads = std::thread::hardware_concurrency();
-
-  std::vector<std::thread> threads;
-  std::atomic<int> remaining(max);
-
-  for (unsigned int i = 0; i < nthreads; ++i) {
-    threads.emplace_back([&deque, &remaining]() {
-      while (remaining.load() > 0) {
-        if (deque.steal()) {
-          remaining.fetch_sub(1);
-        }
-      }
-    });
-  }
-
-  for (auto i = 0; i < max; ++i) {
-    deque.push(i);
-  }
-
-  for (auto &thr : threads) {
-    thr.join();
-  }
-
-  REQUIRE(remaining == 0);
-  REQUIRE(deque.empty());
-}
-
-TEST_CASE("Deque: Single producer + pop(), multiple consumer", "[deque]") {
-  lf::deque<int> deque;
-
-  constexpr auto max = 10000;
-  unsigned int nthreads = std::thread::hardware_concurrency();
-
-  std::vector<std::thread> threads;
-  std::atomic<int> remaining(max);
-
-  for (unsigned int i = 0; i < nthreads; ++i) {
-    threads.emplace_back([&deque, &remaining]() {
-      while (remaining.load() > 0) {
-        if (deque.steal()) {
-          remaining.fetch_sub(1);
-        }
-      }
-    });
-  }
-
-  for (auto i = 0; i < max; ++i) {
-    deque.push(i);
-  }
-
-  while (remaining.load() > 0) {
-    if (deque.pop()) {
-      remaining.fetch_sub(1);
-    }
-  }
-
-  for (auto &thr : threads) {
-    thr.join();
-  }
-
-  REQUIRE(remaining == 0);
-  REQUIRE(deque.empty());
-}
-
 namespace {
 
-void wsq_test_owner() {
-  int64_t cap = 2;
+void test_deque(std::size_t n_pushes, std::size_t n_consumers, bool do_pop) {
 
-  lf::deque<std::size_t> deque(cap);
-  std::deque<std::size_t> gold;
+  // The tested queue
+  lf::deque<std::uint64_t> deque{};
 
-  REQUIRE(deque.capacity() == 2);
-  REQUIRE(deque.empty());
+  // To store removed elements
+  std::vector<std::uint64_t> pops{};
+  std::vector<std::vector<std::uint64_t>> steals(n_consumers);
 
-  std::mt19937 gen(42);
-  std::uniform_int_distribution<> dis(0, 2);
+  // Sync
+  std::atomic_flag done{};
+  std::latch start{static_cast<std::ptrdiff_t>(n_consumers + 1)};
 
-  for (std::size_t i = 2; i <= (1 << 14); i <<= 1) {
-    REQUIRE(deque.empty());
+  //
+  std::mt19937_64 rng{std::random_device{}()};
+  std::uniform_int_distribution<std::size_t> dist{0, 4};
 
-    for (std::size_t j = 0; j < i; ++j) {
-      deque.push(j);
-    }
+  std::vector<std::thread> producers;
 
-    for (std::size_t j = 0; j < i; ++j) {
-      auto item = deque.pop();
-      REQUIRE((item && *item == i - j - 1));
-    }
-    REQUIRE(!deque.pop());
+  // Consumers steal items and write to their respective deques
+  for (std::size_t i = 0; i < n_consumers; ++i) {
+    producers.emplace_back([&, i] {
+      // Wait for initialization to complete
+      start.arrive_and_wait();
 
-    REQUIRE(deque.empty());
-    for (std::size_t j = 0; j < i; ++j) {
-      deque.push(j);
-    }
+      for (;;) {
+        auto [err, item] = deque.steal();
 
-    for (std::size_t j = 0; j < i; ++j) {
-      auto item = deque.steal();
-      REQUIRE((item && *item == j));
-    }
-    REQUIRE(!deque.pop());
-
-    REQUIRE(deque.empty());
-
-    for (std::size_t j = 0; j < i; ++j) {
-      int dice = dis(gen);
-      if (dice == 0) {
-        deque.push(j);
-        gold.push_back(j);
-      } else if (dice == 1) {
-        auto item = deque.pop();
-        if (gold.empty()) {
-          REQUIRE(!item);
-        } else {
-          REQUIRE((item && *item == gold.back()));
-          gold.pop_back();
-        }
-      } else {
-        auto item = deque.steal();
-        if (gold.empty()) {
-          REQUIRE(!item);
-        } else {
-          REQUIRE((item && *item == gold.front()));
-          gold.pop_front();
-        }
-      }
-      REQUIRE(deque.size() == gold.size());
-    }
-
-    while (!deque.empty()) {
-      auto item = deque.pop();
-      REQUIRE((item && *item == gold.back()));
-      gold.pop_back();
-    }
-
-    REQUIRE(gold.empty());
-    REQUIRE(static_cast<std::size_t>(deque.capacity()) == i);
-  }
-}
-
-void wsq_test_n_thieves(std::size_t N) {
-  int64_t cap = 2;
-  lf::deque<std::size_t> deque(cap);
-
-  REQUIRE(deque.capacity() == 2);
-  REQUIRE(deque.empty());
-
-  for (std::size_t i = 2; i <= (1 << 14); i <<= 1) {
-    REQUIRE(deque.empty());
-
-    std::atomic<std::size_t> p = 0;
-    std::vector<std::deque<std::size_t>> cdeqs(N);
-    std::vector<std::thread> consumers;
-    std::deque<std::size_t> pdeq;
-    std::mutex pdeq_mutex;
-
-    std::atomic<std::size_t> total_recovered = 0;
-
-    for (std::size_t n = 0; n < N; n++) {
-      consumers.emplace_back([&, n, i]() {
-        std::mt19937 gen(1337 + n);
-        std::uniform_int_distribution<> dis(0, 3);
-        while (total_recovered.load() < i) {
-          if (dis(gen) == 0) {
-            if (auto item = deque.steal(); item) {
-              cdeqs[n].push_back(*item);
-              total_recovered.fetch_add(1);
+        switch (err) {
+          case lf::err::none:
+            steals[i].push_back(item);
+          case lf::err::lost:
+            break;
+          case lf::err::empty:
+            if (done.test()) {
+              return;
             }
-          }
-          std::this_thread::yield();
         }
-      });
-    }
-
-    std::thread producer([&]() {
-      std::mt19937 gen(42);
-      std::uniform_int_distribution<> dis(0, 3);
-      std::size_t pushed = 0;
-      while (pushed < i || total_recovered.load() < i) {
-        int dice = dis(gen);
-        if (dice == 0 && pushed < i) {
-          deque.push(pushed++);
-        } else if (dice == 1) {
-          if (auto item = deque.pop(); item) {
-            std::lock_guard lock(pdeq_mutex);
-            pdeq.push_back(*item);
-            total_recovered.fetch_add(1);
-          }
-        }
-        std::this_thread::yield();
       }
     });
+  }
 
-    producer.join();
-    for (auto &c : consumers) {
-      c.join();
-    }
+  // Setup, pruducer write n/2 items
+  for (std::size_t i = 0; i < n_pushes / 2; ++i) {
+    deque.push(i);
+  }
 
-    REQUIRE(deque.empty());
-    REQUIRE(static_cast<std::size_t>(deque.capacity()) <= i);
+  // Start the consumers
+  start.arrive_and_wait();
 
-    std::set<std::size_t> set;
-    for (auto const &cdeq : cdeqs) {
-      for (auto k : cdeq) {
-        set.insert(k);
+  // Push remaining items
+  if (do_pop) {
+    for (std::size_t i = n_pushes / 2; i < n_pushes;) {
+      if (dist(rng) == 0) {
+        if (auto item = deque.pop()) {
+          pops.push_back(*item);
+        }
+      } else {
+        deque.push(i);
+        ++i;
       }
     }
-    for (auto k : pdeq) {
-      set.insert(k);
+  } else {
+    for (std::size_t i = n_pushes / 2; i < n_pushes; ++i) {
+      deque.push(i);
     }
+  }
 
-    for (std::size_t j = 0; j < i; ++j) {
-      REQUIRE(set.contains(j));
+  // Drain the queue
+  if (do_pop) {
+    for (;;) {
+      if (auto item = deque.pop()) {
+        pops.push_back(*item);
+      } else {
+        if (done.test_and_set()) {
+          break;
+        }
+      }
     }
-    REQUIRE(set.size() == i);
+  } else {
+    while (!deque.empty()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    done.test_and_set();
+  }
+
+  // Stop the consumers
+  for (auto &producer : producers) {
+    producer.join();
+  }
+
+  // Verify ascending
+  for (auto &&deq : steals) {
+    REQUIRE(std::ranges::is_sorted(deq));
+  }
+
+  // Accumulate all items
+  std::vector<std::uint64_t> all = pops;
+
+  for (auto &&deq : steals) {
+    all.insert(all.end(), deq.begin(), deq.end());
+  }
+
+  std::ranges::sort(all);
+
+  for (std::size_t i = 0; i < n_pushes; ++i) {
+    REQUIRE(all[i] == i);
   }
 }
+
+constexpr std::size_t max_elmements = 1uz << 20;
 
 } // namespace
 
-TEST_CASE("Deque: WSQ Owner Intensive", "[deque][wsq]") { wsq_test_owner(); }
+TEST_CASE("Deque: Single threaded", "[deque]") {
+  for (std::size_t i = 1; i < max_elmements; i <<= 1) {
+    test_deque(i, 0, true);
+  }
+}
 
-TEST_CASE("Deque: WSQ nThieves Intensive", "[deque][wsq]") {
-  for (unsigned int i = 1; i <= std::min(4U, std::thread::hardware_concurrency()); ++i) {
-    wsq_test_n_thieves(i);
+TEST_CASE("Deque: SPSC no-pop", "[deque]") {
+  for (std::size_t i = 1; i < max_elmements; i <<= 1) {
+    test_deque(i, 1, false);
+  }
+}
+
+TEST_CASE("Deque: SPSC with-pop", "[deque]") {
+  for (std::size_t i = 1; i < max_elmements; i <<= 1) {
+    test_deque(i, 1, true);
+  }
+}
+
+TEST_CASE("Deque: MPSC no-pop", "[deque]") {
+
+  unsigned int max_threads = std::min(8u, std::thread::hardware_concurrency());
+
+  for (std::size_t i = 1; i < max_elmements; i <<= 1) {
+    for (std::size_t j = 2; j <= max_threads; ++j) {
+      test_deque(i, j, false);
+    }
+  }
+}
+
+TEST_CASE("Deque: MPSC with-pop", "[deque]") {
+
+  unsigned int max_threads = std::min(8u, std::thread::hardware_concurrency());
+
+  for (std::size_t i = 1; i < max_elmements; i <<= 1) {
+    for (std::size_t j = 2; j <= max_threads; ++j) {
+      test_deque(i, j, true);
+    }
   }
 }
