@@ -46,6 +46,47 @@ struct linear_allocator {
 
 static_assert(lf::stack_allocator<linear_allocator>);
 
+template <lf::stack_allocator Alloc>
+struct vector_ctx {
+
+  using handle_type = lf::frame_handle<vector_ctx>;
+
+  std::vector<handle_type> work;
+  Alloc allocator;
+
+  vector_ctx() { work.reserve(1024); }
+
+  auto alloc() noexcept -> Alloc & { return allocator; }
+
+  // TODO: try LF_NO_INLINE for final allocator
+  LF_NO_INLINE
+  void push(handle_type handle) { work.push_back(handle); }
+
+  auto pop() noexcept -> handle_type {
+    auto handle = work.back();
+    work.pop_back();
+    return handle;
+  }
+};
+
+template <lf::stack_allocator Alloc>
+struct poly_vector_ctx final : lf::polymorphic_context<Alloc> {
+
+  using handle_type = lf::frame_handle<lf::polymorphic_context<Alloc>>;
+
+  std::vector<handle_type> work;
+
+  poly_vector_ctx() { work.reserve(1024); }
+
+  void push(handle_type handle) override { work.push_back(handle); }
+
+  auto pop() noexcept -> handle_type override {
+    auto handle = work.back();
+    work.pop_back();
+    return handle;
+  }
+};
+
 using lf::task;
 
 template <lf::worker_context T>

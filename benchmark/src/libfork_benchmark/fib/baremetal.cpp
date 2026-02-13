@@ -11,8 +11,22 @@
 
 namespace {
 
+// ==== Allocators ==== //
+
+constinit inline thread_local std::byte *tls_bump_ptr = nullptr;
+
 struct task {
-  struct promise_type : tls_bump {
+  struct promise_type {
+
+    static auto operator new(std::size_t sz) -> void * {
+      auto *prev = tls_bump_ptr;
+      tls_bump_ptr += fib_align_size(sz);
+      return prev;
+    }
+
+    static auto operator delete(void *p, [[maybe_unused]] std::size_t sz) noexcept -> void {
+      tls_bump_ptr = std::bit_cast<std::byte *>(p);
+    }
 
     auto get_return_object() -> task { return {std::coroutine_handle<promise_type>::from_promise(*this)}; }
 
