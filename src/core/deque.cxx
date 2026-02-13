@@ -18,7 +18,7 @@ namespace lf {
  *
  * This requires a `TriviallyCopyable` type satisfying both `CopyConstructible` and `CopyAssignable`.
  */
-template <typename T>
+export template <typename T>
 concept atomicable = std::is_trivially_copyable_v<T> &&    //
                      std::is_copy_constructible_v<T> &&    //
                      std::is_move_constructible_v<T> &&    //
@@ -29,7 +29,7 @@ concept atomicable = std::is_trivially_copyable_v<T> &&    //
 /**
  * @brief A concept that verifies a type is lock-free when used with `std::atomic`.
  */
-template <typename T>
+export template <typename T>
 concept lock_free = atomicable<T> && std::atomic<T>::is_always_lock_free;
 
 /**
@@ -37,7 +37,7 @@ concept lock_free = atomicable<T> && std::atomic<T>::is_always_lock_free;
  *
  * This requires it to be `lf::lock_free` and `std::default_initializable`.
  */
-template <typename T>
+export template <typename T>
 concept dequeable = lock_free<T> && std::default_initializable<T>;
 
 /**
@@ -125,7 +125,7 @@ struct atomic_ring_buf {
 /**
  * @brief Error codes for ``deque`` 's ``steal()`` operation.
  */
-enum class err : std::uint8_t {
+export enum class err : std::uint8_t {
   /**
    * @brief The ``steal()`` operation succeeded.
    */
@@ -146,7 +146,7 @@ enum class err : std::uint8_t {
  * This type is suitable for structured bindings. We return a custom type instead of a
  * `std::optional` to allow for more information to be returned as to why a steal may fail.
  */
-template <typename T>
+export template <typename T>
 struct steal_t {
   /**
    * @brief Check if the operation succeeded.
@@ -209,7 +209,7 @@ struct steal_t {
 /**
  * @brief A functor that returns ``std::nullopt``.
  */
-template <typename T>
+export template <typename T>
 struct return_nullopt {
   /**
    * @brief Returns ``std::nullopt``.
@@ -242,7 +242,7 @@ struct return_nullopt {
  *
  * @tparam T The type of the elements in the deque.
  */
-template <dequeable T>
+export template <dequeable T>
 class deque : immovable {
 
   static constexpr std::ptrdiff_t k_default_capacity = 1024;
