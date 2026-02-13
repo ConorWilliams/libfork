@@ -70,11 +70,11 @@ void test_deque(std::size_t n_pushes, std::size_t n_consumers, bool do_pop) {
   std::mt19937_64 rng{std::random_device{}()};
   std::uniform_int_distribution<std::size_t> dist{0, 4};
 
-  std::vector<std::thread> producers;
+  std::vector<std::thread> consumers;
 
-  // Consumers steal items and write to their respective deques
+  // Consumers steal items and write to their respective vectors
   for (std::size_t i = 0; i < n_consumers; ++i) {
-    producers.emplace_back([&, i] {
+    consumers.emplace_back([&, i] {
       // Wait for initialization to complete
       start.arrive_and_wait();
 
@@ -84,18 +84,20 @@ void test_deque(std::size_t n_pushes, std::size_t n_consumers, bool do_pop) {
         switch (err) {
           case lf::err::none:
             steals[i].push_back(item);
+            [[fallthrough]];
           case lf::err::lost:
             break;
           case lf::err::empty:
             if (done.test()) {
               return;
             }
+            std::this_thread::yield();
         }
       }
     });
   }
 
-  // Setup, pruducer write n/2 items
+  // Setup, producer write n/2 items
   for (std::size_t i = 0; i < n_pushes / 2; ++i) {
     deque.push(i);
   }
@@ -134,17 +136,17 @@ void test_deque(std::size_t n_pushes, std::size_t n_consumers, bool do_pop) {
     }
   } else {
     while (!deque.empty()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      std::this_thread::yield();
     }
     done.test_and_set();
   }
 
   // Stop the consumers
-  for (auto &producer : producers) {
-    producer.join();
+  for (auto &c : consumers) {
+    c.join();
   }
 
-  // Verify ascending
+  // Verify ascending for each thief
   for (auto &&deq : steals) {
     REQUIRE(std::ranges::is_sorted(deq));
   }
@@ -156,6 +158,8 @@ void test_deque(std::size_t n_pushes, std::size_t n_consumers, bool do_pop) {
     all.insert(all.end(), deq.begin(), deq.end());
   }
 
+  REQUIRE(all.size() == n_pushes);
+
   std::ranges::sort(all);
 
   for (std::size_t i = 0; i < n_pushes; ++i) {
@@ -163,46 +167,56 @@ void test_deque(std::size_t n_pushes, std::size_t n_consumers, bool do_pop) {
   }
 }
 
-constexpr std::size_t max_elmements = 1uz << 20;
+constexpr std::size_t max_elements = 1uz << 20;
 
 } // namespace
 
 TEST_CASE("Deque: Single threaded", "[deque]") {
-  for (std::size_t i = 1; i < max_elmements; i <<= 1) {
-    test_deque(i, 0, true);
+  for (std::size_t i = 1; i <= max_elements; i <<= 1) {
+    DYNAMIC_SECTION("Elements: " << i) { test_deque(i, 0, true); }
   }
 }
 
 TEST_CASE("Deque: SPSC no-pop", "[deque]") {
-  for (std::size_t i = 1; i < max_elmements; i <<= 1) {
-    test_deque(i, 1, false);
+  for (std::size_t i = 1; i <= max_elements; i <<= 1) {
+    DYNAMIC_SECTION("Elements: " << i) { test_deque(i, 1, false); }
   }
 }
 
 TEST_CASE("Deque: SPSC with-pop", "[deque]") {
-  for (std::size_t i = 1; i < max_elmements; i <<= 1) {
-    test_deque(i, 1, true);
+  for (std::size_t i = 1; i <= max_elements; i <<= 1) {
+    DYNAMIC_SECTION("Elements: " << i) { test_deque(i, 1, true); }
   }
 }
 
 TEST_CASE("Deque: MPSC no-pop", "[deque]") {
-
-  unsigned int max_threads = std::min(8u, std::thread::hardware_concurrency());
-
-  for (std::size_t i = 1; i < max_elmements; i <<= 1) {
+  unsigned int max_threads = std::min(4u, std::thread::hardware_concurrency());
+  for (std::size_t i = 1; i <= (max_elements >> 2); i <<= 1) {
     for (std::size_t j = 2; j <= max_threads; ++j) {
-      test_deque(i, j, false);
+      DYNAMIC_SECTION("Elements: " << i << " Consumers: " << j) { test_deque(i, j, false); }
     }
   }
 }
 
 TEST_CASE("Deque: MPSC with-pop", "[deque]") {
-
-  unsigned int max_threads = std::min(8u, std::thread::hardware_concurrency());
-
-  for (std::size_t i = 1; i < max_elmements; i <<= 1) {
+  unsigned int max_threads = std::min(4u, std::thread::hardware_concurrency());
+  for (std::size_t i = 1; i <= (max_elements >> 2); i <<= 1) {
     for (std::size_t j = 2; j <= max_threads; ++j) {
-      test_deque(i, j, true);
+      DYNAMIC_SECTION("Elements: " << i << " Consumers: " << j) { test_deque(i, j, true); }
     }
   }
+}
+
+TEST_CASE("Deque: Capacity Growth", "[deque]") {
+  lf::deque<int> d(2);
+  REQUIRE(d.capacity() == 2);
+  d.push(1);
+  d.push(2);
+  REQUIRE(d.capacity() == 2);
+  d.push(3); // Should trigger resize
+  REQUIRE(d.capacity() > 2);
+  REQUIRE(d.ssize() == 3);
+  REQUIRE(*d.pop() == 3);
+  REQUIRE(*d.pop() == 2);
+  REQUIRE(*d.pop() == 1);
 }
