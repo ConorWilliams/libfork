@@ -10,6 +10,7 @@ export import :tuple;
 export import :frame;   // concepts
 export import :context; // concepts
 export import :ops;     // concepts, tuple, utility
+export import :deque;   // concepts
 
 // T3 partitions
 export import :promise;

@@ -334,6 +334,12 @@ struct mixin_frame {
 
       if constexpr (!std::is_void_v<R>) {
         child.promise->return_address = pkg.return_address;
+      } else {
+        if constexpr (!std::is_void_v<async_result_t<Fn, Args...>>) {
+          // Set child's return address to null to inhibit the return
+          // TODO: add test for this
+          child.promise->return_address = nullptr;
+        }
       }
 
       return &child.promise->frame;
@@ -355,8 +361,7 @@ struct mixin_frame {
     return {.child = transform<category::fork>(std::move(pkg))};
   }
 
-  constexpr auto
-  await_transform(this auto &self, join_type tag [[maybe_unused]]) noexcept -> join_awaitable<Context> {
+  constexpr auto await_transform(this auto &self, join_type) noexcept -> join_awaitable<Context> {
     return {.frame = &self.frame};
   }
 
@@ -395,7 +400,10 @@ struct promise_type : mixin_frame<Context> {
   template <typename U = T>
     requires std::assignable_from<T &, U &&>
   constexpr void return_value(U &&value) noexcept(std::is_nothrow_assignable_v<T &, U &&>) {
-    *return_address = LF_FWD(value);
+    if (return_address) {
+      // TODO: add the appropriate await_transforms
+      *return_address = LF_FWD(value);
+    }
   }
 };
 

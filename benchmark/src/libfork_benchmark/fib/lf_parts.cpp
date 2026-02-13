@@ -46,6 +46,62 @@ struct linear_allocator {
 
 static_assert(lf::stack_allocator<linear_allocator>);
 
+template <lf::stack_allocator Alloc>
+struct vector_ctx {
+
+  using handle_type = lf::frame_handle<vector_ctx>;
+
+  std::vector<handle_type> work;
+  Alloc allocator;
+
+  vector_ctx() { work.reserve(1024); }
+
+  auto alloc() noexcept -> Alloc & { return allocator; }
+
+  // TODO: try LF_NO_INLINE for final allocator
+  LF_NO_INLINE
+  void push(handle_type handle) { work.push_back(handle); }
+
+  auto pop() noexcept -> handle_type {
+    auto handle = work.back();
+    work.pop_back();
+    return handle;
+  }
+};
+
+template <lf::stack_allocator Alloc>
+struct poly_vector_ctx final : lf::polymorphic_context<Alloc> {
+
+  using handle_type = lf::frame_handle<lf::polymorphic_context<Alloc>>;
+
+  std::vector<handle_type> work;
+
+  poly_vector_ctx() { work.reserve(1024); }
+
+  void push(handle_type handle) override { work.push_back(handle); }
+
+  auto pop() noexcept -> handle_type override {
+    auto handle = work.back();
+    work.pop_back();
+    return handle;
+  }
+};
+
+struct poly_deque_ctx final : lf::polymorphic_context<linear_allocator> {
+
+  using handle_type = lf::frame_handle<lf::polymorphic_context<linear_allocator>>;
+
+  lf::deque<handle_type> work;
+
+  void push(handle_type handle) override { work.push(handle); }
+
+  auto pop() noexcept -> handle_type override {
+    return work.pop([] static -> handle_type {
+      return {};
+    });
+  }
+};
+
 using lf::task;
 
 template <lf::worker_context T>
@@ -217,3 +273,12 @@ BENCHMARK(fib<fork_call<B>, A, B>)->Name("base/libfork/fib/poly_vector_ctx")->Ar
 // Same as above but with join.
 BENCHMARK(fib<fork_call<B, true>, A, B>)->Name("test/libfork/fib/poly_vector_ctx/join")->Arg(fib_test);
 BENCHMARK(fib<fork_call<B, true>, A, B>)->Name("base/libfork/fib/poly_vector_ctx/join")->Arg(fib_base);
+
+using C = poly_deque_ctx;
+
+// Return by value,
+// Libfork call/join/fork with co-await,
+// Polymorphic
+// Deque-backed context
+BENCHMARK(fib<fork_call<B, true>, C, B>)->Name("test/libfork/fib/poly_deque_ctx/join")->Arg(fib_test);
+BENCHMARK(fib<fork_call<B, true>, C, B>)->Name("base/libfork/fib/poly_deque_ctx/join")->Arg(fib_base);

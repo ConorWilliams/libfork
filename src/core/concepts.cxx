@@ -5,6 +5,27 @@ import std;
 
 namespace lf {
 
+// =========== Atomic related concepts =========== //
+
+/**
+ * @brief Verify a type is suitable for use with `std::atomic`
+ *
+ * This requires a `TriviallyCopyable` type satisfying both `CopyConstructible` and `CopyAssignable`.
+ */
+export template <typename T>
+concept atomicable = std::is_trivially_copyable_v<T> &&    //
+                     std::is_copy_constructible_v<T> &&    //
+                     std::is_move_constructible_v<T> &&    //
+                     std::is_copy_assignable_v<T> &&       //
+                     std::is_move_assignable_v<T> &&       //
+                     std::same_as<T, std::remove_cv_t<T>>; //
+
+/**
+ * @brief A concept that verifies a type is lock-free when used with `std::atomic`.
+ */
+export template <typename T>
+concept lock_free = atomicable<T> && std::atomic<T>::is_always_lock_free;
+
 // ========== Specialization ========== //
 
 template <typename T, template <typename...> typename Template>
