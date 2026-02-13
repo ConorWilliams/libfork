@@ -110,7 +110,53 @@ void fib_coro_no_queue(benchmark::State &state) {
   }
 }
 
+// === Recursive with Deque overhead
+
+constinit inline thread_local lf::deque<std::int64_t> *tls_deque = nullptr;
+
+LF_NO_INLINE
+auto deque() -> lf::deque<std::int64_t> & { return *tls_deque; }
+
+auto fib_recursive_deque_impl(std::int64_t n) -> std::int64_t {
+  if (n <= 1) {
+    return n;
+  }
+
+  // Emulate work item creation/scheduling overhead
+  deque().push(n);
+  std::int64_t a = fib_recursive_deque_impl(n - 1);
+  deque().pop();
+
+  std::int64_t b = fib_recursive_deque_impl(n - 2);
+
+  return a + b;
+}
+
+void fib_recursive_deque(benchmark::State &state) {
+
+  std::int64_t n = state.range(0);
+  std::int64_t expect = fib_ref(n);
+
+  state.counters["n"] = static_cast<double>(n);
+
+  lf::deque<std::int64_t> deque;
+  tls_deque = &deque;
+
+  for (auto _ : state) {
+    benchmark::DoNotOptimize(n);
+    std::int64_t result = fib_recursive_deque_impl(n);
+    CHECK_RESULT(result, expect);
+    benchmark::DoNotOptimize(result);
+  }
+
+  tls_deque = nullptr;
+}
+
 } // namespace
 
-BENCHMARK(fib_coro_no_queue)->Name("test/baremetal/fib")->Arg(fib_test);
-BENCHMARK(fib_coro_no_queue)->Name("base/baremetal/fib")->Arg(fib_base);
+// Minimal coroutine, bump allocated (thread-local) stack
+BENCHMARK(fib_coro_no_queue)->Name("test/baremetal/fib/coro")->Arg(fib_test);
+BENCHMARK(fib_coro_no_queue)->Name("base/baremetal/fib/coro")->Arg(fib_base);
+
+BENCHMARK(fib_recursive_deque)->Name("test/baremetal/fib/deque")->Arg(fib_test);
+BENCHMARK(fib_recursive_deque)->Name("base/baremetal/fib/deque")->Arg(fib_base);
