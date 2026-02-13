@@ -34,14 +34,20 @@ TEST_CASE("Deque: Single thread as stack", "[deque]") {
 TEST_CASE("Deque: Custom pop when_empty", "[deque]") {
   lf::deque<int> deque;
 
-  auto result = deque.pop([]() { return -1; });
+  auto result = deque.pop([]() {
+    return -1;
+  });
   REQUIRE(result == -1);
 
   deque.push(42);
-  result = deque.pop([]() { return -1; });
+  result = deque.pop([]() {
+    return -1;
+  });
   REQUIRE(result == 42);
 
-  result = deque.pop([]() { return -1; });
+  result = deque.pop([]() {
+    return -1;
+  });
   REQUIRE(result == -1);
 }
 
