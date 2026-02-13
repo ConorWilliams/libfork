@@ -241,7 +241,7 @@ class deque : immovable {
    *
    * @param val Value to add to the deque.
    */
-  constexpr void push(T const &val);
+  constexpr void push(T val);
   /**
    * @brief Pop an item from the deque.
    *
@@ -314,7 +314,7 @@ constexpr auto deque<T>::empty() const noexcept -> bool {
 }
 
 template <dequeable T>
-constexpr auto deque<T>::push(T const &val) -> void {
+constexpr auto deque<T>::push(T val) -> void {
   std::ptrdiff_t const bottom = m_bottom.load(relaxed);
   std::ptrdiff_t const top = m_top.load(acquire);
   atomic_ring_buf<T> *buf = m_buf.load(relaxed);
@@ -323,10 +323,11 @@ constexpr auto deque<T>::push(T const &val) -> void {
     // Deque is full, build a new one.
     atomic_ring_buf<T> *bigger = buf->resize(bottom, top);
 
-    [&]() noexcept {
+    [&]() noexcept -> void {
       // This should never throw as we reserve 64 slots.
       m_garbage.emplace_back(std::exchange(buf, bigger));
     }();
+
     m_buf.store(buf, relaxed);
   }
 
