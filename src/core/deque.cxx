@@ -201,7 +201,7 @@ struct steal_t {
    */
   err code;
   /**
-   * @brief The value stolen from the deque, Only valid if ``code == err::stolen``.
+   * @brief The value stolen from the deque, Only valid if ``code == err::none``.
    */
   T val;
 };
