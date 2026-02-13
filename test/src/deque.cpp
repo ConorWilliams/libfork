@@ -18,7 +18,8 @@ TEST_CASE("Deque: Single thread as stack", "[deque]") {
   REQUIRE(deque.empty());
 
   for (int i = 0; i < 10; ++i) {
-    deque.push(i);
+    auto pre = deque.push(i);
+    REQUIRE(pre == i);
     REQUIRE(deque.ssize() == i + 1);
   }
 
