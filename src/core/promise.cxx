@@ -167,8 +167,16 @@ struct awaitable : std::suspend_always {
   // TODO: optional cancellation token
 
   template <typename T>
+  LF_NO_INLINE constexpr auto
+  cold_handling(this awaitable self, coro<promise_type<T, Context>> parent) noexcept -> coro<> {
+    self.child->handle().destroy();
+    // TODO: stash in parent frame
+    return parent;
+  }
+
+  template <typename T>
   constexpr auto
-  await_suspend(this auto self, coro<promise_type<T, Context>> parent) noexcept(Cat == call) -> coro<> {
+  await_suspend(this awaitable self, coro<promise_type<T, Context>> parent) noexcept(Cat == call) -> coro<> {
 
     if (!self.child) [[unlikely]] {
       // Noop if an exception was thrown
@@ -191,8 +199,8 @@ struct awaitable : std::suspend_always {
       LF_TRY {
         not_null(thread_context<Context>)->push(frame_handle<Context>{key, &parent.promise().frame});
       } LF_CATCH_ALL {
-        self.child->handle().destroy();
-        // TODO: stash in parent frame
+        // self.cold_handling(parent);
+        // TODO: to test properly need to try a non polymorphic allocator .
         LF_RETHROW;
       }
     }
