@@ -162,6 +162,23 @@ struct final_awaitable : std::suspend_always {
 
 // =============== Fork/Call =============== //
 
+template <worker_context Context>
+constexpr void stash_current_exception(frame_type<Context> *frame) noexcept {
+  // No synchronisation is done via exception_bit, hence we can use relaxed atomics
+  // and rely on the usual fork/join synchronisation to ensure memory ordering.
+  if (frame->atomic_except().exchange(1, std::memory_order_relaxed) == 0) {
+
+    std::exception_ptr exception = std::current_exception();
+
+    LF_ASSUME(exception); // Should have been called from inside a catch block
+
+    frame->except = new frame_type<Context>::except_type{
+        .stashed = frame->parent,
+        .exception = std::move(exception),
+    };
+  }
+}
+
 template <category Cat, worker_context Context>
 struct awaitable : std::suspend_always {
 
@@ -171,23 +188,12 @@ struct awaitable : std::suspend_always {
   frame_type<Context> *child;
 
   template <typename T>
-  LF_NO_INLINE constexpr void
-  stash_exception(this awaitable self, coro<promise_type<T, Context>> parent) noexcept {
+  constexpr auto
+  cleanup_and_stash(this awaitable self, coro<promise_type<T, Context>> parent) noexcept -> coro<> {
     // Clean-up the child that will never be resumed.
     self.child->handle().destroy();
-
-    frame_type<Context> &frame = parent.promise().frame;
-
-    // No synchronisation is done via exception_bit, hence we can use relaxed atomics
-    // and rely on the usual fork/join synchronisation to ensure memory ordering.
-    if (frame.atomic_except().exchange(1, std::memory_order_relaxed) == 0) {
-      frame.except = new except_type{
-          .stashed = frame.parent,
-          .exception = std::current_exception(),
-      };
-    }
-
-    // Else, the exception is dropped.
+    stash_current_exception(&parent.promise().frame);
+    return parent;
   }
 
   template <typename T>
