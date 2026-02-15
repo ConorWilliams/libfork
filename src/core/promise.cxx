@@ -421,10 +421,7 @@ struct mixin_frame {
 
   constexpr static auto final_suspend() noexcept -> final_awaitable { return {}; }
 
-  constexpr static void unhandled_exception() noexcept {
-    // TODO: stash exception in parent
-    std::terminate();
-  }
+  constexpr void unhandled_exception(this auto &self) noexcept { stash_current_exception(&self.frame); }
 };
 
 // =============== Promise (void) =============== //
