@@ -16,7 +16,14 @@ export enum class category : std::uint8_t {
   fork,
 };
 
-struct cancellation {};
+struct cancellation {
+  cancellation *parent = nullptr;
+  std::atomic<std::uint32_t> stop = 0;
+};
+
+struct block_type {
+  //
+};
 
 // =================== Frame =================== //
 
@@ -27,7 +34,21 @@ struct frame_type {
   using allocator_type = allocator_t<Context>;
   using checkpoint_type = checkpoint_t<allocator_type>;
 
-  frame_type *parent;
+  union parent_union {
+    frame_type *frame;
+    block_type *block;
+  };
+
+  struct except_type {
+    parent_union stashed;
+    std::exception_ptr exception;
+  };
+
+  union {
+    parent_union parent;
+    except_type *except;
+  };
+
   cancellation *cancel;
 
   [[no_unique_address]]
@@ -42,6 +63,19 @@ struct frame_type {
   // instruction for the zero init then an instruction for the joins init,
   // instead of three instructions.
   constexpr frame_type() noexcept { joins = k_u16_max; }
+
+  [[nodiscard]]
+  constexpr auto is_cancelled() const noexcept -> bool {
+    // TODO: Should exception trigger cancellation?
+    for (cancellation *ptr = cancel; ptr != nullptr; ptr = ptr->parent) {
+      // TODO: if users can't use cancellation outside of fork-join
+      // then this can be relaxed
+      if (ptr->stop.load(std::memory_order_acquire) == 1) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   [[nodiscard]]
   constexpr auto handle() LF_HOF(std::coroutine_handle<frame_type>::from_promise(*this))
