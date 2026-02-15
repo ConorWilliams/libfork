@@ -194,7 +194,9 @@ struct awaitable : std::suspend_always {
       return parent;
     }
 
-    // TODO: handle cancellation
+    if (parent.promise().frame.is_cancelled()) [[unlikely]] {
+      return parent;
+    }
 
     // Propagate parent->child relationships
     self.child->parent.frame = &parent.promise().frame;
@@ -210,7 +212,8 @@ struct awaitable : std::suspend_always {
       LF_TRY {
         not_null(thread_context<Context>)->push(frame_handle<Context>{key, &parent.promise().frame});
       } LF_CATCH_ALL {
-        return self.stash_exception(parent), parent;
+        // return self.stash_exception(parent), parent;
+        LF_RETHROW;
       }
     }
 

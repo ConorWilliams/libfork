@@ -19,7 +19,7 @@ export enum class category : std::uint8_t {
 
 struct cancellation {
   cancellation *parent = nullptr;
-  std::atomic<std::uint32_t> cancelled = 0;
+  std::atomic<std::uint32_t> stop = 0;
 };
 
 struct block_type {
@@ -64,6 +64,18 @@ struct frame_type {
   // instruction for the zero init then an instruction for the joins init,
   // instead of three instructions.
   constexpr frame_type() noexcept { joins = k_u16_max; }
+
+  [[nodiscard]]
+  constexpr auto is_cancelled() const noexcept -> bool {
+    for (cancellation *ptr = cancel; ptr != nullptr; ptr = ptr->parent) {
+      // TODO: if users can't use cancellation outside of fork-join
+      // then this can be relaxed
+      if (ptr->stop.load(std::memory_order_acquire) == 1) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   [[nodiscard]]
   constexpr auto handle() LF_HOF(std::coroutine_handle<frame_type>::from_promise(*this))
