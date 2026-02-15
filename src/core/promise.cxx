@@ -355,6 +355,8 @@ struct mixin_frame {
 
   // === For internal use === //
 
+  using enum category;
+
   template <typename Self>
     requires (!std::is_const_v<Self>)
   [[nodiscard]]
@@ -398,8 +400,6 @@ struct mixin_frame {
       return stash_current_exception(&self.frame), nullptr;
     }
   }
-
-  using enum category;
 
   template <typename R, typename Fn, typename... Args>
   constexpr auto
