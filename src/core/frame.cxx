@@ -1,4 +1,5 @@
 module;
+#include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/utils.hpp"
 export module libfork.core:frame;
 
@@ -16,7 +17,14 @@ export enum class category : std::uint8_t {
   fork,
 };
 
-struct cancellation {};
+struct cancellation {
+  cancellation *parent = nullptr;
+  std::atomic<std::uint32_t> cancelled = 0;
+};
+
+struct block_type {
+  //
+};
 
 // =================== Frame =================== //
 
@@ -27,7 +35,21 @@ struct frame_type {
   using allocator_type = allocator_t<Context>;
   using checkpoint_type = checkpoint_t<allocator_type>;
 
-  frame_type *parent;
+  union parent_union {
+    frame_type *frame;
+    block_type *block;
+  };
+
+  struct except_type {
+    parent_union stashed;
+    std::exception_ptr exception;
+  };
+
+  union {
+    parent_union parent;
+    except_type *except;
+  };
+
   cancellation *cancel;
 
   [[no_unique_address]]

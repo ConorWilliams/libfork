@@ -61,13 +61,18 @@ template <worker_context Context>
 [[nodiscard]]
 constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
 
+  // Validate final state
+  LF_ASSUME(frame->steals == 0);
+  LF_ASSUME(frame->joins == k_u16_max);
+  LF_ASSUME(frame->exception_bit == 0);
+
   defer _ = [frame] noexcept -> void {
     frame->handle().destroy();
   };
 
   switch (not_null(frame)->kind) {
     case category::call:
-      return not_null(frame->parent)->handle();
+      return not_null(frame->parent.frame)->handle();
     case category::root:
       // TODO: root handling
       return std::noop_coroutine();
@@ -79,7 +84,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
 
   Context *context = not_null(thread_context<Context>);
 
-  frame_type<Context> *parent = not_null(frame->parent);
+  frame_type<Context> *parent = not_null(frame->parent.frame);
 
   if (frame_handle last_pushed = context->pop()) {
     // No-one stole continuation, we are the exclusive owner of parent, so we
@@ -186,7 +191,7 @@ struct awaitable : std::suspend_always {
     // TODO: handle cancellation
 
     // Propagate parent->child relationships
-    self.child->parent = &parent.promise().frame;
+    self.child->parent.frame = &parent.promise().frame;
     self.child->cancel = parent.promise().frame.cancel;
     self.child->stack_ckpt = not_null(thread_context<Context>)->alloc().checkpoint();
     self.child->kind = Cat;
