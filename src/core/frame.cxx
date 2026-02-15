@@ -67,6 +67,7 @@ struct frame_type {
 
   [[nodiscard]]
   constexpr auto is_cancelled() const noexcept -> bool {
+    // TODO: Should exception trigger cancellation?
     for (cancellation *ptr = cancel; ptr != nullptr; ptr = ptr->parent) {
       // TODO: if users can't use cancellation outside of fork-join
       // then this can be relaxed
