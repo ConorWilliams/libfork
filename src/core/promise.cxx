@@ -233,6 +233,8 @@ struct awaitable : std::suspend_always {
 template <worker_context Context>
 struct join_awaitable {
 
+  using except_type = frame_type<Context>::except_type;
+
   frame_type<Context> *frame;
 
   constexpr auto take_stack_and_reset(this join_awaitable self) noexcept -> void {
@@ -310,15 +312,18 @@ struct join_awaitable {
     return std::noop_coroutine();
   }
 
+  [[noreturn]]
+  constexpr auto rethrow_exception(this join_awaitable self) -> void {}
+
   constexpr void await_resume(this join_awaitable self) {
     // We should have been reset
     LF_ASSUME(self.frame->steals == 0);
     LF_ASSUME(self.frame->joins == k_u16_max);
 
+    // Outside parallel regions so can touch non-atomically.
     if constexpr (LF_COMPILER_EXCEPTIONS) {
-      if (self.frame->exception_bit) {
-        // TODO: rest exception but as part of handling
-        LF_THROW(std::runtime_error{"Child task threw an exception"});
+      if (self.frame->exception_bit) [[unlikely]] {
+        self.rethrow_exception();
       }
     }
   }
