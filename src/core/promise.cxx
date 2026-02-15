@@ -179,8 +179,8 @@ struct awaitable : std::suspend_always {
 
     frame_type<Context> &frame = parent.promise().frame;
 
-    // No syncronisation is done via exception_bit, hence we can use relaxed atomics and
-    // rely on the usual fork/join syncronisation to ensure memory ordering.
+    // No synchronisation is done via exception_bit, hence we can use relaxed atomics and
+    // rely on the usual fork/join synchronisation to ensure memory ordering.
     if (frame.atomic_except().exchange(1, std::memory_order_relaxed) == 0) {
     }
   }
@@ -192,7 +192,7 @@ struct awaitable : std::suspend_always {
     // TODO: Add tests for exception/cancellation handling in fork/call.
 
     if (!self.child || parent.promise().frame.is_cancelled()) [[unlikely]] {
-      // Noop if an exception was thrown or cancelled.
+      // Noop if an exception was thrown or canceled.
       // Must clean-up the child that will never be resumed.
       return self.child->handle().destroy(), parent;
     }
