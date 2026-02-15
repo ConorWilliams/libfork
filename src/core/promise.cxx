@@ -187,18 +187,19 @@ struct awaitable : std::suspend_always {
 
   frame_type<Context> *child;
 
+  /**
+   * @brief In a separate function to allow it to be placed in cold block.
+   */
   template <typename T>
-  constexpr auto
-  cleanup_and_stash(this awaitable self, coro<promise_type<T, Context>> parent) noexcept -> coro<> {
+  constexpr void cleanup_and_stash(this awaitable self, coro<promise_type<T, Context>> parent) noexcept {
     // Clean-up the child that will never be resumed.
     self.child->handle().destroy();
     stash_current_exception(&parent.promise().frame);
-    return parent;
   }
 
   template <typename T>
   constexpr auto
-  await_suspend(this awaitable self, coro<promise_type<T, Context>> parent) noexcept(Cat == call) -> coro<> {
+  await_suspend(this awaitable self, coro<promise_type<T, Context>> parent) noexcept -> coro<> {
 
     // TODO: Add tests for exception/cancellation handling in fork/call.
 
@@ -209,7 +210,8 @@ struct awaitable : std::suspend_always {
 
     if (parent.promise().frame.is_cancelled()) [[unlikely]] {
       // Noop if canceled, must clean-up the child that will never be resumed.
-      return self.child->handle().destroy(), parent;
+      self.child->handle().destroy();
+      return parent;
     }
 
     // Propagate parent->child relationships
@@ -226,7 +228,8 @@ struct awaitable : std::suspend_always {
       LF_TRY {
         not_null(thread_context<Context>)->push(frame_handle<Context>{key, &parent.promise().frame});
       } LF_CATCH_ALL {
-        return self.stash_exception(parent), parent;
+        self.cleanup_and_stash(parent);
+        return parent;
       }
     }
 
