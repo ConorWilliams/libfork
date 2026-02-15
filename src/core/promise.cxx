@@ -172,11 +172,17 @@ struct awaitable : std::suspend_always {
   // TODO: optional cancellation token
 
   template <typename T>
-  LF_NO_INLINE constexpr auto
-  cold_handling(this awaitable self, coro<promise_type<T, Context>> parent) noexcept -> coro<> {
+  LF_NO_INLINE constexpr void
+  stash_exception(this awaitable self, coro<promise_type<T, Context>> parent) noexcept {
+    // Clean-up the child that will never be resumed.
     self.child->handle().destroy();
-    // TODO: stash in parent frame
-    return parent;
+
+    frame_type<Context> &frame = parent.promise().frame;
+
+    // No syncronisation is done via exception_bit, hence we can use relaxed atomics and
+    // rely on the usual fork/join syncronisation to ensure memory ordering.
+    if (frame.atomic_except().exchange(1, std::memory_order_relaxed) == 0) {
+    }
   }
 
   template <typename T>
@@ -204,9 +210,7 @@ struct awaitable : std::suspend_always {
       LF_TRY {
         not_null(thread_context<Context>)->push(frame_handle<Context>{key, &parent.promise().frame});
       } LF_CATCH_ALL {
-        // self.cold_handling(parent);
-        // TODO: to test properly need to try a non polymorphic allocator .
-        LF_RETHROW;
+        return self.stash_exception(parent), parent;
       }
     }
 
