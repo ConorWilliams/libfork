@@ -313,7 +313,17 @@ struct join_awaitable {
   }
 
   [[noreturn]]
-  constexpr auto rethrow_exception(this join_awaitable self) -> void {}
+  constexpr auto rethrow_exception(this join_awaitable self) -> void {
+    // Local copy
+    except_type except = std::move(*self.frame->except);
+
+    // Clean-up exception state
+    delete self.frame->except;
+    self.frame->parent = except.stashed;
+    self.frame->exception_bit = 0;
+
+    std::rethrow_exception(std::move(except.exception));
+  }
 
   constexpr void await_resume(this join_awaitable self) {
     // We should have been reset
