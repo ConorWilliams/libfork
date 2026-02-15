@@ -377,7 +377,7 @@ struct mixin_frame {
 
   template <category Cat, typename R, typename Fn, typename... Args>
   [[nodiscard]]
-  static constexpr auto transform(pkg<R, Fn, Args...> &&pkg) noexcept -> frame_type<Context> * {
+  constexpr auto transform(this auto &self, pkg<R, Fn, Args...> &&pkg) noexcept -> frame_type<Context> * {
     LF_TRY {
       task child = std::move(pkg.args).apply(std::move(pkg.fn));
 
@@ -395,21 +395,22 @@ struct mixin_frame {
 
       return &child.promise->frame;
     } LF_CATCH_ALL {
-      // TODO: stash exception
-      return nullptr;
+      return stash_current_exception(&self.frame), nullptr;
     }
   }
 
+  using enum category;
+
   template <typename R, typename Fn, typename... Args>
-  constexpr static auto
-  await_transform(call_pkg<R, Fn, Args...> &&pkg) noexcept -> awaitable<category::call, Context> {
-    return {.child = transform<category::call>(std::move(pkg))};
+  constexpr auto
+  await_transform(this auto &self, call_pkg<R, Fn, Args...> &&pkg) noexcept -> awaitable<call, Context> {
+    return {.child = self.template transform<call>(std::move(pkg))};
   }
 
   template <typename R, typename Fn, typename... Args>
-  constexpr static auto
-  await_transform(fork_pkg<R, Fn, Args...> &&pkg) noexcept -> awaitable<category::fork, Context> {
-    return {.child = transform<category::fork>(std::move(pkg))};
+  constexpr auto
+  await_transform(this auto self, fork_pkg<R, Fn, Args...> &&pkg) noexcept -> awaitable<fork, Context> {
+    return {.child = self.template transform<fork>(std::move(pkg))};
   }
 
   constexpr auto await_transform(this auto &self, join_type) noexcept -> join_awaitable<Context> {
