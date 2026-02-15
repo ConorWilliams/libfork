@@ -191,9 +191,13 @@ struct awaitable : std::suspend_always {
 
     // TODO: Add tests for exception/cancellation handling in fork/call.
 
-    if (!self.child || parent.promise().frame.is_cancelled()) [[unlikely]] {
-      // Noop if an exception was thrown or canceled.
-      // Must clean-up the child that will never be resumed.
+    if (!self.child) [[unlikely]] {
+      // Noop if an exception was thrown.
+      return parent;
+    }
+
+    if (parent.promise().frame.is_cancelled()) [[unlikely]] {
+      // Noop if canceled, must clean-up the child that will never be resumed.
       return self.child->handle().destroy(), parent;
     }
 
