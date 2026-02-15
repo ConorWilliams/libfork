@@ -167,8 +167,8 @@ struct final_awaitable : std::suspend_always {
  */
 template <worker_context Context>
 constexpr void stash_current_exception(frame_type<Context> *frame) noexcept {
-  // No synchronisation is done via exception_bit, hence we can use relaxed atomics
-  // and rely on the usual fork/join synchronisation to ensure memory ordering.
+  // No synchronization is done via exception_bit, hence we can use relaxed atomics
+  // and rely on the usual fork/join synchronization to ensure memory ordering.
   if (frame->atomic_except().exchange(1, std::memory_order_relaxed) == 0) {
 
     std::exception_ptr exception = std::current_exception();
