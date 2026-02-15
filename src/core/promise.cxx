@@ -166,10 +166,9 @@ template <category Cat, worker_context Context>
 struct awaitable : std::suspend_always {
 
   using enum category;
+  using except_type = frame_type<Context>::except_type;
 
   frame_type<Context> *child;
-
-  // TODO: optional cancellation token
 
   template <typename T>
   LF_NO_INLINE constexpr void
@@ -179,10 +178,16 @@ struct awaitable : std::suspend_always {
 
     frame_type<Context> &frame = parent.promise().frame;
 
-    // No synchronisation is done via exception_bit, hence we can use relaxed atomics and
-    // rely on the usual fork/join synchronisation to ensure memory ordering.
+    // No synchronisation is done via exception_bit, hence we can use relaxed atomics
+    // and rely on the usual fork/join synchronisation to ensure memory ordering.
     if (frame.atomic_except().exchange(1, std::memory_order_relaxed) == 0) {
+      frame.except = new except_type{
+          .stashed = frame.parent,
+          .exception = std::current_exception(),
+      };
     }
+
+    // Else, the exception is dropped.
   }
 
   template <typename T>
