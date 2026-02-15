@@ -162,6 +162,9 @@ struct final_awaitable : std::suspend_always {
 
 // =============== Fork/Call =============== //
 
+/**
+ * @brief Call inside a catch block, stash current exception in `frame`.
+ */
 template <worker_context Context>
 constexpr void stash_current_exception(frame_type<Context> *frame) noexcept {
   // No synchronisation is done via exception_bit, hence we can use relaxed atomics
@@ -181,9 +184,6 @@ constexpr void stash_current_exception(frame_type<Context> *frame) noexcept {
 
 template <category Cat, worker_context Context>
 struct awaitable : std::suspend_always {
-
-  using enum category;
-  using except_type = frame_type<Context>::except_type;
 
   frame_type<Context> *child;
 
@@ -220,7 +220,7 @@ struct awaitable : std::suspend_always {
     self.child->stack_ckpt = not_null(thread_context<Context>)->alloc().checkpoint();
     self.child->kind = Cat;
 
-    if constexpr (Cat == fork) {
+    if constexpr (Cat == category::fork) {
       // It is critical to pass self by-value here, after the call to push()
       // the object `*this` may be destroyed, if passing by ref it would be
       // use-after-free to then access self in the following line to fetch the
