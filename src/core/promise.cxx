@@ -189,13 +189,12 @@ struct awaitable : std::suspend_always {
   constexpr auto
   await_suspend(this awaitable self, coro<promise_type<T, Context>> parent) noexcept(Cat == call) -> coro<> {
 
-    if (!self.child) [[unlikely]] {
-      // Noop if an exception was thrown
-      return parent;
-    }
+    // TODO: Add tests for exception/cancellation handling in fork/call.
 
-    if (parent.promise().frame.is_cancelled()) [[unlikely]] {
-      return parent;
+    if (!self.child || parent.promise().frame.is_cancelled()) [[unlikely]] {
+      // Noop if an exception was thrown or cancelled.
+      // Must clean-up the child that will never be resumed.
+      return self.child->handle().destroy(), parent;
     }
 
     // Propagate parent->child relationships
@@ -212,8 +211,7 @@ struct awaitable : std::suspend_always {
       LF_TRY {
         not_null(thread_context<Context>)->push(frame_handle<Context>{key, &parent.promise().frame});
       } LF_CATCH_ALL {
-        // return self.stash_exception(parent), parent;
-        LF_RETHROW;
+        return self.stash_exception(parent), parent;
       }
     }
 
