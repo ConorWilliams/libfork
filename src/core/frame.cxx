@@ -1,5 +1,4 @@
 module;
-#include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/utils.hpp"
 export module libfork.core:frame;
 
