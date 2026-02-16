@@ -1,0 +1,126 @@
+{
+  "version": 10,
+  "configurePresets": [
+    {
+      "name": "cmake-pedantic",
+      "hidden": true,
+      "warnings": {
+        "dev": true,
+        "deprecated": true,
+        "uninitialized": true,
+        "unusedCli": true,
+        "systemVars": false
+      },
+      "errors": {
+        "deprecated": true
+      }
+    },
+    {
+      "name": "ci-base",
+      "inherits": "cmake-pedantic",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "libfork_DEV_MODE": "ON"
+      }
+    },
+    {
+      "name": "ci-hardened",
+      "inherits": "ci-base",
+      "displayName": "Debug with warnings and hardening",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS": "-O2 -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wcast-qual -Wformat -Wformat=2 -Wundef -Werror=float-equal -Wshadow -Wcast-align -Wunused -Wnull-dereference -Wdouble-promotion -Wimplicit-fallthrough -Wextra-semi -Woverloaded-virtual -Wnon-virtual-dtor -Wold-style-cast -Werror=format-security -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS -fstrict-flex-arrays=3 -fstack-protector-strong -Wno-missing-braces -Wno-missing-field-initializers"
+      }
+    },
+    {
+      "name": "ci-release",
+      "inherits": "ci-base",
+      "displayName": "Release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_FLAGS": "-O3 -DNDEBUG -flto=auto -march=native"
+      }
+    },
+    {
+      "name": "ci-no-except-rtti",
+      "inherits": "ci-base",
+      "displayName": "Release no RTTI or exceptions",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_FLAGS": "-O3 -DNDEBUG -flto=auto -march=native -fno-exceptions -fno-rtti"
+      }
+    },
+    {
+      "name": "ci-sanitize",
+      "inherits": "ci-base",
+      "displayName": "Debug with sanitizers",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Sanitize",
+        "CMAKE_CXX_FLAGS": "-O2 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-common -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "ci-hardened",
+      "configurePreset": "ci-hardened"
+    },
+    {
+      "name": "ci-release",
+      "configurePreset": "ci-release"
+    },
+    {
+      "name": "ci-no-except-rtti",
+      "configurePreset": "ci-no-except-rtti"
+    },
+    {
+      "name": "ci-sanitize",
+      "configurePreset": "ci-sanitize"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "ci-hardened",
+      "configurePreset": "ci-hardened",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "ci-release",
+      "configurePreset": "ci-release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "ci-no-except-rtti",
+      "configurePreset": "ci-no-except-rtti",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "ci-sanitize",
+      "configurePreset": "ci-sanitize",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "stopOnFailure": true
+      }
+    }
+  ]
+}

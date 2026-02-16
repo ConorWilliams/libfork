@@ -5,34 +5,83 @@ set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
 
 include(cmake/read_version.cmake)
 
-read_version(${CMAKE_CURRENT_SOURCE_DIR}/include/libfork/core/macro.hpp)
+read_version(${CMAKE_CURRENT_SOURCE_DIR}/include/libfork/version.hpp)
 
 project(
   libfork
   VERSION ${version_major}.${version_minor}.${version_patch}
-  DESCRIPTION "A bleeding-edge, lock-free, wait-free, continuation-stealing fork-join library built on C++20's coroutines."
   LANGUAGES CXX
 )
+
+# ---- Project options ----
+
+option(libfork_DEV_MODE "Enable developer build (tests/benchmarks/etc) for libfork" OFF)
+
+# ---- System dependencies ----
+
+find_package(Threads REQUIRED)
+
+# ===========================
 
 # Tell CMake that we explicitly want `import std`. This will initialize the
 # property on all targets declared after this to 1
 # TODO: set property per target
 set(CMAKE_CXX_MODULE_STD 1)
 
-# Make a library.
-add_library(uses_std STATIC)
+add_library(libfork_libfork)
+add_library(libfork::libfork ALIAS libfork_libfork)
 
-# Add sources.
-target_sources(uses_std PRIVATE uses_std.cxx)
+# target_link_libraries(libfork_libfork PRIVATE Threads::Threads)
 
-# Tell CMake we're using C++23 but only C++20 is needed to consume it.
-target_compile_features(uses_std INTERFACE cxx_std_23)
+set_property(TARGET libfork_libfork PROPERTY EXPORT_NAME libfork)
 
-# Make an executable.
-add_executable(main)
+target_compile_features(libfork_libfork PUBLIC cxx_std_26)
 
-target_sources(main PRIVATE main.cxx)
-target_link_libraries(main PRIVATE uses_std)
+# Public headers
+target_sources(libfork_libfork
+  PUBLIC
+    FILE_SET HEADERS FILES
+      include/libfork/version.hpp
+      include/libfork/__impl/compiler.hpp
+      include/libfork/__impl/exception.hpp
+      include/libfork/__impl/utils.hpp
+      include/libfork/__impl/assume.hpp
+    BASE_DIRS
+      include
+)
+
+# Add the module files to the library, must be public because
+# consumers will need bo build the BMI
+target_sources(libfork_libfork
+  PUBLIC
+    FILE_SET CXX_MODULES FILES
+      src/core/core.cxx
+      src/core/promise.cxx
+      src/core/concepts.cxx
+      src/core/utility.cxx
+      src/core/frame.cxx
+      src/core/constants.cxx
+      src/core/tuple.cxx
+      src/core/ops.cxx
+      src/core/context.cxx
+      src/core/deque.cxx
+    PRIVATE
+      src/exception.cpp
+)
+
+# ======================
+
+if(libfork_DEV_MODE)
+
+  include(CTest) # Enables the BUILD_TESTING option
+
+  if(BUILD_TESTING)
+    add_subdirectory(test)
+  endif()
+
+  add_subdirectory(benchmark)
+
+endif()
 
 # list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 #
@@ -43,9 +92,6 @@ target_link_libraries(main PRIVATE uses_std)
 #
 # message(STATUS "CMAKE_BUILD_TYPE is set to '${CMAKE_BUILD_TYPE}'")
 #
-# # ---- System dependencies ----
-#
-# find_package(Threads REQUIRED)
 #
 # # ------ Declare library ------
 #
