@@ -254,6 +254,7 @@ struct join_awaitable {
   }
 
   constexpr auto await_ready(this join_awaitable self) noexcept -> bool {
+
     if (not_null(self.frame)->steals == 0) [[likely]] {
       // If no steals then we are the only owner of the parent and we are ready
       // to join. Therefore, no need to reset the control block.
