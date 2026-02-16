@@ -409,7 +409,7 @@ struct mixin_frame {
 
   template <typename R, typename Fn, typename... Args>
   constexpr auto
-  await_transform(this auto self, fork_pkg<R, Fn, Args...> &&pkg) noexcept -> awaitable<fork, Context> {
+  await_transform(this auto &self, fork_pkg<R, Fn, Args...> &&pkg) noexcept -> awaitable<fork, Context> {
     return {.child = self.template transform<fork>(std::move(pkg))};
   }
 
