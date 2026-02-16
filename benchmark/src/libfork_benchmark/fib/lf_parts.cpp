@@ -70,6 +70,27 @@ struct vector_ctx {
 };
 
 template <lf::stack_allocator Alloc>
+struct deque_ctx {
+
+  using handle_type = lf::frame_handle<deque_ctx>;
+
+  lf::deque<handle_type> work;
+  Alloc allocator;
+
+  auto alloc() noexcept -> Alloc & { return allocator; }
+
+  // TODO: try LF_NO_INLINE for final allocator
+  LF_NO_INLINE
+  void push(handle_type handle) { work.push(handle); }
+
+  auto pop() noexcept -> handle_type {
+    return work.pop([] static -> handle_type {
+      return {};
+    });
+  }
+};
+
+template <lf::stack_allocator Alloc>
 struct poly_vector_ctx final : lf::polymorphic_context<Alloc> {
 
   using handle_type = lf::frame_handle<lf::polymorphic_context<Alloc>>;
@@ -275,10 +296,14 @@ BENCHMARK(fib<fork_call<B, true>, A, B>)->Name("test/libfork/fib/poly_vector_ctx
 BENCHMARK(fib<fork_call<B, true>, A, B>)->Name("base/libfork/fib/poly_vector_ctx/join")->Arg(fib_base);
 
 using C = poly_deque_ctx;
+using D = deque_ctx<linear_allocator>;
 
 // Return by value,
 // Libfork call/join/fork with co-await,
-// Polymorphic
 // Deque-backed context
+BENCHMARK(fib<fork_call<D, true>, D, D>)->Name("test/libfork/fib/deque_ctx/join")->Arg(fib_test);
+BENCHMARK(fib<fork_call<D, true>, D, D>)->Name("base/libfork/fib/deque_ctx/join")->Arg(fib_base);
+
+// Same as above but polymorphic
 BENCHMARK(fib<fork_call<B, true>, C, B>)->Name("test/libfork/fib/poly_deque_ctx/join")->Arg(fib_test);
 BENCHMARK(fib<fork_call<B, true>, C, B>)->Name("base/libfork/fib/poly_deque_ctx/join")->Arg(fib_base);

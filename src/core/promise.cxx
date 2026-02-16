@@ -61,13 +61,18 @@ template <worker_context Context>
 [[nodiscard]]
 constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
 
+  // Validate final state
+  LF_ASSUME(frame->steals == 0);
+  LF_ASSUME(frame->joins == k_u16_max);
+  LF_ASSUME(frame->exception_bit == 0);
+
   defer _ = [frame] noexcept -> void {
     frame->handle().destroy();
   };
 
   switch (not_null(frame)->kind) {
     case category::call:
-      return not_null(frame->parent)->handle();
+      return not_null(frame->parent.frame)->handle();
     case category::root:
       // TODO: root handling
       return std::noop_coroutine();
@@ -79,7 +84,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
 
   Context *context = not_null(thread_context<Context>);
 
-  frame_type<Context> *parent = not_null(frame->parent);
+  frame_type<Context> *parent = not_null(frame->parent.frame);
 
   if (frame_handle last_pushed = context->pop()) {
     // No-one stole continuation, we are the exclusive owner of parent, so we
@@ -157,33 +162,65 @@ struct final_awaitable : std::suspend_always {
 
 // =============== Fork/Call =============== //
 
+/**
+ * @brief Call inside a catch block, stash current exception in `frame`.
+ */
+template <worker_context Context>
+constexpr void stash_current_exception(frame_type<Context> *frame) noexcept {
+  // No synchronization is done via exception_bit, hence we can use relaxed atomics
+  // and rely on the usual fork/join synchronization to ensure memory ordering.
+  if (frame->atomic_except().exchange(1, std::memory_order_relaxed) == 0) {
+
+    std::exception_ptr exception = std::current_exception();
+
+    LF_ASSUME(exception); // Should have been called from inside a catch block
+
+    frame->except = new frame_type<Context>::except_type{
+        .stashed = frame->parent,
+        .exception = std::move(exception),
+    };
+  }
+}
+
 template <category Cat, worker_context Context>
 struct awaitable : std::suspend_always {
 
-  using enum category;
-
   frame_type<Context> *child;
 
-  // TODO: optional cancellation token
+  /**
+   * @brief In a separate function to allow it to be placed in cold block.
+   */
+  template <typename T>
+  constexpr void cleanup_and_stash(this awaitable self, coro<promise_type<T, Context>> parent) noexcept {
+    // Clean-up the child that will never be resumed.
+    self.child->handle().destroy();
+    stash_current_exception(&parent.promise().frame);
+  }
 
   template <typename T>
   constexpr auto
-  await_suspend(this auto self, coro<promise_type<T, Context>> parent) noexcept(Cat == call) -> coro<> {
+  await_suspend(this awaitable self, coro<promise_type<T, Context>> parent) noexcept -> coro<> {
+
+    // TODO: Add tests for exception/cancellation handling in fork/call.
 
     if (!self.child) [[unlikely]] {
-      // Noop if an exception was thrown
+      // Noop if an exception was thrown.
       return parent;
     }
 
-    // TODO: handle cancellation
+    if (parent.promise().frame.is_cancelled()) [[unlikely]] {
+      // Noop if canceled, must clean-up the child that will never be resumed.
+      self.child->handle().destroy();
+      return parent;
+    }
 
     // Propagate parent->child relationships
-    self.child->parent = &parent.promise().frame;
+    self.child->parent.frame = &parent.promise().frame;
     self.child->cancel = parent.promise().frame.cancel;
     self.child->stack_ckpt = not_null(thread_context<Context>)->alloc().checkpoint();
     self.child->kind = Cat;
 
-    if constexpr (Cat == fork) {
+    if constexpr (Cat == category::fork) {
       // It is critical to pass self by-value here, after the call to push()
       // the object `*this` may be destroyed, if passing by ref it would be
       // use-after-free to then access self in the following line to fetch the
@@ -191,9 +228,8 @@ struct awaitable : std::suspend_always {
       LF_TRY {
         not_null(thread_context<Context>)->push(frame_handle<Context>{key, &parent.promise().frame});
       } LF_CATCH_ALL {
-        self.child->handle().destroy();
-        // TODO: stash in parent frame
-        LF_RETHROW;
+        self.cleanup_and_stash(parent);
+        return parent;
       }
     }
 
@@ -206,6 +242,8 @@ struct awaitable : std::suspend_always {
 template <worker_context Context>
 struct join_awaitable {
 
+  using except_type = frame_type<Context>::except_type;
+
   frame_type<Context> *frame;
 
   constexpr auto take_stack_and_reset(this join_awaitable self) noexcept -> void {
@@ -216,6 +254,7 @@ struct join_awaitable {
   }
 
   constexpr auto await_ready(this join_awaitable self) noexcept -> bool {
+
     if (not_null(self.frame)->steals == 0) [[likely]] {
       // If no steals then we are the only owner of the parent and we are ready
       // to join. Therefore, no need to reset the control block.
@@ -283,15 +322,28 @@ struct join_awaitable {
     return std::noop_coroutine();
   }
 
+  [[noreturn]]
+  constexpr auto rethrow_exception(this join_awaitable self) -> void {
+    // Local copy
+    except_type except = std::move(*self.frame->except);
+
+    // Clean-up exception state
+    delete self.frame->except;
+    self.frame->parent = except.stashed;
+    self.frame->exception_bit = 0;
+
+    std::rethrow_exception(std::move(except.exception));
+  }
+
   constexpr void await_resume(this join_awaitable self) {
     // We should have been reset
     LF_ASSUME(self.frame->steals == 0);
     LF_ASSUME(self.frame->joins == k_u16_max);
 
+    // Outside parallel regions so can touch non-atomically.
     if constexpr (LF_COMPILER_EXCEPTIONS) {
-      if (self.frame->exception_bit) {
-        // TODO: rest exception but as part of handling
-        LF_THROW(std::runtime_error{"Child task threw an exception"});
+      if (self.frame->exception_bit) [[unlikely]] {
+        self.rethrow_exception();
       }
     }
   }
@@ -303,6 +355,8 @@ template <worker_context Context>
 struct mixin_frame {
 
   // === For internal use === //
+
+  using enum category;
 
   template <typename Self>
     requires (!std::is_const_v<Self>)
@@ -326,7 +380,7 @@ struct mixin_frame {
 
   template <category Cat, typename R, typename Fn, typename... Args>
   [[nodiscard]]
-  static constexpr auto transform(pkg<R, Fn, Args...> &&pkg) noexcept -> frame_type<Context> * {
+  constexpr auto transform(this auto &self, pkg<R, Fn, Args...> &&pkg) noexcept -> frame_type<Context> * {
     LF_TRY {
       task child = std::move(pkg.args).apply(std::move(pkg.fn));
 
@@ -344,21 +398,20 @@ struct mixin_frame {
 
       return &child.promise->frame;
     } LF_CATCH_ALL {
-      // TODO: stash exception
-      return nullptr;
+      return stash_current_exception(&self.frame), nullptr;
     }
   }
 
   template <typename R, typename Fn, typename... Args>
-  constexpr static auto
-  await_transform(call_pkg<R, Fn, Args...> &&pkg) noexcept -> awaitable<category::call, Context> {
-    return {.child = transform<category::call>(std::move(pkg))};
+  constexpr auto
+  await_transform(this auto &self, call_pkg<R, Fn, Args...> &&pkg) noexcept -> awaitable<call, Context> {
+    return {.child = self.template transform<call>(std::move(pkg))};
   }
 
   template <typename R, typename Fn, typename... Args>
-  constexpr static auto
-  await_transform(fork_pkg<R, Fn, Args...> &&pkg) noexcept -> awaitable<category::fork, Context> {
-    return {.child = transform<category::fork>(std::move(pkg))};
+  constexpr auto
+  await_transform(this auto &self, fork_pkg<R, Fn, Args...> &&pkg) noexcept -> awaitable<fork, Context> {
+    return {.child = self.template transform<fork>(std::move(pkg))};
   }
 
   constexpr auto await_transform(this auto &self, join_type) noexcept -> join_awaitable<Context> {
@@ -369,10 +422,7 @@ struct mixin_frame {
 
   constexpr static auto final_suspend() noexcept -> final_awaitable { return {}; }
 
-  constexpr static void unhandled_exception() noexcept {
-    // TODO: stash exception in parent
-    std::terminate();
-  }
+  constexpr void unhandled_exception(this auto &self) noexcept { stash_current_exception(&self.frame); }
 };
 
 // =============== Promise (void) =============== //
