@@ -6,11 +6,13 @@ import :frame;
 
 namespace lf {
 
-// =================== Handle =================== //
+// =================== Lock and key =================== //
 
 struct lock {};
 
 inline constexpr lock key = {};
+
+// =================== Handle =================== //
 
 // TODO: api + test this is lock-free
 //
@@ -28,9 +30,11 @@ class frame_handle {
   constexpr frame_handle() = default;
   constexpr frame_handle(lock, frame_type<T> *ptr) noexcept : m_ptr(ptr) {}
 
+  constexpr auto operator==(frame_handle const &) const noexcept -> bool = default;
+
   explicit operator bool() const noexcept { return m_ptr != nullptr; }
 
-  // private:
+ private:
   frame_type<T> *m_ptr = nullptr;
 };
 

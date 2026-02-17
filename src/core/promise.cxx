@@ -91,7 +91,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
   if (frame_handle last_pushed = context->pop()) {
     // No-one stole continuation, we are the exclusive owner of parent, so we
     // just keep ripping!
-    LF_ASSUME(last_pushed.m_ptr == parent);
+    LF_ASSUME(frame_handle{key, parent} == last_pushed);
     // This is not a join point so no state (i.e. counters) is guaranteed.
     return parent->handle();
   }
@@ -228,7 +228,7 @@ struct awaitable : std::suspend_always {
       // use-after-free to then access self in the following line to fetch the
       // handle.
       LF_TRY {
-        not_null(thread_context<Context>)->push(frame_handle<Context>{key, &parent.promise().frame});
+        not_null(thread_context<Context>)->push(frame_handle{key, &parent.promise().frame});
       } LF_CATCH_ALL {
         self.cleanup_and_stash(parent);
         return parent;
