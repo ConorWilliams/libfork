@@ -12,5 +12,7 @@ export import :context; // concepts
 export import :ops;     // concepts, tuple, utility
 export import :deque;   // concepts
 
+export import :schedule;
+
 // T3 partitions
 export import :promise;
