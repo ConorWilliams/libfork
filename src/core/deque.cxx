@@ -323,7 +323,7 @@ constexpr auto deque<T>::push(T val) -> std::ptrdiff_t {
   std::ptrdiff_t const ssize = bottom - top;
 
   if (buf->capacity() < ssize + 1) {
-    throw std::length_error{"deque capacity exceeded"};
+    LF_THROW(std::length_error{"deque capacity exceeded"});
   }
 
   // Construct new object, this does not have to be atomic as no one can steal this item until
