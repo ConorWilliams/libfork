@@ -67,6 +67,7 @@ target_sources(libfork_libfork
       src/core/context.cxx
       src/core/deque.cxx
       src/core/schedule.cxx
+      src/core/handles.cxx
     PRIVATE
       src/exception.cpp
 )

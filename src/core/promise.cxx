@@ -16,6 +16,8 @@ import :utility;
 import :context;
 import :ops;
 
+import :handles;
+
 namespace lf {
 
 template <typename T = void>

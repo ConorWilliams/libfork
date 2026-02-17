@@ -1,4 +1,3 @@
-module;
 export module libfork.core:context;
 
 import std;
