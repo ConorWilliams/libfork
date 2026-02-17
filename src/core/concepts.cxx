@@ -77,13 +77,13 @@ consteval auto constify(T &&x) noexcept -> std::add_const_t<T> &;
  * Slow-path operations: release, acquire
  */
 export template <typename T>
-concept stack_allocator = std::is_object_v<T> && requires (T alloc, std::size_t n, void *ptr) {
+concept stack_allocator = std::is_object_v<T> && requires (T allocator, std::size_t n, void *ptr) {
   // { alloc.empty() } noexcept -> std::same_as<bool>;
-  { alloc.push(n) } -> std::same_as<void *>;
-  { alloc.pop(ptr, n) } noexcept -> std::same_as<void>;
-  { alloc.checkpoint() } noexcept -> std::regular;
-  { alloc.release() } noexcept -> std::same_as<void>;
-  { alloc.acquire(constify(alloc.checkpoint())) } noexcept -> std::same_as<void>;
+  { allocator.push(n) } -> std::same_as<void *>;
+  { allocator.pop(ptr, n) } noexcept -> std::same_as<void>;
+  { allocator.checkpoint() } noexcept -> std::regular;
+  { allocator.release() } noexcept -> std::same_as<void>;
+  { allocator.acquire(constify(allocator.checkpoint())) } noexcept -> std::same_as<void>;
 };
 
 /**
@@ -97,6 +97,9 @@ using checkpoint_t = decltype(std::declval<T &>().checkpoint());
 export template <typename T>
 class frame_handle;
 
+export template <typename T>
+class await_handle;
+
 template <typename T>
 concept ref_to_stack_allocator = std::is_lvalue_reference_v<T> && stack_allocator<std::remove_reference_t<T>>;
 
@@ -107,13 +110,18 @@ concept ref_to_stack_allocator = std::is_lvalue_reference_v<T> && stack_allocato
  *
  * - Push/pop a frame handle onto the context in a LIFO manner.
  * - Have a `stack_allocator` that can be accessed via `alloc()`.
+ * - Post an await handle to the context via `post()` and promise to call resume.
+ *
+ * TODO: rename alloc to allocator
  */
 export template <typename T>
-concept worker_context = std::is_object_v<T> && requires (T ctx, frame_handle<T> handle) {
-  { ctx.alloc() } noexcept -> ref_to_stack_allocator;
-  { ctx.push(handle) } -> std::same_as<void>;
-  { ctx.pop() } noexcept -> std::same_as<frame_handle<T>>;
-};
+concept worker_context =
+    std::is_object_v<T> && requires (T context, frame_handle<T> frame, await_handle<T> await) {
+      { context.post(await) } -> std::same_as<void>;
+      { context.push(frame) } -> std::same_as<void>;
+      { context.pop() } noexcept -> std::same_as<frame_handle<T>>;
+      { context.alloc() } noexcept -> ref_to_stack_allocator;
+    };
 
 /**
  * @brief Fetch the allocator type of a worker context `T`.
