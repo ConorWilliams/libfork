@@ -25,6 +25,8 @@ struct block_type {
   //
 };
 
+// TODO: make everything (deque etc) allocator aware...
+
 // =================== Frame =================== //
 
 export template <typename Context>
