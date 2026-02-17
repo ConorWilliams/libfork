@@ -28,7 +28,7 @@ export template <typename T>
 class frame_handle {
  public:
   constexpr frame_handle() = default;
-  constexpr frame_handle(lock, frame_type<T> *ptr) noexcept : m_ptr(ptr) {}
+  constexpr frame_handle(lock, frame_type<T> *ptr) noexcept : m_ptr{ptr} {}
 
   constexpr auto operator==(frame_handle const &) const noexcept -> bool = default;
 

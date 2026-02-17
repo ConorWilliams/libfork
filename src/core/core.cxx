@@ -9,8 +9,8 @@ export import :tuple;
 // T2 partitions
 export import :frame;   // concepts, constants
 export import :context; // concepts
-export import :ops;     // concepts, tuple, utility
-export import :deque;   // FIXME:
+export import :ops;     // concepts, utility, tuple
+export import :deque;   // concepts, utility, constants
 
 export import :handles; // frame
 
