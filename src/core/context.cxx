@@ -12,18 +12,22 @@ namespace lf {
 export template <stack_allocator Alloc>
 class polymorphic_context {
  public:
-  constexpr polymorphic_context() = default;
-
-  explicit constexpr polymorphic_context(Alloc alloc) noexcept(std::is_nothrow_move_constructible_v<Alloc>)
-      : m_allocator(std::move(alloc)) {}
+  auto allocator() noexcept -> Alloc & { return m_allocator; }
 
   virtual void post(await_handle<polymorphic_context>) = 0;
   virtual void push(frame_handle<polymorphic_context>) = 0;
   virtual auto pop() noexcept -> frame_handle<polymorphic_context> = 0;
 
-  auto allocator() noexcept -> Alloc & { return m_allocator; }
-
   virtual ~polymorphic_context() = default;
+
+ protected:
+  constexpr polymorphic_context() = default;
+
+  template <typename... Args>
+    requires std::constructible_from<Alloc, Args...> && (sizeof...(Args) > 0)
+  explicit(sizeof...(Args) == 1) constexpr polymorphic_context(Args &&...args) noexcept(
+      std::is_nothrow_constructible_v<Alloc, Args...>)
+      : m_allocator(std::forward<Args>(args)...) {}
 
  private:
   Alloc m_allocator;
