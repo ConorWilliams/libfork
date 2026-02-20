@@ -37,7 +37,8 @@ set_property(TARGET libfork_libfork PROPERTY EXPORT_NAME libfork)
 
 target_compile_features(libfork_libfork PUBLIC cxx_std_26)
 
-# Public headers
+# Public headers, __impl must be public because consumers need
+# them to build the module BMI
 target_sources(libfork_libfork
   PUBLIC
     FILE_SET HEADERS FILES
@@ -65,6 +66,8 @@ target_sources(libfork_libfork
       src/core/ops.cxx
       src/core/context.cxx
       src/core/deque.cxx
+      src/core/schedule.cxx
+      src/core/handles.cxx
     PRIVATE
       src/exception.cpp
 )
