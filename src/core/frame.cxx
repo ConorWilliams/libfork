@@ -6,8 +6,44 @@ import std;
 
 import :concepts;
 import :constants;
+import :utility;
 
 namespace lf {
+// =================== Cancellation =================== //
+
+struct cancellation {
+  cancellation *parent = nullptr;
+  std::atomic<std::uint32_t> stop = 0;
+};
+
+// =================== Root =================== //
+
+struct block_type {
+
+  alignas(k_cache_line) std::atomic<std::int32_t> ref_count{1};
+  std::exception_ptr exception;
+  std::binary_semaphore sem{0};
+
+  friend void add_ref(block_type *block) noexcept {
+    not_null(block)->ref_count.fetch_add(1, std::memory_order_relaxed);
+  }
+
+  friend void release(block_type *block) noexcept {
+    if (not_null(block)->ref_count.fetch_sub(1, std::memory_order::release) == 1) {
+      std::atomic_thread_fence(std::memory_order::acquire);
+      delete block;
+    }
+  }
+
+  virtual ~block_type() = default;
+};
+
+template <std::default_initializable T>
+struct block : block_type {
+  T return_value;
+};
+
+// =================== Frame =================== //
 
 // TODO: remove this and other exports
 export enum class category : std::uint8_t {
@@ -16,18 +52,7 @@ export enum class category : std::uint8_t {
   fork,
 };
 
-struct cancellation {
-  cancellation *parent = nullptr;
-  std::atomic<std::uint32_t> stop = 0;
-};
-
-struct block_type {
-  //
-};
-
 // TODO: make everything (deque etc) allocator aware...
-
-// =================== Frame =================== //
 
 export template <typename Context>
 struct frame_type {
