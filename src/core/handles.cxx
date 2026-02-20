@@ -12,7 +12,7 @@ struct lock {};
 
 inline constexpr lock key = {};
 
-// =================== Handle =================== //
+// =================== Frame =================== //
 
 // TODO: api + test this is lock-free
 //
@@ -37,5 +37,10 @@ class frame_handle {
  private:
   frame_type<T> *m_ptr = nullptr;
 };
+
+// =================== Await =================== //
+
+export template <typename T>
+class await_handle {};
 
 } // namespace lf

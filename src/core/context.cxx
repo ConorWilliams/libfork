@@ -17,9 +17,12 @@ class polymorphic_context {
   explicit constexpr polymorphic_context(Alloc alloc) noexcept(std::is_nothrow_move_constructible_v<Alloc>)
       : m_allocator(std::move(alloc)) {}
 
-  auto alloc() noexcept -> Alloc & { return m_allocator; }
+  virtual void post(await_handle<polymorphic_context>) = 0;
   virtual void push(frame_handle<polymorphic_context>) = 0;
   virtual auto pop() noexcept -> frame_handle<polymorphic_context> = 0;
+
+  auto alloc() noexcept -> Alloc & { return m_allocator; }
+
   virtual ~polymorphic_context() = default;
 
  private:
