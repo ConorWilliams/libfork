@@ -37,7 +37,7 @@ struct block_type {
 
   virtual ~block_type() = default;
 
- private:
+ protected:
   block_type() noexcept = default;
 };
 
@@ -69,6 +69,8 @@ struct frame_type {
     std::exception_ptr exception;
   };
 
+  // == Member variables == //
+
   union {
     parent_union parent;
     except_type *except;
@@ -83,6 +85,8 @@ struct frame_type {
   std::uint16_t steals = 0;                     // In debug do overflow checking
   category kind = static_cast<category>(0);     // Fork/Call/Just/Root
   ATOMIC_ALIGN(std::uint8_t) exception_bit = 0; // Atomically set
+
+  // == Member functions == //
 
   // Explicitly post construction, this allows the compiler to emit a single
   // instruction for the zero init then an instruction for the joins init,

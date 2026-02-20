@@ -13,7 +13,7 @@ namespace lf {
 // must be atomicable, ideally it would be able to accpet submission at either
 // a root OR context switch point
 
-template <std::default_initializable T>
+export template <std::default_initializable T>
 struct block : block_type {
   T return_value;
 };
