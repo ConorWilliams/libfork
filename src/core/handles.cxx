@@ -41,6 +41,17 @@ class frame_handle {
 // =================== Await =================== //
 
 export template <typename T>
-class await_handle {};
+class await_handle {
+ public:
+  constexpr await_handle() = default;
+  constexpr await_handle(lock, frame_type<T> *ptr) noexcept : m_ptr{ptr} {}
+
+  constexpr auto operator==(await_handle const &) const noexcept -> bool = default;
+
+  explicit operator bool() const noexcept { return m_ptr != nullptr; }
+
+ private:
+  frame_type<T> *m_ptr = nullptr;
+};
 
 } // namespace lf
