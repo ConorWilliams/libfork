@@ -24,11 +24,11 @@ struct block_type {
   std::exception_ptr exception;
   std::binary_semaphore sem{0};
 
-  friend void add_ref(block_type *block) noexcept {
+  constexpr friend void add_ref(block_type *block) noexcept {
     not_null(block)->ref_count.fetch_add(1, std::memory_order_relaxed);
   }
 
-  friend void release(block_type *block) noexcept {
+  constexpr friend void release_ref(block_type *block) noexcept {
     if (not_null(block)->ref_count.fetch_sub(1, std::memory_order::release) == 1) {
       std::atomic_thread_fence(std::memory_order::acquire);
       delete block;
@@ -36,11 +36,9 @@ struct block_type {
   }
 
   virtual ~block_type() = default;
-};
 
-template <std::default_initializable T>
-struct block : block_type {
-  T return_value;
+ private:
+  block_type() noexcept = default;
 };
 
 // =================== Frame =================== //
