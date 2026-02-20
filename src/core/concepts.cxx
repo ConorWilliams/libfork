@@ -109,7 +109,7 @@ concept ref_to_stack_allocator = std::is_lvalue_reference_v<T> && stack_allocato
  * This requires that `T` is an object type and supports the following operations:
  *
  * - Push/pop a frame handle onto the context in a LIFO manner.
- * - Have a `stack_allocator` that can be accessed via `alloc()`.
+ * - Have a `stack_allocator` that can be accessed via `allocator()`.
  * - Post an await handle to the context via `post()` and promise to call resume.
  *
  * TODO: rename alloc to allocator
@@ -120,14 +120,14 @@ concept worker_context =
       { context.post(await) } -> std::same_as<void>;
       { context.push(frame) } -> std::same_as<void>;
       { context.pop() } noexcept -> std::same_as<frame_handle<T>>;
-      { context.alloc() } noexcept -> ref_to_stack_allocator;
+      { context.allocator() } noexcept -> ref_to_stack_allocator;
     };
 
 /**
  * @brief Fetch the allocator type of a worker context `T`.
  */
 template <worker_context T>
-using allocator_t = std::remove_reference_t<decltype(std::declval<T &>().alloc())>;
+using allocator_t = std::remove_reference_t<decltype(std::declval<T &>().allocator())>;
 
 // ==== Forward-decl
 

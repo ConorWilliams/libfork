@@ -130,7 +130,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
     std::atomic_thread_fence(std::memory_order_acquire);
 
     // In case of scenario (2) we must acquire the parent's stack.
-    context->alloc().acquire(checkpoint);
+    context->allocator().acquire(checkpoint);
 
     // Must reset parent's control block before resuming parent.
     parent->reset_counters();
@@ -143,10 +143,10 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
   // or we are not the last child to complete. We are now out of jobs, we must
   // yield to the executor.
 
-  if (checkpoint == context->alloc().checkpoint()) {
+  if (checkpoint == context->allocator().checkpoint()) {
     // We were unable to resume the parent and we were its owner, as the
     // resuming thread will take ownership of the parent's we must give it up.
-    context->alloc().release();
+    context->allocator().release();
   }
 
   // Else, case (2), our stack has no allocations on it, it may be used later.
@@ -219,7 +219,7 @@ struct awaitable : std::suspend_always {
     // Propagate parent->child relationships
     self.child->parent.frame = &parent.promise().frame;
     self.child->cancel = parent.promise().frame.cancel;
-    self.child->stack_ckpt = not_null(thread_context<Context>)->alloc().checkpoint();
+    self.child->stack_ckpt = not_null(thread_context<Context>)->allocator().checkpoint();
     self.child->kind = Cat;
 
     if constexpr (Cat == category::fork) {
@@ -250,8 +250,8 @@ struct join_awaitable {
 
   constexpr auto take_stack_and_reset(this join_awaitable self) noexcept -> void {
     Context *context = not_null(thread_context<Context>);
-    LF_ASSUME(self.frame->stack_ckpt != context->alloc().checkpoint());
-    context->alloc().acquire(std::as_const(self.frame->stack_ckpt));
+    LF_ASSUME(self.frame->stack_ckpt != context->allocator().checkpoint());
+    context->allocator().acquire(std::as_const(self.frame->stack_ckpt));
     self.frame->reset_counters();
   }
 
@@ -371,11 +371,11 @@ struct mixin_frame {
   // --- Allocation
 
   static auto operator new(std::size_t sz) -> void * {
-    return not_null(thread_context<Context>)->alloc().push(sz);
+    return not_null(thread_context<Context>)->allocator().push(sz);
   }
 
   static auto operator delete(void *p, std::size_t sz) noexcept -> void {
-    not_null(thread_context<Context>)->alloc().pop(p, sz);
+    not_null(thread_context<Context>)->allocator().pop(p, sz);
   }
 
   // --- Await transformations

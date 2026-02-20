@@ -21,7 +21,7 @@ class polymorphic_context {
   virtual void push(frame_handle<polymorphic_context>) = 0;
   virtual auto pop() noexcept -> frame_handle<polymorphic_context> = 0;
 
-  auto alloc() noexcept -> Alloc & { return m_allocator; }
+  auto allocator() noexcept -> Alloc & { return m_allocator; }
 
   virtual ~polymorphic_context() = default;
 

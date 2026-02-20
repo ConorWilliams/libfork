@@ -52,11 +52,11 @@ struct vector_ctx {
   using handle_type = lf::frame_handle<vector_ctx>;
 
   std::vector<handle_type> work;
-  Alloc allocator;
+  Alloc my_allocator;
 
   vector_ctx() { work.reserve(1024); }
 
-  auto alloc() noexcept -> Alloc & { return allocator; }
+  auto allocator() noexcept -> Alloc & { return my_allocator; }
 
   void post(lf::await_handle<vector_ctx>) {}
 
@@ -77,9 +77,9 @@ struct deque_ctx {
   using handle_type = lf::frame_handle<deque_ctx>;
 
   lf::deque<handle_type> work;
-  Alloc allocator;
+  Alloc my_allocator;
 
-  auto alloc() noexcept -> Alloc & { return allocator; }
+  auto allocator() noexcept -> Alloc & { return my_allocator; }
 
   void post(lf::await_handle<deque_ctx>) {}
 
@@ -145,13 +145,13 @@ constexpr auto no_await = [](this auto fib, std::int64_t *ret, std::int64_t n) -
 
   auto t1 = fib(&lhs, n - 1);
   t1.promise->frame.kind = lf::category::root;
-  t1.promise->frame.stack_ckpt = lf::thread_context<T>->alloc().checkpoint();
+  t1.promise->frame.stack_ckpt = lf::thread_context<T>->allocator().checkpoint();
   t1.promise->frame.cancel = nullptr;
   t1.promise->handle().resume();
 
   auto t2 = fib(&rhs, n - 2);
   t2.promise->frame.kind = lf::category::root;
-  t2.promise->frame.stack_ckpt = lf::thread_context<T>->alloc().checkpoint();
+  t2.promise->frame.stack_ckpt = lf::thread_context<T>->allocator().checkpoint();
   t2.promise->frame.cancel = nullptr;
   t2.promise->handle().resume();
 
@@ -235,14 +235,14 @@ void fib(benchmark::State &state) {
       auto task = Fn(&result, n);
       task.promise->frame.kind = lf::category::root;
       task.promise->frame.cancel = nullptr;
-      task.promise->frame.stack_ckpt = lf::thread_context<U>->alloc().checkpoint();
+      task.promise->frame.stack_ckpt = lf::thread_context<U>->allocator().checkpoint();
       task.promise->handle().resume();
     } else {
       auto task = Fn(n);
       task.promise->frame.kind = lf::category::root;
       task.promise->frame.cancel = nullptr;
       task.promise->return_address = &result;
-      task.promise->frame.stack_ckpt = lf::thread_context<U>->alloc().checkpoint();
+      task.promise->frame.stack_ckpt = lf::thread_context<U>->allocator().checkpoint();
       task.promise->handle().resume();
     }
 
