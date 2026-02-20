@@ -205,11 +205,11 @@ void fib(benchmark::State &state) {
   for (auto _ : state) {
     benchmark::DoNotOptimize(n);
 
-    auto *block = new lf::block<std::int64_t>{};
+    std::unique_ptr block = lf::make_block<std::int64_t>();
 
     if constexpr (requires { Fn(&block->return_value, n); }) {
       auto task = Fn(&block->return_value, n);
-      task.promise->frame.parent.block = block;
+      task.promise->frame.parent.block = block.get();
       task.promise->frame.cancel = nullptr;
       task.promise->frame.stack_ckpt = lf::thread_context<U>->allocator().checkpoint();
       task.promise->frame.kind = lf::category::root;
@@ -217,7 +217,7 @@ void fib(benchmark::State &state) {
       task.promise->handle().resume();
     } else {
       auto task = Fn(n);
-      task.promise->frame.parent.block = block;
+      task.promise->frame.parent.block = block.get();
       task.promise->frame.cancel = nullptr;
       task.promise->frame.stack_ckpt = lf::thread_context<U>->allocator().checkpoint();
       task.promise->frame.kind = lf::category::root;
