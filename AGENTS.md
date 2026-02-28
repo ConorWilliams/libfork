@@ -166,7 +166,7 @@ All workflows follow this pattern:
 ```yaml
 - Install Dependencies: brew install ...
 - Configure: cmake --preset <preset> -DCMAKE_TOOLCHAIN_FILE=<toolchain>.cmake
-- Build: cmake --build --preset <preset> 
+- Build: cmake --build --preset <preset>
 - Test: ctest --preset <preset>
 ```
 
@@ -213,7 +213,7 @@ rm -rf build/
 **Problem**: "compiler does not provide a way to discover the import graph"
 **Solution**: Add `-DCMAKE_TOOLCHAIN_FILE=cmake/llvm-brew-toolchain.cmake` to configure
 
-**Problem**: "Could not find 'brew' executable"  
+**Problem**: "Could not find 'brew' executable"
 **Solution**: Install Homebrew
 
 **Problem**: "Could not automatically find libc++.modules.json"
@@ -224,5 +224,5 @@ rm -rf build/
 **Problem**: clang-format errors
 **Solution**: Run fix command above to auto-format code
 
-**Problem**: codespell errors  
+**Problem**: codespell errors
 **Solution**: Fix typos or add to ignore list in `.codespellrc` if false positive
