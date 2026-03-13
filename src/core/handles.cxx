@@ -40,6 +40,10 @@ class frame_handle {
 
 // =================== Await =================== //
 
+// TODO: when a steal handle resumes a task and increments the number of forks
+// it should check and potentially crash if the number of forks exceeds the
+// maximum determined by uint16_max
+
 export template <typename T>
 class await_handle {
  public:
