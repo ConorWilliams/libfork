@@ -64,6 +64,7 @@ consteval auto constify(T &&x) noexcept -> std::add_const_t<T> &;
  *
  * - After construction `this` is in the empty state and push is valid.
  * - Pop is valid provided the FILO order is respected.
+ * - Push produces pointers aligned to __STDCPP_DEFAULT_NEW_ALIGNMENT__.
  * - Destruction is expected to only occur when the stack is empty.
  * - Result of `.checkpoint()` is expected to:
  *     - Be "cheap to copy".
