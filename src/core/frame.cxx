@@ -1,4 +1,5 @@
 module;
+#include "libfork/__impl/compiler.hpp"
 #include "libfork/__impl/utils.hpp"
 export module libfork.core:frame;
 
@@ -24,10 +25,12 @@ struct block_type {
   std::exception_ptr exception;
   std::binary_semaphore sem{0};
 
+  LF_NO_INLINE
   constexpr friend void add_ref(block_type *block) noexcept {
     not_null(block)->ref_count.fetch_add(1, std::memory_order_relaxed);
   }
 
+  LF_NO_INLINE
   constexpr friend void release_ref(block_type *block) noexcept {
     if (not_null(block)->ref_count.fetch_sub(1, std::memory_order::release) == 1) {
       std::atomic_thread_fence(std::memory_order::acquire);
