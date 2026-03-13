@@ -181,6 +181,8 @@ constexpr void stash_current_exception(frame_type<Context> *frame) noexcept {
 
     LF_ASSUME(exception); // Should have been called from inside a catch block
 
+    // TODO: make sure exceptions are cancel-safe (I think now cancellation can leak)
+
     frame->except = new frame_type<Context>::except_type{
         .stashed = frame->parent,
         .exception = std::move(exception),
