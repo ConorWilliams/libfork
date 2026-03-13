@@ -30,6 +30,7 @@ struct block_type {
     not_null(block)->ref_count.fetch_add(1, std::memory_order_relaxed);
   }
 
+  // TODO: remove these no-inline, they're just for gcc bug
   LF_NO_INLINE
   constexpr friend void release_ref(block_type *block) noexcept {
     if (not_null(block)->ref_count.fetch_sub(1, std::memory_order::release) == 1) {
