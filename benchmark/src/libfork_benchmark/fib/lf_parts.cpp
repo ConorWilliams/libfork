@@ -210,6 +210,7 @@ void fib(benchmark::State &state) {
     if constexpr (requires { Fn(&block->return_value, n); }) {
       auto task = Fn(&block->return_value, n);
       task.promise->frame.parent.block = block.get();
+      add_ref(block.get());
       task.promise->frame.cancel = nullptr;
       task.promise->frame.stack_ckpt = lf::thread_context<U>->allocator().checkpoint();
       task.promise->frame.kind = lf::category::root;
@@ -218,6 +219,7 @@ void fib(benchmark::State &state) {
     } else {
       auto task = Fn(n);
       task.promise->frame.parent.block = block.get();
+      add_ref(block.get());
       task.promise->frame.cancel = nullptr;
       task.promise->frame.stack_ckpt = lf::thread_context<U>->allocator().checkpoint();
       task.promise->frame.kind = lf::category::root;
