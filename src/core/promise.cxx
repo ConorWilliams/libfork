@@ -377,7 +377,9 @@ struct mixin_frame {
   // --- Allocation
 
   static auto operator new(std::size_t sz) -> void * {
-    return not_null(thread_context<Context>)->allocator().push(sz);
+    void *ptr = not_null(thread_context<Context>)->allocator().push(sz);
+    LF_ASSUME(std::bit_cast<std::uintptr_t>(ptr) % k_new_align == 0);
+    return std::assume_aligned<k_new_align>(ptr);
   }
 
   static auto operator delete(void *p, std::size_t sz) noexcept -> void {
