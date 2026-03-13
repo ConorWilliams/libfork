@@ -15,10 +15,10 @@
  *
  * This macro is always active, regardless of optimization settings or `NDEBUG`.
  */
-#define LF_ENSURE(expr)                                                                                      \
+#define LF_ENSURE(...)                                                                                       \
   do {                                                                                                       \
-    if (!(expr)) {                                                                                           \
-      LF_TERMINATE("Assumption '" #expr "' failed!");                                                        \
+    if (!(__VA_ARGS__)) {                                                                                    \
+      LF_TERMINATE("Assumption '" #__VA_ARGS__ "' failed!");                                                 \
     }                                                                                                        \
   } while (false)
 
@@ -36,12 +36,12 @@
  * \endrst
  */
 #ifdef NDEBUG
-  #define LF_ASSUME(expr)                                                                                    \
+  #define LF_ASSUME(...)                                                                                     \
     do {                                                                                                     \
-      if (!(expr)) {                                                                                         \
+      if (!(__VA_ARGS__)) {                                                                                  \
         ::std::unreachable();                                                                                \
       }                                                                                                      \
     } while (false)
 #else
-  #define LF_ASSUME(expr) LF_ENSURE(expr)
+  #define LF_ASSUME(...) LF_ENSURE(__VA_ARGS__)
 #endif

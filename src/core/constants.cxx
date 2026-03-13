@@ -1,4 +1,3 @@
-module;
 export module libfork.core:constants;
 
 import std;

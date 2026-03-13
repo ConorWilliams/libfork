@@ -12,6 +12,8 @@ namespace lf {
 
 // clang-format off
 
+// TODO: drop immovable/move_only
+
 template <typename R, typename Fn, typename... Args>
 struct pkg : immovable {
   R *return_address;
