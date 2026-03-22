@@ -19,7 +19,7 @@ struct cancellation {
 
 // =================== Root =================== //
 
-export struct block_type {
+struct block_type {
   // Use an initial ref count of 2: one for the coroutine, one for the block handle.
   std::atomic<std::int32_t> ref_count{2};
   std::exception_ptr exception;
