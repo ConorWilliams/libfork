@@ -60,8 +60,6 @@ consteval auto constify(T &&x) noexcept -> std::add_const_t<T> &;
 /**
  * @brief Defines the API for a libfork compatible stack allocator.
  *
- * TODO: specify alignment requirements.
- *
  * - After construction `this` is in the empty state and push is valid.
  * - Pop is valid provided the FILO order is respected.
  * - Push produces pointers aligned to __STDCPP_DEFAULT_NEW_ALIGNMENT__.
@@ -112,8 +110,6 @@ concept ref_to_stack_allocator = std::is_lvalue_reference_v<T> && stack_allocato
  * - Push/pop a frame handle onto the context in a LIFO manner.
  * - Have a `stack_allocator` that can be accessed via `allocator()`.
  * - Post an await handle to the context via `post()` and promise to call resume.
- *
- * TODO: rename alloc to allocator
  */
 export template <typename T>
 concept worker_context =
