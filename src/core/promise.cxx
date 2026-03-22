@@ -95,7 +95,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
   if (frame_handle last_pushed = context->pop()) {
     // No-one stole continuation, we are the exclusive owner of parent, so we
     // just keep ripping!
-    LF_ASSUME(frame_handle{key, parent} == last_pushed);
+    LF_ASSUME(last_pushed == frame_handle{key, parent});
     // This is not a join point so no state (i.e. counters) is guaranteed.
     return parent->handle();
   }
