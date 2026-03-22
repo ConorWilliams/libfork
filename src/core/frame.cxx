@@ -21,14 +21,11 @@ struct cancellation {
 
 struct block_type {
   // Use an initial ref count of 2: one for the coroutine, one for the block handle.
-  alignas(k_cache_line) std::atomic<std::int32_t> ref_count{2};
+  std::atomic<std::int32_t> ref_count{2};
   std::exception_ptr exception;
   std::binary_semaphore sem{0};
 
   virtual ~block_type() = default;
-
- protected:
-  block_type() noexcept = default;
 };
 
 // constexpr void add_ref(block_type *block) noexcept {
