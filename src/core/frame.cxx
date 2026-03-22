@@ -36,7 +36,8 @@ struct block_type {
 // }
 
 constexpr void release_ref(block_type *block) noexcept {
-  if (not_null(block)->ref_count.fetch_sub(1, std::memory_order::release) == 1) {
+  // TODO: understand why not_null(block) crashes GCC
+  if ((block)->ref_count.fetch_sub(1, std::memory_order::release) == 1) {
     std::atomic_thread_fence(std::memory_order::acquire);
     delete block;
   }
