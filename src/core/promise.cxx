@@ -391,6 +391,10 @@ struct mixin_frame {
   template <category Cat, typename R, typename Fn, typename... Args>
   [[nodiscard]]
   constexpr auto transform(this auto &self, pkg<R, Fn, Args...> &&pkg) noexcept -> frame_type<Context> * {
+
+    // TODO: we must constrain the child to have the same context type as the parent here
+    // and in schedule(...).
+
     LF_TRY {
       task child = std::move(pkg.args).apply(std::move(pkg.fn));
 
