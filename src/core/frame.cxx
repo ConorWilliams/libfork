@@ -1,4 +1,5 @@
 module;
+#include "libfork/__impl/compiler.hpp"
 #include "libfork/__impl/utils.hpp"
 export module libfork.core:frame;
 
@@ -6,8 +7,43 @@ import std;
 
 import :concepts;
 import :constants;
+import :utility;
 
 namespace lf {
+// =================== Cancellation =================== //
+
+struct cancellation {
+  cancellation *parent = nullptr;
+  std::atomic<std::uint32_t> stop = 0;
+};
+
+// =================== Root =================== //
+
+struct block_type {
+  // Use an initial ref count of 2: one for the coroutine, one for the block handle.
+  std::atomic<std::int32_t> ref_count{2};
+  std::exception_ptr exception;
+  std::binary_semaphore sem{0};
+
+  virtual ~block_type();
+};
+
+// TODO: for some reason GCC doesn't compile if this is defaulted inline.
+block_type::~block_type() = default;
+
+// constexpr void add_ref(block_type *block) noexcept {
+//   not_null(block)->ref_count.fetch_add(1, std::memory_order_relaxed);
+// }
+
+constexpr void release_ref(block_type *block) noexcept {
+  // TODO: understand why not_null(block) crashes GCC
+  if ((block)->ref_count.fetch_sub(1, std::memory_order::release) == 1) {
+    std::atomic_thread_fence(std::memory_order::acquire);
+    delete block;
+  }
+}
+
+// =================== Frame =================== //
 
 // TODO: remove this and other exports
 export enum class category : std::uint8_t {
@@ -16,16 +52,7 @@ export enum class category : std::uint8_t {
   fork,
 };
 
-struct cancellation {
-  cancellation *parent = nullptr;
-  std::atomic<std::uint32_t> stop = 0;
-};
-
-struct block_type {
-  //
-};
-
-// =================== Frame =================== //
+// TODO: make everything (deque etc) allocator aware...
 
 export template <typename Context>
 struct frame_type {
@@ -44,6 +71,8 @@ struct frame_type {
     std::exception_ptr exception;
   };
 
+  // == Member variables == //
+
   union {
     parent_union parent;
     except_type *except;
@@ -58,6 +87,8 @@ struct frame_type {
   std::uint16_t steals = 0;                     // In debug do overflow checking
   category kind = static_cast<category>(0);     // Fork/Call/Just/Root
   ATOMIC_ALIGN(std::uint8_t) exception_bit = 0; // Atomically set
+
+  // == Member functions == //
 
   // Explicitly post construction, this allows the compiler to emit a single
   // instruction for the zero init then an instruction for the joins init,
@@ -95,36 +126,5 @@ struct frame_type {
     steals = 0;
   }
 };
-
-// =================== Handle =================== //
-
-struct lock {};
-
-inline constexpr lock key = {};
-
-// TODO: api + test this is lock-free
-//
-// What is the API:
-//  - You can push/pop it
-//  - You can convert it to a "steal handle" -> which you can/must resume?
-//
-// What properties does it have:
-//  - It is trivially copyable/constructible/destructible
-//  - It has a null value, you can test if it is null
-//  - You can store it in an atomic and it is lock-free
-export template <typename T>
-class frame_handle {
- public:
-  constexpr frame_handle() = default;
-  // constexpr frame_handle(std::nullptr_t) noexcept : m_ptr(nullptr) {}
-  constexpr frame_handle(lock, frame_type<T> *ptr) noexcept : m_ptr(ptr) {}
-
-  explicit operator bool() const noexcept { return m_ptr != nullptr; }
-
-  // private:
-  frame_type<T> *m_ptr = nullptr;
-};
-
-// =================== First arg =================== //
 
 } // namespace lf

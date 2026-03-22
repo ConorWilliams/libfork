@@ -20,9 +20,10 @@ struct dummy_allocator {
 static_assert(lf::stack_allocator<dummy_allocator>);
 
 struct dummy_context {
-  auto alloc() noexcept -> dummy_allocator &;
+  void post(lf::await_handle<dummy_context>);
   void push(lf::frame_handle<dummy_context>);
   auto pop() noexcept -> lf::frame_handle<dummy_context>;
+  auto allocator() noexcept -> dummy_allocator &;
 };
 
 static_assert(lf::worker_context<dummy_context>);

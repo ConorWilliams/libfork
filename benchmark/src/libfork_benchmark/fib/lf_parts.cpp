@@ -52,11 +52,13 @@ struct vector_ctx {
   using handle_type = lf::frame_handle<vector_ctx>;
 
   std::vector<handle_type> work;
-  Alloc allocator;
+  Alloc my_allocator;
 
   vector_ctx() { work.reserve(1024); }
 
-  auto alloc() noexcept -> Alloc & { return allocator; }
+  auto allocator() noexcept -> Alloc & { return my_allocator; }
+
+  void post(lf::await_handle<vector_ctx>) {}
 
   // TODO: try LF_NO_INLINE for final allocator
   LF_NO_INLINE
@@ -75,9 +77,11 @@ struct deque_ctx {
   using handle_type = lf::frame_handle<deque_ctx>;
 
   lf::deque<handle_type> work;
-  Alloc allocator;
+  Alloc my_allocator;
 
-  auto alloc() noexcept -> Alloc & { return allocator; }
+  auto allocator() noexcept -> Alloc & { return my_allocator; }
+
+  void post(lf::await_handle<deque_ctx>) {}
 
   // TODO: try LF_NO_INLINE for final allocator
   LF_NO_INLINE
@@ -99,6 +103,8 @@ struct poly_vector_ctx final : lf::polymorphic_context<Alloc> {
 
   poly_vector_ctx() { work.reserve(1024); }
 
+  void post(lf::await_handle<lf::polymorphic_context<Alloc>>) override {}
+
   void push(handle_type handle) override { work.push_back(handle); }
 
   auto pop() noexcept -> handle_type override {
@@ -114,6 +120,8 @@ struct poly_deque_ctx final : lf::polymorphic_context<linear_allocator> {
 
   lf::deque<handle_type> work;
 
+  void post(lf::await_handle<lf::polymorphic_context<linear_allocator>>) override {}
+
   void push(handle_type handle) override { work.push(handle); }
 
   auto pop() noexcept -> handle_type override {
@@ -124,31 +132,6 @@ struct poly_deque_ctx final : lf::polymorphic_context<linear_allocator> {
 };
 
 using lf::task;
-
-template <lf::worker_context T>
-constexpr auto no_await = [](this auto fib, std::int64_t *ret, std::int64_t n) -> task<void, T> {
-  if (n < 2) {
-    *ret = n;
-    co_return;
-  }
-
-  std::int64_t lhs = 0;
-  std::int64_t rhs = 0;
-
-  auto t1 = fib(&lhs, n - 1);
-  t1.promise->frame.kind = lf::category::root;
-  t1.promise->frame.stack_ckpt = lf::thread_context<T>->alloc().checkpoint();
-  t1.promise->frame.cancel = nullptr;
-  t1.promise->handle().resume();
-
-  auto t2 = fib(&rhs, n - 2);
-  t2.promise->frame.kind = lf::category::root;
-  t2.promise->frame.stack_ckpt = lf::thread_context<T>->alloc().checkpoint();
-  t2.promise->frame.cancel = nullptr;
-  t2.promise->handle().resume();
-
-  *ret = lhs + rhs;
-};
 
 template <lf::worker_context T>
 constexpr auto await = [](this auto fib, std::int64_t *ret, std::int64_t n) -> lf::task<void, T> {
@@ -219,43 +202,27 @@ void fib(benchmark::State &state) {
     lf::thread_context<U> = nullptr;
   };
 
+  U *launch = &context;
+
   for (auto _ : state) {
     benchmark::DoNotOptimize(n);
-    std::int64_t result = 0;
 
-    if constexpr (requires { Fn(&result, n); }) {
-      auto task = Fn(&result, n);
-      task.promise->frame.kind = lf::category::root;
-      task.promise->frame.cancel = nullptr;
-      task.promise->frame.stack_ckpt = lf::thread_context<U>->alloc().checkpoint();
-      task.promise->handle().resume();
+    std::int64_t return_value = 0;
+
+    if constexpr (requires { Fn(&return_value, n); }) {
+      lf::schedule(launch, Fn, &return_value, n);
     } else {
-      auto task = Fn(n);
-      task.promise->frame.kind = lf::category::root;
-      task.promise->frame.cancel = nullptr;
-      task.promise->return_address = &result;
-      task.promise->frame.stack_ckpt = lf::thread_context<U>->alloc().checkpoint();
-      task.promise->handle().resume();
+      return_value = lf::schedule(launch, Fn, n);
     }
 
-    CHECK_RESULT(result, expect);
-    benchmark::DoNotOptimize(result);
+    CHECK_RESULT(return_value, expect);
+    benchmark::DoNotOptimize(return_value);
   }
 }
 
 } // namespace
 
 static_assert(lf::worker_context<global_alloc>);
-
-// Return by ref-arg, test direct root, no co-await, direct resumes, uses new/delete for alloc
-BENCHMARK(fib<no_await<global_alloc>, global_alloc>)->Name("test/libfork/fib/heap/no_await")->Arg(fib_test);
-BENCHMARK(fib<no_await<global_alloc>, global_alloc>)->Name("base/libfork/fib/heap/no_await")->Arg(fib_base);
-
-// Same as above but uses bump allocator
-BENCHMARK(fib<no_await<linear_alloc>, linear_alloc>)->Name("test/libfork/fib/bump/no_await")->Arg(fib_test);
-BENCHMARK(fib<no_await<linear_alloc>, linear_alloc>)->Name("base/libfork/fib/bump/no_await")->Arg(fib_base);
-
-// TODO: no_await with segmented stack allocator?
 
 // Return by ref-arg, libfork call/call with co-await, uses new/delete for alloc
 BENCHMARK(fib<await<global_alloc>, global_alloc>)->Name("test/libfork/fib/heap/await")->Arg(fib_test);
@@ -276,14 +243,6 @@ BENCHMARK(fib<ret<linear_alloc>, linear_alloc>)->Name("base/libfork/fib/bump/ret
 BENCHMARK(fib<fork_call<linear_alloc>, linear_alloc>)->Name("test/libfork/fib/vector_ctx")->Arg(fib_test);
 BENCHMARK(fib<fork_call<linear_alloc>, linear_alloc>)->Name("base/libfork/fib/vector_ctx")->Arg(fib_base);
 
-// Same as above but with join.
-BENCHMARK(fib<fork_call<linear_alloc, true>, linear_alloc>)
-    ->Name("test/libfork/fib/vector_ctx/join")
-    ->Arg(fib_test);
-BENCHMARK(fib<fork_call<linear_alloc, true>, linear_alloc>)
-    ->Name("base/libfork/fib/vector_ctx/join")
-    ->Arg(fib_base);
-
 using A = poly_vector_ctx<linear_allocator>;
 using B = lf::polymorphic_context<linear_allocator>;
 
@@ -291,7 +250,15 @@ using B = lf::polymorphic_context<linear_allocator>;
 BENCHMARK(fib<fork_call<B>, A, B>)->Name("test/libfork/fib/poly_vector_ctx")->Arg(fib_test);
 BENCHMARK(fib<fork_call<B>, A, B>)->Name("base/libfork/fib/poly_vector_ctx")->Arg(fib_base);
 
-// Same as above but with join.
+// Same as above but with join and non-polymorphic.
+BENCHMARK(fib<fork_call<linear_alloc, true>, linear_alloc>)
+    ->Name("test/libfork/fib/vector_ctx/join")
+    ->Arg(fib_test);
+BENCHMARK(fib<fork_call<linear_alloc, true>, linear_alloc>)
+    ->Name("base/libfork/fib/vector_ctx/join")
+    ->Arg(fib_base);
+
+// Same as above but with join and polymorphic.
 BENCHMARK(fib<fork_call<B, true>, A, B>)->Name("test/libfork/fib/poly_vector_ctx/join")->Arg(fib_test);
 BENCHMARK(fib<fork_call<B, true>, A, B>)->Name("base/libfork/fib/poly_vector_ctx/join")->Arg(fib_base);
 

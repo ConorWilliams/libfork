@@ -1,7 +1,7 @@
-cmake_minimum_required(VERSION 4.2.1 FATAL_ERROR)
+cmake_minimum_required(VERSION 4.3 FATAL_ERROR)
 
 # See `Help/dev/experimental.rst`
-set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
+set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "451f2fe2-a8a2-47c3-bc32-94786d8fc91b")
 
 include(cmake/read_version.cmake)
 
@@ -37,7 +37,8 @@ set_property(TARGET libfork_libfork PROPERTY EXPORT_NAME libfork)
 
 target_compile_features(libfork_libfork PUBLIC cxx_std_26)
 
-# Public headers
+# Public headers, __impl must be public because consumers need
+# them to build the module BMI
 target_sources(libfork_libfork
   PUBLIC
     FILE_SET HEADERS FILES
@@ -65,6 +66,8 @@ target_sources(libfork_libfork
       src/core/ops.cxx
       src/core/context.cxx
       src/core/deque.cxx
+      src/core/schedule.cxx
+      src/core/handles.cxx
     PRIVATE
       src/exception.cpp
 )
