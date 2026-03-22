@@ -26,7 +26,7 @@ auto make_block() noexcept -> std::unique_ptr<block<T>, block_deleter> {
 }
 
 template <std::default_initializable T>
-struct block : block_type {
+struct block final : block_type {
 
   T return_value;
 
