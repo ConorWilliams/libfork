@@ -28,6 +28,7 @@ struct block_type {
   virtual ~block_type();
 };
 
+// TODO: for some reason GCC doesn't compile if this is defaulted inline.
 block_type::~block_type() = default;
 
 // constexpr void add_ref(block_type *block) noexcept {
