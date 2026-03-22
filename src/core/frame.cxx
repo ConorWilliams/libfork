@@ -20,31 +20,27 @@ struct cancellation {
 // =================== Root =================== //
 
 struct block_type {
-
   // Use an initial ref count of 2: one for the coroutine, one for the block handle.
   alignas(k_cache_line) std::atomic<std::int32_t> ref_count{2};
   std::exception_ptr exception;
   std::binary_semaphore sem{0};
-
-  LF_NO_INLINE
-  constexpr friend void add_ref(block_type *block) noexcept {
-    not_null(block)->ref_count.fetch_add(1, std::memory_order_relaxed);
-  }
-
-  // TODO: remove these no-inline, they're just for gcc bug
-  LF_NO_INLINE
-  constexpr friend void release_ref(block_type *block) noexcept {
-    if (not_null(block)->ref_count.fetch_sub(1, std::memory_order::release) == 1) {
-      std::atomic_thread_fence(std::memory_order::acquire);
-      delete block;
-    }
-  }
 
   virtual ~block_type() = default;
 
  protected:
   block_type() noexcept = default;
 };
+
+// constexpr void add_ref(block_type *block) noexcept {
+//   not_null(block)->ref_count.fetch_add(1, std::memory_order_relaxed);
+// }
+
+constexpr void release_ref(block_type *block) noexcept {
+  if (not_null(block)->ref_count.fetch_sub(1, std::memory_order::release) == 1) {
+    std::atomic_thread_fence(std::memory_order::acquire);
+    delete block;
+  }
+}
 
 // =================== Frame =================== //
 
