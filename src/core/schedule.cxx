@@ -1,9 +1,13 @@
+module;
+#include "libfork/__impl/assume.hpp"
+#include "libfork/__impl/compiler.hpp"
 export module libfork.core:schedule;
 
 import std;
 
 import :concepts;
 import :frame;
+import :context;
 
 namespace lf {
 
@@ -19,7 +23,8 @@ struct block_deleter {
 
 // TODO: void specialization of block
 
-template <std::default_initializable T>
+template <typename T>
+  requires std::is_void_v<T> || std::default_initializable<T>
 struct block;
 
 export template <typename T>
@@ -27,24 +32,55 @@ auto make_block() noexcept -> std::unique_ptr<block<T>, block_deleter> {
   return std::unique_ptr<block<T>, block_deleter>{new block<T>{}};
 }
 
-template <std::default_initializable T>
-struct block final : block_type {
+template <>
+struct block<void> final : block_type {
+ private:
+  friend auto make_block<void>() noexcept -> std::unique_ptr<block<void>, block_deleter>;
+};
 
+template <std::default_initializable T>
+struct block<T> final : block_type {
+
+  [[no_unique_address]]
   T return_value;
 
  private:
-  constexpr block() = default;
-
   friend auto make_block<T>() noexcept -> std::unique_ptr<block<T>, block_deleter>;
 };
 
+// TODO: break this API into a simpler one.
+
 export template <worker_context Context, typename... Args, async_invocable<Args...> Fn>
-constexpr auto schedule(Context *context, Fn &&fn, Args &&...args) noexcept -> void {
+LF_FORCE_INLINE constexpr auto schedule(Context *context, Fn &&fn, Args &&...args) noexcept -> auto {
 
   // This is what the async function will return.
-  using R = async_result_t<Fn, Args...>;
+  using result_type = async_result_t<Fn, Args...>;
 
-  std::unique_ptr block = make_block<R>();
+  std::unique_ptr block = make_block<result_type>();
+
+  // TODO: Before doing this we must be on a valid context.
+  LF_ASSUME(thread_context<Context> == context);
+  task task = std::invoke(std::forward<Fn>(fn), std::forward<Args>(args)...);
+
+  // TODO: expose cancellable?
+  task.promise->frame.parent.block = block.get();
+  task.promise->frame.cancel = nullptr;
+  task.promise->frame.stack_ckpt = thread_context<Context>->allocator().checkpoint();
+  task.promise->frame.kind = lf::category::root;
+
+  if constexpr (!std::is_void_v<result_type>) {
+    task.promise->return_address = &block->return_value;
+  }
+
+  task.promise->handle().resume();
+
+  block->sem.acquire();
+
+  if constexpr (!std::is_void_v<result_type>) {
+    return block->return_value;
+  } else {
+    return;
+  }
 }
 
 } // namespace lf

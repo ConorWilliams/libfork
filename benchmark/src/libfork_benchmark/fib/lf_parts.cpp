@@ -202,32 +202,21 @@ void fib(benchmark::State &state) {
     lf::thread_context<U> = nullptr;
   };
 
+  U *launch = &context;
+
   for (auto _ : state) {
     benchmark::DoNotOptimize(n);
 
-    std::unique_ptr block = lf::make_block<std::int64_t>();
+    std::int64_t return_value = 0;
 
-    if constexpr (requires { Fn(&block->return_value, n); }) {
-      auto task = Fn(&block->return_value, n);
-      task.promise->frame.parent.block = block.get();
-      task.promise->frame.cancel = nullptr;
-      task.promise->frame.stack_ckpt = lf::thread_context<U>->allocator().checkpoint();
-      task.promise->frame.kind = lf::category::root;
-
-      task.promise->handle().resume();
+    if constexpr (requires { Fn(&return_value, n); }) {
+      lf::schedule(launch, Fn, &return_value, n);
     } else {
-      auto task = Fn(n);
-      task.promise->frame.parent.block = block.get();
-      task.promise->frame.cancel = nullptr;
-      task.promise->frame.stack_ckpt = lf::thread_context<U>->allocator().checkpoint();
-      task.promise->frame.kind = lf::category::root;
-      task.promise->return_address = &block->return_value;
-
-      task.promise->handle().resume();
+      return_value = lf::schedule(launch, Fn, n);
     }
 
-    CHECK_RESULT(block->return_value, expect);
-    benchmark::DoNotOptimize(block->return_value);
+    CHECK_RESULT(return_value, expect);
+    benchmark::DoNotOptimize(return_value);
   }
 }
 

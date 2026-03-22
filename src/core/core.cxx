@@ -14,7 +14,7 @@ export import :deque;   // concepts, utility, constants
 
 export import :handles; // frame
 
-export import :schedule;
+export import :schedule; // context
 
 // T3 partitions
 export import :promise;
