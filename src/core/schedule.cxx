@@ -21,8 +21,6 @@ struct block_deleter {
   static void operator()(block_type *block) noexcept { release_ref(block); }
 };
 
-// TODO: void specialization of block
-
 template <typename T>
   requires std::is_void_v<T> || std::default_initializable<T>
 struct block;
