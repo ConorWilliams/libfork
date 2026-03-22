@@ -1,7 +1,7 @@
-cmake_minimum_required(VERSION 4.2.1 FATAL_ERROR)
+cmake_minimum_required(VERSION 4.3 FATAL_ERROR)
 
 # See `Help/dev/experimental.rst`
-set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
+set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "451f2fe2-a8a2-47c3-bc32-94786d8fc91b")
 
 include(cmake/read_version.cmake)
 
