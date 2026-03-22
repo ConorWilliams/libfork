@@ -21,7 +21,8 @@ struct cancellation {
 
 struct block_type {
 
-  alignas(k_cache_line) std::atomic<std::int32_t> ref_count{1};
+  // Use an initial ref count of 2: one for the coroutine, one for the block handle.
+  alignas(k_cache_line) std::atomic<std::int32_t> ref_count{2};
   std::exception_ptr exception;
   std::binary_semaphore sem{0};
 

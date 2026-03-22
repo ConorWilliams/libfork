@@ -17,6 +17,8 @@ struct block_deleter {
   static void operator()(block_type *block) noexcept { release_ref(block); }
 };
 
+// TODO: void specialization of block
+
 template <std::default_initializable T>
 struct block;
 
@@ -38,7 +40,11 @@ struct block final : block_type {
 
 export template <worker_context Context, typename... Args, async_invocable<Args...> Fn>
 constexpr auto schedule(Context *context, Fn &&fn, Args &&...args) noexcept -> void {
-  ///
+
+  // This is what the async function will return.
+  using R = async_result_t<Fn, Args...>;
+
+  std::unique_ptr block = make_block<R>();
 }
 
 } // namespace lf
