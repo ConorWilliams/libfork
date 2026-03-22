@@ -22,7 +22,9 @@ struct block_deleter {
 };
 
 template <typename T>
-  requires std::is_void_v<T> || std::default_initializable<T>
+concept void_or_default_initializable = std::is_void_v<T> || std::default_initializable<T>;
+
+template <void_or_default_initializable T>
 struct block;
 
 template <>
@@ -37,6 +39,7 @@ struct block<T> final : block_type {
 // TODO: break this API into a simpler one.
 
 export template <worker_context Context, typename... Args, async_invocable<Args...> Fn>
+  requires void_or_default_initializable<async_result_t<Fn, Args...>>
 constexpr auto schedule(Context *context, Fn &&fn, Args &&...args) noexcept -> auto {
 
   // This is what the async function will return.
