@@ -46,6 +46,9 @@ constexpr auto schedule(Context *context, Fn &&fn, Args &&...args) noexcept -> a
 
   auto root_block = std::unique_ptr<block<result_type>, block_deleter>{new block<result_type>{}};
 
+  // TODO: clean up block if exception
+  // TODO: make sure we're cancel safe
+
   // TODO: Before doing this we must be on a valid context.
   LF_ASSUME(thread_context<Context> == context);
   task task = std::invoke(std::forward<Fn>(fn), std::forward<Args>(args)...);
