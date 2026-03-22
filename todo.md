@@ -6,4 +6,4 @@
 - Cancellation:
   - Maybe in separate `co_await scope`
   - Integrate into join
-  - Exception saftey
+  - Exception safety
