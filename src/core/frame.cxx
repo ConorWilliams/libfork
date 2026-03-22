@@ -19,14 +19,16 @@ struct cancellation {
 
 // =================== Root =================== //
 
-struct block_type {
+export struct block_type {
   // Use an initial ref count of 2: one for the coroutine, one for the block handle.
   std::atomic<std::int32_t> ref_count{2};
   std::exception_ptr exception;
   std::binary_semaphore sem{0};
 
-  virtual ~block_type() = default;
+  virtual ~block_type();
 };
+
+block_type::~block_type() = default;
 
 // constexpr void add_ref(block_type *block) noexcept {
 //   not_null(block)->ref_count.fetch_add(1, std::memory_order_relaxed);
