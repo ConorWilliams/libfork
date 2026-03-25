@@ -25,10 +25,13 @@ using coro = std::coroutine_handle<T>;
 
 // =============== Forward-decl =============== //
 
+// TODO: public private split here and elsewhere
 export template <returnable T, worker_context Context>
 struct promise_type;
 
 // =============== Task =============== //
+
+struct access;
 
 /**
  * @brief The return type for libfork's async functions/coroutines.
@@ -46,15 +49,32 @@ struct promise_type;
  *
  * \endrst
  */
-export template <returnable T, worker_context Context>
-struct task : immovable {
-
-  // TODO: public private split here and elsewhere
-
+export template <returnable T>
+class task {
+ public:
   using value_type = T;
-  using context_type = Context;
 
-  promise_type<T, Context> *promise;
+ private:
+  friend struct access;
+
+  explicit constexpr task(void *promise) noexcept : m_promise(promise) {}
+
+  void *m_promise;
+};
+
+/**
+ * @brief Utility to access the promise within a task.
+ */
+struct access {
+  template <worker_context Context, typename T>
+  static constexpr auto task(promise_type<T, Context> *promise) noexcept -> ::lf::task<T> {
+    return ::lf::task<T>{promise};
+  }
+
+  template <worker_context Context, typename T>
+  static constexpr auto promise(::lf::task<T> x) noexcept -> promise_type<T, Context> * {
+    return static_cast<promise_type<T, Context> *>(x.m_promise);
+  }
 };
 
 // =============== Final =============== //
@@ -390,42 +410,43 @@ struct mixin_frame {
 
   template <category Cat, typename R, typename Fn, typename... Args>
   [[nodiscard]]
-  constexpr auto transform(this auto &self, pkg<R, Fn, Args...> &&pkg) noexcept -> frame_type<Context> * {
+  constexpr auto
+  transform(this auto &self, pkg<Cat, Context, R, Fn, Args...> &&pkg) noexcept -> frame_type<Context> * {
 
-    // TODO: we must constrain the child to have the same context type as the parent here
-    // and in schedule(...).
+    using U = async_result_t<Fn, Context, Args...>;
 
     LF_TRY {
-      task child = std::move(pkg.args).apply(std::move(pkg.fn));
 
-      LF_ASSUME(child.promise);
+      // clang-format off
+
+      auto *child_promise = access::promise<Context>(std::move(pkg.args).apply(
+        [&](auto &&...args) LF_HOF(std::invoke(fwd_fn<Fn>(pkg.fn), env<Context>{}, LF_FWD(args)...)))
+      );
+
+      // clang-format on
+
+      LF_ASSUME(child_promise);
 
       if constexpr (!std::is_void_v<R>) {
-        child.promise->return_address = pkg.return_address;
+        child_promise->return_address = pkg.return_address;
       } else {
-        if constexpr (!std::is_void_v<async_result_t<Fn, Args...>>) {
+        if constexpr (!std::is_void_v<U>) {
           // Set child's return address to null to inhibit the return
           // TODO: add test for this
-          child.promise->return_address = nullptr;
+          child_promise->return_address = nullptr;
         }
       }
 
-      return &child.promise->frame;
+      return &child_promise->frame;
     } LF_CATCH_ALL {
       return stash_current_exception(&self.frame), nullptr;
     }
   }
 
-  template <typename R, typename Fn, typename... Args>
-  constexpr auto
-  await_transform(this auto &self, call_pkg<R, Fn, Args...> &&pkg) noexcept -> awaitable<call, Context> {
-    return {.child = self.template transform<call>(std::move(pkg))};
-  }
-
-  template <typename R, typename Fn, typename... Args>
-  constexpr auto
-  await_transform(this auto &self, fork_pkg<R, Fn, Args...> &&pkg) noexcept -> awaitable<fork, Context> {
-    return {.child = self.template transform<fork>(std::move(pkg))};
+  template <category Cat, typename R, typename Fn, typename... Args>
+  constexpr auto await_transform(this auto &self, pkg<Cat, Context, R, Fn, Args...> &&pkg) noexcept
+      -> awaitable<Cat, Context> {
+    return {.child = self.transform(std::move(pkg))};
   }
 
   constexpr auto await_transform(this auto &self, join_type) noexcept -> join_awaitable<Context> {
@@ -446,7 +467,7 @@ struct promise_type<void, Context> : mixin_frame<Context> {
 
   frame_type<Context> frame;
 
-  constexpr auto get_return_object() noexcept -> task<void, Context> { return {.promise = this}; }
+  constexpr auto get_return_object() noexcept -> task<void> { return access::task(this); }
 
   constexpr static void return_void() noexcept {}
 };
@@ -459,7 +480,7 @@ struct promise_type : mixin_frame<Context> {
   frame_type<Context> frame;
   T *return_address;
 
-  constexpr auto get_return_object() noexcept -> task<T, Context> { return {.promise = this}; }
+  constexpr auto get_return_object() noexcept -> task<T> { return access::task(this); }
 
   template <typename U = T>
     requires std::assignable_from<T &, U &&>
@@ -475,7 +496,12 @@ struct promise_type : mixin_frame<Context> {
 
 // =============== std specialization =============== //
 
-template <typename R, typename... Policy, typename... Args>
-struct std::coroutine_traits<lf::task<R, Policy...>, Args...> {
-  using promise_type = ::lf::promise_type<R, Policy...>;
+template <typename R, lf::worker_context Context, typename... Args>
+struct std::coroutine_traits<lf::task<R>, lf::env<Context>, Args...> {
+  using promise_type = ::lf::promise_type<R, Context>;
+};
+
+template <typename R, typename Self, lf::worker_context Context, typename... Args>
+struct std::coroutine_traits<lf::task<R>, Self, lf::env<Context>, Args...> {
+  using promise_type = ::lf::promise_type<R, Context>;
 };

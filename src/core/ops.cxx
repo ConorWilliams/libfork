@@ -7,6 +7,7 @@ import std;
 import :concepts;
 import :tuple;
 import :utility;
+import :frame;
 
 namespace lf {
 
@@ -14,67 +15,94 @@ namespace lf {
 
 // TODO: drop immovable/move_only
 
-template <typename R, typename Fn, typename... Args>
-struct pkg : immovable {
+template <category Cat, typename Context, typename R, typename Fn, typename... Args>
+struct [[nodiscard("You should immediately co_await this!")]] pkg {
   R *return_address;
   [[no_unique_address]] Fn fn;
   [[no_unique_address]] tuple<Args...> args;
+
+
 };
 
-template <typename Fn, typename... Args>
-struct pkg<void, Fn, Args...> : immovable {
+template <category Cat, typename Context, typename Fn, typename... Args>
+struct [[nodiscard("You should immediately co_await this!")]] pkg<Cat, Context, void, Fn, Args...> {
   [[no_unique_address]] Fn fn;
   [[no_unique_address]] tuple<Args...> args;
 };
 
+
+
+/**
+ * @brief Forward the function member of a pkg correctly
+ *
+ * The Fn member should be an l/r value reference, r-value reference need an
+ * explicit move to be forwarded correctly.
+ */
+template<typename Fn>
+constexpr auto fwd_fn(auto && fn) noexcept -> Fn {
+
+  static_assert(std::is_reference_v<Fn>);
+
+  if constexpr (std::is_rvalue_reference_v<Fn>) {
+    return std::move(fn);
+  } else {
+    return fn;
+  }
+}
+
 // clang-format on
 
-// TODO: consider a prelude namespace for these ops + task
-// TODO: consider neibloids to block ADL
+export template <typename Context>
+struct scope {
+ private:
+  // Use && for fn/args for zero move/copy + noexcept
+  // TODO: Is it better to stores values for some types i.e. empty
 
-// ======== Fork ======== //
+  template <typename R, typename Fn, typename... Args>
+  using call_pkg = pkg<category::call, Context, R, Fn &&, Args &&...>;
 
-template <typename R, typename Fn, typename... Args>
-struct [[nodiscard("You should immediately co_await this!")]] fork_pkg : pkg<R, Fn, Args...> {};
+  template <typename R, typename Fn, typename... Args>
+  using fork_pkg = pkg<category::fork, Context, R, Fn &&, Args &&...>;
 
-export template <typename... Args, async_invocable<Args...> Fn>
-constexpr auto fork(std::nullptr_t, Fn &&fn, Args &&...args) noexcept -> fork_pkg<void, Fn, Args &&...> {
-  return {{.fn = LF_FWD(fn), .args = {LF_FWD(args)...}}};
-}
+ public:
+  template <typename... Args, async_invocable<Context, Args...> Fn>
+  static constexpr auto
+  fork(std::nullptr_t, Fn &&fn, Args &&...args) noexcept -> fork_pkg<void, Fn, Args...> {
+    return {.fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+  }
+  template <typename... Args, async_invocable_to<void, Context, Args...> Fn>
+  static constexpr auto fork(Fn &&fn, Args &&...args) noexcept -> fork_pkg<void, Fn, Args...> {
+    return {.fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+  }
+  template <typename R, typename... Args, async_invocable_to<R, Context, Args...> Fn>
+  static constexpr auto fork(R *ret, Fn &&fn, Args &&...args) noexcept -> fork_pkg<R, Fn, Args...> {
+    return {.return_address = ret, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+  }
 
-export template <typename... Args, async_invocable_to<void, Args...> Fn>
-constexpr auto fork(Fn &&fn, Args &&...args) noexcept -> fork_pkg<void, Fn, Args &&...> {
-  return {{.fn = LF_FWD(fn), .args = {LF_FWD(args)...}}};
-}
+  template <typename... Args, async_invocable<Context, Args...> Fn>
+  static constexpr auto
+  call(std::nullptr_t, Fn &&fn, Args &&...args) noexcept -> call_pkg<void, Fn, Args...> {
+    return {.fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+  }
+  template <typename... Args, async_invocable_to<void, Context, Args...> Fn>
+  static constexpr auto call(Fn &&fn, Args &&...args) noexcept -> call_pkg<void, Fn, Args...> {
+    return {.fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+  }
+  template <typename R, typename... Args, async_invocable_to<R, Context, Args...> Fn>
+  static constexpr auto call(R *ret, Fn &&fn, Args &&...args) noexcept -> call_pkg<R, Fn, Args...> {
+    return {.return_address = ret, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+  }
+};
 
-export template <typename R, typename... Args, async_invocable_to<R, Args...> Fn>
-constexpr auto fork(R *ret, Fn &&fn, Args &&...args) noexcept -> fork_pkg<R, Fn, Args &&...> {
-  return {{.return_address = ret, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}}};
-}
-// ======== Call ======== //
-
-template <typename R, typename Fn, typename... Args>
-struct [[nodiscard("You should immediately co_await this!")]] call_pkg : pkg<R, Fn, Args...> {};
-
-export template <typename... Args, async_invocable<Args...> Fn>
-constexpr auto call(std::nullptr_t, Fn &&fn, Args &&...args) noexcept -> call_pkg<void, Fn, Args &&...> {
-  return {{.fn = LF_FWD(fn), .args = {LF_FWD(args)...}}};
-}
-
-export template <typename... Args, async_invocable_to<void, Args...> Fn>
-constexpr auto call(Fn &&fn, Args &&...args) noexcept -> call_pkg<void, Fn, Args &&...> {
-  return {{.fn = LF_FWD(fn), .args = {LF_FWD(args)...}}};
-}
-
-export template <typename R, typename... Args, async_invocable_to<R, Args...> Fn>
-constexpr auto call(R *ret, Fn &&fn, Args &&...args) noexcept -> call_pkg<R, Fn, Args &&...> {
-  return {{.return_address = ret, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}}};
-}
+// TODO: do we want join a member of scope?
 
 // =============== Join =============== //
 
-struct [[nodiscard("You should immediately co_await this!")]] join_type {};
+struct join_type {};
 
-export constexpr auto join() noexcept -> join_type { return {}; }
+export [[nodiscard("You should immediately co_await this!")]]
+constexpr auto join() noexcept -> join_type {
+  return {};
+}
 
 } // namespace lf

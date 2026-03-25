@@ -92,25 +92,26 @@ export struct move_only {
  *
  * \endrst
  */
-export template <class F>
-  requires std::is_nothrow_invocable_v<F>
+export template <class Fn>
+  requires std::is_nothrow_invocable_v<Fn>
 class [[nodiscard("Defer will execute unless bound to a name!")]] defer : immovable {
  public:
   /**
    * @brief Construct a new Defer object.
    *
-   * @param f Nullary invocable forwarded into object and invoked by destructor.
+   * @param fn Nullary invocable forwarded into object and invoked by destructor.
    */
-  constexpr defer(F &&f) noexcept(std::is_nothrow_constructible_v<F, F &&>) : m_f(std::forward<F>(f)) {}
+  constexpr defer(Fn &&fn) noexcept(std::is_nothrow_constructible_v<Fn, Fn &&>)
+      : m_fn(std::forward<Fn>(fn)) {}
 
   /**
    * @brief Calls the invocable.
    */
-  LF_FORCE_INLINE constexpr ~defer() noexcept { std::invoke(std::forward<F>(m_f)); }
+  LF_FORCE_INLINE constexpr ~defer() noexcept { std::invoke(std::forward<Fn>(m_fn)); }
 
  private:
   [[no_unique_address]]
-  F m_f;
+  Fn m_fn;
 };
 
 } // namespace lf

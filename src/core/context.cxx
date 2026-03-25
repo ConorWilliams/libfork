@@ -6,6 +6,14 @@ import :concepts;
 
 namespace lf {
 
+// TODO: move to threas_locals file/module
+export template <worker_context Context>
+constinit inline thread_local Context *thread_context = nullptr;
+
+// TODO: rename to basic_poly* and add an alias that uses geometric_stack as the default allocator.
+
+// TODO: is it possible to simultaniosly be poly context and concrete context?
+
 /**
  * @brief A worker context polymorphic in push/pop.
  */
@@ -33,7 +41,8 @@ class polymorphic_context {
   Alloc m_allocator;
 };
 
-export template <worker_context Context>
-constinit inline thread_local Context *thread_context = nullptr;
+// TODO: rename this file/module to poly_context or something similar.
+
+// export using poly_env = env<polymorphic_context<geometric_stack>>;
 
 } // namespace lf

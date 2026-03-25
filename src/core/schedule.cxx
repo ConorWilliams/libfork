@@ -8,6 +8,7 @@ import std;
 import :concepts;
 import :frame;
 import :context;
+import :promise;
 
 namespace lf {
 
@@ -38,12 +39,14 @@ struct block<T> final : block_type {
 
 // TODO: break this API into a simpler one.
 
-export template <worker_context Context, typename... Args, async_invocable<Args...> Fn>
-  requires void_or_default_initializable<async_result_t<Fn, Args...>>
+export template <worker_context Context, typename... Args, async_invocable<Context, Args...> Fn>
+  requires void_or_default_initializable<async_result_t<Fn, Context, Args...>>
 constexpr auto schedule(Context *context, Fn &&fn, Args &&...args) noexcept -> auto {
 
+  // TODO: make sure this is exception safe and correctly qualifed
+
   // This is what the async function will return.
-  using result_type = async_result_t<Fn, Args...>;
+  using result_type = async_result_t<Fn, Context, Args...>;
 
   auto root_block = std::unique_ptr<block<result_type>, block_deleter>{new block<result_type>{}};
 
@@ -52,19 +55,21 @@ constexpr auto schedule(Context *context, Fn &&fn, Args &&...args) noexcept -> a
 
   // TODO: Before doing this we must be on a valid context.
   LF_ASSUME(thread_context<Context> == context);
-  task task = std::invoke(std::forward<Fn>(fn), std::forward<Args>(args)...);
+
+  auto *promise = access::promise<Context>(
+      std::invoke(std::forward<Fn>(fn), env<Context>{}, std::forward<Args>(args)...));
 
   // TODO: expose cancellable?
-  task.promise->frame.parent.block = root_block.get();
-  task.promise->frame.cancel = nullptr;
-  task.promise->frame.stack_ckpt = thread_context<Context>->allocator().checkpoint();
-  task.promise->frame.kind = lf::category::root;
+  promise->frame.parent.block = root_block.get();
+  promise->frame.cancel = nullptr;
+  promise->frame.stack_ckpt = thread_context<Context>->allocator().checkpoint();
+  promise->frame.kind = lf::category::root;
 
   if constexpr (!std::is_void_v<result_type>) {
-    task.promise->return_address = &root_block->return_value;
+    promise->return_address = &root_block->return_value;
   }
 
-  task.promise->handle().resume();
+  promise->handle().resume();
 
   root_block->sem.acquire();
 

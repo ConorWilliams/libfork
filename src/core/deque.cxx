@@ -249,9 +249,10 @@ class deque : immovable {
    * Only the owner thread can pop out an item from the deque. If the buffer is empty calls `when_empty` and
    * returns the result. By default, `when_empty` is a no-op that returns a null `std::optional<T>`.
    */
-  template <std::invocable F = return_nullopt<T>>
-    requires std::convertible_to<T, std::invoke_result_t<F>>
-  constexpr auto pop(F &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<F>) -> std::invoke_result_t<F>;
+  template <std::invocable Fn = return_nullopt<T>>
+    requires std::convertible_to<T, std::invoke_result_t<Fn>>
+  constexpr auto
+  pop(Fn &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<Fn>) -> std::invoke_result_t<Fn>;
 
   /**
    * @brief Steal an item from the deque.
@@ -344,10 +345,10 @@ constexpr auto deque<T>::push(T val) -> std::ptrdiff_t {
 }
 
 template <dequeable T>
-template <std::invocable F>
-  requires std::convertible_to<T, std::invoke_result_t<F>>
+template <std::invocable Fn>
+  requires std::convertible_to<T, std::invoke_result_t<Fn>>
 constexpr auto
-deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_v<F>) -> std::invoke_result_t<F> {
+deque<T>::pop(Fn &&when_empty) noexcept(std::is_nothrow_invocable_v<Fn>) -> std::invoke_result_t<Fn> {
 
   std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1; //
   atomic_ring_buf<T> *buf = m_buf.load(relaxed);            //
@@ -364,7 +365,7 @@ deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_v<F>) -> std::i
       if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
         // Failed race, thief got the last item.
         m_bottom.store(bottom + 1, relaxed);
-        return std::invoke(std::forward<F>(when_empty));
+        return std::invoke(std::forward<Fn>(when_empty));
       }
       m_bottom.store(bottom + 1, relaxed);
     }
@@ -373,7 +374,7 @@ deque<T>::pop(F &&when_empty) noexcept(std::is_nothrow_invocable_v<F>) -> std::i
     return buf->load(bottom);
   }
   m_bottom.store(bottom + 1, relaxed);
-  return std::invoke(std::forward<F>(when_empty));
+  return std::invoke(std::forward<Fn>(when_empty));
 }
 
 template <dequeable T>
