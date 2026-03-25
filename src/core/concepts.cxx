@@ -126,10 +126,36 @@ concept worker_context =
 template <worker_context T>
 using allocator_t = std::remove_reference_t<decltype(std::declval<T &>().allocator())>;
 
-// ==== Forward-decl
+// ==== Core API types.
+
+export template <worker_context Context>
+class env {};
 
 export template <returnable T, worker_context Context>
 struct task;
+
+export template <returnable T>
+class taskk {
+ public:
+  using value_type = T;
+
+ private:
+  constexpr taskk(void *promise) noexcept : m_promise(promise) {}
+
+  // Coroutine traits will need to access promise_for
+  template <typename R, typename... Args>
+  friend struct ::std::coroutine_traits;
+
+  // The actual promise type
+  template <typename Context>
+  struct promise_for;
+
+  void *m_promise;
+};
+
+template <returnable T>
+template <typename Context>
+struct taskk<T>::promise_for {};
 
 // ========== Invocability ========== //
 
