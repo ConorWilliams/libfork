@@ -60,6 +60,7 @@ target_sources(libfork_libfork
       src/core/promise.cxx
       src/core/concepts.cxx
       src/core/utility.cxx
+      src/core/stack.cxx
       src/core/frame.cxx
       src/core/constants.cxx
       src/core/tuple.cxx
