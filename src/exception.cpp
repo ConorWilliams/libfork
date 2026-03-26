@@ -13,6 +13,7 @@ void terminate_with(char const *message, char const *file, int line) noexcept {
   } LF_CATCH_ALL {
     // Drop exceptions during termination
   }
+  // TODO: can we use a std:stack_trace here?
   std::terminate();
 }
 
