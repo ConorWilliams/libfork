@@ -13,7 +13,6 @@ import :concepts;
 import :frame;
 import :utility;
 
-import :poly_context;
 import :thread_locals;
 import :ops;
 
