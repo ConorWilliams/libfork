@@ -410,8 +410,8 @@ struct mixin_frame {
 
   template <category Cat, typename R, typename Fn, typename... Args>
   [[nodiscard]]
-  constexpr auto
-  transform(this auto &self, pkg<Cat, Context, R, Fn, Args...> &&pkg) noexcept -> frame_type<Context> * {
+  constexpr auto await_transform(this auto &self, pkg<Cat, Context, R, Fn, Args...> &&pkg) noexcept
+      -> awaitable<Cat, Context> {
 
     using U = async_result_t<Fn, Context, Args...>;
 
@@ -437,16 +437,11 @@ struct mixin_frame {
         }
       }
 
-      return &child_promise->frame;
+      return {.child = &child_promise->frame};
     } LF_CATCH_ALL {
-      return stash_current_exception(&self.frame), nullptr;
+      stash_current_exception(&self.frame);
+      return {.child = nullptr};
     }
-  }
-
-  template <category Cat, typename R, typename Fn, typename... Args>
-  constexpr auto await_transform(this auto &self, pkg<Cat, Context, R, Fn, Args...> &&pkg) noexcept
-      -> awaitable<Cat, Context> {
-    return {.child = self.transform(std::move(pkg))};
   }
 
   constexpr auto await_transform(this auto &self, join_type) noexcept -> join_awaitable<Context> {
