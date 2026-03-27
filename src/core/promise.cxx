@@ -421,8 +421,8 @@ struct mixin_frame {
       // clang-format off
 
       auto *child_promise = access::promise<Context>(std::move(pkg.args).apply(
-        [&](auto &&...args) LF_HOF(std::invoke(fwd_fn<Fn>(pkg.fn), env<Context>{}, LF_FWD(args)...)))
-      );
+        [&](auto &&...args) LF_HOF(std::invoke(fwd_fn<Fn>(pkg.fn), env<Context>{}, LF_FWD(args)...))
+      ));
 
       // clang-format on
 
