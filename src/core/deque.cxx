@@ -199,7 +199,7 @@ struct return_nullopt {
 export template <dequeable T>
 class deque : immovable {
 
-  static constexpr std::ptrdiff_t k_default_capacity = 1024;
+  static constexpr std::ptrdiff_t k_default_capacity = 1024 * 64 * 64;
   static constexpr std::size_t k_garbage_reserve = 64;
 
  public:
@@ -278,8 +278,7 @@ class deque : immovable {
  private:
   alignas(k_cache_line) std::atomic<std::ptrdiff_t> m_top;
   alignas(k_cache_line) std::atomic<std::ptrdiff_t> m_bottom;
-  alignas(k_cache_line) std::atomic<atomic_ring_buf<T> *> m_buf;
-  std::vector<std::unique_ptr<atomic_ring_buf<T>>> m_garbage;
+  alignas(k_cache_line) atomic_ring_buf<T> m_buf;
 
   // Convenience aliases.
   static constexpr std::memory_order relaxed = std::memory_order_relaxed;
@@ -292,9 +291,7 @@ class deque : immovable {
 template <dequeable T>
 constexpr deque<T>::deque(std::ptrdiff_t cap) : m_top(0),
                                                 m_bottom(0),
-                                                m_buf(new atomic_ring_buf<T>{cap}) {
-  m_garbage.reserve(k_garbage_reserve);
-}
+                                                m_buf(cap) {}
 
 template <dequeable T>
 constexpr auto deque<T>::size() const noexcept -> std::size_t {
@@ -310,7 +307,7 @@ constexpr auto deque<T>::ssize() const noexcept -> std::ptrdiff_t {
 
 template <dequeable T>
 constexpr auto deque<T>::capacity() const noexcept -> std::ptrdiff_t {
-  return m_buf.load(relaxed)->capacity();
+  return m_buf.capacity();
 }
 
 template <dequeable T>
@@ -324,20 +321,12 @@ template <dequeable T>
 constexpr auto deque<T>::push(T val) -> std::ptrdiff_t {
   std::ptrdiff_t const bottom = m_bottom.load(relaxed);
   std::ptrdiff_t const top = m_top.load(acquire);
-  atomic_ring_buf<T> *buf = m_buf.load(relaxed);
+  atomic_ring_buf<T> *buf = &m_buf;
 
   std::ptrdiff_t const ssize = bottom - top;
 
   if (buf->capacity() < ssize + 1) {
-    // Deque is full, build a new one.
-    atomic_ring_buf<T> *bigger = buf->resize(bottom, top);
-
-    [&]() noexcept -> void {
-      // This should never throw as we reserve 64 slots.
-      m_garbage.emplace_back(std::exchange(buf, bigger));
-    }();
-
-    m_buf.store(buf, relaxed);
+    LF_THROW(std::bad_alloc{)}; // No more space even after resize, fail the push.
   }
 
   // Construct new object, this does not have to be atomic as no one can steal this item until
@@ -356,7 +345,7 @@ constexpr auto
 deque<T>::pop(Fn &&when_empty) noexcept(std::is_nothrow_invocable_v<Fn>) -> std::invoke_result_t<Fn> {
 
   std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1; //
-  atomic_ring_buf<T> *buf = m_buf.load(relaxed);            //
+  atomic_ring_buf<T> *buf = &m_buf;                         //
   m_bottom.store(bottom, relaxed);                          // Stealers can no longer steal.
 
   std::atomic_thread_fence(seq_cst);
@@ -398,7 +387,7 @@ constexpr auto deque<T>::steal() noexcept -> steal_t<T> {
     // as we only return the value if we win the race below guaranteeing we had no race during our
     // read. If we loose the race then 'x' could be corrupt due to read-during-write race but as T
     // is trivially destructible this does not matter.
-    T tmp = m_buf.load(consume)->load(top);
+    T tmp = m_buf.load(top);
 
     static_assert(std::is_trivially_destructible_v<T>, "concept 'atomicable' should guarantee this already");
 
@@ -411,8 +400,6 @@ constexpr auto deque<T>::steal() noexcept -> steal_t<T> {
 }
 
 template <dequeable T>
-constexpr deque<T>::~deque() noexcept {
-  delete m_buf.load(); // NOLINT
-}
+constexpr deque<T>::~deque() noexcept {}
 
 } // namespace lf

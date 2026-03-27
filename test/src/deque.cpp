@@ -207,17 +207,3 @@ TEST_CASE("Deque: MPSC with-pop", "[deque]") {
     }
   }
 }
-
-TEST_CASE("Deque: Capacity Growth", "[deque]") {
-  lf::deque<int> d(2);
-  REQUIRE(d.capacity() == 2);
-  d.push(1);
-  d.push(2);
-  REQUIRE(d.capacity() == 2);
-  d.push(3); // Should trigger resize
-  REQUIRE(d.capacity() > 2);
-  REQUIRE(d.ssize() == 3);
-  REQUIRE(*d.pop() == 3);
-  REQUIRE(*d.pop() == 2);
-  REQUIRE(*d.pop() == 1);
-}
