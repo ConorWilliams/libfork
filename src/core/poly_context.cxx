@@ -6,8 +6,6 @@ import :concepts;
 
 namespace lf {
 
-// TODO: is it possible to simultaniosly be poly context and concrete context?
-
 /**
  * @brief A worker context polymorphic in push/pop.
  */
