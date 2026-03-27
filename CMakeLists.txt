@@ -65,6 +65,7 @@ target_sources(libfork_libfork
       src/core/tuple.cxx
       src/core/ops.cxx
       src/core/context.cxx
+      src/core/thread_locals.cxx
       src/core/deque.cxx
       src/core/schedule.cxx
       src/core/handles.cxx

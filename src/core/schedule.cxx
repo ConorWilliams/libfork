@@ -8,6 +8,7 @@ import std;
 import :concepts;
 import :frame;
 import :context;
+import :thread_locals;
 import :promise;
 
 namespace lf {

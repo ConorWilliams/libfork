@@ -14,6 +14,7 @@ import :frame;
 import :utility;
 
 import :context;
+import :thread_locals;
 import :ops;
 
 import :handles;
