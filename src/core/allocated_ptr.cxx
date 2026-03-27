@@ -12,35 +12,48 @@ class allocated_ptr {
 
  private:
   using allocator_traits = std::allocator_traits<Allocator>;
-  using pointer = allocator_traits::pointer;
-  using const_pointer = allocator_traits::const_pointer;
+  using pointer = typename allocator_traits::pointer;
 
   [[no_unique_address]]
   Allocator m_alloc;
   pointer m_data = nullptr;
   std::size_t m_size = 0;
 
-  // Helper method to properly destroy elements in reverse order and free memory
+ public:
+  constexpr auto size() const noexcept -> std::size_t { return m_size; }
+
+  constexpr auto data() noexcept -> T * { return std::to_address(m_data); }
+  constexpr auto data() const noexcept -> T const * { return std::to_address(m_data); }
+
+ private:
+  /**
+   * @brief Destroy all element and deallocate memory
+   */
   void clear_and_deallocate() noexcept {
     if (m_data) {
-      for (std::size_t i = size_; i > 0; --i) {
-        // std::to_address handles both raw pointers and "fancy" pointers
-        allocator_traits::destroy(alloc_, std::to_address(data_ + i - 1));
+      if constexpr (not std::is_trivially_destructible_v<T>) {
+        // If trivially destructible, we can skip destruction and just deallocate
+        for (std::size_t i = 0; i < size_; ++i) {
+          // std::to_address handles both raw pointers and "fancy" pointers
+          allocator_traits::destroy(alloc_, std::to_address(ptr + i));
+        }
       }
       allocator_traits::deallocate(alloc_, data_, size_);
-      m_data = nullptr;
-      size_ = 0;
     }
+    m_data = nullptr;
+    size_ = 0;
   }
 
  public:
-  explicit allocated_ptr(std::size_t count, const Allocator &alloc = Allocator())
+  explicit allocated_ptr(Allocator const &alloc = Allocator()) : m_alloc(alloc), m_data(nullptr), size_(0) {}
+
+  explicit allocated_ptr(std::size_t count, Allocator const &alloc = Allocator())
       : m_alloc(alloc),
         m_data(nullptr),
         size_(count) {
-    if (size_ > 0) {
+    if (count > 0) {
       data_ = allocator_traits::allocate(alloc_, size_);
-      size_type i = 0;
+      std::size_t i = 0;
       try {
         for (; i < size_; ++i) {
           allocator_traits::construct(alloc_, std::to_address(data_ + i));
@@ -66,41 +79,15 @@ class allocated_ptr {
         data_(std::exchange(other.data_, nullptr)),
         size_(std::exchange(other.size_, 0)) {}
 
-  // Allocator-extended move constructor
-  // If allocators match, we take over O(1). If not, we MUST allocate and move elements O(N).
-  allocated_ptr(allocated_ptr &&other, const Allocator &alloc) : m_alloc(alloc), m_data(nullptr), size_(0) {
-    if (m_alloc == other.m_alloc) {
-      data_ = std::exchange(other.data_, nullptr);
-      size_ = std::exchange(other.size_, 0);
-    } else if (other.size_ > 0) {
-      data_ = allocator_traits::allocate(alloc_, other.size_);
-      size_ = other.size_;
-      size_type i = 0;
-      try {
-        for (; i < size_; ++i) {
-          allocator_traits::construct(alloc_, std::to_address(data_ + i), std::move(other.data_[i]));
-        }
-      } catch (...) {
-        for (size_type j = i; j > 0; --j) {
-          allocator_traits::destroy(alloc_, std::to_address(data_ + j - 1));
-        }
-        allocator_traits::deallocate(alloc_, data_, size_);
-        throw;
-      }
-    }
-  }
+ private:
+  static constexpr bool pocma = allocator_traits::propagate_on_container_move_assignment::value;
 
-  // ------------------------------------------------------------------------
-  // 3. Move Assignment Operator
-  // ------------------------------------------------------------------------
+ public:
   allocated_ptr &
-  operator=(allocated_ptr &&other) noexcept(allocator_traits::propagate_on_container_move_assignment::value ||
-                                            allocator_traits::is_always_equal::value) {
-    if (this == &other)
+  operator=(allocated_ptr &&other) noexcept(pocma || allocator_traits::is_always_equal::value) {
+    if (this == &other) {
       return *this;
-
-    // Check POCMA trait
-    constexpr bool pocma = allocator_traits::propagate_on_container_move_assignment::value;
+    }
 
     if constexpr (pocma) {
       clear_and_deallocate();
@@ -154,8 +141,6 @@ class allocated_ptr {
 
   allocator_type get_allocator() const noexcept { return m_alloc; }
 
-  iterator begin() noexcept { return m_data; }
-  const_iterator begin() const noexcept { return m_data; }
   const_iterator cbegin() const noexcept { return m_data; }
 
   iterator end() noexcept { return data_ + size_; }
@@ -169,15 +154,13 @@ class allocated_ptr {
   reference operator[](size_type i) { return m_data[i]; }
   const_reference operator[](size_type i) const { return m_data[i]; }
 
-  pointer data() noexcept { return m_data; }
-  const_pointer data() const noexcept { return m_data; }
-
   // ------------------------------------------------------------------------
   // 6. Swap
   // ------------------------------------------------------------------------
   void swap(allocated_ptr &other) noexcept(allocator_traits::propagate_on_container_swap::value ||
                                            allocator_traits::is_always_equal::value) {
     constexpr bool pocs = allocator_traits::propagate_on_container_swap::value;
+
     if constexpr (pocs) {
       using std::swap;
       swap(m_alloc, other.m_alloc);
