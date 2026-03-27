@@ -8,8 +8,8 @@ export import :tuple;
 
 // T2 partitions
 export import :frame;   // concepts, constants
-export import :context; // concepts
 export import :thread_locals; // concepts
+export import :poly_context; // concepts
 export import :ops;     // concepts, utility, tuple
 export import :deque;   // concepts, utility, constants
 

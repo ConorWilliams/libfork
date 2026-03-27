@@ -95,15 +95,15 @@ struct deque_ctx {
 };
 
 template <lf::stack_allocator Alloc>
-struct poly_vector_ctx final : lf::polymorphic_context<Alloc> {
+struct poly_vector_ctx final : lf::basic_poly_context<Alloc> {
 
-  using handle_type = lf::frame_handle<lf::polymorphic_context<Alloc>>;
+  using handle_type = lf::frame_handle<lf::basic_poly_context<Alloc>>;
 
   std::vector<handle_type> work;
 
   poly_vector_ctx() { work.reserve(1024); }
 
-  void post(lf::await_handle<lf::polymorphic_context<Alloc>>) override {}
+  void post(lf::await_handle<lf::basic_poly_context<Alloc>>) override {}
 
   void push(handle_type handle) override { work.push_back(handle); }
 
@@ -114,13 +114,13 @@ struct poly_vector_ctx final : lf::polymorphic_context<Alloc> {
   }
 };
 
-struct poly_deque_ctx final : lf::polymorphic_context<linear_allocator> {
+struct poly_deque_ctx final : lf::basic_poly_context<linear_allocator> {
 
-  using handle_type = lf::frame_handle<lf::polymorphic_context<linear_allocator>>;
+  using handle_type = lf::frame_handle<lf::basic_poly_context<linear_allocator>>;
 
   lf::deque<handle_type> work;
 
-  void post(lf::await_handle<lf::polymorphic_context<linear_allocator>>) override {}
+  void post(lf::await_handle<lf::basic_poly_context<linear_allocator>>) override {}
 
   void push(handle_type handle) override { work.push(handle); }
 
@@ -250,7 +250,7 @@ BENCHMARK(fib<fork_call<linear_alloc>, linear_alloc>)->Name("test/libfork/fib/ve
 BENCHMARK(fib<fork_call<linear_alloc>, linear_alloc>)->Name("base/libfork/fib/vector_ctx")->Arg(fib_base);
 
 using A = poly_vector_ctx<linear_allocator>;
-using B = lf::polymorphic_context<linear_allocator>;
+using B = lf::basic_poly_context<linear_allocator>;
 
 // Same as above but with polymorphic contexts.
 BENCHMARK(fib<fork_call<B>, A, B>)->Name("test/libfork/fib/poly_vector_ctx")->Arg(fib_test);
