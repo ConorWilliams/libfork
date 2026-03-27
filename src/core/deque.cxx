@@ -13,6 +13,8 @@ import :constants;
 
 namespace lf {
 
+// TODO: test if perf is better if we bound the queue
+
 /**
  * @brief Test is a type is suitable for use with `lf::deque`.
  *
