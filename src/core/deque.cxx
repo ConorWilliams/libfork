@@ -180,6 +180,9 @@ struct return_nullopt {
   static constexpr auto operator()() noexcept -> std::optional<T> { return {}; }
 };
 
+// TODO: drop relaxed semantics on buffer load/store:
+// https://github.com/crossbeam-rs/crossbeam/blob/master/crossbeam-deque/src/deque.rs
+
 /**
  * @brief An unbounded lock-free single-producer multiple-consumer work-stealing deque.
  *
