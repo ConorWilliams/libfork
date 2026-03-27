@@ -360,6 +360,8 @@ deque<T>::pop(Fn &&when_empty) noexcept(std::is_nothrow_invocable_v<Fn>) -> std:
 
   std::ptrdiff_t top = m_top.load(relaxed);
 
+  // TODO: match line-for-line with the paper
+
   if (top <= bottom) {
     // Non-empty deque
     if (top == bottom) {
