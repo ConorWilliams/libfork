@@ -13,19 +13,15 @@ namespace lf {
 
 // clang-format off
 
-// TODO: drop immovable/move_only
-
 template <category Cat, typename Context, typename R, typename Fn, typename... Args>
-struct [[nodiscard("You should immediately co_await this!")]] pkg {
+struct [[nodiscard("You should immediately co_await this!")]] pkg : immovable {
   R *return_address;
   [[no_unique_address]] Fn fn;
   [[no_unique_address]] tuple<Args...> args;
-
-
 };
 
 template <category Cat, typename Context, typename Fn, typename... Args>
-struct [[nodiscard("You should immediately co_await this!")]] pkg<Cat, Context, void, Fn, Args...> {
+struct [[nodiscard("You should immediately co_await this!")]] pkg<Cat, Context, void, Fn, Args...> : immovable {
   [[no_unique_address]] Fn fn;
   [[no_unique_address]] tuple<Args...> args;
 };
