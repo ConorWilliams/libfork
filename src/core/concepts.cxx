@@ -48,7 +48,7 @@ concept specialization_of = is_specialization_of<std::remove_cvref_t<T>, Templat
  *
  * This requires that `T` is `void` or a `std::movable` type.
  */
-template <typename T>
+export template <typename T>
 concept returnable = std::is_void_v<T> || std::movable<T>;
 
 // ==== Stack
@@ -88,7 +88,7 @@ concept stack_allocator = std::is_object_v<T> && requires (T allocator, std::siz
 /**
  * @brief Fetch the checkpoint type of a stack allocator `T`.
  */
-template <stack_allocator T>
+export template <stack_allocator T>
 using checkpoint_t = decltype(std::declval<T &>().checkpoint());
 
 // ==== Context
@@ -123,7 +123,7 @@ concept worker_context =
 /**
  * @brief Fetch the allocator type of a worker context `T`.
  */
-template <worker_context T>
+export template <worker_context T>
 using allocator_t = std::remove_reference_t<decltype(std::declval<T &>().allocator())>;
 
 // ==== Forward-decl
