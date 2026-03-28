@@ -146,7 +146,6 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
   // join race.
   auto const checkpoint = parent->stack_ckpt;
 
-
   // As soon as we do the fetch_sub (if we loose) someone may acquire
   // the stack so we must prepare it for release now.
   auto key = context->allocator().prepare_release();

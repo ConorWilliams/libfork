@@ -22,7 +22,7 @@ struct global_allocator {
   constexpr static auto pop(void *p, std::size_t sz) noexcept -> void { ::operator delete(p, sz); }
   constexpr static auto checkpoint() noexcept -> empty { return {}; }
   constexpr static auto release(empty) noexcept -> void {}
-  constexpr static auto prepare_release() noexcept -> empty {return {};}
+  constexpr static auto prepare_release() noexcept -> empty { return {}; }
   constexpr static auto acquire(empty) noexcept -> void {}
 };
 
@@ -42,7 +42,7 @@ struct linear_allocator {
 
   constexpr auto checkpoint() noexcept -> std::byte * { return data.get(); }
   constexpr auto prepare_release() noexcept -> std::byte * { return data.get(); }
-  constexpr auto release(std::byte*) noexcept -> void {}
+  constexpr auto release(std::byte *) noexcept -> void {}
   constexpr auto acquire(std::byte *) noexcept -> void {}
 };
 
