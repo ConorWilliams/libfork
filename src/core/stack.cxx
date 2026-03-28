@@ -1,6 +1,7 @@
 module;
 #include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/compiler.hpp"
+#include <cstddef>
 export module libfork.core:stack;
 
 import std;
@@ -20,6 +21,50 @@ namespace lf {
 //   { allocator.release() } noexcept -> std::same_as<void>;
 //   { allocator.acquire(constify(allocator.checkpoint())) } noexcept -> std::same_as<void>;
 // };
+
+export class geometric_stack {
+
+  struct node;
+
+  struct node_data {
+    node *prev;                            // Linked list (past).
+    std::unique_ptr<std::byte[]> stacklet; // Actual data
+    std::size_t size;                      // Size of stacklet.
+    std::byte *sp_cache;                   // Cached stack pointer for this stacklet.
+  };
+
+  // Align such that the entire thing is on a cache line
+  struct alignas(std::max(sizeof(node_data), alignof(node_data))) node : node_data {};
+
+  static_assert(sizeof(node) == alignof(node));
+  static_assert(alignof(node) <= k_cache_line);
+
+  struct heap {
+    std::stack<std::byte *> debug;
+    node_data *top;
+    node_data *cache;
+  };
+
+  class checkpoint_t {
+   public:
+    auto operator==(checkpoint_t const &) const noexcept -> bool = default;
+
+   private:
+    explicit constexpr checkpoint_t(heap *root) noexcept : m_root(root) {}
+    friend class geometric_stack;
+    heap *m_root;
+  };
+
+ public:
+  [[nodiscard]]
+  constexpr auto checkpoint() noexcept -> checkpoint_t {
+    return checkpoint_t{m_root.get()};
+  }
+
+  std::unique_ptr<heap> m_root = nullptr;
+  std::byte *m_sp = nullptr;
+  std::byte *m_hi = nullptr;
+};
 
 /**
  * @brief Round size close to a multiple of the page_size.

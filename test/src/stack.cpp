@@ -3,6 +3,7 @@
 import std;
 import libfork.core;
 
+using lf::geometric_stack;
 using lf::stack;
 using lf::stack_allocator;
 
@@ -10,6 +11,9 @@ TEST_CASE("Stack properties", "[stack]") { STATIC_REQUIRE(stack_allocator<stack>
 
 TEST_CASE("Stack allocation", "[stack]") {
   stack s;
+
+  geometric_stack gs;
+  gs.checkpoint() == gs.checkpoint();
 
   void *p1 = s.push(10);
   REQUIRE(p1 != nullptr);
