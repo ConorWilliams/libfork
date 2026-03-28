@@ -62,12 +62,8 @@ export class geometric_stack {
   static_assert(alignof(node) <= k_cache_line);
 
   struct heap : immovable {
-
-    std::stack<std::byte *> debug; // Debugging FILO tracking.
-    node *top;                     // Most recent stacklet i.e. the top of the stack, never null.
-    node *cache = nullptr;         // Cached (empty) stacklet for hot-split gaurding.
-
-    explicit constexpr heap(std::size_t size) : top(new node{nullptr, size}) {}
+    node *top = nullptr;   // Most recent stacklet i.e. the top of the stack.
+    node *cache = nullptr; // Cached (empty) stacklet for hot-split gaurding.
   };
 
   class checkpoint_t {
@@ -75,7 +71,7 @@ export class geometric_stack {
     auto operator==(checkpoint_t const &) const noexcept -> bool = default;
 
    private:
-    explicit constexpr checkpoint_t(heap *root) noexcept : m_root(root) {}
+    explicit constexpr checkpoint_t(heap *root) noexcept : m_root(not_null(root)) {}
     friend class geometric_stack;
     heap *m_root;
   };
@@ -120,25 +116,45 @@ export class geometric_stack {
     return checkpoint_t{m_root.get()};
   }
 
-  constexpr void release() noexcept {
+  // TODO: drop noexcept requirement in concept
+
+  constexpr void release() {
     std::ignore = m_root.release();
+    // Prime with new heap so that .checkpoint is valid.
+    m_root.reset(new heap);
     m_sp = nullptr;
     m_free = 0;
   }
 
   constexpr void acquire(checkpoint_t ckpt) noexcept {
-    if (ckpt.m_root != m_root.get() && ckpt.m_root != nullptr) {
-      LF_ASSUME(m_root == nullptr); // Should only acquire when empty.
-      LF_ASSUME(m_root->top);       // Should never be nullptr
+    if (ckpt.m_root != m_root.get()) {
+
       m_root.reset(ckpt.m_root);
-      m_sp = m_root->top->sp_cache;
-      m_free = m_root->top->size - safe_cast<std::size_t>(m_sp - m_root->top->stacklet.get());
+
+      if (m_root->top != nullptr) {
+        m_sp = m_root->top->sp_cache;
+        m_free = m_root->top->size - safe_cast<std::size_t>(m_sp - m_root->top->stacklet.get());
+      } else {
+        m_sp = nullptr;
+        m_free = 0;
+      }
     }
   }
 
-  std::unique_ptr<heap> m_root = nullptr; // The control block
-  std::byte *m_sp = nullptr;              // The stack pointer for the current stacklet.
-  std::size_t m_free = 0;                 // Space left in the current stacklet.
+ private:
+  struct deleter {
+    static constexpr void operator()(heap *h) noexcept {
+      // Should be empty at destruction.
+      LF_ASSUME(h->top == nullptr || h->top->prev == nullptr);
+      delete h->top;
+      delete h->cache;
+      delete h;
+    }
+  };
+
+  std::unique_ptr<heap, deleter> m_root{new heap}; // The control block, never null.
+  std::byte *m_sp = nullptr;                       // The stack pointer for the current stacklet.
+  std::size_t m_free = 0;                          // Space left in the current stacklet.
 };
 
 /**
