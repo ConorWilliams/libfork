@@ -146,7 +146,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
   // join race.
   auto const checkpoint = parent->stack_ckpt;
 
-  // TODO: do we need a prepare release here?
+  // TODO: we need a prepare release here?
 
   // Register with parent we have completed this child task.
   if (parent->atomic_joins().fetch_sub(1, std::memory_order_release) == 1) {
@@ -309,6 +309,7 @@ struct join_awaitable {
     if (steals == joined) {
       // We must reset the control block and take the stack. We should never
       // own the stack at this point because we must have stolen the stack.
+      // For ruther explanation see await_suspend() below.
       return self.take_stack_and_reset(), true;
     }
 
@@ -325,7 +326,16 @@ struct join_awaitable {
 
     LF_ASSUME(self.frame);
 
-    // TODO: we must release stack before we mark the atomic as ready for resume.
+    // Lemma:
+    //
+    //    If a thread is at a join and steals have occurred then the
+    //    thread can never own the stack of the current frame.
+    //
+    // This is because threads follow the work-first principle, so for the
+    // owner to be running this task it would have to have re-stolen it from a
+    // thief. Which implies it would have run the final suspend of the child
+    // that had it's continuation stolen, where it would have had to release
+    // the stack, because the parent was at not at the join.
 
     std::uint32_t steals = self.frame->steals;
     std::uint32_t offset = k_u16_max - steals;
