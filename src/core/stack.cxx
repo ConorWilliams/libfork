@@ -250,7 +250,7 @@ export class stack : immovable {
       stacklet *next = static_cast<stacklet *>(std::malloc(request));
 
       if (next == nullptr) {
-        throw std::bad_alloc();
+        LF_THROW(std::bad_alloc());
       }
 
       if (prev != nullptr) {
