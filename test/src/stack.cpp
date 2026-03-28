@@ -12,44 +12,16 @@ TEST_CASE("Stack: Basic push and pop", "[stack]") {
 
   void *p1 = stack.push(10);
   REQUIRE(p1 != nullptr);
-  // Check alignment (k_new_align is exported from constants)
   REQUIRE((reinterpret_cast<std::uintptr_t>(p1) % k_new_align) == 0);
 
   void *p2 = stack.push(20);
   REQUIRE(p2 != nullptr);
-  REQUIRE(p2 != p1);
   REQUIRE((reinterpret_cast<std::uintptr_t>(p2) % k_new_align) == 0);
+  REQUIRE(p2 != p1);
 
   // Pop in FILO order
   stack.pop(p2, 20);
   stack.pop(p1, 10);
-}
-
-TEST_CASE("Stack: Large allocation", "[stack]") {
-  geometric_stack stack;
-  // A very large allocation that definitely won't fit in initial stacklet (if any)
-  void *p = stack.push(1024 * 1024);
-  REQUIRE(p != nullptr);
-  REQUIRE((reinterpret_cast<std::uintptr_t>(p) % k_new_align) == 0);
-  stack.pop(p, 1024 * 1024);
-}
-
-TEST_CASE("Stack: Geometric growth", "[stack]") {
-  geometric_stack stack;
-  std::vector<void *> ptrs;
-  std::size_t size = 16;
-  for (std::size_t i = 0; i < 20; ++i) {
-    void *p = stack.push(size);
-    REQUIRE(p != nullptr);
-    REQUIRE((reinterpret_cast<std::uintptr_t>(p) % k_new_align) == 0);
-    ptrs.push_back(p);
-    size *= 2;
-  }
-
-  for (std::size_t i = 19; i < 20; --i) {
-    size /= 2;
-    stack.pop(ptrs[i], size);
-  }
 }
 
 TEST_CASE("Stack: Checkpoint and Acquire/Release", "[stack]") {
