@@ -5,9 +5,9 @@ import libfork.core;
 
 using namespace lf;
 
-TEST_CASE("Stack: Concepts", "[stack]") { STATIC_REQUIRE(stack_allocator<geometric_stack>); }
+TEST_CASE("Concept", "[geometric_stack]") { STATIC_REQUIRE(stack_allocator<geometric_stack>); }
 
-TEST_CASE("Stack: Basic push and pop", "[stack]") {
+TEST_CASE("Basic push and pop", "[geometric_stack]") {
   geometric_stack stack;
 
   void *p1 = stack.push(10);
@@ -24,7 +24,7 @@ TEST_CASE("Stack: Basic push and pop", "[stack]") {
   stack.pop(p1, 10);
 }
 
-TEST_CASE("Stack: Checkpoint and Acquire/Release", "[stack]") {
+TEST_CASE("Checkpoint and Acquire/Release", "[geometric_stack]") {
   geometric_stack stack1;
   void *p1 = stack1.push(100);
   auto cp1 = stack1.checkpoint();
@@ -42,7 +42,7 @@ TEST_CASE("Stack: Checkpoint and Acquire/Release", "[stack]") {
   }
 }
 
-TEST_CASE("Stack: Stress test", "[stack]") {
+TEST_CASE("Stress test", "[geometric_stack]") {
 
   for (int k = 0; k < 10; ++k) {
 
