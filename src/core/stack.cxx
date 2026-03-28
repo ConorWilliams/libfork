@@ -1,6 +1,7 @@
 module;
 #include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/compiler.hpp"
+#include <bit>
 #include <cstddef>
 export module libfork.core:stack;
 
@@ -12,8 +13,30 @@ import :utility;
 
 namespace lf {
 
-static auto make_bytes(std::size_t size) -> std::unique_ptr<std::byte[]> {
+/**
+ * @brief Allocate an uninitialized array of bytes of the given size.
+ */
+[[nodiscard]]
+constexpr auto make_bytes(std::size_t size) -> std::unique_ptr<std::byte[]> {
   return std::make_unique_for_overwrite<std::byte[]>(size);
+}
+
+/**
+ * @brief Round up size to a multiple of `k_new_align` for alignment purposes.
+ */
+[[nodiscard]]
+constexpr auto new_align(std::size_t size) noexcept -> std::size_t {
+  return (size + k_new_align - 1) & ~(k_new_align - 1);
+}
+
+/**
+ * @brief Test if a pointer is aligned to a multiple of `Align`.
+ */
+template <std::size_t Align>
+  requires (std::has_single_bit(Align))
+[[nodiscard]]
+constexpr auto is_aligned(void *ptr) noexcept -> bool {
+  return (std::bit_cast<std::uintptr_t>(ptr) & (Align - 1)) == 0;
 }
 
 export class geometric_stack {
@@ -29,7 +52,10 @@ export class geometric_stack {
 
   // Align such that the entire node is on a cache line
   struct alignas(std::max(sizeof(node_data), alignof(node_data))) node : node_data {
-    constexpr node(node *prev, std::size_t size) : node_data{.prev = prev, .size = size} {}
+    constexpr node(node *prev, std::size_t size) : node_data{.prev = prev, .size = size} {
+      // Each stacklet should be on a boundary.
+      LF_ASSUME(is_aligned<k_new_align>(stacklet.get()));
+    }
   };
 
   static_assert(sizeof(node) == alignof(node));
@@ -73,6 +99,16 @@ export class geometric_stack {
   //   { allocator.push(n) } -> std::same_as<void *>;
   //   { allocator.pop(ptr, n) } noexcept -> std::same_as<void>;
   // };
+
+  [[nodiscard]]
+  constexpr auto push(std::size_t size) -> void * {
+
+    // This is the eager allocation.
+    std::byte *alloc = m_sp;
+
+    // Then t
+    size = new_align(size);
+  }
 
   [[nodiscard]]
   constexpr auto checkpoint() noexcept -> checkpoint_t {
