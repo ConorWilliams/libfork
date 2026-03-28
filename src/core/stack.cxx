@@ -12,45 +12,36 @@ import :utility;
 
 namespace lf {
 
-// export template <typename T>
-// concept stack_allocator = std::is_object_v<T> && requires (T allocator, std::size_t n, void *ptr) {
-//   // { alloc.empty() } noexcept -> std::same_as<bool>;
-//   { allocator.push(n) } -> std::same_as<void *>;
-//   { allocator.pop(ptr, n) } noexcept -> std::same_as<void>;
-//   { allocator.checkpoint() } noexcept -> std::regular;
-//   { allocator.release() } noexcept -> std::same_as<void>;
-//   { allocator.acquire(constify(allocator.checkpoint())) } noexcept -> std::same_as<void>;
-// };
+static auto make_bytes(std::size_t size) -> std::unique_ptr<std::byte[]> {
+  return std::make_unique_for_overwrite<std::byte[]>(size);
+}
 
 export class geometric_stack {
 
   struct node;
 
   struct node_data : immovable {
-    node *prev;                            // Linked list (past).
-    std::size_t size;                      // Size of stacklet.
-    std::unique_ptr<std::byte[]> stacklet; // Actual data.
-    std::byte *sp_cache;                   // Cached stack pointer for this stacklet.
+    node *prev;                                               // Linked list (past).
+    std::size_t size;                                         // Size of stacklet.
+    std::unique_ptr<std::byte[]> stacklet = make_bytes(size); // Actual data.
+    std::byte *sp_cache = nullptr;                            // Cached stack pointer for this stacklet.
   };
 
   // Align such that the entire node is on a cache line
   struct alignas(std::max(sizeof(node_data), alignof(node_data))) node : node_data {
-    constexpr node(node *prev, std::size_t size)
-        : node_data{
-              .prev = prev,
-              .size = size,
-              .stacklet = std::make_unique_for_overwrite<std::byte[]>(size),
-              .sp_cache = nullptr,
-          } {}
+    constexpr node(node *prev, std::size_t size) : node_data{.prev = prev, .size = size} {}
   };
 
   static_assert(sizeof(node) == alignof(node));
   static_assert(alignof(node) <= k_cache_line);
 
   struct heap : immovable {
+
     std::stack<std::byte *> debug; // Debugging FILO tracking.
-    node *top;                     // Most recent stacklet i.e. the top of the stack.
-    node *cache;                   // Cached (empty) stacklet for hot-split gaurding.
+    node *top;                     // Most recent stacklet i.e. the top of the stack, never null.
+    node *cache = nullptr;         // Cached (empty) stacklet for hot-split gaurding.
+
+    explicit constexpr heap(std::size_t size) : top(new node{nullptr, size}) {}
   };
 
   class checkpoint_t {
@@ -64,9 +55,44 @@ export class geometric_stack {
   };
 
  public:
+  // export template <typename T>
+  // * - After construction `this` is in the empty state and push is valid.
+  // * - Pop is valid provided the FILO order is respected.
+  // * - Push produces pointers aligned to __STDCPP_DEFAULT_NEW_ALIGNMENT__.
+  // * - Destruction is expected to only occur when the stack is empty.
+  // * - Result of `.checkpoint()` is expected to:
+  // *     - Be "cheap to copy".
+  // *     - Compare equal if they belong to the same stack.
+  // * - Release detaches the current stack and leaves `this` in the empty state.
+  // * - Acquire attaches to the stack that the checkpoint came from:
+  // *     - This is a noop if the checkpoint is from the current stack.
+  // *     - Otherwise `this` is empty.
+  // *
+  //  concept stack_allocator = std::is_object_v<T> && requires (T allocator, std::size_t n, void *ptr) {
+  //   // { alloc.empty() } noexcept -> std::same_as<bool>;
+  //   { allocator.push(n) } -> std::same_as<void *>;
+  //   { allocator.pop(ptr, n) } noexcept -> std::same_as<void>;
+  // };
+
   [[nodiscard]]
   constexpr auto checkpoint() noexcept -> checkpoint_t {
     return checkpoint_t{m_root.get()};
+  }
+
+  constexpr void release() noexcept {
+    std::ignore = m_root.release();
+    m_sp = nullptr;
+    m_hi = nullptr;
+  }
+
+  constexpr void acquire(checkpoint_t ckpt) noexcept {
+    if (ckpt.m_root != m_root.get() && ckpt.m_root != nullptr) {
+      LF_ASSUME(m_root == nullptr); // Should only acquire when empty.
+      LF_ASSUME(m_root->top);       // Should never be nullptr
+      m_root.reset(ckpt.m_root);
+      m_sp = m_root->top->sp_cache;
+      m_hi = m_root->top->stacklet.get() + m_root->top->size;
+    }
   }
 
   std::unique_ptr<heap> m_root = nullptr;

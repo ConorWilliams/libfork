@@ -14,6 +14,7 @@ TEST_CASE("Stack allocation", "[stack]") {
 
   geometric_stack gs;
   gs.checkpoint() == gs.checkpoint();
+  gs.release();
 
   void *p1 = s.push(10);
   REQUIRE(p1 != nullptr);
