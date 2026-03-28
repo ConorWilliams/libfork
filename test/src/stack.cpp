@@ -80,3 +80,40 @@ TEST_CASE("Stress test", "[geometric_stack]") {
     }
   }
 }
+
+TEST_CASE("Randomized push/pop stress test", "[geometric_stack]") {
+  geometric_stack stack;
+  std::mt19937_64 rng{std::random_device{}()};
+  std::bernoulli_distribution push_dist{0.51};
+  std::uniform_int_distribution<std::size_t> size_dist{1, 512};
+
+  struct entry {
+    void *ptr;
+    std::size_t size;
+  };
+  std::vector<entry> entries;
+  std::size_t total_pushed = 0;
+  const std::size_t target_pushed = 100'000;
+
+  while (total_pushed < target_pushed) {
+    if (entries.empty() || push_dist(rng)) {
+      std::size_t s = size_dist(rng);
+      void *p = stack.push(s);
+      check_alignment(p);
+      entries.push_back({p, s});
+      total_pushed++;
+    } else {
+      auto e = entries.back();
+      stack.pop(e.ptr, e.size);
+      entries.pop_back();
+    }
+    std::println("Total pushed: {}, Current depth: {}", total_pushed, entries.size());
+  }
+
+  // Clean up remaining entries
+  while (!entries.empty()) {
+    auto e = entries.back();
+    stack.pop(e.ptr, e.size);
+    entries.pop_back();
+  }
+}
