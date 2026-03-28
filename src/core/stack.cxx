@@ -85,7 +85,7 @@ export class geometric_stack {
   };
 
   [[nodiscard]]
-  constexpr auto push_cached(std::size_t padded_size) -> void *;
+  LF_NO_INLINE constexpr auto push_cached(std::size_t padded_size) -> void *;
 
   [[nodiscard]]
   constexpr auto push_alloc(std::size_t padded_size) -> void *;
@@ -104,6 +104,7 @@ export class geometric_stack {
     std::size_t padded_size = new_align(size);
 
     if (padded_size > safe_cast<std::size_t>(m_hi - m_sp)) {
+      // [[clang::musttail]]
       return push_cached(padded_size);
     }
     return std::exchange(m_sp, m_sp + padded_size);
@@ -167,11 +168,20 @@ export class geometric_stack {
   std::byte *m_hi = nullptr; // The one-past-the-end pointer for the current stacklet.
 };
 
+LF_NO_INLINE
 constexpr auto geometric_stack::push_cached(std::size_t padded_size) -> void * {
+
+  if (m_sp == m_lo && m_root->top != nullptr) {
+    // There is nothing alloated on the current stacklet/top but it doesn't
+    // have enough space hence, we need to delete top such that we don't end up
+    // with an empty stacklet in the chain. This would break deletion otherwise.
+    delete std::exchange(m_root->top, m_root->top->prev);
+  }
+
   if (m_root->cache != nullptr) {
     if (m_root->cache->size >= padded_size) {
       // Set cache as the new top
-      LF_ASSUME(m_root->cache->prev == m_root->top);
+      m_root->cache->prev = m_root->top;
       m_root->top = std::exchange(m_root->cache, nullptr);
 
       // Local copies of the new top
