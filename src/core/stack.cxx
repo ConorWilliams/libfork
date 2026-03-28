@@ -76,6 +76,8 @@ export class geometric_stack {
    public:
     auto operator==(checkpoint_t const &) const noexcept -> bool = default;
 
+    constexpr checkpoint_t() = default; // Required to be regular
+
    private:
     explicit constexpr checkpoint_t(heap *root) noexcept : m_root(not_null(root)) {}
     friend class geometric_stack;
@@ -114,12 +116,12 @@ export class geometric_stack {
     m_sp = static_cast<std::byte *>(ptr);
   }
 
-  // TODO: drop noexcept requirement in concept
-
-  constexpr auto prepare_release() -> key {
+  constexpr auto prepare_release() noexcept -> key {
     m_root->sp_cache = m_sp;
     return {};
   }
+
+  // TODO: drop noexcept requirement in concept
 
   constexpr void release([[maybe_unused]] key key) noexcept {
     std::ignore = m_root.release();
