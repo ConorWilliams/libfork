@@ -26,23 +26,31 @@ export class geometric_stack {
 
   struct node;
 
-  struct node_data {
+  struct node_data : immovable {
     node *prev;                            // Linked list (past).
-    std::unique_ptr<std::byte[]> stacklet; // Actual data
     std::size_t size;                      // Size of stacklet.
+    std::unique_ptr<std::byte[]> stacklet; // Actual data.
     std::byte *sp_cache;                   // Cached stack pointer for this stacklet.
   };
 
-  // Align such that the entire thing is on a cache line
-  struct alignas(std::max(sizeof(node_data), alignof(node_data))) node : node_data {};
+  // Align such that the entire node is on a cache line
+  struct alignas(std::max(sizeof(node_data), alignof(node_data))) node : node_data {
+    constexpr node(node *prev, std::size_t size)
+        : node_data{
+              .prev = prev,
+              .size = size,
+              .stacklet = std::make_unique_for_overwrite<std::byte[]>(size),
+              .sp_cache = nullptr,
+          } {}
+  };
 
   static_assert(sizeof(node) == alignof(node));
   static_assert(alignof(node) <= k_cache_line);
 
-  struct heap {
-    std::stack<std::byte *> debug;
-    node_data *top;
-    node_data *cache;
+  struct heap : immovable {
+    std::stack<std::byte *> debug; // Debugging FILO tracking.
+    node *top;                     // Most recent stacklet i.e. the top of the stack.
+    node *cache;                   // Cached (empty) stacklet for hot-split gaurding.
   };
 
   class checkpoint_t {
