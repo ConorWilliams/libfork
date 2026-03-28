@@ -20,7 +20,7 @@ A `stack_allocator` in libfork has the following API:
   - Makes the logical-stack ready for another thread to acquire it (via a checkpoint)
   - Must be called before releasing the stack.
   - Must be called before any thread can acquire the stack.
-- Release:
+- Release on checkpoint `x`:
   - Triggers release of ownership of the logical-stack from the handle.
   - Will be called if another thread calls acquire on the stack.
   - May be called before or after the acquire call.
