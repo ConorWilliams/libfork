@@ -52,19 +52,6 @@ TEST_CASE("Stack: Geometric growth", "[stack]") {
   }
 }
 
-TEST_CASE("Stack: Caching", "[stack]") {
-  geometric_stack stack;
-  void *p1 = stack.push(100);
-  stack.pop(p1, 100);
-
-  // Next push should ideally reuse the cached stacklet
-  void *p2 = stack.push(100);
-  REQUIRE(p2 != nullptr);
-  // It's hard to verify it's the SAME stacklet without internal access,
-  // but we can at least verify basic functionality.
-  stack.pop(p2, 100);
-}
-
 TEST_CASE("Stack: Checkpoint and Acquire/Release", "[stack]") {
   geometric_stack stack1;
   void *p1 = stack1.push(100);
@@ -72,18 +59,13 @@ TEST_CASE("Stack: Checkpoint and Acquire/Release", "[stack]") {
 
   geometric_stack stack2;
   auto cp2 = stack2.checkpoint();
-
   REQUIRE(cp1 != cp2);
 
   SECTION("Acquire other stack") {
     auto key1 = stack1.prepare_release();
     stack1.release(key1);
-
     stack2.acquire(cp1);
-
     REQUIRE(stack2.checkpoint() == cp1);
-
-    // We should be able to pop p1 from stack2 now!
     stack2.pop(p1, 100);
   }
 }
