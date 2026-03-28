@@ -7,16 +7,19 @@ using namespace lf;
 
 TEST_CASE("Concept", "[geometric_stack]") { STATIC_REQUIRE(stack_allocator<geometric_stack>); }
 
+void check_alignment(void *ptr) {
+  REQUIRE(ptr != nullptr);
+  REQUIRE((reinterpret_cast<std::uintptr_t>(ptr) % k_new_align) == 0);
+}
+
 TEST_CASE("Basic push and pop", "[geometric_stack]") {
   geometric_stack stack;
 
   void *p1 = stack.push(10);
-  REQUIRE(p1 != nullptr);
-  REQUIRE((reinterpret_cast<std::uintptr_t>(p1) % k_new_align) == 0);
+  check_alignment(p1);
 
   void *p2 = stack.push(20);
-  REQUIRE(p2 != nullptr);
-  REQUIRE((reinterpret_cast<std::uintptr_t>(p2) % k_new_align) == 0);
+  check_alignment(p2);
   REQUIRE(p2 != p1);
 
   // Pop in FILO order
@@ -65,8 +68,7 @@ TEST_CASE("Stress test", "[geometric_stack]") {
       for (std::size_t j = 0; j < depth; ++j) {
         std::size_t s = size_dist(rng);
         void *p = stack.push(s);
-        REQUIRE(p != nullptr);
-        REQUIRE((reinterpret_cast<std::uintptr_t>(p) % k_new_align) == 0);
+        check_alignment(p);
         entries.push_back({p, s});
       }
 
