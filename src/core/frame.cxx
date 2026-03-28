@@ -7,7 +7,6 @@ import std;
 
 import :concepts;
 import :constants;
-import :utility;
 
 namespace lf {
 // =================== Cancellation =================== //
