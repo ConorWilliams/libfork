@@ -52,11 +52,10 @@ export class geometric_stack {
     node *prev;                                               // Linked list (past).
     std::size_t size;                                         // Size of stacklet.
     std::unique_ptr<std::byte[]> stacklet = make_bytes(size); // Actual data.
-    std::byte *sp_cache = nullptr;                            // Cached stack pointer for this stacklet.
   };
 
   // Align such that the entire node is on a cache line
-  struct alignas(std::max(sizeof(node_data), alignof(node_data))) node : node_data {
+  struct alignas(std::max(std::bit_ceil(sizeof(node_data)), alignof(node_data))) node : node_data {
     constexpr node(node *prev, std::size_t size) : node_data{.prev = prev, .size = size} {
       // Each stacklet should be on a boundary.
       LF_ASSUME(is_aligned<k_new_align>(stacklet.get()));
@@ -66,9 +65,12 @@ export class geometric_stack {
   static_assert(sizeof(node) == alignof(node) && alignof(node) <= k_cache_line);
 
   struct heap : immovable {
-    node *top = nullptr;   // Most recent stacklet i.e. the top of the stack.
-    node *cache = nullptr; // Cached (empty) stacklet for hot-split gaurding.
+    node *top = nullptr;           // Most recent stacklet i.e. the top of the stack.
+    node *cache = nullptr;         // Cached (empty) stacklet for hot-split gaurding.
+    std::byte *sp_cache = nullptr; // Cached stack pointer for this stacklet.
   };
+
+  struct key {};
 
   class checkpoint_t {
    public:
@@ -114,7 +116,12 @@ export class geometric_stack {
 
   // TODO: drop noexcept requirement in concept
 
-  constexpr void release() {
+  constexpr auto prepare_release() -> key {
+    m_root->sp_cache = m_sp;
+    return {};
+  }
+
+  constexpr void release([[maybe_unused]] key key) noexcept {
     std::ignore = m_root.release();
     // Prime with new heap so that .checkpoint is valid.
     m_root.reset(new heap);
@@ -130,7 +137,7 @@ export class geometric_stack {
 
       if (m_root->top != nullptr) {
         m_lo = m_root->top->stacklet.get();
-        m_sp = m_root->top->sp_cache;
+        m_sp = m_root->sp_cache;
         m_hi = m_lo + m_root->top->size;
       } else {
         m_lo = nullptr;
