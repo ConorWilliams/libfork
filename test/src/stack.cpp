@@ -3,7 +3,9 @@
 import std;
 import libfork.core;
 
-using namespace lf;
+using lf::geometric_stack;
+using lf::k_new_align;
+using lf::stack_allocator;
 
 TEST_CASE("Concept", "[geometric_stack]") { STATIC_REQUIRE(stack_allocator<geometric_stack>); }
 
@@ -46,7 +48,6 @@ TEST_CASE("Checkpoint and Acquire/Release", "[geometric_stack]") {
 }
 
 TEST_CASE("Stress test", "[geometric_stack]") {
-
   for (int k = 0; k < 10; ++k) {
 
     geometric_stack stack;
