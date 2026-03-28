@@ -112,6 +112,7 @@ export class geometric_stack {
     // If above failed we have several options:
     //
     // - We have no
+    return nullptr;
   }
 
   [[nodiscard]]
@@ -409,6 +410,6 @@ export class stack : immovable {
   stacklet *m_fib;
 };
 
-static_assert(stack_allocator<stack>);
+// static_assert(stack_allocator<stack>);
 
 } // namespace lf

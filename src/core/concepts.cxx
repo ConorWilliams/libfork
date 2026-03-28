@@ -68,7 +68,8 @@ consteval auto constify(T &&x) noexcept -> std::add_const_t<T> &;
  * - Destruction is expected to only occur when the stack is empty.
  * - Result of `.checkpoint()` is expected to:
  *     - Be "cheap to copy".
- *     - Compare equal if they belong to the same stack.
+ *     - Compare equal if and only if they belong to the same stack.
+ *     - Have no preconditions about when it's called.
  * - Release detaches the current stack and leaves `this` in the empty state.
  * - Acquire attaches to the stack that the checkpoint came from:
  *     - This is a noop if the checkpoint is from the current stack.
@@ -79,11 +80,11 @@ consteval auto constify(T &&x) noexcept -> std::add_const_t<T> &;
  */
 export template <typename T>
 concept stack_allocator = std::is_object_v<T> && requires (T allocator, std::size_t n, void *ptr) {
-  // { alloc.empty() } noexcept -> std::same_as<bool>;
   { allocator.push(n) } -> std::same_as<void *>;
   { allocator.pop(ptr, n) } noexcept -> std::same_as<void>;
   { allocator.checkpoint() } noexcept -> std::regular;
-  { allocator.release() } noexcept -> std::same_as<void>;
+  { allocator.prepare_release() } noexcept -> std::movable;
+  { allocator.release(allocator.prepare_release()) } noexcept -> std::same_as<void>;
   { allocator.acquire(constify(allocator.checkpoint())) } noexcept -> std::same_as<void>;
 };
 

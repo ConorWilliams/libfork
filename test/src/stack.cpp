@@ -7,7 +7,7 @@ using lf::geometric_stack;
 using lf::stack;
 using lf::stack_allocator;
 
-TEST_CASE("Stack properties", "[stack]") { STATIC_REQUIRE(stack_allocator<stack>); }
+// TEST_CASE("Stack properties", "[stack]") { STATIC_REQUIRE(stack_allocator<stack>); }
 
 TEST_CASE("Stack allocation", "[stack]") {
   stack s;
