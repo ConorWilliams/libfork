@@ -102,12 +102,16 @@ export class geometric_stack {
 
   [[nodiscard]]
   constexpr auto push(std::size_t size) -> void * {
-
-    // This is the eager allocation.
-    std::byte *alloc = m_sp;
-
-    // Then t
+    // Round such that next allocation is aligned.
     size = new_align(size);
+
+    if (size <= m_free) {
+      return std::exchange(m_sp, m_sp + size);
+    }
+
+    // If above failed we have several options:
+    //
+    // - We have no
   }
 
   [[nodiscard]]
@@ -118,7 +122,7 @@ export class geometric_stack {
   constexpr void release() noexcept {
     std::ignore = m_root.release();
     m_sp = nullptr;
-    m_hi = nullptr;
+    m_free = 0;
   }
 
   constexpr void acquire(checkpoint_t ckpt) noexcept {
@@ -127,13 +131,13 @@ export class geometric_stack {
       LF_ASSUME(m_root->top);       // Should never be nullptr
       m_root.reset(ckpt.m_root);
       m_sp = m_root->top->sp_cache;
-      m_hi = m_root->top->stacklet.get() + m_root->top->size;
+      m_free = m_root->top->size - safe_cast<std::size_t>(m_sp - m_root->top->stacklet.get());
     }
   }
 
-  std::unique_ptr<heap> m_root = nullptr;
-  std::byte *m_sp = nullptr;
-  std::byte *m_hi = nullptr;
+  std::unique_ptr<heap> m_root = nullptr; // The control block
+  std::byte *m_sp = nullptr;              // The stack pointer for the current stacklet.
+  std::size_t m_free = 0;                 // Space left in the current stacklet.
 };
 
 /**

@@ -60,6 +60,8 @@ consteval auto constify(T &&x) noexcept -> std::add_const_t<T> &;
 /**
  * @brief Defines the API for a libfork compatible stack allocator.
  *
+ * // TODO: define if release is required before acquire?
+ *
  * - After construction `this` is in the empty state and push is valid.
  * - Pop is valid provided the FILO order is respected.
  * - Push produces pointers aligned to __STDCPP_DEFAULT_NEW_ALIGNMENT__.

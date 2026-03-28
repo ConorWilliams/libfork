@@ -146,6 +146,8 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
   // join race.
   auto const checkpoint = parent->stack_ckpt;
 
+  // TODO: do we need a prepare release here?
+
   // Register with parent we have completed this child task.
   if (parent->atomic_joins().fetch_sub(1, std::memory_order_release) == 1) {
     // Parent has reached join and we are the last child task to complete. We
@@ -322,6 +324,8 @@ struct join_awaitable {
     //         k_u16_max - joined = num_joined
 
     LF_ASSUME(self.frame);
+
+    // TODO: we must release stack before we mark the atomic as ready for resume.
 
     std::uint32_t steals = self.frame->steals;
     std::uint32_t offset = k_u16_max - steals;
