@@ -463,7 +463,7 @@ struct mixin_frame {
 
       // clang-format off
 
-      auto *child_promise = access::promise<Context>(std::move(pkg.args).apply(
+      promise_type<U, Context> *child_promise = access::promise<Context>(std::move(pkg.args).apply(
         [&](auto &&...args) LF_HOF(std::invoke(fwd_fn<Fn>(pkg.fn), env<Context>{}, LF_FWD(args)...))
       ));
 
@@ -471,14 +471,15 @@ struct mixin_frame {
 
       LF_ASSUME(child_promise);
 
+      // void can signal drop return.
+      static_assert(std::same_as<R, U> || std::is_void_v<U>);
+
       if constexpr (!std::is_void_v<R>) {
         child_promise->return_address = pkg.return_address;
-      } else {
-        if constexpr (!std::is_void_v<U>) {
-          // Set child's return address to null to inhibit the return
-          // TODO: add test for this
-          child_promise->return_address = nullptr;
-        }
+      } else if constexpr (!std::is_void_v<U>) {
+        // Set child's return address to null to inhibit the return
+        // TODO: add test for this
+        child_promise->return_address = nullptr;
       }
 
       return {.child = &child_promise->frame};
@@ -525,7 +526,6 @@ struct promise_type : mixin_frame<Context> {
     requires std::assignable_from<T &, U &&>
   constexpr void return_value(U &&value) noexcept(std::is_nothrow_assignable_v<T &, U &&>) {
     if (return_address) {
-      // TODO: add the appropriate await_transforms
       *return_address = LF_FWD(value);
     }
   }
