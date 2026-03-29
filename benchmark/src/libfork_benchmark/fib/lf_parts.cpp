@@ -310,6 +310,8 @@ BENCHMARK(fib<fork_call<F, true>, E, F>)
 
 using C = poly_deque_ctx<linear_allocator>;
 using D = deque_ctx<linear_allocator>;
+using G = deque_ctx<lf::geometric_stack>;
+using H = poly_deque_ctx<lf::geometric_stack>;
 
 // Return by value,
 // Libfork call/join/fork with co-await,
@@ -317,15 +319,12 @@ using D = deque_ctx<linear_allocator>;
 BENCHMARK(fib<fork_call<D, true>, D, D>)->Name("test/libfork/fib/deque_ctx/join")->Arg(fib_test);
 BENCHMARK(fib<fork_call<D, true>, D, D>)->Name("base/libfork/fib/deque_ctx/join")->Arg(fib_base);
 
+BENCHMARK(fib<fork_call<G, true>, G, G>)->Name("test/libfork/fib/geometric/deque_ctx/join")->Arg(fib_test);
+BENCHMARK(fib<fork_call<G, true>, G, G>)->Name("base/libfork/fib/geometric/deque_ctx/join")->Arg(fib_base);
+
 // Same as above but polymorphic
 BENCHMARK(fib<fork_call<B, true>, C, B>)->Name("test/libfork/fib/poly_deque_ctx/join")->Arg(fib_test);
 BENCHMARK(fib<fork_call<B, true>, C, B>)->Name("base/libfork/fib/poly_deque_ctx/join")->Arg(fib_base);
-
-using G = deque_ctx<lf::geometric_stack>;
-using H = poly_deque_ctx<lf::geometric_stack>;
-
-BENCHMARK(fib<fork_call<G, true>, G, G>)->Name("test/libfork/fib/geometric/deque_ctx/join")->Arg(fib_test);
-BENCHMARK(fib<fork_call<G, true>, G, G>)->Name("base/libfork/fib/geometric/deque_ctx/join")->Arg(fib_base);
 
 BENCHMARK(fib<fork_call<F, true>, H, F>)
     ->Name("test/libfork/fib/poly_geometric_deque_ctx/join")
