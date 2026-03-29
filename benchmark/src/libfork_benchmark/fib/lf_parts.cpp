@@ -194,9 +194,7 @@ constexpr auto fork_call = [](this auto fib, lf::env<T>, std::int64_t n) -> lf::
 
 using global_alloc = vector_ctx<global_allocator>;
 using linear_alloc = vector_ctx<linear_allocator>;
-
-static_assert(lf::stack_allocator<lf::geometric_stack>);
-using geometric_alloc = vector_ctx<lf::geometric_stack>;
+using stacks_alloc = vector_ctx<lf::geometric_stack>;
 
 template <auto Fn, typename T, typename U = T>
 void fib(benchmark::State &state) {
@@ -236,7 +234,7 @@ void fib(benchmark::State &state) {
 
 static_assert(lf::worker_context<global_alloc>);
 static_assert(lf::worker_context<linear_alloc>);
-static_assert(lf::worker_context<geometric_alloc>);
+static_assert(lf::worker_context<stacks_alloc>);
 
 // Return by ref-arg, libfork call/call with co-await, uses new/delete for alloc
 BENCHMARK(fib<await<global_alloc>, global_alloc>)->Name("test/libfork/fib/heap/await")->Arg(fib_test);
@@ -247,24 +245,16 @@ BENCHMARK(fib<await<linear_alloc>, linear_alloc>)->Name("test/libfork/fib/bump/a
 BENCHMARK(fib<await<linear_alloc>, linear_alloc>)->Name("base/libfork/fib/bump/await")->Arg(fib_base);
 
 // Same as above but uses geometric stack
-BENCHMARK(fib<await<geometric_alloc>, geometric_alloc>)
-    ->Name("test/libfork/fib/geometric/await")
-    ->Arg(fib_test);
-BENCHMARK(fib<await<geometric_alloc>, geometric_alloc>)
-    ->Name("base/libfork/fib/geometric/await")
-    ->Arg(fib_base);
+BENCHMARK(fib<await<stacks_alloc>, stacks_alloc>)->Name("test/libfork/fib/geometric/await")->Arg(fib_test);
+BENCHMARK(fib<await<stacks_alloc>, stacks_alloc>)->Name("base/libfork/fib/geometric/await")->Arg(fib_base);
 
 // Return by value
 // libfork call/call with co-await
 BENCHMARK(fib<ret<linear_alloc>, linear_alloc>)->Name("test/libfork/fib/bump/return")->Arg(fib_test);
 BENCHMARK(fib<ret<linear_alloc>, linear_alloc>)->Name("base/libfork/fib/bump/return")->Arg(fib_base);
 
-BENCHMARK(fib<ret<geometric_alloc>, geometric_alloc>)
-    ->Name("test/libfork/fib/geometric/return")
-    ->Arg(fib_test);
-BENCHMARK(fib<ret<geometric_alloc>, geometric_alloc>)
-    ->Name("base/libfork/fib/geometric/return")
-    ->Arg(fib_base);
+BENCHMARK(fib<ret<stacks_alloc>, stacks_alloc>)->Name("test/libfork/fib/geometric/return")->Arg(fib_test);
+BENCHMARK(fib<ret<stacks_alloc>, stacks_alloc>)->Name("base/libfork/fib/geometric/return")->Arg(fib_base);
 
 // Return by value
 // libfork call/fork (no join)
@@ -272,10 +262,10 @@ BENCHMARK(fib<ret<geometric_alloc>, geometric_alloc>)
 BENCHMARK(fib<fork_call<linear_alloc>, linear_alloc>)->Name("test/libfork/fib/vector_ctx")->Arg(fib_test);
 BENCHMARK(fib<fork_call<linear_alloc>, linear_alloc>)->Name("base/libfork/fib/vector_ctx")->Arg(fib_base);
 
-BENCHMARK(fib<fork_call<geometric_alloc>, geometric_alloc>)
+BENCHMARK(fib<fork_call<stacks_alloc>, stacks_alloc>)
     ->Name("test/libfork/fib/geometric/vector_ctx")
     ->Arg(fib_test);
-BENCHMARK(fib<fork_call<geometric_alloc>, geometric_alloc>)
+BENCHMARK(fib<fork_call<stacks_alloc>, stacks_alloc>)
     ->Name("base/libfork/fib/geometric/vector_ctx")
     ->Arg(fib_base);
 
@@ -300,10 +290,10 @@ BENCHMARK(fib<fork_call<linear_alloc, true>, linear_alloc>)
     ->Name("base/libfork/fib/vector_ctx/join")
     ->Arg(fib_base);
 
-BENCHMARK(fib<fork_call<geometric_alloc, true>, geometric_alloc>)
+BENCHMARK(fib<fork_call<stacks_alloc, true>, stacks_alloc>)
     ->Name("test/libfork/fib/geometric/vector_ctx/join")
     ->Arg(fib_test);
-BENCHMARK(fib<fork_call<geometric_alloc, true>, geometric_alloc>)
+BENCHMARK(fib<fork_call<stacks_alloc, true>, stacks_alloc>)
     ->Name("base/libfork/fib/geometric/vector_ctx/join")
     ->Arg(fib_base);
 
