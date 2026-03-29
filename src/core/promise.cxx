@@ -79,46 +79,13 @@ struct access {
 
 // =============== Final =============== //
 
+/**
+ * @brief Part that deals only with parent.
+ */
 template <worker_context Context>
 [[nodiscard]]
-constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
-
-  // Validate final state
-  LF_ASSUME(frame->steals == 0);
-  LF_ASSUME(frame->joins == k_u16_max);
-  LF_ASSUME(frame->exception_bit == 0);
-
-  defer _ = [frame] noexcept -> void {
-    frame->handle().destroy();
-  };
-
-  switch (not_null(frame)->kind) {
-    case category::call:
-      return not_null(frame->parent.frame)->handle();
-    case category::root:
-      // Notify potential blockers
-      not_null(frame->parent.block)->sem.release();
-      // Release the refcount on the shared state
-      release_ref(frame->parent.block);
-      // Return to workers's run-loop
-      return std::noop_coroutine();
-    case category::fork:
-      break;
-    default:
-      LF_ASSUME(false);
-  }
-
-  Context *context = not_null(thread_context<Context>);
-
-  frame_type<Context> *parent = not_null(frame->parent.frame);
-
-  if (frame_handle last_pushed = context->pop()) {
-    // No-one stole continuation, we are the exclusive owner of parent, so we
-    // just keep ripping!
-    LF_ASSUME(last_pushed == frame_handle{key, parent});
-    // This is not a join point so no state (i.e. counters) is guaranteed.
-    return parent->handle();
-  }
+LF_NO_INLINE constexpr auto
+final_suspend_continue(Context *context, frame_type<Context> *parent) noexcept -> coro<> {
 
   // An owner is a worker who:
   //
@@ -144,7 +111,15 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
   // to access as it may be resumed and then destroyed by another thread. Hence
   // we must make copies on-the-stack of any data we may need if we lose the
   // join race.
-  auto const checkpoint = parent->stack_ckpt;
+  bool const owner = parent->stack_ckpt == context->allocator().checkpoint();
+
+  // TODO: we could reduce branching if we unconditionally release and also
+  // drop pre-release function altogether... Need to benchmark with code that
+  // triggers a lot of stealing.
+
+  // As soon as we do the fetch_sub (if we loose) someone may acquire
+  // the stack so we must prepare it for release now.
+  auto release_key = context->allocator().prepare_release();
 
   // Register with parent we have completed this child task.
   if (parent->atomic_joins().fetch_sub(1, std::memory_order_release) == 1) {
@@ -154,7 +129,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
     std::atomic_thread_fence(std::memory_order_acquire);
 
     // In case of scenario (2) we must acquire the parent's stack.
-    context->allocator().acquire(checkpoint);
+    context->allocator().acquire(std::as_const(parent->stack_ckpt));
 
     // Must reset parent's control block before resuming parent.
     parent->reset_counters();
@@ -167,16 +142,64 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
   // or we are not the last child to complete. We are now out of jobs, we must
   // yield to the executor.
 
-  if (checkpoint == context->allocator().checkpoint()) {
+  if (owner) {
     // We were unable to resume the parent and we were its owner, as the
     // resuming thread will take ownership of the parent's we must give it up.
-    context->allocator().release();
+    context->allocator().release(std::move(release_key));
   }
 
   // Else, case (2), our stack has no allocations on it, it may be used later.
-  // TODO: assert empty
-
   return std::noop_coroutine();
+}
+
+template <worker_context Context>
+[[nodiscard]]
+constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
+
+  // Validate final state
+  LF_ASSUME(frame->steals == 0);
+  LF_ASSUME(frame->joins == k_u16_max);
+  LF_ASSUME(frame->exception_bit == 0);
+
+  frame_type<Context> *parent = not_null(frame->parent.frame);
+
+  {
+    defer _ = [frame] noexcept -> void {
+      // Destroy must be called **before** we release/acquire the stack as it
+      // will call `operator delete` which will access the allocator via the
+      // thread-local.
+      frame->handle().destroy();
+    };
+
+    switch (not_null(frame)->kind) {
+      case category::call:
+        return parent->handle();
+      case category::root:
+        // Notify potential blockers
+        not_null(frame->parent.block)->sem.release();
+        // Release the refcount on the shared state
+        release_ref(frame->parent.block);
+        // Return to workers's run-loop
+        return std::noop_coroutine();
+      case category::fork:
+        break;
+      default:
+        LF_ASSUME(false);
+    }
+
+    if (frame_handle last_pushed = not_null(thread_context<Context>)->pop()) {
+      // No-one stole continuation, we are the exclusive owner of parent -> just keep ripping!
+      LF_ASSUME(last_pushed == frame_handle{key, parent});
+      // This is not a join point so no state (i.e. counters) is guaranteed.
+      return parent->handle();
+    }
+  }
+
+  // TODO: benchmark if this split regresses other in stealing context
+
+  // We split the function here as the remainder is the "slow-path", this
+  // keeps the hot code as small as possible.
+  return final_suspend_continue(thread_context<Context>, parent);
 }
 
 struct final_awaitable : std::suspend_always {
@@ -307,6 +330,7 @@ struct join_awaitable {
     if (steals == joined) {
       // We must reset the control block and take the stack. We should never
       // own the stack at this point because we must have stolen the stack.
+      // For ruther explanation see await_suspend() below.
       return self.take_stack_and_reset(), true;
     }
 
@@ -322,6 +346,17 @@ struct join_awaitable {
     //         k_u16_max - joined = num_joined
 
     LF_ASSUME(self.frame);
+
+    // Lemma:
+    //
+    //    If a thread is at a join and steals have occurred then the
+    //    thread can never own the stack of the current frame.
+    //
+    // This is because threads follow the work-first principle, so for the
+    // owner to be running this task it would have to have re-stolen it from a
+    // thief. Which implies it would have run the final suspend of the child
+    // that had it's continuation stolen, where it would have had to release
+    // the stack, because the parent was at not at the join.
 
     std::uint32_t steals = self.frame->steals;
     std::uint32_t offset = k_u16_max - steals;
@@ -398,7 +433,7 @@ struct mixin_frame {
 
   static auto operator new(std::size_t sz) -> void * {
     void *ptr = not_null(thread_context<Context>)->allocator().push(sz);
-    LF_ASSUME(std::bit_cast<std::uintptr_t>(ptr) % k_new_align == 0);
+    LF_ASSUME(is_aligned<k_new_align>(ptr));
     return std::assume_aligned<k_new_align>(ptr);
   }
 

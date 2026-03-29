@@ -13,7 +13,8 @@ struct dummy_allocator {
   constexpr static auto push(std::size_t sz) -> void *;
   constexpr static auto pop(void *p, std::size_t sz) noexcept -> void;
   constexpr static auto checkpoint() noexcept -> ckpt;
-  constexpr static auto release() noexcept -> void;
+  constexpr static auto prepare_release() noexcept -> int;
+  constexpr static auto release(int) noexcept -> void;
   constexpr static auto acquire(ckpt) noexcept -> void;
 };
 
