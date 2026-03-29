@@ -173,7 +173,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
 
   frame_type<Context> *parent = not_null(frame->parent.frame);
 
-  // Handle root first/separatly because:
+  // Handle root first/separately because:
   //  - It is unlikely
   //  - It allows simpler destroy logic
   if (frame->kind == category::root) [[unlikely]] {
