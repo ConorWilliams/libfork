@@ -81,52 +81,6 @@ struct access {
 
 template <worker_context Context>
 [[nodiscard]]
-constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
-
-  // Validate final state
-  LF_ASSUME(frame->steals == 0);
-  LF_ASSUME(frame->joins == k_u16_max);
-  LF_ASSUME(frame->exception_bit == 0);
-
-  defer _ = [frame] noexcept -> void {
-    frame->handle().destroy();
-  };
-
-  switch (not_null(frame)->kind) {
-    case category::call:
-      return not_null(frame->parent.frame)->handle();
-    case category::root:
-      // Notify potential blockers
-      not_null(frame->parent.block)->sem.release();
-      // Release the refcount on the shared state
-      release_ref(frame->parent.block);
-      // Return to workers's run-loop
-      return std::noop_coroutine();
-    case category::fork:
-      break;
-    default:
-      LF_ASSUME(false);
-  }
-
-  Context *context = not_null(thread_context<Context>);
-
-  frame_type<Context> *parent = not_null(frame->parent.frame);
-
-  if (frame_handle last_pushed = context->pop()) {
-    // No-one stole continuation, we are the exclusive owner of parent -> just keep ripping!
-    LF_ASSUME(last_pushed == frame_handle{key, parent});
-    // This is not a join point so no state (i.e. counters) is guaranteed.
-    return parent->handle();
-  }
-
-  // TODO: benchmark if this split regresses other in stealing context
-
-  // We split the function here as the remainder is the "slow-path", this
-  // keeps the hot code as small as possible.
-  return final_suspend_continue(context, parent);
-}
-
-template <worker_context Context>
 LF_NO_INLINE constexpr auto
 final_suspend_continue(Context *context, frame_type<Context> *parent) noexcept -> coro<> {
 
@@ -193,6 +147,53 @@ final_suspend_continue(Context *context, frame_type<Context> *parent) noexcept -
 
   // Else, case (2), our stack has no allocations on it, it may be used later.
   return std::noop_coroutine();
+}
+
+template <worker_context Context>
+[[nodiscard]]
+constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
+
+  // Validate final state
+  LF_ASSUME(frame->steals == 0);
+  LF_ASSUME(frame->joins == k_u16_max);
+  LF_ASSUME(frame->exception_bit == 0);
+
+  defer _ = [frame] noexcept -> void {
+    frame->handle().destroy();
+  };
+
+  switch (not_null(frame)->kind) {
+    case category::call:
+      return not_null(frame->parent.frame)->handle();
+    case category::root:
+      // Notify potential blockers
+      not_null(frame->parent.block)->sem.release();
+      // Release the refcount on the shared state
+      release_ref(frame->parent.block);
+      // Return to workers's run-loop
+      return std::noop_coroutine();
+    case category::fork:
+      break;
+    default:
+      LF_ASSUME(false);
+  }
+
+  Context *context = not_null(thread_context<Context>);
+
+  frame_type<Context> *parent = not_null(frame->parent.frame);
+
+  if (frame_handle last_pushed = context->pop()) {
+    // No-one stole continuation, we are the exclusive owner of parent -> just keep ripping!
+    LF_ASSUME(last_pushed == frame_handle{key, parent});
+    // This is not a join point so no state (i.e. counters) is guaranteed.
+    return parent->handle();
+  }
+
+  // TODO: benchmark if this split regresses other in stealing context
+
+  // We split the function here as the remainder is the "slow-path", this
+  // keeps the hot code as small as possible.
+  return final_suspend_continue(context, parent);
 }
 
 struct final_awaitable : std::suspend_always {
