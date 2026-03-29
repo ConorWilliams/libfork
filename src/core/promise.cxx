@@ -171,14 +171,15 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
   LF_ASSUME(frame->joins == k_u16_max);
   LF_ASSUME(frame->exception_bit == 0);
 
-  frame_type<Context> *parent = not_null(frame->parent.frame);
-
   // Handle root first/separately because:
   //  - It is unlikely
   //  - It allows simpler destroy logic
   if (frame->kind == category::root) [[unlikely]] {
     return finalize_root(frame), std::noop_coroutine();
   }
+
+  // Safe to access union
+  frame_type<Context> *parent = not_null(frame->parent.frame);
 
   // Read before destroy
   category const kind = frame->kind;
