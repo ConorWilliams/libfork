@@ -190,7 +190,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
       return parent->handle();
     case category::fork:
 
-      auto *context = not_null(thread_context<Context>);
+      Context *context = not_null(thread_context<Context>);
 
       if (frame_handle last_pushed = context->pop()) {
         // No-one stole continuation, we are the exclusive owner of parent -> just keep ripping!
