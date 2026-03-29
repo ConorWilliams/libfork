@@ -167,7 +167,7 @@ LF_NO_INLINE
 constexpr auto geometric_stack::push_cached(std::size_t padded_size) -> void * {
 
   if (m_sp == m_lo && m_root->top != nullptr) {
-    // There is nothing alloated on the current stacklet/top but it doesn't
+    // There is nothing allocated on the current stacklet/top but it doesn't
     // have enough space hence, we need to delete top such that we don't end up
     // with an empty stacklet in the chain. This would break deletion otherwise.
     delete std::exchange(m_root->top, m_root->top->prev);
