@@ -13,7 +13,7 @@ namespace lf {
  */
 template <std::integral To, std::integral From>
 [[nodiscard]]
-auto safe_cast(From val) noexcept -> To {
+constexpr auto safe_cast(From val) noexcept -> To {
 
   constexpr auto to_min = std::numeric_limits<To>::min();
   constexpr auto to_max = std::numeric_limits<To>::max();
