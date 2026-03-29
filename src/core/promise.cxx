@@ -148,7 +148,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
 
   // As soon as we do the fetch_sub (if we loose) someone may acquire
   // the stack so we must prepare it for release now.
-  auto key = context->allocator().prepare_release();
+  auto release_key = context->allocator().prepare_release();
 
   // Register with parent we have completed this child task.
   if (parent->atomic_joins().fetch_sub(1, std::memory_order_release) == 1) {
@@ -174,7 +174,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
   if (checkpoint == context->allocator().checkpoint()) {
     // We were unable to resume the parent and we were its owner, as the
     // resuming thread will take ownership of the parent's we must give it up.
-    context->allocator().release(std::move(key));
+    context->allocator().release(std::move(release_key));
   }
 
   // Else, case (2), our stack has no allocations on it, it may be used later.
