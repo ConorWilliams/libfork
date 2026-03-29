@@ -1,6 +1,4 @@
 module;
-#include <version>
-
 #include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/compiler.hpp"
 #include "libfork/__impl/exception.hpp"
