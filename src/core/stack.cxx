@@ -74,7 +74,9 @@ export class geometric_stack {
     constexpr checkpoint_t() = default; // Required to be regular
 
    private:
-    explicit constexpr checkpoint_t(heap *root) noexcept : m_root(not_null(root)) {}
+    explicit constexpr checkpoint_t(heap *root) noexcept : m_root(root) {
+      LF_ASSUME(root != nullptr); //
+    }
     friend class geometric_stack;
     heap *m_root;
   };
