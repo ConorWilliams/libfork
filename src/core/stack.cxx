@@ -114,20 +114,20 @@ export class geometric_stack {
   }
 
   constexpr void acquire(checkpoint_t ckpt) noexcept {
-    // if (ckpt.m_root != m_root.get()) {
-    //
-    //   m_root.reset(ckpt.m_root);
-    //
-    //   if (m_root->top != nullptr) {
-    //     m_lo = m_root->top->stacklet.get();
-    //     m_sp = m_root->sp_cache;
-    //     m_hi = m_lo + m_root->top->size;
-    //   } else {
-    //     m_lo = nullptr;
-    //     m_sp = nullptr;
-    //     m_hi = nullptr;
-    //   }
-    // }
+    if (ckpt.m_root != m_root.get()) {
+
+      m_root.reset(ckpt.m_root);
+
+      if (m_root->top != nullptr) {
+        m_lo = m_root->top->stacklet.get();
+        m_sp = m_root->sp_cache;
+        m_hi = m_lo + m_root->top->size;
+      } else {
+        m_lo = nullptr;
+        m_sp = nullptr;
+        m_hi = nullptr;
+      }
+    }
   }
 
  private:
