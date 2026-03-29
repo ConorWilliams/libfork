@@ -94,7 +94,7 @@ TEST_CASE("Randomized push/pop stress test", "[geometric_stack]") {
   };
   std::vector<entry> entries;
   std::size_t total_pushed = 0;
-  const std::size_t target_pushed = 100'000;
+  const std::size_t target_pushed = 10'000'000;
 
   while (total_pushed < target_pushed) {
     if (entries.empty() || push_dist(rng)) {
@@ -133,7 +133,7 @@ TEST_CASE("Spikey randomized push/pop stress test", "[geometric_stack]") {
   };
   std::vector<entry> entries;
   std::size_t total_pushed = 0;
-  const std::size_t target_pushed = 100'000;
+  const std::size_t target_pushed = 10'000'000;
   bool last_was_push = true;
 
   while (total_pushed < target_pushed) {
