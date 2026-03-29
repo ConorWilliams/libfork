@@ -200,7 +200,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
       }
       // We split the function here as the remainder is the "slow-path", this
       // keeps the hot code as small as possible.
-      // TODO: benchmark if this split regresses other in stealing context
+      // TODO: benchmark if this split/noinline regresses other in stealing context
       return final_suspend_continue(context, parent);
   }
 
