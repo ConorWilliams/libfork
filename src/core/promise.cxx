@@ -270,8 +270,7 @@ struct awaitable : std::suspend_always {
 
     if (parent.promise().frame.is_cancelled()) [[unlikely]] {
       // Noop if canceled, must clean-up the child that will never be resumed.
-      self.child->handle().destroy();
-      return parent;
+      return self.child->handle().destroy(), parent;
     }
 
     // Propagate parent->child relationships
