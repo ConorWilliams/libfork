@@ -37,12 +37,7 @@ constexpr auto is_aligned(void *ptr) noexcept -> bool {
 }
 
 /**
- * @brief A stack is a user-space (geometric) segmented program stack.
- *
- * A stack stores the execution of a DAG from root (which may be a stolen task or true root) to suspend
- * point. A stack is composed of stacklets, each stacklet is a contiguous region of stack space stored in a
- * double-linked list. A stack tracks the top stacklet, the top stacklet contains the last allocation or the
- * stack is empty. The top stacklet may have zero or one cached stacklets "ahead" of it.
+ * @brief A geometric_stack is a user-space (geometric) segmented program stack.
  */
 export class geometric_stack {
 
@@ -252,7 +247,5 @@ constexpr auto round_up_to_page_size(std::size_t size) noexcept -> std::size_t {
 
   return request;
 }
-
-// static_assert(stack_allocator<stack>);
 
 } // namespace lf
