@@ -153,6 +153,16 @@ final_suspend_continue(Context *context, frame_type<Context> *parent) noexcept -
 }
 
 template <worker_context Context>
+constexpr void finalize_root(frame_type<Context> *frame) noexcept {
+  // Notify potential blockers
+  not_null(frame->parent.block)->sem.release();
+  // Release the refcount on the shared state
+  release_ref(frame->parent.block);
+  // Only now can we clean-up
+  frame->handle().destroy();
+}
+
+template <worker_context Context>
 [[nodiscard]]
 constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
 
@@ -161,45 +171,44 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
   LF_ASSUME(frame->joins == k_u16_max);
   LF_ASSUME(frame->exception_bit == 0);
 
-  frame_type<Context> *parent = not_null(frame->parent.frame);
-
-  {
-    defer _ = [frame] noexcept -> void {
-      // Destroy must be called **before** we release/acquire the stack as it
-      // will call `operator delete` which will access the allocator via the
-      // thread-local.
-      frame->handle().destroy();
-    };
-
-    switch (not_null(frame)->kind) {
-      case category::call:
-        return parent->handle();
-      case category::root:
-        // Notify potential blockers
-        not_null(frame->parent.block)->sem.release();
-        // Release the refcount on the shared state
-        release_ref(frame->parent.block);
-        // Return to workers's run-loop
-        return std::noop_coroutine();
-      case category::fork:
-        break;
-      default:
-        LF_ASSUME(false);
-    }
-
-    if (frame_handle last_pushed = not_null(thread_context<Context>)->pop()) {
-      // No-one stole continuation, we are the exclusive owner of parent -> just keep ripping!
-      LF_ASSUME(last_pushed == frame_handle{key, parent});
-      // This is not a join point so no state (i.e. counters) is guaranteed.
-      return parent->handle();
-    }
+  // Handle root first/separately because:
+  //  - It is unlikely
+  //  - It allows simpler destroy logic
+  if (frame->kind == category::root) [[unlikely]] {
+    return finalize_root(frame), std::noop_coroutine();
   }
 
-  // TODO: benchmark if this split regresses other in stealing context
+  // Safe to access union
+  frame_type<Context> *parent = not_null(frame->parent.frame);
 
-  // We split the function here as the remainder is the "slow-path", this
-  // keeps the hot code as small as possible.
-  return final_suspend_continue(thread_context<Context>, parent);
+  // Read before destroy
+  category const kind = frame->kind;
+
+  // Can now destroy frame, must NOT touch from here on.
+  frame->handle().destroy();
+
+  switch (kind) {
+    case category::root:
+      std::unreachable();
+    case category::call:
+      return parent->handle();
+    case category::fork:
+
+      Context *context = not_null(thread_context<Context>);
+
+      if (frame_handle last_pushed = context->pop()) {
+        // No-one stole continuation, we are the exclusive owner of parent -> just keep ripping!
+        LF_ASSUME(last_pushed == frame_handle{key, parent});
+        // This is not a join point so no state (i.e. counters) is guaranteed.
+        return parent->handle();
+      }
+      // We split the function here as the remainder is the "slow-path", this
+      // keeps the hot code as small as possible.
+      // TODO: benchmark if this split/noinline regresses other in stealing context
+      return final_suspend_continue(context, parent);
+  }
+
+  std::unreachable();
 }
 
 struct final_awaitable : std::suspend_always {
