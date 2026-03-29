@@ -249,12 +249,10 @@ struct awaitable : std::suspend_always {
    * @brief In a separate function to allow it to be placed in cold block.
    */
   template <typename T>
-  constexpr auto
-  stash_and_resume(this awaitable self, coro<promise_type<T, Context>> parent) noexcept -> coro<> {
+  constexpr void stash_and_resume(this awaitable self, coro<promise_type<T, Context>> parent) noexcept {
     // Clean-up the child that will never be resumed.
     self.child->handle().destroy();
     stash_current_exception(&parent.promise().frame);
-    return parent;
   }
 
   template <typename T>
@@ -287,7 +285,7 @@ struct awaitable : std::suspend_always {
       LF_TRY {
         not_null(thread_context<Context>)->push(frame_handle{key, &parent.promise().frame});
       } LF_CATCH_ALL {
-        return self.stash_and_resume(parent);
+        return self.stash_and_resume(parent), parent;
       }
     }
 
