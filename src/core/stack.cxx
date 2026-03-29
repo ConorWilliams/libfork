@@ -74,51 +74,50 @@ export class geometric_stack {
     // Round such that next allocation is aligned.
     std::size_t padded_size = round_to_multiple<k_new_align>(size);
 
-    if (padded_size > safe_cast<std::size_t>(m_hi - m_sp)) {
-      // [[clang::musttail]]
+    if (padded_size > safe_cast<std::size_t>(m_hi - m_sp)) [[unlikely]] {
       return push_cached(padded_size);
     }
     return std::exchange(m_sp, m_sp + padded_size);
   }
 
   constexpr void pop(void *ptr, [[maybe_unused]] std::size_t n) noexcept {
-    if (m_sp == m_lo) {
+    if (m_sp == m_lo) [[unlikely]] {
       pop_shuffle();
     }
     m_sp = static_cast<std::byte *>(ptr);
   }
 
   constexpr auto prepare_release() noexcept -> key {
-    m_root->sp_cache = m_sp;
+    // m_root->sp_cache = m_sp;
     return {};
   }
 
   // TODO: drop noexcept requirement in concept
 
   constexpr void release([[maybe_unused]] key key) noexcept {
-    std::ignore = m_root.release();
-    // Prime with new heap so that .checkpoint is valid.
-    m_root.reset(new heap);
-    m_lo = nullptr;
-    m_sp = nullptr;
-    m_hi = nullptr;
+    // std::ignore = m_root.release();
+    // // Prime with new heap so that .checkpoint is valid.
+    // m_root.reset(new heap);
+    // m_lo = nullptr;
+    // m_sp = nullptr;
+    // m_hi = nullptr;
   }
 
   constexpr void acquire(checkpoint_t ckpt) noexcept {
-    if (ckpt.m_root != m_root.get()) {
-
-      m_root.reset(ckpt.m_root);
-
-      if (m_root->top != nullptr) {
-        m_lo = m_root->top->stacklet.get();
-        m_sp = m_root->sp_cache;
-        m_hi = m_lo + m_root->top->size;
-      } else {
-        m_lo = nullptr;
-        m_sp = nullptr;
-        m_hi = nullptr;
-      }
-    }
+    // if (ckpt.m_root != m_root.get()) {
+    //
+    //   m_root.reset(ckpt.m_root);
+    //
+    //   if (m_root->top != nullptr) {
+    //     m_lo = m_root->top->stacklet.get();
+    //     m_sp = m_root->sp_cache;
+    //     m_hi = m_lo + m_root->top->size;
+    //   } else {
+    //     m_lo = nullptr;
+    //     m_sp = nullptr;
+    //     m_hi = nullptr;
+    //   }
+    // }
   }
 
  private:
@@ -139,7 +138,6 @@ export class geometric_stack {
   std::byte *m_hi = nullptr; // The one-past-the-end pointer for the current stacklet.
 };
 
-LF_NO_INLINE
 constexpr auto geometric_stack::push_cached(std::size_t padded_size) -> void * {
 
   if (m_sp == m_lo && m_root->top != nullptr) {
