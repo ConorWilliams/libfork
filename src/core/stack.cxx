@@ -185,7 +185,7 @@ constexpr auto geometric_stack::push_alloc(std::size_t padded_size) -> void * {
   std::size_t stacklet_size = std::max(padded_size, m_root->top ? growth_factor * m_root->top->size : 0);
 
   // Link a new top node into control block.
-  m_root->top = new node(m_root->top, stacklet_size);
+  m_root->top = new node(m_root->top, round_to_multiple<k_page_size>(stacklet_size));
 
   // Local copies of the new top.
   m_lo = m_root->top->stacklet.get();
@@ -205,31 +205,6 @@ constexpr void geometric_stack::pop_shuffle() noexcept {
   m_lo = m_root->top->stacklet.get();
   m_sp = m_lo;
   m_hi = m_lo + m_root->top->size;
-}
-
-/**
- * @brief Round size close to a multiple of the page_size.
- */
-[[nodiscard]]
-constexpr auto round_up_to_page_size(std::size_t size) noexcept -> std::size_t {
-
-  // Want calculate req such that:
-
-  // req + malloc_block_est is a multiple of the page size.
-  // req > size + stacklet_size
-
-  std::size_t constexpr page_size = 4096;                           // 4 KiB on most systems.
-  std::size_t constexpr malloc_meta_data_size = 6 * sizeof(void *); // An (over)estimate.
-
-  std::size_t minimum = size + malloc_meta_data_size;
-  std::size_t rounded = (minimum + page_size - 1) & ~(page_size - 1);
-  std::size_t request = rounded - malloc_meta_data_size;
-
-  LF_ASSUME(minimum <= rounded);
-  LF_ASSUME(rounded % page_size == 0);
-  LF_ASSUME(request >= size);
-
-  return request;
 }
 
 } // namespace lf
