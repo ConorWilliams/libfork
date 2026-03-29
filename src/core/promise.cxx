@@ -257,14 +257,18 @@ struct join_awaitable {
   constexpr auto await_ready(this join_awaitable self) noexcept -> bool {
 
     if (not_null(self.frame)->steals == 0) [[likely]] {
-      // If no steals then we are the only owner of the parent and we are ready
-      // to join. Therefore, no need to reset the control block.
+      // If no steals then we are the only owner of the parent and we are
+      // ready to join. Therefore, no need to reset the control block.
+      if (self.frame->is_cancelled()) [[unlikely]] {
+        // Must unconditionally suspended if cancelled
+        return false;
+      }
       return true;
     }
 
     // TODO: benchmark if including the below check (returning false here) in
     // multithreaded case helps performance enough to justify the extra
-    // instructions along the fast path
+    // instructions along the fast path and complexity
 
     // Currently:               joins() = k_u16_max - num_joined
     // Hence:       k_u16_max - joins() = num_joined
@@ -281,21 +285,24 @@ struct join_awaitable {
       // We must reset the control block and take the stack. We should never
       // own the stack at this point because we must have stolen the stack.
       // For ruther explanation see await_suspend() below.
-      return self.take_stack_and_reset(), true;
-    }
+      self.take_stack_and_reset();
 
+      if (self.frame->is_cancelled()) [[unlikely]] {
+        return false;
+      }
+      return true;
+    }
     return false;
   }
 
   constexpr auto await_suspend(this join_awaitable self, std::coroutine_handle<> task) noexcept -> coro<> {
     // Currently   self.joins  = k_u16_max  - num_joined
+    //
     // We set           joins  = self->joins - (k_u16_max - num_steals)
     //                         = num_steals - num_joined
-
+    //
     // Hence               joined = k_u16_max - num_joined
     //         k_u16_max - joined = num_joined
-
-    LF_ASSUME(self.frame);
 
     // Lemma:
     //
@@ -319,7 +326,14 @@ struct join_awaitable {
 
       // We must reset the control block and take the stack. We should never
       // own the stack at this point because we must have stolen the stack.
-      return self.take_stack_and_reset(), task;
+      self.take_stack_and_reset();
+
+      if (self.frame->is_cancelled()) [[unlikely]] {
+        // TODO: this needs to sink the exception
+        return std::noop_coroutine();
+      }
+
+      return task;
     }
 
     // Someone else is responsible for running this task.
@@ -332,6 +346,7 @@ struct join_awaitable {
     // in a switch awaitable. In this case we can/must do another self-steal.
 
     // return try_self_stealing();
+
     return std::noop_coroutine();
   }
 
