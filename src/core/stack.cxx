@@ -39,7 +39,12 @@ export class geometric_stack {
     std::byte *sp_cache = nullptr; // Cached stack pointer for this stacklet.
   };
 
-  struct key {};
+  struct key {
+    friend geometric_stack;
+
+   private:
+    constexpr key() = default;
+  };
 
   class checkpoint_t {
    public:
@@ -95,12 +100,17 @@ export class geometric_stack {
   // TODO: drop noexcept requirement in concept
 
   constexpr void release([[maybe_unused]] key key) noexcept {
-    // std::ignore = m_root.release();
-    // // Prime with new heap so that .checkpoint is valid.
-    // m_root.reset(new heap);
-    // m_lo = nullptr;
-    // m_sp = nullptr;
-    // m_hi = nullptr;
+
+    // Potentially throwing so call before release
+    heap *fresh_heap = new heap;
+
+    std::ignore = m_root.release();
+
+    // Prime with new heap so that .checkpoint is valid.
+    m_root.reset(fresh_heap);
+    m_lo = nullptr;
+    m_sp = nullptr;
+    m_hi = nullptr;
   }
 
   constexpr void acquire(checkpoint_t ckpt) noexcept {
