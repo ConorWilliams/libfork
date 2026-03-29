@@ -116,13 +116,14 @@ struct poly_vector_ctx final : lf::basic_poly_context<Alloc> {
   }
 };
 
-struct poly_deque_ctx final : lf::basic_poly_context<linear_allocator> {
+template <lf::stack_allocator Alloc>
+struct poly_deque_ctx final : lf::basic_poly_context<Alloc> {
 
-  using handle_type = lf::frame_handle<lf::basic_poly_context<linear_allocator>>;
+  using handle_type = lf::frame_handle<lf::basic_poly_context<Alloc>>;
 
   lf::deque<handle_type> work;
 
-  void post(lf::await_handle<lf::basic_poly_context<linear_allocator>>) override {}
+  void post(lf::await_handle<lf::basic_poly_context<Alloc>>) override {}
 
   void push(handle_type handle) override { work.push(handle); }
 
@@ -194,6 +195,9 @@ constexpr auto fork_call = [](this auto fib, lf::env<T>, std::int64_t n) -> lf::
 using global_alloc = vector_ctx<global_allocator>;
 using linear_alloc = vector_ctx<linear_allocator>;
 
+static_assert(lf::stack_allocator<lf::geometric_stack>);
+using geometric_alloc = vector_ctx<lf::geometric_stack>;
+
 template <auto Fn, typename T, typename U = T>
 void fib(benchmark::State &state) {
 
@@ -231,19 +235,36 @@ void fib(benchmark::State &state) {
 } // namespace
 
 static_assert(lf::worker_context<global_alloc>);
+static_assert(lf::worker_context<linear_alloc>);
+static_assert(lf::worker_context<geometric_alloc>);
 
 // Return by ref-arg, libfork call/call with co-await, uses new/delete for alloc
 BENCHMARK(fib<await<global_alloc>, global_alloc>)->Name("test/libfork/fib/heap/await")->Arg(fib_test);
 BENCHMARK(fib<await<global_alloc>, global_alloc>)->Name("base/libfork/fib/heap/await")->Arg(fib_base);
 
-// // Same as above but uses bump allocator
+// Same as above but uses bump allocator
 BENCHMARK(fib<await<linear_alloc>, linear_alloc>)->Name("test/libfork/fib/bump/await")->Arg(fib_test);
 BENCHMARK(fib<await<linear_alloc>, linear_alloc>)->Name("base/libfork/fib/bump/await")->Arg(fib_base);
+
+// Same as above but uses geometric stack
+BENCHMARK(fib<await<geometric_alloc>, geometric_alloc>)
+    ->Name("test/libfork/fib/geometric/await")
+    ->Arg(fib_test);
+BENCHMARK(fib<await<geometric_alloc>, geometric_alloc>)
+    ->Name("base/libfork/fib/geometric/await")
+    ->Arg(fib_base);
 
 // Return by value
 // libfork call/call with co-await
 BENCHMARK(fib<ret<linear_alloc>, linear_alloc>)->Name("test/libfork/fib/bump/return")->Arg(fib_test);
 BENCHMARK(fib<ret<linear_alloc>, linear_alloc>)->Name("base/libfork/fib/bump/return")->Arg(fib_base);
+
+BENCHMARK(fib<ret<geometric_alloc>, geometric_alloc>)
+    ->Name("test/libfork/fib/geometric/return")
+    ->Arg(fib_test);
+BENCHMARK(fib<ret<geometric_alloc>, geometric_alloc>)
+    ->Name("base/libfork/fib/geometric/return")
+    ->Arg(fib_base);
 
 // Return by value
 // libfork call/fork (no join)
@@ -251,12 +272,25 @@ BENCHMARK(fib<ret<linear_alloc>, linear_alloc>)->Name("base/libfork/fib/bump/ret
 BENCHMARK(fib<fork_call<linear_alloc>, linear_alloc>)->Name("test/libfork/fib/vector_ctx")->Arg(fib_test);
 BENCHMARK(fib<fork_call<linear_alloc>, linear_alloc>)->Name("base/libfork/fib/vector_ctx")->Arg(fib_base);
 
+BENCHMARK(fib<fork_call<geometric_alloc>, geometric_alloc>)
+    ->Name("test/libfork/fib/geometric/vector_ctx")
+    ->Arg(fib_test);
+BENCHMARK(fib<fork_call<geometric_alloc>, geometric_alloc>)
+    ->Name("base/libfork/fib/geometric/vector_ctx")
+    ->Arg(fib_base);
+
 using A = poly_vector_ctx<linear_allocator>;
 using B = lf::basic_poly_context<linear_allocator>;
 
 // Same as above but with polymorphic contexts.
 BENCHMARK(fib<fork_call<B>, A, B>)->Name("test/libfork/fib/poly_vector_ctx")->Arg(fib_test);
 BENCHMARK(fib<fork_call<B>, A, B>)->Name("base/libfork/fib/poly_vector_ctx")->Arg(fib_base);
+
+using E = poly_vector_ctx<lf::geometric_stack>;
+using F = lf::basic_poly_context<lf::geometric_stack>;
+
+BENCHMARK(fib<fork_call<F>, E, F>)->Name("test/libfork/fib/poly_geometric_vector_ctx")->Arg(fib_test);
+BENCHMARK(fib<fork_call<F>, E, F>)->Name("base/libfork/fib/poly_geometric_vector_ctx")->Arg(fib_base);
 
 // Same as above but with join and non-polymorphic.
 BENCHMARK(fib<fork_call<linear_alloc, true>, linear_alloc>)
@@ -266,11 +300,25 @@ BENCHMARK(fib<fork_call<linear_alloc, true>, linear_alloc>)
     ->Name("base/libfork/fib/vector_ctx/join")
     ->Arg(fib_base);
 
+BENCHMARK(fib<fork_call<geometric_alloc, true>, geometric_alloc>)
+    ->Name("test/libfork/fib/geometric/vector_ctx/join")
+    ->Arg(fib_test);
+BENCHMARK(fib<fork_call<geometric_alloc, true>, geometric_alloc>)
+    ->Name("base/libfork/fib/geometric/vector_ctx/join")
+    ->Arg(fib_base);
+
 // Same as above but with join and polymorphic.
 BENCHMARK(fib<fork_call<B, true>, A, B>)->Name("test/libfork/fib/poly_vector_ctx/join")->Arg(fib_test);
 BENCHMARK(fib<fork_call<B, true>, A, B>)->Name("base/libfork/fib/poly_vector_ctx/join")->Arg(fib_base);
 
-using C = poly_deque_ctx;
+BENCHMARK(fib<fork_call<F, true>, E, F>)
+    ->Name("test/libfork/fib/poly_geometric_vector_ctx/join")
+    ->Arg(fib_test);
+BENCHMARK(fib<fork_call<F, true>, E, F>)
+    ->Name("base/libfork/fib/poly_geometric_vector_ctx/join")
+    ->Arg(fib_base);
+
+using C = poly_deque_ctx<linear_allocator>;
 using D = deque_ctx<linear_allocator>;
 
 // Return by value,
@@ -282,3 +330,16 @@ BENCHMARK(fib<fork_call<D, true>, D, D>)->Name("base/libfork/fib/deque_ctx/join"
 // Same as above but polymorphic
 BENCHMARK(fib<fork_call<B, true>, C, B>)->Name("test/libfork/fib/poly_deque_ctx/join")->Arg(fib_test);
 BENCHMARK(fib<fork_call<B, true>, C, B>)->Name("base/libfork/fib/poly_deque_ctx/join")->Arg(fib_base);
+
+using G = deque_ctx<lf::geometric_stack>;
+using H = poly_deque_ctx<lf::geometric_stack>;
+
+BENCHMARK(fib<fork_call<G, true>, G, G>)->Name("test/libfork/fib/geometric/deque_ctx/join")->Arg(fib_test);
+BENCHMARK(fib<fork_call<G, true>, G, G>)->Name("base/libfork/fib/geometric/deque_ctx/join")->Arg(fib_base);
+
+BENCHMARK(fib<fork_call<F, true>, H, F>)
+    ->Name("test/libfork/fib/poly_geometric_deque_ctx/join")
+    ->Arg(fib_test);
+BENCHMARK(fib<fork_call<F, true>, H, F>)
+    ->Name("base/libfork/fib/poly_geometric_deque_ctx/join")
+    ->Arg(fib_base);

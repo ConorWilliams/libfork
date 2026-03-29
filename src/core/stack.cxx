@@ -202,6 +202,8 @@ constexpr auto geometric_stack::push_alloc(std::size_t padded_size) -> void * {
 
   std::size_t stacklet_size = std::max(padded_size, m_root->top ? growth_factor * m_root->top->size : 0);
 
+  stacklet_size = std::max(10000000Uz, stacklet_size);
+
   // Link a new top node into control block.
   m_root->top = new node(m_root->top, stacklet_size);
 
