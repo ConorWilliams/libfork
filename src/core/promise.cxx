@@ -119,17 +119,14 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
     return parent->handle();
   }
 
-  // We split the function here as the remainder is the "slow-path", this
-  // keeps the hot code as small as possible.
-  return final_suspend_continue<Context>(frame);
-}
-
-template <worker_context Context>
-
-constexpr auto final_suspend_continue(frame_type<Context> *frame) noexcept -> coro<> {
-
-  Context *context = not_null(thread_context<Context>);
-  frame_type<Context> *parent = not_null(frame->parent.frame);
+  //   // We split the function here as the remainder is the "slow-path", this
+  //   // keeps the hot code as small as possible.
+  //   return final_suspend_continue(context, parent);
+  // }
+  //
+  // template <worker_context Context>
+  // LF_NO_INLINE constexpr auto
+  // final_suspend_continue(Context *context, frame_type<Context> *parent) noexcept -> coro<> {
 
   // An owner is a worker who:
   //
