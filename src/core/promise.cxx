@@ -153,6 +153,14 @@ final_suspend_continue(Context *context, frame_type<Context> *parent) noexcept -
 }
 
 template <worker_context Context>
+constexpr void root(frame_type<Context> *frame) noexcept {
+  // Notify potential blockers
+  not_null(frame->parent.block)->sem.release();
+  // Release the refcount on the shared state
+  release_ref(frame->parent.block);
+}
+
+template <worker_context Context>
 [[nodiscard]]
 constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
 
@@ -163,36 +171,28 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
 
   frame_type<Context> *parent = not_null(frame->parent.frame);
 
-  {
-    defer _ = [frame] noexcept -> void {
-      // Destroy must be called **before** we release/acquire the stack as it
-      // will call `operator delete` which will access the allocator via the
-      // thread-local.
-      frame->handle().destroy();
-    };
+  auto kill = frame->handle();
 
-    switch (not_null(frame)->kind) {
-      case category::call:
-        return parent->handle();
-      case category::root:
-        // Notify potential blockers
-        not_null(frame->parent.block)->sem.release();
-        // Release the refcount on the shared state
-        release_ref(frame->parent.block);
-        // Return to workers's run-loop
-        return std::noop_coroutine();
-      case category::fork:
-        break;
-      default:
-        LF_ASSUME(false);
-    }
-
-    if (frame_handle last_pushed = not_null(thread_context<Context>)->pop()) {
-      // No-one stole continuation, we are the exclusive owner of parent -> just keep ripping!
-      LF_ASSUME(last_pushed == frame_handle{key, parent});
-      // This is not a join point so no state (i.e. counters) is guaranteed.
+  switch (not_null(frame)->kind) {
+    case category::call:
+      kill.destroy();
       return parent->handle();
-    }
+    case category::root:
+      root(frame);
+      kill.destroy();
+      return std::noop_coroutine();
+    case category::fork:
+      kill.destroy();
+      break;
+    default:
+      LF_ASSUME(false);
+  }
+
+  if (frame_handle last_pushed = not_null(thread_context<Context>)->pop()) {
+    // No-one stole continuation, we are the exclusive owner of parent -> just keep ripping!
+    LF_ASSUME(last_pushed == frame_handle{key, parent});
+    // This is not a join point so no state (i.e. counters) is guaranteed.
+    return parent->handle();
   }
 
   // TODO: benchmark if this split regresses other in stealing context
