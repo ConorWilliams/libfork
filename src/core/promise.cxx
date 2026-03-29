@@ -113,12 +113,23 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
   frame_type<Context> *parent = not_null(frame->parent.frame);
 
   if (frame_handle last_pushed = context->pop()) {
-    // No-one stole continuation, we are the exclusive owner of parent, so we
-    // just keep ripping!
+    // No-one stole continuation, we are the exclusive owner of parent -> just keep ripping!
     LF_ASSUME(last_pushed == frame_handle{key, parent});
     // This is not a join point so no state (i.e. counters) is guaranteed.
     return parent->handle();
   }
+
+  // We split the function here as the remainder is the "slow-path", this
+  // keeps the hot code as small as possible.
+  return final_suspend_continue<Context>(frame);
+}
+
+template <worker_context Context>
+
+constexpr auto final_suspend_continue(frame_type<Context> *frame) noexcept -> coro<> {
+
+  Context *context = not_null(thread_context<Context>);
+  frame_type<Context> *parent = not_null(frame->parent.frame);
 
   // An owner is a worker who:
   //
@@ -178,8 +189,6 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
   }
 
   // Else, case (2), our stack has no allocations on it, it may be used later.
-  // TODO: assert empty
-
   return std::noop_coroutine();
 }
 
