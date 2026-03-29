@@ -199,6 +199,10 @@ constexpr auto geometric_stack::push_alloc(std::size_t padded_size) -> void * {
 
 constexpr void geometric_stack::pop_shuffle() noexcept {
   // Shuffle top/cache
+  LF_ASSUME(m_root != nullptr);
+  LF_ASSUME(m_root->top != nullptr);       // Pop from empty stack
+  LF_ASSUME(m_root->top->prev != nullptr); // ^
+
   delete std::exchange(m_root->cache, m_root->top);
   m_root->top = m_root->top->prev;
 
