@@ -35,7 +35,7 @@ export class geometric_stack {
 
   struct heap : immovable {
     node *top = nullptr;           // Most recent stacklet i.e. the top of the stack.
-    node *cache = nullptr;         // Cached (empty) stacklet for hot-split gaurding.
+    node *cache = nullptr;         // Cached (empty) stacklet for hot-split guarding.
     std::byte *sp_cache = nullptr; // Cached stack pointer for this stacklet.
   };
 
