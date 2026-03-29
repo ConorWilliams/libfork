@@ -119,14 +119,16 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
     return parent->handle();
   }
 
-  //   // We split the function here as the remainder is the "slow-path", this
-  //   // keeps the hot code as small as possible.
-  //   return final_suspend_continue(context, parent);
-  // }
-  //
-  // template <worker_context Context>
-  // LF_NO_INLINE constexpr auto
-  // final_suspend_continue(Context *context, frame_type<Context> *parent) noexcept -> coro<> {
+  // TODO: benchmark if this split regresses other in stealing context
+
+  // We split the function here as the remainder is the "slow-path", this
+  // keeps the hot code as small as possible.
+  return final_suspend_continue(context, parent);
+}
+
+template <worker_context Context>
+LF_NO_INLINE constexpr auto
+final_suspend_continue(Context *context, frame_type<Context> *parent) noexcept -> coro<> {
 
   // An owner is a worker who:
   //
@@ -152,7 +154,11 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
   // to access as it may be resumed and then destroyed by another thread. Hence
   // we must make copies on-the-stack of any data we may need if we lose the
   // join race.
-  auto const checkpoint = parent->stack_ckpt;
+  bool const owner = parent->stack_ckpt == context->allocator().checkpoint();
+
+  // TODO: we could reduce branching if we unconditionally release and also
+  // drop pre-release function altogether... Need to benchmark with code that
+  // triggers a lot of stealing.
 
   // As soon as we do the fetch_sub (if we loose) someone may acquire
   // the stack so we must prepare it for release now.
@@ -166,7 +172,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
     std::atomic_thread_fence(std::memory_order_acquire);
 
     // In case of scenario (2) we must acquire the parent's stack.
-    context->allocator().acquire(checkpoint);
+    context->allocator().acquire(std::as_const(parent->stack_ckpt));
 
     // Must reset parent's control block before resuming parent.
     parent->reset_counters();
@@ -179,7 +185,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
   // or we are not the last child to complete. We are now out of jobs, we must
   // yield to the executor.
 
-  if (checkpoint == context->allocator().checkpoint()) {
+  if (owner) {
     // We were unable to resume the parent and we were its owner, as the
     // resuming thread will take ownership of the parent's we must give it up.
     context->allocator().release(std::move(release_key));

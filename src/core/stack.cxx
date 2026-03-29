@@ -88,7 +88,7 @@ export class geometric_stack {
   }
 
   constexpr auto prepare_release() noexcept -> key {
-    // m_root->sp_cache = m_sp;
+    m_root->sp_cache = m_sp;
     return {};
   }
 
