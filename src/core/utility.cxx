@@ -114,4 +114,32 @@ class [[nodiscard("Defer will execute unless bound to a name!")]] defer : immova
   Fn m_fn;
 };
 
+/**
+ * @brief Allocate an uninitialized array of bytes of the given size.
+ */
+[[nodiscard]]
+constexpr auto make_bytes(std::size_t size) -> std::unique_ptr<std::byte[]> {
+  return std::make_unique_for_overwrite<std::byte[]>(size);
+}
+
+/**
+ * @brief Test if a pointer is aligned to a multiple of `Align`.
+ */
+export template <std::size_t Align>
+  requires (std::has_single_bit(Align))
+[[nodiscard]]
+constexpr auto is_aligned(void *ptr) noexcept -> bool {
+  return (std::bit_cast<std::uintptr_t>(ptr) & (Align - 1)) == 0;
+}
+
+/**
+ * @brief Round up size to a multiple of `k_new_align` for alignment purposes.
+ */
+export template <std::size_t Align>
+  requires (std::has_single_bit(Align))
+[[nodiscard]]
+constexpr auto round_to_multiple(std::size_t size) noexcept -> std::size_t {
+  return (size + Align - 1) & ~(Align - 1);
+}
+
 } // namespace lf

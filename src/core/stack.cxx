@@ -11,32 +11,6 @@ import :utility;
 namespace lf {
 
 /**
- * @brief Allocate an uninitialized array of bytes of the given size.
- */
-[[nodiscard]]
-constexpr auto make_bytes(std::size_t size) -> std::unique_ptr<std::byte[]> {
-  return std::make_unique_for_overwrite<std::byte[]>(size);
-}
-
-/**
- * @brief Round up size to a multiple of `k_new_align` for alignment purposes.
- */
-[[nodiscard]]
-constexpr auto new_align(std::size_t size) noexcept -> std::size_t {
-  return (size + k_new_align - 1) & ~(k_new_align - 1);
-}
-
-/**
- * @brief Test if a pointer is aligned to a multiple of `Align`.
- */
-template <std::size_t Align>
-  requires (std::has_single_bit(Align))
-[[nodiscard]]
-constexpr auto is_aligned(void *ptr) noexcept -> bool {
-  return (std::bit_cast<std::uintptr_t>(ptr) & (Align - 1)) == 0;
-}
-
-/**
  * @brief A geometric_stack is a user-space (geometric) segmented program stack.
  */
 export class geometric_stack {
@@ -98,7 +72,7 @@ export class geometric_stack {
   [[nodiscard]]
   constexpr auto push(std::size_t size) -> void * {
     // Round such that next allocation is aligned.
-    std::size_t padded_size = new_align(size);
+    std::size_t padded_size = round_to_multiple<k_new_align>(size);
 
     if (padded_size > safe_cast<std::size_t>(m_hi - m_sp)) {
       // [[clang::musttail]]
