@@ -177,8 +177,12 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
     case category::call:
       kill.destroy();
       return parent->handle();
+    [[unlikely]]
     case category::root:
-      root(frame);
+      // Notify potential blockers
+      not_null(frame->parent.block)->sem.release();
+      // Release the refcount on the shared state
+      release_ref(frame->parent.block);
       kill.destroy();
       return std::noop_coroutine();
     case category::fork:
