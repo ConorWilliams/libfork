@@ -99,7 +99,7 @@ export class geometric_stack {
 
   // TODO: drop noexcept requirement in concept
 
-  constexpr void release([[maybe_unused]] key key) noexcept {
+  constexpr void release([[maybe_unused]] key) noexcept {
 
     // Potentially throwing so call before release
     heap *fresh_heap = new heap;
@@ -148,6 +148,7 @@ export class geometric_stack {
   std::byte *m_hi = nullptr; // The one-past-the-end pointer for the current stacklet.
 };
 
+LF_NO_INLINE
 constexpr auto geometric_stack::push_cached(std::size_t padded_size) -> void * {
 
   if (m_sp == m_lo && m_root->top != nullptr) {
