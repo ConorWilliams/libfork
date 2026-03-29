@@ -180,10 +180,13 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
     return finalize_root(frame), std::noop_coroutine();
   }
 
-  // Can now destroy frame
+  // Read before destroy
+  category const kind = frame->kind;
+
+  // Can now destroy frame, must NOT touch from here on.
   frame->handle().destroy();
 
-  switch (frame->kind) {
+  switch (kind) {
     case category::root:
       std::unreachable();
     case category::call:
