@@ -70,6 +70,7 @@ consteval auto constify(T &&x) noexcept -> std::add_const_t<T> &;
  *     - Be "cheap to copy".
  *     - Compare equal if and only if they belong to the same stack.
  *     - Have no preconditions about when it's called.
+ *     - A default constructed checkpoint considered undefined
  * - Release detaches the current stack and leaves `this` in the empty state.
  * - Acquire attaches to the stack that the checkpoint came from:
  *     - This is a noop if the checkpoint is from the current stack.
