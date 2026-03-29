@@ -176,7 +176,7 @@ constexpr auto geometric_stack::push_cached(std::size_t padded_size) -> void * {
     delete std::exchange(m_root->cache, nullptr);
   }
   // Must fallback to allocation
-  [[clang::musttail]] return push_alloc(padded_size);
+  return push_alloc(padded_size);
 }
 
 constexpr auto geometric_stack::push_alloc(std::size_t padded_size) -> void * {
