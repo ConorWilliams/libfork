@@ -27,7 +27,7 @@ concept dequeable = lock_free<T> && std::default_initializable<T>;
  * @brief Thrown when a push operation fails because the deque is full.
  */
 export struct deque_full : std::runtime_error {
-  constexpr deque_full() : std::runtime_error{"push faild because deque is full"} {}
+  constexpr deque_full() : std::runtime_error{"push failed because deque is full"} {}
 };
 
 /**
@@ -364,7 +364,7 @@ constexpr auto deque<T>::push(T val) -> std::ptrdiff_t {
   std::atomic_thread_fence(release);
   m_bottom.store(bottom + 1, relaxed);
 
-  // This was the size just befor the push, upon return the size could be any
+  // This was the size just before the push, upon return the size could be any
   // smaller number, down to zero, as stealers could have stolen all the
   // tasks.
   return ssize;
