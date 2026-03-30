@@ -53,11 +53,9 @@ export class geometric_stack {
     constexpr checkpoint_t() = default; // Required to be regular
 
    private:
-    explicit constexpr checkpoint_t(heap *root) noexcept : m_root(root) {
-      LF_ASSUME(root != nullptr); //
-    }
+    explicit constexpr checkpoint_t(heap *root) noexcept : m_root(root) {}
     friend class geometric_stack;
-    heap *m_root;
+    heap *m_root = nullptr;
   };
 
   [[nodiscard]]
@@ -68,16 +66,23 @@ export class geometric_stack {
 
   constexpr void pop_shuffle() noexcept;
 
+  [[nodiscard]]
+  constexpr auto empty() noexcept -> bool {
+    if (m_root == nullptr) {
+      return true;
+    }
+    if (m_root->top == nullptr) {
+      return true;
+    }
+    if (m_root->top->prev != nullptr) {
+      return true;
+    }
+    return m_sp == m_lo;
+  }
+
  public:
   [[nodiscard]]
   constexpr auto checkpoint() noexcept -> checkpoint_t {
-
-    // TODO: revisit if this + exception is worth is for no-alloc recoverability.
-
-    // if (!m_root) [[unlikely]] {
-    //   m_root.reset(new heap);
-    // }
-
     return checkpoint_t{m_root.get()};
   }
 

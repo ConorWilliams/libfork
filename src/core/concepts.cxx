@@ -68,9 +68,10 @@ consteval auto constify(T &&x) noexcept -> std::add_const_t<T> &;
  * - Destruction is expected to only occur when the stack is empty.
  * - Result of `.checkpoint()` is expected to:
  *     - Be "cheap to copy".
- *     - Compare equal if and only if they belong to the same stack.
+ *     - Has a null state (default constructed) that only compares equal to itself.
+ *     - Is allowed to return null if push has never been called.
+ *     - Compare equal if and only if they belong to the same stack or are both null.
  *     - Have no preconditions about when it's called.
- *     - A default constructed checkpoint considered undefined
  * - Release detaches the current stack and leaves `this` in the empty state.
  * - Acquire attaches to the stack that the checkpoint came from:
  *     - This is a noop if the checkpoint is from the current stack.
