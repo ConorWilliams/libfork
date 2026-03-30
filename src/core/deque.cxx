@@ -163,8 +163,6 @@ struct return_nullopt {
   static constexpr auto operator()() noexcept -> std::optional<T> { return {}; }
 };
 
-// TODO: drop relaxed semantics on buffer load/store, look at crossbeam
-
 /**
  * @brief A bounded lock-free single-producer multiple-consumer work-stealing deque.
  *
@@ -268,7 +266,7 @@ constexpr auto deque<T>::size() const noexcept -> std::size_t {
 template <dequeable T>
 constexpr auto deque<T>::ssize() const noexcept -> std::ptrdiff_t {
   std::ptrdiff_t const bottom = m_bottom.load(relaxed);
-  std::ptrdiff_t const top = m_top.load(relaxed);
+  std::ptrdiff_t const top = m_top.load(seq_cst);
   return std::max(bottom - top, std::ptrdiff_t{0});
 }
 
@@ -280,7 +278,7 @@ constexpr auto deque<T>::capacity() const noexcept -> std::ptrdiff_t {
 template <dequeable T>
 constexpr auto deque<T>::empty() const noexcept -> bool {
   std::ptrdiff_t const bottom = m_bottom.load(relaxed);
-  std::ptrdiff_t const top = m_top.load(relaxed);
+  std::ptrdiff_t const top = m_top.load(seq_cst);
   return top >= bottom;
 }
 
