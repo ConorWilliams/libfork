@@ -466,6 +466,8 @@ struct mixin_frame {
     // void can signal drop return.
     static_assert(std::same_as<R, U> || std::is_void_v<R>);
 
+    // TODO: tests for null path
+
     if constexpr (!std::is_void_v<R>) {
       child_promise->return_address = pkg.return_address;
     } else if constexpr (!std::is_void_v<U>) {
