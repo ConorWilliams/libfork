@@ -193,9 +193,9 @@ class deque : immovable {
   /**
    * @brief Construct a new empty deque object.
    *
-   * @param cap The capacity of the deque (must be a power of two).
+   * @param cap The capacity of the deque (will be rounded to the next power of two).
    */
-  constexpr explicit deque(std::ptrdiff_t cap);
+  constexpr explicit deque(std::size_t cap);
   /**
    * @brief Get the number of elements in the deque.
    */
@@ -258,7 +258,7 @@ class deque : immovable {
 };
 
 template <dequeable T>
-constexpr deque<T>::deque(std::ptrdiff_t cap) : m_buf(cap) {}
+constexpr deque<T>::deque(std::size_t cap) : m_buf(safe_cast<std::ptrdiff_t>(std::bit_ceil(cap))) {}
 
 template <dequeable T>
 constexpr auto deque<T>::size() const noexcept -> std::size_t {
