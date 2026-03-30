@@ -133,7 +133,7 @@ constexpr auto is_aligned(void *ptr) noexcept -> bool {
 }
 
 /**
- * @brief Round up size to a multiple of `k_new_align` for alignment purposes.
+ * @brief Round up size to a multiple of `Align` for alignment purposes.
  */
 export template <std::size_t Align>
   requires (std::has_single_bit(Align))

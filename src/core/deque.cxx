@@ -24,6 +24,13 @@ export template <typename T>
 concept dequeable = lock_free<T> && std::default_initializable<T>;
 
 /**
+ * @brief Thrown when a push operation fails because the deque is full.
+ */
+export struct deque_full : std::runtime_error {
+  constexpr deque_full() : std::runtime_error{"push failed because deque is full"} {}
+};
+
+/**
  * @brief A basic wrapper around a c-style array that provides modulo load/stores.
  *
  * This class is designed for internal use only. It provides a c-style API that is
@@ -38,9 +45,11 @@ struct atomic_ring_buf {
    *
    * @param cap The capacity of the buffer, MUST be a power of 2.
    */
-  constexpr explicit atomic_ring_buf(std::ptrdiff_t cap) : m_cap{cap}, m_mask{cap - 1} {
-    LF_ASSUME(cap > 0);
-    LF_ASSUME(std::has_single_bit(static_cast<std::size_t>(cap)));
+  constexpr explicit atomic_ring_buf(std::ptrdiff_t cap)
+      : m_buf{std::make_unique_for_overwrite<std::atomic<T>[]>(safe_cast<std::size_t>(cap))},
+        m_cap{cap},
+        m_mask{cap - 1} {
+    LF_ASSUME(cap > 0 && std::has_single_bit(safe_cast<std::size_t>(cap)));
   }
   /**
    * @brief Get the capacity of the buffer.
@@ -64,32 +73,12 @@ struct atomic_ring_buf {
     LF_ASSUME(index >= 0);
     return (m_buf.get() + (index & m_mask))->load(std::memory_order_relaxed); // NOLINT Avoid cast.
   }
-  /**
-   * @brief Copies elements in range ``[bottom, top)`` into a new ring buffer.
-   *
-   * This function allocates a new buffer and returns a pointer to it.
-   * The caller is responsible for deallocating the memory.
-   *
-   * @param bot The bottom of the range to copy from (inclusive).
-   * @param top The top of the range to copy from (exclusive).
-   */
-  [[nodiscard]]
-  constexpr auto resize(std::ptrdiff_t bot, std::ptrdiff_t top) const -> atomic_ring_buf<T> * {
-
-    auto *ptr = new atomic_ring_buf{2 * m_cap}; // NOLINT
-
-    for (std::ptrdiff_t i = top; i != bot; ++i) {
-      ptr->store(i, load(i));
-    }
-
-    return ptr;
-  }
 
  private:
   /**
    * @brief An array of atomic elements.
    */
-  using array_t = std::atomic<T>[]; // NOLINT
+  std::unique_ptr<std::atomic<T>[]> m_buf;
   /**
    * @brief Capacity of the buffer.
    */
@@ -98,12 +87,6 @@ struct atomic_ring_buf {
    * @brief Bit mask to perform modulo capacity operations.
    */
   std::ptrdiff_t m_mask;
-
-#ifdef __cpp_lib_smart_ptr_for_overwrite
-  std::unique_ptr<array_t> m_buf = std::make_unique_for_overwrite<array_t>(static_cast<std::size_t>(m_cap));
-#else
-  std::unique_ptr<array_t> m_buf = std::make_unique<array_t>(static_cast<std::size_t>(m_cap));
-#endif
 };
 
 /**
@@ -180,11 +163,8 @@ struct return_nullopt {
   static constexpr auto operator()() noexcept -> std::optional<T> { return {}; }
 };
 
-// TODO: drop relaxed semantics on buffer load/store:
-// https://github.com/crossbeam-rs/crossbeam/blob/master/crossbeam-deque/src/deque.rs
-
 /**
- * @brief An unbounded lock-free single-producer multiple-consumer work-stealing deque.
+ * @brief A bounded lock-free single-producer multiple-consumer work-stealing deque.
  *
  * Implements the "Chase-Lev" deque described in the papers, `"Dynamic Circular Work-Stealing deque"
  * <https://doi.org/10.1145/1073970.1073974>`_ and `"Correct and Efficient Work-Stealing for Weak
@@ -194,56 +174,145 @@ struct return_nullopt {
  * like a LIFO stack. Others can (only) ``steal()`` data from the deque, they see a FIFO deque.
  * All threads must have finished using the deque before it is destructed.
  *
+ * Also see:
+
+ * - Rust: https://github.com/crossbeam-rs/crossbeam/blob/master/crossbeam-deque/src/deque.rs
+ * - CDSC: https://dl.acm.org/doi/epdf/10.1145/2544173.2509514
+ *
  * @tparam T The type of the elements in the deque.
  */
 export template <dequeable T>
 class deque : immovable {
-
-  static constexpr std::ptrdiff_t k_default_capacity = 1024;
-  static constexpr std::size_t k_garbage_reserve = 64;
-
  public:
+  /**
+   * @brief A non-owning handle that can be used to steal items from the deque.
+   *
+   * All non-owner interactions with the deque should be made through this handle.
+   */
+  class thief_handle {
+
+    friend class deque;
+
+    explicit thief_handle(deque *queue) noexcept : m_queue{queue} { LF_ASSUME(queue != nullptr); }
+
+   public:
+    /**
+     * @brief Check if the deque is empty.
+     */
+    [[nodiscard]]
+    constexpr auto empty(this thief_handle self) noexcept -> bool {
+      std::ptrdiff_t const top = self.m_queue->m_top.load(acquire);
+      std::atomic_thread_fence(seq_cst);
+      std::ptrdiff_t const bottom = self.m_queue->m_bottom.load(acquire);
+      return top >= bottom;
+    }
+    /**
+     * @brief Get the number of elements in the deque.
+     */
+    [[nodiscard]]
+    constexpr auto size(this thief_handle self) noexcept -> std::size_t {
+      return static_cast<std::size_t>(self.ssize());
+    }
+    /**
+     * @brief Get the number of elements in the deque as a signed integer.
+     */
+    [[nodiscard]]
+    constexpr auto ssize(this thief_handle self) noexcept -> std::ptrdiff_t {
+      std::ptrdiff_t const top = self.m_queue->m_top.load(acquire);
+      std::atomic_thread_fence(seq_cst);
+      std::ptrdiff_t const bottom = self.m_queue->m_bottom.load(acquire);
+      return std::max(bottom - top, std::ptrdiff_t{0});
+    }
+    /**
+     * @brief Get the capacity of the deque.
+     */
+    [[nodiscard]]
+    constexpr auto capacity(this thief_handle self) noexcept -> std::ptrdiff_t {
+      return self.m_queue->capacity();
+    }
+    /**
+     * @brief Steal an item from the deque.
+     *
+     * Any threads can try to steal an item from the deque. This operation can
+     * fail if the deque is empty or if another thread simultaneously stole an
+     * item from the deque.
+     */
+    constexpr auto steal(this thief_handle self) noexcept -> steal_t<T> {
+      //
+      std::ptrdiff_t top = self.m_queue->m_top.load(acquire);
+      std::atomic_thread_fence(seq_cst);
+      std::ptrdiff_t const bottom = self.m_queue->m_bottom.load(acquire);
+
+      if (top < bottom) {
+        // Must load *before* acquiring the slot as slot may be overwritten immediately after
+        // acquiring. This load is NOT required to be atomic even-though it may race with an overwrite
+        // as we only return the value if we win the race below guaranteeing we had no race during our
+        // read. If we loose the race then 'x' could be corrupt due to read-during-write race but as T
+        // is trivially destructible this does not matter.
+        T tmp = self.m_queue->m_buf.load(top);
+
+        static_assert(std::is_trivially_destructible_v<T>, "'atomicable' should guarantee this already");
+
+        if (!self.m_queue->m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
+          return {.code = err::lost, .val = {}};
+        }
+        return {.code = err::none, .val = tmp};
+      }
+      return {.code = err::empty, .val = {}};
+    }
+
+   private:
+    deque *m_queue;
+  };
+
   /**
    * @brief The type of the elements in the deque.
    */
   using value_type = T;
   /**
    * @brief Construct a new empty deque object.
-   */
-  constexpr deque() : deque(k_default_capacity) {}
-  /**
-   * @brief Construct a new empty deque object.
    *
-   * @param cap The capacity of the deque (must be a power of 2).
+   * @param cap The capacity of the deque (will be rounded to the next power of two).
    */
-  constexpr explicit deque(std::ptrdiff_t cap);
-  /**
-   * @brief Get the number of elements in the deque.
-   */
-  [[nodiscard]]
-  constexpr auto size() const noexcept -> std::size_t;
-  /**
-   * @brief Get the number of elements in the deque as a signed integer.
-   */
-  [[nodiscard]]
-  constexpr auto ssize() const noexcept -> std::ptrdiff_t;
-  /**
-   * @brief Get the capacity of the deque.
-   */
-  [[nodiscard]]
-  constexpr auto capacity() const noexcept -> std::ptrdiff_t;
+  constexpr explicit deque(std::size_t cap) : m_buf(safe_cast<std::ptrdiff_t>(std::bit_ceil(cap))) {}
   /**
    * @brief Check if the deque is empty.
    */
   [[nodiscard]]
-  constexpr auto empty() const noexcept -> bool;
+  constexpr auto empty() const noexcept -> bool {
+    std::ptrdiff_t const bottom = m_bottom.load(relaxed);
+    std::ptrdiff_t const top = m_top.load(seq_cst);
+    return top >= bottom;
+  }
+  /**
+   * @brief Get the number of elements in the deque.
+   */
+  [[nodiscard]]
+  constexpr auto size() const noexcept -> std::size_t {
+    return static_cast<std::size_t>(ssize());
+  }
+  /**
+   * @brief Get the number of elements in the deque as a signed integer.
+   */
+  [[nodiscard]]
+  constexpr auto ssize() const noexcept -> std::ptrdiff_t {
+    std::ptrdiff_t const bottom = m_bottom.load(relaxed);
+    std::ptrdiff_t const top = m_top.load(seq_cst);
+    return std::max(bottom - top, std::ptrdiff_t{0});
+  }
+  /**
+   * @brief Get the capacity of the deque.
+   */
+  [[nodiscard]]
+  constexpr auto capacity() const noexcept -> std::ptrdiff_t {
+    return m_buf.capacity();
+  }
   /**
    * @brief Push an item into the deque.
    *
-   * Only the owner thread can insert an item into the deque.
-   * This operation can trigger the deque to resize if more space is required.
-   * This may throw if an allocation is required and then fails.
-   * This returns the number of elements in the deque before the push.
+   * Only the owner thread can insert an item into the deque. This will throw
+   * an exception if the deque is full. This returns the number of elements in
+   * the deque before the push.
    *
    * @param val Value to add to the deque.
    */
@@ -251,35 +320,23 @@ class deque : immovable {
   /**
    * @brief Pop an item from the deque.
    *
-   * Only the owner thread can pop out an item from the deque. If the buffer is empty calls `when_empty` and
-   * returns the result. By default, `when_empty` is a no-op that returns a null `std::optional<T>`.
+   * Only the owner thread can pop out an item from the deque. If the buffer is
+   * empty calls `when_empty` and returns the result. By default, `when_empty`
+   * is a no-op that returns a null `std::optional<T>`.
    */
   template <std::invocable Fn = return_nullopt<T>>
     requires std::convertible_to<T, std::invoke_result_t<Fn>>
   constexpr auto
   pop(Fn &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<Fn>) -> std::invoke_result_t<Fn>;
-
   /**
-   * @brief Steal an item from the deque.
-   *
-   * Any threads can try to steal an item from the deque. This operation can fail if the deque is
-   * empty or if another thread simultaneously stole an item from the deque.
+   * @brief Get a non-owning `thief_handle` that can be used to steal items from the deque.
    */
-  [[nodiscard]]
-  constexpr auto steal() noexcept -> steal_t<T>;
-
-  /**
-   * @brief Destroy the deque object.
-   *
-   * All threads must have finished using the deque before it is destructed.
-   */
-  constexpr ~deque() noexcept;
+  constexpr auto thief() noexcept -> thief_handle { return thief_handle{this}; }
 
  private:
-  alignas(k_cache_line) std::atomic<std::ptrdiff_t> m_top;
-  alignas(k_cache_line) std::atomic<std::ptrdiff_t> m_bottom;
-  alignas(k_cache_line) std::atomic<atomic_ring_buf<T> *> m_buf;
-  std::vector<std::unique_ptr<atomic_ring_buf<T>>> m_garbage;
+  alignas(k_cache_line) atomic_ring_buf<T> m_buf;
+  alignas(k_cache_line) std::atomic<std::ptrdiff_t> m_top{0};
+  alignas(k_cache_line) std::atomic<std::ptrdiff_t> m_bottom{0};
 
   // Convenience aliases.
   static constexpr std::memory_order relaxed = std::memory_order_relaxed;
@@ -290,62 +347,26 @@ class deque : immovable {
 };
 
 template <dequeable T>
-constexpr deque<T>::deque(std::ptrdiff_t cap) : m_top(0),
-                                                m_bottom(0),
-                                                m_buf(new atomic_ring_buf<T>{cap}) {
-  m_garbage.reserve(k_garbage_reserve);
-}
-
-template <dequeable T>
-constexpr auto deque<T>::size() const noexcept -> std::size_t {
-  return static_cast<std::size_t>(ssize());
-}
-
-template <dequeable T>
-constexpr auto deque<T>::ssize() const noexcept -> std::ptrdiff_t {
-  std::ptrdiff_t const bottom = m_bottom.load(relaxed);
-  std::ptrdiff_t const top = m_top.load(relaxed);
-  return std::max(bottom - top, std::ptrdiff_t{0});
-}
-
-template <dequeable T>
-constexpr auto deque<T>::capacity() const noexcept -> std::ptrdiff_t {
-  return m_buf.load(relaxed)->capacity();
-}
-
-template <dequeable T>
-constexpr auto deque<T>::empty() const noexcept -> bool {
-  std::ptrdiff_t const bottom = m_bottom.load(relaxed);
-  std::ptrdiff_t const top = m_top.load(relaxed);
-  return top >= bottom;
-}
-
-template <dequeable T>
 constexpr auto deque<T>::push(T val) -> std::ptrdiff_t {
   std::ptrdiff_t const bottom = m_bottom.load(relaxed);
   std::ptrdiff_t const top = m_top.load(acquire);
-  atomic_ring_buf<T> *buf = m_buf.load(relaxed);
-
   std::ptrdiff_t const ssize = bottom - top;
 
-  if (buf->capacity() < ssize + 1) {
-    // Deque is full, build a new one.
-    atomic_ring_buf<T> *bigger = buf->resize(bottom, top);
-
-    [&]() noexcept -> void {
-      // This should never throw as we reserve 64 slots.
-      m_garbage.emplace_back(std::exchange(buf, bigger));
-    }();
-
-    m_buf.store(buf, relaxed);
+  if (m_buf.capacity() < ssize + 1) {
+    LF_THROW(deque_full{});
   }
 
-  // Construct new object, this does not have to be atomic as no one can steal this item until
-  // after we store the new value of bottom, ordering is maintained by surrounding atomics.
-  buf->store(bottom, val);
+  // Construct new object, this does not have to be atomic as no one can steal
+  // this item until after we store the new value of bottom, ordering is
+  // maintained by surrounding atomics.
+  m_buf.store(bottom, val);
 
   std::atomic_thread_fence(release);
   m_bottom.store(bottom + 1, relaxed);
+
+  // This was the size just before the push, upon return the size could be any
+  // smaller number, down to zero, as stealers could have stolen all the
+  // tasks.
   return ssize;
 }
 
@@ -356,17 +377,18 @@ constexpr auto
 deque<T>::pop(Fn &&when_empty) noexcept(std::is_nothrow_invocable_v<Fn>) -> std::invoke_result_t<Fn> {
 
   std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1; //
-  atomic_ring_buf<T> *buf = m_buf.load(relaxed);            //
   m_bottom.store(bottom, relaxed);                          // Stealers can no longer steal.
 
   std::atomic_thread_fence(seq_cst);
 
   std::ptrdiff_t top = m_top.load(relaxed);
 
-  // TODO: match line-for-line with the paper
-
   if (top <= bottom) {
     // Non-empty deque
+
+    // This load is not required to be atomic as we are the exclusive writer.
+    T val = m_buf.load(bottom);
+
     if (top == bottom) {
       // The last item could get stolen, by a stealer that loaded bottom before our write above.
       if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
@@ -376,43 +398,10 @@ deque<T>::pop(Fn &&when_empty) noexcept(std::is_nothrow_invocable_v<Fn>) -> std:
       }
       m_bottom.store(bottom + 1, relaxed);
     }
-    // Can delay load until after acquiring slot as only this thread can push(),
-    // This load is not required to be atomic as we are the exclusive writer.
-    return buf->load(bottom);
+    return val;
   }
   m_bottom.store(bottom + 1, relaxed);
   return std::invoke(std::forward<Fn>(when_empty));
-}
-
-// READ: https://dl.acm.org/doi/epdf/10.1145/2544173.2509514
-
-template <dequeable T>
-constexpr auto deque<T>::steal() noexcept -> steal_t<T> {
-  std::ptrdiff_t top = m_top.load(acquire);
-  std::atomic_thread_fence(seq_cst);
-  std::ptrdiff_t const bottom = m_bottom.load(acquire);
-
-  if (top < bottom) {
-    // Must load *before* acquiring the slot as slot may be overwritten immediately after
-    // acquiring. This load is NOT required to be atomic even-though it may race with an overwrite
-    // as we only return the value if we win the race below guaranteeing we had no race during our
-    // read. If we loose the race then 'x' could be corrupt due to read-during-write race but as T
-    // is trivially destructible this does not matter.
-    T tmp = m_buf.load(consume)->load(top);
-
-    static_assert(std::is_trivially_destructible_v<T>, "concept 'atomicable' should guarantee this already");
-
-    if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
-      return {.code = err::lost, .val = {}};
-    }
-    return {.code = err::none, .val = tmp};
-  }
-  return {.code = err::empty, .val = {}};
-}
-
-template <dequeable T>
-constexpr deque<T>::~deque() noexcept {
-  delete m_buf.load(); // NOLINT
 }
 
 } // namespace lf

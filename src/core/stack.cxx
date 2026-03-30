@@ -25,7 +25,7 @@ export class geometric_stack {
 
   // Align such that the entire node is on a cache line
   struct alignas(std::max(std::bit_ceil(sizeof(node_data)), alignof(node_data))) node : node_data {
-    constexpr node(node *prev, std::size_t size) : node_data{.prev = prev, .size = size} {
+    constexpr node(node *prev_arg, std::size_t size_arg) : node_data{.prev = prev_arg, .size = size_arg} {
       // Each stacklet should be on a boundary.
       LF_ASSUME(is_aligned<k_new_align>(stacklet.get()));
     }

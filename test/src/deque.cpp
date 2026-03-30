@@ -13,7 +13,8 @@ TEST_CASE("Deque: Concepts", "[deque]") {
 }
 
 TEST_CASE("Deque: Single thread as stack", "[deque]") {
-  lf::deque<int> deque;
+  // Only need a few
+  lf::deque<int> deque{16};
 
   REQUIRE(deque.empty());
 
@@ -33,7 +34,7 @@ TEST_CASE("Deque: Single thread as stack", "[deque]") {
 }
 
 TEST_CASE("Deque: Custom pop when_empty", "[deque]") {
-  lf::deque<int> deque;
+  lf::deque<int> deque{2};
 
   auto result = deque.pop([]() {
     return -1;
@@ -57,7 +58,7 @@ namespace {
 void test_deque(std::size_t n_pushes, std::size_t n_consumers, bool do_pop) {
 
   // The tested queue
-  lf::deque<std::uint64_t> deque{};
+  lf::deque<std::uint64_t> deque{n_pushes};
 
   // To store removed elements
   std::vector<std::uint64_t> pops{};
@@ -80,7 +81,7 @@ void test_deque(std::size_t n_pushes, std::size_t n_consumers, bool do_pop) {
       start.arrive_and_wait();
 
       for (;;) {
-        auto [err, item] = deque.steal();
+        auto [err, item] = deque.thief().steal();
 
         switch (err) {
           case lf::err::none:
@@ -206,18 +207,4 @@ TEST_CASE("Deque: MPSC with-pop", "[deque]") {
       DYNAMIC_SECTION("Elements: " << i << " Consumers: " << j) { test_deque(i, j, true); }
     }
   }
-}
-
-TEST_CASE("Deque: Capacity Growth", "[deque]") {
-  lf::deque<int> d(2);
-  REQUIRE(d.capacity() == 2);
-  d.push(1);
-  d.push(2);
-  REQUIRE(d.capacity() == 2);
-  d.push(3); // Should trigger resize
-  REQUIRE(d.capacity() > 2);
-  REQUIRE(d.ssize() == 3);
-  REQUIRE(*d.pop() == 3);
-  REQUIRE(*d.pop() == 2);
-  REQUIRE(*d.pop() == 1);
 }

@@ -78,7 +78,7 @@ struct deque_ctx {
 
   using handle_type = lf::frame_handle<deque_ctx>;
 
-  lf::deque<handle_type> work;
+  lf::deque<handle_type> work{64};
   Alloc my_allocator;
 
   auto allocator() noexcept -> Alloc & { return my_allocator; }
@@ -121,7 +121,7 @@ struct poly_deque_ctx final : lf::basic_poly_context<Alloc> {
 
   using handle_type = lf::frame_handle<lf::basic_poly_context<Alloc>>;
 
-  lf::deque<handle_type> work;
+  lf::deque<handle_type> work{64};
 
   void post(lf::await_handle<lf::basic_poly_context<Alloc>>) override {}
 
