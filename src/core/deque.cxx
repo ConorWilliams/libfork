@@ -157,11 +157,10 @@ struct return_nullopt {
   static constexpr auto operator()() noexcept -> std::optional<T> { return {}; }
 };
 
-// TODO: drop relaxed semantics on buffer load/store:
-// https://github.com/crossbeam-rs/crossbeam/blob/master/crossbeam-deque/src/deque.rs
+// TODO: drop relaxed semantics on buffer load/store, look at crossbeam
 
 /**
- * @brief An unbounded lock-free single-producer multiple-consumer work-stealing deque.
+ * @brief A bounded lock-free single-producer multiple-consumer work-stealing deque.
  *
  * Implements the "Chase-Lev" deque described in the papers, `"Dynamic Circular Work-Stealing deque"
  * <https://doi.org/10.1145/1073970.1073974>`_ and `"Correct and Efficient Work-Stealing for Weak
@@ -170,6 +169,10 @@ struct return_nullopt {
  * Only the deque owner can perform ``pop()`` and ``push()`` operations where the deque behaves
  * like a LIFO stack. Others can (only) ``steal()`` data from the deque, they see a FIFO deque.
  * All threads must have finished using the deque before it is destructed.
+ *
+ * Also see:
+
+ * - https://github.com/crossbeam-rs/crossbeam/blob/master/crossbeam-deque/src/deque.rs
  *
  * @tparam T The type of the elements in the deque.
  */
