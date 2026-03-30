@@ -24,6 +24,13 @@ export template <typename T>
 concept dequeable = lock_free<T> && std::default_initializable<T>;
 
 /**
+ * @brief Thrown when a push operation fails because the deque is full.
+ */
+export struct deque_full : std::runtime_error {
+  constexpr deque_full() : std::runtime_error{"push faild because deque is full"} {}
+};
+
+/**
  * @brief A basic wrapper around a c-style array that provides modulo load/stores.
  *
  * This class is designed for internal use only. It provides a c-style API that is
@@ -39,10 +46,9 @@ struct atomic_ring_buf {
    * @param cap The capacity of the buffer, MUST be a power of 2.
    */
   constexpr explicit atomic_ring_buf(std::ptrdiff_t cap)
-      : m_buf{std::make_unique_for_overwrite<std::atomic<T>[]>(safe_cast<std::size_t>(m_cap))},
+      : m_buf{std::make_unique_for_overwrite<std::atomic<T>[]>(safe_cast<std::size_t>(cap))},
         m_cap{cap},
-        m_mask{cap - 1},
-  {
+        m_mask{cap - 1} {
     LF_ASSUME(cap > 0 && std::has_single_bit(safe_cast<std::size_t>(cap)));
   }
   /**
@@ -172,16 +178,13 @@ struct return_nullopt {
  *
  * Also see:
 
- * - https://github.com/crossbeam-rs/crossbeam/blob/master/crossbeam-deque/src/deque.rs
+ * - Rust: https://github.com/crossbeam-rs/crossbeam/blob/master/crossbeam-deque/src/deque.rs
+ * - CDSC: https://dl.acm.org/doi/epdf/10.1145/2544173.2509514
  *
  * @tparam T The type of the elements in the deque.
  */
 export template <dequeable T>
 class deque : immovable {
-
-  static constexpr std::ptrdiff_t k_default_capacity = 1024;
-  static constexpr std::size_t k_garbage_reserve = 64;
-
  public:
   /**
    * @brief The type of the elements in the deque.
@@ -189,12 +192,8 @@ class deque : immovable {
   using value_type = T;
   /**
    * @brief Construct a new empty deque object.
-   */
-  constexpr deque() : deque(k_default_capacity) {}
-  /**
-   * @brief Construct a new empty deque object.
    *
-   * @param cap The capacity of the deque (must be a power of 2).
+   * @param cap The capacity of the deque (must be a power of two).
    */
   constexpr explicit deque(std::ptrdiff_t cap);
   /**
@@ -221,8 +220,7 @@ class deque : immovable {
    * @brief Push an item into the deque.
    *
    * Only the owner thread can insert an item into the deque.
-   * This operation can trigger the deque to resize if more space is required.
-   * This may throw if an allocation is required and then fails.
+   * This will throw an exception if the deque is full.
    * This returns the number of elements in the deque before the push.
    *
    * @param val Value to add to the deque.
@@ -238,28 +236,18 @@ class deque : immovable {
     requires std::convertible_to<T, std::invoke_result_t<Fn>>
   constexpr auto
   pop(Fn &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<Fn>) -> std::invoke_result_t<Fn>;
-
   /**
    * @brief Steal an item from the deque.
    *
    * Any threads can try to steal an item from the deque. This operation can fail if the deque is
    * empty or if another thread simultaneously stole an item from the deque.
    */
-  [[nodiscard]]
   constexpr auto steal() noexcept -> steal_t<T>;
 
-  /**
-   * @brief Destroy the deque object.
-   *
-   * All threads must have finished using the deque before it is destructed.
-   */
-  constexpr ~deque() noexcept;
-
  private:
-  alignas(k_cache_line) std::atomic<std::ptrdiff_t> m_top;
-  alignas(k_cache_line) std::atomic<std::ptrdiff_t> m_bottom;
-  alignas(k_cache_line) std::atomic<atomic_ring_buf<T> *> m_buf;
-  std::vector<std::unique_ptr<atomic_ring_buf<T>>> m_garbage;
+  alignas(k_cache_line) atomic_ring_buf<T> m_buf;
+  alignas(k_cache_line) std::atomic<std::ptrdiff_t> m_top{0};
+  alignas(k_cache_line) std::atomic<std::ptrdiff_t> m_bottom{0};
 
   // Convenience aliases.
   static constexpr std::memory_order relaxed = std::memory_order_relaxed;
@@ -270,11 +258,7 @@ class deque : immovable {
 };
 
 template <dequeable T>
-constexpr deque<T>::deque(std::ptrdiff_t cap) : m_top(0),
-                                                m_bottom(0),
-                                                m_buf(new atomic_ring_buf<T>{cap}) {
-  m_garbage.reserve(k_garbage_reserve);
-}
+constexpr deque<T>::deque(std::ptrdiff_t cap) : m_buf(cap) {}
 
 template <dequeable T>
 constexpr auto deque<T>::size() const noexcept -> std::size_t {
@@ -290,7 +274,7 @@ constexpr auto deque<T>::ssize() const noexcept -> std::ptrdiff_t {
 
 template <dequeable T>
 constexpr auto deque<T>::capacity() const noexcept -> std::ptrdiff_t {
-  return m_buf.load(relaxed)->capacity();
+  return m_buf.capacity();
 }
 
 template <dequeable T>
@@ -304,25 +288,15 @@ template <dequeable T>
 constexpr auto deque<T>::push(T val) -> std::ptrdiff_t {
   std::ptrdiff_t const bottom = m_bottom.load(relaxed);
   std::ptrdiff_t const top = m_top.load(acquire);
-  atomic_ring_buf<T> *buf = m_buf.load(relaxed);
-
   std::ptrdiff_t const ssize = bottom - top;
 
-  if (buf->capacity() < ssize + 1) {
-    // Deque is full, build a new one.
-    atomic_ring_buf<T> *bigger = buf->resize(bottom, top);
-
-    [&]() noexcept -> void {
-      // This should never throw as we reserve 64 slots.
-      m_garbage.emplace_back(std::exchange(buf, bigger));
-    }();
-
-    m_buf.store(buf, relaxed);
+  if (m_buf.capacity() < ssize + 1) {
+    LF_THROW(deque_full{});
   }
 
   // Construct new object, this does not have to be atomic as no one can steal this item until
   // after we store the new value of bottom, ordering is maintained by surrounding atomics.
-  buf->store(bottom, val);
+  m_buf.store(bottom, val);
 
   std::atomic_thread_fence(release);
   m_bottom.store(bottom + 1, relaxed);
@@ -336,7 +310,6 @@ constexpr auto
 deque<T>::pop(Fn &&when_empty) noexcept(std::is_nothrow_invocable_v<Fn>) -> std::invoke_result_t<Fn> {
 
   std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1; //
-  atomic_ring_buf<T> *buf = m_buf.load(relaxed);            //
   m_bottom.store(bottom, relaxed);                          // Stealers can no longer steal.
 
   std::atomic_thread_fence(seq_cst);
@@ -358,13 +331,13 @@ deque<T>::pop(Fn &&when_empty) noexcept(std::is_nothrow_invocable_v<Fn>) -> std:
     }
     // Can delay load until after acquiring slot as only this thread can push(),
     // This load is not required to be atomic as we are the exclusive writer.
-    return buf->load(bottom);
+    return m_buf.load(bottom);
   }
   m_bottom.store(bottom + 1, relaxed);
   return std::invoke(std::forward<Fn>(when_empty));
 }
 
-// READ: https://dl.acm.org/doi/epdf/10.1145/2544173.2509514
+// TODO: READ: https://dl.acm.org/doi/epdf/10.1145/2544173.2509514
 
 template <dequeable T>
 constexpr auto deque<T>::steal() noexcept -> steal_t<T> {
@@ -378,7 +351,7 @@ constexpr auto deque<T>::steal() noexcept -> steal_t<T> {
     // as we only return the value if we win the race below guaranteeing we had no race during our
     // read. If we loose the race then 'x' could be corrupt due to read-during-write race but as T
     // is trivially destructible this does not matter.
-    T tmp = m_buf.load(consume)->load(top);
+    T tmp = m_buf.load(top);
 
     static_assert(std::is_trivially_destructible_v<T>, "concept 'atomicable' should guarantee this already");
 
@@ -388,11 +361,6 @@ constexpr auto deque<T>::steal() noexcept -> steal_t<T> {
     return {.code = err::none, .val = tmp};
   }
   return {.code = err::empty, .val = {}};
-}
-
-template <dequeable T>
-constexpr deque<T>::~deque() noexcept {
-  delete m_buf.load(); // NOLINT
 }
 
 } // namespace lf
