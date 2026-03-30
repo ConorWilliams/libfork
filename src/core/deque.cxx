@@ -38,9 +38,12 @@ struct atomic_ring_buf {
    *
    * @param cap The capacity of the buffer, MUST be a power of 2.
    */
-  constexpr explicit atomic_ring_buf(std::ptrdiff_t cap) : m_cap{cap}, m_mask{cap - 1} {
-    LF_ASSUME(cap > 0);
-    LF_ASSUME(std::has_single_bit(static_cast<std::size_t>(cap)));
+  constexpr explicit atomic_ring_buf(std::ptrdiff_t cap)
+      : m_buf{std::make_unique_for_overwrite<std::atomic<T>[]>(safe_cast<std::size_t>(m_cap))},
+        m_cap{cap},
+        m_mask{cap - 1},
+  {
+    LF_ASSUME(cap > 0 && std::has_single_bit(safe_cast<std::size_t>(cap)));
   }
   /**
    * @brief Get the capacity of the buffer.
@@ -64,32 +67,12 @@ struct atomic_ring_buf {
     LF_ASSUME(index >= 0);
     return (m_buf.get() + (index & m_mask))->load(std::memory_order_relaxed); // NOLINT Avoid cast.
   }
-  /**
-   * @brief Copies elements in range ``[bottom, top)`` into a new ring buffer.
-   *
-   * This function allocates a new buffer and returns a pointer to it.
-   * The caller is responsible for deallocating the memory.
-   *
-   * @param bot The bottom of the range to copy from (inclusive).
-   * @param top The top of the range to copy from (exclusive).
-   */
-  [[nodiscard]]
-  constexpr auto resize(std::ptrdiff_t bot, std::ptrdiff_t top) const -> atomic_ring_buf<T> * {
-
-    auto *ptr = new atomic_ring_buf{2 * m_cap}; // NOLINT
-
-    for (std::ptrdiff_t i = top; i != bot; ++i) {
-      ptr->store(i, load(i));
-    }
-
-    return ptr;
-  }
 
  private:
   /**
    * @brief An array of atomic elements.
    */
-  using array_t = std::atomic<T>[]; // NOLINT
+  std::unique_ptr<std::atomic<T>[]> m_buf;
   /**
    * @brief Capacity of the buffer.
    */
@@ -98,12 +81,6 @@ struct atomic_ring_buf {
    * @brief Bit mask to perform modulo capacity operations.
    */
   std::ptrdiff_t m_mask;
-
-#ifdef __cpp_lib_smart_ptr_for_overwrite
-  std::unique_ptr<array_t> m_buf = std::make_unique_for_overwrite<array_t>(static_cast<std::size_t>(m_cap));
-#else
-  std::unique_ptr<array_t> m_buf = std::make_unique<array_t>(static_cast<std::size_t>(m_cap));
-#endif
 };
 
 /**
