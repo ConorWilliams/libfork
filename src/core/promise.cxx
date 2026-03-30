@@ -119,6 +119,9 @@ final_suspend_continue(Context *context, frame_type<Context> *parent) noexcept -
   // the stack so we must prepare it for release now.
   auto release_key = context->allocator().prepare_release();
 
+  // TODO: we could add an `if (owner)` around acquire below, then we could
+  // define that acquire is always called with null or not-self.
+
   // Register with parent we have completed this child task.
   if (parent->atomic_joins().fetch_sub(1, std::memory_order_release) == 1) {
     // Parent has reached join and we are the last child task to complete. We
