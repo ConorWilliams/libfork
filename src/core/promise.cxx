@@ -277,7 +277,6 @@ struct awaitable : std::suspend_always {
     // Propagate parent->child relationships
     self.child->parent.frame = &parent.promise().frame;
     self.child->cancel = parent.promise().frame.cancel;
-    self.child->stack_ckpt = not_null(thread_context<Context>)->allocator().checkpoint();
     self.child->kind = Cat;
 
     if constexpr (Cat == category::fork) {
