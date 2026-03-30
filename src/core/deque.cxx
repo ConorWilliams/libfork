@@ -185,6 +185,87 @@ export template <dequeable T>
 class deque : immovable {
  public:
   /**
+   * @brief A non-owning handle that can be used to steal items from the deque.
+   *
+   * All non-owner interactions with the deque should be made through this handle.
+   */
+  class thief_handle {
+
+    friend class deque;
+
+    explicit thief_handle(deque *queue) noexcept : m_queue{queue} { LF_ASSUME(queue != nullptr); }
+
+   public:
+    /**
+     * @brief Check if the deque is empty.
+     */
+    [[nodiscard]]
+    constexpr auto empty(this thief_handle self) noexcept -> bool {
+      std::ptrdiff_t const top = self.m_queue->m_top.load(acquire);
+      std::atomic_thread_fence(seq_cst);
+      std::ptrdiff_t const bottom = self.m_queue->m_bottom.load(acquire);
+      return top >= bottom;
+    }
+    /**
+     * @brief Get the number of elements in the deque.
+     */
+    [[nodiscard]]
+    constexpr auto size(this thief_handle self) noexcept -> std::size_t {
+      return static_cast<std::size_t>(self->ssize());
+    }
+    /**
+     * @brief Get the number of elements in the deque as a signed integer.
+     */
+    [[nodiscard]]
+    constexpr auto ssize(this thief_handle self) noexcept -> std::ptrdiff_t {
+      std::ptrdiff_t const top = self.m_queue->m_top.load(acquire);
+      std::atomic_thread_fence(seq_cst);
+      std::ptrdiff_t const bottom = self.m_queue->m_bottom.load(acquire);
+      return std::max(bottom - top, std::ptrdiff_t{0});
+    }
+    /**
+     * @brief Get the capacity of the deque.
+     */
+    [[nodiscard]]
+    constexpr auto capacity(this thief_handle self) noexcept -> std::ptrdiff_t {
+      return self.m_queue->capacity();
+    }
+    /**
+     * @brief Steal an item from the deque.
+     *
+     * Any threads can try to steal an item from the deque. This operation can
+     * fail if the deque is empty or if another thread simultaneously stole an
+     * item from the deque.
+     */
+    constexpr auto steal(this thief_handle self) noexcept -> steal_t<T> {
+      //
+      std::ptrdiff_t top = self.m_queue->m_top.load(acquire);
+      std::atomic_thread_fence(seq_cst);
+      std::ptrdiff_t const bottom = self.m_queue->m_bottom.load(acquire);
+
+      if (top < bottom) {
+        // Must load *before* acquiring the slot as slot may be overwritten immediately after
+        // acquiring. This load is NOT required to be atomic even-though it may race with an overwrite
+        // as we only return the value if we win the race below guaranteeing we had no race during our
+        // read. If we loose the race then 'x' could be corrupt due to read-during-write race but as T
+        // is trivially destructible this does not matter.
+        T tmp = self.m_queue->m_buf.load(top);
+
+        static_assert(std::is_trivially_destructible_v<T>, "'atomicable' should guarantee this already");
+
+        if (!self.m_queue->m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
+          return {.code = err::lost, .val = {}};
+        }
+        return {.code = err::none, .val = tmp};
+      }
+      return {.code = err::empty, .val = {}};
+    }
+
+   private:
+    deque *m_queue;
+  };
+
+  /**
    * @brief The type of the elements in the deque.
    */
   using value_type = T;
@@ -193,27 +274,39 @@ class deque : immovable {
    *
    * @param cap The capacity of the deque (will be rounded to the next power of two).
    */
-  constexpr explicit deque(std::size_t cap);
-  /**
-   * @brief Get the number of elements in the deque.
-   */
-  [[nodiscard]]
-  constexpr auto size() const noexcept -> std::size_t;
-  /**
-   * @brief Get the number of elements in the deque as a signed integer.
-   */
-  [[nodiscard]]
-  constexpr auto ssize() const noexcept -> std::ptrdiff_t;
-  /**
-   * @brief Get the capacity of the deque.
-   */
-  [[nodiscard]]
-  constexpr auto capacity() const noexcept -> std::ptrdiff_t;
+  constexpr explicit deque(std::size_t cap) : m_buf(safe_cast<std::ptrdiff_t>(std::bit_ceil(cap))) {}
   /**
    * @brief Check if the deque is empty.
    */
   [[nodiscard]]
-  constexpr auto empty() const noexcept -> bool;
+  constexpr auto empty() const noexcept -> bool {
+    std::ptrdiff_t const bottom = m_bottom.load(relaxed);
+    std::ptrdiff_t const top = m_top.load(seq_cst);
+    return top >= bottom;
+  }
+  /**
+   * @brief Get the number of elements in the deque.
+   */
+  [[nodiscard]]
+  constexpr auto size() const noexcept -> std::size_t {
+    return static_cast<std::size_t>(ssize());
+  }
+  /**
+   * @brief Get the number of elements in the deque as a signed integer.
+   */
+  [[nodiscard]]
+  constexpr auto ssize() const noexcept -> std::ptrdiff_t {
+    std::ptrdiff_t const bottom = m_bottom.load(relaxed);
+    std::ptrdiff_t const top = m_top.load(seq_cst);
+    return std::max(bottom - top, std::ptrdiff_t{0});
+  }
+  /**
+   * @brief Get the capacity of the deque.
+   */
+  [[nodiscard]]
+  constexpr auto capacity() const noexcept -> std::ptrdiff_t {
+    return m_buf.capacity();
+  }
   /**
    * @brief Push an item into the deque.
    *
@@ -236,13 +329,9 @@ class deque : immovable {
   constexpr auto
   pop(Fn &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<Fn>) -> std::invoke_result_t<Fn>;
   /**
-   * @brief Steal an item from the deque.
-   *
-   * Any threads can try to steal an item from the deque. This operation can
-   * fail if the deque is empty or if another thread simultaneously stole an
-   * item from the deque.
+   * @brief Get a non-owning `thief_handle` that can be used to steal items from the deque.
    */
-  constexpr auto steal() noexcept -> steal_t<T>;
+  constexpr auto thief() noexcept -> thief_handle { return thief_handle{this}; }
 
  private:
   alignas(k_cache_line) atomic_ring_buf<T> m_buf;
@@ -256,33 +345,6 @@ class deque : immovable {
   static constexpr std::memory_order release = std::memory_order_release;
   static constexpr std::memory_order seq_cst = std::memory_order_seq_cst;
 };
-
-template <dequeable T>
-constexpr deque<T>::deque(std::size_t cap) : m_buf(safe_cast<std::ptrdiff_t>(std::bit_ceil(cap))) {}
-
-template <dequeable T>
-constexpr auto deque<T>::size() const noexcept -> std::size_t {
-  return static_cast<std::size_t>(ssize());
-}
-
-template <dequeable T>
-constexpr auto deque<T>::ssize() const noexcept -> std::ptrdiff_t {
-  std::ptrdiff_t const bottom = m_bottom.load(relaxed);
-  std::ptrdiff_t const top = m_top.load(seq_cst);
-  return std::max(bottom - top, std::ptrdiff_t{0});
-}
-
-template <dequeable T>
-constexpr auto deque<T>::capacity() const noexcept -> std::ptrdiff_t {
-  return m_buf.capacity();
-}
-
-template <dequeable T>
-constexpr auto deque<T>::empty() const noexcept -> bool {
-  std::ptrdiff_t const bottom = m_bottom.load(relaxed);
-  std::ptrdiff_t const top = m_top.load(seq_cst);
-  return top >= bottom;
-}
 
 template <dequeable T>
 constexpr auto deque<T>::push(T val) -> std::ptrdiff_t {
@@ -340,30 +402,6 @@ deque<T>::pop(Fn &&when_empty) noexcept(std::is_nothrow_invocable_v<Fn>) -> std:
   }
   m_bottom.store(bottom + 1, relaxed);
   return std::invoke(std::forward<Fn>(when_empty));
-}
-
-template <dequeable T>
-constexpr auto deque<T>::steal() noexcept -> steal_t<T> {
-  std::ptrdiff_t top = m_top.load(acquire);
-  std::atomic_thread_fence(seq_cst);
-  std::ptrdiff_t const bottom = m_bottom.load(acquire);
-
-  if (top < bottom) {
-    // Must load *before* acquiring the slot as slot may be overwritten immediately after
-    // acquiring. This load is NOT required to be atomic even-though it may race with an overwrite
-    // as we only return the value if we win the race below guaranteeing we had no race during our
-    // read. If we loose the race then 'x' could be corrupt due to read-during-write race but as T
-    // is trivially destructible this does not matter.
-    T tmp = m_buf.load(top);
-
-    static_assert(std::is_trivially_destructible_v<T>, "concept 'atomicable' should guarantee this already");
-
-    if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
-      return {.code = err::lost, .val = {}};
-    }
-    return {.code = err::none, .val = tmp};
-  }
-  return {.code = err::empty, .val = {}};
 }
 
 } // namespace lf

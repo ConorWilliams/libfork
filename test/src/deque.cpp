@@ -81,7 +81,7 @@ void test_deque(std::size_t n_pushes, std::size_t n_consumers, bool do_pop) {
       start.arrive_and_wait();
 
       for (;;) {
-        auto [err, item] = deque.steal();
+        auto [err, item] = deque.thief().steal();
 
         switch (err) {
           case lf::err::none:
