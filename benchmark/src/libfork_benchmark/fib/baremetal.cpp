@@ -139,7 +139,7 @@ void fib_recursive_deque(benchmark::State &state) {
 
   state.counters["n"] = static_cast<double>(n);
 
-  lf::deque<std::int64_t> deque;
+  lf::deque<std::int64_t> deque{64};
   tls_deque = &deque;
 
   for (auto _ : state) {
