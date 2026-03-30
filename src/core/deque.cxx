@@ -321,10 +321,12 @@ deque<T>::pop(Fn &&when_empty) noexcept(std::is_nothrow_invocable_v<Fn>) -> std:
 
   std::ptrdiff_t top = m_top.load(relaxed);
 
-  // TODO: match line-for-line with the paper
-
   if (top <= bottom) {
     // Non-empty deque
+
+    // This load is not required to be atomic as we are the exclusive writer.
+    T val = m_buf.load(bottom);
+
     if (top == bottom) {
       // The last item could get stolen, by a stealer that loaded bottom before our write above.
       if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
@@ -334,9 +336,7 @@ deque<T>::pop(Fn &&when_empty) noexcept(std::is_nothrow_invocable_v<Fn>) -> std:
       }
       m_bottom.store(bottom + 1, relaxed);
     }
-    // Can delay load until after acquiring slot as only this thread can push(),
-    // This load is not required to be atomic as we are the exclusive writer.
-    return m_buf.load(bottom);
+    return val;
   }
   m_bottom.store(bottom + 1, relaxed);
   return std::invoke(std::forward<Fn>(when_empty));
