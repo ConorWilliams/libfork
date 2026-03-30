@@ -71,6 +71,13 @@ export class geometric_stack {
  public:
   [[nodiscard]]
   constexpr auto checkpoint() noexcept -> checkpoint_t {
+
+    // TODO: revisit if this + exception is worth is for no-alloc recoverability.
+
+    // if (!m_root) [[unlikely]] {
+    //   m_root.reset(new heap);
+    // }
+
     return checkpoint_t{m_root.get()};
   }
 

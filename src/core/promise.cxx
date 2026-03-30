@@ -1,6 +1,4 @@
 module;
-#include <version>
-
 #include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/compiler.hpp"
 #include "libfork/__impl/exception.hpp"
@@ -251,7 +249,7 @@ struct awaitable : std::suspend_always {
    * @brief In a separate function to allow it to be placed in cold block.
    */
   template <typename T>
-  constexpr void cleanup_and_stash(this awaitable self, coro<promise_type<T, Context>> parent) noexcept {
+  constexpr void stash_and_resume(this awaitable self, coro<promise_type<T, Context>> parent) noexcept {
     // Clean-up the child that will never be resumed.
     self.child->handle().destroy();
     stash_current_exception(&parent.promise().frame);
@@ -270,8 +268,7 @@ struct awaitable : std::suspend_always {
 
     if (parent.promise().frame.is_cancelled()) [[unlikely]] {
       // Noop if canceled, must clean-up the child that will never be resumed.
-      self.child->handle().destroy();
-      return parent;
+      return self.child->handle().destroy(), parent;
     }
 
     // Propagate parent->child relationships
@@ -288,8 +285,7 @@ struct awaitable : std::suspend_always {
       LF_TRY {
         not_null(thread_context<Context>)->push(frame_handle{key, &parent.promise().frame});
       } LF_CATCH_ALL {
-        self.cleanup_and_stash(parent);
-        return parent;
+        return self.stash_and_resume(parent), parent;
       }
     }
 
@@ -423,7 +419,7 @@ struct join_awaitable {
 
 // =============== Frame mixin =============== //
 
-template <worker_context Context>
+template <worker_context Ctx>
 struct mixin_frame {
 
   // === For internal use === //
@@ -441,54 +437,60 @@ struct mixin_frame {
   // --- Allocation
 
   static auto operator new(std::size_t sz) -> void * {
-    void *ptr = not_null(thread_context<Context>)->allocator().push(sz);
+    void *ptr = not_null(thread_context<Ctx>)->allocator().push(sz);
     LF_ASSUME(is_aligned<k_new_align>(ptr));
     return std::assume_aligned<k_new_align>(ptr);
   }
 
   static auto operator delete(void *p, std::size_t sz) noexcept -> void {
-    not_null(thread_context<Context>)->allocator().pop(p, sz);
+    not_null(thread_context<Ctx>)->allocator().pop(p, sz);
   }
 
   // --- Await transformations
 
   template <category Cat, typename R, typename Fn, typename... Args>
-  [[nodiscard]]
-  constexpr auto await_transform(this auto &self, pkg<Cat, Context, R, Fn, Args...> &&pkg) noexcept
-      -> awaitable<Cat, Context> {
+  static constexpr auto await_transform_pkg(pkg<Cat, Ctx, R, Fn, Args...> &&pkg) -> awaitable<Cat, Ctx> {
 
-    using U = async_result_t<Fn, Context, Args...>;
+    using U = async_result_t<Fn, Ctx, Args...>;
 
-    LF_TRY {
+    // clang-format off
 
-      // clang-format off
+    promise_type<U, Ctx> *child_promise = access::promise<Ctx>(std::move(pkg.args).apply(
+      [&](auto &&...args) LF_HOF(std::invoke(fwd_fn<Fn>(pkg.fn), env<Ctx>{}, LF_FWD(args)...))
+    ));
 
-      auto *child_promise = access::promise<Context>(std::move(pkg.args).apply(
-        [&](auto &&...args) LF_HOF(std::invoke(fwd_fn<Fn>(pkg.fn), env<Context>{}, LF_FWD(args)...))
-      ));
+    // clang-format on
 
-      // clang-format on
+    LF_ASSUME(child_promise);
 
-      LF_ASSUME(child_promise);
+    // void can signal drop return.
+    static_assert(std::same_as<R, U> || std::is_void_v<R>);
 
-      if constexpr (!std::is_void_v<R>) {
-        child_promise->return_address = pkg.return_address;
-      } else {
-        if constexpr (!std::is_void_v<U>) {
-          // Set child's return address to null to inhibit the return
-          // TODO: add test for this
-          child_promise->return_address = nullptr;
-        }
-      }
+    // TODO: tests for null path
 
-      return {.child = &child_promise->frame};
-    } LF_CATCH_ALL {
-      stash_current_exception(&self.frame);
-      return {.child = nullptr};
+    if constexpr (!std::is_void_v<R>) {
+      child_promise->return_address = pkg.return_address;
+    } else if constexpr (!std::is_void_v<U>) {
+      // Set child's return address to null to inhibit the return
+      // TODO: add test for this
+      child_promise->return_address = nullptr;
     }
+
+    return {.child = &child_promise->frame};
   }
 
-  constexpr auto await_transform(this auto &self, join_type) noexcept -> join_awaitable<Context> {
+  template <category Cat, typename R, typename Fn, typename... Args>
+  constexpr auto
+  await_transform(this auto &self, pkg<Cat, Ctx, R, Fn, Args...> &&pkg) noexcept -> awaitable<Cat, Ctx> {
+    LF_TRY {
+      return self.await_transform_pkg(std::move(pkg));
+    } LF_CATCH_ALL {
+      stash_current_exception(&self.frame);
+    }
+    return {.child = nullptr};
+  }
+
+  constexpr auto await_transform(this auto &self, join_type) noexcept -> join_awaitable<Ctx> {
     return {.frame = &self.frame};
   }
 
@@ -525,7 +527,6 @@ struct promise_type : mixin_frame<Context> {
     requires std::assignable_from<T &, U &&>
   constexpr void return_value(U &&value) noexcept(std::is_nothrow_assignable_v<T &, U &&>) {
     if (return_address) {
-      // TODO: add the appropriate await_transforms
       *return_address = LF_FWD(value);
     }
   }
