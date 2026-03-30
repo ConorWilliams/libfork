@@ -211,7 +211,7 @@ class deque : immovable {
      */
     [[nodiscard]]
     constexpr auto size(this thief_handle self) noexcept -> std::size_t {
-      return static_cast<std::size_t>(self->ssize());
+      return static_cast<std::size_t>(self.ssize());
     }
     /**
      * @brief Get the number of elements in the deque as a signed integer.
