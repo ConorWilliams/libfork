@@ -337,8 +337,6 @@ deque<T>::pop(Fn &&when_empty) noexcept(std::is_nothrow_invocable_v<Fn>) -> std:
   return std::invoke(std::forward<Fn>(when_empty));
 }
 
-// TODO: READ: https://dl.acm.org/doi/epdf/10.1145/2544173.2509514
-
 template <dequeable T>
 constexpr auto deque<T>::steal() noexcept -> steal_t<T> {
   std::ptrdiff_t top = m_top.load(acquire);
