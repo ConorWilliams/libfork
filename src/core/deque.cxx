@@ -217,9 +217,9 @@ class deque : immovable {
   /**
    * @brief Push an item into the deque.
    *
-   * Only the owner thread can insert an item into the deque.
-   * This will throw an exception if the deque is full.
-   * This returns the number of elements in the deque before the push.
+   * Only the owner thread can insert an item into the deque. This will throw
+   * an exception if the deque is full. This returns the number of elements in
+   * the deque before the push.
    *
    * @param val Value to add to the deque.
    */
@@ -227,8 +227,9 @@ class deque : immovable {
   /**
    * @brief Pop an item from the deque.
    *
-   * Only the owner thread can pop out an item from the deque. If the buffer is empty calls `when_empty` and
-   * returns the result. By default, `when_empty` is a no-op that returns a null `std::optional<T>`.
+   * Only the owner thread can pop out an item from the deque. If the buffer is
+   * empty calls `when_empty` and returns the result. By default, `when_empty`
+   * is a no-op that returns a null `std::optional<T>`.
    */
   template <std::invocable Fn = return_nullopt<T>>
     requires std::convertible_to<T, std::invoke_result_t<Fn>>
@@ -237,8 +238,9 @@ class deque : immovable {
   /**
    * @brief Steal an item from the deque.
    *
-   * Any threads can try to steal an item from the deque. This operation can fail if the deque is
-   * empty or if another thread simultaneously stole an item from the deque.
+   * Any threads can try to steal an item from the deque. This operation can
+   * fail if the deque is empty or if another thread simultaneously stole an
+   * item from the deque.
    */
   constexpr auto steal() noexcept -> steal_t<T>;
 
@@ -292,12 +294,17 @@ constexpr auto deque<T>::push(T val) -> std::ptrdiff_t {
     LF_THROW(deque_full{});
   }
 
-  // Construct new object, this does not have to be atomic as no one can steal this item until
-  // after we store the new value of bottom, ordering is maintained by surrounding atomics.
+  // Construct new object, this does not have to be atomic as no one can steal
+  // this item until after we store the new value of bottom, ordering is
+  // maintained by surrounding atomics.
   m_buf.store(bottom, val);
 
   std::atomic_thread_fence(release);
   m_bottom.store(bottom + 1, relaxed);
+
+  // This was the size just befor the push, upon return the size could be any
+  // smaller number, down to zero, as stealers could have stolen all the
+  // tasks.
   return ssize;
 }
 
