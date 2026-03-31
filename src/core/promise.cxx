@@ -195,7 +195,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
       return parent->handle();
     case category::fork:
 
-      Context *context = not_null(thread_context<Context>);
+      Context *context = get_context<Context>();
 
       if (frame_handle last_pushed = context->pop()) {
         // No-one stole continuation, we are the exclusive owner of parent -> just keep ripping!
@@ -293,7 +293,7 @@ struct awaitable : std::suspend_always {
       // use-after-free to then access self in the following line to fetch the
       // handle.
       LF_TRY {
-        not_null(thread_context<Context>)->push(frame_handle{key(), &parent.promise().frame});
+        get_context<Context>()->push(frame_handle{key(), &parent.promise().frame});
       } LF_CATCH_ALL {
         return self.stash_and_resume(parent), parent;
       }
@@ -313,7 +313,7 @@ struct join_awaitable {
   frame_type<Context> *frame;
 
   constexpr auto take_stack_and_reset(this join_awaitable self) noexcept -> void {
-    Context *context = not_null(thread_context<Context>);
+    Context *context = get_context<Context>();
     LF_ASSUME(self.frame->stack_ckpt != context->allocator().checkpoint());
     context->allocator().acquire(std::as_const(self.frame->stack_ckpt));
     self.frame->reset_counters();
@@ -447,14 +447,12 @@ struct mixin_frame {
   // --- Allocation
 
   static auto operator new(std::size_t sz) -> void * {
-    void *ptr = not_null(thread_context<Ctx>)->allocator().push(sz);
+    void *ptr = get_allocator<Ctx>().push(sz);
     LF_ASSUME(is_aligned<k_new_align>(ptr));
     return std::assume_aligned<k_new_align>(ptr);
   }
 
-  static auto operator delete(void *p, std::size_t sz) noexcept -> void {
-    not_null(thread_context<Ctx>)->allocator().pop(p, sz);
-  }
+  static auto operator delete(void *p, std::size_t sz) noexcept -> void { get_allocator<Ctx>().pop(p, sz); }
 
   // --- Await transformations
 
@@ -519,7 +517,7 @@ struct promise_type<void, Context> : mixin_frame<Context> {
   // Putting init here allows:
   //  1. Frame not no need to know about the checkpoint type
   //  2. Compiler merge double read of thread local here and in allocator
-  frame_type<Context> frame{not_null(thread_context<Context>)->allocator().checkpoint()};
+  frame_type<Context> frame{get_allocator<Context>().checkpoint()};
 
   constexpr auto get_return_object() noexcept -> task<void> { return access::task(this); }
 
@@ -534,7 +532,7 @@ struct promise_type : mixin_frame<Context> {
   // Putting init here allows:
   //  1. Frame not no need to know about the checkpoint type
   //  2. Compiler merge double read of thread local here and in allocator
-  frame_type<Context> frame{not_null(thread_context<Context>)->allocator().checkpoint()};
+  frame_type<Context> frame{get_allocator<Context>().checkpoint()};
   T *return_address;
 
   constexpr auto get_return_object() noexcept -> task<T> { return access::task(this); }

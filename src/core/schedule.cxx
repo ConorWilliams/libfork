@@ -45,6 +45,8 @@ constexpr auto schedule(Context *context, Fn &&fn, Args &&...args) noexcept -> a
 
   // TODO: make sure this is exception safe and correctly qualifed
 
+  LF_ASSUME(context != nullptr);
+
   // This is what the async function will return.
   using result_type = async_result_t<Fn, Context, Args...>;
 
@@ -54,7 +56,7 @@ constexpr auto schedule(Context *context, Fn &&fn, Args &&...args) noexcept -> a
   // TODO: make sure we're cancel safe
 
   // TODO: Before doing this we must be on a valid context.
-  LF_ASSUME(thread_context<Context> == context);
+  LF_ASSUME(get_context<Context>() == context);
 
   auto *promise = access::promise<Context>(
       std::invoke(std::forward<Fn>(fn), env<Context>{}, std::forward<Args>(args)...));
@@ -62,7 +64,7 @@ constexpr auto schedule(Context *context, Fn &&fn, Args &&...args) noexcept -> a
   // TODO: expose cancellable?
   promise->frame.parent.block = root_block.get();
   promise->frame.cancel = nullptr;
-  promise->frame.stack_ckpt = thread_context<Context>->allocator().checkpoint();
+  promise->frame.stack_ckpt = get_allocator<Context>().checkpoint();
   promise->frame.kind = lf::category::root;
 
   if constexpr (!std::is_void_v<result_type>) {
