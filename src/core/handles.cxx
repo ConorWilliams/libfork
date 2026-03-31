@@ -6,11 +6,6 @@ import :frame;
 
 namespace lf {
 
-// =================== Lock and key =================== //
-
-struct lock {};
-
-inline constexpr lock key = {};
 
 // =================== Frame =================== //
 
@@ -28,7 +23,7 @@ export template <typename T>
 class frame_handle {
  public:
   constexpr frame_handle() = default;
-  constexpr frame_handle(lock, frame_type<T> *ptr) noexcept : m_ptr{ptr} {}
+  constexpr frame_handle(key_t, frame_type<T> *ptr) noexcept : m_ptr{ptr} {}
 
   constexpr auto operator==(frame_handle const &) const noexcept -> bool = default;
 
@@ -48,7 +43,7 @@ export template <typename T>
 class await_handle {
  public:
   constexpr await_handle() = default;
-  constexpr await_handle(lock, frame_type<T> *ptr) noexcept : m_ptr{ptr} {}
+  constexpr await_handle(key_t, frame_type<T> *ptr) noexcept : m_ptr{ptr} {}
 
   constexpr auto operator==(await_handle const &) const noexcept -> bool = default;
 
