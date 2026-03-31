@@ -1,4 +1,6 @@
 module;
+#include <memory>
+
 #include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/compiler.hpp"
 export module libfork.core:stack;
@@ -156,43 +158,76 @@ export class geometric_stack {
 
 LF_NO_INLINE
 constexpr auto geometric_stack::push_cached(std::size_t padded_size) -> void * {
+
+  // Have to be very careful in this function to be strongly exception-safe!
+
   if (!m_root) {
-    // Need to allocate a control block
+    std::unique_ptr<node> top = std::make_unique<node>(nullptr, round_to_multiple<k_page_size>(padded_size));
     m_root.reset(new heap);
-  } else {
-    LF_ASSUME(m_root->top != nullptr);
+    m_root->top = top.release();
 
-    if (m_sp == m_lo) {
-      // There is nothing allocated on the current stacklet/top but it doesn't
-      // have enough space hence, we need to delete top such that we don't end up
-      // with an empty stacklet in the chain. This would break deletion otherwise.
-      delete std::exchange(m_root->top, m_root->top->prev);
-    }
+    // Local copies of the new top.
+    m_lo = m_root->top->stacklet.get();
+    m_sp = m_lo;
+    m_hi = m_lo + m_root->top->size;
 
-    if (m_root->cache != nullptr) {
-      if (m_root->cache->size >= padded_size) {
-        // We have space in the cache, shuffle it to the top.
-        m_root->cache->prev = m_root->top;
-        m_root->top = m_root->cache;
-        m_root->cache = nullptr;
+    // Do the allocation.
+    return std::exchange(m_sp, m_sp + padded_size);
+  }
 
-        // Local copies of the new top
-        m_lo = m_root->top->stacklet.get();
-        m_sp = m_lo;
-        m_hi = m_lo + m_root->top->size;
+  LF_ASSUME(m_root->top != nullptr);
 
-        // Do the allocation.
-        return std::exchange(m_sp, m_sp + padded_size);
+  if (m_root->cache != nullptr) {
+    if (m_root->cache->size >= padded_size) {
+      // We have space in the cache. No allocations on this path, nothing cam throw.
+
+      if (m_sp == m_lo) {
+        // There is nothing allocated on the current stacklet/top but it doesn't
+        // have enough space hence, we need to delete top such that we don't end up
+        // with an empty stacklet in the chain. This would break deletion otherwise.
+        delete std::exchange(m_root->top, m_root->top->prev);
       }
-      // Cache is too small, free it.
-      delete std::exchange(m_root->cache, nullptr);
+
+      // Shuffle cache to the top.
+      m_root->cache->prev = m_root->top;
+      m_root->top = m_root->cache;
+      m_root->cache = nullptr;
+
+      // Local copies of the new top
+      m_lo = m_root->top->stacklet.get();
+      m_sp = m_lo;
+      m_hi = m_lo + m_root->top->size;
+
+      // Do the allocation.
+      return std::exchange(m_sp, m_sp + padded_size);
+    }
+    // Cache is too small, free it. It is safe to delete cache even if the
+    // below throws an exception because it's not part of the observable state
+    // of the stack.
+    delete std::exchange(m_root->cache, nullptr);
+  }
+
+  if (m_sp == m_lo) {
+    // There is nothing allocated on the current stacklet/top but it doesn't
+    // have enough space hence, we need to delete top such that we don't end up
+    // with an empty stacklet in the chain. This would break deletion otherwise.
+    node *old_top = std::exchange(m_root->top, m_root->top->prev);
+
+    LF_TRY {
+      void *sp = push_alloc(padded_size);
+      delete old_top;
+      return sp;
+    } LF_CATCH_ALL {
+      m_root->top = old_top; // Put the empty stacklet back on top if push_alloc threw an exception.
+      LF_RETHROW;
     }
   }
-  // Must fallback to allocation
   return push_alloc(padded_size);
 }
 
 constexpr auto geometric_stack::push_alloc(std::size_t padded_size) -> void * {
+
+  // This upholds the strong exception gaurantee
 
   LF_ASSUME(m_root != nullptr);
 
