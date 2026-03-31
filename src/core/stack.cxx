@@ -227,7 +227,7 @@ constexpr auto geometric_stack::push_cached(std::size_t padded_size) -> void * {
 
 constexpr auto geometric_stack::push_alloc(std::size_t padded_size) -> void * {
 
-  // This upholds the strong exception gaurantee
+  // This upholds the strong exception guarantee
 
   LF_ASSUME(m_root != nullptr);
 
