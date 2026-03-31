@@ -471,11 +471,6 @@ struct mixin_frame {
 
     // clang-format on
 
-    // Putting this here allows:
-    //  1. Frame not no need to know about the checkpoint type
-    //  2. Compiler merge double read of thread local here and in allocator
-    child_promise->frame.stack_ckpt = not_null(thread_context<Ctx>)->allocator().checkpoint();
-
     LF_ASSUME(child_promise);
 
     // void can signal drop return.
@@ -521,7 +516,10 @@ struct mixin_frame {
 template <worker_context Context>
 struct promise_type<void, Context> : mixin_frame<Context> {
 
-  frame_type<Context> frame;
+  // Putting init here allows:
+  //  1. Frame not no need to know about the checkpoint type
+  //  2. Compiler merge double read of thread local here and in allocator
+  frame_type<Context> frame{not_null(thread_context<Context>)->allocator().checkpoint()};
 
   constexpr auto get_return_object() noexcept -> task<void> { return access::task(this); }
 
@@ -533,7 +531,10 @@ struct promise_type<void, Context> : mixin_frame<Context> {
 template <returnable T, worker_context Context>
 struct promise_type : mixin_frame<Context> {
 
-  frame_type<Context> frame;
+  // Putting init here allows:
+  //  1. Frame not no need to know about the checkpoint type
+  //  2. Compiler merge double read of thread local here and in allocator
+  frame_type<Context> frame{not_null(thread_context<Context>)->allocator().checkpoint()};
   T *return_address;
 
   constexpr auto get_return_object() noexcept -> task<T> { return access::task(this); }
