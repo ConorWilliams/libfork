@@ -83,7 +83,7 @@ struct access {
 template <worker_context Context>
 [[nodiscard]]
 LF_NO_INLINE constexpr auto
-final_suspend_continue(Context *context, frame_type<Context> *parent) noexcept -> coro<> {
+final_suspend_continue(Context *context, frame_type<checkpoint_t<Context>> *parent) noexcept -> coro<> {
 
   // An owner is a worker who:
   //
@@ -153,8 +153,8 @@ final_suspend_continue(Context *context, frame_type<Context> *parent) noexcept -
   return std::noop_coroutine();
 }
 
-template <worker_context Context>
-constexpr void finalize_root(frame_type<Context> *frame) noexcept {
+template <worker_context Checkpoint>
+constexpr void finalize_root(frame_type<Checkpoint> *frame) noexcept {
   // Notify potential blockers
   not_null(frame->parent.block)->sem.release();
   // Release the refcount on the shared state
@@ -165,7 +165,7 @@ constexpr void finalize_root(frame_type<Context> *frame) noexcept {
 
 template <worker_context Context>
 [[nodiscard]]
-constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
+constexpr auto final_suspend(frame_type<checkpoint_t<Context>> *frame) noexcept -> coro<> {
 
   // Validate final state
   LF_ASSUME(frame->steals == 0);
@@ -180,7 +180,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
   }
 
   // Safe to access union
-  frame_type<Context> *parent = not_null(frame->parent.frame);
+  frame_type<checkpoint_t<Context>> *parent = not_null(frame->parent.frame);
 
   // Read before destroy
   category const kind = frame->kind;
@@ -224,8 +224,8 @@ struct final_awaitable : std::suspend_always {
 /**
  * @brief Call inside a catch block, stash current exception in `frame`.
  */
-template <worker_context Context>
-constexpr void stash_current_exception(frame_type<Context> *frame) noexcept {
+template <worker_context Checkpoint>
+constexpr void stash_current_exception(frame_type<Checkpoint> *frame) noexcept {
   // No synchronization is done via exception_bit, hence we can use relaxed atomics
   // and rely on the usual fork/join synchronization to ensure memory ordering.
   if (frame->atomic_except().exchange(1, std::memory_order_relaxed) == 0) {
@@ -236,7 +236,7 @@ constexpr void stash_current_exception(frame_type<Context> *frame) noexcept {
 
     // TODO: make sure exceptions are cancel-safe (I think now cancellation can leak)
 
-    frame->except = new frame_type<Context>::except_type{
+    frame->except = new frame_type<Checkpoint>::except_type{
         .stashed = frame->parent,
         .exception = std::move(exception),
     };
@@ -248,7 +248,7 @@ struct awaitable : std::suspend_always {
 
   static_assert(Cat == category::call || Cat == category::fork, "Invalid category for awaitable");
 
-  frame_type<Context> *child;
+  frame_type<checkpoint_t<Context>> *child;
 
   /**
    * @brief In a separate function to allow it to be placed in cold block.
@@ -308,9 +308,7 @@ struct awaitable : std::suspend_always {
 template <worker_context Context>
 struct join_awaitable {
 
-  using except_type = frame_type<Context>::except_type;
-
-  frame_type<Context> *frame;
+  frame_type<checkpoint_t<Context>> *frame;
 
   constexpr auto take_stack_and_reset(this join_awaitable self) noexcept -> void {
     Context *context = not_null(thread_context<Context>);
@@ -403,7 +401,7 @@ struct join_awaitable {
   [[noreturn]]
   constexpr auto rethrow_exception(this join_awaitable self) -> void {
     // Local copy
-    except_type except = std::move(*self.frame->except);
+    auto except = std::move(*self.frame->except);
 
     // Clean-up exception state
     delete self.frame->except;
@@ -521,7 +519,7 @@ struct mixin_frame {
 template <worker_context Context>
 struct promise_type<void, Context> : mixin_frame<Context> {
 
-  frame_type<Context> frame;
+  frame_type<checkpoint_t<Context>> frame;
 
   constexpr auto get_return_object() noexcept -> task<void> { return access::task(this); }
 
@@ -533,7 +531,7 @@ struct promise_type<void, Context> : mixin_frame<Context> {
 template <returnable T, worker_context Context>
 struct promise_type : mixin_frame<Context> {
 
-  frame_type<Context> frame;
+  frame_type<checkpoint_t<Context>> frame;
   T *return_address;
 
   constexpr auto get_return_object() noexcept -> task<T> { return access::task(this); }

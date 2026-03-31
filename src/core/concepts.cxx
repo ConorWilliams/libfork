@@ -90,12 +90,6 @@ concept stack_allocator = std::is_object_v<T> && requires (T allocator, std::siz
   { allocator.acquire(constify(allocator.checkpoint())) } noexcept -> std::same_as<void>;
 };
 
-/**
- * @brief Fetch the checkpoint type of a stack allocator `T`.
- */
-export template <stack_allocator T>
-using checkpoint_t = decltype(std::declval<T &>().checkpoint());
-
 // ==== Context
 
 export template <typename T>
@@ -130,6 +124,12 @@ concept worker_context =
  */
 export template <worker_context T>
 using allocator_t = std::remove_reference_t<decltype(std::declval<T &>().allocator())>;
+
+/**
+ * @brief Fetch the checkpoint type of a worker context `T`.
+ */
+export template <stack_allocator T>
+using checkpoint_t = decltype(std::declval<allocator_t<T> &>().checkpoint());
 
 // ==== Forward-decl
 

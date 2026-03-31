@@ -12,6 +12,16 @@ struct lock {};
 
 inline constexpr lock key = {};
 
+namespace oh {
+
+/**
+ * @brief Fetch the checkpoint type of a worker context `T`.
+ */
+export template <typename T>
+using checkpoint_t = decltype(std::declval<T &>().allocator().checkpoint());
+
+} // namespace oh
+
 // =================== Frame =================== //
 
 // TODO: api + test this is lock-free
@@ -28,14 +38,14 @@ export template <typename T>
 class frame_handle {
  public:
   constexpr frame_handle() = default;
-  constexpr frame_handle(lock, frame_type<T> *ptr) noexcept : m_ptr{ptr} {}
+  constexpr frame_handle(lock, frame_type<oh::checkpoint_t<T>> *ptr) noexcept : m_ptr{ptr} {}
 
   constexpr auto operator==(frame_handle const &) const noexcept -> bool = default;
 
   explicit operator bool() const noexcept { return m_ptr != nullptr; }
 
  private:
-  frame_type<T> *m_ptr = nullptr;
+  frame_type<oh::checkpoint_t<T>> *m_ptr = nullptr;
 };
 
 // =================== Await =================== //
@@ -48,14 +58,14 @@ export template <typename T>
 class await_handle {
  public:
   constexpr await_handle() = default;
-  constexpr await_handle(lock, frame_type<T> *ptr) noexcept : m_ptr{ptr} {}
+  constexpr await_handle(lock, frame_type<oh::checkpoint_t<T>> *ptr) noexcept : m_ptr{ptr} {}
 
   constexpr auto operator==(await_handle const &) const noexcept -> bool = default;
 
   explicit operator bool() const noexcept { return m_ptr != nullptr; }
 
  private:
-  frame_type<T> *m_ptr = nullptr;
+  frame_type<oh::checkpoint_t<T>> *m_ptr = nullptr;
 };
 
 } // namespace lf

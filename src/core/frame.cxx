@@ -5,10 +5,8 @@ export module libfork.core:frame;
 
 import std;
 
-import :concepts;
 import :constants;
 import :utility;
-import :thread_locals;
 
 namespace lf {
 // =================== Cancellation =================== //
@@ -55,12 +53,8 @@ export enum class category : std::uint8_t {
 
 // TODO: make everything (deque etc) allocator aware...
 
-export template <typename Context>
+export template <typename Checkpoint>
 struct frame_type {
-
-  using context_type = Context;
-  using allocator_type = allocator_t<Context>;
-  using checkpoint_type = checkpoint_t<allocator_type>;
 
   union parent_union {
     frame_type *frame;
@@ -83,9 +77,8 @@ struct frame_type {
 
   cancellation *cancel;
 
-  // TODO: drop default constructible requirement?
   [[no_unique_address]]
-  checkpoint_type stack_ckpt;
+  Checkpoint stack_ckpt;
 
   ATOMIC_ALIGN(std::uint32_t) joins = 0;        // Atomic is 32 bits for speed
   std::uint16_t steals = 0;                     // In debug do overflow checking

@@ -33,10 +33,10 @@ static_assert(lf::worker_context<dummy_context>);
 
 TEST_CASE("Promise test", "[promise]") {
 
-  using frame_t = lf::frame_type<dummy_context>;
+  using frame_t = lf::frame_type<typename dummy_allocator::ckpt>;
 
   // Check for safe reinterpret_casts
-  STATIC_CHECK(std::is_standard_layout_v<lf::frame_type<dummy_context>>);
+  STATIC_CHECK(std::is_standard_layout_v<frame_t>);
 
   // Check on void
   static_assert(alignof(lf::promise_type<void, dummy_context>) == alignof(frame_t));

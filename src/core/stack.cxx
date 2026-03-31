@@ -46,6 +46,8 @@ export class geometric_stack {
     constexpr key() = default;
   };
 
+  // TODO: consider using `void*` as the checkpoint type to reduce codegen
+
   class checkpoint_t {
    public:
     auto operator==(checkpoint_t const &) const noexcept -> bool = default;
