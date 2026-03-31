@@ -39,23 +39,11 @@ export class geometric_stack {
     std::byte *sp_cache = nullptr; // Cached stack pointer for this stacklet.
   };
 
-  struct key {
+  struct release_key {
     friend geometric_stack;
 
    private:
-    constexpr key() = default;
-  };
-
-  class checkpoint_t {
-   public:
-    auto operator==(checkpoint_t const &) const noexcept -> bool = default;
-
-    constexpr checkpoint_t() = default; // Required to be regular
-
-   private:
-    explicit constexpr checkpoint_t(heap *root) noexcept : m_root(root) {}
-    friend class geometric_stack;
-    heap *m_root = nullptr;
+    constexpr release_key() = default;
   };
 
   [[nodiscard]]
@@ -82,8 +70,8 @@ export class geometric_stack {
 
  public:
   [[nodiscard]]
-  constexpr auto checkpoint() noexcept -> checkpoint_t {
-    return checkpoint_t{m_root.get()};
+  constexpr auto checkpoint() noexcept -> opaque {
+    return {key(), m_root.get()};
   }
 
   [[nodiscard]]
@@ -104,14 +92,14 @@ export class geometric_stack {
     m_sp = static_cast<std::byte *>(ptr);
   }
 
-  constexpr auto prepare_release() noexcept -> key {
+  constexpr auto prepare_release() noexcept -> release_key {
     m_root->sp_cache = m_sp;
     return {};
   }
 
   // TODO: drop noexcept requirement in concept
 
-  constexpr void release([[maybe_unused]] key) noexcept {
+  constexpr void release([[maybe_unused]] release_key) noexcept {
 
     // Potentially throwing so call before release
     heap *fresh_heap = new heap;
@@ -125,10 +113,13 @@ export class geometric_stack {
     m_hi = nullptr;
   }
 
-  constexpr void acquire(checkpoint_t ckpt) noexcept {
-    if (ckpt.m_root != m_root.get()) {
+  constexpr void acquire(opaque ckpt) noexcept {
 
-      m_root.reset(ckpt.m_root);
+    heap *ckpt_root = ckpt.cast<heap>();
+
+    if (ckpt_root != m_root.get()) {
+
+      m_root.reset(ckpt_root);
 
       if (m_root->top != nullptr) {
         m_lo = m_root->top->stacklet.get();
