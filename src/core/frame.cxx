@@ -74,7 +74,7 @@ struct frame_type {
 
   // == Member variables == //
 
-  // TODO: add checked accesors for all the things (including except etc)
+  // TODO: add checked accessors for all the things (including except etc)
 
   union {
     parent_union parent;
