@@ -100,7 +100,8 @@ export class geometric_stack {
     m_sp = static_cast<std::byte *>(ptr);
   }
 
-  constexpr auto prepare_release() noexcept -> release_key {
+  [[nodiscard]]
+  constexpr auto prepare_release() const noexcept -> release_key {
     m_root->sp_cache = m_sp;
     return {};
   }
