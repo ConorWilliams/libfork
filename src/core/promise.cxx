@@ -129,8 +129,10 @@ final_suspend_continue(Context *context, frame_type<Context> *parent) noexcept -
     // parent. As we won the race, acquire all writes before resuming.
     std::atomic_thread_fence(std::memory_order_acquire);
 
-    // In case of scenario (2) we must acquire the parent's stack.
-    context->allocator().acquire(std::as_const(parent->stack_ckpt));
+    if (!owner) {
+      // In case of scenario (2) we must acquire the parent's stack.
+      context->allocator().acquire(std::as_const(parent->stack_ckpt));
+    }
 
     // Must reset parent's control block before resuming parent.
     parent->reset_counters();

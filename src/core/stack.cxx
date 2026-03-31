@@ -114,21 +114,22 @@ export class geometric_stack {
   }
 
   constexpr void acquire(opaque ckpt) noexcept {
-    if (heap *ckpt_root = ckpt.cast<heap>(); ckpt_root != m_root.get()) {
 
-      m_root.reset(ckpt_root);
+    heap *ckpt_root = ckpt.cast<heap>();
 
-      if (m_root) {
-        LF_ASSUME(m_root->top != nullptr);
-        m_lo = m_root->top->stacklet.get();
-        m_sp = m_root->sp_cache;
-        m_hi = m_lo + m_root->top->size;
-      } else {
-        m_lo = nullptr;
-        m_sp = nullptr;
-        m_hi = nullptr;
-      }
+    LF_ASSUME(empty());
+    LF_ASSUME(ckpt_root != m_root.get());
+
+    if (ckpt_root == nullptr) {
+      return;
     }
+
+    m_root.reset(ckpt_root);
+
+    LF_ASSUME(m_root->top != nullptr);
+    m_lo = m_root->top->stacklet.get();
+    m_sp = m_root->sp_cache;
+    m_hi = m_lo + m_root->top->size;
   }
 
  private:

@@ -62,20 +62,19 @@ consteval auto constify(T &&x) noexcept -> std::add_const_t<T> &;
  *
  * // TODO: define if release is required before acquire?
  *
- * - After construction `this` is in the empty state and push is valid.
+ * - After construction `this` is empty and push is valid.
  * - Pop is valid provided the FILO order is respected.
  * - Push produces pointers aligned to __STDCPP_DEFAULT_NEW_ALIGNMENT__.
  * - Destruction is expected to only occur when the stack is empty.
  * - Result of `.checkpoint()` is expected to:
  *     - Be "cheap to copy".
- *     - Has a null state (default constructed) that only compares equal to itself.
+ *     - Have a null state (default constructed) that only compares equal to itself.
  *     - Is allowed to return null if push has never been called.
  *     - Compare equal if and only if they belong to the same stack or are both null.
  *     - Have no preconditions about when it's called.
- * - Release detaches the current stack and leaves `this` in the empty state.
+ * - Release detaches the current stack and leaves `this` empty.
  * - Acquire attaches to the stack that the checkpoint came from:
- *     - This is a noop if the checkpoint is from the current stack.
- *     - Otherwise `this` is empty.
+ *     - It is only called the stack is empty
  *
  * Fast-path operations: empty, push, pop, checkpoint
  * Slow-path operations: release, acquire
