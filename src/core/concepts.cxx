@@ -72,7 +72,7 @@ consteval auto constify(T &&x) noexcept -> std::add_const_t<T> &;
  *     - Is allowed to return null if push has never been called.
  *     - Compare equal if and only if they belong to the same stack or are both null.
  *     - Have no preconditions about when it's called.
- * - Prepare release puts the stack into a state which another thread can aquire it.
+ * - Prepare release puts the stack into a state which another thread can acquire it.
  * - Release detaches the current stack and leaves `this` empty.
  *     - This may be called concurrently with acquire
  * - Acquire attaches to the stack that the checkpoint came from:

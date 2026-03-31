@@ -155,7 +155,7 @@ export class geometric_stack {
 LF_NO_INLINE
 constexpr auto geometric_stack::push_cached(std::size_t padded_size) -> void * {
   if (!m_root) {
-    // Need to allocate control block
+    // Need to allocate a control block
     m_root.reset(new heap);
   } else {
     LF_ASSUME(m_root->top != nullptr);
