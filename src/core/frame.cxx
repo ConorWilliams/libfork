@@ -83,7 +83,7 @@ struct frame_type {
 
   // TODO: drop default constructible requirement?
   [[no_unique_address]]
-  checkpoint_type stack_ckpt = not_null(thread_context<Context>)->allocator().checkpoint();
+  checkpoint_type stack_ckpt;
 
   ATOMIC_ALIGN(std::uint32_t) joins = 0;        // Atomic is 32 bits for speed
   std::uint16_t steals = 0;                     // In debug do overflow checking

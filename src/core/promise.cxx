@@ -463,6 +463,11 @@ struct mixin_frame {
 
     // clang-format on
 
+    // Putting this here allows:
+    //  1. Frame not no need to know about the checkpoint type
+    //  2. Compiler merge double read of thread local here and in allocator
+    child_promise->frame.stack_ckpt = not_null(thread_context<Ctx>)->allocator().checkpoint();
+
     LF_ASSUME(child_promise);
 
     // void can signal drop return.
