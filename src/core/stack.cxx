@@ -54,6 +54,7 @@ export class geometric_stack {
 
   constexpr void pop_shuffle() noexcept;
 
+ public:
   [[nodiscard]]
   constexpr auto empty() noexcept -> bool {
     if (m_root == nullptr) {
@@ -63,12 +64,11 @@ export class geometric_stack {
     LF_ASSUME(m_root->top != nullptr);
 
     if (m_root->top->prev != nullptr) {
-      return true;
+      return false;
     }
     return m_sp == m_lo;
   }
 
- public:
   [[nodiscard]]
   constexpr auto checkpoint() noexcept -> opaque {
     return {key(), m_root.get()};
@@ -76,6 +76,8 @@ export class geometric_stack {
 
   [[nodiscard]]
   constexpr auto push(std::size_t size) -> void * {
+    LF_ASSUME(size != 0);
+
     // Round such that next allocation is aligned.
     std::size_t padded_size = round_to_multiple<k_new_align>(size);
 

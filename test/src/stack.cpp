@@ -16,17 +16,21 @@ void check_alignment(void *ptr) {
 
 TEST_CASE("Basic push and pop", "[geometric_stack]") {
   geometric_stack stack;
+  REQUIRE(stack.empty());
 
   void *p1 = stack.push(10);
   check_alignment(p1);
+  REQUIRE(!stack.empty());
 
   void *p2 = stack.push(20);
   check_alignment(p2);
   REQUIRE(p2 != p1);
+  REQUIRE(!stack.empty());
 
   // Pop in FILO order
   stack.pop(p2, 20);
   stack.pop(p1, 10);
+  REQUIRE(stack.empty());
 }
 
 TEST_CASE("Checkpoint and Acquire/Release", "[geometric_stack]") {
@@ -78,6 +82,8 @@ TEST_CASE("Stress test", "[geometric_stack]") {
         auto const &e = entries[j - 1];
         stack.pop(e.ptr, e.size);
       }
+
+      REQUIRE(stack.empty());
     }
   }
 }
@@ -97,6 +103,11 @@ TEST_CASE("Randomized push/pop stress test", "[geometric_stack]") {
   const std::size_t target_pushed = 10'000'000;
 
   while (total_pushed < target_pushed) {
+
+    if (entries.empty()) {
+      REQUIRE(stack.empty());
+    }
+
     if (entries.empty() || push_dist(rng)) {
       std::size_t s = size_dist(rng);
       void *p = stack.push(s);
@@ -116,6 +127,8 @@ TEST_CASE("Randomized push/pop stress test", "[geometric_stack]") {
     stack.pop(e.ptr, e.size);
     entries.pop_back();
   }
+
+  REQUIRE(stack.empty());
 }
 
 TEST_CASE("Spikey randomized push/pop stress test", "[geometric_stack]") {
@@ -141,6 +154,7 @@ TEST_CASE("Spikey randomized push/pop stress test", "[geometric_stack]") {
     bool do_push = true;
 
     if (entries.empty()) {
+      REQUIRE(stack.empty());
       do_push = true;
     } else if (last_was_push) {
       do_push = push_after_push(rng);
@@ -169,4 +183,5 @@ TEST_CASE("Spikey randomized push/pop stress test", "[geometric_stack]") {
     stack.pop(e.ptr, e.size);
     entries.pop_back();
   }
+  REQUIRE(stack.empty());
 }
