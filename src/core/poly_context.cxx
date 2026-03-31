@@ -16,9 +16,9 @@ class basic_poly_context {
 
   auto allocator() noexcept -> Alloc & { return m_allocator; }
 
-  virtual void post(await_handle<checkpoint_type>) = 0;
-  virtual void push(frame_handle<checkpoint_type>) = 0;
-  virtual auto pop() noexcept -> frame_handle<checkpoint_type> = 0;
+  virtual void post(await_handle<basic_poly_context, checkpoint_type>) = 0;
+  virtual void push(frame_handle<basic_poly_context, checkpoint_type>) = 0;
+  virtual auto pop() noexcept -> frame_handle<basic_poly_context, checkpoint_type> = 0;
 
   virtual ~basic_poly_context() = default;
 

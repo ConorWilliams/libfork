@@ -92,10 +92,10 @@ concept stack_allocator = std::is_object_v<T> && requires (T allocator, std::siz
 
 // ==== Context
 
-export template <typename T>
+export template <typename Context, typename Checkpoint>
 class frame_handle;
 
-export template <typename T>
+export template <typename Context, typename Checkpoint>
 class await_handle;
 
 template <typename T>
@@ -124,10 +124,10 @@ using checkpoint_t = decltype(std::declval<allocator_t<T> &>().checkpoint());
  */
 export template <typename T>
 concept worker_context =
-    std::is_object_v<T> && requires (T context, frame_handle<checkpoint_t<T>> frame, await_handle<checkpoint_t<T>> await) {
+    std::is_object_v<T> && requires (T context, frame_handle<T, checkpoint_t<T>> frame, await_handle<T, checkpoint_t<T>> await) {
       { context.post(await) } -> std::same_as<void>;
       { context.push(frame) } -> std::same_as<void>;
-      { context.pop() } noexcept -> std::same_as<frame_handle<checkpoint_t<T>>>;
+      { context.pop() } noexcept -> std::same_as<frame_handle<T, checkpoint_t<T>>>;
       { context.allocator() } noexcept -> ref_to_stack_allocator;
     };
 

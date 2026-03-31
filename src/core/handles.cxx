@@ -24,7 +24,7 @@ inline constexpr lock key = {};
 //  - It is trivially copyable/constructible/destructible
 //  - It has a null value, you can test if it is null
 //  - You can store it in an atomic and it is lock-free
-export template <typename Checkpoint>
+export template <typename Context, typename Checkpoint>
 class frame_handle {
  public:
   constexpr frame_handle() = default;
@@ -44,7 +44,7 @@ class frame_handle {
 // it should check and potentially crash if the number of forks exceeds the
 // maximum determined by uint16_max
 
-export template <typename Checkpoint>
+export template <typename Context, typename Checkpoint>
 class await_handle {
  public:
   constexpr await_handle() = default;

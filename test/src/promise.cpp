@@ -21,9 +21,9 @@ struct dummy_allocator {
 static_assert(lf::stack_allocator<dummy_allocator>);
 
 struct dummy_context {
-  void post(lf::await_handle<dummy_allocator::ckpt>);
-  void push(lf::frame_handle<dummy_allocator::ckpt>);
-  auto pop() noexcept -> lf::frame_handle<dummy_allocator::ckpt>;
+  void post(lf::await_handle<dummy_context, dummy_allocator::ckpt>);
+  void push(lf::frame_handle<dummy_context, dummy_allocator::ckpt>);
+  auto pop() noexcept -> lf::frame_handle<dummy_context, dummy_allocator::ckpt>;
   auto allocator() noexcept -> dummy_allocator &;
 };
 
