@@ -12,16 +12,6 @@ struct lock {};
 
 inline constexpr lock key = {};
 
-namespace oh {
-
-/**
- * @brief Fetch the checkpoint type of a worker context `T`.
- */
-export template <typename T>
-using checkpoint_t = decltype(std::declval<T &>().allocator().checkpoint());
-
-} // namespace oh
-
 // =================== Frame =================== //
 
 // TODO: api + test this is lock-free
@@ -34,18 +24,18 @@ using checkpoint_t = decltype(std::declval<T &>().allocator().checkpoint());
 //  - It is trivially copyable/constructible/destructible
 //  - It has a null value, you can test if it is null
 //  - You can store it in an atomic and it is lock-free
-export template <typename T>
+export template <typename Checkpoint>
 class frame_handle {
  public:
   constexpr frame_handle() = default;
-  constexpr frame_handle(lock, frame_type<oh::checkpoint_t<T>> *ptr) noexcept : m_ptr{ptr} {}
+  constexpr frame_handle(lock, frame_type<Checkpoint> *ptr) noexcept : m_ptr{ptr} {}
 
   constexpr auto operator==(frame_handle const &) const noexcept -> bool = default;
 
   explicit operator bool() const noexcept { return m_ptr != nullptr; }
 
  private:
-  frame_type<oh::checkpoint_t<T>> *m_ptr = nullptr;
+  frame_type<Checkpoint> *m_ptr = nullptr;
 };
 
 // =================== Await =================== //
@@ -54,18 +44,18 @@ class frame_handle {
 // it should check and potentially crash if the number of forks exceeds the
 // maximum determined by uint16_max
 
-export template <typename T>
+export template <typename Checkpoint>
 class await_handle {
  public:
   constexpr await_handle() = default;
-  constexpr await_handle(lock, frame_type<oh::checkpoint_t<T>> *ptr) noexcept : m_ptr{ptr} {}
+  constexpr await_handle(lock, frame_type<Checkpoint> *ptr) noexcept : m_ptr{ptr} {}
 
   constexpr auto operator==(await_handle const &) const noexcept -> bool = default;
 
   explicit operator bool() const noexcept { return m_ptr != nullptr; }
 
  private:
-  frame_type<oh::checkpoint_t<T>> *m_ptr = nullptr;
+  frame_type<Checkpoint> *m_ptr = nullptr;
 };
 
 } // namespace lf

@@ -153,7 +153,7 @@ final_suspend_continue(Context *context, frame_type<checkpoint_t<Context>> *pare
   return std::noop_coroutine();
 }
 
-template <worker_context Checkpoint>
+template <typename Checkpoint>
 constexpr void finalize_root(frame_type<Checkpoint> *frame) noexcept {
   // Notify potential blockers
   not_null(frame->parent.block)->sem.release();
@@ -224,7 +224,7 @@ struct final_awaitable : std::suspend_always {
 /**
  * @brief Call inside a catch block, stash current exception in `frame`.
  */
-template <worker_context Checkpoint>
+template <typename Checkpoint>
 constexpr void stash_current_exception(frame_type<Checkpoint> *frame) noexcept {
   // No synchronization is done via exception_bit, hence we can use relaxed atomics
   // and rely on the usual fork/join synchronization to ensure memory ordering.

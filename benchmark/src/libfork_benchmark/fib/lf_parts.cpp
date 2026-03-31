@@ -51,7 +51,8 @@ static_assert(lf::stack_allocator<linear_allocator>);
 template <lf::stack_allocator Alloc>
 struct vector_ctx {
 
-  using handle_type = lf::frame_handle<vector_ctx>;
+  using checkpoint_type = decltype(std::declval<Alloc &>().checkpoint());
+  using handle_type = lf::frame_handle<checkpoint_type>;
 
   std::vector<handle_type> work;
   Alloc my_allocator;
@@ -60,7 +61,7 @@ struct vector_ctx {
 
   auto allocator() noexcept -> Alloc & { return my_allocator; }
 
-  void post(lf::await_handle<vector_ctx>) {}
+  void post(lf::await_handle<checkpoint_type>) {}
 
   // TODO: try LF_NO_INLINE for final allocator
   LF_NO_INLINE
@@ -76,14 +77,15 @@ struct vector_ctx {
 template <lf::stack_allocator Alloc>
 struct deque_ctx {
 
-  using handle_type = lf::frame_handle<deque_ctx>;
+  using checkpoint_type = decltype(std::declval<Alloc &>().checkpoint());
+  using handle_type = lf::frame_handle<checkpoint_type>;
 
   lf::deque<handle_type> work{64};
   Alloc my_allocator;
 
   auto allocator() noexcept -> Alloc & { return my_allocator; }
 
-  void post(lf::await_handle<deque_ctx>) {}
+  void post(lf::await_handle<checkpoint_type>) {}
 
   // TODO: try LF_NO_INLINE for final allocator
   LF_NO_INLINE
@@ -99,13 +101,14 @@ struct deque_ctx {
 template <lf::stack_allocator Alloc>
 struct poly_vector_ctx final : lf::basic_poly_context<Alloc> {
 
-  using handle_type = lf::frame_handle<lf::basic_poly_context<Alloc>>;
+  using checkpoint_type = typename lf::basic_poly_context<Alloc>::checkpoint_type;
+  using handle_type = lf::frame_handle<checkpoint_type>;
 
   std::vector<handle_type> work;
 
   poly_vector_ctx() { work.reserve(1024); }
 
-  void post(lf::await_handle<lf::basic_poly_context<Alloc>>) override {}
+  void post(lf::await_handle<checkpoint_type>) override {}
 
   void push(handle_type handle) override { work.push_back(handle); }
 
@@ -119,11 +122,12 @@ struct poly_vector_ctx final : lf::basic_poly_context<Alloc> {
 template <lf::stack_allocator Alloc>
 struct poly_deque_ctx final : lf::basic_poly_context<Alloc> {
 
-  using handle_type = lf::frame_handle<lf::basic_poly_context<Alloc>>;
+  using checkpoint_type = typename lf::basic_poly_context<Alloc>::checkpoint_type;
+  using handle_type = lf::frame_handle<checkpoint_type>;
 
   lf::deque<handle_type> work{64};
 
-  void post(lf::await_handle<lf::basic_poly_context<Alloc>>) override {}
+  void post(lf::await_handle<checkpoint_type>) override {}
 
   void push(handle_type handle) override { work.push(handle); }
 

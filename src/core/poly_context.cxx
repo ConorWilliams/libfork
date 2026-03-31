@@ -12,11 +12,13 @@ namespace lf {
 export template <stack_allocator Alloc>
 class basic_poly_context {
  public:
+  using checkpoint_type = decltype(std::declval<Alloc &>().checkpoint());
+
   auto allocator() noexcept -> Alloc & { return m_allocator; }
 
-  virtual void post(await_handle<basic_poly_context>) = 0;
-  virtual void push(frame_handle<basic_poly_context>) = 0;
-  virtual auto pop() noexcept -> frame_handle<basic_poly_context> = 0;
+  virtual void post(await_handle<checkpoint_type>) = 0;
+  virtual void push(frame_handle<checkpoint_type>) = 0;
+  virtual auto pop() noexcept -> frame_handle<checkpoint_type> = 0;
 
   virtual ~basic_poly_context() = default;
 
