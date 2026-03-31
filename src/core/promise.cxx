@@ -277,7 +277,13 @@ struct awaitable : std::suspend_always {
     // Propagate parent->child relationships
     self.child->parent.frame = &parent.promise().frame;
     self.child->cancel = parent.promise().frame.cancel;
-    self.child->kind = Cat;
+
+    if constexpr (Cat == category::call) {
+      // Should be the default
+      LF_ASSUME(self.child->kind == category::call);
+    } else {
+      self.child->kind = Cat;
+    }
 
     if constexpr (Cat == category::fork) {
       // It is critical to pass self by-value here, after the call to push()
