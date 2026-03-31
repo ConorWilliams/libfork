@@ -246,6 +246,8 @@ constexpr void stash_current_exception(frame_type<Context> *frame) noexcept {
 template <category Cat, worker_context Context>
 struct awaitable : std::suspend_always {
 
+  static_assert(Cat == category::call || Cat == category::fork, "Invalid category for awaitable");
+
   frame_type<Context> *child;
 
   /**
