@@ -7,6 +7,8 @@ import std;
 
 import :concepts;
 import :constants;
+import :utility;
+import :thread_locals;
 
 namespace lf {
 // =================== Cancellation =================== //
@@ -72,6 +74,8 @@ struct frame_type {
 
   // == Member variables == //
 
+  // TODO: add checked accessors for all the things (including except etc)
+
   union {
     parent_union parent;
     except_type *except;
@@ -79,6 +83,7 @@ struct frame_type {
 
   cancellation *cancel;
 
+  // TODO: drop default constructible requirement?
   [[no_unique_address]]
   checkpoint_type stack_ckpt;
 
@@ -92,7 +97,7 @@ struct frame_type {
   // Explicitly post construction, this allows the compiler to emit a single
   // instruction for the zero init then an instruction for the joins init,
   // instead of three instructions.
-  constexpr frame_type() noexcept { joins = k_u16_max; }
+  constexpr frame_type(checkpoint_type &&ckpt) noexcept : stack_ckpt(std::move(ckpt)) { joins = k_u16_max; }
 
   [[nodiscard]]
   constexpr auto is_cancelled() const noexcept -> bool {

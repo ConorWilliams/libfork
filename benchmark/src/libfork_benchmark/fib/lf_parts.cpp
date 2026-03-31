@@ -86,7 +86,6 @@ struct deque_ctx {
   void post(lf::await_handle<deque_ctx>) {}
 
   // TODO: try LF_NO_INLINE for final allocator
-  LF_NO_INLINE
   void push(handle_type handle) { work.push(handle); }
 
   auto pop() noexcept -> handle_type {

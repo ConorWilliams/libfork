@@ -1,4 +1,6 @@
 module;
+#include <memory>
+
 #include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/compiler.hpp"
 export module libfork.core:stack;
@@ -39,25 +41,11 @@ export class geometric_stack {
     std::byte *sp_cache = nullptr; // Cached stack pointer for this stacklet.
   };
 
-  struct key {
+  struct release_key {
     friend geometric_stack;
 
    private:
-    constexpr key() = default;
-  };
-
-  class checkpoint_t {
-   public:
-    auto operator==(checkpoint_t const &) const noexcept -> bool = default;
-
-    constexpr checkpoint_t() = default; // Required to be regular
-
-   private:
-    explicit constexpr checkpoint_t(heap *root) noexcept : m_root(root) {
-      LF_ASSUME(root != nullptr); //
-    }
-    friend class geometric_stack;
-    heap *m_root;
+    constexpr release_key() = default;
   };
 
   [[nodiscard]]
@@ -70,85 +58,98 @@ export class geometric_stack {
 
  public:
   [[nodiscard]]
-  constexpr auto checkpoint() noexcept -> checkpoint_t {
+  constexpr auto empty() noexcept -> bool {
+    if (m_root == nullptr) {
+      return true;
+    }
 
-    // TODO: revisit if this + exception is worth is for no-alloc recoverability.
+    LF_ASSUME(m_root->top != nullptr);
 
-    // if (!m_root) [[unlikely]] {
-    //   m_root.reset(new heap);
-    // }
+    if (m_root->top->prev != nullptr) {
+      return false;
+    }
+    return m_sp == m_lo;
+  }
 
-    return checkpoint_t{m_root.get()};
+  [[nodiscard]]
+  constexpr auto checkpoint() noexcept -> opaque {
+    return {key(), m_root.get()};
   }
 
   [[nodiscard]]
   constexpr auto push(std::size_t size) -> void * {
+    LF_ASSUME(size != 0);
+
     // Round such that next allocation is aligned.
     std::size_t padded_size = round_to_multiple<k_new_align>(size);
 
     if (padded_size > safe_cast<std::size_t>(m_hi - m_sp)) [[unlikely]] {
       return push_cached(padded_size);
     }
+
+    LF_ASSUME(m_root != nullptr);
+    LF_ASSUME(m_root->top != nullptr);
+
     return std::exchange(m_sp, m_sp + padded_size);
   }
 
   constexpr void pop(void *ptr, [[maybe_unused]] std::size_t n) noexcept {
+
+    LF_ASSUME(m_root != nullptr);
+    LF_ASSUME(m_root->top != nullptr);
+
     if (m_sp == m_lo) [[unlikely]] {
       pop_shuffle();
     }
     m_sp = static_cast<std::byte *>(ptr);
   }
 
-  constexpr auto prepare_release() noexcept -> key {
+  [[nodiscard]]
+  constexpr auto prepare_release() const noexcept -> release_key {
     m_root->sp_cache = m_sp;
     return {};
   }
 
-  // TODO: drop noexcept requirement in concept
-
-  constexpr void release([[maybe_unused]] key) noexcept {
-
-    // Potentially throwing so call before release
-    heap *fresh_heap = new heap;
-
+  constexpr void release([[maybe_unused]] release_key) noexcept {
+    // Safe even if we are nullptr
     std::ignore = m_root.release();
-
-    // Prime with new heap so that .checkpoint is valid.
-    m_root.reset(fresh_heap);
     m_lo = nullptr;
     m_sp = nullptr;
     m_hi = nullptr;
   }
 
-  constexpr void acquire(checkpoint_t ckpt) noexcept {
-    if (ckpt.m_root != m_root.get()) {
+  constexpr void acquire(opaque ckpt) noexcept {
 
-      m_root.reset(ckpt.m_root);
+    heap *ckpt_root = ckpt.cast<heap>();
 
-      if (m_root->top != nullptr) {
-        m_lo = m_root->top->stacklet.get();
-        m_sp = m_root->sp_cache;
-        m_hi = m_lo + m_root->top->size;
-      } else {
-        m_lo = nullptr;
-        m_sp = nullptr;
-        m_hi = nullptr;
-      }
+    LF_ASSUME(empty());
+    LF_ASSUME(ckpt_root != m_root.get());
+
+    if (ckpt_root == nullptr) {
+      return;
     }
+
+    m_root.reset(ckpt_root);
+
+    LF_ASSUME(m_root->top != nullptr);
+    m_lo = m_root->top->stacklet.get();
+    m_sp = m_root->sp_cache;
+    m_hi = m_lo + m_root->top->size;
   }
 
  private:
   struct deleter {
     static constexpr void operator()(heap *h) noexcept {
       // Should be empty at destruction.
-      LF_ASSUME(h->top == nullptr || h->top->prev == nullptr);
+      LF_ASSUME(h->top != nullptr);
+      LF_ASSUME(h->top->prev == nullptr);
       delete h->cache;
       delete h->top;
       delete h;
     }
   };
 
-  std::unique_ptr<heap, deleter> m_root{new heap}; // The control block, never null.
+  std::unique_ptr<heap, deleter> m_root; // The control block.
 
   std::byte *m_lo = nullptr; // The base pointer for the current stacklet.
   std::byte *m_sp = nullptr; // The stack pointer for the current stacklet.
@@ -158,18 +159,39 @@ export class geometric_stack {
 LF_NO_INLINE
 constexpr auto geometric_stack::push_cached(std::size_t padded_size) -> void * {
 
-  if (m_sp == m_lo && m_root->top != nullptr) {
-    // There is nothing allocated on the current stacklet/top but it doesn't
-    // have enough space hence, we need to delete top such that we don't end up
-    // with an empty stacklet in the chain. This would break deletion otherwise.
-    delete std::exchange(m_root->top, m_root->top->prev);
+  // Have to be very careful in this function to be strongly exception-safe!
+
+  if (!m_root) {
+    std::unique_ptr<node> top = std::make_unique<node>(nullptr, round_to_multiple<k_page_size>(padded_size));
+    m_root.reset(new heap);
+    m_root->top = top.release();
+
+    // Local copies of the new top.
+    m_lo = m_root->top->stacklet.get();
+    m_sp = m_lo;
+    m_hi = m_lo + m_root->top->size;
+
+    // Do the allocation.
+    return std::exchange(m_sp, m_sp + padded_size);
   }
+
+  LF_ASSUME(m_root->top != nullptr);
 
   if (m_root->cache != nullptr) {
     if (m_root->cache->size >= padded_size) {
-      // Set cache as the new top
+      // We have space in the cache. No allocations on this path, nothing cam throw.
+
+      if (m_sp == m_lo) {
+        // There is nothing allocated on the current stacklet/top but it doesn't
+        // have enough space hence, we need to delete top such that we don't end up
+        // with an empty stacklet in the chain. This would break deletion otherwise.
+        delete std::exchange(m_root->top, m_root->top->prev);
+      }
+
+      // Shuffle cache to the top.
       m_root->cache->prev = m_root->top;
-      m_root->top = std::exchange(m_root->cache, nullptr);
+      m_root->top = m_root->cache;
+      m_root->cache = nullptr;
 
       // Local copies of the new top
       m_lo = m_root->top->stacklet.get();
@@ -179,14 +201,35 @@ constexpr auto geometric_stack::push_cached(std::size_t padded_size) -> void * {
       // Do the allocation.
       return std::exchange(m_sp, m_sp + padded_size);
     }
-    // Cache is too small, free it.
+    // Cache is too small, free it. It is safe to delete cache even if the
+    // below throws an exception because it's not part of the observable state
+    // of the stack.
     delete std::exchange(m_root->cache, nullptr);
   }
-  // Must fallback to allocation
+
+  if (m_sp == m_lo) {
+    // There is nothing allocated on the current stacklet/top but it doesn't
+    // have enough space hence, we need to delete top such that we don't end up
+    // with an empty stacklet in the chain. This would break deletion otherwise.
+    node *old_top = std::exchange(m_root->top, m_root->top->prev);
+
+    LF_TRY {
+      void *sp = push_alloc(padded_size);
+      delete old_top;
+      return sp;
+    } LF_CATCH_ALL {
+      m_root->top = old_top; // Put the empty stacklet back on top if push_alloc threw an exception.
+      LF_RETHROW;
+    }
+  }
   return push_alloc(padded_size);
 }
 
 constexpr auto geometric_stack::push_alloc(std::size_t padded_size) -> void * {
+
+  // This upholds the strong exception guarantee
+
+  LF_ASSUME(m_root != nullptr);
 
   constexpr std::size_t growth_factor = 2;
 

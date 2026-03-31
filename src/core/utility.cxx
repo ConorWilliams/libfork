@@ -73,6 +73,40 @@ export struct move_only {
   ~move_only() = default;
 };
 
+class key_t;
+
+constexpr auto key() noexcept -> key_t;
+
+/**
+ * @brief Only way to get one is via un-exported `key()` function.
+ */
+class key_t {
+ public:
+  friend constexpr auto key() noexcept -> key_t { return {}; }
+
+ private:
+  constexpr key_t() = default;
+};
+
+/**
+ * @brief An opaque pointer that only the library can construct.
+ */
+class opaque {
+ public:
+  constexpr opaque() = default;
+  constexpr opaque(key_t, void *ptr) noexcept : m_ptr(ptr) {}
+  constexpr auto operator==(opaque const &) const noexcept -> bool = default;
+
+  template <typename T>
+  [[nodiscard]]
+  auto cast(this opaque self) noexcept -> T * {
+    return static_cast<T *>(self.m_ptr);
+  }
+
+ private:
+  void *m_ptr = nullptr;
+};
+
 /**
  * @brief Basic implementation of a Golang-like defer.
  *
