@@ -3,9 +3,9 @@ export module libfork.core:handles;
 import std;
 
 import :frame;
+import :utility;
 
 namespace lf {
-
 
 // =================== Frame =================== //
 
