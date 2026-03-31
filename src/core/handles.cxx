@@ -12,6 +12,20 @@ struct lock {};
 
 inline constexpr lock key = {};
 
+// =================== Checkpoint =================== //
+
+/**
+ * @brief Fetch the allocator type of a worker context `T`.
+ */
+export template <typename T>
+using allocator_t = std::remove_reference_t<decltype(std::declval<T &>().allocator())>;
+
+/**
+ * @brief Fetch the checkpoint type of a worker context `T`.
+ */
+export template <typename T>
+using checkpoint_t = decltype(std::declval<allocator_t<T> &>().checkpoint());
+
 // =================== Frame =================== //
 
 // TODO: api + test this is lock-free
@@ -24,18 +38,30 @@ inline constexpr lock key = {};
 //  - It is trivially copyable/constructible/destructible
 //  - It has a null value, you can test if it is null
 //  - You can store it in an atomic and it is lock-free
-export template <typename Context, typename Checkpoint>
+export template <typename Context>
 class frame_handle {
  public:
   constexpr frame_handle() = default;
+
+  template <typename Checkpoint>
   constexpr frame_handle(lock, frame_type<Checkpoint> *ptr) noexcept : m_ptr{ptr} {}
 
   constexpr auto operator==(frame_handle const &) const noexcept -> bool = default;
 
   explicit operator bool() const noexcept { return m_ptr != nullptr; }
 
+  /**
+   * @brief Safe accessor to get the underlying typed frame pointer.
+   *
+   * @note This requires Context to be complete.
+   */
+  [[nodiscard]]
+  auto get() const noexcept {
+    return static_cast<frame_type<checkpoint_t<Context>> *>(m_ptr);
+  }
+
  private:
-  frame_type<Checkpoint> *m_ptr = nullptr;
+  void *m_ptr = nullptr;
 };
 
 // =================== Await =================== //
@@ -44,18 +70,30 @@ class frame_handle {
 // it should check and potentially crash if the number of forks exceeds the
 // maximum determined by uint16_max
 
-export template <typename Context, typename Checkpoint>
+export template <typename Context>
 class await_handle {
  public:
   constexpr await_handle() = default;
+
+  template <typename Checkpoint>
   constexpr await_handle(lock, frame_type<Checkpoint> *ptr) noexcept : m_ptr{ptr} {}
 
   constexpr auto operator==(await_handle const &) const noexcept -> bool = default;
 
   explicit operator bool() const noexcept { return m_ptr != nullptr; }
 
+  /**
+   * @brief Safe accessor to get the underlying typed frame pointer.
+   *
+   * @note This requires Context to be complete.
+   */
+  [[nodiscard]]
+  auto get() const noexcept {
+    return static_cast<frame_type<checkpoint_t<Context>> *>(m_ptr);
+  }
+
  private:
-  frame_type<Checkpoint> *m_ptr = nullptr;
+  void *m_ptr = nullptr;
 };
 
 } // namespace lf

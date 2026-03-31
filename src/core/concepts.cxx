@@ -2,6 +2,8 @@ export module libfork.core:concepts;
 
 import std;
 
+import :handles;
+
 namespace lf {
 
 // =========== Atomic related concepts =========== //
@@ -92,26 +94,8 @@ concept stack_allocator = std::is_object_v<T> && requires (T allocator, std::siz
 
 // ==== Context
 
-export template <typename Context, typename Checkpoint>
-class frame_handle;
-
-export template <typename Context, typename Checkpoint>
-class await_handle;
-
 template <typename T>
 concept ref_to_stack_allocator = std::is_lvalue_reference_v<T> && stack_allocator<std::remove_reference_t<T>>;
-
-/**
- * @brief Fetch the allocator type of a worker context `T`.
- */
-export template <typename T>
-using allocator_t = std::remove_reference_t<decltype(std::declval<T &>().allocator())>;
-
-/**
- * @brief Fetch the checkpoint type of a worker context `T`.
- */
-export template <typename T>
-using checkpoint_t = decltype(std::declval<allocator_t<T> &>().checkpoint());
 
 /**
  * @brief Defines the API for a libfork compatible worker context.
@@ -124,10 +108,10 @@ using checkpoint_t = decltype(std::declval<allocator_t<T> &>().checkpoint());
  */
 export template <typename T>
 concept worker_context =
-    std::is_object_v<T> && requires (T context, frame_handle<T, checkpoint_t<T>> frame, await_handle<T, checkpoint_t<T>> await) {
+    std::is_object_v<T> && requires (T context, frame_handle<T> frame, await_handle<T> await) {
       { context.post(await) } -> std::same_as<void>;
       { context.push(frame) } -> std::same_as<void>;
-      { context.pop() } noexcept -> std::same_as<frame_handle<T, checkpoint_t<T>>>;
+      { context.pop() } noexcept -> std::same_as<frame_handle<T>>;
       { context.allocator() } noexcept -> ref_to_stack_allocator;
     };
 
