@@ -171,7 +171,7 @@ constexpr auto ret = [](this auto fib, lf::env<T>, std::int64_t n) -> lf::task<s
 };
 
 template <lf::worker_context T, bool Join = false>
-constexpr auto fork_call = [](this auto fib, lf::env<T>, std::int64_t n) -> lf::task<std::int64_t, T> {
+constexpr auto fork_call = [](this auto fib, std::int64_t n) -> lf::task<std::int64_t, T> {
   if (n < 2) {
     co_return n;
   }
