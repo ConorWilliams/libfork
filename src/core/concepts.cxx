@@ -1,6 +1,10 @@
+module;
+#include "libfork/__impl/utils.hpp"
 export module libfork.core:concepts;
 
 import std;
+
+import :utility;
 
 namespace lf {
 
@@ -137,26 +141,61 @@ using allocator_t = std::remove_reference_t<decltype(std::declval<T &>().allocat
 // ==== Forward-decl
 
 export template <worker_context>
-class env {};
+struct env {
+  explicit constexpr env(key_t) noexcept {}
+};
 
-export template <returnable T>
+export template <returnable T, worker_context Context>
 class task;
 
 // ========== Invocability ========== //
+
+struct not_invocable {};
+
+template <typename Fn, typename Context, typename... Args>
+consteval auto invoke_help() -> specialization_of<std::type_identity> auto {
+  if constexpr (std::invocable<Fn, env<Context>, Args...>) {
+    // Select env dispatch if possible
+    return std::type_identity<std::invoke_result_t<Fn, env<Context>, Args...>>{};
+  } else if constexpr (std::invocable<Fn, Args...>) {
+    // Fallback to normal dispatch
+    return std::type_identity<std::invoke_result_t<Fn, Args...>>{};
+  } else {
+    // Not invocable
+    return std::type_identity<not_invocable>{};
+  }
+}
+
+template <typename Fn, typename Context, typename... Args>
+using maybe_invoke_result_t = decltype(invoke_help<Fn, Context, Args...>())::type;
 
 /**
  * @brief Test if a callable `Fn` when invoked with `Args...` returns an `lf::task`.
  */
 export template <typename Fn, typename Context, typename... Args>
-concept async_invocable = std::invocable<Fn, env<Context>, Args...> &&
-                          specialization_of<std::invoke_result_t<Fn, env<Context>, Args...>, task>;
+concept async_invocable = specialization_of<maybe_invoke_result_t<Fn, Context, Args...>, task>;
+
+// More constrained so it should be selected first
+template <typename Context, typename... Args, async_invocable<Context, Args...> Fn>
+  requires std::invocable<Fn, env<Context>, Args...>
+constexpr auto async_invoke(Fn &&fn, Args &&...args)
+    LF_HOF(std::invoke(std::forward<Fn>(fn), env<Context>{key()}, std::forward<Args>(args)...).get(key()))
+
+template <typename Context, typename... Args, async_invocable<Context, Args...> Fn>
+constexpr auto async_invoke(Fn &&fn, Args &&...args)
+    LF_HOF(std::invoke(std::forward<Fn>(fn), std::forward<Args>(args)...).get(key()))
+
+export template <typename Fn, typename Context, typename... Args>
+concept noexcept_async_invocable =
+    async_invocable<Fn, Context, Args...> &&
+    noexcept(async_invoke<Context, Args...>(std::declval<Fn>(), std::declval<Args>()...));
 
 /**
  * @brief The result type of invoking an async function `Fn` with `Args...`.
  */
 export template <typename Fn, typename Context, typename... Args>
   requires async_invocable<Fn, Context, Args...>
-using async_result_t = std::invoke_result_t<Fn, env<Context>, Args...>::value_type;
+using async_result_t = maybe_invoke_result_t<Fn, Context, Args...>::value_type;
 
 /**
  * @brief Subsumes `async_invocable` and checks the result type is `R`.

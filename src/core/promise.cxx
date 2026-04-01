@@ -29,8 +29,6 @@ struct promise_type;
 
 // =============== Task =============== //
 
-struct access;
-
 /**
  * @brief The return type for libfork's async functions/coroutines.
  *
@@ -47,32 +45,18 @@ struct access;
  *
  * \endrst
  */
-export template <returnable T>
+export template <returnable T, worker_context Context>
 class task {
  public:
   using value_type = T;
+  using context_type = Context;
+
+  constexpr task(key_t, promise_type<T, Context> *promise) noexcept : m_promise(promise) {}
+
+  constexpr auto get(key_t) noexcept -> promise_type<T, Context> * { return m_promise; }
 
  private:
-  friend struct access;
-
-  explicit constexpr task(void *promise) noexcept : m_promise(promise) {}
-
-  void *m_promise;
-};
-
-/**
- * @brief Utility to access the promise within a task.
- */
-struct access {
-  template <worker_context Context, typename T>
-  static constexpr auto task(promise_type<T, Context> *promise) noexcept -> ::lf::task<T> {
-    return ::lf::task<T>{promise};
-  }
-
-  template <worker_context Context, typename T>
-  static constexpr auto promise(::lf::task<T> x) noexcept -> promise_type<T, Context> * {
-    return static_cast<promise_type<T, Context> *>(x.m_promise);
-  }
+  promise_type<T, Context> *m_promise;
 };
 
 // =============== Final =============== //
@@ -431,7 +415,7 @@ struct join_awaitable {
 
 // =============== Frame mixin =============== //
 
-template <worker_context Ctx>
+template <worker_context Context>
 struct mixin_frame {
 
   // === For internal use === //
@@ -448,26 +432,32 @@ struct mixin_frame {
 
   // --- Allocation
 
-  static auto operator new(std::size_t sz) -> void * {
-    void *ptr = get_allocator<Ctx>().push(sz);
+  static auto operator new(std::size_t sz) noexcept(noexcept(get_allocator<Context>().push(sz))) -> void * {
+    void *ptr = get_allocator<Context>().push(sz);
     LF_ASSUME(is_aligned<k_new_align>(ptr));
     return std::assume_aligned<k_new_align>(ptr);
   }
 
-  static auto operator delete(void *p, std::size_t sz) noexcept -> void { get_allocator<Ctx>().pop(p, sz); }
+  static auto operator delete(void *p, std::size_t sz) noexcept -> void {
+    get_allocator<Context>().pop(p, sz);
+  }
 
   // --- Await transformations
 
   template <category Cat, typename R, typename Fn, typename... Args>
-  static constexpr auto await_transform_pkg(pkg<Cat, Ctx, R, Fn, Args...> &&pkg) -> awaitable<Cat, Ctx> {
+  static constexpr auto await_transform_pkg(pkg<Cat, Context, R, Fn, Args...> &&pkg) noexcept(
+      noexcept_async_invocable<Fn, Context, Args...>) -> awaitable<Cat, Context> {
 
-    using U = async_result_t<Fn, Ctx, Args...>;
+    // Required for noexcept specifier to be correct
+    static_assert(std::is_reference_v<Fn> && (... && std::is_reference_v<Args>));
+
+    using U = async_result_t<Fn, Context, Args...>;
 
     // clang-format off
 
-    promise_type<U, Ctx> *child_promise = access::promise<Ctx>(std::move(pkg.args).apply(
-      [&](auto &&...args) LF_HOF(std::invoke(fwd_fn<Fn>(pkg.fn), env<Ctx>{}, LF_FWD(args)...))
-    ));
+    promise_type<U, Context> *child_promise = std::move(pkg.args).apply(
+      [&](auto &&...args) LF_HOF(async_invoke<Context>(fwd_fn<Fn>(pkg.fn), LF_FWD(args)...))
+    );
 
     // clang-format on
 
@@ -490,8 +480,8 @@ struct mixin_frame {
   }
 
   template <category Cat, typename R, typename Fn, typename... Args>
-  constexpr auto
-  await_transform(this auto &self, pkg<Cat, Ctx, R, Fn, Args...> &&pkg) noexcept -> awaitable<Cat, Ctx> {
+  constexpr auto await_transform(this auto &self, pkg<Cat, Context, R, Fn, Args...> &&pkg) noexcept
+      -> awaitable<Cat, Context> {
     LF_TRY {
       return self.await_transform_pkg(std::move(pkg));
     } LF_CATCH_ALL {
@@ -500,7 +490,7 @@ struct mixin_frame {
     return {.child = nullptr};
   }
 
-  constexpr auto await_transform(this auto &self, join_type) noexcept -> join_awaitable<Ctx> {
+  constexpr auto await_transform(this auto &self, join_type) noexcept -> join_awaitable<Context> {
     return {.frame = &self.frame};
   }
 
@@ -521,7 +511,7 @@ struct promise_type<void, Context> : mixin_frame<Context> {
   //  2. Compiler merge double read of thread local here and in allocator
   frame_type<Context> frame{get_allocator<Context>().checkpoint()};
 
-  constexpr auto get_return_object() noexcept -> task<void> { return access::task(this); }
+  constexpr auto get_return_object() noexcept -> task<void, Context> { return {key(), this}; }
 
   constexpr static void return_void() noexcept {}
 };
@@ -537,7 +527,7 @@ struct promise_type : mixin_frame<Context> {
   frame_type<Context> frame{get_allocator<Context>().checkpoint()};
   T *return_address;
 
-  constexpr auto get_return_object() noexcept -> task<T> { return access::task(this); }
+  constexpr auto get_return_object() noexcept -> task<T, Context> { return {key(), this}; }
 
   template <typename U = T>
     requires std::assignable_from<T &, U &&>
@@ -553,11 +543,11 @@ struct promise_type : mixin_frame<Context> {
 // =============== std specialization =============== //
 
 template <typename R, lf::worker_context Context, typename... Args>
-struct std::coroutine_traits<lf::task<R>, lf::env<Context>, Args...> {
+struct std::coroutine_traits<lf::task<R, Context>, Args...> {
   using promise_type = ::lf::promise_type<R, Context>;
 };
 
 template <typename R, typename Self, lf::worker_context Context, typename... Args>
-struct std::coroutine_traits<lf::task<R>, Self, lf::env<Context>, Args...> {
+struct std::coroutine_traits<lf::task<R, Context>, Self, Args...> {
   using promise_type = ::lf::promise_type<R, Context>;
 };

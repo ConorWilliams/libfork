@@ -136,7 +136,7 @@ struct poly_deque_ctx final : lf::basic_poly_context<Alloc> {
 using lf::task;
 
 template <lf::worker_context T>
-constexpr auto await = [](this auto fib, lf::env<T>, std::int64_t *ret, std::int64_t n) -> lf::task<void> {
+constexpr auto await = [](this auto fib, lf::env<T>, std::int64_t *ret, std::int64_t n) -> lf::task<void, T> {
   if (n < 2) {
     *ret = n;
     co_return;
@@ -154,7 +154,7 @@ constexpr auto await = [](this auto fib, lf::env<T>, std::int64_t *ret, std::int
 };
 
 template <lf::worker_context T>
-constexpr auto ret = [](this auto fib, lf::env<T>, std::int64_t n) -> lf::task<std::int64_t> {
+constexpr auto ret = [](this auto fib, lf::env<T>, std::int64_t n) -> lf::task<std::int64_t, T> {
   if (n < 2) {
     co_return n;
   }
@@ -171,7 +171,7 @@ constexpr auto ret = [](this auto fib, lf::env<T>, std::int64_t n) -> lf::task<s
 };
 
 template <lf::worker_context T, bool Join = false>
-constexpr auto fork_call = [](this auto fib, lf::env<T>, std::int64_t n) -> lf::task<std::int64_t> {
+constexpr auto fork_call = [](this auto fib, std::int64_t n) -> lf::task<std::int64_t, T> {
   if (n < 2) {
     co_return n;
   }

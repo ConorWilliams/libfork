@@ -58,8 +58,7 @@ constexpr auto schedule(Context *context, Fn &&fn, Args &&...args) noexcept -> a
   // TODO: Before doing this we must be on a valid context.
   LF_ASSUME(get_context<Context>() == context);
 
-  auto *promise = access::promise<Context>(
-      std::invoke(std::forward<Fn>(fn), env<Context>{}, std::forward<Args>(args)...));
+  auto *promise = async_invoke<Context>(std::forward<Fn>(fn), std::forward<Args>(args)...);
 
   // TODO: expose cancellable?
   promise->frame.parent.block = root_block.get();
