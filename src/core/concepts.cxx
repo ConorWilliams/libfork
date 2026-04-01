@@ -2,6 +2,8 @@ export module libfork.core:concepts;
 
 import std;
 
+import :utility;
+
 namespace lf {
 
 // =========== Atomic related concepts =========== //
@@ -136,9 +138,10 @@ using allocator_t = std::remove_reference_t<decltype(std::declval<T &>().allocat
 
 // ==== Forward-decl
 
-// TODO: protect with key/lock
 export template <worker_context>
-class env {};
+struct env {
+  explicit constexpr env(key_t) noexcept {}
+};
 
 export template <returnable T, worker_context Context>
 class task;
