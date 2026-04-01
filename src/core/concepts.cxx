@@ -150,6 +150,8 @@ class task;
 
 // ========== Invocability ========== //
 
+struct not_invocable {};
+
 template <typename Fn, typename Context, typename... Args>
 consteval auto invoke_help() -> specialization_of<std::type_identity> auto {
   if constexpr (std::invocable<Fn, env<Context>, Args...>) {
@@ -160,7 +162,7 @@ consteval auto invoke_help() -> specialization_of<std::type_identity> auto {
     return std::type_identity<std::invoke_result_t<Fn, Args...>>{};
   } else {
     // Not invocable
-    return std::type_identity<void>{};
+    return std::type_identity<not_invocable>{};
   }
 }
 
