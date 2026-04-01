@@ -47,31 +47,30 @@ struct access;
  *
  * \endrst
  */
-export template <returnable T>
+export template <returnable T, worker_context Context>
 class task {
  public:
   using value_type = T;
+  using context_type = Context;
 
  private:
   friend struct access;
-
-  explicit constexpr task(void *promise) noexcept : m_promise(promise) {}
-
-  void *m_promise;
+  explicit constexpr task(promise_type<Task, Context> *promise) noexcept : m_promise(promise) {}
+  promise_type<Task, Context> *m_promise;
 };
 
 /**
  * @brief Utility to access the promise within a task.
  */
 struct access {
-  template <worker_context Context, typename T>
-  static constexpr auto task(promise_type<T, Context> *promise) noexcept -> ::lf::task<T> {
-    return ::lf::task<T>{promise};
+  template <typename T, worker_context Context>
+  static constexpr auto wrap_task(promise_type<T, Context> *promise) noexcept -> task<T> {
+    return task<T>{promise};
   }
 
   template <worker_context Context, typename T>
-  static constexpr auto promise(::lf::task<T> x) noexcept -> promise_type<T, Context> * {
-    return static_cast<promise_type<T, Context> *>(x.m_promise);
+  static constexpr auto unwrap_promise(lf::task<T> x) noexcept -> promise_type<T, Context> * {
+    return x.m_promise;
   }
 };
 
