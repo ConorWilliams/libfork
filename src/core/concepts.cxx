@@ -1,3 +1,5 @@
+module;
+#include "libfork/__impl/utils.hpp"
 export module libfork.core:concepts;
 
 import std;
@@ -170,6 +172,21 @@ using maybe_invoke_result_t = decltype(invoke_help<Fn, Context, Args...>())::typ
  */
 export template <typename Fn, typename Context, typename... Args>
 concept async_invocable = specialization_of<maybe_invoke_result_t<Fn, Context, Args...>, task>;
+
+// More constrained so it should be selected first
+template <typename Context, typename... Args, async_invocable<Context, Args...> Fn>
+  requires std::invocable<Fn, env<Context>, Args...>
+constexpr auto async_invoke(Fn &&fn, Args &&...args)
+    LF_HOF(std::invoke(std::forward<Fn>(fn), env<Context>{key()}, std::forward<Args>(args)...).get(key()))
+
+template <typename Context, typename... Args, async_invocable<Context, Args...> Fn>
+constexpr auto async_invoke(Fn &&fn, Args &&...args)
+    LF_HOF(std::invoke(std::forward<Fn>(fn), std::forward<Args>(args)...).get(key()))
+
+export template <typename Fn, typename Context, typename... Args>
+concept noexcept_async_invocable =
+    async_invocable<Fn, Context, Args...> &&
+    noexcept(async_invoke<Context, Args...>(std::declval<Fn>(), std::declval<Args>()...));
 
 /**
  * @brief The result type of invoking an async function `Fn` with `Args...`.

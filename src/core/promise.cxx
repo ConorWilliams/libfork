@@ -27,18 +27,6 @@ using coro = std::coroutine_handle<T>;
 export template <returnable T, worker_context Context>
 struct promise_type;
 
-// =============== The invoke function =============== //
-
-// More constrained so it should be selected first
-template <typename Context, typename... Args, async_invocable<Context, Args...> Fn>
-  requires std::invocable<Fn, env<Context>, Args...>
-constexpr auto async_invoke(Fn &&fn, Args &&...args)
-    LF_HOF(std::invoke(std::forward<Fn>(fn), env<Context>{key()}, std::forward<Args>(args)...).get(key()))
-
-template <typename Context, typename... Args, async_invocable<Context, Args...> Fn>
-constexpr auto async_invoke(Fn &&fn, Args &&...args)
-    LF_HOF(std::invoke(std::forward<Fn>(fn), std::forward<Args>(args)...).get(key()))
-
 // =============== Task =============== //
 
 /**
@@ -427,7 +415,7 @@ struct join_awaitable {
 
 // =============== Frame mixin =============== //
 
-template <worker_context Ctx>
+template <worker_context Context>
 struct mixin_frame {
 
   // === For internal use === //
@@ -445,24 +433,30 @@ struct mixin_frame {
   // --- Allocation
 
   static auto operator new(std::size_t sz) -> void * {
-    void *ptr = get_allocator<Ctx>().push(sz);
+    void *ptr = get_allocator<Context>().push(sz);
     LF_ASSUME(is_aligned<k_new_align>(ptr));
     return std::assume_aligned<k_new_align>(ptr);
   }
 
-  static auto operator delete(void *p, std::size_t sz) noexcept -> void { get_allocator<Ctx>().pop(p, sz); }
+  static auto operator delete(void *p, std::size_t sz) noexcept -> void {
+    get_allocator<Context>().pop(p, sz);
+  }
 
   // --- Await transformations
 
   template <category Cat, typename R, typename Fn, typename... Args>
-  static constexpr auto await_transform_pkg(pkg<Cat, Ctx, R, Fn, Args...> &&pkg) -> awaitable<Cat, Ctx> {
+  static constexpr auto await_transform_pkg(pkg<Cat, Context, R, Fn, Args...> &&pkg) noexcept(
+      noexcept_async_invocable<Fn, Context, Args...>) -> awaitable<Cat, Context> {
 
-    using U = async_result_t<Fn, Ctx, Args...>;
+    // Required for noexcept specifier to be correct
+    static_assert(std::is_reference_v<Fn> && (... && std::is_reference_v<Args>));
+
+    using U = async_result_t<Fn, Context, Args...>;
 
     // clang-format off
 
-    promise_type<U, Ctx> *child_promise = std::move(pkg.args).apply(
-      [&](auto &&...args) LF_HOF(async_invoke<Ctx>(fwd_fn<Fn>(pkg.fn), LF_FWD(args)...))
+    promise_type<U, Context> *child_promise = std::move(pkg.args).apply(
+      [&](auto &&...args) LF_HOF(async_invoke<Context>(fwd_fn<Fn>(pkg.fn), LF_FWD(args)...))
     );
 
     // clang-format on
@@ -486,8 +480,8 @@ struct mixin_frame {
   }
 
   template <category Cat, typename R, typename Fn, typename... Args>
-  constexpr auto
-  await_transform(this auto &self, pkg<Cat, Ctx, R, Fn, Args...> &&pkg) noexcept -> awaitable<Cat, Ctx> {
+  constexpr auto await_transform(this auto &self, pkg<Cat, Context, R, Fn, Args...> &&pkg) noexcept
+      -> awaitable<Cat, Context> {
     LF_TRY {
       return self.await_transform_pkg(std::move(pkg));
     } LF_CATCH_ALL {
@@ -496,7 +490,7 @@ struct mixin_frame {
     return {.child = nullptr};
   }
 
-  constexpr auto await_transform(this auto &self, join_type) noexcept -> join_awaitable<Ctx> {
+  constexpr auto await_transform(this auto &self, join_type) noexcept -> join_awaitable<Context> {
     return {.frame = &self.frame};
   }
 
