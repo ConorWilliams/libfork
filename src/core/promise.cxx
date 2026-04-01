@@ -29,8 +29,6 @@ struct promise_type;
 
 // =============== Task =============== //
 
-struct access;
-
 /**
  * @brief The return type for libfork's async functions/coroutines.
  *
@@ -53,25 +51,12 @@ class task {
   using value_type = T;
   using context_type = Context;
 
+  constexpr task(key_t, promise_type<Task, Context> *promise) noexcept : m_promise(promise) {}
+
+  constexpr get(key_t) noexcept -> promise_type<Task, Context> * { return m_promise; }
+
  private:
-  friend struct access;
-  explicit constexpr task(promise_type<Task, Context> *promise) noexcept : m_promise(promise) {}
   promise_type<Task, Context> *m_promise;
-};
-
-/**
- * @brief Utility to access the promise within a task.
- */
-struct access {
-  template <typename T, worker_context Context>
-  static constexpr auto wrap_task(promise_type<T, Context> *promise) noexcept -> task<T> {
-    return task<T>{promise};
-  }
-
-  template <worker_context Context, typename T>
-  static constexpr auto unwrap_promise(lf::task<T> x) noexcept -> promise_type<T, Context> * {
-    return x.m_promise;
-  }
 };
 
 // =============== Final =============== //
