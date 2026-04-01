@@ -27,6 +27,18 @@ using coro = std::coroutine_handle<T>;
 export template <returnable T, worker_context Context>
 struct promise_type;
 
+// =============== The invoke function =============== //
+
+// More constrained so it should be selected first
+template <typename Context, typename... Args, async_invocable<Context, Args...> Fn>
+  requires std::invocable<Fn, env<Context>, Args...>
+constexpr auto async_invoke(Fn &&fn, Args &&...args)
+    LF_HOF(std::invoke(std::forward<Fn>(fn), env<Context>{key()}, std::forward<Args>(args)...).get(key()))
+
+template <typename Context, typename... Args, async_invocable<Context, Args...> Fn>
+constexpr auto async_invoke(Fn &&fn, Args &&...args)
+    LF_HOF(std::invoke(std::forward<Fn>(fn), std::forward<Args>(args)...).get(key()))
+
 // =============== Task =============== //
 
 /**
@@ -51,12 +63,12 @@ class task {
   using value_type = T;
   using context_type = Context;
 
-  constexpr task(key_t, promise_type<Task, Context> *promise) noexcept : m_promise(promise) {}
+  constexpr task(key_t, promise_type<T, Context> *promise) noexcept : m_promise(promise) {}
 
-  constexpr get(key_t) noexcept -> promise_type<Task, Context> * { return m_promise; }
+  constexpr auto get(key_t) noexcept -> promise_type<T, Context> * { return m_promise; }
 
  private:
-  promise_type<Task, Context> *m_promise;
+  promise_type<T, Context> *m_promise;
 };
 
 // =============== Final =============== //
@@ -449,9 +461,9 @@ struct mixin_frame {
 
     // clang-format off
 
-    promise_type<U, Ctx> *child_promise = access::promise<Ctx>(std::move(pkg.args).apply(
-      [&](auto &&...args) LF_HOF(std::invoke(fwd_fn<Fn>(pkg.fn), env<Ctx>{}, LF_FWD(args)...))
-    ));
+    promise_type<U, Ctx> *child_promise = std::move(pkg.args).apply(
+      [&](auto &&...args) LF_HOF(async_invoke<Ctx>(fwd_fn<Fn>(pkg.fn), LF_FWD(args)...))
+    );
 
     // clang-format on
 
@@ -505,7 +517,7 @@ struct promise_type<void, Context> : mixin_frame<Context> {
   //  2. Compiler merge double read of thread local here and in allocator
   frame_type<Context> frame{get_allocator<Context>().checkpoint()};
 
-  constexpr auto get_return_object() noexcept -> task<void> { return access::task(this); }
+  constexpr auto get_return_object() noexcept -> task<void, Context> { return {key(), this}; }
 
   constexpr static void return_void() noexcept {}
 };
@@ -521,7 +533,7 @@ struct promise_type : mixin_frame<Context> {
   frame_type<Context> frame{get_allocator<Context>().checkpoint()};
   T *return_address;
 
-  constexpr auto get_return_object() noexcept -> task<T> { return access::task(this); }
+  constexpr auto get_return_object() noexcept -> task<T, Context> { return {key(), this}; }
 
   template <typename U = T>
     requires std::assignable_from<T &, U &&>
@@ -537,11 +549,11 @@ struct promise_type : mixin_frame<Context> {
 // =============== std specialization =============== //
 
 template <typename R, lf::worker_context Context, typename... Args>
-struct std::coroutine_traits<lf::task<R>, lf::env<Context>, Args...> {
+struct std::coroutine_traits<lf::task<R, Context>, lf::env<Context>, Args...> {
   using promise_type = ::lf::promise_type<R, Context>;
 };
 
 template <typename R, typename Self, lf::worker_context Context, typename... Args>
-struct std::coroutine_traits<lf::task<R>, Self, lf::env<Context>, Args...> {
+struct std::coroutine_traits<lf::task<R, Context>, Self, lf::env<Context>, Args...> {
   using promise_type = ::lf::promise_type<R, Context>;
 };
