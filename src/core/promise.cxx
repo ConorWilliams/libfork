@@ -549,11 +549,11 @@ struct promise_type : mixin_frame<Context> {
 // =============== std specialization =============== //
 
 template <typename R, lf::worker_context Context, typename... Args>
-struct std::coroutine_traits<lf::task<R, Context>, lf::env<Context>, Args...> {
+struct std::coroutine_traits<lf::task<R, Context>, Args...> {
   using promise_type = ::lf::promise_type<R, Context>;
 };
 
 template <typename R, typename Self, lf::worker_context Context, typename... Args>
-struct std::coroutine_traits<lf::task<R, Context>, Self, lf::env<Context>, Args...> {
+struct std::coroutine_traits<lf::task<R, Context>, Self, Args...> {
   using promise_type = ::lf::promise_type<R, Context>;
 };
