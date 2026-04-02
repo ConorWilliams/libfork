@@ -150,18 +150,15 @@ class task;
 
 // ========== Invocability ========== //
 
-template <typename Fn, typename Context, typename... Args>
-concept either_invocable = std::invocable<Fn, env<Context>, Args...> || std::invocable<Fn, Args...>;
-
 template <typename Context>
 struct ctx_invoke_t {
-  // More constrained so it should be selected first
-  template <typename... Args, either_invocable<Context, Args...> Fn>
+  // Explicitly constrained so overload resolution selects prefers
+  template <typename... Args, typename Fn>
     requires std::invocable<Fn, env<Context>, Args...>
   static constexpr auto operator()(Fn &&fn, Args &&...args)
       LF_HOF(std::invoke(std::forward<Fn>(fn), env<Context>{key()}, std::forward<Args>(args)...))
 
-  template <typename... Args, either_invocable<Context, Args...> Fn>
+  template <typename... Args, typename Fn>
   static constexpr auto operator()(Fn &&fn, Args &&...args)
       LF_HOF(std::invoke(std::forward<Fn>(fn), std::forward<Args>(args)...))
 };
