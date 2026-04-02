@@ -30,19 +30,19 @@ class geometric : immovable {
   using node_ptr = typename node_traits::pointer;
   using byte_ptr = typename byte_traits::pointer;
 
-  struct release_key {
-    constexpr release_key(key_t) noexcept {}
+  struct release_t {
+    constexpr release_t(key_t) noexcept {}
   };
 
   // TODO: use move's on all fancy pointer types
 
-  class checkpoint {
+  class checkpoint_t {
    public:
-    auto operator==(checkpoint const &) const noexcept -> bool = default;
+    auto operator==(checkpoint_t const &) const noexcept -> bool = default;
 
    private:
     friend geometric;
-    constexpr checkpoint(heap_ptr ptr) noexcept : m_ptr(ptr) {}
+    explicit constexpr checkpoint_t(heap_ptr ptr) noexcept : m_ptr(ptr) {}
     heap_ptr m_ptr;
   };
 
@@ -54,6 +54,9 @@ class geometric : immovable {
         m_node_alloc(alloc),
         m_byte_alloc(alloc) {}
 
+  /**
+   * @brief Test if the stack is empty (all pushes have been popped).
+   */
   [[nodiscard]]
   constexpr auto empty() const noexcept -> bool {
     if (m_root == nullptr) {
@@ -69,8 +72,8 @@ class geometric : immovable {
   }
 
   [[nodiscard]]
-  constexpr auto checkpoint() noexcept -> opaque {
-    return {key(), m_root.get()};
+  constexpr auto checkpoint() noexcept -> checkpoint_t {
+    return checkpoint_t{m_root};
   }
 
   [[nodiscard]]
