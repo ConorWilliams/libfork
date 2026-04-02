@@ -208,6 +208,8 @@ class geometric : immovable {
     m_hi = m_lo + m_root->top->size;
   }
 
+  // TODO: highlight local modifications with explicit self param
+
   /**
    * @brief Allocate node with size bytes for stacklet,
    *
