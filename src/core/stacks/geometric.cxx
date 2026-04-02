@@ -1,6 +1,4 @@
 module;
-#include <memory>
-
 #include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/compiler.hpp"
 export module libfork.core:geometric_stack;
