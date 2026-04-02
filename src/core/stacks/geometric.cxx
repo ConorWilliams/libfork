@@ -1,6 +1,7 @@
 module;
 #include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/compiler.hpp"
+#include "libfork/__impl/exception.hpp"
 export module libfork.core:geometric_stack;
 
 import std;
@@ -30,7 +31,7 @@ class geometric : immovable {
   constexpr geometric() = default;
 
   [[nodiscard]]
-  constexpr auto empty() noexcept -> bool {
+  constexpr auto empty() const noexcept -> bool {
     if (m_root == nullptr) {
       return true;
     }
@@ -104,6 +105,8 @@ class geometric : immovable {
     m_root.reset(ckpt_root);
 
     LF_ASSUME(m_root->top != nullptr);
+
+    // Not quite a load_local because sp = sp_cache
     m_lo = m_root->top->stacklet;
     m_sp = m_root->sp_cache;
     m_hi = m_lo + m_root->top->size;
@@ -111,86 +114,150 @@ class geometric : immovable {
 
   constexpr ~geometric() noexcept {
     // TODO:
+
+    // struct deleter {
+    //   static constexpr void operator()(heap *h) noexcept {
+    //     // Should be empty at destruction.
+    //     LF_ASSUME(h->top != nullptr);
+    //     LF_ASSUME(h->top->prev == nullptr);
+    //     delete h->cache;
+    //     delete h->top;
+    //     delete h;
+    //   }
+    // };
   }
 
  private:
+  // ============== Types ==============  //
+
   struct node;
+  struct heap;
 
-  struct node_data : immovable {
-    node *prev;                    // Linked list (past).
-    std::size_t size;              // Usable-size of the stacklet
-    std::byte *original = nullptr; // The result of the allocation.
-    std::byte *stacklet = nullptr; // First aligned address
+  using heap_traits = std::allocator_traits<Allocator>::template rebind_traits<heap>;
+  using node_traits = std::allocator_traits<Allocator>::template rebind_traits<node>;
+  using byte_traits = std::allocator_traits<Allocator>::template rebind_traits<std::byte>;
+
+  using heap_ptr = typename heap_traits::pointer;
+  using node_ptr = typename node_traits::pointer;
+  using byte_ptr = typename byte_traits::pointer;
+
+  struct node {
+    node_ptr prev;             // Linked list (past)
+    byte_ptr raw_ptr;          // The raw allocation for the stacklet (for deallocation)
+    std::size_t raw_size;      // Original size of the allocation (for deallocation)
+    std::byte *stacklet;       // First aligned address in the alloctaion
+    std::size_t stacklet_size; // Usable-size of the stacklet
   };
 
-  static_assert(std::has_single_bit(k_new_align), "Alignment is a power of two");
-
-  // Align such that the entire node is on a cache line
-  struct alignas(std::max(std::bit_ceil(sizeof(node_data)), alignof(node_data))) node : node_data {
-    /**
-     * @brief Set stacklet to the first aligned address after original and reduce size accordingly.
-     *
-     * This works because:
-     *   (y - (x mod y)) mod y = (- x) mod y
-     *                         = (- x) & (y - 1) as y is a power of two
-     */
-    constexpr node(node *prev_arg, std::byte *ptr, std::size_t raw_size) noexcept
-        : node{
-              prev_arg,
-              ptr,
-              raw_size,
-              (-std::bit_cast<std::size_t>(ptr)) & (k_new_align - 1),
-          } {
-      LF_ASUME(std::is_sufficiently_aligned<k_new_align>(stacklet));
-    }
-
-   private:
-    constexpr node(node *prev_arg, std::byte *ptr, std::size_t raw_size, std::size_t offset) noexcept
-        : node_data{.prev = prev_arg, .size = raw_size - offset, .originial = ptr, .stacklet = ptr + offset} {
-    }
-  };
-
-  static_assert(sizeof(node) == alignof(node) && alignof(node) <= k_cache_line);
-
-  struct heap : immovable {
-    node *top = nullptr;           // Most recent stacklet i.e. the top of the stack.
-    node *cache = nullptr;         // Cached (empty) stacklet for hot-split guarding.
+  struct heap {
+    node_ptr top = nullptr;        // Most recent stacklet i.e. the top of the stack.
+    node_ptr cache = nullptr;      // Cached (empty) stacklet for hot-split guarding.
     std::byte *sp_cache = nullptr; // Cached stack pointer for this stacklet.
   };
+
+  // ============== Members ==============  //
+
+  [[no_unique_address]]
+  typename heap_traits::allocator_type m_heap_alloc;
+  [[no_unique_address]]
+  typename node_traits::allocator_type m_node_alloc;
+  [[no_unique_address]]
+  typename byte_traits::allocator_type m_byte_alloc;
+
+  heap_ptr m_root = nullptr; // The control block for the stack.
+
+  std::byte *m_lo = nullptr; // The base pointer for the current stacklet.
+  std::byte *m_sp = nullptr; // The stack pointer for the current stacklet.
+  std::byte *m_hi = nullptr; // The one-past-the-end pointer for the current stacklet.
+
+  // ============== Methods ==============  //
 
   // TODO: do we need the no inlines
 
   [[nodiscard]]
   LF_NO_INLINE constexpr auto push_cached(std::size_t padded_size) -> void *;
 
-  [[nodiscard]]
-  constexpr auto push_alloc(std::size_t padded_size) -> void *;
-
   constexpr void pop_shuffle() noexcept;
 
-  // struct deleter {
-  //   static constexpr void operator()(heap *h) noexcept {
-  //     // Should be empty at destruction.
-  //     LF_ASSUME(h->top != nullptr);
-  //     LF_ASSUME(h->top->prev == nullptr);
-  //     delete h->cache;
-  //     delete h->top;
-  //     delete h;
-  //   }
-  // };
+  /**
+   * @brief Make local pointers point to the current stacklet in the control block.
+   *
+   * Assumes that the control block and top stacklet are non-nullptr.
+   */
+  constexpr auto load_local() noexcept -> void {
+    LF_ASSUME(m_root != nullptr);
+    LF_ASSUME(m_root->top != nullptr);
+    m_lo = m_root->top->stacklet;
+    m_sp = m_lo;
+    m_hi = m_lo + m_root->top->size;
+  }
 
-  [[no_unique_address]]
-  std::allocator_traits<Allocator>::template rebind_alloc<heap> m_heap_allocator;
-  [[no_unique_address]]
-  std::allocator_traits<Allocator>::template rebind_alloc<node> m_node_allocator;
-  [[no_unique_address]]
-  std::allocator_traits<Allocator>::template rebind_alloc<std::byte> m_byte_allocator;
+  /**
+   * @brief Allocate node with size bytes for stacklet,
+   *
+   * Note the resultant stacklet may be smaller as it will be adjusted for
+   * alignment. If you need `x` bytes allocate `x + k_new_align - 1` bytes.
+   *
+   * This function is strongly exception-safe.
+   */
+  [[nodiscard]]
+  constexpr auto new_node(node_ptr prev, std::size_t size) -> node_ptr {
+    // Don't need to construct (implicit lifetime bytes)
+    byte_ptr byte_data = byte_traits::allocate(m_byte_alloc, size);
+    node_ptr next_node = nullptr;
 
-  heap *m_root; // The control block.
+    LF_TRY {
+      next_node = node_traits::allocate(m_node_alloc, 1);
+    } LF_CATCH_ALL {
+      byte_traits::deallocate(m_byte_alloc, byte_data, size);
+      LF_RETHROW;
+    }
 
-  std::byte *m_lo = nullptr; // The base pointer for the current stacklet.
-  std::byte *m_sp = nullptr; // The stack pointer for the current stacklet.
-  std::byte *m_hi = nullptr; // The one-past-the-end pointer for the current stacklet.
+    // From here on nothing can (is allowed to) throw.
+
+    static_assert(std::has_single_bit(k_new_align), "Alignment is a power of two");
+
+    std::byte *raw_stacklet = std::to_address(byte_data);
+
+    // How much we need to increment to align:
+    //
+    //   (y - (x mod y)) mod y = (- x) mod y
+    //                         = (- x) & (y - 1) as y is a power of two
+    //
+    std::size_t offset = (-std::bit_cast<std::size_t>(stacklet)) & (k_new_align - 1);
+
+    std::byte *stacklet = stacklet + offset;
+    std::size_t stacklet_size = size - offset;
+
+    // LF_ASSUME(std::is_sufficiently_aligned<k_new_align>(stacklet));
+
+    node_traits::construct(m_node_alloc,
+                           next_node,
+                           node{
+                               .prev = prev,
+                               .raw_ptr = byte_data,
+                               .raw_size = size,
+                               .stacklet = stacklet,
+                               .stacklet_size = stacklet_size,
+                           });
+
+    return next_node;
+  }
+
+  /**
+   * @brief Delete a (possibly null) node and it's associated stacklet.
+   */
+  constexpr auto delete_node(node_ptr ptr) noexcept -> void {
+    if (ptr != nullptr) {
+      LF_ASSUME(ptr->original != nullptr)
+
+      // Don't need to destroy (trivial destructor)
+      byte_traits::deallocate(m_byte_alloc, node->raw_ptr, node->raw_size);
+
+      node_traits::destroy(m_node_alloc, node);
+      node_traits::deallocate(m_node_alloc, node, 1);
+    }
+  }
 };
 
 template <typename Allocator>
@@ -198,89 +265,88 @@ LF_NO_INLINE constexpr auto geometric<Allocator>::push_cached(std::size_t padded
 
   // Have to be very careful in this function to be strongly exception-safe!
 
-  if (!m_root) {
-    std::unique_ptr<node> top = std::make_unique<node>(nullptr, round_to_multiple<k_page_size>(padded_size));
-    m_root.reset(new heap);
-    m_root->top = top.release();
+  // This is the minimum size of node we could allocate that would fit the allocation.
+  std::size_t min_node_size = padded_size + k_new_align - 1;
+
+  if (m_root == nullptr) {
+    // Fine if this throw
+    heap_ptr new_root = heap_traits::allocate(m_heap_alloc, 1);
+
+    // Can't throw
+    heap_traits::construct(m_heap_alloc, new_root, 1);
+
+    LF_TRY {
+      new_root->top = new_node(nullptr, round_to_multiple<k_page_size>(min_node_size));
+    } LF_CATCH_ALL {
+      heap_traits::destroy(m_heap_alloc, new_root);
+      heap_traits::deallocate(m_heap_alloc, new_root, 1);
+      LF_RETHROW;
+    }
+
+    // Nothing can throw, safe to publish to *this.
+    m_root = new_root;
 
     // Local copies of the new top.
-    m_lo = m_root->top->stacklet;
-    m_sp = m_lo;
-    m_hi = m_lo + m_root->top->size;
-
+    load_local();
     // Do the allocation.
     return std::exchange(m_sp, m_sp + padded_size);
   }
 
   LF_ASSUME(m_root->top != nullptr);
 
-  if (m_root->cache != nullptr) {
-    if (m_root->cache->size >= padded_size) {
-      // We have space in the cache. No allocations on this path, nothing cam throw.
+  if (m_root->cache != nullptr && m_root->cache->stacklet_size >= padded_size) {
 
-      if (m_sp == m_lo) {
-        // There is nothing allocated on the current stacklet/top but it doesn't
-        // have enough space hence, we need to delete top such that we don't end up
-        // with an empty stacklet in the chain. This would break deletion otherwise.
-        delete std::exchange(m_root->top, m_root->top->prev);
-      }
+    // We have space in the cache. No allocations on this path, nothing cam throw.
 
-      // Shuffle cache to the top.
-      m_root->cache->prev = m_root->top;
-      m_root->top = m_root->cache;
-      m_root->cache = nullptr;
-
-      // Local copies of the new top
-      m_lo = m_root->top->stacklet;
-      m_sp = m_lo;
-      m_hi = m_lo + m_root->top->size;
-
-      // Do the allocation.
-      return std::exchange(m_sp, m_sp + padded_size);
+    if (m_sp == m_lo) {
+      // There is nothing allocated on the current stacklet/top but it doesn't
+      // have enough space hence, we need to delete top such that we don't end up
+      // with an empty stacklet in the chain. This would break deletion otherwise.
+      node_ptr empty_top = m_root->top;
+      m_root->top = m_root->top->prev; // top could be null now
+      delete_node(empty_top);
     }
-    // Cache is too small, free it. It is safe to delete cache even if the
-    // below throws an exception because it's not part of the observable state
-    // of the stack.
-    delete std::exchange(m_root->cache, nullptr);
+
+    // Shuffle cache to the top.
+    m_root->cache->prev = m_root->top;
+    m_root->top = m_root->cache;
+    m_root->cache = nullptr;
+
+    // Local copies of the new top
+    load_local();
+    // Do the allocation.
+    return std::exchange(m_sp, m_sp + padded_size);
   }
+
+  // We need to allocate a new stacklet to fit this allocation, we choose to
+  // grow geometrically to try to avoid too many allocations.
+  std::size_t next_node_size = std::max(min_node_size, 2 * m_root->top->raw_size);
+
+  // Fine if this throws
+  node_ptr new_top = new_node(nullptr, round_to_multiple<k_page_size>(next_node_size));
+
+  // Nothing can throw after this point
+
+  // We didn't use the cache because it wasn't big enough, we should delete it
+  // now because we had to grow the stack. We couldn't do this until now because
+  // new_node may have thrown.
+  delete_node(std::exchange(m_root->cache, nullptr));
 
   if (m_sp == m_lo) {
     // There is nothing allocated on the current stacklet/top but it doesn't
     // have enough space hence, we need to delete top such that we don't end up
     // with an empty stacklet in the chain. This would break deletion otherwise.
-    node *old_top = std::exchange(m_root->top, m_root->top->prev);
-
-    LF_TRY {
-      void *sp = push_alloc(padded_size);
-      delete old_top;
-      return sp;
-    } LF_CATCH_ALL {
-      m_root->top = old_top; // Put the empty stacklet back on top if push_alloc threw an exception.
-      LF_RETHROW;
-    }
+    node_ptr empty_top = m_root->top;
+    m_root->top = m_root->top->prev; // top could be null now
+    delete_node(empty_top);
   }
-  return push_alloc(padded_size);
-}
 
-template <typename Allocator>
-constexpr auto geometric<Allocator>::push_alloc(std::size_t padded_size) -> void * {
+  // Commit the new/node
+  new_top->prev = m_root->top;
+  m_root->top = new_top;
 
-  // This upholds the strong exception guarantee
-
-  LF_ASSUME(m_root != nullptr);
-
-  constexpr std::size_t growth_factor = 2;
-
-  std::size_t stacklet_size = std::max(padded_size, m_root->top ? growth_factor * m_root->top->size : 0);
-
-  // Link a new top node into control block.
-  m_root->top = new node(m_root->top, round_to_multiple<k_page_size>(stacklet_size));
-
-  // Local copies of the new top.
-  m_lo = m_root->top->stacklet;
-  m_sp = m_lo;
-  m_hi = m_lo + m_root->top->size;
-
+  // Local copies of the new top
+  load_local();
   // Do the allocation.
   return std::exchange(m_sp, m_sp + padded_size);
 }
