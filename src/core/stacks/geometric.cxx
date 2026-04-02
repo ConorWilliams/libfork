@@ -242,20 +242,17 @@ class geometric : immovable {
     //
     std::size_t offset = (-std::bit_cast<std::size_t>(raw_stacklet)) & (k_new_align - 1);
 
-    std::byte *stacklet = raw_stacklet + offset;
-    std::size_t stacklet_size = size - offset;
+    node next{
+        .prev = prev,
+        .raw_ptr = byte_data,
+        .raw_size = size,
+        .stacklet = raw_stacklet + offset,
+        .stacklet_size = size - offset,
+    };
 
-    // LF_ASSUME(std::is_sufficiently_aligned<k_new_align>(stacklet));
+    // LF_ASSUME(std::is_sufficiently_aligned<k_new_align>(next.stacklet));
 
-    node_traits::construct(m_node_alloc,
-                           next_node,
-                           node{
-                               .prev = prev,
-                               .raw_ptr = byte_data,
-                               .raw_size = size,
-                               .stacklet = stacklet,
-                               .stacklet_size = stacklet_size,
-                           });
+    node_traits::construct(m_node_alloc, next_node, next);
 
     return next_node;
   }
