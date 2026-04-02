@@ -8,29 +8,31 @@ import std;
 import :constants;
 import :utility;
 
-namespace lf {
+namespace lf::stack {
 
 /**
  * @brief A geometric_stack is a user-space (geometric) segmented program stack.
  *
  * This protects against hot-splitting by keeping a single cached segment.
  */
-export class geometric_stack : immovable {
+export template <typename Allocator = std::allocator<std::byte>>
+class geometric : immovable {
 
   struct node;
 
   struct node_data : immovable {
-    node *prev;                                               // Linked list (past).
-    std::size_t size;                                         // Size of stacklet.
-    std::unique_ptr<std::byte[]> stacklet = make_bytes(size); // Actual data.
+    node *prev;                    // Linked list (past).
+    std::size_t size;              // Size of stacklet.
+    std::byte *stacklet = nullptr; // Actual data.
   };
 
   // Align such that the entire node is on a cache line
   struct alignas(std::max(std::bit_ceil(sizeof(node_data)), alignof(node_data))) node : node_data {
     constexpr node(node *prev_arg, std::size_t size_arg) : node_data{.prev = prev_arg, .size = size_arg} {
-      // Each stacklet should be on a boundary.
-      LF_ASSUME(is_aligned<k_new_align>(stacklet.get()));
+      this->stacklet = new std::byte[size_arg];
     }
+
+    ~node() { delete[] this->stacklet; }
   };
 
   static_assert(sizeof(node) == alignof(node) && alignof(node) <= k_cache_line);
@@ -42,11 +44,13 @@ export class geometric_stack : immovable {
   };
 
   struct release_key {
-    friend geometric_stack;
+    friend geometric;
 
    private:
     constexpr release_key() = default;
   };
+
+  // TODO: do we need the no inlines
 
   [[nodiscard]]
   LF_NO_INLINE constexpr auto push_cached(std::size_t padded_size) -> void *;
@@ -132,7 +136,7 @@ export class geometric_stack : immovable {
     m_root.reset(ckpt_root);
 
     LF_ASSUME(m_root->top != nullptr);
-    m_lo = m_root->top->stacklet.get();
+    m_lo = m_root->top->stacklet;
     m_sp = m_root->sp_cache;
     m_hi = m_lo + m_root->top->size;
   }
@@ -156,8 +160,8 @@ export class geometric_stack : immovable {
   std::byte *m_hi = nullptr; // The one-past-the-end pointer for the current stacklet.
 };
 
-LF_NO_INLINE
-constexpr auto geometric_stack::push_cached(std::size_t padded_size) -> void * {
+template <typename Allocator>
+LF_NO_INLINE constexpr auto geometric<Allocator>::push_cached(std::size_t padded_size) -> void * {
 
   // Have to be very careful in this function to be strongly exception-safe!
 
@@ -167,7 +171,7 @@ constexpr auto geometric_stack::push_cached(std::size_t padded_size) -> void * {
     m_root->top = top.release();
 
     // Local copies of the new top.
-    m_lo = m_root->top->stacklet.get();
+    m_lo = m_root->top->stacklet;
     m_sp = m_lo;
     m_hi = m_lo + m_root->top->size;
 
@@ -194,7 +198,7 @@ constexpr auto geometric_stack::push_cached(std::size_t padded_size) -> void * {
       m_root->cache = nullptr;
 
       // Local copies of the new top
-      m_lo = m_root->top->stacklet.get();
+      m_lo = m_root->top->stacklet;
       m_sp = m_lo;
       m_hi = m_lo + m_root->top->size;
 
@@ -225,7 +229,8 @@ constexpr auto geometric_stack::push_cached(std::size_t padded_size) -> void * {
   return push_alloc(padded_size);
 }
 
-constexpr auto geometric_stack::push_alloc(std::size_t padded_size) -> void * {
+template <typename Allocator>
+constexpr auto geometric<Allocator>::push_alloc(std::size_t padded_size) -> void * {
 
   // This upholds the strong exception guarantee
 
@@ -239,7 +244,7 @@ constexpr auto geometric_stack::push_alloc(std::size_t padded_size) -> void * {
   m_root->top = new node(m_root->top, round_to_multiple<k_page_size>(stacklet_size));
 
   // Local copies of the new top.
-  m_lo = m_root->top->stacklet.get();
+  m_lo = m_root->top->stacklet;
   m_sp = m_lo;
   m_hi = m_lo + m_root->top->size;
 
@@ -247,7 +252,8 @@ constexpr auto geometric_stack::push_alloc(std::size_t padded_size) -> void * {
   return std::exchange(m_sp, m_sp + padded_size);
 }
 
-constexpr void geometric_stack::pop_shuffle() noexcept {
+template <typename Allocator>
+constexpr void geometric<Allocator>::pop_shuffle() noexcept {
   // Shuffle top/cache
   LF_ASSUME(m_root != nullptr);
   LF_ASSUME(m_root->top != nullptr);       // Pop from empty stack
@@ -257,9 +263,9 @@ constexpr void geometric_stack::pop_shuffle() noexcept {
   m_root->top = m_root->top->prev;
 
   // Local copies of the new top
-  m_lo = m_root->top->stacklet.get();
+  m_lo = m_root->top->stacklet;
   m_sp = m_lo;
   m_hi = m_lo + m_root->top->size;
 }
 
-} // namespace lf
+} // namespace lf::stack
