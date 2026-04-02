@@ -19,16 +19,40 @@ namespace lf::stack {
 export template <typename Allocator = std::allocator<std::byte>>
 class geometric : immovable {
 
+  struct heap;
+  struct node;
+
+  using heap_traits = std::allocator_traits<Allocator>::template rebind_traits<heap>;
+  using node_traits = std::allocator_traits<Allocator>::template rebind_traits<node>;
+  using byte_traits = std::allocator_traits<Allocator>::template rebind_traits<std::byte>;
+
+  using heap_ptr = typename heap_traits::pointer;
+  using node_ptr = typename node_traits::pointer;
+  using byte_ptr = typename byte_traits::pointer;
+
   struct release_key {
-    friend geometric;
+    constexpr release_key(key_t) noexcept {}
+  };
+
+  // TODO: use move's on all fancy pointer types
+
+  class checkpoint {
+   public:
+    auto operator==(checkpoint const &) const noexcept -> bool = default;
 
    private:
-    constexpr release_key() = default;
+    friend geometric;
+    constexpr checkpoint(heap_ptr ptr) noexcept : m_ptr(ptr) {}
+    heap_ptr m_ptr;
   };
 
  public:
-  // default
-  constexpr geometric() = default;
+  constexpr geometric() noexcept(noexcept(Allocator{})) : geometric(Allocator()) {}
+
+  explicit constexpr geometric(Allocator const &alloc)
+      : m_heap_alloc(alloc),
+        m_node_alloc(alloc),
+        m_byte_alloc(alloc) {}
 
   [[nodiscard]]
   constexpr auto empty() const noexcept -> bool {
@@ -130,17 +154,6 @@ class geometric : immovable {
  private:
   // ============== Types ==============  //
 
-  struct node;
-  struct heap;
-
-  using heap_traits = std::allocator_traits<Allocator>::template rebind_traits<heap>;
-  using node_traits = std::allocator_traits<Allocator>::template rebind_traits<node>;
-  using byte_traits = std::allocator_traits<Allocator>::template rebind_traits<std::byte>;
-
-  using heap_ptr = typename heap_traits::pointer;
-  using node_ptr = typename node_traits::pointer;
-  using byte_ptr = typename byte_traits::pointer;
-
   struct node {
     node_ptr prev;             // Linked list (past)
     byte_ptr raw_ptr;          // The raw allocation for the stacklet (for deallocation)
@@ -224,9 +237,9 @@ class geometric : immovable {
     //   (y - (x mod y)) mod y = (- x) mod y
     //                         = (- x) & (y - 1) as y is a power of two
     //
-    std::size_t offset = (-std::bit_cast<std::size_t>(stacklet)) & (k_new_align - 1);
+    std::size_t offset = (-std::bit_cast<std::size_t>(raw_stacklet)) & (k_new_align - 1);
 
-    std::byte *stacklet = stacklet + offset;
+    std::byte *stacklet = raw_stacklet + offset;
     std::size_t stacklet_size = size - offset;
 
     // LF_ASSUME(std::is_sufficiently_aligned<k_new_align>(stacklet));
@@ -249,13 +262,13 @@ class geometric : immovable {
    */
   constexpr auto delete_node(node_ptr ptr) noexcept -> void {
     if (ptr != nullptr) {
-      LF_ASSUME(ptr->original != nullptr)
+      LF_ASSUME(ptr->original != nullptr);
 
       // Don't need to destroy (trivial destructor)
-      byte_traits::deallocate(m_byte_alloc, node->raw_ptr, node->raw_size);
+      byte_traits::deallocate(m_byte_alloc, ptr->raw_ptr, ptr->raw_size);
 
-      node_traits::destroy(m_node_alloc, node);
-      node_traits::deallocate(m_node_alloc, node, 1);
+      node_traits::destroy(m_node_alloc, ptr);
+      node_traits::deallocate(m_node_alloc, ptr, 1);
     }
   }
 };
