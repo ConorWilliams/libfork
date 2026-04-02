@@ -7,6 +7,10 @@ import libfork.core;
 
 namespace lf {
 
+// TODO: replace dummy_context with unit-context
+
+// TODO: replace dummy_allocator with fixed-allocator
+
 export struct dummy_context {
   void post(lf::await_handle<dummy_context>);
   void push(lf::frame_handle<dummy_context>);
