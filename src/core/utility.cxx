@@ -1,4 +1,6 @@
 module;
+#include <version>
+
 #include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/compiler.hpp"
 #include "libfork/__impl/exception.hpp"
@@ -151,13 +153,27 @@ class [[nodiscard("Defer will execute unless bound to a name!")]] defer : immova
 };
 
 /**
+ * @brief Test if a pointer is aligned to a multiple of `Align`.
+ */
+export template <std::size_t Align>
+  requires (std::has_single_bit(Align))
+[[nodiscard]]
+auto is_sufficiently_aligned(void *ptr) noexcept -> bool {
+#if __cpp_lib_is_sufficiently_aligned
+  return std::is_sufficiently_aligned<Align>(ptr);
+#else
+  return (std::bit_cast<std::uintptr_t>(ptr) & (Align - 1)) == 0;
+#endif
+}
+
+/**
  * @brief Round up size to a multiple of `Align` for alignment purposes.
  */
-export template <std::size_t Alignment, std::unsigned_integral T>
-  requires (std::has_single_bit(Alignment))
+export template <std::size_t Align>
+  requires (std::has_single_bit(Align))
 [[nodiscard]]
-constexpr auto round_to_multiple(T size) noexcept -> T {
-  return (size + Alignment - 1) & ~(Alignment - 1);
+constexpr auto round_to_multiple(std::size_t size) noexcept -> std::size_t {
+  return (size + Align - 1) & ~(Align - 1);
 }
 
 } // namespace lf
