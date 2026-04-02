@@ -3,7 +3,7 @@ module;
 
 #include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/compiler.hpp"
-export module libfork.core:stack;
+export module libfork.core:geometric_stack;
 
 import std;
 
