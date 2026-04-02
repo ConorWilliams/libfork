@@ -434,7 +434,7 @@ struct mixin_frame {
 
   static auto operator new(std::size_t sz) noexcept(noexcept(get_allocator<Context>().push(sz))) -> void * {
     void *ptr = get_allocator<Context>().push(sz);
-    LF_ASSUME(is_aligned<k_new_align>(ptr));
+    LF_ASSUME(std::is_sufficiently_aligned<k_new_align>(ptr));
     return std::assume_aligned<k_new_align>(ptr);
   }
 
