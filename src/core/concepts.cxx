@@ -174,6 +174,9 @@ concept async_invocable = worker_context<Context> &&                            
                           std::invocable<ctx_invoke_t<Context>, Fn, Args...> &&                         //
                           task_from<std::invoke_result_t<ctx_invoke_t<Context>, Fn, Args...>, Context>; //
 
+/**
+ * @brief Subsumes `async_invocable` and checks that the invocation is `noexcept`.
+ */
 export template <typename Fn, typename Context, typename... Args>
 concept async_nothrow_invocable =
     async_invocable<Fn, Context, Args...> && std::is_nothrow_invocable_v<ctx_invoke_t<Context>, Fn, Args...>;
@@ -191,5 +194,12 @@ using async_result_t = std::invoke_result_t<ctx_invoke_t<Context>, Fn, Args...>:
 export template <typename Fn, typename R, typename Context, typename... Args>
 concept async_invocable_to =
     async_invocable<Fn, Context, Args...> && std::same_as<R, async_result_t<Fn, Context, Args...>>;
+
+/**
+ * @brief Subsumes `async_nothrow_invocable` and `async_invocable_to`.
+ */
+export template <typename Fn, typename R, typename Context, typename... Args>
+concept async_nothrow_invocable_to =
+    async_nothrow_invocable<Fn, Context, Args...> && async_invocable_to<Fn, R, Context, Args...>;
 
 } // namespace lf
