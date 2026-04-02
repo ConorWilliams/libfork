@@ -14,6 +14,8 @@ namespace lf {
 
 /**
  * @brief A geometric_stack is a user-space (geometric) segmented program stack.
+ *
+ * This protects against hot-splitting by keeping a single cached segment.
  */
 export class geometric_stack {
 
