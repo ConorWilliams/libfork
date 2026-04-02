@@ -107,21 +107,34 @@ TEST_CASE("Concepts: async_invocable", "[concepts]") {
   STATIC_REQUIRE(async_invocable<decltype(async_fn_env), dummy_context, int>);
   STATIC_REQUIRE(async_invocable<decltype(async_fn_no_env), dummy_context, int>);
 
+  // Arg mismatch
+  STATIC_REQUIRE_FALSE(async_invocable<decltype(async_fn_env), dummy_context, int *>);
+  STATIC_REQUIRE_FALSE(async_invocable<decltype(async_fn_no_env), dummy_context, double *>);
+
+  // Result type check
+  STATIC_REQUIRE(std::same_as<async_result_t<decltype(async_fn_env), dummy_context, int>, int>);
+
   // Preference check: when both are available, it should pick the one with env
   // and return int task.
   STATIC_REQUIRE(async_invocable_to<both_invocable, int, dummy_context, int>);
   // Verification that it didn't pick the double one
   STATIC_REQUIRE_FALSE(async_invocable_to<both_invocable, double, dummy_context, int>);
 
-  // Result type check
-  STATIC_REQUIRE(std::same_as<async_result_t<decltype(async_fn_env), dummy_context, int>, int>);
+  // Fails unless return is a task
+  STATIC_REQUIRE_FALSE(async_invocable<decltype(not_async_fn), dummy_context, int>);
 
-  struct mock_context : dummy_context {};
+  // Need a valid context of a different type
+  struct mock_context {
+    void push(lf::frame_handle<mock_context>);
+    void post(lf::await_handle<mock_context>);
+    auto pop() noexcept -> lf::frame_handle<mock_context>;
+    auto allocator() noexcept -> dummy_allocator &;
+  };
 
-  // Negative cases
-  STATIC_REQUIRE_FALSE(async_invocable<decltype(not_async_fn), dummy_context, int>);      // Return mismatch
-  STATIC_REQUIRE_FALSE(async_invocable<decltype(async_fn_env), dummy_context, double *>); // Arg mismatch
-  STATIC_REQUIRE_FALSE(async_invocable<decltype(async_fn_no_env), mock_context, int>);    // Context mismatch
+  STATIC_REQUIRE(worker_context<mock_context>);
+
+  // Fails because the result task's context doesn't match the provided context
+  STATIC_REQUIRE_FALSE(async_invocable<decltype(async_fn_no_env), mock_context, int>);
 }
 
 TEST_CASE("Concepts: async_nothrow_invocable", "[concepts]") {

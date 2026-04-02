@@ -164,17 +164,15 @@ struct ctx_invoke_t {
 };
 
 template <typename R, typename Context>
-concept async_invocable_result =
-    specialization_of<R, task> && std::same_as<Context, typename R::context_type>;
+concept task_from = specialization_of<R, task> && std::same_as<Context, typename R::context_type>;
 
 /**
  * @brief Test if a callable `Fn` when invoked with `Args...` returns an `lf::task`.
  */
 export template <typename Fn, typename Context, typename... Args>
-concept async_invocable =
-    worker_context<Context> &&                                                                 //
-    std::invocable<ctx_invoke_t<Context>, Fn, Args...> &&                                      //
-    async_invocable_result<std::invoke_result_t<ctx_invoke_t<Context>, Fn, Args...>, Context>; //
+concept async_invocable = worker_context<Context> &&                                                    //
+                          std::invocable<ctx_invoke_t<Context>, Fn, Args...> &&                         //
+                          task_from<std::invoke_result_t<ctx_invoke_t<Context>, Fn, Args...>, Context>; //
 
 export template <typename Fn, typename Context, typename... Args>
 concept async_nothrow_invocable =
