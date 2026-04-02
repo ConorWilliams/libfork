@@ -81,28 +81,17 @@ TEST_CASE("Concepts: worker_context", "[concepts]") {
   STATIC_REQUIRE_FALSE(worker_context<missing_post>);
 }
 
-namespace {
-
-auto async_fn_env(env<dummy_context>, int) -> task<int, dummy_context> { std::unreachable(); }
-auto async_fn_no_env(int) -> task<int, dummy_context> { std::unreachable(); }
-auto not_async_fn(int) -> int { std::unreachable(); }
-
-struct both_invocable {
-  auto operator()(env<dummy_context>, int) const -> task<int, dummy_context>;
-  auto operator()(int) const -> task<double, dummy_context>;
-};
-
-struct nothrow_async {
-  auto operator()(int) const noexcept -> task<int, dummy_context>;
-};
-
-struct throwing_async {
-  auto operator()(int) const -> task<int, dummy_context>;
-};
-
-} // namespace
-
 TEST_CASE("Concepts: async_invocable", "[concepts]") {
+
+  auto async_fn_env(env<dummy_context>, int) -> task<int, dummy_context>;
+  auto async_fn_no_env(int) -> task<int, dummy_context>;
+  auto not_async_fn(int) -> int;
+
+  struct both_invocable {
+    auto operator()(env<dummy_context>, int) const -> task<int, dummy_context>;
+    auto operator()(int) const -> task<double, dummy_context>;
+  };
+
   // Basic positive cases
   STATIC_REQUIRE(async_invocable<decltype(async_fn_env), dummy_context, int>);
   STATIC_REQUIRE(async_invocable<decltype(async_fn_no_env), dummy_context, int>);
@@ -138,6 +127,15 @@ TEST_CASE("Concepts: async_invocable", "[concepts]") {
 }
 
 TEST_CASE("Concepts: async_nothrow_invocable", "[concepts]") {
+
+  struct nothrow_async {
+    auto operator()(int) const noexcept -> task<int, dummy_context>;
+  };
+
+  struct throwing_async {
+    auto operator()(int) const -> task<int, dummy_context>;
+  };
+
   STATIC_REQUIRE(async_nothrow_invocable<nothrow_async, dummy_context, int>);
   STATIC_REQUIRE_FALSE(async_nothrow_invocable<throwing_async, dummy_context, int>);
 }
