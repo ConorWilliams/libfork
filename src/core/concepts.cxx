@@ -153,30 +153,17 @@ class task;
 template <typename Fn, typename Context, typename... Args>
 concept either_invocable = std::invocable<Fn, env<Context>, Args...> || std::invocable<Fn, Args...>;
 
-template <typename T, typename Context>
-concept task_specialization =
-    specialization_of<T, task>; // && std::same_as<typename T::context_type, Context>;
-
 template <typename Context>
 struct ctx_invoke_t {
-
-  using Env = env<Context>;
-
-  // TODO: use hof
-
   // More constrained so it should be selected first
   template <typename... Args, either_invocable<Context, Args...> Fn>
-    requires std::invocable<Fn, Env, Args...>
-  static constexpr auto
-  operator()(Fn &&fn, Args &&...args) noexcept(std::is_nothrow_invocable_v<Fn, Env, Args...>) {
-    return std::invoke(std::forward<Fn>(fn), env<Context>{key()}, std::forward<Args>(args)...);
-  }
+    requires std::invocable<Fn, env<Context>, Args...>
+  static constexpr auto operator()(Fn &&fn, Args &&...args)
+      LF_HOF(std::invoke(std::forward<Fn>(fn), env<Context>{key()}, std::forward<Args>(args)...))
 
   template <typename... Args, either_invocable<Context, Args...> Fn>
-  static constexpr auto
-  operator()(Fn &&fn, Args &&...args) noexcept(std::is_nothrow_invocable_v<Fn, Args...>) {
-    return std::invoke(std::forward<Fn>(fn), std::forward<Args>(args)...);
-  }
+  static constexpr auto operator()(Fn &&fn, Args &&...args)
+      LF_HOF(std::invoke(std::forward<Fn>(fn), std::forward<Args>(args)...))
 };
 
 template <typename R, typename Context>
