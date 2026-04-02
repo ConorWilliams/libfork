@@ -49,6 +49,8 @@ not_null(T *ptr, std::source_location const loc = std::source_location::current(
   return ptr;
 }
 
+// TODO: get rid of immovable/move_only
+
 /**
  * @brief An immovable, empty type, use as a mixin.
  */
