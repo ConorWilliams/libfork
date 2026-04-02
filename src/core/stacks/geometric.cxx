@@ -18,31 +18,6 @@ namespace lf::stack {
 export template <typename Allocator = std::allocator<std::byte>>
 class geometric : immovable {
 
-  struct node;
-
-  struct node_data : immovable {
-    node *prev;                    // Linked list (past).
-    std::size_t size;              // Size of stacklet.
-    std::byte *stacklet = nullptr; // Actual data.
-  };
-
-  // Align such that the entire node is on a cache line
-  struct alignas(std::max(std::bit_ceil(sizeof(node_data)), alignof(node_data))) node : node_data {
-    constexpr node(node *prev_arg, std::size_t size_arg) : node_data{.prev = prev_arg, .size = size_arg} {
-      this->stacklet = new std::byte[size_arg];
-    }
-
-    ~node() { delete[] this->stacklet; }
-  };
-
-  static_assert(sizeof(node) == alignof(node) && alignof(node) <= k_cache_line);
-
-  struct heap : immovable {
-    node *top = nullptr;           // Most recent stacklet i.e. the top of the stack.
-    node *cache = nullptr;         // Cached (empty) stacklet for hot-split guarding.
-    std::byte *sp_cache = nullptr; // Cached stack pointer for this stacklet.
-  };
-
   struct release_key {
     friend geometric;
 
@@ -50,17 +25,10 @@ class geometric : immovable {
     constexpr release_key() = default;
   };
 
-  // TODO: do we need the no inlines
-
-  [[nodiscard]]
-  LF_NO_INLINE constexpr auto push_cached(std::size_t padded_size) -> void *;
-
-  [[nodiscard]]
-  constexpr auto push_alloc(std::size_t padded_size) -> void *;
-
-  constexpr void pop_shuffle() noexcept;
-
  public:
+  // default
+  constexpr geometric() = default;
+
   [[nodiscard]]
   constexpr auto empty() noexcept -> bool {
     if (m_root == nullptr) {
@@ -141,19 +109,84 @@ class geometric : immovable {
     m_hi = m_lo + m_root->top->size;
   }
 
+  constexpr ~geometric() noexcept {
+    // TODO:
+  }
+
  private:
-  struct deleter {
-    static constexpr void operator()(heap *h) noexcept {
-      // Should be empty at destruction.
-      LF_ASSUME(h->top != nullptr);
-      LF_ASSUME(h->top->prev == nullptr);
-      delete h->cache;
-      delete h->top;
-      delete h;
+  struct node;
+
+  struct node_data : immovable {
+    node *prev;                    // Linked list (past).
+    std::size_t size;              // Usable-size of the stacklet
+    std::byte *original = nullptr; // The result of the allocation.
+    std::byte *stacklet = nullptr; // First aligned address
+  };
+
+  static_assert(std::has_single_bit(k_new_align), "Alignment is a power of two");
+
+  // Align such that the entire node is on a cache line
+  struct alignas(std::max(std::bit_ceil(sizeof(node_data)), alignof(node_data))) node : node_data {
+    /**
+     * @brief Set stacklet to the first aligned address after original and reduce size accordingly.
+     *
+     * This works because:
+     *   (y - (x mod y)) mod y = (- x) mod y
+     *                         = (- x) & (y - 1) as y is a power of two
+     */
+    constexpr node(node *prev_arg, std::byte *ptr, std::size_t raw_size) noexcept
+        : node{
+              prev_arg,
+              ptr,
+              raw_size,
+              (-std::bit_cast<std::size_t>(ptr)) & (k_new_align - 1),
+          } {
+      LF_ASUME(std::is_sufficiently_aligned<k_new_align>(stacklet));
+    }
+
+   private:
+    constexpr node(node *prev_arg, std::byte *ptr, std::size_t raw_size, std::size_t offset) noexcept
+        : node_data{.prev = prev_arg, .size = raw_size - offset, .originial = ptr, .stacklet = ptr + offset} {
     }
   };
 
-  std::unique_ptr<heap, deleter> m_root; // The control block.
+  static_assert(sizeof(node) == alignof(node) && alignof(node) <= k_cache_line);
+
+  struct heap : immovable {
+    node *top = nullptr;           // Most recent stacklet i.e. the top of the stack.
+    node *cache = nullptr;         // Cached (empty) stacklet for hot-split guarding.
+    std::byte *sp_cache = nullptr; // Cached stack pointer for this stacklet.
+  };
+
+  // TODO: do we need the no inlines
+
+  [[nodiscard]]
+  LF_NO_INLINE constexpr auto push_cached(std::size_t padded_size) -> void *;
+
+  [[nodiscard]]
+  constexpr auto push_alloc(std::size_t padded_size) -> void *;
+
+  constexpr void pop_shuffle() noexcept;
+
+  // struct deleter {
+  //   static constexpr void operator()(heap *h) noexcept {
+  //     // Should be empty at destruction.
+  //     LF_ASSUME(h->top != nullptr);
+  //     LF_ASSUME(h->top->prev == nullptr);
+  //     delete h->cache;
+  //     delete h->top;
+  //     delete h;
+  //   }
+  // };
+
+  [[no_unique_address]]
+  std::allocator_traits<Allocator>::template rebind_alloc<heap> m_heap_allocator;
+  [[no_unique_address]]
+  std::allocator_traits<Allocator>::template rebind_alloc<node> m_node_allocator;
+  [[no_unique_address]]
+  std::allocator_traits<Allocator>::template rebind_alloc<std::byte> m_byte_allocator;
+
+  heap *m_root; // The control block.
 
   std::byte *m_lo = nullptr; // The base pointer for the current stacklet.
   std::byte *m_sp = nullptr; // The stack pointer for the current stacklet.
