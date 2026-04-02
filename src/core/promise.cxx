@@ -446,7 +446,7 @@ struct mixin_frame {
 
   template <category Cat, typename R, typename Fn, typename... Args>
   static constexpr auto await_transform_pkg(pkg<Cat, Context, R, Fn, Args...> &&pkg) noexcept(
-      noexcept_async_invocable<Fn, Context, Args...>) -> awaitable<Cat, Context> {
+      async_nothrow_invocable<Fn, Context, Args...>) -> awaitable<Cat, Context> {
 
     // Required for noexcept specifier to be correct
     static_assert(std::is_reference_v<Fn> && (... && std::is_reference_v<Args>));
@@ -456,8 +456,8 @@ struct mixin_frame {
     // clang-format off
 
     promise_type<U, Context> *child_promise = std::move(pkg.args).apply(
-      [&](auto &&...args) LF_HOF(async_invoke<Context>(fwd_fn<Fn>(pkg.fn), LF_FWD(args)...))
-    );
+      [&](auto &&...args) LF_HOF(ctx_invoke_t<Context>{}(fwd_fn<Fn>(pkg.fn), LF_FWD(args)...))
+    ).get(key());
 
     // clang-format on
 
