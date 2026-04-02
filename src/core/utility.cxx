@@ -151,11 +151,11 @@ class [[nodiscard("Defer will execute unless bound to a name!")]] defer : immova
 /**
  * @brief Round up size to a multiple of `Align` for alignment purposes.
  */
-export template <std::size_t Alignment, std::unsigned_integral T, T A = Alignment>
+export template <std::size_t Alignment, std::unsigned_integral T>
   requires (std::has_single_bit(Alignment))
 [[nodiscard]]
 constexpr auto round_to_multiple(T size) noexcept -> T {
-  return (size + A - 1) & ~(A - 1);
+  return (size + Alignment - 1) & ~(Alignment - 1);
 }
 
 } // namespace lf
