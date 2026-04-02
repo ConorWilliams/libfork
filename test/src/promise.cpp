@@ -1,58 +1,34 @@
 #include <catch2/catch_test_macros.hpp>
 
 import libfork.core;
+import libfork.context;
 
-namespace {
-
-struct dummy_allocator {
-
-  struct ckpt {
-    auto operator==(ckpt const &) const -> bool = default;
-  };
-
-  constexpr static auto push(std::size_t sz) -> void *;
-  constexpr static auto pop(void *p, std::size_t sz) noexcept -> void;
-  constexpr static auto checkpoint() noexcept -> ckpt;
-  constexpr static auto prepare_release() noexcept -> int;
-  constexpr static auto release(int) noexcept -> void;
-  constexpr static auto acquire(ckpt) noexcept -> void;
-};
-
-static_assert(lf::stack_allocator<dummy_allocator>);
-
-struct dummy_context {
-  void post(lf::await_handle<dummy_context>);
-  void push(lf::frame_handle<dummy_context>);
-  auto pop() noexcept -> lf::frame_handle<dummy_context>;
-  auto allocator() noexcept -> dummy_allocator &;
-};
-
-static_assert(lf::worker_context<dummy_context>);
-
-} // namespace
+// TODO: make the tests part of the module so they can access the internals?
 
 TEST_CASE("Promise test", "[promise]") {
 
-  using frame_t = lf::frame_type<dummy_context>;
+  using frame_t = lf::frame_type<lf::dummy_context>;
 
   // Check for safe reinterpret_casts
-  STATIC_CHECK(std::is_standard_layout_v<lf::frame_type<dummy_context>>);
+  STATIC_CHECK(std::is_standard_layout_v<frame_t>);
 
   // Check on void
-  static_assert(alignof(lf::promise_type<void, dummy_context>) == alignof(frame_t));
+  static_assert(alignof(lf::promise_type<void, lf::dummy_context>) == alignof(frame_t));
 
 #ifdef __cpp_lib_is_pointer_interconvertible
-  static_assert(std::is_pointer_interconvertible_with_class(&lf::promise_type<void, dummy_context>::frame));
+  static_assert(
+      std::is_pointer_interconvertible_with_class(&lf::promise_type<void, lf::dummy_context>::frame));
 #else
-  static_assert(std::is_standard_layout_v<lf::promise_type<void, dummy_context>>);
+  static_assert(std::is_standard_layout_v<lf::promise_type<void, lf::dummy_context>>);
 #endif
 
   // Check on non-void
-  static_assert(alignof(lf::promise_type<int, dummy_context>) == alignof(frame_t));
+  static_assert(alignof(lf::promise_type<int, lf::dummy_context>) == alignof(frame_t));
 
 #ifdef __cpp_lib_is_pointer_interconvertible
-  static_assert(std::is_pointer_interconvertible_with_class(&lf::promise_type<int, dummy_context>::frame));
+  static_assert(
+      std::is_pointer_interconvertible_with_class(&lf::promise_type<int, lf::dummy_context>::frame));
 #else
-  static_assert(std::is_standard_layout_v<lf::promise_type<int, dummy_context>>);
+  static_assert(std::is_standard_layout_v<lf::promise_type<int, lf::dummy_context>>);
 #endif
 }
