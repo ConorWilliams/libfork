@@ -53,9 +53,9 @@ class task {
 
   constexpr task(key_t, promise_type<T, Context> *promise) noexcept : m_promise(promise) {}
 
-  constexpr auto get(key_t) noexcept -> promise_type<T, Context> * { return m_promise; }
-
  private:
+  friend constexpr auto get(key_t, task t) noexcept -> promise_type<T, Context> * { return t.m_promise; }
+
   promise_type<T, Context> *m_promise;
 };
 
@@ -455,9 +455,9 @@ struct mixin_frame {
 
     // clang-format off
 
-    promise_type<U, Context> *child_promise = std::move(pkg.args).apply(
+    promise_type<U, Context> *child_promise = get(key(), std::move(pkg.args).apply(
       [&](auto &&...args) LF_HOF(ctx_invoke_t<Context>{}(fwd_fn<Fn>(pkg.fn), LF_FWD(args)...))
-    ).get(key());
+    ));
 
     // clang-format on
 
