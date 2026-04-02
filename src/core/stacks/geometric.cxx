@@ -15,7 +15,7 @@ namespace lf {
  *
  * This protects against hot-splitting by keeping a single cached segment.
  */
-export class geometric_stack {
+export class geometric_stack : immovable {
 
   struct node;
 
