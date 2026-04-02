@@ -56,11 +56,11 @@ target_sources(libfork_libfork
 target_sources(libfork_libfork
   PUBLIC
     FILE_SET CXX_MODULES FILES
+     # Core
       src/core/core.cxx
       src/core/promise.cxx
       src/core/concepts.cxx
       src/core/utility.cxx
-      src/core/stack.cxx
       src/core/frame.cxx
       src/core/constants.cxx
       src/core/tuple.cxx
@@ -70,6 +70,11 @@ target_sources(libfork_libfork
       src/core/deque.cxx
       src/core/schedule.cxx
       src/core/handles.cxx
+      src/core/stacks/geometric.cxx
+      src/core/stacks/dummy.cxx
+      # Context
+      src/context/context.cxx
+      src/context/dummy.cxx
     PRIVATE
       src/exception.cpp
 )

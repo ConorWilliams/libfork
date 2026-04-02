@@ -41,7 +41,8 @@ struct block<T> final : block_type {
 
 export template <worker_context Context, typename... Args, async_invocable<Context, Args...> Fn>
   requires void_or_default_initializable<async_result_t<Fn, Context, Args...>>
-constexpr auto schedule(Context *context, Fn &&fn, Args &&...args) noexcept -> auto {
+constexpr auto
+schedule(Context *context, Fn &&fn, Args &&...args) noexcept -> async_result_t<Fn, Context, Args...> {
 
   // TODO: make sure this is exception safe and correctly qualifed
 
@@ -58,7 +59,7 @@ constexpr auto schedule(Context *context, Fn &&fn, Args &&...args) noexcept -> a
   // TODO: Before doing this we must be on a valid context.
   LF_ASSUME(get_context<Context>() == context);
 
-  auto *promise = async_invoke<Context>(std::forward<Fn>(fn), std::forward<Args>(args)...);
+  auto *promise = get(key(), ctx_invoke_t<Context>{}(std::forward<Fn>(fn), std::forward<Args>(args)...));
 
   // TODO: expose cancellable?
   promise->frame.parent.block = root_block.get();
