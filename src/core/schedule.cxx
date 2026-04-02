@@ -41,7 +41,8 @@ struct block<T> final : block_type {
 
 export template <worker_context Context, typename... Args, async_invocable<Context, Args...> Fn>
   requires void_or_default_initializable<async_result_t<Fn, Context, Args...>>
-constexpr auto schedule(Context *context, Fn &&fn, Args &&...args) noexcept -> auto {
+constexpr auto
+schedule(Context *context, Fn &&fn, Args &&...args) noexcept -> async_result_t<Fn, Context, Args...> {
 
   // TODO: make sure this is exception safe and correctly qualifed
 
