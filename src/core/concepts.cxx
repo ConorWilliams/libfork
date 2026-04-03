@@ -43,8 +43,6 @@ struct is_specialization_of<Template<Args...>, Template> : std::true_type {};
 export template <typename T, template <typename...> typename Template>
 concept specialization_of = is_specialization_of<std::remove_cvref_t<T>, Template>::value;
 
-// ========== Task constraint related concepts ========== //
-
 // ==== Returnable
 
 /**
@@ -54,6 +52,26 @@ concept specialization_of = is_specialization_of<std::remove_cvref_t<T>, Templat
  */
 export template <typename T>
 concept returnable = std::is_void_v<T> || std::movable<T>;
+
+// ==== Allocators
+
+/**
+ * @brief Lifted from the c++26 exposition only requirement.
+ */
+template <class T>
+concept simple_allocator =
+    std::copy_constructible<T> && std::equality_comparable<T> && requires (T alloc, std::size_t n) {
+      { *alloc.allocate(n) } -> std::same_as<typename T::value_type &>;
+      { alloc.deallocate(alloc.allocate(n), n) };
+    };
+
+/**
+ * @brief Semantically `T` must be a std:: Allocator
+ *
+ * Doesn't specify the full API just 'simple-allocator' exposition only concept.
+ */
+template <class T, typename U>
+concept allocator_of = simple_allocator<T> && std::same_as<typename T::value_type, U>;
 
 // ==== Stack
 
