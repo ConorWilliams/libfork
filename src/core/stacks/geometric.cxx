@@ -164,8 +164,6 @@ class geometric {
   [[no_unique_address]]
   typename node_traits::allocator_type m_node_alloc;
 
-  // TODO: rename root->heap
-
   ctrl_ptr m_ctrl = nullptr; // The control block for the stack.
 
   // TODO: use ptr
@@ -278,25 +276,25 @@ LF_NO_INLINE constexpr auto geometric<Allocator>::push_cached(std::size_t padded
 
   if (m_ctrl == nullptr) {
     // Fine if this throw
-    ctrl_ptr new_root = ctrl_traits::allocate(m_heap_alloc, 1);
+    ctrl_ptr new_ctrl = ctrl_traits::allocate(m_heap_alloc, 1);
 
     LF_TRY {
-      ctrl_traits::construct(m_heap_alloc, new_root);
+      ctrl_traits::construct(m_heap_alloc, new_ctrl);
       LF_TRY {
-        new_root->top = new_node(round_to_multiple<k_page_size>(min_node_size));
+        new_ctrl->top = new_node(round_to_multiple<k_page_size>(min_node_size));
       } LF_CATCH_ALL {
         // Clean up construction
-        ctrl_traits::destroy(m_heap_alloc, new_root);
+        ctrl_traits::destroy(m_heap_alloc, new_ctrl);
         LF_RETHROW;
       }
     } LF_CATCH_ALL {
       // Clean up allocation
-      ctrl_traits::deallocate(m_heap_alloc, new_root, 1);
+      ctrl_traits::deallocate(m_heap_alloc, new_ctrl, 1);
       LF_RETHROW;
     }
 
     // Nothing can throw, safe to publish to *this.
-    m_ctrl = new_root;
+    m_ctrl = new_ctrl;
 
     // Local copies of the new top.
     load_local<from::top>();
