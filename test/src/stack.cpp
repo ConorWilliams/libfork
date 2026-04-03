@@ -8,48 +8,78 @@ using lf::stack_allocator;
 
 // TODO: constexpr tests
 
-TEST_CASE("Concept", "[geometric_stack]") { STATIC_REQUIRE(stack_allocator<lf::stack::geometric<>>); }
+#define expect(expr)                                                                                         \
+  if consteval {                                                                                             \
+    if (!(expr)) {                                                                                           \
+      throw std::logic_error("Compile-time assertion failed: " #expr);                                       \
+    }                                                                                                        \
+  } else {                                                                                                   \
+    REQUIRE(expr);                                                                                           \
+  }
 
-void check_alignment(void *ptr) {
-  REQUIRE(ptr != nullptr);
-  REQUIRE((reinterpret_cast<std::uintptr_t>(ptr) % k_new_align) == 0);
+#define TEST_CONSTEXPR(...)                                                                                  \
+  constexpr auto impl = __VA_ARGS__;                                                                         \
+  STATIC_REQUIRE(impl());                                                                                    \
+  REQUIRE(impl())
+
+namespace {
+
+constexpr void check_alignment(void *ptr) {
+
+  expect(ptr != nullptr);
+
+  if !consteval {
+    REQUIRE(lf::is_sufficiently_aligned<k_new_align>(ptr));
+  }
+}
+
+} // namespace
+
+TEST_CASE("Concept", "[geometric_stack]") {
+  STATIC_REQUIRE(stack_allocator<lf::stack::geometric<>>); //
 }
 
 TEST_CASE("Basic push and pop", "[geometric_stack]") {
-  lf::stack::geometric<> stack;
-  REQUIRE(stack.empty());
+  TEST_CONSTEXPR([]() -> bool {
+    lf::stack::geometric<> stack;
+    expect(stack.empty());
 
-  void *p1 = stack.push(10);
-  check_alignment(p1);
-  REQUIRE(!stack.empty());
+    void *p1 = stack.push(10);
+    check_alignment(p1);
+    expect(!stack.empty());
 
-  void *p2 = stack.push(20);
-  check_alignment(p2);
-  REQUIRE(p2 != p1);
-  REQUIRE(!stack.empty());
+    void *p2 = stack.push(20);
+    check_alignment(p2);
+    expect(p2 != p1);
+    expect(!stack.empty());
 
-  // Pop in FILO order
-  stack.pop(p2, 20);
-  stack.pop(p1, 10);
-  REQUIRE(stack.empty());
+    // Pop in FILO order
+    stack.pop(p2, 20);
+    stack.pop(p1, 10);
+    expect(stack.empty());
+
+    return true;
+  });
 }
 
 TEST_CASE("Checkpoint and Acquire/Release", "[geometric_stack]") {
-  lf::stack::geometric<> stack1;
-  void *p1 = stack1.push(100);
-  auto cp1 = stack1.checkpoint();
+  TEST_CONSTEXPR([]() -> bool {
+    lf::stack::geometric<> stack1;
+    void *p1 = stack1.push(100);
+    auto cp1 = stack1.checkpoint();
 
-  lf::stack::geometric<> stack2;
-  auto cp2 = stack2.checkpoint();
-  REQUIRE(cp1 != cp2);
+    lf::stack::geometric<> stack2;
+    auto cp2 = stack2.checkpoint();
+    expect(cp1 != cp2);
 
-  SECTION("Acquire other stack") {
     auto key1 = stack1.prepare_release();
-    stack1.release(key1);
     stack2.acquire(cp1);
-    REQUIRE(stack2.checkpoint() == cp1);
+    stack1.release(key1);
+    expect(stack2.checkpoint() == cp1);
     stack2.pop(p1, 100);
-  }
+
+    return true;
+  });
 }
 
 TEST_CASE("Stress test", "[geometric_stack]") {
