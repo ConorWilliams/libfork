@@ -96,7 +96,7 @@ class geometric {
     // Zero sized pushed are an error
     LF_ASSUME(size > 0);
 
-    // Very carful math to avoid superflous instructions on this (very) hot path.
+    // Very careful math to avoid superfluous instructions on this (very) hot path.
     diff_int push_bytes = safe_cast<diff_int>(round_to_multiple<sizeof(node)>(size));
 
     constexpr diff_int node_size = sizeof(node);
@@ -104,7 +104,7 @@ class geometric {
     LF_ASSUME(push_bytes >= node_size);
     LF_ASSUME(push_bytes % node_size == 0);
 
-    // Optimised to just the subtrtaction because multiplication cancles the implicit division.
+    // Optimized to just the subtrtaction because multiplication cancels the implicit division.
     diff_int free_bytes = node_size * (m_hi - m_sp);
 
     if (push_bytes > free_bytes) [[unlikely]] {
@@ -328,7 +328,7 @@ class geometric {
   // TODO: do we need the no inlines
 
   [[nodiscard]]
-  LF_NO_INLINE constexpr auto push_cached(diff_int push_bytes) -> void_ptr {
+  constexpr auto push_cached(diff_int push_bytes) -> void_ptr {
 
     // Have to be very careful in this function to be strongly exception-safe!
 
@@ -411,8 +411,6 @@ class geometric {
   }
 
   constexpr void pop_shuffle(node_ptr sp) noexcept {
-
-    // TODO: benchmark accepting sp
 
     // Shuffle top/cache
     LF_ASSUME(!empty());
