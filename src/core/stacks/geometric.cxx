@@ -161,7 +161,7 @@ class geometric {
 
   constexpr void release([[maybe_unused]] release_t) noexcept {
 
-    // Don't delete, will be resumed
+    // Don't delete, will be resumed from a checkpoint.
     m_ctrl = nullptr;
 
     m_lo = nullptr;
@@ -181,6 +181,11 @@ class geometric {
     delete_ctrl(m_ctrl);
 
     m_ctrl = ckpt.m_ctrl;
+
+    if constexpr (!node_traits::is_always_equal::value) {
+      // Need to propagate allocator
+      m_ctrl_alloc = typename ctrl_traits::allocator_type{std::as_const(m_ctrl->node_alloc)};
+    }
 
     LF_ASSUME(m_ctrl->top != nullptr);
 
