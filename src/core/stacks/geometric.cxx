@@ -298,8 +298,6 @@ class geometric {
     }
   }
 
-  // TODO: vet constexpr usage in the library
-
   /**
    * @brief Allocate node with size bytes for stacklet.
    *

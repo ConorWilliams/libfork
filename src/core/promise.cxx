@@ -16,6 +16,8 @@ import :ops;
 
 import :handles;
 
+// TODO: vet constexpr usage in the library
+
 namespace lf {
 
 template <typename T = void>
