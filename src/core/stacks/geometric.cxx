@@ -154,6 +154,7 @@ class geometric {
   enum class from : char {
     top,
     cache,
+    none,
   };
 
   struct alignas(k_new_align) node {
@@ -189,20 +190,24 @@ class geometric {
    *
    * Assumes that the control block and top stacklet are non-nullptr.
    */
-  template <from From>
+  template <from StackPtr>
   constexpr auto load_local() noexcept -> void {
     LF_ASSUME(m_ctrl != nullptr);
     LF_ASSUME(m_ctrl->top != nullptr);
 
     m_lo = std::bit_cast<std::byte *>(m_ctrl->top + 1);
-
-    if constexpr (From == from::cache) {
-      m_sp = m_ctrl->sp_cache;
-    } else {
-      m_sp = m_lo;
-    }
-
     m_hi = m_lo + m_ctrl->top->size;
+
+    switch (StackPtr) {
+      case from::top:
+        m_sp = m_lo;
+        return;
+      case from::cache:
+        m_sp = m_ctrl->sp_cache;
+        return;
+      case from::none:
+        return;
+    }
   }
 
   /**
@@ -360,16 +365,25 @@ class geometric {
   }
 
   constexpr void pop_shuffle() noexcept {
+
+    // TODO: benchmark accepting sp
+
     // Shuffle top/cache
+    LF_ASSUME(!empty());
     LF_ASSUME(m_ctrl != nullptr);
     LF_ASSUME(m_ctrl->top != nullptr);       // Pop from empty stack
     LF_ASSUME(m_ctrl->top->prev != nullptr); // ^
 
-    delete std::exchange(m_ctrl->cache, m_ctrl->top);
+    // Shuffle top to cache
+    node_ptr old_cache = m_ctrl->cache;
+    m_ctrl->cache = m_ctrl->top;
+    delete_node(old_cache);
+
+    // Go back one stacklet
     m_ctrl->top = m_ctrl->top->prev;
 
     // Local copies of the new top
-    load_local<from::top>();
+    load_local<from::none>();
   }
 };
 
