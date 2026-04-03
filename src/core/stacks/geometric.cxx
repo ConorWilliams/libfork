@@ -169,9 +169,9 @@ class geometric {
   };
 
   struct ctrl {
-    node_ptr top = nullptr;        // Most recent stacklet i.e. the top of the stack.
-    node_ptr cache = nullptr;      // Cached (empty) stacklet for hot-split guarding.
-    std::byte *sp_cache = nullptr; // Cached stack pointer for this stacklet.
+    node_ptr top = nullptr;      // Most recent stacklet i.e. the top of the stack.
+    node_ptr cache = nullptr;    // Cached (empty) stacklet for hot-split guarding.
+    node_ptr sp_cache = nullptr; // Cached stack pointer for this stacklet.
   };
 
   // ============== Members ==============  //
@@ -183,11 +183,9 @@ class geometric {
 
   ctrl_ptr m_ctrl = nullptr; // The control block for the stack.
 
-  // TODO: use ptr
-
-  std::byte *m_lo = nullptr; // The base pointer for the current stacklet.
-  std::byte *m_sp = nullptr; // The stack pointer for the current stacklet.
-  std::byte *m_hi = nullptr; // The one-past-the-end pointer for the current stacklet.
+  node_ptr m_lo = nullptr; // The base pointer for the current stacklet.
+  node_ptr m_sp = nullptr; // The stack pointer for the current stacklet.
+  node_ptr m_hi = nullptr; // The one-past-the-end pointer for the current stacklet.
 
   // ============== Methods ==============  //
 
@@ -198,21 +196,21 @@ class geometric {
    */
   template <from StackPtr>
   constexpr auto load_local() noexcept -> void {
+
     LF_ASSUME(m_ctrl != nullptr);
     LF_ASSUME(m_ctrl->top != nullptr);
 
-    m_lo = std::bit_cast<std::byte *>(m_ctrl->top + 1);
+    constexpr typename std::iterator_traits<node_ptr>::difference_type one{1};
+
+    m_lo = m_ctrl->top + one;
     m_hi = m_lo + m_ctrl->top->size;
 
-    switch (StackPtr) {
-      case from::top:
-        m_sp = m_lo;
-        return;
-      case from::cache:
-        m_sp = m_ctrl->sp_cache;
-        return;
-      case from::none:
-        return;
+    if constexpr (StackPtr == from::cache) {
+      m_sp = m_ctrl->sp_cache;
+    } else if constexpr (StackPtr == from::top) {
+      m_sp = m_lo;
+    } else {
+      static_assert(StackPtr == from::none);
     }
   }
 
