@@ -114,6 +114,26 @@ class await_handle;
 template <typename T>
 concept ref_to_stack_allocator = std::is_lvalue_reference_v<T> && stack_allocator<std::remove_reference_t<T>>;
 
+template <typename T>
+concept has_allocator = requires (T context) {
+  { context.allocator() } noexcept -> ref_to_stack_allocator;
+};
+
+/**
+ * @brief Fetch the allocator type of a worker context `T`.
+ */
+export template <has_allocator T>
+using allocator_t = std::remove_reference_t<decltype(std::declval<T &>().allocator())>;
+
+template <typename T, typename U>
+concept worker_context_handles =
+    std::is_object_v<T> && requires (T context, frame_handle<T, U> frame, await_handle<T, U> await) {
+      { context.post(await) } -> std::same_as<void>;
+      { context.push(frame) } -> std::same_as<void>;
+      { context.pop() } noexcept -> std::same_as<frame_handle<T>>;
+      { context.allocator() } noexcept -> ref_to_stack_allocator;
+    };
+
 /**
  * @brief Defines the API for a libfork compatible worker context.
  *
@@ -131,12 +151,6 @@ concept worker_context =
       { context.pop() } noexcept -> std::same_as<frame_handle<T>>;
       { context.allocator() } noexcept -> ref_to_stack_allocator;
     };
-
-/**
- * @brief Fetch the allocator type of a worker context `T`.
- */
-export template <worker_context T>
-using allocator_t = std::remove_reference_t<decltype(std::declval<T &>().allocator())>;
 
 // ==== Forward-decl
 
