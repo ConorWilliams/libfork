@@ -175,6 +175,31 @@ class geometric {
   // ============== Methods ==============  //
 
   /**
+   * @brief Allocate and construct a new control block with a single stacklet of size bytes.
+   */
+  constexpr auto new_ctrl(std::size_t size) -> ctrl_ptr {
+
+    ctrl_ptr new_ctrl = ctrl_traits::allocate(m_heap_alloc, 1);
+
+    LF_TRY {
+      ctrl_traits::construct(m_heap_alloc, new_ctrl);
+      LF_TRY {
+        new_ctrl->top = new_node(round_to_multiple<k_page_size>(size));
+      } LF_CATCH_ALL {
+        // Clean up construction
+        ctrl_traits::destroy(m_heap_alloc, new_ctrl);
+        LF_RETHROW;
+      }
+    } LF_CATCH_ALL {
+      // Clean up allocation
+      ctrl_traits::deallocate(m_heap_alloc, new_ctrl, 1);
+      LF_RETHROW;
+    }
+
+    return new_ctrl;
+  }
+
+  /**
    * @brief Clean and delete the control block and all stacklets.
    */
   constexpr void delete_ctrl() noexcept {
@@ -271,34 +296,9 @@ LF_NO_INLINE constexpr auto geometric<Allocator>::push_cached(std::size_t padded
 
   // Have to be very careful in this function to be strongly exception-safe!
 
-  // This is the minimum size of node we could allocate that would fit the allocation.
-  std::size_t min_node_size = padded_size + k_new_align - 1;
-
   if (m_ctrl == nullptr) {
-    // Fine if this throw
-    ctrl_ptr new_ctrl = ctrl_traits::allocate(m_heap_alloc, 1);
-
-    LF_TRY {
-      ctrl_traits::construct(m_heap_alloc, new_ctrl);
-      LF_TRY {
-        new_ctrl->top = new_node(round_to_multiple<k_page_size>(min_node_size));
-      } LF_CATCH_ALL {
-        // Clean up construction
-        ctrl_traits::destroy(m_heap_alloc, new_ctrl);
-        LF_RETHROW;
-      }
-    } LF_CATCH_ALL {
-      // Clean up allocation
-      ctrl_traits::deallocate(m_heap_alloc, new_ctrl, 1);
-      LF_RETHROW;
-    }
-
-    // Nothing can throw, safe to publish to *this.
-    m_ctrl = new_ctrl;
-
-    // Local copies of the new top.
+    m_ctrl = new_ctrl(padded_size);
     load_local<from::top>();
-    // Do the allocation.
     return std::exchange(m_sp, m_sp + padded_size);
   }
 
@@ -330,7 +330,7 @@ LF_NO_INLINE constexpr auto geometric<Allocator>::push_cached(std::size_t padded
 
   // We need to allocate a new stacklet to fit this allocation, we choose to
   // grow geometrically to try to avoid too many allocations.
-  std::size_t next_node_size = std::max(min_node_size, 2 * m_ctrl->top->size);
+  std::size_t next_node_size = std::max(padded_size, 2 * m_ctrl->top->size);
 
   // Fine if this throws
   node_ptr new_top = new_node(round_to_multiple<k_page_size>(next_node_size));
