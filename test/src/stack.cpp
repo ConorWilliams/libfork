@@ -3,58 +3,93 @@
 import std;
 import libfork.core;
 
-using lf::geometric_stack;
 using lf::k_new_align;
 using lf::stack_allocator;
 
-TEST_CASE("Concept", "[geometric_stack]") { STATIC_REQUIRE(stack_allocator<geometric_stack>); }
+namespace {
 
-void check_alignment(void *ptr) {
-  REQUIRE(ptr != nullptr);
-  REQUIRE((reinterpret_cast<std::uintptr_t>(ptr) % k_new_align) == 0);
+auto not_constexpr() {}
+
+} // namespace
+
+#define expect(expr)                                                                                         \
+  if consteval {                                                                                             \
+    if (!(expr)) {                                                                                           \
+      not_constexpr();                                                                                       \
+    }                                                                                                        \
+  } else {                                                                                                   \
+    REQUIRE(expr);                                                                                           \
+  }
+
+#define TEST_CONSTEXPR(...)                                                                                  \
+  constexpr auto impl = __VA_ARGS__;                                                                         \
+  STATIC_REQUIRE(impl());                                                                                    \
+  REQUIRE(impl())
+
+namespace {
+
+constexpr void check_alignment(void *ptr) {
+
+  expect(ptr != nullptr);
+
+  if !consteval {
+    REQUIRE(lf::is_sufficiently_aligned<k_new_align>(ptr));
+  }
+}
+
+} // namespace
+
+TEST_CASE("Concept", "[geometric_stack]") {
+  STATIC_REQUIRE(stack_allocator<lf::stack::geometric<>>); //
 }
 
 TEST_CASE("Basic push and pop", "[geometric_stack]") {
-  geometric_stack stack;
-  REQUIRE(stack.empty());
+  TEST_CONSTEXPR([]() -> bool {
+    lf::stack::geometric<> stack;
+    expect(stack.empty());
 
-  void *p1 = stack.push(10);
-  check_alignment(p1);
-  REQUIRE(!stack.empty());
+    void *p1 = stack.push(10);
+    check_alignment(p1);
+    expect(!stack.empty());
 
-  void *p2 = stack.push(20);
-  check_alignment(p2);
-  REQUIRE(p2 != p1);
-  REQUIRE(!stack.empty());
+    void *p2 = stack.push(20);
+    check_alignment(p2);
+    expect(p2 != p1);
+    expect(!stack.empty());
 
-  // Pop in FILO order
-  stack.pop(p2, 20);
-  stack.pop(p1, 10);
-  REQUIRE(stack.empty());
+    // Pop in FILO order
+    stack.pop(p2, 20);
+    stack.pop(p1, 10);
+    expect(stack.empty());
+
+    return true;
+  });
 }
 
 TEST_CASE("Checkpoint and Acquire/Release", "[geometric_stack]") {
-  geometric_stack stack1;
-  void *p1 = stack1.push(100);
-  auto cp1 = stack1.checkpoint();
+  TEST_CONSTEXPR([]() -> bool {
+    lf::stack::geometric<> stack1;
+    void *p1 = stack1.push(100);
+    auto cp1 = stack1.checkpoint();
 
-  geometric_stack stack2;
-  auto cp2 = stack2.checkpoint();
-  REQUIRE(cp1 != cp2);
+    lf::stack::geometric<> stack2;
+    auto cp2 = stack2.checkpoint();
+    expect(cp1 != cp2);
 
-  SECTION("Acquire other stack") {
     auto key1 = stack1.prepare_release();
-    stack1.release(key1);
     stack2.acquire(cp1);
-    REQUIRE(stack2.checkpoint() == cp1);
+    stack1.release(key1);
+    expect(stack2.checkpoint() == cp1);
     stack2.pop(p1, 100);
-  }
+
+    return true;
+  });
 }
 
 TEST_CASE("Stress test", "[geometric_stack]") {
   for (int k = 0; k < 10; ++k) {
 
-    geometric_stack stack;
+    lf::stack::geometric<> stack;
     std::mt19937_64 rng{std::random_device{}()};
     std::uniform_int_distribution<std::size_t> size_dist{1, 200};
     std::uniform_int_distribution<std::size_t> depth_dist{5, 5000};
@@ -89,7 +124,7 @@ TEST_CASE("Stress test", "[geometric_stack]") {
 }
 
 TEST_CASE("Randomized push/pop stress test", "[geometric_stack]") {
-  geometric_stack stack;
+  lf::stack::geometric<> stack;
   std::mt19937_64 rng{std::random_device{}()};
   std::bernoulli_distribution push_dist{0.51};
   std::uniform_int_distribution<std::size_t> size_dist{1, 512};
@@ -132,7 +167,7 @@ TEST_CASE("Randomized push/pop stress test", "[geometric_stack]") {
 }
 
 TEST_CASE("Spikey randomized push/pop stress test", "[geometric_stack]") {
-  geometric_stack stack;
+  lf::stack::geometric<> stack;
   std::mt19937_64 rng{std::random_device{}()};
 
   // Higher probability of push after push, higher probability of pop after pop

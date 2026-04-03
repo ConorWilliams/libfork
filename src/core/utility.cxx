@@ -49,6 +49,8 @@ not_null(T *ptr, std::source_location const loc = std::source_location::current(
   return ptr;
 }
 
+// TODO: get rid of immovable/move_only
+
 /**
  * @brief An immovable, empty type, use as a mixin.
  */
@@ -149,21 +151,15 @@ class [[nodiscard("Defer will execute unless bound to a name!")]] defer : immova
 };
 
 /**
- * @brief Allocate an uninitialized array of bytes of the given size.
- */
-[[nodiscard]]
-constexpr auto make_bytes(std::size_t size) -> std::unique_ptr<std::byte[]> {
-  return std::make_unique_for_overwrite<std::byte[]>(size);
-}
-
-/**
  * @brief Test if a pointer is aligned to a multiple of `Align`.
+ *
+ * Supports fancy pointers, doesn't require an object to exist at the pointer.
  */
-export template <std::size_t Align>
+export template <std::size_t Align, typename T>
   requires (std::has_single_bit(Align))
 [[nodiscard]]
-constexpr auto is_aligned(void *ptr) noexcept -> bool {
-  return (std::bit_cast<std::uintptr_t>(ptr) & (Align - 1)) == 0;
+auto is_sufficiently_aligned(T *ptr) noexcept -> bool {
+  return (std::bit_cast<std::uintptr_t>(std::to_address(ptr)) & (Align - 1)) == 0;
 }
 
 /**
