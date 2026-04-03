@@ -85,7 +85,7 @@ class geometric {
   }
 
   /**
-   * @brief Get a chckpoint of the stack that can be used to acquire it from another stack allocator.
+   * @brief Get a checkpoint of the stack that can be used to acquire it from another stack allocator.
    */
   [[nodiscard]]
   constexpr auto checkpoint() noexcept -> checkpoint_t {
@@ -151,7 +151,7 @@ class geometric {
   [[nodiscard]]
   constexpr auto prepare_release() const noexcept -> release_t {
 
-    // Gaurd against null release
+    // Guard against null release
     if (m_ctrl != nullptr) {
       m_ctrl->sp_cache = m_sp;
     }
