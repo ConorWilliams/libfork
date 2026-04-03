@@ -117,8 +117,9 @@ class geometric {
   }
 
   constexpr void release([[maybe_unused]] release_t) noexcept {
-    // Safe even if we are nullptr
+    // Don't delete, will be resumed
     m_ctrl = nullptr;
+
     m_lo = nullptr;
     m_sp = nullptr;
     m_hi = nullptr;
@@ -139,10 +140,7 @@ class geometric {
 
     LF_ASSUME(m_ctrl->top != nullptr);
 
-    // Not quite a load_local because sp = sp_cache
-    m_lo = std::bit_cast<std::byte *>(m_ctrl->top + 1);
-    m_sp = m_ctrl->sp_cache;
-    m_hi = m_lo + m_ctrl->top->size;
+    load_local<from::cache>();
   }
 
  private:
@@ -197,23 +195,29 @@ class geometric {
     }
   }
 
-  // TODO: do we need the no inlines
-
-  [[nodiscard]]
-  LF_NO_INLINE constexpr auto push_cached(std::size_t padded_size) -> void *;
-
-  constexpr void pop_shuffle() noexcept;
+  enum class from : char {
+    top,
+    cache,
+  };
 
   /**
    * @brief Make local pointers point to the current stacklet in the control block.
    *
    * Assumes that the control block and top stacklet are non-nullptr.
    */
+  template <from From>
   constexpr auto load_local() noexcept -> void {
     LF_ASSUME(m_ctrl != nullptr);
     LF_ASSUME(m_ctrl->top != nullptr);
+
     m_lo = std::bit_cast<std::byte *>(m_ctrl->top + 1);
-    m_sp = m_lo;
+
+    if constexpr (From == from::cache) {
+      m_sp = m_ctrl->sp_cache;
+    } else {
+      m_sp = m_lo;
+    }
+
     m_hi = m_lo + m_ctrl->top->size;
   }
 
@@ -255,6 +259,13 @@ class geometric {
       node_traits::deallocate(m_node_alloc, ptr, num_nodes);
     }
   }
+
+  // TODO: do we need the no inlines
+
+  [[nodiscard]]
+  LF_NO_INLINE constexpr auto push_cached(std::size_t padded_size) -> void *;
+
+  constexpr void pop_shuffle() noexcept;
 };
 
 template <typename Allocator>
@@ -288,7 +299,7 @@ LF_NO_INLINE constexpr auto geometric<Allocator>::push_cached(std::size_t padded
     m_ctrl = new_root;
 
     // Local copies of the new top.
-    load_local();
+    load_local<from::top>();
     // Do the allocation.
     return std::exchange(m_sp, m_sp + padded_size);
   }
@@ -314,7 +325,7 @@ LF_NO_INLINE constexpr auto geometric<Allocator>::push_cached(std::size_t padded
     m_ctrl->cache = nullptr;
 
     // Local copies of the new top
-    load_local();
+    load_local<from::top>();
     // Do the allocation.
     return std::exchange(m_sp, m_sp + padded_size);
   }
@@ -347,7 +358,7 @@ LF_NO_INLINE constexpr auto geometric<Allocator>::push_cached(std::size_t padded
   m_ctrl->top = new_top;
 
   // Local copies of the new top
-  load_local();
+  load_local<from::top>();
   // Do the allocation.
   return std::exchange(m_sp, m_sp + padded_size);
 }
@@ -363,7 +374,7 @@ constexpr void geometric<Allocator>::pop_shuffle() noexcept {
   m_ctrl->top = m_ctrl->top->prev;
 
   // Local copies of the new top
-  load_local();
+  load_local<from::top>();
 }
 
 } // namespace lf::stack
