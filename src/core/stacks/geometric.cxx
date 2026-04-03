@@ -32,6 +32,7 @@ class geometric {
 
   using void_ptr = node_traits::void_pointer;
 
+  using size_int = node_traits::size_type;
   using diff_int = node_traits::difference_type;
 
   struct release_t {
@@ -231,14 +232,14 @@ class geometric {
   /**
    * @brief Allocate and construct a new control block with a single stacklet of size bytes.
    */
-  constexpr auto new_ctrl(this geometric &self, std::size_t size) -> ctrl_ptr {
+  constexpr auto new_ctrl(this geometric &self, diff_int num_nodes) -> ctrl_ptr {
 
     ctrl_ptr new_ctrl = ctrl_traits::allocate(self.m_heap_alloc, 1);
 
     LF_TRY {
       ctrl_traits::construct(self.m_heap_alloc, new_ctrl);
       LF_TRY {
-        new_ctrl->top = self.new_node(round_to_multiple<k_page_size>(size));
+        new_ctrl->top = self.new_node(num_nodes);
       } LF_CATCH_ALL {
         // Clean up construction
         ctrl_traits::destroy(self.m_heap_alloc, new_ctrl);
@@ -280,19 +281,21 @@ class geometric {
    * This function is strongly exception-safe.
    */
   [[nodiscard]]
-  constexpr auto new_node(this geometric &self, std::size_t size) -> node_ptr {
+  constexpr auto new_node(this geometric &self, diff_int num_nodes) -> node_ptr {
 
     // Allocation should be a multiple of the node size
-    LF_ASSUME(size % sizeof(node) == 0);
+    LF_ASSUME(num_nodes > 0);
 
-    std::size_t num_nodes = 1 + (size / sizeof(node));
+    // Allocation/deallocation requires size_int, +1 for the header node
+    size_int allocate_nodes = 1 + safe_cast<size_int>(num_nodes);
 
-    node_ptr next_node = node_traits::allocate(self.m_node_alloc, num_nodes);
+    node_ptr next_node = node_traits::allocate(self.m_node_alloc, allocate_nodes);
 
     LF_TRY {
-      node_traits::construct(self.m_node_alloc, next_node, nullptr, size);
+      // Construct the header
+      node_traits::construct(self.m_node_alloc, next_node, nullptr, num_nodes);
     } LF_CATCH_ALL {
-      node_traits::deallocate(self.m_node_alloc, next_node, num_nodes);
+      node_traits::deallocate(self.m_node_alloc, next_node, allocate_nodes);
       LF_RETHROW;
     }
 
@@ -304,28 +307,35 @@ class geometric {
    */
   constexpr auto delete_node(this geometric &self, node_ptr ptr) noexcept -> void {
     if (ptr != nullptr) {
-      std::size_t num_nodes = 1 + (ptr->size / sizeof(node));
+      // Size doesn't include the header node so we +1 here.
+      size_int allocated_nodes = safe_cast<size_int>(1 + ptr->size);
       node_traits::destroy(self.m_node_alloc, ptr);
-      node_traits::deallocate(self.m_node_alloc, ptr, num_nodes);
+      node_traits::deallocate(self.m_node_alloc, ptr, allocated_nodes);
     }
   }
 
   // TODO: do we need the no inlines
 
   [[nodiscard]]
-  LF_NO_INLINE constexpr auto push_cached(std::size_t padded_size) -> void * {
+  LF_NO_INLINE constexpr auto push_cached(diff_int num_nodes) -> void_ptr {
 
     // Have to be very careful in this function to be strongly exception-safe!
 
     if (m_ctrl == nullptr) {
-      m_ctrl = new_ctrl(padded_size);
+      // Initial stacklet wants to be quite large
+      constexpr diff_int min_nodes = (k_page_size / sizeof(node)) - 1;
+
+      m_ctrl = new_ctrl(std::max(min_nodes, num_nodes));
+
+      // Local copies of the new top
       load_local<from::top>();
-      return std::exchange(m_sp, m_sp + padded_size);
+      // Do the allocation.
+      return static_cast<void_ptr>(std::exchange(m_sp, m_sp + num_nodes));
     }
 
     LF_ASSUME(m_ctrl->top != nullptr);
 
-    if (m_ctrl->cache != nullptr && m_ctrl->cache->size >= padded_size) {
+    if (m_ctrl->cache != nullptr && m_ctrl->cache->size >= num_nodes) {
 
       // We have space in the cache. No allocations on this path, nothing cam throw.
 
@@ -346,15 +356,13 @@ class geometric {
       // Local copies of the new top
       load_local<from::top>();
       // Do the allocation.
-      return std::exchange(m_sp, m_sp + padded_size);
+      return static_cast<void_ptr>(std::exchange(m_sp, m_sp + num_nodes));
     }
 
     // We need to allocate a new stacklet to fit this allocation, we choose to
-    // grow geometrically to try to avoid too many allocations.
-    std::size_t next_node_size = std::max(padded_size, 2 * m_ctrl->top->size);
-
-    // Fine if this throws
-    node_ptr new_top = new_node(round_to_multiple<k_page_size>(next_node_size));
+    // grow geometrically to try to avoid too many allocations. Fine if this
+    // throws
+    node_ptr new_top = new_node(std::max(num_nodes, 2 * m_ctrl->top->size));
 
     // Nothing can throw after this point
 
@@ -379,10 +387,10 @@ class geometric {
     // Local copies of the new top
     load_local<from::top>();
     // Do the allocation.
-    return std::exchange(m_sp, m_sp + padded_size);
+    return static_cast<void_ptr>(std::exchange(m_sp, m_sp + num_nodes));
   }
 
-  constexpr void pop_shuffle(std::byte *sp) noexcept {
+  constexpr void pop_shuffle(node_ptr sp) noexcept {
 
     // TODO: benchmark accepting sp
 
