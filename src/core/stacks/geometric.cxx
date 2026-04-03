@@ -22,8 +22,6 @@ class geometric {
   struct ctrl;
   struct node;
 
-  // TODO: renames
-
   using ctrl_traits = std::allocator_traits<Allocator>::template rebind_traits<ctrl>;
   using node_traits = std::allocator_traits<Allocator>::template rebind_traits<node>;
 
