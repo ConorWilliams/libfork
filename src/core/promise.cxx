@@ -248,7 +248,7 @@ struct awaitable : std::suspend_always {
   constexpr void stash_and_resume(this awaitable self, coro<promise_type<T, Context>> parent) noexcept {
     // Clean-up the child that will never be resumed.
     self.child->handle().destroy();
-    stash_current_exception(not_null(&parent.promise().frame));
+    stash_current_exception(&parent.promise().frame);
   }
 
   template <typename T>
