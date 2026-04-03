@@ -20,6 +20,12 @@ namespace lf {
 //  - It is trivially copyable/constructible/destructible
 //  - It has a null value, you can test if it is null
 //  - You can store it in an atomic and it is lock-free
+
+/**
+ * @brief [TODO:description]
+ *
+ * @tparam T The (potentially incomplete) worker context.
+ */
 export template <typename T>
 class frame_handle {
  public:
