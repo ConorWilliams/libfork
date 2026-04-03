@@ -39,8 +39,6 @@ class geometric {
     explicit constexpr release_t(key_t) noexcept {}
   };
 
-  // TODO: use move's on all fancy pointer types
-
   class checkpoint_t {
    public:
     constexpr checkpoint_t() noexcept = default;
@@ -86,11 +84,17 @@ class geometric {
     return m_sp == m_lo;
   }
 
+  /**
+   * @brief Get a chckpoint of the stack that can be used to acquire it from another stack allocator.
+   */
   [[nodiscard]]
   constexpr auto checkpoint() noexcept -> checkpoint_t {
     return checkpoint_t{m_ctrl};
   }
 
+  /**
+   * @brief Allocate size bytes on the stack and return a pointer to the base of the allocation.
+   */
   [[nodiscard]]
   constexpr auto push(std::size_t size) -> void_ptr {
     // Zero sized pushed are an error
@@ -122,6 +126,10 @@ class geometric {
     return static_cast<void_ptr>(std::exchange(m_sp, m_sp + num_nodes));
   }
 
+  /**
+   * @brief Deallocate the most recent allocation of size bytes at ptr, which
+   * must be the most recent allocation returned by push and not yet popped.
+   */
   constexpr void pop(void_ptr ptr, [[maybe_unused]] std::size_t n) noexcept {
 
     LF_ASSUME(!empty());
@@ -283,7 +291,6 @@ class geometric {
     }
   }
 
-  // TODO: highlight local modifications with explicit self param
   // TODO: vet constexpr usage in the library
 
   /**
@@ -324,8 +331,6 @@ class geometric {
       node_traits::deallocate(self.m_node_alloc, ptr, allocated_nodes);
     }
   }
-
-  // TODO: do we need the no inlines
 
   [[nodiscard]]
   constexpr auto push_cached(diff_int push_bytes) -> void_ptr {
