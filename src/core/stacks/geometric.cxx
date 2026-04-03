@@ -137,18 +137,19 @@ class geometric : immovable {
   }
 
   constexpr ~geometric() noexcept {
-    // TODO:
+    if (m_root != nullptr) {
 
-    // struct deleter {
-    //   static constexpr void operator()(heap *h) noexcept {
-    //     // Should be empty at destruction.
-    //     LF_ASSUME(h->top != nullptr);
-    //     LF_ASSUME(h->top->prev == nullptr);
-    //     delete h->cache;
-    //     delete h->top;
-    //     delete h;
-    //   }
-    // };
+      LF_ASSUME(empty());
+      LF_ASSUME(m_root->top != nullptr);
+      LF_ASSUME(m_root->top->prev == nullptr);
+
+      delete_node(m_root->top);
+      delete_node(m_root->cache);
+
+      // Finally delete the control block.
+      heap_traits::destroy(m_heap_alloc, m_root);
+      heap_traits::deallocate(m_heap_alloc, m_root, 1);
+    }
   }
 
  private:
