@@ -31,7 +31,7 @@ class geometric : immovable {
   using node_ptr = typename node_traits::pointer;
 
   struct release_t {
-    constexpr release_t(key_t) noexcept {}
+    explicit constexpr release_t(key_t) noexcept {}
   };
 
   // TODO: use move's on all fancy pointer types
@@ -106,12 +106,12 @@ class geometric : immovable {
   [[nodiscard]]
   constexpr auto prepare_release() const noexcept -> release_t {
     m_root->sp_cache = m_sp;
-    return {};
+    return release_t{key()};
   }
 
   constexpr void release([[maybe_unused]] release_t) noexcept {
     // Safe even if we are nullptr
-    std::ignore = m_root.release();
+    m_root = nullptr;
     m_lo = nullptr;
     m_sp = nullptr;
     m_hi = nullptr;
@@ -122,16 +122,16 @@ class geometric : immovable {
     LF_ASSUME(empty());
     LF_ASSUME(ckpt.m_ptr != m_root);
 
-    if (ckpt_root == nullptr) {
+    if (ckpt.m_ptr == nullptr) {
       return;
     }
 
-    m_root.reset(ckpt_root);
+    m_root = ckpt.m_ptr;
 
     LF_ASSUME(m_root->top != nullptr);
 
     // Not quite a load_local because sp = sp_cache
-    m_lo = m_root->top->stacklet;
+    m_lo = std::bit_cast<std::byte *>(m_root->top + 1);
     m_sp = m_root->sp_cache;
     m_hi = m_lo + m_root->top->size;
   }
@@ -199,8 +199,7 @@ class geometric : immovable {
   constexpr auto load_local() noexcept -> void {
     LF_ASSUME(m_root != nullptr);
     LF_ASSUME(m_root->top != nullptr);
-    LF_ASSUME(m_root->top->stacklet != nullptr);
-    m_lo = m_root->top->stacklet;
+    m_lo = std::bit_cast<std::byte *>(m_root->top + 1);
     m_sp = m_lo;
     m_hi = m_lo + m_root->top->size;
   }
@@ -208,56 +207,29 @@ class geometric : immovable {
   // TODO: highlight local modifications with explicit self param
 
   /**
-   * @brief Allocate node with size bytes for stacklet,
-   *
-   * Note the resultant stacklet may be smaller as it will be adjusted for
-   * alignment. If you need `x` bytes allocate `x + k_new_align - 1` bytes.
+   * @brief Allocate node with size bytes for stacklet.
    *
    * This function is strongly exception-safe.
    */
   [[nodiscard]]
-  constexpr auto new_node(node_ptr prev, std::size_t size) -> node_ptr {
-    // Don't need to construct (implicit lifetime bytes)
-    byte_ptr byte_data = byte_traits::allocate(m_byte_alloc, size);
-    node_ptr next_node = nullptr;
+  constexpr auto new_node(std::size_t size) -> node_ptr {
+
+    // Allocation should be a multiple of the node size
+    LF_ASSUME(size % sizeof(node) == 0);
+
+    std::size_t num_nodes = 1 + (size / sizeof(node));
+
+    node_ptr next_node = node_traits::allocate(m_node_alloc, num_nodes);
 
     LF_TRY {
-      next_node = node_traits::allocate(m_node_alloc, 1);
+      node_traits::construct(m_node_alloc, next_node, nullptr, size);
     } LF_CATCH_ALL {
-      byte_traits::deallocate(m_byte_alloc, byte_data, size);
+      node_traits::deallocate(m_node_alloc, next_node, num_nodes);
       LF_RETHROW;
     }
-
-    // From here on nothing can (is allowed to) throw.
-
-    static_assert(std::has_single_bit(k_new_align), "Alignment is a power of two");
-
-    std::byte *raw_stacklet = std::to_address(byte_data);
-
-    // How much we need to increment to align:
-    //
-    //   (y - (x mod y)) mod y = (- x) mod y
-    //                         = (- x) & (y - 1) as y is a power of two
-    //
-    std::size_t offset = (-std::bit_cast<std::size_t>(raw_stacklet)) & (k_new_align - 1);
-
-    node next{
-        .prev = prev,
-        .raw_ptr = byte_data,
-        .raw_size = size,
-        .stacklet = raw_stacklet + offset,
-        .stacklet_size = size - offset,
-    };
+    return next_node;
 
     // TODO: vet constexpr usage in the library
-
-    if !consteval {
-      LF_ASSUME(is_sufficiently_aligned<k_new_align>(next.stacklet));
-    }
-
-    node_traits::construct(m_node_alloc, next_node, next);
-
-    return next_node;
   }
 
   /**
@@ -265,13 +237,9 @@ class geometric : immovable {
    */
   constexpr auto delete_node(node_ptr ptr) noexcept -> void {
     if (ptr != nullptr) {
-      LF_ASSUME(ptr->original != nullptr);
-
-      // Don't need to destroy (trivial destructor)
-      byte_traits::deallocate(m_byte_alloc, ptr->raw_ptr, ptr->raw_size);
-
+      std::size_t num_nodes = 1 + (ptr->size / sizeof(node));
       node_traits::destroy(m_node_alloc, ptr);
-      node_traits::deallocate(m_node_alloc, ptr, 1);
+      node_traits::deallocate(m_node_alloc, ptr, num_nodes);
     }
   }
 };
@@ -288,13 +256,17 @@ LF_NO_INLINE constexpr auto geometric<Allocator>::push_cached(std::size_t padded
     // Fine if this throw
     heap_ptr new_root = heap_traits::allocate(m_heap_alloc, 1);
 
-    // Can't throw
-    heap_traits::construct(m_heap_alloc, new_root, 1);
-
     LF_TRY {
-      new_root->top = new_node(nullptr, round_to_multiple<k_page_size>(min_node_size));
+      heap_traits::construct(m_heap_alloc, new_root);
+      LF_TRY {
+        new_root->top = new_node(round_to_multiple<k_page_size>(min_node_size));
+      } LF_CATCH_ALL {
+        // Clean up construction
+        heap_traits::destroy(m_heap_alloc, new_root);
+        LF_RETHROW;
+      }
     } LF_CATCH_ALL {
-      heap_traits::destroy(m_heap_alloc, new_root);
+      // Clean up allocation
       heap_traits::deallocate(m_heap_alloc, new_root, 1);
       LF_RETHROW;
     }
@@ -310,7 +282,7 @@ LF_NO_INLINE constexpr auto geometric<Allocator>::push_cached(std::size_t padded
 
   LF_ASSUME(m_root->top != nullptr);
 
-  if (m_root->cache != nullptr && m_root->cache->stacklet_size >= padded_size) {
+  if (m_root->cache != nullptr && m_root->cache->size >= padded_size) {
 
     // We have space in the cache. No allocations on this path, nothing cam throw.
 
@@ -336,10 +308,10 @@ LF_NO_INLINE constexpr auto geometric<Allocator>::push_cached(std::size_t padded
 
   // We need to allocate a new stacklet to fit this allocation, we choose to
   // grow geometrically to try to avoid too many allocations.
-  std::size_t next_node_size = std::max(min_node_size, 2 * m_root->top->raw_size);
+  std::size_t next_node_size = std::max(min_node_size, 2 * m_root->top->size);
 
   // Fine if this throws
-  node_ptr new_top = new_node(nullptr, round_to_multiple<k_page_size>(next_node_size));
+  node_ptr new_top = new_node(round_to_multiple<k_page_size>(next_node_size));
 
   // Nothing can throw after this point
 
@@ -378,9 +350,7 @@ constexpr void geometric<Allocator>::pop_shuffle() noexcept {
   m_root->top = m_root->top->prev;
 
   // Local copies of the new top
-  m_lo = m_root->top->stacklet;
-  m_sp = m_lo;
-  m_hi = m_lo + m_root->top->size;
+  load_local();
 }
 
 } // namespace lf::stack
