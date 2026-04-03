@@ -290,27 +290,55 @@ class geometric {
   // TODO: do we need the no inlines
 
   [[nodiscard]]
-  LF_NO_INLINE constexpr auto push_cached(std::size_t padded_size) -> void *;
+  LF_NO_INLINE constexpr auto push_cached(std::size_t padded_size) -> void * {
 
-  constexpr void pop_shuffle() noexcept;
-};
+    // Have to be very careful in this function to be strongly exception-safe!
 
-template <typename Allocator>
-LF_NO_INLINE constexpr auto geometric<Allocator>::push_cached(std::size_t padded_size) -> void * {
+    if (m_ctrl == nullptr) {
+      m_ctrl = new_ctrl(padded_size);
+      load_local<from::top>();
+      return std::exchange(m_sp, m_sp + padded_size);
+    }
 
-  // Have to be very careful in this function to be strongly exception-safe!
+    LF_ASSUME(m_ctrl->top != nullptr);
 
-  if (m_ctrl == nullptr) {
-    m_ctrl = new_ctrl(padded_size);
-    load_local<from::top>();
-    return std::exchange(m_sp, m_sp + padded_size);
-  }
+    if (m_ctrl->cache != nullptr && m_ctrl->cache->size >= padded_size) {
 
-  LF_ASSUME(m_ctrl->top != nullptr);
+      // We have space in the cache. No allocations on this path, nothing cam throw.
 
-  if (m_ctrl->cache != nullptr && m_ctrl->cache->size >= padded_size) {
+      if (m_sp == m_lo) {
+        // There is nothing allocated on the current stacklet/top but it doesn't
+        // have enough space hence, we need to delete top such that we don't end up
+        // with an empty stacklet in the chain. This would break deletion otherwise.
+        node_ptr empty_top = m_ctrl->top;
+        m_ctrl->top = m_ctrl->top->prev; // top could be null now
+        delete_node(empty_top);
+      }
 
-    // We have space in the cache. No allocations on this path, nothing cam throw.
+      // Shuffle cache to the top.
+      m_ctrl->cache->prev = m_ctrl->top;
+      m_ctrl->top = m_ctrl->cache;
+      m_ctrl->cache = nullptr;
+
+      // Local copies of the new top
+      load_local<from::top>();
+      // Do the allocation.
+      return std::exchange(m_sp, m_sp + padded_size);
+    }
+
+    // We need to allocate a new stacklet to fit this allocation, we choose to
+    // grow geometrically to try to avoid too many allocations.
+    std::size_t next_node_size = std::max(padded_size, 2 * m_ctrl->top->size);
+
+    // Fine if this throws
+    node_ptr new_top = new_node(round_to_multiple<k_page_size>(next_node_size));
+
+    // Nothing can throw after this point
+
+    // We didn't use the cache because it wasn't big enough, we should delete it
+    // now because we had to grow the stack. We couldn't do this until now because
+    // new_node may have thrown.
+    delete_node(std::exchange(m_ctrl->cache, nullptr));
 
     if (m_sp == m_lo) {
       // There is nothing allocated on the current stacklet/top but it doesn't
@@ -321,10 +349,9 @@ LF_NO_INLINE constexpr auto geometric<Allocator>::push_cached(std::size_t padded
       delete_node(empty_top);
     }
 
-    // Shuffle cache to the top.
-    m_ctrl->cache->prev = m_ctrl->top;
-    m_ctrl->top = m_ctrl->cache;
-    m_ctrl->cache = nullptr;
+    // Commit the new/node
+    new_top->prev = m_ctrl->top;
+    m_ctrl->top = new_top;
 
     // Local copies of the new top
     load_local<from::top>();
@@ -332,51 +359,18 @@ LF_NO_INLINE constexpr auto geometric<Allocator>::push_cached(std::size_t padded
     return std::exchange(m_sp, m_sp + padded_size);
   }
 
-  // We need to allocate a new stacklet to fit this allocation, we choose to
-  // grow geometrically to try to avoid too many allocations.
-  std::size_t next_node_size = std::max(padded_size, 2 * m_ctrl->top->size);
+  constexpr void pop_shuffle() noexcept {
+    // Shuffle top/cache
+    LF_ASSUME(m_ctrl != nullptr);
+    LF_ASSUME(m_ctrl->top != nullptr);       // Pop from empty stack
+    LF_ASSUME(m_ctrl->top->prev != nullptr); // ^
 
-  // Fine if this throws
-  node_ptr new_top = new_node(round_to_multiple<k_page_size>(next_node_size));
+    delete std::exchange(m_ctrl->cache, m_ctrl->top);
+    m_ctrl->top = m_ctrl->top->prev;
 
-  // Nothing can throw after this point
-
-  // We didn't use the cache because it wasn't big enough, we should delete it
-  // now because we had to grow the stack. We couldn't do this until now because
-  // new_node may have thrown.
-  delete_node(std::exchange(m_ctrl->cache, nullptr));
-
-  if (m_sp == m_lo) {
-    // There is nothing allocated on the current stacklet/top but it doesn't
-    // have enough space hence, we need to delete top such that we don't end up
-    // with an empty stacklet in the chain. This would break deletion otherwise.
-    node_ptr empty_top = m_ctrl->top;
-    m_ctrl->top = m_ctrl->top->prev; // top could be null now
-    delete_node(empty_top);
+    // Local copies of the new top
+    load_local<from::top>();
   }
-
-  // Commit the new/node
-  new_top->prev = m_ctrl->top;
-  m_ctrl->top = new_top;
-
-  // Local copies of the new top
-  load_local<from::top>();
-  // Do the allocation.
-  return std::exchange(m_sp, m_sp + padded_size);
-}
-
-template <typename Allocator>
-constexpr void geometric<Allocator>::pop_shuffle() noexcept {
-  // Shuffle top/cache
-  LF_ASSUME(m_ctrl != nullptr);
-  LF_ASSUME(m_ctrl->top != nullptr);       // Pop from empty stack
-  LF_ASSUME(m_ctrl->top->prev != nullptr); // ^
-
-  delete std::exchange(m_ctrl->cache, m_ctrl->top);
-  m_ctrl->top = m_ctrl->top->prev;
-
-  // Local copies of the new top
-  load_local<from::top>();
-}
+};
 
 } // namespace lf::stack
