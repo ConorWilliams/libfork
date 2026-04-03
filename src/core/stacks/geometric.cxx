@@ -151,6 +151,11 @@ class geometric {
  private:
   // ============== Types ==============  //
 
+  enum class from : char {
+    top,
+    cache,
+  };
+
   struct alignas(k_new_align) node {
     node_ptr prev;    // Linked list (past)
     std::size_t size; // Usable-size of the stacklet
@@ -178,6 +183,27 @@ class geometric {
   std::byte *m_hi = nullptr; // The one-past-the-end pointer for the current stacklet.
 
   // ============== Methods ==============  //
+
+  /**
+   * @brief Make local pointers point to the current stacklet in the control block.
+   *
+   * Assumes that the control block and top stacklet are non-nullptr.
+   */
+  template <from From>
+  constexpr auto load_local() noexcept -> void {
+    LF_ASSUME(m_ctrl != nullptr);
+    LF_ASSUME(m_ctrl->top != nullptr);
+
+    m_lo = std::bit_cast<std::byte *>(m_ctrl->top + 1);
+
+    if constexpr (From == from::cache) {
+      m_sp = m_ctrl->sp_cache;
+    } else {
+      m_sp = m_lo;
+    }
+
+    m_hi = m_lo + m_ctrl->top->size;
+  }
 
   /**
    * @brief Allocate and construct a new control block with a single stacklet of size bytes.
@@ -220,32 +246,6 @@ class geometric {
       ctrl_traits::destroy(self.m_heap_alloc, ctrl);
       ctrl_traits::deallocate(self.m_heap_alloc, ctrl, 1);
     }
-  }
-
-  enum class from : char {
-    top,
-    cache,
-  };
-
-  /**
-   * @brief Make local pointers point to the current stacklet in the control block.
-   *
-   * Assumes that the control block and top stacklet are non-nullptr.
-   */
-  template <from From>
-  constexpr auto load_local() noexcept -> void {
-    LF_ASSUME(m_ctrl != nullptr);
-    LF_ASSUME(m_ctrl->top != nullptr);
-
-    m_lo = std::bit_cast<std::byte *>(m_ctrl->top + 1);
-
-    if constexpr (From == from::cache) {
-      m_sp = m_ctrl->sp_cache;
-    } else {
-      m_sp = m_lo;
-    }
-
-    m_hi = m_lo + m_ctrl->top->size;
   }
 
   // TODO: highlight local modifications with explicit self param
