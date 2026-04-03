@@ -96,17 +96,27 @@ class geometric {
     // Zero sized pushed are an error
     LF_ASSUME(size > 0);
 
-    // Round up to number of nodes
-    diff_int num_nodes = safe_cast<diff_int>((size + sizeof(node) - 1) / sizeof(node));
+    // Very carful math to avoid superflous instructions on this (very) hot path.
+    diff_int push_bytes = safe_cast<diff_int>(round_to_multiple<sizeof(node)>(size));
 
-    LF_ASSUME(num_nodes > 0);
+    constexpr diff_int node_size = sizeof(node);
 
-    if (num_nodes > m_hi - m_sp) [[unlikely]] {
-      return push_cached(num_nodes);
+    LF_ASSUME(push_bytes >= node_size);
+    LF_ASSUME(push_bytes % node_size == 0);
+
+    // Optimised to just the subtrtaction because multiplication cancles the implicit division.
+    diff_int free_bytes = node_size * (m_hi - m_sp);
+
+    if (push_bytes > free_bytes) [[unlikely]] {
+      return push_cached(push_bytes);
     }
 
     LF_ASSUME(m_ctrl != nullptr);
     LF_ASSUME(m_ctrl->top != nullptr);
+
+    // Compiler should optimize this division away when it fuses it with the
+    // implicit multiplication in the pointer arithmetic below.
+    diff_int num_nodes = push_bytes / node_size;
 
     // node_ptr -> void_ptr
     return static_cast<void_ptr>(std::exchange(m_sp, m_sp + num_nodes));
@@ -318,9 +328,18 @@ class geometric {
   // TODO: do we need the no inlines
 
   [[nodiscard]]
-  LF_NO_INLINE constexpr auto push_cached(diff_int num_nodes) -> void_ptr {
+  LF_NO_INLINE constexpr auto push_cached(diff_int push_bytes) -> void_ptr {
 
     // Have to be very careful in this function to be strongly exception-safe!
+
+    constexpr diff_int node_size = sizeof(node);
+
+    LF_ASSUME(push_bytes >= node_size);
+    LF_ASSUME(push_bytes % node_size == 0);
+
+    diff_int num_nodes = safe_cast<diff_int>(push_bytes / node_size);
+
+    LF_ASSUME(num_nodes > 0);
 
     if (m_ctrl == nullptr) {
       // Initial stacklet wants to be quite large
