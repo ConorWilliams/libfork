@@ -24,10 +24,10 @@ class geometric {
 
   // TODO: renames
 
-  using heap_traits = std::allocator_traits<Allocator>::template rebind_traits<ctrl>;
+  using ctrl_traits = std::allocator_traits<Allocator>::template rebind_traits<ctrl>;
   using node_traits = std::allocator_traits<Allocator>::template rebind_traits<node>;
 
-  using heap_ptr = typename heap_traits::pointer;
+  using ctrl_ptr = typename ctrl_traits::pointer;
   using node_ptr = typename node_traits::pointer;
 
   struct release_t {
@@ -43,8 +43,8 @@ class geometric {
 
    private:
     friend geometric;
-    explicit constexpr checkpoint_t(heap_ptr ptr) noexcept : m_ptr(ptr) {}
-    heap_ptr m_ptr = nullptr;
+    explicit constexpr checkpoint_t(ctrl_ptr ptr) noexcept : m_ctrl(ptr) {}
+    ctrl_ptr m_ctrl = nullptr;
   };
 
  public:
@@ -64,13 +64,13 @@ class geometric {
    */
   [[nodiscard]]
   constexpr auto empty() const noexcept -> bool {
-    if (m_root == nullptr) {
+    if (m_ctrl == nullptr) {
       return true;
     }
 
-    LF_ASSUME(m_root->top != nullptr);
+    LF_ASSUME(m_ctrl->top != nullptr);
 
-    if (m_root->top->prev != nullptr) {
+    if (m_ctrl->top->prev != nullptr) {
       return false;
     }
     return m_sp == m_lo;
@@ -78,7 +78,7 @@ class geometric {
 
   [[nodiscard]]
   constexpr auto checkpoint() noexcept -> checkpoint_t {
-    return checkpoint_t{m_root};
+    return checkpoint_t{m_ctrl};
   }
 
   [[nodiscard]]
@@ -92,16 +92,16 @@ class geometric {
       return push_cached(padded_size);
     }
 
-    LF_ASSUME(m_root != nullptr);
-    LF_ASSUME(m_root->top != nullptr);
+    LF_ASSUME(m_ctrl != nullptr);
+    LF_ASSUME(m_ctrl->top != nullptr);
 
     return std::exchange(m_sp, m_sp + padded_size);
   }
 
   constexpr void pop(void *ptr, [[maybe_unused]] std::size_t n) noexcept {
 
-    LF_ASSUME(m_root != nullptr);
-    LF_ASSUME(m_root->top != nullptr);
+    LF_ASSUME(m_ctrl != nullptr);
+    LF_ASSUME(m_ctrl->top != nullptr);
 
     if (m_sp == m_lo) [[unlikely]] {
       pop_shuffle();
@@ -112,13 +112,13 @@ class geometric {
 
   [[nodiscard]]
   constexpr auto prepare_release() const noexcept -> release_t {
-    m_root->sp_cache = m_sp;
+    m_ctrl->sp_cache = m_sp;
     return release_t{key()};
   }
 
   constexpr void release([[maybe_unused]] release_t) noexcept {
     // Safe even if we are nullptr
-    m_root = nullptr;
+    m_ctrl = nullptr;
     m_lo = nullptr;
     m_sp = nullptr;
     m_hi = nullptr;
@@ -127,22 +127,22 @@ class geometric {
   constexpr void acquire(checkpoint_t ckpt) noexcept {
 
     LF_ASSUME(empty());
-    LF_ASSUME(ckpt.m_ptr != m_root);
+    LF_ASSUME(ckpt.m_ctrl != m_ctrl);
 
-    if (ckpt.m_ptr == nullptr) {
+    if (ckpt.m_ctrl == nullptr) {
       return;
     }
 
     delete_ctrl();
 
-    m_root = ckpt.m_ptr;
+    m_ctrl = ckpt.m_ctrl;
 
-    LF_ASSUME(m_root->top != nullptr);
+    LF_ASSUME(m_ctrl->top != nullptr);
 
     // Not quite a load_local because sp = sp_cache
-    m_lo = std::bit_cast<std::byte *>(m_root->top + 1);
-    m_sp = m_root->sp_cache;
-    m_hi = m_lo + m_root->top->size;
+    m_lo = std::bit_cast<std::byte *>(m_ctrl->top + 1);
+    m_sp = m_ctrl->sp_cache;
+    m_hi = m_lo + m_ctrl->top->size;
   }
 
  private:
@@ -162,13 +162,13 @@ class geometric {
   // ============== Members ==============  //
 
   [[no_unique_address]]
-  typename heap_traits::allocator_type m_heap_alloc;
+  typename ctrl_traits::allocator_type m_heap_alloc;
   [[no_unique_address]]
   typename node_traits::allocator_type m_node_alloc;
 
   // TODO: rename root->heap
 
-  heap_ptr m_root = nullptr; // The control block for the stack.
+  ctrl_ptr m_ctrl = nullptr; // The control block for the stack.
 
   // TODO: use ptr
 
@@ -182,18 +182,18 @@ class geometric {
    * @brief Clean and delete the control block and all stacklets.
    */
   constexpr void delete_ctrl() noexcept {
-    if (m_root != nullptr) {
+    if (m_ctrl != nullptr) {
       LF_ASSUME(empty());
-      LF_ASSUME(m_root->top != nullptr);
-      LF_ASSUME(m_root->top->prev == nullptr);
+      LF_ASSUME(m_ctrl->top != nullptr);
+      LF_ASSUME(m_ctrl->top->prev == nullptr);
 
       // Clea-up stacklets
-      delete_node(m_root->top);
-      delete_node(m_root->cache);
+      delete_node(m_ctrl->top);
+      delete_node(m_ctrl->cache);
 
       // Finally delete the control block.
-      heap_traits::destroy(m_heap_alloc, m_root);
-      heap_traits::deallocate(m_heap_alloc, m_root, 1);
+      ctrl_traits::destroy(m_heap_alloc, m_ctrl);
+      ctrl_traits::deallocate(m_heap_alloc, m_ctrl, 1);
     }
   }
 
@@ -210,11 +210,11 @@ class geometric {
    * Assumes that the control block and top stacklet are non-nullptr.
    */
   constexpr auto load_local() noexcept -> void {
-    LF_ASSUME(m_root != nullptr);
-    LF_ASSUME(m_root->top != nullptr);
-    m_lo = std::bit_cast<std::byte *>(m_root->top + 1);
+    LF_ASSUME(m_ctrl != nullptr);
+    LF_ASSUME(m_ctrl->top != nullptr);
+    m_lo = std::bit_cast<std::byte *>(m_ctrl->top + 1);
     m_sp = m_lo;
-    m_hi = m_lo + m_root->top->size;
+    m_hi = m_lo + m_ctrl->top->size;
   }
 
   // TODO: highlight local modifications with explicit self param
@@ -265,27 +265,27 @@ LF_NO_INLINE constexpr auto geometric<Allocator>::push_cached(std::size_t padded
   // This is the minimum size of node we could allocate that would fit the allocation.
   std::size_t min_node_size = padded_size + k_new_align - 1;
 
-  if (m_root == nullptr) {
+  if (m_ctrl == nullptr) {
     // Fine if this throw
-    heap_ptr new_root = heap_traits::allocate(m_heap_alloc, 1);
+    ctrl_ptr new_root = ctrl_traits::allocate(m_heap_alloc, 1);
 
     LF_TRY {
-      heap_traits::construct(m_heap_alloc, new_root);
+      ctrl_traits::construct(m_heap_alloc, new_root);
       LF_TRY {
         new_root->top = new_node(round_to_multiple<k_page_size>(min_node_size));
       } LF_CATCH_ALL {
         // Clean up construction
-        heap_traits::destroy(m_heap_alloc, new_root);
+        ctrl_traits::destroy(m_heap_alloc, new_root);
         LF_RETHROW;
       }
     } LF_CATCH_ALL {
       // Clean up allocation
-      heap_traits::deallocate(m_heap_alloc, new_root, 1);
+      ctrl_traits::deallocate(m_heap_alloc, new_root, 1);
       LF_RETHROW;
     }
 
     // Nothing can throw, safe to publish to *this.
-    m_root = new_root;
+    m_ctrl = new_root;
 
     // Local copies of the new top.
     load_local();
@@ -293,9 +293,9 @@ LF_NO_INLINE constexpr auto geometric<Allocator>::push_cached(std::size_t padded
     return std::exchange(m_sp, m_sp + padded_size);
   }
 
-  LF_ASSUME(m_root->top != nullptr);
+  LF_ASSUME(m_ctrl->top != nullptr);
 
-  if (m_root->cache != nullptr && m_root->cache->size >= padded_size) {
+  if (m_ctrl->cache != nullptr && m_ctrl->cache->size >= padded_size) {
 
     // We have space in the cache. No allocations on this path, nothing cam throw.
 
@@ -303,15 +303,15 @@ LF_NO_INLINE constexpr auto geometric<Allocator>::push_cached(std::size_t padded
       // There is nothing allocated on the current stacklet/top but it doesn't
       // have enough space hence, we need to delete top such that we don't end up
       // with an empty stacklet in the chain. This would break deletion otherwise.
-      node_ptr empty_top = m_root->top;
-      m_root->top = m_root->top->prev; // top could be null now
+      node_ptr empty_top = m_ctrl->top;
+      m_ctrl->top = m_ctrl->top->prev; // top could be null now
       delete_node(empty_top);
     }
 
     // Shuffle cache to the top.
-    m_root->cache->prev = m_root->top;
-    m_root->top = m_root->cache;
-    m_root->cache = nullptr;
+    m_ctrl->cache->prev = m_ctrl->top;
+    m_ctrl->top = m_ctrl->cache;
+    m_ctrl->cache = nullptr;
 
     // Local copies of the new top
     load_local();
@@ -321,7 +321,7 @@ LF_NO_INLINE constexpr auto geometric<Allocator>::push_cached(std::size_t padded
 
   // We need to allocate a new stacklet to fit this allocation, we choose to
   // grow geometrically to try to avoid too many allocations.
-  std::size_t next_node_size = std::max(min_node_size, 2 * m_root->top->size);
+  std::size_t next_node_size = std::max(min_node_size, 2 * m_ctrl->top->size);
 
   // Fine if this throws
   node_ptr new_top = new_node(round_to_multiple<k_page_size>(next_node_size));
@@ -331,20 +331,20 @@ LF_NO_INLINE constexpr auto geometric<Allocator>::push_cached(std::size_t padded
   // We didn't use the cache because it wasn't big enough, we should delete it
   // now because we had to grow the stack. We couldn't do this until now because
   // new_node may have thrown.
-  delete_node(std::exchange(m_root->cache, nullptr));
+  delete_node(std::exchange(m_ctrl->cache, nullptr));
 
   if (m_sp == m_lo) {
     // There is nothing allocated on the current stacklet/top but it doesn't
     // have enough space hence, we need to delete top such that we don't end up
     // with an empty stacklet in the chain. This would break deletion otherwise.
-    node_ptr empty_top = m_root->top;
-    m_root->top = m_root->top->prev; // top could be null now
+    node_ptr empty_top = m_ctrl->top;
+    m_ctrl->top = m_ctrl->top->prev; // top could be null now
     delete_node(empty_top);
   }
 
   // Commit the new/node
-  new_top->prev = m_root->top;
-  m_root->top = new_top;
+  new_top->prev = m_ctrl->top;
+  m_ctrl->top = new_top;
 
   // Local copies of the new top
   load_local();
@@ -355,12 +355,12 @@ LF_NO_INLINE constexpr auto geometric<Allocator>::push_cached(std::size_t padded
 template <typename Allocator>
 constexpr void geometric<Allocator>::pop_shuffle() noexcept {
   // Shuffle top/cache
-  LF_ASSUME(m_root != nullptr);
-  LF_ASSUME(m_root->top != nullptr);       // Pop from empty stack
-  LF_ASSUME(m_root->top->prev != nullptr); // ^
+  LF_ASSUME(m_ctrl != nullptr);
+  LF_ASSUME(m_ctrl->top != nullptr);       // Pop from empty stack
+  LF_ASSUME(m_ctrl->top->prev != nullptr); // ^
 
-  delete std::exchange(m_root->cache, m_root->top);
-  m_root->top = m_root->top->prev;
+  delete std::exchange(m_ctrl->cache, m_ctrl->top);
+  m_ctrl->top = m_ctrl->top->prev;
 
   // Local copies of the new top
   load_local();
