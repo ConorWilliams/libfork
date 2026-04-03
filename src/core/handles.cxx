@@ -19,8 +19,7 @@ namespace lf {
 //  - It is trivially copyable/constructible/destructible
 //  - It has a null value, you can test if it is null
 //  - You can store it in an atomic and it is lock-free
-
-export template <typename Context, typename Checkpoint>
+export template <typename T>
 class frame_handle {
  public:
   constexpr frame_handle() = default;
