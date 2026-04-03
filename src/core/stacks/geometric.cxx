@@ -57,22 +57,27 @@ class geometric {
   constexpr auto operator=(geometric const &other) -> geometric & = delete;
   constexpr auto operator=(geometric &&other) -> geometric & = delete;
 
-  constexpr ~geometric() noexcept { delete_ctrl(); }
+  constexpr ~geometric() noexcept {
+    LF_ASSUME(empty());
+    delete_ctrl(m_ctrl);
+  }
 
   /**
    * @brief Test if the stack is empty (all pushes have been popped).
    */
   [[nodiscard]]
   constexpr auto empty() const noexcept -> bool {
-    if (m_ctrl == nullptr) {
+
+    if (m_ctrl != nullptr) {
+      LF_ASSUME(m_ctrl->top != nullptr);
+    } else {
       return true;
     }
-
-    LF_ASSUME(m_ctrl->top != nullptr);
 
     if (m_ctrl->top->prev != nullptr) {
       return false;
     }
+
     return m_sp == m_lo;
   }
 
@@ -134,7 +139,7 @@ class geometric {
       return;
     }
 
-    delete_ctrl();
+    delete_ctrl(m_ctrl);
 
     m_ctrl = ckpt.m_ctrl;
 
@@ -177,22 +182,22 @@ class geometric {
   /**
    * @brief Allocate and construct a new control block with a single stacklet of size bytes.
    */
-  constexpr auto new_ctrl(std::size_t size) -> ctrl_ptr {
+  constexpr auto new_ctrl(this geometric &self, std::size_t size) -> ctrl_ptr {
 
-    ctrl_ptr new_ctrl = ctrl_traits::allocate(m_heap_alloc, 1);
+    ctrl_ptr new_ctrl = ctrl_traits::allocate(self.m_heap_alloc, 1);
 
     LF_TRY {
-      ctrl_traits::construct(m_heap_alloc, new_ctrl);
+      ctrl_traits::construct(self.m_heap_alloc, new_ctrl);
       LF_TRY {
-        new_ctrl->top = new_node(round_to_multiple<k_page_size>(size));
+        new_ctrl->top = self.new_node(round_to_multiple<k_page_size>(size));
       } LF_CATCH_ALL {
         // Clean up construction
-        ctrl_traits::destroy(m_heap_alloc, new_ctrl);
+        ctrl_traits::destroy(self.m_heap_alloc, new_ctrl);
         LF_RETHROW;
       }
     } LF_CATCH_ALL {
       // Clean up allocation
-      ctrl_traits::deallocate(m_heap_alloc, new_ctrl, 1);
+      ctrl_traits::deallocate(self.m_heap_alloc, new_ctrl, 1);
       LF_RETHROW;
     }
 
@@ -202,19 +207,18 @@ class geometric {
   /**
    * @brief Clean and delete the control block and all stacklets.
    */
-  constexpr void delete_ctrl() noexcept {
-    if (m_ctrl != nullptr) {
-      LF_ASSUME(empty());
-      LF_ASSUME(m_ctrl->top != nullptr);
-      LF_ASSUME(m_ctrl->top->prev == nullptr);
+  constexpr void delete_ctrl(this geometric &self, ctrl_ptr ctrl) noexcept {
+    if (ctrl != nullptr) {
+      LF_ASSUME(ctrl->top != nullptr);
+      LF_ASSUME(ctrl->top->prev == nullptr);
 
       // Clea-up stacklets
-      delete_node(m_ctrl->top);
-      delete_node(m_ctrl->cache);
+      self.delete_node(ctrl->top);
+      self.delete_node(ctrl->cache);
 
       // Finally delete the control block.
-      ctrl_traits::destroy(m_heap_alloc, m_ctrl);
-      ctrl_traits::deallocate(m_heap_alloc, m_ctrl, 1);
+      ctrl_traits::destroy(self.m_heap_alloc, ctrl);
+      ctrl_traits::deallocate(self.m_heap_alloc, ctrl, 1);
     }
   }
 
