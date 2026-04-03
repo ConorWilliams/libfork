@@ -97,7 +97,7 @@ class geometric {
     LF_ASSUME(size > 0);
 
     // Round up to number of nodes
-    std::size_t num_bytes = round_to_multiple<sizeof(node)>(size);
+    diff_int num_nodes = safe_cast<diff_int>((size + sizeof(node) - 1) / sizeof(node));
 
     LF_ASSUME(num_nodes > 0);
 
@@ -183,8 +183,6 @@ class geometric {
     diff_int size; // Usable-size of the stacklet
   };
 
-  static_assert(sizeof(node) == k_new_align, "Bad platform");
-
   struct ctrl {
     node_ptr top = nullptr;      // Most recent stacklet i.e. the top of the stack.
     node_ptr cache = nullptr;    // Cached (empty) stacklet for hot-split guarding.
@@ -200,11 +198,9 @@ class geometric {
 
   ctrl_ptr m_ctrl = nullptr; // The control block for the stack.
 
-  // Use `byte *` (instead of node_ptr) becasue we get better assembly in hot-loop
-
-  std::byte *m_lo = nullptr; // The base pointer for the current stacklet.
-  std::byte *m_sp = nullptr; // The stack pointer for the current stacklet.
-  std::byte *m_hi = nullptr; // The one-past-the-end pointer for the current stacklet.
+  node_ptr m_lo = nullptr; // The base pointer for the current stacklet.
+  node_ptr m_sp = nullptr; // The stack pointer for the current stacklet.
+  node_ptr m_hi = nullptr; // The one-past-the-end pointer for the current stacklet.
 
   // ============== Methods ==============  //
 
