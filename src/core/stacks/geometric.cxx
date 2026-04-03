@@ -27,6 +27,9 @@ class geometric {
   using ctrl_traits = std::allocator_traits<Allocator>::template rebind_traits<ctrl>;
   using node_traits = std::allocator_traits<Allocator>::template rebind_traits<node>;
 
+  using ctrl_alloc = ctrl_traits::allocator_type;
+  using node_alloc = node_traits::allocator_type;
+
   using ctrl_ptr = ctrl_traits::pointer;
   using node_ptr = node_traits::pointer;
 
@@ -40,14 +43,30 @@ class geometric {
   };
 
   class checkpoint_t {
+
+    // An empty replacement for allocators that are always equal.
+    struct empty {
+      constexpr empty() noexcept = default;
+      explicit constexpr empty(ctrl_alloc const &) noexcept {}
+      constexpr auto operator==(empty const &) const noexcept -> bool = default;
+    };
+
+    using allocator = std::conditional_t<ctrl_traits::is_always_equal::value, empty, ctrl_alloc>;
+
    public:
-    constexpr checkpoint_t() noexcept = default;
+    constexpr checkpoint_t() noexcept(noexcept(allocator())) : m_alloc() {}
     constexpr auto operator==(checkpoint_t const &) const noexcept -> bool = default;
 
    private:
     friend geometric;
-    explicit constexpr checkpoint_t(ctrl_ptr ptr) noexcept : m_ctrl(ptr) {}
+
     ctrl_ptr m_ctrl = nullptr;
+    [[no_unique_address]]
+    allocator m_alloc;
+
+    explicit constexpr checkpoint_t(geometric const &stack) noexcept
+        : m_ctrl(stack.m_ctrl),
+          m_alloc{stack.m_ctrl_alloc} {}
   };
 
  public:
@@ -89,7 +108,7 @@ class geometric {
    */
   [[nodiscard]]
   constexpr auto checkpoint() noexcept -> checkpoint_t {
-    return checkpoint_t{m_ctrl};
+    return checkpoint_t{*this};
   }
 
   /**
@@ -169,7 +188,7 @@ class geometric {
     m_hi = nullptr;
   }
 
-  constexpr void acquire(checkpoint_t ckpt) noexcept {
+  constexpr void acquire(checkpoint_t const &ckpt) noexcept {
 
     LF_ASSUME(empty());
     LF_ASSUME(ckpt.m_ctrl != m_ctrl);
@@ -181,6 +200,10 @@ class geometric {
     delete_ctrl(m_ctrl);
 
     m_ctrl = ckpt.m_ctrl;
+
+    if constexpr (!ctrl_traits::is_always_equal::value) {
+      m_ctrl_alloc = ckpt.m_alloc;
+    }
 
     LF_ASSUME(m_ctrl->top != nullptr);
 
