@@ -126,6 +126,8 @@ class geometric : immovable {
       return;
     }
 
+    delete_ctrl();
+
     m_root = ckpt.m_ptr;
 
     LF_ASSUME(m_root->top != nullptr);
@@ -136,21 +138,7 @@ class geometric : immovable {
     m_hi = m_lo + m_root->top->size;
   }
 
-  constexpr ~geometric() noexcept {
-    if (m_root != nullptr) {
-
-      LF_ASSUME(empty());
-      LF_ASSUME(m_root->top != nullptr);
-      LF_ASSUME(m_root->top->prev == nullptr);
-
-      delete_node(m_root->top);
-      delete_node(m_root->cache);
-
-      // Finally delete the control block.
-      heap_traits::destroy(m_heap_alloc, m_root);
-      heap_traits::deallocate(m_heap_alloc, m_root, 1);
-    }
-  }
+  constexpr ~geometric() noexcept { delete_ctrl(); }
 
  private:
   // ============== Types ==============  //
@@ -184,6 +172,25 @@ class geometric : immovable {
   std::byte *m_hi = nullptr; // The one-past-the-end pointer for the current stacklet.
 
   // ============== Methods ==============  //
+
+  /**
+   * @brief Clean and delete the control block and all stacklets.
+   */
+  constexpr void delete_ctrl() noexcept {
+    if (m_root != nullptr) {
+      LF_ASSUME(empty());
+      LF_ASSUME(m_root->top != nullptr);
+      LF_ASSUME(m_root->top->prev == nullptr);
+
+      // Clea-up stacklets
+      delete_node(m_root->top);
+      delete_node(m_root->cache);
+
+      // Finally delete the control block.
+      heap_traits::destroy(m_heap_alloc, m_root);
+      heap_traits::deallocate(m_heap_alloc, m_root, 1);
+    }
+  }
 
   // TODO: do we need the no inlines
 
