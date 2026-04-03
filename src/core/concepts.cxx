@@ -1,6 +1,5 @@
 module;
 #include "libfork/__impl/utils.hpp"
-#include <concepts>
 export module libfork.core:concepts;
 
 import std;
@@ -62,38 +61,6 @@ template <typename T>
   requires std::is_object_v<T>
 consteval auto constify(T &&x) noexcept -> std::add_const_t<T> &;
 
-template <class T>
-concept simple_allocator =
-    std::copy_constructible<T> && std::equality_comparable<T> && requires (T alloc, std::size_t n) {
-      { *alloc.allocate(n) } -> std::same_as<typename T::value_type &>;
-      { alloc.deallocate(alloc.allocate(n), n) };
-    };
-/**
- * @brief `T` must be a std:: Allocator
- *
- * Doesn't specify the full API just 'simple-allocator' exposition only concept.
- */
-template <class T, typename U>
-concept allocator_of = simple_allocator<T> && std::same_as<typename T::value_type, U>;
-
-template <typename T>
-concept has_allocator =
-    requires (T t) { typename T::allocator_type; } && simple_allocator<typename T::allocator_type>;
-
-template <typename T>
-concept stack_allocator_ops = requires (T stack, std::size_t n, void *ptr) {
-  { stack.push(n) } -> std::same_as<void *>;
-  { stack.pop(ptr, n) } noexcept -> std::same_as<void>;
-  { stack.checkpoint() } noexcept -> std::regular;
-  { stack.prepare_release() } noexcept -> std::movable;
-  { stack.release(stack.prepare_release()) } noexcept -> std::same_as<void>;
-  { stack.acquire(constify(stack.checkpoint())) } noexcept -> std::same_as<void>;
-};
-
-template <typename T, typename A>
-concept stack_allocator_with =
-    std::default_initializable<T> && std::constructible_from<T, A const &> && allocator_of<A, std::byte>;
-
 /**
  * @brief Defines the API for a libfork compatible stack allocator.
  *
@@ -121,7 +88,14 @@ concept stack_allocator_with =
  * Slow-path operations: release, acquire
  */
 export template <typename T>
-concept stack_allocator = std::is_object_v<T> && std::de;
+concept stack_allocator = std::is_object_v<T> && requires (T allocator, std::size_t n, void *ptr) {
+  { allocator.push(n) } -> std::same_as<void *>;
+  { allocator.pop(ptr, n) } noexcept -> std::same_as<void>;
+  { allocator.checkpoint() } noexcept -> std::regular;
+  { allocator.prepare_release() } noexcept -> std::movable;
+  { allocator.release(allocator.prepare_release()) } noexcept -> std::same_as<void>;
+  { allocator.acquire(constify(allocator.checkpoint())) } noexcept -> std::same_as<void>;
+};
 
 /**
  * @brief Fetch the checkpoint type of a stack allocator `T`.
@@ -227,4 +201,5 @@ concept async_invocable_to =
 export template <typename Fn, typename R, typename Context, typename... Args>
 concept async_nothrow_invocable_to =
     async_nothrow_invocable<Fn, Context, Args...> && async_invocable_to<Fn, R, Context, Args...>;
+
 } // namespace lf
