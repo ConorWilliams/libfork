@@ -19,16 +19,14 @@ namespace lf::stack {
 export template <typename Allocator = std::allocator<std::byte>>
 class geometric : immovable {
 
-  struct heap;
+  struct ctrl;
   struct node;
 
-  using heap_traits = std::allocator_traits<Allocator>::template rebind_traits<heap>;
+  using heap_traits = std::allocator_traits<Allocator>::template rebind_traits<ctrl>;
   using node_traits = std::allocator_traits<Allocator>::template rebind_traits<node>;
-  using byte_traits = std::allocator_traits<Allocator>::template rebind_traits<std::byte>;
 
   using heap_ptr = typename heap_traits::pointer;
   using node_ptr = typename node_traits::pointer;
-  using byte_ptr = typename byte_traits::pointer;
 
   struct release_t {
     constexpr release_t(key_t) noexcept {}
@@ -157,15 +155,20 @@ class geometric : immovable {
  private:
   // ============== Types ==============  //
 
-  struct node {
-    node_ptr prev;             // Linked list (past)
-    byte_ptr raw_ptr;          // The raw allocation for the stacklet (for deallocation)
-    std::size_t raw_size;      // Original size of the allocation (for deallocation)
-    std::byte *stacklet;       // First aligned address in the alloctaion
-    std::size_t stacklet_size; // Usable-size of the stacklet
+  struct alignas(k_new_align) node_base {
+    node_ptr prev;     // Linked list (past)
+    node_ptr stacklet; // First aligned address in the alloctaion
+    std::size_t size;  // Usable-size of the stacklet
   };
 
-  struct heap {
+  struct node_union {
+    union {
+      std::byte bytes[];
+    };
+
+  }
+
+  struct ctrl {
     node_ptr top = nullptr;        // Most recent stacklet i.e. the top of the stack.
     node_ptr cache = nullptr;      // Cached (empty) stacklet for hot-split guarding.
     std::byte *sp_cache = nullptr; // Cached stack pointer for this stacklet.
