@@ -181,7 +181,7 @@ struct return_nullopt {
  *
  * @tparam T The type of the elements in the deque.
  */
-export template <dequeable T>
+export template <dequeable T, allocator_of<std::atomic<T>> Allocator = std::allocator<std::atomic<T>>>
 class deque : immovable {
  public:
   /**
@@ -308,6 +308,11 @@ class deque : immovable {
     return m_buf.capacity();
   }
   /**
+   * @brief Get a non-owning `thief_handle` that can be used to steal items from the deque.
+   */
+  constexpr auto thief() noexcept -> thief_handle { return thief_handle{this}; }
+
+  /**
    * @brief Push an item into the deque.
    *
    * Only the owner thread can insert an item into the deque. This will throw
@@ -316,7 +321,30 @@ class deque : immovable {
    *
    * @param val Value to add to the deque.
    */
-  constexpr auto push(T val) -> std::ptrdiff_t;
+  constexpr auto push(T val) -> std::ptrdiff_t {
+
+    std::ptrdiff_t const bottom = m_bottom.load(relaxed);
+    std::ptrdiff_t const top = m_top.load(acquire);
+    std::ptrdiff_t const ssize = bottom - top;
+
+    if (m_buf.capacity() < ssize + 1) {
+      LF_THROW(deque_full{});
+    }
+
+    // Construct new object, this does not have to be atomic as no one can steal
+    // this item until after we store the new value of bottom, ordering is
+    // maintained by surrounding atomics.
+    m_buf.store(bottom, val);
+
+    std::atomic_thread_fence(release);
+    m_bottom.store(bottom + 1, relaxed);
+
+    // This was the size just before the push, upon return the size could be any
+    // smaller number, down to zero, as stealers could have stolen all the
+    // tasks.
+    return ssize;
+  }
+
   /**
    * @brief Pop an item from the deque.
    *
@@ -327,11 +355,35 @@ class deque : immovable {
   template <std::invocable Fn = return_nullopt<T>>
     requires std::convertible_to<T, std::invoke_result_t<Fn>>
   constexpr auto
-  pop(Fn &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<Fn>) -> std::invoke_result_t<Fn>;
-  /**
-   * @brief Get a non-owning `thief_handle` that can be used to steal items from the deque.
-   */
-  constexpr auto thief() noexcept -> thief_handle { return thief_handle{this}; }
+  pop(Fn &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<Fn>) -> std::invoke_result_t<Fn> {
+
+    std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1; //
+    m_bottom.store(bottom, relaxed);                          // Stealers can no longer steal.
+
+    std::atomic_thread_fence(seq_cst);
+
+    std::ptrdiff_t top = m_top.load(relaxed);
+
+    if (top <= bottom) {
+      // Non-empty deque
+
+      // This load is not required to be atomic as we are the exclusive writer.
+      T val = m_buf.load(bottom);
+
+      if (top == bottom) {
+        // The last item could get stolen, by a stealer that loaded bottom before our write above.
+        if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
+          // Failed race, thief got the last item.
+          m_bottom.store(bottom + 1, relaxed);
+          return std::invoke(std::forward<Fn>(when_empty));
+        }
+        m_bottom.store(bottom + 1, relaxed);
+      }
+      return val;
+    }
+    m_bottom.store(bottom + 1, relaxed);
+    return std::invoke(std::forward<Fn>(when_empty));
+  }
 
  private:
   alignas(k_cache_line) atomic_ring_buf<T> m_buf;
@@ -346,62 +398,6 @@ class deque : immovable {
   static constexpr std::memory_order seq_cst = std::memory_order_seq_cst;
 };
 
-template <dequeable T>
-constexpr auto deque<T>::push(T val) -> std::ptrdiff_t {
-  std::ptrdiff_t const bottom = m_bottom.load(relaxed);
-  std::ptrdiff_t const top = m_top.load(acquire);
-  std::ptrdiff_t const ssize = bottom - top;
-
-  if (m_buf.capacity() < ssize + 1) {
-    LF_THROW(deque_full{});
-  }
-
-  // Construct new object, this does not have to be atomic as no one can steal
-  // this item until after we store the new value of bottom, ordering is
-  // maintained by surrounding atomics.
-  m_buf.store(bottom, val);
-
-  std::atomic_thread_fence(release);
-  m_bottom.store(bottom + 1, relaxed);
-
-  // This was the size just before the push, upon return the size could be any
-  // smaller number, down to zero, as stealers could have stolen all the
-  // tasks.
-  return ssize;
-}
-
-template <dequeable T>
-template <std::invocable Fn>
-  requires std::convertible_to<T, std::invoke_result_t<Fn>>
-constexpr auto
-deque<T>::pop(Fn &&when_empty) noexcept(std::is_nothrow_invocable_v<Fn>) -> std::invoke_result_t<Fn> {
-
-  std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1; //
-  m_bottom.store(bottom, relaxed);                          // Stealers can no longer steal.
-
-  std::atomic_thread_fence(seq_cst);
-
-  std::ptrdiff_t top = m_top.load(relaxed);
-
-  if (top <= bottom) {
-    // Non-empty deque
-
-    // This load is not required to be atomic as we are the exclusive writer.
-    T val = m_buf.load(bottom);
-
-    if (top == bottom) {
-      // The last item could get stolen, by a stealer that loaded bottom before our write above.
-      if (!m_top.compare_exchange_strong(top, top + 1, seq_cst, relaxed)) {
-        // Failed race, thief got the last item.
-        m_bottom.store(bottom + 1, relaxed);
-        return std::invoke(std::forward<Fn>(when_empty));
-      }
-      m_bottom.store(bottom + 1, relaxed);
-    }
-    return val;
-  }
-  m_bottom.store(bottom + 1, relaxed);
-  return std::invoke(std::forward<Fn>(when_empty));
-}
+// TODO: use the allocator
 
 } // namespace lf

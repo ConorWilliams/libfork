@@ -14,6 +14,8 @@ namespace {
 
 struct global_allocator {
 
+  using allocator_type = std::allocator<std::byte>;
+
   struct empty {
     auto operator==(empty const &) const -> bool = default;
   };
@@ -29,6 +31,8 @@ struct global_allocator {
 static_assert(lf::stack_allocator<global_allocator>);
 
 struct linear_allocator {
+
+  using allocator_type = std::allocator<std::byte>;
 
   std::unique_ptr<std::byte[]> data = std::make_unique<std::byte[]>(1024 * 1024);
   std::byte *ptr = data.get();
