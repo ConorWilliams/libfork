@@ -52,7 +52,7 @@ class geometric {
 
  public:
   constexpr geometric() noexcept(noexcept(Allocator{})) : geometric(Allocator()) {}
-  explicit constexpr geometric(Allocator const &alloc) : m_heap_alloc(alloc), m_node_alloc(alloc) {}
+  explicit constexpr geometric(Allocator const &alloc) : m_heap_alloc(alloc) {}
 
   constexpr geometric(geometric const &other) = delete;
   constexpr geometric(geometric &&other) = delete;
@@ -202,6 +202,9 @@ class geometric {
   };
 
   struct ctrl {
+    [[no_unique_address]]
+    typename node_traits::allocator_type node_alloc;
+
     node_ptr top = nullptr;      // Most recent stacklet i.e. the top of the stack.
     node_ptr cache = nullptr;    // Cached (empty) stacklet for hot-split guarding.
     node_ptr sp_cache = nullptr; // Cached stack pointer for this stacklet.
@@ -211,8 +214,6 @@ class geometric {
 
   [[no_unique_address]]
   typename ctrl_traits::allocator_type m_heap_alloc;
-  [[no_unique_address]]
-  typename node_traits::allocator_type m_node_alloc;
 
   ctrl_ptr m_ctrl = nullptr; // The control block for the stack.
 
@@ -256,9 +257,10 @@ class geometric {
     ctrl_ptr new_ctrl = ctrl_traits::allocate(self.m_heap_alloc, 1);
 
     LF_TRY {
-      ctrl_traits::construct(self.m_heap_alloc, new_ctrl);
+      // Propagate ctrl allocator to control blocks node allocator.
+      ctrl_traits::construct(self.m_heap_alloc, new_ctrl, std::as_const(self.m_heap_alloc));
       LF_TRY {
-        new_ctrl->top = self.new_node(num_nodes);
+        new_ctrl->top = new_node(new_ctrl, num_nodes);
       } LF_CATCH_ALL {
         // Clean up construction
         ctrl_traits::destroy(self.m_heap_alloc, new_ctrl);
@@ -282,8 +284,8 @@ class geometric {
       LF_ASSUME(ctrl->top->prev == nullptr);
 
       // Clea-up stacklets
-      self.delete_node(ctrl->top);
-      self.delete_node(ctrl->cache);
+      delete_node(ctrl, ctrl->top);
+      delete_node(ctrl, ctrl->cache);
 
       // Finally delete the control block.
       ctrl_traits::destroy(self.m_heap_alloc, ctrl);
@@ -299,21 +301,22 @@ class geometric {
    * This function is strongly exception-safe.
    */
   [[nodiscard]]
-  constexpr auto new_node(this geometric &self, diff_int num_nodes) -> node_ptr {
+  static constexpr auto new_node(ctrl_ptr ctrl, diff_int num_nodes) -> node_ptr {
 
     // Allocation should be a multiple of the node size
     LF_ASSUME(num_nodes > 0);
+    LF_ASSUME(ctrl != nullptr);
 
     // Allocation/deallocation requires size_int, +1 for the header node
     size_int allocate_nodes = 1 + safe_cast<size_int>(num_nodes);
 
-    node_ptr next_node = node_traits::allocate(self.m_node_alloc, allocate_nodes);
+    node_ptr next_node = node_traits::allocate(ctrl->node_alloc, allocate_nodes);
 
     LF_TRY {
       // Construct the header
-      node_traits::construct(self.m_node_alloc, next_node, nullptr, num_nodes);
+      node_traits::construct(ctrl->node_alloc, next_node, nullptr, num_nodes);
     } LF_CATCH_ALL {
-      node_traits::deallocate(self.m_node_alloc, next_node, allocate_nodes);
+      node_traits::deallocate(ctrl->node_alloc, next_node, allocate_nodes);
       LF_RETHROW;
     }
 
@@ -323,12 +326,13 @@ class geometric {
   /**
    * @brief Delete a (possibly null) node and it's associated stacklet.
    */
-  constexpr auto delete_node(this geometric &self, node_ptr ptr) noexcept -> void {
+  static constexpr auto delete_node(ctrl_ptr ctrl, node_ptr ptr) noexcept -> void {
     if (ptr != nullptr) {
+      LF_ASSUME(ctrl != nullptr);
       // Size doesn't include the header node so we +1 here.
       size_int allocated_nodes = safe_cast<size_int>(1 + ptr->size);
-      node_traits::destroy(self.m_node_alloc, ptr);
-      node_traits::deallocate(self.m_node_alloc, ptr, allocated_nodes);
+      node_traits::destroy(ctrl->node_alloc, ptr);
+      node_traits::deallocate(ctrl->node_alloc, ptr, allocated_nodes);
     }
   }
 
@@ -370,7 +374,7 @@ class geometric {
         // with an empty stacklet in the chain. This would break deletion otherwise.
         node_ptr empty_top = m_ctrl->top;
         m_ctrl->top = m_ctrl->top->prev; // top could be null now
-        delete_node(empty_top);
+        delete_node(m_ctrl, empty_top);
       }
 
       // Shuffle cache to the top.
@@ -387,14 +391,14 @@ class geometric {
     // We need to allocate a new stacklet to fit this allocation, we choose to
     // grow geometrically to try to avoid too many allocations. Fine if this
     // throws
-    node_ptr new_top = new_node(std::max(num_nodes, 2 * m_ctrl->top->size));
+    node_ptr new_top = new_node(m_ctrl, std::max(num_nodes, 2 * m_ctrl->top->size));
 
     // Nothing can throw after this point
 
     // We didn't use the cache because it wasn't big enough, we should delete it
     // now because we had to grow the stack. We couldn't do this until now because
     // new_node may have thrown.
-    delete_node(std::exchange(m_ctrl->cache, nullptr));
+    delete_node(m_ctrl, std::exchange(m_ctrl->cache, nullptr));
 
     if (m_sp == m_lo) {
       // There is nothing allocated on the current stacklet/top but it doesn't
@@ -402,7 +406,7 @@ class geometric {
       // with an empty stacklet in the chain. This would break deletion otherwise.
       node_ptr empty_top = m_ctrl->top;
       m_ctrl->top = m_ctrl->top->prev; // top could be null now
-      delete_node(empty_top);
+      delete_node(m_ctrl, empty_top);
     }
 
     // Commit the new/node
@@ -426,7 +430,7 @@ class geometric {
     // Shuffle top to cache
     node_ptr old_cache = m_ctrl->cache;
     m_ctrl->cache = m_ctrl->top;
-    delete_node(old_cache);
+    delete_node(m_ctrl, old_cache);
 
     // Go back one stacklet
     m_ctrl->top = m_ctrl->top->prev;
