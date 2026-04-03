@@ -23,6 +23,9 @@ namespace lf {
 template <typename T = void>
 using coro = std::coroutine_handle<T>;
 
+template <worker_context Context>
+using frame_t = frame_type<checkpoint_t<allocator_t<Context>>>;
+
 // =============== Forward-decl =============== //
 
 // TODO: public private split here and elsewhere
@@ -69,7 +72,7 @@ class task {
 template <worker_context Context>
 [[nodiscard]]
 LF_NO_INLINE constexpr auto
-final_suspend_continue(Context *context, frame_type<Context> *parent) noexcept -> coro<> {
+final_suspend_continue(Context *context, frame_t<Context> *parent) noexcept -> coro<> {
 
   // An owner is a worker who:
   //
@@ -141,8 +144,8 @@ final_suspend_continue(Context *context, frame_type<Context> *parent) noexcept -
   return std::noop_coroutine();
 }
 
-template <worker_context Context>
-constexpr void finalize_root(frame_type<Context> *frame) noexcept {
+template <typename Checkpoint>
+constexpr void finalize_root(frame_type<Checkpoint> *frame) noexcept {
   // Notify potential blockers
   not_null(frame->parent.block)->sem.release();
   // Release the refcount on the shared state
@@ -153,7 +156,7 @@ constexpr void finalize_root(frame_type<Context> *frame) noexcept {
 
 template <worker_context Context>
 [[nodiscard]]
-constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
+constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
 
   // Validate final state
   LF_ASSUME(frame->steals == 0);
@@ -168,7 +171,7 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
   }
 
   // Safe to access union
-  frame_type<Context> *parent = not_null(frame->parent.frame);
+  frame_t<Context> *parent = not_null(frame->parent.frame);
 
   // Read before destroy
   category const kind = frame->kind;
@@ -185,9 +188,9 @@ constexpr auto final_suspend(frame_type<Context> *frame) noexcept -> coro<> {
 
       Context *context = get_context<Context>();
 
-      if (frame_handle last_pushed = context->pop()) {
+      if (frame_handle<Context> last_pushed = context->pop()) {
         // No-one stole continuation, we are the exclusive owner of parent -> just keep ripping!
-        LF_ASSUME(last_pushed == frame_handle{key(), parent});
+        LF_ASSUME(last_pushed == frame_handle<Context>{key(), parent});
         // This is not a join point so no state (i.e. counters) is guaranteed.
         return parent->handle();
       }
@@ -212,8 +215,8 @@ struct final_awaitable : std::suspend_always {
 /**
  * @brief Call inside a catch block, stash current exception in `frame`.
  */
-template <worker_context Context>
-constexpr void stash_current_exception(frame_type<Context> *frame) noexcept {
+template <typename Checkpoint>
+constexpr void stash_current_exception(frame_type<Checkpoint> *frame) noexcept {
   // No synchronization is done via exception_bit, hence we can use relaxed atomics
   // and rely on the usual fork/join synchronization to ensure memory ordering.
   if (frame->atomic_except().exchange(1, std::memory_order_relaxed) == 0) {
@@ -224,7 +227,7 @@ constexpr void stash_current_exception(frame_type<Context> *frame) noexcept {
 
     // TODO: make sure exceptions are cancel-safe (I think now cancellation can leak)
 
-    frame->except = new frame_type<Context>::except_type{
+    frame->except = new frame_type<Checkpoint>::except_type{
         .stashed = frame->parent,
         .exception = std::move(exception),
     };
@@ -236,7 +239,7 @@ struct awaitable : std::suspend_always {
 
   static_assert(Cat == category::call || Cat == category::fork, "Invalid category for awaitable");
 
-  frame_type<Context> *child;
+  frame_t<Context> *child;
 
   /**
    * @brief In a separate function to allow it to be placed in cold block.
@@ -245,7 +248,7 @@ struct awaitable : std::suspend_always {
   constexpr void stash_and_resume(this awaitable self, coro<promise_type<T, Context>> parent) noexcept {
     // Clean-up the child that will never be resumed.
     self.child->handle().destroy();
-    stash_current_exception(&parent.promise().frame);
+    stash_current_exception(not_null(&parent.promise().frame));
   }
 
   template <typename T>
@@ -281,7 +284,7 @@ struct awaitable : std::suspend_always {
       // use-after-free to then access self in the following line to fetch the
       // handle.
       LF_TRY {
-        get_context<Context>()->push(frame_handle{key(), &parent.promise().frame});
+        get_context<Context>()->push(frame_handle<Context>{key(), &parent.promise().frame});
       } LF_CATCH_ALL {
         return self.stash_and_resume(parent), parent;
       }
@@ -296,9 +299,9 @@ struct awaitable : std::suspend_always {
 template <worker_context Context>
 struct join_awaitable {
 
-  using except_type = frame_type<Context>::except_type;
+  using except_type = frame_t<Context>::except_type;
 
-  frame_type<Context> *frame;
+  frame_t<Context> *frame;
 
   constexpr auto take_stack_and_reset(this join_awaitable self) noexcept -> void {
     Context *context = get_context<Context>();
@@ -511,7 +514,7 @@ struct promise_type<void, Context> : mixin_frame<Context> {
   // Putting init here allows:
   //  1. Frame not no need to know about the checkpoint type
   //  2. Compiler merge double read of thread local here and in allocator
-  frame_type<Context> frame{get_allocator<Context>().checkpoint()};
+  frame_t<Context> frame{get_allocator<Context>().checkpoint()};
 
   constexpr auto get_return_object() noexcept -> task<void, Context> { return {key(), this}; }
 
@@ -526,7 +529,7 @@ struct promise_type : mixin_frame<Context> {
   // Putting init here allows:
   //  1. Frame not no need to know about the checkpoint type
   //  2. Compiler merge double read of thread local here and in allocator
-  frame_type<Context> frame{get_allocator<Context>().checkpoint()};
+  frame_t<Context> frame{get_allocator<Context>().checkpoint()};
   T *return_address;
 
   constexpr auto get_return_object() noexcept -> task<T, Context> { return {key(), this}; }

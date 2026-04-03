@@ -53,14 +53,14 @@ export enum class category : std::uint8_t {
   fork,
 };
 
+export struct frame_base {};
+
 // TODO: make everything (deque etc) allocator aware...
 
-export template <typename Context>
-struct frame_type {
+export template <typename Checkpoint>
+struct frame_type : frame_base {
 
-  using context_type = Context;
-  using allocator_type = allocator_t<Context>;
-  using checkpoint_type = checkpoint_t<allocator_type>;
+  using checkpoint_type = Checkpoint;
 
   union parent_union {
     frame_type *frame;

@@ -23,14 +23,20 @@ export template <typename T>
 class frame_handle {
  public:
   constexpr frame_handle() = default;
-  constexpr frame_handle(key_t, frame_type<T> *ptr) noexcept : m_ptr{ptr} {}
+
+  constexpr frame_handle(key_t, frame_base *ptr) noexcept : m_ptr{ptr} {}
 
   constexpr auto operator==(frame_handle const &) const noexcept -> bool = default;
 
   explicit operator bool() const noexcept { return m_ptr != nullptr; }
 
+  [[nodiscard]]
+  constexpr auto get(key_t) const noexcept -> frame_base * {
+    return m_ptr;
+  }
+
  private:
-  frame_type<T> *m_ptr = nullptr;
+  frame_base *m_ptr = nullptr;
 };
 
 // =================== Await =================== //
@@ -43,14 +49,19 @@ export template <typename T>
 class await_handle {
  public:
   constexpr await_handle() = default;
-  constexpr await_handle(key_t, frame_type<T> *ptr) noexcept : m_ptr{ptr} {}
+  constexpr await_handle(key_t, frame_base *ptr) noexcept : m_ptr{ptr} {}
 
   constexpr auto operator==(await_handle const &) const noexcept -> bool = default;
 
   explicit operator bool() const noexcept { return m_ptr != nullptr; }
 
+  [[nodiscard]]
+  constexpr auto get(key_t) const noexcept -> frame_base * {
+    return m_ptr;
+  }
+
  private:
-  frame_type<T> *m_ptr = nullptr;
+  frame_base *m_ptr = nullptr;
 };
 
 } // namespace lf
