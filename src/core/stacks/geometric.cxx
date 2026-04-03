@@ -17,7 +17,7 @@ namespace lf::stack {
  * This protects against hot-splitting by keeping a single cached segment.
  */
 export template <typename Allocator = std::allocator<std::byte>>
-class geometric : immovable {
+class geometric {
 
   struct ctrl;
   struct node;
@@ -49,8 +49,15 @@ class geometric : immovable {
 
  public:
   constexpr geometric() noexcept(noexcept(Allocator{})) : geometric(Allocator()) {}
-
   explicit constexpr geometric(Allocator const &alloc) : m_heap_alloc(alloc), m_node_alloc(alloc) {}
+
+  constexpr geometric(geometric const &other) = delete;
+  constexpr geometric(geometric &&other) = delete;
+
+  constexpr auto operator=(geometric const &other) -> geometric & = delete;
+  constexpr auto operator=(geometric &&other) -> geometric & = delete;
+
+  constexpr ~geometric() noexcept { delete_ctrl(); }
 
   /**
    * @brief Test if the stack is empty (all pushes have been popped).
@@ -137,8 +144,6 @@ class geometric : immovable {
     m_sp = m_root->sp_cache;
     m_hi = m_lo + m_root->top->size;
   }
-
-  constexpr ~geometric() noexcept { delete_ctrl(); }
 
  private:
   // ============== Types ==============  //
