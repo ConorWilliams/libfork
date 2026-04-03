@@ -52,7 +52,7 @@ class geometric {
 
  public:
   constexpr geometric() noexcept(noexcept(Allocator{})) : geometric(Allocator()) {}
-  explicit constexpr geometric(Allocator const &alloc) : m_heap_alloc(alloc) {}
+  explicit constexpr geometric(Allocator const &alloc) : m_ctrl_alloc(alloc) {}
 
   constexpr geometric(geometric const &other) = delete;
   constexpr geometric(geometric &&other) = delete;
@@ -213,7 +213,7 @@ class geometric {
   // ============== Members ==============  //
 
   [[no_unique_address]]
-  typename ctrl_traits::allocator_type m_heap_alloc;
+  typename ctrl_traits::allocator_type m_ctrl_alloc;
 
   ctrl_ptr m_ctrl = nullptr; // The control block for the stack.
 
@@ -254,21 +254,21 @@ class geometric {
   [[nodiscard]]
   constexpr auto new_ctrl(this geometric &self, diff_int num_nodes) -> ctrl_ptr {
 
-    ctrl_ptr new_ctrl = ctrl_traits::allocate(self.m_heap_alloc, 1);
+    ctrl_ptr new_ctrl = ctrl_traits::allocate(self.m_ctrl_alloc, 1);
 
     LF_TRY {
       // Propagate ctrl allocator to control blocks node allocator.
-      ctrl_traits::construct(self.m_heap_alloc, new_ctrl, std::as_const(self.m_heap_alloc));
+      ctrl_traits::construct(self.m_ctrl_alloc, new_ctrl, std::as_const(self.m_ctrl_alloc));
       LF_TRY {
         new_ctrl->top = new_node(new_ctrl, num_nodes);
       } LF_CATCH_ALL {
         // Clean up construction
-        ctrl_traits::destroy(self.m_heap_alloc, new_ctrl);
+        ctrl_traits::destroy(self.m_ctrl_alloc, new_ctrl);
         LF_RETHROW;
       }
     } LF_CATCH_ALL {
       // Clean up allocation
-      ctrl_traits::deallocate(self.m_heap_alloc, new_ctrl, 1);
+      ctrl_traits::deallocate(self.m_ctrl_alloc, new_ctrl, 1);
       LF_RETHROW;
     }
 
@@ -288,8 +288,8 @@ class geometric {
       delete_node(ctrl, ctrl->cache);
 
       // Finally delete the control block.
-      ctrl_traits::destroy(self.m_heap_alloc, ctrl);
-      ctrl_traits::deallocate(self.m_heap_alloc, ctrl, 1);
+      ctrl_traits::destroy(self.m_ctrl_alloc, ctrl);
+      ctrl_traits::deallocate(self.m_ctrl_alloc, ctrl, 1);
     }
   }
 
