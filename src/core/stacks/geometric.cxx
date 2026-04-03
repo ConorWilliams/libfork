@@ -318,9 +318,11 @@ class geometric {
   // TODO: do we need the no inlines
 
   [[nodiscard]]
-  LF_NO_INLINE constexpr auto push_cached(diff_int num_nodes) -> void_ptr {
+  LF_NO_INLINE constexpr auto push_cached(std::size_t knum_nodes) -> void_ptr {
 
     // Have to be very careful in this function to be strongly exception-safe!
+
+    diff_int num_nodes = safe_cast<diff_int>(knum_nodes);
 
     if (m_ctrl == nullptr) {
       // Initial stacklet wants to be quite large
