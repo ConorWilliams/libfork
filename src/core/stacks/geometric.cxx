@@ -222,6 +222,7 @@ class geometric {
   }
 
   // TODO: highlight local modifications with explicit self param
+  // TODO: vet constexpr usage in the library
 
   /**
    * @brief Allocate node with size bytes for stacklet.
@@ -229,34 +230,33 @@ class geometric {
    * This function is strongly exception-safe.
    */
   [[nodiscard]]
-  constexpr auto new_node(std::size_t size) -> node_ptr {
+  constexpr auto new_node(this geometric &self, std::size_t size) -> node_ptr {
 
     // Allocation should be a multiple of the node size
     LF_ASSUME(size % sizeof(node) == 0);
 
     std::size_t num_nodes = 1 + (size / sizeof(node));
 
-    node_ptr next_node = node_traits::allocate(m_node_alloc, num_nodes);
+    node_ptr next_node = node_traits::allocate(self.m_node_alloc, num_nodes);
 
     LF_TRY {
-      node_traits::construct(m_node_alloc, next_node, nullptr, size);
+      node_traits::construct(self.m_node_alloc, next_node, nullptr, size);
     } LF_CATCH_ALL {
-      node_traits::deallocate(m_node_alloc, next_node, num_nodes);
+      node_traits::deallocate(self.m_node_alloc, next_node, num_nodes);
       LF_RETHROW;
     }
-    return next_node;
 
-    // TODO: vet constexpr usage in the library
+    return next_node;
   }
 
   /**
    * @brief Delete a (possibly null) node and it's associated stacklet.
    */
-  constexpr auto delete_node(node_ptr ptr) noexcept -> void {
+  constexpr auto delete_node(this geometric &self, node_ptr ptr) noexcept -> void {
     if (ptr != nullptr) {
       std::size_t num_nodes = 1 + (ptr->size / sizeof(node));
-      node_traits::destroy(m_node_alloc, ptr);
-      node_traits::deallocate(m_node_alloc, ptr, num_nodes);
+      node_traits::destroy(self.m_node_alloc, ptr);
+      node_traits::deallocate(self.m_node_alloc, ptr, num_nodes);
     }
   }
 
