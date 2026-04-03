@@ -15,6 +15,8 @@ namespace lf::stack {
  * @brief A geometric_stack is a user-space (geometric) segmented program stack.
  *
  * This protects against hot-splitting by keeping a single cached segment.
+ *
+ * For this to conform to `stack_allocator` the allocators void pointer type must be `void *`
  */
 export template <typename Allocator = std::allocator<std::byte>>
 class geometric {
@@ -25,8 +27,12 @@ class geometric {
   using ctrl_traits = std::allocator_traits<Allocator>::template rebind_traits<ctrl>;
   using node_traits = std::allocator_traits<Allocator>::template rebind_traits<node>;
 
-  using ctrl_ptr = typename ctrl_traits::pointer;
-  using node_ptr = typename node_traits::pointer;
+  using ctrl_ptr = ctrl_traits::pointer;
+  using node_ptr = node_traits::pointer;
+
+  using void_ptr = node_traits::void_pointer;
+
+  using diff_int = node_traits::difference_type;
 
   struct release_t {
     explicit constexpr release_t(key_t) noexcept {}
@@ -85,34 +91,42 @@ class geometric {
   }
 
   [[nodiscard]]
-  constexpr auto push(std::size_t size) -> void * {
-    LF_ASSUME(size != 0);
+  constexpr auto push(std::size_t size) -> void_ptr {
+    // Zero sized pushed are an error
+    LF_ASSUME(size > 0);
 
-    // Round such that next allocation is aligned.
-    std::size_t padded_size = round_to_multiple<k_new_align>(size);
+    // Round up to number of nodes
+    diff_int num_nodes = safe_cast<diff_int>((size + sizeof(node) - 1) / sizeof(node));
 
-    if (padded_size > safe_cast<std::size_t>(m_hi - m_sp)) [[unlikely]] {
-      return push_cached(padded_size);
+    LF_ASSUME(num_nodes > 0);
+
+    if (num_nodes > m_hi - m_sp) [[unlikely]] {
+      return push_cached(num_nodes);
     }
 
     LF_ASSUME(m_ctrl != nullptr);
     LF_ASSUME(m_ctrl->top != nullptr);
 
-    return std::exchange(m_sp, m_sp + padded_size);
+    // node_ptr -> void_ptr
+    return static_cast<void_ptr>(std::exchange(m_sp, m_sp + num_nodes));
   }
 
-  constexpr void pop(void *ptr, [[maybe_unused]] std::size_t n) noexcept {
+  constexpr void pop(void_ptr ptr, [[maybe_unused]] std::size_t n) noexcept {
 
+    LF_ASSUME(!empty());
     LF_ASSUME(m_ctrl != nullptr);
     LF_ASSUME(m_ctrl->top != nullptr);
+    LF_ASSUME(m_sp != nullptr);
+    LF_ASSUME(ptr != nullptr);
 
-    std::byte *byte_ptr = std::bit_cast<std::byte *>(ptr);
+    // Inverse of push: void_ptr -> node_ptr
+    auto sp = static_cast<node_ptr>(ptr);
 
     if (m_sp == m_lo) [[unlikely]] {
-      return pop_shuffle(byte_ptr);
+      return pop_shuffle(sp);
     }
 
-    m_sp = byte_ptr;
+    m_sp = sp;
   }
 
   [[nodiscard]]
@@ -164,8 +178,8 @@ class geometric {
   };
 
   struct alignas(k_new_align) node {
-    node_ptr prev;    // Linked list (past)
-    std::size_t size; // Usable-size of the stacklet
+    node_ptr prev; // Linked list (past)
+    diff_int size; // Usable-size of the stacklet
   };
 
   struct ctrl {
@@ -200,7 +214,7 @@ class geometric {
     LF_ASSUME(m_ctrl != nullptr);
     LF_ASSUME(m_ctrl->top != nullptr);
 
-    constexpr typename std::iterator_traits<node_ptr>::difference_type one{1};
+    constexpr diff_int one{1};
 
     m_lo = m_ctrl->top + one;
     m_hi = m_lo + m_ctrl->top->size;
