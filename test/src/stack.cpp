@@ -6,8 +6,6 @@ import libfork.core;
 using lf::k_new_align;
 using lf::stack_allocator;
 
-// TODO: constexpr tests
-
 #define expect(expr)                                                                                         \
   if consteval {                                                                                             \
     if (!(expr)) {                                                                                           \
