@@ -7,25 +7,65 @@ import libfork.core;
 
 namespace lf {
 
-export template <stack_allocator Stack>
-class inline_context {
-  using allocator_type = Stack::allocator_type;
-  using allocator_traits = std::allocator_traits<allocator_type>;
-  using allocator_handle = allocator_traits::template rebind_alloc<frame_handle<inline_context>>;
+template <typename T, typename Allocator>
+class vector_stack {
 
  public:
-  constexpr void post(await_handle<inline_context>) {}
+  constexpr void push(T value) { m_vector.push_back(value); }
 
-  constexpr void push(frame_handle<inline_context>) {}
-
-  constexpr auto pop() noexcept -> frame_handle<inline_context>;
-
-  constexpr auto allocator() noexcept -> inline_context &;
-
-  explicit constexpr inline_context(allocator_type const &) noexcept;
+  constexpr auto pop() noexcept -> T {
+    if (!m_vector.empty()) {
+      T value = m_vector.back();
+      m_vector.pop_back();
+      return value;
+    }
+    return {};
+  }
 
  private:
-  Stack m_allocator;
+  std::vector<T, Allocator> m_vector;
+};
+
+export template <                                                  //
+    bool Polymorphic,                                              //
+    stack_allocator Stack,                                         //
+    template <typename, typename> typename Container = std::vector //
+    >
+class inline_context final : public context_base<Polymorphic, Stack> {
+
+  using context_type = std::conditional_t<Polymorphic, context_base<Polymorphic, Stack>, inline_context>;
+
+  using await_h = await_handle<context_type>;
+  using frame_h = frame_handle<context_type>;
+
+  using allocator_type = Stack::allocator_type;
+  using allocator_traits = std::allocator_traits<allocator_type>;
+  using allocator_handle = allocator_traits::template rebind_alloc<frame_h>;
+
+ public:
+  constexpr void post(await_h frame) noexcept(!Polymorphic) {
+    LF_ASSERT(frame);
+
+    //
+  }
+
+  constexpr void push(frame_h frame) { m_stack.push_back(frame); }
+
+  constexpr auto pop() noexcept -> frame_h {
+    if (!m_stack.empty()) {
+      frame_h frame = m_stack.back();
+      m_stack.pop_back();
+      return frame;
+    }
+    return {};
+  }
+
+  // TODO: make allocator aware
+  // TODO: make generic over vector/deque
+
+  // explicit constexpr inline_context(allocator_type const &) noexcept;
+
+ private:
   std::vector<frame_handle<inline_context>, allocator_handle> m_stack;
 };
 
