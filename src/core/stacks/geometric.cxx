@@ -38,12 +38,13 @@ class geometric : immovable {
 
   class checkpoint_t {
    public:
-    auto operator==(checkpoint_t const &) const noexcept -> bool = default;
+    constexpr checkpoint_t() noexcept = default;
+    constexpr auto operator==(checkpoint_t const &) const noexcept -> bool = default;
 
    private:
     friend geometric;
     explicit constexpr checkpoint_t(heap_ptr ptr) noexcept : m_ptr(ptr) {}
-    heap_ptr m_ptr;
+    heap_ptr m_ptr = nullptr;
   };
 
  public:
@@ -101,16 +102,17 @@ class geometric : immovable {
     if (m_sp == m_lo) [[unlikely]] {
       pop_shuffle();
     }
+
     m_sp = static_cast<std::byte *>(ptr);
   }
 
   [[nodiscard]]
-  constexpr auto prepare_release() const noexcept -> release_key {
+  constexpr auto prepare_release() const noexcept -> release_t {
     m_root->sp_cache = m_sp;
     return {};
   }
 
-  constexpr void release([[maybe_unused]] release_key) noexcept {
+  constexpr void release([[maybe_unused]] release_t) noexcept {
     // Safe even if we are nullptr
     std::ignore = m_root.release();
     m_lo = nullptr;
@@ -118,9 +120,7 @@ class geometric : immovable {
     m_hi = nullptr;
   }
 
-  constexpr void acquire(opaque ckpt) noexcept {
-
-    heap *ckpt_root = ckpt.cast<heap>();
+  constexpr void acquire(checkpoint_t ckpt) noexcept {
 
     LF_ASSUME(empty());
     LF_ASSUME(ckpt_root != m_root.get());
@@ -203,6 +203,7 @@ class geometric : immovable {
   constexpr auto load_local() noexcept -> void {
     LF_ASSUME(m_root != nullptr);
     LF_ASSUME(m_root->top != nullptr);
+    LF_ASSUME(m_root->top->stacklet != nullptr);
     m_lo = m_root->top->stacklet;
     m_sp = m_lo;
     m_hi = m_lo + m_root->top->size;
@@ -252,7 +253,11 @@ class geometric : immovable {
         .stacklet_size = size - offset,
     };
 
-    // LF_ASSUME(std::is_sufficiently_aligned<k_new_align>(next.stacklet));
+    // TODO: vet constexpr usage in the library
+
+    if !consteval {
+      LF_ASSUME(is_sufficiently_aligned<k_new_align>(next.stacklet));
+    }
 
     node_traits::construct(m_node_alloc, next_node, next);
 
