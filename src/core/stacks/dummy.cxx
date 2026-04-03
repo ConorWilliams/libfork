@@ -7,6 +7,8 @@ namespace lf {
 
 export struct dummy_allocator {
 
+  using allocator_type = std::allocator<std::byte>;
+
   struct ckpt {
     auto operator==(ckpt const &) const -> bool = default;
   };

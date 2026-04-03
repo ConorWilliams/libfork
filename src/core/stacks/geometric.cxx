@@ -8,6 +8,7 @@ import std;
 
 import :constants;
 import :utility;
+import :concepts;
 
 namespace lf::stack {
 
@@ -18,7 +19,7 @@ namespace lf::stack {
  *
  * For this to conform to `stack_allocator` the allocators void pointer type must be `void *`
  */
-export template <typename Allocator = std::allocator<std::byte>>
+export template <allocator_of<std::byte> Allocator = std::allocator<std::byte>>
 class geometric {
 
   struct ctrl;
@@ -51,8 +52,10 @@ class geometric {
   };
 
  public:
+  using allocator_type = Allocator;
+
   constexpr geometric() noexcept(noexcept(Allocator{})) : geometric(Allocator()) {}
-  explicit constexpr geometric(Allocator const &alloc) : m_ctrl_alloc(alloc) {}
+  explicit constexpr geometric(Allocator const &alloc) noexcept : m_ctrl_alloc(alloc) {}
 
   constexpr geometric(geometric const &other) = delete;
   constexpr geometric(geometric &&other) = delete;

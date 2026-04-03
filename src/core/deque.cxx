@@ -181,7 +181,7 @@ struct return_nullopt {
  *
  * @tparam T The type of the elements in the deque.
  */
-export template <dequeable T>
+export template <dequeable T, allocator_of<std::atomic<T>> Allocator = std::allocator<std::atomic<T>>>
 class deque : immovable {
  public:
   /**
@@ -346,8 +346,8 @@ class deque : immovable {
   static constexpr std::memory_order seq_cst = std::memory_order_seq_cst;
 };
 
-template <dequeable T>
-constexpr auto deque<T>::push(T val) -> std::ptrdiff_t {
+template <dequeable T, allocator_of<std::atomic<T>> Allocator>
+constexpr auto deque<T, Allocator>::push(T val) -> std::ptrdiff_t {
   std::ptrdiff_t const bottom = m_bottom.load(relaxed);
   std::ptrdiff_t const top = m_top.load(acquire);
   std::ptrdiff_t const ssize = bottom - top;
@@ -370,11 +370,13 @@ constexpr auto deque<T>::push(T val) -> std::ptrdiff_t {
   return ssize;
 }
 
-template <dequeable T>
+// TODO: use the allocator
+
+template <dequeable T, allocator_of<std::atomic<T>> Allocator>
 template <std::invocable Fn>
   requires std::convertible_to<T, std::invoke_result_t<Fn>>
-constexpr auto
-deque<T>::pop(Fn &&when_empty) noexcept(std::is_nothrow_invocable_v<Fn>) -> std::invoke_result_t<Fn> {
+constexpr auto deque<T, Allocator>::pop(Fn &&when_empty) noexcept(std::is_nothrow_invocable_v<Fn>)
+    -> std::invoke_result_t<Fn> {
 
   std::ptrdiff_t const bottom = m_bottom.load(relaxed) - 1; //
   m_bottom.store(bottom, relaxed);                          // Stealers can no longer steal.
