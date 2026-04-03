@@ -108,11 +108,13 @@ class geometric {
     LF_ASSUME(m_ctrl != nullptr);
     LF_ASSUME(m_ctrl->top != nullptr);
 
+    std::byte *byte_ptr = std::bit_cast<std::byte *>(ptr);
+
     if (m_sp == m_lo) [[unlikely]] {
-      pop_shuffle();
+      return pop_shuffle(byte_ptr);
     }
 
-    m_sp = static_cast<std::byte *>(ptr);
+    m_sp = byte_ptr;
   }
 
   [[nodiscard]]
@@ -364,7 +366,7 @@ class geometric {
     return std::exchange(m_sp, m_sp + padded_size);
   }
 
-  constexpr void pop_shuffle() noexcept {
+  constexpr void pop_shuffle(std::byte *sp) noexcept {
 
     // TODO: benchmark accepting sp
 
@@ -384,6 +386,7 @@ class geometric {
 
     // Local copies of the new top
     load_local<from::none>();
+    m_sp = sp;
   }
 };
 
