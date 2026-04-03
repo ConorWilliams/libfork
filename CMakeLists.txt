@@ -75,6 +75,7 @@ target_sources(libfork_libfork
       # Context
       src/context/context.cxx
       src/context/dummy.cxx
+      src/context/inline.cxx
     PRIVATE
       src/exception.cpp
 )
