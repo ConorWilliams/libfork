@@ -78,18 +78,17 @@ class geometric : immovable {
   constexpr auto push(std::size_t size) -> void * {
     LF_ASSUME(size != 0);
 
-    // Compute the number of nodes we'll need
-    std::size_t num_nodes = (size + sizeof(node) - 1) / sizeof(node);
+    // Round such that next allocation is aligned.
+    std::size_t padded_size = round_to_multiple<k_new_align>(size);
 
-    if (num_nodes > safe_cast<std::size_t>(m_hi - m_sp)) [[unlikely]] {
-      return push_cached(num_nodes);
+    if (padded_size > safe_cast<std::size_t>(m_hi - m_sp)) [[unlikely]] {
+      return push_cached(padded_size);
     }
 
     LF_ASSUME(m_root != nullptr);
     LF_ASSUME(m_root->top != nullptr);
 
-    // node_ptr -> node* -> void*
-    return std::to_address(std::exchange(m_sp, m_sp + num_nodes));
+    return std::exchange(m_sp, m_sp + padded_size);
   }
 
   constexpr void pop(void *ptr, [[maybe_unused]] std::size_t n) noexcept {
@@ -101,8 +100,7 @@ class geometric : immovable {
       pop_shuffle();
     }
 
-    // void* -> node* -> node_ptr
-    m_sp = std::pointer_traits<node_ptr>::pointer_to(static_cast<node>(ptr));
+    m_sp = static_cast<std::byte *>(ptr);
   }
 
   [[nodiscard]]
