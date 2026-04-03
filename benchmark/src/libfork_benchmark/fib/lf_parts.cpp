@@ -71,6 +71,11 @@ struct vector_ctx {
   void push(handle_type handle) { work.push_back(handle); }
 
   auto pop() noexcept -> handle_type {
+
+    if (work.empty()) {
+      return {};
+    }
+
     auto handle = work.back();
     work.pop_back();
     return handle;
@@ -113,6 +118,11 @@ struct poly_vector_ctx final : lf::basic_poly_context<Alloc> {
   void push(handle_type handle) override { work.push_back(handle); }
 
   auto pop() noexcept -> handle_type override {
+
+    if (work.empty()) {
+      return {};
+    }
+
     auto handle = work.back();
     work.pop_back();
     return handle;
