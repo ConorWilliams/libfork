@@ -1,6 +1,4 @@
 module;
-#include <version>
-
 #include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/compiler.hpp"
 #include "libfork/__impl/exception.hpp"
@@ -154,16 +152,14 @@ class [[nodiscard("Defer will execute unless bound to a name!")]] defer : immova
 
 /**
  * @brief Test if a pointer is aligned to a multiple of `Align`.
+ *
+ * Supports fancy pointers, doesn't require an object to exist at the pointer.
  */
-export template <std::size_t Align>
+export template <std::size_t Align, typename T>
   requires (std::has_single_bit(Align))
 [[nodiscard]]
-auto is_sufficiently_aligned(void *ptr) noexcept -> bool {
-#if __cpp_lib_is_sufficiently_aligned
-  return std::is_sufficiently_aligned<Align>(ptr);
-#else
-  return (std::bit_cast<std::uintptr_t>(ptr) & (Align - 1)) == 0;
-#endif
+auto is_sufficiently_aligned(T *ptr) noexcept -> bool {
+  return (std::bit_cast<std::uintptr_t>(std::to_address(ptr)) & (Align - 1)) == 0;
 }
 
 /**
