@@ -155,18 +155,17 @@ class geometric : immovable {
  private:
   // ============== Types ==============  //
 
-  struct alignas(k_new_align) node_base {
-    node_ptr prev;     // Linked list (past)
-    node_ptr stacklet; // First aligned address in the alloctaion
-    std::size_t size;  // Usable-size of the stacklet
+  struct header {
+    node_ptr prev;    // Linked list (past)
+    std::size_t size; // Usable-size of the stacklet
   };
 
-  struct node_union {
+  struct alignas(k_new_align) node {
     union {
-      std::byte bytes[];
+      std::byte _[sizeof(header)];
+      header head;
     };
-
-  }
+  };
 
   struct ctrl {
     node_ptr top = nullptr;        // Most recent stacklet i.e. the top of the stack.
@@ -180,14 +179,12 @@ class geometric : immovable {
   typename heap_traits::allocator_type m_heap_alloc;
   [[no_unique_address]]
   typename node_traits::allocator_type m_node_alloc;
-  [[no_unique_address]]
-  typename byte_traits::allocator_type m_byte_alloc;
 
   heap_ptr m_root = nullptr; // The control block for the stack.
 
-  std::byte *m_lo = nullptr; // The base pointer for the current stacklet.
-  std::byte *m_sp = nullptr; // The stack pointer for the current stacklet.
-  std::byte *m_hi = nullptr; // The one-past-the-end pointer for the current stacklet.
+  node_ptr m_lo = nullptr; // The base pointer for the current stacklet.
+  node_ptr m_sp = nullptr; // The stack pointer for the current stacklet.
+  node_ptr m_hi = nullptr; // The one-past-the-end pointer for the current stacklet.
 
   // ============== Methods ==============  //
 
