@@ -117,11 +117,17 @@ class geometric {
 
   [[nodiscard]]
   constexpr auto prepare_release() const noexcept -> release_t {
-    m_ctrl->sp_cache = m_sp;
+
+    // Gaurd against null release
+    if (m_ctrl != nullptr) {
+      m_ctrl->sp_cache = m_sp;
+    }
+
     return release_t{key()};
   }
 
   constexpr void release([[maybe_unused]] release_t) noexcept {
+
     // Don't delete, will be resumed
     m_ctrl = nullptr;
 
