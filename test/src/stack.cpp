@@ -6,10 +6,16 @@ import libfork.core;
 using lf::k_new_align;
 using lf::stack_allocator;
 
+namespace {
+
+auto not_constexpr() {}
+
+} // namespace
+
 #define expect(expr)                                                                                         \
   if consteval {                                                                                             \
     if (!(expr)) {                                                                                           \
-      throw std::logic_error("Compile-time assertion failed: " #expr);                                       \
+      not_constexpr();                                                                                       \
     }                                                                                                        \
   } else {                                                                                                   \
     REQUIRE(expr);                                                                                           \
