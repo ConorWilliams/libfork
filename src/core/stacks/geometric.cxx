@@ -120,7 +120,7 @@ class geometric : immovable {
   constexpr void acquire(checkpoint_t ckpt) noexcept {
 
     LF_ASSUME(empty());
-    LF_ASSUME(ckpt_root != m_root.get());
+    LF_ASSUME(ckpt.m_ptr != m_root);
 
     if (ckpt_root == nullptr) {
       return;
@@ -176,9 +176,11 @@ class geometric : immovable {
 
   heap_ptr m_root = nullptr; // The control block for the stack.
 
-  node_ptr m_lo = nullptr; // The base pointer for the current stacklet.
-  node_ptr m_sp = nullptr; // The stack pointer for the current stacklet.
-  node_ptr m_hi = nullptr; // The one-past-the-end pointer for the current stacklet.
+  // TODO: use ptr
+
+  std::byte *m_lo = nullptr; // The base pointer for the current stacklet.
+  std::byte *m_sp = nullptr; // The stack pointer for the current stacklet.
+  std::byte *m_hi = nullptr; // The one-past-the-end pointer for the current stacklet.
 
   // ============== Methods ==============  //
 
