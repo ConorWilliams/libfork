@@ -22,6 +22,8 @@ class geometric : immovable {
   struct ctrl;
   struct node;
 
+  // TODO: renames
+
   using heap_traits = std::allocator_traits<Allocator>::template rebind_traits<ctrl>;
   using node_traits = std::allocator_traits<Allocator>::template rebind_traits<node>;
 
@@ -48,10 +50,7 @@ class geometric : immovable {
  public:
   constexpr geometric() noexcept(noexcept(Allocator{})) : geometric(Allocator()) {}
 
-  explicit constexpr geometric(Allocator const &alloc)
-      : m_heap_alloc(alloc),
-        m_node_alloc(alloc),
-        m_byte_alloc(alloc) {}
+  explicit constexpr geometric(Allocator const &alloc) : m_heap_alloc(alloc), m_node_alloc(alloc) {}
 
   /**
    * @brief Test if the stack is empty (all pushes have been popped).
@@ -79,17 +78,18 @@ class geometric : immovable {
   constexpr auto push(std::size_t size) -> void * {
     LF_ASSUME(size != 0);
 
-    // Round such that next allocation is aligned.
-    std::size_t padded_size = round_to_multiple<k_new_align>(size);
+    // Compute the number of nodes we'll need
+    std::size_t num_nodes = (size + sizeof(node) - 1) / sizeof(node);
 
-    if (padded_size > safe_cast<std::size_t>(m_hi - m_sp)) [[unlikely]] {
-      return push_cached(padded_size);
+    if (num_nodes > safe_cast<std::size_t>(m_hi - m_sp)) [[unlikely]] {
+      return push_cached(num_nodes);
     }
 
     LF_ASSUME(m_root != nullptr);
     LF_ASSUME(m_root->top != nullptr);
 
-    return std::exchange(m_sp, m_sp + padded_size);
+    // node_ptr -> node* -> void*
+    return std::to_address(std::exchange(m_sp, m_sp + num_nodes));
   }
 
   constexpr void pop(void *ptr, [[maybe_unused]] std::size_t n) noexcept {
@@ -101,7 +101,8 @@ class geometric : immovable {
       pop_shuffle();
     }
 
-    m_sp = static_cast<std::byte *>(ptr);
+    // void* -> node* -> node_ptr
+    m_sp = std::pointer_traits<node_ptr>::pointer_to(static_cast<node>(ptr));
   }
 
   [[nodiscard]]
@@ -155,16 +156,9 @@ class geometric : immovable {
  private:
   // ============== Types ==============  //
 
-  struct header {
+  struct alignas(k_new_align) node {
     node_ptr prev;    // Linked list (past)
     std::size_t size; // Usable-size of the stacklet
-  };
-
-  struct alignas(k_new_align) node {
-    union {
-      std::byte _[sizeof(header)];
-      header head;
-    };
   };
 
   struct ctrl {
@@ -179,6 +173,8 @@ class geometric : immovable {
   typename heap_traits::allocator_type m_heap_alloc;
   [[no_unique_address]]
   typename node_traits::allocator_type m_node_alloc;
+
+  // TODO: rename root->heap
 
   heap_ptr m_root = nullptr; // The control block for the stack.
 
