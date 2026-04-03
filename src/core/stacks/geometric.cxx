@@ -232,6 +232,7 @@ class geometric {
   /**
    * @brief Allocate and construct a new control block with a single stacklet of size bytes.
    */
+  [[nodiscard]]
   constexpr auto new_ctrl(this geometric &self, diff_int num_nodes) -> ctrl_ptr {
 
     ctrl_ptr new_ctrl = ctrl_traits::allocate(self.m_heap_alloc, 1);
