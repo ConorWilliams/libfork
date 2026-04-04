@@ -13,6 +13,7 @@ import :promise;
 import :root;
 import :handles;
 import :utility;
+import :receiver;
 
 namespace lf {
 
@@ -21,74 +22,8 @@ namespace lf {
 export template <typename T>
 concept schedulable_return = std::is_void_v<T> || std::default_initializable<T>;
 
-template <schedulable_return T, typename Checkpoint>
-struct receiver_state {
-
-  struct empty {};
-
-  // frame_type<Checkpoint> frame;
-
-  [[no_unique_address]]
-  std::conditional_t<std::is_void_v<T>, empty, T> m_return_value;
-  std::atomic_flag m_ready;
-
-  // TODO: destructor to clean up exception
-};
-
 export struct schedule_error : std::runtime_error {
   using std::runtime_error::runtime_error;
-};
-
-template <schedulable_return T, typename Checkpoint>
-class receiver {
-
-  using state_type = receiver_state<T, Checkpoint>;
-
- public:
-  constexpr receiver(key_t, std::shared_ptr<state_type> &&state) : m_state(std::move(state)) {}
-  constexpr receiver(receiver &&) noexcept = default;
-  constexpr auto operator=(receiver &&) noexcept -> receiver & = default;
-
-  // Move only
-  constexpr receiver(const receiver &) = delete;
-  constexpr auto operator=(const receiver &) -> receiver & = delete;
-
-  [[nodiscard]]
-  constexpr auto valid() const noexcept -> bool {
-    return m_state != nullptr;
-  }
-
-  [[nodiscard]]
-  auto ready() const -> bool {
-    if (!valid()) {
-      LF_THROW(schedule_error{"receiver is not valid!"});
-    }
-    return m_state->m_ready.test();
-  }
-
-  void wait() const {
-    if (!valid()) {
-      LF_THROW(schedule_error{"Invalid receiver!"});
-    }
-    m_state->m_ready.wait(false);
-  }
-
-  [[nodiscard]]
-  auto get() -> T {
-
-    wait();
-
-    if (m_state->m_exception) {
-      std::rethrow_exception(m_state->m_exception);
-    }
-
-    if constexpr (!std::is_void_v<T>) {
-      return std::move(m_state->m_return_value);
-    }
-  }
-
- private:
-  std::shared_ptr<state_type> m_state;
 };
 
 template <typename Context, typename State, typename Fn, typename... Args>
@@ -151,11 +86,11 @@ template <typename Fn, typename Context, typename... Args>
 using invoke_decay_result_t = async_result_t<std::decay_t<Fn>, Context, std::decay_t<Args>...>;
 
 template <typename Fn, typename Context, typename... Args>
-using schedule_state_t = receiver_state<invoke_decay_result_t<Fn, Context, Args...>, checkpoint_t<Context>>;
+using schedule_state_t = receiver_state<invoke_decay_result_t<Fn, Context, Args...>>;
 
 export template <typename Fn, typename Context, typename... Args>
   requires schedulable<Fn, Context, Args...>
-using schedule_result_t = receiver<invoke_decay_result_t<Fn, Context, Args...>, checkpoint_t<Context>>;
+using schedule_result_t = receiver<invoke_decay_result_t<Fn, Context, Args...>>;
 
 export template <scheduler Sch, decay_copyable Fn, decay_copyable... Args>
   requires schedulable<Fn, context_t<Sch>, Args...>
