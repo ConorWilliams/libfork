@@ -68,7 +68,7 @@ class receiver {
     wait();
 
     // State will be cleaned up on unwind
-    std::shared_ptr state = std::move(m_state);
+    std::shared_ptr state = std::exchange(m_state, nullptr);
 
     LF_ASSUME(state != nullptr);
 
