@@ -36,7 +36,7 @@ class inline_context final : public context_base<Polymorphic, Stack> {
   using context_type = std::conditional_t<Polymorphic, context_base<Polymorphic, Stack>, inline_context>;
 
   using await_h = sched_handle<context_type>;
-  using frame_h = frame_handle<context_type>;
+  using frame_h = steal_handle<context_type>;
 
   using allocator_type = Stack::allocator_type;
   using allocator_traits = std::allocator_traits<allocator_type>;
@@ -72,7 +72,7 @@ class inline_context final : public context_base<Polymorphic, Stack> {
   // explicit constexpr inline_context(allocator_type const &) noexcept;
 
  private:
-  Container<frame_handle<inline_context>, allocator_handle> m_stack;
+  Container<steal_handle<inline_context>, allocator_handle> m_stack;
 };
 
 } // namespace lf

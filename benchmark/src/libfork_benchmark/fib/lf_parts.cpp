@@ -55,7 +55,7 @@ static_assert(lf::stack_allocator<linear_allocator>);
 template <lf::stack_allocator Alloc>
 struct vector_ctx {
 
-  using handle_type = lf::frame_handle<vector_ctx>;
+  using handle_type = lf::steal_handle<vector_ctx>;
 
   std::vector<handle_type> work;
   Alloc my_allocator;
@@ -85,7 +85,7 @@ struct vector_ctx {
 template <lf::stack_allocator Alloc>
 struct deque_ctx {
 
-  using handle_type = lf::frame_handle<deque_ctx>;
+  using handle_type = lf::steal_handle<deque_ctx>;
 
   lf::deque<handle_type> work{64};
   Alloc my_allocator;
@@ -107,7 +107,7 @@ struct deque_ctx {
 template <lf::stack_allocator Alloc>
 struct poly_vector_ctx final : lf::basic_poly_context<Alloc> {
 
-  using handle_type = lf::frame_handle<lf::basic_poly_context<Alloc>>;
+  using handle_type = lf::steal_handle<lf::basic_poly_context<Alloc>>;
 
   std::vector<handle_type> work;
 
@@ -132,7 +132,7 @@ struct poly_vector_ctx final : lf::basic_poly_context<Alloc> {
 template <lf::stack_allocator Alloc>
 struct poly_deque_ctx final : lf::basic_poly_context<Alloc> {
 
-  using handle_type = lf::frame_handle<lf::basic_poly_context<Alloc>>;
+  using handle_type = lf::steal_handle<lf::basic_poly_context<Alloc>>;
 
   lf::deque<handle_type> work{64};
 

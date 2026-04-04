@@ -127,7 +127,7 @@ using checkpoint_t = decltype(std::declval<T &>().checkpoint());
 // ==== Context
 
 export template <typename T>
-struct frame_handle;
+struct steal_handle;
 
 export template <typename T>
 struct sched_handle;
@@ -146,10 +146,10 @@ concept ref_to_stack_allocator = std::is_lvalue_reference_v<T> && stack_allocato
  */
 export template <typename T>
 concept worker_context =
-    plain_object<T> && requires (T context, frame_handle<T> frame, sched_handle<T> await) {
+    plain_object<T> && requires (T context, steal_handle<T> frame, sched_handle<T> await) {
       { context.post(await) } -> std::same_as<void>;
       { context.push(frame) } -> std::same_as<void>;
-      { context.pop() } noexcept -> std::same_as<frame_handle<T>>;
+      { context.pop() } noexcept -> std::same_as<steal_handle<T>>;
       { context.allocator() } noexcept -> ref_to_stack_allocator;
     };
 

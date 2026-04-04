@@ -47,7 +47,7 @@ class handle {
  * @tparam T The (potentially incomplete) worker context.
  */
 export template <typename T>
-struct frame_handle : handle<T> {
+struct steal_handle : handle<T> {
   using handle<T>::handle;
 };
 

@@ -31,8 +31,8 @@ export template <stack_allocator Alloc>
 class basic_poly_context : public basic_stack_context<Alloc> {
  public:
   virtual void post(sched_handle<basic_poly_context>) = 0;
-  virtual void push(frame_handle<basic_poly_context>) = 0;
-  virtual auto pop() noexcept -> frame_handle<basic_poly_context> = 0;
+  virtual void push(steal_handle<basic_poly_context>) = 0;
+  virtual auto pop() noexcept -> steal_handle<basic_poly_context> = 0;
 
   virtual ~basic_poly_context() noexcept = default;
 };
