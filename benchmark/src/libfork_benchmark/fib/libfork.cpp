@@ -9,14 +9,14 @@
 
 // === Coroutine
 
-namespace  {
+namespace {
 
 using lf::env;
 using lf::task;
 using lf::worker_context;
 
-constexpr auto fib = []<worker_context Context>(this auto fib, env<Context>, std::int64_t n) -> task<std::int64_t, Context> {
-
+constexpr auto fib = []<worker_context Context>(this auto fib, env<Context>,
+                                                std::int64_t n) -> task<std::int64_t, Context> {
   if (n < 2) {
     co_return n;
   }
@@ -53,13 +53,13 @@ void run(benchmark::State &state) {
   }
 }
 
-}
+} // namespace
 
-using lf::inline_context;
 using lf::deque;
+using lf::inline_context;
 using lf::stacks::geometric;
 
 // // Minimal coroutine, bump allocated (thread-local) stack
-// BENCHMARK_TEMPLATE(run, inline_context<false, geometric<>>)->Name("test/libfork/inline/nopoly/geometric")->Arg(fib_test);
-// BENCHMARK_TEMPLATE(run, inline_context<false, geometric<>>)->Name("base/libfork/inline/nopoly/geometric")->Arg(fib_base);
-
+// BENCHMARK_TEMPLATE(run, inline_context<false,
+// geometric<>>)->Name("test/libfork/inline/nopoly/geometric")->Arg(fib_test); BENCHMARK_TEMPLATE(run,
+// inline_context<false, geometric<>>)->Name("base/libfork/inline/nopoly/geometric")->Arg(fib_base);

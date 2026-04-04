@@ -116,7 +116,7 @@ TEST_CASE("Concepts: async_invocable", "[concepts]") {
     void push(lf::steal_handle<mock_context>);
     void post(lf::sched_handle<mock_context>);
     auto pop() noexcept -> lf::steal_handle<mock_context>;
-    auto stack() noexcept ->stacks:: dummy_allocator &;
+    auto stack() noexcept -> stacks::dummy_allocator &;
   };
 
   STATIC_REQUIRE(worker_context<mock_context>);
