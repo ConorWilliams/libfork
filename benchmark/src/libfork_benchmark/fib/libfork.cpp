@@ -59,7 +59,7 @@ using lf::inline_context;
 using lf::deque;
 using lf::stack::geometric;
 
-// Minimal coroutine, bump allocated (thread-local) stack
-BENCHMARK_TEMPLATE(run, inline_context<false, geometric<>>)->Name("test/libfork/inline/nopoly/geometric")->Arg(fib_test);
-BENCHMARK_TEMPLATE(run, inline_context<false, geometric<>>)->Name("base/libfork/inline/nopoly/geometric")->Arg(fib_base);
+// // Minimal coroutine, bump allocated (thread-local) stack
+// BENCHMARK_TEMPLATE(run, inline_context<false, geometric<>>)->Name("test/libfork/inline/nopoly/geometric")->Arg(fib_test);
+// BENCHMARK_TEMPLATE(run, inline_context<false, geometric<>>)->Name("base/libfork/inline/nopoly/geometric")->Arg(fib_base);
 

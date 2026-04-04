@@ -109,13 +109,13 @@ consteval auto constify(T &&x) noexcept -> std::add_const_t<T> &;
  * Slow-path operations: release, acquire
  */
 export template <typename T>
-concept worker_stack = plain_object<T> && requires (T allocator, std::size_t n, void *ptr) {
-  { allocator.push(n) } -> std::same_as<void *>;
-  { allocator.pop(ptr, n) } noexcept -> std::same_as<void>;
-  { allocator.checkpoint() } noexcept -> std::regular;
-  { allocator.prepare_release() } noexcept -> std::movable;
-  { allocator.release(allocator.prepare_release()) } noexcept -> std::same_as<void>;
-  { allocator.acquire(constify(allocator.checkpoint())) } noexcept -> std::same_as<void>;
+concept worker_stack = plain_object<T> && requires (T stack, std::size_t n, void *ptr) {
+  { stack.push(n) } -> std::same_as<void *>;
+  { stack.pop(ptr, n) } noexcept -> std::same_as<void>;
+  { stack.checkpoint() } noexcept -> std::regular;
+  { stack.prepare_release() } noexcept -> std::movable;
+  { stack.release(stack.prepare_release()) } noexcept -> std::same_as<void>;
+  { stack.acquire(constify(stack.checkpoint())) } noexcept -> std::same_as<void>;
 };
 
 /**
