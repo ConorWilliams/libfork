@@ -57,7 +57,7 @@ void run(benchmark::State &state) {
 
 using lf::inline_context;
 using lf::deque;
-using lf::stack::geometric;
+using lf::stacks::geometric;
 
 // // Minimal coroutine, bump allocated (thread-local) stack
 // BENCHMARK_TEMPLATE(run, inline_context<false, geometric<>>)->Name("test/libfork/inline/nopoly/geometric")->Arg(fib_test);

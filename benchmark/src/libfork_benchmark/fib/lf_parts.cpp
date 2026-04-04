@@ -207,7 +207,7 @@ constexpr auto fork_call = [](this auto fib, std::int64_t n) -> lf::task<std::in
 
 using global_alloc = vector_ctx<global_allocator>;
 using linear_alloc = vector_ctx<linear_allocator>;
-using stacks_alloc = vector_ctx<lf::stack::geometric<>>;
+using stacks_alloc = vector_ctx<lf::stacks::geometric<>>;
 
 template <auto Fn, typename T, typename U = T>
 void fib(benchmark::State &state) {
@@ -289,8 +289,8 @@ using B = lf::basic_poly_context<linear_allocator>;
 BENCHMARK(fib<fork_call<B>, A, B>)->Name("test/libfork/fib/poly_vector_ctx")->Arg(fib_test);
 BENCHMARK(fib<fork_call<B>, A, B>)->Name("base/libfork/fib/poly_vector_ctx")->Arg(fib_base);
 
-using E = poly_vector_ctx<lf::stack::geometric<>>;
-using F = lf::basic_poly_context<lf::stack::geometric<>>;
+using E = poly_vector_ctx<lf::stacks::geometric<>>;
+using F = lf::basic_poly_context<lf::stacks::geometric<>>;
 
 BENCHMARK(fib<fork_call<F>, E, F>)->Name("test/libfork/fib/poly_geometric_vector_ctx")->Arg(fib_test);
 BENCHMARK(fib<fork_call<F>, E, F>)->Name("base/libfork/fib/poly_geometric_vector_ctx")->Arg(fib_base);
@@ -323,8 +323,8 @@ BENCHMARK(fib<fork_call<F, true>, E, F>)
 
 using C = poly_deque_ctx<linear_allocator>;
 using D = deque_ctx<linear_allocator>;
-using G = deque_ctx<lf::stack::geometric<>>;
-using H = poly_deque_ctx<lf::stack::geometric<>>;
+using G = deque_ctx<lf::stacks::geometric<>>;
+using H = poly_deque_ctx<lf::stacks::geometric<>>;
 
 // Return by value,
 // Libfork call/join/fork with co-await,

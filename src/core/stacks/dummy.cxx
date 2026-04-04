@@ -3,7 +3,7 @@ export module libfork.core:dummy_stack;
 
 import std;
 
-namespace lf {
+namespace lf::stacks {
 
 export struct dummy_allocator {
 

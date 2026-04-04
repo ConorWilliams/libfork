@@ -15,7 +15,7 @@ export struct dummy_context {
   void post(lf::sched_handle<dummy_context>);
   void push(lf::steal_handle<dummy_context>);
   auto pop() noexcept -> lf::steal_handle<dummy_context>;
-  auto stack() noexcept -> dummy_allocator &;
+  auto stack() noexcept -> stacks::dummy_allocator &;
 };
 
 } // namespace lf

@@ -10,7 +10,7 @@ import :constants;
 import :utility;
 import :concepts;
 
-namespace lf::stack {
+namespace lf::stacks {
 
 /**
  * @brief A geometric_stack is a user-space (geometric) segmented program stack.
@@ -447,4 +447,4 @@ class geometric {
   }
 };
 
-} // namespace lf::stack
+} // namespace lf::stacks
