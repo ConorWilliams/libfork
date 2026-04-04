@@ -22,7 +22,7 @@ export template <typename T>
 concept schedulable_return = std::is_void_v<T> || std::default_initializable<T>;
 
 template <schedulable_return T, typename Checkpoint>
-struct reciver_state {
+struct receiver_state {
 
   struct empty {};
 
@@ -40,18 +40,18 @@ export struct schedule_error : std::runtime_error {
 };
 
 template <schedulable_return T, typename Checkpoint>
-class reciver {
+class receiver {
 
-  using state_type = reciver_state<T, Checkpoint>;
+  using state_type = receiver_state<T, Checkpoint>;
 
  public:
-  constexpr reciver(key_t, std::shared_ptr<state_type> &&state) : m_state(std::move(state)) {}
-  constexpr reciver(reciver &&) noexcept = default;
-  constexpr auto operator=(reciver &&) noexcept -> reciver & = default;
+  constexpr receiver(key_t, std::shared_ptr<state_type> &&state) : m_state(std::move(state)) {}
+  constexpr receiver(receiver &&) noexcept = default;
+  constexpr auto operator=(receiver &&) noexcept -> receiver & = default;
 
   // Move only
-  constexpr reciver(const reciver &) = delete;
-  constexpr auto operator=(const reciver &) -> reciver & = delete;
+  constexpr receiver(const receiver &) = delete;
+  constexpr auto operator=(const receiver &) -> receiver & = delete;
 
   [[nodiscard]]
   constexpr auto valid() const noexcept -> bool {
@@ -61,14 +61,14 @@ class reciver {
   [[nodiscard]]
   auto ready() const -> bool {
     if (!valid()) {
-      LF_THROW(schedule_error{"reciver is not valid!"});
+      LF_THROW(schedule_error{"receiver is not valid!"});
     }
     return m_state->m_ready.test();
   }
 
   void wait() const {
     if (!valid()) {
-      LF_THROW(schedule_error{"Invalid reciver!"});
+      LF_THROW(schedule_error{"Invalid receiver!"});
     }
     m_state->m_ready.wait(false);
   }
@@ -130,7 +130,7 @@ auto package(std::shared_ptr<State> recv, Fn fn, Args... args) -> root_task<chec
 
   // Now to that which we would otherwise do at a final suspend.
 
-  // Notify the reciver that the task is done.
+  // Notify the receiver that the task is done.
   recv->m_ready.test_and_set();
   recv->m_ready.notify_one();
 
@@ -151,11 +151,11 @@ template <typename Fn, typename Context, typename... Args>
 using invoke_decay_result_t = async_result_t<std::decay_t<Fn>, Context, std::decay_t<Args>...>;
 
 template <typename Fn, typename Context, typename... Args>
-using schedule_state_t = reciver_state<invoke_decay_result_t<Fn, Context, Args...>, checkpoint_t<Context>>;
+using schedule_state_t = receiver_state<invoke_decay_result_t<Fn, Context, Args...>, checkpoint_t<Context>>;
 
 export template <typename Fn, typename Context, typename... Args>
   requires schedulable<Fn, Context, Args...>
-using schedule_result_t = reciver<invoke_decay_result_t<Fn, Context, Args...>, checkpoint_t<Context>>;
+using schedule_result_t = receiver<invoke_decay_result_t<Fn, Context, Args...>, checkpoint_t<Context>>;
 
 export template <scheduler Sch, decay_copyable Fn, decay_copyable... Args>
   requires schedulable<Fn, context_t<Sch>, Args...>
