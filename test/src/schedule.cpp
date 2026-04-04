@@ -3,6 +3,7 @@
 import std;
 
 import libfork.core;
+import libfork.schedule;
 
 // TODO: test (we need a context...)
 
@@ -20,5 +21,11 @@ auto void_function(env<Context>) -> task<void, Context> {
 
 TEST_CASE("Simple schedule", "[schedule]") {
 
-  lf::generic_context<false, lf::stacks::geometric<>> context; //
+  using context_type = lf::generic_context<false, lf::stacks::geometric<>>;
+
+  // lf::generic_context<false, lf::stacks::geometric<>> context; //
+
+  lf::inline_scheduler<context_type> scheduler;
+
+  schedule2(scheduler, void_function<context_type>);
 }

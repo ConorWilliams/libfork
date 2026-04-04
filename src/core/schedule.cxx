@@ -11,6 +11,8 @@ import :frame;
 import :thread_locals;
 import :promise;
 import :root;
+import :handles;
+import :utility;
 
 namespace lf {
 
@@ -94,21 +96,32 @@ using checkpoint_for_t = checkpoint_t<stack_t<Context>>;
 
 template <typename Context, typename State, typename Fn, typename... Args>
 auto package(std::shared_ptr<State> recv, Fn fn, Args... args) -> root_task<checkpoint_for_t<Context>> {
-  //
-  // auto *promise = get(key(), ctx_invoke_t<Context>{}(std::move(fn), std::move(args)...));
+  LF_TRY {
+    // This should be resumed on a valid context.
+    LF_ASSUME(thread_context<Context> != nullptr);
 
-  // // TODO: expose cancellable?
-  // promise->frame.parent.block = root_block.get();
-  // promise->frame.cancel = nullptr;
-  // promise->frame.stack_ckpt = get_stack<Context>().checkpoint();
-  // promise->frame.kind = lf::category::root;
+    // This is a pointer to the current root_task's frame
+    auto *frame = co_await get_frame_t{};
 
-  // if constexpr (!std::is_void_v<result_type>) {
-  //   promise->return_address = &root_block->return_value;
-  // }
+    //
+    // auto *promise = get(key(), ctx_invoke_t<Context>{}(std::move(fn), std::move(args)...));
 
-  // promise->handle().resume();
-  // co_return;
+    // // TODO: expose cancellable?
+    // promise->frame.parent.block = root_block.get();
+    // promise->frame.cancel = nullptr;
+    // promise->frame.stack_ckpt = get_stack<Context>().checkpoint();
+    // promise->frame.kind = lf::category::root;
+
+    // if constexpr (!std::is_void_v<result_type>) {
+    //   promise->return_address = &root_block->return_value;
+    // }
+
+    // promise->handle().resume();
+
+    co_return;
+  } LF_CATCH_ALL {
+    // TODO:
+  };
 }
 
 template <typename T>
@@ -134,7 +147,7 @@ using schedule_result_t =
 
 export template <scheduler Sch, decay_copyable Fn, decay_copyable... Args>
   requires schedulable<Fn, context_t<Sch>, Args...>
-constexpr auto schedule2(Sch &&sch, Fn &&fn, Args &&...args) noexcept -> auto {
+constexpr auto schedule2(Sch &&sch, Fn &&fn, Args &&...args) -> auto {
 
   using context_type = context_t<Sch>;
 
@@ -153,13 +166,13 @@ constexpr auto schedule2(Sch &&sch, Fn &&fn, Args &&...args) noexcept -> auto {
   root_task task = package<context_type>(state, std::forward<Fn>(fn), std::forward<Args>(args)...);
 
   LF_TRY {
-    // TODO: publish to schedule
+    sch.post(sched_handle<context_type>{key(), &task.promise->frame});
   } LF_CATCH_ALL {
     // TODO: clean up task
     LF_RETHROW;
   }
 
-  return state;
+  // return state;
 }
 
 //////////////////////////////////////////////////////////////////////
