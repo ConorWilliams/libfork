@@ -181,7 +181,7 @@ constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
 
   switch (kind) {
     case category::root:
-      std::unreachable();
+      LF_UNREACHABLE(); // Handled above
     case category::call:
       return parent->handle();
     case category::fork:
@@ -199,8 +199,6 @@ constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
       // TODO: benchmark if this split/noinline regresses other in stealing context
       return final_suspend_continue(context, parent);
   }
-
-  std::unreachable();
 }
 
 struct final_awaitable : std::suspend_always {
