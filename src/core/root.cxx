@@ -104,7 +104,7 @@ root_pkg(std::shared_ptr<receiver_state<R>> recv, Fn fn, Args... args) -> root_t
     child->return_address = std::addressof(recv->m_return_value);
   }
 
-  // Begin normal executio of the child task, it will clean itself
+  // Begin normal execution of the child task, it will clean itself
   // up (i.e. .destroy()) at the final suspend
   co_await &child->frame;
 
