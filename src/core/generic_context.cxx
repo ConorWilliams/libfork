@@ -26,17 +26,17 @@ class vector_stack {
   std::vector<T, Allocator> m_vector;
 };
 
-export template <                                                  //
-    bool Polymorphic,                                              //
-    worker_stack Stack,                                            //
-    template <typename, typename> typename Container = std::vector //
+export template <                                                   //
+    bool Polymorphic,                                               //
+    worker_stack Stack,                                             //
+    template <typename, typename> typename Container = vector_stack //
     >
-class inline_context final : context_base<Polymorphic, Stack> {
+class generic_context final : context_base<Polymorphic, Stack> {
 
   using base_type = context_base<Polymorphic, Stack>;
 
  public:
-  using context_type = std::conditional_t<Polymorphic, base_type, inline_context>;
+  using context_type = std::conditional_t<Polymorphic, base_type, generic_context>;
 
  private:
   using sched_h = sched_handle<context_type>;

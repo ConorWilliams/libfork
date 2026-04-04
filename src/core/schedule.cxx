@@ -13,6 +13,7 @@ import :promise;
 import :root;
 
 namespace lf {
+
 ///////////////////////////////////////////////////
 
 export template <typename T>
@@ -23,11 +24,11 @@ struct reciver_state {
 
   struct empty {};
 
-  frame_type<Checkpoint> frame;
+  // frame_type<Checkpoint> frame;
 
   [[no_unique_address]]
   std::conditional_t<std::is_void_v<T>, empty, T> m_return_value;
-  std::atomic_flag m_ready{};
+  std::atomic_flag m_ready;
 
   // TODO: destructor to clean up exception
 };
@@ -107,6 +108,7 @@ auto package(std::shared_ptr<State> recv, Fn fn, Args... args) -> root_task<chec
   // }
 
   // promise->handle().resume();
+  // co_return;
 }
 
 template <typename T>
