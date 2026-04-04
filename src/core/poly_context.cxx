@@ -33,7 +33,20 @@ class basic_poly_context : public basic_stack_context<Alloc> {
   virtual void post(await_handle<basic_poly_context>) = 0;
   virtual void push(frame_handle<basic_poly_context>) = 0;
   virtual auto pop() noexcept -> frame_handle<basic_poly_context> = 0;
+
+  virtual ~basic_poly_context() noexcept = default;
 };
+
+/**
+ * @brief A potentially polymorphic worker context base class.
+ *
+ * Provides:
+ *  virtual push/pop/post/deleter if Polymorphic is true, otherwise provides no virtual functions.
+ *  allocator method/member.
+ *  constructors that forward to the allocator's constructors.
+ */
+export template <bool Polymorphic, stack_allocator Alloc>
+using context_base = std::conditional_t<Polymorphic, basic_poly_context<Alloc>, basic_stack_context<Alloc>>;
 
 // export using poly_env = env<basic_poly_context<geometric_stack>>;
 
