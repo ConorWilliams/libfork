@@ -224,6 +224,8 @@ constexpr void stash_current_exception(frame_type<Checkpoint> *frame) noexcept {
     LF_ASSUME(exception); // Should have been called from inside a catch block
 
     // TODO: make sure exceptions are cancel-safe (I think now cancellation can leak)
+    //
+    // TODO: allocator aware -> ideally no allocation here?
 
     frame->except = new frame_type<Checkpoint>::except_type{
         .stashed = frame->parent,
@@ -294,10 +296,31 @@ struct awaitable : std::suspend_always {
 
 // =============== Join =============== //
 
+/**
+ * @brief Pull an exception out of a frame and clean-up the union/allocation.
+ */
+template <typename Checkpoint>
+constexpr auto extract_exception(frame_type<Checkpoint> *frame) noexcept -> std::exception_ptr {
+
+  LF_ASSUME(frame->exception_bit); // Should only be called if an exception was thrown.
+
+  // Local copy
+  typename frame_type<Checkpoint>::except_type except = std::move(*frame->except);
+
+  LF_ASSUME(except.exception); // Should have been set by stash_current_exception
+
+  // Clean-up exception state
+  delete frame->except;
+  // Switch union's active member
+  frame->parent = except.stashed;
+  // Reset
+  frame->exception_bit = 0;
+
+  return std::move(except.exception);
+}
+
 template <worker_context Context>
 struct join_awaitable {
-
-  using except_type = frame_t<Context>::except_type;
 
   frame_t<Context> *frame;
 
@@ -390,16 +413,8 @@ struct join_awaitable {
   }
 
   [[noreturn]]
-  constexpr auto rethrow_exception(this join_awaitable self) -> void {
-    // Local copy
-    except_type except = std::move(*self.frame->except);
-
-    // Clean-up exception state
-    delete self.frame->except;
-    self.frame->parent = except.stashed;
-    self.frame->exception_bit = 0;
-
-    std::rethrow_exception(std::move(except.exception));
+  constexpr void rethrow_exception(this join_awaitable self) {
+    std::rethrow_exception(extract_exception(self.frame));
   }
 
   constexpr void await_resume(this join_awaitable self) {

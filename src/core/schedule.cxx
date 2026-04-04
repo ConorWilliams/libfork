@@ -26,52 +26,6 @@ export struct schedule_error : std::runtime_error {
   using std::runtime_error::runtime_error;
 };
 
-template <typename Context, typename State, typename Fn, typename... Args>
-auto package(std::shared_ptr<State> recv, Fn fn, Args... args) -> root_task<checkpoint_t<Context>> {
-
-  // This should be resumed on a valid context.
-  LF_ASSUME(thread_context<Context> != nullptr);
-
-  LF_TRY {
-    using checkpoint = checkpoint_t<Context>;
-
-    // This is a pointer to the current root_task's frame
-    frame_type<checkpoint> *root = co_await get_frame_t{};
-
-    // Now we do a manual "call" invocation.
-
-    using result_type = async_result_t<Fn, Context, Args...>;
-    using promise_type = promise_type<result_type, Context>;
-
-    // This is a pointer to the promise
-    promise_type *child = get(key(), ctx_invoke_t<Context>{}(std::move(fn), std::move(args)...));
-
-    // TODO: cancellation
-
-    child->frame.parent.frame = root;
-    child->frame.cancel = nullptr;
-
-    LF_ASSUME(child->frame.kind == category::call);
-
-    if constexpr (!std::is_void_v<async_result_t<Fn, Context, Args...>>) {
-      child->return_address = std::addressof(recv->m_return_value);
-    }
-
-    co_await &child->frame;
-
-  } LF_CATCH_ALL {
-    // TODO:
-  }
-
-  // Now to that which we would otherwise do at a final suspend.
-
-  // Notify the receiver that the task is done.
-  recv->m_ready.test_and_set();
-  recv->m_ready.notify_one();
-
-  co_return;
-}
-
 template <typename T>
 concept decay_copyable = std::convertible_to<T, std::decay_t<T>>;
 
@@ -105,13 +59,16 @@ schedule2(Sch &&sch, Fn &&fn, Args &&...args) -> schedule_result_t<Fn, context_t
     LF_THROW(schedule_error{"Schedule called from within a worker thread!"});
   }
 
+  // TODO: allocator aware new
   std::shared_ptr state = std::make_shared<schedule_state_t<Fn, context_type, Args...>>();
 
   // TODO: clean up block if exception
   // TODO: make sure we're cancel safe
 
   // package has shared ownership of the state.
-  root_task task = package<context_type>(state, std::forward<Fn>(fn), std::forward<Args>(args)...);
+  root_task task = package_as_root<context_type>(state, std::forward<Fn>(fn), std::forward<Args>(args)...);
+
+  LF_ASSUME(task.promise != nullptr);
 
   LF_TRY {
     sch.post(sched_handle<context_type>{key(), &task.promise->frame});
