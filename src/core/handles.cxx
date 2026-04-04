@@ -58,11 +58,11 @@ struct frame_handle : handle<T> {
 // maximum determined by uint16_max
 
 export template <typename T>
-struct await_handle : handle<T> {
+struct sched_handle : handle<T> {
 
   using handle<T>::handle;
 
-  constexpr auto resume_on(this await_handle self, T *context) noexcept -> void {
+  constexpr auto resume_on(this sched_handle self, T *context) noexcept -> void {
     LF_ASSUME(context == get_context<T>());
     // get(key(), self);
 

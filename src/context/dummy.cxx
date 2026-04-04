@@ -12,7 +12,7 @@ namespace lf {
 // TODO: replace dummy_allocator with fixed-allocator
 
 export struct dummy_context {
-  void post(lf::await_handle<dummy_context>);
+  void post(lf::sched_handle<dummy_context>);
   void push(lf::frame_handle<dummy_context>);
   auto pop() noexcept -> lf::frame_handle<dummy_context>;
   auto allocator() noexcept -> dummy_allocator &;

@@ -114,7 +114,7 @@ TEST_CASE("Concepts: async_invocable", "[concepts]") {
   // Need a valid context of a different type
   struct mock_context {
     void push(lf::frame_handle<mock_context>);
-    void post(lf::await_handle<mock_context>);
+    void post(lf::sched_handle<mock_context>);
     auto pop() noexcept -> lf::frame_handle<mock_context>;
     auto allocator() noexcept -> dummy_allocator &;
   };

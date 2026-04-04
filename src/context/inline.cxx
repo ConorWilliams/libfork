@@ -35,7 +35,7 @@ class inline_context final : public context_base<Polymorphic, Stack> {
 
   using context_type = std::conditional_t<Polymorphic, context_base<Polymorphic, Stack>, inline_context>;
 
-  using await_h = await_handle<context_type>;
+  using await_h = sched_handle<context_type>;
   using frame_h = frame_handle<context_type>;
 
   using allocator_type = Stack::allocator_type;

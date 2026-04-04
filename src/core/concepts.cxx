@@ -129,7 +129,7 @@ export template <typename T>
 struct frame_handle;
 
 export template <typename T>
-struct await_handle;
+struct sched_handle;
 
 template <typename T>
 concept ref_to_stack_allocator = std::is_lvalue_reference_v<T> && stack_allocator<std::remove_reference_t<T>>;
@@ -145,7 +145,7 @@ concept ref_to_stack_allocator = std::is_lvalue_reference_v<T> && stack_allocato
  */
 export template <typename T>
 concept worker_context =
-    std::is_object_v<T> && requires (T context, frame_handle<T> frame, await_handle<T> await) {
+    std::is_object_v<T> && requires (T context, frame_handle<T> frame, sched_handle<T> await) {
       { context.post(await) } -> std::same_as<void>;
       { context.push(frame) } -> std::same_as<void>;
       { context.pop() } noexcept -> std::same_as<frame_handle<T>>;

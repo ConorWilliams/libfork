@@ -64,7 +64,7 @@ struct vector_ctx {
 
   auto allocator() noexcept -> Alloc & { return my_allocator; }
 
-  void post(lf::await_handle<vector_ctx>) {}
+  void post(lf::sched_handle<vector_ctx>) {}
 
   // TODO: try LF_NO_INLINE for final allocator
   LF_NO_INLINE
@@ -92,7 +92,7 @@ struct deque_ctx {
 
   auto allocator() noexcept -> Alloc & { return my_allocator; }
 
-  void post(lf::await_handle<deque_ctx>) {}
+  void post(lf::sched_handle<deque_ctx>) {}
 
   // TODO: try LF_NO_INLINE for final allocator
   void push(handle_type handle) { work.push(handle); }
@@ -113,7 +113,7 @@ struct poly_vector_ctx final : lf::basic_poly_context<Alloc> {
 
   poly_vector_ctx() { work.reserve(1024); }
 
-  void post(lf::await_handle<lf::basic_poly_context<Alloc>>) override {}
+  void post(lf::sched_handle<lf::basic_poly_context<Alloc>>) override {}
 
   void push(handle_type handle) override { work.push_back(handle); }
 
@@ -136,7 +136,7 @@ struct poly_deque_ctx final : lf::basic_poly_context<Alloc> {
 
   lf::deque<handle_type> work{64};
 
-  void post(lf::await_handle<lf::basic_poly_context<Alloc>>) override {}
+  void post(lf::sched_handle<lf::basic_poly_context<Alloc>>) override {}
 
   void push(handle_type handle) override { work.push(handle); }
 
