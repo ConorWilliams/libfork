@@ -7,6 +7,8 @@ import libfork.schedule;
 
 namespace {
 
+// TODO: test exceptions
+
 using lf::env;
 using lf::task;
 
