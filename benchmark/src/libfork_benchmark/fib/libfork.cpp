@@ -56,7 +56,7 @@ void run(benchmark::State &state) {
 } // namespace
 
 using lf::deque;
-using lf::inline_context;
+// using lf::inline_context;
 using lf::stacks::geometric;
 
 // // Minimal coroutine, bump allocated (thread-local) stack

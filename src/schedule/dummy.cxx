@@ -1,4 +1,3 @@
-module;
 export module libfork.schedule:dummy_context;
 
 import std;

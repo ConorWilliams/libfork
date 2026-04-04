@@ -1,9 +1,9 @@
-module;
-export module libfork.schedule:inline_context;
+export module libfork.core:generic_context;
 
 import std;
 
-import libfork.core;
+import :concepts;
+import :poly_context;
 
 namespace lf {
 
@@ -31,10 +31,14 @@ export template <                                                  //
     worker_stack Stack,                                            //
     template <typename, typename> typename Container = std::vector //
     >
-class inline_context final : public context_base<Polymorphic, Stack> {
+class inline_context final : context_base<Polymorphic, Stack> {
 
-  using context_type = std::conditional_t<Polymorphic, context_base<Polymorphic, Stack>, inline_context>;
+  using base_type = context_base<Polymorphic, Stack>;
 
+ public:
+  using context_type = std::conditional_t<Polymorphic, base_type, inline_context>;
+
+ private:
   using await_h = sched_handle<context_type>;
   using frame_h = steal_handle<context_type>;
 
@@ -43,27 +47,27 @@ class inline_context final : public context_base<Polymorphic, Stack> {
   using allocator_handle = allocator_traits::template rebind_alloc<frame_h>;
 
  public:
-  constexpr auto poly() noexcept -> context_base<Polymorphic, Stack> &
-    requires Polymorphic
-  {
-    return this;
+  /**
+   * @brief Get a view of this object as a context.
+   */
+  constexpr auto context() noexcept -> base_type & { return this; }
+
+  using base_type::stack;
+
+  constexpr void push(frame_h frame) { m_container.push_back(frame); }
+
+  constexpr auto pop() noexcept -> frame_h {
+    if (!m_container.empty()) {
+      frame_h frame = m_container.back();
+      m_container.pop_back();
+      return frame;
+    }
+    return {};
   }
 
   constexpr void post(await_h frame) noexcept(!Polymorphic) {
     LF_ASSERT(frame);
-
     //
-  }
-
-  constexpr void push(frame_h frame) { m_stack.push_back(frame); }
-
-  constexpr auto pop() noexcept -> frame_h {
-    if (!m_stack.empty()) {
-      frame_h frame = m_stack.back();
-      m_stack.pop_back();
-      return frame;
-    }
-    return {};
   }
 
   // TODO: make allocator aware
@@ -72,7 +76,7 @@ class inline_context final : public context_base<Polymorphic, Stack> {
   // explicit constexpr inline_context(allocator_type const &) noexcept;
 
  private:
-  Container<steal_handle<inline_context>, allocator_handle> m_stack;
+  Container<steal_handle<inline_context>, allocator_handle> m_container;
 };
 
 } // namespace lf

@@ -1,4 +1,3 @@
-module;
 export module libfork.core:dummy_stack;
 
 import std;

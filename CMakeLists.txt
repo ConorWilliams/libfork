@@ -66,6 +66,7 @@ target_sources(libfork_libfork
       src/core/tuple.cxx
       src/core/ops.cxx
       src/core/poly_context.cxx
+      src/core/generic_context.cxx
       src/core/thread_locals.cxx
       src/core/deque.cxx
       src/core/schedule.cxx
@@ -75,7 +76,6 @@ target_sources(libfork_libfork
       # Schedule
       src/schedule/schedule.cxx
       src/schedule/dummy.cxx
-      src/schedule/inline.cxx
     PRIVATE
       src/exception.cpp
 )
