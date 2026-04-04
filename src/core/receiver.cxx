@@ -1,5 +1,6 @@
 
 module;
+#include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/exception.hpp"
 export module libfork.core:receiver;
 
@@ -62,16 +63,21 @@ class receiver {
   }
 
   [[nodiscard]]
-  auto get() -> T {
+  auto get() && -> T {
 
     wait();
 
-    if (m_state->m_exception) {
-      std::rethrow_exception(m_state->m_exception);
+    // State will be cleaned up on unwind
+    std::shared_ptr state = std::move(m_state);
+
+    LF_ASSUME(state != nullptr);
+
+    if (state->m_exception) {
+      std::rethrow_exception(state->m_exception);
     }
 
     if constexpr (!std::is_void_v<T>) {
-      return std::move(m_state->m_return_value);
+      return std::move(state->m_return_value);
     }
   }
 

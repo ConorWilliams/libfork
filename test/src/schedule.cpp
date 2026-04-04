@@ -13,8 +13,8 @@ using lf::env;
 using lf::task;
 
 template <typename Context>
-auto void_function(env<Context>) -> task<void, Context> {
-  co_return;
+auto void_function(env<Context>) -> task<bool, Context> {
+  co_return true;
 }
 
 } // namespace
@@ -31,5 +31,5 @@ TEST_CASE("Simple schedule", "[schedule]") {
 
   REQUIRE(recv.valid());
 
-  recv.wait();
+  REQUIRE(std::move(recv).get() == true);
 }
