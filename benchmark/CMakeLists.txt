@@ -54,6 +54,7 @@ target_sources(libfork_benchmark
 target_sources(libfork_benchmark
   PRIVATE
     src/libfork_benchmark/fib/lf_parts.cpp
+    src/libfork_benchmark/fib/libfork.cpp
 )
 
 target_link_libraries(libfork_benchmark
