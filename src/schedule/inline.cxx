@@ -1,5 +1,5 @@
 module;
-export module libfork.context:inline_context;
+export module libfork.schedule:inline_context;
 
 import std;
 

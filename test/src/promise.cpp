@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 import libfork.core;
-import libfork.context;
+import libfork.schedule;
 
 // TODO: make the tests part of the module so they can access the internals?
 

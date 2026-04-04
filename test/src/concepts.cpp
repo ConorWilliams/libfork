@@ -3,7 +3,7 @@
 import std;
 
 import libfork.core;
-import libfork.context;
+import libfork.schedule;
 
 using namespace lf;
 

@@ -72,10 +72,10 @@ target_sources(libfork_libfork
       src/core/handles.cxx
       src/core/stacks/geometric.cxx
       src/core/stacks/dummy.cxx
-      # Context
-      src/context/context.cxx
-      src/context/dummy.cxx
-      src/context/inline.cxx
+      # Schedule
+      src/schedule/schedule.cxx
+      src/schedule/dummy.cxx
+      src/schedule/inline.cxx
     PRIVATE
       src/exception.cpp
 )

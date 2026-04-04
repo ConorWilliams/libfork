@@ -1,5 +1,5 @@
 module;
-export module libfork.context:dummy_context;
+export module libfork.schedule:dummy_context;
 
 import std;
 
