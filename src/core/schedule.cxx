@@ -46,6 +46,11 @@ export template <typename Fn, typename Context, typename... Args>
   requires schedulable<Fn, Context, Args...>
 using schedule_result_t = receiver<invoke_decay_result_t<Fn, Context, Args...>>;
 
+/**
+ * @brief Schedule a function to be run on a scheduler.
+ *
+ * This function is strongly exception safe.
+ */
 export template <scheduler Sch, decay_copyable Fn, decay_copyable... Args>
   requires schedulable<Fn, context_t<Sch>, Args...>
 constexpr auto
@@ -65,13 +70,14 @@ schedule2(Sch &&sch, Fn &&fn, Args &&...args) -> schedule_result_t<Fn, context_t
   // TODO: clean up block if exception
   // TODO: make sure we're cancel safe
 
-  // package has shared ownership of the state.
+  // Package has shared ownership of the state, fine if this throws
   root_task task = package_as_root<context_type>(state, std::forward<Fn>(fn), std::forward<Args>(args)...);
 
   LF_ASSUME(task.promise != nullptr);
 
   LF_TRY {
     sch.post(sched_handle<context_type>{key(), &task.promise->frame});
+    // If ^ didn't throw then the root_task will destroy itself at the final suspend.
   } LF_CATCH_ALL {
     task.promise->frame.handle().destroy();
     LF_RETHROW;
