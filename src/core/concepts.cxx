@@ -124,10 +124,10 @@ using checkpoint_t = decltype(std::declval<T &>().checkpoint());
 // ==== Context
 
 export template <typename T>
-class frame_handle;
+struct frame_handle;
 
 export template <typename T>
-class await_handle;
+struct await_handle;
 
 template <typename T>
 concept ref_to_stack_allocator = std::is_lvalue_reference_v<T> && stack_allocator<std::remove_reference_t<T>>;
