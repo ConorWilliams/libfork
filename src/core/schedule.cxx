@@ -1,6 +1,7 @@
 module;
 #include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/compiler.hpp"
+#include "libfork/__impl/exception.hpp"
 export module libfork.core:schedule;
 
 import std;
@@ -9,6 +10,7 @@ import :concepts;
 import :frame;
 import :thread_locals;
 import :promise;
+import :root;
 
 namespace lf {
 
@@ -86,53 +88,132 @@ export struct schedule_error : std::runtime_error {
   using std::runtime_error::runtime_error;
 };
 
-export template <worker_context Context, typename... Args, async_invocable<Context, Args...> Fn>
-  requires void_or_default_initializable<async_result_t<Fn, Context, Args...>>
-constexpr auto
-schedule2(Context &context, Fn &&fn, Args &&...args) noexcept -> async_result_t<Fn, Context, Args...> {
+///////////////////////////////////////////////////
+
+export template <typename T>
+concept schedulable_return = std::is_void_v<T> || std::default_initializable<T>;
+
+template <schedulable_return T>
+class reciver_state {
+
+  struct empty {};
+
+  [[no_unique_address]]
+  std::conditional_t<std::is_void_v<T>, empty, T> m_return_value;
+  std::exception_ptr m_exception;
+  std::atomic_flag m_ready{};
+};
+
+template <schedulable_return T>
+class reciver {
+ public:
+  constexpr reciver() : m_state(std::make_shared<reciver_state<T>>()) {}
+  constexpr reciver(reciver &&) noexcept = default;
+  constexpr auto operator=(reciver &&) noexcept -> reciver & = default;
+
+  // Move only
+  constexpr reciver(const reciver &) = delete;
+  constexpr auto operator=(const reciver &) -> reciver & = delete;
+
+  [[nodiscard]]
+  constexpr auto valid() const noexcept -> bool {
+    return m_state != nullptr;
+  }
+
+  [[nodiscard]]
+  auto ready() const -> bool {
+    if (!valid()) {
+      LF_THROW(schedule_error{"reciver is not valid!"});
+    }
+    return m_state->m_ready.test();
+  }
+
+  void wait() const {
+    if (!valid()) {
+      LF_THROW(schedule_error{"Invalid reciver!"});
+    }
+    m_state->m_ready.wait(false);
+  }
+
+  [[nodiscard]]
+  auto get() -> T {
+
+    wait();
+
+    if (m_state->m_exception) {
+      std::rethrow_exception(m_state->m_exception);
+    }
+
+    if constexpr (!std::is_void_v<T>) {
+      return std::move(m_state->m_return_value);
+    }
+  }
+
+ private:
+  std::shared_ptr<reciver_state<T>> m_state;
+};
+
+template <typename Context, typename R, typename Fn, typename... Args>
+auto package(block<R> *block, Fn fn, Args... args) -> root_task<checkpoint_t<stack_t<Context>>> {
+  //
+  // auto *promise = get(key(), ctx_invoke_t<Context>{}(std::move(fn), std::move(args)...));
+
+  // // TODO: expose cancellable?
+  // promise->frame.parent.block = root_block.get();
+  // promise->frame.cancel = nullptr;
+  // promise->frame.stack_ckpt = get_stack<Context>().checkpoint();
+  // promise->frame.kind = lf::category::root;
+
+  // if constexpr (!std::is_void_v<result_type>) {
+  //   promise->return_address = &root_block->return_value;
+  // }
+
+  // promise->handle().resume();
+}
+
+template <typename T>
+concept decay_copyable = std::convertible_to<T, std::decay_t<T>>;
+
+template <typename Fn, typename Context, typename... Args>
+concept schedulable_decayed =
+    async_invocable<Fn, Context, Args...> && schedulable_return<async_result_t<Fn, Context, Args...>>;
+
+export template <typename Fn, typename Context, typename... Args>
+concept schedulable = schedulable_decayed<std::decay_t<Fn>, Context, std::decay_t<Args>...>;
+
+template <typename Fn, typename Context, typename... Args>
+using block_for_t = block<async_result_t<std::decay_t<Fn>, Context, std::decay_t<Args>...>>;
+
+export template <typename Fn, typename Context, typename... Args>
+using schedule_result_t = std::unique_ptr<block_for_t<Fn, Context, Args...>, block_deleter>;
+
+export template <scheduler Sch, decay_copyable Fn, decay_copyable... Args>
+  requires schedulable<Fn, context_t<Sch>, Args...>
+constexpr auto schedule2(Sch &&sch, Fn &&fn, Args &&...args) noexcept -> auto {
+
+  using context_type = context_t<Sch>;
 
   // TODO: make sure this is exception safe and correctly qualifed
 
-  LF_ASSUME(context != nullptr);
-
-  if (thread_context<Context> != nullptr) {
+  if (thread_context<context_type> != nullptr) {
     LF_THROW(schedule_error{"Schedule called from within a worker thread!"});
   }
 
-  // This is what the async function will return.
-  using result_type = async_result_t<Fn, Context, Args...>;
-
-  auto root_block = std::unique_ptr<block<result_type>, block_deleter>{new block<result_type>{}};
+  schedule_result_t<Fn, context_type, Args...> block{new block_for_t<Fn, context_type, Args...>};
 
   // TODO: clean up block if exception
   // TODO: make sure we're cancel safe
 
-  // TODO: Before doing this we must be on a valid context.
-  LF_ASSUME(get_context<Context>() == context);
+  root_task task = package<context_type>(block.get(), std::forward<Fn>(fn), std::forward<Args>(args)...);
 
-  // The following invocation of the async function will access `context`
-
-  auto *promise = get(key(), ctx_invoke_t<Context>{}(std::forward<Fn>(fn), std::forward<Args>(args)...));
-
-  // TODO: expose cancellable?
-  promise->frame.parent.block = root_block.get();
-  promise->frame.cancel = nullptr;
-  promise->frame.stack_ckpt = get_stack<Context>().checkpoint();
-  promise->frame.kind = lf::category::root;
-
-  if constexpr (!std::is_void_v<result_type>) {
-    promise->return_address = &root_block->return_value;
+  LF_TRY {
+    // TODO: publish to schedule
+  } LF_CATCH_ALL {
+    // TODO: clean up task
+    LF_RETHROW;
   }
 
-  promise->handle().resume();
-
-  root_block->sem.acquire();
-
-  if constexpr (!std::is_void_v<result_type>) {
-    return root_block->return_value;
-  } else {
-    return;
-  }
+  return block;
 }
 
 } // namespace lf
