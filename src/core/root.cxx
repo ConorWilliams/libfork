@@ -64,8 +64,9 @@ struct root_task {
 
 template <worker_context Context, typename R, typename Fn, typename... Args>
   requires async_invocable_to<Fn, R, Context, Args...>
-auto package_as_root(std::shared_ptr<receiver_state<R>> recv, Fn fn, Args... args)
-    -> root_task<checkpoint_t<Context>> {
+[[nodiscard]]
+auto //
+root_pkg(std::shared_ptr<receiver_state<R>> recv, Fn fn, Args... args) -> root_task<checkpoint_t<Context>> {
 
   // This should be resumed on a valid context.
   LF_ASSUME(thread_context<Context> != nullptr);

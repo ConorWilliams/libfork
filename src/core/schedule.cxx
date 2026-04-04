@@ -71,7 +71,7 @@ schedule2(Sch &&sch, Fn &&fn, Args &&...args) -> schedule_result_t<Fn, context_t
   // TODO: make sure we're cancel safe
 
   // Package has shared ownership of the state, fine if this throws
-  root_task task = package_as_root<context_type>(state, std::forward<Fn>(fn), std::forward<Args>(args)...);
+  root_task task = root_pkg<context_type>(state, std::forward<Fn>(fn), std::forward<Args>(args)...);
 
   LF_ASSUME(task.promise != nullptr);
 
