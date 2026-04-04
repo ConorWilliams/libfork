@@ -80,48 +80,51 @@ auto package_as_root(std::shared_ptr<receiver_state<R>> recv, Fn fn, Args... arg
   using result_type = async_result_t<Fn, Context, Args...>;
   using promise_type = promise_type<result_type, Context>;
 
+  promise_type *child = nullptr;
+
   LF_TRY {
     // Potentially throwing
-    promise_type *child = get(key(), ctx_invoke_t<Context>{}(std::move(fn), std::move(args)...));
-
-    LF_ASSUME(child != nullptr);
-
-    // TODO: cancellation
-
-    child->frame.parent.frame = root;
-    child->frame.cancel = nullptr;
-
-    LF_ASSUME(child->frame.kind == category::call);
-
-    if constexpr (!std::is_void_v<async_result_t<Fn, Context, Args...>>) {
-      child->return_address = std::addressof(recv->m_return_value);
-    }
-
-    // Begin normal executio of the child task, it will clean itself
-    // up (i.e. .destroy()) at the final suspend
-    co_await &child->frame;
-
-    // Now we have been resumed the child is done, it could have completed via:
-    //
-    // - Normal return
-    // - Exception
-    // - Cancellation
-
-    if constexpr (LF_COMPILER_EXCEPTIONS) {
-      if (root->exception_bit) {
-        // The child threw an exception, propagate it to the receiver.
-        recv->m_exception = extract_exception(root);
-      }
-    }
+    child = get(key(), ctx_invoke_t<Context>{}(std::move(fn), std::move(args)...));
   } LF_CATCH_ALL {
     recv->m_exception = std::current_exception();
+    goto cleanup;
   }
 
+  LF_ASSUME(child != nullptr);
+
+  // TODO: cancellation
+
+  child->frame.parent.frame = root;
+  child->frame.cancel = nullptr;
+
+  LF_ASSUME(child->frame.kind == category::call);
+
+  if constexpr (!std::is_void_v<async_result_t<Fn, Context, Args...>>) {
+    child->return_address = std::addressof(recv->m_return_value);
+  }
+
+  // Begin normal executio of the child task, it will clean itself
+  // up (i.e. .destroy()) at the final suspend
+  co_await &child->frame;
+
+  // Now we have been resumed the child is done, it could have completed via:
+  //
+  // - Normal return
+  // - Exception
+  // - Cancellation
+
+  if constexpr (LF_COMPILER_EXCEPTIONS) {
+    if (root->exception_bit) {
+      // The child threw an exception, propagate it to the receiver.
+      recv->m_exception = extract_exception(root);
+    }
+  }
+
+cleanup:
   // Now to that which we would otherwise do at a final suspend.
   // Notify the receiver that the task is done.
   recv->m_ready.test_and_set();
   recv->m_ready.notify_one();
-
   co_return;
 }
 
