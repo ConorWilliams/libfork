@@ -66,7 +66,7 @@ struct await_handle : handle<T> {
 
   constexpr auto resume_on(this await_handle self, T *context) noexcept -> void {
     LF_ASSUME(context == get_context<T>());
-    get(key(), self);
+    // get(key(), self);
 
     //
   }
