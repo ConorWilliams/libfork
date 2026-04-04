@@ -13,6 +13,8 @@ namespace lf {
 export template <worker_context Context>
 constinit inline thread_local Context *thread_context = nullptr;
 
+// TODO: return a reference, rename to get_tls_*
+
 /**
  * @brief A getter for the current worker context, checks for null in debug.
  */
@@ -22,8 +24,8 @@ constexpr auto get_context() noexcept -> Context * {
 }
 
 template <worker_context Context>
-constexpr auto get_allocator() noexcept -> allocator_t<Context> & {
-  return get_context<Context>()->allocator();
+constexpr auto get_stack() noexcept -> stack_t<Context> & {
+  return get_context<Context>()->stack();
 }
 
 } // namespace lf

@@ -66,15 +66,16 @@ target_sources(libfork_libfork
       src/core/tuple.cxx
       src/core/ops.cxx
       src/core/poly_context.cxx
+      src/core/generic_context.cxx
       src/core/thread_locals.cxx
       src/core/deque.cxx
       src/core/schedule.cxx
       src/core/handles.cxx
       src/core/stacks/geometric.cxx
       src/core/stacks/dummy.cxx
-      # Context
-      src/context/context.cxx
-      src/context/dummy.cxx
+      # Schedule
+      src/schedule/schedule.cxx
+      src/schedule/dummy.cxx
     PRIVATE
       src/exception.cpp
 )

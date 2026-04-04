@@ -10,14 +10,14 @@ import :constants;
 import :utility;
 import :concepts;
 
-namespace lf::stack {
+namespace lf::stacks {
 
 /**
  * @brief A geometric_stack is a user-space (geometric) segmented program stack.
  *
  * This protects against hot-splitting by keeping a single cached segment.
  *
- * For this to conform to `stack_allocator` the allocators void pointer type must be `void *`
+ * For this to conform to `worker_stack` the allocators void pointer type must be `void *`
  */
 export template <allocator_of<std::byte> Allocator = std::allocator<std::byte>>
 class geometric {
@@ -447,4 +447,4 @@ class geometric {
   }
 };
 
-} // namespace lf::stack
+} // namespace lf::stacks

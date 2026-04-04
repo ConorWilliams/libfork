@@ -64,7 +64,60 @@ schedule(Context *context, Fn &&fn, Args &&...args) noexcept -> async_result_t<F
   // TODO: expose cancellable?
   promise->frame.parent.block = root_block.get();
   promise->frame.cancel = nullptr;
-  promise->frame.stack_ckpt = get_allocator<Context>().checkpoint();
+  promise->frame.stack_ckpt = get_stack<Context>().checkpoint();
+  promise->frame.kind = lf::category::root;
+
+  if constexpr (!std::is_void_v<result_type>) {
+    promise->return_address = &root_block->return_value;
+  }
+
+  promise->handle().resume();
+
+  root_block->sem.acquire();
+
+  if constexpr (!std::is_void_v<result_type>) {
+    return root_block->return_value;
+  } else {
+    return;
+  }
+}
+
+export struct schedule_error : std::runtime_error {
+  using std::runtime_error::runtime_error;
+};
+
+export template <worker_context Context, typename... Args, async_invocable<Context, Args...> Fn>
+  requires void_or_default_initializable<async_result_t<Fn, Context, Args...>>
+constexpr auto
+schedule2(Context &context, Fn &&fn, Args &&...args) noexcept -> async_result_t<Fn, Context, Args...> {
+
+  // TODO: make sure this is exception safe and correctly qualifed
+
+  LF_ASSUME(context != nullptr);
+
+  if (thread_context<Context> != nullptr) {
+    LF_THROW(schedule_error{"Schedule called from within a worker thread!"});
+  }
+
+  // This is what the async function will return.
+  using result_type = async_result_t<Fn, Context, Args...>;
+
+  auto root_block = std::unique_ptr<block<result_type>, block_deleter>{new block<result_type>{}};
+
+  // TODO: clean up block if exception
+  // TODO: make sure we're cancel safe
+
+  // TODO: Before doing this we must be on a valid context.
+  LF_ASSUME(get_context<Context>() == context);
+
+  // The following invocation of the async function will access `context`
+
+  auto *promise = get(key(), ctx_invoke_t<Context>{}(std::forward<Fn>(fn), std::forward<Args>(args)...));
+
+  // TODO: expose cancellable?
+  promise->frame.parent.block = root_block.get();
+  promise->frame.cancel = nullptr;
+  promise->frame.stack_ckpt = get_stack<Context>().checkpoint();
   promise->frame.kind = lf::category::root;
 
   if constexpr (!std::is_void_v<result_type>) {

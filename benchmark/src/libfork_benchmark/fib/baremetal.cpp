@@ -132,6 +132,8 @@ auto fib_recursive_deque_impl(std::int64_t n) -> std::int64_t {
   return a + b;
 }
 
+// TODO: can we generalize the runner function?
+
 void fib_recursive_deque(benchmark::State &state) {
 
   std::int64_t n = state.range(0);

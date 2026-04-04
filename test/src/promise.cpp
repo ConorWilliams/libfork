@@ -1,13 +1,13 @@
 #include <catch2/catch_test_macros.hpp>
 
 import libfork.core;
-import libfork.context;
+import libfork.schedule;
 
 // TODO: make the tests part of the module so they can access the internals?
 
 TEST_CASE("Promise test", "[promise]") {
 
-  using ckpt_t = lf::checkpoint_t<lf::allocator_t<lf::dummy_context>>;
+  using ckpt_t = lf::checkpoint_t<lf::stack_t<lf::dummy_context>>;
   using frame_t = lf::frame_type<ckpt_t>;
 
   // Check for safe reinterpret_casts

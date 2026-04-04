@@ -10,18 +10,21 @@ namespace lf {
 
 // =========== Atomic related concepts =========== //
 
+template <typename T>
+concept plain_object = std::is_object_v<T> && std::same_as<T, std::remove_reference_t<T>>;
+
 /**
  * @brief Verify a type is suitable for use with `std::atomic`
  *
  * This requires a `TriviallyCopyable` type satisfying both `CopyConstructible` and `CopyAssignable`.
  */
 export template <typename T>
-concept atomicable = std::is_trivially_copyable_v<T> &&    //
-                     std::is_copy_constructible_v<T> &&    //
-                     std::is_move_constructible_v<T> &&    //
-                     std::is_copy_assignable_v<T> &&       //
-                     std::is_move_assignable_v<T> &&       //
-                     std::same_as<T, std::remove_cv_t<T>>; //
+concept atomicable = plain_object<T> &&                 //
+                     std::is_trivially_copyable_v<T> && //
+                     std::is_copy_constructible_v<T> && //
+                     std::is_move_constructible_v<T> && //
+                     std::is_copy_assignable_v<T> &&    //
+                     std::is_move_assignable_v<T>;      //
 
 /**
  * @brief A concept that verifies a type is lock-free when used with `std::atomic`.
@@ -51,7 +54,7 @@ concept specialization_of = is_specialization_of<std::remove_cvref_t<T>, Templat
  * This requires that `T` is `void` or a `std::movable` type.
  */
 export template <typename T>
-concept returnable = std::is_void_v<T> || std::movable<T>;
+concept returnable = std::is_void_v<T> || (plain_object<T> && std::movable<T>);
 
 // ==== Allocators
 
@@ -80,7 +83,7 @@ template <typename T>
 consteval auto constify(T &&x) noexcept -> std::add_const_t<T> &;
 
 /**
- * @brief Defines the API for a libfork compatible stack allocator.
+ * @brief Defines the API for a libfork compatible stack.
  *
  * // TODO: define if release is required before acquire?
  *
@@ -106,31 +109,31 @@ consteval auto constify(T &&x) noexcept -> std::add_const_t<T> &;
  * Slow-path operations: release, acquire
  */
 export template <typename T>
-concept stack_allocator = std::is_object_v<T> && requires (T allocator, std::size_t n, void *ptr) {
-  { allocator.push(n) } -> std::same_as<void *>;
-  { allocator.pop(ptr, n) } noexcept -> std::same_as<void>;
-  { allocator.checkpoint() } noexcept -> std::regular;
-  { allocator.prepare_release() } noexcept -> std::movable;
-  { allocator.release(allocator.prepare_release()) } noexcept -> std::same_as<void>;
-  { allocator.acquire(constify(allocator.checkpoint())) } noexcept -> std::same_as<void>;
+concept worker_stack = plain_object<T> && requires (T stack, std::size_t n, void *ptr) {
+  { stack.push(n) } -> std::same_as<void *>;
+  { stack.pop(ptr, n) } noexcept -> std::same_as<void>;
+  { stack.checkpoint() } noexcept -> std::regular;
+  { stack.prepare_release() } noexcept -> std::movable;
+  { stack.release(stack.prepare_release()) } noexcept -> std::same_as<void>;
+  { stack.acquire(constify(stack.checkpoint())) } noexcept -> std::same_as<void>;
 };
 
 /**
- * @brief Fetch the checkpoint type of a stack allocator `T`.
+ * @brief Fetch the checkpoint type of a stack `T`.
  */
-export template <stack_allocator T>
+export template <worker_stack T>
 using checkpoint_t = decltype(std::declval<T &>().checkpoint());
 
 // ==== Context
 
 export template <typename T>
-struct frame_handle;
+struct steal_handle;
 
 export template <typename T>
-struct await_handle;
+struct sched_handle;
 
 template <typename T>
-concept ref_to_stack_allocator = std::is_lvalue_reference_v<T> && stack_allocator<std::remove_reference_t<T>>;
+concept ref_to_worker_stack = std::is_lvalue_reference_v<T> && worker_stack<std::remove_reference_t<T>>;
 
 /**
  * @brief Defines the API for a libfork compatible worker context.
@@ -138,23 +141,37 @@ concept ref_to_stack_allocator = std::is_lvalue_reference_v<T> && stack_allocato
  * This requires that `T` is an object type and supports the following operations:
  *
  * - Push/pop a frame handle onto the context in a LIFO manner.
- * - Have a `stack_allocator` that can be accessed via `allocator()`.
+ * - Have a `worker_stack` that can be accessed via `stack()`.
  * - Post an await handle to the context via `post()` and promise to call resume.
  */
 export template <typename T>
 concept worker_context =
-    std::is_object_v<T> && requires (T context, frame_handle<T> frame, await_handle<T> await) {
-      { context.post(await) } -> std::same_as<void>;
+    plain_object<T> && requires (T context, steal_handle<T> frame, sched_handle<T> await) {
       { context.push(frame) } -> std::same_as<void>;
-      { context.pop() } noexcept -> std::same_as<frame_handle<T>>;
-      { context.allocator() } noexcept -> ref_to_stack_allocator;
+      { context.pop() } noexcept -> std::same_as<steal_handle<T>>;
+      { context.stack() } noexcept -> ref_to_worker_stack;
     };
 
 /**
- * @brief Fetch the allocator type of a worker context `T`.
+ * @brief Fetch the stack type of a worker context `T`.
  */
 export template <worker_context T>
-using allocator_t = std::remove_reference_t<decltype(std::declval<T &>().allocator())>;
+using stack_t = std::remove_reference_t<decltype(std::declval<T &>().stack())>;
+
+// ==== Scheduler
+
+/**
+ * @brief An object capable of scheduling a libfork task for execution.
+ *
+ * These are typed to a context, the `post` method must:
+ *
+ * - Satisfy the strong exception guarantee.
+ * - Guarantee eventual execution of the task associated with `handle`.
+ */
+export template <typename T>
+concept scheduler = requires (T sched, sched_handle<typename std::remove_cvref_t<T>::context_type> handle) {
+  { sched.post(handle) } -> std::same_as<void>;
+};
 
 // ==== Forward-decl
 

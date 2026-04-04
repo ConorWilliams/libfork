@@ -3,7 +3,7 @@
 import std;
 
 import libfork.core;
-import libfork.context;
+import libfork.schedule;
 
 using namespace lf;
 
@@ -58,26 +58,25 @@ TEST_CASE("Concepts: returnable", "[concepts]") {
   STATIC_REQUIRE_FALSE(returnable<non_movable>);
 }
 
-TEST_CASE("Concepts: stack_allocator", "[concepts]") {
-  STATIC_REQUIRE(stack_allocator<dummy_allocator>);
+TEST_CASE("Concepts: worker_stack", "[concepts]") {
+  STATIC_REQUIRE(worker_stack<stacks::dummy_allocator>);
 
-  struct bad_alloc : dummy_allocator {
+  struct bad_alloc : stacks::dummy_allocator {
     constexpr static auto pop(void *p, std::size_t sz) -> void;
   };
 
-  STATIC_REQUIRE_FALSE(stack_allocator<bad_alloc>);
+  STATIC_REQUIRE_FALSE(worker_stack<bad_alloc>);
 }
 
 TEST_CASE("Concepts: worker_context", "[concepts]") {
   STATIC_REQUIRE(worker_context<dummy_context>);
 
-  struct missing_post {
-    void push(lf::frame_handle<missing_post>);
-    auto pop() noexcept -> lf::frame_handle<missing_post>;
-    auto allocator() noexcept -> dummy_allocator &;
+  struct missing_push {
+    auto pop() noexcept -> lf::steal_handle<missing_push>;
+    auto stack() noexcept -> stacks::dummy_allocator &;
   };
 
-  STATIC_REQUIRE_FALSE(worker_context<missing_post>);
+  STATIC_REQUIRE_FALSE(worker_context<missing_push>);
 }
 
 TEST_CASE("Concepts: async_invocable", "[concepts]") {
@@ -113,10 +112,10 @@ TEST_CASE("Concepts: async_invocable", "[concepts]") {
 
   // Need a valid context of a different type
   struct mock_context {
-    void push(lf::frame_handle<mock_context>);
-    void post(lf::await_handle<mock_context>);
-    auto pop() noexcept -> lf::frame_handle<mock_context>;
-    auto allocator() noexcept -> dummy_allocator &;
+    void push(lf::steal_handle<mock_context>);
+    void post(lf::sched_handle<mock_context>);
+    auto pop() noexcept -> lf::steal_handle<mock_context>;
+    auto stack() noexcept -> stacks::dummy_allocator &;
   };
 
   STATIC_REQUIRE(worker_context<mock_context>);

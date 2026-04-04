@@ -1,3 +1,5 @@
+module;
+#include "libfork/__impl/exception.hpp"
 export module libfork.core:poly_context;
 
 import std;
@@ -6,33 +8,40 @@ import :concepts;
 
 namespace lf {
 
-export template <stack_allocator Alloc>
+export template <worker_stack Stack>
 class basic_stack_context {
  public:
-  auto allocator() noexcept -> Alloc & { return m_allocator; }
+  auto stack() noexcept -> Stack & { return m_stack; }
 
  protected:
   constexpr basic_stack_context() = default;
 
   template <typename... Args>
-    requires std::constructible_from<Alloc, Args...> && (sizeof...(Args) > 0)
+    requires std::constructible_from<Stack, Args...> && (sizeof...(Args) > 0)
   explicit(sizeof...(Args) == 1) constexpr basic_stack_context(Args &&...args) noexcept(
-      std::is_nothrow_constructible_v<Alloc, Args...>)
-      : m_allocator(std::forward<Args>(args)...) {}
+      std::is_nothrow_constructible_v<Stack, Args...>)
+      : m_stack(std::forward<Args>(args)...) {}
 
  private:
-  Alloc m_allocator;
+  Stack m_stack;
+};
+
+export struct post_error : std::runtime_error {
+  using std::runtime_error::runtime_error;
 };
 
 /**
- * @brief A worker context polymorphic in push/pop.
+ * @brief A worker context polymorphic in push/pop/post.
  */
-export template <stack_allocator Alloc>
-class basic_poly_context : public basic_stack_context<Alloc> {
+export template <worker_stack Stack>
+class basic_poly_context : public basic_stack_context<Stack> {
  public:
-  virtual void post(await_handle<basic_poly_context>) = 0;
-  virtual void push(frame_handle<basic_poly_context>) = 0;
-  virtual auto pop() noexcept -> frame_handle<basic_poly_context> = 0;
+  virtual void push(steal_handle<basic_poly_context>) = 0;
+  virtual auto pop() noexcept -> steal_handle<basic_poly_context> = 0;
+
+  virtual void post([[maybe_unused]] sched_handle<basic_poly_context> handle) {
+    LF_THROW(post_error{"Derived context does not support posting tasks."});
+  }
 
   virtual ~basic_poly_context() noexcept = default;
 };
@@ -42,11 +51,11 @@ class basic_poly_context : public basic_stack_context<Alloc> {
  *
  * Provides:
  *  virtual push/pop/post/deleter if Polymorphic is true, otherwise provides no virtual functions.
- *  allocator method/member.
- *  constructors that forward to the allocator's constructors.
+ *  stack method/member.
+ *  constructors that forward to the stack's constructors.
  */
-export template <bool Polymorphic, stack_allocator Alloc>
-using context_base = std::conditional_t<Polymorphic, basic_poly_context<Alloc>, basic_stack_context<Alloc>>;
+export template <bool Polymorphic, worker_stack Stack>
+using context_base = std::conditional_t<Polymorphic, basic_poly_context<Stack>, basic_stack_context<Stack>>;
 
 // export using poly_env = env<basic_poly_context<geometric_stack>>;
 

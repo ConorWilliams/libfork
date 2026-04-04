@@ -28,7 +28,7 @@ struct global_allocator {
   constexpr static auto acquire(empty) noexcept -> void {}
 };
 
-static_assert(lf::stack_allocator<global_allocator>);
+static_assert(lf::worker_stack<global_allocator>);
 
 struct linear_allocator {
 
@@ -50,21 +50,21 @@ struct linear_allocator {
   constexpr auto acquire(std::byte *) noexcept -> void {}
 };
 
-static_assert(lf::stack_allocator<linear_allocator>);
+static_assert(lf::worker_stack<linear_allocator>);
 
-template <lf::stack_allocator Alloc>
+template <lf::worker_stack Stack>
 struct vector_ctx {
 
-  using handle_type = lf::frame_handle<vector_ctx>;
+  using handle_type = lf::steal_handle<vector_ctx>;
 
   std::vector<handle_type> work;
-  Alloc my_allocator;
+  Stack my_allocator;
 
   vector_ctx() { work.reserve(1024); }
 
-  auto allocator() noexcept -> Alloc & { return my_allocator; }
+  auto stack() noexcept -> Stack & { return my_allocator; }
 
-  void post(lf::await_handle<vector_ctx>) {}
+  void post(lf::sched_handle<vector_ctx>) {}
 
   // TODO: try LF_NO_INLINE for final allocator
   LF_NO_INLINE
@@ -82,17 +82,17 @@ struct vector_ctx {
   }
 };
 
-template <lf::stack_allocator Alloc>
+template <lf::worker_stack Stack>
 struct deque_ctx {
 
-  using handle_type = lf::frame_handle<deque_ctx>;
+  using handle_type = lf::steal_handle<deque_ctx>;
 
   lf::deque<handle_type> work{64};
-  Alloc my_allocator;
+  Stack my_allocator;
 
-  auto allocator() noexcept -> Alloc & { return my_allocator; }
+  auto stack() noexcept -> Stack & { return my_allocator; }
 
-  void post(lf::await_handle<deque_ctx>) {}
+  void post(lf::sched_handle<deque_ctx>) {}
 
   // TODO: try LF_NO_INLINE for final allocator
   void push(handle_type handle) { work.push(handle); }
@@ -104,16 +104,16 @@ struct deque_ctx {
   }
 };
 
-template <lf::stack_allocator Alloc>
-struct poly_vector_ctx final : lf::basic_poly_context<Alloc> {
+template <lf::worker_stack Stack>
+struct poly_vector_ctx final : lf::basic_poly_context<Stack> {
 
-  using handle_type = lf::frame_handle<lf::basic_poly_context<Alloc>>;
+  using handle_type = lf::steal_handle<lf::basic_poly_context<Stack>>;
 
   std::vector<handle_type> work;
 
   poly_vector_ctx() { work.reserve(1024); }
 
-  void post(lf::await_handle<lf::basic_poly_context<Alloc>>) override {}
+  void post(lf::sched_handle<lf::basic_poly_context<Stack>>) override {}
 
   void push(handle_type handle) override { work.push_back(handle); }
 
@@ -129,14 +129,14 @@ struct poly_vector_ctx final : lf::basic_poly_context<Alloc> {
   }
 };
 
-template <lf::stack_allocator Alloc>
-struct poly_deque_ctx final : lf::basic_poly_context<Alloc> {
+template <lf::worker_stack Stack>
+struct poly_deque_ctx final : lf::basic_poly_context<Stack> {
 
-  using handle_type = lf::frame_handle<lf::basic_poly_context<Alloc>>;
+  using handle_type = lf::steal_handle<lf::basic_poly_context<Stack>>;
 
   lf::deque<handle_type> work{64};
 
-  void post(lf::await_handle<lf::basic_poly_context<Alloc>>) override {}
+  void post(lf::sched_handle<lf::basic_poly_context<Stack>>) override {}
 
   void push(handle_type handle) override { work.push(handle); }
 
@@ -207,7 +207,7 @@ constexpr auto fork_call = [](this auto fib, std::int64_t n) -> lf::task<std::in
 
 using global_alloc = vector_ctx<global_allocator>;
 using linear_alloc = vector_ctx<linear_allocator>;
-using stacks_alloc = vector_ctx<lf::stack::geometric<>>;
+using stacks_alloc = vector_ctx<lf::stacks::geometric<>>;
 
 template <auto Fn, typename T, typename U = T>
 void fib(benchmark::State &state) {
@@ -289,8 +289,8 @@ using B = lf::basic_poly_context<linear_allocator>;
 BENCHMARK(fib<fork_call<B>, A, B>)->Name("test/libfork/fib/poly_vector_ctx")->Arg(fib_test);
 BENCHMARK(fib<fork_call<B>, A, B>)->Name("base/libfork/fib/poly_vector_ctx")->Arg(fib_base);
 
-using E = poly_vector_ctx<lf::stack::geometric<>>;
-using F = lf::basic_poly_context<lf::stack::geometric<>>;
+using E = poly_vector_ctx<lf::stacks::geometric<>>;
+using F = lf::basic_poly_context<lf::stacks::geometric<>>;
 
 BENCHMARK(fib<fork_call<F>, E, F>)->Name("test/libfork/fib/poly_geometric_vector_ctx")->Arg(fib_test);
 BENCHMARK(fib<fork_call<F>, E, F>)->Name("base/libfork/fib/poly_geometric_vector_ctx")->Arg(fib_base);
@@ -323,8 +323,8 @@ BENCHMARK(fib<fork_call<F, true>, E, F>)
 
 using C = poly_deque_ctx<linear_allocator>;
 using D = deque_ctx<linear_allocator>;
-using G = deque_ctx<lf::stack::geometric<>>;
-using H = poly_deque_ctx<lf::stack::geometric<>>;
+using G = deque_ctx<lf::stacks::geometric<>>;
+using H = poly_deque_ctx<lf::stacks::geometric<>>;
 
 // Return by value,
 // Libfork call/join/fork with co-await,
