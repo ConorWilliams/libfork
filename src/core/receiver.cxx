@@ -12,7 +12,7 @@ namespace lf {
 
 export struct broken_receiver_error final : std::exception {
   [[nodiscard]]
-  auto what() const noexcept -> const char * override {
+  constexpr auto what() const noexcept -> const char * override {
     return "Receiver is in invalid state";
   }
 };
@@ -48,14 +48,14 @@ class receiver {
   }
 
   [[nodiscard]]
-  auto ready() const -> bool {
+  constexpr auto ready() const -> bool {
     if (!valid()) {
       LF_THROW(broken_receiver_error{});
     }
     return m_state->m_ready.test();
   }
 
-  void wait() const {
+  constexpr void wait() const {
     if (!valid()) {
       LF_THROW(broken_receiver_error{});
     }
@@ -63,7 +63,7 @@ class receiver {
   }
 
   [[nodiscard]]
-  auto get() && -> T {
+  constexpr auto get() && -> T {
 
     wait();
 
