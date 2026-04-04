@@ -76,6 +76,7 @@ target_sources(libfork_libfork
       src/core/stacks/dummy.cxx
       # Schedule
       src/schedule/schedule.cxx
+      src/schedule/inline.cxx
       src/schedule/dummy.cxx
     PRIVATE
       src/exception.cpp
