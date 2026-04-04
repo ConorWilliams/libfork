@@ -56,7 +56,7 @@ target_sources(libfork_libfork
 target_sources(libfork_libfork
   PUBLIC
     FILE_SET CXX_MODULES FILES
-     # Core
+      # core
       src/core/core.cxx
       src/core/promise.cxx
       src/core/concepts.cxx
@@ -72,9 +72,11 @@ target_sources(libfork_libfork
       src/core/schedule.cxx
       src/core/handles.cxx
       src/core/root.cxx
+      src/core/execute.cxx
+      # core.stacks
       src/core/stacks/geometric.cxx
       src/core/stacks/dummy.cxx
-      # Schedule
+      # schedule
       src/schedule/schedule.cxx
       src/schedule/inline.cxx
       src/schedule/dummy.cxx
