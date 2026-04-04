@@ -20,13 +20,27 @@ struct root_task {
     frame_type<Checkpoint> frame{Checkpoint{}};
 
     struct frame_awaitable : std::suspend_never {
-
       frame_type<Checkpoint> *frame;
-
-      auto await_resume() const noexcept -> frame_type<Checkpoint> * { return frame; }
+      [[nodiscard]]
+      constexpr auto await_resume() const noexcept -> frame_type<Checkpoint> * {
+        return frame;
+      }
     };
 
-    constexpr auto await_transform(get_frame_t) noexcept -> frame_awaitable { return {.frame = &frame}; }
+    constexpr auto await_transform([[maybe_unused]] get_frame_t tag) noexcept -> frame_awaitable {
+      return {.frame = &frame};
+    }
+
+    struct call_awaitable : std::suspend_always {
+      frame_type<Checkpoint> *child;
+      constexpr auto await_suspend([[maybe_unused]] coro<promise_type> root) const noexcept -> coro<> {
+        return child->handle();
+      }
+    };
+
+    constexpr auto await_transform(frame_type<Checkpoint> *child) noexcept -> call_awaitable {
+      return {.child = child};
+    }
 
     constexpr auto get_return_object() noexcept -> root_task { return {.promise = this}; }
 

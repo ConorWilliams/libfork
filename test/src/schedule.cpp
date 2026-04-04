@@ -27,5 +27,9 @@ TEST_CASE("Simple schedule", "[schedule]") {
 
   lf::inline_scheduler<context_type> scheduler;
 
-  schedule2(scheduler, void_function<context_type>);
+  auto recv = schedule2(scheduler, void_function<context_type>);
+
+  REQUIRE(recv.valid());
+
+  recv.wait();
 }

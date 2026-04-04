@@ -93,32 +93,48 @@ class reciver {
 
 template <typename Context, typename State, typename Fn, typename... Args>
 auto package(std::shared_ptr<State> recv, Fn fn, Args... args) -> root_task<checkpoint_t<Context>> {
+
+  // This should be resumed on a valid context.
+  LF_ASSUME(thread_context<Context> != nullptr);
+
   LF_TRY {
-    // This should be resumed on a valid context.
-    LF_ASSUME(thread_context<Context> != nullptr);
+    using checkpoint = checkpoint_t<Context>;
 
     // This is a pointer to the current root_task's frame
-    auto *frame = co_await get_frame_t{};
+    frame_type<checkpoint> *root = co_await get_frame_t{};
 
-    //
-    // auto *promise = get(key(), ctx_invoke_t<Context>{}(std::move(fn), std::move(args)...));
+    // Now we do a manual "call" invocation.
 
-    // // TODO: expose cancellable?
-    // promise->frame.parent.block = root_block.get();
-    // promise->frame.cancel = nullptr;
-    // promise->frame.stack_ckpt = get_stack<Context>().checkpoint();
-    // promise->frame.kind = lf::category::root;
+    using result_type = async_result_t<Fn, Context, Args...>;
+    using promise_type = promise_type<result_type, Context>;
 
-    // if constexpr (!std::is_void_v<result_type>) {
-    //   promise->return_address = &root_block->return_value;
-    // }
+    // This is a pointer to the promise
+    promise_type *child = get(key(), ctx_invoke_t<Context>{}(std::move(fn), std::move(args)...));
 
-    // promise->handle().resume();
+    // TODO: cancellation
 
-    co_return;
+    child->frame.parent.frame = root;
+    child->frame.cancel = nullptr;
+
+    LF_ASSUME(child->frame.kind == category::call);
+
+    if constexpr (!std::is_void_v<async_result_t<Fn, Context, Args...>>) {
+      child->return_address = std::addressof(recv->m_return_value);
+    }
+
+    co_await &child->frame;
+
   } LF_CATCH_ALL {
     // TODO:
-  };
+  }
+
+  // Now to that which we would otherwise do at a final suspend.
+
+  // Notify the reciver that the task is done.
+  recv->m_ready.test_and_set();
+  recv->m_ready.notify_one();
+
+  co_return;
 }
 
 template <typename T>
@@ -138,11 +154,13 @@ template <typename Fn, typename Context, typename... Args>
 using schedule_state_t = reciver_state<invoke_decay_result_t<Fn, Context, Args...>, checkpoint_t<Context>>;
 
 export template <typename Fn, typename Context, typename... Args>
+  requires schedulable<Fn, Context, Args...>
 using schedule_result_t = reciver<invoke_decay_result_t<Fn, Context, Args...>, checkpoint_t<Context>>;
 
 export template <scheduler Sch, decay_copyable Fn, decay_copyable... Args>
   requires schedulable<Fn, context_t<Sch>, Args...>
-constexpr auto schedule2(Sch &&sch, Fn &&fn, Args &&...args) -> auto {
+constexpr auto
+schedule2(Sch &&sch, Fn &&fn, Args &&...args) -> schedule_result_t<Fn, context_t<Sch>, Args...> {
 
   using context_type = context_t<Sch>;
 
@@ -163,11 +181,11 @@ constexpr auto schedule2(Sch &&sch, Fn &&fn, Args &&...args) -> auto {
   LF_TRY {
     sch.post(sched_handle<context_type>{key(), &task.promise->frame});
   } LF_CATCH_ALL {
-    // TODO: clean up task
+    task.promise->frame.handle().destroy();
     LF_RETHROW;
   }
 
-  // return state;
+  return {key(), std::move(state)};
 }
 
 //////////////////////////////////////////////////////////////////////
