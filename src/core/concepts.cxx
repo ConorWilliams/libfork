@@ -159,6 +159,21 @@ concept worker_context =
 export template <worker_context T>
 using stack_t = std::remove_reference_t<decltype(std::declval<T &>().stack())>;
 
+// ==== Scheduler
+
+/**
+ * @brief An object capable of scheduling a libfork task for execution.
+ *
+ * These are typed to a context, the `post` method must:
+ *
+ * - Satisfy the strong exception guarantee.
+ * - Guarantee eventual execution of the task associated with `handle`.
+ */
+export template <typename T>
+concept scheduler = requires (T sched, sched_handle<typename std::remove_cvref_t<T>::context_type> handle) {
+  { sched.post(handle) } -> std::same_as<void>;
+};
+
 // ==== Forward-decl
 
 export template <worker_context>
