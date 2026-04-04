@@ -10,18 +10,21 @@ namespace lf {
 
 // =========== Atomic related concepts =========== //
 
+template <typename T>
+concept plain_object = std::is_object_v<T> && std::same_as<T, std::remove_reference_t<T>>;
+
 /**
  * @brief Verify a type is suitable for use with `std::atomic`
  *
  * This requires a `TriviallyCopyable` type satisfying both `CopyConstructible` and `CopyAssignable`.
  */
 export template <typename T>
-concept atomicable = std::is_trivially_copyable_v<T> &&    //
-                     std::is_copy_constructible_v<T> &&    //
-                     std::is_move_constructible_v<T> &&    //
-                     std::is_copy_assignable_v<T> &&       //
-                     std::is_move_assignable_v<T> &&       //
-                     std::same_as<T, std::remove_cv_t<T>>; //
+concept atomicable = plain_object<T> &&                 //
+                     std::is_trivially_copyable_v<T> && //
+                     std::is_copy_constructible_v<T> && //
+                     std::is_move_constructible_v<T> && //
+                     std::is_copy_assignable_v<T> &&    //
+                     std::is_move_assignable_v<T>;      //
 
 /**
  * @brief A concept that verifies a type is lock-free when used with `std::atomic`.
@@ -51,7 +54,7 @@ concept specialization_of = is_specialization_of<std::remove_cvref_t<T>, Templat
  * This requires that `T` is `void` or a `std::movable` type.
  */
 export template <typename T>
-concept returnable = std::is_void_v<T> || std::movable<T>;
+concept returnable = std::is_void_v<T> || (plain_object<T> && std::movable<T>);
 
 // ==== Allocators
 
@@ -74,8 +77,6 @@ template <class T, typename U>
 concept allocator_of = simple_allocator<T> && std::same_as<typename T::value_type, U>;
 
 // ==== Stack
-
-// TODO: enforce plain_object
 
 template <typename T>
   requires std::is_object_v<T>
@@ -108,7 +109,7 @@ consteval auto constify(T &&x) noexcept -> std::add_const_t<T> &;
  * Slow-path operations: release, acquire
  */
 export template <typename T>
-concept stack_allocator = std::is_object_v<T> && requires (T allocator, std::size_t n, void *ptr) {
+concept stack_allocator = plain_object<T> && requires (T allocator, std::size_t n, void *ptr) {
   { allocator.push(n) } -> std::same_as<void *>;
   { allocator.pop(ptr, n) } noexcept -> std::same_as<void>;
   { allocator.checkpoint() } noexcept -> std::regular;
@@ -145,7 +146,7 @@ concept ref_to_stack_allocator = std::is_lvalue_reference_v<T> && stack_allocato
  */
 export template <typename T>
 concept worker_context =
-    std::is_object_v<T> && requires (T context, frame_handle<T> frame, sched_handle<T> await) {
+    plain_object<T> && requires (T context, frame_handle<T> frame, sched_handle<T> await) {
       { context.post(await) } -> std::same_as<void>;
       { context.push(frame) } -> std::same_as<void>;
       { context.pop() } noexcept -> std::same_as<frame_handle<T>>;
