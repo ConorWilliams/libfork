@@ -71,13 +71,12 @@ TEST_CASE("Concepts: worker_stack", "[concepts]") {
 TEST_CASE("Concepts: worker_context", "[concepts]") {
   STATIC_REQUIRE(worker_context<dummy_context>);
 
-  struct missing_post {
-    void push(lf::steal_handle<missing_post>);
-    auto pop() noexcept -> lf::steal_handle<missing_post>;
+  struct missing_push {
+    auto pop() noexcept -> lf::steal_handle<missing_push>;
     auto stack() noexcept -> stacks::dummy_allocator &;
   };
 
-  STATIC_REQUIRE_FALSE(worker_context<missing_post>);
+  STATIC_REQUIRE_FALSE(worker_context<missing_push>);
 }
 
 TEST_CASE("Concepts: async_invocable", "[concepts]") {

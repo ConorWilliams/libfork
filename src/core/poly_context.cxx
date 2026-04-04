@@ -1,3 +1,5 @@
+module;
+#include "libfork/__impl/exception.hpp"
 export module libfork.core:poly_context;
 
 import std;
@@ -24,15 +26,22 @@ class basic_stack_context {
   Stack m_stack;
 };
 
+export struct post_error : std::runtime_error {
+  using std::runtime_error::runtime_error;
+};
+
 /**
- * @brief A worker context polymorphic in push/pop.
+ * @brief A worker context polymorphic in push/pop/post.
  */
 export template <worker_stack Stack>
 class basic_poly_context : public basic_stack_context<Stack> {
  public:
-  virtual void post(sched_handle<basic_poly_context>) = 0;
   virtual void push(steal_handle<basic_poly_context>) = 0;
   virtual auto pop() noexcept -> steal_handle<basic_poly_context> = 0;
+
+  virtual void post([[maybe_unused]] sched_handle<basic_poly_context> handle) {
+    LF_THROW(post_error{"Derived context does not support posting tasks."});
+  }
 
   virtual ~basic_poly_context() noexcept = default;
 };
