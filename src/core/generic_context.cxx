@@ -39,12 +39,13 @@ class inline_context final : context_base<Polymorphic, Stack> {
   using context_type = std::conditional_t<Polymorphic, base_type, inline_context>;
 
  private:
-  using await_h = sched_handle<context_type>;
-  using frame_h = steal_handle<context_type>;
+  using sched_h = sched_handle<context_type>;
+  using steal_h = steal_handle<context_type>;
 
   using allocator_type = Stack::allocator_type;
   using allocator_traits = std::allocator_traits<allocator_type>;
-  using allocator_handle = allocator_traits::template rebind_alloc<frame_h>;
+
+  using container_type = Container<steal_h, typename allocator_traits::template rebind_alloc<steal_h>>;
 
  public:
   /**
@@ -54,21 +55,18 @@ class inline_context final : context_base<Polymorphic, Stack> {
 
   using base_type::stack;
 
-  constexpr void push(frame_h frame) { m_container.push_back(frame); }
+  constexpr void push(steal_h frame) { m_container.push_back(frame); }
 
-  constexpr auto pop() noexcept -> frame_h {
+  constexpr auto pop() noexcept -> steal_h {
     if (!m_container.empty()) {
-      frame_h frame = m_container.back();
+      steal_h frame = m_container.back();
       m_container.pop_back();
       return frame;
     }
     return {};
   }
 
-  constexpr void post(await_h frame) noexcept(!Polymorphic) {
-    LF_ASSERT(frame);
-    //
-  }
+  constexpr void post(sched_h frame) {}
 
   // TODO: make allocator aware
   // TODO: make generic over vector/deque
@@ -76,7 +74,7 @@ class inline_context final : context_base<Polymorphic, Stack> {
   // explicit constexpr inline_context(allocator_type const &) noexcept;
 
  private:
-  Container<steal_handle<inline_context>, allocator_handle> m_container;
+  container_type m_container;
 };
 
 } // namespace lf
