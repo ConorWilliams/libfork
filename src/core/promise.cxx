@@ -304,7 +304,7 @@ struct join_awaitable {
   frame_t<Context> *frame;
 
   constexpr auto take_stack_and_reset(this join_awaitable self) noexcept -> void {
-    allocator_t<Context> &allocator = get_allocator<Context>();
+    allocator_t<Context> &allocator = get_stack<Context>();
     LF_ASSUME(self.frame->stack_ckpt != allocator.checkpoint());
     allocator.acquire(std::as_const(self.frame->stack_ckpt));
     self.frame->reset_counters();
@@ -437,14 +437,14 @@ struct mixin_frame {
 
   // --- Allocation
 
-  static auto operator new(std::size_t sz) noexcept(noexcept(get_allocator<Context>().push(sz))) -> void * {
-    void *ptr = get_allocator<Context>().push(sz);
+  static auto operator new(std::size_t sz) noexcept(noexcept(get_stack<Context>().push(sz))) -> void * {
+    void *ptr = get_stack<Context>().push(sz);
     LF_ASSUME(is_sufficiently_aligned<k_new_align>(ptr));
     return std::assume_aligned<k_new_align>(ptr);
   }
 
   static auto operator delete(void *p, std::size_t sz) noexcept -> void {
-    get_allocator<Context>().pop(p, sz);
+    get_stack<Context>().pop(p, sz);
   }
 
   // --- Await transformations
@@ -514,7 +514,7 @@ struct promise_type<void, Context> : mixin_frame<Context> {
   // Putting init here allows:
   //  1. Frame not no need to know about the checkpoint type
   //  2. Compiler merge double read of thread local here and in allocator
-  frame_t<Context> frame{get_allocator<Context>().checkpoint()};
+  frame_t<Context> frame{get_stack<Context>().checkpoint()};
 
   constexpr auto get_return_object() noexcept -> task<void, Context> { return {key(), this}; }
 
@@ -529,7 +529,7 @@ struct promise_type : mixin_frame<Context> {
   // Putting init here allows:
   //  1. Frame not no need to know about the checkpoint type
   //  2. Compiler merge double read of thread local here and in allocator
-  frame_t<Context> frame{get_allocator<Context>().checkpoint()};
+  frame_t<Context> frame{get_stack<Context>().checkpoint()};
   T *return_address;
 
   constexpr auto get_return_object() noexcept -> task<T, Context> { return {key(), this}; }

@@ -24,7 +24,7 @@ constexpr auto get_context() noexcept -> Context * {
 }
 
 template <worker_context Context>
-constexpr auto get_allocator() noexcept -> allocator_t<Context> & {
+constexpr auto get_stack() noexcept -> allocator_t<Context> & {
   return get_context<Context>()->allocator();
 }
 

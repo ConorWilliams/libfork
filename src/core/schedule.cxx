@@ -64,7 +64,7 @@ schedule(Context *context, Fn &&fn, Args &&...args) noexcept -> async_result_t<F
   // TODO: expose cancellable?
   promise->frame.parent.block = root_block.get();
   promise->frame.cancel = nullptr;
-  promise->frame.stack_ckpt = get_allocator<Context>().checkpoint();
+  promise->frame.stack_ckpt = get_stack<Context>().checkpoint();
   promise->frame.kind = lf::category::root;
 
   if constexpr (!std::is_void_v<result_type>) {
@@ -117,7 +117,7 @@ schedule2(Context &context, Fn &&fn, Args &&...args) noexcept -> async_result_t<
   // TODO: expose cancellable?
   promise->frame.parent.block = root_block.get();
   promise->frame.cancel = nullptr;
-  promise->frame.stack_ckpt = get_allocator<Context>().checkpoint();
+  promise->frame.stack_ckpt = get_stack<Context>().checkpoint();
   promise->frame.kind = lf::category::root;
 
   if constexpr (!std::is_void_v<result_type>) {
