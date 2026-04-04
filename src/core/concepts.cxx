@@ -75,6 +75,8 @@ concept allocator_of = simple_allocator<T> && std::same_as<typename T::value_typ
 
 // ==== Stack
 
+// TODO: enforce plain_object
+
 template <typename T>
   requires std::is_object_v<T>
 consteval auto constify(T &&x) noexcept -> std::add_const_t<T> &;

@@ -13,6 +13,8 @@ namespace lf {
 export template <worker_context Context>
 constinit inline thread_local Context *thread_context = nullptr;
 
+// TODO: return a reference
+
 /**
  * @brief A getter for the current worker context, checks for null in debug.
  */

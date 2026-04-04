@@ -43,7 +43,7 @@ class inline_context final : public context_base<Polymorphic, Stack> {
   using allocator_handle = allocator_traits::template rebind_alloc<frame_h>;
 
  public:
-  constexpr auto poly() noexcept -> context_base<Polymorphic, Stack> *
+  constexpr auto poly() noexcept -> context_base<Polymorphic, Stack> &
     requires Polymorphic
   {
     return this;

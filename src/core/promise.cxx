@@ -304,9 +304,9 @@ struct join_awaitable {
   frame_t<Context> *frame;
 
   constexpr auto take_stack_and_reset(this join_awaitable self) noexcept -> void {
-    Context *context = get_context<Context>();
-    LF_ASSUME(self.frame->stack_ckpt != context->allocator().checkpoint());
-    context->allocator().acquire(std::as_const(self.frame->stack_ckpt));
+    allocator_t<Context> &allocator = get_allocator<Context>();
+    LF_ASSUME(self.frame->stack_ckpt != allocator.checkpoint());
+    allocator.acquire(std::as_const(self.frame->stack_ckpt));
     self.frame->reset_counters();
   }
 

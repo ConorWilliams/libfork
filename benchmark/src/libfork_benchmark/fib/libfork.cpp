@@ -61,5 +61,5 @@ using lf::stack::geometric;
 
 // Minimal coroutine, bump allocated (thread-local) stack
 BENCHMARK_TEMPLATE(run, inline_context<false, geometric<>>)->Name("test/libfork/inline/nopoly/geometric")->Arg(fib_test);
-// BENCHMARK_TEMPLATE()->Name("base/baremetal/fib/coro")->Arg(fib_base);
+BENCHMARK_TEMPLATE(run, inline_context<false, geometric<>>)->Name("base/libfork/inline/nopoly/geometric")->Arg(fib_base);
 
