@@ -33,10 +33,10 @@ class handle {
   constexpr handle(key_t, frame_base *ptr) noexcept : m_ptr{ptr} {}
 
  private:
-  // [[nodiscard]]
-  // constexpr friend auto get(key_t, handle<U> other) noexcept -> frame_type<U> * {
-  //   return static_cast<frame_type<U> *>(other.m_ptr);
-  // }
+  [[nodiscard]]
+  constexpr friend auto get(key_t, handle other) noexcept -> frame_base * {
+    return other.m_ptr;
+  }
 
   frame_base *m_ptr = nullptr;
 };

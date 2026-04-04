@@ -20,9 +20,7 @@ class inline_scheduler {
  public:
   using context_type = Context;
 
-  auto post(lf::sched_handle<Context> handle) {
-    throw std::runtime_error{"inline_scheduler does not support post!"};
-  }
+  auto post(lf::sched_handle<Context> handle) { execute(m_context, handle); }
 
  private:
   Context m_context;
