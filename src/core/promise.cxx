@@ -24,7 +24,7 @@ template <typename T = void>
 using coro = std::coroutine_handle<T>;
 
 template <worker_context Context>
-using frame_t = frame_type<checkpoint_t<stack_t<Context>>>;
+using frame_t = frame_type<checkpoint_t<Context>>;
 
 // =============== Forward-decl =============== //
 

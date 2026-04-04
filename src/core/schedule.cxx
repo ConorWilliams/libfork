@@ -91,11 +91,8 @@ class reciver {
   std::shared_ptr<state_type> m_state;
 };
 
-template <typename Context>
-using checkpoint_for_t = checkpoint_t<stack_t<Context>>;
-
 template <typename Context, typename State, typename Fn, typename... Args>
-auto package(std::shared_ptr<State> recv, Fn fn, Args... args) -> root_task<checkpoint_for_t<Context>> {
+auto package(std::shared_ptr<State> recv, Fn fn, Args... args) -> root_task<checkpoint_t<Context>> {
   LF_TRY {
     // This should be resumed on a valid context.
     LF_ASSUME(thread_context<Context> != nullptr);
@@ -135,15 +132,13 @@ export template <typename Fn, typename Context, typename... Args>
 concept schedulable = schedulable_decayed<std::decay_t<Fn>, Context, std::decay_t<Args>...>;
 
 template <typename Fn, typename Context, typename... Args>
-using async_invoke_decay_result_t = async_result_t<std::decay_t<Fn>, Context, std::decay_t<Args>...>;
+using invoke_decay_result_t = async_result_t<std::decay_t<Fn>, Context, std::decay_t<Args>...>;
 
 template <typename Fn, typename Context, typename... Args>
-using schedule_state_t =
-    reciver_state<async_invoke_decay_result_t<Fn, Context, Args...>, checkpoint_for_t<Context>>;
+using schedule_state_t = reciver_state<invoke_decay_result_t<Fn, Context, Args...>, checkpoint_t<Context>>;
 
 export template <typename Fn, typename Context, typename... Args>
-using schedule_result_t =
-    reciver<async_invoke_decay_result_t<Fn, Context, Args...>, checkpoint_for_t<Context>>;
+using schedule_result_t = reciver<invoke_decay_result_t<Fn, Context, Args...>, checkpoint_t<Context>>;
 
 export template <scheduler Sch, decay_copyable Fn, decay_copyable... Args>
   requires schedulable<Fn, context_t<Sch>, Args...>

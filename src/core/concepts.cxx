@@ -118,12 +118,6 @@ concept worker_stack = plain_object<T> && requires (T stack, std::size_t n, void
   { stack.acquire(constify(stack.checkpoint())) } noexcept -> std::same_as<void>;
 };
 
-/**
- * @brief Fetch the checkpoint type of a stack `T`.
- */
-export template <worker_stack T>
-using checkpoint_t = decltype(std::declval<T &>().checkpoint());
-
 // ==== Context
 
 export template <typename T>
@@ -157,6 +151,12 @@ concept worker_context =
  */
 export template <worker_context T>
 using stack_t = std::remove_reference_t<decltype(std::declval<T &>().stack())>;
+
+/**
+ * @brief Fetch the checkpoint type of a worker context `T`.
+ */
+export template <worker_context T>
+using checkpoint_t = decltype(std::declval<stack_t<T> &>().checkpoint());
 
 // ==== Scheduler
 
