@@ -43,6 +43,12 @@ class inline_context final : public context_base<Polymorphic, Stack> {
   using allocator_handle = allocator_traits::template rebind_alloc<frame_h>;
 
  public:
+  constexpr auto poly() noexcept -> context_base<Polymorphic, Stack> *
+    requires Polymorphic
+  {
+    return this;
+  }
+
   constexpr void post(await_h frame) noexcept(!Polymorphic) {
     LF_ASSERT(frame);
 
@@ -66,7 +72,7 @@ class inline_context final : public context_base<Polymorphic, Stack> {
   // explicit constexpr inline_context(allocator_type const &) noexcept;
 
  private:
-  std::vector<frame_handle<inline_context>, allocator_handle> m_stack;
+  Container<frame_handle<inline_context>, allocator_handle> m_stack;
 };
 
 } // namespace lf
