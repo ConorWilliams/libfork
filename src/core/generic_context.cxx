@@ -51,7 +51,7 @@ class inline_context final : context_base<Polymorphic, Stack> {
   /**
    * @brief Get a view of this object as a context.
    */
-  constexpr auto context() noexcept -> base_type & { return this; }
+  constexpr auto context() noexcept -> base_type & { return *this; }
 
   using base_type::stack;
 
