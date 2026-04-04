@@ -30,15 +30,13 @@ class handle {
   constexpr explicit operator bool() const noexcept { return m_ptr != nullptr; }
 
   // Template to prevent circular dependency
-  template <std::same_as<checkpoint_t<allocator_t<T>>> U>
-  constexpr handle(key_t, frame_type<U> *ptr) noexcept : m_ptr{ptr} {}
+  constexpr handle(key_t, frame_base *ptr) noexcept : m_ptr{ptr} {}
 
  private:
-  template <std::same_as<checkpoint_t<allocator_t<T>>> U>
-  [[nodiscard]]
-  constexpr friend auto get(key_t, handle<U> other) noexcept -> frame_type<U> * {
-    return static_cast<frame_type<U> *>(other.m_ptr);
-  }
+  // [[nodiscard]]
+  // constexpr friend auto get(key_t, handle<U> other) noexcept -> frame_type<U> * {
+  //   return static_cast<frame_type<U> *>(other.m_ptr);
+  // }
 
   frame_base *m_ptr = nullptr;
 };
