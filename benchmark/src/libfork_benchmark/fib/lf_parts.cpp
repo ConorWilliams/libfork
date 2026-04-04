@@ -28,7 +28,7 @@ struct global_allocator {
   constexpr static auto acquire(empty) noexcept -> void {}
 };
 
-static_assert(lf::stack_allocator<global_allocator>);
+static_assert(lf::worker_stack<global_allocator>);
 
 struct linear_allocator {
 
@@ -50,9 +50,9 @@ struct linear_allocator {
   constexpr auto acquire(std::byte *) noexcept -> void {}
 };
 
-static_assert(lf::stack_allocator<linear_allocator>);
+static_assert(lf::worker_stack<linear_allocator>);
 
-template <lf::stack_allocator Alloc>
+template <lf::worker_stack Alloc>
 struct vector_ctx {
 
   using handle_type = lf::steal_handle<vector_ctx>;
@@ -82,7 +82,7 @@ struct vector_ctx {
   }
 };
 
-template <lf::stack_allocator Alloc>
+template <lf::worker_stack Alloc>
 struct deque_ctx {
 
   using handle_type = lf::steal_handle<deque_ctx>;
@@ -104,7 +104,7 @@ struct deque_ctx {
   }
 };
 
-template <lf::stack_allocator Alloc>
+template <lf::worker_stack Alloc>
 struct poly_vector_ctx final : lf::basic_poly_context<Alloc> {
 
   using handle_type = lf::steal_handle<lf::basic_poly_context<Alloc>>;
@@ -129,7 +129,7 @@ struct poly_vector_ctx final : lf::basic_poly_context<Alloc> {
   }
 };
 
-template <lf::stack_allocator Alloc>
+template <lf::worker_stack Alloc>
 struct poly_deque_ctx final : lf::basic_poly_context<Alloc> {
 
   using handle_type = lf::steal_handle<lf::basic_poly_context<Alloc>>;

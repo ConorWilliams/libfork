@@ -109,7 +109,7 @@ consteval auto constify(T &&x) noexcept -> std::add_const_t<T> &;
  * Slow-path operations: release, acquire
  */
 export template <typename T>
-concept stack_allocator = plain_object<T> && requires (T allocator, std::size_t n, void *ptr) {
+concept worker_stack = plain_object<T> && requires (T allocator, std::size_t n, void *ptr) {
   { allocator.push(n) } -> std::same_as<void *>;
   { allocator.pop(ptr, n) } noexcept -> std::same_as<void>;
   { allocator.checkpoint() } noexcept -> std::regular;
@@ -121,7 +121,7 @@ concept stack_allocator = plain_object<T> && requires (T allocator, std::size_t 
 /**
  * @brief Fetch the checkpoint type of a stack allocator `T`.
  */
-export template <stack_allocator T>
+export template <worker_stack T>
 using checkpoint_t = decltype(std::declval<T &>().checkpoint());
 
 // ==== Context
@@ -133,7 +133,7 @@ export template <typename T>
 struct sched_handle;
 
 template <typename T>
-concept ref_to_stack_allocator = std::is_lvalue_reference_v<T> && stack_allocator<std::remove_reference_t<T>>;
+concept ref_to_worker_stack = std::is_lvalue_reference_v<T> && worker_stack<std::remove_reference_t<T>>;
 
 /**
  * @brief Defines the API for a libfork compatible worker context.
@@ -141,7 +141,7 @@ concept ref_to_stack_allocator = std::is_lvalue_reference_v<T> && stack_allocato
  * This requires that `T` is an object type and supports the following operations:
  *
  * - Push/pop a frame handle onto the context in a LIFO manner.
- * - Have a `stack_allocator` that can be accessed via `allocator()`.
+ * - Have a `worker_stack` that can be accessed via `allocator()`.
  * - Post an await handle to the context via `post()` and promise to call resume.
  */
 export template <typename T>
@@ -150,7 +150,7 @@ concept worker_context =
       { context.post(await) } -> std::same_as<void>;
       { context.push(frame) } -> std::same_as<void>;
       { context.pop() } noexcept -> std::same_as<steal_handle<T>>;
-      { context.allocator() } noexcept -> ref_to_stack_allocator;
+      { context.allocator() } noexcept -> ref_to_worker_stack;
     };
 
 /**

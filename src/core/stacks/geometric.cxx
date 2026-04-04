@@ -17,7 +17,7 @@ namespace lf::stack {
  *
  * This protects against hot-splitting by keeping a single cached segment.
  *
- * For this to conform to `stack_allocator` the allocators void pointer type must be `void *`
+ * For this to conform to `worker_stack` the allocators void pointer type must be `void *`
  */
 export template <allocator_of<std::byte> Allocator = std::allocator<std::byte>>
 class geometric {

@@ -28,7 +28,7 @@ class vector_stack {
 
 export template <                                                  //
     bool Polymorphic,                                              //
-    stack_allocator Stack,                                         //
+    worker_stack Stack,                                         //
     template <typename, typename> typename Container = std::vector //
     >
 class inline_context final : public context_base<Polymorphic, Stack> {

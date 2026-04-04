@@ -58,14 +58,14 @@ TEST_CASE("Concepts: returnable", "[concepts]") {
   STATIC_REQUIRE_FALSE(returnable<non_movable>);
 }
 
-TEST_CASE("Concepts: stack_allocator", "[concepts]") {
-  STATIC_REQUIRE(stack_allocator<dummy_allocator>);
+TEST_CASE("Concepts: worker_stack", "[concepts]") {
+  STATIC_REQUIRE(worker_stack<dummy_allocator>);
 
   struct bad_alloc : dummy_allocator {
     constexpr static auto pop(void *p, std::size_t sz) -> void;
   };
 
-  STATIC_REQUIRE_FALSE(stack_allocator<bad_alloc>);
+  STATIC_REQUIRE_FALSE(worker_stack<bad_alloc>);
 }
 
 TEST_CASE("Concepts: worker_context", "[concepts]") {

@@ -6,7 +6,7 @@ import :concepts;
 
 namespace lf {
 
-export template <stack_allocator Alloc>
+export template <worker_stack Alloc>
 class basic_stack_context {
  public:
   auto allocator() noexcept -> Alloc & { return m_allocator; }
@@ -27,7 +27,7 @@ class basic_stack_context {
 /**
  * @brief A worker context polymorphic in push/pop.
  */
-export template <stack_allocator Alloc>
+export template <worker_stack Alloc>
 class basic_poly_context : public basic_stack_context<Alloc> {
  public:
   virtual void post(sched_handle<basic_poly_context>) = 0;
@@ -45,7 +45,7 @@ class basic_poly_context : public basic_stack_context<Alloc> {
  *  allocator method/member.
  *  constructors that forward to the allocator's constructors.
  */
-export template <bool Polymorphic, stack_allocator Alloc>
+export template <bool Polymorphic, worker_stack Alloc>
 using context_base = std::conditional_t<Polymorphic, basic_poly_context<Alloc>, basic_stack_context<Alloc>>;
 
 // export using poly_env = env<basic_poly_context<geometric_stack>>;

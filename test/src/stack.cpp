@@ -4,7 +4,7 @@ import std;
 import libfork.core;
 
 using lf::k_new_align;
-using lf::stack_allocator;
+using lf::worker_stack;
 
 namespace {
 
@@ -40,7 +40,7 @@ constexpr void check_alignment(void *ptr) {
 } // namespace
 
 TEST_CASE("Concept", "[geometric_stack]") {
-  STATIC_REQUIRE(stack_allocator<lf::stack::geometric<>>); //
+  STATIC_REQUIRE(worker_stack<lf::stack::geometric<>>); //
 }
 
 TEST_CASE("Basic push and pop", "[geometric_stack]") {
