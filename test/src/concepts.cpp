@@ -74,7 +74,7 @@ TEST_CASE("Concepts: worker_context", "[concepts]") {
   struct missing_post {
     void push(lf::steal_handle<missing_post>);
     auto pop() noexcept -> lf::steal_handle<missing_post>;
-    auto allocator() noexcept -> dummy_allocator &;
+    auto stack() noexcept -> dummy_allocator &;
   };
 
   STATIC_REQUIRE_FALSE(worker_context<missing_post>);
@@ -116,7 +116,7 @@ TEST_CASE("Concepts: async_invocable", "[concepts]") {
     void push(lf::steal_handle<mock_context>);
     void post(lf::sched_handle<mock_context>);
     auto pop() noexcept -> lf::steal_handle<mock_context>;
-    auto allocator() noexcept -> dummy_allocator &;
+    auto stack() noexcept -> dummy_allocator &;
   };
 
   STATIC_REQUIRE(worker_context<mock_context>);

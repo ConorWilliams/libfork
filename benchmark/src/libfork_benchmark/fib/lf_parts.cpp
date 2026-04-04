@@ -62,7 +62,7 @@ struct vector_ctx {
 
   vector_ctx() { work.reserve(1024); }
 
-  auto allocator() noexcept -> Stack & { return my_allocator; }
+  auto stack() noexcept -> Stack & { return my_allocator; }
 
   void post(lf::sched_handle<vector_ctx>) {}
 
@@ -90,7 +90,7 @@ struct deque_ctx {
   lf::deque<handle_type> work{64};
   Stack my_allocator;
 
-  auto allocator() noexcept -> Stack & { return my_allocator; }
+  auto stack() noexcept -> Stack & { return my_allocator; }
 
   void post(lf::sched_handle<deque_ctx>) {}
 

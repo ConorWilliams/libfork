@@ -83,7 +83,7 @@ template <typename T>
 consteval auto constify(T &&x) noexcept -> std::add_const_t<T> &;
 
 /**
- * @brief Defines the API for a libfork compatible stack allocator.
+ * @brief Defines the API for a libfork compatible stack.
  *
  * // TODO: define if release is required before acquire?
  *
@@ -119,7 +119,7 @@ concept worker_stack = plain_object<T> && requires (T stack, std::size_t n, void
 };
 
 /**
- * @brief Fetch the checkpoint type of a stack allocator `T`.
+ * @brief Fetch the checkpoint type of a stack `T`.
  */
 export template <worker_stack T>
 using checkpoint_t = decltype(std::declval<T &>().checkpoint());
@@ -141,7 +141,7 @@ concept ref_to_worker_stack = std::is_lvalue_reference_v<T> && worker_stack<std:
  * This requires that `T` is an object type and supports the following operations:
  *
  * - Push/pop a frame handle onto the context in a LIFO manner.
- * - Have a `worker_stack` that can be accessed via `allocator()`.
+ * - Have a `worker_stack` that can be accessed via `stack()`.
  * - Post an await handle to the context via `post()` and promise to call resume.
  */
 export template <typename T>
@@ -150,14 +150,14 @@ concept worker_context =
       { context.post(await) } -> std::same_as<void>;
       { context.push(frame) } -> std::same_as<void>;
       { context.pop() } noexcept -> std::same_as<steal_handle<T>>;
-      { context.allocator() } noexcept -> ref_to_worker_stack;
+      { context.stack() } noexcept -> ref_to_worker_stack;
     };
 
 /**
- * @brief Fetch the allocator type of a worker context `T`.
+ * @brief Fetch the stack type of a worker context `T`.
  */
 export template <worker_context T>
-using allocator_t = std::remove_reference_t<decltype(std::declval<T &>().allocator())>;
+using stack_t = std::remove_reference_t<decltype(std::declval<T &>().stack())>;
 
 // ==== Forward-decl
 

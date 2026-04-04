@@ -9,7 +9,7 @@ namespace lf {
 export template <worker_stack Stack>
 class basic_stack_context {
  public:
-  auto allocator() noexcept -> Stack & { return m_allocator; }
+  auto stack() noexcept -> Stack & { return m_stack; }
 
  protected:
   constexpr basic_stack_context() = default;
@@ -18,10 +18,10 @@ class basic_stack_context {
     requires std::constructible_from<Stack, Args...> && (sizeof...(Args) > 0)
   explicit(sizeof...(Args) == 1) constexpr basic_stack_context(Args &&...args) noexcept(
       std::is_nothrow_constructible_v<Stack, Args...>)
-      : m_allocator(std::forward<Args>(args)...) {}
+      : m_stack(std::forward<Args>(args)...) {}
 
  private:
-  Stack m_allocator;
+  Stack m_stack;
 };
 
 /**
@@ -42,8 +42,8 @@ class basic_poly_context : public basic_stack_context<Stack> {
  *
  * Provides:
  *  virtual push/pop/post/deleter if Polymorphic is true, otherwise provides no virtual functions.
- *  allocator method/member.
- *  constructors that forward to the allocator's constructors.
+ *  stack method/member.
+ *  constructors that forward to the stack's constructors.
  */
 export template <bool Polymorphic, worker_stack Stack>
 using context_base = std::conditional_t<Polymorphic, basic_poly_context<Stack>, basic_stack_context<Stack>>;
