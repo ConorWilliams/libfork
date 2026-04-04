@@ -41,7 +41,7 @@ constexpr auto
 not_null(T *ptr, std::source_location const loc = std::source_location::current()) noexcept -> T * {
   if (!ptr) {
 #ifdef NDEBUG
-    std::unreachable();
+    LF_UNREACHABLE();
 #else
     impl::terminate_with("Null pointer dereferenced!", loc.file_name(), safe_cast<int>(loc.line()));
 #endif

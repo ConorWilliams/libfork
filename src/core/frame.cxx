@@ -60,8 +60,6 @@ export struct frame_base {};
 export template <typename Checkpoint>
 struct frame_type : frame_base {
 
-  using checkpoint_type = Checkpoint;
-
   union parent_union {
     frame_type *frame;
     block_type *block;
@@ -85,7 +83,7 @@ struct frame_type : frame_base {
 
   // TODO: drop default constructible requirement?
   [[no_unique_address]]
-  checkpoint_type stack_ckpt;
+  Checkpoint stack_ckpt;
 
   ATOMIC_ALIGN(std::uint32_t) joins = 0;        // Atomic is 32 bits for speed
   std::uint16_t steals = 0;                     // In debug do overflow checking
@@ -97,7 +95,7 @@ struct frame_type : frame_base {
   // Explicitly post construction, this allows the compiler to emit a single
   // instruction for the zero init then an instruction for the joins init,
   // instead of three instructions.
-  constexpr frame_type(checkpoint_type &&ckpt) noexcept : stack_ckpt(std::move(ckpt)) { joins = k_u16_max; }
+  constexpr frame_type(Checkpoint &&ckpt) noexcept : stack_ckpt(std::move(ckpt)) { joins = k_u16_max; }
 
   [[nodiscard]]
   constexpr auto is_cancelled() const noexcept -> bool {

@@ -15,6 +15,8 @@ constinit inline thread_local Context *thread_context = nullptr;
 
 // TODO: return a reference, rename to get_tls_*
 
+// TODO: implictaions of thread local on constexpr
+
 /**
  * @brief A getter for the current worker context, checks for null in debug.
  */

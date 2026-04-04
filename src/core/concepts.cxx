@@ -118,12 +118,6 @@ concept worker_stack = plain_object<T> && requires (T stack, std::size_t n, void
   { stack.acquire(constify(stack.checkpoint())) } noexcept -> std::same_as<void>;
 };
 
-/**
- * @brief Fetch the checkpoint type of a stack `T`.
- */
-export template <worker_stack T>
-using checkpoint_t = decltype(std::declval<T &>().checkpoint());
-
 // ==== Context
 
 export template <typename T>
@@ -158,6 +152,12 @@ concept worker_context =
 export template <worker_context T>
 using stack_t = std::remove_reference_t<decltype(std::declval<T &>().stack())>;
 
+/**
+ * @brief Fetch the checkpoint type of a worker context `T`.
+ */
+export template <worker_context T>
+using checkpoint_t = decltype(std::declval<stack_t<T> &>().checkpoint());
+
 // ==== Scheduler
 
 /**
@@ -172,6 +172,9 @@ export template <typename T>
 concept scheduler = requires (T sched, sched_handle<typename std::remove_cvref_t<T>::context_type> handle) {
   { sched.post(handle) } -> std::same_as<void>;
 };
+
+template <scheduler Sch>
+using context_t = typename std::remove_cvref_t<Sch>::context_type;
 
 // ==== Forward-decl
 
@@ -198,7 +201,7 @@ struct ctx_invoke_t {
       LF_HOF(std::invoke(std::forward<Fn>(fn), std::forward<Args>(args)...))
 };
 
-template <typename R, typename Context>
+template <typename Context, typename R>
 concept task_from = specialization_of<R, task> && std::same_as<Context, typename R::context_type>;
 
 /**
@@ -207,7 +210,7 @@ concept task_from = specialization_of<R, task> && std::same_as<Context, typename
 export template <typename Fn, typename Context, typename... Args>
 concept async_invocable = worker_context<Context> &&                                                    //
                           std::invocable<ctx_invoke_t<Context>, Fn, Args...> &&                         //
-                          task_from<std::invoke_result_t<ctx_invoke_t<Context>, Fn, Args...>, Context>; //
+                          task_from<Context, std::invoke_result_t<ctx_invoke_t<Context>, Fn, Args...>>; //
 
 /**
  * @brief Subsumes `async_invocable` and checks that the invocation is `noexcept`.

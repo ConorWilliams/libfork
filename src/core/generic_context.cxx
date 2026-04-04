@@ -26,17 +26,17 @@ class vector_stack {
   std::vector<T, Allocator> m_vector;
 };
 
-export template <                                                  //
-    bool Polymorphic,                                              //
-    worker_stack Stack,                                            //
-    template <typename, typename> typename Container = std::vector //
+export template <                                                   //
+    bool Polymorphic,                                               //
+    worker_stack Stack,                                             //
+    template <typename, typename> typename Container = vector_stack //
     >
-class inline_context final : context_base<Polymorphic, Stack> {
+class generic_context final : context_base<Polymorphic, Stack> {
 
   using base_type = context_base<Polymorphic, Stack>;
 
  public:
-  using context_type = std::conditional_t<Polymorphic, base_type, inline_context>;
+  using context_type = std::conditional_t<Polymorphic, base_type, generic_context>;
 
  private:
   using sched_h = sched_handle<context_type>;
@@ -55,16 +55,9 @@ class inline_context final : context_base<Polymorphic, Stack> {
 
   using base_type::stack;
 
-  constexpr void push(steal_h frame) { m_container.push_back(frame); }
+  constexpr void push(steal_h frame) { m_container.push(frame); }
 
-  constexpr auto pop() noexcept -> steal_h {
-    if (!m_container.empty()) {
-      steal_h frame = m_container.back();
-      m_container.pop_back();
-      return frame;
-    }
-    return {};
-  }
+  constexpr auto pop() noexcept -> steal_h { return m_container.pop(); }
 
   // constexpr void post(sched_h frame) {}
 

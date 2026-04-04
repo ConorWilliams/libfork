@@ -45,3 +45,12 @@
 #else
   #define LF_ASSUME(...) LF_ENSURE(__VA_ARGS__)
 #endif
+
+#ifdef NDEBUG
+  #define LF_UNREACHABLE()                                                                                   \
+    do {                                                                                                     \
+      ::std::unreachable();                                                                                  \
+    } while (false)
+#else
+  #define LF_UNREACHABLE() LF_TERMINATE("This code should be unreachable!");
+#endif
