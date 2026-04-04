@@ -66,7 +66,7 @@ class inline_context final : context_base<Polymorphic, Stack> {
     return {};
   }
 
-  constexpr void post(sched_h frame) {}
+  // constexpr void post(sched_h frame) {}
 
   // TODO: make allocator aware
   // TODO: make generic over vector/deque
