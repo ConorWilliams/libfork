@@ -31,9 +31,9 @@ export template <                                                   //
     worker_stack Stack,                                             //
     template <typename, typename> typename Container = vector_stack //
     >
-class generic_context final : context_base<Polymorphic, Stack> {
+class generic_context final : maybe_poly_context<Polymorphic, Stack> {
 
-  using base_type = context_base<Polymorphic, Stack>;
+  using base_type = maybe_poly_context<Polymorphic, Stack>;
 
  public:
   using context_type = std::conditional_t<Polymorphic, base_type, generic_context>;

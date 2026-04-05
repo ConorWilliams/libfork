@@ -55,8 +55,7 @@ class basic_poly_context : public basic_stack_context<Stack> {
  *  constructors that forward to the stack's constructors.
  */
 export template <bool Polymorphic, worker_stack Stack>
-using context_base = std::conditional_t<Polymorphic, basic_poly_context<Stack>, basic_stack_context<Stack>>;
-
-// export using poly_env = env<basic_poly_context<geometric_stack>>;
+using maybe_poly_context =
+    std::conditional_t<Polymorphic, basic_poly_context<Stack>, basic_stack_context<Stack>>;
 
 } // namespace lf
