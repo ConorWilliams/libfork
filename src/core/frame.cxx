@@ -55,7 +55,7 @@ struct frame_type : frame_base {
 
   ATOMIC_ALIGN(std::uint32_t) joins = 0;        // Atomic is 32 bits for speed
   std::uint16_t steals = 0;                     // In debug do overflow checking
-  category kind = static_cast<category>(0);     // Fork/Call/Just/Root
+  category kind = static_cast<category>(0);     // Fork/Call
   ATOMIC_ALIGN(std::uint8_t) exception_bit = 0; // Atomically set
 
   // == Member functions == //
