@@ -12,10 +12,10 @@
 namespace {
 
 using lf::env;
+using lf::receiver;
 using lf::scheduler;
 using lf::task;
 using lf::worker_context;
-using lf::receiver;
 
 struct fib {
   template <worker_context Context>
@@ -60,19 +60,20 @@ void run(benchmark::State &state) {
 } // namespace
 
 using lf::deque;
-using lf::inline_scheduler;
 using lf::generic_context;
+using lf::inline_scheduler;
 using lf::stacks::geometric;
 
-#define BENCH_ONE(mode, ...) BENCHMARK_TEMPLATE(run, __VA_ARGS__)->Name(#mode "/libfork/fib/" #__VA_ARGS__)->Arg(fib_##mode);
+#define BENCH_ONE(mode, ...)                                                                                 \
+  BENCHMARK_TEMPLATE(run, __VA_ARGS__)->Name(#mode "/libfork/fib/" #__VA_ARGS__)->Arg(fib_##mode);
 #define BENCH_ALL(...) BENCH_ONE(test, __VA_ARGS__) BENCH_ONE(base, __VA_ARGS__)
 
-template<typename Stack>
+template <typename Stack>
 using real_context = generic_context<false, Stack>;
 
-template<typename Stack>
+template <typename Stack>
 using poly_context = generic_context<true, Stack>;
 
-BENCH_ALL(inline_scheduler<real_context<geometric<>>>);
+BENCH_ALL(inline_scheduler<real_context<geometric<>>>)
 
-// BENCH_ALL(inline_scheduler<poly_context<geometric<>>>);
+// BENCH_ALL(inline_scheduler<poly_context<geometric<>>>)
