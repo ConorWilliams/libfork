@@ -70,6 +70,14 @@ class generic_poly_context : public poly_context<Stack> {
 
   using container_type = Container<steal_h, typename allocator_traits::template rebind_alloc<steal_h>>;
 
+  /*
+   *
+   * push/pop optionally post -> needs to know steal/sched handle types
+   *
+   * construct with what?
+   *
+   */
+
  public:
   constexpr void push(steal_h frame) final { m_container.push(frame); }
 
@@ -85,16 +93,5 @@ class generic_poly_context : public poly_context<Stack> {
  private:
   container_type m_container;
 };
-
-/**
- * @brief A potentially polymorphic worker context base class.
- *
- * Provides:
- *  virtual push/pop/post/deleter if Polymorphic is true, otherwise provides no virtual functions.
- *  stack method/member.
- *  constructors that forward to the stack's constructors.
- */
-export template <bool Polymorphic, worker_stack Stack>
-using maybe_poly_context = std::conditional_t<Polymorphic, poly_context<Stack>, base_context<Stack>>;
 
 } // namespace lf
