@@ -10,7 +10,7 @@ import :poly_context;
 namespace lf {
 
 template <typename Context>
-class vector_stack {
+class vector_adaptor {
  public:
   constexpr void push(steal_handle<Context> value) { m_vector.push_back(value); }
 
@@ -30,23 +30,30 @@ class vector_stack {
 // TODO: allow customization of post (via Container?)
 // TODO: allocator aware
 
-export template <                                         //
-    worker_stack Stack,                                   //
-    template <typename> typename Container = vector_stack //
+export template <                                           //
+    worker_stack Stack,                                     //
+    template <typename> typename Container = vector_adaptor //
     >
 class mono_context : public base_context<Stack> {
  public:
-  constexpr void push(steal_handle<mono_context> frame) noexcept(noexcept(m_container.push(frame))) {
+  using context_type = mono_context;
+
+  constexpr void push(steal_handle<context_type> frame) noexcept(noexcept(m_container.push(frame))) {
     m_container.push(frame);
   }
 
-  constexpr auto pop() noexcept -> steal_handle<mono_context> { return m_container.pop(); }
+  constexpr auto pop() noexcept -> steal_handle<context_type> { return m_container.pop(); }
 
-  constexpr auto
-  post(sched_handle<mono_context> handle) noexcept(noexcept(m_container.post(handle))) -> void {}
+  constexpr void post(sched_handle<context_type> handle) noexcept(noexcept(m_container.post(handle)))
+    requires requires (Container<context_type> context) {
+      { context.post(handle) } -> std::same_as<void>;
+    }
+  {
+    m_container.post(handle);
+  }
 
  private:
-  Container<mono_context> m_container;
+  Container<context_type> m_container;
 };
 
 } // namespace lf

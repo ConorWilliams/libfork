@@ -56,42 +56,28 @@ class poly_context : public base_context<Stack> {
 // TODO: allocator aware
 // TODO: make post aware
 
-export template <                                    //
-    worker_stack Stack,                              //
-    template <typename, typename> typename Container //
+export template <                          //
+    worker_stack Stack,                    //
+    template <typename> typename Container //
     >
 class generic_poly_context : public poly_context<Stack> {
-
-  using sched_h = sched_handle<poly_context<Stack>>;
-  using steal_h = steal_handle<poly_context<Stack>>;
-
-  using allocator_type = Stack::allocator_type;
-  using allocator_traits = std::allocator_traits<allocator_type>;
-
-  using container_type = Container<steal_h, typename allocator_traits::template rebind_alloc<steal_h>>;
-
-  /*
-   *
-   * push/pop optionally post -> needs to know steal/sched handle types
-   *
-   * construct with what?
-   *
-   */
-
  public:
-  constexpr void push(steal_h frame) final { m_container.push(frame); }
+  using context_type = poly_context<Stack>;
 
-  constexpr auto pop() noexcept -> steal_h final { return m_container.pop(); }
+  constexpr void push(steal_handle<context_type> frame) final { m_container.push(frame); }
 
-  // constexpr void post(sched_h frame) {}
+  constexpr auto pop() noexcept -> steal_handle<context_type> final { return m_container.pop(); }
 
-  // TODO: make allocator aware
-  // TODO: make generic over vector/deque
-
-  // explicit constexpr inline_context(allocator_type const &) noexcept;
+  constexpr void post(sched_handle<context_type> handle)
+    requires requires (Container<context_type> context) {
+      { context.post(handle) } -> std::same_as<void>;
+    }
+  final {
+    m_container.post(handle);
+  }
 
  private:
-  container_type m_container;
+  Container<context_type> m_container;
 };
 
 } // namespace lf
