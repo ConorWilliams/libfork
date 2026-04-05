@@ -44,7 +44,7 @@ void run(benchmark::State &state) {
 
   for (auto _ : state) {
     benchmark::DoNotOptimize(n);
-    lf::receiver recv = lf::schedule2(scheduler, fib{}, n);
+    lf::receiver recv = lf::schedule(scheduler, fib{}, n);
     std::int64_t return_value = std::move(recv).get();
     CHECK_RESULT(return_value, expect);
     benchmark::DoNotOptimize(return_value);
