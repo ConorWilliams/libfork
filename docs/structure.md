@@ -1,0 +1,19 @@
+# Structure of libfork
+
+Libfork is organised into several modules:
+
+- `libfork`: Meta module that re-exports all public modules
+- `libfork.utils`: Independent internal utilities, not part of the public API
+- `libfork.core`: Core functionality of libfork including:
+  - Task template
+  - Task handles
+  - Concepts for context/stack/scheduler
+  - Fork/call primatives
+  - Execute primitives (for starting work)
+  - Schedule primitive (for launching work)
+  - Polymorphic context ABC
+  - \[internal\] Promise/frame
+- `libfork.batteries`: Collection of context, stack and other types
+  - The `::stacks` namespace
+- `libfork.schedulers`: Collection of schedulers
+  - Inline scheduler
