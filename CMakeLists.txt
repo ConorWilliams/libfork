@@ -74,6 +74,7 @@ target_sources(libfork_libfork
       src/core/root.cxx
       src/core/execute.cxx
       src/core/receiver.cxx
+      src/core/adaptors.cxx
       # core.stacks
       src/core/stacks/geometric.cxx
       src/core/stacks/dummy.cxx
