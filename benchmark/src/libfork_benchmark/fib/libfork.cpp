@@ -60,8 +60,8 @@ void run(benchmark::State &state) {
 } // namespace
 
 using lf::deque;
-using lf::mono_context;
 using lf::inline_scheduler;
+using lf::mono_context;
 using lf::stacks::geometric;
 
 #define BENCH_ONE(mode, ...)                                                                                 \
