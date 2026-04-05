@@ -29,20 +29,15 @@ class vector_stack {
 // TODO: allow customization of post (via Container?)
 
 export template <                                                   //
-    bool Polymorphic,                                               //
     worker_stack Stack,                                             //
     template <typename, typename> typename Container = vector_stack //
     >
-class generic_context final : maybe_poly_context<Polymorphic, Stack> {
+class generic_context : public context_stack_base<Stack> {
 
-  using base_type = maybe_poly_context<Polymorphic, Stack>;
+  using sched_h = sched_handle<generic_context>;
+  using steal_h = steal_handle<generic_context>;
 
- public:
-  using context_type = std::conditional_t<Polymorphic, base_type, generic_context>;
-
- private:
-  using sched_h = sched_handle<context_type>;
-  using steal_h = steal_handle<context_type>;
+  // TODO: Move some of these type defs into the base class
 
   using allocator_type = Stack::allocator_type;
   using allocator_traits = std::allocator_traits<allocator_type>;
@@ -50,23 +45,12 @@ class generic_context final : maybe_poly_context<Polymorphic, Stack> {
   using container_type = Container<steal_h, typename allocator_traits::template rebind_alloc<steal_h>>;
 
  public:
-  /**
-   * @brief Get a view of this object as a context.
-   */
-  constexpr auto context() noexcept -> base_type & { return *this; }
-
-  using base_type::stack;
-
   constexpr void push(steal_h frame) { m_container.push(frame); }
 
   constexpr auto pop() noexcept -> steal_h { return m_container.pop(); }
 
-  // constexpr void post(sched_h frame) {}
-
   // TODO: make allocator aware
   // TODO: make generic over vector/deque
-
-  // explicit constexpr inline_context(allocator_type const &) noexcept;
 
  private:
   container_type m_container;
