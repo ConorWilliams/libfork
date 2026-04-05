@@ -1,4 +1,4 @@
-export module libfork.schedulers:inline_scheduler;
+export module libfork.schedule:inline_scheduler;
 
 import std;
 

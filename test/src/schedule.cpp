@@ -2,7 +2,8 @@
 
 import std;
 
-import libfork;
+import libfork.core;
+import libfork.schedule;
 
 namespace {
 

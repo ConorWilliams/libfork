@@ -3,7 +3,7 @@ export module libfork.core:handles;
 import std;
 
 import :frame;
-import libfork.utils;
+import :utility;
 import :concepts;
 import :thread_locals;
 

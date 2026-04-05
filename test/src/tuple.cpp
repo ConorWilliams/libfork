@@ -4,7 +4,7 @@
 
 import std;
 
-import libfork;
+import libfork.core;
 
 namespace {
 

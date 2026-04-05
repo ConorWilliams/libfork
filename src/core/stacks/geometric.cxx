@@ -2,13 +2,13 @@ module;
 #include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/compiler.hpp"
 #include "libfork/__impl/exception.hpp"
-export module libfork.batteries:geometric_stack;
+export module libfork.core:geometric_stack;
 
 import std;
 
-import libfork.core;
-import libfork.utils;
-import libfork.core;
+import :constants;
+import :utility;
+import :concepts;
 
 namespace lf::stacks {
 
