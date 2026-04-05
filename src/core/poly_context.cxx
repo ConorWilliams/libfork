@@ -68,12 +68,17 @@ class derived_poly_context : public poly_context<Stack> {
 
   constexpr auto pop() noexcept -> steal_handle<context_type> final { return m_container.pop(); }
 
-  constexpr void post(sched_handle<context_type> handle)
-    requires requires (Adaptor<context_type> context) {
-      { context.post(handle) } -> std::same_as<void>;
+  constexpr void post(sched_handle<context_type> handle) final {
+
+    constexpr bool has_post = requires {
+      { m_container.post(handle) } -> std::same_as<void>;
+    };
+
+    if constexpr (has_post) {
+      m_container.post(handle);
+    } else {
+      poly_context<Stack>::post(handle);
     }
-  final {
-    m_container.post(handle);
   }
 
  private:

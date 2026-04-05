@@ -30,6 +30,17 @@ TEST_CASE("Simple schedule", "[schedule]") {
   auto recv = schedule2(scheduler, void_function<context_type>);
 
   REQUIRE(recv.valid());
-
   REQUIRE(std::move(recv).get() == true);
+}
+
+TEST_CASE("Poly schedule", "[schedule]") {
+
+  using context_type = lf::derived_poly_context<lf::stacks::geometric<>, lf::adapt_vector>;
+
+  lf::inline_scheduler<context_type> scheduler;
+
+  // auto recv = schedule2(scheduler, void_function<context_type>);
+
+  // REQUIRE(recv.valid());
+  // REQUIRE(std::move(recv).get() == true);
 }
