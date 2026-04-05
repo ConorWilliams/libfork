@@ -7,15 +7,15 @@ import :poly_context;
 
 namespace lf {
 
-template <typename T, typename Allocator>
+template <typename Context>
 class vector_stack {
 
  public:
-  constexpr void push(T value) { m_vector.push_back(value); }
+  constexpr void push(steal_handle<Context> value) { m_vector.push_back(value); }
 
-  constexpr auto pop() noexcept -> T {
+  constexpr auto pop() noexcept -> steal_handle<Context> {
     if (!m_vector.empty()) {
-      T value = m_vector.back();
+      steal_handle<Context> value = m_vector.back();
       m_vector.pop_back();
       return value;
     }
@@ -23,14 +23,14 @@ class vector_stack {
   }
 
  private:
-  std::vector<T, Allocator> m_vector;
+  std::vector<steal_handle<Context>> m_vector;
 };
 
 // TODO: allow customization of post (via Container?)
 
-export template <                                                   //
-    worker_stack Stack,                                             //
-    template <typename, typename> typename Container = vector_stack //
+export template <                                         //
+    worker_stack Stack,                                   //
+    template <typename> typename Container = vector_stack //
     >
 class mono_context : public base_context<Stack> {
 
@@ -42,12 +42,12 @@ class mono_context : public base_context<Stack> {
   using allocator_type = Stack::allocator_type;
   using allocator_traits = std::allocator_traits<allocator_type>;
 
-  using container_type = Container<steal_h, typename allocator_traits::template rebind_alloc<steal_h>>;
+  using container_type = Container<mono_context>;
 
  public:
-  constexpr void push(steal_h frame) { m_container.push(frame); }
+  constexpr void push(steal_handle<mono_context> frame) { m_container.push(frame); }
 
-  constexpr auto pop() noexcept -> steal_h { return m_container.pop(); }
+  constexpr auto pop() noexcept -> steal_handle<mono_context> { return m_container.pop(); }
 
   // TODO: make allocator aware
   // TODO: make generic over vector/deque
