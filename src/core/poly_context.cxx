@@ -60,7 +60,7 @@ export template <                          //
     worker_stack Stack,                    //
     template <typename> typename Container //
     >
-class generic_poly_context : public poly_context<Stack> {
+class derived_poly_context : public poly_context<Stack> {
  public:
   using context_type = poly_context<Stack>;
 

@@ -167,7 +167,7 @@ concept has_context_typedef = requires { typename std::remove_cvref_t<T>::contex
 template <has_context_typedef T>
 using context_t = typename std::remove_cvref_t<T>::context_type;
 
-template <typename Context>
+export template <typename Context>
 concept derived_worker_context = has_context_typedef<Context> && worker_context<context_t<Context>>;
 
 // ==== Scheduler
