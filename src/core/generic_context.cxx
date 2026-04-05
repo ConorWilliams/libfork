@@ -26,6 +26,8 @@ class vector_stack {
   std::vector<T, Allocator> m_vector;
 };
 
+// TODO: allow customization of post (via Container?)
+
 export template <                                                   //
     bool Polymorphic,                                               //
     worker_stack Stack,                                             //
