@@ -1,6 +1,7 @@
 export module libfork.core:adaptors;
 
 import :handles;
+import :deque;
 
 namespace lf {
 
@@ -22,6 +23,21 @@ class adapt_vector {
 
  private:
   std::vector<steal_handle<Context>> m_vector;
+};
+
+export template <typename Context>
+class adapt_deque {
+ public:
+  constexpr void push(steal_handle<Context> value) { m_deque.push(value); }
+
+  constexpr auto pop() noexcept -> steal_handle<Context> {
+    return m_deque.pop([] static noexcept -> steal_handle<Context> {
+      return {};
+    });
+  }
+
+ private:
+  deque<steal_handle<Context>> m_deque{1024};
 };
 
 } // namespace lf
