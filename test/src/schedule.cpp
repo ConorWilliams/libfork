@@ -35,9 +35,11 @@ TEST_CASE("Simple schedule", "[schedule]") {
 
 TEST_CASE("Poly schedule", "[schedule]") {
 
-  using context_type = lf::derived_poly_context<lf::stacks::geometric<>, lf::adapt_vector>;
+  using derived_context = lf::derived_poly_context<lf::stacks::geometric<>, lf::adapt_vector>;
 
-  lf::inline_scheduler<context_type> scheduler;
+  lf::inline_scheduler<derived_context> scheduler;
+
+  using context_type = derived_context::context_type;
 
   auto recv = schedule2(scheduler, void_function<context_type>);
 
