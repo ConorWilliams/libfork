@@ -21,7 +21,7 @@ auto void_function(env<Context>) -> task<bool, Context> {
 
 TEST_CASE("Simple schedule", "[schedule]") {
 
-  using context_type = lf::mono_context<lf::stacks::geometric<>>;
+  using context_type = lf::mono_context<lf::stacks::geometric<>, lf::adapt_vector>;
 
   STATIC_REQUIRE(lf::worker_context<context_type>);
 

@@ -9,30 +9,12 @@ import :poly_context;
 
 namespace lf {
 
-template <typename Context>
-class vector_adaptor {
- public:
-  constexpr void push(steal_handle<Context> value) { m_vector.push_back(value); }
-
-  constexpr auto pop() noexcept -> steal_handle<Context> {
-    if (!m_vector.empty()) {
-      steal_handle<Context> value = m_vector.back();
-      m_vector.pop_back();
-      return value;
-    }
-    return {};
-  }
-
- private:
-  std::vector<steal_handle<Context>> m_vector;
-};
-
 // TODO: allow customization of post (via Container?)
 // TODO: allocator aware
 
-export template <                                           //
-    worker_stack Stack,                                     //
-    template <typename> typename Container = vector_adaptor //
+export template <                        //
+    worker_stack Stack,                  //
+    template <typename> typename Adaptor //
     >
 class mono_context : public base_context<Stack> {
  public:
@@ -45,7 +27,7 @@ class mono_context : public base_context<Stack> {
   constexpr auto pop() noexcept -> steal_handle<context_type> { return m_container.pop(); }
 
   constexpr void post(sched_handle<context_type> handle) noexcept(noexcept(m_container.post(handle)))
-    requires requires (Container<context_type> context) {
+    requires requires (Adaptor<context_type> context) {
       { context.post(handle) } -> std::same_as<void>;
     }
   {
@@ -53,7 +35,7 @@ class mono_context : public base_context<Stack> {
   }
 
  private:
-  Container<context_type> m_container;
+  Adaptor<context_type> m_container;
 };
 
 } // namespace lf

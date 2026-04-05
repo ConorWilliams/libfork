@@ -56,9 +56,9 @@ class poly_context : public base_context<Stack> {
 // TODO: allocator aware
 // TODO: make post aware
 
-export template <                          //
-    worker_stack Stack,                    //
-    template <typename> typename Container //
+export template <                        //
+    worker_stack Stack,                  //
+    template <typename> typename Adaptor //
     >
 class derived_poly_context : public poly_context<Stack> {
  public:
@@ -69,7 +69,7 @@ class derived_poly_context : public poly_context<Stack> {
   constexpr auto pop() noexcept -> steal_handle<context_type> final { return m_container.pop(); }
 
   constexpr void post(sched_handle<context_type> handle)
-    requires requires (Container<context_type> context) {
+    requires requires (Adaptor<context_type> context) {
       { context.post(handle) } -> std::same_as<void>;
     }
   final {
@@ -77,7 +77,7 @@ class derived_poly_context : public poly_context<Stack> {
   }
 
  private:
-  Container<context_type> m_container;
+  Adaptor<context_type> m_container;
 };
 
 } // namespace lf

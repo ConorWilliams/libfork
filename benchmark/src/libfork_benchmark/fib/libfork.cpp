@@ -59,9 +59,12 @@ void run(benchmark::State &state) {
 
 } // namespace
 
+using lf::adapt_vector;
 using lf::deque;
+using lf::derived_poly_context;
 using lf::inline_scheduler;
 using lf::mono_context;
+
 using lf::stacks::geometric;
 
 #define BENCH_ONE(mode, ...)                                                                                 \
@@ -69,13 +72,13 @@ using lf::stacks::geometric;
 
 #define BENCH_ALL(...) BENCH_ONE(test, __VA_ARGS__) BENCH_ONE(base, __VA_ARGS__)
 
-template <typename Stack, template <typename, typename> typename Container = std::vector>
-using real_context = mono_context<Stack>; // TODO: use container
+template <typename Stack, template <typename> typename Adaptor>
+using real_context = mono_context<Stack, Adaptor>; // TODO: use container
 
-// template <typename Stack, template <typename, typename> typename Container>
-// using poly_context = mono_context<Stack>;
+template <typename Stack, template <typename> typename Adaptor>
+using poly_context = derived_poly_context<Stack, Adaptor>; // TODO: use container
 
-BENCH_ALL(inline_scheduler<real_context<geometric<>>>)
+BENCH_ALL(inline_scheduler<real_context<geometric<>, adapt_vector>>)
 
 // BENCH_ALL(inline_scheduler<real_context<geometric<>, deque>>)
 
