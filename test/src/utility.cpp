@@ -2,7 +2,7 @@
 
 import std;
 
-import libfork.core;
+import libfork;
 
 using lf::immovable;
 using lf::move_only;

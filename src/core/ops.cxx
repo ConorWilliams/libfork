@@ -5,8 +5,7 @@ export module libfork.core:ops;
 import std;
 
 import :concepts;
-import :tuple;
-import :utility;
+import libfork.utils;
 import :frame;
 
 namespace lf {

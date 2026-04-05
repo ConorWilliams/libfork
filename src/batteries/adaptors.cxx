@@ -1,7 +1,7 @@
-export module libfork.core:adaptors;
+export module libfork.batteries:adaptors;
 
-import :handles;
-import :deque;
+import libfork.core;
+import libfork.utils;
 
 namespace lf {
 

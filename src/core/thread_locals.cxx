@@ -3,7 +3,7 @@ export module libfork.core:thread_locals;
 import std;
 
 import :concepts;
-import :utility;
+import libfork.utils;
 
 namespace lf {
 

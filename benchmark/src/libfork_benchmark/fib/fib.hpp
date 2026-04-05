@@ -9,8 +9,7 @@
 
 #include "libfork_benchmark/common.hpp"
 
-import libfork.core;
-import libfork.schedule;
+import libfork;
 
 inline constexpr int fib_test = 3;
 inline constexpr int fib_base = 37;

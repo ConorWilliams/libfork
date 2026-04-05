@@ -12,7 +12,7 @@ import :thread_locals;
 import :promise;
 import :root;
 import :handles;
-import :utility;
+import libfork.utils;
 import :receiver;
 
 namespace lf {
