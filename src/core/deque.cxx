@@ -177,11 +177,9 @@ struct return_nullopt {
  * - Rust: https://github.com/crossbeam-rs/crossbeam/blob/master/crossbeam-deque/src/deque.rs
  * - CDSC: https://dl.acm.org/doi/epdf/10.1145/2544173.2509514
  *
- * TODO: mention the allocator will be rebound (better to use atomic ref!)?
- *
  * @tparam T The type of the elements in the deque.
  */
-export template <dequeable T, allocator_of<T> Allocator = std::allocator<T>>
+export template <dequeable T, allocator_of<std::atomic<T>> Allocator = std::allocator<std::atomic<T>>>
 class deque : immovable {
  public:
   /**
