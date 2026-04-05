@@ -5,11 +5,12 @@ import std;
 import :concepts;
 import :poly_context;
 
+// TODO: search for places that HOF would simplify
+
 namespace lf {
 
 template <typename Context>
 class vector_stack {
-
  public:
   constexpr void push(steal_handle<Context> value) { m_vector.push_back(value); }
 
@@ -27,33 +28,25 @@ class vector_stack {
 };
 
 // TODO: allow customization of post (via Container?)
+// TODO: allocator aware
 
 export template <                                         //
     worker_stack Stack,                                   //
     template <typename> typename Container = vector_stack //
     >
 class mono_context : public base_context<Stack> {
-
-  using sched_h = sched_handle<mono_context>;
-  using steal_h = steal_handle<mono_context>;
-
-  // TODO: Move some of these type defs into the base class
-
-  using allocator_type = Stack::allocator_type;
-  using allocator_traits = std::allocator_traits<allocator_type>;
-
-  using container_type = Container<mono_context>;
-
  public:
-  constexpr void push(steal_handle<mono_context> frame) { m_container.push(frame); }
+  constexpr void push(steal_handle<mono_context> frame) noexcept(noexcept(m_container.push(frame))) {
+    m_container.push(frame);
+  }
 
   constexpr auto pop() noexcept -> steal_handle<mono_context> { return m_container.pop(); }
 
-  // TODO: make allocator aware
-  // TODO: make generic over vector/deque
+  constexpr auto
+  post(sched_handle<mono_context> handle) noexcept(noexcept(m_container.post(handle))) -> void {}
 
  private:
-  container_type m_container;
+  Container<mono_context> m_container;
 };
 
 } // namespace lf
