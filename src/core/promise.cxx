@@ -74,7 +74,7 @@ constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
   LF_ASSUME(frame->joins == k_u16_max);
   LF_ASSUME(frame->exception_bit == 0);
 
-  // Befor resuming the next (or exiting) we should clean-up the current frame.
+  // Before resuming the next (or exiting) we should clean-up the current frame.
   defer _ = [frame] noexcept -> void {
     frame->handle().destroy();
   };
