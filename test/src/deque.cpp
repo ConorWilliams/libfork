@@ -2,7 +2,7 @@
 
 import std;
 
-import libfork;
+import libfork.core;
 
 using namespace lf;
 

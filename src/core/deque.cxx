@@ -1,13 +1,13 @@
 module;
 #include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/exception.hpp"
-export module libfork.utils:deque;
+export module libfork.core:deque;
 
 import std;
 
 import :utility;
 import :concepts;
-import libfork.core;
+import :constants;
 
 namespace lf {
 

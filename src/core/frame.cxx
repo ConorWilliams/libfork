@@ -7,7 +7,7 @@ import std;
 
 import :concepts;
 import :constants;
-import libfork.utils;
+import :utility;
 import :thread_locals;
 
 namespace lf {

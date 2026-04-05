@@ -1,4 +1,4 @@
-export module libfork.schedulers:dummy;
+export module libfork.schedule:dummy_context;
 
 import std;
 

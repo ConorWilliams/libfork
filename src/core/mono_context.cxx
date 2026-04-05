@@ -1,9 +1,9 @@
-export module libfork.batteries:mono_context;
+export module libfork.core:mono_context;
 
 import std;
 
-import libfork.core;
-import libfork.core;
+import :concepts;
+import :poly_context;
 
 // TODO: search for places that HOF would simplify
 

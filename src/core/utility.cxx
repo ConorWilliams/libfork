@@ -2,7 +2,7 @@ module;
 #include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/compiler.hpp"
 #include "libfork/__impl/exception.hpp"
-export module libfork.utils:utility;
+export module libfork.core:utility;
 
 import std;
 
