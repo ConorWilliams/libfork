@@ -118,6 +118,9 @@ concept worker_stack = plain_object<T> && requires (T stack, std::size_t n, void
   { stack.acquire(constify(stack.checkpoint())) } noexcept -> std::same_as<void>;
 };
 
+export template <typename T>
+concept aa_worker_stack = worker_stack<T> && true; // TODO: Allocator aware stack
+
 // ==== Context
 
 export template <typename T>
