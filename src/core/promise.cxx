@@ -199,6 +199,8 @@ constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
       // TODO: benchmark if this split/noinline regresses other in stealing context
       return final_suspend_continue(context, parent);
   }
+
+  LF_UNREACHABLE();
 }
 
 struct final_awaitable : std::suspend_always {
