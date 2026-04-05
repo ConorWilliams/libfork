@@ -32,7 +32,7 @@ export template <                                                   //
     worker_stack Stack,                                             //
     template <typename, typename> typename Container = vector_stack //
     >
-class generic_context : public context_stack_base<Stack> {
+class generic_context : public base_context<Stack> {
 
   using sched_h = sched_handle<generic_context>;
   using steal_h = steal_handle<generic_context>;

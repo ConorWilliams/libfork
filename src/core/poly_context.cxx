@@ -9,17 +9,17 @@ import :concepts;
 namespace lf {
 
 template <worker_stack Stack>
-class context_stack_base {
+class base_context {
  public:
   auto stack() noexcept -> Stack & { return m_stack; }
 
  protected:
-  constexpr context_stack_base() = default;
+  constexpr base_context() = default;
 
   template <typename... Args>
     requires std::constructible_from<Stack, Args...> && (sizeof...(Args) > 0)
-  explicit(sizeof...(Args) == 1) constexpr context_stack_base(Args &&...args) noexcept(
-      std::is_nothrow_constructible_v<Stack, Args...>)
+  explicit(sizeof...(Args) ==
+           1) constexpr base_context(Args &&...args) noexcept(std::is_nothrow_constructible_v<Stack, Args...>)
       : m_stack(std::forward<Args>(args)...) {}
 
  private:
@@ -30,8 +30,6 @@ export struct post_error : std::runtime_error {
   using std::runtime_error::runtime_error;
 };
 
-// TODO: rename basic_poly_context to poly_context
-
 /**
  * @brief A worker context polymorphic in push/pop/post.
  *
@@ -40,16 +38,16 @@ export struct post_error : std::runtime_error {
  * in the `.stack` member
  */
 export template <worker_stack Stack>
-class basic_poly_context : public context_stack_base<Stack> {
+class poly_context : public base_context<Stack> {
  public:
-  virtual void push(steal_handle<basic_poly_context>) = 0;
-  virtual auto pop() noexcept -> steal_handle<basic_poly_context> = 0;
+  virtual void push(steal_handle<poly_context>) = 0;
+  virtual auto pop() noexcept -> steal_handle<poly_context> = 0;
 
-  virtual void post([[maybe_unused]] sched_handle<basic_poly_context> handle) {
+  virtual void post([[maybe_unused]] sched_handle<poly_context> handle) {
     LF_THROW(post_error{"Derived context does not support posting tasks."});
   }
 
-  virtual ~basic_poly_context() noexcept = default;
+  virtual ~poly_context() noexcept = default;
 };
 
 // TODO: constraints on container
@@ -62,10 +60,10 @@ export template <                                    //
     worker_stack Stack,                              //
     template <typename, typename> typename Container //
     >
-class generic_poly_context : public basic_poly_context<Stack> {
+class generic_poly_context : public poly_context<Stack> {
 
-  using sched_h = sched_handle<basic_poly_context<Stack>>;
-  using steal_h = steal_handle<basic_poly_context<Stack>>;
+  using sched_h = sched_handle<poly_context<Stack>>;
+  using steal_h = steal_handle<poly_context<Stack>>;
 
   using allocator_type = Stack::allocator_type;
   using allocator_traits = std::allocator_traits<allocator_type>;
@@ -97,7 +95,6 @@ class generic_poly_context : public basic_poly_context<Stack> {
  *  constructors that forward to the stack's constructors.
  */
 export template <bool Polymorphic, worker_stack Stack>
-using maybe_poly_context =
-    std::conditional_t<Polymorphic, basic_poly_context<Stack>, context_stack_base<Stack>>;
+using maybe_poly_context = std::conditional_t<Polymorphic, poly_context<Stack>, base_context<Stack>>;
 
 } // namespace lf
