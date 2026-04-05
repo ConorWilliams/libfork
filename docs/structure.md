@@ -1,6 +1,6 @@
 # Structure of libfork
 
-Libfork is organised into several modules:
+Libfork is organized into several modules:
 
 - `libfork`: Meta module that re-exports all public modules
 - `libfork.utils`: Independent internal utilities, not part of the public API
@@ -8,7 +8,7 @@ Libfork is organised into several modules:
   - Task template
   - Task handles
   - Concepts for context/stack/scheduler
-  - Fork/call primatives
+  - Fork/call primitives
   - Execute primitives (for starting work)
   - Schedule primitive (for launching work)
   - Polymorphic context ABC
