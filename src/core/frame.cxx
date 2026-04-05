@@ -18,39 +18,13 @@ struct cancellation {
   std::atomic<std::uint32_t> stop = 0;
 };
 
-// =================== Root =================== //
-
-struct block_type {
-  // Use an initial ref count of 2: one for the coroutine, one for the block handle.
-  std::atomic<std::int32_t> ref_count{2};
-  std::exception_ptr exception;
-  std::binary_semaphore sem{0};
-
-  virtual ~block_type();
-};
-
-// TODO: for some reason GCC doesn't compile if this is defaulted inline.
-block_type::~block_type() = default;
-
-// constexpr void add_ref(block_type *block) noexcept {
-//   not_null(block)->ref_count.fetch_add(1, std::memory_order_relaxed);
-// }
-
-constexpr void release_ref(block_type *block) noexcept {
-  // TODO: understand why not_null(block) crashes GCC
-  if ((block)->ref_count.fetch_sub(1, std::memory_order::release) == 1) {
-    std::atomic_thread_fence(std::memory_order::acquire);
-    delete block;
-  }
-}
-
 // =================== Frame =================== //
 
 // TODO: remove this and other exports
 export enum class category : std::uint8_t {
   call = 0,
-  root,
   fork,
+  root,
 };
 
 export struct frame_base {};
@@ -60,13 +34,8 @@ export struct frame_base {};
 export template <typename Checkpoint>
 struct frame_type : frame_base {
 
-  union parent_union {
-    frame_type *frame;
-    block_type *block;
-  };
-
   struct except_type {
-    parent_union stashed;
+    frame_type *parent;
     std::exception_ptr exception;
   };
 
@@ -75,7 +44,7 @@ struct frame_type : frame_base {
   // TODO: add checked accessors for all the things (including except etc)
 
   union {
-    parent_union parent;
+    frame_type *parent;
     except_type *except;
   };
 

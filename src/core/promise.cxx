@@ -144,16 +144,6 @@ final_suspend_continue(Context *context, frame_t<Context> *parent) noexcept -> c
   return std::noop_coroutine();
 }
 
-template <typename Checkpoint>
-constexpr void finalize_root(frame_type<Checkpoint> *frame) noexcept {
-  // Notify potential blockers
-  not_null(frame->parent.block)->sem.release();
-  // Release the refcount on the shared state
-  release_ref(frame->parent.block);
-  // Only now can we clean-up
-  frame->handle().destroy();
-}
-
 template <worker_context Context>
 [[nodiscard]]
 constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
@@ -163,15 +153,8 @@ constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
   LF_ASSUME(frame->joins == k_u16_max);
   LF_ASSUME(frame->exception_bit == 0);
 
-  // Handle root first/separately because:
-  //  - It is unlikely
-  //  - It allows simpler destroy logic
-  if (frame->kind == category::root) [[unlikely]] {
-    return finalize_root(frame), std::noop_coroutine();
-  }
-
   // Safe to access union
-  frame_t<Context> *parent = not_null(frame->parent.frame);
+  frame_t<Context> *parent = not_null(frame->parent);
 
   // Read before destroy
   category const kind = frame->kind;
@@ -230,7 +213,7 @@ constexpr void stash_current_exception(frame_type<Checkpoint> *frame) noexcept {
     // TODO: allocator aware -> ideally no allocation here?
 
     frame->except = new frame_type<Checkpoint>::except_type{
-        .stashed = frame->parent,
+        .parent = frame->parent,
         .exception = std::move(exception),
     };
   }
@@ -270,7 +253,7 @@ struct awaitable : std::suspend_always {
     }
 
     // Propagate parent->child relationships
-    self.child->parent.frame = &parent.promise().frame;
+    self.child->parent = &parent.promise().frame;
     self.child->cancel = parent.promise().frame.cancel;
 
     if constexpr (Cat == category::call) {
@@ -314,7 +297,7 @@ constexpr auto extract_exception(frame_type<Checkpoint> *frame) noexcept -> std:
   // Clean-up exception state
   delete frame->except;
   // Switch union's active member
-  frame->parent = except.stashed;
+  frame->parent = except.parent;
   // Reset
   frame->exception_bit = 0;
 

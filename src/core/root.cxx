@@ -95,7 +95,7 @@ root_pkg(std::shared_ptr<receiver_state<R>> recv, Fn fn, Args... args) -> root_t
 
   // TODO: cancellation
 
-  child->frame.parent.frame = root;
+  child->frame.parent = root;
   child->frame.cancel = nullptr;
 
   LF_ASSUME(child->frame.kind == category::call);
