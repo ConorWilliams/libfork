@@ -66,14 +66,17 @@ using lf::stacks::geometric;
 
 #define BENCH_ONE(mode, ...)                                                                                 \
   BENCHMARK_TEMPLATE(run, __VA_ARGS__)->Name(#mode "/libfork/fib/" #__VA_ARGS__)->Arg(fib_##mode);
+
 #define BENCH_ALL(...) BENCH_ONE(test, __VA_ARGS__) BENCH_ONE(base, __VA_ARGS__)
 
-template <typename Stack>
+template <typename Stack, template <typename, typename> typename Container>
 using real_context = generic_context<false, Stack>;
 
-template <typename Stack>
+template <typename Stack, template <typename, typename> typename Container>
 using poly_context = generic_context<true, Stack>;
 
-BENCH_ALL(inline_scheduler<real_context<geometric<>>>)
+BENCH_ALL(inline_scheduler<real_context<geometric<>, deque>>)
+
+BENCH_ALL(inline_scheduler<real_context<geometric<>, deque>>)
 
 // BENCH_ALL(inline_scheduler<poly_context<geometric<>>>)
