@@ -12,15 +12,14 @@ namespace lf {
 
 // TODO: Can we store the context directly in TLS?
 
-export template <worker_context Context>
+export template <derived_worker_context Context>
 class inline_scheduler {
-
-  // TODO: how to adapt for polymorphic contexts?
-
  public:
-  using context_type = Context;
+  using context_type = Context::context_type;
 
-  auto post(lf::sched_handle<Context> handle) { execute(m_context, handle); }
+  void post(lf::sched_handle<context_type> handle) {
+    execute(static_cast<context_type &>(m_context), handle);
+  }
 
  private:
   Context m_context;

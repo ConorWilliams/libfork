@@ -11,30 +11,28 @@
 
 namespace {
 
-using lf::env;
-using lf::task;
-using lf::worker_context;
+struct fib {
+  template <lf::worker_context Context>
+  static auto operator()(lf::env<Context>, std::int64_t n) -> lf::task<std::int64_t, Context> {
+    if (n < 2) {
+      co_return n;
+    }
 
-constexpr auto fib = []<worker_context Context>(this auto fib, env<Context>,
-                                                std::int64_t n) -> task<std::int64_t, Context> {
-  if (n < 2) {
-    co_return n;
+    std::int64_t lhs = 0;
+    std::int64_t rhs = 0;
+
+    using scope = lf::scope<Context>;
+
+    co_await scope::fork(&rhs, fib{}, n - 2);
+    co_await scope::call(&lhs, fib{}, n - 1);
+
+    co_await lf::join();
+
+    co_return lhs + rhs;
   }
-
-  std::int64_t lhs = 0;
-  std::int64_t rhs = 0;
-
-  using scope = lf::scope<Context>;
-
-  co_await scope::fork(&rhs, fib, n - 2);
-  co_await scope::call(&lhs, fib, n - 1);
-
-  co_await lf::join();
-
-  co_return lhs + rhs;
 };
 
-template <worker_context Context>
+template <lf::scheduler Sch>
 void run(benchmark::State &state) {
 
   std::int64_t n = state.range(0);
@@ -42,12 +40,12 @@ void run(benchmark::State &state) {
 
   state.counters["n"] = static_cast<double>(n);
 
-  Context context;
+  Sch scheduler;
 
   for (auto _ : state) {
     benchmark::DoNotOptimize(n);
-    std::int64_t return_value = 0;
-    lf::schedule(&context, fib, n);
+    lf::receiver recv = lf::schedule2(scheduler, fib{}, n);
+    std::int64_t return_value = std::move(recv).get();
     CHECK_RESULT(return_value, expect);
     benchmark::DoNotOptimize(return_value);
   }
@@ -55,11 +53,25 @@ void run(benchmark::State &state) {
 
 } // namespace
 
-using lf::deque;
-// using lf::inline_context;
+#define BENCH_ONE(mode, ...)                                                                                 \
+  BENCHMARK_TEMPLATE(run, __VA_ARGS__)->Name(#mode "/libfork/fib/" #__VA_ARGS__)->Arg(fib_##mode);
+
+#define BENCH_ALL(...) BENCH_ONE(test, __VA_ARGS__) BENCH_ONE(base, __VA_ARGS__)
+
+template <typename Stack, template <typename> typename Adaptor>
+using real_context = lf::mono_context<Stack, Adaptor>;
+
+template <typename Stack, template <typename> typename Adaptor>
+using poly_context = lf::derived_poly_context<Stack, Adaptor>;
+
+using lf::adapt_deque;
+using lf::adapt_vector;
+using lf::inline_scheduler;
+
 using lf::stacks::geometric;
 
-// // Minimal coroutine, bump allocated (thread-local) stack
-// BENCHMARK_TEMPLATE(run, inline_context<false,
-// geometric<>>)->Name("test/libfork/inline/nopoly/geometric")->Arg(fib_test); BENCHMARK_TEMPLATE(run,
-// inline_context<false, geometric<>>)->Name("base/libfork/inline/nopoly/geometric")->Arg(fib_base);
+BENCH_ALL(inline_scheduler<real_context<geometric<>, adapt_vector>>)
+BENCH_ALL(inline_scheduler<poly_context<geometric<>, adapt_vector>>)
+
+BENCH_ALL(inline_scheduler<real_context<geometric<>, adapt_deque>>)
+BENCH_ALL(inline_scheduler<poly_context<geometric<>, adapt_deque>>)

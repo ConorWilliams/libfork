@@ -8,18 +8,18 @@ import :concepts;
 
 namespace lf {
 
-export template <worker_stack Stack>
-class basic_stack_context {
+template <worker_stack Stack>
+class base_context {
  public:
   auto stack() noexcept -> Stack & { return m_stack; }
 
  protected:
-  constexpr basic_stack_context() = default;
+  constexpr base_context() = default;
 
   template <typename... Args>
     requires std::constructible_from<Stack, Args...> && (sizeof...(Args) > 0)
-  explicit(sizeof...(Args) == 1) constexpr basic_stack_context(Args &&...args) noexcept(
-      std::is_nothrow_constructible_v<Stack, Args...>)
+  explicit(sizeof...(Args) ==
+           1) constexpr base_context(Args &&...args) noexcept(std::is_nothrow_constructible_v<Stack, Args...>)
       : m_stack(std::forward<Args>(args)...) {}
 
  private:
@@ -32,31 +32,57 @@ export struct post_error : std::runtime_error {
 
 /**
  * @brief A worker context polymorphic in push/pop/post.
+ *
+ * This is the canonical/blessed base class in libfork for polymorphic uses
+ * cases. Although possible, libfork does not recommend contexts polymorphic
+ * in the `.stack` member
  */
 export template <worker_stack Stack>
-class basic_poly_context : public basic_stack_context<Stack> {
+class poly_context : public base_context<Stack> {
  public:
-  virtual void push(steal_handle<basic_poly_context>) = 0;
-  virtual auto pop() noexcept -> steal_handle<basic_poly_context> = 0;
+  virtual void push(steal_handle<poly_context>) = 0;
+  virtual auto pop() noexcept -> steal_handle<poly_context> = 0;
 
-  virtual void post([[maybe_unused]] sched_handle<basic_poly_context> handle) {
+  virtual void post([[maybe_unused]] sched_handle<poly_context> handle) {
     LF_THROW(post_error{"Derived context does not support posting tasks."});
   }
 
-  virtual ~basic_poly_context() noexcept = default;
+  virtual ~poly_context() noexcept = default;
 };
 
-/**
- * @brief A potentially polymorphic worker context base class.
- *
- * Provides:
- *  virtual push/pop/post/deleter if Polymorphic is true, otherwise provides no virtual functions.
- *  stack method/member.
- *  constructors that forward to the stack's constructors.
- */
-export template <bool Polymorphic, worker_stack Stack>
-using context_base = std::conditional_t<Polymorphic, basic_poly_context<Stack>, basic_stack_context<Stack>>;
+// TODO: constraints on container
 
-// export using poly_env = env<basic_poly_context<geometric_stack>>;
+// TODO: could we make the container non template-template
+// TODO: allocator aware
+// TODO: make post aware
+
+export template <                        //
+    worker_stack Stack,                  //
+    template <typename> typename Adaptor //
+    >
+class derived_poly_context : public poly_context<Stack> {
+ public:
+  using context_type = poly_context<Stack>;
+
+  constexpr void push(steal_handle<context_type> frame) final { m_container.push(frame); }
+
+  constexpr auto pop() noexcept -> steal_handle<context_type> final { return m_container.pop(); }
+
+  constexpr void post(sched_handle<context_type> handle) final {
+
+    constexpr bool has_post = requires {
+      { m_container.post(handle) } -> std::same_as<void>;
+    };
+
+    if constexpr (has_post) {
+      m_container.post(handle);
+    } else {
+      poly_context<Stack>::post(handle);
+    }
+  }
+
+ private:
+  Adaptor<context_type> m_container;
+};
 
 } // namespace lf

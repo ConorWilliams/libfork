@@ -118,6 +118,9 @@ concept worker_stack = plain_object<T> && requires (T stack, std::size_t n, void
   { stack.acquire(constify(stack.checkpoint())) } noexcept -> std::same_as<void>;
 };
 
+export template <typename T>
+concept aa_worker_stack = worker_stack<T> && true; // TODO: Allocator aware stack
+
 // ==== Context
 
 export template <typename T>
@@ -158,6 +161,19 @@ using stack_t = std::remove_reference_t<decltype(std::declval<T &>().stack())>;
 export template <worker_context T>
 using checkpoint_t = decltype(std::declval<stack_t<T> &>().checkpoint());
 
+template <typename T>
+concept has_context_typedef = requires { typename std::remove_cvref_t<T>::context_type; };
+
+template <has_context_typedef T>
+using context_t = typename std::remove_cvref_t<T>::context_type;
+
+template <typename Derived, typename Base>
+concept derived_context_from = worker_context<Base> && std::derived_from<Derived, Base>;
+
+export template <typename Context>
+concept derived_worker_context =
+    has_context_typedef<Context> && derived_context_from<Context, context_t<Context>>;
+
 // ==== Scheduler
 
 /**
@@ -168,13 +184,11 @@ using checkpoint_t = decltype(std::declval<stack_t<T> &>().checkpoint());
  * - Satisfy the strong exception guarantee.
  * - Guarantee eventual execution of the task associated with `handle`.
  */
-export template <typename T>
-concept scheduler = requires (T sched, sched_handle<typename std::remove_cvref_t<T>::context_type> handle) {
-  { sched.post(handle) } -> std::same_as<void>;
-};
-
-template <scheduler Sch>
-using context_t = typename std::remove_cvref_t<Sch>::context_type;
+export template <typename Sch>
+concept scheduler =
+    has_context_typedef<Sch> && requires (Sch scheduler, sched_handle<context_t<Sch>> handle) {
+      { scheduler.post(handle) } -> std::same_as<void>;
+    };
 
 // ==== Forward-decl
 

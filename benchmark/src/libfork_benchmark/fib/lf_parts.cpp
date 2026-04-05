@@ -105,15 +105,15 @@ struct deque_ctx {
 };
 
 template <lf::worker_stack Stack>
-struct poly_vector_ctx final : lf::basic_poly_context<Stack> {
+struct poly_vector_ctx final : lf::poly_context<Stack> {
 
-  using handle_type = lf::steal_handle<lf::basic_poly_context<Stack>>;
+  using handle_type = lf::steal_handle<lf::poly_context<Stack>>;
 
   std::vector<handle_type> work;
 
   poly_vector_ctx() { work.reserve(1024); }
 
-  void post(lf::sched_handle<lf::basic_poly_context<Stack>>) override {}
+  void post(lf::sched_handle<lf::poly_context<Stack>>) override {}
 
   void push(handle_type handle) override { work.push_back(handle); }
 
@@ -130,13 +130,13 @@ struct poly_vector_ctx final : lf::basic_poly_context<Stack> {
 };
 
 template <lf::worker_stack Stack>
-struct poly_deque_ctx final : lf::basic_poly_context<Stack> {
+struct poly_deque_ctx final : lf::poly_context<Stack> {
 
-  using handle_type = lf::steal_handle<lf::basic_poly_context<Stack>>;
+  using handle_type = lf::steal_handle<lf::poly_context<Stack>>;
 
   lf::deque<handle_type> work{64};
 
-  void post(lf::sched_handle<lf::basic_poly_context<Stack>>) override {}
+  void post(lf::sched_handle<lf::poly_context<Stack>>) override {}
 
   void push(handle_type handle) override { work.push(handle); }
 
@@ -283,14 +283,14 @@ BENCHMARK(fib<fork_call<stacks_alloc>, stacks_alloc>)
     ->Arg(fib_base);
 
 using A = poly_vector_ctx<linear_allocator>;
-using B = lf::basic_poly_context<linear_allocator>;
+using B = lf::poly_context<linear_allocator>;
 
 // Same as above but with polymorphic contexts.
 BENCHMARK(fib<fork_call<B>, A, B>)->Name("test/libfork/fib/poly_vector_ctx")->Arg(fib_test);
 BENCHMARK(fib<fork_call<B>, A, B>)->Name("base/libfork/fib/poly_vector_ctx")->Arg(fib_base);
 
 using E = poly_vector_ctx<lf::stacks::geometric<>>;
-using F = lf::basic_poly_context<lf::stacks::geometric<>>;
+using F = lf::poly_context<lf::stacks::geometric<>>;
 
 BENCHMARK(fib<fork_call<F>, E, F>)->Name("test/libfork/fib/poly_geometric_vector_ctx")->Arg(fib_test);
 BENCHMARK(fib<fork_call<F>, E, F>)->Name("base/libfork/fib/poly_geometric_vector_ctx")->Arg(fib_base);

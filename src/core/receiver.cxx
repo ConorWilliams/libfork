@@ -28,7 +28,7 @@ struct receiver_state {
   std::atomic_flag m_ready;
 };
 
-template <typename T>
+export template <typename T>
 class receiver {
 
   using state_type = receiver_state<T>;
