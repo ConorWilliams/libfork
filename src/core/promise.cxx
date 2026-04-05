@@ -78,12 +78,15 @@ constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
   frame_t<Context> *parent = not_null(frame->parent);
   category const kind = frame->kind;
 
-  // Can now destroy frame, must NOT touch from here on.
-  frame->handle().destroy();
+  defer _ = [frame] noexcept -> void {
+    frame->handle().destroy();
+  };
 
   if (kind == category::call) {
     return parent->handle();
   }
+
+  LF_ASSUME(kind == category::fork);
 
   Context *context = get_context<Context>();
 
