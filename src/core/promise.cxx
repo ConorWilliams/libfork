@@ -9,7 +9,7 @@ import std;
 
 import :concepts;
 import :frame;
-import :utility;
+import libfork.utils;
 
 import :thread_locals;
 import :ops;

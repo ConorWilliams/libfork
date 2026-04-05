@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 import std;
-import libfork.core;
+import libfork;
 
 using lf::k_new_align;
 using lf::worker_stack;
