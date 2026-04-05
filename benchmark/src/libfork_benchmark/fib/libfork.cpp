@@ -69,13 +69,13 @@ using lf::stacks::geometric;
 
 #define BENCH_ALL(...) BENCH_ONE(test, __VA_ARGS__) BENCH_ONE(base, __VA_ARGS__)
 
-template <typename Stack, template <typename, typename> typename Container>
-using real_context = generic_context<Stack, Container>;
+template <typename Stack, template <typename, typename> typename Container = std::vector>
+using real_context = generic_context<Stack>; // TODO: use container
 
 // template <typename Stack, template <typename, typename> typename Container>
 // using poly_context = generic_context<Stack>;
 
-// BENCH_ALL(inline_scheduler<real_context<geometric<>, deque>>)
+BENCH_ALL(inline_scheduler<real_context<geometric<>>>)
 
 // BENCH_ALL(inline_scheduler<real_context<geometric<>, deque>>)
 
