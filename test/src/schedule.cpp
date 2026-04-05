@@ -28,7 +28,6 @@ TEST_CASE("Simple schedule", "[schedule]") {
   lf::inline_scheduler<context_type> scheduler;
 
   auto recv = schedule2(scheduler, void_function<context_type>);
-
   REQUIRE(recv.valid());
   REQUIRE(std::move(recv).get() == true);
 }
@@ -41,8 +40,9 @@ TEST_CASE("Poly schedule", "[schedule]") {
 
   using context_type = derived_context::context_type;
 
-  auto recv = schedule2(scheduler, void_function<context_type>);
+  STATIC_REQUIRE(lf::worker_context<context_type>);
 
-  // REQUIRE(recv.valid());
-  // REQUIRE(std::move(recv).get() == true);
+  auto recv = schedule2(scheduler, void_function<context_type>);
+  REQUIRE(recv.valid());
+  REQUIRE(std::move(recv).get() == true);
 }
