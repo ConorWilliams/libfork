@@ -153,37 +153,29 @@ constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
   LF_ASSUME(frame->joins == k_u16_max);
   LF_ASSUME(frame->exception_bit == 0);
 
-  // Safe to access union
-  frame_t<Context> *parent = not_null(frame->parent);
-
   // Read before destroy
+  frame_t<Context> *parent = not_null(frame->parent);
   category const kind = frame->kind;
 
   // Can now destroy frame, must NOT touch from here on.
   frame->handle().destroy();
 
-  switch (kind) {
-    case category::root:
-      LF_UNREACHABLE(); // Handled above
-    case category::call:
-      return parent->handle();
-    case category::fork:
-
-      Context *context = get_context<Context>();
-
-      if (steal_handle<Context> last_pushed = context->pop()) {
-        // No-one stole continuation, we are the exclusive owner of parent -> just keep ripping!
-        LF_ASSUME(last_pushed == steal_handle<Context>{key(), parent});
-        // This is not a join point so no state (i.e. counters) is guaranteed.
-        return parent->handle();
-      }
-      // We split the function here as the remainder is the "slow-path", this
-      // keeps the hot code as small as possible.
-      // TODO: benchmark if this split/noinline regresses other in stealing context
-      return final_suspend_continue(context, parent);
+  if (kind == category::call) {
+    return parent->handle();
   }
 
-  LF_UNREACHABLE();
+  Context *context = get_context<Context>();
+
+  if (steal_handle<Context> last_pushed = context->pop()) {
+    // No-one stole continuation, we are the exclusive owner of parent -> just keep ripping!
+    LF_ASSUME(last_pushed == steal_handle<Context>{key(), parent});
+    // This is not a join point so no state (i.e. counters) is guaranteed.
+    return parent->handle();
+  }
+  // We split the function here as the remainder is the "slow-path", this
+  // keeps the hot code as small as possible.
+  // TODO: benchmark if this split/noinline regresses other in stealing context
+  return final_suspend_continue(context, parent);
 }
 
 struct final_awaitable : std::suspend_always {

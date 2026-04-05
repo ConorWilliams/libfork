@@ -24,7 +24,6 @@ struct cancellation {
 export enum class category : std::uint8_t {
   call = 0,
   fork,
-  root,
 };
 
 export struct frame_base {};
