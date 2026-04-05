@@ -1,4 +1,4 @@
-export module libfork.core:generic_context;
+export module libfork.core:mono_context;
 
 import std;
 
@@ -32,10 +32,10 @@ export template <                                                   //
     worker_stack Stack,                                             //
     template <typename, typename> typename Container = vector_stack //
     >
-class generic_context : public base_context<Stack> {
+class mono_context : public base_context<Stack> {
 
-  using sched_h = sched_handle<generic_context>;
-  using steal_h = steal_handle<generic_context>;
+  using sched_h = sched_handle<mono_context>;
+  using steal_h = steal_handle<mono_context>;
 
   // TODO: Move some of these type defs into the base class
 

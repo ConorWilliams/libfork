@@ -18,7 +18,7 @@ export import :frame;
 export import :deque;
 export import :thread_locals;
 export import :poly_context;
-export import :generic_context;
+export import :mono_context;
 export import :ops;
 export import :handles;
 export import :promise;
