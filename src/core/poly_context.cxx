@@ -33,7 +33,7 @@ export struct post_error : std::runtime_error {
 /**
  * @brief A worker context polymorphic in push/pop/post.
  *
- * This is the canonical/blesses base class in libfork for polymorphic uses
+ * This is the canonical/blessed base class in libfork for polymorphic uses
  * cases. Although possible, libfork does not recommend contexts polymorphic
  * in the `.stack` member
  */
