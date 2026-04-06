@@ -56,32 +56,37 @@ target_sources(libfork_libfork
 target_sources(libfork_libfork
   PUBLIC
     FILE_SET CXX_MODULES FILES
-      # core
+      # libfork (meta)
+      src/libfork.cxx
+      # libfork.utils
+      src/utils/utils.cxx
+      src/utils/utility.cxx
+      src/utils/constants.cxx
+      src/utils/tuple.cxx
+      src/utils/concepts.cxx
+      # libfork.core
       src/core/core.cxx
-      src/core/promise.cxx
       src/core/concepts.cxx
-      src/core/utility.cxx
       src/core/frame.cxx
-      src/core/constants.cxx
-      src/core/tuple.cxx
       src/core/ops.cxx
       src/core/poly_context.cxx
-      src/core/mono_context.cxx
       src/core/thread_locals.cxx
-      src/core/deque.cxx
       src/core/schedule.cxx
       src/core/handles.cxx
       src/core/root.cxx
       src/core/execute.cxx
       src/core/receiver.cxx
-      src/core/adaptors.cxx
-      # core.stacks
-      src/core/stacks/geometric.cxx
-      src/core/stacks/dummy.cxx
-      # schedule
-      src/schedule/schedule.cxx
-      src/schedule/inline.cxx
-      src/schedule/dummy.cxx
+      src/core/promise.cxx
+      # libfork.batteries
+      src/batteries/batteries.cxx
+      src/batteries/deque.cxx
+      src/batteries/adaptors.cxx
+      src/batteries/contexts.cxx
+      src/batteries/stacks/geometric.cxx
+      src/batteries/stacks/dummy.cxx
+      # libfork.schedulers
+      src/schedulers/schedulers.cxx
+      src/schedulers/inline.cxx
     PRIVATE
       src/exception.cpp
 )
