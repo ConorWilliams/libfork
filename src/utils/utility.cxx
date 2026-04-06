@@ -91,25 +91,6 @@ export class key_t {
 };
 
 /**
- * @brief An opaque pointer that only the library can construct.
- */
-export class opaque {
- public:
-  constexpr opaque() = default;
-  constexpr opaque(key_t, void *ptr) noexcept : m_ptr(ptr) {}
-  constexpr auto operator==(opaque const &) const noexcept -> bool = default;
-
-  template <typename T>
-  [[nodiscard]]
-  auto cast(this opaque self) noexcept -> T * {
-    return static_cast<T *>(self.m_ptr);
-  }
-
- private:
-  void *m_ptr = nullptr;
-};
-
-/**
  * @brief Basic implementation of a Golang-like defer.
  *
  * \rst
