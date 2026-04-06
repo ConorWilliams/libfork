@@ -9,8 +9,6 @@ import libfork;
 
 namespace {
 
-// TODO: test exceptions
-
 using lf::env;
 using lf::task;
 
