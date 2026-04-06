@@ -143,34 +143,16 @@ libfork/
 │   ├── libfork.cxx           # libfork — meta-module, re-exports all public modules
 │   ├── utils/                # libfork.utils — internal utilities (not public API)
 │   │   ├── utils.cxx         #   aggregator
-│   │   ├── utility.cxx       #   :utility  (safe_cast, not_null, defer, key_t, …)
-│   │   ├── constants.cxx     #   :constants (k_page_size, k_cache_line, …)
-│   │   ├── tuple.cxx         #   :tuple
-│   │   └── concepts.cxx      #   :concepts (atomicable, lock_free, allocator_of, …)
+│   │   └── *.cxx             #   :partitions
 │   ├── core/                 # libfork.core — core task/scheduler primitives
 │   │   ├── core.cxx          #   aggregator
-│   │   ├── concepts.cxx      #   :concepts (worker_stack, worker_context, scheduler, …)
-│   │   ├── frame.cxx         #   :frame        [internal]
-│   │   ├── handles.cxx       #   :handles (steal_handle, sched_handle)
-│   │   ├── ops.cxx           #   :ops (fork/call primitives)
-│   │   ├── poly_context.cxx  #   :poly_context (ABC + base_context)
-│   │   ├── thread_locals.cxx #   :thread_locals [internal]
-│   │   ├── promise.cxx       #   :promise / task [internal]
-│   │   ├── schedule.cxx      #   :schedule (schedule() entry point)
-│   │   ├── root.cxx          #   :root     [internal]
-│   │   ├── execute.cxx       #   :execute (execute() entry point)
-│   │   └── receiver.cxx      #   :receiver
+│   │   └── *.cxx             #   :partitions
 │   ├── batteries/            # libfork.batteries — stacks, contexts, adaptors
 │   │   ├── batteries.cxx     #   aggregator
-│   │   ├── deque.cxx         #   :deque (Chase-Lev work-stealing deque)
-│   │   ├── adaptors.cxx      #   :adaptors (adapt_vector, adapt_deque)
-│   │   ├── contexts.cxx      #   :contexts (derived_poly_context, mono_context, dummy_context)
-│   │   └── stacks/           #   ::stacks namespace
-│   │       ├── geometric.cxx #     :geometric_stack
-│   │       └── dummy.cxx     #     :dummy_stack
+│   │   └── *.cxx             #   :partitions
 │   ├── schedulers/           # libfork.schedulers — concrete schedulers
 │   │   ├── schedulers.cxx    #   aggregator
-│   │   └── inline.cxx        #   :inline_scheduler
+│   │   └── *.cxx             #   :partitions
 │   └── exception.cpp         # terminate_with() implementation
 ├── test/src/**/              # Test suite (Catch2) — uses `import libfork;`
 │   └── *.cpp
