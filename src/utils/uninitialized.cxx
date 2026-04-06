@@ -22,7 +22,7 @@ class uninitialized {
 
   auto operator->() noexcept -> T * { return std::launder(std::bit_cast<T *>(buffer)); }
 
-  auto operator*() noexcept -> T & { return **this; }
+  auto operator*() noexcept -> T & { return *this->operator->(); }
 
   template <class... Args>
     requires std::constructible_from<T, Args...>
@@ -30,7 +30,7 @@ class uninitialized {
     return *::new (static_cast<void *>(buffer)) T(std::forward<Args>(args)...);
   }
 
-  void destroy() noexcept { this->~T(); }
+  void destroy() noexcept { (**this).~T(); }
 
  private:
   alignas(std::max_align_t) std::byte buffer[sizeof(std::max_align_t)];
