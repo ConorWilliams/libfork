@@ -114,12 +114,7 @@ class busy_scheduler {
   }
 
   void join_all() {
-    for (auto &t : m_threads) {
-      t.request_stop();
-    }
-    for (auto &t : m_threads) {
-      t.join();
-    }
+    m_threads.clear(); // jthread calls stop and joins in destructor
   }
 
   static void resume(steal_handle<context_type> task) {
