@@ -3,11 +3,13 @@ export module libfork.utils:uninitialized;
 
 import std;
 
+import :concepts;
+
 namespace lf {
 
 // TODO: use trivial union
 
-export template <typename T>
+export template <plain_object T>
 class uninitialized {
  public:
   constexpr uninitialized() = default;
@@ -33,7 +35,7 @@ class uninitialized {
   void destroy() noexcept { (**this).~T(); }
 
  private:
-  alignas(std::max_align_t) std::byte buffer[sizeof(std::max_align_t)];
+  alignas(T) std::byte buffer[sizeof(T)];
 };
 
 } // namespace lf
