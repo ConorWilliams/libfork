@@ -20,7 +20,7 @@ class uninitialized {
 
   constexpr ~uninitialized() = default;
 
-  auto operator->() noexcept -> T * { return std::launder(std::bit_cast<T *>(buffer)); }
+  auto operator->() noexcept -> T * { return std::launder(std::bit_cast<T *>(auto{buffer})); }
 
   auto operator*() noexcept -> T & { return *this->operator->(); }
 
