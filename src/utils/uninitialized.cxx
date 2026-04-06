@@ -7,7 +7,9 @@ import :concepts;
 
 namespace lf {
 
-// TODO: use trivial union
+#if defined(__cpp_trivial_union) && __cpp_trivial_union >= 202306L
+  #pragma message("TODO: __cpp_trivial_union is available — remove union workaround")
+#endif
 
 export template <plain_object T>
 class uninitialized {
