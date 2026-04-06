@@ -12,6 +12,8 @@ find_package(benchmark REQUIRED)
 
 add_executable(libfork_benchmark)
 
+target_compile_features(libfork_benchmark PRIVATE cxx_std_26)
+
 target_link_libraries(libfork_benchmark
   PRIVATE
     benchmark::benchmark_main
