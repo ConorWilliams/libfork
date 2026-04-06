@@ -8,7 +8,8 @@ export module libfork.core:promise;
 import std;
 
 import libfork.utils;
-import :concepts;
+import :concepts_context;
+import :concepts_invocable;
 import :frame;
 import :task;
 import :thread_locals;

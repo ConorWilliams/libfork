@@ -3,8 +3,8 @@ export module libfork.core:handles;
 import std;
 
 import libfork.utils;
+
 import :frame;
-import :concepts;
 import :thread_locals;
 
 namespace lf {

@@ -7,7 +7,10 @@ export module libfork.core;
 // concepts
 // polymorphic context ABC
 
-export import :concepts;
+export import :concepts_invocable;
+export import :concepts_scheduler;
+export import :concepts_context;
+export import :concepts_stack;
 export import :frame;
 export import :task;
 export import :thread_locals;

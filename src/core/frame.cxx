@@ -6,7 +6,7 @@ export module libfork.core:frame;
 import std;
 
 import libfork.utils;
-import :concepts;
+
 import :thread_locals;
 
 namespace lf {

@@ -7,7 +7,7 @@ export module libfork.core:schedule;
 import std;
 
 import libfork.utils;
-import :concepts;
+import :concepts_invocable;
 import :frame;
 import :thread_locals;
 import :promise;
@@ -18,7 +18,7 @@ import :receiver;
 namespace lf {
 
 export template <typename T>
-concept schedulable_return = std::is_void_v<T> || std::default_initializable<T>;
+concept schedulable_return = std::is_void_v<T> || (std::default_initializable<T> && std::movable<T>);
 
 export struct schedule_error final : libfork_exception {
   [[nodiscard]]

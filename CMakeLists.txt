@@ -68,7 +68,10 @@ target_sources(libfork_libfork
       src/utils/defer.cxx
       # libfork.core
       src/core/core.cxx
-      src/core/concepts.cxx
+      src/core/concepts/stack.cxx
+      src/core/concepts/context.cxx
+      src/core/concepts/scheduler.cxx
+      src/core/concepts/invocable.cxx
       src/core/frame.cxx
       src/core/task.cxx
       src/core/ops.cxx
