@@ -3,6 +3,7 @@
 import std;
 
 import libfork;
+import libfork.utils;
 
 using lf::k_new_align;
 using lf::worker_stack;

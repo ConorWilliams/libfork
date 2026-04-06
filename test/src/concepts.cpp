@@ -3,6 +3,7 @@
 import std;
 
 import libfork;
+import libfork.utils;
 
 using namespace lf;
 

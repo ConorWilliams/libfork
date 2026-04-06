@@ -3,6 +3,7 @@
 import std;
 
 import libfork;
+import libfork.utils;
 
 TEST_CASE("Defer properties", "[defer]") {
   using fn_t = void (*)() noexcept;
@@ -15,7 +16,7 @@ TEST_CASE("Defer properties", "[defer]") {
 TEST_CASE("Defer executes on scope exit", "[defer]") {
   int count = 0;
   {
-    lf::defer _ = [&count]() noexcept {
+    lf::defer _ = [&count]() noexcept -> void {
       ++count;
     };
     REQUIRE(count == 0);
