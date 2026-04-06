@@ -13,17 +13,17 @@ using lf::env;
 using lf::task;
 
 template <typename Context>
-auto simple_function(env<Context>) -> task<bool, Context> {
+auto simple_function(env<Context> /*unused*/) -> task<bool, Context> {
   co_return true;
 }
 
 template <typename Context>
-auto void_function(env<Context>) -> task<void, Context> {
+auto void_function(env<Context> /*unused*/) -> task<void, Context> {
   co_return;
 }
 
 template <typename Context>
-auto throwing_function(env<Context>) -> task<void, Context> {
+auto throwing_function(env<Context> /*unused*/) -> task<void, Context> {
   LF_THROW(std::runtime_error{"This function always throws"});
   co_return;
 }
