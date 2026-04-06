@@ -6,3 +6,4 @@ export import :constants;
 export import :tuple;
 export import :concepts;
 export import :defer;
+export import :uninitialized;

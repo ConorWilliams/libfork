@@ -66,6 +66,7 @@ target_sources(libfork_libfork
       src/utils/tuple.cxx
       src/utils/concepts.cxx
       src/utils/defer.cxx
+      src/utils/uninitialized.cxx
       # libfork.core
       src/core/core.cxx
       src/core/concepts/stack.cxx
