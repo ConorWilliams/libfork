@@ -1,11 +1,8 @@
-#include <coroutine>
-#include <cstddef>
-#include <exception>
-#include <memory>
-
 #include <benchmark/benchmark.h>
 
 #include "libfork_benchmark/fib/fib.hpp"
+
+import libfork;
 
 // === Coroutine
 
