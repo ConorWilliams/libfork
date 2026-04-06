@@ -1,4 +1,4 @@
-export module libfork.schedule:inline_scheduler;
+export module libfork.schedulers:inline_scheduler;
 
 import std;
 
@@ -11,6 +11,13 @@ namespace lf {
 // - with allocators
 
 // TODO: Can we store the context directly in TLS?
+
+template <typename Derived, typename Base>
+concept derived_context_from = worker_context<Base> && std::derived_from<Derived, Base>;
+
+export template <typename Context>
+concept derived_worker_context =
+    has_context_typedef<Context> && derived_context_from<Context, context_t<Context>>;
 
 export template <derived_worker_context Context>
 class inline_scheduler {

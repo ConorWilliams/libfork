@@ -4,6 +4,8 @@
 
 #include "libfork_benchmark/fib/fib.hpp"
 
+import std;
+
 namespace {
 
 LF_NO_INLINE auto fib(std::int64_t n) -> std::int64_t {

@@ -2,40 +2,24 @@
 
 import std;
 
-import libfork.core;
+import libfork;
+import libfork.utils;
 
-using lf::immovable;
-using lf::move_only;
+TEST_CASE("Defer properties", "[defer]") {
+  using fn_t = void (*)() noexcept;
+  STATIC_REQUIRE(!std::is_copy_constructible_v<lf::defer<fn_t>>);
+  STATIC_REQUIRE(!std::is_move_constructible_v<lf::defer<fn_t>>);
+  STATIC_REQUIRE(!std::is_copy_assignable_v<lf::defer<fn_t>>);
+  STATIC_REQUIRE(!std::is_move_assignable_v<lf::defer<fn_t>>);
+}
 
-namespace {
-
-struct test_immovable : immovable {};
-struct test_move_only : move_only {};
-
-} // namespace
-
-TEST_CASE("Utility properties", "[utility]") {
-
-  STATIC_REQUIRE(std::is_default_constructible_v<immovable>);
-  STATIC_REQUIRE(!std::is_copy_constructible_v<immovable>);
-  STATIC_REQUIRE(!std::is_move_constructible_v<immovable>);
-  STATIC_REQUIRE(!std::is_copy_assignable_v<immovable>);
-  STATIC_REQUIRE(!std::is_move_assignable_v<immovable>);
-
-  STATIC_REQUIRE(std::is_default_constructible_v<move_only>);
-  STATIC_REQUIRE(!std::is_copy_constructible_v<move_only>);
-  STATIC_REQUIRE(std::is_move_constructible_v<move_only>);
-  STATIC_REQUIRE(!std::is_copy_assignable_v<move_only>);
-  STATIC_REQUIRE(std::is_move_assignable_v<move_only>);
-  STATIC_REQUIRE(std::movable<move_only>);
-
-  STATIC_REQUIRE(std::is_default_constructible_v<test_immovable>);
-  STATIC_REQUIRE(!std::is_copy_constructible_v<test_immovable>);
-  STATIC_REQUIRE(!std::is_move_constructible_v<test_immovable>);
-
-  STATIC_REQUIRE(std::is_default_constructible_v<test_move_only>);
-  STATIC_REQUIRE(!std::is_copy_constructible_v<test_move_only>);
-  STATIC_REQUIRE(std::is_move_constructible_v<test_move_only>);
-  STATIC_REQUIRE(std::is_move_assignable_v<test_move_only>);
-  STATIC_REQUIRE(std::movable<test_move_only>);
+TEST_CASE("Defer executes on scope exit", "[defer]") {
+  int count = 0;
+  {
+    lf::defer _ = [&count]() noexcept -> void {
+      ++count;
+    };
+    REQUIRE(count == 0);
+  }
+  REQUIRE(count == 1);
 }

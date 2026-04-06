@@ -1,8 +1,8 @@
-// export module libfork.core:adaptor_stack;
+// export module libfork.batteries:adaptor_stack;
 //
 // import std;
 //
-// import :concepts;
+// import libfork.utils;
 //
 // namespace lf::stacks {
 //

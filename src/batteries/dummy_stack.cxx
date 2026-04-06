@@ -1,8 +1,8 @@
-export module libfork.core:dummy_stack;
+export module libfork.batteries:dummy_stack;
 
 import std;
 
-namespace lf::stacks {
+namespace lf {
 
 export struct dummy_allocator {
 
@@ -20,4 +20,4 @@ export struct dummy_allocator {
   constexpr static auto acquire(ckpt) noexcept -> void;
 };
 
-} // namespace lf::stacks
+} // namespace lf

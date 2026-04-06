@@ -5,9 +5,15 @@ export module libfork.core:root;
 
 import std;
 
+import libfork.utils;
+
+import :concepts_context;
+import :concepts_invocable;
 import :frame;
 import :promise;
 import :receiver;
+import :thread_locals;
+import :task;
 
 namespace lf {
 
@@ -69,7 +75,7 @@ auto //
 root_pkg(std::shared_ptr<receiver_state<R>> recv, Fn fn, Args... args) -> root_task<checkpoint_t<Context>> {
 
   // This should be resumed on a valid context.
-  LF_ASSUME(thread_context<Context> != nullptr);
+  LF_ASSUME(thread_local_context<Context> != nullptr);
 
   using checkpoint = checkpoint_t<Context>;
 

@@ -4,9 +4,9 @@ export module libfork.core:ops;
 
 import std;
 
-import :concepts;
-import :tuple;
-import :utility;
+import libfork.utils;
+
+import :concepts_invocable;
 import :frame;
 
 namespace lf {
@@ -14,19 +14,19 @@ namespace lf {
 // clang-format off
 
 template <category Cat, typename Context, typename R, typename Fn, typename... Args>
-struct [[nodiscard("You should immediately co_await this!")]] pkg : immovable {
+struct [[nodiscard("You should immediately co_await this!")]] pkg {
   R *return_address;
   [[no_unique_address]] Fn fn;
   [[no_unique_address]] tuple<Args...> args;
 };
 
 template <category Cat, typename Context, typename Fn, typename... Args>
-struct [[nodiscard("You should immediately co_await this!")]] pkg<Cat, Context, void, Fn, Args...> : immovable {
+struct [[nodiscard("You should immediately co_await this!")]] pkg<Cat, Context, void, Fn, Args...> {
   [[no_unique_address]] Fn fn;
   [[no_unique_address]] tuple<Args...> args;
 };
 
-
+// clang-format on
 
 /**
  * @brief Forward the function member of a pkg correctly
@@ -34,8 +34,8 @@ struct [[nodiscard("You should immediately co_await this!")]] pkg<Cat, Context, 
  * The Fn member should be an l/r value reference, r-value reference need an
  * explicit move to be forwarded correctly.
  */
-template<typename Fn>
-constexpr auto fwd_fn(auto && fn) noexcept -> Fn {
+template <typename Fn>
+constexpr auto fwd_fn(auto &&fn) noexcept -> Fn {
 
   static_assert(std::is_reference_v<Fn>);
 
@@ -45,8 +45,6 @@ constexpr auto fwd_fn(auto && fn) noexcept -> Fn {
     return fn;
   }
 }
-
-// clang-format on
 
 export template <typename Context>
 struct scope {

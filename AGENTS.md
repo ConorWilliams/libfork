@@ -138,12 +138,24 @@ find src include test benchmark/src -name "*.cpp" -o -name "*.hpp" -o -name "*.c
 ```sh
 libfork/
 ├── cmake/                    # CMake utilities
-├── include/libfork/**/*.hpp  # Public headers
-├── src/**/                   # Module and source files
-│   ├── *.cxx                 # Module files
-│   └── *.cpp                 # Source files
-├── test/src/**/              # Test suite (Catch2)
-│   └── *.cpp                 # Test source files
+├── include/libfork/**/*.hpp  # Public headers (macros, version)
+├── src/                      # C++26 module source files (.cxx) and impl (.cpp)
+│   ├── libfork.cxx           # libfork — meta-module, re-exports all public modules
+│   ├── utils/                # libfork.utils — internal utilities (not public API)
+│   │   ├── utils.cxx         #   aggregator
+│   │   └── *.cxx             #   :partitions
+│   ├── core/                 # libfork.core — core task/scheduler primitives
+│   │   ├── core.cxx          #   aggregator
+│   │   └── *.cxx             #   :partitions
+│   ├── batteries/            # libfork.batteries — stacks, contexts, adaptors
+│   │   ├── batteries.cxx     #   aggregator
+│   │   └── *.cxx             #   :partitions
+│   ├── schedulers/           # libfork.schedulers — concrete schedulers
+│   │   ├── schedulers.cxx    #   aggregator
+│   │   └── *.cxx             #   :partitions
+│   └── exception.cpp         # terminate_with() implementation
+├── test/src/**/              # Test suite (Catch2) — uses `import libfork;`
+│   └── *.cpp
 ├── benchmark/src/            # Benchmarking suite (google-benchmark)
 │   └── libfork_benchmark/    # Merged source/header files for benchmarks
 │          └── fib/           # Each benchmark in its own sub-directory

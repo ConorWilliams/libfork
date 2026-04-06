@@ -2,25 +2,23 @@ module;
 #include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/compiler.hpp"
 #include "libfork/__impl/exception.hpp"
-export module libfork.core:geometric_stack;
+export module libfork.batteries:geometric_stack;
 
 import std;
 
-import :constants;
-import :utility;
-import :concepts;
+import libfork.utils;
 
-namespace lf::stacks {
+namespace lf {
 
 /**
- * @brief A geometric_stack is a user-space (geometric) segmented program stack.
+ * @brief A geometric_stack is a user-space (geometric-growth) segmented program stack.
  *
  * This protects against hot-splitting by keeping a single cached segment.
  *
  * For this to conform to `worker_stack` the allocators void pointer type must be `void *`
  */
 export template <allocator_of<std::byte> Allocator = std::allocator<std::byte>>
-class geometric {
+class geometric_stack {
 
   struct ctrl;
   struct node;
@@ -46,7 +44,7 @@ class geometric {
     constexpr auto operator==(checkpoint_t const &) const noexcept -> bool = default;
 
    private:
-    friend geometric;
+    friend geometric_stack;
     explicit constexpr checkpoint_t(ctrl_ptr ptr) noexcept : m_ctrl(ptr) {}
     ctrl_ptr m_ctrl = nullptr;
   };
@@ -54,16 +52,16 @@ class geometric {
  public:
   using allocator_type = Allocator;
 
-  constexpr geometric() noexcept(noexcept(Allocator{})) : geometric(Allocator()) {}
-  explicit constexpr geometric(Allocator const &alloc) noexcept : m_ctrl_alloc(alloc) {}
+  constexpr geometric_stack() noexcept(noexcept(Allocator{})) : geometric_stack(Allocator()) {}
+  explicit constexpr geometric_stack(Allocator const &alloc) noexcept : m_ctrl_alloc(alloc) {}
 
-  constexpr geometric(geometric const &other) = delete;
-  constexpr geometric(geometric &&other) = delete;
+  constexpr geometric_stack(geometric_stack const &other) = delete;
+  constexpr geometric_stack(geometric_stack &&other) = delete;
 
-  constexpr auto operator=(geometric const &other) -> geometric & = delete;
-  constexpr auto operator=(geometric &&other) -> geometric & = delete;
+  constexpr auto operator=(geometric_stack const &other) -> geometric_stack & = delete;
+  constexpr auto operator=(geometric_stack &&other) -> geometric_stack & = delete;
 
-  constexpr ~geometric() noexcept {
+  constexpr ~geometric_stack() noexcept {
     LF_ASSUME(empty());
     delete_ctrl(m_ctrl);
   }
@@ -260,7 +258,7 @@ class geometric {
    * @brief Allocate and construct a new control block with a single stacklet of size bytes.
    */
   [[nodiscard]]
-  constexpr auto new_ctrl(this geometric &self, diff_int num_nodes) -> ctrl_ptr {
+  constexpr auto new_ctrl(this geometric_stack &self, diff_int num_nodes) -> ctrl_ptr {
 
     ctrl_ptr new_ctrl = ctrl_traits::allocate(self.m_ctrl_alloc, 1);
 
@@ -286,7 +284,7 @@ class geometric {
   /**
    * @brief Clean and delete the control block and all stacklets.
    */
-  constexpr void delete_ctrl(this geometric &self, ctrl_ptr ctrl) noexcept {
+  constexpr void delete_ctrl(this geometric_stack &self, ctrl_ptr ctrl) noexcept {
     if (ctrl != nullptr) {
       LF_ASSUME(ctrl->top != nullptr);
       LF_ASSUME(ctrl->top->prev == nullptr);
@@ -447,4 +445,4 @@ class geometric {
   }
 };
 
-} // namespace lf::stacks
+} // namespace lf

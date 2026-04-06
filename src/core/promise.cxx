@@ -7,13 +7,14 @@ export module libfork.core:promise;
 
 import std;
 
-import :concepts;
-import :frame;
-import :utility;
+import libfork.utils;
 
+import :concepts_context;
+import :concepts_invocable;
+import :frame;
+import :task;
 import :thread_locals;
 import :ops;
-
 import :handles;
 
 // TODO: vet constexpr usage in the library
@@ -25,44 +26,6 @@ using coro = std::coroutine_handle<T>;
 
 template <worker_context Context>
 using frame_t = frame_type<checkpoint_t<Context>>;
-
-// =============== Forward-decl =============== //
-
-// TODO: public private split here and elsewhere
-export template <returnable T, worker_context Context>
-struct promise_type;
-
-// =============== Task =============== //
-
-/**
- * @brief The return type for libfork's async functions/coroutines.
- *
- * This predominantly exists to disambiguate `libfork`s coroutines from other
- * coroutines and specify `T` the async function's return type which is
- * required to be `void` or a `std::movable` type.
- *
- * \rst
- *
- * .. note::
- *
- *    No consumer of this library should ever touch an instance of this type,
- *    it is used for specifying the return type of an `async` function only.
- *
- * \endrst
- */
-export template <returnable T, worker_context Context>
-class task {
- public:
-  using value_type = T;
-  using context_type = Context;
-
-  constexpr task(key_t, promise_type<T, Context> *promise) noexcept : m_promise(promise) {}
-
- private:
-  friend constexpr auto get(key_t, task t) noexcept -> promise_type<T, Context> * { return t.m_promise; }
-
-  promise_type<T, Context> *m_promise;
-};
 
 // =============== Final =============== //
 template <worker_context Context>
@@ -87,9 +50,9 @@ constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
 
   LF_ASSUME(frame->kind == category::fork);
 
-  Context *context = get_context<Context>();
+  Context &context = get_tls_context<Context>();
 
-  if (steal_handle<Context> last_pushed = context->pop()) {
+  if (steal_handle<Context> last_pushed = context.pop()) {
     // No-one stole continuation, we are the exclusive owner of parent -> just keep ripping!
     LF_ASSUME(last_pushed == steal_handle<Context>{key(), parent});
     // This is not a join point so no state (i.e. counters) is guaranteed.
@@ -120,7 +83,7 @@ constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
   // to access as it may be resumed and then destroyed by another thread. Hence
   // we must make copies on-the-stack of any data we may need if we lose the
   // join race.
-  bool const owner = parent->stack_ckpt == context->stack().checkpoint();
+  bool const owner = parent->stack_ckpt == context.stack().checkpoint();
 
   // TODO: we could reduce branching if we unconditionally release and also
   // drop pre-release function altogether... Need to benchmark with code that
@@ -128,7 +91,7 @@ constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
 
   // As soon as we do the fetch_sub (if we loose) someone may acquire
   // the stack so we must prepare it for release now.
-  auto release_key = context->stack().prepare_release();
+  auto release_key = context.stack().prepare_release();
 
   // TODO: we could add an `if (owner)` around acquire below, then we could
   // define that acquire is always called with null or not-self.
@@ -142,7 +105,7 @@ constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
 
     if (!owner) {
       // In case of scenario (2) we must acquire the parent's stack.
-      context->stack().acquire(std::as_const(parent->stack_ckpt));
+      context.stack().acquire(std::as_const(parent->stack_ckpt));
     }
 
     // Must reset parent's control block before resuming parent.
@@ -159,7 +122,7 @@ constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
   if (owner) {
     // We were unable to resume the parent and we were its owner, as the
     // resuming thread will take ownership of the parent's we must give it up.
-    context->stack().release(std::move(release_key));
+    context.stack().release(std::move(release_key));
   }
 
   // Else, case (2), our stack has no allocations on it, it may be used later.
@@ -326,7 +289,7 @@ struct awaitable : std::suspend_always {
       // use-after-free to then access self in the following line to fetch the
       // handle.
       LF_TRY {
-        get_context<Context>()->push(steal_handle<Context>{key(), &parent.promise().frame});
+        get_tls_context<Context>().push(steal_handle<Context>{key(), &parent.promise().frame});
       } LF_CATCH_ALL {
         return self.stash_and_resume(parent), parent;
       }
@@ -367,7 +330,7 @@ struct join_awaitable {
   frame_t<Context> *frame;
 
   constexpr auto take_stack_and_reset(this join_awaitable self) noexcept -> void {
-    stack_t<Context> &stack = get_stack<Context>();
+    stack_t<Context> &stack = get_tls_stack<Context>();
     LF_ASSUME(self.frame->stack_ckpt != stack.checkpoint());
     stack.acquire(std::as_const(self.frame->stack_ckpt));
     self.frame->reset_counters();
@@ -492,13 +455,15 @@ struct mixin_frame {
 
   // --- Allocation
 
-  static auto operator new(std::size_t sz) noexcept(noexcept(get_stack<Context>().push(sz))) -> void * {
-    void *ptr = get_stack<Context>().push(sz);
+  static auto operator new(std::size_t sz) noexcept(noexcept(get_tls_stack<Context>().push(sz))) -> void * {
+    void *ptr = get_tls_stack<Context>().push(sz);
     LF_ASSUME(is_sufficiently_aligned<k_new_align>(ptr));
     return std::assume_aligned<k_new_align>(ptr);
   }
 
-  static auto operator delete(void *p, std::size_t sz) noexcept -> void { get_stack<Context>().pop(p, sz); }
+  static auto operator delete(void *p, std::size_t sz) noexcept -> void {
+    get_tls_stack<Context>().pop(p, sz);
+  }
 
   // --- Await transformations
 
@@ -567,7 +532,7 @@ struct promise_type<void, Context> : mixin_frame<Context> {
   // Putting init here allows:
   //  1. Frame not no need to know about the checkpoint type
   //  2. Compiler merge double read of thread local here and in allocator
-  frame_t<Context> frame{get_stack<Context>().checkpoint()};
+  frame_t<Context> frame{get_tls_stack<Context>().checkpoint()};
 
   constexpr auto get_return_object() noexcept -> task<void, Context> { return {key(), this}; }
 
@@ -582,7 +547,7 @@ struct promise_type : mixin_frame<Context> {
   // Putting init here allows:
   //  1. Frame not no need to know about the checkpoint type
   //  2. Compiler merge double read of thread local here and in allocator
-  frame_t<Context> frame{get_stack<Context>().checkpoint()};
+  frame_t<Context> frame{get_tls_stack<Context>().checkpoint()};
   T *return_address;
 
   constexpr auto get_return_object() noexcept -> task<T, Context> { return {key(), this}; }

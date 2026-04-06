@@ -2,8 +2,8 @@
 
 import std;
 
-import libfork.core;
-import libfork.schedule;
+import libfork;
+import libfork.utils;
 
 using namespace lf;
 
@@ -59,9 +59,9 @@ TEST_CASE("Concepts: returnable", "[concepts]") {
 }
 
 TEST_CASE("Concepts: worker_stack", "[concepts]") {
-  STATIC_REQUIRE(worker_stack<stacks::dummy_allocator>);
+  STATIC_REQUIRE(worker_stack<dummy_allocator>);
 
-  struct bad_alloc : stacks::dummy_allocator {
+  struct bad_alloc : dummy_allocator {
     constexpr static auto pop(void *p, std::size_t sz) -> void;
   };
 
@@ -73,7 +73,7 @@ TEST_CASE("Concepts: worker_context", "[concepts]") {
 
   struct missing_push {
     auto pop() noexcept -> lf::steal_handle<missing_push>;
-    auto stack() noexcept -> stacks::dummy_allocator &;
+    auto stack() noexcept -> dummy_allocator &;
   };
 
   STATIC_REQUIRE_FALSE(worker_context<missing_push>);
@@ -115,7 +115,7 @@ TEST_CASE("Concepts: async_invocable", "[concepts]") {
     void push(lf::steal_handle<mock_context>);
     void post(lf::sched_handle<mock_context>);
     auto pop() noexcept -> lf::steal_handle<mock_context>;
-    auto stack() noexcept -> stacks::dummy_allocator &;
+    auto stack() noexcept -> dummy_allocator &;
   };
 
   STATIC_REQUIRE(worker_context<mock_context>);

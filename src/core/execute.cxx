@@ -5,14 +5,21 @@ export module libfork.core:execute;
 
 import std;
 
+import libfork.utils;
+
+import :frame;
 import :thread_locals;
-import :concepts;
+import :concepts_context;
 import :handles;
-import :utility;
 
 namespace lf {
 
-// TODO: unify exception higerarchy
+export struct execute_error final : libfork_exception {
+  [[nodiscard]]
+  constexpr auto what() const noexcept -> const char * override {
+    return "execute called from within a worker thread!";
+  }
+};
 
 /**
  * @brief Bind this thread to a context and execute the scheduled tasks on that context/thread.
@@ -23,14 +30,14 @@ namespace lf {
 export template <worker_context Context>
 constexpr void execute(Context &context, sched_handle<Context> handle) {
 
-  if (thread_context<Context> != nullptr) {
-    LF_THROW(std::runtime_error{"execute called from within a worker thread!"});
+  if (thread_local_context<Context> != nullptr) {
+    LF_THROW(execute_error{});
   }
 
-  thread_context<Context> = std::addressof(context);
+  thread_local_context<Context> = std::addressof(context);
 
   defer _ = [] noexcept -> void {
-    thread_context<Context> = nullptr;
+    thread_local_context<Context> = nullptr;
   };
 
   auto *frame = static_cast<frame_type<checkpoint_t<Context>> *>(get(key(), handle));

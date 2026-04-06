@@ -1,6 +1,6 @@
 module;
 #include "libfork/__impl/utils.hpp"
-export module libfork.core:tuple;
+export module libfork.utils:tuple;
 
 import std;
 
@@ -95,7 +95,7 @@ tuple(Ts &&...) -> tuple<Ts...>;
 } // namespace lf
 
 template <typename... Ts>
-struct std::tuple_size<lf::tuple<Ts...>> : integral_constant<size_t, sizeof...(Ts)> {};
+struct std::tuple_size<lf::tuple<Ts...>> : std::integral_constant<std::size_t, sizeof...(Ts)> {};
 
 template <std::size_t I, typename... Ts>
-struct std::tuple_element<I, lf::tuple<Ts...>> : type_identity<Ts... [I]> {};
+struct std::tuple_element<I, lf::tuple<Ts...>> : std::type_identity<Ts... [I]> {};

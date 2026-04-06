@@ -1,17 +1,21 @@
-#include <coroutine>
-#include <cstddef>
-#include <exception>
-#include <memory>
-
 #include <benchmark/benchmark.h>
 
 #include "libfork_benchmark/fib/fib.hpp"
+
+import std;
+
+import libfork;
 
 // === Coroutine
 
 namespace {
 
 // ==== Allocators ==== //
+
+[[nodiscard]]
+inline auto fib_align_size(std::size_t n) -> std::size_t {
+  return (n + __STDCPP_DEFAULT_NEW_ALIGNMENT__ - 1) & ~(__STDCPP_DEFAULT_NEW_ALIGNMENT__ - 1);
+}
 
 constinit inline thread_local std::byte *tls_bump_ptr = nullptr;
 
@@ -114,7 +118,6 @@ void fib_coro_no_queue(benchmark::State &state) {
 
 constinit inline thread_local lf::deque<std::int64_t> *tls_deque = nullptr;
 
-LF_NO_INLINE
 auto deque() -> lf::deque<std::int64_t> & { return *tls_deque; }
 
 auto fib_recursive_deque_impl(std::int64_t n) -> std::int64_t {

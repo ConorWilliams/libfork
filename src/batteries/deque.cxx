@@ -1,17 +1,13 @@
 module;
 #include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/exception.hpp"
-export module libfork.core:deque;
+export module libfork.batteries:deque;
 
 import std;
 
-import :utility;
-import :concepts;
-import :constants;
+import libfork.utils;
 
 namespace lf {
-
-// TODO: test if perf is better if we bound the queue
 
 /**
  * @brief Test is a type is suitable for use with `lf::deque`.
@@ -24,8 +20,11 @@ concept dequeable = lock_free<T> && std::default_initializable<T>;
 /**
  * @brief Thrown when a push operation fails because the deque is full.
  */
-export struct deque_full : std::runtime_error {
-  constexpr deque_full() : std::runtime_error{"push failed because deque is full"} {}
+export struct deque_full_error final : libfork_exception {
+  [[nodiscard]]
+  constexpr auto what() const noexcept -> const char * override {
+    return "push failed because deque is full";
+  }
 };
 
 /**
@@ -180,8 +179,13 @@ struct return_nullopt {
  * @tparam T The type of the elements in the deque.
  */
 export template <dequeable T, allocator_of<std::atomic<T>> Allocator = std::allocator<std::atomic<T>>>
-class deque : immovable {
+class deque {
  public:
+  deque(deque const &) = delete;
+  deque(deque &&) = delete;
+  auto operator=(deque const &) -> deque & = delete;
+  auto operator=(deque &&) -> deque & = delete;
+
   /**
    * @brief A non-owning handle that can be used to steal items from the deque.
    *
@@ -326,7 +330,7 @@ class deque : immovable {
     std::ptrdiff_t const ssize = bottom - top;
 
     if (m_buf.capacity() < ssize + 1) {
-      LF_THROW(deque_full{});
+      LF_THROW(deque_full_error{});
     }
 
     // Construct new object, this does not have to be atomic as no one can steal

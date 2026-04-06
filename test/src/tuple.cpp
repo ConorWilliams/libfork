@@ -4,7 +4,7 @@
 
 import std;
 
-import libfork.core;
+import libfork.utils;
 
 namespace {
 
@@ -90,9 +90,15 @@ TEST_CASE("Tuple construction", "[tuple]") {
 
 TEST_CASE("Tuple apply", "[tuple]") {
 
-  lf::tuple<int, lf::move_only> val{1, lf::move_only{}};
+  struct move_only {
+    move_only() = default;
+    move_only(move_only const &) = delete;
+    move_only(move_only &&) = default;
+  };
 
-  REQUIRE(std::move(val).apply([](int x, lf::move_only) -> bool {
+  lf::tuple<int, move_only> val{1, move_only{}};
+
+  REQUIRE(std::move(val).apply([](int x, move_only) -> bool {
     return x == 1;
   }));
 }

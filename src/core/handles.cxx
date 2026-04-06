@@ -1,11 +1,8 @@
 export module libfork.core:handles;
 
-import std;
+import libfork.utils;
 
 import :frame;
-import :utility;
-import :concepts;
-import :thread_locals;
 
 namespace lf {
 
@@ -41,6 +38,8 @@ class handle {
   frame_base *m_ptr = nullptr;
 };
 
+// TODO: can we private inherit?
+
 /**
  * @brief [TODO:description]
  *
@@ -59,15 +58,7 @@ struct steal_handle : handle<T> {
 
 export template <typename T>
 struct sched_handle : handle<T> {
-
   using handle<T>::handle;
-
-  constexpr auto resume_on(this sched_handle self, T *context) noexcept -> void {
-    LF_ASSUME(context == get_context<T>());
-    // get(key(), self);
-
-    //
-  }
 };
 
 } // namespace lf
