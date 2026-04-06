@@ -1,3 +1,4 @@
+#include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 import std;
@@ -41,57 +42,124 @@ constexpr void check_alignment(void *ptr) {
 
 } // namespace
 
-TEST_CASE("Concept", "[geometric_stack]") {
+// ============== Concept checks ==============  //
+
+TEST_CASE("Concept geometric_stack", "[geometric_stack]") {
   STATIC_REQUIRE(worker_stack<lf::geometric_stack<>>); //
 }
 
-TEST_CASE("Basic push and pop", "[geometric_stack]") {
-  TEST_CONSTEXPR([]() -> bool {
-    lf::geometric_stack<> stack;
-    expect(stack.empty());
-
-    void *p1 = stack.push(10);
-    check_alignment(p1);
-    expect(!stack.empty());
-
-    void *p2 = stack.push(20);
-    check_alignment(p2);
-    expect(p2 != p1);
-    expect(!stack.empty());
-
-    // Pop in FILO order
-    stack.pop(p2, 20);
-    stack.pop(p1, 10);
-    expect(stack.empty());
-
-    return true;
-  });
+TEST_CASE("Concept adaptor_stack", "[adaptor_stack]") {
+  STATIC_REQUIRE(worker_stack<lf::adaptor_stack<>>); //
 }
 
-TEST_CASE("Checkpoint and Acquire/Release", "[geometric_stack]") {
-  TEST_CONSTEXPR([]() -> bool {
-    lf::geometric_stack<> stack1;
-    void *p1 = stack1.push(100);
-    auto cp1 = stack1.checkpoint();
+// ============== Constexpr tests ==============  //
 
-    lf::geometric_stack<> stack2;
-    auto cp2 = stack2.checkpoint();
-    expect(cp1 != cp2);
+namespace {
 
-    auto key1 = stack1.prepare_release();
-    stack2.acquire(cp1);
-    stack1.release(key1);
-    expect(stack2.checkpoint() == cp1);
-    stack2.pop(p1, 100);
+template <typename Stack>
+constexpr auto constexpr_push_pop() -> bool {
+  Stack stack;
+  expect(stack.empty());
 
-    return true;
-  });
+  void *p1 = stack.push(10);
+  check_alignment(p1);
+  expect(!stack.empty());
+
+  void *p2 = stack.push(20);
+  check_alignment(p2);
+  expect(p2 != p1);
+  expect(!stack.empty());
+
+  // Pop in FILO order
+  stack.pop(p2, 20);
+  stack.pop(p1, 10);
+  expect(stack.empty());
+
+  return true;
 }
 
-TEST_CASE("Stress test", "[geometric_stack]") {
+template <typename Stack>
+constexpr auto constexpr_checkpoint() -> bool {
+  Stack stack1;
+  void *p1 = stack1.push(100);
+  auto cp1 = stack1.checkpoint();
+
+  Stack stack2;
+  auto cp2 = stack2.checkpoint();
+  expect(cp1 != cp2);
+
+  auto key1 = stack1.prepare_release();
+  stack2.acquire(cp1);
+  stack1.release(key1);
+  expect(stack2.checkpoint() == cp1);
+  stack2.pop(p1, 100);
+
+  return true;
+}
+
+} // namespace
+
+TEST_CASE("Constexpr basic push and pop geometric_stack", "[geometric_stack]") {
+  STATIC_REQUIRE(constexpr_push_pop<lf::geometric_stack<>>());
+  REQUIRE(constexpr_push_pop<lf::geometric_stack<>>());
+}
+
+TEST_CASE("Constexpr basic push and pop adaptor_stack", "[adaptor_stack]") {
+  STATIC_REQUIRE(constexpr_push_pop<lf::adaptor_stack<>>());
+  REQUIRE(constexpr_push_pop<lf::adaptor_stack<>>());
+}
+
+TEST_CASE("Constexpr checkpoint geometric_stack", "[geometric_stack]") {
+  STATIC_REQUIRE(constexpr_checkpoint<lf::geometric_stack<>>());
+  REQUIRE(constexpr_checkpoint<lf::geometric_stack<>>());
+}
+
+TEST_CASE("Constexpr checkpoint adaptor_stack", "[adaptor_stack]") {
+  STATIC_REQUIRE(constexpr_checkpoint<lf::adaptor_stack<>>());
+  REQUIRE(constexpr_checkpoint<lf::adaptor_stack<>>());
+}
+
+// ============== Templated runtime tests ==============  //
+
+TEMPLATE_TEST_CASE("Basic push and pop", "[stack]", lf::geometric_stack<>, lf::adaptor_stack<>) {
+  TestType stack;
+  REQUIRE(stack.empty());
+
+  void *p1 = stack.push(10);
+  check_alignment(p1);
+  REQUIRE_FALSE(stack.empty());
+
+  void *p2 = stack.push(20);
+  check_alignment(p2);
+  REQUIRE(p2 != p1);
+  REQUIRE_FALSE(stack.empty());
+
+  // Pop in FILO order
+  stack.pop(p2, 20);
+  stack.pop(p1, 10);
+  REQUIRE(stack.empty());
+}
+
+TEMPLATE_TEST_CASE("Checkpoint and acquire/release", "[stack]", lf::geometric_stack<>, lf::adaptor_stack<>) {
+  TestType stack1;
+  void *p1 = stack1.push(100);
+  auto cp1 = stack1.checkpoint();
+
+  TestType stack2;
+  auto cp2 = stack2.checkpoint();
+  REQUIRE(cp1 != cp2);
+
+  auto key1 = stack1.prepare_release();
+  stack2.acquire(cp1);
+  stack1.release(key1);
+  REQUIRE(stack2.checkpoint() == cp1);
+  stack2.pop(p1, 100);
+}
+
+TEMPLATE_TEST_CASE("Stress test", "[stack]", lf::geometric_stack<>, lf::adaptor_stack<>) {
   for (int k = 0; k < 10; ++k) {
 
-    lf::geometric_stack<> stack;
+    TestType stack;
     std::mt19937_64 rng{std::random_device{}()};
     std::uniform_int_distribution<std::size_t> size_dist{1, 200};
     std::uniform_int_distribution<std::size_t> depth_dist{5, 5000};
@@ -125,8 +193,8 @@ TEST_CASE("Stress test", "[geometric_stack]") {
   }
 }
 
-TEST_CASE("Randomized push/pop stress test", "[geometric_stack]") {
-  lf::geometric_stack<> stack;
+TEMPLATE_TEST_CASE("Randomized push/pop stress test", "[stack]", lf::geometric_stack<>, lf::adaptor_stack<>) {
+  TestType stack;
   std::mt19937_64 rng{std::random_device{}()};
   std::bernoulli_distribution push_dist{0.51};
   std::uniform_int_distribution<std::size_t> size_dist{1, 512};
@@ -168,8 +236,9 @@ TEST_CASE("Randomized push/pop stress test", "[geometric_stack]") {
   REQUIRE(stack.empty());
 }
 
-TEST_CASE("Spikey randomized push/pop stress test", "[geometric_stack]") {
-  lf::geometric_stack<> stack;
+TEMPLATE_TEST_CASE("Spikey randomized push/pop stress test", "[stack]", lf::geometric_stack<>,
+                   lf::adaptor_stack<>) {
+  TestType stack;
   std::mt19937_64 rng{std::random_device{}()};
 
   // Higher probability of push after push, higher probability of pop after pop
