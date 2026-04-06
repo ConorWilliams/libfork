@@ -100,7 +100,11 @@ class adaptor_stack {
 
   constexpr void release([[maybe_unused]] release_t key) noexcept {}
 
-  constexpr void acquire([[maybe_unused]] checkpoint_t ckpt) noexcept {}
+  constexpr void acquire(checkpoint_t const &ckpt) noexcept {
+    if constexpr (!align_trait::is_always_equal::value) {
+      m_alloc = ckpt.m_alloc;
+    }
+  }
 
  private:
   align_alloc m_alloc;
