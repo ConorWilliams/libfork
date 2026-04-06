@@ -86,6 +86,7 @@ class busy_thread_pool {
         m_posted.pop_back();
         lock.unlock();
         execute(static_cast<context_type &>(ctx), task);
+        std::println("{} -> finished root", std::this_thread::get_id());
         continue;
       }
 

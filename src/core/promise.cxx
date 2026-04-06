@@ -85,6 +85,8 @@ constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
   // join race.
   bool const owner = parent->stack_ckpt == context.stack().checkpoint();
 
+  std::println("{} -> owner={}", std::this_thread::get_id(), owner);
+
   // TODO: we could reduce branching if we unconditionally release and also
   // drop pre-release function altogether... Need to benchmark with code that
   // triggers a lot of stealing.
@@ -114,6 +116,8 @@ constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
     return parent->handle();
   }
 
+  std::println("{} -> lost", std::this_thread::get_id());
+
   // We did not win the join-race, we cannot dereference the parent pointer now
   // as the frame may now be freed by the winner. Parent has not reached join
   // or we are not the last child to complete. We are now out of jobs, we must
@@ -124,6 +128,8 @@ constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
     // resuming thread will take ownership of the parent's we must give it up.
     context.stack().release(std::move(release_key));
   }
+
+  std::println("{} -> noop", std::this_thread::get_id());
 
   // Else, case (2), our stack has no allocations on it, it may be used later.
   return std::noop_coroutine();

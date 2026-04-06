@@ -52,9 +52,10 @@ export struct steal_overflow_error final : libfork_exception {
   }
 };
 
-
 export template <worker_context Context>
 constexpr void execute(Context &context, steal_handle<Context> handle) {
+
+  std::println("{} -> steal", std::this_thread::get_id());
 
   if (thread_local_context<Context> != nullptr) {
     LF_THROW(execute_error{});
