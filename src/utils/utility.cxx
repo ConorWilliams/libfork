@@ -68,10 +68,10 @@ export class key_t {
  *
  * Supports fancy pointers, doesn't require an object to exist at the pointer.
  */
-export template <std::size_t Align, typename T>
+export template <std::size_t Align, typename Ptr>
   requires (std::has_single_bit(Align))
 [[nodiscard]]
-auto is_sufficiently_aligned(T *ptr) noexcept -> bool {
+auto is_sufficiently_aligned(Ptr const &ptr) noexcept -> bool {
   return (std::bit_cast<std::uintptr_t>(std::to_address(ptr)) & (Align - 1)) == 0;
 }
 
