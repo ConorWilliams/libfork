@@ -26,8 +26,8 @@ auto not_constexpr() {}
 
 #define TEST_CONSTEXPR(...)                                                                                  \
   constexpr auto impl = __VA_ARGS__;                                                                         \
-  STATIC_REQUIRE(impl());                                                                                    \
-  REQUIRE(impl())
+  REQUIRE(impl());                                                                                           \
+  STATIC_REQUIRE(impl())
 
 namespace {
 
@@ -83,13 +83,16 @@ TEMPLATE_TEST_CASE("Basic push and pop", "[stacks]", lf::geometric_stack<>, lf::
 
 TEMPLATE_TEST_CASE("Checkpoint and Acquire/Release", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>) {
   TEST_CONSTEXPR([]() -> bool {
-    lf::geometric_stack<> stack1;
+    TestType stack1;
     void *p1 = stack1.push(100);
     auto cp1 = stack1.checkpoint();
 
-    lf::geometric_stack<> stack2;
+    TestType stack2;
     auto cp2 = stack2.checkpoint();
-    expect(cp1 != cp2);
+
+    using C = decltype(cp1);
+
+    expect(((cp1 == C{} && cp2 == C{}) || cp1 != cp2));
 
     auto key1 = stack1.prepare_release();
     stack2.acquire(cp1);
@@ -104,7 +107,7 @@ TEMPLATE_TEST_CASE("Checkpoint and Acquire/Release", "[stacks]", lf::geometric_s
 TEMPLATE_TEST_CASE("Single pass", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>) {
   for (int k = 0; k < 10; ++k) {
 
-    lf::geometric_stack<> stack;
+    TestType stack;
     std::mt19937_64 rng{std::random_device{}()};
     std::uniform_int_distribution<std::size_t> size_dist{1, 200};
     std::uniform_int_distribution<std::size_t> depth_dist{5, 5000};
@@ -139,7 +142,7 @@ TEMPLATE_TEST_CASE("Single pass", "[stacks]", lf::geometric_stack<>, lf::adaptor
 }
 
 TEMPLATE_TEST_CASE("Randomized push/pop", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>) {
-  lf::geometric_stack<> stack;
+  TestType stack;
   std::mt19937_64 rng{std::random_device{}()};
   std::bernoulli_distribution push_dist{0.51};
   std::uniform_int_distribution<std::size_t> size_dist{1, 512};
@@ -178,11 +181,11 @@ TEMPLATE_TEST_CASE("Randomized push/pop", "[stacks]", lf::geometric_stack<>, lf:
     entries.pop_back();
   }
 
-  REQUIRE(stack.empty());
+  check_empty(stack);
 }
 
 TEMPLATE_TEST_CASE("Spikey randomized push/pop", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>) {
-  lf::geometric_stack<> stack;
+  TestType stack;
   std::mt19937_64 rng{std::random_device{}()};
 
   // Higher probability of push after push, higher probability of pop after pop
