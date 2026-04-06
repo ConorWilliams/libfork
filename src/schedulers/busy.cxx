@@ -1,3 +1,5 @@
+module;
+#include "libfork/__impl/compiler.hpp"
 export module libfork.schedulers:busy_scheduler;
 
 import std;
@@ -8,12 +10,12 @@ import libfork.batteries;
 
 namespace lf {
 
-template <typename Derived, typename Base>
-concept derived_context_from = worker_context<Base> && std::derived_from<Derived, Base>;
-
-template <typename Context>
-concept derived_worker_context =
-    has_context_typedef<Context> && derived_context_from<Context, context_t<Context>>;
+struct invalid_workers_error : std::exception {
+  [[nodiscard]]
+  constexpr auto what() const noexcept -> const char * override {
+    return "A thread pool must have at least one worker.";
+  }
+};
 
 export template <bool Polymorphic, worker_stack Stack>
 class busy_scheduler {
@@ -24,36 +26,38 @@ class busy_scheduler {
       mono_context<Stack, adapt_deque>          //
       >;
 
-  static_assert(derived_worker_context<context>);
-
  public:
   using context_type = context::context_type;
 
-  explicit busy_scheduler(std::size_t num_threads = std::thread::hardware_concurrency())
-      : m_contexts(num_threads) {
-    m_threads.reserve(num_threads);
-    for (std::size_t i = 0; i < num_threads; ++i) {
-      m_threads.emplace_back([this, i](std::stop_token stop) {
-        worker(stop, i);
-      });
-    }
-  }
+  explicit busy_scheduler(std::size_t n = std::thread::hardware_concurrency()) : m_contexts(n) {
 
-  ~busy_scheduler() {
-    for (auto &t : m_threads) {
-      t.request_stop();
+    if (n < 1) {
+      LF_THROW(invalid_workers_error{});
     }
-    for (auto &t : m_threads) {
-      t.join();
+
+    LF_TRY{
+      for (std::size_t id = 0; id < n; ++id) {
+        m_threads.emplace_back([this, id](std::stop_token stop) -> void {
+          worker(std::move(stop), id);
+        });
+      }
+    } LF_CATCH_ALL {
+      // Force joins before members (which threads reference) are destroyed.
+      join_all();
+      LF_RETHROW;
     }
   }
 
   busy_scheduler(busy_scheduler const &) = delete;
   busy_scheduler(busy_scheduler &&) = delete;
+
   auto operator=(busy_scheduler const &) -> busy_scheduler & = delete;
   auto operator=(busy_scheduler &&) -> busy_scheduler & = delete;
 
+  ~busy_scheduler() { join_all(); }
+
   void post(sched_handle<context_type> handle) {
+    // TODO: use a lock-free queue here
     auto lock = std::unique_lock(m_mutex);
     m_posted.push_back(handle);
   }
@@ -65,7 +69,7 @@ class busy_scheduler {
 
     thread_local_context<context_type> = static_cast<context_type *>(&ctx);
 
-    defer cleanup = [] noexcept {
+    defer cleanup = [] noexcept -> auto {
       thread_local_context<context_type> = nullptr;
     };
 
@@ -106,6 +110,15 @@ class busy_scheduler {
       }
 
       std::this_thread::yield();
+    }
+  }
+
+  void join_all() {
+    for (auto &t : m_threads) {
+      t.request_stop();
+    }
+    for (auto &t : m_threads) {
+      t.join();
     }
   }
 
