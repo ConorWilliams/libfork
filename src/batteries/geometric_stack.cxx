@@ -50,6 +50,7 @@ class geometric_stack {
   };
 
  public:
+  // TODO: remove this typedef
   using allocator_type = Allocator;
 
   constexpr geometric_stack() noexcept(noexcept(Allocator{})) : geometric_stack(Allocator()) {}
