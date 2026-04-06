@@ -7,8 +7,6 @@ import std;
 
 import libfork.utils;
 
-import :thread_locals;
-
 namespace lf {
 // =================== Cancellation =================== //
 

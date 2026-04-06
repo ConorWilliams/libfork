@@ -5,16 +5,9 @@ import std;
 import libfork.utils;
 
 import :concepts_stack;
+import :handles;
 
 namespace lf {
-
-// TODO: I think we can import the definitions.
-
-export template <typename T>
-struct steal_handle;
-
-export template <typename T>
-struct sched_handle;
 
 template <typename T>
 concept ref_to_worker_stack = std::is_lvalue_reference_v<T> && worker_stack<std::remove_reference_t<T>>;
