@@ -1,3 +1,4 @@
+#include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 import std;
@@ -25,8 +26,8 @@ auto not_constexpr() {}
 
 #define TEST_CONSTEXPR(...)                                                                                  \
   constexpr auto impl = __VA_ARGS__;                                                                         \
-  STATIC_REQUIRE(impl());                                                                                    \
-  REQUIRE(impl())
+  REQUIRE(impl());                                                                                           \
+  STATIC_REQUIRE(impl())
 
 namespace {
 
@@ -39,44 +40,59 @@ constexpr void check_alignment(void *ptr) {
   }
 }
 
-} // namespace
-
-TEST_CASE("Concept", "[geometric_stack]") {
-  STATIC_REQUIRE(worker_stack<lf::geometric_stack<>>); //
+constexpr void check_empty(auto const &stack) {
+  if constexpr (requires { stack.empty(); }) {
+    expect(stack.empty());
+  }
 }
 
-TEST_CASE("Basic push and pop", "[geometric_stack]") {
+constexpr void check_non_empty(auto const &stack) {
+  if constexpr (requires { stack.empty(); }) {
+    expect(!stack.empty());
+  }
+}
+
+} // namespace
+
+TEMPLATE_TEST_CASE("Concept", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>) {
+  STATIC_REQUIRE(worker_stack<TestType>); //
+}
+
+TEMPLATE_TEST_CASE("Basic push and pop", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>) {
   TEST_CONSTEXPR([]() -> bool {
-    lf::geometric_stack<> stack;
-    expect(stack.empty());
+    TestType stack;
+    check_empty(stack);
 
     void *p1 = stack.push(10);
     check_alignment(p1);
-    expect(!stack.empty());
+    check_non_empty(stack);
 
     void *p2 = stack.push(20);
     check_alignment(p2);
     expect(p2 != p1);
-    expect(!stack.empty());
+    check_non_empty(stack);
 
     // Pop in FILO order
     stack.pop(p2, 20);
     stack.pop(p1, 10);
-    expect(stack.empty());
+    check_empty(stack);
 
     return true;
   });
 }
 
-TEST_CASE("Checkpoint and Acquire/Release", "[geometric_stack]") {
+TEMPLATE_TEST_CASE("Checkpoint and Acquire/Release", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>) {
   TEST_CONSTEXPR([]() -> bool {
-    lf::geometric_stack<> stack1;
+    TestType stack1;
     void *p1 = stack1.push(100);
     auto cp1 = stack1.checkpoint();
 
-    lf::geometric_stack<> stack2;
+    TestType stack2;
     auto cp2 = stack2.checkpoint();
-    expect(cp1 != cp2);
+
+    using C = decltype(cp1);
+
+    expect(((cp1 == C{} && cp2 == C{}) || cp1 != cp2));
 
     auto key1 = stack1.prepare_release();
     stack2.acquire(cp1);
@@ -88,10 +104,10 @@ TEST_CASE("Checkpoint and Acquire/Release", "[geometric_stack]") {
   });
 }
 
-TEST_CASE("Stress test", "[geometric_stack]") {
+TEMPLATE_TEST_CASE("Single pass", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>) {
   for (int k = 0; k < 10; ++k) {
 
-    lf::geometric_stack<> stack;
+    TestType stack;
     std::mt19937_64 rng{std::random_device{}()};
     std::uniform_int_distribution<std::size_t> size_dist{1, 200};
     std::uniform_int_distribution<std::size_t> depth_dist{5, 5000};
@@ -120,13 +136,13 @@ TEST_CASE("Stress test", "[geometric_stack]") {
         stack.pop(e.ptr, e.size);
       }
 
-      REQUIRE(stack.empty());
+      check_empty(stack);
     }
   }
 }
 
-TEST_CASE("Randomized push/pop stress test", "[geometric_stack]") {
-  lf::geometric_stack<> stack;
+TEMPLATE_TEST_CASE("Randomized push/pop", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>) {
+  TestType stack;
   std::mt19937_64 rng{std::random_device{}()};
   std::bernoulli_distribution push_dist{0.51};
   std::uniform_int_distribution<std::size_t> size_dist{1, 512};
@@ -142,7 +158,7 @@ TEST_CASE("Randomized push/pop stress test", "[geometric_stack]") {
   while (total_pushed < target_pushed) {
 
     if (entries.empty()) {
-      REQUIRE(stack.empty());
+      check_empty(stack);
     }
 
     if (entries.empty() || push_dist(rng)) {
@@ -165,11 +181,11 @@ TEST_CASE("Randomized push/pop stress test", "[geometric_stack]") {
     entries.pop_back();
   }
 
-  REQUIRE(stack.empty());
+  check_empty(stack);
 }
 
-TEST_CASE("Spikey randomized push/pop stress test", "[geometric_stack]") {
-  lf::geometric_stack<> stack;
+TEMPLATE_TEST_CASE("Spikey randomized push/pop", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>) {
+  TestType stack;
   std::mt19937_64 rng{std::random_device{}()};
 
   // Higher probability of push after push, higher probability of pop after pop
@@ -191,7 +207,7 @@ TEST_CASE("Spikey randomized push/pop stress test", "[geometric_stack]") {
     bool do_push = true;
 
     if (entries.empty()) {
-      REQUIRE(stack.empty());
+      check_empty(stack);
       do_push = true;
     } else if (last_was_push) {
       do_push = push_after_push(rng);
@@ -220,5 +236,5 @@ TEST_CASE("Spikey randomized push/pop stress test", "[geometric_stack]") {
     stack.pop(e.ptr, e.size);
     entries.pop_back();
   }
-  REQUIRE(stack.empty());
+  check_empty(stack);
 }
