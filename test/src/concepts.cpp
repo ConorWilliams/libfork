@@ -4,7 +4,6 @@ import std;
 
 import libfork;
 
-
 using namespace lf;
 
 TEST_CASE("Concepts: atomicable", "[concepts]") {

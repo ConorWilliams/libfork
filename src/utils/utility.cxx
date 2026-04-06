@@ -48,7 +48,6 @@ not_null(T *ptr, std::source_location const loc = std::source_location::current(
   return ptr;
 }
 
-
 export class key_t;
 
 export constexpr auto key() noexcept -> key_t;
@@ -63,7 +62,6 @@ export class key_t {
  private:
   constexpr key_t() = default;
 };
-
 
 /**
  * @brief Test if a pointer is aligned to a multiple of `Align`.

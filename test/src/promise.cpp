@@ -2,7 +2,6 @@
 
 import libfork;
 
-
 // TODO: make the tests part of the module so they can access the internals?
 
 TEST_CASE("Promise test", "[promise]") {

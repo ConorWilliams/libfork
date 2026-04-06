@@ -11,7 +11,6 @@
 
 import libfork;
 
-
 inline constexpr int fib_test = 3;
 inline constexpr int fib_base = 37;
 

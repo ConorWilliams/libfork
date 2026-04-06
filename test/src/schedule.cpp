@@ -4,7 +4,6 @@ import std;
 
 import libfork;
 
-
 namespace {
 
 // TODO: test exceptions
