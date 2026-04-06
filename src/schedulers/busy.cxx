@@ -30,6 +30,8 @@ class busy_thread_pool {
  public:
   using context_type = context::context_type;
 
+  // TODO: sleep when zero work
+
   explicit busy_thread_pool(std::size_t n = std::thread::hardware_concurrency()) : m_contexts(n) {
 
     if (n < 1) {
