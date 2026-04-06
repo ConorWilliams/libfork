@@ -3,9 +3,23 @@ export module libfork.core:task;
 import std;
 
 import libfork.utils;
+
 import :concepts;
 
 namespace lf {
+
+/**
+ * @brief A type returnable from libfork's async functions/coroutines.
+ *
+ * This requires that `T` is `void` or a `std::movable` type.
+ */
+export template <typename T>
+concept returnable = std::is_void_v<T> || (plain_object<T> && std::movable<T>);
+
+export template <worker_context>
+struct env {
+  explicit constexpr env(key_t) noexcept {}
+};
 
 // Forward-declare promise_type so task can reference it as a pointer.
 export template <returnable T, worker_context Context>
