@@ -30,23 +30,16 @@ export struct frame_base {};
 export template <typename Checkpoint>
 struct frame_type : frame_base {
 
-  struct except_type {
-    frame_type *parent;
-    std::exception_ptr exception;
-  };
-
   // == Member variables == //
 
   // TODO: add checked accessors for all the things (including except etc)
 
-  union {
-    frame_type *parent;
-    except_type *except;
-  };
+  // Only set if an exception is thrown, otherwise uninit
+  uninitialized<std::exception_ptr> except;
 
+  frame_type *parent;
   cancellation *cancel;
 
-  // TODO: drop default constructible requirement?
   [[no_unique_address]]
   Checkpoint stack_ckpt;
 

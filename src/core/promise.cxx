@@ -3,6 +3,7 @@ module;
 #include "libfork/__impl/compiler.hpp"
 #include "libfork/__impl/exception.hpp"
 #include "libfork/__impl/utils.hpp"
+#include <exception>
 export module libfork.core:promise;
 
 import std;
@@ -215,6 +216,8 @@ constexpr auto final_suspend_continue(Context *context, frame_t<Context> *parent
 
 // =============== Fork/Call =============== //
 
+// TODO: make sure exceptions are cancel-safe (I think now cancellation can leak)
+
 /**
  * @brief Call inside a catch block, stash current exception in `frame`.
  */
@@ -224,18 +227,10 @@ constexpr void stash_current_exception(frame_type<Checkpoint> *frame) noexcept {
   // and rely on the usual fork/join synchronization to ensure memory ordering.
   if (frame->atomic_except().exchange(1, std::memory_order_relaxed) == 0) {
 
-    std::exception_ptr exception = std::current_exception();
+    frame->except.construct(std::current_exception());
 
-    LF_ASSUME(exception); // Should have been called from inside a catch block
-
-    // TODO: make sure exceptions are cancel-safe (I think now cancellation can leak)
-    //
-    // TODO: allocator aware -> ideally no allocation here?
-
-    frame->except = new frame_type<Checkpoint>::except_type{
-        .parent = frame->parent,
-        .exception = std::move(exception),
-    };
+    // Should have been called from inside a catch block
+    LF_ASSUME(*frame->except != nullptr);
   }
 }
 
@@ -310,18 +305,16 @@ constexpr auto extract_exception(frame_type<Checkpoint> *frame) noexcept -> std:
   LF_ASSUME(frame->exception_bit); // Should only be called if an exception was thrown.
 
   // Local copy
-  typename frame_type<Checkpoint>::except_type except = std::move(*frame->except);
+  std::exception_ptr except = std::move(*frame->except);
 
-  LF_ASSUME(except.exception); // Should have been set by stash_current_exception
+  // Should have been set by stash_current_exception
+  LF_ASSUME(except != nullptr);
 
   // Clean-up exception state
-  delete frame->except;
-  // Switch union's active member
-  frame->parent = except.parent;
-  // Reset
   frame->exception_bit = 0;
+  frame->except.destroy();
 
-  return std::move(except.exception);
+  return except; // NRVO
 }
 
 template <worker_context Context>
