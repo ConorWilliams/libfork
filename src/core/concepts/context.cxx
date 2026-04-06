@@ -22,12 +22,11 @@ concept ref_to_worker_stack = std::is_lvalue_reference_v<T> && worker_stack<std:
  * - Post an await handle to the context via `post()` and promise to call resume.
  */
 export template <typename T>
-concept worker_context =
-    plain_object<T> && requires (T context, steal_handle<T> frame, sched_handle<T> await) {
-      { context.push(frame) } -> std::same_as<void>;
-      { context.pop() } noexcept -> std::same_as<steal_handle<T>>;
-      { context.stack() } noexcept -> ref_to_worker_stack;
-    };
+concept worker_context = plain_object<T> && requires (T context, steal_handle<T> frame) {
+  { context.push(frame) } -> std::same_as<void>;
+  { context.pop() } noexcept -> std::same_as<steal_handle<T>>;
+  { context.stack() } noexcept -> ref_to_worker_stack;
+};
 
 /**
  * @brief Fetch the stack type of a worker context `T`.
