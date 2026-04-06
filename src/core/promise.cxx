@@ -49,9 +49,9 @@ constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
 
   LF_ASSUME(frame->kind == category::fork);
 
-  Context *context = get_tls_context<Context>();
+  Context &context = get_tls_context<Context>();
 
-  if (steal_handle<Context> last_pushed = context->pop()) {
+  if (steal_handle<Context> last_pushed = context.pop()) {
     // No-one stole continuation, we are the exclusive owner of parent -> just keep ripping!
     LF_ASSUME(last_pushed == steal_handle<Context>{key(), parent});
     // This is not a join point so no state (i.e. counters) is guaranteed.
@@ -82,7 +82,7 @@ constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
   // to access as it may be resumed and then destroyed by another thread. Hence
   // we must make copies on-the-stack of any data we may need if we lose the
   // join race.
-  bool const owner = parent->stack_ckpt == context->stack().checkpoint();
+  bool const owner = parent->stack_ckpt == context.stack().checkpoint();
 
   // TODO: we could reduce branching if we unconditionally release and also
   // drop pre-release function altogether... Need to benchmark with code that
@@ -90,7 +90,7 @@ constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
 
   // As soon as we do the fetch_sub (if we loose) someone may acquire
   // the stack so we must prepare it for release now.
-  auto release_key = context->stack().prepare_release();
+  auto release_key = context.stack().prepare_release();
 
   // TODO: we could add an `if (owner)` around acquire below, then we could
   // define that acquire is always called with null or not-self.
@@ -104,7 +104,7 @@ constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
 
     if (!owner) {
       // In case of scenario (2) we must acquire the parent's stack.
-      context->stack().acquire(std::as_const(parent->stack_ckpt));
+      context.stack().acquire(std::as_const(parent->stack_ckpt));
     }
 
     // Must reset parent's control block before resuming parent.
@@ -121,7 +121,7 @@ constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
   if (owner) {
     // We were unable to resume the parent and we were its owner, as the
     // resuming thread will take ownership of the parent's we must give it up.
-    context->stack().release(std::move(release_key));
+    context.stack().release(std::move(release_key));
   }
 
   // Else, case (2), our stack has no allocations on it, it may be used later.
@@ -288,7 +288,7 @@ struct awaitable : std::suspend_always {
       // use-after-free to then access self in the following line to fetch the
       // handle.
       LF_TRY {
-        get_tls_context<Context>()->push(steal_handle<Context>{key(), &parent.promise().frame});
+        get_tls_context<Context>().push(steal_handle<Context>{key(), &parent.promise().frame});
       } LF_CATCH_ALL {
         return self.stash_and_resume(parent), parent;
       }
@@ -460,7 +460,9 @@ struct mixin_frame {
     return std::assume_aligned<k_new_align>(ptr);
   }
 
-  static auto operator delete(void *p, std::size_t sz) noexcept -> void { get_tls_stack<Context>().pop(p, sz); }
+  static auto operator delete(void *p, std::size_t sz) noexcept -> void {
+    get_tls_stack<Context>().pop(p, sz);
+  }
 
   // --- Await transformations
 
