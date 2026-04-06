@@ -1,6 +1,5 @@
 module;
 #include "libfork/__impl/assume.hpp"
-#include "libfork/__impl/compiler.hpp"
 #include "libfork/__impl/exception.hpp"
 export module libfork.utils:utility;
 
@@ -49,31 +48,6 @@ not_null(T *ptr, std::source_location const loc = std::source_location::current(
   return ptr;
 }
 
-// TODO: get rid of immovable/move_only
-
-/**
- * @brief An immovable, empty type, use as a mixin.
- */
-export struct immovable {
-  immovable() = default;
-  immovable(const immovable &) = delete;
-  immovable(immovable &&) = delete;
-  auto operator=(const immovable &) -> immovable & = delete;
-  auto operator=(immovable &&) -> immovable & = delete;
-  ~immovable() = default;
-};
-
-/**
- * @brief A move-only, empty type, use as a mixin.
- */
-export struct move_only {
-  move_only() = default;
-  move_only(const move_only &) = delete;
-  move_only(move_only &&) = default;
-  auto operator=(const move_only &) -> move_only & = delete;
-  auto operator=(move_only &&) -> move_only & = default;
-  ~move_only() = default;
-};
 
 export class key_t;
 
@@ -90,46 +64,6 @@ export class key_t {
   constexpr key_t() = default;
 };
 
-/**
- * @brief Basic implementation of a Golang-like defer.
- *
- * \rst
- *
- * Use like:
- *
- * .. code::
- *
- *    auto * ptr = c_api_init();
- *
- *    defer _ = [&ptr] noexcept {
- *      c_api_clean_up(ptr);
- *    };
- *
- *    // Code that may throw
- *
- * \endrst
- */
-export template <class Fn>
-  requires std::is_nothrow_invocable_v<Fn> && std::is_object_v<Fn>
-class [[nodiscard("Defer will execute unless bound to a name!")]] defer : immovable {
- public:
-  /**
-   * @brief Construct a new Defer object.
-   *
-   * @param fn Nullary invocable forwarded into object and invoked by destructor.
-   */
-  constexpr defer(Fn &&fn) noexcept(std::is_nothrow_constructible_v<Fn, Fn &&>)
-      : m_fn(std::forward<Fn>(fn)) {}
-
-  /**
-   * @brief Calls the invocable.
-   */
-  LF_FORCE_INLINE constexpr ~defer() noexcept { std::invoke(std::move(m_fn)); }
-
- private:
-  [[no_unique_address]]
-  Fn m_fn;
-};
 
 /**
  * @brief Test if a pointer is aligned to a multiple of `Align`.

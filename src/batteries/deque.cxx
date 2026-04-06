@@ -178,8 +178,13 @@ struct return_nullopt {
  * @tparam T The type of the elements in the deque.
  */
 export template <dequeable T, allocator_of<std::atomic<T>> Allocator = std::allocator<std::atomic<T>>>
-class deque : immovable {
+class deque {
  public:
+  deque(deque const &) = delete;
+  deque(deque &&) = delete;
+  auto operator=(deque const &) -> deque & = delete;
+  auto operator=(deque &&) -> deque & = delete;
+
   /**
    * @brief A non-owning handle that can be used to steal items from the deque.
    *
