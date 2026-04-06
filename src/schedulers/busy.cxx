@@ -72,7 +72,7 @@ class busy_scheduler {
 
     std::size_t const n = m_contexts.size();
 
-    std::default_random_engine rng(static_cast<unsigned>(id + 1));
+    std::default_random_engine rng(safe_cast<unsigned>(id + 1));
     std::uniform_int_distribution<std::size_t> dist(0, n - 2);
 
     constexpr int k_steal_attempts = 1024;
@@ -86,22 +86,26 @@ class busy_scheduler {
         m_posted.pop_back();
         lock.unlock();
         execute(static_cast<context_type &>(ctx), task);
+        continue;
       }
 
-      for (int i = 0; i < k_steal_attempts; ++i) {
+      if (n > 1) {
+        for (int i = 0; i < k_steal_attempts; ++i) {
 
-        std::size_t victim = dist(rng);
+          std::size_t victim = dist(rng);
 
-        if (victim >= id) {
-          ++victim;
-        }
+          if (victim >= id) {
+            victim += 1;
+          }
 
-        LF_ASSUME(victim < n);
-        LF_ASSUME(victim != id);
+          LF_ASSUME(victim < n);
+          LF_ASSUME(victim != id);
 
-        if (auto result = m_contexts[victim].get_underlying().thief().steal()) {
-          // resume(*result);
-          continue;
+          if (auto result = m_contexts[victim].get_underlying().thief().steal()) {
+            // resume(*result);
+            LF_UNREACHABLE(); // TODO:
+            continue;
+          }
         }
       }
     }
