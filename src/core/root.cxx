@@ -104,7 +104,7 @@ root_pkg(std::shared_ptr<receiver_state<R>> recv, Fn fn, Args... args) -> root_t
   child->frame.parent = root;
   child->frame.cancel = nullptr;
 
-  LF_ASSUME(child->frame.kind_and_except == category::call);
+  LF_ASSUME(child->frame.kind == category::call);
 
   if constexpr (!std::is_void_v<async_result_t<Fn, Context, Args...>>) {
     child->return_address = std::addressof(recv->m_return_value);
@@ -121,7 +121,7 @@ root_pkg(std::shared_ptr<receiver_state<R>> recv, Fn fn, Args... args) -> root_t
   // - Cancellation
 
   if constexpr (LF_COMPILER_EXCEPTIONS) {
-    if (root->kind_and_except >= 2) {
+    if (root->exception_bit) {
       // The child threw an exception, propagate it to the receiver.
       recv->m_exception = extract_exception(root);
     }

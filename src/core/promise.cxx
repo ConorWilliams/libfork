@@ -36,7 +36,7 @@ constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
   // Validate final state
   LF_ASSUME(frame->steals == 0);
   LF_ASSUME(frame->joins == k_u16_max);
-  LF_ASSUME(frame->kind_and_except == category::call || frame->kind_and_except == category::fork);
+  LF_ASSUME(frame->exception_bit == 0);
 
   // Before resuming the next (or exiting) we should clean-up the current frame.
   defer _ = [frame] noexcept -> void {
@@ -45,11 +45,11 @@ constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
 
   frame_t<Context> *parent = not_null(frame->parent);
 
-  if (frame->kind_and_except == category::call) {
+  if (frame->kind == category::call) {
     return parent->handle();
   }
 
-  LF_ASSUME(frame->kind_and_except == category::fork);
+  LF_ASSUME(frame->kind == category::fork);
 
   Context &context = get_tls_context<Context>();
 
@@ -223,7 +223,9 @@ constexpr auto final_suspend_continue(Context *context, frame_t<Context> *parent
  */
 template <typename Checkpoint>
 constexpr void stash_current_exception(frame_type<Checkpoint> *frame) noexcept {
-  if (frame->atomic_set_exception()) {
+  // No synchronization is done via exception_bit, hence we can use relaxed atomics
+  // and rely on the usual fork/join synchronization to ensure memory ordering.
+  if (frame->atomic_except().exchange(1, std::memory_order_relaxed) == 0) {
 
     frame->except.construct(std::current_exception());
 
@@ -269,10 +271,14 @@ struct awaitable : std::suspend_always {
     self.child->parent = &parent.promise().frame;
     self.child->cancel = parent.promise().frame.cancel;
 
+    if constexpr (Cat == category::call) {
+      // Should be the default
+      LF_ASSUME(self.child->kind == category::call);
+    } else {
+      self.child->kind = Cat;
+    }
+
     if constexpr (Cat == category::fork) {
-
-      self.child->kind_and_except = category::fork;
-
       // It is critical to pass self by-value here, after the call to push()
       // the object `*this` may be destroyed, if passing by ref it would be
       // use-after-free to then access self in the following line to fetch the
@@ -282,9 +288,6 @@ struct awaitable : std::suspend_always {
       } LF_CATCH_ALL {
         return self.stash_and_resume(parent), parent;
       }
-    } else {
-      // Call should be the default
-      LF_ASSUME(self.child->kind_and_except == Cat);
     }
 
     return self.child->handle();
@@ -299,7 +302,7 @@ struct awaitable : std::suspend_always {
 template <typename Checkpoint>
 constexpr auto extract_exception(frame_type<Checkpoint> *frame) noexcept -> std::exception_ptr {
 
-  LF_ASSUME(frame->has_exception()); // Should only be called if an exception was thrown.
+  LF_ASSUME(frame->exception_bit); // Should only be called if an exception was thrown.
 
   // Local copy
   std::exception_ptr except = std::move(*frame->except);
@@ -308,7 +311,7 @@ constexpr auto extract_exception(frame_type<Checkpoint> *frame) noexcept -> std:
   LF_ASSUME(except != nullptr);
 
   // Clean-up exception state
-  frame->kind_and_except &= 0b00000001;
+  frame->exception_bit = 0;
   frame->except.destroy();
 
   return except; // NRVO
@@ -419,7 +422,7 @@ struct join_awaitable {
 
     // Outside parallel regions so can touch non-atomically.
     if constexpr (LF_COMPILER_EXCEPTIONS) {
-      if (self.frame->has_exception()) [[unlikely]] {
+      if (self.frame->exception_bit) [[unlikely]] {
         self.rethrow_exception();
       }
     }
