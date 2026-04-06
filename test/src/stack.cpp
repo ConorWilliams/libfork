@@ -40,12 +40,12 @@ constexpr void check_alignment(void *ptr) {
 } // namespace
 
 TEST_CASE("Concept", "[geometric_stack]") {
-  STATIC_REQUIRE(worker_stack<lf::stacks::geometric<>>); //
+  STATIC_REQUIRE(worker_stack<lf::geometric_stack<>>); //
 }
 
 TEST_CASE("Basic push and pop", "[geometric_stack]") {
   TEST_CONSTEXPR([]() -> bool {
-    lf::stacks::geometric<> stack;
+    lf::geometric_stack<> stack;
     expect(stack.empty());
 
     void *p1 = stack.push(10);
@@ -68,11 +68,11 @@ TEST_CASE("Basic push and pop", "[geometric_stack]") {
 
 TEST_CASE("Checkpoint and Acquire/Release", "[geometric_stack]") {
   TEST_CONSTEXPR([]() -> bool {
-    lf::stacks::geometric<> stack1;
+    lf::geometric_stack<> stack1;
     void *p1 = stack1.push(100);
     auto cp1 = stack1.checkpoint();
 
-    lf::stacks::geometric<> stack2;
+    lf::geometric_stack<> stack2;
     auto cp2 = stack2.checkpoint();
     expect(cp1 != cp2);
 
@@ -89,7 +89,7 @@ TEST_CASE("Checkpoint and Acquire/Release", "[geometric_stack]") {
 TEST_CASE("Stress test", "[geometric_stack]") {
   for (int k = 0; k < 10; ++k) {
 
-    lf::stacks::geometric<> stack;
+    lf::geometric_stack<> stack;
     std::mt19937_64 rng{std::random_device{}()};
     std::uniform_int_distribution<std::size_t> size_dist{1, 200};
     std::uniform_int_distribution<std::size_t> depth_dist{5, 5000};
@@ -124,7 +124,7 @@ TEST_CASE("Stress test", "[geometric_stack]") {
 }
 
 TEST_CASE("Randomized push/pop stress test", "[geometric_stack]") {
-  lf::stacks::geometric<> stack;
+  lf::geometric_stack<> stack;
   std::mt19937_64 rng{std::random_device{}()};
   std::bernoulli_distribution push_dist{0.51};
   std::uniform_int_distribution<std::size_t> size_dist{1, 512};
@@ -167,7 +167,7 @@ TEST_CASE("Randomized push/pop stress test", "[geometric_stack]") {
 }
 
 TEST_CASE("Spikey randomized push/pop stress test", "[geometric_stack]") {
-  lf::stacks::geometric<> stack;
+  lf::geometric_stack<> stack;
   std::mt19937_64 rng{std::random_device{}()};
 
   // Higher probability of push after push, higher probability of pop after pop

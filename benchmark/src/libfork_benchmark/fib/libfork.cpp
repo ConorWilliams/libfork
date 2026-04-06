@@ -68,10 +68,10 @@ using lf::adapt_deque;
 using lf::adapt_vector;
 using lf::inline_scheduler;
 
-using lf::stacks::geometric;
+using lf::geometric_stack;
 
-BENCH_ALL(inline_scheduler<real_context<geometric<>, adapt_vector>>)
-BENCH_ALL(inline_scheduler<poly_context<geometric<>, adapt_vector>>)
+BENCH_ALL(inline_scheduler<real_context<geometric_stack<>, adapt_vector>>)
+BENCH_ALL(inline_scheduler<poly_context<geometric_stack<>, adapt_vector>>)
 
-BENCH_ALL(inline_scheduler<real_context<geometric<>, adapt_deque>>)
-BENCH_ALL(inline_scheduler<poly_context<geometric<>, adapt_deque>>)
+BENCH_ALL(inline_scheduler<real_context<geometric_stack<>, adapt_deque>>)
+BENCH_ALL(inline_scheduler<poly_context<geometric_stack<>, adapt_deque>>)
