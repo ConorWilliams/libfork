@@ -40,6 +40,18 @@ constexpr void check_alignment(void *ptr) {
   }
 }
 
+constexpr void check_empty(auto const &stack) {
+  if constexpr (requires { stack.empty(); }) {
+    expect(stack.empty());
+  }
+}
+
+constexpr void check_non_empty(auto const &stack) {
+  if constexpr (requires { stack.empty(); }) {
+    expect(!stack.empty());
+  }
+}
+
 } // namespace
 
 TEMPLATE_TEST_CASE("Concept", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>) {
@@ -49,21 +61,21 @@ TEMPLATE_TEST_CASE("Concept", "[stacks]", lf::geometric_stack<>, lf::adaptor_sta
 TEMPLATE_TEST_CASE("Basic push and pop", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>) {
   TEST_CONSTEXPR([]() -> bool {
     TestType stack;
-    expect(stack.empty());
+    check_empty(stack);
 
     void *p1 = stack.push(10);
     check_alignment(p1);
-    expect(!stack.empty());
+    check_non_empty(stack);
 
     void *p2 = stack.push(20);
     check_alignment(p2);
     expect(p2 != p1);
-    expect(!stack.empty());
+    check_non_empty(stack);
 
     // Pop in FILO order
     stack.pop(p2, 20);
     stack.pop(p1, 10);
-    expect(stack.empty());
+    check_empty(stack);
 
     return true;
   });
@@ -121,7 +133,7 @@ TEMPLATE_TEST_CASE("Single pass", "[stacks]", lf::geometric_stack<>, lf::adaptor
         stack.pop(e.ptr, e.size);
       }
 
-      REQUIRE(stack.empty());
+      check_empty(stack);
     }
   }
 }
@@ -143,7 +155,7 @@ TEMPLATE_TEST_CASE("Randomized push/pop", "[stacks]", lf::geometric_stack<>, lf:
   while (total_pushed < target_pushed) {
 
     if (entries.empty()) {
-      REQUIRE(stack.empty());
+      check_empty(stack);
     }
 
     if (entries.empty() || push_dist(rng)) {
@@ -192,7 +204,7 @@ TEMPLATE_TEST_CASE("Spikey randomized push/pop", "[stacks]", lf::geometric_stack
     bool do_push = true;
 
     if (entries.empty()) {
-      REQUIRE(stack.empty());
+      check_empty(stack);
       do_push = true;
     } else if (last_was_push) {
       do_push = push_after_push(rng);
@@ -221,5 +233,5 @@ TEMPLATE_TEST_CASE("Spikey randomized push/pop", "[stacks]", lf::geometric_stack
     stack.pop(e.ptr, e.size);
     entries.pop_back();
   }
-  REQUIRE(stack.empty());
+  check_empty(stack);
 }
