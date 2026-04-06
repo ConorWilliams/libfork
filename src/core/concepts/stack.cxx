@@ -21,7 +21,7 @@ consteval auto constify(T &&x) noexcept -> std::add_const_t<T> &;
  *     - Be "cheap to copy".
  *     - Have a null state (default constructed) that only compares equal to itself.
  *     - Is allowed to return null if push has never been called.
- *     - Compare equal if and only if they belong to the same stack or are both null.
+ *     - Compare equal if and only if they are both null or they allocate from the same stack.
  *     - Have no preconditions about when it's called.
  * - Prepare release puts the stack into a state which another thread can acquire it.
  * - Release detaches the current stack and leaves `this` empty.
