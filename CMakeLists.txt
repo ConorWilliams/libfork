@@ -85,8 +85,8 @@ target_sources(libfork_libfork
       src/batteries/deque.cxx
       src/batteries/adaptors.cxx
       src/batteries/contexts.cxx
-      src/batteries/stacks/geometric.cxx
-      src/batteries/stacks/dummy.cxx
+      src/batteries/geometric_stack.cxx
+      src/batteries/dummy_stack.cxx
       # libfork.schedulers
       src/schedulers/schedulers.cxx
       src/schedulers/inline.cxx
