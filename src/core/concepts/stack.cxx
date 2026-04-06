@@ -47,6 +47,6 @@ concept worker_stack = plain_object<T> && requires (T stack, std::size_t n, void
 // TODO: Allocator aware stack
 
 // export template <typename T>
-// concept aa_worker_stack = worker_stack<T> && true; 
+// concept aa_worker_stack = worker_stack<T> && true;
 
 } // namespace lf
