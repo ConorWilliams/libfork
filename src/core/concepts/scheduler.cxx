@@ -4,14 +4,14 @@ import std;
 
 import libfork.utils;
 
-import libfork.core:handles;
+import :handles;
 
 namespace lf {
 
-template <typename T>
+export template <typename T>
 concept has_context_typedef = requires { typename std::remove_cvref_t<T>::context_type; };
 
-template <has_context_typedef T>
+export template <has_context_typedef T>
 using context_t = typename std::remove_cvref_t<T>::context_type;
 
 /**

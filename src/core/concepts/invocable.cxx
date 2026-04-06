@@ -6,8 +6,8 @@ import std;
 
 import libfork.utils;
 
-import libfork.core:task;
-import libfork.core:concepts_context;
+import :task;
+import :concepts_context;
 
 namespace lf {
 

@@ -8,6 +8,7 @@ import std;
 
 import libfork.utils;
 import :concepts_invocable;
+import :concepts_scheduler;
 import :frame;
 import :thread_locals;
 import :promise;

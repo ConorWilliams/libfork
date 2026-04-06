@@ -4,7 +4,7 @@ import std;
 
 import libfork.utils;
 
-import libfork.core:concepts_stack;
+import :concepts_stack;
 
 namespace lf {
 
