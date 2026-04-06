@@ -82,7 +82,7 @@ class busy_thread_pool {
       LF_ASSUME(ctx.get_underlying().empty()); // ctx interactions are core-managed
 
       if (auto lock = std::unique_lock(m_mutex); !m_posted.empty()) {
-        auto task = m_posted.back();
+        sched_handle task = m_posted.back();
         m_posted.pop_back();
         lock.unlock();
         execute(static_cast<context_type &>(ctx), task);
@@ -101,9 +101,8 @@ class busy_thread_pool {
           LF_ASSUME(victim < n);
           LF_ASSUME(victim != id);
 
-          if (auto result = m_contexts[victim].get_underlying().thief().steal()) {
-            // resume(*result);
-            LF_UNREACHABLE(); // TODO:
+          if (auto [err, result] = m_contexts[victim].get_underlying().thief().steal()) {
+            execute(static_cast<context_type &>(ctx), result);
             continue;
           }
         }
