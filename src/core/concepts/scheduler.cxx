@@ -2,8 +2,6 @@ export module libfork.core:concepts_scheduler;
 
 import std;
 
-import libfork.utils;
-
 import :handles;
 
 namespace lf {

@@ -6,9 +6,13 @@ export module libfork.core:root;
 import std;
 
 import libfork.utils;
+import :concepts_context;
+import :concepts_invocable;
 import :frame;
 import :promise;
 import :receiver;
+import :thread_locals;
+import :task;
 
 namespace lf {
 

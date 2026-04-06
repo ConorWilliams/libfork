@@ -2,8 +2,6 @@ export module libfork.utils:concepts;
 
 import std;
 
-import :utility;
-
 namespace lf {
 
 // =========== Atomic related concepts =========== //

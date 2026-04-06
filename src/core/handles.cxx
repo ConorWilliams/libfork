@@ -1,7 +1,5 @@
 export module libfork.core:handles;
 
-import std;
-
 import libfork.utils;
 
 import :frame;
