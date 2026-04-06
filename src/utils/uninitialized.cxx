@@ -20,11 +20,12 @@ class uninitialized {
 
   constexpr ~uninitialized() = default;
 
-  auto operator->() noexcept -> T * { return std::launder(reinterpret_cast<T *>(buffer)); }
+  auto operator->() noexcept -> T * { return std::launder(std::bit_cast<T *>(buffer)); }
 
   auto operator*() noexcept -> T & { return **this; }
 
   template <class... Args>
+    requires std::constructible_from<T, Args...>
   auto construct(Args &&...args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> T & {
     return *::new (static_cast<void *>(buffer)) T(std::forward<Args>(args)...);
   }
