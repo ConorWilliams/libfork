@@ -5,6 +5,7 @@ export module libfork.core:root;
 
 import std;
 
+import libfork.utils;
 import :frame;
 import :promise;
 import :receiver;

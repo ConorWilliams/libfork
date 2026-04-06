@@ -7,13 +7,11 @@ export module libfork.core:promise;
 
 import std;
 
+import libfork.utils;
 import :concepts;
 import :frame;
-import :utility;
-
 import :thread_locals;
 import :ops;
-
 import :handles;
 
 // TODO: vet constexpr usage in the library
