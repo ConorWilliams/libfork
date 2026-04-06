@@ -4,6 +4,7 @@ export module libfork.core:poly_context;
 
 import std;
 
+import libfork.utils;
 import :concepts;
 
 namespace lf {
@@ -26,8 +27,11 @@ class base_context {
   Stack m_stack;
 };
 
-export struct post_error : std::runtime_error {
-  using std::runtime_error::runtime_error;
+export struct post_error final : libfork_exception {
+  [[nodiscard]]
+  constexpr auto what() const noexcept -> const char * override {
+    return "derived context does not support posting tasks.";
+  }
 };
 
 /**
@@ -43,9 +47,7 @@ class poly_context : public base_context<Stack> {
   virtual void push(steal_handle<poly_context>) = 0;
   virtual auto pop() noexcept -> steal_handle<poly_context> = 0;
 
-  virtual void post([[maybe_unused]] sched_handle<poly_context> handle) {
-    LF_THROW(post_error{"Derived context does not support posting tasks."});
-  }
+  virtual void post([[maybe_unused]] sched_handle<poly_context> handle) { LF_THROW(post_error{}); }
 
   virtual ~poly_context() noexcept = default;
 };

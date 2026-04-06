@@ -60,6 +60,7 @@ target_sources(libfork_libfork
       src/libfork.cxx
       # libfork.utils
       src/utils/utils.cxx
+      src/utils/exception.cxx
       src/utils/utility.cxx
       src/utils/constants.cxx
       src/utils/tuple.cxx

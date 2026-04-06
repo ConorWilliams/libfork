@@ -20,8 +20,11 @@ namespace lf {
 export template <typename T>
 concept schedulable_return = std::is_void_v<T> || std::default_initializable<T>;
 
-export struct schedule_error : std::runtime_error {
-  using std::runtime_error::runtime_error;
+export struct schedule_error final : libfork_exception {
+  [[nodiscard]]
+  constexpr auto what() const noexcept -> const char * override {
+    return "schedule called from within a worker thread!";
+  }
 };
 
 template <typename T>
@@ -59,7 +62,7 @@ schedule(Sch &&sch, Fn &&fn, Args &&...args) -> schedule_result_t<Fn, context_t<
   // TODO: make sure this is exception safe and correctly qualifed
 
   if (thread_context<context_type> != nullptr) {
-    LF_THROW(schedule_error{"Schedule called from within a worker thread!"});
+    LF_THROW(schedule_error{});
   }
 
   // TODO: allocator aware new

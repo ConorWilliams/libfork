@@ -10,10 +10,10 @@ import libfork.utils;
 
 namespace lf {
 
-export struct broken_receiver_error final : std::exception {
+export struct broken_receiver_error final : libfork_exception {
   [[nodiscard]]
   constexpr auto what() const noexcept -> const char * override {
-    return "Receiver is in invalid state";
+    return "receiver is in invalid state";
   }
 };
 
