@@ -88,5 +88,7 @@ BENCH_ALL(inline_scheduler<poly_context<geometric_stack<>, adapt_vector>>)
 BENCH_ALL(inline_scheduler<real_context<geometric_stack<>, adapt_deque>>)
 BENCH_ALL(inline_scheduler<poly_context<geometric_stack<>, adapt_deque>>)
 
+// TODO: bench over number of threads
+
 BENCH_ALL(lf::busy_thread_pool<false, geometric_stack<>>)
 BENCH_ALL(lf::busy_thread_pool<true, geometric_stack<>>)
