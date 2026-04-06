@@ -19,7 +19,6 @@ namespace lf {
  * For this to conform to `worker_stack` the allocators void pointer type must be `void *`.
  */
 export template <allocator_of<std::byte> Allocator = std::allocator<std::byte>>
-  requires std::allocator_traits<Allocator>::is_always_equal::value
 class adaptor_stack {
 
   struct alignas(k_new_align) aligned {};
@@ -37,8 +36,22 @@ class adaptor_stack {
     explicit constexpr release_t(key_t) noexcept {}
   };
 
-  struct checkpoint_t {
-    auto operator==(checkpoint_t const &) const -> bool = default;
+  class checkpoint_t {
+   public:
+    constexpr checkpoint_t() noexcept = default;
+    constexpr auto operator==(checkpoint_t const &) const noexcept -> bool = default;
+
+   private:
+    friend adaptor_stack;
+    explicit constexpr checkpoint_t(align_alloc const &alloc) noexcept : m_alloc(alloc) {}
+
+    struct empty {
+      constexpr empty() noexcept = default;
+      constexpr auto operator==(empty const &) const noexcept -> bool = default;
+      explicit constexpr empty(align_alloc const &) noexcept {};
+    };
+
+    std::conditional_t<align_trait::is_always_equal::value, empty, align_alloc> m_alloc;
   };
 
  public:
@@ -58,7 +71,7 @@ class adaptor_stack {
    */
   [[nodiscard]]
   constexpr auto checkpoint() noexcept -> checkpoint_t {
-    return {};
+    return checkpoint_t{m_alloc};
   }
 
   /**
