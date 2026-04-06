@@ -39,7 +39,13 @@ void run(benchmark::State &state) {
 
   state.counters["n"] = static_cast<double>(n);
 
-  Sch scheduler{2};
+  Sch scheduler = [] -> Sch {
+    if constexpr (std::constructible_from<Sch, std::size_t>) {
+      return Sch{4};
+    } else {
+      return Sch{};
+    }
+  }();
 
   for (auto _ : state) {
     benchmark::DoNotOptimize(n);
@@ -70,13 +76,14 @@ using lf::inline_scheduler;
 using lf::adaptor_stack;
 using lf::geometric_stack;
 
-// BENCH_ALL(inline_scheduler<real_context<adaptor_stack<>, adapt_vector>>)
-// BENCH_ALL(inline_scheduler<poly_context<adaptor_stack<>, adapt_vector>>)
-//
-// BENCH_ALL(inline_scheduler<real_context<geometric_stack<>, adapt_vector>>)
-// BENCH_ALL(inline_scheduler<poly_context<geometric_stack<>, adapt_vector>>)
-//
-// BENCH_ALL(inline_scheduler<real_context<geometric_stack<>, adapt_deque>>)
-// BENCH_ALL(inline_scheduler<poly_context<geometric_stack<>, adapt_deque>>)
-//
+BENCH_ALL(inline_scheduler<real_context<adaptor_stack<>, adapt_vector>>)
+BENCH_ALL(inline_scheduler<poly_context<adaptor_stack<>, adapt_vector>>)
+
+BENCH_ALL(inline_scheduler<real_context<geometric_stack<>, adapt_vector>>)
+BENCH_ALL(inline_scheduler<poly_context<geometric_stack<>, adapt_vector>>)
+
+BENCH_ALL(inline_scheduler<real_context<geometric_stack<>, adapt_deque>>)
+BENCH_ALL(inline_scheduler<poly_context<geometric_stack<>, adapt_deque>>)
+
 BENCH_ALL(lf::busy_thread_pool<false, geometric_stack<>>)
+BENCH_ALL(lf::busy_thread_pool<true, geometric_stack<>>)
