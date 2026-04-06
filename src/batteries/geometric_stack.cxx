@@ -131,9 +131,9 @@ class geometric_stack {
    */
   constexpr void pop(void_ptr ptr, [[maybe_unused]] std::size_t n) noexcept {
 
-    LF_ASSUME(!empty());
     LF_ASSUME(m_ctrl != nullptr);
     LF_ASSUME(m_ctrl->top != nullptr);
+    LF_ASSUME(!empty());
     LF_ASSUME(m_sp != nullptr);
     LF_ASSUME(ptr != nullptr);
 
