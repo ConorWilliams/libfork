@@ -5,6 +5,7 @@ export module libfork.batteries:contexts;
 import std;
 
 import libfork.core;
+
 import :dummy_stack;
 
 namespace lf {

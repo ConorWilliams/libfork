@@ -3,6 +3,7 @@ export module libfork.batteries:adaptors;
 import std;
 
 import libfork.core;
+
 import :deque;
 
 namespace lf {
