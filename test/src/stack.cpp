@@ -1,3 +1,4 @@
+#include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 import std;
@@ -41,13 +42,13 @@ constexpr void check_alignment(void *ptr) {
 
 } // namespace
 
-TEST_CASE("Concept", "[geometric_stack]") {
-  STATIC_REQUIRE(worker_stack<lf::geometric_stack<>>); //
+TEMPLATE_TEST_CASE("Concept", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>) {
+  STATIC_REQUIRE(worker_stack<TestType>); //
 }
 
-TEST_CASE("Basic push and pop", "[geometric_stack]") {
+TEMPLATE_TEST_CASE("Basic push and pop", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>) {
   TEST_CONSTEXPR([]() -> bool {
-    lf::geometric_stack<> stack;
+    TestType stack;
     expect(stack.empty());
 
     void *p1 = stack.push(10);
@@ -68,7 +69,7 @@ TEST_CASE("Basic push and pop", "[geometric_stack]") {
   });
 }
 
-TEST_CASE("Checkpoint and Acquire/Release", "[geometric_stack]") {
+TEMPLATE_TEST_CASE("Checkpoint and Acquire/Release", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>) {
   TEST_CONSTEXPR([]() -> bool {
     lf::geometric_stack<> stack1;
     void *p1 = stack1.push(100);
@@ -88,7 +89,7 @@ TEST_CASE("Checkpoint and Acquire/Release", "[geometric_stack]") {
   });
 }
 
-TEST_CASE("Stress test", "[geometric_stack]") {
+TEMPLATE_TEST_CASE("Single pass", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>) {
   for (int k = 0; k < 10; ++k) {
 
     lf::geometric_stack<> stack;
@@ -125,7 +126,7 @@ TEST_CASE("Stress test", "[geometric_stack]") {
   }
 }
 
-TEST_CASE("Randomized push/pop stress test", "[geometric_stack]") {
+TEMPLATE_TEST_CASE("Randomized push/pop", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>) {
   lf::geometric_stack<> stack;
   std::mt19937_64 rng{std::random_device{}()};
   std::bernoulli_distribution push_dist{0.51};
@@ -168,7 +169,7 @@ TEST_CASE("Randomized push/pop stress test", "[geometric_stack]") {
   REQUIRE(stack.empty());
 }
 
-TEST_CASE("Spikey randomized push/pop stress test", "[geometric_stack]") {
+TEMPLATE_TEST_CASE("Spikey randomized push/pop", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>) {
   lf::geometric_stack<> stack;
   std::mt19937_64 rng{std::random_device{}()};
 
