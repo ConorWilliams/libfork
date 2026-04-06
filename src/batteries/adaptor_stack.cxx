@@ -23,6 +23,8 @@ class adaptor_stack {
 
   struct alignas(k_new_align) aligned {};
 
+  static_assert(sizeof(aligned) == k_new_align);
+
   using align_trait = std::allocator_traits<Allocator>::template rebind_traits<aligned>;
   using align_alloc = align_trait::allocator_type;
   using alloc_ptr = align_trait::pointer;
@@ -40,21 +42,19 @@ class adaptor_stack {
     constexpr auto operator==(checkpoint_t const &) const noexcept -> bool = default;
 
    private:
+    friend adaptor_stack;
+    explicit constexpr checkpoint_t(align_alloc const &alloc) noexcept : m_alloc(alloc) {}
+
     struct empty {
       constexpr empty() noexcept = default;
       constexpr auto operator==(empty const &) const noexcept -> bool = default;
       explicit constexpr empty(align_alloc const &) noexcept {};
     };
 
-    friend adaptor_stack;
-    explicit constexpr checkpoint_t(align_alloc const &alloc) noexcept : m_alloc(alloc) {}
-
     std::conditional_t<align_trait::is_always_equal::value, empty, align_alloc> m_alloc;
   };
 
  public:
-  using allocator_type = Allocator;
-
   constexpr adaptor_stack() noexcept(noexcept(Allocator{})) : adaptor_stack(Allocator()) {}
   explicit constexpr adaptor_stack(Allocator const &alloc) noexcept : m_alloc(alloc) {}
 
@@ -81,7 +81,7 @@ class adaptor_stack {
   constexpr auto push(std::size_t size) -> void_ptr {
     LF_ASSUME(size > 0);
     size_int num_aligned = (size + (k_new_align - 1)) / sizeof(aligned);
-    return static_cast<void_ptr>(std::allocator_traits<Allocator>::allocate(m_alloc, num_aligned));
+    return static_cast<void_ptr>(align_trait::allocate(m_alloc, num_aligned));
   }
 
   /**
@@ -90,7 +90,7 @@ class adaptor_stack {
   constexpr void pop(void_ptr ptr, [[maybe_unused]] std::size_t size) noexcept {
     LF_ASSUME(size > 0);
     size_int num_aligned = (size + (k_new_align - 1)) / sizeof(aligned);
-    std::allocator_traits<Allocator>::deallocate(m_alloc, static_cast<alloc_ptr>(ptr), num_aligned);
+    align_trait::deallocate(m_alloc, static_cast<alloc_ptr>(ptr), num_aligned);
   }
 
   [[nodiscard]]
@@ -98,12 +98,12 @@ class adaptor_stack {
     return release_t{key()};
   }
 
-  constexpr void release([[maybe_unused]] release_t) noexcept {}
+  constexpr void release([[maybe_unused]] release_t key) noexcept {}
 
-  constexpr void acquire(checkpoint_t ckpt) noexcept {}
+  constexpr void acquire([[maybe_unused]] checkpoint_t ckpt) noexcept {}
 
  private:
-  Allocator m_alloc;
+  align_alloc m_alloc;
 };
 
 } // namespace lf
