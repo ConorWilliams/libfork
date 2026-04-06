@@ -1,4 +1,5 @@
 module;
+#include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/compiler.hpp"
 export module libfork.schedulers:busy_scheduler;
 
@@ -65,66 +66,49 @@ class busy_scheduler {
  private:
   void worker(std::stop_token stop, std::size_t id) {
 
-    auto &ctx = m_contexts[id];
+    LF_ASSUME(id < m_contexts.size());
 
-    thread_local_context<context_type> = static_cast<context_type *>(&ctx);
+    context &ctx = m_contexts[id];
 
-    defer cleanup = [] noexcept -> auto {
-      thread_local_context<context_type> = nullptr;
-    };
-
-    auto const n = m_contexts.size();
+    std::size_t const n = m_contexts.size();
 
     std::default_random_engine rng(static_cast<unsigned>(id + 1));
+    std::uniform_int_distribution<std::size_t> dist(0, n - 2);
+
+    constexpr int k_steal_attempts = 1024;
 
     while (!stop.stop_requested()) {
 
-      // 1. Pop from own deque.
-      if (auto task = ctx.pop()) {
+      LF_ASSUME(!ctx.empty()); // ctx interactions are core-managed
+
+      if (auto lock = std::unique_lock(m_mutex); !m_posted.empty()) {
+        auto task = m_posted.back();
+        m_posted.pop_back();
+        lock.unlock();
         resume(task);
-        continue;
       }
 
-      // 2. Check the posted queue for new root tasks.
-      {
-        auto lock = std::unique_lock(m_mutex);
-        if (!m_posted.empty()) {
-          auto task = m_posted.back();
-          m_posted.pop_back();
-          lock.unlock();
-          resume(task);
-          continue;
-        }
-      }
+      for (int i = 0; i < k_steal_attempts; ++i) {
 
-      // 3. Try stealing from a random other worker.
-      if (n > 1) {
-        auto victim = std::uniform_int_distribution<std::size_t>(0, n - 2)(rng);
+        std::size_t victim = dist(rng);
+
         if (victim >= id) {
           ++victim;
         }
+
+        LF_ASSUME(victim < n);
+        LF_ASSUME(victim != id);
+
         if (auto result = m_contexts[victim].get_underlying().thief().steal()) {
           resume(*result);
           continue;
         }
       }
-
-      std::this_thread::yield();
     }
   }
 
   void join_all() {
     m_threads.clear(); // jthread calls stop and joins in destructor
-  }
-
-  static void resume(steal_handle<context_type> task) {
-    auto *frame = static_cast<frame_type<checkpoint_t<context_type>> *>(get(key(), task));
-    frame->handle().resume();
-  }
-
-  static void resume(sched_handle<context_type> task) {
-    auto *frame = static_cast<frame_type<checkpoint_t<context_type>> *>(get(key(), task));
-    frame->handle().resume();
   }
 
   std::vector<context> m_contexts;
