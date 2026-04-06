@@ -1,4 +1,4 @@
-export module libfork.core:dummy_stack;
+export module libfork.batteries:dummy_stack;
 
 import std;
 

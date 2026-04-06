@@ -1,6 +1,6 @@
 module;
 #include "libfork/__impl/utils.hpp"
-export module libfork.core:tuple;
+export module libfork.utils:tuple;
 
 import std;
 
