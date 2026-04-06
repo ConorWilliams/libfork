@@ -71,7 +71,7 @@ class busy_scheduler {
 
     auto const n = m_contexts.size();
 
-    std::minstd_rand rng(static_cast<unsigned>(id + 1));
+    std::default_random_engine rng(static_cast<unsigned>(id + 1));
 
     while (!stop.stop_requested()) {
 

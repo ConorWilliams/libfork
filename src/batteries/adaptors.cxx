@@ -42,6 +42,7 @@ class adapt_deque {
   constexpr auto thief() noexcept { return m_deque.thief(); }
 
  private:
+  // TODO: make initializable/configurable
   deque<steal_handle<Context>> m_deque{1024};
 };
 
