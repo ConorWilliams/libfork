@@ -61,17 +61,12 @@ schedule(Sch &&sch, Fn &&fn, Args &&...args) -> schedule_result_t<Fn, context_t<
 
   using context_type = context_t<Sch>;
 
-  // TODO: make sure this is exception safe and correctly qualifed
-
   if (thread_local_context<context_type> != nullptr) {
     LF_THROW(schedule_error{});
   }
 
   // TODO: allocator aware new
   std::shared_ptr state = std::make_shared<schedule_state_t<Fn, context_type, Args...>>();
-
-  // TODO: clean up block if exception
-  // TODO: make sure we're cancel safe
 
   // Package has shared ownership of the state, fine if this throws
   root_task task = root_pkg<context_type>(state, std::forward<Fn>(fn), std::forward<Args>(args)...);

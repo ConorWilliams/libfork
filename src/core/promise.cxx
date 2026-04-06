@@ -244,7 +244,8 @@ struct awaitable : std::suspend_always {
    * @brief In a separate function to allow it to be placed in cold block.
    */
   template <typename T>
-  constexpr void stash_and_resume(this awaitable self, coro<promise_type<T, Context>> parent) noexcept {
+  constexpr void
+  destroy_child_stash_exception(this awaitable self, coro<promise_type<T, Context>> parent) noexcept {
     // Clean-up the child that will never be resumed.
     self.child->handle().destroy();
     stash_current_exception(&parent.promise().frame);
@@ -285,7 +286,7 @@ struct awaitable : std::suspend_always {
       LF_TRY {
         get_tls_context<Context>().push(steal_handle<Context>{key(), &parent.promise().frame});
       } LF_CATCH_ALL {
-        return self.stash_and_resume(parent), parent;
+        return self.destroy_child_stash_exception(parent), parent;
       }
     }
 
@@ -513,7 +514,10 @@ struct mixin_frame {
 
   constexpr static auto final_suspend() noexcept -> final_awaitable { return {}; }
 
-  constexpr void unhandled_exception(this auto &self) noexcept { stash_current_exception(&self.frame); }
+  constexpr void unhandled_exception(this auto &self) noexcept {
+    // Stash the exception in the parent which will rethrow at the join.
+    stash_current_exception(self.frame.parent);
+  }
 };
 
 // =============== Promise (void) =============== //
