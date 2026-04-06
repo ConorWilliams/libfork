@@ -2,7 +2,7 @@ module;
 #include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/compiler.hpp"
 #include "libfork/__impl/exception.hpp"
-export module libfork.core:utility;
+export module libfork.utils:utility;
 
 import std;
 
@@ -11,7 +11,7 @@ namespace lf {
 /**
  * @brief Safe integral cast, will terminate if the cast would overflow in debug.
  */
-template <std::integral To, std::integral From>
+export template <std::integral To, std::integral From>
 [[nodiscard]]
 constexpr auto safe_cast(From val) noexcept -> To {
 
@@ -35,7 +35,7 @@ constexpr auto safe_cast(From val) noexcept -> To {
 /**
  * @brief Assume a pointer is not null, otherwise terminates the program in debug mode.
  */
-template <typename T>
+export template <typename T>
 [[nodiscard]]
 constexpr auto
 not_null(T *ptr, std::source_location const loc = std::source_location::current()) noexcept -> T * {
@@ -75,14 +75,14 @@ export struct move_only {
   ~move_only() = default;
 };
 
-class key_t;
+export class key_t;
 
-constexpr auto key() noexcept -> key_t;
+export constexpr auto key() noexcept -> key_t;
 
 /**
  * @brief Only way to get one is via un-exported `key()` function.
  */
-class key_t {
+export class key_t {
  public:
   friend constexpr auto key() noexcept -> key_t { return {}; }
 
@@ -93,7 +93,7 @@ class key_t {
 /**
  * @brief An opaque pointer that only the library can construct.
  */
-class opaque {
+export class opaque {
  public:
   constexpr opaque() = default;
   constexpr opaque(key_t, void *ptr) noexcept : m_ptr(ptr) {}
