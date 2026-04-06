@@ -59,7 +59,10 @@ void run(benchmark::State &state) {
 } // namespace
 
 #define BENCH_ONE(mode, ...)                                                                                 \
-  BENCHMARK_TEMPLATE(run, __VA_ARGS__)->Name(#mode "/libfork/fib/" #__VA_ARGS__)->Arg(fib_##mode)->UseRealTime();
+  BENCHMARK_TEMPLATE(run, __VA_ARGS__)                                                                       \
+      ->Name(#mode "/libfork/fib/" #__VA_ARGS__)                                                             \
+      ->Arg(fib_##mode)                                                                                      \
+      ->UseRealTime();
 
 #define BENCH_ALL(...) BENCH_ONE(test, __VA_ARGS__) BENCH_ONE(base, __VA_ARGS__)
 

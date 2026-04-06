@@ -52,7 +52,6 @@ export struct steal_overflow_error final : libfork_exception {
   }
 };
 
-
 export template <worker_context Context>
 constexpr void execute(Context &context, steal_handle<Context> handle) {
 
