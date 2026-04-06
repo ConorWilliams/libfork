@@ -37,18 +37,20 @@ constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
   LF_ASSUME(frame->joins == k_u16_max);
   LF_ASSUME(frame->exception_bit == 0);
 
-  // Before resuming the next (or exiting) we should clean-up the current frame.
-  defer _ = [frame] noexcept -> void {
-    frame->handle().destroy();
-  };
+  // Local copies (before we destroy frame)
+  category const kind = frame->kind;
 
   frame_t<Context> *parent = not_null(frame->parent);
 
-  if (frame->kind == category::call) {
+  // Before resuming the next (or exiting) we should clean-up the current frame.
+  // Can't use frame from this point onwards
+  frame->handle().destroy();
+
+  if (kind == category::call) {
     return parent->handle();
   }
 
-  LF_ASSUME(frame->kind == category::fork);
+  LF_ASSUME(kind == category::fork);
 
   Context &context = get_tls_context<Context>();
 
