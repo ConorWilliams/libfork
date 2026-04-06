@@ -63,12 +63,12 @@ TEMPLATE_TEST_CASE("Inline schedule", "[schedule]", mono_inline_ctx, poly_inline
 
 namespace {
 
-using mono_busy_scheduler = lf::busy_scheduler<false, lf::geometric_stack<>>;
-using poly_busy_scheduler = lf::busy_scheduler<true, lf::geometric_stack<>>;
+using mono_busy_thread_pool = lf::busy_thread_pool<false, lf::geometric_stack<>>;
+using poly_busy_thread_pool = lf::busy_thread_pool<true, lf::geometric_stack<>>;
 
 } // namespace
 
-TEMPLATE_TEST_CASE("Busy schedule", "[schedule]", mono_busy_scheduler, poly_busy_scheduler) {
+TEMPLATE_TEST_CASE("Busy schedule", "[schedule]", mono_busy_thread_pool, poly_busy_thread_pool) {
   for (std::size_t thr = 1; thr < 4; ++thr) {
     TestType scheduler{thr};
     simple_tests(scheduler);
