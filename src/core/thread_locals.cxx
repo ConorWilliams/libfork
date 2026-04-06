@@ -10,7 +10,7 @@ namespace lf {
  * @brief Thread-local pointer to the current worker context.
  */
 export template <worker_context Context>
-constinit inline thread_local Context *thread_context = nullptr;
+constinit inline thread_local Context *thread_local_context = nullptr;
 
 // TODO: return a reference, rename to get_tls_*
 
@@ -20,13 +20,13 @@ constinit inline thread_local Context *thread_context = nullptr;
  * @brief A getter for the current worker context, checks for null in debug.
  */
 template <worker_context Context>
-constexpr auto get_context() noexcept -> Context * {
-  return not_null(thread_context<Context>);
+constexpr auto get_tls_context() noexcept -> Context * {
+  return not_null(thread_local_context<Context>);
 }
 
 template <worker_context Context>
-constexpr auto get_stack() noexcept -> stack_t<Context> & {
-  return get_context<Context>()->stack();
+constexpr auto get_tls_stack() noexcept -> stack_t<Context> & {
+  return get_tls_context<Context>()->stack();
 }
 
 } // namespace lf

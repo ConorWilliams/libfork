@@ -62,7 +62,7 @@ schedule(Sch &&sch, Fn &&fn, Args &&...args) -> schedule_result_t<Fn, context_t<
 
   // TODO: make sure this is exception safe and correctly qualifed
 
-  if (thread_context<context_type> != nullptr) {
+  if (thread_local_context<context_type> != nullptr) {
     LF_THROW(schedule_error{});
   }
 

@@ -74,7 +74,7 @@ auto //
 root_pkg(std::shared_ptr<receiver_state<R>> recv, Fn fn, Args... args) -> root_task<checkpoint_t<Context>> {
 
   // This should be resumed on a valid context.
-  LF_ASSUME(thread_context<Context> != nullptr);
+  LF_ASSUME(thread_local_context<Context> != nullptr);
 
   using checkpoint = checkpoint_t<Context>;
 

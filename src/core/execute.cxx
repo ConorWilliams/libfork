@@ -29,14 +29,14 @@ export struct execute_error final : libfork_exception {
 export template <worker_context Context>
 constexpr void execute(Context &context, sched_handle<Context> handle) {
 
-  if (thread_context<Context> != nullptr) {
+  if (thread_local_context<Context> != nullptr) {
     LF_THROW(execute_error{});
   }
 
-  thread_context<Context> = std::addressof(context);
+  thread_local_context<Context> = std::addressof(context);
 
   defer _ = [] noexcept -> void {
-    thread_context<Context> = nullptr;
+    thread_local_context<Context> = nullptr;
   };
 
   auto *frame = static_cast<frame_type<checkpoint_t<Context>> *>(get(key(), handle));
