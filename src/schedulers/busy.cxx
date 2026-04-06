@@ -79,13 +79,13 @@ class busy_scheduler {
 
     while (!stop.stop_requested()) {
 
-      LF_ASSUME(!ctx.empty()); // ctx interactions are core-managed
+      LF_ASSUME(ctx.get_underlying().empty()); // ctx interactions are core-managed
 
       if (auto lock = std::unique_lock(m_mutex); !m_posted.empty()) {
         auto task = m_posted.back();
         m_posted.pop_back();
         lock.unlock();
-        resume(task);
+        execute(static_cast<context_type &>(ctx), task);
       }
 
       for (int i = 0; i < k_steal_attempts; ++i) {
@@ -100,7 +100,7 @@ class busy_scheduler {
         LF_ASSUME(victim != id);
 
         if (auto result = m_contexts[victim].get_underlying().thief().steal()) {
-          resume(*result);
+          // resume(*result);
           continue;
         }
       }

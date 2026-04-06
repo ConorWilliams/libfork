@@ -1,3 +1,4 @@
+#include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include "libfork/__impl/exception.hpp"
@@ -29,47 +30,49 @@ auto throwing_function(env<Context>) -> task<void, Context> {
   co_return;
 }
 
-template <typename Context>
-void simple_tests(auto &scheduler) {
+template <typename Sch>
+void simple_tests(Sch &scheduler) {
   SECTION("void") {
-    auto recv = schedule(scheduler, void_function<Context>);
+    auto recv = schedule(scheduler, void_function<lf::context_t<Sch>>);
     REQUIRE(recv.valid());
     std::move(recv).get();
   }
 
   SECTION("non-void") {
-    auto recv = schedule(scheduler, simple_function<Context>);
+    auto recv = schedule(scheduler, simple_function<lf::context_t<Sch>>);
     REQUIRE(recv.valid());
     REQUIRE(std::move(recv).get() == true);
   }
 
 #if LF_COMPILER_EXCEPTIONS
   SECTION("throwing") {
-    auto recv = schedule(scheduler, throwing_function<Context>);
+    auto recv = schedule(scheduler, throwing_function<lf::context_t<Sch>>);
     REQUIRE(recv.valid());
     REQUIRE_THROWS_AS(std::move(recv).get(), std::runtime_error);
   }
 #endif
 }
 
+using mono_inline_ctx = lf::mono_context<lf::geometric_stack<>, lf::adapt_vector>;
+using poly_inline_ctx = lf::derived_poly_context<lf::geometric_stack<>, lf::adapt_vector>;
+
 } // namespace
 
-TEST_CASE("Mono schedule", "[schedule]") {
-
-  using context_type = lf::mono_context<lf::geometric_stack<>, lf::adapt_vector>;
-  STATIC_REQUIRE(lf::worker_context<context_type>);
-
-  lf::inline_scheduler<context_type> scheduler;
-  simple_tests<context_type>(scheduler);
+TEMPLATE_TEST_CASE("Inline schedule", "[schedule]", mono_inline_ctx, poly_inline_ctx) {
+  lf::inline_scheduler<TestType> scheduler;
+  simple_tests(scheduler);
 }
 
-TEST_CASE("Poly schedule", "[schedule]") {
+namespace {
 
-  using derived_context = lf::derived_poly_context<lf::geometric_stack<>, lf::adapt_vector>;
+using mono_busy_scheduler = lf::busy_scheduler<false, lf::geometric_stack<>>;
+using poly_busy_scheduler = lf::busy_scheduler<true, lf::geometric_stack<>>;
 
-  lf::inline_scheduler<derived_context> scheduler;
+} // namespace
 
-  using context_type = derived_context::context_type;
-  STATIC_REQUIRE(lf::worker_context<context_type>);
-  simple_tests<context_type>(scheduler);
+TEMPLATE_TEST_CASE("Busy schedule", "[schedule]", mono_busy_scheduler, poly_busy_scheduler) {
+  for (std::size_t thr = 1; thr < 4; ++thr) {
+    TestType scheduler{thr};
+    simple_tests(scheduler);
+  }
 }
