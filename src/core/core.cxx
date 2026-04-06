@@ -9,6 +9,7 @@ export module libfork.core;
 
 export import :concepts;
 export import :frame;
+export import :task;
 export import :thread_locals;
 export import :poly_context;
 export import :ops;

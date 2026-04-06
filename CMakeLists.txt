@@ -70,6 +70,7 @@ target_sources(libfork_libfork
       src/core/core.cxx
       src/core/concepts.cxx
       src/core/frame.cxx
+      src/core/task.cxx
       src/core/ops.cxx
       src/core/poly_context.cxx
       src/core/thread_locals.cxx
