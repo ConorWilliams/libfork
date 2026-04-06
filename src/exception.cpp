@@ -1,3 +1,5 @@
+#include <cstdio>
+
 #include "libfork/__impl/exception.hpp"
 
 import std;
