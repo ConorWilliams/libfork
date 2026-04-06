@@ -8,7 +8,7 @@ import :concepts;
 
 namespace lf {
 
-template <worker_stack Stack>
+export template <worker_stack Stack>
 class base_context {
  public:
   auto stack() noexcept -> Stack & { return m_stack; }
@@ -48,41 +48,6 @@ class poly_context : public base_context<Stack> {
   }
 
   virtual ~poly_context() noexcept = default;
-};
-
-// TODO: constraints on container
-
-// TODO: could we make the container non template-template
-// TODO: allocator aware
-// TODO: make post aware
-
-export template <                        //
-    worker_stack Stack,                  //
-    template <typename> typename Adaptor //
-    >
-class derived_poly_context : public poly_context<Stack> {
- public:
-  using context_type = poly_context<Stack>;
-
-  constexpr void push(steal_handle<context_type> frame) final { m_container.push(frame); }
-
-  constexpr auto pop() noexcept -> steal_handle<context_type> final { return m_container.pop(); }
-
-  constexpr void post(sched_handle<context_type> handle) final {
-
-    constexpr bool has_post = requires {
-      { m_container.post(handle) } -> std::same_as<void>;
-    };
-
-    if constexpr (has_post) {
-      m_container.post(handle);
-    } else {
-      poly_context<Stack>::post(handle);
-    }
-  }
-
- private:
-  Adaptor<context_type> m_container;
 };
 
 } // namespace lf

@@ -5,10 +5,10 @@ export module libfork.core:execute;
 
 import std;
 
+import libfork.utils;
 import :thread_locals;
 import :concepts;
 import :handles;
-import :utility;
 
 namespace lf {
 

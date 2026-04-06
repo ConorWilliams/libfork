@@ -2,8 +2,8 @@ export module libfork.core:thread_locals;
 
 import std;
 
+import libfork.utils;
 import :concepts;
-import :utility;
 
 namespace lf {
 

@@ -4,9 +4,8 @@ export module libfork.core:ops;
 
 import std;
 
+import libfork.utils;
 import :concepts;
-import :tuple;
-import :utility;
 import :frame;
 
 namespace lf {

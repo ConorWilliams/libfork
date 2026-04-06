@@ -6,13 +6,13 @@ export module libfork.core:schedule;
 
 import std;
 
+import libfork.utils;
 import :concepts;
 import :frame;
 import :thread_locals;
 import :promise;
 import :root;
 import :handles;
-import :utility;
 import :receiver;
 
 namespace lf {
