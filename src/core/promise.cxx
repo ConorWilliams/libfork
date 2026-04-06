@@ -3,7 +3,6 @@ module;
 #include "libfork/__impl/compiler.hpp"
 #include "libfork/__impl/exception.hpp"
 #include "libfork/__impl/utils.hpp"
-#include <exception>
 export module libfork.core:promise;
 
 import std;
