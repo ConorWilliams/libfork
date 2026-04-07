@@ -12,7 +12,7 @@ struct incorrect_result : public std::runtime_error {
   using std::runtime_error::runtime_error;
 };
 
-inline constexpr unsigned bench_max_threads = 8;
+inline constexpr unsigned bench_max_threads = 12;
 
 #define CHECK_RESULT(result, expected)                                                                       \
   do {                                                                                                       \
