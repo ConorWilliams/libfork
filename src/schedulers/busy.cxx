@@ -23,10 +23,10 @@ export enum class pool_kind { mono, poly };
 export template <pool_kind Kind, worker_stack Stack>
 class basic_busy_pool {
 
-  using context = std::conditional_t<                  //
-      Kind == pool_kind::poly,                         //
-      derived_poly_context<Stack, adapt_deque>,        //
-      mono_context<Stack, adapt_deque>                 //
+  using context = std::conditional_t<           //
+      Kind == pool_kind::poly,                  //
+      derived_poly_context<Stack, adapt_deque>, //
+      mono_context<Stack, adapt_deque>          //
       >;
 
  public:
