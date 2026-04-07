@@ -42,9 +42,9 @@ auto uts_traverse(int depth, Node *parent) -> result {
 }
 
 void uts_serial(benchmark::State &state) {
-  auto tree_id = static_cast<int>(state.range(0));
-  setup_tree(tree_id);
-  auto expected = expected_result(tree_id);
+  auto tree = static_cast<uts_tree>(state.range(0));
+  setup_tree(tree);
+  auto expected = expected_result(tree);
 
   for (auto _ : state) {
     Node root;

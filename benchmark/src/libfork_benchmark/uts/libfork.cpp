@@ -57,10 +57,10 @@ struct uts_fn {
 
 template <lf::scheduler Sch>
 void run(benchmark::State &state) {
-  auto tree_id = static_cast<int>(state.range(0));
+  auto tree = static_cast<uts_tree>(state.range(0));
 
-  setup_tree(tree_id);
-  auto expected = expected_result(tree_id);
+  setup_tree(tree);
+  auto expected = expected_result(tree);
 
   Sch scheduler = [&state] -> Sch {
     if constexpr (std::constructible_from<Sch, std::size_t>) {

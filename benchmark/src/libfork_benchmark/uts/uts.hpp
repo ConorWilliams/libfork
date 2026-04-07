@@ -31,16 +31,17 @@ struct pair {
   Node child;
 };
 
-inline constexpr int uts_t1 = 11;
-inline constexpr int uts_t1l = 12;
-inline constexpr int uts_t1xxl = 13;
-
-inline constexpr int uts_t3 = 31;
-inline constexpr int uts_t3l = 32;
-inline constexpr int uts_t3xxl = 33;
+enum uts_tree : int {
+  uts_t1 = 11,    // Geometric [fixed],  ~4M nodes
+  uts_t1l = 12,   // Geometric [fixed],  ~102M nodes
+  uts_t1xxl = 13, // Geometric [fixed],  ~4.2B nodes
+  uts_t3 = 31,    // Binomial,           ~4M nodes
+  uts_t3l = 32,   // Binomial,           ~111M nodes
+  uts_t3xxl = 33, // Binomial,           ~2.8B nodes
+};
 
 // T1 (4M nodes) is fast enough for correctness checks in dry-run mode.
-inline constexpr int uts_test = uts_t1;
+inline constexpr uts_tree uts_test = uts_t1;
 
 // ---- Tree setup ----
 
@@ -118,8 +119,8 @@ inline void setup_t3xxl() {
   rootId = 316;
 }
 
-inline void setup_tree(int i) {
-  switch (i) {
+inline void setup_tree(uts_tree tree) {
+  switch (tree) {
     case uts_t1:
       setup_t1();
       break;
@@ -138,13 +139,11 @@ inline void setup_tree(int i) {
     case uts_t3xxl:
       setup_t3xxl();
       break;
-    default:
-      std::unreachable();
   }
 }
 
-inline auto expected_result(int i) -> result {
-  switch (i) {
+inline auto expected_result(uts_tree tree) -> result {
+  switch (tree) {
     case uts_t1:
       return {10, 4130071, 3305118};
     case uts_t1l:
@@ -157,7 +156,6 @@ inline auto expected_result(int i) -> result {
       return {17844, 111345631, 89076904};
     case uts_t3xxl:
       return {99049, 2793220501, 1396611250};
-    default:
-      std::unreachable();
   }
+  std::unreachable();
 }
