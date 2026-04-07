@@ -17,7 +17,7 @@ target_link_libraries(libfork_benchmark
     benchmark::benchmark_main
 )
 
-# Headers (shared between all benchmarks)
+# Common headers
 target_sources(libfork_benchmark
   PRIVATE
     FILE_SET HEADERS FILES
@@ -28,6 +28,22 @@ target_sources(libfork_benchmark
       src
 )
 
+# Common sources
+target_sources(libfork_benchmark
+  PRIVATE
+    src/libfork_benchmark/uts/uts.cpp
+)
+
+
+# C lib for UTS
+add_library(uts_c OBJECT
+  src/libfork_benchmark/uts/external/uts.c
+  src/libfork_benchmark/uts/external/rng/brg_sha1.c
+)
+
+target_link_libraries(libfork_benchmark PRIVATE uts_c)
+
+# Test hook
 if(BUILD_TESTING)
   add_test(NAME Benchmark
     COMMAND
@@ -40,6 +56,7 @@ endif()
 target_sources(libfork_benchmark
   PRIVATE
     src/libfork_benchmark/fib/serial.cpp
+    src/libfork_benchmark/uts/serial.cpp
 )
 
 # ---- Baremetal ----
@@ -54,27 +71,10 @@ target_sources(libfork_benchmark
 target_sources(libfork_benchmark
   PRIVATE
     src/libfork_benchmark/fib/libfork.cpp
+    src/libfork_benchmark/uts/libfork.cpp
 )
 
 target_link_libraries(libfork_benchmark
   PRIVATE
     libfork::libfork
-)
-
-# ---- UTS C library ----
-
-add_library(uts_c OBJECT
-  src/libfork_benchmark/uts/external/uts.c
-  src/libfork_benchmark/uts/external/rng/brg_sha1.c
-)
-
-target_link_libraries(libfork_benchmark PRIVATE uts_c)
-
-# ---- UTS ----
-
-target_sources(libfork_benchmark
-  PRIVATE
-    src/libfork_benchmark/uts/uts.cpp
-    src/libfork_benchmark/uts/serial.cpp
-    src/libfork_benchmark/uts/libfork.cpp
 )
