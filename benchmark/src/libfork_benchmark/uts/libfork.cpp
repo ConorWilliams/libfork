@@ -85,16 +85,6 @@ void run(benchmark::State &state) {
 
 // ---- Benchmark registrations ----
 
-template <typename Stack, template <typename> typename Adaptor>
-using real_context = lf::mono_context<Stack, Adaptor>;
-
-template <typename Stack, template <typename> typename Adaptor>
-using poly_context = lf::derived_poly_context<Stack, Adaptor>;
-
-using lf::geometric_stack;
-
-// Multi-threaded (busy_thread_pool) variants
-
 #define BENCH_MAX_THR 8
 
 #define BENCH_ONE_MT(mode, tree_name, tree_id, ...)                                                          \
@@ -114,6 +104,14 @@ using lf::geometric_stack;
   BENCH_ONE_MT(base, "T1L", uts_t1l, __VA_ARGS__)                                                            \
   BENCH_ONE_MT(large, "T3", uts_t3, __VA_ARGS__)                                                             \
   BENCH_ONE_MT(large, "T3L", uts_t3l, __VA_ARGS__)
+
+template <typename Stack, template <typename> typename Adaptor>
+using real_context = lf::mono_context<Stack, Adaptor>;
+
+template <typename Stack, template <typename> typename Adaptor>
+using poly_context = lf::derived_poly_context<Stack, Adaptor>;
+
+using lf::geometric_stack;
 
 BENCH_MT(lf::busy_thread_pool<false, geometric_stack<>>)
 BENCH_MT(lf::busy_thread_pool<true, geometric_stack<>>)
