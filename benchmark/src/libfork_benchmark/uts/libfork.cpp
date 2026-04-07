@@ -22,18 +22,18 @@ struct uts_fn {
     if (num_children > 0) {
       std::vector<pair> cs(static_cast<std::size_t>(num_children));
 
-      for (int i = 0; i < num_children; ++i) {
+      for (std::size_t i = 0; i < static_cast<std::size_t>(num_children); ++i) {
         cs[i].child.type = child_type;
         cs[i].child.height = parent->height + 1;
         cs[i].child.numChildren = -1;
 
         for (int j = 0; j < computeGranularity; ++j) {
-          rng_spawn(parent->state.state, cs[i].child.state.state, i);
+          rng_spawn(parent->state.state, cs[i].child.state.state, static_cast<int>(i));
         }
 
         using scope = lf::scope<Context>;
 
-        if (i + 1 == num_children) {
+        if (i + 1 == static_cast<std::size_t>(num_children)) {
           co_await scope::call(&cs[i].res, uts_fn{}, depth + 1, &cs[i].child);
         } else {
           co_await scope::fork(&cs[i].res, uts_fn{}, depth + 1, &cs[i].child);
@@ -62,7 +62,7 @@ void run(benchmark::State &state) {
   setup_tree(tree);
   auto expected = expected_result(tree);
 
-  Sch scheduler = [&state] -> Sch {
+  Sch scheduler = [&] -> Sch {
     if constexpr (std::constructible_from<Sch, std::size_t>) {
       return Sch{static_cast<std::size_t>(state.range(1))};
     } else {

@@ -17,13 +17,13 @@ auto uts_traverse(int depth, Node *parent) -> result {
   if (num_children > 0) {
     std::vector<pair> cs(static_cast<std::size_t>(num_children));
 
-    for (int i = 0; i < num_children; ++i) {
+    for (std::size_t i = 0; i < static_cast<std::size_t>(num_children); ++i) {
       cs[i].child.type = child_type;
       cs[i].child.height = parent->height + 1;
       cs[i].child.numChildren = -1;
 
       for (int j = 0; j < computeGranularity; ++j) {
-        rng_spawn(parent->state.state, cs[i].child.state.state, i);
+        rng_spawn(parent->state.state, cs[i].child.state.state, static_cast<int>(i));
       }
 
       cs[i].res = uts_traverse(depth + 1, &cs[i].child);
