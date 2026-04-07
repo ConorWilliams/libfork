@@ -1,8 +1,11 @@
 #include <benchmark/benchmark.h>
 
-#include "libfork/__impl/compiler.hpp"
+#include "libfork_benchmark/common.hpp"
 
 #include "libfork_benchmark/fib/fib.hpp"
+
+#include "libfork/__impl/compiler.hpp"
+
 
 import std;
 

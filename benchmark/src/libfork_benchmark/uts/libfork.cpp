@@ -1,10 +1,12 @@
 #include <benchmark/benchmark.h>
 
 #include "libfork_benchmark/common.hpp"
+
 #include "libfork_benchmark/uts/uts.hpp"
 
-import libfork;
 import std;
+
+import libfork;
 
 // === Coroutine
 
