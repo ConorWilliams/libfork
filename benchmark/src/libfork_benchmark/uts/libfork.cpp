@@ -91,11 +91,6 @@ using real_context = lf::mono_context<Stack, Adaptor>;
 template <typename Stack, template <typename> typename Adaptor>
 using poly_context = lf::derived_poly_context<Stack, Adaptor>;
 
-using lf::adapt_deque;
-using lf::adapt_vector;
-using lf::inline_scheduler;
-
-using lf::adaptor_stack;
 using lf::geometric_stack;
 
 // Multi-threaded (busy_thread_pool) variants
