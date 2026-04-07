@@ -58,8 +58,8 @@ void uts_serial(benchmark::State &state) {
 
 } // namespace
 
-BENCHMARK(uts_serial)->Name("test/serial/uts/T1")->Arg(uts_t1_mini)->UseRealTime();
-BENCHMARK(uts_serial)->Name("test/serial/uts/T3")->Arg(uts_t3_mini)->UseRealTime();
+BENCHMARK(uts_serial)->Name("test/serial/uts/T1_mini")->Arg(uts_t1_mini)->UseRealTime();
+BENCHMARK(uts_serial)->Name("test/serial/uts/T3_mini")->Arg(uts_t3_mini)->UseRealTime();
 
 BENCHMARK(uts_serial)->Name("base/serial/uts/T1")->Arg(uts_t1)->UseRealTime();
 BENCHMARK(uts_serial)->Name("base/serial/uts/T3")->Arg(uts_t3)->UseRealTime();

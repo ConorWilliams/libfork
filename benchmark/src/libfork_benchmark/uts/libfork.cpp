@@ -98,31 +98,6 @@ using lf::inline_scheduler;
 using lf::adaptor_stack;
 using lf::geometric_stack;
 
-// Single-threaded (inline_scheduler) variants
-
-#define BENCH_ONE_ST(mode, tree_name, tree_id, ...)                                                          \
-  BENCHMARK_TEMPLATE(run, __VA_ARGS__)                                                                       \
-      ->Name(#mode "/libfork/uts/" tree_name "/" #__VA_ARGS__)                                               \
-      ->Arg(tree_id)                                                                                         \
-      ->UseRealTime();
-
-#define BENCH_ST(...)                                                                                        \
-  BENCH_ONE_ST(test, "T1", uts_t1_mini, __VA_ARGS__)                                                         \
-  BENCH_ONE_ST(test, "T3", uts_t3_mini, __VA_ARGS__)                                                         \
-  BENCH_ONE_ST(base, "T1", uts_t1, __VA_ARGS__)                                                              \
-  BENCH_ONE_ST(base, "T1L", uts_t1l, __VA_ARGS__)                                                            \
-  BENCH_ONE_ST(large, "T3", uts_t3, __VA_ARGS__)                                                              \
-  BENCH_ONE_ST(large, "T3L", uts_t3l, __VA_ARGS__)
-
-BENCH_ST(inline_scheduler<real_context<adaptor_stack<>, adapt_vector>>)
-BENCH_ST(inline_scheduler<poly_context<adaptor_stack<>, adapt_vector>>)
-
-BENCH_ST(inline_scheduler<real_context<geometric_stack<>, adapt_vector>>)
-BENCH_ST(inline_scheduler<poly_context<geometric_stack<>, adapt_vector>>)
-
-BENCH_ST(inline_scheduler<real_context<geometric_stack<>, adapt_deque>>)
-BENCH_ST(inline_scheduler<poly_context<geometric_stack<>, adapt_deque>>)
-
 // Multi-threaded (busy_thread_pool) variants
 
 #define BENCH_MAX_THR 8
@@ -138,11 +113,11 @@ BENCH_ST(inline_scheduler<poly_context<geometric_stack<>, adapt_deque>>)
       ->UseRealTime();
 
 #define BENCH_MT(...)                                                                                        \
-  BENCH_ONE_MT(test, "T1", uts_t1_mini, __VA_ARGS__)                                                         \
-  BENCH_ONE_MT(test, "T3", uts_t3_mini, __VA_ARGS__)                                                         \
+  BENCH_ONE_MT(test, "T1_mini", uts_t1_mini, __VA_ARGS__)                                                    \
+  BENCH_ONE_MT(test, "T3_mini", uts_t3_mini, __VA_ARGS__)                                                    \
   BENCH_ONE_MT(base, "T1", uts_t1, __VA_ARGS__)                                                              \
   BENCH_ONE_MT(base, "T1L", uts_t1l, __VA_ARGS__)                                                            \
-  BENCH_ONE_MT(large, "T3", uts_t3, __VA_ARGS__)                                                              \
+  BENCH_ONE_MT(large, "T3", uts_t3, __VA_ARGS__)                                                             \
   BENCH_ONE_MT(large, "T3L", uts_t3l, __VA_ARGS__)
 
 BENCH_MT(lf::busy_thread_pool<false, geometric_stack<>>)
