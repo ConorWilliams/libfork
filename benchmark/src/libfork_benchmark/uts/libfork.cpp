@@ -111,8 +111,8 @@ using lf::geometric_stack;
   BENCH_ONE_ST(test, "T3", uts_t3_mini, __VA_ARGS__)                                                         \
   BENCH_ONE_ST(base, "T1", uts_t1, __VA_ARGS__)                                                              \
   BENCH_ONE_ST(base, "T1L", uts_t1l, __VA_ARGS__)                                                            \
-  BENCH_ONE_ST(base, "T3", uts_t3, __VA_ARGS__)                                                              \
-  BENCH_ONE_ST(base, "T3L", uts_t3l, __VA_ARGS__)
+  BENCH_ONE_ST(large, "T3", uts_t3, __VA_ARGS__)                                                              \
+  BENCH_ONE_ST(large, "T3L", uts_t3l, __VA_ARGS__)
 
 BENCH_ST(inline_scheduler<real_context<adaptor_stack<>, adapt_vector>>)
 BENCH_ST(inline_scheduler<poly_context<adaptor_stack<>, adapt_vector>>)
@@ -142,8 +142,8 @@ BENCH_ST(inline_scheduler<poly_context<geometric_stack<>, adapt_deque>>)
   BENCH_ONE_MT(test, "T3", uts_t3_mini, __VA_ARGS__)                                                         \
   BENCH_ONE_MT(base, "T1", uts_t1, __VA_ARGS__)                                                              \
   BENCH_ONE_MT(base, "T1L", uts_t1l, __VA_ARGS__)                                                            \
-  BENCH_ONE_MT(base, "T3", uts_t3, __VA_ARGS__)                                                              \
-  BENCH_ONE_MT(base, "T3L", uts_t3l, __VA_ARGS__)
+  BENCH_ONE_MT(large, "T3", uts_t3, __VA_ARGS__)                                                              \
+  BENCH_ONE_MT(large, "T3L", uts_t3l, __VA_ARGS__)
 
 BENCH_MT(lf::busy_thread_pool<false, geometric_stack<>>)
 BENCH_MT(lf::busy_thread_pool<true, geometric_stack<>>)
