@@ -4,7 +4,7 @@
 
 import std;
 
-inline constexpr int fib_test = 3;
+inline constexpr int fib_test = 8;
 inline constexpr int fib_base = 37;
 
 /**
