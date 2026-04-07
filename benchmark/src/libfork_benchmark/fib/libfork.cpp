@@ -39,7 +39,7 @@ void run(benchmark::State &state) {
 
   state.counters["n"] = static_cast<double>(n);
 
-  Sch scheduler = [&state] -> Sch {
+  Sch scheduler = [&] -> Sch {
     if constexpr (std::constructible_from<Sch, std::size_t>) {
       return Sch{static_cast<std::size_t>(state.range(1))};
     } else {
