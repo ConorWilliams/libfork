@@ -77,6 +77,8 @@ void run(benchmark::State &state) {
     CHECK_RESULT(r, expected);
     benchmark::DoNotOptimize(r);
   }
+
+  record_stats(state, scheduler, static_cast<std::uint64_t>(expected.size));
 }
 
 } // namespace

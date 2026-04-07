@@ -29,12 +29,19 @@ class basic_busy_pool {
       mono_context<Stack, adapt_deque>          //
       >;
 
+  static constexpr std::size_t k_cache_line = 64;
+
+  struct alignas(k_cache_line) steal_counter {
+    std::atomic<std::uint64_t> value{0};
+  };
+
  public:
   using context_type = context::context_type;
 
   // TODO: sleep when zero work
 
-  explicit basic_busy_pool(std::size_t n = std::thread::hardware_concurrency()) : m_contexts(n) {
+  explicit basic_busy_pool(std::size_t n = std::thread::hardware_concurrency())
+      : m_contexts(n), m_steal_counters(n) {
 
     if (n < 1) {
       LF_THROW(invalid_workers_error{});
@@ -65,6 +72,15 @@ class basic_busy_pool {
     // TODO: use a lock-free queue here
     auto lock = std::unique_lock(m_mutex);
     m_posted.push_back(handle);
+  }
+
+  [[nodiscard]]
+  auto steal_count() const noexcept -> std::uint64_t {
+    std::uint64_t total = 0;
+    for (auto const &c : m_steal_counters) {
+      total += c.value.load(std::memory_order_relaxed);
+    }
+    return total;
   }
 
  private:
@@ -106,6 +122,7 @@ class basic_busy_pool {
           LF_ASSUME(victim != id);
 
           if (auto [err, result] = m_contexts[victim].get_underlying().thief().steal()) {
+            m_steal_counters[id].value.fetch_add(1, std::memory_order_relaxed);
             execute(static_cast<context_type &>(ctx), result);
             continue;
           }
@@ -122,6 +139,7 @@ class basic_busy_pool {
   std::vector<std::jthread> m_threads;
   std::mutex m_mutex;
   std::vector<sched_handle<context_type>> m_posted;
+  std::vector<steal_counter> m_steal_counters;
 };
 
 export template <worker_stack Stack>
