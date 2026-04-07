@@ -37,7 +37,7 @@ struct tuple_leaf {
 
 // In GCC 15 name mangling is not implemented for function signatures
 // with 'deducing this' yet, so we fall back to the old implementation.
-#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ <= 15)
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ <= 16)
 
 template <std::size_t I, typename... Ts>
 struct index;
