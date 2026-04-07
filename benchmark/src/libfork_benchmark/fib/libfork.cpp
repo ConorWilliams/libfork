@@ -39,13 +39,7 @@ void run(benchmark::State &state) {
 
   state.counters["n"] = static_cast<double>(n);
 
-  Sch scheduler = [&] -> Sch {
-    if constexpr (std::constructible_from<Sch, std::size_t>) {
-      return Sch{static_cast<std::size_t>(state.range(1))};
-    } else {
-      return Sch{};
-    }
-  }();
+  Sch scheduler = make_scheduler<Sch>(state);
 
   for (auto _ : state) {
     benchmark::DoNotOptimize(n);
@@ -78,9 +72,6 @@ using lf::inline_scheduler;
 
 using lf::adaptor_stack;
 using lf::geometric_stack;
-
-using mono_busy_pool = lf::mono_busy_pool<geometric_stack<>>;
-using poly_busy_pool = lf::poly_busy_pool<geometric_stack<>>;
 
 BENCH_ALL(inline_scheduler<real_context<adaptor_stack<>, adapt_vector>>)
 BENCH_ALL(inline_scheduler<poly_context<adaptor_stack<>, adapt_vector>>)

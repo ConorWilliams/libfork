@@ -63,13 +63,7 @@ void run(benchmark::State &state) {
   setup_tree(tree);
   auto expected = expected_result(tree);
 
-  Sch scheduler = [&] -> Sch {
-    if constexpr (std::constructible_from<Sch, std::size_t>) {
-      return Sch{static_cast<std::size_t>(state.range(1))};
-    } else {
-      return Sch{};
-    }
-  }();
+  Sch scheduler = make_scheduler<Sch>(state);
 
   for (auto _ : state) {
     Node root;
@@ -102,17 +96,6 @@ void run(benchmark::State &state) {
   BENCH_ONE_MT(base, "T3", uts_t3, __VA_ARGS__)                                                              \
   BENCH_ONE_MT(large, "T1L", uts_t1l, __VA_ARGS__)                                                           \
   BENCH_ONE_MT(large, "T3L", uts_t3l, __VA_ARGS__)
-
-template <typename Stack, template <typename> typename Adaptor>
-using real_context = lf::mono_context<Stack, Adaptor>;
-
-template <typename Stack, template <typename> typename Adaptor>
-using poly_context = lf::derived_poly_context<Stack, Adaptor>;
-
-using lf::geometric_stack;
-
-using mono_busy_pool = lf::mono_busy_pool<geometric_stack<>>;
-using poly_busy_pool = lf::poly_busy_pool<geometric_stack<>>;
 
 BENCH_MT(mono_busy_pool)
 BENCH_MT(poly_busy_pool)
