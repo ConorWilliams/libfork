@@ -8,6 +8,8 @@ struct incorrect_result : public std::runtime_error {
   using std::runtime_error::runtime_error;
 };
 
+inline constexpr unsigned bench_max_threads = 8;
+
 #define CHECK_RESULT(result, expected)                                                                       \
   do {                                                                                                       \
     auto &&lf_check_result_val = (result);                                                                   \

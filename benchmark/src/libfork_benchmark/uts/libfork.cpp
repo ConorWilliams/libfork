@@ -85,13 +85,11 @@ void run(benchmark::State &state) {
 
 // ---- Benchmark registrations ----
 
-#define BENCH_MAX_THR 8
-
 #define BENCH_ONE_MT(mode, tree_name, tree_id, ...)                                                          \
   BENCHMARK_TEMPLATE(run, __VA_ARGS__)                                                                       \
       ->Name(#mode "/libfork/uts/" tree_name "/" #__VA_ARGS__)                                               \
       ->Apply([](benchmark::Benchmark *b) -> void {                                                          \
-        for (unsigned t = 1; t <= BENCH_MAX_THR; ++t) {                                                      \
+        for (unsigned t = 1; t <= bench_max_threads; ++t) {                                                  \
           b->Args({tree_id, static_cast<std::int64_t>(t)});                                                  \
         }                                                                                                    \
       })                                                                                                     \
