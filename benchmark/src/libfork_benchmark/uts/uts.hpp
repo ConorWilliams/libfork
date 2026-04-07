@@ -1,6 +1,5 @@
 #pragma once
 
-// clang-format off
 
 // Include the C UTS library header first (it defines max/min macros that would
 // clash with std::max/std::min after import std).
@@ -9,9 +8,7 @@
 #undef max
 #undef min
 
-// clang-format on
 
-#include "libfork_benchmark/common.hpp"
 
 import std;
 
@@ -51,4 +48,5 @@ inline constexpr uts_tree uts_t1_test = uts_t1_mini;
 inline constexpr uts_tree uts_t3_test = uts_t3_mini;
 
 void setup_tree(uts_tree tree);
+
 auto expected_result(uts_tree tree) -> result;

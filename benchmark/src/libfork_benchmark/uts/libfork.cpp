@@ -1,6 +1,7 @@
 #include <benchmark/benchmark.h>
 
 #include "libfork_benchmark/uts/uts.hpp"
+#include "libfork_benchmark/common.hpp"
 
 import libfork;
 import std;
