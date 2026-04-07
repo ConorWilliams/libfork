@@ -36,14 +36,14 @@ struct pair {
 };
 
 enum uts_tree : int {
-  uts_t1_mini = 10, // Geometric [fixed],  ~64K nodes  (test only)
-  uts_t1 = 11,      // Geometric [fixed],  ~4M nodes
-  uts_t1l = 12,     // Geometric [fixed],  ~102M nodes
-  uts_t1xxl = 13,   // Geometric [fixed],  ~4.2B nodes
-  uts_t3_mini = 30, // Binomial,           ~6K nodes   (test only)
-  uts_t3 = 31,      // Binomial,           ~4M nodes
-  uts_t3l = 32,     // Binomial,           ~111M nodes
-  uts_t3xxl = 33,   // Binomial,           ~2.8B nodes
+  uts_t1_mini, // Geometric [fixed],  ~64K nodes  (test only)
+  uts_t1,      // Geometric [fixed],  ~4M nodes
+  uts_t1l,     // Geometric [fixed],  ~102M nodes
+  uts_t1xxl,   // Geometric [fixed],  ~4.2B nodes
+  uts_t3_mini, // Binomial,           ~6K nodes   (test only)
+  uts_t3,      // Binomial,           ~4M nodes
+  uts_t3l,     // Binomial,           ~111M nodes
+  uts_t3xxl,   // Binomial,           ~2.8B nodes
 };
 
 // Mini trees used for dry-run correctness checks (fast, ~64K and ~6K nodes).
