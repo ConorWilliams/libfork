@@ -29,7 +29,7 @@ struct pair {
   Node child;
 };
 
-enum uts_tree : int {
+enum uts_tree : char {
   uts_t1_mini, // Geometric [fixed],  ~64K nodes  (test only)
   uts_t1,      // Geometric [fixed],  ~4M nodes
   uts_t1l,     // Geometric [fixed],  ~102M nodes
@@ -39,10 +39,6 @@ enum uts_tree : int {
   uts_t3l,     // Binomial,           ~111M nodes
   uts_t3xxl,   // Binomial,           ~2.8B nodes
 };
-
-// Mini trees used for dry-run correctness checks (fast, ~64K and ~6K nodes).
-inline constexpr uts_tree uts_t1_test = uts_t1_mini;
-inline constexpr uts_tree uts_t3_test = uts_t3_mini;
 
 void setup_tree(uts_tree tree);
 

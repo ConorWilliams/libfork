@@ -1,7 +1,7 @@
 #include <benchmark/benchmark.h>
 
-#include "libfork_benchmark/uts/uts.hpp"
 #include "libfork_benchmark/common.hpp"
+#include "libfork_benchmark/uts/uts.hpp"
 
 import libfork;
 import std;
@@ -107,8 +107,8 @@ using lf::geometric_stack;
       ->UseRealTime();
 
 #define BENCH_ST(...)                                                                                        \
-  BENCH_ONE_ST(test, "T1", uts_t1_test, __VA_ARGS__)                                                         \
-  BENCH_ONE_ST(test, "T3", uts_t3_test, __VA_ARGS__)                                                         \
+  BENCH_ONE_ST(test, "T1", uts_t1_mini, __VA_ARGS__)                                                         \
+  BENCH_ONE_ST(test, "T3", uts_t3_mini, __VA_ARGS__)                                                         \
   BENCH_ONE_ST(base, "T1", uts_t1, __VA_ARGS__)                                                              \
   BENCH_ONE_ST(base, "T1L", uts_t1l, __VA_ARGS__)                                                            \
   BENCH_ONE_ST(base, "T3", uts_t3, __VA_ARGS__)                                                              \
@@ -138,8 +138,8 @@ BENCH_ST(inline_scheduler<poly_context<geometric_stack<>, adapt_deque>>)
       ->UseRealTime();
 
 #define BENCH_MT(...)                                                                                        \
-  BENCH_ONE_MT(test, "T1", uts_t1_test, __VA_ARGS__)                                                         \
-  BENCH_ONE_MT(test, "T3", uts_t3_test, __VA_ARGS__)                                                         \
+  BENCH_ONE_MT(test, "T1", uts_t1_mini, __VA_ARGS__)                                                         \
+  BENCH_ONE_MT(test, "T3", uts_t3_mini, __VA_ARGS__)                                                         \
   BENCH_ONE_MT(base, "T1", uts_t1, __VA_ARGS__)                                                              \
   BENCH_ONE_MT(base, "T1L", uts_t1l, __VA_ARGS__)                                                            \
   BENCH_ONE_MT(base, "T3", uts_t3, __VA_ARGS__)                                                              \
