@@ -15,7 +15,7 @@ struct uts_fn {
     result r{static_cast<counter_t>(depth), counter_t{1}, counter_t{0}};
 
     int num_children = uts_numChildren(parent);
-    int child_type   = uts_childType(parent);
+    int child_type = uts_childType(parent);
 
     parent->numChildren = num_children;
 
@@ -23,8 +23,8 @@ struct uts_fn {
       std::vector<pair> cs(static_cast<std::size_t>(num_children));
 
       for (int i = 0; i < num_children; ++i) {
-        cs[i].child.type        = child_type;
-        cs[i].child.height      = parent->height + 1;
+        cs[i].child.type = child_type;
+        cs[i].child.height = parent->height + 1;
         cs[i].child.numChildren = -1;
 
         for (int j = 0; j < computeGranularity; ++j) {
@@ -129,10 +129,10 @@ BENCH_ST(inline_scheduler<poly_context<geometric_stack<>, adapt_deque>>)
   BENCHMARK_TEMPLATE(run, __VA_ARGS__)                                                                       \
       ->Name(#mode "/libfork/uts/" tree_name "/" #__VA_ARGS__)                                               \
       ->Apply([](benchmark::Benchmark *b) -> void {                                                          \
-          for (unsigned t = 1; t <= BENCH_MAX_THR; ++t) {                                                    \
-            b->Args({tree_id, static_cast<std::int64_t>(t)});                                                \
-          }                                                                                                   \
-        })                                                                                                    \
+        for (unsigned t = 1; t <= BENCH_MAX_THR; ++t) {                                                      \
+          b->Args({tree_id, static_cast<std::int64_t>(t)});                                                  \
+        }                                                                                                    \
+      })                                                                                                     \
       ->UseRealTime();
 
 #define BENCH_MT(...)                                                                                        \
