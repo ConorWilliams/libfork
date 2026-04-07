@@ -1,15 +1,11 @@
 #pragma once
 
-// clang-format off
-
 // Include the C UTS library header first (it defines max/min macros that would
 // clash with std::max/std::min after import std).
 #include "libfork_benchmark/uts/external/uts.h"
 
 #undef max
 #undef min
-
-// clang-format on
 
 #include "libfork_benchmark/common.hpp"
 
@@ -38,6 +34,7 @@ struct pair {
 inline constexpr int uts_t1 = 11;
 inline constexpr int uts_t1l = 12;
 inline constexpr int uts_t1xxl = 13;
+
 inline constexpr int uts_t3 = 31;
 inline constexpr int uts_t3l = 32;
 inline constexpr int uts_t3xxl = 33;
