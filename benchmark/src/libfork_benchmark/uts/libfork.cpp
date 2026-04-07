@@ -63,6 +63,8 @@ void run(benchmark::State &state) {
   setup_tree(tree);
   auto expected = expected_result(tree);
 
+  state.counters["p"] = static_cast<double>(thread_count<Sch>(state));
+
   Sch scheduler = make_scheduler<Sch>(state);
 
   for (auto _ : state) {

@@ -38,6 +38,7 @@ void run(benchmark::State &state) {
   std::int64_t expect = fib_ref(n);
 
   state.counters["n"] = static_cast<double>(n);
+  state.counters["p"] = static_cast<double>(thread_count<Sch>(state));
 
   Sch scheduler = make_scheduler<Sch>(state);
 
