@@ -69,9 +69,11 @@ using poly_busy_thread_pool = lf::busy_thread_pool<true, lf::geometric_stack<>>;
 } // namespace
 
 TEMPLATE_TEST_CASE("Busy schedule", "[schedule]", mono_busy_thread_pool, poly_busy_thread_pool) {
+
+  STATIC_REQUIRE(lf::scheduler<TestType>);
+
   for (std::size_t thr = 1; thr < 4; ++thr) {
     TestType scheduler{thr};
-    STATIC_REQUIRE(lf::scheduler<TestType>);
     simple_tests(scheduler);
   }
 }
