@@ -53,7 +53,7 @@ class adapt_deque {
 
  private:
   // TODO: make initializable/configurable
-  deque<steal_handle<Context>> m_deque{1024};
+  deque<steal_handle<Context>> m_deque{1024 * 32};
 };
 
 } // namespace lf
