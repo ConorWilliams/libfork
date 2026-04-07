@@ -1,5 +1,7 @@
 #include "libfork_benchmark/uts/uts.hpp"
 
+#include "libfork/__impl/exception.hpp"
+
 import std;
 
 namespace {
@@ -132,21 +134,22 @@ void setup_tree(uts_tree tree) {
 auto expected_result(uts_tree tree) -> result {
   switch (tree) {
     case uts_t1_mini:
-      return {7, 63914, 51124};
+      return {.maxdepth = 7, .size = 63914, .leaves = 51124};
     case uts_t1:
-      return {10, 4130071, 3305118};
+      return {.maxdepth = 10, .size = 4130071, .leaves = 3305118};
     case uts_t1l:
-      return {13, 102181082, 81746377};
+      return {.maxdepth = 13, .size = 102181082, .leaves = 81746377};
     case uts_t1xxl:
-      return {15, 4230646601, 3384495738};
+      return {.maxdepth = 15, .size = 4230646601, .leaves = 3384495738};
     case uts_t3_mini:
-      return {67, 6213, 5438};
+      return {.maxdepth = 67, .size = 6213, .leaves = 5438};
     case uts_t3:
-      return {1572, 4112897, 3599034};
+      return {.maxdepth = 1572, .size = 4112897, .leaves = 3599034};
     case uts_t3l:
-      return {17844, 111345631, 89076904};
+      return {.maxdepth = 17844, .size = 111345631, .leaves = 89076904};
     case uts_t3xxl:
-      return {99049, 2793220501, 1396611250};
+      return {.maxdepth = 99049, .size = 2793220501, .leaves = 1396611250};
+    default:
+      LF_THROW(std::invalid_argument("invalid tree type"));
   }
-  std::unreachable();
 }
