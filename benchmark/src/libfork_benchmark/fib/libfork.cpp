@@ -88,22 +88,19 @@ BENCH_ALL(inline_scheduler<poly_context<geometric_stack<>, adapt_vector>>)
 BENCH_ALL(inline_scheduler<real_context<geometric_stack<>, adapt_deque>>)
 BENCH_ALL(inline_scheduler<poly_context<geometric_stack<>, adapt_deque>>)
 
-// clang-format off
+#define BENCH_MAX_THR 8
 
-#define BENCH_ONE_MT(mode, ...)                                                                                \
-  BENCHMARK_TEMPLATE(run, __VA_ARGS__)                                                                         \
-      ->Name(#mode "/libfork/fib/" #__VA_ARGS__)                                                               \
-      ->Apply([](benchmark::internal::Benchmark *b) {                                                          \
-        auto max_t = std::thread::hardware_concurrency();                                                      \
-        for (unsigned t = 1; t <= max_t; ++t) {                                                                \
-          b->Args({fib_##mode, static_cast<std::int64_t>(t)});                                                 \
-        }                                                                                                      \
-      })                                                                                                       \
+#define BENCH_ONE_MT(mode, ...)                                                                              \
+  BENCHMARK_TEMPLATE(run, __VA_ARGS__)                                                                       \
+      ->Name(#mode "/libfork/fib/" #__VA_ARGS__)                                                             \
+      ->Apply([](benchmark::Benchmark *b) -> void {                                                          \
+        for (unsigned t = 1; t <= BENCH_MAX_THR; ++t) {                                                      \
+          b->Args({fib_##mode, static_cast<std::int64_t>(t)});                                               \
+        }                                                                                                    \
+      })                                                                                                     \
       ->UseRealTime();
 
 #define BENCH_ALL_MT(...) BENCH_ONE_MT(test, __VA_ARGS__) BENCH_ONE_MT(base, __VA_ARGS__)
-
-// clang-format on
 
 BENCH_ALL_MT(lf::busy_thread_pool<false, geometric_stack<>>)
 BENCH_ALL_MT(lf::busy_thread_pool<true, geometric_stack<>>)
