@@ -63,8 +63,8 @@ TEMPLATE_TEST_CASE("Inline schedule", "[schedule]", mono_inline_ctx, poly_inline
 
 namespace {
 
-using mono_busy_thread_pool = lf::busy_thread_pool<false, lf::geometric_stack<>>;
-using poly_busy_thread_pool = lf::busy_thread_pool<true, lf::geometric_stack<>>;
+using mono_busy_thread_pool = lf::mono_busy_pool<lf::geometric_stack<>>;
+using poly_busy_thread_pool = lf::poly_busy_pool<lf::geometric_stack<>>;
 
 } // namespace
 

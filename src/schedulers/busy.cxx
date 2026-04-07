@@ -1,7 +1,7 @@
 module;
 #include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/compiler.hpp"
-export module libfork.schedulers:busy_thread_pool;
+export module libfork.schedulers:basic_busy_pool;
 
 import std;
 
@@ -18,13 +18,15 @@ struct invalid_workers_error : std::exception {
   }
 };
 
-export template <bool Polymorphic, worker_stack Stack>
-class busy_thread_pool {
+export enum class pool_kind { mono, poly };
 
-  using context = std::conditional_t<           //
-      Polymorphic,                              //
-      derived_poly_context<Stack, adapt_deque>, //
-      mono_context<Stack, adapt_deque>          //
+export template <pool_kind Kind, worker_stack Stack>
+class basic_busy_pool {
+
+  using context = std::conditional_t<                  //
+      Kind == pool_kind::poly,                         //
+      derived_poly_context<Stack, adapt_deque>,        //
+      mono_context<Stack, adapt_deque>                 //
       >;
 
  public:
@@ -32,7 +34,7 @@ class busy_thread_pool {
 
   // TODO: sleep when zero work
 
-  explicit busy_thread_pool(std::size_t n = std::thread::hardware_concurrency()) : m_contexts(n) {
+  explicit basic_busy_pool(std::size_t n = std::thread::hardware_concurrency()) : m_contexts(n) {
 
     if (n < 1) {
       LF_THROW(invalid_workers_error{});
@@ -51,13 +53,13 @@ class busy_thread_pool {
     }
   }
 
-  busy_thread_pool(busy_thread_pool const &) = delete;
-  busy_thread_pool(busy_thread_pool &&) = delete;
+  basic_busy_pool(basic_busy_pool const &) = delete;
+  basic_busy_pool(basic_busy_pool &&) = delete;
 
-  auto operator=(busy_thread_pool const &) -> busy_thread_pool & = delete;
-  auto operator=(busy_thread_pool &&) -> busy_thread_pool & = delete;
+  auto operator=(basic_busy_pool const &) -> basic_busy_pool & = delete;
+  auto operator=(basic_busy_pool &&) -> basic_busy_pool & = delete;
 
-  ~busy_thread_pool() { join_all(); }
+  ~basic_busy_pool() { join_all(); }
 
   void post(sched_handle<context_type> handle) {
     // TODO: use a lock-free queue here
@@ -121,5 +123,11 @@ class busy_thread_pool {
   std::mutex m_mutex;
   std::vector<sched_handle<context_type>> m_posted;
 };
+
+export template <worker_stack Stack>
+using mono_busy_pool = basic_busy_pool<pool_kind::mono, Stack>;
+
+export template <worker_stack Stack>
+using poly_busy_pool = basic_busy_pool<pool_kind::poly, Stack>;
 
 } // namespace lf

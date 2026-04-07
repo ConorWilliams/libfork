@@ -113,5 +113,8 @@ using poly_context = lf::derived_poly_context<Stack, Adaptor>;
 
 using lf::geometric_stack;
 
-BENCH_MT(lf::busy_thread_pool<false, geometric_stack<>>)
-BENCH_MT(lf::busy_thread_pool<true, geometric_stack<>>)
+using mono_busy_pool = lf::mono_busy_pool<geometric_stack<>>;
+using poly_busy_pool = lf::poly_busy_pool<geometric_stack<>>;
+
+BENCH_MT(mono_busy_pool)
+BENCH_MT(poly_busy_pool)

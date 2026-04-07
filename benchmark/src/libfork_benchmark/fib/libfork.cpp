@@ -79,6 +79,9 @@ using lf::inline_scheduler;
 using lf::adaptor_stack;
 using lf::geometric_stack;
 
+using mono_busy_pool = lf::mono_busy_pool<geometric_stack<>>;
+using poly_busy_pool = lf::poly_busy_pool<geometric_stack<>>;
+
 BENCH_ALL(inline_scheduler<real_context<adaptor_stack<>, adapt_vector>>)
 BENCH_ALL(inline_scheduler<poly_context<adaptor_stack<>, adapt_vector>>)
 
@@ -102,5 +105,5 @@ BENCH_ALL(inline_scheduler<poly_context<geometric_stack<>, adapt_deque>>)
 
 #define BENCH_ALL_MT(...) BENCH_ONE_MT(test, __VA_ARGS__) BENCH_ONE_MT(base, __VA_ARGS__)
 
-BENCH_ALL_MT(lf::busy_thread_pool<false, geometric_stack<>>)
-BENCH_ALL_MT(lf::busy_thread_pool<true, geometric_stack<>>)
+BENCH_ALL_MT(mono_busy_pool)
+BENCH_ALL_MT(poly_busy_pool)
