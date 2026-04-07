@@ -75,6 +75,7 @@ target_link_libraries(libfork_benchmark PRIVATE uts_c)
 
 target_sources(libfork_benchmark
   PRIVATE
+    src/libfork_benchmark/uts/uts.cpp
     src/libfork_benchmark/uts/serial.cpp
     src/libfork_benchmark/uts/libfork.cpp
 )
