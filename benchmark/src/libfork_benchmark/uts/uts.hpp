@@ -1,14 +1,11 @@
 #pragma once
 
-
 // Include the C UTS library header first (it defines max/min macros that would
 // clash with std::max/std::min after import std).
 #include "libfork_benchmark/uts/external/uts.h"
 
 #undef max
 #undef min
-
-
 
 import std;
 
