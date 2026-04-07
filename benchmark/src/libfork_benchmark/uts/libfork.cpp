@@ -99,8 +99,8 @@ void run(benchmark::State &state) {
   BENCH_ONE_MT(test, "T1_mini", uts_t1_mini, __VA_ARGS__)                                                    \
   BENCH_ONE_MT(test, "T3_mini", uts_t3_mini, __VA_ARGS__)                                                    \
   BENCH_ONE_MT(base, "T1", uts_t1, __VA_ARGS__)                                                              \
-  BENCH_ONE_MT(base, "T1L", uts_t1l, __VA_ARGS__)                                                            \
-  BENCH_ONE_MT(large, "T3", uts_t3, __VA_ARGS__)                                                             \
+  BENCH_ONE_MT(base, "T3", uts_t3, __VA_ARGS__)                                                              \
+  BENCH_ONE_MT(large, "T1L", uts_t1l, __VA_ARGS__)                                                           \
   BENCH_ONE_MT(large, "T3L", uts_t3l, __VA_ARGS__)
 
 template <typename Stack, template <typename> typename Adaptor>
