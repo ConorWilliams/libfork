@@ -138,7 +138,7 @@ class slab_stack {
   }
 
   [[nodiscard]]
-  constexpr auto prepare_release() const noexcept -> release_t {
+  constexpr auto prepare_release() noexcept -> release_t {
     // Guard against null ctrl (failed prior allocation in release()).
     if (m_ctrl != nullptr) {
       m_ctrl->sp_cache = m_sp;
@@ -165,6 +165,7 @@ class slab_stack {
 
   constexpr void acquire(checkpoint_t ckpt) noexcept {
     LF_ASSUME(empty());
+    LF_ASSUME(ckpt.m_ctrl != m_ctrl);
 
     if (ckpt.m_ctrl == nullptr) {
       return;

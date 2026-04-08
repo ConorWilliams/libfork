@@ -107,7 +107,7 @@ class geometric_stack {
     LF_ASSUME(push_bytes >= node_size);
     LF_ASSUME(push_bytes % node_size == 0);
 
-    // Optimized to just the subtrtaction because multiplication cancels the implicit division.
+    // Optimized to just the subtraction because multiplication cancels the implicit division.
     diff_type free_bytes = node_size * (m_hi - m_sp);
 
     if (push_bytes > free_bytes) [[unlikely]] {
@@ -148,7 +148,7 @@ class geometric_stack {
   }
 
   [[nodiscard]]
-  constexpr auto prepare_release() const noexcept -> release_t {
+  constexpr auto prepare_release() noexcept -> release_t {
 
     // Guard against null release
     if (m_ctrl != nullptr) {
