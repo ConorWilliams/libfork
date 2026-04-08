@@ -33,8 +33,6 @@
 #ifndef _SHA1_H
 #define _SHA1_H
 
-#include <stdlib.h>
-
 #include "brg_types.h"
 
 #define SHA1_BLOCK_SIZE 64
