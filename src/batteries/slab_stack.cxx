@@ -13,18 +13,17 @@ namespace lf {
 /**
  * @brief A slab_stack is a user-space stack backed by a single fixed-size slab of memory.
  *
- * The ctrl metadata and usable stack space are fused into a single allocation: a header
- * at the front of the slab is followed immediately by the usable nodes.  There is no
- * segmentation, caching, or geometric growth — if the slab is full, push throws.
+ * The ctrl metadata and usable stack space are fused into a single allocation: the first
+ * node of the slab is the header, and the remaining `size` nodes are the usable stack
+ * space.  There is no segmentation, caching, or geometric growth — if the slab is full,
+ * push throws.
  *
  * For this to conform to `worker_stack` the allocators void pointer type must be `void *`
  */
 export template <allocator_of<std::byte> Allocator = std::allocator<std::byte>>
 class slab_stack {
 
-  // Alignment unit — all allocations are a multiple of this size.
-  struct alignas(k_new_align) node {};
-  static_assert(sizeof(node) == k_new_align);
+  struct node; // Forward declaration so type aliases can reference node before its definition.
 
   using node_traits = std::allocator_traits<Allocator>::template rebind_traits<node>;
   using node_alloc_t = node_traits::allocator_type;
@@ -33,22 +32,19 @@ class slab_stack {
   using size_int = node_traits::size_type;
   using diff_int = node_traits::difference_type;
 
-  // Fused ctrl+node header — lives at the very start of every slab allocation.
-  // The usable stack space (size nodes) follows directly after the header region.
-  struct slab {
+  // Fused ctrl+node: the first element of every slab allocation.
+  // node_alloc, sp_cache, and size live here; the `size` nodes that follow are
+  // the usable stack space.  Mirrors how geometric_stack stores ctrl data in its
+  // first node — no reinterpret_cast is ever needed.
+  struct alignas(k_new_align) node {
     [[no_unique_address]]
     node_alloc_t node_alloc; // Propagated to new owners on acquire.
     node_ptr sp_cache;       // Stack pointer saved across release/acquire.
-    diff_int size;           // Usable node count in this slab.
+    diff_int size;           // Usable node count following this header.
   };
 
-  // Number of node-sized units occupied by the header at the front of each allocation.
-  static constexpr diff_int k_header_nodes =
-      safe_cast<diff_int>((sizeof(slab) + sizeof(node) - 1) / sizeof(node));
-
-  // Default capacity: fill one page minus the header.
-  static constexpr diff_int k_default_nodes =
-      safe_cast<diff_int>(k_page_size / sizeof(node)) - k_header_nodes;
+  // Default capacity: one page of usable space (header occupies the first node).
+  static constexpr diff_int k_default_nodes = safe_cast<diff_int>(k_page_size / sizeof(node)) - 1;
 
   static_assert(k_default_nodes > 0);
 
@@ -63,12 +59,13 @@ class slab_stack {
 
    private:
     friend slab_stack;
-    explicit constexpr checkpoint_t(slab *ptr) noexcept : m_slab(ptr) {}
-    slab *m_slab = nullptr;
+    explicit constexpr checkpoint_t(node_ptr ptr) noexcept : m_ctrl(ptr) {}
+    node_ptr m_ctrl = nullptr;
   };
 
  public:
   constexpr slab_stack() : slab_stack(Allocator{}) {}
+  explicit constexpr slab_stack(diff_int num_nodes) : slab_stack(Allocator{}, num_nodes) {}
   explicit constexpr slab_stack(Allocator const &alloc, diff_int num_nodes = k_default_nodes)
       : m_alloc(alloc) {
     init_slab(num_nodes);
@@ -82,7 +79,7 @@ class slab_stack {
 
   constexpr ~slab_stack() noexcept {
     LF_ASSUME(empty());
-    free_slab(m_slab);
+    free_ctrl(m_ctrl);
   }
 
   /**
@@ -98,7 +95,7 @@ class slab_stack {
    */
   [[nodiscard]]
   constexpr auto checkpoint() noexcept -> checkpoint_t {
-    return checkpoint_t{m_slab};
+    return checkpoint_t{m_ctrl};
   }
 
   /**
@@ -142,18 +139,18 @@ class slab_stack {
 
   [[nodiscard]]
   constexpr auto prepare_release() const noexcept -> release_t {
-    // Guard against null release (failed prior allocation).
-    if (m_slab != nullptr) {
-      m_slab->sp_cache = m_sp;
+    // Guard against null ctrl (failed prior allocation in release()).
+    if (m_ctrl != nullptr) {
+      m_ctrl->sp_cache = m_sp;
     }
     return release_t{key()};
   }
 
   constexpr void release([[maybe_unused]] release_t) noexcept {
-    diff_int next_size = (m_slab != nullptr) ? m_slab->size : k_default_nodes;
+    diff_int next_size = (m_ctrl != nullptr) ? m_ctrl->size : k_default_nodes;
 
     // Hand off the current slab to whoever holds the checkpoint; clear local state.
-    m_slab = nullptr;
+    m_ctrl = nullptr;
     m_lo = nullptr;
     m_sp = nullptr;
     m_hi = nullptr;
@@ -169,20 +166,20 @@ class slab_stack {
   constexpr void acquire(checkpoint_t ckpt) noexcept {
     LF_ASSUME(empty());
 
-    if (ckpt.m_slab == nullptr) {
+    if (ckpt.m_ctrl == nullptr) {
       return;
     }
 
     // Discard the fresh empty slab we prepared during release() (may be null on alloc failure).
-    free_slab(m_slab);
+    free_ctrl(m_ctrl);
 
-    m_slab = ckpt.m_slab;
+    m_ctrl = ckpt.m_ctrl;
 
     if constexpr (!node_traits::is_always_equal::value) {
-      m_alloc = node_alloc_t{std::as_const(m_slab->node_alloc)};
+      m_alloc = node_alloc_t{std::as_const(m_ctrl->node_alloc)};
     }
 
-    LF_ASSUME(m_slab != nullptr);
+    LF_ASSUME(m_ctrl != nullptr);
 
     load_local();
   }
@@ -191,46 +188,44 @@ class slab_stack {
   [[no_unique_address]]
   node_alloc_t m_alloc;
 
-  slab *m_slab = nullptr;
-  node_ptr m_lo = nullptr; // Base of usable space in the current slab.
-  node_ptr m_sp = nullptr; // Stack pointer for the current slab.
-  node_ptr m_hi = nullptr; // One-past-the-end of usable space in the current slab.
+  node_ptr m_ctrl = nullptr; // Header node (fused ctrl+first-node of the slab).
+  node_ptr m_lo = nullptr;   // Base of usable space (m_ctrl + 1).
+  node_ptr m_sp = nullptr;   // Stack pointer for the current slab.
+  node_ptr m_hi = nullptr;   // One-past-the-end of usable space.
 
-  // Restore local pointers from the slab header, taking sp from the cache.
+  // Restore local pointers from the header node, taking sp from the cache.
   constexpr void load_local() noexcept {
-    LF_ASSUME(m_slab != nullptr);
-    node_ptr base = reinterpret_cast<node_ptr>(m_slab) + k_header_nodes;
-    m_lo = base;
-    m_hi = base + m_slab->size;
-    m_sp = m_slab->sp_cache;
+    LF_ASSUME(m_ctrl != nullptr);
+    m_lo = m_ctrl + 1;
+    m_hi = m_lo + m_ctrl->size;
+    m_sp = m_ctrl->sp_cache;
   }
 
   // Allocate and construct a fresh slab with num_nodes usable nodes.
   constexpr void init_slab(diff_int num_nodes) {
     LF_ASSUME(num_nodes > 0);
 
-    size_int total = safe_cast<size_int>(k_header_nodes + num_nodes);
-    node_ptr raw = node_traits::allocate(m_alloc, total);
+    size_int total = safe_cast<size_int>(1 + num_nodes);
+    m_ctrl = node_traits::allocate(m_alloc, total);
 
     LF_TRY {
-      m_slab = std::construct_at(reinterpret_cast<slab *>(std::to_address(raw)), m_alloc, nullptr, num_nodes);
+      node_traits::construct(m_alloc, m_ctrl, m_alloc, nullptr, num_nodes);
     } LF_CATCH_ALL {
-      node_traits::deallocate(m_alloc, raw, total);
+      node_traits::deallocate(m_alloc, m_ctrl, total);
+      m_ctrl = nullptr;
       LF_RETHROW;
     }
 
-    node_ptr base = raw + k_header_nodes;
-    m_lo = m_sp = base;
-    m_hi = base + num_nodes;
+    m_lo = m_sp = m_ctrl + 1;
+    m_hi = m_lo + num_nodes;
   }
 
   // Destroy and deallocate a slab (no-op if null).
-  constexpr void free_slab(slab *s) noexcept {
-    if (s != nullptr) {
-      size_int total = safe_cast<size_int>(k_header_nodes + s->size);
-      node_ptr raw = reinterpret_cast<node_ptr>(s);
-      std::destroy_at(s);
-      node_traits::deallocate(m_alloc, raw, total);
+  constexpr void free_ctrl(node_ptr ctrl) noexcept {
+    if (ctrl != nullptr) {
+      size_int total = safe_cast<size_int>(1 + ctrl->size);
+      node_traits::destroy(m_alloc, ctrl);
+      node_traits::deallocate(m_alloc, ctrl, total);
     }
   }
 

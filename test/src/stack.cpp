@@ -54,11 +54,12 @@ constexpr void check_non_empty(auto const &stack) {
 
 } // namespace
 
-TEMPLATE_TEST_CASE("Concept", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>) {
+TEMPLATE_TEST_CASE("Concept", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>, lf::slab_stack<>) {
   STATIC_REQUIRE(worker_stack<TestType>); //
 }
 
-TEMPLATE_TEST_CASE("Basic push and pop", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>) {
+TEMPLATE_TEST_CASE("Basic push and pop", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>,
+                   lf::slab_stack<>) {
   TEST_CONSTEXPR([]() -> bool {
     TestType stack;
     check_empty(stack);
@@ -81,7 +82,8 @@ TEMPLATE_TEST_CASE("Basic push and pop", "[stacks]", lf::geometric_stack<>, lf::
   });
 }
 
-TEMPLATE_TEST_CASE("Checkpoint and Acquire/Release", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>) {
+TEMPLATE_TEST_CASE("Checkpoint and Acquire/Release", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>,
+                   lf::slab_stack<>) {
   TEST_CONSTEXPR([]() -> bool {
     TestType stack1;
     void *p1 = stack1.push(100);
@@ -104,7 +106,7 @@ TEMPLATE_TEST_CASE("Checkpoint and Acquire/Release", "[stacks]", lf::geometric_s
   });
 }
 
-TEMPLATE_TEST_CASE("Single pass", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>) {
+TEMPLATE_TEST_CASE("Single pass", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>, lf::slab_stack<>) {
   for (int k = 0; k < 10; ++k) {
 
     TestType stack;
@@ -122,16 +124,21 @@ TEMPLATE_TEST_CASE("Single pass", "[stacks]", lf::geometric_stack<>, lf::adaptor
       std::vector<entry> entries;
       const std::size_t depth = depth_dist(rng);
 
-      // Push phase
+      // Push phase — break early if slab_stack exhausts its fixed capacity
       for (std::size_t j = 0; j < depth; ++j) {
         std::size_t s = size_dist(rng);
-        void *p = stack.push(s);
+        void *p = nullptr;
+        try {
+          p = stack.push(s);
+        } catch (std::bad_alloc const &) {
+          break;
+        }
         check_alignment(p);
         entries.push_back({.ptr = p, .size = s});
       }
 
-      // Pop phase (FILO)
-      for (std::size_t j = depth; j > 0; --j) {
+      // Pop phase (FILO) — use entries.size() in case push exited early
+      for (std::size_t j = entries.size(); j > 0; --j) {
         auto const &e = entries[j - 1];
         stack.pop(e.ptr, e.size);
       }
@@ -141,7 +148,8 @@ TEMPLATE_TEST_CASE("Single pass", "[stacks]", lf::geometric_stack<>, lf::adaptor
   }
 }
 
-TEMPLATE_TEST_CASE("Randomized push/pop", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>) {
+TEMPLATE_TEST_CASE("Randomized push/pop", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>,
+                   lf::slab_stack<>) {
   TestType stack;
   std::mt19937_64 rng{std::random_device{}()};
   std::bernoulli_distribution push_dist{0.51};
@@ -163,7 +171,12 @@ TEMPLATE_TEST_CASE("Randomized push/pop", "[stacks]", lf::geometric_stack<>, lf:
 
     if (entries.empty() || push_dist(rng)) {
       std::size_t s = size_dist(rng);
-      void *p = stack.push(s);
+      void *p = nullptr;
+      try {
+        p = stack.push(s);
+      } catch (std::bad_alloc const &) {
+        break; // slab_stack exhausted; clean up and finish
+      }
       check_alignment(p);
       entries.push_back({.ptr = p, .size = s});
       total_pushed++;
@@ -184,7 +197,8 @@ TEMPLATE_TEST_CASE("Randomized push/pop", "[stacks]", lf::geometric_stack<>, lf:
   check_empty(stack);
 }
 
-TEMPLATE_TEST_CASE("Spikey randomized push/pop", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>) {
+TEMPLATE_TEST_CASE("Spikey randomized push/pop", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>,
+                   lf::slab_stack<>) {
   TestType stack;
   std::mt19937_64 rng{std::random_device{}()};
 
@@ -217,7 +231,12 @@ TEMPLATE_TEST_CASE("Spikey randomized push/pop", "[stacks]", lf::geometric_stack
 
     if (do_push) {
       std::size_t s = size_dist(rng);
-      void *p = stack.push(s);
+      void *p = nullptr;
+      try {
+        p = stack.push(s);
+      } catch (std::bad_alloc const &) {
+        break; // slab_stack exhausted; clean up and finish
+      }
       check_alignment(p);
       entries.push_back({.ptr = p, .size = s});
       total_pushed++;
@@ -237,4 +256,57 @@ TEMPLATE_TEST_CASE("Spikey randomized push/pop", "[stacks]", lf::geometric_stack
     entries.pop_back();
   }
   check_empty(stack);
+}
+
+// ---- slab_stack specific ----
+//
+// Tests that exercise behaviour unique to slab_stack's fixed-size design.
+
+TEST_CASE("slab_stack - throws when full", "[stacks]") {
+  // Use a tiny slab (2 usable nodes) to exercise the overflow path precisely.
+  lf::slab_stack<> stack(2);
+
+  void *p1 = stack.push(k_new_align);
+  void *p2 = stack.push(k_new_align);
+  REQUIRE_THROWS_AS(stack.push(k_new_align), std::bad_alloc);
+
+  stack.pop(p2, k_new_align);
+  stack.pop(p1, k_new_align);
+  check_empty(stack);
+}
+
+TEST_CASE("slab_stack - single pass", "[stacks]") {
+  for (int k = 0; k < 10; ++k) {
+    // Slab sized to hold the worst-case live footprint without early exit:
+    // depth_max (5000) * roundup(size_max (200), k_new_align=16) / k_new_align
+    // = 5000 * 13 = 65 000 nodes, with headroom.
+    lf::slab_stack<> stack(70'000);
+    std::mt19937_64 rng{std::random_device{}()};
+    std::uniform_int_distribution<std::size_t> size_dist{1, 200};
+    std::uniform_int_distribution<std::size_t> depth_dist{5, 5000};
+
+    struct entry {
+      void *ptr;
+      std::size_t size;
+    };
+
+    for (int i = 0; i < 2; ++i) {
+      std::vector<entry> entries;
+      const std::size_t depth = depth_dist(rng);
+
+      for (std::size_t j = 0; j < depth; ++j) {
+        std::size_t s = size_dist(rng);
+        void *p = stack.push(s);
+        check_alignment(p);
+        entries.push_back({.ptr = p, .size = s});
+      }
+
+      for (std::size_t j = depth; j > 0; --j) {
+        auto const &e = entries[j - 1];
+        stack.pop(e.ptr, e.size);
+      }
+
+      check_empty(stack);
+    }
+  }
 }
