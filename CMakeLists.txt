@@ -92,6 +92,7 @@ target_sources(libfork_libfork
       src/batteries/contexts.cxx
       src/batteries/geometric_stack.cxx
       src/batteries/adaptor_stack.cxx
+      src/batteries/slab_stack.cxx
       src/batteries/dummy_stack.cxx
       # libfork.schedulers
       src/schedulers/schedulers.cxx
