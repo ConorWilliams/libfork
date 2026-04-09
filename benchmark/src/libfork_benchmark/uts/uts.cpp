@@ -20,7 +20,7 @@ void reset_uts() {
   verbose = 1;
 }
 
-// (T1 mini) Geometric [fixed] — gen_mx=7, same other params as T1
+// (T1 mini) Geometric
 void setup_t1_mini() {
   reset_uts();
   type = static_cast<tree_t>(1);
@@ -30,7 +30,7 @@ void setup_t1_mini() {
   rootId = 19;
 }
 
-// (T1) Geometric [fixed] — size = 4130071, depth = 10, leaves = 3305118
+// (T1) Geometric
 void setup_t1() {
   reset_uts();
   type = static_cast<tree_t>(1);
@@ -40,7 +40,7 @@ void setup_t1() {
   rootId = 19;
 }
 
-// (T1L) Geometric [fixed] — size = 102181082, depth = 13, leaves = 81746377
+// (T1L) Geometric
 void setup_t1l() {
   reset_uts();
   type = static_cast<tree_t>(1);
@@ -50,7 +50,7 @@ void setup_t1l() {
   rootId = 29;
 }
 
-// (T1XXL) Geometric [fixed] — size = 4230646601, depth = 15
+// (T1XXL)
 void setup_t1xxl() {
   reset_uts();
   type = static_cast<tree_t>(1);
@@ -60,7 +60,7 @@ void setup_t1xxl() {
   rootId = 19;
 }
 
-// (T3 mini) Binomial — b_0=20, same other params as T3
+// (T3 mini)
 void setup_t3_mini() {
   reset_uts();
   type = static_cast<tree_t>(0);
@@ -70,7 +70,7 @@ void setup_t3_mini() {
   rootId = 42;
 }
 
-// (T3) Binomial — size = 4112897, depth = 1572, leaves = 3599034
+// (T3) Binomial
 void setup_t3() {
   reset_uts();
   type = static_cast<tree_t>(0);
@@ -80,7 +80,7 @@ void setup_t3() {
   rootId = 42;
 }
 
-// (T3L) Binomial — size = 111345631, depth = 17844, leaves = 89076904
+// (T3L) Binomial
 void setup_t3l() {
   reset_uts();
   type = static_cast<tree_t>(0);
@@ -90,7 +90,7 @@ void setup_t3l() {
   rootId = 7;
 }
 
-// (T3XXL) Binomial — size = 2793220501
+// (T3XXL) Binomial
 void setup_t3xxl() {
   reset_uts();
   type = static_cast<tree_t>(0);
@@ -128,6 +128,8 @@ void setup_tree(uts_tree tree) {
     case uts_t3xxl:
       setup_t3xxl();
       break;
+    default:
+      LF_THROW(std::invalid_argument("invalid tree type"));
   }
 }
 
