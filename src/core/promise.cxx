@@ -260,7 +260,7 @@ struct join_awaitable {
       // If no steals then we are the only owner of the parent and we are
       // ready to join. Therefore, no need to reset the control block.
       if (self.frame->is_cancelled()) [[unlikely]] {
-        // Must unconditionally suspended if cancelled
+        // Must unconditionally suspended if canceled
         return false;
       }
       return true;
