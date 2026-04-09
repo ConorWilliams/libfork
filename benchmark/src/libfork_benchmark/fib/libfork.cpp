@@ -39,7 +39,13 @@ void run(benchmark::State &state) {
 
   state.counters["n"] = static_cast<double>(n);
 
-  Sch scheduler;
+  Sch scheduler = [&state] -> Sch {
+    if constexpr (std::constructible_from<Sch, std::size_t>) {
+      return Sch{static_cast<std::size_t>(state.range(1))};
+    } else {
+      return Sch{};
+    }
+  }();
 
   for (auto _ : state) {
     benchmark::DoNotOptimize(n);
@@ -53,7 +59,10 @@ void run(benchmark::State &state) {
 } // namespace
 
 #define BENCH_ONE(mode, ...)                                                                                 \
-  BENCHMARK_TEMPLATE(run, __VA_ARGS__)->Name(#mode "/libfork/fib/" #__VA_ARGS__)->Arg(fib_##mode);
+  BENCHMARK_TEMPLATE(run, __VA_ARGS__)                                                                       \
+      ->Name(#mode "/libfork/fib/" #__VA_ARGS__)                                                             \
+      ->Arg(fib_##mode)                                                                                      \
+      ->UseRealTime();
 
 #define BENCH_ALL(...) BENCH_ONE(test, __VA_ARGS__) BENCH_ONE(base, __VA_ARGS__)
 
@@ -78,3 +87,20 @@ BENCH_ALL(inline_scheduler<poly_context<geometric_stack<>, adapt_vector>>)
 
 BENCH_ALL(inline_scheduler<real_context<geometric_stack<>, adapt_deque>>)
 BENCH_ALL(inline_scheduler<poly_context<geometric_stack<>, adapt_deque>>)
+
+#define BENCH_MAX_THR 8
+
+#define BENCH_ONE_MT(mode, ...)                                                                              \
+  BENCHMARK_TEMPLATE(run, __VA_ARGS__)                                                                       \
+      ->Name(#mode "/libfork/fib/" #__VA_ARGS__)                                                             \
+      ->Apply([](benchmark::Benchmark *b) -> void {                                                          \
+        for (unsigned t = 1; t <= BENCH_MAX_THR; ++t) {                                                      \
+          b->Args({fib_##mode, static_cast<std::int64_t>(t)});                                               \
+        }                                                                                                    \
+      })                                                                                                     \
+      ->UseRealTime();
+
+#define BENCH_ALL_MT(...) BENCH_ONE_MT(test, __VA_ARGS__) BENCH_ONE_MT(base, __VA_ARGS__)
+
+BENCH_ALL_MT(lf::busy_thread_pool<false, geometric_stack<>>)
+BENCH_ALL_MT(lf::busy_thread_pool<true, geometric_stack<>>)

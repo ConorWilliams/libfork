@@ -50,9 +50,6 @@ class geometric_stack {
   };
 
  public:
-  // TODO: remove this typedef
-  using allocator_type = Allocator;
-
   constexpr geometric_stack() noexcept(noexcept(Allocator{})) : geometric_stack(Allocator()) {}
   explicit constexpr geometric_stack(Allocator const &alloc) noexcept : m_ctrl_alloc(alloc) {}
 
@@ -134,9 +131,9 @@ class geometric_stack {
    */
   constexpr void pop(void_ptr ptr, [[maybe_unused]] std::size_t n) noexcept {
 
-    LF_ASSUME(!empty());
     LF_ASSUME(m_ctrl != nullptr);
     LF_ASSUME(m_ctrl->top != nullptr);
+    LF_ASSUME(!empty());
     LF_ASSUME(m_sp != nullptr);
     LF_ASSUME(ptr != nullptr);
 

@@ -33,7 +33,7 @@ class adaptor_stack {
   using size_int = align_trait::size_type;
 
   struct release_t {
-    explicit constexpr release_t(key_t) noexcept {}
+    explicit constexpr release_t(key_t /*unused*/) noexcept {}
   };
 
   class checkpoint_t {
@@ -48,7 +48,7 @@ class adaptor_stack {
     struct empty {
       constexpr empty() noexcept = default;
       constexpr auto operator==(empty const &) const noexcept -> bool = default;
-      explicit constexpr empty(align_alloc const &) noexcept {};
+      explicit constexpr empty(align_alloc const & /*unused*/) noexcept {}
     };
 
     std::conditional_t<align_trait::is_always_equal::value, empty, align_alloc> m_alloc;

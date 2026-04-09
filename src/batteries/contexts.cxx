@@ -24,6 +24,11 @@ class derived_poly_context : public poly_context<Stack> {
  public:
   using context_type = poly_context<Stack>;
 
+  [[nodiscard]]
+  constexpr auto get_underlying() noexcept -> Adaptor<context_type> & {
+    return m_container;
+  }
+
   constexpr void push(steal_handle<context_type> frame) final { m_container.push(frame); }
 
   constexpr auto pop() noexcept -> steal_handle<context_type> final { return m_container.pop(); }
@@ -55,6 +60,11 @@ export template <                        //
 class mono_context : public base_context<Stack> {
  public:
   using context_type = mono_context;
+
+  [[nodiscard]]
+  constexpr auto get_underlying() noexcept -> Adaptor<context_type> & {
+    return m_container;
+  }
 
   constexpr void push(steal_handle<context_type> frame) noexcept(noexcept(m_container.push(frame))) {
     m_container.push(frame);

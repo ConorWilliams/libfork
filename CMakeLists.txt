@@ -95,6 +95,7 @@ target_sources(libfork_libfork
       # libfork.schedulers
       src/schedulers/schedulers.cxx
       src/schedulers/inline.cxx
+      src/schedulers/busy.cxx
     PRIVATE
       src/exception.cpp
 )

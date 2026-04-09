@@ -39,7 +39,20 @@ class adapt_deque {
     });
   }
 
+  // TODO: vet for [[nodiscard]]
+
+  [[nodiscard]]
+  constexpr auto thief() noexcept {
+    return m_deque.thief();
+  }
+
+  [[nodiscard]]
+  constexpr auto empty() const noexcept -> bool {
+    return m_deque.empty();
+  }
+
  private:
+  // TODO: make initializable/configurable
   deque<steal_handle<Context>> m_deque{1024};
 };
 

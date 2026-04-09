@@ -9,7 +9,7 @@ namespace lf::impl {
 [[noreturn]]
 void terminate_with(char const *message, char const *file, int line) noexcept {
   LF_TRY {
-    std::println(stderr, "{}:{}: {}", file, line, message);
+    std::println(stderr, "{} {}:{}: {}", std::this_thread::get_id(), file, line, message);
   } LF_CATCH_ALL {
     // Drop exceptions during termination
   }
