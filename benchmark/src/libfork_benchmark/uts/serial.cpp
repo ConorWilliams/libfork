@@ -9,7 +9,8 @@ import std;
 namespace {
 
 auto uts_traverse(int depth, Node *parent) -> result {
-  result r{static_cast<counter_t>(depth), counter_t{1}, counter_t{0}};
+
+  result r{.maxdepth = static_cast<counter_t>(depth), .size = counter_t{1}, .leaves = counter_t{0}};
 
   int num_children = uts_numChildren(parent);
   int child_type = uts_childType(parent);

@@ -12,10 +12,13 @@ import libfork;
 
 namespace {
 
+// TODO: try a version that uses try_fork
+
 struct uts_fn {
   template <lf::worker_context Context>
   static auto operator()(lf::env<Context>, int depth, Node *parent) -> lf::task<result, Context> {
-    result r{static_cast<counter_t>(depth), counter_t{1}, counter_t{0}};
+
+    result r{.maxdepth = static_cast<counter_t>(depth), .size = counter_t{1}, .leaves = counter_t{0}};
 
     int num_children = uts_numChildren(parent);
     int child_type = uts_childType(parent);
