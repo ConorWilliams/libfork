@@ -34,35 +34,35 @@ execute_process(
 )
 
 find_program(CMAKE_C_COMPILER
-  NAMES gcc-15
+  NAMES gcc-HEAD
   HINTS "${GCC_PREFIX}/bin"
   NO_DEFAULT_PATH
   REQUIRED
 )
 
 find_program(CMAKE_CXX_COMPILER
-  NAMES g++-15
+  NAMES g++-HEAD
   HINTS "${GCC_PREFIX}/bin"
   NO_DEFAULT_PATH
   REQUIRED
 )
 
 find_program(CMAKE_AR
-  NAMES gcc-ar-15
+  NAMES gcc-ar-HEAD
   HINTS "${GCC_PREFIX}/bin"
   NO_DEFAULT_PATH
   REQUIRED
 )
 
 find_program(CMAKE_RANLIB
-  NAMES gcc-ranlib-15
+  NAMES gcc-ranlib-HEAD
   HINTS "${GCC_PREFIX}/bin"
   NO_DEFAULT_PATH
   REQUIRED
 )
 
 find_program(CMAKE_NM
-  NAMES gcc-nm-15
+  NAMES gcc-nm-HEAD
   HINTS "${GCC_PREFIX}/bin"
   NO_DEFAULT_PATH
   REQUIRED

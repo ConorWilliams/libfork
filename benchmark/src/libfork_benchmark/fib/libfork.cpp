@@ -1,10 +1,12 @@
 #include <benchmark/benchmark.h>
 
+#include "libfork_benchmark/common.hpp"
+
 #include "libfork_benchmark/fib/fib.hpp"
 
-import libfork;
-
 import std;
+
+import libfork;
 
 // === Coroutine
 
@@ -38,14 +40,9 @@ void run(benchmark::State &state) {
   std::int64_t expect = fib_ref(n);
 
   state.counters["n"] = static_cast<double>(n);
+  state.counters["p"] = static_cast<double>(thread_count<Sch>(state));
 
-  Sch scheduler = [&state] -> Sch {
-    if constexpr (std::constructible_from<Sch, std::size_t>) {
-      return Sch{static_cast<std::size_t>(state.range(1))};
-    } else {
-      return Sch{};
-    }
-  }();
+  Sch scheduler = make_scheduler<Sch>(state);
 
   for (auto _ : state) {
     benchmark::DoNotOptimize(n);
@@ -88,13 +85,11 @@ BENCH_ALL(inline_scheduler<poly_context<geometric_stack<>, adapt_vector>>)
 BENCH_ALL(inline_scheduler<real_context<geometric_stack<>, adapt_deque>>)
 BENCH_ALL(inline_scheduler<poly_context<geometric_stack<>, adapt_deque>>)
 
-#define BENCH_MAX_THR 8
-
 #define BENCH_ONE_MT(mode, ...)                                                                              \
   BENCHMARK_TEMPLATE(run, __VA_ARGS__)                                                                       \
       ->Name(#mode "/libfork/fib/" #__VA_ARGS__)                                                             \
       ->Apply([](benchmark::Benchmark *b) -> void {                                                          \
-        for (unsigned t = 1; t <= BENCH_MAX_THR; ++t) {                                                      \
+        for (unsigned t = 1; t <= bench_max_threads; ++t) {                                                  \
           b->Args({fib_##mode, static_cast<std::int64_t>(t)});                                               \
         }                                                                                                    \
       })                                                                                                     \
@@ -102,5 +97,5 @@ BENCH_ALL(inline_scheduler<poly_context<geometric_stack<>, adapt_deque>>)
 
 #define BENCH_ALL_MT(...) BENCH_ONE_MT(test, __VA_ARGS__) BENCH_ONE_MT(base, __VA_ARGS__)
 
-BENCH_ALL_MT(lf::busy_thread_pool<false, geometric_stack<>>)
-BENCH_ALL_MT(lf::busy_thread_pool<true, geometric_stack<>>)
+BENCH_ALL_MT(mono_busy_pool)
+BENCH_ALL_MT(poly_busy_pool)

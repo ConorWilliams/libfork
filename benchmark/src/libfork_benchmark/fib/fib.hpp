@@ -1,7 +1,5 @@
 #pragma once
 
-#include "libfork_benchmark/common.hpp"
-
 import std;
 
 inline constexpr int fib_test = 8;
