@@ -51,9 +51,6 @@ void run(benchmark::State &state) {
     CHECK_RESULT(return_value, expect);
     benchmark::DoNotOptimize(return_value);
   }
-
-  auto total_tasks = static_cast<std::uint64_t>(2 * fib_ref(n + 1) - 1);
-  record_stats(state, scheduler, total_tasks);
 }
 
 } // namespace

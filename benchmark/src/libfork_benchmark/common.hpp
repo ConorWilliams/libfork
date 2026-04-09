@@ -44,19 +44,3 @@ auto make_scheduler(benchmark::State &state) -> Sch {
 
 using mono_busy_pool = lf::mono_busy_pool<lf::geometric_stack<>>;
 using poly_busy_pool = lf::poly_busy_pool<lf::geometric_stack<>>;
-
-template <typename T>
-concept pool_with_stats = requires (T const &t) {
-  { t.steal_count() } -> std::same_as<std::uint64_t>;
-};
-
-template <lf::scheduler Sch>
-void record_stats(benchmark::State &state, Sch const &scheduler, std::uint64_t total_tasks) {
-  state.counters["tasks"] = static_cast<double>(total_tasks);
-  if constexpr (pool_with_stats<Sch>) {
-    auto iters = static_cast<double>(state.iterations());
-    auto avg_steals = static_cast<double>(scheduler.steal_count()) / iters;
-    state.counters["steals"] = avg_steals;
-    state.counters["steal_frac"] = avg_steals / static_cast<double>(total_tasks);
-  }
-}
