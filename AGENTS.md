@@ -103,34 +103,6 @@ All tests should pass. If tests fail, check that:
 - Build completed without errors
 - Any changes you have made are correct
 
-## Linting & Validation
-
-The CI runs two linting tools that you should run before committing:
-
-### codespell (spelling)
-
-```bash
-codespell
-```
-
-Config: `.codespellrc` (ignores: build/, .git/, etc.)
-Should produce no output if passing.
-
-### clang-format (code formatting)
-
-```bash
-find src include test benchmark/src -name "*.cpp" -o -name "*.hpp" -o -name "*.cxx" | xargs clang-format --dry-run --Werror
-```
-
-Config: `.clang-format` (110 column limit, specific style)
-Should produce no output if passing.
-
-**To auto-fix formatting**:
-
-```bash
-find src include test benchmark/src -name "*.cpp" -o -name "*.hpp" -o -name "*.cxx" | xargs clang-format -i
-```
-
 ## Project Structure
 
 ### Source Layout
@@ -150,10 +122,9 @@ libfork/
 │   ├── batteries/            # libfork.batteries — stacks, contexts, adaptors
 │   │   ├── batteries.cxx     #   aggregator
 │   │   └── *.cxx             #   :partitions
-│   ├── schedulers/           # libfork.schedulers — concrete schedulers
+│   └── schedulers/           # libfork.schedulers — concrete schedulers
 │   │   ├── schedulers.cxx    #   aggregator
 │   │   └── *.cxx             #   :partitions
-│   └── exception.cpp         # terminate_with() implementation
 ├── test/src/**/              # Test suite (Catch2) — uses `import libfork;`
 │   └── *.cpp
 ├── benchmark/src/            # Benchmarking suite (google-benchmark)
