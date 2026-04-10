@@ -119,7 +119,10 @@ struct scope {
   static constexpr auto call(R *ret, Fn &&fn, Args &&...args) noexcept -> call_pkg<R, Fn, Args...> {
     return {.maybe_ret_adr = {ret}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
+
   // === Call with-cancel === //
+
+  // TODO: explicitly = delte overloads with cancel ptr = std::nullptr_t to avoid mistakes?
 
   template <typename... Args, async_invocable<Context, Args...> Fn>
   static constexpr auto
