@@ -225,6 +225,7 @@ struct awaitable : std::suspend_always {
  * @brief Pull an exception out of a frame and clean-up the union/allocation.
  */
 template <typename Checkpoint>
+[[nodiscard]]
 constexpr auto extract_exception(frame_type<Checkpoint> *frame) noexcept -> std::exception_ptr {
 
   LF_ASSUME(frame->exception_bit); // Should only be called if an exception was thrown.
@@ -329,14 +330,12 @@ struct join_awaitable {
       self.take_stack_and_reset();
 
       if (self.frame->is_cancelled()) [[unlikely]] {
-        // TODO: this needs to sink the exception
-        return std::noop_coroutine();
+        return self.handle_cancel();
       }
-
       return task;
     }
-
     // Someone else is responsible for running this task.
+
     // We cannot touch *this or dereference self as someone may have resumed already!
     // We cannot currently own this stack (checking would violate above).
 
@@ -349,6 +348,16 @@ struct join_awaitable {
 
     return std::noop_coroutine();
   }
+
+  [[nodiscard]]
+  constexpr auto handle_cancel(this join_awaitable self) -> coro<> {
+    if constexpr (LF_COMPILER_EXCEPTIONS) {
+      if (self.frame->exception_bit) [[unlikely]] {
+        std::ignore = extract_exception(self.frame);
+      }
+    }
+    return final_suspend<Context>(self.frame);
+  };
 
   [[noreturn]]
   constexpr void rethrow_exception(this join_awaitable self) {
