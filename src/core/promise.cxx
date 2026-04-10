@@ -309,7 +309,7 @@ struct awaitable : std::suspend_always {
   }
 
   template <typename T>
-  LF_FORCE_INLINE constexpr auto
+  constexpr auto
   await_suspend(this awaitable self, coro<promise_type<T, Context>> parent) noexcept -> coro<> {
 
     // TODO: Add tests for exception/cancellation handling in fork/call.
