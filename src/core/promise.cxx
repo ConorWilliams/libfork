@@ -401,8 +401,8 @@ struct mixin_frame {
 
   // --- Await transformations
 
-  template <category Cat, typename R, typename Fn, typename... Args>
-  static constexpr auto await_transform_pkg(pkg<Cat, Context, R, Fn, Args...> &&pkg) noexcept(
+  template <category Cat, bool Cancel, typename R, typename Fn, typename... Args>
+  static constexpr auto await_transform_pkg(pkg<Cat, Cancel, Context, R, Fn, Args...> &&pkg) noexcept(
       async_nothrow_invocable<Fn, Context, Args...>) -> awaitable<Cat, Context> {
 
     // Required for noexcept specifier to be correct
@@ -436,8 +436,8 @@ struct mixin_frame {
     return {.child = &child_promise->frame};
   }
 
-  template <category Cat, typename R, typename Fn, typename... Args>
-  constexpr auto await_transform(this auto &self, pkg<Cat, Context, R, Fn, Args...> &&pkg) noexcept
+  template <category Cat, bool Cancel, typename R, typename Fn, typename... Args>
+  constexpr auto await_transform(this auto &self, pkg<Cat, Cancel, Context, R, Fn, Args...> &&pkg) noexcept
       -> awaitable<Cat, Context> {
     LF_TRY {
       return self.await_transform_pkg(std::move(pkg));

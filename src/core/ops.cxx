@@ -21,8 +21,9 @@ struct maybe_ptr<void> {};
 
 // clang-format off
 
-template <category Cat, typename Context, typename R, typename Fn, typename... Args>
+template <category Cat, bool Cancel, typename Context, typename R, typename Fn, typename... Args>
 struct [[nodiscard("You should immediately co_await this!")]] pkg {
+  [[no_unique_address]] maybe_ptr<std::conditional<Cancel, cancellation, void>> maybe_cancel;
   [[no_unique_address]] maybe_ptr<R> maybe_ret_adr;
   [[no_unique_address]] Fn fn;
   [[no_unique_address]] tuple<Args...> args;
@@ -55,12 +56,20 @@ struct scope {
   // TODO: Is it better to stores values for some types i.e. empty
 
   template <typename R, typename Fn, typename... Args>
-  using call_pkg = pkg<category::call, Context, R, Fn &&, Args &&...>;
+  using call_pkg = pkg<category::call, false, Context, R, Fn &&, Args &&...>;
 
   template <typename R, typename Fn, typename... Args>
-  using fork_pkg = pkg<category::fork, Context, R, Fn &&, Args &&...>;
+  using fork_pkg = pkg<category::fork, false, Context, R, Fn &&, Args &&...>;
+
+  template <typename R, typename Fn, typename... Args>
+  using call_cancel_pkg = pkg<category::call, true, Context, R, Fn &&, Args &&...>;
+
+  template <typename R, typename Fn, typename... Args>
+  using fork_cancel_pkg = pkg<category::fork, true, Context, R, Fn &&, Args &&...>;
 
  public:
+  // === Fork no-cancel === //
+
   template <typename... Args, async_invocable<Context, Args...> Fn>
   static constexpr auto
   fork(std::nullptr_t, Fn &&fn, Args &&...args) noexcept -> fork_pkg<void, Fn, Args...> {
@@ -74,6 +83,22 @@ struct scope {
   static constexpr auto fork(R *ret, Fn &&fn, Args &&...args) noexcept -> fork_pkg<R, Fn, Args...> {
     return {.maybe_ret_adr = {ret}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
+
+  // === Fork with-cancel === //
+
+  // template <typename... Args, async_invocable<Context, Args...> Fn>
+  // static constexpr auto
+  // fork(std::nullptr_t, Fn &&fn, Args &&...args) noexcept -> fork_cancel_pkg<void, Fn, Args...> {
+  //   return {.maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+  // }
+  // template <typename... Args, async_invocable_to<void, Context, Args...> Fn>
+  // static constexpr auto fork(Fn &&fn, Args &&...args) noexcept -> fork_cancel_pkg<void, Fn, Args...> {
+  //   return {.maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+  // }
+  // template <typename R, typename... Args, async_invocable_to<R, Context, Args...> Fn>
+  // static constexpr auto fork(R *ret, Fn &&fn, Args &&...args) noexcept -> fork_cancel_pkg<R, Fn, Args...> {
+  //   return {.maybe_ret_adr = {ret}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+  // }
 
   template <typename... Args, async_invocable<Context, Args...> Fn>
   static constexpr auto
