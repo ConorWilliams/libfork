@@ -67,6 +67,8 @@ struct scope {
   template <typename R, typename Fn, typename... Args>
   using fork_cancel_pkg = pkg<category::fork, true, Context, R, Fn &&, Args &&...>;
 
+  using cancel_t = cancellation *;
+
  public:
   // === Fork no-cancel === //
 
@@ -86,19 +88,23 @@ struct scope {
 
   // === Fork with-cancel === //
 
-  // template <typename... Args, async_invocable<Context, Args...> Fn>
-  // static constexpr auto
-  // fork(std::nullptr_t, Fn &&fn, Args &&...args) noexcept -> fork_cancel_pkg<void, Fn, Args...> {
-  //   return {.maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
-  // }
-  // template <typename... Args, async_invocable_to<void, Context, Args...> Fn>
-  // static constexpr auto fork(Fn &&fn, Args &&...args) noexcept -> fork_cancel_pkg<void, Fn, Args...> {
-  //   return {.maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
-  // }
-  // template <typename R, typename... Args, async_invocable_to<R, Context, Args...> Fn>
-  // static constexpr auto fork(R *ret, Fn &&fn, Args &&...args) noexcept -> fork_cancel_pkg<R, Fn, Args...> {
-  //   return {.maybe_ret_adr = {ret}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
-  // }
+  template <typename... Args, async_invocable<Context, Args...> Fn>
+  static constexpr auto
+  fork(cancel_t ptr, std::nullptr_t, Fn &&fn, Args &&...args) noexcept -> fork_cancel_pkg<void, Fn, Args...> {
+    return {.maybe_cancel = {ptr}, .maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+  }
+  template <typename... Args, async_invocable_to<void, Context, Args...> Fn>
+  static constexpr auto
+  fork(cancel_t ptr, Fn &&fn, Args &&...args) noexcept -> fork_cancel_pkg<void, Fn, Args...> {
+    return {.maybe_cancel = {ptr}, .maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+  }
+  template <typename R, typename... Args, async_invocable_to<R, Context, Args...> Fn>
+  static constexpr auto
+  fork(cancel_t ptr, R *ret, Fn &&fn, Args &&...args) noexcept -> fork_cancel_pkg<R, Fn, Args...> {
+    return {.maybe_cancel = {ptr}, .maybe_ret_adr = {ret}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+  }
+
+  // === Call no-cancel === //
 
   template <typename... Args, async_invocable<Context, Args...> Fn>
   static constexpr auto
@@ -112,6 +118,23 @@ struct scope {
   template <typename R, typename... Args, async_invocable_to<R, Context, Args...> Fn>
   static constexpr auto call(R *ret, Fn &&fn, Args &&...args) noexcept -> call_pkg<R, Fn, Args...> {
     return {.maybe_ret_adr = {ret}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+  }
+  // === Call with-cancel === //
+
+  template <typename... Args, async_invocable<Context, Args...> Fn>
+  static constexpr auto
+  call(cancel_t ptr, std::nullptr_t, Fn &&fn, Args &&...args) noexcept -> call_cancel_pkg<void, Fn, Args...> {
+    return {.maybe_cancel = {ptr}, .maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+  }
+  template <typename... Args, async_invocable_to<void, Context, Args...> Fn>
+  static constexpr auto
+  call(cancel_t ptr, Fn &&fn, Args &&...args) noexcept -> call_cancel_pkg<void, Fn, Args...> {
+    return {.maybe_cancel = {ptr}, .maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+  }
+  template <typename R, typename... Args, async_invocable_to<R, Context, Args...> Fn>
+  static constexpr auto
+  call(cancel_t ptr, R *ret, Fn &&fn, Args &&...args) noexcept -> call_cancel_pkg<R, Fn, Args...> {
+    return {.maybe_cancel = {ptr}, .maybe_ret_adr = {ret}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
 };
 
