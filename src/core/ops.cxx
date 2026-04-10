@@ -11,20 +11,21 @@ import :frame;
 
 namespace lf {
 
-template <typename T>
+// Integer is just to make the types different
+template <int, typename T>
 struct maybe_ptr {
   T *ptr;
 };
 
-template <>
-struct maybe_ptr<void> {};
+template <int I>
+struct maybe_ptr<I, void> {};
 
 // clang-format off
 
 template <category Cat, bool Cancel, typename Context, typename R, typename Fn, typename... Args>
 struct [[nodiscard("You should immediately co_await this!")]] pkg {
-  [[no_unique_address]] maybe_ptr<std::conditional<Cancel, cancellation, void>> maybe_cancel;
-  [[no_unique_address]] maybe_ptr<R> maybe_ret_adr;
+  [[no_unique_address]] maybe_ptr<0, std::conditional<Cancel, cancellation, void>> maybe_cancel;
+  [[no_unique_address]] maybe_ptr<1, R> maybe_ret_adr;
   [[no_unique_address]] Fn fn;
   [[no_unique_address]] tuple<Args...> args;
 };
@@ -68,6 +69,8 @@ struct scope {
   using fork_cancel_pkg = pkg<category::fork, true, Context, R, Fn &&, Args &&...>;
 
   using cancel_t = cancellation *;
+
+  // TODO: a test that instanticates all of these
 
  public:
   // === Fork no-cancel === //
