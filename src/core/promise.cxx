@@ -34,6 +34,7 @@ LF_FORCE_INLINE constexpr auto final_suspend(frame_t<Context> *frame) noexcept -
   for (;;) {
     // Validate final state
     LF_ASSUME(frame);
+    LF_ASSUME(frame->kind != category::root);
     LF_ASSUME(frame->steals == 0);
     LF_ASSUME(frame->joins == k_u16_max);
     LF_ASSUME(frame->exception_bit == 0);
@@ -51,7 +52,10 @@ LF_FORCE_INLINE constexpr auto final_suspend(frame_t<Context> *frame) noexcept -
       return parent->handle();
     }
 
+    // Given we are not a call we must be a fork hence, our
+    // parent can't be a root as they can only call.
     LF_ASSUME(kind == category::fork);
+    LF_ASSUME(parent->kind != category::root);
 
     Context &context = get_tls_context<Context>();
 
@@ -121,10 +125,10 @@ LF_FORCE_INLINE constexpr auto final_suspend(frame_t<Context> *frame) noexcept -
             std::ignore = extract_exception(parent);
           }
         }
-        // TODO: if the parent is a root task then we need to run a different final_suspend
         frame = parent;
         continue;
       }
+
       return parent->handle();
     }
 
@@ -370,7 +374,7 @@ struct join_awaitable {
       }
     }
     return final_suspend<Context>(self.frame);
-  };
+  }
 
   [[noreturn]]
   constexpr void rethrow_exception(this join_awaitable self) {
