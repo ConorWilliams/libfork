@@ -150,6 +150,48 @@ int expected_count(const NodeSpec &root) {
 }
 
 // ============================================================
+//  Upper bound for busy-pool execution
+//
+//  With a thread pool, a steal can cause the parent to fork sibling B before
+//  sibling A has had a chance to run and signal the shared cancel token.  So
+//  the actual counter may be *higher* than the sequential simulation.
+//
+//  The upper bound is the count produced when no cancellation takes effect at
+//  all: every leaf runs and every Fork-internal node reaches its post-join
+//  increment.  It equals leaves(tree) + fork_internals(tree).
+//
+//  Why this is always ≥ concurrent:
+//    Cancellation can only suppress tasks (lower the counter), never add them.
+//
+//  Why sequential (min) ≤ concurrent:
+//    In sequential, task T is skipped only when a prior sibling already
+//    stopped the shared token before T's await_transform check.  With a busy
+//    pool the parent can be stolen and fork T *before* that sibling runs, so T
+//    is created.  Concurrent execution is therefore a superset of sequential.
+//
+//  The post-join increment is DETERMINISTIC regardless of scheduling:
+//    The join winner's memory_order_acquire fence synchronises with all
+//    children's request_stop() (memory_order_release), so the join always
+//    sees every signal that originated inside the fork region.  If any child
+//    (in any scheduling order) signalled the token, the join cascades.
+//    This means concurrent ≥ sequential may be entirely due to extra leaves.
+// ============================================================
+
+int max_count(const NodeSpec &node) {
+  if (node.is_leaf()) {
+    return 1; // leaf always increments
+  }
+  int total = 0;
+  for (const auto &child : node.children) {
+    total += max_count(child);
+  }
+  if (node.child_kind == NodeSpec::ChildKind::Fork) {
+    ++total; // post-join always reached when no cancellation
+  }
+  return total;
+}
+
+// ============================================================
 //  libfork execution
 // ============================================================
 
@@ -243,16 +285,16 @@ auto execute_node(env<Context>, const NodeSpec *spec, cancellation *my_tok,
 }
 
 // ============================================================
-//  Fuzz runner
+//  Fuzz runners
 // ============================================================
 
+// Exact check — correct for the inline scheduler (deterministic, no stealing).
 template <typename Sch>
-void run_fuzz(Sch &scheduler, std::mt19937 &rng, int n_trees, int max_depth) {
+void run_fuzz_exact(Sch &scheduler, std::mt19937 &rng, int n_trees, int max_depth) {
   using Ctx = lf::context_t<Sch>;
 
   for (int t = 0; t < n_trees; ++t) {
     NodeSpec root = gen_node(rng, 0, max_depth);
-
     int expected = expected_count(root);
 
     std::atomic<int> counter{0};
@@ -262,10 +304,41 @@ void run_fuzz(Sch &scheduler, std::mt19937 &rng, int n_trees, int max_depth) {
 
     int actual = counter.load();
     if (actual != expected) {
-      // Helpful failure message
-      FAIL("counter mismatch: expected " << expected << " got " << actual
-                                         << " (tree depth " << max_depth
-                                         << ", iteration " << t << ")");
+      FAIL("exact mismatch: expected " << expected << " got " << actual
+                                       << " (depth " << max_depth << ", iter " << t << ")");
+    }
+  }
+}
+
+// Range check — correct for the busy pool (concurrent, non-deterministic cancel races).
+//
+// Invariant:  expected_count(root)  ≤  actual  ≤  max_count(root)
+//
+// Lower bound (expected_count): sequential simulation, signals maximally observed.
+// Upper bound (max_count):      no cancellation at all, every task runs.
+//
+// Post-join increments are fully deterministic due to the acquire fence in the
+// join winner: if any child signalled the token the post-join is suppressed in
+// EVERY scheduling, not just sequential.  The non-determinism is confined to
+// whether sibling forks were created before a prior sibling's signal propagated.
+template <typename Sch>
+void run_fuzz_range(Sch &scheduler, std::mt19937 &rng, int n_trees, int max_depth) {
+  using Ctx = lf::context_t<Sch>;
+
+  for (int t = 0; t < n_trees; ++t) {
+    NodeSpec root = gen_node(rng, 0, max_depth);
+    int lo = expected_count(root);
+    int hi = max_count(root);
+
+    std::atomic<int> counter{0};
+    auto recv = lf::schedule(scheduler, fuzz_root<Ctx>, &root, &counter);
+    REQUIRE(recv.valid());
+    std::move(recv).get();
+
+    int actual = counter.load();
+    if (actual < lo || actual > hi) {
+      FAIL("range violation: " << lo << " ≤ actual ≤ " << hi << " but got " << actual
+                               << " (depth " << max_depth << ", iter " << t << ")");
     }
   }
 }
@@ -278,11 +351,10 @@ void run_fuzz(Sch &scheduler, std::mt19937 &rng, int n_trees, int max_depth) {
 
 using mono_inline_ctx = lf::mono_context<lf::geometric_stack<>, lf::adapt_vector>;
 using poly_inline_ctx = lf::derived_poly_context<lf::geometric_stack<>, lf::adapt_vector>;
+using mono_busy_pool = lf::mono_busy_pool<lf::geometric_stack<>>;
+using poly_busy_pool = lf::poly_busy_pool<lf::geometric_stack<>>;
 
-// The fuzz test uses the inline scheduler because:
-// - The reference simulation is sequential/deterministic (inline semantics)
-// - With a thread pool, cancel races make the expected count ambiguous
-// The per-scheduler cancel semantics are already covered by cancel.cpp.
+// Inline: deterministic execution, exact expected-count check.
 TEMPLATE_TEST_CASE("Cancellation fuzz: random task trees (inline)", "[cancel][fuzz]",
                    mono_inline_ctx, poly_inline_ctx) {
 
@@ -290,11 +362,56 @@ TEMPLATE_TEST_CASE("Cancellation fuzz: random task trees (inline)", "[cancel][fu
 
   SECTION("fixed seed, shallow trees (reproducible)") {
     std::mt19937 rng{0xDEAD'BEEF};
-    run_fuzz(scheduler, rng, 2000, 4);
+    run_fuzz_exact(scheduler, rng, 2000, 4);
   }
 
   SECTION("random seed, deeper trees") {
     std::mt19937 rng{std::random_device{}()};
-    run_fuzz(scheduler, rng, 500, 6);
+    run_fuzz_exact(scheduler, rng, 500, 6);
+  }
+}
+
+// Busy pool: concurrent execution, range check [min, max].
+//
+// min = sequential simulation (signals observed maximally = fewest tasks run)
+// max = no-cancel simulation (signals ignored = most tasks run)
+//
+// Invariant proof sketch:
+//   actual ≤ max: cancellation suppresses tasks; removing signals can only add.
+//   actual ≥ min: stealing lets the parent fork sibling B before sibling A
+//     runs and signals; concurrent execution is a superset of sequential.
+//   Post-join determinism: the join winner's acquire fence synchronises with
+//     every child's request_stop() release; the join always sees all signals,
+//     so the post-join increment is suppressed in every scheduling if any
+//     child signalled — not just in the sequential case.
+TEMPLATE_TEST_CASE("Cancellation fuzz: random task trees (busy pool)", "[cancel][fuzz]",
+                   mono_busy_pool, poly_busy_pool) {
+
+  STATIC_REQUIRE(lf::scheduler<TestType>);
+
+  SECTION("fixed seed, 1 thread (sequential, exact check degenerates to range check)") {
+    TestType pool{1};
+    std::mt19937 rng{0xDEAD'BEEF};
+    run_fuzz_range(pool, rng, 500, 4);
+  }
+
+  SECTION("fixed seed, 2 threads") {
+    TestType pool{2};
+    std::mt19937 rng{0xCAFE'BABE};
+    run_fuzz_range(pool, rng, 300, 4);
+  }
+
+  SECTION("fixed seed, 4 threads") {
+    TestType pool{4};
+    std::mt19937 rng{0xDEAD'C0DE};
+    run_fuzz_range(pool, rng, 300, 4);
+  }
+
+  SECTION("random seed, variable threads") {
+    std::mt19937 rng{std::random_device{}()};
+    for (std::size_t thr = 1; thr <= 4; ++thr) {
+      TestType pool{thr};
+      run_fuzz_range(pool, rng, 100, 4);
+    }
   }
 }
