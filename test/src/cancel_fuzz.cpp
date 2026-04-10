@@ -41,7 +41,9 @@ struct NodeSpec {
   std::vector<NodeSpec> children;
 
   [[nodiscard]]
-  bool is_leaf() const noexcept { return children.empty(); }
+  bool is_leaf() const noexcept {
+    return children.empty();
+  }
 };
 
 // ============================================================
@@ -201,14 +203,12 @@ using lf::task;
 
 // Forward declaration: execute_node is mutually recursive with itself.
 template <typename Context>
-auto execute_node(env<Context>, const NodeSpec *, cancellation *, std::atomic<int> *)
-    -> task<void, Context>;
+auto execute_node(env<Context>, const NodeSpec *, cancellation *, std::atomic<int> *) -> task<void, Context>;
 
 // Root wrapper: schedule() always creates the root task with cancel=nullptr.
 // We give the root node its own fresh token so the fuzz spec can signal it.
 template <typename Context>
-auto fuzz_root(env<Context>, const NodeSpec *spec, std::atomic<int> *counter)
-    -> task<void, Context> {
+auto fuzz_root(env<Context>, const NodeSpec *spec, std::atomic<int> *counter) -> task<void, Context> {
   cancellation root_tok;
   using S = lf::scope<Context>;
   co_await S::call(&root_tok, execute_node<Context>, spec, &root_tok, counter);
@@ -228,8 +228,8 @@ auto fuzz_root(env<Context>, const NodeSpec *spec, std::atomic<int> *counter)
 //   Internal Fork, cascade      → post-join code not reached (frame destroyed)
 //   Internal Call               → no counter increment (pure structure)
 template <typename Context>
-auto execute_node(env<Context>, const NodeSpec *spec, cancellation *my_tok,
-                  std::atomic<int> *counter) -> task<void, Context> {
+auto execute_node(env<Context>, const NodeSpec *spec, cancellation *my_tok, std::atomic<int> *counter)
+    -> task<void, Context> {
   using S = lf::scope<Context>;
 
   // Signal before children (matches reference: stopped[my_tok]=true before loop)
@@ -304,8 +304,8 @@ void run_fuzz_exact(Sch &scheduler, std::mt19937 &rng, int n_trees, int max_dept
 
     int actual = counter.load();
     if (actual != expected) {
-      FAIL("exact mismatch: expected " << expected << " got " << actual
-                                       << " (depth " << max_depth << ", iter " << t << ")");
+      FAIL("exact mismatch: expected " << expected << " got " << actual << " (depth " << max_depth
+                                       << ", iter " << t << ")");
     }
   }
 }
@@ -337,8 +337,8 @@ void run_fuzz_range(Sch &scheduler, std::mt19937 &rng, int n_trees, int max_dept
 
     int actual = counter.load();
     if (actual < lo || actual > hi) {
-      FAIL("range violation: " << lo << " ≤ actual ≤ " << hi << " but got " << actual
-                               << " (depth " << max_depth << ", iter " << t << ")");
+      FAIL("range violation: " << lo << " ≤ actual ≤ " << hi << " but got " << actual << " (depth "
+                               << max_depth << ", iter " << t << ")");
     }
   }
 }
@@ -355,8 +355,8 @@ using mono_busy_pool = lf::mono_busy_pool<lf::geometric_stack<>>;
 using poly_busy_pool = lf::poly_busy_pool<lf::geometric_stack<>>;
 
 // Inline: deterministic execution, exact expected-count check.
-TEMPLATE_TEST_CASE("Cancellation fuzz: random task trees (inline)", "[cancel][fuzz]",
-                   mono_inline_ctx, poly_inline_ctx) {
+TEMPLATE_TEST_CASE("Cancellation fuzz: random task trees (inline)", "[cancel][fuzz]", mono_inline_ctx,
+                   poly_inline_ctx) {
 
   lf::inline_scheduler<TestType> scheduler;
 
@@ -384,8 +384,8 @@ TEMPLATE_TEST_CASE("Cancellation fuzz: random task trees (inline)", "[cancel][fu
 //     every child's request_stop() release; the join always sees all signals,
 //     so the post-join increment is suppressed in every scheduling if any
 //     child signalled — not just in the sequential case.
-TEMPLATE_TEST_CASE("Cancellation fuzz: random task trees (busy pool)", "[cancel][fuzz]",
-                   mono_busy_pool, poly_busy_pool) {
+TEMPLATE_TEST_CASE("Cancellation fuzz: random task trees (busy pool)", "[cancel][fuzz]", mono_busy_pool,
+                   poly_busy_pool) {
 
   STATIC_REQUIRE(lf::scheduler<TestType>);
 
