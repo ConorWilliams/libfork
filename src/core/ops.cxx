@@ -23,7 +23,7 @@ struct maybe_ptr<void> {};
 
 template <category Cat, bool Cancel, typename Context, typename R, typename Fn, typename... Args>
 struct [[nodiscard("You should immediately co_await this!")]] pkg {
-  [[no_unique_address]] maybe_ptr<std::conditional<Cancel, cancellation, void>> maybe_cancel;
+  [[no_unique_address]] maybe_ptr<std::conditional_t<Cancel, cancellation, void>> maybe_cancel;
   [[no_unique_address]] maybe_ptr<R> maybe_ret_adr;
   [[no_unique_address]] Fn fn;
   [[no_unique_address]] tuple<Args...> args;
