@@ -10,9 +10,16 @@ import libfork.utils;
 namespace lf {
 // =================== Cancellation =================== //
 
-struct cancellation {
+export struct cancellation {
   cancellation *parent = nullptr;
   std::atomic<std::uint32_t> stop = 0;
+
+  constexpr void request_stop() noexcept { stop.store(1, std::memory_order_release); }
+
+  [[nodiscard]]
+  constexpr auto stop_requested() const noexcept -> bool {
+    return stop.load(std::memory_order_acquire) != 0;
+  }
 };
 
 // =================== Frame =================== //
