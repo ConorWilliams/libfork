@@ -114,8 +114,7 @@ auto fork_signal_join(env<Context>, cancellation *tok, std::atomic<int> *post_jo
 }
 
 template <typename Context>
-auto fork_outer(env<Context>, cancellation *tok, std::atomic<int> *post_join_ran)
-    -> task<void, Context> {
+auto fork_outer(env<Context>, cancellation *tok, std::atomic<int> *post_join_ran) -> task<void, Context> {
   using S = lf::scope<Context>;
   co_await S::call(tok, fork_signal_join<Context>, tok, post_join_ran);
   co_return;
@@ -133,8 +132,7 @@ auto fork_outer(env<Context>, cancellation *tok, std::atomic<int> *post_join_ran
 // ============================================================
 
 template <typename Context>
-auto fork_two_children(env<Context>, cancellation *tok, std::atomic<int> *second_ran)
-    -> task<void, Context> {
+auto fork_two_children(env<Context>, cancellation *tok, std::atomic<int> *second_ran) -> task<void, Context> {
   using S = lf::scope<Context>;
 
   co_await S::fork(signal_cancel_task<Context>, tok);
@@ -146,8 +144,7 @@ auto fork_two_children(env<Context>, cancellation *tok, std::atomic<int> *second
 }
 
 template <typename Context>
-auto fork_two_outer(env<Context>, cancellation *tok, std::atomic<int> *second_ran)
-    -> task<void, Context> {
+auto fork_two_outer(env<Context>, cancellation *tok, std::atomic<int> *second_ran) -> task<void, Context> {
   using S = lf::scope<Context>;
   co_await S::call(tok, fork_two_children<Context>, tok, second_ran);
   co_return;
@@ -216,8 +213,7 @@ auto fork_throw_outer(env<Context>, cancellation *tok) -> task<void, Context> {
 // ============================================================
 
 template <typename Context>
-auto call_pre_cancel_root(env<Context>, cancellation *tok, std::atomic<int> *ran)
-    -> task<void, Context> {
+auto call_pre_cancel_root(env<Context>, cancellation *tok, std::atomic<int> *ran) -> task<void, Context> {
   using S = lf::scope<Context>;
   // tok is already stopped before this call.
   // Root's cancel=nullptr → await_transform creates inner_with_cancel.
@@ -378,8 +374,7 @@ TEST_CASE("cancellation token: chain — stopping child does not affect parent",
   REQUIRE_FALSE(parent.stop_requested()); // parent unaffected
 }
 
-TEST_CASE("cancellation token: chain — stopping parent does not affect child's own flag",
-          "[cancel]") {
+TEST_CASE("cancellation token: chain — stopping parent does not affect child's own flag", "[cancel]") {
   cancellation parent;
   cancellation child{.parent = &parent};
   parent.request_stop();
