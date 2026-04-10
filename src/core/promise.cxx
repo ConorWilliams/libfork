@@ -410,6 +410,33 @@ struct join_awaitable {
       }
       return true;
     }
+
+    // TODO: benchmark if including the below check (returning false here) in
+    // multithreaded case helps performance enough to justify the extra
+    // instructions along the fast path and complexity
+
+    // Currently:               joins() = k_u16_max - num_joined
+    // Hence:       k_u16_max - joins() = num_joined
+
+    // Could use (relaxed here) + (fence(acquire) in truthy branch) but, it's
+    // better if we see all the decrements to joins() and avoid suspending the
+    // coroutine if possible. Cannot fetch_sub() here and write to frame as
+    // coroutine must be suspended first.
+
+    std::uint32_t steals = self.frame->steals;
+    std::uint32_t joined = k_u16_max - self.frame->atomic_joins().load(std::memory_order_acquire);
+
+    if (steals == joined) {
+      // We must reset the control block and take the stack. We should never
+      // own the stack at this point because we must have stolen the stack.
+      // For ruther explanation see await_suspend() below.
+      self.take_stack_and_reset();
+
+      if (self.frame->is_cancelled()) [[unlikely]] {
+        return false;
+      }
+      return true;
+    }
     return false;
   }
 
