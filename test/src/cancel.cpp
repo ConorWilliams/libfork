@@ -65,6 +65,7 @@ auto inner_with_cancel(env<Context>, std::atomic<int> *grandchild_ran) -> task<v
   // Inherited cancel is checked here. If our cancel chain is stopped,
   // counting_task is never created.
   co_await S::call(counting_task<Context>, grandchild_ran);
+  co_await lf::join();
   co_return;
 }
 
@@ -75,6 +76,7 @@ auto outer_with_cancel(env<Context>, cancellation *tok, std::atomic<int> *grandc
   // Root's cancel=nullptr → await_transform succeeds, creates inner_with_cancel
   // and binds it to tok.
   co_await S::call(tok, inner_with_cancel<Context>, grandchild_ran);
+  co_await lf::join();
   co_return;
 }
 
@@ -117,6 +119,7 @@ template <typename Context>
 auto fork_outer(env<Context>, cancellation *tok, std::atomic<int> *post_join_ran) -> task<void, Context> {
   using S = lf::scope<Context>;
   co_await S::call(tok, fork_signal_join<Context>, tok, post_join_ran);
+  co_await lf::join();
   co_return;
 }
 
@@ -147,6 +150,7 @@ template <typename Context>
 auto fork_two_outer(env<Context>, cancellation *tok, std::atomic<int> *second_ran) -> task<void, Context> {
   using S = lf::scope<Context>;
   co_await S::call(tok, fork_two_children<Context>, tok, second_ran);
+  co_await lf::join();
   co_return;
 }
 
@@ -171,6 +175,7 @@ auto outer_returning(env<Context>, cancellation *tok) -> task<int, Context> {
   int val = 0;
   // Call inner with tok in its cancel chain; write result to val.
   co_await S::call(tok, &val, inner_returning<Context>, tok);
+  co_await lf::join();
   co_return val;
 }
 
@@ -203,6 +208,7 @@ template <typename Context>
 auto fork_throw_outer(env<Context>, cancellation *tok) -> task<void, Context> {
   using S = lf::scope<Context>;
   co_await S::call(tok, fork_throw_and_cancel<Context>, tok);
+  co_await lf::join();
   co_return;
 }
 
@@ -219,6 +225,7 @@ auto call_pre_cancel_root(env<Context>, cancellation *tok, std::atomic<int> *ran
   // Root's cancel=nullptr → await_transform creates inner_with_cancel.
   // inner_with_cancel inherits tok → its own await_transform skips counting_task.
   co_await S::call(tok, inner_with_cancel<Context>, ran);
+  co_await lf::join();
   co_return;
 }
 
