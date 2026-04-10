@@ -160,7 +160,6 @@ All workflows follow this pattern:
 1. **Modify source files** in `src/`, `include/`, `test/`, or `benchmark/`
 2. **Rebuild**: `cmake --build --preset <your-preset>`
 3. **Test**: `ctest --preset <your-preset>`
-4. **Lint**: Run codespell and clang-format checks
 
 #### Adding/removing files from `src/` or `include/`
 
@@ -201,11 +200,3 @@ rm -rf build/
 
 **Problem**: "Could not automatically find libc++.modules.json"
 **Solution**: Ensure LLVM is installed via Homebrew; toolchain auto-detects the path
-
-### Linting Failures
-
-**Problem**: clang-format errors
-**Solution**: Run fix command above to auto-format code
-
-**Problem**: codespell errors
-**Solution**: Fix typos or add to ignore list in `.codespellrc` if false positive
