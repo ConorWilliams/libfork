@@ -299,6 +299,14 @@ struct join_awaitable {
 
     LF_ASSUME(self.frame);
 
+    // Special case: steals==0 means await_ready returned false only because
+    // is_cancelled() is true. We are the exclusive owner of the frame and stack;
+    // take_stack_and_reset() would falsely assert we don't own the stack.
+    if (self.frame->steals == 0) [[unlikely]] {
+      self.frame->reset_counters();
+      return self.handle_cancel();
+    }
+
     std::uint32_t steals = self.frame->steals;
     std::uint32_t offset = k_u16_max - steals;
     std::uint32_t joined = self.frame->atomic_joins().fetch_sub(offset, std::memory_order_release);
