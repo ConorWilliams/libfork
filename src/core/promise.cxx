@@ -175,7 +175,7 @@ constexpr void stash_current_exception(frame_type<Checkpoint> *frame) noexcept {
   }
 }
 
-template <category Cat, bool Cancel, worker_context Context>
+template <category Cat, worker_context Context>
 struct awaitable : std::suspend_always {
 
   static_assert(Cat == category::call || Cat == category::fork, "Invalid category for awaitable");
@@ -204,25 +204,8 @@ struct awaitable : std::suspend_always {
       return parent;
     }
 
-    // Noop if canceled, must clean-up the child that will never be resumed.
-    if constexpr (Cancel) {
-      //
-      if (self.child->is_cancelled()) [[unlikely]] {
-        return self.child->handle().destroy(), parent;
-      }
-    } else {
-      if (parent.promise().frame.is_cancelled()) [[unlikely]] {
-        return self.child->handle().destroy(), parent;
-      }
-    }
-
-    // Propagate parent->child relationships
-    self.child->parent = &parent.promise().frame;
-
-    if constexpr (!Cancel) {
-      // If not explicitly bound to a cancel source then
-      // we propagate cancellation parent -> child
-      self.child->cancel = parent.promise().frame.cancel;
+    if (self.child->is_cancelled()) [[unlikely]] {
+      return self.child->handle().destroy(), parent;
     }
 
     if constexpr (Cat == category::call) {
@@ -414,8 +397,9 @@ struct mixin_frame {
   // --- Await transformations
 
   template <category Cat, bool Cancel, typename R, typename Fn, typename... Args>
-  static constexpr auto await_transform_pkg(pkg<Cat, Cancel, Context, R, Fn, Args...> &&pkg) noexcept(
-      async_nothrow_invocable<Fn, Context, Args...>) -> awaitable<Cat, Cancel, Context> {
+  constexpr auto
+  await_transform_pkg(this auto &self, pkg<Cat, Cancel, Context, R, Fn, Args...> &&pkg) noexcept(
+      async_nothrow_invocable<Fn, Context, Args...>) -> awaitable<Cat, Context> {
 
     // Required for noexcept specifier to be correct
     static_assert(std::is_reference_v<Fn> && (... && std::is_reference_v<Args>));
@@ -445,8 +429,17 @@ struct mixin_frame {
       child_promise->return_address = nullptr;
     }
 
+    // TODO: bench cancel test here instead of await
+
+    // Propagate parent->child relationships
+    child_promise->frame.parent = &self.frame;
+
     if constexpr (Cancel) {
+      // Explicit cancel source
       child_promise->frame.cancel = not_null(pkg.maybe_cancel.ptr);
+    } else {
+      // Propagate parent->child relationships
+      child_promise->frame.cancel = self.frame.cancel;
     }
 
     return {.child = &child_promise->frame};
@@ -454,7 +447,7 @@ struct mixin_frame {
 
   template <category Cat, bool Cancel, typename R, typename Fn, typename... Args>
   constexpr auto await_transform(this auto &self, pkg<Cat, Cancel, Context, R, Fn, Args...> &&pkg) noexcept
-      -> awaitable<Cat, Cancel, Context> {
+      -> awaitable<Cat, Context> {
     LF_TRY {
       return self.await_transform_pkg(std::move(pkg));
     } LF_CATCH_ALL {
