@@ -333,6 +333,8 @@ struct join_awaitable {
     // that had it's continuation stolen, where it would have had to release
     // the stack, because the parent was at not at the join.
 
+    LF_ASSUME(self.frame);
+
     std::uint32_t steals = self.frame->steals;
     std::uint32_t offset = k_u16_max - steals;
     std::uint32_t joined = self.frame->atomic_joins().fetch_sub(offset, std::memory_order_release);
