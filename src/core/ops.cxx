@@ -11,17 +11,19 @@ import :frame;
 
 namespace lf {
 
+template <typename T>
+struct maybe_ptr {
+  T *ptr;
+};
+
+template <>
+struct maybe_ptr<void> {};
+
 // clang-format off
 
 template <category Cat, typename Context, typename R, typename Fn, typename... Args>
 struct [[nodiscard("You should immediately co_await this!")]] pkg {
-  R *return_address;
-  [[no_unique_address]] Fn fn;
-  [[no_unique_address]] tuple<Args...> args;
-};
-
-template <category Cat, typename Context, typename Fn, typename... Args>
-struct [[nodiscard("You should immediately co_await this!")]] pkg<Cat, Context, void, Fn, Args...> {
+  [[no_unique_address]] maybe_ptr<R> maybe_ret_adr;
   [[no_unique_address]] Fn fn;
   [[no_unique_address]] tuple<Args...> args;
 };
@@ -62,29 +64,29 @@ struct scope {
   template <typename... Args, async_invocable<Context, Args...> Fn>
   static constexpr auto
   fork(std::nullptr_t, Fn &&fn, Args &&...args) noexcept -> fork_pkg<void, Fn, Args...> {
-    return {.fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+    return {.maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
   template <typename... Args, async_invocable_to<void, Context, Args...> Fn>
   static constexpr auto fork(Fn &&fn, Args &&...args) noexcept -> fork_pkg<void, Fn, Args...> {
-    return {.fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+    return {.maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
   template <typename R, typename... Args, async_invocable_to<R, Context, Args...> Fn>
   static constexpr auto fork(R *ret, Fn &&fn, Args &&...args) noexcept -> fork_pkg<R, Fn, Args...> {
-    return {.return_address = ret, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+    return {.maybe_ret_adr = {ret}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
 
   template <typename... Args, async_invocable<Context, Args...> Fn>
   static constexpr auto
   call(std::nullptr_t, Fn &&fn, Args &&...args) noexcept -> call_pkg<void, Fn, Args...> {
-    return {.fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+    return {.maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
   template <typename... Args, async_invocable_to<void, Context, Args...> Fn>
   static constexpr auto call(Fn &&fn, Args &&...args) noexcept -> call_pkg<void, Fn, Args...> {
-    return {.fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+    return {.maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
   template <typename R, typename... Args, async_invocable_to<R, Context, Args...> Fn>
   static constexpr auto call(R *ret, Fn &&fn, Args &&...args) noexcept -> call_pkg<R, Fn, Args...> {
-    return {.return_address = ret, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+    return {.maybe_ret_adr = {ret}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
 };
 

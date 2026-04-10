@@ -426,7 +426,7 @@ struct mixin_frame {
     // TODO: tests for null path
 
     if constexpr (!std::is_void_v<R>) {
-      child_promise->return_address = pkg.return_address;
+      child_promise->return_address = pkg.maybe_ret_adr.ptr;
     } else if constexpr (!std::is_void_v<U>) {
       // Set child's return address to null to inhibit the return
       // TODO: add test for this
