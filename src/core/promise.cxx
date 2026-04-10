@@ -204,6 +204,10 @@ struct awaitable : std::suspend_always {
       return parent;
     }
 
+    if (self.child->is_cancelled()) [[unlikely]] {
+      return self.child->handle().destroy(), parent;
+    }
+
     if constexpr (Cat == category::call) {
       // Should be the default
       LF_ASSUME(self.child->kind == category::call);
@@ -444,12 +448,6 @@ struct mixin_frame {
   template <category Cat, bool Cancel, typename R, typename Fn, typename... Args>
   constexpr auto await_transform(this auto &self, pkg<Cat, Cancel, Context, R, Fn, Args...> &&pkg) noexcept
       -> awaitable<Cat, Context> {
-
-    // Don't launch work if cancelled.
-    if (self.frame.is_cancelled()) [[unlikely]] {
-      return {.child = nullptr};
-    }
-
     LF_TRY {
       return self.await_transform_pkg(std::move(pkg));
     } LF_CATCH_ALL {
