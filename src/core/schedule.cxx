@@ -73,6 +73,8 @@ schedule(Sch &&sch, Fn &&fn, Args &&...args) -> schedule_result_t<Fn, context_t<
 
   LF_ASSUME(task.promise != nullptr);
 
+  task.promise->frame.kind = category::root;
+
   LF_TRY {
     sch.post(sched_handle<context_type>{key(), &task.promise->frame});
     // If ^ didn't throw then the root_task will destroy itself at the final suspend.
