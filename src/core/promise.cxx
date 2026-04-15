@@ -110,46 +110,67 @@ constexpr auto final_suspend_full(Context &context, frame_t<Context> *frame) noe
     // drop pre-release function altogether... Need to benchmark with code that
     // triggers a lot of stealing.
 
-    // As soon as we do the fetch_sub (if we loose) someone may acquire
-    // the stack so we must prepare it for release now.
-    auto release_key = context.stack().prepare_release();
+    if (owner) {
+      // As soon as we do the fetch_sub (if we loose) someone may acquire
+      // the stack so we must prepare it for release now.
+      auto release_key = context.stack().prepare_release();
 
-    // TODO: we could add an `if (owner)` around acquire below, then we could
-    // define that acquire is always called with null or not-self.
+      // TODO: we could add an `if (owner)` around acquire below, then we could
+      // define that acquire is always called with null or not-self.
 
-    // Register with parent we have completed this child task.
-    if (parent->atomic_joins().fetch_sub(1, std::memory_order_release) == 1) {
-      // Parent has reached join and we are the last child task to complete. We
-      // are the exclusive owner of the parent and therefore, we must continue
-      // parent. As we won the race, acquire all writes before resuming.
-      std::atomic_thread_fence(std::memory_order_acquire);
+      // Register with parent we have completed this child task.
+      if (parent->atomic_joins().fetch_sub(1, std::memory_order_release) == 1) {
+        // Parent has reached join and we are the last child task to complete. We
+        // are the exclusive owner of the parent and therefore, we must continue
+        // parent. As we won the race, acquire all writes before resuming.
+        std::atomic_thread_fence(std::memory_order_acquire);
 
-      if (owner) {
-        // In case of scenario (2) we must acquire the parent's stack.
-        context.stack().acquire(std::as_const(parent->stack_ckpt));
-      }
+        // Must reset parent's control block before resuming parent.
+        parent->reset_counters();
 
-      // Must reset parent's control block before resuming parent.
-      parent->reset_counters();
-
-      if (parent->is_cancelled()) [[unlikely]] {
-        // Don't resume if cancelled
-        if constexpr (LF_COMPILER_EXCEPTIONS) {
-          if (parent->exception_bit) [[unlikely]] {
-            std::ignore = extract_exception(parent);
+        if (parent->is_cancelled()) [[unlikely]] {
+          // Don't resume if cancelled
+          if constexpr (LF_COMPILER_EXCEPTIONS) {
+            if (parent->exception_bit) [[unlikely]] {
+              std::ignore = extract_exception(parent);
+            }
           }
+          frame = parent;
+          continue;
         }
-        frame = parent;
-        continue;
-      }
 
-      if (owner) {
         // We were unable to resume the parent and we were its owner, as the
         // resuming thread will take ownership of the parent's we must give it up.
         context.stack().release(std::move(release_key));
-      }
 
-      return parent->handle();
+      } else {
+        // Register with parent we have completed this child task.
+        if (parent->atomic_joins().fetch_sub(1, std::memory_order_release) == 1) {
+          // Parent has reached join and we are the last child task to complete. We
+          // are the exclusive owner of the parent and therefore, we must continue
+          // parent. As we won the race, acquire all writes before resuming.
+          std::atomic_thread_fence(std::memory_order_acquire);
+
+          // In case of scenario (2) we must acquire the parent's stack.
+          context.stack().acquire(std::as_const(parent->stack_ckpt));
+
+          // Must reset parent's control block before resuming parent.
+          parent->reset_counters();
+
+          if (parent->is_cancelled()) [[unlikely]] {
+            // Don't resume if cancelled
+            if constexpr (LF_COMPILER_EXCEPTIONS) {
+              if (parent->exception_bit) [[unlikely]] {
+                std::ignore = extract_exception(parent);
+              }
+            }
+            frame = parent;
+            continue;
+          }
+        }
+
+        return parent->handle();
+      }
     }
 
     // We did not win the join-race, we cannot dereference the parent pointer now
@@ -203,31 +224,48 @@ constexpr auto final_suspend2(Context &context, frame_t<Context> *parent) noexce
 
   bool const owner = parent->stack_ckpt == context.stack().checkpoint();
 
-  auto release_key = context.stack().prepare_release();
-
-  if (parent->atomic_joins().fetch_sub(1, std::memory_order_release) == 1) {
-
-    std::atomic_thread_fence(std::memory_order_acquire);
-
-    if (!owner) {
-      context.stack().acquire(std::as_const(parent->stack_ckpt));
-    }
-
-    parent->reset_counters();
-
-    if (parent->is_cancelled()) [[unlikely]] {
-      if constexpr (LF_COMPILER_EXCEPTIONS) {
-        if (parent->exception_bit) [[unlikely]] {
-          std::ignore = extract_exception(parent);
-        }
-      }
-      return final_suspend_full<Context>(context, parent);
-    }
-    return parent->handle();
-  }
-
   if (owner) {
+    auto release_key = context.stack().prepare_release();
+
+    if (parent->atomic_joins().fetch_sub(1, std::memory_order_release) == 1) {
+
+      std::atomic_thread_fence(std::memory_order_acquire);
+
+      parent->reset_counters();
+
+      if (parent->is_cancelled()) [[unlikely]] {
+        if constexpr (LF_COMPILER_EXCEPTIONS) {
+          if (parent->exception_bit) [[unlikely]] {
+            std::ignore = extract_exception(parent);
+          }
+        }
+        return final_suspend_full<Context>(context, parent);
+      }
+      return parent->handle();
+    }
+
     context.stack().release(std::move(release_key));
+
+  } else {
+
+    if (parent->atomic_joins().fetch_sub(1, std::memory_order_release) == 1) {
+
+      std::atomic_thread_fence(std::memory_order_acquire);
+
+      context.stack().acquire(std::as_const(parent->stack_ckpt));
+
+      parent->reset_counters();
+
+      if (parent->is_cancelled()) [[unlikely]] {
+        if constexpr (LF_COMPILER_EXCEPTIONS) {
+          if (parent->exception_bit) [[unlikely]] {
+            std::ignore = extract_exception(parent);
+          }
+        }
+        return final_suspend_full<Context>(context, parent);
+      }
+      return parent->handle();
+    }
   }
 
   return std::noop_coroutine();
