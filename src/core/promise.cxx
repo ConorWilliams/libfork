@@ -270,6 +270,8 @@ struct awaitable : std::suspend_always {
 
     // TODO: Add tests for exception/cancellation handling in fork/call.
 
+    // TODO: test of having a dedicated is_cancelld awaitable is quicker
+
     if (!self.child) [[unlikely]] {
       // Noop if an exception was thrown.
       return parent;
