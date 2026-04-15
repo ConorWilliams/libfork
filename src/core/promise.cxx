@@ -29,6 +29,21 @@ using frame_t = frame_type<checkpoint_t<Context>>;
 
 // =============== Final =============== //
 
+/**
+ * @brief The full final suspend logic.
+ *
+ * The final suspend logic is fully expressed in this function in brief:
+ *
+ * - Try to resume parent if a call.
+ * - Try to resume parent if a fork with no stealing.
+ * - Try to resume a stolen forked task if last to complete.
+ *
+ * This function also handles cancellation (of the parent) by iteratively
+ * climbing up the parent chain.
+ *
+ * This function is split and repeated as two separate functions to allow the
+ * hot-path code to be inlined more easily into the final suspend.
+ */
 template <worker_context Context>
 [[nodiscard]]
 constexpr auto final_suspend3(Context &context, frame_t<Context> *frame) noexcept -> coro<> {
@@ -272,8 +287,6 @@ struct final_awaitable : std::suspend_always {
 };
 
 // =============== Fork/Call =============== //
-
-// TODO: make sure exceptions are cancel-safe (I think now cancellation can leak)
 
 /**
  * @brief Call inside a catch block, stash current exception in `frame`.
