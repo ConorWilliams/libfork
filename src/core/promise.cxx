@@ -479,7 +479,7 @@ struct mixin_frame {
 
   template <category Cat, bool Cancel, typename R, typename Fn, typename... Args>
   constexpr auto
-  await_transform_pkg(this auto &self, pkg<Cat, Cancel, Context, R, Fn, Args...> &&pkg) noexcept(
+  await_transform_pkg(this auto const &self, pkg<Cat, Cancel, Context, R, Fn, Args...> &&pkg) noexcept(
       async_nothrow_invocable<Fn, Context, Args...>) -> awaitable<Cat, Cancel, Context> {
 
     // Required for noexcept specifier to be correct
