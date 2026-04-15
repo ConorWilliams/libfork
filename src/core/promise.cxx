@@ -46,7 +46,7 @@ using frame_t = frame_type<checkpoint_t<Context>>;
  */
 template <worker_context Context>
 [[nodiscard]]
-constexpr auto final_suspend3(Context &context, frame_t<Context> *frame) noexcept -> coro<> {
+constexpr auto final_suspend_full(Context &context, frame_t<Context> *frame) noexcept -> coro<> {
   for (;;) {
     // Validate final state
     LF_ASSUME(frame);
@@ -258,7 +258,7 @@ constexpr auto final_suspend2(Context &context, frame_t<Context> *parent) noexce
           std::ignore = extract_exception(parent);
         }
       }
-      return final_suspend3<Context>(context, parent);
+      return final_suspend_full<Context>(context, parent);
     }
     return parent->handle();
   }
