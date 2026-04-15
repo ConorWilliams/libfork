@@ -290,12 +290,6 @@ struct awaitable : std::suspend_always {
     // Propagate parent->child relationships
     self.child->parent = &parent.promise().frame;
 
-    if constexpr (!Cancel) {
-      // If not explicitly bound to a cancel source then
-      // we propagate cancellation parent -> child
-      self.child->cancel = parent.promise().frame.cancel;
-    }
-
     if constexpr (Cat == category::call) {
       // Should be the default
       LF_ASSUME(self.child->kind == category::call);
@@ -485,7 +479,8 @@ struct mixin_frame {
   // --- Await transformations
 
   template <category Cat, bool Cancel, typename R, typename Fn, typename... Args>
-  static constexpr auto await_transform_pkg(pkg<Cat, Cancel, Context, R, Fn, Args...> &&pkg) noexcept(
+  constexpr auto
+  await_transform_pkg(this auto &self, pkg<Cat, Cancel, Context, R, Fn, Args...> &&pkg) noexcept(
       async_nothrow_invocable<Fn, Context, Args...>) -> awaitable<Cat, Cancel, Context> {
 
     // Required for noexcept specifier to be correct
@@ -518,6 +513,8 @@ struct mixin_frame {
 
     if constexpr (Cancel) {
       child_promise->frame.cancel = not_null(pkg.maybe_cancel.ptr);
+    } else {
+      child_promise->frame.cancel = self.frame.cancel;
     }
 
     return {.child = &child_promise->frame};
