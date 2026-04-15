@@ -246,7 +246,7 @@ constexpr void stash_current_exception(frame_type<Checkpoint> *frame) noexcept {
   }
 }
 
-template <category Cat, bool Cancel, worker_context Context>
+template <category Cat, worker_context Context>
 struct awaitable : std::suspend_always {
 
   static_assert(Cat == category::call || Cat == category::fork, "Invalid category for awaitable");
@@ -278,16 +278,6 @@ struct awaitable : std::suspend_always {
     // Noop if canceled, must clean-up the child that will never be resumed.
     if (self.child->is_cancelled()) [[unlikely]] {
       return self.child->handle().destroy(), parent;
-    }
-
-    // Propagate parent->child relationships
-    self.child->parent = &parent.promise().frame;
-
-    if constexpr (Cat == category::call) {
-      // Should be the default
-      LF_ASSUME(self.child->kind == category::call);
-    } else {
-      self.child->kind = Cat;
     }
 
     if constexpr (Cat == category::fork) {
@@ -474,7 +464,7 @@ struct mixin_frame {
   template <category Cat, bool Cancel, typename R, typename Fn, typename... Args>
   constexpr auto
   await_transform_pkg(this auto &self, pkg<Cat, Cancel, Context, R, Fn, Args...> &&pkg) noexcept(
-      async_nothrow_invocable<Fn, Context, Args...>) -> awaitable<Cat, Cancel, Context> {
+      async_nothrow_invocable<Fn, Context, Args...>) -> awaitable<Cat, Context> {
 
     // Required for noexcept specifier to be correct
     static_assert(std::is_reference_v<Fn> && (... && std::is_reference_v<Args>));
@@ -510,12 +500,21 @@ struct mixin_frame {
       child_promise->frame.cancel = self.frame.cancel;
     }
 
+    // Propagate parent->child relationships
+    child_promise->frame.parent = &self.frame;
+
+    if constexpr (Cat == category::call) {
+      // Should be the default
+    } else {
+      child_promise->frame.kind = Cat;
+    }
+
     return {.child = &child_promise->frame};
   }
 
   template <category Cat, bool Cancel, typename R, typename Fn, typename... Args>
   constexpr auto await_transform(this auto &self, pkg<Cat, Cancel, Context, R, Fn, Args...> &&pkg) noexcept
-      -> awaitable<Cat, Cancel, Context> {
+      -> awaitable<Cat, Context> {
     LF_TRY {
       return self.await_transform_pkg(std::move(pkg));
     } LF_CATCH_ALL {
