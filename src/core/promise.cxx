@@ -166,19 +166,16 @@ constexpr auto final_suspend2(Context *, frame_t<Context> *frame) noexcept -> co
 template <worker_context Context>
 [[nodiscard]]
 constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
-  // Validate final state
+
   LF_ASSUME(frame);
   LF_ASSUME(frame->steals == 0);
   LF_ASSUME(frame->joins == k_u16_max);
   LF_ASSUME(frame->exception_bit == 0);
 
-  // Local copies (before we destroy frame)
   category const kind = frame->kind;
 
   frame_t<Context> *parent = not_null(frame->parent);
 
-  // Before resuming the next (or exiting) we should clean-up the current frame.
-  // Can't use frame from this point onwards
   frame->handle().destroy();
 
   if (kind == category::call) {
@@ -190,9 +187,7 @@ constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
   Context &context = get_tls_context<Context>();
 
   if (steal_handle<Context> last_pushed = context.pop()) {
-    // No-one stole continuation, we are the exclusive owner of parent -> just keep ripping!
     LF_ASSUME(last_pushed == steal_handle<Context>{key(), parent});
-    // This is not a join point so no state (i.e. counters) is guaranteed.
     return parent->handle();
   }
 
@@ -202,57 +197,22 @@ constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
 template <worker_context Context>
 [[nodiscard]]
 constexpr auto final_suspend2(Context &context, frame_t<Context> *parent) noexcept -> coro<> {
-  // An owner is a worker who:
-  //
-  // - Created the task.
-  // - OR had the task submitted to them.
-  // - OR won the task at a join.
-  //
-  // An owner of a task owns the stack the task is on.
-  //
-  // As the worker who completed the child task this thread owns the stack the child task was on.
-  //
-  // Either:
-  //
-  // 1. The parent is on the same stack as the child.
-  // 2. OR the parent is on a different stack to the child.
-  //
-  // Case (1) implies: we owned the parent; forked the child task; then the parent was then stolen.
-  // Case (2) implies: we stole the parent task; then forked the child; then the parent was stolen.
-  //
-  // Case (2) implies that our stack is empty.
 
-  // As soon as we do the `fetch_sub` below the parent task is no longer safe
-  // to access as it may be resumed and then destroyed by another thread. Hence
-  // we must make copies on-the-stack of any data we may need if we lose the
-  // join race.
   bool const owner = parent->stack_ckpt == context.stack().checkpoint();
-
-  // TODO: we could reduce branching if we unconditionally release and also
-  // drop pre-release function altogether... Need to benchmark with code that
-  // triggers a lot of stealing.
 
   auto release_key = context.stack().prepare_release();
 
-  // TODO: we could add an `if (owner)` around acquire below, then we could
-  // define that acquire is always called with null or not-self.
-
-  // Register with parent we have completed this child task.
   if (parent->atomic_joins().fetch_sub(1, std::memory_order_release) == 1) {
-    // Parent has reached join and we are the last child task to complete. We
-    // are the exclusive owner of the parent and therefore, we must continue
-    // parent. As we won the race, acquire all writes before resuming.
+
     std::atomic_thread_fence(std::memory_order_acquire);
 
-    // In case of scenario (2) we must acquire the parent's stack.
     if (!owner) {
       context.stack().acquire(std::as_const(parent->stack_ckpt));
     }
-    // Must reset parent's control block before resuming parent.
+
     parent->reset_counters();
 
     if (parent->is_cancelled()) [[unlikely]] {
-      // Don't resume if cancelled
       if constexpr (LF_COMPILER_EXCEPTIONS) {
         if (parent->exception_bit) [[unlikely]] {
           std::ignore = extract_exception(parent);
@@ -263,19 +223,10 @@ constexpr auto final_suspend2(Context &context, frame_t<Context> *parent) noexce
     return parent->handle();
   }
 
-  // We did not win the join-race, we cannot dereference the parent pointer now
-  // as the frame may now be freed by the winner. Parent has not reached join
-  // or we are not the last child to complete. We are now out of jobs, we must
-  // yield to the executor.
-  // As soon as we do the fetch_sub (if we loose) someone may acquire
-  // the stack so we must prepare it for release now.
   if (owner) {
-    // We were unable to resume the parent and we were its owner, as the
-    // resuming thread will take ownership of the parent's we must give it up.
     context.stack().release(std::move(release_key));
   }
 
-  // Else, case (2), our stack has no allocations on it, it may be used later.
   return std::noop_coroutine();
 }
 
