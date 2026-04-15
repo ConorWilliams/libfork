@@ -106,10 +106,6 @@ constexpr auto final_suspend_full(Context &context, frame_t<Context> *frame) noe
     // join race.
     bool const owner = parent->stack_ckpt == context.stack().checkpoint();
 
-    // TODO: we could reduce branching if we unconditionally release and also
-    // drop pre-release function altogether... Need to benchmark with code that
-    // triggers a lot of stealing.
-
     // As soon as we do the fetch_sub (if we loose) someone may acquire
     // the stack so we must prepare it for release now.
     auto release_key = context.stack().prepare_release();
@@ -161,42 +157,7 @@ constexpr auto final_suspend_full(Context &context, frame_t<Context> *frame) noe
 
 template <worker_context Context>
 [[nodiscard]]
-constexpr auto final_suspend2(Context *, frame_t<Context> *frame) noexcept -> coro<>;
-
-template <worker_context Context>
-[[nodiscard]]
-constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
-
-  LF_ASSUME(frame);
-  LF_ASSUME(frame->steals == 0);
-  LF_ASSUME(frame->joins == k_u16_max);
-  LF_ASSUME(frame->exception_bit == 0);
-
-  category const kind = frame->kind;
-
-  frame_t<Context> *parent = not_null(frame->parent);
-
-  frame->handle().destroy();
-
-  if (kind == category::call) {
-    return parent->handle();
-  }
-
-  LF_ASSUME(kind == category::fork);
-
-  Context &context = get_tls_context<Context>();
-
-  if (steal_handle<Context> last_pushed = context.pop()) {
-    LF_ASSUME(last_pushed == steal_handle<Context>{key(), parent});
-    return parent->handle();
-  }
-
-  return final_suspend2<Context>(context, parent);
-}
-
-template <worker_context Context>
-[[nodiscard]]
-constexpr auto final_suspend2(Context &context, frame_t<Context> *parent) noexcept -> coro<> {
+constexpr auto final_suspend_trailing(Context &context, frame_t<Context> *parent) noexcept -> coro<> {
 
   bool const owner = parent->stack_ckpt == context.stack().checkpoint();
 
@@ -229,11 +190,41 @@ constexpr auto final_suspend2(Context &context, frame_t<Context> *parent) noexce
 
   return std::noop_coroutine();
 }
+template <worker_context Context>
+[[nodiscard]]
+constexpr auto final_suspend_leading(frame_t<Context> *frame) noexcept -> coro<> {
+
+  LF_ASSUME(frame);
+  LF_ASSUME(frame->steals == 0);
+  LF_ASSUME(frame->joins == k_u16_max);
+  LF_ASSUME(frame->exception_bit == 0);
+
+  category const kind = frame->kind;
+
+  frame_t<Context> *parent = not_null(frame->parent);
+
+  frame->handle().destroy();
+
+  if (kind == category::call) {
+    return parent->handle();
+  }
+
+  LF_ASSUME(kind == category::fork);
+
+  Context &context = get_tls_context<Context>();
+
+  if (steal_handle<Context> last_pushed = context.pop()) {
+    LF_ASSUME(last_pushed == steal_handle<Context>{key(), parent});
+    return parent->handle();
+  }
+
+  return final_suspend_trailing<Context>(context, parent);
+}
 
 struct final_awaitable : std::suspend_always {
   template <returnable T, worker_context Context>
   constexpr static auto await_suspend(coro<promise_type<T, Context>> handle) noexcept -> coro<> {
-    return final_suspend<Context>(&handle.promise().frame);
+    return final_suspend_leading<Context>(&handle.promise().frame);
   }
 };
 
@@ -440,7 +431,7 @@ struct join_awaitable {
         std::ignore = extract_exception(self.frame);
       }
     }
-    return final_suspend<Context>(self.frame);
+    return final_suspend_leading<Context>(self.frame);
   }
 
   [[noreturn]]
