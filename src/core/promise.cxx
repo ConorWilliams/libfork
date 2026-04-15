@@ -124,7 +124,7 @@ constexpr auto final_suspend_full(Context &context, frame_t<Context> *frame) noe
       // parent. As we won the race, acquire all writes before resuming.
       std::atomic_thread_fence(std::memory_order_acquire);
 
-      if (owner) {
+      if (!owner) {
         // In case of scenario (2) we must acquire the parent's stack.
         context.stack().acquire(std::as_const(parent->stack_ckpt));
       }
