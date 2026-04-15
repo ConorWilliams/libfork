@@ -112,7 +112,12 @@ constexpr auto final_suspend_full(Context &context, frame_t<Context> *frame) noe
 
     // As soon as we do the fetch_sub (if we loose) someone may acquire
     // the stack so we must prepare it for release now.
-    auto release_key = context.stack().prepare_release();
+    if (owner) {
+      auto release_key = context.stack().prepare_release();
+      // We were unable to resume the parent and we were its owner, as the
+      // resuming thread will take ownership of the parent's we must give it up.
+      context.stack().release(std::move(release_key));
+    }
 
     // TODO: we could add an `if (owner)` around acquire below, then we could
     // define that acquire is always called with null or not-self.
@@ -124,10 +129,8 @@ constexpr auto final_suspend_full(Context &context, frame_t<Context> *frame) noe
       // parent. As we won the race, acquire all writes before resuming.
       std::atomic_thread_fence(std::memory_order_acquire);
 
-      if (owner) {
-        // In case of scenario (2) we must acquire the parent's stack.
-        context.stack().acquire(std::as_const(parent->stack_ckpt));
-      }
+      // In case of scenario (2) we must acquire the parent's stack.
+      context.stack().acquire(std::as_const(parent->stack_ckpt));
 
       // Must reset parent's control block before resuming parent.
       parent->reset_counters();
@@ -141,12 +144,6 @@ constexpr auto final_suspend_full(Context &context, frame_t<Context> *frame) noe
         }
         frame = parent;
         continue;
-      }
-
-      if (owner) {
-        // We were unable to resume the parent and we were its owner, as the
-        // resuming thread will take ownership of the parent's we must give it up.
-        context.stack().release(std::move(release_key));
       }
 
       return parent->handle();
@@ -203,15 +200,17 @@ constexpr auto final_suspend2(Context &context, frame_t<Context> *parent) noexce
 
   bool const owner = parent->stack_ckpt == context.stack().checkpoint();
 
-  auto release_key = context.stack().prepare_release();
+  if (owner) {
+
+    auto release_key = context.stack().prepare_release();
+    context.stack().release(std::move(release_key));
+  }
 
   if (parent->atomic_joins().fetch_sub(1, std::memory_order_release) == 1) {
 
     std::atomic_thread_fence(std::memory_order_acquire);
 
-    if (!owner) {
-      context.stack().acquire(std::as_const(parent->stack_ckpt));
-    }
+    context.stack().acquire(std::as_const(parent->stack_ckpt));
 
     parent->reset_counters();
 
@@ -224,10 +223,6 @@ constexpr auto final_suspend2(Context &context, frame_t<Context> *parent) noexce
       return final_suspend_full<Context>(context, parent);
     }
     return parent->handle();
-  }
-
-  if (owner) {
-    context.stack().release(std::move(release_key));
   }
 
   return std::noop_coroutine();
