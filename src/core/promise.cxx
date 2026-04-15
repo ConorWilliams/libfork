@@ -112,12 +112,7 @@ constexpr auto final_suspend_full(Context &context, frame_t<Context> *frame) noe
 
     // As soon as we do the fetch_sub (if we loose) someone may acquire
     // the stack so we must prepare it for release now.
-    if (owner) {
-      auto release_key = context.stack().prepare_release();
-      // We were unable to resume the parent and we were its owner, as the
-      // resuming thread will take ownership of the parent's we must give it up.
-      context.stack().release(std::move(release_key));
-    }
+    auto release_key = context.stack().prepare_release();
 
     // TODO: we could add an `if (owner)` around acquire below, then we could
     // define that acquire is always called with null or not-self.
@@ -129,8 +124,10 @@ constexpr auto final_suspend_full(Context &context, frame_t<Context> *frame) noe
       // parent. As we won the race, acquire all writes before resuming.
       std::atomic_thread_fence(std::memory_order_acquire);
 
-      // In case of scenario (2) we must acquire the parent's stack.
-      context.stack().acquire(std::as_const(parent->stack_ckpt));
+      if (owner) {
+        // In case of scenario (2) we must acquire the parent's stack.
+        context.stack().acquire(std::as_const(parent->stack_ckpt));
+      }
 
       // Must reset parent's control block before resuming parent.
       parent->reset_counters();
@@ -144,6 +141,12 @@ constexpr auto final_suspend_full(Context &context, frame_t<Context> *frame) noe
         }
         frame = parent;
         continue;
+      }
+
+      if (owner) {
+        // We were unable to resume the parent and we were its owner, as the
+        // resuming thread will take ownership of the parent's we must give it up.
+        context.stack().release(std::move(release_key));
       }
 
       return parent->handle();
