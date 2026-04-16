@@ -386,6 +386,8 @@ struct join_awaitable {
 
     LF_ASSUME(self.frame);
 
+    // TODO: fuse and simplify this path
+
     // Special case: steals==0 means await_ready returned false only because
     // is_cancelled() is true. We are the exclusive owner of the frame and stack;
     // take_stack_and_reset() would falsely assert we don't own the stack.
