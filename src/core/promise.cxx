@@ -532,6 +532,8 @@ struct mixin_frame {
     }
 
     if constexpr (Cancel) {
+      // TODO: need some kind of API to launch an unstoppable task?
+      // currently this prevents the cancel ptr from being null.
       child_promise->frame.cancel = not_null(pkg.maybe_cancel.ptr);
     } else {
       child_promise->frame.cancel = self.frame.cancel;
