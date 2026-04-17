@@ -474,6 +474,13 @@ struct scope_awaitable : std::suspend_never {
   static constexpr auto await_resume() -> scope_ops<Context> { return {}; }
 };
 
+// ==== Stop awaitable ==== //
+
+struct stop_awaitable : std::suspend_never {
+  stop_source *cancel;
+  constexpr auto await_resume(this stop_awaitable self) -> stop_source { return stop_source{self.cancel}; }
+};
+
 // =============== Frame mixin =============== //
 
 template <worker_context Context>
@@ -565,6 +572,10 @@ struct mixin_frame {
   }
 
   static constexpr auto await_transform(scope_type) noexcept -> scope_awaitable<Context> { return {}; }
+
+  constexpr auto await_transform(this auto const &self, stop_type) noexcept -> stop_awaitable {
+    return {.cancel = self.frame.cancel};
+  }
 
   constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
 

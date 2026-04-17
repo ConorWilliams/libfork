@@ -11,28 +11,39 @@ import libfork;
 
 namespace {
 
+struct add_one {
+  template <typename Context>
+  static auto operator()(lf::env<Context>, std::atomic<int> &count) -> lf::task<int, Context> {
+    co_return count.fetch_add(1);
+  }
+};
+
 template <typename Context>
-auto add_one(lf::env<Context>, std::atomic<int> *count) -> lf::task<int, Context> {
-  co_return count->fetch_add(1);
+auto test_cancel(lf::env<Context>) -> lf::task<bool, Context> {
+
+  // Test that a task that a call doesn't run if cancelled
+
+  std::atomic<int> count = 0;
+
+  auto stop_src = co_await lf::child_stop_source();
+  auto sc = co_await lf::scope();
+
+  stop_src.request_stop();
+
+  co_await sc.call_with_drop(&stop_src, add_one{}, count);
+  co_await lf::join();
+
+  co_return count.load() == 0;
 }
 
-// template <typename Context>
-// auto test_cancel(lf::env<Context>) -> lf::task<void, Context> {
-//
-//   lf::stop_source src;
-//
-//   co_return;
-// }
+auto test_no_join() {}
 
 template <typename Sch>
-void simple_tests(Sch &scheduler) {
-  SECTION("void") {
-
-    std::atomic<int> count = 0;
-
-    auto recv = schedule(scheduler, add_one<lf::context_t<Sch>>, &count);
+void tests(Sch &scheduler) {
+  SECTION("Canceled is not run") {
+    auto recv = schedule(scheduler, test_cancel<lf::context_t<Sch>>);
     REQUIRE(recv.valid());
-    std::move(recv).get();
+    REQUIRE(std::move(recv).get());
   }
 
   // #if LF_COMPILER_EXCEPTIONS
@@ -51,7 +62,7 @@ using poly_inline_ctx = lf::derived_poly_context<lf::geometric_stack<>, lf::adap
 
 TEMPLATE_TEST_CASE("Innline cancel", "[cancel]", mono_inline_ctx, poly_inline_ctx) {
   lf::inline_scheduler<TestType> sch{};
-  simple_tests(sch);
+  tests(sch);
 }
 
 // namespace {

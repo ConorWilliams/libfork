@@ -4,11 +4,19 @@ import std;
 
 namespace lf {
 
+struct stop_type {}; // Tag type
+
+export [[nodiscard("You should immediately co_await this!")]]
+constexpr auto child_stop_source() noexcept -> stop_type {
+  return {};
+}
+
 /**
  * @brief An intrusively linked chain of stop sources.
  */
 class stop_source {
  public:
+  constexpr explicit stop_source(stop_source *parent) noexcept : m_parent(parent) {}
   constexpr stop_source() noexcept = default;
 
   // Immovable
