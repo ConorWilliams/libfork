@@ -343,12 +343,6 @@ struct join_awaitable {
 
   frame_t<Context> *frame;
 
-  constexpr auto take_stack(this join_awaitable self) noexcept -> void {
-    stack_t<Context> &stack = get_tls_stack<Context>();
-    LF_ASSUME(self.frame->stack_ckpt != stack.checkpoint());
-    stack.acquire(std::as_const(self.frame->stack_ckpt));
-  }
-
   constexpr auto await_ready(this join_awaitable self) noexcept -> bool {
     if (not_null(self.frame)->steals == 0) [[likely]] {
       if (self.frame->is_cancelled()) [[unlikely]] {
@@ -404,11 +398,6 @@ struct join_awaitable {
       std::atomic_thread_fence(std::memory_order_acquire);
 
       if (self.frame->is_cancelled()) [[unlikely]] {
-        // Only take the stack if there were steals
-        if (steals > 0) {
-          self.take_stack();
-        }
-        self.frame->reset_counters();
         return self.handle_cancel();
       }
 
@@ -433,21 +422,6 @@ struct join_awaitable {
     return std::noop_coroutine();
   }
 
-  [[nodiscard]]
-  constexpr auto handle_cancel(this join_awaitable self) -> coro<> {
-    if constexpr (LF_COMPILER_EXCEPTIONS) {
-      if (self.frame->exception_bit) [[unlikely]] {
-        std::ignore = extract_exception(self.frame);
-      }
-    }
-    return final_suspend_leading<Context>(self.frame);
-  }
-
-  [[noreturn]]
-  constexpr void rethrow_exception(this join_awaitable self) {
-    std::rethrow_exception(extract_exception(self.frame));
-  }
-
   constexpr void await_resume(this join_awaitable self) {
     // We should have been reset
     LF_ASSUME(self.frame->steals == 0);
@@ -459,6 +433,37 @@ struct join_awaitable {
         self.rethrow_exception();
       }
     }
+  }
+
+  constexpr auto take_stack(this join_awaitable self) noexcept -> void {
+    stack_t<Context> &stack = get_tls_stack<Context>();
+    LF_ASSUME(self.frame->stack_ckpt != stack.checkpoint());
+    stack.acquire(std::as_const(self.frame->stack_ckpt));
+  }
+
+  [[nodiscard]]
+  constexpr auto handle_cancel(this join_awaitable self) -> coro<> {
+    // Only need to take the stack if there were steals
+    if (self.frame->steals > 0) {
+      self.take_stack();
+    }
+
+    // We always need to reset the connters as we modified
+    self.frame->reset_counters();
+
+    // Drop any exceptions in the now-cancelled task
+    if constexpr (LF_COMPILER_EXCEPTIONS) {
+      if (self.frame->exception_bit) [[unlikely]] {
+        std::ignore = extract_exception(self.frame);
+      }
+    }
+
+    return final_suspend_leading<Context>(self.frame);
+  }
+
+  [[noreturn]]
+  constexpr void rethrow_exception(this join_awaitable self) {
+    std::rethrow_exception(extract_exception(self.frame));
   }
 };
 
