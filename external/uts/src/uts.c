@@ -19,7 +19,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "uts.h"
+#include "uts/uts.h"
 
 /***********************************************************
  *  tree generation and search parameters                  *
