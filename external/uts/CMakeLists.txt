@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 4.2.1 FATAL_ERROR)
 
 project(uts_external LANGUAGES C)
 
-add_library(uts_c OBJECT)
+add_library(uts_c)
 
 target_sources(uts_c
   PRIVATE
@@ -18,4 +18,4 @@ target_sources(uts_c
       include/uts/rng/brg_types.h
 )
 
-target_include_directories(uts_c PRIVATE include)
+target_include_directories(uts_c PRIVATE include include/uts/rng)
