@@ -8,6 +8,8 @@ import std;
 
 import libfork.utils;
 
+import :stop;
+
 namespace lf {
 
 export struct broken_receiver_error final : libfork_exception {
@@ -26,6 +28,8 @@ struct receiver_state {
   std::conditional_t<std::is_void_v<T>, empty, T> m_return_value;
   std::exception_ptr m_exception;
   std::atomic_flag m_ready;
+
+  stop_source m_stop;
 };
 
 export template <typename T>
