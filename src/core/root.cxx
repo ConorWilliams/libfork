@@ -89,6 +89,12 @@ root_pkg(std::shared_ptr<receiver_state<R>> recv, Fn fn, Args... args) -> root_t
 
   promise_type *child = nullptr;
 
+  if (root->is_cancelled()) {
+    // The root task was cancelled before it even started, we can skip
+    // straight to cleanup.
+    goto cleanup;
+  }
+
   LF_TRY {
     // Potentially throwing
     child = get(key(), ctx_invoke_t<Context>{}(std::move(fn), std::move(args)...));
