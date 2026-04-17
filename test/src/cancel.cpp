@@ -16,6 +16,14 @@ auto add_one(lf::env<Context>, std::atomic<int> *count) -> lf::task<int, Context
   co_return count->fetch_add(1);
 }
 
+template <typename Context>
+auto test_cancel(lf::env<Context>) -> lf::task<void, Context> {
+
+  lf::stop_source src;
+
+  co_return;
+}
+
 template <typename Sch>
 void simple_tests(Sch &scheduler) {
   SECTION("void") {
