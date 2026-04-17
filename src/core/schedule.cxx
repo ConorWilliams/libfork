@@ -73,9 +73,11 @@ schedule(Sch &&sch, Fn &&fn, Args &&...args) -> schedule_result_t<Fn, context_t<
 
   LF_ASSUME(task.promise != nullptr);
 
+  // TODO: benchmark if it's worth having an unstoppable root task
+
   task.promise->frame.kind = category::root;
-  task.promise->frame.parent = nullptr; // No parent for root tasks
-  task.promise->frame.cancel = &state->m_stop; // No cancellation for root tasks
+  task.promise->frame.parent = nullptr;
+  task.promise->frame.cancel = &state->m_stop;
 
   LF_TRY {
     sch.post(sched_handle<context_type>{key(), &task.promise->frame});

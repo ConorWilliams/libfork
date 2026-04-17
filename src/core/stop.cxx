@@ -45,8 +45,8 @@ export class stop_source {
    * Safe to call with a null pointer, in which case it returns false.
    */
   [[nodiscard]]
-  friend constexpr auto deep_stop_requested(stop_source *src) noexcept -> bool {
-    for (stop_source *ptr = src; ptr != nullptr; ptr = ptr->m_parent) {
+  friend constexpr auto deep_stop_requested(stop_source const *src) noexcept -> bool {
+    for (stop_source const *ptr = src; ptr != nullptr; ptr = ptr->m_parent) {
       if (ptr->stop_requested()) {
         return true;
       }

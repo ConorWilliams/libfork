@@ -51,6 +51,17 @@ class receiver {
     return m_state != nullptr;
   }
 
+  /**
+   * @brief Get a reference to the underlying stop_source.
+   */
+  [[nodiscard]]
+  constexpr auto stop_source() noexcept -> stop_source & {
+    if (!valid()) {
+      LF_THROW(broken_receiver_error{});
+    }
+    return m_state->m_stop;
+  }
+
   [[nodiscard]]
   constexpr auto ready() const -> bool {
     if (!valid()) {
