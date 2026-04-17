@@ -25,7 +25,7 @@ struct receiver_state {
   struct empty {};
 
   [[no_unique_address]]
-  std::conditional_t<std::is_void_v<T>, empty, T> m_return_value;
+  std::conditional_t<std::is_void_v<T>, empty, T> m_return_value{};
   std::exception_ptr m_exception;
   std::atomic_flag m_ready;
 
