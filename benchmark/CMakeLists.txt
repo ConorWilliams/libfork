@@ -36,10 +36,7 @@ target_sources(libfork_benchmark
 
 
 # C lib for UTS
-add_library(uts_c OBJECT
-  src/libfork_benchmark/uts/external/uts.c
-  src/libfork_benchmark/uts/external/rng/brg_sha1.c
-)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../external/uts external/uts)
 
 target_link_libraries(libfork_benchmark PRIVATE uts_c)
 
