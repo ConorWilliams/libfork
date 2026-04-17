@@ -89,9 +89,9 @@ BENCH_ALL(inline_scheduler<poly_context<geometric_stack<>, adapt_deque>>)
   BENCHMARK_TEMPLATE(run, __VA_ARGS__)                                                                       \
       ->Name(#mode "/libfork/fib/" #__VA_ARGS__)                                                             \
       ->Apply([](benchmark::Benchmark *b) -> void {                                                          \
-        for (unsigned t = 1; t <= bench_max_threads; ++t) {                                                  \
+        bench_thread_args(b, [](benchmark::Benchmark *b, unsigned t) {                                       \
           b->Args({fib_##mode, static_cast<std::int64_t>(t)});                                               \
-        }                                                                                                    \
+        });                                                                                                  \
       })                                                                                                     \
       ->UseRealTime();
 

@@ -12,7 +12,15 @@ struct incorrect_result : public std::runtime_error {
   using std::runtime_error::runtime_error;
 };
 
-inline constexpr unsigned bench_max_threads = 24;
+inline void bench_thread_args(benchmark::internal::Benchmark *bench, auto make_args) {
+  unsigned hw = std::thread::hardware_concurrency();
+  for (unsigned t : {1U, 2U, 4U, 6U, 8U, 12U, 16U, 24U, 32U, 48U, 64U, 96U}) {
+    if (t > hw) {
+      return;
+    }
+    make_args(bench, t);
+  }
+}
 
 #define CHECK_RESULT(result, expected)                                                                       \
   do {                                                                                                       \

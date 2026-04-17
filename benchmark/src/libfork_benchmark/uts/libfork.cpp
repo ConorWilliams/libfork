@@ -90,9 +90,9 @@ void run(benchmark::State &state) {
   BENCHMARK_TEMPLATE(run, __VA_ARGS__)                                                                       \
       ->Name(#mode "/libfork/uts/" tree_name "/" #__VA_ARGS__)                                               \
       ->Apply([](benchmark::Benchmark *b) -> void {                                                          \
-        for (unsigned t = 1; t <= bench_max_threads; ++t) {                                                  \
+        bench_thread_args(b, [](benchmark::Benchmark *b, unsigned t) {                                       \
           b->Args({tree_id, static_cast<std::int64_t>(t)});                                                  \
-        }                                                                                                    \
+        });                                                                                                  \
       })                                                                                                     \
       ->UseRealTime();
 
