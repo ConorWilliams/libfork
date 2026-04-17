@@ -99,10 +99,9 @@ root_pkg(std::shared_ptr<receiver_state<R>> recv, Fn fn, Args... args) -> root_t
 
   LF_ASSUME(child != nullptr);
 
-  // TODO: cancellation
-
+  // Propagate parent/cancel info to child
   child->frame.parent = root;
-  child->frame.cancel = nullptr;
+  child->frame.cancel = root->cancel;
 
   LF_ASSUME(child->frame.kind == category::call);
 
@@ -119,6 +118,8 @@ root_pkg(std::shared_ptr<receiver_state<R>> recv, Fn fn, Args... args) -> root_t
   // - Normal return
   // - Exception
   // - Cancellation
+  //
+  // We return any exception stashed unconditionally
 
   if constexpr (LF_COMPILER_EXCEPTIONS) {
     if (root->exception_bit) {
@@ -128,10 +129,15 @@ root_pkg(std::shared_ptr<receiver_state<R>> recv, Fn fn, Args... args) -> root_t
   }
 
 cleanup:
-  // Now to that which we would otherwise do at a final suspend.
+  // Now do that which we would otherwise do at a final suspend.
   // Notify the receiver that the task is done.
   recv->m_ready.test_and_set();
   recv->m_ready.notify_one();
+
+  LF_ASSUME(root->steals == 0);
+  LF_ASSUME(root->joins == k_u16_max);
+  LF_ASSUME(root->exception_bit == 0);
+
   co_return;
 }
 
