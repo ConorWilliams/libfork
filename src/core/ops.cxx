@@ -69,79 +69,77 @@ struct scope {
   template <typename R, typename Fn, typename... Args>
   using fork_cancel_pkg = pkg<category::fork, true, Context, R, Fn &&, Args &&...>;
 
-  using cancel_t = stop_source *;
+  using stop_t = stop_source *;
 
-  // TODO: a test that instanticates all of these
+  // TODO: a test that instantiates all of these
 
  public:
   // === Fork no-cancel === //
 
+  template <typename R, typename... Args, async_invocable_to<R, Context, Args...> Fn>
+  static constexpr auto fork(R *ret, Fn &&fn, Args &&...args) noexcept -> fork_pkg<R, Fn, Args...> {
+    return {.maybe_ret_adr = {ret}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+  }
   template <typename... Args, async_invocable<Context, Args...> Fn>
-  static constexpr auto
-  fork(std::nullptr_t, Fn &&fn, Args &&...args) noexcept -> fork_pkg<void, Fn, Args...> {
+  static constexpr auto fork_drop(Fn &&fn, Args &&...args) noexcept -> fork_pkg<void, Fn, Args...> {
     return {.maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
   template <typename... Args, async_invocable_to<void, Context, Args...> Fn>
   static constexpr auto fork(Fn &&fn, Args &&...args) noexcept -> fork_pkg<void, Fn, Args...> {
     return {.maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
-  template <typename R, typename... Args, async_invocable_to<R, Context, Args...> Fn>
-  static constexpr auto fork(R *ret, Fn &&fn, Args &&...args) noexcept -> fork_pkg<R, Fn, Args...> {
-    return {.maybe_ret_adr = {ret}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
-  }
 
   // === Fork with-cancel === //
 
+  template <typename R, typename... Args, async_invocable_to<R, Context, Args...> Fn>
+  static constexpr auto
+  fork_with(stop_t ptr, R *ret, Fn &&fn, Args &&...args) noexcept -> fork_cancel_pkg<R, Fn, Args...> {
+    return {.maybe_cancel = {ptr}, .maybe_ret_adr = {ret}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+  }
   template <typename... Args, async_invocable<Context, Args...> Fn>
   static constexpr auto
-  fork(cancel_t ptr, std::nullptr_t, Fn &&fn, Args &&...args) noexcept -> fork_cancel_pkg<void, Fn, Args...> {
+  fork_with_drop(stop_t ptr, Fn &&fn, Args &&...args) noexcept -> fork_cancel_pkg<void, Fn, Args...> {
     return {.maybe_cancel = {ptr}, .maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
   template <typename... Args, async_invocable_to<void, Context, Args...> Fn>
   static constexpr auto
-  fork(cancel_t ptr, Fn &&fn, Args &&...args) noexcept -> fork_cancel_pkg<void, Fn, Args...> {
+  fork_with(stop_t ptr, Fn &&fn, Args &&...args) noexcept -> fork_cancel_pkg<void, Fn, Args...> {
     return {.maybe_cancel = {ptr}, .maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
-  }
-  template <typename R, typename... Args, async_invocable_to<R, Context, Args...> Fn>
-  static constexpr auto
-  fork(cancel_t ptr, R *ret, Fn &&fn, Args &&...args) noexcept -> fork_cancel_pkg<R, Fn, Args...> {
-    return {.maybe_cancel = {ptr}, .maybe_ret_adr = {ret}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
 
   // === Call no-cancel === //
 
+  template <typename R, typename... Args, async_invocable_to<R, Context, Args...> Fn>
+  static constexpr auto call(R *ret, Fn &&fn, Args &&...args) noexcept -> call_pkg<R, Fn, Args...> {
+    return {.maybe_ret_adr = {ret}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+  }
   template <typename... Args, async_invocable<Context, Args...> Fn>
-  static constexpr auto
-  call(std::nullptr_t, Fn &&fn, Args &&...args) noexcept -> call_pkg<void, Fn, Args...> {
+  static constexpr auto call_drop(Fn &&fn, Args &&...args) noexcept -> call_pkg<void, Fn, Args...> {
     return {.maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
   template <typename... Args, async_invocable_to<void, Context, Args...> Fn>
   static constexpr auto call(Fn &&fn, Args &&...args) noexcept -> call_pkg<void, Fn, Args...> {
     return {.maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
-  template <typename R, typename... Args, async_invocable_to<R, Context, Args...> Fn>
-  static constexpr auto call(R *ret, Fn &&fn, Args &&...args) noexcept -> call_pkg<R, Fn, Args...> {
-    return {.maybe_ret_adr = {ret}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
-  }
 
   // === Call with-cancel === //
 
-  // TODO: explicitly = delte overloads with cancel ptr = std::nullptr_t to avoid mistakes?
+  // TODO: explicitly = delete overloads with cancel ptr = std::nullptr_t to avoid mistakes?
 
+  template <typename R, typename... Args, async_invocable_to<R, Context, Args...> Fn>
+  static constexpr auto
+  call_with(stop_t ptr, R *ret, Fn &&fn, Args &&...args) noexcept -> call_cancel_pkg<R, Fn, Args...> {
+    return {.maybe_cancel = {ptr}, .maybe_ret_adr = {ret}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+  }
   template <typename... Args, async_invocable<Context, Args...> Fn>
   static constexpr auto
-  call(cancel_t ptr, std::nullptr_t, Fn &&fn, Args &&...args) noexcept -> call_cancel_pkg<void, Fn, Args...> {
+  call_with_drop(stop_t ptr, Fn &&fn, Args &&...args) noexcept -> call_cancel_pkg<void, Fn, Args...> {
     return {.maybe_cancel = {ptr}, .maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
   template <typename... Args, async_invocable_to<void, Context, Args...> Fn>
   static constexpr auto
-  call(cancel_t ptr, Fn &&fn, Args &&...args) noexcept -> call_cancel_pkg<void, Fn, Args...> {
+  call_with(stop_t ptr, Fn &&fn, Args &&...args) noexcept -> call_cancel_pkg<void, Fn, Args...> {
     return {.maybe_cancel = {ptr}, .maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
-  }
-  template <typename R, typename... Args, async_invocable_to<R, Context, Args...> Fn>
-  static constexpr auto
-  call(cancel_t ptr, R *ret, Fn &&fn, Args &&...args) noexcept -> call_cancel_pkg<R, Fn, Args...> {
-    return {.maybe_cancel = {ptr}, .maybe_ret_adr = {ret}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
 };
 
