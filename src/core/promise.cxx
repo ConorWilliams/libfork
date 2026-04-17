@@ -343,22 +343,20 @@ struct join_awaitable {
 
   frame_t<Context> *frame;
 
-  constexpr auto take_stack_and_reset(this join_awaitable self) noexcept -> void {
+  constexpr auto take_stack(this join_awaitable self) noexcept -> void {
     stack_t<Context> &stack = get_tls_stack<Context>();
     LF_ASSUME(self.frame->stack_ckpt != stack.checkpoint());
     stack.acquire(std::as_const(self.frame->stack_ckpt));
-    self.frame->reset_counters();
   }
 
   constexpr auto await_ready(this join_awaitable self) noexcept -> bool {
-
     if (not_null(self.frame)->steals == 0) [[likely]] {
-      // If no steals then we are the only owner of the parent and we are
-      // ready to join. Therefore, no need to reset the control block.
       if (self.frame->is_cancelled()) [[unlikely]] {
         // Must unconditionally suspended if canceled
         return false;
       }
+      // If no steals then we are the only owner of the parent and we are
+      // ready to join. Therefore, no need to reset the control block.
       return true;
     }
     return false;
@@ -386,32 +384,38 @@ struct join_awaitable {
 
     LF_ASSUME(self.frame);
 
-    // TODO: fuse and simplify this path
-
-    // Special case: steals==0 means await_ready returned false only because
-    // is_cancelled() is true. We are the exclusive owner of the frame and stack;
-    // take_stack_and_reset() would falsely assert we don't own the stack.
-    if (self.frame->steals == 0) [[unlikely]] {
-      self.frame->reset_counters();
-      return self.handle_cancel();
-    }
-
     std::uint32_t steals = self.frame->steals;
     std::uint32_t offset = k_u16_max - steals;
     std::uint32_t joined = self.frame->atomic_joins().fetch_sub(offset, std::memory_order_release);
+
+    // If this was a cancel:
+    //
+    // steals = 0, joins = k_u16_max then:
+    //
+    // steals = 0
+    // offset = k_u16_max
+    // joined = k_u16_max, (self.frame->joins is now 0)
+    //
+    // k_u16_max - joined = 0 = steals, hence win the if
 
     if (steals == k_u16_max - joined) {
       // We set joins after all children had completed therefore we can resume the task.
       // Need to acquire to ensure we see all writes by other threads to the result.
       std::atomic_thread_fence(std::memory_order_acquire);
 
-      // We must reset the control block and take the stack. We should never
-      // own the stack at this point because we must have stolen the stack.
-      self.take_stack_and_reset();
-
       if (self.frame->is_cancelled()) [[unlikely]] {
+        // Only take the stack if there were steals
+        if (steals > 0) {
+          self.take_stack();
+        }
+        self.frame->reset_counters();
         return self.handle_cancel();
       }
+
+      // We must reset the control block and take the stack. We should never
+      // own the stack at this point because we must have stolen the stack.
+      self.take_stack();
+      self.frame->reset_counters();
       return task;
     }
     // Someone else is responsible for running this task.
