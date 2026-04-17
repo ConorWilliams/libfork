@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 4.2.1 FATAL_ERROR)
 
-project(libfork_benchmark LANGUAGES C CXX)
+project(libfork_benchmark LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
   message(WARNING "It is recommended to build benchmarks in Release mode for accurate results.")
