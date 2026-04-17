@@ -69,6 +69,7 @@ void run(benchmark::State &state) {
   auto expected = expected_result(tree);
 
   state.counters["p"] = static_cast<double>(thread_count<Sch>(state));
+  state.SetComplexityN(static_cast<benchmark::IterationCount>(thread_count<Sch>(state)));
 
   Sch scheduler = make_scheduler<Sch>(state);
 
@@ -94,6 +95,7 @@ void run(benchmark::State &state) {
           b->Args({tree_id, static_cast<std::int64_t>(t)});                                                  \
         });                                                                                                  \
       })                                                                                                     \
+      ->Complexity([](benchmark::IterationCount n) -> double { return 1.0 / static_cast<double>(n); }) \
       ->UseRealTime();
 
 #define BENCH_MT(...)                                                                                        \

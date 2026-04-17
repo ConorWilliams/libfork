@@ -41,6 +41,7 @@ void run(benchmark::State &state) {
 
   state.counters["n"] = static_cast<double>(n);
   state.counters["p"] = static_cast<double>(thread_count<Sch>(state));
+  state.SetComplexityN(static_cast<benchmark::IterationCount>(thread_count<Sch>(state)));
 
   Sch scheduler = make_scheduler<Sch>(state);
 
@@ -93,6 +94,7 @@ BENCH_ALL(inline_scheduler<poly_context<geometric_stack<>, adapt_deque>>)
           b->Args({fib_##mode, static_cast<std::int64_t>(t)});                                               \
         });                                                                                                  \
       })                                                                                                     \
+      ->Complexity([](benchmark::IterationCount n) -> double { return 1.0 / static_cast<double>(n); }) \
       ->UseRealTime();
 
 #define BENCH_ALL_MT(...) BENCH_ONE_MT(test, __VA_ARGS__) BENCH_ONE_MT(base, __VA_ARGS__)
