@@ -45,14 +45,6 @@ void tests(Sch &scheduler) {
     REQUIRE(recv.valid());
     REQUIRE(std::move(recv).get());
   }
-
-  // #if LF_COMPILER_EXCEPTIONS
-  //   SECTION("throwing") {
-  //     auto recv = schedule(scheduler, throwing_function<lf::context_t<Sch>>);
-  //     REQUIRE(recv.valid());
-  //     REQUIRE_THROWS_AS(std::move(recv).get(), std::runtime_error);
-  //   }
-  // #endif
 }
 
 using mono_inline_ctx = lf::mono_context<lf::geometric_stack<>, lf::adapt_vector>;
@@ -65,20 +57,19 @@ TEMPLATE_TEST_CASE("Innline cancel", "[cancel]", mono_inline_ctx, poly_inline_ct
   tests(sch);
 }
 
-// namespace {
-//
-// using mono_busy_thread_pool = lf::mono_busy_pool<lf::geometric_stack<>>;
-// using poly_busy_thread_pool = lf::poly_busy_pool<lf::geometric_stack<>>;
-//
-// } // namespace
-//
-// TEMPLATE_TEST_CASE("Busy schedule", "[schedule]", mono_busy_thread_pool, poly_busy_thread_pool) {
-//
-//   STATIC_REQUIRE(lf::scheduler<TestType>);
-//
-//   for (std::size_t thr = 1; thr < 4; ++thr) {
-//     TestType scheduler{thr};
-//     simple_tests(scheduler);
-//   }
-// }
-// mport libfork;
+namespace {
+
+using mono_busy_thread_pool = lf::mono_busy_pool<lf::geometric_stack<>>;
+using poly_busy_thread_pool = lf::poly_busy_pool<lf::geometric_stack<>>;
+
+} // namespace
+
+TEMPLATE_TEST_CASE("Busy cancel", "[schedule]", mono_busy_thread_pool, poly_busy_thread_pool) {
+
+  STATIC_REQUIRE(lf::scheduler<TestType>);
+
+  for (std::size_t thr = 1; thr < 4; ++thr) {
+    TestType scheduler{thr};
+    tests(scheduler);
+  }
+}
