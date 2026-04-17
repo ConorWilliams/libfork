@@ -37,12 +37,12 @@ struct uts_fn {
           rng_spawn(parent->state.state, cs[i].child.state.state, static_cast<int>(i));
         }
 
-        using scope = lf::scope<Context>;
+        auto sc = co_await lf::scope();
 
         if (i + 1 == static_cast<std::size_t>(num_children)) {
-          co_await scope::call(&cs[i].res, uts_fn{}, depth + 1, &cs[i].child);
+          co_await sc.call(&cs[i].res, uts_fn{}, depth + 1, &cs[i].child);
         } else {
-          co_await scope::fork(&cs[i].res, uts_fn{}, depth + 1, &cs[i].child);
+          co_await sc.fork(&cs[i].res, uts_fn{}, depth + 1, &cs[i].child);
         }
       }
 
@@ -95,7 +95,9 @@ void run(benchmark::State &state) {
           b->Args({tree_id, static_cast<std::int64_t>(t)});                                                  \
         });                                                                                                  \
       })                                                                                                     \
-      ->Complexity([](benchmark::IterationCount n) -> double { return 1.0 / static_cast<double>(n); }) \
+      ->Complexity([](benchmark::IterationCount n) -> double {                                               \
+        return 1.0 / static_cast<double>(n);                                                                 \
+      })                                                                                                     \
       ->UseRealTime();
 
 #define BENCH_MT(...)                                                                                        \

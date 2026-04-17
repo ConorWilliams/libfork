@@ -467,6 +467,13 @@ struct join_awaitable {
   }
 };
 
+// ==== Scope awaitable ==== //
+
+template <worker_context Context>
+struct scope_awaitable : std::suspend_never {
+  static constexpr auto await_resume() -> scope_ops<Context> { return {}; }
+};
+
 // =============== Frame mixin =============== //
 
 template <worker_context Context>
@@ -556,6 +563,8 @@ struct mixin_frame {
   constexpr auto await_transform(this auto &self, join_type) noexcept -> join_awaitable<Context> {
     return {.frame = &self.frame};
   }
+
+  static constexpr auto await_transform(scope_type) noexcept -> scope_awaitable<Context> { return {}; }
 
   constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
 

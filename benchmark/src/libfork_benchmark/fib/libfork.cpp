@@ -22,10 +22,10 @@ struct fib {
     std::int64_t lhs = 0;
     std::int64_t rhs = 0;
 
-    using scope = lf::scope<Context>;
+    auto sc = co_await lf::scope();
 
-    co_await scope::fork(&rhs, fib{}, n - 2);
-    co_await scope::call(&lhs, fib{}, n - 1);
+    co_await sc.fork(&rhs, fib{}, n - 2);
+    co_await sc.call(&lhs, fib{}, n - 1);
 
     co_await lf::join();
 
@@ -94,7 +94,9 @@ BENCH_ALL(inline_scheduler<poly_context<geometric_stack<>, adapt_deque>>)
           b->Args({fib_##mode, static_cast<std::int64_t>(t)});                                               \
         });                                                                                                  \
       })                                                                                                     \
-      ->Complexity([](benchmark::IterationCount n) -> double { return 1.0 / static_cast<double>(n); }) \
+      ->Complexity([](benchmark::IterationCount n) -> double {                                               \
+        return 1.0 / static_cast<double>(n);                                                                 \
+      })                                                                                                     \
       ->UseRealTime();
 
 #define BENCH_ALL_MT(...) BENCH_ONE_MT(test, __VA_ARGS__) BENCH_ONE_MT(base, __VA_ARGS__)

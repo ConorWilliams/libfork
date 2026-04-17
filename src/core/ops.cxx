@@ -51,8 +51,8 @@ constexpr auto fwd_fn(auto &&fn) noexcept -> Fn {
   }
 }
 
-export template <typename Context>
-struct scope {
+template <typename Context>
+struct scope_ops {
  private:
   // Use && for fn/args for zero move/copy + noexcept
   // TODO: Is it better to stores values for some types i.e. empty
@@ -74,6 +74,13 @@ struct scope {
   // TODO: a test that instantiates all of these
 
  public:
+  // Immovable
+  scope_ops() noexcept = default;
+  scope_ops(const scope_ops &) = delete;
+  scope_ops(scope_ops &&) = delete;
+  scope_ops &operator=(const scope_ops &) = delete;
+  scope_ops &operator=(scope_ops &&) = delete;
+
   // === Fork no-cancel === //
 
   template <typename R, typename... Args, async_invocable_to<R, Context, Args...> Fn>
@@ -143,9 +150,16 @@ struct scope {
   }
 };
 
-// TODO: do we want join a member of scope?
+struct scope_type {};
+
+export [[nodiscard("You should immediately co_await this!")]]
+constexpr auto scope() noexcept -> scope_type {
+  return {};
+}
 
 // =============== Join =============== //
+
+// TODO: do we want join a member of scope?
 
 struct join_type {};
 
