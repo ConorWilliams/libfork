@@ -33,7 +33,7 @@
 #ifndef _SHA1_H
 #define _SHA1_H
 
-#include "brg_types.h"
+#include "uts/rng/brg_types.h"
 
 #define SHA1_BLOCK_SIZE 64
 #define SHA1_DIGEST_SIZE 20
