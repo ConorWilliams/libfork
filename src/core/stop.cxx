@@ -7,7 +7,7 @@ namespace lf {
 /**
  * @brief An intrusively linked chain of stop sources.
  */
-export class stop_source {
+class stop_source {
  public:
   constexpr stop_source() noexcept = default;
 
