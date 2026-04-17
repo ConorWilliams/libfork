@@ -46,7 +46,6 @@ export class stop_source {
    */
   [[nodiscard]]
   friend constexpr auto deep_stop_requested(stop_source *src) noexcept -> bool {
-    // TODO: Should exception trigger cancellation?
     for (stop_source *ptr = src; ptr != nullptr; src = src->m_parent) {
       if (ptr->stop_requested()) {
         return true;
