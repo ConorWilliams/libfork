@@ -17,5 +17,3 @@ target_sources(uts_c
       include/uts/rng/brg_sha1.h
       include/uts/rng/brg_types.h
 )
-
-target_include_directories(uts_c PRIVATE include include/uts/rng)
