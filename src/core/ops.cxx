@@ -8,6 +8,7 @@ import libfork.utils;
 
 import :concepts_invocable;
 import :frame;
+import :stop;
 
 namespace lf {
 
@@ -24,7 +25,7 @@ struct maybe_ptr<I, void> {};
 
 template <category Cat, bool Cancel, typename Context, typename R, typename Fn, typename... Args>
 struct [[nodiscard("You should immediately co_await this!")]] pkg {
-  [[no_unique_address]] maybe_ptr<0, std::conditional_t<Cancel, cancellation, void>> maybe_cancel;
+  [[no_unique_address]] maybe_ptr<0, std::conditional_t<Cancel, stop_source, void>> maybe_cancel;
   [[no_unique_address]] maybe_ptr<1, R> maybe_ret_adr;
   [[no_unique_address]] Fn fn;
   [[no_unique_address]] tuple<Args...> args;
@@ -68,7 +69,7 @@ struct scope {
   template <typename R, typename Fn, typename... Args>
   using fork_cancel_pkg = pkg<category::fork, true, Context, R, Fn &&, Args &&...>;
 
-  using cancel_t = cancellation *;
+  using cancel_t = stop_source *;
 
   // TODO: a test that instanticates all of these
 

@@ -7,16 +7,9 @@ import std;
 
 import libfork.utils;
 
+import :stop;
+
 namespace lf {
-
-// =================== Cancellation =================== //
-
-struct cancellation {
-  cancellation *parent = nullptr;
-  std::atomic<std::uint32_t> stop = 0;
-};
-
-// =================== Frame =================== //
 
 // TODO: remove this and other exports
 export enum class category : std::uint8_t {
@@ -40,7 +33,7 @@ struct frame_type : frame_base {
   uninitialized<std::exception_ptr> except;
 
   frame_type *parent;
-  cancellation *cancel;
+  stop_source *cancel;
 
   [[no_unique_address]]
   Checkpoint stack_ckpt;
@@ -60,14 +53,7 @@ struct frame_type : frame_base {
   [[nodiscard]]
   constexpr auto is_cancelled() const noexcept -> bool {
     // TODO: Should exception trigger cancellation?
-    for (cancellation *ptr = cancel; ptr != nullptr; ptr = ptr->parent) {
-      // TODO: if users can't use cancellation outside of fork-join
-      // then this can be relaxed
-      if (ptr->stop.load(std::memory_order_acquire) == 1) {
-        return true;
-      }
-    }
-    return false;
+    return deep_stop_requested(cancel);
   }
 
   [[nodiscard]]
