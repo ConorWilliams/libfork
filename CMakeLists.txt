@@ -31,7 +31,7 @@ set(CMAKE_CXX_MODULE_STD 1)
 add_library(libfork_libfork)
 add_library(libfork::libfork ALIAS libfork_libfork)
 
-# target_link_libraries(libfork_libfork PRIVATE Threads::Threads)
+target_link_libraries(libfork_libfork PUBLIC Threads::Threads)
 
 set_property(TARGET libfork_libfork PROPERTY EXPORT_NAME libfork)
 

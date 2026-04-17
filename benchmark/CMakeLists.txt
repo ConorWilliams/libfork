@@ -17,8 +17,10 @@ target_link_libraries(libfork_benchmark
     benchmark::benchmark_main
 )
 
-# Common headers
+# Common components
 target_sources(libfork_benchmark
+  PRIVATE
+    src/libfork_benchmark/uts/uts.cpp
   PRIVATE
     FILE_SET HEADERS FILES
       src/libfork_benchmark/common.hpp
@@ -27,13 +29,6 @@ target_sources(libfork_benchmark
     BASE_DIRS
       src
 )
-
-# Common sources
-target_sources(libfork_benchmark
-  PRIVATE
-    src/libfork_benchmark/uts/uts.cpp
-)
-
 
 # C lib for UTS
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../external/uts external/uts)
