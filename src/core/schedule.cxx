@@ -2,7 +2,6 @@ module;
 #include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/compiler.hpp"
 #include "libfork/__impl/exception.hpp"
-#include <cstddef>
 export module libfork.core:schedule;
 
 import std;
@@ -78,7 +77,7 @@ schedule(Sch &&sch, Fn &&fn, Args &&...args) -> schedule_result_t<Fn, context_t<
 
   task.promise->frame.kind = category::root;
   task.promise->frame.parent = nullptr;
-  task.promise->frame.cancel = nullptr;
+  task.promise->frame.cancel = &state->m_stop;
 
   LF_TRY {
     sch.post(sched_handle<context_type>{key(), &task.promise->frame});
