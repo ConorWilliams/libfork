@@ -1,5 +1,3 @@
-#include <catch2/catch_test_macros.hpp>
-
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
 
@@ -386,6 +384,7 @@ auto test_sibling_exception_dropped_when_cancelled(lf::env<Context>) -> lf::task
 
 template <typename Sch>
 void tests(Sch &scheduler) {
+
   using Ctx = lf::context_t<Sch>;
 
   // A. Cancel=true (child-specific token)

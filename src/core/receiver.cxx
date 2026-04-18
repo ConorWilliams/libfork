@@ -39,11 +39,11 @@ class receiver {
 
  public:
   constexpr receiver(key_t, std::shared_ptr<state_type> &&state) : m_state(std::move(state)) {}
-  constexpr receiver(receiver &&) noexcept = default;
-  constexpr auto operator=(receiver &&) noexcept -> receiver & = default;
 
   // Move only
+  constexpr receiver(receiver &&) noexcept = default;
   constexpr receiver(const receiver &) = delete;
+  constexpr auto operator=(receiver &&) noexcept -> receiver & = default;
   constexpr auto operator=(const receiver &) -> receiver & = delete;
 
   [[nodiscard]]
