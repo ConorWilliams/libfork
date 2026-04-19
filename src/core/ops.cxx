@@ -29,7 +29,10 @@ struct [[nodiscard("You should immediately co_await this!")]] pkg {
 // clang-format on
 
 /**
- * @brief Forward the function member of a pkg correctly.
+ * @brief Forward the function member of a pkg correctly
+ *
+ * The Fn member should be an l/r value reference, r-value reference need an
+ * explicit move to be forwarded correctly.
  */
 template <typename Fn>
 constexpr auto fwd_fn(auto &&fn) noexcept -> Fn {
