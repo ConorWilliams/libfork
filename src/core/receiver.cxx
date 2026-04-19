@@ -26,12 +26,12 @@ template <typename T, bool Stoppable = false>
 struct receiver_state {
 
   /// Size of the embedded coroutine-frame buffer (bytes).
-  static constexpr std::size_t buffer_size = 1024;
+  static constexpr std::size_t k_buffer_size = 1024;
 
   struct empty_1 {};
   struct empty_2 {};
 
-  alignas(k_new_align) std::byte buffer[buffer_size]{};
+  alignas(k_new_align) std::byte buffer[k_buffer_size]{};
 
   [[no_unique_address]]
   std::conditional_t<std::is_void_v<T>, empty_1, T> return_value{};
@@ -70,7 +70,7 @@ class root_state {
 
  public:
   /// Default: value-initialise via `std::make_shared`.
-  root_state() : m_ptr(std::make_shared<state_type>()) {}
+  constexpr root_state() : m_ptr(std::make_shared<state_type>()) {}
 
   /// Value-init from args: forwards `args` to `receiver_state`'s constructor
   /// (in-place construction of the return value) via `std::make_shared`.
@@ -81,23 +81,25 @@ class root_state {
 
   /// Allocator-aware, default return value: allocate via `std::allocate_shared`.
   template <simple_allocator Alloc>
-  root_state(std::allocator_arg_t, Alloc const &alloc) : m_ptr(std::allocate_shared<state_type>(alloc)) {}
+  constexpr root_state(std::allocator_arg_t, Alloc const &alloc)
+      : m_ptr(std::allocate_shared<state_type>(alloc)) {}
 
   /// Allocator-aware with value-init args.
   template <simple_allocator Alloc, typename... Args>
     requires std::constructible_from<state_type, Args...>
-  root_state(std::allocator_arg_t, Alloc const &alloc, Args &&...args)
+  constexpr root_state(std::allocator_arg_t, Alloc const &alloc, Args &&...args)
       : m_ptr(std::allocate_shared<state_type>(alloc, std::forward<Args>(args)...)) {}
 
   // Move-only.
-  root_state(root_state &&) noexcept = default;
-  auto operator=(root_state &&) noexcept -> root_state & = default;
-  root_state(root_state const &) = delete;
-  auto operator=(root_state const &) -> root_state & = delete;
+  constexpr root_state(root_state &&) noexcept = default;
+  constexpr auto operator=(root_state &&) noexcept -> root_state & = default;
+  constexpr root_state(root_state const &) = delete;
+  constexpr auto operator=(root_state const &) -> root_state & = delete;
 
  private:
   [[nodiscard]]
-  friend auto get(key_t, root_state &&self) noexcept -> std::shared_ptr<receiver_state<T, Stoppable>> {
+  friend constexpr auto
+  get(key_t, root_state &&self) noexcept -> std::shared_ptr<receiver_state<T, Stoppable>> {
     return std::move(self.m_ptr);
   }
 
