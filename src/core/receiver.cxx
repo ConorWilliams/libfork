@@ -166,6 +166,11 @@ class receiver {
     m_state->stop.request_stop();
   }
 
+  /**
+   * @brief Wait for the associated task to complete and return its result, or rethrow.
+   *
+   * This may only be called once; the state is consumed and the receiver becomes invalid.
+   */
   [[nodiscard]]
   constexpr auto get() && -> T {
 
