@@ -43,8 +43,8 @@ struct root_task {
         : keep_alive(recv) {}
 
     template <typename R, bool Stoppable, typename... Args>
-    static auto operator new(std::size_t size, state_handle<R, Stoppable> const &recv, Args const &...)
-        -> void * {
+    static auto
+    operator new(std::size_t size, state_handle<R, Stoppable> const &recv, Args const &...) -> void * {
 
       LF_ASSUME(recv != nullptr);
 
@@ -127,8 +127,7 @@ template <worker_context Context, typename R, bool Stoppable, typename Fn, typen
   requires async_invocable_to<Fn, R, Context, Args...>
 [[nodiscard]]
 auto //
-root_pkg(state_handle<R, Stoppable> recv, Fn fn, Args... args)
-    -> root_task<checkpoint_t<Context>> {
+root_pkg(state_handle<R, Stoppable> recv, Fn fn, Args... args) -> root_task<checkpoint_t<Context>> {
 
   // This should be resumed on a valid context.
   LF_ASSUME(thread_local_context<Context> != nullptr);

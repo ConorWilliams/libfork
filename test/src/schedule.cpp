@@ -89,8 +89,7 @@ void simple_tests(Sch &scheduler) {
 
   SECTION("frame too large -> root_alloc_error") {
     std::array<std::byte, 2048> big{};
-    REQUIRE_THROWS_AS(schedule(scheduler, big_arg_function<lf::context_t<Sch>>, big),
-                      lf::root_alloc_error);
+    REQUIRE_THROWS_AS(schedule(scheduler, big_arg_function<lf::context_t<Sch>>, big), lf::root_alloc_error);
   }
 #endif
 }
