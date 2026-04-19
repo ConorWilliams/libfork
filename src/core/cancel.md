@@ -2,14 +2,14 @@
 
 Goals:
 
-- Symmetry between schedule and fork/call cancellation binding
-- Allocator aware schedule (using shared pointer std:: function)
-- Customize the construction of receiver
-- Default schedule should be non-cancellable (bind nullptr)
-- Join should be a member function of the scope
-- Cancel scope instead of separate source+scope
+- Symmetry between schedule and fork/call cancellation binding ✓
+- Allocator aware schedule (using shared pointer std:: function) ✓
+- Customize the construction of receiver ✓
+- Default schedule should be non-cancellable (bind nullptr) ✓
+- Join should be a member function of the scope ✓
+- Cancel scope instead of separate source+scope ✓
 
-## Task 1 - cancel scope
+## Task 1 - cancel scope ✓
 
 ```cpp
 auto example() -> task<void> {
@@ -23,31 +23,42 @@ auto example() -> task<void> {
 }
 ```
 
-The result of `sc.token()` should be `stop_token` a lightweight wrapper around
-a pointer to a stop source that has the stop_requested and other member
-functions.
+`child_scope()` returns a `child_scope_ops<Context>` that:
+- Owns a `stop_source` chained onto the parent frame's cancel token.
+- All `fork`/`call` operations automatically bind the scope's stop source
+  as the child's cancel source (Cancel=true path).
+- `.token()` returns a `stop_token` wrapping the scope's stop source.
+- `.join()` is available via the shared `scope_base` base class
+  (same as calling `co_await lf::join()`).
 
-You can convert the current `stop_source` to a simple internal-only struct and
-convert uses of `stop_source*` to use `stop_token`.
+`stop_source` is now internal-only (not exported). The public API is
+`stop_token` — a lightweight pointer-sized wrapper that exposes
+`stop_requested()`, `request_stop()`, and `race_request_stop()`.
 
-Make `join()` a member of both the regular and child scope's via a shared base
-class.
+`scope_ops` (obtained via `co_await lf::scope()`) also inherits `scope_base`
+and therefore also exposes `.join()`. For explicit cancel binding from a
+regular scope, `fork_with(token, ...)` / `call_with(token, ...)` accept a
+`stop_token`.
 
-## Task 2 - Schedule API
+## Task 2 - Schedule API ✓
 
-The receiver class and state should have a cancellable template parameter.
+`receiver_state<T, Cancellable=false>` has:
+- Public default constructor + forwarding constructors for in-place T construction.
+- All other members private, with accessor methods used by `root_pkg` and `schedule`.
+- A `stop_source` member only when `Cancellable=true`.
+- `get_stop_token()` (requires `Cancellable=true`) returns a `stop_token`.
 
-The receiver state should have public constructors which forwards arguments for
-in-place construction of the return value. The rest of the members should
-become private.
+`receiver<T, Cancellable=false>` exposes:
+- `token()` (requires `Cancellable=true`) for external cancellation.
 
-The API of `schedule` should be something like:
+`schedule` has two overloads:
 
 ```cpp
-  requires decay_invocable_to<Fn, R, Context, Args...>
-auto schedule(std::shared_ptr<receiver_state<R, Cancellable>> recv_state, Fn && fn, Args&&... args...)
-```
+// Primary: caller supplies a pre-allocated (possibly custom-allocated) state.
+auto schedule(Sch&&, shared_ptr<receiver_state<R, Cancellable>>, Fn&&, Args&&...)
+    -> receiver<R, Cancellable>;
 
-This allows users to customize the allocation if desired. A convenience
-overload (which delegated to above) should exist, which just allocates via
-`make_shared`. It should default to non-cancellable.
+// Convenience: allocates via make_shared, non-cancellable by default.
+auto schedule(Sch&&, Fn&&, Args&&...)
+    -> receiver<R>;   // receiver<R, false>
+```
