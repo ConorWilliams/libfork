@@ -19,6 +19,16 @@ namespace lf {
 
 // TODO: allocator aware! -> IDEA embed in frame/state
 
+/**
+ * @brief Thrown if the root coroutine frame is too large for the embedded buffer.
+ */
+export struct root_alloc_error final : libfork_exception {
+  [[nodiscard]]
+  constexpr auto what() const noexcept -> const char * override {
+    return "root coroutine frame exceeds receiver_state buffer size";
+  }
+};
+
 struct get_frame_t {};
 
 template <typename Checkpoint>
