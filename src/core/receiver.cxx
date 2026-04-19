@@ -22,16 +22,23 @@ export struct broken_receiver_error final : libfork_exception {
 /**
  * @brief Shared state between a scheduled task and its receiver handle.
  *
- * @tparam T          The return type of the scheduled coroutine.
- * @tparam Stoppable If true, the state owns a stop_source that can be used
- *                     to cancel the root task externally.
+ * This class is internal — users interact with it only via the exported
+ * `root_state` wrapper (defined in the schedule partition) and the returned
+ * `receiver` handle.
  *
- * Constructors forward arguments for in-place construction of the return value.
- * Internal access is gated behind a hidden friend: `get(key_t, receiver_state&)`.
+ * The class embeds a 1 KiB aligned buffer that the root task's coroutine
+ * frame is placement-new'd into (see the custom operator new/delete and
+ * final_suspend awaiter in root.cxx).  Because the frame lives inside the
+ * buffer, `receiver_state` must outlive the frame — arranged by holding a
+ * type-erased `std::shared_ptr<void>` inside the root promise that is
+ * hand-over-hand moved out of the frame before the frame is destroyed.
  */
-export template <typename T, bool Stoppable = false>
+template <typename T, bool Stoppable = false>
 class receiver_state {
  public:
+  /// Size of the embedded coroutine-frame buffer (bytes).
+  static constexpr std::size_t buffer_size = 1024;
+
   struct empty {};
 
   /// Default construction — return value is default-initialised (or empty for void).
@@ -52,6 +59,17 @@ class receiver_state {
     requires Stoppable
   {
     m_stop.request_stop();
+  }
+
+  /**
+   * @brief Raw pointer to the embedded buffer.
+   *
+   * Used by the root task's promise_type::operator new to placement-construct
+   * the coroutine frame inside this state's storage.
+   */
+  [[nodiscard]]
+  auto buffer() noexcept -> void * {
+    return m_buffer;
   }
 
  private:
@@ -99,6 +117,9 @@ class receiver_state {
   friend constexpr auto get(key_t, receiver_state &self) noexcept -> view {
     return {&self};
   }
+
+  // Buffer first — it is the largest member and alignment-sensitive.
+  alignas(std::max_align_t) std::byte m_buffer[buffer_size]{};
 
   [[no_unique_address]]
   std::conditional_t<std::is_void_v<T>, empty, T> m_return_value{};

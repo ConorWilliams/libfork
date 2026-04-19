@@ -43,27 +43,59 @@ concept schedulable = schedulable_decayed<std::decay_t<Fn>, Context, std::decay_
 template <typename Fn, typename Context, typename... Args>
 using invoke_decay_result_t = async_result_t<std::decay_t<Fn>, Context, std::decay_t<Args>...>;
 
-template <typename Fn, typename Context, bool Stoppable, typename... Args>
-using schedule_state_t = receiver_state<invoke_decay_result_t<Fn, Context, Args...>, Stoppable>;
-
 export template <typename Fn, typename Context, typename... Args>
   requires schedulable<Fn, Context, Args...>
 using schedule_result_t = receiver<invoke_decay_result_t<Fn, Context, Args...>>;
 
 /**
- * @brief Schedule a function with a pre-allocated receiver state.
+ * @brief Lightweight move-only handle owning a pre-allocated root task state.
  *
- * This is the primary overload: the caller provides a shared_ptr to the
- * receiver state, allowing custom allocation.  The stop_token bound to the
- * root frame depends on whether the state is cancellable.
+ * `root_state` is a simple wrapper the caller constructs and then passes
+ * by value into `schedule`.  It has no public methods beyond construction
+ * and move: all user-visible interaction with the task happens through the
+ * `receiver` returned from `schedule`.
  *
- * This function is strongly exception safe.
+ * Construction allocates a `receiver_state<T, Stoppable>` on the heap; this
+ * state embeds a 1 KiB buffer into which the root coroutine frame will be
+ * placement-constructed by `schedule`.
+ */
+export template <typename T, bool Stoppable = false>
+class root_state {
+ public:
+  /// Allocate the backing receiver_state.
+  root_state() : m_ptr(std::make_shared<receiver_state<T, Stoppable>>()) {}
+
+  // Move-only.
+  root_state(root_state &&) noexcept = default;
+  auto operator=(root_state &&) noexcept -> root_state & = default;
+  root_state(root_state const &) = delete;
+  auto operator=(root_state const &) -> root_state & = delete;
+
+  ~root_state() = default;
+
+ private:
+  [[nodiscard]]
+  friend auto get(key_t, root_state &self) noexcept -> std::shared_ptr<receiver_state<T, Stoppable>> & {
+    return self.m_ptr;
+  }
+
+  std::shared_ptr<receiver_state<T, Stoppable>> m_ptr;
+};
+
+/**
+ * @brief Schedule a function using a caller-provided `root_state`.
+ *
+ * The root coroutine frame is placement-constructed inside the 1 KiB buffer
+ * embedded in the state's `receiver_state`.  Lifetime of the state (and
+ * therefore the buffer) is extended past frame destruction by a type-erased
+ * keep-alive shared_ptr installed into the root promise.
+ *
+ * Strongly exception safe.
  */
 export template <scheduler Sch, typename R, bool Stoppable, decay_copyable Fn, decay_copyable... Args>
   requires schedulable<Fn, context_t<Sch>, Args...> &&
            std::same_as<R, invoke_decay_result_t<Fn, context_t<Sch>, Args...>>
-constexpr auto
-schedule(Sch &&sch, std::shared_ptr<receiver_state<R, Stoppable>> state, Fn &&fn, Args &&...args)
+constexpr auto schedule(Sch &&sch, root_state<R, Stoppable> state, Fn &&fn, Args &&...args)
     -> receiver<R, Stoppable> {
 
   using context_type = context_t<Sch>;
@@ -72,8 +104,13 @@ schedule(Sch &&sch, std::shared_ptr<receiver_state<R, Stoppable>> state, Fn &&fn
     LF_THROW(schedule_error{});
   }
 
+  // Grab a copy of the shared_ptr before handing it to root_pkg.
+  std::shared_ptr<receiver_state<R, Stoppable>> sp = get(key(), state);
+
+  LF_ASSUME(sp != nullptr);
+
   // Package takes shared ownership of the state; fine if this throws.
-  root_task task = root_pkg<context_type>(state, std::forward<Fn>(fn), std::forward<Args>(args)...);
+  root_task task = root_pkg<context_type>(sp, std::forward<Fn>(fn), std::forward<Args>(args)...);
 
   LF_ASSUME(task.promise != nullptr);
 
@@ -81,7 +118,7 @@ schedule(Sch &&sch, std::shared_ptr<receiver_state<R, Stoppable>> state, Fn &&fn
   task.promise->frame.parent = nullptr;
 
   if constexpr (Stoppable) {
-    task.promise->frame.stop_token = get(key(), *state).get_stop_token();
+    task.promise->frame.stop_token = get(key(), *sp).get_stop_token();
   } else {
     task.promise->frame.stop_token = stop_source::stop_token{}; // non-cancellable root
   }
@@ -95,14 +132,11 @@ schedule(Sch &&sch, std::shared_ptr<receiver_state<R, Stoppable>> state, Fn &&fn
     LF_RETHROW;
   }
 
-  return {key(), std::move(state)};
+  return {key(), std::move(sp)};
 }
 
 /**
- * @brief Convenience overload: allocates receiver state via make_shared.
- *
- * Defaults to non-cancellable (Stoppable=false).  Delegates to the primary
- * overload above.
+ * @brief Convenience overload: default-constructs a non-cancellable root_state.
  */
 export template <scheduler Sch, decay_copyable Fn, decay_copyable... Args>
   requires schedulable<Fn, context_t<Sch>, Args...>
@@ -112,10 +146,10 @@ schedule(Sch &&sch, Fn &&fn, Args &&...args) -> receiver<invoke_decay_result_t<F
   using context_type = context_t<Sch>;
   using R = invoke_decay_result_t<Fn, context_type, Args...>;
 
-  auto state = std::make_shared<receiver_state<R, false>>();
-
-  return schedule(
-      std::forward<Sch>(sch), std::move(state), std::forward<Fn>(fn), std::forward<Args>(args)...);
+  return schedule(std::forward<Sch>(sch),
+                  root_state<R, false>{},
+                  std::forward<Fn>(fn),
+                  std::forward<Args>(args)...);
 }
 
 } // namespace lf
