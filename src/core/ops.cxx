@@ -47,6 +47,7 @@ constexpr auto fwd_fn(auto &&fn) noexcept -> Fn {
 
 struct join_type {};
 
+// TODO: remove
 export [[nodiscard("You should immediately co_await this!")]]
 constexpr auto join() noexcept -> join_type {
   return {};
