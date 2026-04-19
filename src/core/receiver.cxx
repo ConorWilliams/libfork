@@ -70,6 +70,50 @@ struct receiver_state {
       : return_value(std::forward<Args>(args)...) {}
 };
 
+/**
+ * @brief Lightweight move-only handle owning a pre-allocated root task state.
+ *
+ * `root_state` is a simple wrapper constructed by the caller and passed by
+ * value into `schedule`.  Apart from construction and move-assignment it has
+ * no public methods — all user-visible interaction with the scheduled task
+ * happens through the `receiver` returned from `schedule`.
+ *
+ * Construction allocates a `receiver_state<T, Stoppable>` which embeds a
+ * 1 KiB aligned buffer; the root coroutine frame is placement-constructed
+ * into that buffer by `schedule`.
+ *
+ * Two constructors are provided, mirroring `make_shared` / `allocate_shared`:
+ *   - default-construct: uses `std::make_shared`
+ *   - allocator-aware: uses `std::allocate_shared` with the given allocator
+ */
+export template <typename T, bool Stoppable = false>
+class root_state {
+ public:
+  /// Default: allocate via `std::make_shared`.
+  root_state() : m_ptr(std::make_shared<receiver_state<T, Stoppable>>()) {}
+
+  /// Allocator-aware: allocate via `std::allocate_shared` with `alloc`.
+  template <typename Allocator>
+  root_state(std::allocator_arg_t /*tag*/, Allocator const &alloc)
+      : m_ptr(std::allocate_shared<receiver_state<T, Stoppable>>(alloc)) {}
+
+  // Move-only.
+  root_state(root_state &&) noexcept = default;
+  auto operator=(root_state &&) noexcept -> root_state & = default;
+  root_state(root_state const &) = delete;
+  auto operator=(root_state const &) -> root_state & = delete;
+
+  ~root_state() = default;
+
+ private:
+  [[nodiscard]]
+  friend auto get(key_t, root_state &self) noexcept -> std::shared_ptr<receiver_state<T, Stoppable>> & {
+    return self.m_ptr;
+  }
+
+  std::shared_ptr<receiver_state<T, Stoppable>> m_ptr;
+};
+
 export template <typename T, bool Stoppable = false>
 class receiver {
 
