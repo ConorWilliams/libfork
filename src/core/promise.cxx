@@ -276,15 +276,9 @@ struct awaitable : std::suspend_always {
       return parent;
     }
 
-    // Noop if stopped, must clean-up the child that will never be resumed.
-    if constexpr (StopToken) {
-      if (self.child->stop_requested()) [[unlikely]] {
-        return self.child->handle().destroy(), parent;
-      }
-    } else {
-      if (parent.promise().frame.stop_requested()) [[unlikely]] {
-        return self.child->handle().destroy(), parent;
-      }
+    if (self.child->stop_requested()) [[unlikely]] {
+      // Noop if stopped, must clean-up the child that will never be resumed.
+      return self.child->handle().destroy(), parent;
     }
 
     // Propagate parent->child relationships
