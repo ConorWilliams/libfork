@@ -13,7 +13,7 @@ struct incorrect_result : public std::runtime_error {
 };
 
 inline void bench_thread_args(benchmark::Benchmark *bench, auto make_args) {
-  unsigned hw = std::thread::hardware_concurrency();
+  unsigned hw = std::max(1U, std::thread::hardware_concurrency());
   for (unsigned t : {1U, 2U, 4U, 6U, 8U, 12U, 16U, 24U, 32U, 48U, 64U, 96U}) {
     if (t > hw) {
       return;
