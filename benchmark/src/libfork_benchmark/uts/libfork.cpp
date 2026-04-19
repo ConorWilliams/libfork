@@ -24,11 +24,10 @@ struct uts_fn {
     int child_type = uts_childType(parent);
 
     parent->numChildren = num_children;
-        
 
     if (num_children > 0) {
       std::vector<pair> cs(static_cast<std::size_t>(num_children));
-    
+
       auto sc = co_await lf::scope();
 
       for (std::size_t i = 0; i < static_cast<std::size_t>(num_children); ++i) {
@@ -39,7 +38,6 @@ struct uts_fn {
         for (int j = 0; j < computeGranularity; ++j) {
           rng_spawn(parent->state.state, cs[i].child.state.state, static_cast<int>(i));
         }
-
 
         if (i + 1 == static_cast<std::size_t>(num_children)) {
           co_await sc.call(&cs[i].res, uts_fn{}, depth + 1, &cs[i].child);

@@ -40,8 +40,7 @@ class receiver_state {
   /// In-place construction of the return value from arbitrary args.
   template <typename... Args>
     requires (!std::is_void_v<T>) && std::constructible_from<T, Args...>
-  constexpr explicit receiver_state(Args &&...args)
-      : m_return_value(std::forward<Args>(args)...) {}
+  constexpr explicit receiver_state(Args &&...args) : m_return_value(std::forward<Args>(args)...) {}
 
  private:
   template <typename U, bool C>
@@ -56,9 +55,7 @@ class receiver_state {
   struct view {
     receiver_state *p;
 
-    constexpr void set_exception(std::exception_ptr e) noexcept {
-      p->m_exception = std::move(e);
-    }
+    constexpr void set_exception(std::exception_ptr e) noexcept { p->m_exception = std::move(e); }
 
     constexpr void notify_ready() noexcept {
       p->m_ready.test_and_set();
