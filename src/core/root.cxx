@@ -43,22 +43,17 @@ struct root_task {
                                     Args const &...) noexcept
         : keep_alive(recv) {}
 
-    /**
-     * @brief Placement `operator new`: locate the frame inside the
-     *        receiver_state's embedded buffer.
-     *
-     * Throws `root_alloc_error` if the requested frame size exceeds the
-     * buffer capacity.  Declared non-`noexcept` so the exception propagates
-     * out to the caller of the scheduled coroutine (the `root_pkg` call in
-     * `schedule`).
-     */
-    template <typename R, bool Stoppable, typename... CoroArgs>
-    static auto operator new(std::size_t size, std::shared_ptr<receiver_state<R, Stoppable>> const &recv,
-                             CoroArgs const &.../*unused*/) -> void * {
+    template <typename R, bool Stoppable, typename... Args>
+    static auto
+    operator new(std::size_t size, std::shared_ptr<receiver_state<R, Stoppable>> const &recv, Args const &...)
+        -> void * {
+
       LF_ASSUME(recv != nullptr);
+
       if (size > recv->buffer.size()) {
         LF_THROW(root_alloc_error{});
       }
+
       return recv->buffer.data();
     }
 
@@ -100,25 +95,20 @@ struct root_task {
      *
      *   1. `std::exchange` the keep-alive shared_ptr into a local on the
      *      host stack, leaving the promise member null.
-     *   2. `h.destroy()` — runs parameter + promise destructors (including
+     *   2. `handle.destroy()` — runs parameter + promise destructors (including
      *      the now-null `keep_alive`) and our no-op `operator delete`.
      *      No frame-memory access occurs after the handle returns.
      *   3. On return, the stack-local `shared_ptr<void>` dies; if its ref
      *      was the last, it destroys the receiver_state cleanly — we are
      *      no longer executing inside the buffer.
-     *
-     * Destroying a coroutine from within its own final_awaiter::await_suspend
-     * is a well-known idiom: by the time await_suspend runs the body is
-     * complete so the frame has no further work to do.
      */
-    struct final_awaiter {
-      constexpr auto await_ready() const noexcept -> bool { return false; }
-      void await_suspend(std::coroutine_handle<promise_type> h) const noexcept {
-        std::shared_ptr<void> local = std::exchange(h.promise().keep_alive, nullptr);
-        h.destroy();
+    struct final_awaiter : std::suspend_always {
+      void await_suspend(std::coroutine_handle<promise_type> handle) const noexcept {
+        std::shared_ptr<void> local = std::exchange(handle.promise().keep_alive, nullptr);
+        LF_ASSUME(local != nullptr);
+        handle.destroy();
         // `local` released here — possibly freeing receiver_state on return.
       }
-      constexpr void await_resume() const noexcept {}
     };
 
     constexpr static auto final_suspend() noexcept -> final_awaiter { return {}; }
