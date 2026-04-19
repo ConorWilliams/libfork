@@ -494,7 +494,9 @@ TEMPLATE_TEST_CASE("Busy cancel", "[cancel]", mono_busy_thread_pool, poly_busy_t
   STATIC_REQUIRE(lf::scheduler<TestType>);
 
   for (std::size_t thr = 1; thr < 4; ++thr) {
-    TestType scheduler{thr};
-    tests(scheduler);
+    DYNAMIC_SECTION("threads=" << thr) {
+      TestType scheduler{thr};
+      tests(scheduler);
+    }
   }
 }
