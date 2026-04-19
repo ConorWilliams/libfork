@@ -72,6 +72,14 @@ void simple_tests(Sch &scheduler) {
     REQUIRE(std::move(recv).get() == true);
   }
 
+  SECTION("root_state with value-init") {
+    // Pre-initialise the return slot; the task overwrites it.
+    lf::root_state<bool, false> state{false};
+    auto recv = schedule(scheduler, std::move(state), simple_function<lf::context_t<Sch>>);
+    REQUIRE(recv.valid());
+    REQUIRE(std::move(recv).get() == true);
+  }
+
 #if LF_COMPILER_EXCEPTIONS
   SECTION("throwing") {
     auto recv = schedule(scheduler, throwing_function<lf::context_t<Sch>>);

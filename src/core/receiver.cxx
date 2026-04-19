@@ -82,20 +82,37 @@ struct receiver_state {
  * 1 KiB aligned buffer; the root coroutine frame is placement-constructed
  * into that buffer by `schedule`.
  *
- * Two constructors are provided, mirroring `make_shared` / `allocate_shared`:
- *   - default-construct: uses `std::make_shared`
- *   - allocator-aware: uses `std::allocate_shared` with the given allocator
+ * Constructors mirror `make_shared` / `allocate_shared`:
+ *
+ *   root_state<T> s;                              // default-init return value
+ *   root_state<T> s{v1, v2};                      // in-place init: T{v1, v2}
+ *   root_state<T> s{allocator_arg, alloc};         // default-init, custom allocator
+ *   root_state<T> s{allocator_arg, alloc, v1, v2}; // in-place init + custom allocator
  */
 export template <typename T, bool Stoppable = false>
 class root_state {
- public:
-  /// Default: allocate via `std::make_shared`.
-  root_state() : m_ptr(std::make_shared<receiver_state<T, Stoppable>>()) {}
+  using state_type = receiver_state<T, Stoppable>;
 
-  /// Allocator-aware: allocate via `std::allocate_shared` with `alloc`.
-  template <typename Allocator>
-  root_state(std::allocator_arg_t /*tag*/, Allocator const &alloc)
-      : m_ptr(std::allocate_shared<receiver_state<T, Stoppable>>(alloc)) {}
+ public:
+  /// Default: value-initialise via `std::make_shared`.
+  root_state() : m_ptr(std::make_shared<state_type>()) {}
+
+  /// Value-init from args: forwards `args` to `receiver_state`'s constructor
+  /// (in-place construction of the return value) via `std::make_shared`.
+  template <typename... Args>
+    requires (sizeof...(Args) > 0) && std::constructible_from<state_type, Args...>
+  constexpr explicit(sizeof...(Args) == 1) root_state(Args &&...args)
+      : m_ptr(std::make_shared<state_type>(std::forward<Args>(args)...)) {}
+
+  /// Allocator-aware, default return value: allocate via `std::allocate_shared`.
+  template <simple_allocator Alloc>
+  root_state(std::allocator_arg_t, Alloc const &alloc) : m_ptr(std::allocate_shared<state_type>(alloc)) {}
+
+  /// Allocator-aware with value-init args.
+  template <simple_allocator Alloc, typename... Args>
+    requires std::constructible_from<state_type, Args...>
+  root_state(std::allocator_arg_t, Alloc const &alloc, Args &&...args)
+      : m_ptr(std::allocate_shared<state_type>(alloc, std::forward<Args>(args)...)) {}
 
   // Move-only.
   root_state(root_state &&) noexcept = default;
