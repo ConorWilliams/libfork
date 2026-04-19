@@ -19,12 +19,12 @@ export class stop_source {
   class stop_token {
    public:
     /**
-     * @brief Construct a null (non-cancellable) token.
+     * @brief Construct a null (unstoppable) token.
      */
     constexpr stop_token() noexcept = default;
 
     /**
-     * @brief Returns true if a stop source is associated (cancellation is possible).
+     * @brief Returns true if a stop source is associated (stopping is possible).
      */
     [[nodiscard]]
     constexpr auto stop_possible() const noexcept -> bool {

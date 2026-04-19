@@ -52,7 +52,7 @@ struct frame_type : frame_base {
 
   [[nodiscard]]
   constexpr auto stop_requested() const noexcept -> bool {
-    // TODO: Should exception trigger cancellation?
+    // TODO: Should exception trigger stop?
     return stop_token.stop_requested();
   }
 
