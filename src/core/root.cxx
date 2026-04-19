@@ -68,11 +68,11 @@ struct root_task {
   promise_type *promise;
 };
 
-template <worker_context Context, typename R, bool Cancellable, typename Fn, typename... Args>
+template <worker_context Context, typename R, bool Stoppable, typename Fn, typename... Args>
   requires async_invocable_to<Fn, R, Context, Args...>
 [[nodiscard]]
 auto //
-root_pkg(std::shared_ptr<receiver_state<R, Cancellable>> recv, Fn fn, Args... args)
+root_pkg(std::shared_ptr<receiver_state<R, Stoppable>> recv, Fn fn, Args... args)
     -> root_task<checkpoint_t<Context>> {
 
   // This should be resumed on a valid context.

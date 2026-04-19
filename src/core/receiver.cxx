@@ -23,13 +23,13 @@ export struct broken_receiver_error final : libfork_exception {
  * @brief Shared state between a scheduled task and its receiver handle.
  *
  * @tparam T          The return type of the scheduled coroutine.
- * @tparam Cancellable If true, the state owns a stop_source that can be used
+ * @tparam Stoppable If true, the state owns a stop_source that can be used
  *                     to cancel the root task externally.
  *
  * Constructors forward arguments for in-place construction of the return value.
  * Internal access is gated behind a hidden friend: `get(key_t, receiver_state&)`.
  */
-export template <typename T, bool Cancellable = false>
+export template <typename T, bool Stoppable = false>
 class receiver_state {
  public:
   struct empty {};
@@ -71,7 +71,7 @@ class receiver_state {
 
     [[nodiscard]]
     constexpr auto get_stop_token() noexcept -> stop_source::stop_token
-      requires Cancellable
+      requires Stoppable
     {
       return p->m_stop.token();
     }
@@ -94,13 +94,13 @@ class receiver_state {
   std::atomic_flag m_ready;
 
   [[no_unique_address]]
-  std::conditional_t<Cancellable, stop_source, empty> m_stop;
+  std::conditional_t<Stoppable, stop_source, empty> m_stop;
 };
 
-export template <typename T, bool Cancellable = false>
+export template <typename T, bool Stoppable = false>
 class receiver {
 
-  using state_type = receiver_state<T, Cancellable>;
+  using state_type = receiver_state<T, Stoppable>;
 
  public:
   constexpr receiver(key_t, std::shared_ptr<state_type> &&state) : m_state(std::move(state)) {}
@@ -134,12 +134,12 @@ class receiver {
   /**
    * @brief Returns a stop_token for this task's stop source.
    *
-   * Only available when Cancellable=true.  The token can be used to request
+   * Only available when Stoppable=true.  The token can be used to request
    * cancellation of the scheduled task before or after it has started.
    */
   [[nodiscard]]
   constexpr auto token() noexcept -> stop_source::stop_token
-    requires Cancellable
+    requires Stoppable
   {
     if (!valid()) {
       LF_THROW(broken_receiver_error{});

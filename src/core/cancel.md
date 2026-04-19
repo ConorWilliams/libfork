@@ -42,21 +42,21 @@ regular scope, `fork_with(token, ...)` / `call_with(token, ...)` accept a
 
 ## Task 2 - Schedule API ✓
 
-`receiver_state<T, Cancellable=false>` has:
+`receiver_state<T, Stoppable=false>` has:
 - Public default constructor + forwarding constructors for in-place T construction.
 - All other members private, with accessor methods used by `root_pkg` and `schedule`.
-- A `stop_source` member only when `Cancellable=true`.
-- `get_stop_token()` (requires `Cancellable=true`) returns a `stop_token`.
+- A `stop_source` member only when `Stoppable=true`.
+- `get_stop_token()` (requires `Stoppable=true`) returns a `stop_token`.
 
-`receiver<T, Cancellable=false>` exposes:
-- `token()` (requires `Cancellable=true`) for external cancellation.
+`receiver<T, Stoppable=false>` exposes:
+- `token()` (requires `Stoppable=true`) for external cancellation.
 
 `schedule` has two overloads:
 
 ```cpp
 // Primary: caller supplies a pre-allocated (possibly custom-allocated) state.
-auto schedule(Sch&&, shared_ptr<receiver_state<R, Cancellable>>, Fn&&, Args&&...)
-    -> receiver<R, Cancellable>;
+auto schedule(Sch&&, shared_ptr<receiver_state<R, Stoppable>>, Fn&&, Args&&...)
+    -> receiver<R, Stoppable>;
 
 // Convenience: allocates via make_shared, non-cancellable by default.
 auto schedule(Sch&&, Fn&&, Args&&...)

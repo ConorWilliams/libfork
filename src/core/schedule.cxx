@@ -43,8 +43,8 @@ concept schedulable = schedulable_decayed<std::decay_t<Fn>, Context, std::decay_
 template <typename Fn, typename Context, typename... Args>
 using invoke_decay_result_t = async_result_t<std::decay_t<Fn>, Context, std::decay_t<Args>...>;
 
-template <typename Fn, typename Context, bool Cancellable, typename... Args>
-using schedule_state_t = receiver_state<invoke_decay_result_t<Fn, Context, Args...>, Cancellable>;
+template <typename Fn, typename Context, bool Stoppable, typename... Args>
+using schedule_state_t = receiver_state<invoke_decay_result_t<Fn, Context, Args...>, Stoppable>;
 
 export template <typename Fn, typename Context, typename... Args>
   requires schedulable<Fn, Context, Args...>
@@ -59,12 +59,12 @@ using schedule_result_t = receiver<invoke_decay_result_t<Fn, Context, Args...>>;
  *
  * This function is strongly exception safe.
  */
-export template <scheduler Sch, typename R, bool Cancellable, decay_copyable Fn, decay_copyable... Args>
+export template <scheduler Sch, typename R, bool Stoppable, decay_copyable Fn, decay_copyable... Args>
   requires schedulable<Fn, context_t<Sch>, Args...> &&
            std::same_as<R, invoke_decay_result_t<Fn, context_t<Sch>, Args...>>
 constexpr auto
-schedule(Sch &&sch, std::shared_ptr<receiver_state<R, Cancellable>> state, Fn &&fn, Args &&...args)
-    -> receiver<R, Cancellable> {
+schedule(Sch &&sch, std::shared_ptr<receiver_state<R, Stoppable>> state, Fn &&fn, Args &&...args)
+    -> receiver<R, Stoppable> {
 
   using context_type = context_t<Sch>;
 
@@ -80,7 +80,7 @@ schedule(Sch &&sch, std::shared_ptr<receiver_state<R, Cancellable>> state, Fn &&
   task.promise->frame.kind = category::root;
   task.promise->frame.parent = nullptr;
 
-  if constexpr (Cancellable) {
+  if constexpr (Stoppable) {
     task.promise->frame.cancel = get(key(), *state).get_stop_token();
   } else {
     task.promise->frame.cancel = stop_source::stop_token{}; // non-cancellable root
@@ -101,7 +101,7 @@ schedule(Sch &&sch, std::shared_ptr<receiver_state<R, Cancellable>> state, Fn &&
 /**
  * @brief Convenience overload: allocates receiver state via make_shared.
  *
- * Defaults to non-cancellable (Cancellable=false).  Delegates to the primary
+ * Defaults to non-cancellable (Stoppable=false).  Delegates to the primary
  * overload above.
  */
 export template <scheduler Sch, decay_copyable Fn, decay_copyable... Args>

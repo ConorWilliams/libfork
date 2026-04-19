@@ -18,9 +18,9 @@ struct no_ret_t {};
 
 // clang-format off
 
-template <category Cat, bool Cancellable, typename Context, typename R, typename Fn, typename... Args>
+template <category Cat, bool Stoppable, typename Context, typename R, typename Fn, typename... Args>
 struct [[nodiscard("You should immediately co_await this!")]] pkg {
-  [[no_unique_address]] std::conditional_t<Cancellable, stop_source::stop_token, no_cnl_t> maybe_cancel;
+  [[no_unique_address]] std::conditional_t<Stoppable, stop_source::stop_token, no_cnl_t> maybe_cancel;
   [[no_unique_address]] std::conditional_t<std::is_void_v<R>, no_ret_t, R *> maybe_ret_adr;
   [[no_unique_address]] Fn fn;
   [[no_unique_address]] tuple<Args...> args;
