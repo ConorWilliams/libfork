@@ -172,7 +172,7 @@ struct inner_call_after_self_cancel {
 };
 
 template <typename Context>
-auto test_call_parent_cancel(lf::env<Context>) -> lf::task<bool, Context> {
+auto test_call_parent_stop_source(lf::env<Context>) -> lf::task<bool, Context> {
   std::atomic<int> count = 0;
   auto outer_sc = co_await lf::child_scope();
   // Pass the scope's stop_source by reference so the inner task can cancel it.
@@ -367,9 +367,8 @@ void tests(Sch &scheduler) {
     REQUIRE(std::move(recv).get());
   }
 
-  SECTION("call_drop/fork_drop (Cancel=false): skipped when parent frame is cancelled; "
-          "join fires handle_cancel") {
-    auto recv = schedule(scheduler, test_call_parent_cancel<Ctx>);
+  SECTION("call_drop/fork_drop: skipped when parent frame is cancelled; join fires handle_cancel") {
+    auto recv = schedule(scheduler, test_call_parent_stop_source<Ctx>);
     REQUIRE(recv.valid());
     REQUIRE(std::move(recv).get());
   }
