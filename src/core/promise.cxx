@@ -560,7 +560,7 @@ struct mixin_frame {
 
   constexpr auto
   await_transform(this auto const &self, child_scope_type) noexcept -> child_scope_awaitable<Context> {
-    return {.parent_stop_source = self.frame.stop_token};
+    return {.parent_stop_token = self.frame.stop_token};
   }
 
   constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }

@@ -190,10 +190,10 @@ struct child_scope_ops : scope_base, stop_source {
 template <worker_context Context>
 struct child_scope_awaitable : std::suspend_never {
 
-  stop_source::stop_token parent_stop_source;
+  stop_source::stop_token parent_stop_token;
 
   constexpr auto await_resume(this child_scope_awaitable self) -> child_scope_ops<Context> {
-    return child_scope_ops<Context>{self.parent_stop_source};
+    return child_scope_ops<Context>{self.parent_stop_token};
   }
 };
 
