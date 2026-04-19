@@ -12,10 +12,10 @@ import libfork;
 // Cancellation check-points in promise.cxx:
 //
 //   A. awaitable::await_suspend (Cancel=true):
-//        child->is_cancelled() → child not spawned (fork_with/call_with)
+//        child->is_cancelled() → child not spawned (fork/call via child_scope_ops)
 //
 //   B. awaitable::await_suspend (Cancel=false):
-//        parent.promise().frame.is_cancelled() → child not spawned (fork/call)
+//        parent.promise().frame.is_cancelled() → child not spawned (fork/call via scope_ops)
 //
 //   C. final_suspend_full / final_suspend_trailing:
 //        parent->is_cancelled() after winning join race → exception dropped,
@@ -36,7 +36,6 @@ namespace {
 // Basic helper tasks
 // ============================================================
 
-// Returns the old count (i.e. before incrementing)
 struct count_up {
   template <typename Context>
   static auto operator()(lf::env<Context>, std::atomic<int> &count) -> lf::task<int, Context> {
@@ -53,194 +52,157 @@ struct count_up_void {
 };
 
 // ============================================================
-// A. Cancel=true: child-specific cancellation (call_with / fork_with)
+// A. Cancel=true: child-specific cancellation via child_scope_ops.
 //
-//    Exercises awaitable::await_suspend's Cancel=true branch.
-//    The check is on the CHILD frame's cancel token.
+//    child_scope_ops binds its stop_source as Cancel=true on every fork/call.
+//    Calling sc.request_stop() before launching exercises
+//    awaitable::await_suspend's Cancel=true branch.
 // ============================================================
 
-// Pre-cancelled call_with_drop: child not run
 template <typename Context>
-auto test_call_with_drop_cancelled(lf::env<Context>) -> lf::task<bool, Context> {
+auto test_call_drop_cancelled(lf::env<Context>) -> lf::task<bool, Context> {
   std::atomic<int> count = 0;
-  auto stop = co_await lf::child_stop_source();
-  auto sc = co_await lf::scope();
-  stop.request_stop();
-  co_await sc.call_with_drop(&stop, count_up_void{}, count);
-  co_await lf::join();
+  auto sc = co_await lf::child_scope();
+  sc.request_stop();
+  co_await sc.call_drop(count_up_void{}, count);
+  co_await sc.join();
   co_return count.load() == 0;
 }
 
-// Pre-cancelled call_with with return value: return address not written
 template <typename Context>
-auto test_call_with_cancelled(lf::env<Context>) -> lf::task<bool, Context> {
+auto test_call_cancelled(lf::env<Context>) -> lf::task<bool, Context> {
   std::atomic<int> count = 0;
   int result = 99;
-  auto stop = co_await lf::child_stop_source();
-  auto sc = co_await lf::scope();
-  stop.request_stop();
-  co_await sc.call_with(&stop, &result, count_up{}, count);
-  co_await lf::join();
+  auto sc = co_await lf::child_scope();
+  sc.request_stop();
+  co_await sc.call(&result, count_up{}, count);
+  co_await sc.join();
   co_return result == 99 && count.load() == 0;
 }
 
-// Pre-cancelled fork_with_drop: child not run
 template <typename Context>
-auto test_fork_with_drop_cancelled(lf::env<Context>) -> lf::task<bool, Context> {
+auto test_fork_drop_cancelled(lf::env<Context>) -> lf::task<bool, Context> {
   std::atomic<int> count = 0;
-  auto stop = co_await lf::child_stop_source();
-  auto sc = co_await lf::scope();
-  stop.request_stop();
-  co_await sc.fork_with_drop(&stop, count_up_void{}, count);
-  co_await lf::join();
+  auto sc = co_await lf::child_scope();
+  sc.request_stop();
+  co_await sc.fork_drop(count_up_void{}, count);
+  co_await sc.join();
   co_return count.load() == 0;
 }
 
-// Pre-cancelled fork_with with return value: return address not written
 template <typename Context>
-auto test_fork_with_cancelled(lf::env<Context>) -> lf::task<bool, Context> {
+auto test_fork_cancelled(lf::env<Context>) -> lf::task<bool, Context> {
   std::atomic<int> count = 0;
   int result = 99;
-  auto stop = co_await lf::child_stop_source();
-  auto sc = co_await lf::scope();
-  stop.request_stop();
-  co_await sc.fork_with(&stop, &result, count_up{}, count);
-  co_await lf::join();
+  auto sc = co_await lf::child_scope();
+  sc.request_stop();
+  co_await sc.fork(&result, count_up{}, count);
+  co_await sc.join();
   co_return result == 99 && count.load() == 0;
 }
 
-// Positive: call_with NOT cancelled - child runs
 template <typename Context>
-auto test_call_with_not_cancelled(lf::env<Context>) -> lf::task<bool, Context> {
+auto test_call_not_cancelled(lf::env<Context>) -> lf::task<bool, Context> {
   std::atomic<int> count = 0;
   int result = 0;
-  auto stop = co_await lf::child_stop_source();
-  auto sc = co_await lf::scope();
-  co_await sc.call_with(&stop, &result, count_up{}, count);
-  co_await lf::join();
+  auto sc = co_await lf::child_scope();
+  co_await sc.call(&result, count_up{}, count);
+  co_await sc.join();
   co_return result == 0 && count.load() == 1;
 }
 
-// Positive: fork_with NOT cancelled - child runs
 template <typename Context>
-auto test_fork_with_not_cancelled(lf::env<Context>) -> lf::task<bool, Context> {
+auto test_fork_not_cancelled(lf::env<Context>) -> lf::task<bool, Context> {
   std::atomic<int> count = 0;
   int result = 0;
-  auto stop = co_await lf::child_stop_source();
-  auto sc = co_await lf::scope();
-  co_await sc.fork_with(&stop, &result, count_up{}, count);
-  co_await lf::join();
+  auto sc = co_await lf::child_scope();
+  co_await sc.fork(&result, count_up{}, count);
+  co_await sc.join();
   co_return result == 0 && count.load() == 1;
 }
 
-// Multiple fork_with_drop: all pre-cancelled, none run
 template <typename Context>
 auto test_multiple_cancelled(lf::env<Context>) -> lf::task<bool, Context> {
   std::atomic<int> count = 0;
-  auto stop = co_await lf::child_stop_source();
-  auto sc = co_await lf::scope();
-  stop.request_stop();
-  co_await sc.fork_with_drop(&stop, count_up_void{}, count);
-  co_await sc.fork_with_drop(&stop, count_up_void{}, count);
-  co_await sc.fork_with_drop(&stop, count_up_void{}, count);
-  co_await lf::join();
+  auto sc = co_await lf::child_scope();
+  sc.request_stop();
+  co_await sc.fork_drop(count_up_void{}, count);
+  co_await sc.fork_drop(count_up_void{}, count);
+  co_await sc.fork_drop(count_up_void{}, count);
+  co_await sc.join();
   co_return count.load() == 0;
 }
 
-// Mixed: some children have a cancelled token, others don't.
-// Only the non-cancelled children should run.
 template <typename Context>
 auto test_mixed_cancel(lf::env<Context>) -> lf::task<bool, Context> {
   std::atomic<int> count = 0;
-  auto stop_run = co_await lf::child_stop_source();
-  auto stop_skip = co_await lf::child_stop_source();
-  auto sc = co_await lf::scope();
-  stop_skip.request_stop();
-  co_await sc.fork_with_drop(&stop_run, count_up_void{}, count);  // runs
-  co_await sc.fork_with_drop(&stop_skip, count_up_void{}, count); // skipped
-  co_await sc.fork_with_drop(&stop_run, count_up_void{}, count);  // runs
-  co_await lf::join();
+  auto sc_run = co_await lf::child_scope();
+  auto sc_skip = co_await lf::child_scope();
+  sc_skip.request_stop();
+  co_await sc_run.fork_drop(count_up_void{}, count);  // runs
+  co_await sc_skip.fork_drop(count_up_void{}, count); // skipped
+  co_await sc_run.fork_drop(count_up_void{}, count);  // runs
+  co_await sc_run.join();
+  co_await sc_skip.join();
   co_return count.load() == 2;
 }
 
 // ============================================================
-// B. Cancel=false: parent frame cancellation propagation
+// B. Cancel=false: parent frame cancellation propagation.
 //
-//    Exercises awaitable::await_suspend's Cancel=false branch.
-//    The check is on the PARENT frame's is_cancelled().
-//
-//    Strategy: use call_with to give an inner task a specific stop source as
-//    its frame.cancel. The inner task receives that pointer as an argument,
-//    calls request_stop() on it (making its own is_cancelled() true), then
-//    tries to launch sub-tasks via the no-cancel (Cancel=false) API.
-//
-//    The sub-tasks are skipped because parent.is_cancelled() is true.
-//    At the subsequent join, handle_cancel (path E/D) fires, cleans up the
-//    inner task, and resumes the outer task normally.
-//
-//    Outer task's stop chain does NOT include the inner task's cs, so the
-//    outer task completes normally and returns the count comparison.
+//    An inner task receives a stop_source& that IS its own frame's cancel
+//    source (bound via child_scope_ops::call_drop / Cancel=true).  It calls
+//    request_stop() on it, making its own is_cancelled() return true, then
+//    tries to launch sub-tasks via scope_ops (Cancel=false).  Those are
+//    skipped because parent.is_cancelled() is true (path B).
+//    At join, handle_cancel fires (paths D+E).
 // ============================================================
 
-// Inner task: cancels its own stop source, then tries call_drop (Cancel=false)
 struct inner_call_after_self_cancel {
-  template <typename Context, typename CS>
-  static auto
-  operator()(lf::env<Context>, CS *my_cancel, std::atomic<int> &count) -> lf::task<void, Context> {
-    my_cancel->request_stop(); // Make this frame's is_cancelled() return true
+  template <typename Context>
+  static auto operator()(lf::env<Context>, lf::stop_source &my_cancel, std::atomic<int> &count)
+      -> lf::task<void, Context> {
+    my_cancel.request_stop(); // make this frame's is_cancelled() == true
     auto sc = co_await lf::scope();
-    // Cancel=false: parent (this frame) is_cancelled() → child not spawned (path B)
-    co_await sc.call_drop(count_up_void{}, count);
-    // Cancel=false: same check for fork (path B)
-    co_await sc.fork_drop(count_up_void{}, count);
-    // Paths D+E: join sees is_cancelled(), fires handle_cancel, outer task resumes
-    co_await lf::join();
-    count.fetch_add(100); // must not be reached
+    co_await sc.call_drop(count_up_void{}, count); // Cancel=false: parent cancelled → skip
+    co_await sc.fork_drop(count_up_void{}, count); // Cancel=false: parent cancelled → skip
+    co_await lf::join();                           // paths D+E: join fires handle_cancel
+    count.fetch_add(100);                          // must not be reached
   }
 };
 
-// test_call_parent_cancel: outer wraps inner via call_with so inner.frame.cancel = &cs.
-// inner cancels cs and verifies both call_drop and fork_drop are skipped.
 template <typename Context>
 auto test_call_parent_cancel(lf::env<Context>) -> lf::task<bool, Context> {
   std::atomic<int> count = 0;
-  auto cs = co_await lf::child_stop_source();
-  auto sc = co_await lf::scope();
-  co_await sc.call_with_drop(&cs, inner_call_after_self_cancel{}, &cs, count);
-  co_await lf::join();
+  auto outer_sc = co_await lf::child_scope();
+  // Pass the scope's stop_source by reference so the inner task can cancel it.
+  co_await outer_sc.call_drop(inner_call_after_self_cancel{}, outer_sc, count);
+  co_await outer_sc.join();
   co_return count.load() == 0;
 }
 
 // ============================================================
-// C/D/E. Concurrent cancellation: final_suspend + join interaction
-//
-//    A forked child cancels the parent's stop source, then the parent task
-//    arrives at join. The join detects cancellation (paths D+E) and calls
-//    handle_cancel. With multiple threads (busy pool), the cancel may also
-//    be observed in final_suspend_full (path C).
+// C/D/E. Concurrent cancellation: final_suspend + join interaction.
 // ============================================================
 
-// A child task that cancels a stop source then runs normally.
-// Template on CS to avoid naming lf::stop_source directly.
-struct cancel_cs {
-  template <typename Context, typename CS>
-  static auto operator()(lf::env<Context>, CS *cs, std::atomic<int> &count) -> lf::task<void, Context> {
+// A child task that cancels a stop_source then completes normally.
+struct cancel_source {
+  template <typename Context>
+  static auto
+  operator()(lf::env<Context>, lf::stop_source &src, std::atomic<int> &count) -> lf::task<void, Context> {
     count.fetch_add(1);
-    cs->request_stop();
+    src.request_stop();
     co_return;
   }
 };
 
-// Outer task: forked children cancel the frame's stop source, then join
-// detects cancel (D+E). The outer is NOT the cancelled task - it just
-// verifies the inner completes cleanly.
 struct inner_fork_then_cancel_at_join {
-  template <typename Context, typename CS>
-  static auto
-  operator()(lf::env<Context>, CS *my_cancel, std::atomic<int> &count) -> lf::task<void, Context> {
+  template <typename Context>
+  static auto operator()(lf::env<Context>, lf::stop_source &my_cancel, std::atomic<int> &count)
+      -> lf::task<void, Context> {
     auto sc = co_await lf::scope();
-    co_await sc.fork_drop(cancel_cs{}, my_cancel, count);
-    co_await lf::join();  // is_cancelled after child cancels cs → handle_cancel
+    co_await sc.fork_drop(cancel_source{}, my_cancel, count);
+    co_await lf::join();  // is_cancelled after child cancels → handle_cancel
     count.fetch_add(100); // must not be reached
   }
 };
@@ -248,23 +210,18 @@ struct inner_fork_then_cancel_at_join {
 template <typename Context>
 auto test_fork_cancel_at_join(lf::env<Context>) -> lf::task<bool, Context> {
   std::atomic<int> count = 0;
-  auto cs = co_await lf::child_stop_source();
-  auto sc = co_await lf::scope();
-  co_await sc.call_with_drop(&cs, inner_fork_then_cancel_at_join{}, &cs, count);
-  co_await lf::join();
-  co_return count.load() == 1; // cancel_cs ran exactly once
+  auto outer_sc = co_await lf::child_scope();
+  co_await outer_sc.call_drop(inner_fork_then_cancel_at_join{}, outer_sc, count);
+  co_await outer_sc.join();
+  co_return count.load() == 1;
 }
 
 // ============================================================
-// F. Exception + cancellation interaction
-//
-//    When a frame is cancelled at join time and the frame has an exception
-//    stashed, handle_cancel drops (not propagates) the exception.
+// F. Exception + cancellation interaction.
 // ============================================================
 
 #if LF_COMPILER_EXCEPTIONS
 
-// A task that throws unconditionally
 struct just_throw {
   template <typename Context>
   static auto operator()(lf::env<Context>) -> lf::task<void, Context> {
@@ -273,77 +230,54 @@ struct just_throw {
   }
 };
 
-// Inner task: forks just_throw, then rethrows at join.
-// Used to verify exceptions propagate when no cancellation.
 struct inner_forks_throwing {
   template <typename Context>
   static auto operator()(lf::env<Context>) -> lf::task<void, Context> {
     auto sc = co_await lf::scope();
     co_await sc.fork_drop(just_throw{});
-    co_await lf::join(); // not cancelled → exception_bit=1 → rethrow (path await_resume)
-    co_return;           // not reached
+    co_await lf::join(); // not cancelled → rethrow
+    co_return;
   }
 };
 
-// Test F1: exception propagates through join and all the way to recv.get()
-// when the task is NOT cancelled.
 template <typename Context>
 auto test_exception_propagates(lf::env<Context>) -> lf::task<void, Context> {
-  auto cs = co_await lf::child_stop_source();
-  auto sc = co_await lf::scope();
-  co_await sc.call_with_drop(&cs, inner_forks_throwing{});
-  co_await lf::join();
+  auto outer_sc = co_await lf::child_scope();
+  co_await outer_sc.call_drop(inner_forks_throwing{});
+  co_await outer_sc.join();
 }
 
-// A child task that cancels a stop source AND throws.
-// Exception stashes in its parent (inner_cancel_and_throw's frame).
-struct cancel_cs_and_throw {
-  template <typename Context, typename CS>
-  static auto operator()(lf::env<Context>, CS *cs, std::atomic<int> &count) -> lf::task<void, Context> {
-    count.fetch_add(1); // Confirm this task ran
-    cs->request_stop(); // Cancel parent's stop source
+struct cancel_source_and_throw {
+  template <typename Context>
+  static auto
+  operator()(lf::env<Context>, lf::stop_source &src, std::atomic<int> &count) -> lf::task<void, Context> {
+    count.fetch_add(1);
+    src.request_stop();
     throw std::runtime_error("should be dropped");
     co_return;
   }
 };
 
-// Inner task:
-//   1. fork cancel_cs_and_throw → child cancels my_cancel AND stashes exception
-//      in this frame (not outer's).
-//   2. At join: is_cancelled AND exception_bit → handle_cancel drops exception (path F),
-//      then final_suspend_leading resumes outer.
-// Outer sees no exception and count==1.
 struct inner_cancel_and_throw {
-  template <typename Context, typename CS>
-  static auto
-  operator()(lf::env<Context>, CS *my_cancel, std::atomic<int> &count) -> lf::task<void, Context> {
+  template <typename Context>
+  static auto operator()(lf::env<Context>, lf::stop_source &my_cancel, std::atomic<int> &count)
+      -> lf::task<void, Context> {
     auto sc = co_await lf::scope();
-    co_await sc.fork_drop(cancel_cs_and_throw{}, my_cancel, count);
+    co_await sc.fork_drop(cancel_source_and_throw{}, my_cancel, count);
     co_await lf::join();  // cancelled + exception → handle_cancel drops exception
     count.fetch_add(100); // must not be reached
   }
 };
 
-// Test F2: exception stashed in a cancelled frame is silently dropped.
-// recv.get() does NOT throw; cancel_cs_and_throw ran (count==1).
 template <typename Context>
 auto test_exception_dropped_when_cancelled(lf::env<Context>) -> lf::task<bool, Context> {
   std::atomic<int> count = 0;
-  auto cs = co_await lf::child_stop_source();
-  auto sc = co_await lf::scope();
-  co_await sc.call_with_drop(&cs, inner_cancel_and_throw{}, &cs, count);
-  co_await lf::join(); // outer is NOT cancelled, no exception reaches here
+  auto outer_sc = co_await lf::child_scope();
+  co_await outer_sc.call_drop(inner_cancel_and_throw{}, outer_sc, count);
+  co_await outer_sc.join();
   co_return count.load() == 1;
 }
 
-// Test F3: combined - verify that a non-cancellation exception still propagates
-// when a sibling child cancelled the frame BUT the throwing child ran first
-// (i.e., the exception stash/drop is frame-local, not task-global).
-//
-// inner_throws_first_then_cancel:
-//   fork throw_child  → exception stashed in this frame
-//   fork cancel_child → cancels my_cancel
-//   join → cancelled + exception → exception dropped
 struct just_throw_and_count {
   template <typename Context>
   static auto operator()(lf::env<Context>, std::atomic<int> &count) -> lf::task<void, Context> {
@@ -354,13 +288,13 @@ struct just_throw_and_count {
 };
 
 struct inner_sibling_throws_and_cancel {
-  template <typename Context, typename CS>
-  static auto
-  operator()(lf::env<Context>, CS *my_cancel, std::atomic<int> &count) -> lf::task<void, Context> {
+  template <typename Context>
+  static auto operator()(lf::env<Context>, lf::stop_source &my_cancel, std::atomic<int> &count)
+      -> lf::task<void, Context> {
     auto sc = co_await lf::scope();
     co_await sc.fork_drop(just_throw_and_count{}, count);
-    co_await sc.fork_drop(cancel_cs{}, my_cancel, count);
-    co_await lf::join();  // cancelled; any exceptions dropped
+    co_await sc.fork_drop(cancel_source{}, my_cancel, count);
+    co_await lf::join();  // cancelled; exceptions dropped
     count.fetch_add(100); // must not be reached
   }
 };
@@ -368,11 +302,9 @@ struct inner_sibling_throws_and_cancel {
 template <typename Context>
 auto test_sibling_exception_dropped_when_cancelled(lf::env<Context>) -> lf::task<bool, Context> {
   std::atomic<int> count = 0;
-  auto cs = co_await lf::child_stop_source();
-  auto sc = co_await lf::scope();
-  co_await sc.call_with_drop(&cs, inner_sibling_throws_and_cancel{}, &cs, count);
-  co_await lf::join(); // outer is NOT cancelled, no exception
-  // just_throw_and_count and cancel_cs both ran → count >= 2
+  auto outer_sc = co_await lf::child_scope();
+  co_await outer_sc.call_drop(inner_sibling_throws_and_cancel{}, outer_sc, count);
+  co_await outer_sc.join();
   co_return count.load() >= 2 && count.load() < 100;
 }
 
@@ -387,57 +319,53 @@ void tests(Sch &scheduler) {
 
   using Ctx = lf::context_t<Sch>;
 
-  // A. Cancel=true (child-specific token)
-
-  SECTION("call_with_drop: pre-cancelled child is not run") {
-    auto recv = schedule(scheduler, test_call_with_drop_cancelled<Ctx>);
+  SECTION("call_drop: pre-cancelled child is not run") {
+    auto recv = schedule(scheduler, test_call_drop_cancelled<Ctx>);
     REQUIRE(recv.valid());
     REQUIRE(std::move(recv).get());
   }
 
-  SECTION("call_with: pre-cancelled child is not run, return address not written") {
-    auto recv = schedule(scheduler, test_call_with_cancelled<Ctx>);
+  SECTION("call: pre-cancelled child is not run, return address not written") {
+    auto recv = schedule(scheduler, test_call_cancelled<Ctx>);
     REQUIRE(recv.valid());
     REQUIRE(std::move(recv).get());
   }
 
-  SECTION("fork_with_drop: pre-cancelled child is not run") {
-    auto recv = schedule(scheduler, test_fork_with_drop_cancelled<Ctx>);
+  SECTION("fork_drop: pre-cancelled child is not run") {
+    auto recv = schedule(scheduler, test_fork_drop_cancelled<Ctx>);
     REQUIRE(recv.valid());
     REQUIRE(std::move(recv).get());
   }
 
-  SECTION("fork_with: pre-cancelled child is not run, return address not written") {
-    auto recv = schedule(scheduler, test_fork_with_cancelled<Ctx>);
+  SECTION("fork: pre-cancelled child is not run, return address not written") {
+    auto recv = schedule(scheduler, test_fork_cancelled<Ctx>);
     REQUIRE(recv.valid());
     REQUIRE(std::move(recv).get());
   }
 
-  SECTION("call_with: positive - not cancelled, child runs and writes result") {
-    auto recv = schedule(scheduler, test_call_with_not_cancelled<Ctx>);
+  SECTION("call: positive - not cancelled, child runs and writes result") {
+    auto recv = schedule(scheduler, test_call_not_cancelled<Ctx>);
     REQUIRE(recv.valid());
     REQUIRE(std::move(recv).get());
   }
 
-  SECTION("fork_with: positive - not cancelled, child runs and writes result") {
-    auto recv = schedule(scheduler, test_fork_with_not_cancelled<Ctx>);
+  SECTION("fork: positive - not cancelled, child runs and writes result") {
+    auto recv = schedule(scheduler, test_fork_not_cancelled<Ctx>);
     REQUIRE(recv.valid());
     REQUIRE(std::move(recv).get());
   }
 
-  SECTION("multiple fork_with_drop: all pre-cancelled, none run") {
+  SECTION("multiple fork_drops: all pre-cancelled, none run") {
     auto recv = schedule(scheduler, test_multiple_cancelled<Ctx>);
     REQUIRE(recv.valid());
     REQUIRE(std::move(recv).get());
   }
 
-  SECTION("fork_with_drop: mixed tokens - only non-cancelled children run") {
+  SECTION("mixed scopes: only non-cancelled children run") {
     auto recv = schedule(scheduler, test_mixed_cancel<Ctx>);
     REQUIRE(recv.valid());
     REQUIRE(std::move(recv).get());
   }
-
-  // B/D/E. Cancel=false (parent frame propagation) + join cancel handling
 
   SECTION("call_drop/fork_drop (Cancel=false): skipped when parent frame is cancelled; "
           "join fires handle_cancel") {
@@ -453,8 +381,6 @@ void tests(Sch &scheduler) {
   }
 
 #if LF_COMPILER_EXCEPTIONS
-
-  // F. Exception + cancellation
 
   SECTION("exception propagates through join when frame is NOT cancelled") {
     auto recv = schedule(scheduler, test_exception_propagates<Ctx>);
