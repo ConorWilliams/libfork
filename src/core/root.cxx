@@ -21,41 +21,50 @@ namespace lf {
 
 struct get_frame_t {};
 
-/**
- * @brief Tag awaited inside the root body to install a type-erased shared_ptr
- *        keep-alive into the promise.
- *
- * The keep-alive is moved out of the frame by final_awaiter before the frame
- * is destroyed, so the receiver_state (which owns the buffer the frame lives
- * in) is kept alive until *after* frame teardown completes.
- */
-struct set_keep_alive_t {
-  std::shared_ptr<void> ptr;
-};
-
 template <typename Checkpoint>
 struct root_task {
   struct promise_type {
 
     frame_type<Checkpoint> frame{Checkpoint{}};
 
-    /// Owns a ref to the receiver_state hosting this coroutine's buffer.
-    /// Moved out by `final_awaiter::await_suspend` before frame destruction.
+    /// Owns a ref to the receiver_state hosting this frame's buffer.
+    /// Moved (via std::exchange) out of the frame by `final_awaiter::await_suspend`
+    /// before the frame itself is destroyed, so the receiver_state (and its
+    /// buffer) outlives frame teardown.
     std::shared_ptr<void> keep_alive;
 
     /**
-     * @brief Placement operator new: place the coroutine frame in the
+     * @brief Default constructor — used if no coroutine-arg ctor matches.
+     */
+    constexpr promise_type() = default;
+
+    /**
+     * @brief Coroutine-argument constructor: captures a keep-alive copy of
+     *        the receiver_state shared pointer passed as the coroutine's
+     *        first argument.
+     */
+    template <typename R, bool Stoppable, typename... Rest>
+    constexpr explicit promise_type(std::shared_ptr<receiver_state<R, Stoppable>> const &recv,
+                                    Rest const &.../*unused*/) noexcept
+        : keep_alive(recv) {}
+
+    /**
+     * @brief Placement `operator new`: locate the frame inside the
      *        receiver_state's embedded buffer.
      *
-     * Deduces R and Stoppable from the first coroutine argument (the
-     * `std::shared_ptr<receiver_state<R, Stoppable>>` passed to `root_pkg`).
+     * Throws `root_alloc_error` if the requested frame size exceeds the
+     * buffer capacity.  Declared non-`noexcept` so the exception propagates
+     * out to the caller of the scheduled coroutine (the `root_pkg` call in
+     * `schedule`).
      */
     template <typename R, bool Stoppable, typename... CoroArgs>
     static auto operator new(std::size_t size, std::shared_ptr<receiver_state<R, Stoppable>> const &recv,
-                             CoroArgs const &.../*unused*/) noexcept -> void * {
+                             CoroArgs const &.../*unused*/) -> void * {
       LF_ASSUME(recv != nullptr);
-      LF_ASSUME(size <= receiver_state<R, Stoppable>::buffer_size);
-      return recv->buffer();
+      if (size > receiver_state<R, Stoppable>::buffer_size) {
+        LF_THROW(root_alloc_error{});
+      }
+      return recv->buffer;
     }
 
     /// No-op: the buffer is owned by the receiver_state, not the frame.
@@ -84,18 +93,6 @@ struct root_task {
       return {.child = child};
     }
 
-    struct set_keep_alive_awaitable {
-      set_keep_alive_t tag;
-      promise_type *self;
-      constexpr auto await_ready() const noexcept -> bool { return true; }
-      constexpr void await_suspend(std::coroutine_handle<>) const noexcept {}
-      constexpr void await_resume() noexcept { self->keep_alive = std::move(tag.ptr); }
-    };
-
-    constexpr auto await_transform(set_keep_alive_t tag) noexcept -> set_keep_alive_awaitable {
-      return {.tag = std::move(tag), .self = this};
-    }
-
     constexpr auto get_return_object() noexcept -> root_task { return {.promise = this}; }
 
     constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
@@ -103,33 +100,28 @@ struct root_task {
     /**
      * @brief Custom final_suspend.
      *
-     * The root task's coroutine frame lives inside the receiver_state's
-     * embedded buffer.  We must ensure the receiver_state (which owns that
-     * buffer) outlives the frame teardown itself.  The strategy:
+     * The root coroutine frame lives inside the receiver_state's embedded
+     * buffer, so the receiver_state must outlive the frame teardown.
      *
-     *   1. Move the type-erased keep-alive shared_ptr out of the promise
-     *      into a local on the host stack.  After this the promise no
-     *      longer holds a ref.
-     *   2. Call `h.destroy()`.  This runs parameter + promise destructors
-     *      and then our no-op `operator delete`.  No frame-memory access
-     *      occurs after this point.
-     *   3. Return from `await_suspend`.  As we unwind, the stack-local
-     *      shared_ptr's destructor runs; if its ref was the last, it
-     *      destroys the receiver_state (and releases the buffer memory)
-     *      cleanly — we are no longer executing inside the buffer.
+     *   1. `std::exchange` the keep-alive shared_ptr into a local on the
+     *      host stack, leaving the promise member null.
+     *   2. `h.destroy()` — runs parameter + promise destructors (including
+     *      the now-null `keep_alive`) and our no-op `operator delete`.
+     *      No frame-memory access occurs after the handle returns.
+     *   3. On return, the stack-local `shared_ptr<void>` dies; if its ref
+     *      was the last, it destroys the receiver_state cleanly — we are
+     *      no longer executing inside the buffer.
      *
      * Destroying a coroutine from within its own final_awaiter::await_suspend
-     * is a well-known idiom: by the time await_suspend is called the body
-     * has completed, so there is nothing else for the frame to do.
+     * is a well-known idiom: by the time await_suspend runs the body is
+     * complete so the frame has no further work to do.
      */
     struct final_awaiter {
       constexpr auto await_ready() const noexcept -> bool { return false; }
       void await_suspend(std::coroutine_handle<promise_type> h) const noexcept {
-        // Step 1: move keep-alive onto our stack.
-        std::shared_ptr<void> local = std::move(h.promise().keep_alive);
-        // Step 2: destroy the frame (promise + parameter destructors, no-op delete).
+        std::shared_ptr<void> local = std::exchange(h.promise().keep_alive, nullptr);
         h.destroy();
-        // Step 3: `local` goes out of scope on return — possibly frees receiver_state.
+        // `local` released here — possibly freeing receiver_state on return.
       }
       constexpr void await_resume() const noexcept {}
     };
@@ -160,17 +152,10 @@ root_pkg(std::shared_ptr<receiver_state<R, Stoppable>> recv, Fn fn, Args... args
 
   using checkpoint = checkpoint_t<Context>;
 
-  // Install the keep-alive shared_ptr into the promise before anything else.
-  // The type-erased std::shared_ptr<void> shares ownership with `recv`, so
-  // even after `recv` (the coroutine parameter) is destroyed during frame
-  // teardown the receiver_state stays alive until final_awaiter drops the
-  // keep-alive on the host stack.
-  co_await set_keep_alive_t{std::shared_ptr<void>{recv}};
-
-  // This is a pointer to the current root_task's frame
+  // Pointer to this root_task's own frame.
   frame_type<checkpoint> *root = not_null(co_await get_frame_t{});
 
-  // Now we do a manual "call" invocation.
+  // Manual "call" invocation of the user-supplied task.
 
   using result_type = async_result_t<Fn, Context, Args...>;
   using promise_type = promise_type<result_type, Context>;
@@ -187,7 +172,7 @@ root_pkg(std::shared_ptr<receiver_state<R, Stoppable>> recv, Fn fn, Args... args
     // Potentially throwing
     child = get(key(), ctx_invoke_t<Context>{}(std::move(fn), std::move(args)...));
   } LF_CATCH_ALL {
-    get(key(), *recv).set_exception(std::current_exception());
+    recv->exception = std::current_exception();
     goto cleanup;
   }
 
@@ -200,7 +185,7 @@ root_pkg(std::shared_ptr<receiver_state<R, Stoppable>> recv, Fn fn, Args... args
   LF_ASSUME(child->frame.kind == category::call);
 
   if constexpr (!std::is_void_v<async_result_t<Fn, Context, Args...>>) {
-    child->return_address = get(key(), *recv).return_value_address();
+    child->return_address = std::addressof(recv->return_value);
   }
 
   // Begin normal execution of the child task, it will clean itself
@@ -215,19 +200,17 @@ root_pkg(std::shared_ptr<receiver_state<R, Stoppable>> recv, Fn fn, Args... args
   //
   // We return any exception stashed unconditionally
 
-  // TODO: drop exception on cancel
-
   if constexpr (LF_COMPILER_EXCEPTIONS) {
     if (root->exception_bit) {
       // The child threw an exception, propagate it to the receiver.
-      get(key(), *recv).set_exception(extract_exception(root));
+      recv->exception = extract_exception(root);
     }
   }
 
 cleanup:
-  // Now do that which we would otherwise do at a final suspend.
   // Notify the receiver that the task is done.
-  get(key(), *recv).notify_ready();
+  recv->ready.test_and_set();
+  recv->ready.notify_one();
 
   LF_ASSUME(root->steals == 0);
   LF_ASSUME(root->joins == k_u16_max);

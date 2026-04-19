@@ -50,20 +50,29 @@ using schedule_result_t = receiver<invoke_decay_result_t<Fn, Context, Args...>>;
 /**
  * @brief Lightweight move-only handle owning a pre-allocated root task state.
  *
- * `root_state` is a simple wrapper the caller constructs and then passes
- * by value into `schedule`.  It has no public methods beyond construction
- * and move: all user-visible interaction with the task happens through the
- * `receiver` returned from `schedule`.
+ * `root_state` is a simple wrapper constructed by the caller and passed by
+ * value into `schedule`.  Apart from construction and move-assignment it has
+ * no public methods — all user-visible interaction with the scheduled task
+ * happens through the `receiver` returned from `schedule`.
  *
- * Construction allocates a `receiver_state<T, Stoppable>` on the heap; this
- * state embeds a 1 KiB buffer into which the root coroutine frame will be
- * placement-constructed by `schedule`.
+ * Construction allocates a `receiver_state<T, Stoppable>` which embeds a
+ * 1 KiB aligned buffer; the root coroutine frame is placement-constructed
+ * into that buffer by `schedule`.
+ *
+ * Two constructors are provided, mirroring `make_shared` / `allocate_shared`:
+ *   - default-construct: uses `std::make_shared`
+ *   - allocator-aware: uses `std::allocate_shared` with the given allocator
  */
 export template <typename T, bool Stoppable = false>
 class root_state {
  public:
-  /// Allocate the backing receiver_state.
+  /// Default: allocate via `std::make_shared`.
   root_state() : m_ptr(std::make_shared<receiver_state<T, Stoppable>>()) {}
+
+  /// Allocator-aware: allocate via `std::allocate_shared` with `alloc`.
+  template <typename Allocator>
+  root_state(std::allocator_arg_t /*tag*/, Allocator const &alloc)
+      : m_ptr(std::allocate_shared<receiver_state<T, Stoppable>>(alloc)) {}
 
   // Move-only.
   root_state(root_state &&) noexcept = default;
@@ -85,12 +94,8 @@ class root_state {
 /**
  * @brief Schedule a function using a caller-provided `root_state`.
  *
- * The root coroutine frame is placement-constructed inside the 1 KiB buffer
- * embedded in the state's `receiver_state`.  Lifetime of the state (and
- * therefore the buffer) is extended past frame destruction by a type-erased
- * keep-alive shared_ptr installed into the root promise.
- *
- * Strongly exception safe.
+ * Strongly exception safe: if the scheduler's `post()` throws, the root
+ * frame is destroyed and the exception is rethrown to the caller.
  */
 export template <scheduler Sch, typename R, bool Stoppable, decay_copyable Fn, decay_copyable... Args>
   requires schedulable<Fn, context_t<Sch>, Args...> &&
@@ -104,12 +109,12 @@ constexpr auto schedule(Sch &&sch, root_state<R, Stoppable> state, Fn &&fn, Args
     LF_THROW(schedule_error{});
   }
 
-  // Grab a copy of the shared_ptr before handing it to root_pkg.
   std::shared_ptr<receiver_state<R, Stoppable>> sp = get(key(), state);
 
   LF_ASSUME(sp != nullptr);
 
-  // Package takes shared ownership of the state; fine if this throws.
+  // root_pkg's operator new may throw root_alloc_error if the frame is
+  // too large; if so, `sp` goes out of scope and destroys the state.
   root_task task = root_pkg<context_type>(sp, std::forward<Fn>(fn), std::forward<Args>(args)...);
 
   LF_ASSUME(task.promise != nullptr);
@@ -118,7 +123,7 @@ constexpr auto schedule(Sch &&sch, root_state<R, Stoppable> state, Fn &&fn, Args
   task.promise->frame.parent = nullptr;
 
   if constexpr (Stoppable) {
-    task.promise->frame.stop_token = get(key(), *sp).get_stop_token();
+    task.promise->frame.stop_token = sp->stop.token();
   } else {
     task.promise->frame.stop_token = stop_source::stop_token{}; // non-cancellable root
   }
