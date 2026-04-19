@@ -65,7 +65,7 @@ schedule(Sch &&sch, root_state<R, Stoppable> state, Fn &&fn, Args &&...args) -> 
     LF_THROW(schedule_error{});
   }
 
-  std::shared_ptr<receiver_state<R, Stoppable>> sp = get(key(), state);
+  std::shared_ptr<receiver_state<R, Stoppable>> sp = get(key(), std::move(state));
 
   LF_ASSUME(sp != nullptr);
 

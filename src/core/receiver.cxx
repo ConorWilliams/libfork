@@ -21,16 +21,6 @@ export struct broken_receiver_error final : libfork_exception {
 
 /**
  * @brief Shared state between a scheduled task and its receiver handle.
- *
- * Internal — users interact with it only through the exported `root_state`
- * wrapper (in schedule.cxx) and the returned `receiver` handle.
- *
- * The aligned `buffer` hosts the root task's coroutine frame via placement
- * `operator new`; the state must outlive the frame, which is arranged by the
- * root promise taking a copy of the `shared_ptr<receiver_state>` parameter.
- *
- * Two distinct `empty_*` tags are used for the potentially-empty members so
- * that `[[no_unique_address]]` can collapse both to the same offset.
  */
 template <typename T, bool Stoppable = false>
 struct receiver_state {
@@ -63,19 +53,14 @@ struct receiver_state {
 /**
  * @brief Lightweight move-only handle owning a pre-allocated root task state.
  *
- * `root_state` is a simple wrapper constructed by the caller and passed by
- * value into `schedule`.  Apart from construction and move-assignment it has
- * no public methods — all user-visible interaction with the scheduled task
- * happens through the `receiver` returned from `schedule`.
- *
  * Construction allocates a `receiver_state<T, Stoppable>` which embeds a
  * 1 KiB aligned buffer; the root coroutine frame is placement-constructed
  * into that buffer by `schedule`.
  *
  * Constructors mirror `make_shared` / `allocate_shared`:
  *
- *   root_state<T> s;                              // default-init return value
- *   root_state<T> s{v1, v2};                      // in-place init: T{v1, v2}
+ *   root_state<T> s;                               // default-init return value
+ *   root_state<T> s{v1, v2};                       // in-place init: T{v1, v2}
  *   root_state<T> s{allocator_arg, alloc};         // default-init, custom allocator
  *   root_state<T> s{allocator_arg, alloc, v1, v2}; // in-place init + custom allocator
  */
@@ -110,12 +95,10 @@ class root_state {
   root_state(root_state const &) = delete;
   auto operator=(root_state const &) -> root_state & = delete;
 
-  ~root_state() = default;
-
  private:
   [[nodiscard]]
-  friend auto get(key_t, root_state &self) noexcept -> std::shared_ptr<receiver_state<T, Stoppable>> & {
-    return self.m_ptr;
+  friend auto get(key_t, root_state &&self) noexcept -> std::shared_ptr<receiver_state<T, Stoppable>> {
+    return std::move(self.m_ptr);
   }
 
   std::shared_ptr<receiver_state<T, Stoppable>> m_ptr;
@@ -127,7 +110,7 @@ class receiver {
   using state_type = receiver_state<T, Stoppable>;
 
  public:
-  constexpr receiver(key_t, std::shared_ptr<state_type> state) noexcept : m_state(std::move(state)) {}
+  constexpr receiver(key_t, std::shared_ptr<state_type> &&state) noexcept : m_state(std::move(state)) {}
 
   // Move only
   constexpr receiver(receiver &&) noexcept = default;
@@ -173,7 +156,7 @@ class receiver {
   /**
    * @brief Request that the associated task stop.
    *
-   * Only available when Stoppable=true.  Thread-safe.
+   * Only available when Stoppable=true. Thread-safe.
    */
   constexpr auto request_stop() -> void
     requires Stoppable
