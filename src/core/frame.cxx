@@ -51,7 +51,7 @@ struct frame_type : frame_base {
   constexpr frame_type(Checkpoint &&ckpt) noexcept : stack_ckpt(std::move(ckpt)) { joins = k_u16_max; }
 
   [[nodiscard]]
-  constexpr auto is_cancelled() const noexcept -> bool {
+  constexpr auto stop_requested() const noexcept -> bool {
     // TODO: Should exception trigger cancellation?
     return stop_token.stop_requested();
   }

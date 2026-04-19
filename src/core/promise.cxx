@@ -126,7 +126,7 @@ constexpr auto final_suspend_full(Context &context, frame_t<Context> *frame) noe
       // Must reset parent's control block before resuming parent.
       parent->reset_counters();
 
-      if (parent->is_cancelled()) [[unlikely]] {
+      if (parent->stop_requested()) [[unlikely]] {
         // Don't resume if cancelled
         if constexpr (LF_COMPILER_EXCEPTIONS) {
           if (parent->exception_bit) [[unlikely]] {
@@ -174,7 +174,7 @@ constexpr auto final_suspend_trailing(Context &context, frame_t<Context> *parent
 
     parent->reset_counters();
 
-    if (parent->is_cancelled()) [[unlikely]] {
+    if (parent->stop_requested()) [[unlikely]] {
       if constexpr (LF_COMPILER_EXCEPTIONS) {
         if (parent->exception_bit) [[unlikely]] {
           std::ignore = extract_exception(parent);
@@ -280,11 +280,11 @@ struct awaitable : std::suspend_always {
 
     // Noop if canceled, must clean-up the child that will never be resumed.
     if constexpr (Cancel) {
-      if (self.child->is_cancelled()) [[unlikely]] {
+      if (self.child->stop_requested()) [[unlikely]] {
         return self.child->handle().destroy(), parent;
       }
     } else {
-      if (parent.promise().frame.is_cancelled()) [[unlikely]] {
+      if (parent.promise().frame.stop_requested()) [[unlikely]] {
         return self.child->handle().destroy(), parent;
       }
     }
@@ -346,7 +346,7 @@ struct join_awaitable {
 
   constexpr auto await_ready(this join_awaitable self) noexcept -> bool {
     if (not_null(self.frame)->steals == 0) [[likely]] {
-      if (self.frame->is_cancelled()) [[unlikely]] {
+      if (self.frame->stop_requested()) [[unlikely]] {
         // Must unconditionally suspended if canceled
         return false;
       }
@@ -398,7 +398,7 @@ struct join_awaitable {
       // Need to acquire to ensure we see all writes by other threads to the result.
       std::atomic_thread_fence(std::memory_order_acquire);
 
-      if (self.frame->is_cancelled()) [[unlikely]] {
+      if (self.frame->stop_requested()) [[unlikely]] {
         return self.handle_cancel();
       }
 

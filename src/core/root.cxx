@@ -90,7 +90,7 @@ root_pkg(std::shared_ptr<receiver_state<R, Stoppable>> recv, Fn fn, Args... args
 
   promise_type *child = nullptr;
 
-  if (root->is_cancelled()) {
+  if (root->stop_requested()) {
     // The root task was cancelled before it even started, we can skip
     // straight to cleanup.
     goto cleanup;
