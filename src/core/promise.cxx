@@ -535,9 +535,9 @@ struct mixin_frame {
     if constexpr (Cancel) {
       // TODO: need some kind of API to launch an unstoppable task?
       LF_ASSUME(pkg.stop_token.stop_possible());
-      child_promise->frame.cancel = pkg.stop_token;
+      child_promise->frame.stop_token = pkg.stop_token;
     } else {
-      child_promise->frame.cancel = self.frame.cancel;
+      child_promise->frame.stop_token = self.frame.stop_token;
     }
 
     return {.child = &child_promise->frame};
@@ -562,7 +562,7 @@ struct mixin_frame {
 
   constexpr auto
   await_transform(this auto const &self, child_scope_type) noexcept -> child_scope_awaitable<Context> {
-    return {.parent_stop_source = self.frame.cancel};
+    return {.parent_stop_source = self.frame.stop_token};
   }
 
   constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }

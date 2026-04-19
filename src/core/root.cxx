@@ -108,7 +108,7 @@ root_pkg(std::shared_ptr<receiver_state<R, Stoppable>> recv, Fn fn, Args... args
 
   // Propagate parent/cancel info to child
   child->frame.parent = root;
-  child->frame.cancel = root->cancel;
+  child->frame.stop_token = root->stop_token;
 
   LF_ASSUME(child->frame.kind == category::call);
 

@@ -33,7 +33,7 @@ struct frame_type : frame_base {
   uninitialized<std::exception_ptr> except;
 
   frame_type *parent;
-  stop_source::stop_token cancel;
+  stop_source::stop_token stop_token;
 
   [[no_unique_address]]
   Checkpoint stack_ckpt;
@@ -53,7 +53,7 @@ struct frame_type : frame_base {
   [[nodiscard]]
   constexpr auto is_cancelled() const noexcept -> bool {
     // TODO: Should exception trigger cancellation?
-    return cancel.stop_requested();
+    return stop_token.stop_requested();
   }
 
   [[nodiscard]]

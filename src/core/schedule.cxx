@@ -81,9 +81,9 @@ schedule(Sch &&sch, std::shared_ptr<receiver_state<R, Stoppable>> state, Fn &&fn
   task.promise->frame.parent = nullptr;
 
   if constexpr (Stoppable) {
-    task.promise->frame.cancel = get(key(), *state).get_stop_token();
+    task.promise->frame.stop_token = get(key(), *state).get_stop_token();
   } else {
-    task.promise->frame.cancel = stop_source::stop_token{}; // non-cancellable root
+    task.promise->frame.stop_token = stop_source::stop_token{}; // non-cancellable root
   }
 
   LF_TRY {
