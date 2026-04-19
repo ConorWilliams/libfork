@@ -42,6 +42,18 @@ class receiver_state {
     requires (!std::is_void_v<T>) && std::constructible_from<T, Args...>
   constexpr explicit receiver_state(Args &&...args) : m_return_value(std::forward<Args>(args)...) {}
 
+  /**
+   * @brief Request that the associated task stop.
+   *
+   * Only available when Stoppable=true.  Safe to call before scheduling —
+   * the root frame checks stop_requested() before executing the task body.
+   */
+  constexpr auto request_stop() noexcept -> void
+    requires Stoppable
+  {
+    m_stop.request_stop();
+  }
+
  private:
   template <typename U, bool C>
   friend class receiver;
@@ -134,8 +146,8 @@ class receiver {
   /**
    * @brief Returns a stop_token for this task's stop source.
    *
-   * Only available when Stoppable=true.  The token can be used to request
-   * cancellation of the scheduled task before or after it has started.
+   * Only available when Stoppable=true.  The token can be used to observe
+   * whether the associated task has been cancelled.
    */
   [[nodiscard]]
   constexpr auto token() noexcept -> stop_source::stop_token
@@ -145,6 +157,21 @@ class receiver {
       LF_THROW(broken_receiver_error{});
     }
     return get(key(), *m_state).get_stop_token();
+  }
+
+  /**
+   * @brief Request that the associated task stop.
+   *
+   * Only available when Stoppable=true.  Thread-safe; may be called
+   * concurrently with the task executing on worker threads.
+   */
+  constexpr auto request_stop() -> void
+    requires Stoppable
+  {
+    if (!valid()) {
+      LF_THROW(broken_receiver_error{});
+    }
+    m_state->m_stop.request_stop();
   }
 
   [[nodiscard]]

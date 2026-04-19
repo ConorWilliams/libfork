@@ -29,6 +29,14 @@ import libfork;
 //
 //   F. handle_cancel (exception_bit set on cancelled frame):
 //        exception dropped, not propagated to caller
+//
+//   G. Nested child_scope chain propagation:
+//        inner child_scope inherits parent's stop token; stopping the outer
+//        source propagates through the chain to the inner scope.
+//
+//   H. Stoppable receiver / pre-cancelled root:
+//        receiver_state<T, true>::request_stop() before schedule() triggers
+//        the goto-cleanup fast path in root.cxx — task body never executes.
 
 namespace {
 
@@ -305,10 +313,56 @@ auto test_sibling_exception_dropped_when_cancelled(lf::env<Context>) -> lf::task
   auto outer_sc = co_await lf::child_scope();
   co_await outer_sc.call_drop(inner_sibling_throws_and_cancel{}, outer_sc, count);
   co_await outer_sc.join();
-  co_return count.load() >= 2 && count.load() < 100;
+  auto c = count.load();
+  co_return c >= 2 && c < 100;
 }
 
 #endif // LF_COMPILER_EXCEPTIONS
+
+// ============================================================
+// G. Nested child_scope chain propagation.
+//
+//    A child_scope created inside a task that runs under another child_scope
+//    has m_parent pointing to the outer scope's stop_source.  Stopping the
+//    outer source propagates through the chain, making the inner scope's
+//    stop_requested() return true (path A).
+// ============================================================
+
+struct inner_with_nested_scope {
+  template <typename Context>
+  static auto
+  operator()(lf::env<Context>, lf::stop_source &outer, std::atomic<int> &count) -> lf::task<void, Context> {
+    auto inner_sc = co_await lf::child_scope();
+    // Cancel the outer scope; inner_sc.m_parent == &outer, so the chain fires.
+    outer.request_stop();
+    co_await inner_sc.fork_drop(count_up_void{}, count); // skipped: inner_sc is stopped
+    co_await inner_sc.join();                            // handle_stop
+    count.fetch_add(100);                                // must not be reached
+  }
+};
+
+template <typename Context>
+auto test_nested_child_scope_chain(lf::env<Context>) -> lf::task<bool, Context> {
+  std::atomic<int> count = 0;
+  auto outer_sc = co_await lf::child_scope();
+  co_await outer_sc.call_drop(inner_with_nested_scope{}, outer_sc, count);
+  co_await outer_sc.join();
+  co_return count.load() == 0;
+}
+
+// ============================================================
+// H. Stoppable receiver / pre-cancelled root.
+//
+//    receiver_state<T, true>::request_stop() before schedule() makes the root
+//    frame's stop_token immediately satisfied, triggering the goto-cleanup
+//    fast path in root.cxx so the task body never runs.
+// ============================================================
+
+template <typename Context>
+auto pre_cancelled_root_fn(lf::env<Context>, bool *ran) -> lf::task<void, Context> {
+  *ran = true;
+  co_return;
+}
 
 // ============================================================
 // Run all tests against a given scheduler
@@ -377,6 +431,22 @@ void tests(Sch &scheduler) {
     auto recv = schedule(scheduler, test_fork_cancel_at_join<Ctx>);
     REQUIRE(recv.valid());
     REQUIRE(std::move(recv).get());
+  }
+
+  SECTION("nested child_scope: stopping outer scope propagates to inner via chain") {
+    auto recv = schedule(scheduler, test_nested_child_scope_chain<Ctx>);
+    REQUIRE(recv.valid());
+    REQUIRE(std::move(recv).get());
+  }
+
+  SECTION("stoppable receiver: pre-cancelled root task body never executes") {
+    bool ran = false;
+    auto state = std::make_shared<lf::receiver_state<void, true>>();
+    state->request_stop();
+    auto recv = lf::schedule(scheduler, std::move(state), pre_cancelled_root_fn<Ctx>, &ran);
+    REQUIRE(recv.valid());
+    std::move(recv).get();
+    REQUIRE(!ran);
   }
 
 #if LF_COMPILER_EXCEPTIONS
