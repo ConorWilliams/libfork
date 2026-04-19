@@ -47,14 +47,6 @@ constexpr auto fwd_fn(auto &&fn) noexcept -> Fn {
 
 struct join_type {};
 
-// TODO: remove
-export [[nodiscard("You should immediately co_await this!")]]
-constexpr auto join() noexcept -> join_type {
-  return {};
-}
-
-// =============== Scope base =============== //
-
 /**
  * @brief Base class shared by scope_ops and child_scope_ops.
  *
@@ -79,7 +71,7 @@ struct scope_ops : scope_base {
   using fork_pkg = pkg<category::fork, false, Context, R, Fn &&, Args &&...>;
 
  public:
-  // default constructible
+  // Default constructible
   scope_ops() noexcept = default;
 
   // Immovable

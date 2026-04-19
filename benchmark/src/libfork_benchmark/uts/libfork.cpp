@@ -24,9 +24,12 @@ struct uts_fn {
     int child_type = uts_childType(parent);
 
     parent->numChildren = num_children;
+        
 
     if (num_children > 0) {
       std::vector<pair> cs(static_cast<std::size_t>(num_children));
+    
+      auto sc = co_await lf::scope();
 
       for (std::size_t i = 0; i < static_cast<std::size_t>(num_children); ++i) {
         cs[i].child.type = child_type;
@@ -37,7 +40,6 @@ struct uts_fn {
           rng_spawn(parent->state.state, cs[i].child.state.state, static_cast<int>(i));
         }
 
-        auto sc = co_await lf::scope();
 
         if (i + 1 == static_cast<std::size_t>(num_children)) {
           co_await sc.call(&cs[i].res, uts_fn{}, depth + 1, &cs[i].child);
@@ -46,7 +48,7 @@ struct uts_fn {
         }
       }
 
-      co_await lf::join();
+      co_await sc.join();
 
       for (auto &&elem : cs) {
         r.maxdepth = std::max(r.maxdepth, elem.res.maxdepth);

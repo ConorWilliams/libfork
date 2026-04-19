@@ -166,7 +166,7 @@ struct inner_call_after_self_cancel {
     auto sc = co_await lf::scope();
     co_await sc.call_drop(count_up_void{}, count); // Cancel=false: parent cancelled → skip
     co_await sc.fork_drop(count_up_void{}, count); // Cancel=false: parent cancelled → skip
-    co_await lf::join();                           // paths D+E: join fires handle_cancel
+    co_await sc.join();                            // paths D+E: join fires handle_cancel
     count.fetch_add(100);                          // must not be reached
   }
 };
@@ -202,7 +202,7 @@ struct inner_fork_then_cancel_at_join {
       -> lf::task<void, Context> {
     auto sc = co_await lf::scope();
     co_await sc.fork_drop(cancel_source{}, my_cancel, count);
-    co_await lf::join();  // is_cancelled after child cancels → handle_cancel
+    co_await sc.join();   // is_cancelled after child cancels → handle_cancel
     count.fetch_add(100); // must not be reached
   }
 };
@@ -235,7 +235,7 @@ struct inner_forks_throwing {
   static auto operator()(lf::env<Context>) -> lf::task<void, Context> {
     auto sc = co_await lf::scope();
     co_await sc.fork_drop(just_throw{});
-    co_await lf::join(); // not cancelled → rethrow
+    co_await sc.join(); // not cancelled → rethrow
     co_return;
   }
 };
@@ -264,7 +264,7 @@ struct inner_cancel_and_throw {
       -> lf::task<void, Context> {
     auto sc = co_await lf::scope();
     co_await sc.fork_drop(cancel_source_and_throw{}, my_cancel, count);
-    co_await lf::join();  // cancelled + exception → handle_cancel drops exception
+    co_await sc.join();   // cancelled + exception → handle_cancel drops exception
     count.fetch_add(100); // must not be reached
   }
 };
@@ -294,7 +294,7 @@ struct inner_sibling_throws_and_cancel {
     auto sc = co_await lf::scope();
     co_await sc.fork_drop(just_throw_and_count{}, count);
     co_await sc.fork_drop(cancel_source{}, my_cancel, count);
-    co_await lf::join();  // cancelled; exceptions dropped
+    co_await sc.join();   // cancelled; exceptions dropped
     count.fetch_add(100); // must not be reached
   }
 };

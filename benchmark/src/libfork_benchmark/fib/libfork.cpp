@@ -27,7 +27,7 @@ struct fib {
     co_await sc.fork(&rhs, fib{}, n - 2);
     co_await sc.call(&lhs, fib{}, n - 1);
 
-    co_await lf::join();
+    co_await sc.join();
 
     co_return lhs + rhs;
   }
