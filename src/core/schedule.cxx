@@ -43,6 +43,13 @@ concept schedulable = schedulable_decayed<std::decay_t<Fn>, Context, std::decay_
 template <typename Fn, typename Context, typename... Args>
 using invoke_decay_result_t = async_result_t<std::decay_t<Fn>, Context, std::decay_t<Args>...>;
 
+/**
+ * @brief Subsumes `schedulable` and checks the result type is `R`.
+ */
+export template <typename Fn, typename R, typename Context, typename... Args>
+concept schedulable_to =
+    schedulable<Fn, Context, Args...> && std::same_as<R, invoke_decay_result_t<Fn, Context, Args...>>;
+
 export template <typename Fn, typename Context, typename... Args>
   requires schedulable<Fn, Context, Args...>
 using schedule_result_t = receiver<invoke_decay_result_t<Fn, Context, Args...>>;
@@ -54,8 +61,7 @@ using schedule_result_t = receiver<invoke_decay_result_t<Fn, Context, Args...>>;
  * frame is destroyed and the exception is rethrown to the caller.
  */
 export template <scheduler Sch, typename R, bool Stoppable, decay_copyable Fn, decay_copyable... Args>
-  requires schedulable<Fn, context_t<Sch>, Args...> &&
-           std::same_as<R, invoke_decay_result_t<Fn, context_t<Sch>, Args...>>
+  requires schedulable_to<Fn, R, context_t<Sch>, Args...>
 constexpr auto
 schedule(Sch &&sch, root_state<R, Stoppable> state, Fn &&fn, Args &&...args) -> receiver<R, Stoppable> {
 
