@@ -17,8 +17,6 @@ import :task;
 
 namespace lf {
 
-// TODO: allocator aware! -> IDEA embed in frame/state
-
 /**
  * @brief Thrown if the root coroutine frame is too large for the embedded buffer.
  */
