@@ -47,6 +47,10 @@ struct receiver_state {
       : return_value(std::forward<Args>(args)...) {}
 };
 
+/// Convenience alias — used throughout the core partitions.
+template <typename T, bool Stoppable = false>
+using state_handle = std::shared_ptr<receiver_state<T, Stoppable>>;
+
 /**
  * @brief Lightweight move-only handle owning a pre-allocated root task state.
  *
@@ -95,12 +99,11 @@ class root_state {
 
  private:
   [[nodiscard]]
-  friend constexpr auto
-  get(key_t, root_state &&self) noexcept -> std::shared_ptr<receiver_state<T, Stoppable>> {
+  friend constexpr auto get(key_t, root_state &&self) noexcept -> state_handle<T, Stoppable> {
     return std::move(self.m_ptr);
   }
 
-  std::shared_ptr<receiver_state<T, Stoppable>> m_ptr;
+  state_handle<T, Stoppable> m_ptr;
 };
 
 export template <typename T, bool Stoppable = false>
@@ -109,7 +112,7 @@ class receiver {
   using state_type = receiver_state<T, Stoppable>;
 
  public:
-  constexpr receiver(key_t, std::shared_ptr<state_type> &&state) noexcept : m_state(std::move(state)) {}
+  constexpr receiver(key_t, state_handle<T, Stoppable> state) noexcept : m_state(std::move(state)) {}
 
   // Move only
   constexpr receiver(receiver &&) noexcept = default;
@@ -191,7 +194,7 @@ class receiver {
   }
 
  private:
-  std::shared_ptr<state_type> m_state;
+  state_handle<T, Stoppable> m_state;
 };
 
 } // namespace lf

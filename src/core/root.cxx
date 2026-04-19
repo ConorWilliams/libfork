@@ -39,13 +39,11 @@ struct root_task {
     std::shared_ptr<void> keep_alive;
 
     template <typename R, bool Stoppable, typename... Args>
-    constexpr explicit promise_type(std::shared_ptr<receiver_state<R, Stoppable>> const &recv,
-                                    Args const &...) noexcept
+    constexpr explicit promise_type(state_handle<R, Stoppable> const &recv, Args const &...) noexcept
         : keep_alive(recv) {}
 
     template <typename R, bool Stoppable, typename... Args>
-    static auto
-    operator new(std::size_t size, std::shared_ptr<receiver_state<R, Stoppable>> const &recv, Args const &...)
+    static auto operator new(std::size_t size, state_handle<R, Stoppable> const &recv, Args const &...)
         -> void * {
 
       LF_ASSUME(recv != nullptr);
@@ -129,7 +127,7 @@ template <worker_context Context, typename R, bool Stoppable, typename Fn, typen
   requires async_invocable_to<Fn, R, Context, Args...>
 [[nodiscard]]
 auto //
-root_pkg(std::shared_ptr<receiver_state<R, Stoppable>> recv, Fn fn, Args... args)
+root_pkg(state_handle<R, Stoppable> recv, Fn fn, Args... args)
     -> root_task<checkpoint_t<Context>> {
 
   // This should be resumed on a valid context.
