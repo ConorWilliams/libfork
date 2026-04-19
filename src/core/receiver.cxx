@@ -48,27 +48,26 @@ struct receiver_state {
   /// Size of the embedded coroutine-frame buffer (bytes).
   static constexpr std::size_t buffer_size = 1024;
 
-  struct empty_ret {};
-  struct empty_stop {};
+  struct empty_1 {};
+  struct empty_2 {};
 
-  alignas(std::max_align_t) std::byte buffer[buffer_size]{};
+  alignas(k_new_align) std::byte buffer[buffer_size]{};
 
   [[no_unique_address]]
-  std::conditional_t<std::is_void_v<T>, empty_ret, T> return_value{};
+  std::conditional_t<std::is_void_v<T>, empty_1, T> return_value{};
 
   std::exception_ptr exception;
   std::atomic_flag ready;
 
   [[no_unique_address]]
-  std::conditional_t<Stoppable, stop_source, empty_stop> stop;
+  std::conditional_t<Stoppable, stop_source, empty_2> stop;
 
-  /// Default construction — return value is default-initialised (or empty for void).
   constexpr receiver_state() = default;
 
-  /// In-place construction of the return value (used by allocate_shared).
   template <typename... Args>
-    requires (!std::is_void_v<T>) && std::constructible_from<T, Args...>
-  constexpr explicit receiver_state(Args &&...args) : return_value(std::forward<Args>(args)...) {}
+    requires (sizeof...(Args) > 0) && std::constructible_from<T, Args...>
+  constexpr explicit(sizeof...(Args) == 1) receiver_state(Args &&...args)
+      : return_value(std::forward<Args>(args)...) {}
 };
 
 export template <typename T, bool Stoppable = false>
