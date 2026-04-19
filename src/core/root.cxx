@@ -36,24 +36,11 @@ struct root_task {
     frame_type<Checkpoint> frame{Checkpoint{}};
 
     /// Owns a ref to the receiver_state hosting this frame's buffer.
-    /// Moved (via std::exchange) out of the frame by `final_awaiter::await_suspend`
-    /// before the frame itself is destroyed, so the receiver_state (and its
-    /// buffer) outlives frame teardown.
     std::shared_ptr<void> keep_alive;
 
-    /**
-     * @brief Default constructor — used if no coroutine-arg ctor matches.
-     */
-    constexpr promise_type() = default;
-
-    /**
-     * @brief Coroutine-argument constructor: captures a keep-alive copy of
-     *        the receiver_state shared pointer passed as the coroutine's
-     *        first argument.
-     */
-    template <typename R, bool Stoppable, typename... Rest>
+    template <typename R, bool Stoppable, typename... Args>
     constexpr explicit promise_type(std::shared_ptr<receiver_state<R, Stoppable>> const &recv,
-                                    Rest const &.../*unused*/) noexcept
+                                    Args const &...) noexcept
         : keep_alive(recv) {}
 
     /**
