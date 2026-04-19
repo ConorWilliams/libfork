@@ -1,5 +1,5 @@
 [codespell]
-builtin = clear,rare,en-GB_to_en-US,names,informal,code
+builtin = clear,rare,names,informal,code
 check-filenames =
 check-hidden =
 ignore-words-list = deque,warmup,stdio,copyable,combinate

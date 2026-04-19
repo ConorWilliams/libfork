@@ -12,6 +12,7 @@ import libfork.utils;
 import :concepts_context;
 import :concepts_invocable;
 import :frame;
+import :stop;
 import :task;
 import :thread_locals;
 import :ops;
@@ -28,22 +29,181 @@ template <worker_context Context>
 using frame_t = frame_type<checkpoint_t<Context>>;
 
 // =============== Final =============== //
+
+/**
+ * @brief The full final suspend logic.
+ *
+ * The final suspend logic is fully expressed in this function in brief:
+ *
+ * - Try to resume parent if a call.
+ * - Try to resume parent if a fork with no stealing.
+ * - Try to resume a stolen forked task if last to complete.
+ *
+ * This function also handles cancellation (of the parent) by iteratively
+ * climbing up the parent chain.
+ *
+ * This function is split and repeated as two separate functions to allow the
+ * hot-path code to be inlined more easily into the final suspend.
+ */
 template <worker_context Context>
 [[nodiscard]]
-LF_FORCE_INLINE constexpr auto final_suspend(frame_t<Context> *frame) noexcept -> coro<> {
+constexpr auto final_suspend_full(Context &context, frame_t<Context> *frame) noexcept -> coro<> {
+  for (;;) {
+    // Validate final state
+    LF_ASSUME(frame);
+    LF_ASSUME(frame->kind != category::root);
+    LF_ASSUME(frame->steals == 0);
+    LF_ASSUME(frame->joins == k_u16_max);
+    LF_ASSUME(frame->exception_bit == 0);
 
-  // Validate final state
+    // Local copies (before we destroy frame)
+    category const kind = frame->kind;
+
+    frame_t<Context> *parent = not_null(frame->parent);
+
+    // Before resuming the next (or exiting) we should clean-up the current frame.
+    // Can't use frame from this point onwards
+    frame->handle().destroy();
+
+    if (kind == category::call) {
+      return parent->handle();
+    }
+
+    // Given we are not a call we must be a fork hence, our
+    // parent can't be a root as they can only call.
+    LF_ASSUME(kind == category::fork);
+    LF_ASSUME(parent->kind != category::root);
+
+    if (steal_handle<Context> last_pushed = context.pop()) {
+      // No-one stole continuation, we are the exclusive owner of parent -> just keep ripping!
+      LF_ASSUME(last_pushed == steal_handle<Context>{key(), parent});
+      // This is not a join point so no state (i.e. counters) is guaranteed.
+      return parent->handle();
+    }
+
+    // An owner is a worker who:
+    //
+    // - Created the task.
+    // - OR had the task submitted to them.
+    // - OR won the task at a join.
+    //
+    // An owner of a task owns the stack the task is on.
+    //
+    // As the worker who completed the child task this thread owns the stack the child task was on.
+    //
+    // Either:
+    //
+    // 1. The parent is on the same stack as the child.
+    // 2. OR the parent is on a different stack to the child.
+    //
+    // Case (1) implies: we owned the parent; forked the child task; then the parent was then stolen.
+    // Case (2) implies: we stole the parent task; then forked the child; then the parent was stolen.
+    //
+    // Case (2) implies that our stack is empty.
+
+    // As soon as we do the `fetch_sub` below the parent task is no longer safe
+    // to access as it may be resumed and then destroyed by another thread. Hence
+    // we must make copies on-the-stack of any data we may need if we lose the
+    // join race.
+    bool const owner = parent->stack_ckpt == context.stack().checkpoint();
+
+    // As soon as we do the fetch_sub (if we loose) someone may acquire
+    // the stack so we must prepare it for release now.
+    auto release_key = context.stack().prepare_release();
+
+    // Register with parent we have completed this child task.
+    if (parent->atomic_joins().fetch_sub(1, std::memory_order_release) == 1) {
+      // Parent has reached join and we are the last child task to complete. We
+      // are the exclusive owner of the parent and therefore, we must continue
+      // parent. As we won the race, acquire all writes before resuming.
+      std::atomic_thread_fence(std::memory_order_acquire);
+
+      if (!owner) {
+        // In case of scenario (2) we must acquire the parent's stack.
+        context.stack().acquire(std::as_const(parent->stack_ckpt));
+      }
+
+      // Must reset parent's control block before resuming parent.
+      parent->reset_counters();
+
+      if (parent->stop_requested()) [[unlikely]] {
+        // Don't resume if stopped
+        if constexpr (LF_COMPILER_EXCEPTIONS) {
+          if (parent->exception_bit) [[unlikely]] {
+            std::ignore = extract_exception(parent);
+          }
+        }
+        frame = parent;
+        continue;
+      }
+
+      if (owner) {
+        // We were unable to resume the parent and we were its owner, as the
+        // resuming thread will take ownership of the parent's we must give it up.
+        context.stack().release(std::move(release_key));
+      }
+
+      return parent->handle();
+    }
+
+    // We did not win the join-race, we cannot dereference the parent pointer now
+    // as the frame may now be freed by the winner. Parent has not reached join
+    // or we are not the last child to complete. We are now out of jobs, we must
+    // yield to the executor.
+
+    // Else, case (2), our stack has no allocations on it, it may be used later.
+    return std::noop_coroutine();
+  }
+}
+
+template <worker_context Context>
+[[nodiscard]]
+constexpr auto final_suspend_trailing(Context &context, frame_t<Context> *parent) noexcept -> coro<> {
+
+  bool const owner = parent->stack_ckpt == context.stack().checkpoint();
+
+  auto release_key = context.stack().prepare_release();
+
+  if (parent->atomic_joins().fetch_sub(1, std::memory_order_release) == 1) {
+
+    std::atomic_thread_fence(std::memory_order_acquire);
+
+    if (!owner) {
+      context.stack().acquire(std::as_const(parent->stack_ckpt));
+    }
+
+    parent->reset_counters();
+
+    if (parent->stop_requested()) [[unlikely]] {
+      if constexpr (LF_COMPILER_EXCEPTIONS) {
+        if (parent->exception_bit) [[unlikely]] {
+          std::ignore = extract_exception(parent);
+        }
+      }
+      return final_suspend_full<Context>(context, parent);
+    }
+    return parent->handle();
+  }
+
+  if (owner) {
+    context.stack().release(std::move(release_key));
+  }
+
+  return std::noop_coroutine();
+}
+template <worker_context Context>
+[[nodiscard]]
+constexpr auto final_suspend_leading(frame_t<Context> *frame) noexcept -> coro<> {
+
+  LF_ASSUME(frame);
   LF_ASSUME(frame->steals == 0);
   LF_ASSUME(frame->joins == k_u16_max);
   LF_ASSUME(frame->exception_bit == 0);
 
-  // Local copies (before we destroy frame)
   category const kind = frame->kind;
 
   frame_t<Context> *parent = not_null(frame->parent);
 
-  // Before resuming the next (or exiting) we should clean-up the current frame.
-  // Can't use frame from this point onwards
   frame->handle().destroy();
 
   if (kind == category::call) {
@@ -55,92 +215,21 @@ LF_FORCE_INLINE constexpr auto final_suspend(frame_t<Context> *frame) noexcept -
   Context &context = get_tls_context<Context>();
 
   if (steal_handle<Context> last_pushed = context.pop()) {
-    // No-one stole continuation, we are the exclusive owner of parent -> just keep ripping!
     LF_ASSUME(last_pushed == steal_handle<Context>{key(), parent});
-    // This is not a join point so no state (i.e. counters) is guaranteed.
     return parent->handle();
   }
 
-  // An owner is a worker who:
-  //
-  // - Created the task.
-  // - OR had the task submitted to them.
-  // - OR won the task at a join.
-  //
-  // An owner of a task owns the stack the task is on.
-  //
-  // As the worker who completed the child task this thread owns the stack the child task was on.
-  //
-  // Either:
-  //
-  // 1. The parent is on the same stack as the child.
-  // 2. OR the parent is on a different stack to the child.
-  //
-  // Case (1) implies: we owned the parent; forked the child task; then the parent was then stolen.
-  // Case (2) implies: we stole the parent task; then forked the child; then the parent was stolen.
-  //
-  // Case (2) implies that our stack is empty.
-
-  // As soon as we do the `fetch_sub` below the parent task is no longer safe
-  // to access as it may be resumed and then destroyed by another thread. Hence
-  // we must make copies on-the-stack of any data we may need if we lose the
-  // join race.
-  bool const owner = parent->stack_ckpt == context.stack().checkpoint();
-
-  // TODO: we could reduce branching if we unconditionally release and also
-  // drop pre-release function altogether... Need to benchmark with code that
-  // triggers a lot of stealing.
-
-  // As soon as we do the fetch_sub (if we loose) someone may acquire
-  // the stack so we must prepare it for release now.
-  auto release_key = context.stack().prepare_release();
-
-  // TODO: we could add an `if (owner)` around acquire below, then we could
-  // define that acquire is always called with null or not-self.
-
-  // Register with parent we have completed this child task.
-  if (parent->atomic_joins().fetch_sub(1, std::memory_order_release) == 1) {
-    // Parent has reached join and we are the last child task to complete. We
-    // are the exclusive owner of the parent and therefore, we must continue
-    // parent. As we won the race, acquire all writes before resuming.
-    std::atomic_thread_fence(std::memory_order_acquire);
-
-    if (!owner) {
-      // In case of scenario (2) we must acquire the parent's stack.
-      context.stack().acquire(std::as_const(parent->stack_ckpt));
-    }
-
-    // Must reset parent's control block before resuming parent.
-    parent->reset_counters();
-
-    return parent->handle();
-  }
-
-  // We did not win the join-race, we cannot dereference the parent pointer now
-  // as the frame may now be freed by the winner. Parent has not reached join
-  // or we are not the last child to complete. We are now out of jobs, we must
-  // yield to the executor.
-
-  if (owner) {
-    // We were unable to resume the parent and we were its owner, as the
-    // resuming thread will take ownership of the parent's we must give it up.
-    context.stack().release(std::move(release_key));
-  }
-
-  // Else, case (2), our stack has no allocations on it, it may be used later.
-  return std::noop_coroutine();
+  return final_suspend_trailing<Context>(context, parent);
 }
 
 struct final_awaitable : std::suspend_always {
   template <returnable T, worker_context Context>
   constexpr static auto await_suspend(coro<promise_type<T, Context>> handle) noexcept -> coro<> {
-    return final_suspend<Context>(&handle.promise().frame);
+    return final_suspend_leading<Context>(&handle.promise().frame);
   }
 };
 
 // =============== Fork/Call =============== //
-
-// TODO: make sure exceptions are cancel-safe (I think now cancellation can leak)
 
 /**
  * @brief Call inside a catch block, stash current exception in `frame`.
@@ -177,24 +266,23 @@ struct awaitable : std::suspend_always {
   }
 
   template <typename T>
-  LF_FORCE_INLINE constexpr auto
+  constexpr auto
   await_suspend(this awaitable self, coro<promise_type<T, Context>> parent) noexcept -> coro<> {
 
-    // TODO: Add tests for exception/cancellation handling in fork/call.
+    // TODO: test of having a dedicated is_stopped awaitable is quicker
 
     if (!self.child) [[unlikely]] {
       // Noop if an exception was thrown.
       return parent;
     }
 
-    if (parent.promise().frame.is_cancelled()) [[unlikely]] {
-      // Noop if canceled, must clean-up the child that will never be resumed.
+    if (self.child->stop_requested()) [[unlikely]] {
+      // Noop if stopped, must clean-up the child that will never be resumed.
       return self.child->handle().destroy(), parent;
     }
 
     // Propagate parent->child relationships
     self.child->parent = &parent.promise().frame;
-    self.child->cancel = parent.promise().frame.cancel;
 
     if constexpr (Cat == category::call) {
       // Should be the default
@@ -225,6 +313,7 @@ struct awaitable : std::suspend_always {
  * @brief Pull an exception out of a frame and clean-up the union/allocation.
  */
 template <typename Checkpoint>
+[[nodiscard]]
 constexpr auto extract_exception(frame_type<Checkpoint> *frame) noexcept -> std::exception_ptr {
 
   LF_ASSUME(frame->exception_bit); // Should only be called if an exception was thrown.
@@ -247,55 +336,27 @@ struct join_awaitable {
 
   frame_t<Context> *frame;
 
-  constexpr auto take_stack_and_reset(this join_awaitable self) noexcept -> void {
-    stack_t<Context> &stack = get_tls_stack<Context>();
-    LF_ASSUME(self.frame->stack_ckpt != stack.checkpoint());
-    stack.acquire(std::as_const(self.frame->stack_ckpt));
-    self.frame->reset_counters();
-  }
-
   constexpr auto await_ready(this join_awaitable self) noexcept -> bool {
-
     if (not_null(self.frame)->steals == 0) [[likely]] {
-      // If no steals then we are the only owner of the parent and we are ready
-      // to join. Therefore, no need to reset the control block.
+      if (self.frame->stop_requested()) [[unlikely]] {
+        // Must unconditionally suspended if stopped
+        return false;
+      }
+      // If no steals then we are the only owner of the parent and we are
+      // ready to join. Therefore, no need to reset the control block.
       return true;
     }
-
-    // TODO: benchmark if including the below check (returning false here) in
-    // multithreaded case helps performance enough to justify the extra
-    // instructions along the fast path
-
-    // Currently:               joins() = k_u16_max - num_joined
-    // Hence:       k_u16_max - joins() = num_joined
-
-    // Could use (relaxed here) + (fence(acquire) in truthy branch) but, it's
-    // better if we see all the decrements to joins() and avoid suspending the
-    // coroutine if possible. Cannot fetch_sub() here and write to frame as
-    // coroutine must be suspended first.
-
-    std::uint32_t steals = self.frame->steals;
-    std::uint32_t joined = k_u16_max - self.frame->atomic_joins().load(std::memory_order_acquire);
-
-    if (steals == joined) {
-      // We must reset the control block and take the stack. We should never
-      // own the stack at this point because we must have stolen the stack.
-      // For ruther explanation see await_suspend() below.
-      return self.take_stack_and_reset(), true;
-    }
-
     return false;
   }
 
   constexpr auto await_suspend(this join_awaitable self, std::coroutine_handle<> task) noexcept -> coro<> {
     // Currently   self.joins  = k_u16_max  - num_joined
+    //
     // We set           joins  = self->joins - (k_u16_max - num_steals)
     //                         = num_steals - num_joined
-
+    //
     // Hence               joined = k_u16_max - num_joined
     //         k_u16_max - joined = num_joined
-
-    LF_ASSUME(self.frame);
 
     // Lemma:
     //
@@ -308,21 +369,39 @@ struct join_awaitable {
     // that had it's continuation stolen, where it would have had to release
     // the stack, because the parent was at not at the join.
 
+    LF_ASSUME(self.frame);
+
     std::uint32_t steals = self.frame->steals;
     std::uint32_t offset = k_u16_max - steals;
     std::uint32_t joined = self.frame->atomic_joins().fetch_sub(offset, std::memory_order_release);
+
+    // If this was a stop:
+    //
+    // steals = 0, joins = k_u16_max then:
+    //
+    // steals = 0
+    // offset = k_u16_max
+    // joined = k_u16_max, (self.frame->joins is now 0)
+    //
+    // k_u16_max - joined = 0 = steals, hence win the if
 
     if (steals == k_u16_max - joined) {
       // We set joins after all children had completed therefore we can resume the task.
       // Need to acquire to ensure we see all writes by other threads to the result.
       std::atomic_thread_fence(std::memory_order_acquire);
 
+      if (self.frame->stop_requested()) [[unlikely]] {
+        return self.handle_stop();
+      }
+
       // We must reset the control block and take the stack. We should never
       // own the stack at this point because we must have stolen the stack.
-      return self.take_stack_and_reset(), task;
+      self.take_stack();
+      self.frame->reset_counters();
+      return task;
     }
-
     // Someone else is responsible for running this task.
+
     // We cannot touch *this or dereference self as someone may have resumed already!
     // We cannot currently own this stack (checking would violate above).
 
@@ -332,12 +411,8 @@ struct join_awaitable {
     // in a switch awaitable. In this case we can/must do another self-steal.
 
     // return try_self_stealing();
-    return std::noop_coroutine();
-  }
 
-  [[noreturn]]
-  constexpr void rethrow_exception(this join_awaitable self) {
-    std::rethrow_exception(extract_exception(self.frame));
+    return std::noop_coroutine();
   }
 
   constexpr void await_resume(this join_awaitable self) {
@@ -351,6 +426,37 @@ struct join_awaitable {
         self.rethrow_exception();
       }
     }
+  }
+
+  constexpr auto take_stack(this join_awaitable self) noexcept -> void {
+    stack_t<Context> &stack = get_tls_stack<Context>();
+    LF_ASSUME(self.frame->stack_ckpt != stack.checkpoint());
+    stack.acquire(std::as_const(self.frame->stack_ckpt));
+  }
+
+  [[nodiscard]]
+  constexpr auto handle_stop(this join_awaitable self) -> coro<> {
+    // Only need to take the stack if there were steals
+    if (self.frame->steals > 0) {
+      self.take_stack();
+    }
+
+    // We always need to reset the connters as we modified
+    self.frame->reset_counters();
+
+    // Drop any exceptions in the now-stopped task
+    if constexpr (LF_COMPILER_EXCEPTIONS) {
+      if (self.frame->exception_bit) [[unlikely]] {
+        std::ignore = extract_exception(self.frame);
+      }
+    }
+
+    return final_suspend_leading<Context>(self.frame);
+  }
+
+  [[noreturn]]
+  constexpr void rethrow_exception(this join_awaitable self) {
+    std::rethrow_exception(extract_exception(self.frame));
   }
 };
 
@@ -385,8 +491,9 @@ struct mixin_frame {
 
   // --- Await transformations
 
-  template <category Cat, typename R, typename Fn, typename... Args>
-  static constexpr auto await_transform_pkg(pkg<Cat, Context, R, Fn, Args...> &&pkg) noexcept(
+  template <category Cat, bool StopToken, typename R, typename Fn, typename... Args>
+  constexpr auto
+  await_transform_pkg(this auto const &self, pkg<Cat, StopToken, Context, R, Fn, Args...> &&pkg) noexcept(
       async_nothrow_invocable<Fn, Context, Args...>) -> awaitable<Cat, Context> {
 
     // Required for noexcept specifier to be correct
@@ -407,21 +514,29 @@ struct mixin_frame {
     // void can signal drop return.
     static_assert(std::same_as<R, U> || std::is_void_v<R>);
 
-    // TODO: tests for null path
+    // TODO: tests for null return path
 
     if constexpr (!std::is_void_v<R>) {
-      child_promise->return_address = pkg.return_address;
+      child_promise->return_address = not_null(pkg.return_addr);
     } else if constexpr (!std::is_void_v<U>) {
       // Set child's return address to null to inhibit the return
       // TODO: add test for this
       child_promise->return_address = nullptr;
     }
 
+    if constexpr (StopToken) {
+      // TODO: need some kind of API to launch an unstoppable task?
+      LF_ASSUME(pkg.stop_token.stop_possible());
+      child_promise->frame.stop_token = pkg.stop_token;
+    } else {
+      child_promise->frame.stop_token = self.frame.stop_token;
+    }
+
     return {.child = &child_promise->frame};
   }
 
-  template <category Cat, typename R, typename Fn, typename... Args>
-  constexpr auto await_transform(this auto &self, pkg<Cat, Context, R, Fn, Args...> &&pkg) noexcept
+  template <category Cat, bool StopToken, typename R, typename Fn, typename... Args>
+  constexpr auto await_transform(this auto &self, pkg<Cat, StopToken, Context, R, Fn, Args...> &&pkg) noexcept
       -> awaitable<Cat, Context> {
     LF_TRY {
       return self.await_transform_pkg(std::move(pkg));
@@ -433,6 +548,13 @@ struct mixin_frame {
 
   constexpr auto await_transform(this auto &self, join_type) noexcept -> join_awaitable<Context> {
     return {.frame = &self.frame};
+  }
+
+  static constexpr auto await_transform(scope_type) noexcept -> scope_awaitable<Context> { return {}; }
+
+  constexpr auto
+  await_transform(this auto const &self, child_scope_type) noexcept -> child_scope_awaitable<Context> {
+    return {.parent_stop_token = self.frame.stop_token};
   }
 
   constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }

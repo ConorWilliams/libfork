@@ -28,6 +28,8 @@ struct uts_fn {
     if (num_children > 0) {
       std::vector<pair> cs(static_cast<std::size_t>(num_children));
 
+      auto sc = co_await lf::scope();
+
       for (std::size_t i = 0; i < static_cast<std::size_t>(num_children); ++i) {
         cs[i].child.type = child_type;
         cs[i].child.height = parent->height + 1;
@@ -37,16 +39,14 @@ struct uts_fn {
           rng_spawn(parent->state.state, cs[i].child.state.state, static_cast<int>(i));
         }
 
-        using scope = lf::scope<Context>;
-
         if (i + 1 == static_cast<std::size_t>(num_children)) {
-          co_await scope::call(&cs[i].res, uts_fn{}, depth + 1, &cs[i].child);
+          co_await sc.call(&cs[i].res, uts_fn{}, depth + 1, &cs[i].child);
         } else {
-          co_await scope::fork(&cs[i].res, uts_fn{}, depth + 1, &cs[i].child);
+          co_await sc.fork(&cs[i].res, uts_fn{}, depth + 1, &cs[i].child);
         }
       }
 
-      co_await lf::join();
+      co_await sc.join();
 
       for (auto &&elem : cs) {
         r.maxdepth = std::max(r.maxdepth, elem.res.maxdepth);
@@ -69,6 +69,7 @@ void run(benchmark::State &state) {
   auto expected = expected_result(tree);
 
   state.counters["p"] = static_cast<double>(thread_count<Sch>(state));
+  state.SetComplexityN(static_cast<benchmark::IterationCount>(thread_count<Sch>(state)));
 
   Sch scheduler = make_scheduler<Sch>(state);
 
@@ -90,9 +91,12 @@ void run(benchmark::State &state) {
   BENCHMARK_TEMPLATE(run, __VA_ARGS__)                                                                       \
       ->Name(#mode "/libfork/uts/" tree_name "/" #__VA_ARGS__)                                               \
       ->Apply([](benchmark::Benchmark *b) -> void {                                                          \
-        for (unsigned t = 1; t <= bench_max_threads; ++t) {                                                  \
+        bench_thread_args(b, [](benchmark::Benchmark *b, unsigned t) {                                       \
           b->Args({tree_id, static_cast<std::int64_t>(t)});                                                  \
-        }                                                                                                    \
+        });                                                                                                  \
+      })                                                                                                     \
+      ->Complexity([](benchmark::IterationCount n) -> double {                                               \
+        return 1.0 / static_cast<double>(n);                                                                 \
       })                                                                                                     \
       ->UseRealTime();
 

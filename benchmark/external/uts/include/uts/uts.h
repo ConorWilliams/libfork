@@ -22,7 +22,7 @@
 extern "C" {
   #endif
 
-  #include "rng/rng.h"
+  #include "uts/rng/rng.h"
 
   #define UTS_VERSION "2.1"
 

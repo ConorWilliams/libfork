@@ -8,6 +8,8 @@ import std;
 
 import libfork.utils;
 
+import :stop;
+
 namespace lf {
 
 export struct broken_receiver_error final : libfork_exception {
@@ -17,29 +19,108 @@ export struct broken_receiver_error final : libfork_exception {
   }
 };
 
-template <typename T>
-struct receiver_state {
-
+/**
+ * @brief Shared state between a scheduled task and its receiver handle.
+ *
+ * @tparam T          The return type of the scheduled coroutine.
+ * @tparam Stoppable If true, the state owns a stop_source that can be used
+ *                     to cancel the root task externally.
+ *
+ * Constructors forward arguments for in-place construction of the return value.
+ * Internal access is gated behind a hidden friend: `get(key_t, receiver_state&)`.
+ */
+export template <typename T, bool Stoppable = false>
+class receiver_state {
+ public:
   struct empty {};
 
+  /// Default construction — return value is default-initialised (or empty for void).
+  constexpr receiver_state() = default;
+
+  /// In-place construction of the return value from arbitrary args.
+  template <typename... Args>
+    requires (!std::is_void_v<T>) && std::constructible_from<T, Args...>
+  constexpr explicit receiver_state(Args &&...args) : m_return_value(std::forward<Args>(args)...) {}
+
+  /**
+   * @brief Request that the associated task stop.
+   *
+   * Only available when Stoppable=true.  Safe to call before scheduling —
+   * the root frame checks stop_requested() before executing the task body.
+   */
+  constexpr auto request_stop() noexcept -> void
+    requires Stoppable
+  {
+    m_stop.request_stop();
+  }
+
+ private:
+  template <typename U, bool C>
+  friend class receiver;
+
+  /**
+   * @brief Internal accessor returned by `get(key_t, receiver_state&)`.
+   *
+   * Not reachable by name from outside this translation unit because view
+   * is a private nested type. Callers use `auto` with the hidden friend.
+   */
+  struct view {
+    receiver_state *p;
+
+    constexpr void set_exception(std::exception_ptr e) noexcept { p->m_exception = std::move(e); }
+
+    constexpr void notify_ready() noexcept {
+      p->m_ready.test_and_set();
+      p->m_ready.notify_one();
+    }
+
+    [[nodiscard]]
+    constexpr auto return_value_address() noexcept -> T *
+      requires (!std::is_void_v<T>)
+    {
+      return std::addressof(p->m_return_value);
+    }
+
+    [[nodiscard]]
+    constexpr auto get_stop_token() noexcept -> stop_source::stop_token
+      requires Stoppable
+    {
+      return p->m_stop.token();
+    }
+  };
+
+  /**
+   * @brief Hidden friend accessor for internal library use.
+   *
+   * Only callable via ADL when a `key_t` is available (i.e. by calling `key()`).
+   * Returns a `view` proxy to manipulate the state's private members.
+   */
+  [[nodiscard]]
+  friend constexpr auto get(key_t, receiver_state &self) noexcept -> view {
+    return {&self};
+  }
+
   [[no_unique_address]]
-  std::conditional_t<std::is_void_v<T>, empty, T> m_return_value;
+  std::conditional_t<std::is_void_v<T>, empty, T> m_return_value{};
   std::exception_ptr m_exception;
   std::atomic_flag m_ready;
+
+  [[no_unique_address]]
+  std::conditional_t<Stoppable, stop_source, empty> m_stop;
 };
 
-export template <typename T>
+export template <typename T, bool Stoppable = false>
 class receiver {
 
-  using state_type = receiver_state<T>;
+  using state_type = receiver_state<T, Stoppable>;
 
  public:
   constexpr receiver(key_t, std::shared_ptr<state_type> &&state) : m_state(std::move(state)) {}
-  constexpr receiver(receiver &&) noexcept = default;
-  constexpr auto operator=(receiver &&) noexcept -> receiver & = default;
 
   // Move only
+  constexpr receiver(receiver &&) noexcept = default;
   constexpr receiver(const receiver &) = delete;
+  constexpr auto operator=(receiver &&) noexcept -> receiver & = default;
   constexpr auto operator=(const receiver &) -> receiver & = delete;
 
   [[nodiscard]]
@@ -60,6 +141,37 @@ class receiver {
       LF_THROW(broken_receiver_error{});
     }
     m_state->m_ready.wait(false);
+  }
+
+  /**
+   * @brief Returns a stop_token for this task's stop source.
+   *
+   * Only available when Stoppable=true.  The token can be used to observe
+   * whether the associated task has been cancelled.
+   */
+  [[nodiscard]]
+  constexpr auto token() noexcept -> stop_source::stop_token
+    requires Stoppable
+  {
+    if (!valid()) {
+      LF_THROW(broken_receiver_error{});
+    }
+    return get(key(), *m_state).get_stop_token();
+  }
+
+  /**
+   * @brief Request that the associated task stop.
+   *
+   * Only available when Stoppable=true.  Thread-safe; may be called
+   * concurrently with the task executing on worker threads.
+   */
+  constexpr auto request_stop() -> void
+    requires Stoppable
+  {
+    if (!valid()) {
+      LF_THROW(broken_receiver_error{});
+    }
+    m_state->m_stop.request_stop();
   }
 
   [[nodiscard]]

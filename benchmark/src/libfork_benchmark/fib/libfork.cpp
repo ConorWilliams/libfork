@@ -22,12 +22,12 @@ struct fib {
     std::int64_t lhs = 0;
     std::int64_t rhs = 0;
 
-    using scope = lf::scope<Context>;
+    auto sc = co_await lf::scope();
 
-    co_await scope::fork(&rhs, fib{}, n - 2);
-    co_await scope::call(&lhs, fib{}, n - 1);
+    co_await sc.fork(&rhs, fib{}, n - 2);
+    co_await sc.call(&lhs, fib{}, n - 1);
 
-    co_await lf::join();
+    co_await sc.join();
 
     co_return lhs + rhs;
   }
@@ -41,6 +41,7 @@ void run(benchmark::State &state) {
 
   state.counters["n"] = static_cast<double>(n);
   state.counters["p"] = static_cast<double>(thread_count<Sch>(state));
+  state.SetComplexityN(static_cast<benchmark::IterationCount>(thread_count<Sch>(state)));
 
   Sch scheduler = make_scheduler<Sch>(state);
 
@@ -89,9 +90,12 @@ BENCH_ALL(inline_scheduler<poly_context<geometric_stack<>, adapt_deque>>)
   BENCHMARK_TEMPLATE(run, __VA_ARGS__)                                                                       \
       ->Name(#mode "/libfork/fib/" #__VA_ARGS__)                                                             \
       ->Apply([](benchmark::Benchmark *b) -> void {                                                          \
-        for (unsigned t = 1; t <= bench_max_threads; ++t) {                                                  \
+        bench_thread_args(b, [](benchmark::Benchmark *b, unsigned t) {                                       \
           b->Args({fib_##mode, static_cast<std::int64_t>(t)});                                               \
-        }                                                                                                    \
+        });                                                                                                  \
+      })                                                                                                     \
+      ->Complexity([](benchmark::IterationCount n) -> double {                                               \
+        return 1.0 / static_cast<double>(n);                                                                 \
       })                                                                                                     \
       ->UseRealTime();
 

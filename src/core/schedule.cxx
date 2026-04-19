@@ -11,6 +11,7 @@ import libfork.utils;
 import :concepts_invocable;
 import :concepts_scheduler;
 import :frame;
+import :stop;
 import :thread_locals;
 import :promise;
 import :root;
@@ -42,22 +43,28 @@ concept schedulable = schedulable_decayed<std::decay_t<Fn>, Context, std::decay_
 template <typename Fn, typename Context, typename... Args>
 using invoke_decay_result_t = async_result_t<std::decay_t<Fn>, Context, std::decay_t<Args>...>;
 
-template <typename Fn, typename Context, typename... Args>
-using schedule_state_t = receiver_state<invoke_decay_result_t<Fn, Context, Args...>>;
+template <typename Fn, typename Context, bool Stoppable, typename... Args>
+using schedule_state_t = receiver_state<invoke_decay_result_t<Fn, Context, Args...>, Stoppable>;
 
 export template <typename Fn, typename Context, typename... Args>
   requires schedulable<Fn, Context, Args...>
 using schedule_result_t = receiver<invoke_decay_result_t<Fn, Context, Args...>>;
 
 /**
- * @brief Schedule a function to be run on a scheduler.
+ * @brief Schedule a function with a pre-allocated receiver state.
+ *
+ * This is the primary overload: the caller provides a shared_ptr to the
+ * receiver state, allowing custom allocation.  The stop_token bound to the
+ * root frame depends on whether the state is cancellable.
  *
  * This function is strongly exception safe.
  */
-export template <scheduler Sch, decay_copyable Fn, decay_copyable... Args>
-  requires schedulable<Fn, context_t<Sch>, Args...>
+export template <scheduler Sch, typename R, bool Stoppable, decay_copyable Fn, decay_copyable... Args>
+  requires schedulable<Fn, context_t<Sch>, Args...> &&
+           std::same_as<R, invoke_decay_result_t<Fn, context_t<Sch>, Args...>>
 constexpr auto
-schedule(Sch &&sch, Fn &&fn, Args &&...args) -> schedule_result_t<Fn, context_t<Sch>, Args...> {
+schedule(Sch &&sch, std::shared_ptr<receiver_state<R, Stoppable>> state, Fn &&fn, Args &&...args)
+    -> receiver<R, Stoppable> {
 
   using context_type = context_t<Sch>;
 
@@ -65,15 +72,22 @@ schedule(Sch &&sch, Fn &&fn, Args &&...args) -> schedule_result_t<Fn, context_t<
     LF_THROW(schedule_error{});
   }
 
-  // TODO: allocator aware new
-  std::shared_ptr state = std::make_shared<schedule_state_t<Fn, context_type, Args...>>();
-
-  // Package has shared ownership of the state, fine if this throws
+  // Package takes shared ownership of the state; fine if this throws.
   root_task task = root_pkg<context_type>(state, std::forward<Fn>(fn), std::forward<Args>(args)...);
 
   LF_ASSUME(task.promise != nullptr);
 
+  task.promise->frame.kind = category::root;
+  task.promise->frame.parent = nullptr;
+
+  if constexpr (Stoppable) {
+    task.promise->frame.stop_token = get(key(), *state).get_stop_token();
+  } else {
+    task.promise->frame.stop_token = stop_source::stop_token{}; // non-cancellable root
+  }
+
   LF_TRY {
+    // TODO: forward sch + modify concept
     sch.post(sched_handle<context_type>{key(), &task.promise->frame});
     // If ^ didn't throw then the root_task will destroy itself at the final suspend.
   } LF_CATCH_ALL {
@@ -82,6 +96,26 @@ schedule(Sch &&sch, Fn &&fn, Args &&...args) -> schedule_result_t<Fn, context_t<
   }
 
   return {key(), std::move(state)};
+}
+
+/**
+ * @brief Convenience overload: allocates receiver state via make_shared.
+ *
+ * Defaults to non-cancellable (Stoppable=false).  Delegates to the primary
+ * overload above.
+ */
+export template <scheduler Sch, decay_copyable Fn, decay_copyable... Args>
+  requires schedulable<Fn, context_t<Sch>, Args...>
+constexpr auto
+schedule(Sch &&sch, Fn &&fn, Args &&...args) -> receiver<invoke_decay_result_t<Fn, context_t<Sch>, Args...>> {
+
+  using context_type = context_t<Sch>;
+  using R = invoke_decay_result_t<Fn, context_type, Args...>;
+
+  auto state = std::make_shared<receiver_state<R, false>>();
+
+  return schedule(
+      std::forward<Sch>(sch), std::move(state), std::forward<Fn>(fn), std::forward<Args>(args)...);
 }
 
 } // namespace lf

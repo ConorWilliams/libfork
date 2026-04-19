@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 4.2.1 FATAL_ERROR)
 
-project(libfork_benchmark LANGUAGES C CXX)
+project(libfork_benchmark LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
   message(WARNING "It is recommended to build benchmarks in Release mode for accurate results.")
@@ -17,7 +17,8 @@ target_link_libraries(libfork_benchmark
     benchmark::benchmark_main
 )
 
-# Common headers
+# Common components
+
 target_sources(libfork_benchmark
   PRIVATE
     FILE_SET HEADERS FILES
@@ -28,18 +29,13 @@ target_sources(libfork_benchmark
       src
 )
 
-# Common sources
 target_sources(libfork_benchmark
   PRIVATE
     src/libfork_benchmark/uts/uts.cpp
 )
 
-
 # C lib for UTS
-add_library(uts_c OBJECT
-  src/libfork_benchmark/uts/external/uts.c
-  src/libfork_benchmark/uts/external/rng/brg_sha1.c
-)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/external/uts external/uts)
 
 target_link_libraries(libfork_benchmark PRIVATE uts_c)
 

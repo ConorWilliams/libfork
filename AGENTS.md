@@ -103,34 +103,6 @@ All tests should pass. If tests fail, check that:
 - Build completed without errors
 - Any changes you have made are correct
 
-## Linting & Validation
-
-The CI runs two linting tools that you should run before committing:
-
-### codespell (spelling)
-
-```bash
-codespell
-```
-
-Config: `.codespellrc` (ignores: build/, .git/, etc.)
-Should produce no output if passing.
-
-### clang-format (code formatting)
-
-```bash
-find src include test benchmark/src -name "*.cpp" -o -name "*.hpp" -o -name "*.cxx" | xargs clang-format --dry-run --Werror
-```
-
-Config: `.clang-format` (110 column limit, specific style)
-Should produce no output if passing.
-
-**To auto-fix formatting**:
-
-```bash
-find src include test benchmark/src -name "*.cpp" -o -name "*.hpp" -o -name "*.cxx" | xargs clang-format -i
-```
-
 ## Project Structure
 
 ### Source Layout
@@ -150,10 +122,9 @@ libfork/
 │   ├── batteries/            # libfork.batteries — stacks, contexts, adaptors
 │   │   ├── batteries.cxx     #   aggregator
 │   │   └── *.cxx             #   :partitions
-│   ├── schedulers/           # libfork.schedulers — concrete schedulers
+│   └── schedulers/           # libfork.schedulers — concrete schedulers
 │   │   ├── schedulers.cxx    #   aggregator
 │   │   └── *.cxx             #   :partitions
-│   └── exception.cpp         # terminate_with() implementation
 ├── test/src/**/              # Test suite (Catch2) — uses `import libfork;`
 │   └── *.cpp
 ├── benchmark/src/            # Benchmarking suite (google-benchmark)
@@ -189,7 +160,6 @@ All workflows follow this pattern:
 1. **Modify source files** in `src/`, `include/`, `test/`, or `benchmark/`
 2. **Rebuild**: `cmake --build --preset <your-preset>`
 3. **Test**: `ctest --preset <your-preset>`
-4. **Lint**: Run codespell and clang-format checks
 
 #### Adding/removing files from `src/` or `include/`
 
@@ -230,11 +200,3 @@ rm -rf build/
 
 **Problem**: "Could not automatically find libc++.modules.json"
 **Solution**: Ensure LLVM is installed via Homebrew; toolchain auto-detects the path
-
-### Linting Failures
-
-**Problem**: clang-format errors
-**Solution**: Run fix command above to auto-format code
-
-**Problem**: codespell errors
-**Solution**: Fix typos or add to ignore list in `.codespellrc` if false positive
