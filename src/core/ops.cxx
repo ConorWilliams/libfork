@@ -13,14 +13,14 @@ import :stop;
 namespace lf {
 
 // Placeholder types for absent optional fields.
-struct no_cnl_t {};
+struct no_stop_t {};
 struct no_ret_t {};
 
 // clang-format off
 
 template <category Cat, bool StopToken, typename Context, typename R, typename Fn, typename... Args>
 struct [[nodiscard("You should immediately co_await this!")]] pkg {
-  [[no_unique_address]] std::conditional_t<StopToken, stop_source::stop_token, no_cnl_t> stop_token;
+  [[no_unique_address]] std::conditional_t<StopToken, stop_source::stop_token, no_stop_t> stop_token;
   [[no_unique_address]] std::conditional_t<std::is_void_v<R>, no_ret_t, R *> return_addr;
   [[no_unique_address]] Fn fn;
   [[no_unique_address]] tuple<Args...> args;
