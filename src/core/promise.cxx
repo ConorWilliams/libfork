@@ -247,7 +247,7 @@ constexpr void stash_current_exception(frame_type<Checkpoint> *frame) noexcept {
   }
 }
 
-template <category Cat, bool StopToken, worker_context Context>
+template <category Cat, worker_context Context>
 struct awaitable : std::suspend_always {
 
   static_assert(Cat == category::call || Cat == category::fork, "Invalid category for awaitable");
@@ -494,7 +494,7 @@ struct mixin_frame {
   template <category Cat, bool StopToken, typename R, typename Fn, typename... Args>
   constexpr auto
   await_transform_pkg(this auto const &self, pkg<Cat, StopToken, Context, R, Fn, Args...> &&pkg) noexcept(
-      async_nothrow_invocable<Fn, Context, Args...>) -> awaitable<Cat, StopToken, Context> {
+      async_nothrow_invocable<Fn, Context, Args...>) -> awaitable<Cat, Context> {
 
     // Required for noexcept specifier to be correct
     static_assert(std::is_reference_v<Fn> && (... && std::is_reference_v<Args>));
@@ -537,7 +537,7 @@ struct mixin_frame {
 
   template <category Cat, bool StopToken, typename R, typename Fn, typename... Args>
   constexpr auto await_transform(this auto &self, pkg<Cat, StopToken, Context, R, Fn, Args...> &&pkg) noexcept
-      -> awaitable<Cat, StopToken, Context> {
+      -> awaitable<Cat, Context> {
     LF_TRY {
       return self.await_transform_pkg(std::move(pkg));
     } LF_CATCH_ALL {
