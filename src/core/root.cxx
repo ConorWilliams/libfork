@@ -106,7 +106,7 @@ root_pkg(std::shared_ptr<receiver_state<R, Stoppable>> recv, Fn fn, Args... args
 
   LF_ASSUME(child != nullptr);
 
-  // Propagate parent/cancel info to child
+  // Propagate parent/stop info to child
   child->frame.parent = root;
   child->frame.stop_token = root->stop_token;
 

@@ -127,7 +127,7 @@ constexpr auto final_suspend_full(Context &context, frame_t<Context> *frame) noe
       parent->reset_counters();
 
       if (parent->stop_requested()) [[unlikely]] {
-        // Don't resume if cancelled
+        // Don't resume if stopped
         if constexpr (LF_COMPILER_EXCEPTIONS) {
           if (parent->exception_bit) [[unlikely]] {
             std::ignore = extract_exception(parent);
@@ -269,16 +269,14 @@ struct awaitable : std::suspend_always {
   constexpr auto
   await_suspend(this awaitable self, coro<promise_type<T, Context>> parent) noexcept -> coro<> {
 
-    // TODO: Add tests for exception/cancellation handling in fork/call.
-
-    // TODO: test of having a dedicated is_cancelld awaitable is quicker
+    // TODO: test of having a dedicated is_stopped awaitable is quicker
 
     if (!self.child) [[unlikely]] {
       // Noop if an exception was thrown.
       return parent;
     }
 
-    // Noop if canceled, must clean-up the child that will never be resumed.
+    // Noop if stopped, must clean-up the child that will never be resumed.
     if constexpr (StopToken) {
       if (self.child->stop_requested()) [[unlikely]] {
         return self.child->handle().destroy(), parent;
@@ -347,7 +345,7 @@ struct join_awaitable {
   constexpr auto await_ready(this join_awaitable self) noexcept -> bool {
     if (not_null(self.frame)->steals == 0) [[likely]] {
       if (self.frame->stop_requested()) [[unlikely]] {
-        // Must unconditionally suspended if canceled
+        // Must unconditionally suspended if stopped
         return false;
       }
       // If no steals then we are the only owner of the parent and we are
@@ -383,7 +381,7 @@ struct join_awaitable {
     std::uint32_t offset = k_u16_max - steals;
     std::uint32_t joined = self.frame->atomic_joins().fetch_sub(offset, std::memory_order_release);
 
-    // If this was a cancel:
+    // If this was a stop:
     //
     // steals = 0, joins = k_u16_max then:
     //
@@ -452,7 +450,7 @@ struct join_awaitable {
     // We always need to reset the connters as we modified
     self.frame->reset_counters();
 
-    // Drop any exceptions in the now-cancelled task
+    // Drop any exceptions in the now-stopped task
     if constexpr (LF_COMPILER_EXCEPTIONS) {
       if (self.frame->exception_bit) [[unlikely]] {
         std::ignore = extract_exception(self.frame);
