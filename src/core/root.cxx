@@ -51,8 +51,7 @@ struct root_task {
      * `std::shared_ptr<receiver_state<R, Stoppable>>` passed to `root_pkg`).
      */
     template <typename R, bool Stoppable, typename... CoroArgs>
-    static auto operator new(std::size_t size,
-                             std::shared_ptr<receiver_state<R, Stoppable>> const &recv,
+    static auto operator new(std::size_t size, std::shared_ptr<receiver_state<R, Stoppable>> const &recv,
                              CoroArgs const &.../*unused*/) noexcept -> void * {
       LF_ASSUME(recv != nullptr);
       LF_ASSUME(size <= receiver_state<R, Stoppable>::buffer_size);
@@ -215,6 +214,8 @@ root_pkg(std::shared_ptr<receiver_state<R, Stoppable>> recv, Fn fn, Args... args
   // - Cancellation
   //
   // We return any exception stashed unconditionally
+
+  // TODO: drop exception on cancel
 
   if constexpr (LF_COMPILER_EXCEPTIONS) {
     if (root->exception_bit) {
