@@ -25,13 +25,10 @@ export struct broken_receiver_error final : libfork_exception {
 template <typename T, bool Stoppable = false>
 struct receiver_state {
 
-  /// Size of the embedded coroutine-frame buffer (bytes).
-  static constexpr std::size_t k_buffer_size = 1024;
-
   struct empty_1 {};
   struct empty_2 {};
 
-  alignas(k_new_align) std::byte buffer[k_buffer_size]{};
+  alignas(k_new_align) std::array<std::byte, 1024> buffer{};
 
   [[no_unique_address]]
   std::conditional_t<std::is_void_v<T>, empty_1, T> return_value{};

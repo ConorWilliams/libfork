@@ -69,10 +69,10 @@ struct root_task {
     static auto operator new(std::size_t size, std::shared_ptr<receiver_state<R, Stoppable>> const &recv,
                              CoroArgs const &.../*unused*/) -> void * {
       LF_ASSUME(recv != nullptr);
-      if (size > receiver_state<R, Stoppable>::k_buffer_size) {
+      if (size > recv->buffer.size()) {
         LF_THROW(root_alloc_error{});
       }
-      return recv->buffer;
+      return recv->buffer.data();
     }
 
     /// No-op: the buffer is owned by the receiver_state, not the frame.
