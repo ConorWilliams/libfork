@@ -525,7 +525,7 @@ struct mixin_frame {
     // TODO: tests for null return path
 
     if constexpr (!std::is_void_v<R>) {
-      child_promise->return_address = not_null(pkg.maybe_ret_adr);
+      child_promise->return_address = not_null(pkg.return_addr);
     } else if constexpr (!std::is_void_v<U>) {
       // Set child's return address to null to inhibit the return
       // TODO: add test for this
@@ -534,8 +534,8 @@ struct mixin_frame {
 
     if constexpr (Cancel) {
       // TODO: need some kind of API to launch an unstoppable task?
-      LF_ASSUME(pkg.maybe_cancel.stop_possible());
-      child_promise->frame.cancel = pkg.maybe_cancel;
+      LF_ASSUME(pkg.stop_token.stop_possible());
+      child_promise->frame.cancel = pkg.stop_token;
     } else {
       child_promise->frame.cancel = self.frame.cancel;
     }

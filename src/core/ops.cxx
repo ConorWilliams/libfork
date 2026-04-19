@@ -20,8 +20,8 @@ struct no_ret_t {};
 
 template <category Cat, bool Stoppable, typename Context, typename R, typename Fn, typename... Args>
 struct [[nodiscard("You should immediately co_await this!")]] pkg {
-  [[no_unique_address]] std::conditional_t<Stoppable, stop_source::stop_token, no_cnl_t> maybe_cancel;
-  [[no_unique_address]] std::conditional_t<std::is_void_v<R>, no_ret_t, R *> maybe_ret_adr;
+  [[no_unique_address]] std::conditional_t<Stoppable, stop_source::stop_token, no_cnl_t> stop_token;
+  [[no_unique_address]] std::conditional_t<std::is_void_v<R>, no_ret_t, R *> return_addr;
   [[no_unique_address]] Fn fn;
   [[no_unique_address]] tuple<Args...> args;
 };
@@ -84,30 +84,30 @@ struct scope_ops : scope_base {
 
   template <typename R, typename... Args, async_invocable_to<R, Context, Args...> Fn>
   static constexpr auto fork(R *ret, Fn &&fn, Args &&...args) noexcept -> fork_pkg<R, Fn, Args...> {
-    return {.maybe_ret_adr = ret, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+    return {.return_addr = ret, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
   template <typename... Args, async_invocable<Context, Args...> Fn>
   static constexpr auto fork_drop(Fn &&fn, Args &&...args) noexcept -> fork_pkg<void, Fn, Args...> {
-    return {.maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+    return {.return_addr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
   template <typename... Args, async_invocable_to<void, Context, Args...> Fn>
   static constexpr auto fork(Fn &&fn, Args &&...args) noexcept -> fork_pkg<void, Fn, Args...> {
-    return {.maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+    return {.return_addr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
 
   // === Call === //
 
   template <typename R, typename... Args, async_invocable_to<R, Context, Args...> Fn>
   static constexpr auto call(R *ret, Fn &&fn, Args &&...args) noexcept -> call_pkg<R, Fn, Args...> {
-    return {.maybe_ret_adr = ret, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+    return {.return_addr = ret, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
   template <typename... Args, async_invocable<Context, Args...> Fn>
   static constexpr auto call_drop(Fn &&fn, Args &&...args) noexcept -> call_pkg<void, Fn, Args...> {
-    return {.maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+    return {.return_addr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
   template <typename... Args, async_invocable_to<void, Context, Args...> Fn>
   static constexpr auto call(Fn &&fn, Args &&...args) noexcept -> call_pkg<void, Fn, Args...> {
-    return {.maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+    return {.return_addr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
 };
 
@@ -155,30 +155,30 @@ struct child_scope_ops : scope_base, stop_source {
 
   template <typename R, typename... Args, async_invocable_to<R, Context, Args...> Fn>
   constexpr auto fork(R *ret, Fn &&fn, Args &&...args) noexcept -> fork_pkg<R, Fn, Args...> {
-    return {.maybe_cancel = token(), .maybe_ret_adr = ret, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+    return {.stop_token = token(), .return_addr = ret, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
   template <typename... Args, async_invocable<Context, Args...> Fn>
   constexpr auto fork_drop(Fn &&fn, Args &&...args) noexcept -> fork_pkg<void, Fn, Args...> {
-    return {.maybe_cancel = token(), .maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+    return {.stop_token = token(), .return_addr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
   template <typename... Args, async_invocable_to<void, Context, Args...> Fn>
   constexpr auto fork(Fn &&fn, Args &&...args) noexcept -> fork_pkg<void, Fn, Args...> {
-    return {.maybe_cancel = token(), .maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+    return {.stop_token = token(), .return_addr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
 
   // === Call (binds this scope's stop source as child cancel) === //
 
   template <typename R, typename... Args, async_invocable_to<R, Context, Args...> Fn>
   constexpr auto call(R *ret, Fn &&fn, Args &&...args) noexcept -> call_pkg<R, Fn, Args...> {
-    return {.maybe_cancel = token(), .maybe_ret_adr = ret, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+    return {.stop_token = token(), .return_addr = ret, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
   template <typename... Args, async_invocable<Context, Args...> Fn>
   constexpr auto call_drop(Fn &&fn, Args &&...args) noexcept -> call_pkg<void, Fn, Args...> {
-    return {.maybe_cancel = token(), .maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+    return {.stop_token = token(), .return_addr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
   template <typename... Args, async_invocable_to<void, Context, Args...> Fn>
   constexpr auto call(Fn &&fn, Args &&...args) noexcept -> call_pkg<void, Fn, Args...> {
-    return {.maybe_cancel = token(), .maybe_ret_adr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
+    return {.stop_token = token(), .return_addr = {}, .fn = LF_FWD(fn), .args = {LF_FWD(args)...}};
   }
 };
 
