@@ -31,8 +31,8 @@ class geometric_stack {
 
   using void_ptr = node_traits::void_pointer;
 
-  using size_int = node_traits::size_type;
-  using diff_int = node_traits::difference_type;
+  using size_type = node_traits::size_type;
+  using diff_type = node_traits::difference_type;
 
   struct release_t {
     explicit constexpr release_t(key_t) noexcept {}
@@ -100,15 +100,15 @@ class geometric_stack {
     LF_ASSUME(size > 0);
 
     // Very careful math to avoid superfluous instructions on this (very) hot path.
-    diff_int push_bytes = safe_cast<diff_int>(round_to_multiple<sizeof(node)>(size));
+    diff_type push_bytes = safe_cast<diff_type>(round_to_multiple<sizeof(node)>(size));
 
-    constexpr diff_int node_size = sizeof(node);
+    constexpr diff_type node_size = sizeof(node);
 
     LF_ASSUME(push_bytes >= node_size);
     LF_ASSUME(push_bytes % node_size == 0);
 
     // Optimized to just the subtrtaction because multiplication cancels the implicit division.
-    diff_int free_bytes = node_size * (m_hi - m_sp);
+    diff_type free_bytes = node_size * (m_hi - m_sp);
 
     if (push_bytes > free_bytes) [[unlikely]] {
       return push_cached(push_bytes);
@@ -119,7 +119,7 @@ class geometric_stack {
 
     // Compiler should optimize this division away when it fuses it with the
     // implicit multiplication in the pointer arithmetic below.
-    diff_int num_nodes = push_bytes / node_size;
+    diff_type num_nodes = push_bytes / node_size;
 
     // node_ptr -> void_ptr
     return static_cast<void_ptr>(std::exchange(m_sp, m_sp + num_nodes));
@@ -201,8 +201,8 @@ class geometric_stack {
   };
 
   struct alignas(k_new_align) node {
-    node_ptr prev; // Linked list (past)
-    diff_int size; // Usable-size of the stacklet
+    node_ptr prev;  // Linked list (past)
+    diff_type size; // Usable-size of the stacklet
   };
 
   struct ctrl {
@@ -238,7 +238,7 @@ class geometric_stack {
     LF_ASSUME(m_ctrl != nullptr);
     LF_ASSUME(m_ctrl->top != nullptr);
 
-    constexpr diff_int one{1};
+    constexpr diff_type one{1};
 
     m_lo = m_ctrl->top + one;
     m_hi = m_lo + m_ctrl->top->size;
@@ -256,7 +256,7 @@ class geometric_stack {
    * @brief Allocate and construct a new control block with a single stacklet of size bytes.
    */
   [[nodiscard]]
-  constexpr auto new_ctrl(this geometric_stack &self, diff_int num_nodes) -> ctrl_ptr {
+  constexpr auto new_ctrl(this geometric_stack &self, diff_type num_nodes) -> ctrl_ptr {
 
     ctrl_ptr new_ctrl = ctrl_traits::allocate(self.m_ctrl_alloc, 1);
 
@@ -303,14 +303,14 @@ class geometric_stack {
    * This function is strongly exception-safe.
    */
   [[nodiscard]]
-  static constexpr auto new_node(ctrl_ptr ctrl, diff_int num_nodes) -> node_ptr {
+  static constexpr auto new_node(ctrl_ptr ctrl, diff_type num_nodes) -> node_ptr {
 
     // Allocation should be a multiple of the node size
     LF_ASSUME(num_nodes > 0);
     LF_ASSUME(ctrl != nullptr);
 
-    // Allocation/deallocation requires size_int, +1 for the header node
-    size_int allocate_nodes = 1 + safe_cast<size_int>(num_nodes);
+    // Allocation/deallocation requires size_type, +1 for the header node
+    size_type allocate_nodes = 1 + safe_cast<size_type>(num_nodes);
 
     node_ptr next_node = node_traits::allocate(ctrl->node_alloc, allocate_nodes);
 
@@ -332,29 +332,29 @@ class geometric_stack {
     if (ptr != nullptr) {
       LF_ASSUME(ctrl != nullptr);
       // Size doesn't include the header node so we +1 here.
-      size_int allocated_nodes = safe_cast<size_int>(1 + ptr->size);
+      size_type allocated_nodes = safe_cast<size_type>(1 + ptr->size);
       node_traits::destroy(ctrl->node_alloc, std::to_address(ptr));
       node_traits::deallocate(ctrl->node_alloc, ptr, allocated_nodes);
     }
   }
 
   [[nodiscard]]
-  constexpr auto push_cached(diff_int push_bytes) -> void_ptr {
+  constexpr auto push_cached(diff_type push_bytes) -> void_ptr {
 
     // Have to be very careful in this function to be strongly exception-safe!
 
-    constexpr diff_int node_size = sizeof(node);
+    constexpr diff_type node_size = sizeof(node);
 
     LF_ASSUME(push_bytes >= node_size);
     LF_ASSUME(push_bytes % node_size == 0);
 
-    diff_int num_nodes = safe_cast<diff_int>(push_bytes / node_size);
+    diff_type num_nodes = safe_cast<diff_type>(push_bytes / node_size);
 
     LF_ASSUME(num_nodes > 0);
 
     if (m_ctrl == nullptr) {
       // Initial stacklet wants to be quite large
-      constexpr diff_int min_nodes = (k_page_size / sizeof(node)) - 1;
+      constexpr diff_type min_nodes = (k_page_size / sizeof(node)) - 1;
 
       m_ctrl = new_ctrl(std::max(min_nodes, num_nodes));
 

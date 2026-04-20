@@ -27,10 +27,11 @@ class adaptor_stack {
 
   using align_trait = std::allocator_traits<Allocator>::template rebind_traits<aligned>;
   using align_alloc = align_trait::allocator_type;
-  using alloc_ptr = align_trait::pointer;
 
+  using alloc_ptr = align_trait::pointer;
   using void_ptr = align_trait::void_pointer;
-  using size_int = align_trait::size_type;
+
+  using size_type = align_trait::size_type;
 
   struct release_t {
     explicit constexpr release_t(key_t /*unused*/) noexcept {}
@@ -80,7 +81,7 @@ class adaptor_stack {
   [[nodiscard]]
   constexpr auto push(std::size_t size) -> void_ptr {
     LF_ASSUME(size > 0);
-    size_int num_aligned = (size + (k_new_align - 1)) / sizeof(aligned);
+    size_type num_aligned = safe_cast<size_type>((size + (k_new_align - 1)) / k_new_align);
     return static_cast<void_ptr>(align_trait::allocate(m_alloc, num_aligned));
   }
 
@@ -89,7 +90,7 @@ class adaptor_stack {
    */
   constexpr void pop(void_ptr ptr, [[maybe_unused]] std::size_t size) noexcept {
     LF_ASSUME(size > 0);
-    size_int num_aligned = (size + (k_new_align - 1)) / sizeof(aligned);
+    size_type num_aligned = safe_cast<size_type>((size + (k_new_align - 1)) / k_new_align);
     align_trait::deallocate(m_alloc, static_cast<alloc_ptr>(ptr), num_aligned);
   }
 
