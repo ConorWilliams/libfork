@@ -260,6 +260,8 @@ class geometric_stack {
 
     ctrl_ptr new_ctrl = ctrl_traits::allocate(self.m_ctrl_alloc, 1);
 
+    // TODO: construct/destroy operate on raw (not fancy) pointers
+
     LF_TRY {
       // Propagate ctrl allocator to control blocks node allocator.
       ctrl_traits::construct(self.m_ctrl_alloc, new_ctrl, std::as_const(self.m_ctrl_alloc));
