@@ -81,7 +81,7 @@ class adaptor_stack {
   [[nodiscard]]
   constexpr auto push(std::size_t size) -> void_ptr {
     LF_ASSUME(size > 0);
-    size_type num_aligned = safe_cast<size_type>((size + (k_new_align - 1)) / k_new_align);
+    size_type num_aligned = safe_cast<size_type>(((size - 1) / k_new_align) + 1);
     return static_cast<void_ptr>(align_trait::allocate(m_alloc, num_aligned));
   }
 
@@ -90,7 +90,7 @@ class adaptor_stack {
    */
   constexpr void pop(void_ptr ptr, [[maybe_unused]] std::size_t size) noexcept {
     LF_ASSUME(size > 0);
-    size_type num_aligned = safe_cast<size_type>((size + (k_new_align - 1)) / k_new_align);
+    size_type num_aligned = safe_cast<size_type>(((size - 1) / k_new_align) + 1);
     align_trait::deallocate(m_alloc, static_cast<alloc_ptr>(ptr), num_aligned);
   }
 
