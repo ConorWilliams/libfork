@@ -447,7 +447,7 @@ void tests(Sch &scheduler) {
     lf::recv_state<void, true> state;
     auto recv = lf::schedule(scheduler, std::move(state), pre_cancelled_root_fn<Ctx>, &ran);
     REQUIRE(recv.valid());
-    recv.request_stop();
+    recv.stop_source().request_stop();
     std::move(recv).get();
     // The task body may or may not have run depending on scheduler timing;
     // what matters is that get() completes without error.

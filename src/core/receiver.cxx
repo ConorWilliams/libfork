@@ -120,11 +120,17 @@ class receiver {
   constexpr auto operator=(receiver &&) noexcept -> receiver & = default;
   constexpr auto operator=(const receiver &) -> receiver & = delete;
 
+  /**
+   * @brief Test if connected to a receiver state.
+   */
   [[nodiscard]]
   constexpr auto valid() const noexcept -> bool {
     return m_state != nullptr;
   }
 
+  /**
+   * @brief Test if the associated task has completed (either successfully or with an exception/cancellation).
+   */
   [[nodiscard]]
   constexpr auto ready() const -> bool {
     if (!valid()) {
@@ -133,6 +139,11 @@ class receiver {
     return m_state->ready.test();
   }
 
+  /**
+   * @brief Wait for the associated task to complete (either successfully or with an exception/cancellation).
+   *
+   * May be called multiple times.
+   */
   constexpr void wait() const {
     if (!valid()) {
       LF_THROW(broken_receiver_error{});
@@ -141,32 +152,18 @@ class receiver {
   }
 
   /**
-   * @brief Returns a stop_token for this task's stop source.
+   * @brief Get a reference to the stop_source for this task, allowing the caller to request cancellation.
    *
    * Only available when Stoppable=true.
    */
   [[nodiscard]]
-  constexpr auto token() const -> stop_source::stop_token
+  constexpr auto stop_source() -> stop_source &
     requires Stoppable
   {
     if (!valid()) {
       LF_THROW(broken_receiver_error{});
     }
-    return m_state->stop.token();
-  }
-
-  /**
-   * @brief Request that the associated task stop.
-   *
-   * Only available when Stoppable=true. Thread-safe.
-   */
-  constexpr auto request_stop() -> void
-    requires Stoppable
-  {
-    if (!valid()) {
-      LF_THROW(broken_receiver_error{});
-    }
-    m_state->stop.request_stop();
+    return m_state->stop;
   }
 
   /**
