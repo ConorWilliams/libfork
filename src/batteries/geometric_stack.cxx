@@ -332,7 +332,7 @@ class geometric_stack {
     if (ptr != nullptr) {
       LF_ASSUME(ctrl != nullptr);
       // Size doesn't include the header node so we +1 here.
-      size_type allocated_nodes = safe_cast<size_type>(1 + ptr->size);
+      size_type allocated_nodes = 1 + safe_cast<size_type>(ptr->size);
       node_traits::destroy(ctrl->node_alloc, std::to_address(ptr));
       node_traits::deallocate(ctrl->node_alloc, ptr, allocated_nodes);
     }
