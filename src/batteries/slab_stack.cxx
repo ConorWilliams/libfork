@@ -180,8 +180,6 @@ class slab_stack {
       m_alloc = node_alloc_t{std::as_const(m_ctrl->node_alloc)};
     }
 
-    LF_ASSUME(m_ctrl != nullptr);
-
     load_local();
   }
 
