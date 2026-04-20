@@ -425,7 +425,7 @@ struct join_awaitable {
     //
     // A task that completes by responding to cancellation will drop any
     // exceptions however, a task may still throw exceptions even if cancelled.
-    // Here we must rethrow even if cancelled becasue we can't re-suspend at
+    // Here we must rethrow even if cancelled because we can't re-suspend at
     // this point.
     if constexpr (LF_COMPILER_EXCEPTIONS) {
       if (self.frame->exception_bit) [[unlikely]] {
