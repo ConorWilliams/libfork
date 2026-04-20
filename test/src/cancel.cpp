@@ -35,7 +35,7 @@ import libfork;
 //        source propagates through the chain to the inner scope.
 //
 //   H. Stoppable receiver / pre-cancelled root:
-//        root_state<T, true> + receiver::request_stop() immediately after
+//        recv_state<T, true> + receiver::request_stop() immediately after
 //        schedule() — covers the goto-cleanup fast path in root.cxx on
 //        schedulers where the task has not yet begun running.  Racy in
 //        principle, so the test only asserts completion, not that the body
@@ -356,7 +356,7 @@ auto test_nested_child_scope_chain(lf::env<Context>) -> lf::task<bool, Context> 
 // ============================================================
 // H. Stoppable receiver / pre-cancelled root.
 //
-//    Using root_state<T, true> + receiver::request_stop() exercises the
+//    Using recv_state<T, true> + receiver::request_stop() exercises the
 //    goto-cleanup fast path in root.cxx when stop is requested before the
 //    worker resumes the task.
 // ============================================================
@@ -442,9 +442,9 @@ void tests(Sch &scheduler) {
     REQUIRE(std::move(recv).get());
   }
 
-  SECTION("stoppable receiver: root_state + request_stop completes cleanly") {
+  SECTION("stoppable receiver: recv_state + request_stop completes cleanly") {
     std::atomic<bool> ran = false;
-    lf::root_state<void, true> state;
+    lf::recv_state<void, true> state;
     auto recv = lf::schedule(scheduler, std::move(state), pre_cancelled_root_fn<Ctx>, &ran);
     REQUIRE(recv.valid());
     recv.request_stop();

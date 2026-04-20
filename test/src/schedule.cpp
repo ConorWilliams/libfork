@@ -29,7 +29,7 @@ auto throwing_function(env<Context> /*unused*/) -> task<void, Context> {
 }
 
 // Task whose argument is a big enough value-type to push the root coroutine
-// frame past the 1 KiB embedded buffer in receiver_state.
+// frame past the 1 KiB embedded buffer in hidden_receiver_state.
 template <typename Context>
 auto big_arg_function(env<Context> /*unused*/, std::array<std::byte, 2048> /*unused*/)
     -> task<void, Context> {
@@ -50,31 +50,31 @@ void simple_tests(Sch &scheduler) {
     REQUIRE(std::move(recv).get() == true);
   }
 
-  SECTION("explicit root_state") {
-    lf::root_state<bool, false> state;
+  SECTION("explicit recv_state") {
+    lf::recv_state<bool, false> state;
     auto recv = schedule(scheduler, std::move(state), simple_function<lf::context_t<Sch>>);
     REQUIRE(recv.valid());
     REQUIRE(std::move(recv).get() == true);
   }
 
-  SECTION("stoppable root_state") {
-    lf::root_state<bool, true> state;
+  SECTION("stoppable recv_state") {
+    lf::recv_state<bool, true> state;
     auto recv = schedule(scheduler, std::move(state), simple_function<lf::context_t<Sch>>);
     REQUIRE(recv.valid());
     REQUIRE(std::move(recv).get() == true);
   }
 
-  SECTION("root_state with explicit allocator") {
+  SECTION("recv_state with explicit allocator") {
     std::allocator<std::byte> alloc;
-    lf::root_state<bool, false> state{std::allocator_arg, alloc};
+    lf::recv_state<bool, false> state{std::allocator_arg, alloc};
     auto recv = schedule(scheduler, std::move(state), simple_function<lf::context_t<Sch>>);
     REQUIRE(recv.valid());
     REQUIRE(std::move(recv).get() == true);
   }
 
-  SECTION("root_state with value-init") {
+  SECTION("recv_state with value-init") {
     // Pre-initialise the return slot; the task overwrites it.
-    lf::root_state<bool, false> state{false};
+    lf::recv_state<bool, false> state{false};
     auto recv = schedule(scheduler, std::move(state), simple_function<lf::context_t<Sch>>);
     REQUIRE(recv.valid());
     REQUIRE(std::move(recv).get() == true);

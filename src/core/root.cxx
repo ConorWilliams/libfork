@@ -23,7 +23,7 @@ namespace lf {
 export struct root_alloc_error final : libfork_exception {
   [[nodiscard]]
   constexpr auto what() const noexcept -> const char * override {
-    return "root coroutine frame exceeds receiver_state buffer size";
+    return "root coroutine frame exceeds hidden_receiver_state buffer size";
   }
 };
 
@@ -35,7 +35,7 @@ struct root_task {
 
     frame_type<Checkpoint> frame{Checkpoint{}};
 
-    /// Owns a ref to the receiver_state hosting this frame's buffer.
+    /// Owns a ref to the hidden_receiver_state hosting this frame's buffer.
     std::shared_ptr<void> keep_alive;
 
     template <typename R, bool Stoppable, typename... Args>
@@ -55,7 +55,7 @@ struct root_task {
       return recv->buffer.data();
     }
 
-    /// No-op: the buffer is owned by the receiver_state, not the frame.
+    /// No-op: the buffer is owned by the hidden_receiver_state, not the frame.
     static auto operator delete(void * /*ptr*/, std::size_t /*size*/) noexcept -> void {}
 
     struct frame_awaitable : std::suspend_never {
@@ -88,8 +88,8 @@ struct root_task {
     /**
      * @brief Custom final_suspend.
      *
-     * The root coroutine frame lives inside the receiver_state's embedded
-     * buffer, so the receiver_state must outlive the frame teardown.
+     * The root coroutine frame lives inside the hidden_receiver_state's embedded
+     * buffer, so the hidden_receiver_state must outlive the frame teardown.
      *
      *   1. `std::exchange` the keep-alive shared_ptr into a local on the
      *      host stack, leaving the promise member null.
@@ -97,7 +97,7 @@ struct root_task {
      *      the now-null `keep_alive`) and our no-op `operator delete`.
      *      No frame-memory access occurs after the handle returns.
      *   3. On return, the stack-local `shared_ptr<void>` dies; if its ref
-     *      was the last, it destroys the receiver_state cleanly — we are
+     *      was the last, it destroys the hidden_receiver_state cleanly — we are
      *      no longer executing inside the buffer.
      */
     struct final_awaiter : std::suspend_always {
@@ -105,7 +105,7 @@ struct root_task {
         std::shared_ptr<void> local = std::exchange(handle.promise().keep_alive, nullptr);
         LF_ASSUME(local != nullptr);
         handle.destroy();
-        // `local` released here — possibly freeing receiver_state on return.
+        // `local` released here — possibly freeing hidden_receiver_state on return.
       }
     };
 

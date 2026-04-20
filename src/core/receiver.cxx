@@ -23,7 +23,7 @@ export struct broken_receiver_error final : libfork_exception {
  * @brief Shared state between a scheduled task and its receiver handle.
  */
 template <typename T, bool Stoppable = false>
-struct receiver_state {
+struct hidden_receiver_state {
 
   struct empty_1 {};
   struct empty_2 {};
@@ -39,67 +39,67 @@ struct receiver_state {
   [[no_unique_address]]
   std::conditional_t<Stoppable, stop_source, empty_2> stop;
 
-  constexpr receiver_state() = default;
+  constexpr hidden_receiver_state() = default;
 
   template <typename... Args>
     requires (sizeof...(Args) > 0) && std::constructible_from<T, Args...>
-  constexpr explicit(sizeof...(Args) == 1) receiver_state(Args &&...args)
+  constexpr explicit(sizeof...(Args) == 1) hidden_receiver_state(Args &&...args)
       : return_value(std::forward<Args>(args)...) {}
 };
 
 /// Convenience alias — used throughout the core partitions.
 template <typename T, bool Stoppable = false>
-using state_handle = std::shared_ptr<receiver_state<T, Stoppable>>;
+using state_handle = std::shared_ptr<hidden_receiver_state<T, Stoppable>>;
 
 /**
  * @brief Lightweight move-only handle owning a pre-allocated root task state.
  *
- * Construction allocates a `receiver_state<T, Stoppable>` which embeds a
+ * Construction allocates a `hidden_receiver_state<T, Stoppable>` which embeds a
  * 1 KiB aligned buffer; the root coroutine frame is placement-constructed
  * into that buffer by `schedule`.
  *
  * Constructors mirror `make_shared` / `allocate_shared`:
  *
- *   root_state<T> s;                               // default-init return value
- *   root_state<T> s{v1, v2};                       // in-place init: T{v1, v2}
- *   root_state<T> s{allocator_arg, alloc};         // default-init, custom allocator
- *   root_state<T> s{allocator_arg, alloc, v1, v2}; // in-place init + custom allocator
+ *   recv_state<T> s;                               // default-init return value
+ *   recv_state<T> s{v1, v2};                       // in-place init: T{v1, v2}
+ *   recv_state<T> s{allocator_arg, alloc};         // default-init, custom allocator
+ *   recv_state<T> s{allocator_arg, alloc, v1, v2}; // in-place init + custom allocator
  */
 export template <typename T, bool Stoppable = false>
-class root_state {
-  using state_type = receiver_state<T, Stoppable>;
+class recv_state {
+  using state_type = hidden_receiver_state<T, Stoppable>;
 
  public:
   /// Default: value-initialise via `std::make_shared`.
-  constexpr root_state() : m_ptr(std::make_shared<state_type>()) {}
+  constexpr recv_state() : m_ptr(std::make_shared<state_type>()) {}
 
-  /// Value-init from args: forwards `args` to `receiver_state`'s constructor
+  /// Value-init from args: forwards `args` to `hidden_receiver_state`'s constructor
   /// (in-place construction of the return value) via `std::make_shared`.
   template <typename... Args>
     requires (sizeof...(Args) > 0) && std::constructible_from<state_type, Args...>
-  constexpr explicit(sizeof...(Args) == 1) root_state(Args &&...args)
+  constexpr explicit(sizeof...(Args) == 1) recv_state(Args &&...args)
       : m_ptr(std::make_shared<state_type>(std::forward<Args>(args)...)) {}
 
   /// Allocator-aware, default return value: allocate via `std::allocate_shared`.
   template <simple_allocator Alloc>
-  constexpr root_state(std::allocator_arg_t, Alloc const &alloc)
+  constexpr recv_state(std::allocator_arg_t, Alloc const &alloc)
       : m_ptr(std::allocate_shared<state_type>(alloc)) {}
 
   /// Allocator-aware with value-init args.
   template <simple_allocator Alloc, typename... Args>
     requires std::constructible_from<state_type, Args...>
-  constexpr root_state(std::allocator_arg_t, Alloc const &alloc, Args &&...args)
+  constexpr recv_state(std::allocator_arg_t, Alloc const &alloc, Args &&...args)
       : m_ptr(std::allocate_shared<state_type>(alloc, std::forward<Args>(args)...)) {}
 
   // Move-only.
-  constexpr root_state(root_state &&) noexcept = default;
-  constexpr auto operator=(root_state &&) noexcept -> root_state & = default;
-  constexpr root_state(root_state const &) = delete;
-  constexpr auto operator=(root_state const &) -> root_state & = delete;
+  constexpr recv_state(recv_state &&) noexcept = default;
+  constexpr auto operator=(recv_state &&) noexcept -> recv_state & = default;
+  constexpr recv_state(recv_state const &) = delete;
+  constexpr auto operator=(recv_state const &) -> recv_state & = delete;
 
  private:
   [[nodiscard]]
-  friend constexpr auto get(key_t, root_state &&self) noexcept -> state_handle<T, Stoppable> {
+  friend constexpr auto get(key_t, recv_state &&self) noexcept -> state_handle<T, Stoppable> {
     return std::move(self.m_ptr);
   }
 
@@ -109,7 +109,7 @@ class root_state {
 export template <typename T, bool Stoppable = false>
 class receiver {
 
-  using state_type = receiver_state<T, Stoppable>;
+  using state_type = hidden_receiver_state<T, Stoppable>;
 
  public:
   constexpr receiver(key_t, state_handle<T, Stoppable> state) noexcept : m_state(std::move(state)) {}

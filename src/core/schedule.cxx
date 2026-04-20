@@ -31,14 +31,14 @@ template <typename T>
 concept decay_copyable = std::convertible_to<T, std::decay_t<T>>;
 
 /**
- * @brief Schedule a function using a caller-provided `root_state`.
+ * @brief Schedule a function using a caller-provided `recv_state`.
  *
  * This will create a root task that stores decayed copies of `Fn` and
  * `Args...` in its frame, then post it to the scheduler. The root task must
  * then be resumed by a worker which will perform the invocation of `Fn`.
  *
  * The return address/exception and possibly stop token of the root task are
- * bound to the provided `root_state` and can be observed by the caller via the
+ * bound to the provided `recv_state` and can be observed by the caller via the
  * returned `receiver`.
  *
  * Strongly exception safe.
@@ -47,7 +47,7 @@ export template <scheduler Sch, typename R, bool Stoppable, decay_copyable Fn, d
   requires async_invocable_to<std::decay_t<Fn>, R, context_t<Sch>, std::decay_t<Args>...>
 [[nodiscard("Fire and forget is an anti-pattern")]]
 constexpr auto
-schedule(Sch &&sch, root_state<R, Stoppable> state, Fn &&fn, Args &&...args) -> receiver<R, Stoppable> {
+schedule(Sch &&sch, recv_state<R, Stoppable> state, Fn &&fn, Args &&...args) -> receiver<R, Stoppable> {
 
   using context_type = context_t<Sch>;
 
@@ -97,7 +97,7 @@ template <typename Fn, typename Context, typename... Args>
 using async_decay_result_t = async_result_t<std::decay_t<Fn>, Context, std::decay_t<Args>...>;
 
 /**
- * @brief Convenience overload: default-constructs a non-cancellable root_state.
+ * @brief Convenience overload: default-constructs a non-cancellable recv_state.
  *
  * Uses the default allocator (`make_shared`) for all allocations.
  */
@@ -107,7 +107,7 @@ export template <scheduler Sch, decay_copyable Fn, decay_copyable... Args>
 constexpr auto
 schedule(Sch &&sch, Fn &&fn, Args &&...args) -> receiver<async_decay_result_t<Fn, context_t<Sch>, Args...>> {
   using result_type = async_decay_result_t<Fn, context_t<Sch>, Args...>;
-  root_state<result_type, false> state;
+  recv_state<result_type, false> state;
   return schedule(
       std::forward<Sch>(sch), std::move(state), std::forward<Fn>(fn), std::forward<Args>(args)...);
 }
