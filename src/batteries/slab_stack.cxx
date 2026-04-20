@@ -29,8 +29,8 @@ class slab_stack {
   using node_alloc_t = node_traits::allocator_type;
   using node_ptr = node_traits::pointer;
   using void_ptr = node_traits::void_pointer;
-  using size_int = node_traits::size_type;
-  using diff_int = node_traits::difference_type;
+  using size_type = node_traits::size_type;
+  using diff_type = node_traits::difference_type;
 
   // Fused ctrl+node: the first element of every slab allocation.
   // node_alloc, sp_cache, and size live here; the `size` nodes that follow are
@@ -40,11 +40,11 @@ class slab_stack {
     [[no_unique_address]]
     node_alloc_t node_alloc; // Propagated to new owners on acquire.
     node_ptr sp_cache;       // Stack pointer saved across release/acquire.
-    diff_int size;           // Usable node count following this header.
+    diff_type size;          // Usable node count following this header.
   };
 
   // Default capacity: one page of usable space (header occupies the first node).
-  static constexpr diff_int k_default_nodes = safe_cast<diff_int>(k_page_size / sizeof(node)) - 1;
+  static constexpr diff_type k_default_nodes = safe_cast<diff_type>(k_page_size / sizeof(node)) - 1;
 
   static_assert(k_default_nodes > 0);
 
@@ -65,8 +65,8 @@ class slab_stack {
 
  public:
   constexpr slab_stack() : slab_stack(Allocator{}) {}
-  explicit constexpr slab_stack(diff_int num_nodes) : slab_stack(Allocator{}, num_nodes) {}
-  explicit constexpr slab_stack(Allocator const &alloc, diff_int num_nodes = k_default_nodes)
+  explicit constexpr slab_stack(diff_type num_nodes) : slab_stack(Allocator{}, num_nodes) {}
+  explicit constexpr slab_stack(Allocator const &alloc, diff_type num_nodes = k_default_nodes)
       : m_alloc(alloc) {
     init_slab(num_nodes);
   }
@@ -79,7 +79,7 @@ class slab_stack {
 
   constexpr ~slab_stack() noexcept {
     LF_ASSUME(empty());
-    free_ctrl(m_ctrl);
+    delete_ctrl(m_ctrl);
   }
 
   /**
@@ -105,21 +105,21 @@ class slab_stack {
   constexpr auto push(std::size_t size) -> void_ptr {
     LF_ASSUME(size > 0);
 
-    constexpr diff_int node_size = sizeof(node);
+    constexpr diff_type node_size = sizeof(node);
 
-    diff_int push_bytes = safe_cast<diff_int>(round_to_multiple<sizeof(node)>(size));
+    diff_type push_bytes = safe_cast<diff_type>(round_to_multiple<sizeof(node)>(size));
 
     LF_ASSUME(push_bytes >= node_size);
     LF_ASSUME(push_bytes % node_size == 0);
 
     // Optimized to just the subtraction because multiplication cancels the implicit division.
-    diff_int free_bytes = node_size * (m_hi - m_sp);
+    diff_type free_bytes = node_size * (m_hi - m_sp);
 
     if (push_bytes > free_bytes) [[unlikely]] {
-      slab_full();
+      LF_THROW(std::bad_alloc{});
     }
 
-    diff_int num_nodes = push_bytes / node_size;
+    diff_type num_nodes = push_bytes / node_size;
 
     // node_ptr -> void_ptr
     return static_cast<void_ptr>(std::exchange(m_sp, m_sp + num_nodes));
@@ -147,7 +147,7 @@ class slab_stack {
   }
 
   constexpr void release([[maybe_unused]] release_t) noexcept {
-    diff_int next_size = (m_ctrl != nullptr) ? m_ctrl->size : k_default_nodes;
+    diff_type next_size = (m_ctrl != nullptr) ? m_ctrl->size : k_default_nodes;
 
     // Hand off the current slab to whoever holds the checkpoint; clear local state.
     m_ctrl = nullptr;
@@ -172,7 +172,7 @@ class slab_stack {
     }
 
     // Discard the fresh empty slab we prepared during release() (may be null on alloc failure).
-    free_ctrl(m_ctrl);
+    delete_ctrl(m_ctrl);
 
     m_ctrl = ckpt.m_ctrl;
 
@@ -203,14 +203,14 @@ class slab_stack {
   }
 
   // Allocate and construct a fresh slab with num_nodes usable nodes.
-  constexpr void init_slab(diff_int num_nodes) {
+  constexpr void init_slab(diff_type num_nodes) {
     LF_ASSUME(num_nodes > 0);
 
-    size_int total = safe_cast<size_int>(1 + num_nodes);
+    size_type total = safe_cast<size_type>(1 + num_nodes);
     m_ctrl = node_traits::allocate(m_alloc, total);
 
     LF_TRY {
-      node_traits::construct(m_alloc, m_ctrl, m_alloc, nullptr, num_nodes);
+      node_traits::construct(m_alloc, std::to_address(m_ctrl), m_alloc, nullptr, num_nodes);
     } LF_CATCH_ALL {
       node_traits::deallocate(m_alloc, m_ctrl, total);
       m_ctrl = nullptr;
@@ -222,17 +222,12 @@ class slab_stack {
   }
 
   // Destroy and deallocate a slab (no-op if null).
-  constexpr void free_ctrl(node_ptr ctrl) noexcept {
+  constexpr void delete_ctrl(node_ptr ctrl) noexcept {
     if (ctrl != nullptr) {
-      size_int total = safe_cast<size_int>(1 + ctrl->size);
-      node_traits::destroy(m_alloc, ctrl);
+      size_type total = safe_cast<size_type>(1 + ctrl->size);
+      node_traits::destroy(m_alloc, std::to_address(ctrl));
       node_traits::deallocate(m_alloc, ctrl, total);
     }
-  }
-
-  [[noreturn]]
-  static void slab_full() {
-    LF_THROW(std::bad_alloc{});
   }
 };
 
