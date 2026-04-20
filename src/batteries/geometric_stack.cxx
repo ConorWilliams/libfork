@@ -260,16 +260,14 @@ class geometric_stack {
 
     ctrl_ptr new_ctrl = ctrl_traits::allocate(self.m_ctrl_alloc, 1);
 
-    // TODO: construct/destroy operate on raw (not fancy) pointers
-
     LF_TRY {
       // Propagate ctrl allocator to control blocks node allocator.
-      ctrl_traits::construct(self.m_ctrl_alloc, new_ctrl, std::as_const(self.m_ctrl_alloc));
+      ctrl_traits::construct(self.m_ctrl_alloc, std::to_address(new_ctrl), std::as_const(self.m_ctrl_alloc));
       LF_TRY {
         new_ctrl->top = new_node(new_ctrl, num_nodes);
       } LF_CATCH_ALL {
         // Clean up construction
-        ctrl_traits::destroy(self.m_ctrl_alloc, new_ctrl);
+        ctrl_traits::destroy(self.m_ctrl_alloc, std::to_address(new_ctrl));
         LF_RETHROW;
       }
     } LF_CATCH_ALL {
@@ -294,7 +292,7 @@ class geometric_stack {
       delete_node(ctrl, ctrl->cache);
 
       // Finally delete the control block.
-      ctrl_traits::destroy(self.m_ctrl_alloc, ctrl);
+      ctrl_traits::destroy(self.m_ctrl_alloc, std::to_address(ctrl));
       ctrl_traits::deallocate(self.m_ctrl_alloc, ctrl, 1);
     }
   }
@@ -318,7 +316,7 @@ class geometric_stack {
 
     LF_TRY {
       // Construct the header
-      node_traits::construct(ctrl->node_alloc, next_node, nullptr, num_nodes);
+      node_traits::construct(ctrl->node_alloc, std::to_address(next_node), nullptr, num_nodes);
     } LF_CATCH_ALL {
       node_traits::deallocate(ctrl->node_alloc, next_node, allocate_nodes);
       LF_RETHROW;
@@ -335,7 +333,7 @@ class geometric_stack {
       LF_ASSUME(ctrl != nullptr);
       // Size doesn't include the header node so we +1 here.
       size_int allocated_nodes = safe_cast<size_int>(1 + ptr->size);
-      node_traits::destroy(ctrl->node_alloc, ptr);
+      node_traits::destroy(ctrl->node_alloc, std::to_address(ptr));
       node_traits::deallocate(ctrl->node_alloc, ptr, allocated_nodes);
     }
   }
