@@ -137,13 +137,13 @@ constexpr auto final_suspend_full(Context &context, frame_t<Context> *frame) noe
         continue;
       }
 
-      if (owner) {
-        // We were unable to resume the parent and we were its owner, as the
-        // resuming thread will take ownership of the parent's we must give it up.
-        context.stack().release(std::move(release_key));
-      }
-
       return parent->handle();
+    }
+
+    if (owner) {
+      // We were unable to resume the parent and we were its owner, as the
+      // resuming thread will take ownership of the parent's we must give it up.
+      context.stack().release(std::move(release_key));
     }
 
     // We did not win the join-race, we cannot dereference the parent pointer now
@@ -182,6 +182,7 @@ constexpr auto final_suspend_trailing(Context &context, frame_t<Context> *parent
       }
       return final_suspend_full<Context>(context, parent);
     }
+
     return parent->handle();
   }
 
