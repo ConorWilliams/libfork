@@ -448,10 +448,16 @@ void tests(Sch &scheduler) {
     auto recv = lf::schedule(scheduler, std::move(state), pre_cancelled_root_fn<Ctx>, &ran);
     REQUIRE(recv.valid());
     recv.stop_source().request_stop();
-    std::move(recv).get();
+
+#if LF_COMPILER_EXCEPTIONS
+    REQUIRE_THROWS_AS(std::move(recv).get(), lf::operation_cancelled_error);
+#else
+    recv.wait();
+#endif
+
     // The task body may or may not have run depending on scheduler timing;
     // what matters is that get() completes without error.
-    (void)ran.load();
+    std::ignore = ran.load();
   }
 
 #if LF_COMPILER_EXCEPTIONS

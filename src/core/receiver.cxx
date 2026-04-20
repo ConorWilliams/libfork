@@ -19,6 +19,13 @@ export struct broken_receiver_error final : libfork_exception {
   }
 };
 
+export struct operation_cancelled_error final : libfork_exception {
+  [[nodiscard]]
+  constexpr auto what() const noexcept -> const char * override {
+    return "operation was cancelled";
+  }
+};
+
 /**
  * @brief Shared state between a scheduled task and its receiver handle.
  */
@@ -169,6 +176,8 @@ class receiver {
   /**
    * @brief Wait for the associated task to complete and return its result, or rethrow.
    *
+   * If the reciever was cancelled this will throw an exception.
+   *
    * This may only be called once; the state is consumed and the receiver becomes invalid.
    */
   [[nodiscard]]
@@ -183,6 +192,12 @@ class receiver {
 
     if (state->exception) {
       std::rethrow_exception(state->exception);
+    }
+
+    if constexpr (Stoppable) {
+      if (state->stop.stop_requested()) {
+        LF_THROW(operation_cancelled_error{});
+      }
     }
 
     if constexpr (!std::is_void_v<T>) {
