@@ -56,6 +56,14 @@ constexpr void check_non_empty(auto const &stack) {
 
 } // namespace
 
+// Stack types that may hit slab_stack's fixed capacity need exception support
+// to signal overflow. Under -fno-exceptions, drop slab_stack from those tests.
+#if LF_COMPILER_EXCEPTIONS
+  #define STACK_TYPES_ALL lf::geometric_stack<>, lf::adaptor_stack<>, lf::slab_stack<>
+#else
+  #define STACK_TYPES_ALL lf::geometric_stack<>, lf::adaptor_stack<>
+#endif
+
 TEMPLATE_TEST_CASE("Concept", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>, lf::slab_stack<>) {
   STATIC_REQUIRE(worker_stack<TestType>); //
 }
@@ -108,7 +116,7 @@ TEMPLATE_TEST_CASE("Checkpoint and Acquire/Release", "[stacks]", lf::geometric_s
   });
 }
 
-TEMPLATE_TEST_CASE("Single pass", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>, lf::slab_stack<>) {
+TEMPLATE_TEST_CASE("Single pass", "[stacks]", STACK_TYPES_ALL) {
   for (int k = 0; k < 10; ++k) {
 
     TestType stack;
@@ -130,11 +138,15 @@ TEMPLATE_TEST_CASE("Single pass", "[stacks]", lf::geometric_stack<>, lf::adaptor
       for (std::size_t j = 0; j < depth; ++j) {
         std::size_t s = size_dist(rng);
         void *p = nullptr;
+#if LF_COMPILER_EXCEPTIONS
         try {
           p = stack.push(s);
         } catch (std::bad_alloc const &) {
           break;
         }
+#else
+        p = stack.push(s);
+#endif
         check_alignment(p);
         entries.push_back({.ptr = p, .size = s});
       }
@@ -150,8 +162,7 @@ TEMPLATE_TEST_CASE("Single pass", "[stacks]", lf::geometric_stack<>, lf::adaptor
   }
 }
 
-TEMPLATE_TEST_CASE("Randomized push/pop", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>,
-                   lf::slab_stack<>) {
+TEMPLATE_TEST_CASE("Randomized push/pop", "[stacks]", STACK_TYPES_ALL) {
   TestType stack;
   std::mt19937_64 rng{std::random_device{}()};
   std::bernoulli_distribution push_dist{0.51};
@@ -174,11 +185,15 @@ TEMPLATE_TEST_CASE("Randomized push/pop", "[stacks]", lf::geometric_stack<>, lf:
     if (entries.empty() || push_dist(rng)) {
       std::size_t s = size_dist(rng);
       void *p = nullptr;
+#if LF_COMPILER_EXCEPTIONS
       try {
         p = stack.push(s);
       } catch (std::bad_alloc const &) {
         break; // slab_stack exhausted; clean up and finish
       }
+#else
+      p = stack.push(s);
+#endif
       check_alignment(p);
       entries.push_back({.ptr = p, .size = s});
       total_pushed++;
@@ -199,8 +214,7 @@ TEMPLATE_TEST_CASE("Randomized push/pop", "[stacks]", lf::geometric_stack<>, lf:
   check_empty(stack);
 }
 
-TEMPLATE_TEST_CASE("Spikey randomized push/pop", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>,
-                   lf::slab_stack<>) {
+TEMPLATE_TEST_CASE("Spikey randomized push/pop", "[stacks]", STACK_TYPES_ALL) {
   TestType stack;
   std::mt19937_64 rng{std::random_device{}()};
 
@@ -234,11 +248,15 @@ TEMPLATE_TEST_CASE("Spikey randomized push/pop", "[stacks]", lf::geometric_stack
     if (do_push) {
       std::size_t s = size_dist(rng);
       void *p = nullptr;
+#if LF_COMPILER_EXCEPTIONS
       try {
         p = stack.push(s);
       } catch (std::bad_alloc const &) {
         break; // slab_stack exhausted; clean up and finish
       }
+#else
+      p = stack.push(s);
+#endif
       check_alignment(p);
       entries.push_back({.ptr = p, .size = s});
       total_pushed++;
@@ -264,6 +282,7 @@ TEMPLATE_TEST_CASE("Spikey randomized push/pop", "[stacks]", lf::geometric_stack
 //
 // Tests that exercise behaviour unique to slab_stack's fixed-size design.
 
+#if LF_COMPILER_EXCEPTIONS
 TEST_CASE("slab_stack - throws when full", "[stacks]") {
   // Use a tiny slab (2 usable nodes) to exercise the overflow path precisely.
   lf::slab_stack<> stack(2);
@@ -276,6 +295,7 @@ TEST_CASE("slab_stack - throws when full", "[stacks]") {
   stack.pop(p1, k_new_align);
   check_empty(stack);
 }
+#endif
 
 TEST_CASE("slab_stack - single pass", "[stacks]") {
   for (int k = 0; k < 10; ++k) {
