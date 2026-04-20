@@ -13,29 +13,22 @@ namespace lf {
 /**
  * @brief A slab_stack is a user-space stack backed by a single fixed-size slab of memory.
  *
- * The ctrl metadata and usable stack space are fused into a single allocation: the first
- * node of the slab is the header, and the remaining `size` nodes are the usable stack
- * space.  There is no segmentation, caching, or geometric growth — if the slab is full,
- * push throws.
- *
  * For this to conform to `worker_stack` the allocators void pointer type must be `void *`
  */
 export template <allocator_of<std::byte> Allocator = std::allocator<std::byte>>
 class slab_stack {
 
-  struct node; // Forward declaration so type aliases can reference node before its definition.
+  struct node;
 
   using node_traits = std::allocator_traits<Allocator>::template rebind_traits<node>;
   using node_alloc_t = node_traits::allocator_type;
+
   using node_ptr = node_traits::pointer;
   using void_ptr = node_traits::void_pointer;
+
   using size_type = node_traits::size_type;
   using diff_type = node_traits::difference_type;
 
-  // Fused ctrl+node: the first element of every slab allocation.
-  // node_alloc, sp_cache, and size live here; the `size` nodes that follow are
-  // the usable stack space.  Mirrors how geometric_stack stores ctrl data in its
-  // first node — no reinterpret_cast is ever needed.
   struct alignas(k_new_align) node {
     [[no_unique_address]]
     node_alloc_t node_alloc; // Propagated to new owners on acquire.
@@ -43,8 +36,7 @@ class slab_stack {
     diff_type size;          // Usable node count following this header.
   };
 
-  // Default capacity: one page of usable space (header occupies the first node).
-  static constexpr diff_type k_default_nodes = safe_cast<diff_type>(k_page_size / sizeof(node)) - 1;
+  static constexpr diff_type k_default_nodes = safe_cast<diff_type>(4 * k_page_size / sizeof(node)) - 1;
 
   static_assert(k_default_nodes > 0);
 
@@ -67,6 +59,7 @@ class slab_stack {
   constexpr slab_stack() : slab_stack(k_default_nodes, Allocator{}) {}
 
   // TODO: what is appropriate unit for initialisation
+  // TODO: remove default constructor?
 
   explicit constexpr slab_stack(diff_type num_nodes, Allocator const &alloc = Allocator{}) : m_alloc(alloc) {
     init_slab(num_nodes);
@@ -138,6 +131,9 @@ class slab_stack {
     m_sp = static_cast<node_ptr>(ptr);
   }
 
+  /**
+   * @brief Make ready for a call to release().
+   */
   [[nodiscard]]
   constexpr auto prepare_release() noexcept -> release_t {
     // Guard against null ctrl (failed prior allocation in release()).
