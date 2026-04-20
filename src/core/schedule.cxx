@@ -37,6 +37,10 @@ concept decay_copyable = std::convertible_to<T, std::decay_t<T>>;
  * `Args...` in its frame, then post it to the scheduler. The root task must
  * then be resumed by a worker which will perform the invocation of `Fn`.
  *
+ * The return address/exception and possibly stop token of the root task are
+ * bound to the provided `root_state` and can be observed by the caller via the
+ * returned `receiver`.
+ *
  * Strongly exception safe.
  */
 export template <scheduler Sch, typename R, bool Stoppable, decay_copyable Fn, decay_copyable... Args>
@@ -94,18 +98,18 @@ using async_decay_result_t = async_result_t<std::decay_t<Fn>, Context, std::deca
 
 /**
  * @brief Convenience overload: default-constructs a non-cancellable root_state.
+ *
+ * Uses the default allocator (`make_shared`) for all allocations.
  */
 export template <scheduler Sch, decay_copyable Fn, decay_copyable... Args>
   requires default_schedulable<std::decay_t<Fn>, context_t<Sch>, std::decay_t<Args>...>
 [[nodiscard("Fire and forget is an anti-pattern")]]
 constexpr auto
 schedule(Sch &&sch, Fn &&fn, Args &&...args) -> receiver<async_decay_result_t<Fn, context_t<Sch>, Args...>> {
-
-  using context_type = context_t<Sch>;
-  using R = async_decay_result_t<Fn, context_type, Args...>;
-
+  using result_type = async_decay_result_t<Fn, context_t<Sch>, Args...>;
+  root_state<result_type, false> state;
   return schedule(
-      std::forward<Sch>(sch), root_state<R, false>{}, std::forward<Fn>(fn), std::forward<Args>(args)...);
+      std::forward<Sch>(sch), std::move(state), std::forward<Fn>(fn), std::forward<Args>(args)...);
 }
 
 } // namespace lf
