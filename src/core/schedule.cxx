@@ -20,9 +20,6 @@ import :receiver;
 
 namespace lf {
 
-export template <typename T>
-concept schedulable_return = std::is_void_v<T> || (std::default_initializable<T> && std::movable<T>);
-
 export struct schedule_error final : libfork_exception {
   [[nodiscard]]
   constexpr auto what() const noexcept -> const char * override {
@@ -33,35 +30,18 @@ export struct schedule_error final : libfork_exception {
 template <typename T>
 concept decay_copyable = std::convertible_to<T, std::decay_t<T>>;
 
-template <typename Fn, typename Context, typename... Args>
-concept schedulable_decayed =
-    async_invocable<Fn, Context, Args...> && schedulable_return<async_result_t<Fn, Context, Args...>>;
-
-export template <typename Fn, typename Context, typename... Args>
-concept schedulable = schedulable_decayed<std::decay_t<Fn>, Context, std::decay_t<Args>...>;
-
-template <typename Fn, typename Context, typename... Args>
-using invoke_decay_result_t = async_result_t<std::decay_t<Fn>, Context, std::decay_t<Args>...>;
-
-/**
- * @brief Subsumes `schedulable` and checks the result type is `R`.
- */
-export template <typename Fn, typename R, typename Context, typename... Args>
-concept schedulable_to =
-    schedulable<Fn, Context, Args...> && std::same_as<R, invoke_decay_result_t<Fn, Context, Args...>>;
-
-export template <typename Fn, typename Context, typename... Args>
-  requires schedulable<Fn, Context, Args...>
-using schedule_result_t = receiver<invoke_decay_result_t<Fn, Context, Args...>>;
-
 /**
  * @brief Schedule a function using a caller-provided `root_state`.
  *
- * Strongly exception safe: if the scheduler's `post()` throws, the root
- * frame is destroyed and the exception is rethrown to the caller.
+ * This will create a root task that stores decayed copies of `Fn` and
+ * `Args...` in its frame, then post it to the scheduler. The root task must
+ * then be resumed by a worker which will perform the invocation of `Fn`.
+ *
+ * Strongly exception safe.
  */
 export template <scheduler Sch, typename R, bool Stoppable, decay_copyable Fn, decay_copyable... Args>
-  requires schedulable_to<Fn, R, context_t<Sch>, Args...>
+  requires async_invocable_to<std::decay_t<Fn>, R, context_t<Sch>, std::decay_t<Args>...>
+[[nodiscard("Fire and forget is an anti-pattern")]]
 constexpr auto
 schedule(Sch &&sch, root_state<R, Stoppable> state, Fn &&fn, Args &&...args) -> receiver<R, Stoppable> {
 
@@ -102,16 +82,27 @@ schedule(Sch &&sch, root_state<R, Stoppable> state, Fn &&fn, Args &&...args) -> 
   return {key(), std::move(sp)};
 }
 
+template <typename T>
+concept schedulable_return = std::is_void_v<T> || (std::default_initializable<T> && std::movable<T>);
+
+template <typename Fn, typename Context, typename... Args>
+concept default_schedulable =
+    async_invocable<Fn, Context, Args...> && schedulable_return<async_result_t<Fn, Context, Args...>>;
+
+template <typename Fn, typename Context, typename... Args>
+using async_decay_result_t = async_result_t<std::decay_t<Fn>, Context, std::decay_t<Args>...>;
+
 /**
  * @brief Convenience overload: default-constructs a non-cancellable root_state.
  */
 export template <scheduler Sch, decay_copyable Fn, decay_copyable... Args>
-  requires schedulable<Fn, context_t<Sch>, Args...>
+  requires default_schedulable<std::decay_t<Fn>, context_t<Sch>, std::decay_t<Args>...>
+[[nodiscard("Fire and forget is an anti-pattern")]]
 constexpr auto
-schedule(Sch &&sch, Fn &&fn, Args &&...args) -> receiver<invoke_decay_result_t<Fn, context_t<Sch>, Args...>> {
+schedule(Sch &&sch, Fn &&fn, Args &&...args) -> receiver<async_decay_result_t<Fn, context_t<Sch>, Args...>> {
 
   using context_type = context_t<Sch>;
-  using R = invoke_decay_result_t<Fn, context_type, Args...>;
+  using R = async_decay_result_t<Fn, context_type, Args...>;
 
   return schedule(
       std::forward<Sch>(sch), root_state<R, false>{}, std::forward<Fn>(fn), std::forward<Args>(args)...);
