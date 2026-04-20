@@ -51,13 +51,13 @@ schedule(Sch &&sch, root_state<R, Stoppable> state, Fn &&fn, Args &&...args) -> 
     LF_THROW(schedule_error{});
   }
 
-  state_handle<R, Stoppable> sp = get(key(), std::move(state));
+  state_handle<R, Stoppable> state_ptr = get(key(), std::move(state));
 
-  LF_ASSUME(sp != nullptr);
+  LF_ASSUME(state_ptr != nullptr);
 
   // root_pkg's operator new may throw root_alloc_error if the frame is
-  // too large; if so, `sp` goes out of scope and destroys the state.
-  root_task task = root_pkg<context_type>(sp, std::forward<Fn>(fn), std::forward<Args>(args)...);
+  // too large; if so, `state_ptr` goes out of scope and destroys the state.
+  root_task task = root_pkg<context_type>(state_ptr, std::forward<Fn>(fn), std::forward<Args>(args)...);
 
   LF_ASSUME(task.promise != nullptr);
 
@@ -65,7 +65,7 @@ schedule(Sch &&sch, root_state<R, Stoppable> state, Fn &&fn, Args &&...args) -> 
   task.promise->frame.parent = nullptr;
 
   if constexpr (Stoppable) {
-    task.promise->frame.stop_token = sp->stop.token();
+    task.promise->frame.stop_token = state_ptr->stop.token();
   } else {
     task.promise->frame.stop_token = stop_source::stop_token{}; // non-cancellable root
   }
@@ -79,7 +79,7 @@ schedule(Sch &&sch, root_state<R, Stoppable> state, Fn &&fn, Args &&...args) -> 
     LF_RETHROW;
   }
 
-  return {key(), std::move(sp)};
+  return {key(), std::move(state_ptr)};
 }
 
 template <typename T>
