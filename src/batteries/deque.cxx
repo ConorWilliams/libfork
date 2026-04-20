@@ -225,6 +225,9 @@ class deque {
   using diff_type = atomic_ring_buf<T, Allocator>::diff_type;
   using size_type = atomic_ring_buf<T, Allocator>::size_type;
 
+  using value_type = T;
+  using allocator_type = Allocator;
+
   deque(deque const &) = delete;
   deque(deque &&) = delete;
   auto operator=(deque const &) -> deque & = delete;
