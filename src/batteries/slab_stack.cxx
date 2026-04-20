@@ -164,6 +164,7 @@ class slab_stack {
   }
 
   constexpr void acquire(checkpoint_t ckpt) noexcept {
+
     LF_ASSUME(empty());
     LF_ASSUME(ckpt.m_ctrl != m_ctrl);
 
