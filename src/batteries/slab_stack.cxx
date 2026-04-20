@@ -157,9 +157,9 @@ class slab_stack {
 
     LF_TRY {
       init_slab(next_size);
-      // If this throws, swallow the exception — push will see no space
-      // i.e. (m_hi - m_sp == 0) and throw instead.
     } LF_CATCH_ALL {
+      // If ^ throws, swallow the exception — push will see no space
+      // i.e. (m_hi - m_sp == 0) and throw instead.
     }
   }
 
