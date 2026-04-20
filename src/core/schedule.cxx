@@ -75,10 +75,10 @@ schedule(Sch &&sch, root_state<R, Stoppable> state, Fn &&fn, Args &&...args) -> 
   }
 
   LF_TRY {
-    // TODO: forward sch + modify concept
-    sch.post(sched_handle<context_type>{key(), &task.promise->frame});
+    std::forward<Sch>(sch).post(sched_handle<context_type>{key(), &task.promise->frame});
     // If ^ didn't throw then the root_task will destroy itself at the final suspend.
   } LF_CATCH_ALL {
+    // Otherwise, if it did throw, we must clean up
     task.promise->frame.handle().destroy();
     LF_RETHROW;
   }

@@ -22,8 +22,8 @@ using context_t = typename std::remove_cvref_t<T>::context_type;
  */
 export template <typename Sch>
 concept scheduler =
-    has_context_typedef<Sch> && requires (Sch scheduler, sched_handle<context_t<Sch>> handle) {
-      { scheduler.post(handle) } -> std::same_as<void>;
+    has_context_typedef<Sch> && requires (Sch &&scheduler, sched_handle<context_t<Sch>> handle) {
+      { static_cast<Sch &&>(scheduler).post(handle) } -> std::same_as<void>;
     };
 
 } // namespace lf
