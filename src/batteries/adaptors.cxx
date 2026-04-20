@@ -30,7 +30,17 @@ class adapt_vector {
 
 export template <typename Context>
 class adapt_deque {
+  using queue_type = deque<steal_handle<Context>>;
+
  public:
+  static constexpr std::size_t default_capacity = 1024 * 32;
+
+  constexpr adapt_deque() : m_deque(default_capacity) {}
+
+  template <typename... Args>
+    requires (sizeof...(Args) > 0) && std::constructible_from<queue_type, Args...>
+  explicit constexpr adapt_deque(Args &&...args) : m_deque(std::forward<Args>(args)...) {}
+
   constexpr void push(steal_handle<Context> value) { m_deque.push(value); }
 
   constexpr auto pop() noexcept -> steal_handle<Context> {
@@ -52,8 +62,7 @@ class adapt_deque {
   }
 
  private:
-  // TODO: make initializable/configurable
-  deque<steal_handle<Context>> m_deque{1024 * 32};
+  queue_type m_deque;
 };
 
 } // namespace lf

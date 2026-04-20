@@ -24,6 +24,16 @@ class derived_poly_context : public poly_context<Stack> {
  public:
   using context_type = poly_context<Stack>;
 
+  constexpr derived_poly_context() = default;
+
+  template <typename StackTuple, typename AdaptorTuple>
+  constexpr derived_poly_context(std::piecewise_construct_t,
+                                 StackTuple &&stack_args,
+                                 AdaptorTuple &&adaptor_args)
+      : poly_context<Stack>(std::make_from_tuple<Stack>(std::forward<StackTuple>(stack_args))),
+        m_container(
+            std::make_from_tuple<Adaptor<context_type>>(std::forward<AdaptorTuple>(adaptor_args))) {}
+
   [[nodiscard]]
   constexpr auto get_underlying() noexcept -> Adaptor<context_type> & {
     return m_container;
@@ -60,6 +70,16 @@ export template <                        //
 class mono_context : public base_context<Stack> {
  public:
   using context_type = mono_context;
+
+  constexpr mono_context() = default;
+
+  template <typename StackTuple, typename AdaptorTuple>
+  constexpr mono_context(std::piecewise_construct_t,
+                         StackTuple &&stack_args,
+                         AdaptorTuple &&adaptor_args)
+      : base_context<Stack>(std::make_from_tuple<Stack>(std::forward<StackTuple>(stack_args))),
+        m_container(
+            std::make_from_tuple<Adaptor<context_type>>(std::forward<AdaptorTuple>(adaptor_args))) {}
 
   [[nodiscard]]
   constexpr auto get_underlying() noexcept -> Adaptor<context_type> & {
