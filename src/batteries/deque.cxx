@@ -41,26 +41,26 @@ struct atomic_ring_buf {
   using traits = std::allocator_traits<Allocator>;
   using pointer = traits::pointer;
 
-  using diff_int = traits::difference_type;
-  using size_int = traits::size_type;
-
  public:
+  using diff_type = traits::difference_type;
+  using size_type = traits::size_type;
+
   /**
    * @brief Construct a new ring buff object
    *
    * @param cap The capacity of the buffer, MUST be a power of 2.
    * @param alloc The allocator used to allocate the buffer.
    */
-  constexpr explicit atomic_ring_buf(diff_int cap, Allocator const &alloc)
+  constexpr atomic_ring_buf(diff_type cap, Allocator const &alloc)
       : m_alloc{alloc},
         m_cap{cap},
         m_mask{cap - 1} {
 
     LF_ASSUME(cap > 0 && std::has_single_bit(safe_cast<size_type>(cap)));
 
-    m_buf = traits::allocate(m_alloc, safe_cast<size_type>(cap););
+    m_buf = traits::allocate(m_alloc, safe_cast<size_type>(cap));
 
-    difference_type i = 0;
+    diff_type i = 0;
 
     LF_TRY {
       // Begin the lifetime of each atomic.
@@ -84,13 +84,13 @@ struct atomic_ring_buf {
    * @brief Get the capacity of the buffer.
    */
   [[nodiscard]]
-  constexpr auto capacity() const noexcept -> diff_int {
+  constexpr auto capacity() const noexcept -> diff_type {
     return m_cap;
   }
   /**
    * @brief Store ``val`` at ``index % this->capacity()``.
    */
-  constexpr auto store(diff_int index, T const &val) noexcept -> void {
+  constexpr auto store(diff_type index, T const &val) noexcept -> void {
     LF_ASSUME(index >= 0);
     std::to_address(m_buf + (index & m_mask))->store(val, std::memory_order_relaxed);
   }
@@ -98,7 +98,7 @@ struct atomic_ring_buf {
    * @brief Load value at ``index % this->capacity()``.
    */
   [[nodiscard]]
-  constexpr auto load(diff_int index) const noexcept -> T {
+  constexpr auto load(diff_type index) const noexcept -> T {
     LF_ASSUME(index >= 0);
     return std::to_address(m_buf + (index & m_mask))->load(std::memory_order_relaxed);
   }
@@ -107,21 +107,21 @@ struct atomic_ring_buf {
   /**
    * @brief Destroy the first `n` elements and deallocate the buffer.
    */
-  constexpr clean_up(diff_int n) noexcept {
+  constexpr void clean_up(diff_type n) noexcept {
 
     LF_ASSUME(0 <= n && n <= m_cap);
 
-    for (diff_int i = n - 1; i >= 0; --i) {
+    for (diff_type i = n - 1; i >= 0; --i) {
       traits::destroy(m_alloc, std::to_address(m_buf + i));
     }
-    traits::deallocate(m_alloc, m_buf, safe_cast<typename traits::size_type>(m_cap));
+    traits::deallocate(m_alloc, m_buf, safe_cast<size_type>(m_cap));
   }
 
   [[no_unique_address]]
   Allocator m_alloc;
   pointer m_buf{};
-  diff_int m_cap;
-  diff_int m_mask;
+  diff_type m_cap;
+  diff_type m_mask;
 };
 
 /**
@@ -195,7 +195,10 @@ struct return_nullopt {
   /**
    * @brief Returns ``std::nullopt``.
    */
-  static constexpr auto operator()() noexcept -> std::optional<T> { return {}; }
+  [[nodiscard]]
+  static constexpr auto operator()() noexcept -> std::optional<T> {
+    return {};
+  }
 };
 
 /**
@@ -219,6 +222,9 @@ struct return_nullopt {
 export template <dequeable T, allocator_of<std::atomic<T>> Allocator = std::allocator<std::atomic<T>>>
 class deque {
  public:
+  using diff_type = atomic_ring_buf<T, Allocator>::diff_type;
+  using size_type = atomic_ring_buf<T, Allocator>::size_type;
+
   deque(deque const &) = delete;
   deque(deque &&) = delete;
   auto operator=(deque const &) -> deque & = delete;
@@ -241,33 +247,33 @@ class deque {
      */
     [[nodiscard]]
     constexpr auto empty(this thief_handle self) noexcept -> bool {
-      diff_int const top = self.m_queue->m_top.load(acquire);
+      diff_type const top = self.m_queue->m_top.load(acquire);
       std::atomic_thread_fence(seq_cst);
-      diff_int const bottom = self.m_queue->m_bottom.load(acquire);
+      diff_type const bottom = self.m_queue->m_bottom.load(acquire);
       return top >= bottom;
     }
     /**
      * @brief Get the number of elements in the deque.
      */
     [[nodiscard]]
-    constexpr auto size(this thief_handle self) noexcept -> std::size_t {
-      return static_cast<std::size_t>(self.ssize());
+    constexpr auto size(this thief_handle self) noexcept -> size_type {
+      return safe_cast<size_type>(self.ssize());
     }
     /**
      * @brief Get the number of elements in the deque as a signed integer.
      */
     [[nodiscard]]
-    constexpr auto ssize(this thief_handle self) noexcept -> diff_int {
-      diff_int const top = self.m_queue->m_top.load(acquire);
+    constexpr auto ssize(this thief_handle self) noexcept -> diff_type {
+      diff_type const top = self.m_queue->m_top.load(acquire);
       std::atomic_thread_fence(seq_cst);
-      diff_int const bottom = self.m_queue->m_bottom.load(acquire);
-      return std::max(bottom - top, diff_int{0});
+      diff_type const bottom = self.m_queue->m_bottom.load(acquire);
+      return std::max(bottom - top, diff_type{0});
     }
     /**
      * @brief Get the capacity of the deque.
      */
     [[nodiscard]]
-    constexpr auto capacity(this thief_handle self) noexcept -> diff_int {
+    constexpr auto capacity(this thief_handle self) noexcept -> diff_type {
       return self.m_queue->capacity();
     }
     /**
@@ -279,9 +285,9 @@ class deque {
      */
     constexpr auto steal(this thief_handle self) noexcept -> steal_t<T> {
       //
-      diff_int top = self.m_queue->m_top.load(acquire);
+      diff_type top = self.m_queue->m_top.load(acquire);
       std::atomic_thread_fence(seq_cst);
-      diff_int const bottom = self.m_queue->m_bottom.load(acquire);
+      diff_type const bottom = self.m_queue->m_bottom.load(acquire);
 
       if (top < bottom) {
         // Must load *before* acquiring the slot as slot may be overwritten immediately after
@@ -306,48 +312,44 @@ class deque {
   };
 
   /**
-   * @brief The type of the elements in the deque.
-   */
-  using value_type = T;
-  using allocator_type = Allocator;
-  /**
    * @brief Construct a new empty deque object.
    *
    * @param cap The capacity of the deque (will be rounded to the next power of two).
    * @param alloc Allocator used to allocate the internal buffer.
    */
-  constexpr explicit deque(std::size_t cap, Allocator const &alloc = Allocator{})
-      : m_buf(safe_cast<diff_int>(std::bit_ceil(cap)), alloc) {}
+  constexpr explicit deque(size_type cap, Allocator const &alloc = Allocator{})
+      : m_buf(safe_cast<diff_type>(std::bit_ceil(cap)), alloc) {}
+
   /**
    * @brief Check if the deque is empty.
    */
   [[nodiscard]]
   constexpr auto empty() const noexcept -> bool {
-    diff_int const bottom = m_bottom.load(relaxed);
-    diff_int const top = m_top.load(seq_cst);
+    diff_type const bottom = m_bottom.load(relaxed);
+    diff_type const top = m_top.load(seq_cst);
     return top >= bottom;
   }
   /**
    * @brief Get the number of elements in the deque.
    */
   [[nodiscard]]
-  constexpr auto size() const noexcept -> std::size_t {
-    return static_cast<std::size_t>(ssize());
+  constexpr auto size() const noexcept -> size_type {
+    return safe_cast<size_type>(ssize());
   }
   /**
    * @brief Get the number of elements in the deque as a signed integer.
    */
   [[nodiscard]]
-  constexpr auto ssize() const noexcept -> diff_int {
-    diff_int const bottom = m_bottom.load(relaxed);
-    diff_int const top = m_top.load(seq_cst);
-    return std::max(bottom - top, diff_int{0});
+  constexpr auto ssize() const noexcept -> diff_type {
+    diff_type const bottom = m_bottom.load(relaxed);
+    diff_type const top = m_top.load(seq_cst);
+    return std::max(bottom - top, diff_type{0});
   }
   /**
    * @brief Get the capacity of the deque.
    */
   [[nodiscard]]
-  constexpr auto capacity() const noexcept -> diff_int {
+  constexpr auto capacity() const noexcept -> diff_type {
     return m_buf.capacity();
   }
   /**
@@ -364,11 +366,11 @@ class deque {
    *
    * @param val Value to add to the deque.
    */
-  constexpr auto push(T val) -> diff_int {
+  constexpr auto push(T val) -> diff_type {
 
-    diff_int const bottom = m_bottom.load(relaxed);
-    diff_int const top = m_top.load(acquire);
-    diff_int const ssize = bottom - top;
+    diff_type const bottom = m_bottom.load(relaxed);
+    diff_type const top = m_top.load(acquire);
+    diff_type const ssize = bottom - top;
 
     if (m_buf.capacity() < ssize + 1) {
       LF_THROW(deque_full_error{});
@@ -400,12 +402,12 @@ class deque {
   constexpr auto
   pop(Fn &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<Fn>) -> std::invoke_result_t<Fn> {
 
-    diff_int const bottom = m_bottom.load(relaxed) - 1; //
-    m_bottom.store(bottom, relaxed);                    // Stealers can no longer steal.
+    diff_type const bottom = m_bottom.load(relaxed) - 1; //
+    m_bottom.store(bottom, relaxed);                     // Stealers can no longer steal.
 
     std::atomic_thread_fence(seq_cst);
 
-    diff_int top = m_top.load(relaxed);
+    diff_type top = m_top.load(relaxed);
 
     if (top <= bottom) {
       // Non-empty deque
@@ -430,8 +432,8 @@ class deque {
 
  private:
   alignas(k_cache_line) atomic_ring_buf<T, Allocator> m_buf;
-  alignas(k_cache_line) std::atomic<diff_int> m_top{0};
-  alignas(k_cache_line) std::atomic<diff_int> m_bottom{0};
+  alignas(k_cache_line) std::atomic<diff_type> m_top{0};
+  alignas(k_cache_line) std::atomic<diff_type> m_bottom{0};
 
   // Convenience aliases.
   static constexpr std::memory_order relaxed = std::memory_order_relaxed;
