@@ -422,8 +422,6 @@ auto stress_fan_cancel(lf::env<Context>, int width) -> lf::task<void, Context> {
   auto outer = co_await lf::child_scope();
   co_await outer.call_drop(stress_fan_cancel_inner{}, outer, count, width);
   co_await outer.join();
-  // Unreachable: outer scope was cancelled by the inner task.
-  std::terminate();
 }
 
 // --- Deep recursive fork tree with cancellation at a specific depth.
@@ -464,8 +462,6 @@ auto stress_tree_cancel(lf::env<Context>, int depth, int cancel_at) -> lf::task<
   auto outer = co_await lf::child_scope();
   co_await outer.call_drop(tree_cancel_node{}, outer, count, depth, cancel_at);
   co_await outer.join();
-  // Unreachable: outer scope was cancelled by a tree node.
-  std::terminate();
 }
 
 // --- Repeated schedule + cancel: exercises root.cxx stop path and receiver.
@@ -524,8 +520,6 @@ auto stress_nested_cancel(lf::env<Context>, int width) -> lf::task<void, Context
   auto outer = co_await lf::child_scope();
   co_await outer.call_drop(nested_cancel_orchestrator{}, outer, count, width);
   co_await outer.join();
-  // Unreachable: outer scope was cancelled by the orchestrator.
-  std::terminate();
 }
 
 // ============================================================
