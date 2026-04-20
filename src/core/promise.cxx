@@ -421,6 +421,11 @@ struct join_awaitable {
     LF_ASSUME(self.frame->joins == k_u16_max);
 
     // Outside parallel regions so can touch non-atomically.
+    //
+    // A task that completes by responding to cancellation will drop any
+    // exceptions however, a task may still throw exceptions even if cancelled.
+    // Here we must rethrow even if cancelled becasue we can't re-suspend at
+    // this point.
     if constexpr (LF_COMPILER_EXCEPTIONS) {
       if (self.frame->exception_bit) [[unlikely]] {
         self.rethrow_exception();

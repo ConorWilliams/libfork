@@ -178,9 +178,10 @@ root_pkg(state_handle<R, Stoppable> recv, Fn fn, Args... args) -> root_task<chec
   //
   // - Normal return
   // - Exception
-  // - Cancellation
+  // - Cancellation (in which case it would have dropped any exceptions)
   //
-  // We return any exception stashed unconditionally
+  // For symmetry with a normal task we unconditionaly propagate exceptions here,
+  // effectivly this is an `await_resume`.
 
   if constexpr (LF_COMPILER_EXCEPTIONS) {
     if (root->exception_bit) {
