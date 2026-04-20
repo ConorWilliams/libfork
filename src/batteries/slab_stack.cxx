@@ -64,10 +64,9 @@ class slab_stack {
   };
 
  public:
-  constexpr slab_stack() : slab_stack(Allocator{}) {}
-  explicit constexpr slab_stack(diff_type num_nodes) : slab_stack(Allocator{}, num_nodes) {}
-  explicit constexpr slab_stack(Allocator const &alloc, diff_type num_nodes = k_default_nodes)
-      : m_alloc(alloc) {
+  constexpr slab_stack() : slab_stack(k_default_nodes, Allocator{}) {}
+
+  explicit constexpr slab_stack(diff_type num_nodes, Allocator const &alloc = Allocator{}) : m_alloc(alloc) {
     init_slab(num_nodes);
   }
 
