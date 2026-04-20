@@ -72,7 +72,10 @@ export class stop_source {
   /**
    * @brief Get a handle to this stop source.
    */
-  constexpr auto token() const noexcept -> stop_token { return stop_token{this}; }
+  [[nodiscard]]
+  constexpr auto token() const noexcept -> stop_token {
+    return stop_token{this};
+  }
 
   /**
    * @brief Returns true if any stop source in the ancestor chain has been stopped.
