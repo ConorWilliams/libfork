@@ -147,6 +147,7 @@ class slab_stack {
   }
 
   constexpr void release([[maybe_unused]] release_t) noexcept {
+
     diff_type next_size = (m_ctrl != nullptr) ? m_ctrl->size : k_default_nodes;
 
     // Hand off the current slab to whoever holds the checkpoint; clear local state.
@@ -155,10 +156,12 @@ class slab_stack {
     m_sp = nullptr;
     m_hi = nullptr;
 
-    // Pre-allocate a fresh slab for our next use.  If this throws, swallow the
-    // exception — push will see no space (m_hi - m_sp == 0) and throw instead.
+    // Pre-allocate a fresh slab for our next use.
+
     LF_TRY {
       init_slab(next_size);
+      // If this throws, swallow the exception — push will see no space
+      // i.e. (m_hi - m_sp == 0) and throw instead.
     } LF_CATCH_ALL {
     }
   }
