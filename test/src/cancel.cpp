@@ -40,6 +40,8 @@ import libfork;
 //        schedulers where the task has not yet begun running.  Racy in
 //        principle, so the test only asserts completion, not that the body
 //        was skipped.
+//
+//   I. Stress tests: concurrent cancellation under contention.
 
 namespace {
 
