@@ -321,7 +321,7 @@ class deque {
    * @param alloc Allocator used to allocate the internal buffer.
    */
   constexpr explicit deque(size_type cap, Allocator const &alloc = Allocator{})
-      : m_buf(safe_cast<diff_type>(std::bit_ceil(cap)), alloc) {}
+      : m_buf(round_capacity(cap), alloc) {}
 
   /**
    * @brief Check if the deque is empty.
@@ -444,6 +444,15 @@ class deque {
   static constexpr std::memory_order acquire = std::memory_order_acquire;
   static constexpr std::memory_order release = std::memory_order_release;
   static constexpr std::memory_order seq_cst = std::memory_order_seq_cst;
+
+  /**
+   * @brief Round `cap` up to the next power of two as a `diff_type`.
+   */
+  static constexpr auto round_capacity(size_type cap) -> diff_type {
+    constexpr auto max_cap = std::bit_floor(safe_cast<size_type>(std::numeric_limits<diff_type>::max()));
+    LF_ASSUME(0 < cap && cap <= max_cap);
+    return safe_cast<diff_type>(std::bit_ceil(cap));
+  }
 };
 
 } // namespace lf
