@@ -17,7 +17,15 @@ import :task;
 
 namespace lf {
 
-// TODO: allocator aware! -> IDEA embed in frame/state
+/**
+ * @brief Thrown if the root coroutine frame is too large for the embedded buffer.
+ */
+export struct root_alloc_error final : libfork_exception {
+  [[nodiscard]]
+  constexpr auto what() const noexcept -> const char * override {
+    return "root coroutine frame exceeds hidden_receiver_state buffer size";
+  }
+};
 
 struct get_frame_t {};
 
@@ -26,6 +34,29 @@ struct root_task {
   struct promise_type {
 
     frame_type<Checkpoint> frame{Checkpoint{}};
+
+    /// Owns a ref to the hidden_receiver_state hosting this frame's buffer.
+    std::shared_ptr<void> keep_alive;
+
+    template <typename R, bool Stoppable, typename... Args>
+    constexpr explicit promise_type(state_handle<R, Stoppable> const &recv, Args const &...) noexcept
+        : keep_alive(recv) {}
+
+    template <typename R, bool Stoppable, typename... Args>
+    static auto
+    operator new(std::size_t size, state_handle<R, Stoppable> const &recv, Args const &...) -> void * {
+
+      LF_ASSUME(recv != nullptr);
+
+      if (size > recv->buffer.size()) {
+        LF_THROW(root_alloc_error{});
+      }
+
+      return recv->buffer.data();
+    }
+
+    /// No-op: the buffer is owned by the hidden_receiver_state, not the frame.
+    static auto operator delete(void * /*ptr*/, std::size_t /*size*/) noexcept -> void {}
 
     struct frame_awaitable : std::suspend_never {
       frame_type<Checkpoint> *frame;
@@ -54,7 +85,31 @@ struct root_task {
 
     constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
 
-    constexpr static auto final_suspend() noexcept -> std::suspend_never { return {}; }
+    /**
+     * @brief Custom final_suspend.
+     *
+     * The root coroutine frame lives inside the hidden_receiver_state's embedded
+     * buffer, so the hidden_receiver_state must outlive the frame teardown.
+     *
+     *   1. `std::exchange` the keep-alive shared_ptr into a local on the
+     *      host stack, leaving the promise member null.
+     *   2. `handle.destroy()` — runs parameter + promise destructors (including
+     *      the now-null `keep_alive`) and our no-op `operator delete`.
+     *      No frame-memory access occurs after the handle returns.
+     *   3. On return, the stack-local `shared_ptr<void>` dies; if its ref
+     *      was the last, it destroys the hidden_receiver_state cleanly — we are
+     *      no longer executing inside the buffer.
+     */
+    struct final_awaiter : std::suspend_always {
+      void await_suspend(std::coroutine_handle<promise_type> handle) const noexcept {
+        std::shared_ptr<void> local = std::exchange(handle.promise().keep_alive, nullptr);
+        LF_ASSUME(local != nullptr);
+        handle.destroy();
+        // `local` released here — possibly freeing hidden_receiver_state on return.
+      }
+    };
+
+    constexpr static auto final_suspend() noexcept -> final_awaiter { return {}; }
 
     constexpr static void return_void() noexcept {}
 
@@ -72,18 +127,17 @@ template <worker_context Context, typename R, bool Stoppable, typename Fn, typen
   requires async_invocable_to<Fn, R, Context, Args...>
 [[nodiscard]]
 auto //
-root_pkg(std::shared_ptr<receiver_state<R, Stoppable>> recv, Fn fn, Args... args)
-    -> root_task<checkpoint_t<Context>> {
+root_pkg(state_handle<R, Stoppable> recv, Fn fn, Args... args) -> root_task<checkpoint_t<Context>> {
 
   // This should be resumed on a valid context.
   LF_ASSUME(thread_local_context<Context> != nullptr);
 
   using checkpoint = checkpoint_t<Context>;
 
-  // This is a pointer to the current root_task's frame
+  // Pointer to this root_task's own frame.
   frame_type<checkpoint> *root = not_null(co_await get_frame_t{});
 
-  // Now we do a manual "call" invocation.
+  // Manual "call" invocation of the user-supplied task.
 
   using result_type = async_result_t<Fn, Context, Args...>;
   using promise_type = promise_type<result_type, Context>;
@@ -100,7 +154,7 @@ root_pkg(std::shared_ptr<receiver_state<R, Stoppable>> recv, Fn fn, Args... args
     // Potentially throwing
     child = get(key(), ctx_invoke_t<Context>{}(std::move(fn), std::move(args)...));
   } LF_CATCH_ALL {
-    get(key(), *recv).set_exception(std::current_exception());
+    recv->exception = std::current_exception();
     goto cleanup;
   }
 
@@ -113,7 +167,7 @@ root_pkg(std::shared_ptr<receiver_state<R, Stoppable>> recv, Fn fn, Args... args
   LF_ASSUME(child->frame.kind == category::call);
 
   if constexpr (!std::is_void_v<async_result_t<Fn, Context, Args...>>) {
-    child->return_address = get(key(), *recv).return_value_address();
+    child->return_address = std::addressof(recv->return_value);
   }
 
   // Begin normal execution of the child task, it will clean itself
@@ -124,21 +178,22 @@ root_pkg(std::shared_ptr<receiver_state<R, Stoppable>> recv, Fn fn, Args... args
   //
   // - Normal return
   // - Exception
-  // - Cancellation
+  // - Cancellation (in which case it would have dropped any exceptions)
   //
-  // We return any exception stashed unconditionally
+  // For symmetry with a normal task we unconditionally propagate exceptions here,
+  // effectively this is an `await_resume`.
 
   if constexpr (LF_COMPILER_EXCEPTIONS) {
     if (root->exception_bit) {
       // The child threw an exception, propagate it to the receiver.
-      get(key(), *recv).set_exception(extract_exception(root));
+      recv->exception = extract_exception(root);
     }
   }
 
 cleanup:
-  // Now do that which we would otherwise do at a final suspend.
   // Notify the receiver that the task is done.
-  get(key(), *recv).notify_ready();
+  recv->ready.test_and_set();
+  recv->ready.notify_one();
 
   LF_ASSUME(root->steals == 0);
   LF_ASSUME(root->joins == k_u16_max);

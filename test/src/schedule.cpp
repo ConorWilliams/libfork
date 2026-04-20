@@ -28,6 +28,14 @@ auto throwing_function(env<Context> /*unused*/) -> task<void, Context> {
   co_return;
 }
 
+// Task whose argument is a big enough value-type to push the root coroutine
+// frame past the 1 KiB embedded buffer in hidden_receiver_state.
+template <typename Context>
+auto big_arg_function(env<Context> /*unused*/, std::array<std::byte, 2048> /*unused*/)
+    -> task<void, Context> {
+  co_return;
+}
+
 template <typename Sch>
 void simple_tests(Sch &scheduler) {
   SECTION("void") {
@@ -42,11 +50,46 @@ void simple_tests(Sch &scheduler) {
     REQUIRE(std::move(recv).get() == true);
   }
 
+  SECTION("explicit recv_state") {
+    lf::recv_state<bool, false> state;
+    auto recv = schedule(scheduler, std::move(state), simple_function<lf::context_t<Sch>>);
+    REQUIRE(recv.valid());
+    REQUIRE(std::move(recv).get() == true);
+  }
+
+  SECTION("stoppable recv_state") {
+    lf::recv_state<bool, true> state;
+    auto recv = schedule(scheduler, std::move(state), simple_function<lf::context_t<Sch>>);
+    REQUIRE(recv.valid());
+    REQUIRE(std::move(recv).get() == true);
+  }
+
+  SECTION("recv_state with explicit allocator") {
+    std::allocator<std::byte> alloc;
+    lf::recv_state<bool, false> state{std::allocator_arg, alloc};
+    auto recv = schedule(scheduler, std::move(state), simple_function<lf::context_t<Sch>>);
+    REQUIRE(recv.valid());
+    REQUIRE(std::move(recv).get() == true);
+  }
+
+  SECTION("recv_state with value-init") {
+    // Pre-initialise the return slot; the task overwrites it.
+    lf::recv_state<bool, false> state{false};
+    auto recv = schedule(scheduler, std::move(state), simple_function<lf::context_t<Sch>>);
+    REQUIRE(recv.valid());
+    REQUIRE(std::move(recv).get() == true);
+  }
+
 #if LF_COMPILER_EXCEPTIONS
   SECTION("throwing") {
     auto recv = schedule(scheduler, throwing_function<lf::context_t<Sch>>);
     REQUIRE(recv.valid());
     REQUIRE_THROWS_AS(std::move(recv).get(), std::runtime_error);
+  }
+
+  SECTION("frame too large -> root_alloc_error") {
+    std::array<std::byte, 2048> big{};
+    REQUIRE_THROWS_AS(schedule(scheduler, big_arg_function<lf::context_t<Sch>>, big), lf::root_alloc_error);
   }
 #endif
 }

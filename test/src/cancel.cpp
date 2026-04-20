@@ -35,8 +35,13 @@ import libfork;
 //        source propagates through the chain to the inner scope.
 //
 //   H. Stoppable receiver / pre-cancelled root:
-//        receiver_state<T, true>::request_stop() before schedule() triggers
-//        the goto-cleanup fast path in root.cxx — task body never executes.
+//        recv_state<T, true> + receiver::request_stop() immediately after
+//        schedule() — covers the goto-cleanup fast path in root.cxx on
+//        schedulers where the task has not yet begun running.  Racy in
+//        principle, so the test only asserts completion, not that the body
+//        was skipped.
+//
+//   I. Stress tests: concurrent cancellation under contention.
 
 namespace {
 
@@ -353,15 +358,168 @@ auto test_nested_child_scope_chain(lf::env<Context>) -> lf::task<bool, Context> 
 // ============================================================
 // H. Stoppable receiver / pre-cancelled root.
 //
-//    receiver_state<T, true>::request_stop() before schedule() makes the root
-//    frame's stop_token immediately satisfied, triggering the goto-cleanup
-//    fast path in root.cxx so the task body never runs.
+//    Using recv_state<T, true> + receiver::request_stop() exercises the
+//    goto-cleanup fast path in root.cxx when stop is requested before the
+//    worker resumes the task.
 // ============================================================
 
 template <typename Context>
-auto pre_cancelled_root_fn(lf::env<Context>, bool *ran) -> lf::task<void, Context> {
-  *ran = true;
+auto pre_cancelled_root_fn(lf::env<Context>, std::atomic<bool> *ran) -> lf::task<void, Context> {
+  ran->store(true, std::memory_order_relaxed);
   co_return;
+}
+
+// ============================================================
+// I. Stress tests: concurrent cancellation under contention.
+//
+//    These tests fork many tasks across multiple threads to maximize the
+//    probability of hitting the concurrent paths in final_suspend_full,
+//    final_suspend_trailing, and join_awaitable::await_suspend with
+//    stop_requested() == true.
+// ============================================================
+
+// --- Leaf task: does a tiny amount of work then returns.
+struct leaf_work {
+  template <typename Context>
+  static auto operator()(lf::env<Context>, std::atomic<int> &count) -> lf::task<void, Context> {
+    count.fetch_add(1, std::memory_order_relaxed);
+    co_return;
+  }
+};
+
+// --- Fan-out many forks, one sibling cancels the scope mid-flight.
+//
+//     With enough forks and threads, some children will be in-flight when
+//     stop fires. This exercises:
+//       - final_suspend_trailing: child completes, wins join race, sees stop
+//       - final_suspend_full: iterative ancestor climb on stopped frames
+//       - awaitable::await_suspend: children launched after stop are skipped
+//       - join_awaitable: stop detected at join with steals > 0
+
+struct stress_fan_cancel_inner {
+  template <typename Context>
+  static auto operator()(lf::env<Context>, lf::stop_source &my_stop, std::atomic<int> &count, int width)
+      -> lf::task<void, Context> {
+    auto sc = co_await lf::scope();
+
+    // Fork width children; the last one cancels this scope.
+    for (int i = 0; i < width; ++i) {
+      if (i == width / 2) {
+        co_await sc.fork_drop(cancel_source{}, my_stop, count);
+      } else {
+        co_await sc.fork_drop(leaf_work{}, count);
+      }
+    }
+    co_await sc.join();
+    // Should not be reached — cancel_source fired mid-fan.
+    count.fetch_add(10000, std::memory_order_relaxed);
+  }
+};
+
+template <typename Context>
+auto stress_fan_cancel(lf::env<Context>, int width) -> lf::task<void, Context> {
+  std::atomic<int> count = 0;
+  auto outer = co_await lf::child_scope();
+  co_await outer.call_drop(stress_fan_cancel_inner{}, outer, count, width);
+  co_await outer.join();
+}
+
+// --- Deep recursive fork tree with cancellation at a specific depth.
+//
+//     This creates a binary tree of forks. When a node at the target depth
+//     fires, it cancels the scope. This stresses:
+//       - final_suspend_full loop: many frames in the ancestor chain may be
+//         stopped, causing iterative climbing
+//       - final_suspend_trailing: stolen forks completing concurrently
+//       - Stack ownership transfer under cancellation
+
+struct tree_cancel_node {
+  template <typename Context>
+  static auto
+  operator()(lf::env<Context>, lf::stop_source &root_stop, std::atomic<int> &count, int depth, int cancel_at)
+      -> lf::task<void, Context> {
+    count.fetch_add(1, std::memory_order_relaxed);
+
+    if (depth <= 0) {
+      co_return;
+    }
+
+    if (depth == cancel_at) {
+      root_stop.request_stop();
+      co_return;
+    }
+
+    auto sc = co_await lf::scope();
+    co_await sc.fork_drop(tree_cancel_node{}, root_stop, count, depth - 1, cancel_at);
+    co_await sc.fork_drop(tree_cancel_node{}, root_stop, count, depth - 1, cancel_at);
+    co_await sc.join();
+  }
+};
+
+template <typename Context>
+auto stress_tree_cancel(lf::env<Context>, int depth, int cancel_at) -> lf::task<void, Context> {
+  std::atomic<int> count = 0;
+  auto outer = co_await lf::child_scope();
+  co_await outer.call_drop(tree_cancel_node{}, outer, count, depth, cancel_at);
+  co_await outer.join();
+}
+
+// --- Repeated schedule + cancel: exercises root.cxx stop path and receiver.
+//
+//     Rapidly schedules tasks and immediately cancels them. The race between
+//     the worker picking up the task and the cancellation request stresses
+//     the root_pkg pre-cancelled path and final_suspend from root frames.
+
+struct busy_leaf {
+  template <typename Context>
+  static auto operator()(lf::env<Context>) -> lf::task<void, Context> {
+    co_return;
+  }
+};
+
+// --- Many-fork cancel with nested child_scopes at multiple levels.
+//
+//     An outer child_scope forks N tasks. Each inner task creates its own
+//     child_scope and forks M children. Mid-way, the outer scope is cancelled.
+//     This tests chain propagation under concurrent fork completion, hitting
+//     final_suspend_full's iterative climb through multiple nested stopped
+//     frames.
+
+struct nested_inner_worker {
+  template <typename Context>
+  static auto operator()(lf::env<Context>, std::atomic<int> &count, int width) -> lf::task<void, Context> {
+    auto sc = co_await lf::scope();
+    for (int i = 0; i < width; ++i) {
+      co_await sc.fork_drop(leaf_work{}, count);
+    }
+    co_await sc.join();
+  }
+};
+
+struct nested_cancel_orchestrator {
+  template <typename Context>
+  static auto operator()(lf::env<Context>, lf::stop_source &root_stop, std::atomic<int> &count, int width)
+      -> lf::task<void, Context> {
+    auto sc = co_await lf::scope();
+    for (int i = 0; i < width; ++i) {
+      if (i == width / 2) {
+        // Cancel after forking half the work
+        root_stop.request_stop();
+      }
+      co_await sc.fork_drop(nested_inner_worker{}, count, width);
+    }
+    co_await sc.join();
+    // Should not be reached
+    count.fetch_add(100000, std::memory_order_relaxed);
+  }
+};
+
+template <typename Context>
+auto stress_nested_cancel(lf::env<Context>, int width) -> lf::task<void, Context> {
+  std::atomic<int> count = 0;
+  auto outer = co_await lf::child_scope();
+  co_await outer.call_drop(nested_cancel_orchestrator{}, outer, count, width);
+  co_await outer.join();
 }
 
 // ============================================================
@@ -439,14 +597,79 @@ void tests(Sch &scheduler) {
     REQUIRE(std::move(recv).get());
   }
 
-  SECTION("stoppable receiver: pre-cancelled root task body never executes") {
-    bool ran = false;
-    auto state = std::make_shared<lf::receiver_state<void, true>>();
-    state->request_stop();
+  SECTION("stoppable receiver: recv_state + request_stop completes cleanly") {
+    std::atomic<bool> ran = false;
+    lf::recv_state<void, true> state;
     auto recv = lf::schedule(scheduler, std::move(state), pre_cancelled_root_fn<Ctx>, &ran);
     REQUIRE(recv.valid());
+    recv.stop_source().request_stop();
+
+#if LF_COMPILER_EXCEPTIONS
+    REQUIRE_THROWS_AS(std::move(recv).get(), lf::operation_cancelled_error);
+#else
+    recv.wait();
+#endif
+
+    // The task body may or may not have run depending on scheduler timing;
+    // what matters is that get() completes without error.
+    std::ignore = ran.load();
+  }
+
+  // --- Stress tests (paths C/D/E under contention) ---
+
+  SECTION("stress: fan-out cancel, width=16") {
+    auto recv = schedule(scheduler, stress_fan_cancel<Ctx>, 16);
+    REQUIRE(recv.valid());
     std::move(recv).get();
-    REQUIRE(!ran);
+  }
+
+  SECTION("stress: fan-out cancel, width=64") {
+    auto recv = schedule(scheduler, stress_fan_cancel<Ctx>, 64);
+    REQUIRE(recv.valid());
+    std::move(recv).get();
+  }
+
+  SECTION("stress: tree cancel depth=6, cancel at depth=3") {
+    auto recv = schedule(scheduler, stress_tree_cancel<Ctx>, 6, 3);
+    REQUIRE(recv.valid());
+    std::move(recv).get();
+  }
+
+  SECTION("stress: tree cancel depth=8, cancel at depth=1 (near leaf)") {
+    auto recv = schedule(scheduler, stress_tree_cancel<Ctx>, 8, 1);
+    REQUIRE(recv.valid());
+    std::move(recv).get();
+  }
+
+  SECTION("stress: tree cancel depth=8, cancel at depth=7 (near root)") {
+    auto recv = schedule(scheduler, stress_tree_cancel<Ctx>, 8, 7);
+    REQUIRE(recv.valid());
+    std::move(recv).get();
+  }
+
+  SECTION("stress: nested child_scope cancel, width=8") {
+    auto recv = schedule(scheduler, stress_nested_cancel<Ctx>, 8);
+    REQUIRE(recv.valid());
+    std::move(recv).get();
+  }
+
+  SECTION("stress: nested child_scope cancel, width=32") {
+    auto recv = schedule(scheduler, stress_nested_cancel<Ctx>, 32);
+    REQUIRE(recv.valid());
+    std::move(recv).get();
+  }
+
+  SECTION("stress: rapid schedule + cancel") {
+    for (int i = 0; i < 50; ++i) {
+      lf::recv_state<void, true> state;
+      auto recv = lf::schedule(scheduler, std::move(state), busy_leaf{});
+      recv.stop_source().request_stop();
+#if LF_COMPILER_EXCEPTIONS
+      REQUIRE_THROWS_AS(std::move(recv).get(), lf::operation_cancelled_error);
+#else
+      recv.wait();
+#endif
+    }
   }
 
 #if LF_COMPILER_EXCEPTIONS
@@ -497,6 +720,54 @@ TEMPLATE_TEST_CASE("Busy cancel", "[cancel]", mono_busy_thread_pool, poly_busy_t
     DYNAMIC_SECTION("threads=" << thr) {
       TestType scheduler{thr};
       tests(scheduler);
+    }
+  }
+}
+
+namespace {
+
+// Stress tests repeated at higher thread counts to maximize contention.
+template <typename Sch>
+void stress_tests(Sch &scheduler) {
+  using Ctx = lf::context_t<Sch>;
+
+  SECTION("stress: repeated fan cancel") {
+    for (int rep = 0; rep < 20; ++rep) {
+      auto recv = schedule(scheduler, stress_fan_cancel<Ctx>, 32);
+      REQUIRE(recv.valid());
+      std::move(recv).get();
+    }
+  }
+
+  SECTION("stress: repeated tree cancel") {
+    for (int rep = 0; rep < 20; ++rep) {
+      auto recv = schedule(scheduler, stress_tree_cancel<Ctx>, 7, 3);
+      REQUIRE(recv.valid());
+      std::move(recv).get();
+    }
+  }
+
+  SECTION("stress: repeated nested cancel") {
+    for (int rep = 0; rep < 20; ++rep) {
+      auto recv = schedule(scheduler, stress_nested_cancel<Ctx>, 16);
+      REQUIRE(recv.valid());
+      std::move(recv).get();
+    }
+  }
+}
+
+} // namespace
+
+TEMPLATE_TEST_CASE("Busy cancel stress", "[cancel][stress]", mono_busy_thread_pool, poly_busy_thread_pool) {
+
+  STATIC_REQUIRE(lf::scheduler<TestType>);
+
+  std::size_t max_thr = std::min(8UZ, static_cast<std::size_t>(std::thread::hardware_concurrency()));
+
+  for (std::size_t thr = 2; thr <= max_thr; thr *= 2) {
+    DYNAMIC_SECTION("threads=" << thr) {
+      TestType scheduler{thr};
+      stress_tests(scheduler);
     }
   }
 }

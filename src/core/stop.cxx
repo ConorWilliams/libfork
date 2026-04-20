@@ -7,7 +7,7 @@ import libfork.utils;
 namespace lf {
 
 /**
- * @brief Similar to a linked-list of std::stop_sorce but with an embedded stop_state.
+ * @brief Similar to a linked-list of std::stop_source but with an embedded stop_state.
  */
 export class stop_source {
  public:
@@ -72,11 +72,14 @@ export class stop_source {
   /**
    * @brief Get a handle to this stop source.
    */
-  constexpr auto token() const noexcept -> stop_token { return stop_token{this}; }
+  [[nodiscard]]
+  constexpr auto token() const noexcept -> stop_token {
+    return stop_token{this};
+  }
 
   /**
    * @brief Returns true if any stop source in the ancestor chain has been stopped.
-
+   *
    * Complexity: O(chain depth). Every task that creates a child_scope adds one
    * node to the chain, so deeply-nested task hierarchies pay proportionally more
    * per stop check.
