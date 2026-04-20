@@ -1,6 +1,8 @@
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "libfork/__impl/exception.hpp"
+
 import std;
 
 import libfork;
@@ -310,3 +312,32 @@ TEST_CASE("slab_stack - single pass", "[stacks]") {
     }
   }
 }
+
+#if LF_COMPILER_EXCEPTIONS
+
+TEST_CASE("slab_stack - release/acquire preserves capacity", "[stacks]") {
+  // Regression: acquire must propagate the non-default capacity via m_ctrl->size,
+  // not silently revert to k_default_nodes.
+  constexpr int N = 4;
+  lf::slab_stack<> src(N);
+  lf::slab_stack<> dst;
+
+  void *p = src.push(k_new_align);
+  auto cp = src.checkpoint();
+  auto key = src.prepare_release();
+  dst.acquire(cp);
+  src.release(key);
+
+  // dst should have room for N-1 more pushes (one already used), and then throw.
+  std::vector<void *> ptrs{p};
+  for (int i = 1; i < N; ++i) {
+    ptrs.push_back(dst.push(k_new_align));
+  }
+  REQUIRE_THROWS_AS(dst.push(k_new_align), std::bad_alloc);
+  for (auto it = ptrs.rbegin(); it != ptrs.rend(); ++it) {
+    dst.pop(*it, k_new_align);
+  }
+  REQUIRE(dst.empty());
+}
+
+#endif
