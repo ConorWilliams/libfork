@@ -78,6 +78,8 @@ using lf::adaptor_stack;
 using lf::geometric_stack;
 using lf::slab_stack;
 
+// -- Vector
+
 BENCH_ALL(inline_scheduler<real_context<adaptor_stack<>, adapt_vector>>)
 BENCH_ALL(inline_scheduler<poly_context<adaptor_stack<>, adapt_vector>>)
 
@@ -86,6 +88,14 @@ BENCH_ALL(inline_scheduler<poly_context<slab_stack<>, adapt_vector>>)
 
 BENCH_ALL(inline_scheduler<real_context<geometric_stack<>, adapt_vector>>)
 BENCH_ALL(inline_scheduler<poly_context<geometric_stack<>, adapt_vector>>)
+
+// -- Deque
+
+BENCH_ALL(inline_scheduler<real_context<adaptor_stack<>, adapt_deque>>)
+BENCH_ALL(inline_scheduler<poly_context<adaptor_stack<>, adapt_deque>>)
+
+BENCH_ALL(inline_scheduler<real_context<slab_stack<>, adapt_deque>>)
+BENCH_ALL(inline_scheduler<poly_context<slab_stack<>, adapt_deque>>)
 
 BENCH_ALL(inline_scheduler<real_context<geometric_stack<>, adapt_deque>>)
 BENCH_ALL(inline_scheduler<poly_context<geometric_stack<>, adapt_deque>>)
