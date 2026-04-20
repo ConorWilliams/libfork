@@ -176,7 +176,7 @@ class receiver {
   /**
    * @brief Wait for the associated task to complete and return its result, or rethrow.
    *
-   * If the reciever was cancelled this will throw an exception.
+   * If the receiver was cancelled this will throw an exception.
    *
    * This may only be called once; the state is consumed and the receiver becomes invalid.
    */
