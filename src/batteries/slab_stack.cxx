@@ -66,6 +66,8 @@ class slab_stack {
  public:
   constexpr slab_stack() : slab_stack(k_default_nodes, Allocator{}) {}
 
+  // TODO: what is appropriate unit for initialisation
+
   explicit constexpr slab_stack(diff_type num_nodes, Allocator const &alloc = Allocator{}) : m_alloc(alloc) {
     init_slab(num_nodes);
   }
