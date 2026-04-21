@@ -139,15 +139,11 @@ TEMPLATE_TEST_CASE("Single pass", "[stacks]", STACK_TYPES_ALL) {
       for (std::size_t j = 0; j < depth; ++j) {
         std::size_t s = size_dist(rng);
         void *p = nullptr;
-#if LF_COMPILER_EXCEPTIONS
-        try {
+        LF_TRY {
           p = stack.push(s);
-        } catch (std::bad_alloc const &) {
+        } LF_CATCH(std::bad_alloc const &) {
           break;
         }
-#else
-        p = stack.push(s);
-#endif
         check_alignment(p);
         entries.push_back({.ptr = p, .size = s});
       }
@@ -186,15 +182,12 @@ TEMPLATE_TEST_CASE("Randomized push/pop", "[stacks]", STACK_TYPES_ALL) {
     if (entries.empty() || push_dist(rng)) {
       std::size_t s = size_dist(rng);
       void *p = nullptr;
-#if LF_COMPILER_EXCEPTIONS
-      try {
+      LF_TRY {
         p = stack.push(s);
-      } catch (std::bad_alloc const &) {
-        break; // slab_stack exhausted; clean up and finish
+      } LF_CATCH(std::bad_alloc const &) {
+        // slab_stack exhausted; clean up and finish
+        break;
       }
-#else
-      p = stack.push(s);
-#endif
       check_alignment(p);
       entries.push_back({.ptr = p, .size = s});
       total_pushed++;
@@ -249,15 +242,12 @@ TEMPLATE_TEST_CASE("Spikey randomized push/pop", "[stacks]", STACK_TYPES_ALL) {
     if (do_push) {
       std::size_t s = size_dist(rng);
       void *p = nullptr;
-#if LF_COMPILER_EXCEPTIONS
-      try {
+      LF_TRY {
         p = stack.push(s);
-      } catch (std::bad_alloc const &) {
-        break; // slab_stack exhausted; clean up and finish
+      } LF_CATCH(std::bad_alloc const &) {
+        // slab_stack exhausted; clean up and finish
+        break;
       }
-#else
-      p = stack.push(s);
-#endif
       check_alignment(p);
       entries.push_back({.ptr = p, .size = s});
       total_pushed++;
