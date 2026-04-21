@@ -8,7 +8,10 @@ import std;
 import libfork;
 import libfork.utils;
 
+using lf::adaptor_stack;
+using lf::geometric_stack;
 using lf::k_new_align;
+using lf::slab_stack;
 using lf::worker_stack;
 
 namespace {
@@ -59,17 +62,16 @@ constexpr void check_non_empty(auto const &stack) {
 // Stack types that may hit slab_stack's fixed capacity need exception support
 // to signal overflow. Under -fno-exceptions, drop slab_stack from those tests.
 #if LF_COMPILER_EXCEPTIONS
-  #define STACK_TYPES_ALL lf::geometric_stack<>, lf::adaptor_stack<>, lf::slab_stack<>
+  #define STACK_TYPES_ALL geometric_stack<>, adaptor_stack<>, slab_stack<>
 #else
-  #define STACK_TYPES_ALL lf::geometric_stack<>, lf::adaptor_stack<>
+  #define STACK_TYPES_ALL geometric_stack<>, adaptor_stack<>
 #endif
 
-TEMPLATE_TEST_CASE("Concept", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>, lf::slab_stack<>) {
+TEMPLATE_TEST_CASE("Concept", "[stacks]", geometric_stack<>, adaptor_stack<>, slab_stack<>) {
   STATIC_REQUIRE(worker_stack<TestType>); //
 }
 
-TEMPLATE_TEST_CASE("Basic push and pop", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>,
-                   lf::slab_stack<>) {
+TEMPLATE_TEST_CASE("Basic push and pop", "[stacks]", geometric_stack<>, adaptor_stack<>, slab_stack<>) {
   TEST_CONSTEXPR([]() -> bool {
     TestType stack;
     check_empty(stack);
@@ -92,8 +94,7 @@ TEMPLATE_TEST_CASE("Basic push and pop", "[stacks]", lf::geometric_stack<>, lf::
   });
 }
 
-TEMPLATE_TEST_CASE("Checkpoint and Acquire/Release", "[stacks]", lf::geometric_stack<>, lf::adaptor_stack<>,
-                   lf::slab_stack<>) {
+TEMPLATE_TEST_CASE("Ckpt/Acquire/Release", "[stacks]", geometric_stack<>, adaptor_stack<>, slab_stack<>) {
   TEST_CONSTEXPR([]() -> bool {
     TestType stack1;
     void *p1 = stack1.push(100);
