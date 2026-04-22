@@ -8,12 +8,9 @@ import :frame;
 
 namespace lf {
 
-// =================== Untyped handle =================== //
-//
-// `handle` is the untyped storage form — trivially-copyable pointer-sized, suitable for atomic storage.
-// Only libfork internals can construct one or extract the frame pointer, via the `key_t` passkey.
+// =================== Untyped handles =================== //
 
-export class handle {
+class handle {
  public:
   constexpr handle() = default;
   constexpr handle(key_t, frame_base *ptr) noexcept : m_ptr{ptr} {}
@@ -29,23 +26,44 @@ export class handle {
   frame_base *m_ptr = nullptr;
 };
 
-// =================== Tagged handles =================== //
-//
-// Tagged wrappers carrying the context type at API boundaries. They slice to `handle`
-// for untyped storage; re-tagging from `handle` is gated on `key_t`.
-
-// TODO: when a steal handle resumes a task and increments the number of forks
-// it should check and potentially crash if the number of forks exceeds the
-// maximum determined by uint16_max
-
-export template <typename T>
-struct steal_handle : handle {
+/**
+ * @brief An untyped steal-handle.
+ *
+ * For use by context policies that need to store handles in an untyped manner.
+ */
+export struct untyped_steal_handle : handle {
   using handle::handle;
 };
 
-export template <typename T>
-struct sched_handle : handle {
+/**
+ * @brief An untyped schedule-handle.
+ *
+ * For use by context policies that need to store handles in an untyped manner.
+ */
+export struct untyped_sched_handle : handle {
   using handle::handle;
+};
+
+// =================== Tagged handles =================== //
+
+/**
+ * @brief A handle to a task that can be stolen and resumed with `execute`.
+ *
+ * The coroutine behind this task is always suspended at fork point.
+ */
+export template <typename T>
+struct steal_handle : untyped_steal_handle {
+  using untyped_steal_handle::untyped_steal_handle;
+};
+
+/**
+ * @brief A handle to a task that can be resumed with `execute`.
+ *
+ * The coroutine behind this task is either not-yet-started or suspended at a context-switch.
+ */
+export template <typename T>
+struct sched_handle : untyped_sched_handle {
+  using untyped_sched_handle::untyped_sched_handle;
 };
 
 } // namespace lf
