@@ -1,64 +1,51 @@
 export module libfork.core:handles;
 
+import std;
+
 import libfork.utils;
 
 import :frame;
 
 namespace lf {
 
-// =================== Frame =================== //
-
-// TODO: api + test this is lock-free
+// =================== Untyped handle =================== //
 //
-// What is the API:
-//  - You can push/pop it
-//  - You can convert it to a "steal handle" -> which you can/must resume?
-//
-// What properties does it have:
-//  - It is trivially copyable/constructible/destructible
-//  - It has a null value, you can test if it is null
-//  - You can store it in an atomic and it is lock-free
+// `handle` is the untyped storage form — trivially-copyable pointer-sized, suitable for atomic storage.
+// Only libfork internals can construct one or extract the frame pointer, via the `key_t` passkey.
 
-export template <typename T>
-class handle {
+export class handle {
  public:
   constexpr handle() = default;
+  constexpr handle(key_t, frame_base *ptr) noexcept : m_ptr{ptr} {}
   constexpr auto operator==(handle const &) const noexcept -> bool = default;
   constexpr explicit operator bool() const noexcept { return m_ptr != nullptr; }
 
-  // Template to prevent circular dependency
-  constexpr handle(key_t, frame_base *ptr) noexcept : m_ptr{ptr} {}
-
  private:
   [[nodiscard]]
-  constexpr friend auto get(key_t, handle other) noexcept -> frame_base * {
-    return other.m_ptr;
+  constexpr friend auto get(key_t, handle h) noexcept -> frame_base * {
+    return h.m_ptr;
   }
 
   frame_base *m_ptr = nullptr;
 };
 
-// TODO: can we private inherit?
-
-/**
- * @brief [TODO:description]
- *
- * @tparam T The (potentially incomplete) worker context.
- */
-export template <typename T>
-struct steal_handle : handle<T> {
-  using handle<T>::handle;
-};
-
-// =================== Await =================== //
+// =================== Tagged handles =================== //
+//
+// Tagged wrappers carrying the context type at API boundaries. They slice to `handle`
+// for untyped storage; re-tagging from `handle` is gated on `key_t`.
 
 // TODO: when a steal handle resumes a task and increments the number of forks
 // it should check and potentially crash if the number of forks exceeds the
 // maximum determined by uint16_max
 
 export template <typename T>
-struct sched_handle : handle<T> {
-  using handle<T>::handle;
+struct steal_handle : handle {
+  using handle::handle;
+};
+
+export template <typename T>
+struct sched_handle : handle {
+  using handle::handle;
 };
 
 } // namespace lf
