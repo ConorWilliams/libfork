@@ -5,87 +5,98 @@ export module libfork.batteries:contexts;
 import std;
 
 import libfork.core;
+import libfork.utils;
 
 import :dummy_stack;
 
 namespace lf {
 
-// TODO: constraints on container
+// =================== Adaptor concepts =================== //
 
-// TODO: could we make the container non template-template
-// TODO: allocator aware
-// TODO: make post aware
+export template <typename A>
+concept context_adaptor = worker_context_of<A, handle>;
 
-export template <                        //
-    worker_stack Stack,                  //
-    template <typename> typename Adaptor //
-    >
+export template <typename A>
+concept posting_context_adaptor = context_adaptor<A> && requires (A &a, handle h) {
+  { a.post(h) } -> std::same_as<void>;
+};
+
+export template <typename A>
+concept stealable_context_adaptor = context_adaptor<A> && requires (A &a) {
+  { a.thief() };
+};
+
+// =================== Contexts =================== //
+
+export template <worker_stack Stack, context_adaptor Adaptor>
 class derived_poly_context : public poly_context<Stack> {
  public:
   using context_type = poly_context<Stack>;
 
   [[nodiscard]]
-  constexpr auto get_underlying() noexcept -> Adaptor<context_type> & {
+  constexpr auto get_underlying() noexcept -> Adaptor & {
     return m_container;
+  }
+
+  [[nodiscard]]
+  static constexpr auto adopt_steal(handle h) noexcept -> steal_handle<context_type> {
+    return {key(), get(key(), h)};
   }
 
   constexpr void push(steal_handle<context_type> frame) final { m_container.push(frame); }
 
-  constexpr auto pop() noexcept -> steal_handle<context_type> final { return m_container.pop(); }
+  constexpr auto pop() noexcept -> steal_handle<context_type> final {
+    return {key(), get(key(), m_container.pop())};
+  }
 
-  constexpr void post(sched_handle<context_type> handle) final {
-
-    constexpr bool has_post = requires {
-      { m_container.post(handle) } -> std::same_as<void>;
-    };
-
-    if constexpr (has_post) {
-      m_container.post(handle);
+  constexpr void post(sched_handle<context_type> h) final {
+    if constexpr (posting_context_adaptor<Adaptor>) {
+      m_container.post(h);
     } else {
-      poly_context<Stack>::post(handle);
+      poly_context<Stack>::post(h);
     }
   }
 
  private:
-  Adaptor<context_type> m_container;
+  Adaptor m_container;
 };
 
-// TODO: allow customization of post (via Container?)
-// TODO: allocator aware
-
-export template <                        //
-    worker_stack Stack,                  //
-    template <typename> typename Adaptor //
-    >
+export template <worker_stack Stack, context_adaptor Adaptor>
 class mono_context : public base_context<Stack> {
  public:
   using context_type = mono_context;
 
   [[nodiscard]]
-  constexpr auto get_underlying() noexcept -> Adaptor<context_type> & {
+  constexpr auto get_underlying() noexcept -> Adaptor & {
     return m_container;
   }
 
-  constexpr void push(steal_handle<context_type> frame) noexcept(noexcept(m_container.push(frame))) {
+  [[nodiscard]]
+  static constexpr auto adopt_steal(handle h) noexcept -> steal_handle<context_type> {
+    return {key(), get(key(), h)};
+  }
+
+  constexpr void
+  push(steal_handle<context_type> frame) noexcept(noexcept(m_container.push(std::declval<handle>()))) {
     m_container.push(frame);
   }
 
-  constexpr auto pop() noexcept -> steal_handle<context_type> { return m_container.pop(); }
+  constexpr auto pop() noexcept -> steal_handle<context_type> {
+    return {key(), get(key(), m_container.pop())};
+  }
 
-  constexpr void post(sched_handle<context_type> handle) noexcept(noexcept(m_container.post(handle)))
-    requires requires (Adaptor<context_type> context) {
-      { context.post(handle) } -> std::same_as<void>;
-    }
+  constexpr void
+  post(sched_handle<context_type> h) noexcept(noexcept(m_container.post(std::declval<handle>())))
+    requires posting_context_adaptor<Adaptor>
   {
-    m_container.post(handle);
+    m_container.post(h);
   }
 
  private:
-  Adaptor<context_type> m_container;
+  Adaptor m_container;
 };
 
 // TODO: replace dummy_context with unit-context
-
 // TODO: replace dummy_allocator with fixed-allocator
 
 export struct dummy_context {
