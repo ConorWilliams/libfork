@@ -64,10 +64,10 @@ void run(benchmark::State &state) {
 
 #define BENCH_ALL(...) BENCH_ONE(test, __VA_ARGS__) BENCH_ONE(base, __VA_ARGS__)
 
-template <typename Stack, template <typename> typename Adaptor>
+template <typename Stack, typename Adaptor>
 using real_context = lf::mono_context<Stack, Adaptor>;
 
-template <typename Stack, template <typename> typename Adaptor>
+template <typename Stack, typename Adaptor>
 using poly_context = lf::derived_poly_context<Stack, Adaptor>;
 
 using lf::adapt_deque;
