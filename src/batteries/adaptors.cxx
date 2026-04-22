@@ -10,11 +10,11 @@ namespace lf {
 
 export class adapt_vector {
  public:
-  constexpr void push(handle value) { m_vector.push_back(value); }
+  constexpr void push(unsafe_steal_handle value) { m_vector.push_back(value); }
 
-  constexpr auto pop() noexcept -> handle {
+  constexpr auto pop() noexcept -> unsafe_steal_handle {
     if (!m_vector.empty()) {
-      handle value = m_vector.back();
+      unsafe_steal_handle value = m_vector.back();
       m_vector.pop_back();
       return value;
     }
@@ -22,27 +22,31 @@ export class adapt_vector {
   }
 
  private:
-  std::vector<handle> m_vector;
+  std::vector<unsafe_steal_handle> m_vector;
 };
 
 export class adapt_deque {
  public:
-  constexpr void push(handle value) { m_deque.push(value); }
+  constexpr void push(unsafe_steal_handle value) { m_deque.push(value); }
 
-  constexpr auto pop() noexcept -> handle {
-    return m_deque.pop([] static noexcept -> handle {
+  constexpr auto pop() noexcept -> unsafe_steal_handle {
+    return m_deque.pop([] static noexcept -> unsafe_steal_handle {
       return {};
     });
   }
 
   [[nodiscard]]
-  constexpr auto thief() noexcept { return m_deque.thief(); }
+  constexpr auto thief() noexcept {
+    return m_deque.thief();
+  }
 
   [[nodiscard]]
-  constexpr auto empty() const noexcept -> bool { return m_deque.empty(); }
+  constexpr auto empty() const noexcept -> bool {
+    return m_deque.empty();
+  }
 
  private:
-  deque<handle> m_deque{1024 * 32};
+  deque<unsafe_steal_handle> m_deque{1024 * 32};
 };
 
 } // namespace lf
