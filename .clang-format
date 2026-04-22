@@ -16,6 +16,7 @@ PenaltyReturnTypeOnItsOwnLine: 1
 Macros:
   - LF_TRY=if
   - LF_CATCH_ALL=else
+  - LF_CATCH(x)=else
   - LF_HOF(x)={x;}
   - LF_HOF(x,y)={x,y;}
   - LF_HOF(x,y,z)={x,y,z;}

@@ -43,6 +43,10 @@ void terminate_with(char const *message, char const *file, int line) noexcept;
    */
   #define LF_CATCH_ALL catch (...)
   /**
+   * @brief Expands to ``catch (__VA_ARGS__)`` if exceptions are enabled, otherwise ``if constexpr (false)``.
+   */
+  #define LF_CATCH(...) catch (__VA_ARGS__)
+  /**
    * @brief Expands to ``throw X`` if exceptions are enabled, otherwise terminates the program.
    */
   #define LF_THROW(X) throw X
@@ -59,6 +63,10 @@ void terminate_with(char const *message, char const *file, int line) noexcept;
    * @brief Expands to ``catch (...)`` if exceptions are enabled, otherwise ``if constexpr (false)``.
    */
   #define LF_CATCH_ALL if constexpr (false)
+  /**
+   * @brief Expands to ``catch (__VA_ARGS__)`` if exceptions are enabled, otherwise ``if constexpr (false)``.
+   */
+  #define LF_CATCH(...) if constexpr (false)
   /**
    * @brief Expands to ``throw X`` if exceptions are enabled, otherwise terminates the program.
    */
