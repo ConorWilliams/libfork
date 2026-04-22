@@ -31,7 +31,7 @@ class handle {
  *
  * For use by context policies that need to store handles in an untyped manner.
  */
-export struct untyped_steal_handle : handle {
+export struct unsafe_steal_handle : handle {
   using handle::handle;
 };
 
@@ -40,7 +40,7 @@ export struct untyped_steal_handle : handle {
  *
  * For use by context policies that need to store handles in an untyped manner.
  */
-export struct untyped_sched_handle : handle {
+export struct unsafe_sched_handle : handle {
   using handle::handle;
 };
 
@@ -52,8 +52,8 @@ export struct untyped_sched_handle : handle {
  * The coroutine behind this task is always suspended at fork point.
  */
 export template <typename T>
-struct steal_handle : untyped_steal_handle {
-  using untyped_steal_handle::untyped_steal_handle;
+struct steal_handle : unsafe_steal_handle {
+  using unsafe_steal_handle::unsafe_steal_handle;
 };
 
 /**
@@ -62,8 +62,8 @@ struct steal_handle : untyped_steal_handle {
  * The coroutine behind this task is either not-yet-started or suspended at a context-switch.
  */
 export template <typename T>
-struct sched_handle : untyped_sched_handle {
-  using untyped_sched_handle::untyped_sched_handle;
+struct sched_handle : unsafe_sched_handle {
+  using unsafe_sched_handle::unsafe_sched_handle;
 };
 
 } // namespace lf

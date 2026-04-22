@@ -83,8 +83,6 @@ class basic_busy_pool {
 
     while (!stop.stop_requested()) {
 
-      LF_ASSUME(ctx.get_underlying().empty()); // ctx interactions are core-managed
-
       if (auto lock = std::unique_lock(m_mutex); !m_posted.empty()) {
         sched_handle task = m_posted.back();
         m_posted.pop_back();
@@ -105,10 +103,10 @@ class basic_busy_pool {
           LF_ASSUME(victim < n);
           LF_ASSUME(victim != id);
 
-          if (auto [err, result] = m_contexts[victim].get_underlying().thief().steal()) {
-            execute(static_cast<context_type &>(ctx), context::adopt_steal(result));
-            continue;
-          }
+          //   if (auto [err, result] = m_contexts[victim].get_underlying().thief().steal()) {
+          //     execute(static_cast<context_type &>(ctx), context::adopt_steal(result));
+          //     continue;
+          //   }
         }
       }
     }
