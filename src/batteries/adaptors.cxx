@@ -8,16 +8,13 @@ import :deque;
 
 namespace lf {
 
-// TODO: move stacks and contexts out of core and into substrate?
-
-export template <typename Context>
-class adapt_vector {
+export class adapt_vector {
  public:
-  constexpr void push(steal_handle<Context> value) { m_vector.push_back(value); }
+  constexpr void push(handle value) { m_vector.push_back(value); }
 
-  constexpr auto pop() noexcept -> steal_handle<Context> {
+  constexpr auto pop() noexcept -> handle {
     if (!m_vector.empty()) {
-      steal_handle<Context> value = m_vector.back();
+      handle value = m_vector.back();
       m_vector.pop_back();
       return value;
     }
@@ -25,35 +22,27 @@ class adapt_vector {
   }
 
  private:
-  std::vector<steal_handle<Context>> m_vector;
+  std::vector<handle> m_vector;
 };
 
-export template <typename Context>
-class adapt_deque {
+export class adapt_deque {
  public:
-  constexpr void push(steal_handle<Context> value) { m_deque.push(value); }
+  constexpr void push(handle value) { m_deque.push(value); }
 
-  constexpr auto pop() noexcept -> steal_handle<Context> {
-    return m_deque.pop([] static noexcept -> steal_handle<Context> {
+  constexpr auto pop() noexcept -> handle {
+    return m_deque.pop([] static noexcept -> handle {
       return {};
     });
   }
 
-  // TODO: vet for [[nodiscard]]
+  [[nodiscard]]
+  constexpr auto thief() noexcept { return m_deque.thief(); }
 
   [[nodiscard]]
-  constexpr auto thief() noexcept {
-    return m_deque.thief();
-  }
-
-  [[nodiscard]]
-  constexpr auto empty() const noexcept -> bool {
-    return m_deque.empty();
-  }
+  constexpr auto empty() const noexcept -> bool { return m_deque.empty(); }
 
  private:
-  // TODO: make initializable/configurable
-  deque<steal_handle<Context>> m_deque{1024 * 32};
+  deque<handle> m_deque{1024 * 32};
 };
 
 } // namespace lf
