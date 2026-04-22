@@ -26,9 +26,8 @@ concept lifo_stack = plain_object<T> && requires (T context, U val) {
  *
  * This requires that `T` is an object type and supports the following operations:
  *
- * - Push/pop a frame handle onto the context in a LIFO manner.
+ * - Push/pop a steal handle onto the context in a LIFO manner.
  * - Have a `worker_stack` that can be accessed via `stack()`.
- * - Post an await handle to the context via `post()` and promise to call resume.
  */
 export template <typename T>
 concept worker_context = lifo_stack<T, steal_handle<T>> && requires (T context) {

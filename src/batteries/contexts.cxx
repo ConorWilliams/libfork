@@ -9,91 +9,84 @@ import libfork.utils;
 
 import :dummy_stack;
 
+// TODO: rename to policy
+
 namespace lf {
 
-// =================== Adaptor concepts =================== //
+// =================== Context Policies =================== //
 
-export template <typename A>
-concept context_adaptor = worker_context_of<A, handle>;
+/**
+ * @brief The simplest context policy is just a LIFO stack of type-erased handles.
+ *
+ * Context policies (unlike full contexts) are not aware of the full context
+ * type hence, operate on untyped handles. This is inherently unsafe. To
+ * prevent UB a policy must not give-out the handles it receives. All
+ * operations must be managed through either `derived_poly_context` or
+ * `mono_context`.
+ */
+export template <typename T>
+concept context_policy = lifo_stack<T, unsafe_steal_handle>;
 
-export template <typename A>
-concept posting_context_adaptor = context_adaptor<A> && requires (A &a, handle h) {
-  { a.post(h) } -> std::same_as<void>;
-};
+// TODO: consider the methods/concepts needed for a auto/scheduling worker
+// context that has a `post` method.
 
-export template <typename A>
-concept stealable_context_adaptor = context_adaptor<A> && requires (A &a) {
-  { a.thief() };
+/**
+ * @brief An extension of `context_policy` that supports FIFO stealing of handles.
+ */
+export template <typename T>
+concept stealable_context_policy = context_policy<T> && requires (T &policy) {
+  { policy.steal() } -> std::same_as<unsafe_steal_handle>;
 };
 
 // =================== Contexts =================== //
 
-export template <worker_stack Stack, context_adaptor Adaptor>
+/**
+ * @brief A polymorphic worker context composed of a `worker_stack` and a `context_policy`.
+ */
+export template <worker_stack Stack, context_policy Policy>
 class derived_poly_context : public poly_context<Stack> {
  public:
   using context_type = poly_context<Stack>;
 
-  [[nodiscard]]
-  constexpr auto get_underlying() noexcept -> Adaptor & {
-    return m_container;
-  }
-
-  [[nodiscard]]
-  static constexpr auto adopt_steal(handle h) noexcept -> steal_handle<context_type> {
-    return {key(), get(key(), h)};
-  }
-
-  constexpr void push(steal_handle<context_type> frame) final { m_container.push(frame); }
+  constexpr void push(steal_handle<context_type> handle) final { m_container.push(handle); }
 
   constexpr auto pop() noexcept -> steal_handle<context_type> final {
     return {key(), get(key(), m_container.pop())};
   }
 
-  constexpr void post(sched_handle<context_type> h) final {
-    if constexpr (posting_context_adaptor<Adaptor>) {
-      m_container.post(h);
-    } else {
-      poly_context<Stack>::post(h);
-    }
+  [[nodiscard]]
+  constexpr auto steal() noexcept(noexcept(m_container.steal())) -> steal_handle<context_type>
+    requires stealable_context_policy<Policy>
+  {
+    return {key(), get(key(), m_container.steal())};
   }
 
  private:
-  Adaptor m_container;
+  Policy m_container;
 };
 
-export template <worker_stack Stack, context_adaptor Adaptor>
+export template <worker_stack Stack, context_policy Policy>
 class mono_context : public base_context<Stack> {
  public:
   using context_type = mono_context;
 
-  [[nodiscard]]
-  constexpr auto get_underlying() noexcept -> Adaptor & {
-    return m_container;
-  }
-
-  [[nodiscard]]
-  static constexpr auto adopt_steal(handle h) noexcept -> steal_handle<context_type> {
-    return {key(), get(key(), h)};
-  }
-
-  constexpr void
-  push(steal_handle<context_type> frame) noexcept(noexcept(m_container.push(std::declval<handle>()))) {
-    m_container.push(frame);
+  constexpr void push(steal_handle<context_type> handle) noexcept(noexcept(m_container.push(handle))) {
+    m_container.push(handle);
   }
 
   constexpr auto pop() noexcept -> steal_handle<context_type> {
     return {key(), get(key(), m_container.pop())};
   }
 
-  constexpr void
-  post(sched_handle<context_type> h) noexcept(noexcept(m_container.post(std::declval<handle>())))
-    requires posting_context_adaptor<Adaptor>
+  [[nodiscard]]
+  constexpr auto steal() noexcept(noexcept(m_container.steal())) -> steal_handle<context_type>
+    requires stealable_context_policy<Policy>
   {
-    m_container.post(h);
+    return {key(), get(key(), m_container.steal())};
   }
 
  private:
-  Adaptor m_container;
+  Policy m_container;
 };
 
 // TODO: replace dummy_context with unit-context

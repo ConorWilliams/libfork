@@ -49,7 +49,8 @@ class poly_context : public base_context<Stack> {
   virtual void push(steal_handle<poly_context>) = 0;
   virtual auto pop() noexcept -> steal_handle<poly_context> = 0;
 
-  virtual void post([[maybe_unused]] sched_handle<poly_context> handle) { LF_THROW(post_error{}); }
+  // TODO: re-introdcue post API if/when we support auto/scheduling contexts.
+  // virtual void post([[maybe_unused]] sched_handle<poly_context> handle) { LF_THROW(post_error{}); }
 
   virtual ~poly_context() noexcept = default;
 };
