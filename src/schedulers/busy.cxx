@@ -106,7 +106,7 @@ class basic_busy_pool {
           LF_ASSUME(victim != id);
 
           if (auto [err, result] = m_contexts[victim].get_underlying().thief().steal()) {
-            execute(static_cast<context_type &>(ctx), result);
+            execute(static_cast<context_type &>(ctx), context::adopt_steal(result));
             continue;
           }
         }
