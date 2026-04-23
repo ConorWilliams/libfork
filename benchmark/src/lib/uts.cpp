@@ -1,4 +1,4 @@
-#include "libfork_benchmark/uts/uts.hpp"
+#include "uts.hpp"
 
 #include "libfork/__impl/exception.hpp"
 
