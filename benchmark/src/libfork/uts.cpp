@@ -1,8 +1,10 @@
 #include <benchmark/benchmark.h>
 
-#include "libfork_benchmark/common.hpp"
+#include "common.hpp"
 
-#include "libfork_benchmark/uts/uts.hpp"
+#include "uts.hpp"
+
+#include "helpers.hpp"
 
 import std;
 
@@ -66,7 +68,7 @@ void run(benchmark::State &state) {
   auto tree = static_cast<uts_tree>(state.range(0));
 
   setup_tree(tree);
-  auto expected = expected_result(tree);
+  auto expect = expected_result(tree);
 
   state.counters["p"] = static_cast<double>(thread_count<Sch>(state));
   state.SetComplexityN(static_cast<benchmark::IterationCount>(thread_count<Sch>(state)));
@@ -78,7 +80,12 @@ void run(benchmark::State &state) {
     uts_initRoot(&root, type);
     lf::receiver recv = lf::schedule(scheduler, uts_fn{}, 0, &root);
     result r = std::move(recv).get();
-    CHECK_RESULT(r, expected);
+
+    if (r != expect) {
+      state.SkipWithError(std::format("incorrect result: {} != {}", r, expect));
+      break;
+    }
+
     benchmark::DoNotOptimize(r);
   }
 }

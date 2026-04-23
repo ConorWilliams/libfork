@@ -1,8 +1,10 @@
 #include <benchmark/benchmark.h>
 
-#include "libfork_benchmark/common.hpp"
+#include "common.hpp"
 
-#include "libfork_benchmark/fib/fib.hpp"
+#include "fib.hpp"
+
+#include "helpers.hpp"
 
 import std;
 
@@ -49,7 +51,12 @@ void run(benchmark::State &state) {
     benchmark::DoNotOptimize(n);
     lf::receiver recv = lf::schedule(scheduler, fib{}, n);
     std::int64_t return_value = std::move(recv).get();
-    CHECK_RESULT(return_value, expect);
+
+    if (return_value != expect) {
+      state.SkipWithError(std::format("incorrect result: {} != {}", return_value, expect));
+      break;
+    }
+
     benchmark::DoNotOptimize(return_value);
   }
 }

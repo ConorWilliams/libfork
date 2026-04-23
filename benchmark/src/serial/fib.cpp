@@ -1,16 +1,14 @@
 #include <benchmark/benchmark.h>
 
-#include "libfork_benchmark/common.hpp"
+#include "common.hpp"
 
-#include "libfork_benchmark/fib/fib.hpp"
-
-#include "libfork/__impl/compiler.hpp"
+#include "fib.hpp"
 
 import std;
 
 namespace {
 
-LF_NO_INLINE auto fib(std::int64_t &ret, std::int64_t n) -> void {
+auto fib(std::int64_t &ret, std::int64_t n) -> void {
   if (n < 2) {
     ret = n;
     return;
@@ -36,12 +34,15 @@ void fib_serial(benchmark::State &state) {
     benchmark::DoNotOptimize(n);
     std::int64_t result = 0;
     fib(result, n);
-    CHECK_RESULT(result, expect);
+    if (result != expect) {
+      state.SkipWithError(std::format("incorrect result: {} != {}", result, expect));
+      break;
+    }
     benchmark::DoNotOptimize(result);
   }
 }
 
-LF_NO_INLINE auto fib(std::int64_t n) -> std::int64_t {
+auto fib(std::int64_t n) -> std::int64_t {
   if (n < 2) {
     return n;
   }
@@ -62,7 +63,10 @@ void fib_serial_return(benchmark::State &state) {
   for (auto _ : state) {
     benchmark::DoNotOptimize(n);
     std::int64_t result = fib(n);
-    CHECK_RESULT(result, expect);
+    if (result != expect) {
+      state.SkipWithError(std::format("incorrect result: {} != {}", result, expect));
+      break;
+    }
     benchmark::DoNotOptimize(result);
   }
 }
