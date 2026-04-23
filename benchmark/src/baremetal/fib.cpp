@@ -107,7 +107,12 @@ void fib_coro_no_queue(benchmark::State &state) {
     benchmark::DoNotOptimize(n);
     std::int64_t result = 0;
     fib(n).set(result).coro.resume();
-    CHECK_RESULT(result, expect);
+
+    if (result != expect) {
+      state.SkipWithError(std::format("incorrect result: {} != {}", result, expect));
+      break;
+    }
+
     benchmark::DoNotOptimize(result);
   }
 
@@ -152,7 +157,12 @@ void fib_recursive_deque(benchmark::State &state) {
   for (auto _ : state) {
     benchmark::DoNotOptimize(n);
     std::int64_t result = fib_recursive_deque_impl(n);
-    CHECK_RESULT(result, expect);
+
+    if (result != expect) {
+      state.SkipWithError(std::format("incorrect result: {} != {}", result, expect));
+      break;
+    }
+
     benchmark::DoNotOptimize(result);
   }
 

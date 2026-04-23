@@ -22,16 +22,6 @@ inline void bench_thread_args(benchmark::Benchmark *bench, auto make_args) {
   }
 }
 
-#define CHECK_RESULT(result, expected)                                                                       \
-  do {                                                                                                       \
-    auto &&lf_check_result_val = (result);                                                                   \
-    auto &&lf_check_expected_val = (expected);                                                               \
-    if (lf_check_result_val != lf_check_expected_val) {                                                      \
-      LF_THROW(incorrect_result(                                                                             \
-          std::format("{}={} != {}={}", #expected, lf_check_expected_val, #result, lf_check_result_val)));   \
-    }                                                                                                        \
-  } while (0)
-
 template <lf::scheduler Sch>
 auto thread_count(benchmark::State &state) -> std::size_t {
   if constexpr (std::constructible_from<Sch, std::size_t>) {
