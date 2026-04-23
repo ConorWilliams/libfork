@@ -61,12 +61,10 @@ struct uts_fn {
   }
 };
 
-template <lf::scheduler Sch>
+template <uts_tree Tree, lf::scheduler Sch>
 void run(benchmark::State &state) {
-  auto tree = static_cast<uts_tree>(state.range(0));
-
-  setup_tree(tree);
-  auto expect = expected_result(tree);
+  setup_tree(Tree);
+  auto expect = expected_result(Tree);
 
   state.counters["p"] = static_cast<double>(thread_count<Sch>(state));
   state.SetComplexityN(static_cast<benchmark::IterationCount>(thread_count<Sch>(state)));

@@ -9,11 +9,17 @@ import std;
 #define BENCH_GET_FN(bench_fn, ...) bench_fn<__VA_ARGS__>
 
 namespace lf_bench {
+inline auto sanitize(std::string s) -> std::string {
+  s.erase(std::remove(s.begin(), s.end(), ' '), s.end());
+  return s;
+}
+
 inline auto
 format_name(std::string mode, std::string category, std::string name, std::string args) -> std::string {
-  std::string res = mode + "/" + category + "/" + name;
-  if (!args.empty()) {
-    res += "/" + args;
+  std::string res = sanitize(mode) + "/" + sanitize(category) + "/" + sanitize(name);
+  std::string s_args = sanitize(args);
+  if (!s_args.empty()) {
+    res += "/" + s_args;
   }
   return res;
 }
@@ -78,10 +84,9 @@ format_name(std::string mode, std::string category, std::string name, std::strin
   struct benchmark_reg_uts_##id {                                                                            \
     benchmark_reg_uts_##id() {                                                                               \
       auto *b = benchmark::RegisterBenchmark(                                                                \
-          #mode "/" #category "/uts/" tree_name +                                                            \
-              (std::string(#__VA_ARGS__).empty() ? "" : "/" + std::string(#__VA_ARGS__)),                    \
-          BENCH_GET_FN(bench_fn, ##__VA_ARGS__));                                                            \
-      b->Arg(tree_id)->UseRealTime();                                                                        \
+          lf_bench::format_name(#mode, #category, "uts/" tree_name, #__VA_ARGS__),                           \
+          BENCH_GET_FN(bench_fn, tree_id, ##__VA_ARGS__));                                                   \
+      b->UseRealTime();                                                                                      \
     }                                                                                                        \
   } benchmark_reg_uts_inst_##id;                                                                             \
   }
@@ -103,13 +108,12 @@ format_name(std::string mode, std::string category, std::string name, std::strin
   struct benchmark_reg_uts_mt_##id {                                                                         \
     benchmark_reg_uts_mt_##id() {                                                                            \
       auto *benchmark_obj = benchmark::RegisterBenchmark(                                                    \
-          #mode "/" #category "/uts/" tree_name +                                                            \
-              (std::string(#__VA_ARGS__).empty() ? "" : "/" + std::string(#__VA_ARGS__)),                    \
-          BENCH_GET_FN(bench_fn, ##__VA_ARGS__));                                                            \
+          lf_bench::format_name(#mode, #category, "uts/" tree_name, #__VA_ARGS__),                           \
+          BENCH_GET_FN(bench_fn, tree_id, ##__VA_ARGS__));                                                   \
       benchmark_obj                                                                                          \
           ->Apply([](benchmark::Benchmark *b) -> void {                                                      \
             bench_thread_args(b, [](benchmark::Benchmark *inner_b, unsigned t) {                             \
-              inner_b->Args({tree_id, static_cast<std::int64_t>(t)});                                        \
+              inner_b->Arg(static_cast<std::int64_t>(t));                                                    \
             });                                                                                              \
           })                                                                                                 \
           ->Complexity([](benchmark::IterationCount n) -> double {                                           \

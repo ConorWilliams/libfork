@@ -51,13 +51,12 @@ auto uts_omp_impl(int depth, Node *parent) -> result {
   return r;
 }
 
-template <typename = void>
+template <uts_tree Tree>
 void uts_run(benchmark::State &state) {
-  auto tree = static_cast<uts_tree>(state.range(0));
-  int threads = static_cast<int>(state.range(1));
+  int threads = static_cast<int>(state.range(0));
 
-  setup_tree(tree);
-  auto expect = expected_result(tree);
+  setup_tree(Tree);
+  auto expect = expected_result(Tree);
 
   state.counters["p"] = static_cast<double>(threads);
   state.SetComplexityN(static_cast<benchmark::IterationCount>(threads));

@@ -44,11 +44,10 @@ auto uts_traverse(int depth, Node *parent) -> result {
   return r;
 }
 
-template <typename = void>
+template <uts_tree Tree>
 void uts_serial(benchmark::State &state) {
-  auto tree = static_cast<uts_tree>(state.range(0));
-  setup_tree(tree);
-  auto expect = expected_result(tree);
+  setup_tree(Tree);
+  auto expect = expected_result(Tree);
 
   for (auto _ : state) {
     Node root;
@@ -105,11 +104,10 @@ auto uts_traverse_no_alloc(int depth, Node *parent) -> result {
   return r;
 }
 
-template <typename = void>
+template <uts_tree Tree>
 void uts_serial_no_alloc(benchmark::State &state) {
-  auto tree = static_cast<uts_tree>(state.range(0));
-  setup_tree(tree);
-  auto expect = expected_result(tree);
+  setup_tree(Tree);
+  auto expect = expected_result(Tree);
 
   for (auto _ : state) {
     Node root;
