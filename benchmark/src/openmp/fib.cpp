@@ -1,5 +1,4 @@
 #include <benchmark/benchmark.h>
-#include <omp.h>
 
 #include "common.hpp"
 #include "fib.hpp"

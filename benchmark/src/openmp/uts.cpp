@@ -1,5 +1,4 @@
 #include <benchmark/benchmark.h>
-#include <omp.h>
 
 #include "common.hpp"
 #include "macros.hpp"
@@ -68,13 +67,10 @@ void uts_run(benchmark::State &state, uts_tree tree) {
     uts_initRoot(&root, type);
     result r;
 
-    omp_set_num_threads(threads);
-#pragma omp parallel
-    {
+#pragma omp parallel num_threads(threads) default(shared)
 #pragma omp single nowait
-      {
-        r = uts_omp_impl(0, &root);
-      }
+    {
+      r = uts_omp_impl(0, &root);
     }
 
     if (r != expect) {
