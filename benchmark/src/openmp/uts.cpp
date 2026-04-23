@@ -87,12 +87,4 @@ void uts_run(benchmark::State &state) {
 
 } // namespace
 
-#define BENCH_MT()                                                                                           \
-  UTS_BENCH_ONE_MT(uts_run, openmp, test, "T1_mini", uts_t1_mini)                                            \
-  UTS_BENCH_ONE_MT(uts_run, openmp, test, "T3_mini", uts_t3_mini)                                            \
-  UTS_BENCH_ONE_MT(uts_run, openmp, base, "T1", uts_t1)                                                      \
-  UTS_BENCH_ONE_MT(uts_run, openmp, base, "T3", uts_t3)                                                      \
-  UTS_BENCH_ONE_MT(uts_run, openmp, large, "T1L", uts_t1l)                                                   \
-  UTS_BENCH_ONE_MT(uts_run, openmp, large, "T3L", uts_t3l)
-
-BENCH_MT()
+UTS_BENCH_ALL_MT(uts_run, openmp)

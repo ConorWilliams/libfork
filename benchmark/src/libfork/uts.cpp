@@ -90,15 +90,5 @@ void run(benchmark::State &state) {
 
 } // namespace
 
-// ---- Benchmark registrations ----
-
-#define BENCH_MT(...)                                                                                        \
-  LIBFORK_UTS_BENCH_ONE_MT(run, test, "T1_mini", uts_t1_mini, __VA_ARGS__)                                   \
-  LIBFORK_UTS_BENCH_ONE_MT(run, test, "T3_mini", uts_t3_mini, __VA_ARGS__)                                   \
-  LIBFORK_UTS_BENCH_ONE_MT(run, base, "T1", uts_t1, __VA_ARGS__)                                             \
-  LIBFORK_UTS_BENCH_ONE_MT(run, base, "T3", uts_t3, __VA_ARGS__)                                             \
-  LIBFORK_UTS_BENCH_ONE_MT(run, large, "T1L", uts_t1l, __VA_ARGS__)                                          \
-  LIBFORK_UTS_BENCH_ONE_MT(run, large, "T3L", uts_t3l, __VA_ARGS__)
-
-BENCH_MT(mono_busy_pool)
-BENCH_MT(poly_busy_pool)
+LIBFORK_UTS_BENCH_ALL_MT(run, mono_busy_pool)
+LIBFORK_UTS_BENCH_ALL_MT(run, poly_busy_pool)

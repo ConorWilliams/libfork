@@ -66,14 +66,6 @@ void uts_serial(benchmark::State &state) {
 
 } // namespace
 
-#define UTS_BENCH_ALL(bench_fn, category)                                                                    \
-  UTS_BENCH_ONE(bench_fn, category, test, "T1_mini", uts_t1_mini)                                            \
-  UTS_BENCH_ONE(bench_fn, category, test, "T3_mini", uts_t3_mini)                                            \
-  UTS_BENCH_ONE(bench_fn, category, base, "T1", uts_t1)                                                      \
-  UTS_BENCH_ONE(bench_fn, category, base, "T3", uts_t3)                                                      \
-  UTS_BENCH_ONE(bench_fn, category, large, "T1L", uts_t1l)                                                   \
-  UTS_BENCH_ONE(bench_fn, category, large, "T3L", uts_t3l)
-
 UTS_BENCH_ALL(uts_serial, serial)
 
 namespace {
