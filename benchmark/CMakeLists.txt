@@ -18,3 +18,19 @@ add_subdirectory(src/lib)
 add_subdirectory(src/serial)
 add_subdirectory(src/baremetal)
 add_subdirectory(src/libfork)
+
+add_executable(libfork_benchmark)
+
+target_link_libraries(libfork_benchmark
+  PRIVATE
+    serial_benchmarks
+    baremetal_benchmarks
+    libfork_benchmarks
+    benchmark::benchmark_main
+)
+
+if(BUILD_TESTING)
+  add_test(NAME Benchmark
+    COMMAND libfork_benchmark --benchmark_dry_run --benchmark_filter=^test/
+  )
+endif()
