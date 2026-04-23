@@ -1,6 +1,20 @@
-add_library(benchmark_common STATIC uts.cpp)
+cmake_minimum_required(VERSION 4.2.1 FATAL_ERROR)
 
-target_include_directories(benchmark_common PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+project(benchmark_common LANGUAGES CXX)
+
+add_library(benchmark_common STATIC)
+
+target_sources(benchmark_common
+  PRIVATE
+    uts.cpp
+  PUBLIC
+    FILE_SET HEADERS
+    BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
+    FILES
+      common.hpp
+      fib.hpp
+      uts.hpp
+)
 
 target_link_libraries(benchmark_common
   PUBLIC
