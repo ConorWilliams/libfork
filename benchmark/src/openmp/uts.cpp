@@ -3,7 +3,7 @@
 
 #include "common.hpp"
 #include "uts.hpp"
-#include "helpers.hpp"
+#include "macros.hpp"
 
 import std;
 
@@ -18,24 +18,6 @@ auto uts_omp_impl(int depth, Node *parent) -> result {
   parent->numChildren = num_children;
 
   if (num_children > 0) {
-    // Cutoff: if depth is large, run serially to avoid task overhead
-    if (depth > 10) {
-      for (int i = 0; i < num_children; ++i) {
-        Node child;
-        child.type = child_type;
-        child.height = parent->height + 1;
-        child.numChildren = -1;
-        for (int j = 0; j < computeGranularity; ++j) {
-          rng_spawn(parent->state.state, child.state.state, i);
-        }
-        result res = uts_omp_impl(depth + 1, &child);
-        r.maxdepth = std::max(r.maxdepth, res.maxdepth);
-        r.size += res.size;
-        r.leaves += res.leaves;
-      }
-      return r;
-    }
-
     std::vector<pair> cs(static_cast<std::size_t>(num_children));
 
     for (std::size_t i = 0; i < static_cast<std::size_t>(num_children); ++i) {
@@ -66,7 +48,7 @@ auto uts_omp_impl(int depth, Node *parent) -> result {
 }
 
 template <typename = void>
-void run(benchmark::State &state) {
+void uts_run(benchmark::State &state) {
   auto tree = static_cast<uts_tree>(state.range(0));
   int threads = static_cast<int>(state.range(1));
 
@@ -101,12 +83,12 @@ void run(benchmark::State &state) {
 
 } // namespace
 
-#define BENCH_MT(...)                                                                                        \
-  OMP_UTS_BENCH_ONE_MT(run, test, "T1_mini", uts_t1_mini)                                                    \
-  OMP_UTS_BENCH_ONE_MT(run, test, "T3_mini", uts_t3_mini)                                                    \
-  OMP_UTS_BENCH_ONE_MT(run, base, "T1", uts_t1)                                                              \
-  OMP_UTS_BENCH_ONE_MT(run, base, "T3", uts_t3)                                                              \
-  OMP_UTS_BENCH_ONE_MT(run, large, "T1L", uts_t1l)                                                           \
-  OMP_UTS_BENCH_ONE_MT(run, large, "T3L", uts_t3l)
+#define BENCH_MT()                                                                                           \
+  UTS_BENCH_ONE_MT(uts_run, openmp, test, "T1_mini", uts_t1_mini)                                            \
+  UTS_BENCH_ONE_MT(uts_run, openmp, test, "T3_mini", uts_t3_mini)                                            \
+  UTS_BENCH_ONE_MT(uts_run, openmp, base, "T1", uts_t1)                                                      \
+  UTS_BENCH_ONE_MT(uts_run, openmp, base, "T3", uts_t3)                                                      \
+  UTS_BENCH_ONE_MT(uts_run, openmp, large, "T1L", uts_t1l)                                                   \
+  UTS_BENCH_ONE_MT(uts_run, openmp, large, "T3L", uts_t3l)
 
 BENCH_MT()

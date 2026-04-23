@@ -6,17 +6,16 @@ add_library(openmp_benchmarks)
 
 target_sources(openmp_benchmarks
   PRIVATE
-    fib_omp.cpp uts_omp.cpp
+    fib.cpp uts.cpp
 )
 
 target_link_libraries(openmp_benchmarks
   PUBLIC
     benchmark_common
-    libfork::libfork
     OpenMP::OpenMP_CXX
 )
 
 target_include_directories(openmp_benchmarks
   PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../libfork
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../lib
 )

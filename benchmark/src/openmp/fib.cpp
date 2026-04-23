@@ -3,7 +3,7 @@
 
 #include "common.hpp"
 #include "fib.hpp"
-#include "helpers.hpp"
+#include "macros.hpp"
 
 import std;
 
@@ -12,15 +12,6 @@ namespace {
 auto fib_omp_impl(std::int64_t n) -> std::int64_t {
   if (n < 2) {
     return n;
-  }
-
-  // Use a cutoff to avoid creating too many tasks
-  if (n < 20) {
-    auto fib_serial = [](auto self, std::int64_t val) -> std::int64_t {
-      if (val < 2) return val;
-      return self(self, val - 1) + self(self, val - 2);
-    };
-    return fib_serial(fib_serial, n);
   }
 
   std::int64_t lhs = 0;
@@ -37,7 +28,7 @@ auto fib_omp_impl(std::int64_t n) -> std::int64_t {
 }
 
 template <typename = void>
-void run(benchmark::State &state) {
+void fib_run(benchmark::State &state) {
   std::int64_t n = state.range(0);
   std::int64_t expect = fib_ref(n);
   int threads = static_cast<int>(state.range(1));
@@ -70,4 +61,4 @@ void run(benchmark::State &state) {
 
 } // namespace
 
-OMP_BENCH_ALL(run, fib)
+BENCH_ALL_MT(fib_run, openmp, fib)
