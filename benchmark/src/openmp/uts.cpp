@@ -11,7 +11,7 @@
 
 namespace {
 
-auto uts_omp_impl(int depth, Node *parent) -> result {
+auto uts(int depth, Node *parent) -> result {
   result r{.maxdepth = static_cast<counter_t>(depth), .size = counter_t{1}, .leaves = counter_t{0}};
 
   int num_children = uts_numChildren(parent);
@@ -32,10 +32,10 @@ auto uts_omp_impl(int depth, Node *parent) -> result {
       }
 
       if (i + 1 == static_cast<std::size_t>(num_children)) {
-        cs[i].res = uts_omp_impl(depth + 1, &cs[i].child);
+        cs[i].res = uts(depth + 1, &cs[i].child);
       } else {
 #pragma omp task untied shared(cs) firstprivate(depth, i) default(none)
-        cs[i].res = uts_omp_impl(depth + 1, &cs[i].child);
+        cs[i].res = uts(depth + 1, &cs[i].child);
       }
     }
 
@@ -70,7 +70,7 @@ void uts_run(benchmark::State &state, uts_tree tree) {
 #pragma omp parallel num_threads(threads) default(shared)
 #pragma omp single nowait
     {
-      r = uts_omp_impl(0, &root);
+      r = uts(0, &root);
     }
 
     if (r != expect) {

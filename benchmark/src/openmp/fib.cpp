@@ -9,7 +9,7 @@
 
 namespace {
 
-auto fib_omp_impl(std::int64_t n) -> std::int64_t {
+auto fib(std::int64_t n) -> std::int64_t {
   if (n < 2) {
     return n;
   }
@@ -18,9 +18,9 @@ auto fib_omp_impl(std::int64_t n) -> std::int64_t {
   std::int64_t rhs = 0;
 
 #pragma omp task untied shared(lhs) firstprivate(n) default(none)
-  lhs = fib_omp_impl(n - 1);
+  lhs = fib(n - 1);
 
-  rhs = fib_omp_impl(n - 2);
+  rhs = fib(n - 2);
 
 #pragma omp taskwait
   return lhs + rhs;
@@ -43,7 +43,7 @@ void fib_run(benchmark::State &state) {
 #pragma omp parallel num_threads(threads) default(shared)
 #pragma omp single nowait
     {
-      return_value = fib_omp_impl(n);
+      return_value = fib(n);
     }
 
     if (return_value != expect) {
