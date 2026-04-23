@@ -40,13 +40,10 @@ void fib_run(benchmark::State &state) {
     benchmark::DoNotOptimize(n);
     std::int64_t return_value = 0;
 
-    omp_set_num_threads(threads);
-#pragma omp parallel
-    {
+#pragma omp parallel num_threads(threads) default(shared)
 #pragma omp single nowait
-      {
-        return_value = fib_omp_impl(n);
-      }
+    {
+      return_value = fib_omp_impl(n);
     }
 
     if (return_value != expect) {
