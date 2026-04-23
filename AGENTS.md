@@ -127,11 +127,15 @@ libfork/
 │   │   └── *.cxx             #   :partitions
 ├── test/src/**/              # Test suite (Catch2) — uses `import libfork;`
 │   └── *.cpp
-├── benchmark/src/            # Benchmarking suite (google-benchmark)
-│   └── libfork_benchmark/    # Merged source/header files for benchmarks
-│          └── fib/           # Each benchmark in its own sub-directory
-│              ├── *.hpp      # Benchmark header files
-│              └── *.cpp      # Benchmark source files
+├── benchmark/                # Benchmarking suite (google-benchmark)
+│   ├── lib/                  # Shared benchmark utilities and definitions
+│   │   ├── *.hpp             #   headers
+│   │   └── *.cpp             #   common source
+│   ├── src/                  # Implementation-specific benchmarks
+│   │   ├── libfork/          #   libfork-based benchmarks
+│   │   ├── serial/           #   serial benchmarks
+│   │   └── */                #   Other library benchmarks (e.g. OpenMP, TBB, Cilk Plus)
+│   └── external/             # External benchmark code (e.g. UTS)
 ├── .github/workflows/        # CI workflows
 │   ├── linux.yml             # Linux builds
 │   ├── macos.yml             # MacOS builds
@@ -165,9 +169,9 @@ All workflows follow this pattern:
 
 - Update the root `CMakeLists.txt` with new/removed files.
 
-#### Adding/removing files from `benchmark/src/`
+#### Adding/removing files from benchmarks
 
-- Update `benchmark/CMakeLists.txt` with new/removed files.
+- Update the relevant `CMakeLists.txt` in `benchmark/lib/` or `benchmark/src/<impl>/`.
 
 ### Adding Tests
 
