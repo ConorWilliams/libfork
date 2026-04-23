@@ -7,7 +7,8 @@
 #undef max
 #undef min
 
-import std;
+#include <format>
+#include <string>
 
 struct result {
   counter_t maxdepth;

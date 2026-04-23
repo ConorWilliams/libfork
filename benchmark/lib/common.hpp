@@ -2,7 +2,8 @@
 
 #include <benchmark/benchmark.h>
 
-import std;
+#include <algorithm>
+#include <thread>
 
 inline void bench_thread_args(benchmark::Benchmark *bench, auto make_args) {
   unsigned hw = std::max(1U, std::thread::hardware_concurrency());
