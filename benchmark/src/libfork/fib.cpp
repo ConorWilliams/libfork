@@ -1,9 +1,7 @@
 #include <benchmark/benchmark.h>
 
 #include "common.hpp"
-
 #include "fib.hpp"
-
 #include "helpers.hpp"
 
 import std;
@@ -63,14 +61,6 @@ void run(benchmark::State &state) {
 
 } // namespace
 
-#define BENCH_ONE(mode, ...)                                                                                 \
-  BENCHMARK_TEMPLATE(run, __VA_ARGS__)                                                                       \
-      ->Name(#mode "/libfork/fib/" #__VA_ARGS__)                                                             \
-      ->Arg(fib_##mode)                                                                                      \
-      ->UseRealTime();
-
-#define BENCH_ALL(...) BENCH_ONE(test, __VA_ARGS__) BENCH_ONE(base, __VA_ARGS__)
-
 template <typename Stack, template <typename> typename Adaptor>
 using real_context = lf::mono_context<Stack, Adaptor>;
 
@@ -87,40 +77,25 @@ using lf::slab_stack;
 
 // -- Vector
 
-BENCH_ALL(inline_scheduler<real_context<adaptor_stack<>, adapt_vector>>)
-BENCH_ALL(inline_scheduler<poly_context<adaptor_stack<>, adapt_vector>>)
+LIBFORK_BENCH_ALL(run, fib, fib, inline_scheduler<real_context<adaptor_stack<>, adapt_vector>>)
+LIBFORK_BENCH_ALL(run, fib, fib, inline_scheduler<poly_context<adaptor_stack<>, adapt_vector>>)
 
-BENCH_ALL(inline_scheduler<real_context<slab_stack<>, adapt_vector>>)
-BENCH_ALL(inline_scheduler<poly_context<slab_stack<>, adapt_vector>>)
+LIBFORK_BENCH_ALL(run, fib, fib, inline_scheduler<real_context<slab_stack<>, adapt_vector>>)
+LIBFORK_BENCH_ALL(run, fib, fib, inline_scheduler<poly_context<slab_stack<>, adapt_vector>>)
 
-BENCH_ALL(inline_scheduler<real_context<geometric_stack<>, adapt_vector>>)
-BENCH_ALL(inline_scheduler<poly_context<geometric_stack<>, adapt_vector>>)
+LIBFORK_BENCH_ALL(run, fib, fib, inline_scheduler<real_context<geometric_stack<>, adapt_vector>>)
+LIBFORK_BENCH_ALL(run, fib, fib, inline_scheduler<poly_context<geometric_stack<>, adapt_vector>>)
 
 // -- Deque
 
-BENCH_ALL(inline_scheduler<real_context<adaptor_stack<>, adapt_deque>>)
-BENCH_ALL(inline_scheduler<poly_context<adaptor_stack<>, adapt_deque>>)
+LIBFORK_BENCH_ALL(run, fib, fib, inline_scheduler<real_context<adaptor_stack<>, adapt_deque>>)
+LIBFORK_BENCH_ALL(run, fib, fib, inline_scheduler<poly_context<adaptor_stack<>, adapt_deque>>)
 
-BENCH_ALL(inline_scheduler<real_context<slab_stack<>, adapt_deque>>)
-BENCH_ALL(inline_scheduler<poly_context<slab_stack<>, adapt_deque>>)
+LIBFORK_BENCH_ALL(run, fib, fib, inline_scheduler<real_context<slab_stack<>, adapt_deque>>)
+LIBFORK_BENCH_ALL(run, fib, fib, inline_scheduler<poly_context<slab_stack<>, adapt_deque>>)
 
-BENCH_ALL(inline_scheduler<real_context<geometric_stack<>, adapt_deque>>)
-BENCH_ALL(inline_scheduler<poly_context<geometric_stack<>, adapt_deque>>)
+LIBFORK_BENCH_ALL(run, fib, fib, inline_scheduler<real_context<geometric_stack<>, adapt_deque>>)
+LIBFORK_BENCH_ALL(run, fib, fib, inline_scheduler<poly_context<geometric_stack<>, adapt_deque>>)
 
-#define BENCH_ONE_MT(mode, ...)                                                                              \
-  BENCHMARK_TEMPLATE(run, __VA_ARGS__)                                                                       \
-      ->Name(#mode "/libfork/fib/" #__VA_ARGS__)                                                             \
-      ->Apply([](benchmark::Benchmark *b) -> void {                                                          \
-        bench_thread_args(b, [](benchmark::Benchmark *b, unsigned t) {                                       \
-          b->Args({fib_##mode, static_cast<std::int64_t>(t)});                                               \
-        });                                                                                                  \
-      })                                                                                                     \
-      ->Complexity([](benchmark::IterationCount n) -> double {                                               \
-        return 1.0 / static_cast<double>(n);                                                                 \
-      })                                                                                                     \
-      ->UseRealTime();
-
-#define BENCH_ALL_MT(...) BENCH_ONE_MT(test, __VA_ARGS__) BENCH_ONE_MT(base, __VA_ARGS__)
-
-BENCH_ALL_MT(mono_busy_pool)
-BENCH_ALL_MT(poly_busy_pool)
+LIBFORK_BENCH_ALL_MT(run, fib, fib, mono_busy_pool)
+LIBFORK_BENCH_ALL_MT(run, fib, fib, poly_busy_pool)

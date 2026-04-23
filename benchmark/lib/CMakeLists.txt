@@ -16,6 +16,7 @@ target_sources(benchmark_common
       common.hpp
       fib.hpp
       uts.hpp
+      macros.hpp
 )
 
 target_link_libraries(benchmark_common

@@ -1,8 +1,8 @@
 #include <benchmark/benchmark.h>
 
 #include "common.hpp"
-
 #include "fib.hpp"
+#include "macros.hpp"
 
 import std;
 
@@ -92,6 +92,7 @@ auto fib(std::int64_t n) -> task {
   co_return a + b;
 }
 
+template <typename = void>
 void fib_coro_no_queue(benchmark::State &state) {
 
   std::int64_t n = state.range(0);
@@ -142,8 +143,7 @@ auto fib_recursive_deque_impl(std::int64_t n) -> std::int64_t {
   return a + b;
 }
 
-// TODO: can we generalize the runner function?
-
+template <typename = void>
 void fib_recursive_deque(benchmark::State &state) {
 
   std::int64_t n = state.range(0);
@@ -172,8 +172,6 @@ void fib_recursive_deque(benchmark::State &state) {
 } // namespace
 
 // Minimal coroutine, bump allocated (thread-local) stack
-BENCHMARK(fib_coro_no_queue)->Name("test/baremetal/fib/coro")->Arg(fib_test);
-BENCHMARK(fib_coro_no_queue)->Name("base/baremetal/fib/coro")->Arg(fib_base);
+BENCH_ALL(fib_coro_no_queue, baremetal, coro, fib)
 
-BENCHMARK(fib_recursive_deque)->Name("test/baremetal/fib/deque")->Arg(fib_test);
-BENCHMARK(fib_recursive_deque)->Name("base/baremetal/fib/deque")->Arg(fib_base);
+BENCH_ALL(fib_recursive_deque, baremetal, deque, fib)

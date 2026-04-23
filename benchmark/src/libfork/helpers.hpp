@@ -1,6 +1,6 @@
-
 #pragma once
 
+#include "macros.hpp"
 #include <benchmark/benchmark.h>
 
 import std;
@@ -27,3 +27,14 @@ auto make_scheduler(benchmark::State &state) -> Sch {
 
 using mono_busy_pool = lf::mono_busy_pool<lf::geometric_stack<>>;
 using poly_busy_pool = lf::poly_busy_pool<lf::geometric_stack<>>;
+
+#define LIBFORK_BENCH_ALL(bench_fn, name, prefix, ...)                                                       \
+  BENCH_ALL(bench_fn, libfork, name, prefix, ##__VA_ARGS__)
+
+#define LIBFORK_BENCH_ALL_MT(bench_fn, name, prefix, ...)                                                    \
+  BENCH_ALL_MT(bench_fn, libfork, name, prefix, ##__VA_ARGS__)
+
+#define LIBFORK_UTS_BENCH_ONE_MT(bench_fn, mode, tree_name, tree_id, ...)                                    \
+  UTS_BENCH_ONE_MT(bench_fn, libfork, mode, tree_name, tree_id, ##__VA_ARGS__)
+
+#define LIBFORK_UTS_BENCH_ALL_MT(bench_fn, ...) UTS_BENCH_ALL_MT(bench_fn, libfork, ##__VA_ARGS__)

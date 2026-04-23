@@ -9,6 +9,7 @@ endif()
 # ---- Dependencies ----
 
 find_package(benchmark REQUIRED)
+find_package(OpenMP REQUIRED)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/external/uts external/uts)
 
@@ -19,6 +20,7 @@ add_subdirectory(lib)
 add_subdirectory(src/serial)
 add_subdirectory(src/baremetal)
 add_subdirectory(src/libfork)
+# add_subdirectory(src/openmp)
 
 # WHOLE_ARCHIVE ensures benchmark registrations (global initialisers) are not
 # dropped by the linker when pulling objects from the static libraries above.
@@ -28,6 +30,7 @@ target_link_libraries(libfork_benchmark
   PRIVATE
     $<LINK_LIBRARY:WHOLE_ARCHIVE,serial_benchmarks,baremetal_benchmarks,libfork_benchmarks>
     benchmark::benchmark_main
+    # OpenMP::OpenMP_CXX
 )
 
 if(BUILD_TESTING)
