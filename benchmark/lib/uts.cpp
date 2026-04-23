@@ -127,7 +127,7 @@ void setup_tree(uts_tree tree) {
       setup_t3xxl();
       break;
     default:
-      LF_THROW(std::invalid_argument("invalid tree type"));
+      std::terminate();
   }
 }
 

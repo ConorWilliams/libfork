@@ -14,4 +14,4 @@ target_sources(libfork_benchmarks
       helpers.hpp
 )
 
-target_link_libraries(libfork_benchmarks PUBLIC benchmark_common)
+target_link_libraries(libfork_benchmarks PUBLIC benchmark_common libfork::libfork)

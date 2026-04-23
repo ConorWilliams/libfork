@@ -4,6 +4,8 @@ project(benchmark_common LANGUAGES CXX)
 
 add_library(benchmark_common STATIC)
 
+target_compile_features(benchmark_common PUBLIC cxx_std_26)
+
 target_sources(benchmark_common
   PRIVATE
     uts.cpp
