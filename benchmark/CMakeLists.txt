@@ -14,7 +14,8 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/external/uts external/uts)
 
 # ---- Benchmarks ----
 
-add_subdirectory(src/lib)
+add_subdirectory(lib)
+
 add_subdirectory(src/serial)
 add_subdirectory(src/baremetal)
 add_subdirectory(src/libfork)
