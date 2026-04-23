@@ -4,8 +4,6 @@
 
 #include "fib.hpp"
 
-#include "libfork/__impl/compiler.hpp"
-
 import std;
 
 namespace {

@@ -1,7 +1,5 @@
 #include "uts.hpp"
 
-#include "libfork/__impl/exception.hpp"
-
 import std;
 
 namespace {
@@ -152,6 +150,6 @@ auto expected_result(uts_tree tree) -> result {
     case uts_t3xxl:
       return {.maxdepth = 99049, .size = 2793220501, .leaves = 1396611250};
     default:
-      LF_THROW(std::invalid_argument("invalid tree type"));
+      std::terminate();
   }
 }

@@ -20,5 +20,4 @@ target_link_libraries(benchmark_common
   PUBLIC
     benchmark::benchmark
     uts_c
-    libfork::libfork
 )
