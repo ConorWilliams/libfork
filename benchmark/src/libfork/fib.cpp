@@ -4,6 +4,8 @@
 
 #include "fib.hpp"
 
+#include "helpers.hpp"
+
 import std;
 
 import libfork;
