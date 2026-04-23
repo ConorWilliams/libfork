@@ -94,26 +94,13 @@ void run(benchmark::State &state) {
 
 // ---- Benchmark registrations ----
 
-#define BENCH_ONE_MT(mode, tree_name, tree_id, ...)                                                          \
-  BENCHMARK_TEMPLATE(run, __VA_ARGS__)                                                                       \
-      ->Name(#mode "/libfork/uts/" tree_name "/" #__VA_ARGS__)                                               \
-      ->Apply([](benchmark::Benchmark *b) -> void {                                                          \
-        bench_thread_args(b, [](benchmark::Benchmark *b, unsigned t) {                                       \
-          b->Args({tree_id, static_cast<std::int64_t>(t)});                                                  \
-        });                                                                                                  \
-      })                                                                                                     \
-      ->Complexity([](benchmark::IterationCount n) -> double {                                               \
-        return 1.0 / static_cast<double>(n);                                                                 \
-      })                                                                                                     \
-      ->UseRealTime();
-
 #define BENCH_MT(...)                                                                                        \
-  BENCH_ONE_MT(test, "T1_mini", uts_t1_mini, __VA_ARGS__)                                                    \
-  BENCH_ONE_MT(test, "T3_mini", uts_t3_mini, __VA_ARGS__)                                                    \
-  BENCH_ONE_MT(base, "T1", uts_t1, __VA_ARGS__)                                                              \
-  BENCH_ONE_MT(base, "T3", uts_t3, __VA_ARGS__)                                                              \
-  BENCH_ONE_MT(large, "T1L", uts_t1l, __VA_ARGS__)                                                           \
-  BENCH_ONE_MT(large, "T3L", uts_t3l, __VA_ARGS__)
+  LIBFORK_UTS_BENCH_ONE_MT(run, test, "T1_mini", uts_t1_mini, __VA_ARGS__)                                   \
+  LIBFORK_UTS_BENCH_ONE_MT(run, test, "T3_mini", uts_t3_mini, __VA_ARGS__)                                   \
+  LIBFORK_UTS_BENCH_ONE_MT(run, base, "T1", uts_t1, __VA_ARGS__)                                             \
+  LIBFORK_UTS_BENCH_ONE_MT(run, base, "T3", uts_t3, __VA_ARGS__)                                             \
+  LIBFORK_UTS_BENCH_ONE_MT(run, large, "T1L", uts_t1l, __VA_ARGS__)                                          \
+  LIBFORK_UTS_BENCH_ONE_MT(run, large, "T3L", uts_t3l, __VA_ARGS__)
 
 BENCH_MT(mono_busy_pool)
 BENCH_MT(poly_busy_pool)
