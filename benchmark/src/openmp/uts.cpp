@@ -32,7 +32,7 @@ auto uts_omp_impl(int depth, Node *parent) -> result {
       if (i + 1 == static_cast<std::size_t>(num_children)) {
         cs[i].res = uts_omp_impl(depth + 1, &cs[i].child);
       } else {
-#pragma omp task shared(cs)
+#pragma omp task untied shared(cs) firstprivate(depth, i) default(none)
         cs[i].res = uts_omp_impl(depth + 1, &cs[i].child);
       }
     }

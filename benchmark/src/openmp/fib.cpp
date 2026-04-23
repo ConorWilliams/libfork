@@ -17,7 +17,7 @@ auto fib_omp_impl(std::int64_t n) -> std::int64_t {
   std::int64_t lhs = 0;
   std::int64_t rhs = 0;
 
-#pragma omp task shared(lhs)
+#pragma omp task untied shared(lhs) firstprivate(n) default(none)
   lhs = fib_omp_impl(n - 1);
 
   rhs = fib_omp_impl(n - 2);
