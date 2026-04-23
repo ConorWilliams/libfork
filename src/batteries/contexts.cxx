@@ -25,25 +25,25 @@ namespace lf {
  * `mono_context`.
  */
 export template <typename T>
-concept context_policy = lifo_stack<T, unsafe_steal_handle>;
+concept deque_policy = lifo_stack<T, unsafe_steal_handle>;
 
 // TODO: consider the methods/concepts needed for a auto/scheduling worker
 // context that has a `post` method.
 
 /**
- * @brief An extension of `context_policy` that supports FIFO stealing of handles.
+ * @brief An extension of `deque_policy` that supports FIFO stealing of handles.
  */
 export template <typename T>
-concept stealable_context_policy = context_policy<T> && requires (T &policy) {
+concept stealable_deque_policy = deque_policy<T> && requires (T &policy) {
   { policy.steal() } -> std::same_as<unsafe_steal_handle>;
 };
 
 // =================== Contexts =================== //
 
 /**
- * @brief A polymorphic worker context composed of a `worker_stack` and a `context_policy`.
+ * @brief A polymorphic worker context composed of a `worker_stack` and a `deque_policy`.
  */
-export template <worker_stack Stack, context_policy Policy>
+export template <worker_stack Stack, deque_policy Deque>
 class derived_poly_context : public poly_context<Stack> {
  public:
   using context_type = poly_context<Stack>;
@@ -56,16 +56,16 @@ class derived_poly_context : public poly_context<Stack> {
 
   [[nodiscard]]
   constexpr auto steal() noexcept(noexcept(m_container.steal())) -> steal_handle<context_type>
-    requires stealable_context_policy<Policy>
+    requires stealable_deque_policy<Deque>
   {
     return {key(), get(key(), m_container.steal())};
   }
 
  private:
-  Policy m_container;
+  Deque m_container;
 };
 
-export template <worker_stack Stack, context_policy Policy>
+export template <worker_stack Stack, deque_policy Deque>
 class mono_context : public base_context<Stack> {
  public:
   using context_type = mono_context;
@@ -80,13 +80,13 @@ class mono_context : public base_context<Stack> {
 
   [[nodiscard]]
   constexpr auto steal() noexcept(noexcept(m_container.steal())) -> steal_handle<context_type>
-    requires stealable_context_policy<Policy>
+    requires stealable_deque_policy<Deque>
   {
     return {key(), get(key(), m_container.steal())};
   }
 
  private:
-  Policy m_container;
+  Deque m_container;
 };
 
 // TODO: replace dummy_context with unit-context
