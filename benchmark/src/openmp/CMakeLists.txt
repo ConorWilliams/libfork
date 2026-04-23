@@ -14,8 +14,3 @@ target_link_libraries(openmp_benchmarks
     benchmark_common
     OpenMP::OpenMP_CXX
 )
-
-target_include_directories(openmp_benchmarks
-  PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../lib
-)
