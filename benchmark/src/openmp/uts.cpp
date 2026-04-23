@@ -70,7 +70,7 @@ void uts_run(benchmark::State &state) {
     omp_set_num_threads(threads);
 #pragma omp parallel
     {
-#pragma omp single
+#pragma omp single nowait
       {
         r = uts_omp_impl(0, &root);
       }

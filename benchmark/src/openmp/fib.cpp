@@ -43,7 +43,7 @@ void fib_run(benchmark::State &state) {
     omp_set_num_threads(threads);
 #pragma omp parallel
     {
-#pragma omp single
+#pragma omp single nowait
       {
         return_value = fib_omp_impl(n);
       }
