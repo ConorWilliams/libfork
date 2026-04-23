@@ -19,13 +19,13 @@ add_subdirectory(src/serial)
 add_subdirectory(src/baremetal)
 add_subdirectory(src/libfork)
 
-add_executable(libfork_benchmark)
+# WHOLE_ARCHIVE ensures benchmark registrations (global initialisers) are not
+# dropped by the linker when pulling objects from the static libraries above.
+add_executable(libfork_benchmark src/benchmarks.cpp)
 
 target_link_libraries(libfork_benchmark
   PRIVATE
-    serial_benchmarks
-    baremetal_benchmarks
-    libfork_benchmarks
+    $<LINK_LIBRARY:WHOLE_ARCHIVE,serial_benchmarks,baremetal_benchmarks,libfork_benchmarks>
     benchmark::benchmark_main
 )
 
