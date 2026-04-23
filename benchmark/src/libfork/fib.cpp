@@ -1,9 +1,7 @@
 #include <benchmark/benchmark.h>
 
 #include "common.hpp"
-
 #include "fib.hpp"
-
 #include "helpers.hpp"
 
 import std;
@@ -79,25 +77,25 @@ using lf::slab_stack;
 
 // -- Vector
 
-LIBFORK_BENCH_ALL(run, fib, inline_scheduler<real_context<adaptor_stack<>, adapt_vector>>)
-LIBFORK_BENCH_ALL(run, fib, inline_scheduler<poly_context<adaptor_stack<>, adapt_vector>>)
+LIBFORK_BENCH_ALL(run, fib, fib, inline_scheduler<real_context<adaptor_stack<>, adapt_vector>>)
+LIBFORK_BENCH_ALL(run, fib, fib, inline_scheduler<poly_context<adaptor_stack<>, adapt_vector>>)
 
-LIBFORK_BENCH_ALL(run, fib, inline_scheduler<real_context<slab_stack<>, adapt_vector>>)
-LIBFORK_BENCH_ALL(run, fib, inline_scheduler<poly_context<slab_stack<>, adapt_vector>>)
+LIBFORK_BENCH_ALL(run, fib, fib, inline_scheduler<real_context<slab_stack<>, adapt_vector>>)
+LIBFORK_BENCH_ALL(run, fib, fib, inline_scheduler<poly_context<slab_stack<>, adapt_vector>>)
 
-LIBFORK_BENCH_ALL(run, fib, inline_scheduler<real_context<geometric_stack<>, adapt_vector>>)
-LIBFORK_BENCH_ALL(run, fib, inline_scheduler<poly_context<geometric_stack<>, adapt_vector>>)
+LIBFORK_BENCH_ALL(run, fib, fib, inline_scheduler<real_context<geometric_stack<>, adapt_vector>>)
+LIBFORK_BENCH_ALL(run, fib, fib, inline_scheduler<poly_context<geometric_stack<>, adapt_vector>>)
 
 // -- Deque
 
-LIBFORK_BENCH_ALL(run, fib, inline_scheduler<real_context<adaptor_stack<>, adapt_deque>>)
-LIBFORK_BENCH_ALL(run, fib, inline_scheduler<poly_context<adaptor_stack<>, adapt_deque>>)
+LIBFORK_BENCH_ALL(run, fib, fib, inline_scheduler<real_context<adaptor_stack<>, adapt_deque>>)
+LIBFORK_BENCH_ALL(run, fib, fib, inline_scheduler<poly_context<adaptor_stack<>, adapt_deque>>)
 
-LIBFORK_BENCH_ALL(run, fib, inline_scheduler<real_context<slab_stack<>, adapt_deque>>)
-LIBFORK_BENCH_ALL(run, fib, inline_scheduler<poly_context<slab_stack<>, adapt_deque>>)
+LIBFORK_BENCH_ALL(run, fib, fib, inline_scheduler<real_context<slab_stack<>, adapt_deque>>)
+LIBFORK_BENCH_ALL(run, fib, fib, inline_scheduler<poly_context<slab_stack<>, adapt_deque>>)
 
-LIBFORK_BENCH_ALL(run, fib, inline_scheduler<real_context<geometric_stack<>, adapt_deque>>)
-LIBFORK_BENCH_ALL(run, fib, inline_scheduler<poly_context<geometric_stack<>, adapt_deque>>)
+LIBFORK_BENCH_ALL(run, fib, fib, inline_scheduler<real_context<geometric_stack<>, adapt_deque>>)
+LIBFORK_BENCH_ALL(run, fib, fib, inline_scheduler<poly_context<geometric_stack<>, adapt_deque>>)
 
-LIBFORK_BENCH_ALL_MT(run, fib, mono_busy_pool)
-LIBFORK_BENCH_ALL_MT(run, fib, poly_busy_pool)
+LIBFORK_BENCH_ALL_MT(run, fib, fib, mono_busy_pool)
+LIBFORK_BENCH_ALL_MT(run, fib, fib, poly_busy_pool)

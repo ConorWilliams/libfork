@@ -60,4 +60,4 @@ void fib_run(benchmark::State &state) {
 
 } // namespace
 
-BENCH_ALL_MT(fib_run, openmp, fib)
+BENCH_ALL_MT(fib_run, openmp, fib, fib)
