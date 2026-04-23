@@ -61,15 +61,16 @@ struct uts_fn {
   }
 };
 
-template <uts_tree Tree, lf::scheduler Sch>
-void run(benchmark::State &state) {
-  setup_tree(Tree);
-  auto expect = expected_result(Tree);
+template <lf::scheduler Sch>
+void run(benchmark::State &state, uts_tree tree) {
+  setup_tree(tree);
+  auto expect = expected_result(tree);
 
-  state.counters["p"] = static_cast<double>(thread_count<Sch>(state));
-  state.SetComplexityN(static_cast<benchmark::IterationCount>(thread_count<Sch>(state)));
+  std::size_t threads = static_cast<std::size_t>(state.range(0));
+  state.counters["p"] = static_cast<double>(threads);
+  state.SetComplexityN(static_cast<benchmark::IterationCount>(threads));
 
-  Sch scheduler = make_scheduler<Sch>(state);
+  Sch scheduler = Sch{threads};
 
   for (auto _ : state) {
     Node root;
