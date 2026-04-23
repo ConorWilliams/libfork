@@ -35,14 +35,11 @@ export class adapt_deque {
     });
   }
 
-  [[nodiscard]]
-  constexpr auto thief() noexcept {
-    return m_deque.thief();
-  }
-
-  [[nodiscard]]
-  constexpr auto empty() const noexcept -> bool {
-    return m_deque.empty();
+  constexpr auto steal() noexcept -> unsafe_steal_handle {
+    if (auto [_, result] = m_deque.thief().steal()) {
+      return result;
+    }
+    return {};
   }
 
  private:
