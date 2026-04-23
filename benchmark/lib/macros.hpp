@@ -4,7 +4,9 @@
 
 #include "common.hpp"
 
-import std;
+#include <algorithm>
+#include <cstdint>
+#include <string>
 
 // Helper to handle bench_fn with or without template arguments
 #define BENCH_GET_FN(bench_fn, ...) bench_fn __VA_OPT__(<__VA_ARGS__>)

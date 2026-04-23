@@ -1,6 +1,6 @@
 #pragma once
 
-import std;
+#include <cstdint>
 
 inline constexpr int fib_test = 8;
 inline constexpr int fib_base = 37;
