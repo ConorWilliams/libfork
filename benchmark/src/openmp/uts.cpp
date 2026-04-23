@@ -2,8 +2,8 @@
 #include <omp.h>
 
 #include "common.hpp"
-#include "uts.hpp"
 #include "macros.hpp"
+#include "uts.hpp"
 
 import std;
 
@@ -29,11 +29,15 @@ auto uts_omp_impl(int depth, Node *parent) -> result {
         rng_spawn(parent->state.state, cs[i].child.state.state, static_cast<int>(i));
       }
 
-      #pragma omp task shared(cs)
-      cs[i].res = uts_omp_impl(depth + 1, &cs[i].child);
+      if (i + 1 == static_cast<std::size_t>(num_children)) {
+        cs[i].res = uts_omp_impl(depth + 1, &cs[i].child);
+      } else {
+#pragma omp task shared(cs)
+        cs[i].res = uts_omp_impl(depth + 1, &cs[i].child);
+      }
     }
 
-    #pragma omp taskwait
+#pragma omp taskwait
 
     for (auto &&elem : cs) {
       r.maxdepth = std::max(r.maxdepth, elem.res.maxdepth);
@@ -64,9 +68,9 @@ void uts_run(benchmark::State &state) {
     result r;
 
     omp_set_num_threads(threads);
-    #pragma omp parallel
+#pragma omp parallel
     {
-      #pragma omp single
+#pragma omp single
       {
         r = uts_omp_impl(0, &root);
       }

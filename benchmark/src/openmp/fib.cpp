@@ -17,13 +17,12 @@ auto fib_omp_impl(std::int64_t n) -> std::int64_t {
   std::int64_t lhs = 0;
   std::int64_t rhs = 0;
 
-  #pragma omp task shared(lhs)
+#pragma omp task shared(lhs)
   lhs = fib_omp_impl(n - 1);
 
-  #pragma omp task shared(rhs)
   rhs = fib_omp_impl(n - 2);
 
-  #pragma omp taskwait
+#pragma omp taskwait
   return lhs + rhs;
 }
 
@@ -42,9 +41,9 @@ void fib_run(benchmark::State &state) {
     std::int64_t return_value = 0;
 
     omp_set_num_threads(threads);
-    #pragma omp parallel
+#pragma omp parallel
     {
-      #pragma omp single
+#pragma omp single
       {
         return_value = fib_omp_impl(n);
       }
