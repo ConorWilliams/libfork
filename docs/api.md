@@ -130,6 +130,7 @@ Pre-allocated shared state for a root task. Constructors mirror `make_shared` / 
 recv_state<int> s;                                   // default-init
 recv_state<int> s{42};                               // in-place init
 recv_state<int> s{std::allocator_arg, alloc};        // custom allocator
+recv_state<int> s{std::allocator_arg, alloc, 42};    // custom allocator + in-place init
 recv_state<int, true> s;                             // cancellable variant
 ```
 
