@@ -7,8 +7,12 @@
 #undef max
 #undef min
 
-#include <format>
-#include <string>
+#ifdef LF_BENCH_NO_IMPORT_STD
+  #include <format>
+  #include <string>
+#else
+import std;
+#endif
 
 struct result {
   counter_t maxdepth;

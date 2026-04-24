@@ -1,6 +1,10 @@
 #include "uts.hpp"
 
-#include <exception>
+#ifdef LF_BENCH_NO_IMPORT_STD
+  #include <exception>
+#else
+import std;
+#endif
 
 namespace {
 
