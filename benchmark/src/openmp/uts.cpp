@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <format>
+#include <thread>
 #include <vector>
 
 namespace {

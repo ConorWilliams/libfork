@@ -9,6 +9,10 @@ add_library(openmp_benchmarks)
 # incompatible modmap for this target.
 set_target_properties(openmp_benchmarks PROPERTIES CXX_SCAN_FOR_MODULES OFF)
 
+# Signal to shared benchmark headers that this target cannot `import std;`
+# and must use textual standard headers instead.
+target_compile_definitions(openmp_benchmarks PRIVATE LF_BENCH_NO_IMPORT_STD)
+
 target_sources(openmp_benchmarks
   PRIVATE
     fib.cpp uts.cpp

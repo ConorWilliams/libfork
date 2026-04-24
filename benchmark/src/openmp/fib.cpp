@@ -5,8 +5,10 @@
 #include "fib.hpp"
 #include "macros.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <format>
+#include <thread>
 
 namespace {
 

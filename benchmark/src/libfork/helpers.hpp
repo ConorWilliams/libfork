@@ -3,8 +3,7 @@
 #include "macros.hpp"
 #include <benchmark/benchmark.h>
 
-#include <concepts>
-#include <cstddef>
+import std;
 
 import libfork;
 
