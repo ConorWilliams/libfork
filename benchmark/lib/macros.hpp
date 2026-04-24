@@ -27,6 +27,30 @@ format_name(std::string mode, std::string category, std::string name, std::strin
   return res;
 }
 
+inline auto inverse_complexity(benchmark::IterationCount n) -> double { return 1.0 / static_cast<double>(n); }
+
+inline void setup_single(benchmark::Benchmark *b, std::int64_t size) { b->Arg(size)->UseRealTime(); }
+
+inline void setup_mt(benchmark::Benchmark *b, std::int64_t size) {
+  b->Apply([size](benchmark::Benchmark *b) {
+     bench_thread_args(b, [size](benchmark::Benchmark *inner_b, unsigned t) {
+       inner_b->Args({size, static_cast<std::int64_t>(t)});
+     });
+   })
+      ->Complexity(inverse_complexity)
+      ->UseRealTime();
+}
+
+inline void setup_uts_mt(benchmark::Benchmark *b) {
+  b->Apply([](benchmark::Benchmark *b) {
+     bench_thread_args(b, [](benchmark::Benchmark *inner_b, unsigned t) {
+       inner_b->Arg(static_cast<std::int64_t>(t));
+     });
+   })
+      ->Complexity(inverse_complexity)
+      ->UseRealTime();
+}
+
 } // namespace lf_bench
 
 // --- Standard Benchmarks ---
@@ -35,10 +59,9 @@ format_name(std::string mode, std::string category, std::string name, std::strin
   namespace {                                                                                                \
   struct benchmark_reg_##id {                                                                                \
     benchmark_reg_##id() {                                                                                   \
-      benchmark::RegisterBenchmark(lf_bench::format_name(#mode, #category, #name, #__VA_ARGS__),             \
-                                   BENCH_GET_FN(bench_fn __VA_OPT__(, ) __VA_ARGS__))                        \
-          ->Arg(prefix##_##mode)                                                                             \
-          ->UseRealTime();                                                                                   \
+      auto *b = benchmark::RegisterBenchmark(lf_bench::format_name(#mode, #category, #name, #__VA_ARGS__),   \
+                                             BENCH_GET_FN(bench_fn __VA_OPT__(, ) __VA_ARGS__));             \
+      lf_bench::setup_single(b, prefix##_##mode);                                                            \
     }                                                                                                        \
   } benchmark_reg_inst_##id;                                                                                 \
   }
@@ -57,17 +80,9 @@ format_name(std::string mode, std::string category, std::string name, std::strin
   namespace {                                                                                                \
   struct benchmark_reg_##id {                                                                                \
     benchmark_reg_##id() {                                                                                   \
-      benchmark::RegisterBenchmark(lf_bench::format_name(#mode, #category, #name, #__VA_ARGS__),             \
-                                   BENCH_GET_FN(bench_fn __VA_OPT__(, ) __VA_ARGS__))                        \
-          ->Apply([](benchmark::Benchmark *b) {                                                              \
-            bench_thread_args(b, [](benchmark::Benchmark *inner_b, unsigned t) {                             \
-              inner_b->Args({prefix##_##mode, static_cast<std::int64_t>(t)});                                \
-            });                                                                                              \
-          })                                                                                                 \
-          ->Complexity([](benchmark::IterationCount n) -> double {                                           \
-            return 1.0 / static_cast<double>(n);                                                             \
-          })                                                                                                 \
-          ->UseRealTime();                                                                                   \
+      auto *b = benchmark::RegisterBenchmark(lf_bench::format_name(#mode, #category, #name, #__VA_ARGS__),   \
+                                             BENCH_GET_FN(bench_fn __VA_OPT__(, ) __VA_ARGS__));             \
+      lf_bench::setup_mt(b, prefix##_##mode);                                                                \
     }                                                                                                        \
   } benchmark_reg_inst_##id;                                                                                 \
   }
@@ -86,11 +101,12 @@ format_name(std::string mode, std::string category, std::string name, std::strin
   namespace {                                                                                                \
   struct benchmark_reg_##id {                                                                                \
     benchmark_reg_##id() {                                                                                   \
-      benchmark::RegisterBenchmark(lf_bench::format_name(#mode, #category, "uts/" tree_name, #__VA_ARGS__),  \
-                                   [=](benchmark::State &state) {                                            \
-                                     BENCH_GET_FN(bench_fn __VA_OPT__(, ) __VA_ARGS__)(state, tree_id);      \
-                                   })                                                                        \
-          ->UseRealTime();                                                                                   \
+      auto *b = benchmark::RegisterBenchmark(                                                                \
+          lf_bench::format_name(#mode, #category, "uts/" tree_name, #__VA_ARGS__),                           \
+          [=](benchmark::State &state) {                                                                     \
+            BENCH_GET_FN(bench_fn __VA_OPT__(, ) __VA_ARGS__)(state, tree_id);                               \
+          });                                                                                                \
+      b->UseRealTime();                                                                                      \
     }                                                                                                        \
   } benchmark_reg_inst_##id;                                                                                 \
   }
@@ -113,19 +129,12 @@ format_name(std::string mode, std::string category, std::string name, std::strin
   namespace {                                                                                                \
   struct benchmark_reg_##id {                                                                                \
     benchmark_reg_##id() {                                                                                   \
-      benchmark::RegisterBenchmark(lf_bench::format_name(#mode, #category, "uts/" tree_name, #__VA_ARGS__),  \
-                                   [=](benchmark::State &state) {                                            \
-                                     BENCH_GET_FN(bench_fn __VA_OPT__(, ) __VA_ARGS__)(state, tree_id);      \
-                                   })                                                                        \
-          ->Apply([](benchmark::Benchmark *b) {                                                              \
-            bench_thread_args(b, [](benchmark::Benchmark *inner_b, unsigned t) {                             \
-              inner_b->Arg(static_cast<std::int64_t>(t));                                                    \
-            });                                                                                              \
-          })                                                                                                 \
-          ->Complexity([](benchmark::IterationCount n) -> double {                                           \
-            return 1.0 / static_cast<double>(n);                                                             \
-          })                                                                                                 \
-          ->UseRealTime();                                                                                   \
+      auto *b = benchmark::RegisterBenchmark(                                                                \
+          lf_bench::format_name(#mode, #category, "uts/" tree_name, #__VA_ARGS__),                           \
+          [=](benchmark::State &state) {                                                                     \
+            BENCH_GET_FN(bench_fn __VA_OPT__(, ) __VA_ARGS__)(state, tree_id);                               \
+          });                                                                                                \
+      lf_bench::setup_uts_mt(b);                                                                             \
     }                                                                                                        \
   } benchmark_reg_inst_##id;                                                                                 \
   }
