@@ -579,7 +579,7 @@ template <worker_context Context>
 struct promise_type<void, Context> : mixin_frame<Context> {
 
   // Putting init here allows:
-  //  1. Frame not no need to know about the checkpoint type
+  //  1. Frame not to need to know about the checkpoint type
   //  2. Compiler merge double read of thread local here and in allocator
   frame_t<Context> frame{get_tls_stack<Context>().checkpoint()};
 
@@ -594,7 +594,7 @@ template <returnable T, worker_context Context>
 struct promise_type : mixin_frame<Context> {
 
   // Putting init here allows:
-  //  1. Frame not no need to know about the checkpoint type
+  //  1. Frame not to need to know about the checkpoint type
   //  2. Compiler merge double read of thread local here and in allocator
   frame_t<Context> frame{get_tls_stack<Context>().checkpoint()};
   T *return_address;

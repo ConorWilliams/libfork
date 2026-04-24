@@ -35,7 +35,7 @@ class basic_busy_pool {
 
   // TODO: sleep when zero work
 
-  explicit basic_busy_pool(std::size_t n = std::thread::hardware_concurrency(), Alloc alloc = Alloc())
+  explicit basic_busy_pool(std::size_t n = std::thread::hardware_concurrency(), Alloc const &alloc = Alloc())
       : m_contexts(n) {
 
     // TODO: propagate alloc to m_contexts, m_posted, etc.
