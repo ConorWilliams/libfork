@@ -5,9 +5,11 @@
 #include "common.hpp"
 
 #ifdef LF_BENCH_NO_IMPORT_STD
-#  include <algorithm>
-#  include <cstdint>
-#  include <string>
+  #include <algorithm>
+  #include <cstdint>
+  #include <string>
+#else
+import std;
 #endif
 
 #define BENCH_GET_FN(bench_fn, ...) bench_fn __VA_OPT__(<__VA_ARGS__>)

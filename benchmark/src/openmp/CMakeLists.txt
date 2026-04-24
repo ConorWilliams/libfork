@@ -5,6 +5,8 @@ add_library(openmp_benchmarks)
 # incompatible modmap for this target.
 set_target_properties(openmp_benchmarks PROPERTIES CXX_SCAN_FOR_MODULES OFF)
 
+# TODO: remove this hack when we have LLVM 23
+
 # Signal to shared benchmark headers that this target cannot `import std;`
 # and must use textual standard headers instead.
 target_compile_definitions(openmp_benchmarks PRIVATE LF_BENCH_NO_IMPORT_STD)
