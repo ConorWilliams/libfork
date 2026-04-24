@@ -4,7 +4,10 @@
 #include "macros.hpp"
 #include "uts.hpp"
 
-import std;
+#include <algorithm>
+#include <cstddef>
+#include <format>
+#include <vector>
 
 namespace {
 

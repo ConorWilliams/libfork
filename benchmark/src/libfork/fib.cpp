@@ -4,7 +4,8 @@
 #include "fib.hpp"
 #include "helpers.hpp"
 
-import std;
+#include <cstdint>
+#include <format>
 
 import libfork;
 
