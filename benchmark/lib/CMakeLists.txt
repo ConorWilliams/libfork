@@ -1,7 +1,3 @@
-cmake_minimum_required(VERSION 4.2.1 FATAL_ERROR)
-
-project(benchmark_common LANGUAGES CXX)
-
 add_library(benchmark_common STATIC)
 
 target_compile_features(benchmark_common PUBLIC cxx_std_26)

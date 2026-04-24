@@ -1,7 +1,3 @@
-cmake_minimum_required(VERSION 4.2.1 FATAL_ERROR)
-
-project(openmp_benchmarks LANGUAGES CXX)
-
 add_library(openmp_benchmarks)
 
 # OpenMP compiles with -fopenmp which conflicts with the shared std.pcm (built
