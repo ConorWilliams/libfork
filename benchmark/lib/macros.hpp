@@ -2,11 +2,13 @@
 
 #include <benchmark/benchmark.h>
 
-#include <algorithm>
-#include <cstdint>
-#include <string>
-
 #include "common.hpp"
+
+#ifdef LF_BENCH_NO_IMPORT_STD
+#  include <algorithm>
+#  include <cstdint>
+#  include <string>
+#endif
 
 #define BENCH_GET_FN(bench_fn, ...) bench_fn __VA_OPT__(<__VA_ARGS__>)
 
