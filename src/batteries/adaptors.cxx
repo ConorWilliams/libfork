@@ -41,8 +41,7 @@ class adapt_deque {
   static constexpr size_type k_default_capacity = 1024 * 32;
 
  public:
-  constexpr adapt_deque() noexcept(noexcept(Allocator()))
-      : adapt_deque(k_default_capacity, Allocator()) {}
+  constexpr adapt_deque() : adapt_deque(k_default_capacity, Allocator()) {}
 
   explicit constexpr adapt_deque(size_type capacity, Allocator const &alloc = Allocator())
       : m_deque{capacity, alloc} {}
