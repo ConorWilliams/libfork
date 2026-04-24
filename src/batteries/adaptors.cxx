@@ -41,7 +41,7 @@ class adapt_deque {
  public:
   constexpr adapt_deque() : m_deque{k_default_capacity} {}
 
-  explicit constexpr adapt_deque(size_type capacity, Allocator const &alloc = Allocator{})
+  explicit constexpr adapt_deque(size_type capacity, Allocator const &alloc = Allocator())
       : m_deque{capacity, alloc} {}
 
   constexpr void push(unsafe_steal_handle value) { m_deque.push(value); }

@@ -50,7 +50,7 @@ class geometric_stack {
   };
 
  public:
-  constexpr geometric_stack() noexcept(noexcept(Allocator{})) : geometric_stack(Allocator()) {}
+  constexpr geometric_stack() noexcept(noexcept(Allocator())) : geometric_stack(Allocator()) {}
   explicit constexpr geometric_stack(Allocator const &alloc) noexcept : m_ctrl_alloc(alloc) {}
 
   constexpr geometric_stack(geometric_stack const &other) = delete;

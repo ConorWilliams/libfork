@@ -56,7 +56,7 @@ class adaptor_stack {
   };
 
  public:
-  constexpr adaptor_stack() noexcept(noexcept(Allocator{})) : adaptor_stack(Allocator()) {}
+  constexpr adaptor_stack() noexcept(noexcept(Allocator())) : adaptor_stack(Allocator()) {}
   explicit constexpr adaptor_stack(Allocator const &alloc) noexcept : m_alloc(alloc) {}
 
   // TODO: drop constexpr for =default and =delete across the lib
