@@ -1,4 +1,4 @@
-add_library(benchmark_common STATIC)
+add_library(benchmark_common)
 
 target_compile_features(benchmark_common PUBLIC cxx_std_26)
 
