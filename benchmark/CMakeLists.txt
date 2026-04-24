@@ -43,9 +43,8 @@ if(OpenMP_CXX_FOUND)
   add_subdirectory(src/openmp)
 
   target_link_libraries(libfork_benchmark
-  PRIVATE
-    $<LINK_LIBRARY:WHOLE_ARCHIVE,openmp_benchmarks>
-    OpenMP::OpenMP_CXX
+    PRIVATE
+      $<LINK_LIBRARY:WHOLE_ARCHIVE,openmp_benchmarks>
   )
 endif()
 
