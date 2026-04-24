@@ -12,7 +12,7 @@ RequiresExpressionIndentation: OuterScope
 LambdaBodyIndentation: Signature
 PenaltyReturnTypeOnItsOwnLine: 1
 
-# TODO: update for clan-format 23
+# TODO: update for clang-format 23
 BinPackArguments: false
 BinPackParameters: OnePerLine
 
