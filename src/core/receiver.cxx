@@ -49,8 +49,9 @@ struct hidden_receiver_state {
   constexpr hidden_receiver_state() = default;
 
   template <typename... Args>
-    requires (sizeof...(Args) > 0) && std::constructible_from<T, Args...>
-  constexpr explicit(sizeof...(Args) == 1) hidden_receiver_state(Args &&...args)
+    requires std::constructible_from<T, Args...>
+  constexpr explicit(sizeof...(Args) == 1)
+      hidden_receiver_state(Args &&...args) noexcept(std::is_nothrow_constructible_v<T, Args...>)
       : return_value(std::forward<Args>(args)...) {}
 };
 
@@ -83,7 +84,7 @@ class recv_state {
   /// Value-init from args: forwards `args` to `hidden_receiver_state`'s constructor
   /// (in-place construction of the return value) via `std::make_shared`.
   template <typename... Args>
-    requires (sizeof...(Args) > 0) && std::constructible_from<state_type, Args...>
+    requires std::constructible_from<state_type, Args...>
   constexpr explicit(sizeof...(Args) == 1) recv_state(Args &&...args)
       : m_ptr(std::make_shared<state_type>(std::forward<Args>(args)...)) {}
 

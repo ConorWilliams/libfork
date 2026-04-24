@@ -20,7 +20,7 @@ class base_context {
   constexpr base_context() = default;
 
   template <typename... Args>
-    requires std::constructible_from<Stack, Args...> && (sizeof...(Args) > 0)
+    requires std::constructible_from<Stack, Args...>
   explicit(sizeof...(Args) ==
            1) constexpr base_context(Args &&...args) noexcept(std::is_nothrow_constructible_v<Stack, Args...>)
       : m_stack(std::forward<Args>(args)...) {}
