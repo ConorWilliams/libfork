@@ -8,7 +8,6 @@
 #include <cstdint>
 #include <string>
 
-// Helper to handle bench_fn with or without template arguments
 #define BENCH_GET_FN(bench_fn, ...) bench_fn __VA_OPT__(<__VA_ARGS__>)
 
 namespace lf_bench {
@@ -27,17 +26,19 @@ format_name(std::string mode, std::string category, std::string name, std::strin
   }
   return res;
 }
+
 } // namespace lf_bench
 
-// --- Standard Benchmarks (Single Argument for size) ---
+// --- Standard Benchmarks ---
 
 #define BENCH_ONE_WITH_ID(id, bench_fn, category, name, mode, prefix, ...)                                   \
   namespace {                                                                                                \
   struct benchmark_reg_##id {                                                                                \
     benchmark_reg_##id() {                                                                                   \
-      auto *b = benchmark::RegisterBenchmark(lf_bench::format_name(#mode, #category, #name, #__VA_ARGS__),   \
-                                             BENCH_GET_FN(bench_fn __VA_OPT__(, ) __VA_ARGS__));             \
-      b->Arg(prefix##_##mode)->UseRealTime();                                                                \
+      benchmark::RegisterBenchmark(lf_bench::format_name(#mode, #category, #name, #__VA_ARGS__),             \
+                                   BENCH_GET_FN(bench_fn __VA_OPT__(, ) __VA_ARGS__))                        \
+          ->Arg(prefix##_##mode)                                                                             \
+          ->UseRealTime();                                                                                   \
     }                                                                                                        \
   } benchmark_reg_inst_##id;                                                                                 \
   }
@@ -50,17 +51,15 @@ format_name(std::string mode, std::string category, std::string name, std::strin
   BENCH_ONE(bench_fn, category, name, test, prefix __VA_OPT__(, ) __VA_ARGS__)                               \
   BENCH_ONE(bench_fn, category, name, base, prefix __VA_OPT__(, ) __VA_ARGS__)
 
-// --- Multi-Threaded Benchmarks (Size and Threads) ---
+// --- Multi-Threaded Benchmarks ---
 
 #define BENCH_ONE_MT_WITH_ID(id, bench_fn, category, name, mode, prefix, ...)                                \
   namespace {                                                                                                \
-  struct benchmark_reg_mt_##id {                                                                             \
-    benchmark_reg_mt_##id() {                                                                                \
-      auto *benchmark_obj =                                                                                  \
-          benchmark::RegisterBenchmark(lf_bench::format_name(#mode, #category, #name, #__VA_ARGS__),         \
-                                       BENCH_GET_FN(bench_fn, __VA_ARGS__));                                 \
-      benchmark_obj                                                                                          \
-          ->Apply([](benchmark::Benchmark *b) -> void {                                                      \
+  struct benchmark_reg_##id {                                                                                \
+    benchmark_reg_##id() {                                                                                   \
+      benchmark::RegisterBenchmark(lf_bench::format_name(#mode, #category, #name, #__VA_ARGS__),             \
+                                   BENCH_GET_FN(bench_fn __VA_OPT__(, ) __VA_ARGS__))                        \
+          ->Apply([](benchmark::Benchmark *b) {                                                              \
             bench_thread_args(b, [](benchmark::Benchmark *inner_b, unsigned t) {                             \
               inner_b->Args({prefix##_##mode, static_cast<std::int64_t>(t)});                                \
             });                                                                                              \
@@ -70,7 +69,7 @@ format_name(std::string mode, std::string category, std::string name, std::strin
           })                                                                                                 \
           ->UseRealTime();                                                                                   \
     }                                                                                                        \
-  } benchmark_reg_mt_inst_##id;                                                                              \
+  } benchmark_reg_inst_##id;                                                                                 \
   }
 
 #define BENCH_ONE_MT_HIDDEN(id, ...) BENCH_ONE_MT_WITH_ID(id __VA_OPT__(, ) __VA_ARGS__)
@@ -81,20 +80,19 @@ format_name(std::string mode, std::string category, std::string name, std::strin
   BENCH_ONE_MT(bench_fn, category, name, test, prefix __VA_OPT__(, ) __VA_ARGS__)                            \
   BENCH_ONE_MT(bench_fn, category, name, base, prefix __VA_OPT__(, ) __VA_ARGS__)
 
-// --- UTS Benchmarks (Tree ID and Threads) ---
+// --- UTS Benchmarks ---
 
 #define UTS_BENCH_ONE_WITH_ID(id, bench_fn, category, mode, tree_name, tree_id, ...)                         \
   namespace {                                                                                                \
-  struct benchmark_reg_uts_##id {                                                                            \
-    benchmark_reg_uts_##id() {                                                                               \
-      auto *b = benchmark::RegisterBenchmark(                                                                \
-          lf_bench::format_name(#mode, #category, "uts/" tree_name, #__VA_ARGS__),                           \
-          [=](benchmark::State &state) {                                                                     \
-            BENCH_GET_FN(bench_fn __VA_OPT__(, ) __VA_ARGS__)(state, tree_id);                               \
-          });                                                                                                \
-      b->UseRealTime();                                                                                      \
+  struct benchmark_reg_##id {                                                                                \
+    benchmark_reg_##id() {                                                                                   \
+      benchmark::RegisterBenchmark(lf_bench::format_name(#mode, #category, "uts/" tree_name, #__VA_ARGS__),  \
+                                   [=](benchmark::State &state) {                                            \
+                                     BENCH_GET_FN(bench_fn __VA_OPT__(, ) __VA_ARGS__)(state, tree_id);      \
+                                   })                                                                        \
+          ->UseRealTime();                                                                                   \
     }                                                                                                        \
-  } benchmark_reg_uts_inst_##id;                                                                             \
+  } benchmark_reg_inst_##id;                                                                                 \
   }
 
 #define UTS_BENCH_ONE_HIDDEN(id, ...) UTS_BENCH_ONE_WITH_ID(id __VA_OPT__(, ) __VA_ARGS__)
@@ -109,17 +107,17 @@ format_name(std::string mode, std::string category, std::string name, std::strin
   UTS_BENCH_ONE(bench_fn, category, large, "T1L", uts_t1l __VA_OPT__(, ) __VA_ARGS__)                        \
   UTS_BENCH_ONE(bench_fn, category, large, "T3L", uts_t3l __VA_OPT__(, ) __VA_ARGS__)
 
+// --- UTS Multi-Threaded Benchmarks ---
+
 #define UTS_BENCH_ONE_MT_WITH_ID(id, bench_fn, category, mode, tree_name, tree_id, ...)                      \
   namespace {                                                                                                \
-  struct benchmark_reg_uts_mt_##id {                                                                         \
-    benchmark_reg_uts_mt_##id() {                                                                            \
-      auto *benchmark_obj = benchmark::RegisterBenchmark(                                                    \
-          lf_bench::format_name(#mode, #category, "uts/" tree_name, #__VA_ARGS__),                           \
-          [=](benchmark::State &state) {                                                                     \
-            BENCH_GET_FN(bench_fn __VA_OPT__(, ) __VA_ARGS__)(state, tree_id);                               \
-          });                                                                                                \
-      benchmark_obj                                                                                          \
-          ->Apply([](benchmark::Benchmark *b) -> void {                                                      \
+  struct benchmark_reg_##id {                                                                                \
+    benchmark_reg_##id() {                                                                                   \
+      benchmark::RegisterBenchmark(lf_bench::format_name(#mode, #category, "uts/" tree_name, #__VA_ARGS__),  \
+                                   [=](benchmark::State &state) {                                            \
+                                     BENCH_GET_FN(bench_fn __VA_OPT__(, ) __VA_ARGS__)(state, tree_id);      \
+                                   })                                                                        \
+          ->Apply([](benchmark::Benchmark *b) {                                                              \
             bench_thread_args(b, [](benchmark::Benchmark *inner_b, unsigned t) {                             \
               inner_b->Arg(static_cast<std::int64_t>(t));                                                    \
             });                                                                                              \
@@ -129,7 +127,7 @@ format_name(std::string mode, std::string category, std::string name, std::strin
           })                                                                                                 \
           ->UseRealTime();                                                                                   \
     }                                                                                                        \
-  } benchmark_reg_uts_mt_inst_##id;                                                                          \
+  } benchmark_reg_inst_##id;                                                                                 \
   }
 
 #define UTS_BENCH_ONE_MT_HIDDEN(id, ...) UTS_BENCH_ONE_MT_WITH_ID(id __VA_OPT__(, ) __VA_ARGS__)
