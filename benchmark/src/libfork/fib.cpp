@@ -24,8 +24,8 @@ struct fib {
 
     auto sc = co_await lf::scope();
 
-    co_await sc.fork(&rhs, fib{}, n - 2);
-    co_await sc.call(&lhs, fib{}, n - 1);
+    co_await sc.fork(&rhs, fib{}, n - 1);
+    co_await sc.call(&lhs, fib{}, n - 2);
 
     co_await sc.join();
 
