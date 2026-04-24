@@ -1,8 +1,8 @@
 #include <benchmark/benchmark.h>
 
-#include "libfork_benchmark/common.hpp"
-
-#include "libfork_benchmark/fib/fib.hpp"
+#include "common.hpp"
+#include "fib.hpp"
+#include "macros.hpp"
 
 import std;
 
@@ -87,11 +87,12 @@ auto fib(std::int64_t n) -> task {
   }
   std::int64_t a = 0;
   std::int64_t b = 0;
-  co_await fib(n - 1).set(a);
-  co_await fib(n - 2).set(b);
+  co_await fib(n - 2).set(a);
+  co_await fib(n - 1).set(b);
   co_return a + b;
 }
 
+template <typename = void>
 void fib_coro_no_queue(benchmark::State &state) {
 
   std::int64_t n = state.range(0);
@@ -107,7 +108,12 @@ void fib_coro_no_queue(benchmark::State &state) {
     benchmark::DoNotOptimize(n);
     std::int64_t result = 0;
     fib(n).set(result).coro.resume();
-    CHECK_RESULT(result, expect);
+
+    if (result != expect) {
+      state.SkipWithError(std::format("incorrect result: {} != {}", result, expect));
+      break;
+    }
+
     benchmark::DoNotOptimize(result);
   }
 
@@ -129,16 +135,15 @@ auto fib_recursive_deque_impl(std::int64_t n) -> std::int64_t {
 
   // Emulate work item creation/scheduling overhead
   deque().push(n);
-  std::int64_t a = fib_recursive_deque_impl(n - 1);
+  std::int64_t a = fib_recursive_deque_impl(n - 2);
   deque().pop();
 
-  std::int64_t b = fib_recursive_deque_impl(n - 2);
+  std::int64_t b = fib_recursive_deque_impl(n - 1);
 
   return a + b;
 }
 
-// TODO: can we generalize the runner function?
-
+template <typename = void>
 void fib_recursive_deque(benchmark::State &state) {
 
   std::int64_t n = state.range(0);
@@ -152,7 +157,12 @@ void fib_recursive_deque(benchmark::State &state) {
   for (auto _ : state) {
     benchmark::DoNotOptimize(n);
     std::int64_t result = fib_recursive_deque_impl(n);
-    CHECK_RESULT(result, expect);
+
+    if (result != expect) {
+      state.SkipWithError(std::format("incorrect result: {} != {}", result, expect));
+      break;
+    }
+
     benchmark::DoNotOptimize(result);
   }
 
@@ -162,8 +172,6 @@ void fib_recursive_deque(benchmark::State &state) {
 } // namespace
 
 // Minimal coroutine, bump allocated (thread-local) stack
-BENCHMARK(fib_coro_no_queue)->Name("test/baremetal/fib/coro")->Arg(fib_test);
-BENCHMARK(fib_coro_no_queue)->Name("base/baremetal/fib/coro")->Arg(fib_base);
+BENCH_ALL(fib_coro_no_queue, baremetal, coro, fib)
 
-BENCHMARK(fib_recursive_deque)->Name("test/baremetal/fib/deque")->Arg(fib_test);
-BENCHMARK(fib_recursive_deque)->Name("base/baremetal/fib/deque")->Arg(fib_base);
+BENCH_ALL(fib_recursive_deque, baremetal, deque, fib)

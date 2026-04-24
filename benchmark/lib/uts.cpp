@@ -1,8 +1,10 @@
-#include "libfork_benchmark/uts/uts.hpp"
+#include "uts.hpp"
 
-#include "libfork/__impl/exception.hpp"
-
+#ifdef LF_BENCH_NO_IMPORT_STD
+  #include <exception>
+#else
 import std;
+#endif
 
 namespace {
 
@@ -129,7 +131,7 @@ void setup_tree(uts_tree tree) {
       setup_t3xxl();
       break;
     default:
-      LF_THROW(std::invalid_argument("invalid tree type"));
+      std::terminate();
   }
 }
 
@@ -152,6 +154,6 @@ auto expected_result(uts_tree tree) -> result {
     case uts_t3xxl:
       return {.maxdepth = 99049, .size = 2793220501, .leaves = 1396611250};
     default:
-      LF_THROW(std::invalid_argument("invalid tree type"));
+      std::terminate();
   }
 }

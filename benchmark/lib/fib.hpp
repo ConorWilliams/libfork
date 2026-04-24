@@ -1,6 +1,10 @@
 #pragma once
 
+#ifdef LF_BENCH_NO_IMPORT_STD
+  #include <cstdint>
+#else
 import std;
+#endif
 
 inline constexpr int fib_test = 8;
 inline constexpr int fib_base = 37;

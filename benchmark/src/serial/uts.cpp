@@ -1,8 +1,8 @@
 #include <benchmark/benchmark.h>
 
-#include "libfork_benchmark/common.hpp"
-
-#include "libfork_benchmark/uts/uts.hpp"
+#include "common.hpp"
+#include "macros.hpp"
+#include "uts.hpp"
 
 import std;
 
@@ -44,30 +44,27 @@ auto uts_traverse(int depth, Node *parent) -> result {
   return r;
 }
 
-void uts_serial(benchmark::State &state) {
-  auto tree = static_cast<uts_tree>(state.range(0));
+void uts_serial(benchmark::State &state, uts_tree tree) {
   setup_tree(tree);
-  auto expected = expected_result(tree);
+  auto expect = expected_result(tree);
 
   for (auto _ : state) {
     Node root;
     uts_initRoot(&root, type);
     result r = uts_traverse(0, &root);
-    CHECK_RESULT(r, expected);
+
+    if (r != expect) {
+      state.SkipWithError(std::format("incorrect result: {} != {}", r, expect));
+      break;
+    }
+
     benchmark::DoNotOptimize(r);
   }
 }
 
 } // namespace
 
-BENCHMARK(uts_serial)->Name("test/serial/uts/T1_mini")->Arg(uts_t1_mini)->UseRealTime();
-BENCHMARK(uts_serial)->Name("test/serial/uts/T3_mini")->Arg(uts_t3_mini)->UseRealTime();
-
-BENCHMARK(uts_serial)->Name("base/serial/uts/T1")->Arg(uts_t1)->UseRealTime();
-BENCHMARK(uts_serial)->Name("base/serial/uts/T3")->Arg(uts_t3)->UseRealTime();
-
-BENCHMARK(uts_serial)->Name("large/serial/uts/T1L")->Arg(uts_t1l)->UseRealTime();
-BENCHMARK(uts_serial)->Name("large/serial/uts/T3L")->Arg(uts_t3l)->UseRealTime();
+UTS_BENCH_ALL(uts_serial, serial)
 
 namespace {
 
@@ -106,27 +103,24 @@ auto uts_traverse_no_alloc(int depth, Node *parent) -> result {
   return r;
 }
 
-void uts_serial_no_alloc(benchmark::State &state) {
-  auto tree = static_cast<uts_tree>(state.range(0));
+void uts_serial_no_alloc(benchmark::State &state, uts_tree tree) {
   setup_tree(tree);
-  auto expected = expected_result(tree);
+  auto expect = expected_result(tree);
 
   for (auto _ : state) {
     Node root;
     uts_initRoot(&root, type);
     result r = uts_traverse_no_alloc(0, &root);
-    CHECK_RESULT(r, expected);
+
+    if (r != expect) {
+      state.SkipWithError(std::format("incorrect result: {} != {}", r, expect));
+      break;
+    }
+
     benchmark::DoNotOptimize(r);
   }
 }
 
 } // namespace
 
-BENCHMARK(uts_serial_no_alloc)->Name("test/serial/no_alloc/uts/T1_mini")->Arg(uts_t1_mini)->UseRealTime();
-BENCHMARK(uts_serial_no_alloc)->Name("test/serial/no_alloc/uts/T3_mini")->Arg(uts_t3_mini)->UseRealTime();
-
-BENCHMARK(uts_serial_no_alloc)->Name("base/serial/no_alloc/uts/T1")->Arg(uts_t1)->UseRealTime();
-BENCHMARK(uts_serial_no_alloc)->Name("base/serial/no_alloc/uts/T3")->Arg(uts_t3)->UseRealTime();
-
-BENCHMARK(uts_serial_no_alloc)->Name("large/serial/no_alloc/uts/T1L")->Arg(uts_t1l)->UseRealTime();
-BENCHMARK(uts_serial_no_alloc)->Name("large/serial/no_alloc/uts/T3L")->Arg(uts_t3l)->UseRealTime();
+UTS_BENCH_ALL(uts_serial_no_alloc, serial / no_alloc)
