@@ -4,10 +4,9 @@ export module libfork.core:poly_context;
 
 import std;
 
-import libfork.utils;
-
 import :concepts_stack;
 import :handles;
+import :exception;
 
 namespace lf {
 

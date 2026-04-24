@@ -1,4 +1,4 @@
-export module libfork.utils:exception;
+export module libfork.core:exception;
 
 import std;
 

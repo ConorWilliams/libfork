@@ -5,6 +5,7 @@ export module libfork.batteries:deque;
 
 import std;
 
+import libfork.core;
 import libfork.utils;
 
 namespace lf {

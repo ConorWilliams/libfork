@@ -6,8 +6,6 @@ export module libfork.core:schedule;
 
 import std;
 
-import libfork.utils;
-
 import :concepts_invocable;
 import :concepts_scheduler;
 import :frame;
@@ -17,6 +15,7 @@ import :promise;
 import :root;
 import :handles;
 import :receiver;
+import :exception;
 
 namespace lf {
 

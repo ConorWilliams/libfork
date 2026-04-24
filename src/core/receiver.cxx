@@ -6,9 +6,8 @@ export module libfork.core:receiver;
 
 import std;
 
-import libfork.utils;
-
 import :stop;
+import :exception;
 
 namespace lf {
 
