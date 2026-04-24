@@ -46,6 +46,8 @@ export struct post_error final : libfork_exception {
 export template <worker_stack Stack>
 class poly_context : public base_context<Stack> {
  public:
+  using base_context<Stack>::base_context;
+
   virtual void push(steal_handle<poly_context>) = 0;
   virtual auto pop() noexcept -> steal_handle<poly_context> = 0;
 

@@ -49,14 +49,14 @@ class derived_poly_context : public poly_context<Stack> {
   constexpr derived_poly_context() = default;
 
   template <typename... StackArgs, typename... DequeArgs>
-    requires std::constructible_from<base_context<Stack>, StackArgs...> &&
+    requires std::constructible_from<poly_context<Stack>, StackArgs...> &&
                  std::constructible_from<Deque, DequeArgs...>
   constexpr derived_poly_context(
       std::piecewise_construct_t, std::tuple<StackArgs...> stack_args,
       std::tuple<DequeArgs...>
-          deque_args) noexcept(std::is_nothrow_constructible_v<base_context<Stack>, StackArgs...> &&
+          deque_args) noexcept(std::is_nothrow_constructible_v<poly_context<Stack>, StackArgs...> &&
                                std::is_nothrow_constructible_v<Deque, DequeArgs...>)
-      : base_context<Stack>(std::make_from_tuple<base_context<Stack>>(std::move(stack_args))),
+      : poly_context<Stack>(std::make_from_tuple<poly_context<Stack>>(std::move(stack_args))),
         m_container(std::make_from_tuple<Deque>(std::move(deque_args))) {}
 
   constexpr void push(steal_handle<context_type> handle) final { m_container.push(handle); }
