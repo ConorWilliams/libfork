@@ -4,7 +4,11 @@
 #include "helpers.hpp"
 #include "uts.hpp"
 
-import std;
+#include <algorithm>
+#include <cstddef>
+#include <format>
+#include <utility>
+#include <vector>
 
 import libfork;
 
