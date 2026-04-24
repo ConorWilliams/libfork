@@ -13,18 +13,24 @@ template <typename T>
 concept ref_to_worker_stack = std::is_lvalue_reference_v<T> && worker_stack<std::remove_reference_t<T>>;
 
 /**
+ * @brief Specifies that a type acts as a LIFO stack over U.
+ */
+export template <typename T, typename U>
+concept lifo_stack = plain_object<T> && requires (T context, U val) {
+  { context.push(val) } -> std::same_as<void>;
+  { context.pop() } noexcept -> std::same_as<U>;
+};
+
+/**
  * @brief Defines the API for a libfork compatible worker context.
  *
  * This requires that `T` is an object type and supports the following operations:
  *
- * - Push/pop a frame handle onto the context in a LIFO manner.
+ * - Push/pop a steal handle onto the context in a LIFO manner.
  * - Have a `worker_stack` that can be accessed via `stack()`.
- * - Post an await handle to the context via `post()` and promise to call resume.
  */
 export template <typename T>
-concept worker_context = plain_object<T> && requires (T context, steal_handle<T> frame) {
-  { context.push(frame) } -> std::same_as<void>;
-  { context.pop() } noexcept -> std::same_as<steal_handle<T>>;
+concept worker_context = lifo_stack<T, steal_handle<T>> && requires (T context) {
   { context.stack() } noexcept -> ref_to_worker_stack;
 };
 

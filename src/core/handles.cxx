@@ -6,59 +6,62 @@ import :frame;
 
 namespace lf {
 
-// =================== Frame =================== //
+// =================== Untyped handles =================== //
 
-// TODO: api + test this is lock-free
-//
-// What is the API:
-//  - You can push/pop it
-//  - You can convert it to a "steal handle" -> which you can/must resume?
-//
-// What properties does it have:
-//  - It is trivially copyable/constructible/destructible
-//  - It has a null value, you can test if it is null
-//  - You can store it in an atomic and it is lock-free
-
-export template <typename T>
 class handle {
  public:
   constexpr handle() = default;
+  constexpr handle(key_t, frame_base *ptr) noexcept : m_ptr{ptr} {}
   constexpr auto operator==(handle const &) const noexcept -> bool = default;
   constexpr explicit operator bool() const noexcept { return m_ptr != nullptr; }
 
-  // Template to prevent circular dependency
-  constexpr handle(key_t, frame_base *ptr) noexcept : m_ptr{ptr} {}
-
  private:
   [[nodiscard]]
-  constexpr friend auto get(key_t, handle other) noexcept -> frame_base * {
-    return other.m_ptr;
+  constexpr friend auto get(key_t, handle h) noexcept -> frame_base * {
+    return h.m_ptr;
   }
 
   frame_base *m_ptr = nullptr;
 };
 
-// TODO: can we private inherit?
-
 /**
- * @brief [TODO:description]
+ * @brief An untyped steal-handle.
  *
- * @tparam T The (potentially incomplete) worker context.
+ * For use by context policies that need to store handles in an untyped manner.
  */
-export template <typename T>
-struct steal_handle : handle<T> {
-  using handle<T>::handle;
+export struct unsafe_steal_handle : handle {
+  using handle::handle;
 };
 
-// =================== Await =================== //
+/**
+ * @brief An untyped schedule-handle.
+ *
+ * For use by context policies that need to store handles in an untyped manner.
+ */
+export struct unsafe_sched_handle : handle {
+  using handle::handle;
+};
 
-// TODO: when a steal handle resumes a task and increments the number of forks
-// it should check and potentially crash if the number of forks exceeds the
-// maximum determined by uint16_max
+// =================== Tagged handles =================== //
 
+/**
+ * @brief A handle to a task that can be stolen and resumed with `execute`.
+ *
+ * The coroutine behind this task is always suspended at fork point.
+ */
 export template <typename T>
-struct sched_handle : handle<T> {
-  using handle<T>::handle;
+struct steal_handle : unsafe_steal_handle {
+  using unsafe_steal_handle::unsafe_steal_handle;
+};
+
+/**
+ * @brief A handle to a task that can be resumed with `execute`.
+ *
+ * The coroutine behind this task is either not-yet-started or suspended at a context-switch.
+ */
+export template <typename T>
+struct sched_handle : unsafe_sched_handle {
+  using unsafe_sched_handle::unsafe_sched_handle;
 };
 
 } // namespace lf

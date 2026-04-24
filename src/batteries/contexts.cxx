@@ -5,87 +5,89 @@ export module libfork.batteries:contexts;
 import std;
 
 import libfork.core;
+import libfork.utils;
 
 import :dummy_stack;
 
 namespace lf {
 
-// TODO: constraints on container
+// =================== Context Policies =================== //
 
-// TODO: could we make the container non template-template
-// TODO: allocator aware
-// TODO: make post aware
+/**
+ * @brief The simplest context policy is just a LIFO stack of type-erased handles.
+ *
+ * Context policies (unlike full contexts) are not aware of the full context
+ * type hence, operate on untyped handles. This is inherently unsafe. To
+ * prevent UB a policy must not give-out the handles it receives. All
+ * operations must be managed through either `derived_poly_context` or
+ * `mono_context`.
+ */
+export template <typename T>
+concept deque_policy = lifo_stack<T, unsafe_steal_handle>;
 
-export template <                        //
-    worker_stack Stack,                  //
-    template <typename> typename Adaptor //
-    >
+// TODO: consider the methods/concepts needed for a auto/scheduling worker
+// context that has a `post` method.
+
+/**
+ * @brief An extension of `deque_policy` that supports FIFO stealing of handles.
+ */
+export template <typename T>
+concept stealable_deque_policy = deque_policy<T> && requires (T &policy) {
+  { policy.steal() } -> std::same_as<unsafe_steal_handle>;
+};
+
+// =================== Contexts =================== //
+
+/**
+ * @brief A polymorphic worker context composed of a `worker_stack` and a `deque_policy`.
+ */
+export template <worker_stack Stack, deque_policy Deque>
 class derived_poly_context : public poly_context<Stack> {
  public:
   using context_type = poly_context<Stack>;
 
-  [[nodiscard]]
-  constexpr auto get_underlying() noexcept -> Adaptor<context_type> & {
-    return m_container;
+  constexpr void push(steal_handle<context_type> handle) final { m_container.push(handle); }
+
+  constexpr auto pop() noexcept -> steal_handle<context_type> final {
+    return {key(), get(key(), m_container.pop())};
   }
 
-  constexpr void push(steal_handle<context_type> frame) final { m_container.push(frame); }
-
-  constexpr auto pop() noexcept -> steal_handle<context_type> final { return m_container.pop(); }
-
-  constexpr void post(sched_handle<context_type> handle) final {
-
-    constexpr bool has_post = requires {
-      { m_container.post(handle) } -> std::same_as<void>;
-    };
-
-    if constexpr (has_post) {
-      m_container.post(handle);
-    } else {
-      poly_context<Stack>::post(handle);
-    }
+  [[nodiscard]]
+  constexpr auto steal() noexcept(noexcept(m_container.steal())) -> steal_handle<context_type>
+    requires stealable_deque_policy<Deque>
+  {
+    return {key(), get(key(), m_container.steal())};
   }
 
  private:
-  Adaptor<context_type> m_container;
+  Deque m_container;
 };
 
-// TODO: allow customization of post (via Container?)
-// TODO: allocator aware
-
-export template <                        //
-    worker_stack Stack,                  //
-    template <typename> typename Adaptor //
-    >
+export template <worker_stack Stack, deque_policy Deque>
 class mono_context : public base_context<Stack> {
  public:
   using context_type = mono_context;
 
+  constexpr void push(steal_handle<context_type> handle) noexcept(noexcept(m_container.push(handle))) {
+    m_container.push(handle);
+  }
+
+  constexpr auto pop() noexcept -> steal_handle<context_type> {
+    return {key(), get(key(), m_container.pop())};
+  }
+
   [[nodiscard]]
-  constexpr auto get_underlying() noexcept -> Adaptor<context_type> & {
-    return m_container;
-  }
-
-  constexpr void push(steal_handle<context_type> frame) noexcept(noexcept(m_container.push(frame))) {
-    m_container.push(frame);
-  }
-
-  constexpr auto pop() noexcept -> steal_handle<context_type> { return m_container.pop(); }
-
-  constexpr void post(sched_handle<context_type> handle) noexcept(noexcept(m_container.post(handle)))
-    requires requires (Adaptor<context_type> context) {
-      { context.post(handle) } -> std::same_as<void>;
-    }
+  constexpr auto steal() noexcept(noexcept(m_container.steal())) -> steal_handle<context_type>
+    requires stealable_deque_policy<Deque>
   {
-    m_container.post(handle);
+    return {key(), get(key(), m_container.steal())};
   }
 
  private:
-  Adaptor<context_type> m_container;
+  Deque m_container;
 };
 
 // TODO: replace dummy_context with unit-context
-
 // TODO: replace dummy_allocator with fixed-allocator
 
 export struct dummy_context {
