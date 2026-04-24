@@ -191,7 +191,7 @@ struct steal_t {
 /**
  * @brief A functor that returns ``std::nullopt``.
  */
-export template <typename T>
+template <typename T>
 struct return_nullopt {
   /**
    * @brief Returns ``std::nullopt``.

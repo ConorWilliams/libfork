@@ -11,18 +11,17 @@ import :stop;
 
 namespace lf {
 
-// TODO: remove this and other exports
-export enum class category : std::uint8_t {
+enum class category : std::uint8_t {
   call = 0,
   fork,
   root,
 };
 
-export struct frame_base {};
+struct frame_base {};
 
 // TODO: make everything (deque etc) allocator aware...
 
-export template <typename Checkpoint>
+template <typename Checkpoint>
 struct frame_type : frame_base {
 
   // == Member variables == //
