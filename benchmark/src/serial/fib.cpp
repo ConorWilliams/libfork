@@ -17,8 +17,8 @@ auto fib_impl(std::int64_t &ret, std::int64_t n) -> void {
   std::int64_t lhs = 0;
   std::int64_t rhs = 0;
 
-  fib_impl(lhs, n - 1);
-  fib_impl(rhs, n - 2);
+  fib_impl(lhs, n - 2);
+  fib_impl(rhs, n - 1);
 
   ret = lhs + rhs;
 }

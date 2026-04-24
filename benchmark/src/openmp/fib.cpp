@@ -18,9 +18,9 @@ auto fib(std::int64_t n) -> std::int64_t {
   std::int64_t rhs = 0;
 
 #pragma omp task untied shared(lhs) firstprivate(n) default(none)
-  lhs = fib(n - 1);
+  lhs = fib(n - 2);
 
-  rhs = fib(n - 2);
+  rhs = fib(n - 1);
 
 #pragma omp taskwait
   return lhs + rhs;

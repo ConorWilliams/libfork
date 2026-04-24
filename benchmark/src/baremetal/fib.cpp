@@ -87,8 +87,8 @@ auto fib(std::int64_t n) -> task {
   }
   std::int64_t a = 0;
   std::int64_t b = 0;
-  co_await fib(n - 1).set(a);
-  co_await fib(n - 2).set(b);
+  co_await fib(n - 2).set(a);
+  co_await fib(n - 1).set(b);
   co_return a + b;
 }
 
@@ -135,10 +135,10 @@ auto fib_recursive_deque_impl(std::int64_t n) -> std::int64_t {
 
   // Emulate work item creation/scheduling overhead
   deque().push(n);
-  std::int64_t a = fib_recursive_deque_impl(n - 1);
+  std::int64_t a = fib_recursive_deque_impl(n - 2);
   deque().pop();
 
-  std::int64_t b = fib_recursive_deque_impl(n - 2);
+  std::int64_t b = fib_recursive_deque_impl(n - 1);
 
   return a + b;
 }
