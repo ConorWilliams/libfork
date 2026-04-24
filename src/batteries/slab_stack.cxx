@@ -51,17 +51,20 @@ class slab_stack {
 
    private:
     friend slab_stack;
-    explicit constexpr checkpoint_t(node_ptr ptr) noexcept : m_ctrl(ptr) {}
+    explicit constexpr checkpoint_t(node_ptr ptr) noexcept
+        : m_ctrl(ptr) {}
     node_ptr m_ctrl = nullptr;
   };
 
  public:
-  constexpr slab_stack() : slab_stack(k_default_nodes, Allocator()) {}
+  constexpr slab_stack()
+      : slab_stack(k_default_nodes, Allocator()) {}
 
   // TODO: what is appropriate unit for initialisation
   // TODO: remove default constructor?
 
-  explicit constexpr slab_stack(diff_type num_nodes, Allocator const &alloc = Allocator()) : m_alloc(alloc) {
+  explicit constexpr slab_stack(diff_type num_nodes, Allocator const &alloc = Allocator())
+      : m_alloc(alloc) {
     init_slab(num_nodes);
   }
 

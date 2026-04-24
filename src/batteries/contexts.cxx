@@ -52,7 +52,8 @@ class derived_poly_context : public poly_context<Stack> {
     requires std::constructible_from<poly_context<Stack>, StackArgs...> &&
                  std::constructible_from<Deque, DequeArgs...>
   constexpr derived_poly_context(
-      std::piecewise_construct_t, std::tuple<StackArgs...> stack_args,
+      std::piecewise_construct_t,
+      std::tuple<StackArgs...> stack_args,
       std::tuple<DequeArgs...>
           deque_args) noexcept(std::is_nothrow_constructible_v<poly_context<Stack>, StackArgs...> &&
                                std::is_nothrow_constructible_v<Deque, DequeArgs...>)
@@ -87,7 +88,8 @@ class mono_context : public base_context<Stack> {
     requires std::constructible_from<base_context<Stack>, StackArgs...> &&
                  std::constructible_from<Deque, DequeArgs...>
   constexpr mono_context(
-      std::piecewise_construct_t, std::tuple<StackArgs...> stack_args,
+      std::piecewise_construct_t,
+      std::tuple<StackArgs...> stack_args,
       std::tuple<DequeArgs...>
           deque_args) noexcept(std::is_nothrow_constructible_v<base_context<Stack>, StackArgs...> &&
                                std::is_nothrow_constructible_v<Deque, DequeArgs...>)

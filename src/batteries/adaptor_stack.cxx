@@ -44,7 +44,8 @@ class adaptor_stack {
 
    private:
     friend adaptor_stack;
-    explicit constexpr checkpoint_t(align_alloc const &alloc) noexcept : m_alloc(alloc) {}
+    explicit constexpr checkpoint_t(align_alloc const &alloc) noexcept
+        : m_alloc(alloc) {}
 
     struct empty {
       constexpr empty() noexcept = default;
@@ -56,8 +57,10 @@ class adaptor_stack {
   };
 
  public:
-  constexpr adaptor_stack() noexcept(noexcept(Allocator())) : adaptor_stack(Allocator()) {}
-  explicit constexpr adaptor_stack(Allocator const &alloc) noexcept : m_alloc(alloc) {}
+  constexpr adaptor_stack() noexcept(noexcept(Allocator()))
+      : adaptor_stack(Allocator()) {}
+  explicit constexpr adaptor_stack(Allocator const &alloc) noexcept
+      : m_alloc(alloc) {}
 
   // TODO: drop constexpr for =default and =delete across the lib
 

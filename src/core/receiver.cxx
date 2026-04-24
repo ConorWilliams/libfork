@@ -78,7 +78,8 @@ class recv_state {
 
  public:
   /// Default: value-initialise via `std::make_shared`.
-  constexpr recv_state() : m_ptr(std::make_shared<state_type>()) {}
+  constexpr recv_state()
+      : m_ptr(std::make_shared<state_type>()) {}
 
   /// Value-init from args: forwards `args` to `hidden_receiver_state`'s constructor
   /// (in-place construction of the return value) via `std::make_shared`.
@@ -119,7 +120,8 @@ class receiver {
   using state_type = hidden_receiver_state<T, Stoppable>;
 
  public:
-  constexpr receiver(key_t, state_handle<T, Stoppable> state) noexcept : m_state(std::move(state)) {}
+  constexpr receiver(key_t, state_handle<T, Stoppable> state) noexcept
+      : m_state(std::move(state)) {}
 
   // Move only
   constexpr receiver(receiver &&) noexcept = default;

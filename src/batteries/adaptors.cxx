@@ -12,9 +12,11 @@ namespace lf {
 export template <allocator_of<unsafe_steal_handle> Allocator = std::allocator<unsafe_steal_handle>>
 class adapt_vector {
  public:
-  constexpr adapt_vector() noexcept(noexcept(Allocator())) : adapt_vector(Allocator()) {}
+  constexpr adapt_vector() noexcept(noexcept(Allocator()))
+      : adapt_vector(Allocator()) {}
 
-  explicit constexpr adapt_vector(Allocator const &alloc) noexcept : m_vector(alloc) {}
+  explicit constexpr adapt_vector(Allocator const &alloc) noexcept
+      : m_vector(alloc) {}
 
   constexpr void push(unsafe_steal_handle value) { m_vector.push_back(value); }
 
@@ -39,7 +41,8 @@ class adapt_deque {
   static constexpr size_type k_default_capacity = 1024 * 32;
 
  public:
-  constexpr adapt_deque() noexcept(noexcept(Allocator())) : adapt_deque(k_default_capacity, Allocator()) {}
+  constexpr adapt_deque() noexcept(noexcept(Allocator()))
+      : adapt_deque(k_default_capacity, Allocator()) {}
 
   explicit constexpr adapt_deque(size_type capacity, Allocator const &alloc = Allocator())
       : m_deque{capacity, alloc} {}

@@ -4,14 +4,19 @@ ColumnLimit: 110
 IndentPPDirectives: BeforeHash
 AlwaysBreakTemplateDeclarations: Yes
 BreakAfterAttributes: Always
-PackConstructorInitializers: CurrentLine
+PackConstructorInitializers: Never
 AccessModifierOffset: -1
 IndentCaseLabels: true
 AllowShortLambdasOnASingleLine: Empty
 RequiresExpressionIndentation: OuterScope
-BinPackArguments: false
 LambdaBodyIndentation: Signature
 PenaltyReturnTypeOnItsOwnLine: 1
+
+# TODO: update for clan-format 23
+BinPackArguments: false
+BinPackParameters: OnePerLine
+
+BreakBeforeConceptDeclarations: Always
 
 Macros:
   - LF_TRY=if

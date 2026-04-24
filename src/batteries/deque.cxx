@@ -243,7 +243,10 @@ class deque {
 
     friend class deque;
 
-    explicit thief_handle(deque *queue) noexcept : m_queue{queue} { LF_ASSUME(queue != nullptr); }
+    explicit thief_handle(deque *queue) noexcept
+        : m_queue{queue} {
+      LF_ASSUME(queue != nullptr);
+    }
 
    public:
     /**

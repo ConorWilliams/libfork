@@ -146,7 +146,8 @@ struct child_scope_ops : scope_base, stop_source {
   /**
    * @brief Construct the scope, chaining its stop source onto the parent's token.
    */
-  explicit constexpr child_scope_ops(stop_source::stop_token parent) noexcept : stop_source(parent) {}
+  explicit constexpr child_scope_ops(stop_source::stop_token parent) noexcept
+      : stop_source(parent) {}
 
   // Immovable (stop_source base is immovable)
   child_scope_ops(const child_scope_ops &) = delete;

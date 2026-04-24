@@ -20,7 +20,9 @@ struct invalid_workers_error : std::exception {
 
 export enum class pool_kind { mono, poly };
 
-export template <pool_kind Kind, worker_stack Stack, stealable_deque_policy Deque = adapt_deque<>,
+export template <pool_kind Kind,
+                 worker_stack Stack,
+                 stealable_deque_policy Deque = adapt_deque<>,
                  simple_allocator Alloc = std::allocator<std::byte>>
 class basic_busy_pool {
 
@@ -127,11 +129,13 @@ class basic_busy_pool {
   std::vector<sched_handle<context_type>> m_posted;
 };
 
-export template <worker_stack Stack, stealable_deque_policy Deque = adapt_deque<>,
+export template <worker_stack Stack,
+                 stealable_deque_policy Deque = adapt_deque<>,
                  simple_allocator Alloc = std::allocator<std::byte>>
 using mono_busy_pool = basic_busy_pool<pool_kind::mono, Stack, Deque, Alloc>;
 
-export template <worker_stack Stack, stealable_deque_policy Deque = adapt_deque<>,
+export template <worker_stack Stack,
+                 stealable_deque_policy Deque = adapt_deque<>,
                  simple_allocator Alloc = std::allocator<std::byte>>
 using poly_busy_pool = basic_busy_pool<pool_kind::poly, Stack, Deque, Alloc>;
 

@@ -47,7 +47,8 @@ class task {
   using value_type = T;
   using context_type = Context;
 
-  constexpr task(key_t, promise_type<T, Context> *promise) noexcept : m_promise(promise) {}
+  constexpr task(key_t, promise_type<T, Context> *promise) noexcept
+      : m_promise(promise) {}
 
  private:
   friend constexpr auto get(key_t, task t) noexcept -> promise_type<T, Context> * { return t.m_promise; }
