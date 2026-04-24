@@ -28,7 +28,9 @@ class inline_scheduler {
 
   template <typename... Args>
     requires std::constructible_from<Context, Args...>
-  explicit(sizeof...(Args) == 1) inline_scheduler(Args &&...args) : m_context(std::forward<Args>(args)...) {}
+  explicit(sizeof...(Args) == 1)
+      inline_scheduler(Args &&...args) noexcept(std::is_nothrow_constructible_v<Context, Args...>)
+      : m_context(std::forward<Args>(args)...) {}
 
   void post(lf::sched_handle<context_type> handle) {
     execute(static_cast<context_type &>(m_context), handle);
