@@ -1,8 +1,9 @@
 #include <benchmark/benchmark.h>
 
 #include "common.hpp"
-#include "helpers.hpp"
 #include "uts.hpp"
+
+#include "helpers.hpp"
 
 import std;
 

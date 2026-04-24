@@ -1,11 +1,10 @@
-#include <benchmark/benchmark.h>
-
-#include "common.hpp"
-#include "fib.hpp"
-#include "macros.hpp"
-
 #include <cstdint>
 #include <format>
+
+#include <benchmark/benchmark.h>
+
+#include "fib.hpp"
+#include "macros.hpp"
 
 namespace {
 

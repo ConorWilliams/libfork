@@ -1,13 +1,12 @@
-#include <benchmark/benchmark.h>
-
-#include "common.hpp"
-#include "macros.hpp"
-#include "uts.hpp"
-
 #include <algorithm>
 #include <cstddef>
 #include <format>
 #include <vector>
+
+#include <benchmark/benchmark.h>
+
+#include "macros.hpp"
+#include "uts.hpp"
 
 namespace {
 
