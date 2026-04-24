@@ -31,4 +31,3 @@ jobs:
           else
             echo "No merge commits detected. Linear history check passed."
           fi
-
