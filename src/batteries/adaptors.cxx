@@ -43,6 +43,7 @@ export class adapt_deque {
   }
 
  private:
+  // TODO: make size configurable
   deque<unsafe_steal_handle> m_deque{1024 * 32};
 };
 

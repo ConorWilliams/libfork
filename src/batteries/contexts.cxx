@@ -9,8 +9,6 @@ import libfork.utils;
 
 import :dummy_stack;
 
-// TODO: rename to policy
-
 namespace lf {
 
 // =================== Context Policies =================== //
