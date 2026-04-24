@@ -46,6 +46,14 @@ class derived_poly_context : public poly_context<Stack> {
  public:
   using context_type = poly_context<Stack>;
 
+  constexpr derived_poly_context() = default;
+
+  template <typename... StackArgs, typename... DequeArgs>
+  constexpr derived_poly_context(std::piecewise_construct_t, std::tuple<StackArgs...> stack_args,
+                                 std::tuple<DequeArgs...> deque_args)
+      : base_context<Stack>(std::make_from_tuple<base_context<Stack>>(std::move(stack_args))),
+        m_container(std::make_from_tuple<Deque>(std::move(deque_args))) {}
+
   constexpr void push(steal_handle<context_type> handle) final { m_container.push(handle); }
 
   constexpr auto pop() noexcept -> steal_handle<context_type> final {
@@ -67,6 +75,14 @@ export template <worker_stack Stack, deque_policy Deque>
 class mono_context : public base_context<Stack> {
  public:
   using context_type = mono_context;
+
+  constexpr mono_context() = default;
+
+  template <typename... StackArgs, typename... DequeArgs>
+  constexpr mono_context(std::piecewise_construct_t, std::tuple<StackArgs...> stack_args,
+                         std::tuple<DequeArgs...> deque_args)
+      : base_context<Stack>(std::make_from_tuple<base_context<Stack>>(std::move(stack_args))),
+        m_container(std::make_from_tuple<Deque>(std::move(deque_args))) {}
 
   constexpr void push(steal_handle<context_type> handle) noexcept(noexcept(m_container.push(handle))) {
     m_container.push(handle);
