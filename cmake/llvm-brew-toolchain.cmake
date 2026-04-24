@@ -85,12 +85,4 @@ if(APPLE)
     OUTPUT_STRIP_TRAILING_WHITESPACE
     COMMAND_ERROR_IS_FATAL ANY
   )
-
-  # Use Homebrew LLVM's libc++ rather than the macOS system one. Without this,
-  # the linker resolves -lc++ to /usr/lib/libc++.1.dylib (compiled from older
-  # LLVM sources), which is missing ABI-tagged symbols introduced in LLVM 22+.
-  set(CMAKE_EXE_LINKER_FLAGS_INIT
-    "-L${LLVM_PREFIX}/lib -Wl,-rpath,${LLVM_PREFIX}/lib")
-  set(CMAKE_SHARED_LINKER_FLAGS_INIT
-    "-L${LLVM_PREFIX}/lib -Wl,-rpath,${LLVM_PREFIX}/lib")
 endif()
