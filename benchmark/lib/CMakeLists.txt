@@ -15,6 +15,8 @@ target_sources(benchmark_common
       macros.hpp
 )
 
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../external/uts external/uts)
+
 target_link_libraries(benchmark_common
   PUBLIC
     benchmark::benchmark
