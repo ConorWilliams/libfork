@@ -4,13 +4,7 @@
 #include "fib.hpp"
 #include "macros.hpp"
 
-#include <bit>
-#include <coroutine>
-#include <cstddef>
-#include <cstdint>
-#include <exception>
-#include <format>
-#include <memory>
+import std;
 
 import libfork;
 

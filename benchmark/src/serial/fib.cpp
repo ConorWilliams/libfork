@@ -4,8 +4,7 @@
 #include "fib.hpp"
 #include "macros.hpp"
 
-#include <cstdint>
-#include <format>
+import std;
 
 namespace {
 

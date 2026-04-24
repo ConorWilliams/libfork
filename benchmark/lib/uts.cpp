@@ -1,6 +1,6 @@
 #include "uts.hpp"
 
-#include <exception>
+import std;
 
 namespace {
 
