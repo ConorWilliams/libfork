@@ -1,6 +1,5 @@
 #include <benchmark/benchmark.h>
 
-#include "common.hpp"
 #include "fib.hpp"
 
 #include "helpers.hpp"

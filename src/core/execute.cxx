@@ -35,7 +35,7 @@ constexpr void execute(Context &context, sched_handle<Context> handle) {
 
   thread_local_context<Context> = std::addressof(context);
 
-  defer _ = [] noexcept -> void {
+  defer _ = [] static noexcept -> void {
     thread_local_context<Context> = nullptr;
   };
 
@@ -60,7 +60,7 @@ constexpr void execute(Context &context, steal_handle<Context> handle) {
 
   thread_local_context<Context> = std::addressof(context);
 
-  defer _ = [] noexcept -> void {
+  defer _ = [] static noexcept -> void {
     thread_local_context<Context> = nullptr;
   };
 

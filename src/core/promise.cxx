@@ -504,9 +504,6 @@ struct mixin_frame {
   await_transform_pkg(this auto const &self, pkg<Cat, StopToken, Context, R, Fn, Args...> &&pkg) noexcept(
       async_nothrow_invocable<Fn, Context, Args...>) -> awaitable<Cat, Context> {
 
-    // Required for noexcept specifier to be correct
-    static_assert(std::is_reference_v<Fn> && (... && std::is_reference_v<Args>));
-
     using U = async_result_t<Fn, Context, Args...>;
 
     // clang-format off

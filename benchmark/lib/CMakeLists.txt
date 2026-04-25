@@ -9,7 +9,6 @@ target_sources(benchmark_common
     FILE_SET HEADERS
     BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
     FILES
-      common.hpp
       fib.hpp
       uts.hpp
       macros.hpp

@@ -16,6 +16,25 @@ namespace lf {
 struct no_stop_t {};
 struct no_ret_t {};
 
+// =============== Value-or-reference storage policy =============== //
+
+// For rvalue-reference arguments that are trivially copyable and fit in two
+// pointer-sized words, store by value inside pkg instead of keeping a reference.
+// This lets [[no_unique_address]] collapse empty functors to zero bytes and
+// allows the compiler to treat the stored values as local data (no aliasing).
+template <typename T>
+concept small_trivially_copyable = !std::is_reference_v<T>                     //
+                                   && std::is_trivially_copyable_v<T>          //
+                                   && sizeof(T) <= 2 * sizeof(void *)          //
+                                   && alignof(T) <= alignof(std::max_align_t); //
+
+// Only collapses rvalue refs; lvalue refs are kept as-is to preserve reference semantics.
+template <typename T>
+using store_as_t =
+    std::conditional_t<std::is_rvalue_reference_v<T> && small_trivially_copyable<std::remove_cvref_t<T>>,
+                       std::remove_cvref_t<T>,
+                       T>;
+
 // clang-format off
 
 template <category Cat, bool StopToken, typename Context, typename R, typename Fn, typename... Args>
@@ -29,20 +48,21 @@ struct [[nodiscard("You should immediately co_await this!")]] pkg {
 // clang-format on
 
 /**
- * @brief Forward the function member of a pkg correctly
+ * @brief Forward the function member of a pkg correctly.
  *
- * The Fn member should be an l/r value reference, r-value reference need an
- * explicit move to be forwarded correctly.
+ * Handles three cases:
+ *  - rvalue reference Fn: move it.
+ *  - lvalue reference Fn: return by reference.
+ *  - value type Fn (small trivially-copyable stored directly): return by value.
  */
 template <typename Fn>
 constexpr auto fwd_fn(auto &&fn) noexcept -> Fn {
-
-  static_assert(std::is_reference_v<Fn>);
-
   if constexpr (std::is_rvalue_reference_v<Fn>) {
     return std::move(fn);
-  } else {
+  } else if constexpr (std::is_lvalue_reference_v<Fn> || small_trivially_copyable<Fn>) {
     return fn;
+  } else {
+    static_assert(false, "Invalid Fn type in fwd_fn");
   }
 }
 
@@ -68,10 +88,10 @@ template <typename Context>
 struct scope_ops : scope_base {
  private:
   template <typename R, typename Fn, typename... Args>
-  using call_pkg = pkg<category::call, false, Context, R, Fn &&, Args &&...>;
+  using call_pkg = pkg<category::call, false, Context, R, store_as_t<Fn &&>, store_as_t<Args &&>...>;
 
   template <typename R, typename Fn, typename... Args>
-  using fork_pkg = pkg<category::fork, false, Context, R, Fn &&, Args &&...>;
+  using fork_pkg = pkg<category::fork, false, Context, R, store_as_t<Fn &&>, store_as_t<Args &&>...>;
 
  public:
   // Default constructible
@@ -137,10 +157,10 @@ template <typename Context>
 struct child_scope_ops : scope_base, stop_source {
  private:
   template <typename R, typename Fn, typename... Args>
-  using call_pkg = pkg<category::call, true, Context, R, Fn &&, Args &&...>;
+  using call_pkg = pkg<category::call, true, Context, R, store_as_t<Fn &&>, store_as_t<Args &&>...>;
 
   template <typename R, typename Fn, typename... Args>
-  using fork_pkg = pkg<category::fork, true, Context, R, Fn &&, Args &&...>;
+  using fork_pkg = pkg<category::fork, true, Context, R, store_as_t<Fn &&>, store_as_t<Args &&>...>;
 
  public:
   /**
