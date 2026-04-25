@@ -46,10 +46,30 @@ TEST_CASE("derived_poly_context: piecewise construction compiles", "[contexts]")
   std::ignore = ctx;
 }
 
+TEST_CASE("derived_poly_context: piecewise construction forwards stack args", "[contexts]") {
+  derived_poly_context<test_stack, test_deque> ctx{
+      std::piecewise_construct,
+      std::tuple<std::allocator<std::byte>>{},
+      std::tuple<std::size_t>{1024},
+  };
+
+  std::ignore = ctx;
+}
+
 TEST_CASE("mono_context: piecewise construction compiles", "[contexts]") {
   mono_context<test_stack, test_deque> ctx{
       std::piecewise_construct,
       std::tuple<>{},
+      std::tuple<std::size_t>{1024},
+  };
+
+  std::ignore = ctx;
+}
+
+TEST_CASE("mono_context: piecewise construction forwards stack args", "[contexts]") {
+  mono_context<test_stack, test_deque> ctx{
+      std::piecewise_construct,
+      std::tuple<std::allocator<std::byte>>{},
       std::tuple<std::size_t>{1024},
   };
 
