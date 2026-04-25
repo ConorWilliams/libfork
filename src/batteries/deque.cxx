@@ -5,6 +5,7 @@ export module libfork.batteries:deque;
 
 import std;
 
+import libfork.core;
 import libfork.utils;
 
 namespace lf {
@@ -242,7 +243,10 @@ class deque {
 
     friend class deque;
 
-    explicit thief_handle(deque *queue) noexcept : m_queue{queue} { LF_ASSUME(queue != nullptr); }
+    explicit thief_handle(deque *queue) noexcept
+        : m_queue{queue} {
+      LF_ASSUME(queue != nullptr);
+    }
 
    public:
     /**
@@ -320,7 +324,7 @@ class deque {
    * @param cap The capacity of the deque (will be rounded to the next power of two).
    * @param alloc Allocator used to allocate the internal buffer.
    */
-  constexpr explicit deque(size_type cap, Allocator const &alloc = Allocator{})
+  constexpr explicit deque(size_type cap, Allocator const &alloc = Allocator())
       : m_buf(round_capacity(cap), alloc) {}
 
   /**

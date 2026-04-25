@@ -4,10 +4,9 @@ export module libfork.core:poly_context;
 
 import std;
 
-import libfork.utils;
-
 import :concepts_stack;
 import :handles;
+import :exception;
 
 namespace lf {
 
@@ -20,7 +19,7 @@ class base_context {
   constexpr base_context() = default;
 
   template <typename... Args>
-    requires std::constructible_from<Stack, Args...> && (sizeof...(Args) > 0)
+    requires std::constructible_from<Stack, Args...>
   explicit(sizeof...(Args) ==
            1) constexpr base_context(Args &&...args) noexcept(std::is_nothrow_constructible_v<Stack, Args...>)
       : m_stack(std::forward<Args>(args)...) {}
@@ -46,6 +45,8 @@ export struct post_error final : libfork_exception {
 export template <worker_stack Stack>
 class poly_context : public base_context<Stack> {
  public:
+  using base_context<Stack>::base_context;
+
   virtual void push(steal_handle<poly_context>) = 0;
   virtual auto pop() noexcept -> steal_handle<poly_context> = 0;
 

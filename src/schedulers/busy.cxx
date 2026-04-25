@@ -20,13 +20,16 @@ struct invalid_workers_error : std::exception {
 
 export enum class pool_kind { mono, poly };
 
-export template <pool_kind Kind, worker_stack Stack>
+export template <pool_kind Kind,
+                 worker_stack Stack,
+                 stealable_deque_policy Deque = adapt_deque<>,
+                 simple_allocator Alloc = std::allocator<std::byte>>
 class basic_busy_pool {
 
-  using context = std::conditional_t<           //
-      Kind == pool_kind::poly,                  //
-      derived_poly_context<Stack, adapt_deque>, //
-      mono_context<Stack, adapt_deque>          //
+  using context = std::conditional_t<     //
+      Kind == pool_kind::poly,            //
+      derived_poly_context<Stack, Deque>, //
+      mono_context<Stack, Deque>          //
       >;
 
  public:
@@ -34,7 +37,11 @@ class basic_busy_pool {
 
   // TODO: sleep when zero work
 
-  explicit basic_busy_pool(std::size_t n = std::thread::hardware_concurrency()) : m_contexts(n) {
+  explicit basic_busy_pool(std::size_t n = std::thread::hardware_concurrency(), Alloc const &alloc = Alloc())
+      : m_contexts(n) {
+
+    // TODO: propagate alloc to m_contexts, m_posted, etc.
+    (void)alloc;
 
     if (n < 1) {
       LF_THROW(invalid_workers_error{});
@@ -122,10 +129,14 @@ class basic_busy_pool {
   std::vector<sched_handle<context_type>> m_posted;
 };
 
-export template <worker_stack Stack>
-using mono_busy_pool = basic_busy_pool<pool_kind::mono, Stack>;
+export template <worker_stack Stack,
+                 stealable_deque_policy Deque = adapt_deque<>,
+                 simple_allocator Alloc = std::allocator<std::byte>>
+using mono_busy_pool = basic_busy_pool<pool_kind::mono, Stack, Deque, Alloc>;
 
-export template <worker_stack Stack>
-using poly_busy_pool = basic_busy_pool<pool_kind::poly, Stack>;
+export template <worker_stack Stack,
+                 stealable_deque_policy Deque = adapt_deque<>,
+                 simple_allocator Alloc = std::allocator<std::byte>>
+using poly_busy_pool = basic_busy_pool<pool_kind::poly, Stack, Deque, Alloc>;
 
 } // namespace lf

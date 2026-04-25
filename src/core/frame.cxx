@@ -48,7 +48,10 @@ struct frame_type : frame_base {
   // Explicitly post construction, this allows the compiler to emit a single
   // instruction for the zero init then an instruction for the joins init,
   // instead of three instructions.
-  constexpr frame_type(Checkpoint &&ckpt) noexcept : stack_ckpt(std::move(ckpt)) { joins = k_u16_max; }
+  explicit constexpr frame_type(Checkpoint &&ckpt) noexcept(std::is_nothrow_move_constructible_v<Checkpoint>)
+      : stack_ckpt(std::move(ckpt)) {
+    joins = k_u16_max;
+  }
 
   [[nodiscard]]
   constexpr auto stop_requested() const noexcept -> bool {

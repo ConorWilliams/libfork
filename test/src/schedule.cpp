@@ -94,8 +94,8 @@ void simple_tests(Sch &scheduler) {
 #endif
 }
 
-using mono_inline_ctx = lf::mono_context<lf::geometric_stack<>, lf::adapt_vector>;
-using poly_inline_ctx = lf::derived_poly_context<lf::geometric_stack<>, lf::adapt_vector>;
+using mono_inline_ctx = lf::mono_context<lf::geometric_stack<>, lf::adapt_vector<>>;
+using poly_inline_ctx = lf::derived_poly_context<lf::geometric_stack<>, lf::adapt_vector<>>;
 
 } // namespace
 

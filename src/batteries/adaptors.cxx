@@ -3,13 +3,21 @@ export module libfork.batteries:adaptors;
 import std;
 
 import libfork.core;
+import libfork.utils;
 
 import :deque;
 
 namespace lf {
 
-export class adapt_vector {
+export template <allocator_of<unsafe_steal_handle> Allocator = std::allocator<unsafe_steal_handle>>
+class adapt_vector {
  public:
+  constexpr adapt_vector() noexcept(noexcept(Allocator()))
+      : adapt_vector(Allocator()) {}
+
+  explicit constexpr adapt_vector(Allocator const &alloc) noexcept
+      : m_vector(alloc) {}
+
   constexpr void push(unsafe_steal_handle value) { m_vector.push_back(value); }
 
   constexpr auto pop() noexcept -> unsafe_steal_handle {
@@ -22,11 +30,25 @@ export class adapt_vector {
   }
 
  private:
-  std::vector<unsafe_steal_handle> m_vector;
+  std::vector<unsafe_steal_handle, Allocator> m_vector;
 };
 
-export class adapt_deque {
+export template <allocator_of<std::atomic<unsafe_steal_handle>> Allocator =
+                     std::allocator<std::atomic<unsafe_steal_handle>>>
+class adapt_deque {
  public:
+  using size_type = deque<unsafe_steal_handle, Allocator>::size_type;
+
+ private:
+  static constexpr size_type k_default_capacity = 1024 * 32;
+
+ public:
+  constexpr adapt_deque()
+      : adapt_deque(k_default_capacity, Allocator()) {}
+
+  explicit constexpr adapt_deque(size_type capacity, Allocator const &alloc = Allocator())
+      : m_deque{capacity, alloc} {}
+
   constexpr void push(unsafe_steal_handle value) { m_deque.push(value); }
 
   constexpr auto pop() noexcept -> unsafe_steal_handle {
@@ -43,8 +65,7 @@ export class adapt_deque {
   }
 
  private:
-  // TODO: make size configurable
-  deque<unsafe_steal_handle> m_deque{1024 * 32};
+  deque<unsafe_steal_handle, Allocator> m_deque;
 };
 
 } // namespace lf

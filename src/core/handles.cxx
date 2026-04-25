@@ -11,7 +11,8 @@ namespace lf {
 class handle {
  public:
   constexpr handle() = default;
-  constexpr handle(key_t, frame_base *ptr) noexcept : m_ptr{ptr} {}
+  constexpr handle(key_t, frame_base *ptr) noexcept
+      : m_ptr{ptr} {}
   constexpr auto operator==(handle const &) const noexcept -> bool = default;
   constexpr explicit operator bool() const noexcept { return m_ptr != nullptr; }
 

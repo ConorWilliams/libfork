@@ -118,7 +118,7 @@ struct scope_ops : scope_base {
 
 template <worker_context Context>
 struct scope_awaitable : std::suspend_never {
-  static constexpr auto await_resume() -> scope_ops<Context> { return {}; }
+  static constexpr auto await_resume() noexcept -> scope_ops<Context> { return {}; }
 };
 
 struct scope_type {};
@@ -146,7 +146,8 @@ struct child_scope_ops : scope_base, stop_source {
   /**
    * @brief Construct the scope, chaining its stop source onto the parent's token.
    */
-  explicit constexpr child_scope_ops(stop_source::stop_token parent) noexcept : stop_source(parent) {}
+  explicit constexpr child_scope_ops(stop_source::stop_token parent) noexcept
+      : stop_source(parent) {}
 
   // Immovable (stop_source base is immovable)
   child_scope_ops(const child_scope_ops &) = delete;
@@ -192,7 +193,7 @@ struct child_scope_awaitable : std::suspend_never {
 
   stop_source::stop_token parent_stop_token;
 
-  constexpr auto await_resume(this child_scope_awaitable self) -> child_scope_ops<Context> {
+  constexpr auto await_resume(this child_scope_awaitable self) noexcept -> child_scope_ops<Context> {
     return child_scope_ops<Context>{self.parent_stop_token};
   }
 };

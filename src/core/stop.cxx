@@ -48,7 +48,8 @@ export class stop_source {
    private:
     friend class stop_source;
 
-    explicit constexpr stop_token(stop_source const *src) noexcept : m_src(src) {}
+    explicit constexpr stop_token(stop_source const *src) noexcept
+        : m_src(src) {}
 
     stop_source const *m_src = nullptr;
   };
@@ -61,7 +62,8 @@ export class stop_source {
   /**
    * @brief Construct a stop source chained onto the given parent token.
    */
-  constexpr explicit stop_source(stop_token parent) noexcept : m_parent(parent.m_src) {}
+  constexpr explicit stop_source(stop_token parent) noexcept
+      : m_parent(parent.m_src) {}
 
   // Immovable
   constexpr stop_source(const stop_source &) noexcept = delete;

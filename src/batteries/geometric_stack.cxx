@@ -45,13 +45,16 @@ class geometric_stack {
 
    private:
     friend geometric_stack;
-    explicit constexpr checkpoint_t(ctrl_ptr ptr) noexcept : m_ctrl(ptr) {}
+    explicit constexpr checkpoint_t(ctrl_ptr ptr) noexcept
+        : m_ctrl(ptr) {}
     ctrl_ptr m_ctrl = nullptr;
   };
 
  public:
-  constexpr geometric_stack() noexcept(noexcept(Allocator{})) : geometric_stack(Allocator()) {}
-  explicit constexpr geometric_stack(Allocator const &alloc) noexcept : m_ctrl_alloc(alloc) {}
+  constexpr geometric_stack() noexcept(noexcept(Allocator()))
+      : geometric_stack(Allocator()) {}
+  explicit constexpr geometric_stack(Allocator const &alloc) noexcept
+      : m_ctrl_alloc(alloc) {}
 
   constexpr geometric_stack(geometric_stack const &other) = delete;
   constexpr geometric_stack(geometric_stack &&other) = delete;

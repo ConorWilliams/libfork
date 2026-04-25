@@ -38,53 +38,80 @@ concept stealable_deque_policy = deque_policy<T> && requires (T &policy) {
 
 // =================== Contexts =================== //
 
+template <typename Base, worker_stack Stack, deque_policy Deque, typename ContextType>
+class context_base : public Base {
+ public:
+  constexpr context_base() = default;
+
+  template <typename... StackArgs, typename... DequeArgs>
+    requires std::constructible_from<Stack, StackArgs...> && std::constructible_from<Deque, DequeArgs...>
+  constexpr context_base(
+      std::piecewise_construct_t,
+      std::tuple<StackArgs...> stack_args,
+      std::tuple<DequeArgs...> deque_args) noexcept(std::is_nothrow_constructible_v<Stack, StackArgs...> &&
+                                                    std::is_nothrow_constructible_v<Deque, DequeArgs...>)
+      : context_base(std::move(stack_args),
+                     std::move(deque_args),
+                     std::index_sequence_for<StackArgs...>{},
+                     std::index_sequence_for<DequeArgs...>{}) {}
+
+  [[nodiscard]]
+  constexpr auto steal() noexcept(noexcept(m_container.steal())) -> steal_handle<ContextType>
+    requires stealable_deque_policy<Deque>
+  {
+    return {key(), get(key(), m_container.steal())};
+  }
+
+ protected:
+  Deque m_container;
+
+ private:
+  template <typename... StackArgs, typename... DequeArgs, std::size_t... Is, std::size_t... Js>
+  constexpr context_base(
+      std::tuple<StackArgs...> stack_args,
+      std::tuple<DequeArgs...> deque_args,
+      std::index_sequence<Is...>,
+      std::index_sequence<Js...>) noexcept(std::is_nothrow_constructible_v<Stack, StackArgs...> &&
+                                           std::is_nothrow_constructible_v<Deque, DequeArgs...>)
+      : Base(std::get<Is>(std::move(stack_args))...),
+        m_container(std::get<Js>(std::move(deque_args))...) {}
+};
+
 /**
  * @brief A polymorphic worker context composed of a `worker_stack` and a `deque_policy`.
  */
 export template <worker_stack Stack, deque_policy Deque>
-class derived_poly_context : public poly_context<Stack> {
+class derived_poly_context : public context_base<poly_context<Stack>, Stack, Deque, poly_context<Stack>> {
+  using base = context_base<poly_context<Stack>, Stack, Deque, poly_context<Stack>>;
+
  public:
   using context_type = poly_context<Stack>;
 
-  constexpr void push(steal_handle<context_type> handle) final { m_container.push(handle); }
+  using base::base;
+
+  constexpr void push(steal_handle<context_type> handle) final { this->m_container.push(handle); }
 
   constexpr auto pop() noexcept -> steal_handle<context_type> final {
-    return {key(), get(key(), m_container.pop())};
+    return {key(), get(key(), this->m_container.pop())};
   }
-
-  [[nodiscard]]
-  constexpr auto steal() noexcept(noexcept(m_container.steal())) -> steal_handle<context_type>
-    requires stealable_deque_policy<Deque>
-  {
-    return {key(), get(key(), m_container.steal())};
-  }
-
- private:
-  Deque m_container;
 };
 
 export template <worker_stack Stack, deque_policy Deque>
-class mono_context : public base_context<Stack> {
+class mono_context : public context_base<base_context<Stack>, Stack, Deque, mono_context<Stack, Deque>> {
+  using base = context_base<base_context<Stack>, Stack, Deque, mono_context>;
+
  public:
   using context_type = mono_context;
 
-  constexpr void push(steal_handle<context_type> handle) noexcept(noexcept(m_container.push(handle))) {
-    m_container.push(handle);
+  using base::base;
+
+  constexpr void push(steal_handle<context_type> handle) noexcept(noexcept(this->m_container.push(handle))) {
+    this->m_container.push(handle);
   }
 
   constexpr auto pop() noexcept -> steal_handle<context_type> {
-    return {key(), get(key(), m_container.pop())};
+    return {key(), get(key(), this->m_container.pop())};
   }
-
-  [[nodiscard]]
-  constexpr auto steal() noexcept(noexcept(m_container.steal())) -> steal_handle<context_type>
-    requires stealable_deque_policy<Deque>
-  {
-    return {key(), get(key(), m_container.steal())};
-  }
-
- private:
-  Deque m_container;
 };
 
 // TODO: replace dummy_context with unit-context

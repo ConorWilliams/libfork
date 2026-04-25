@@ -60,7 +60,6 @@ target_sources(libfork_libfork
       src/libfork.cxx
       # libfork.utils
       src/utils/utils.cxx
-      src/utils/exception.cxx
       src/utils/utility.cxx
       src/utils/constants.cxx
       src/utils/tuple.cxx
@@ -69,6 +68,7 @@ target_sources(libfork_libfork
       src/utils/uninitialized.cxx
       # libfork.core
       src/core/core.cxx
+      src/core/exception.cxx
       src/core/concepts/stack.cxx
       src/core/concepts/context.cxx
       src/core/concepts/scheduler.cxx

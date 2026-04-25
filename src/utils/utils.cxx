@@ -1,6 +1,5 @@
 export module libfork.utils;
 
-export import :exception;
 export import :utility;
 export import :constants;
 export import :tuple;
