@@ -1,4 +1,6 @@
 module;
+#include <version>
+
 #include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/compiler.hpp"
 #include "libfork/__impl/exception.hpp"
@@ -623,3 +625,43 @@ template <typename R, typename Self, lf::worker_context Context, typename... Arg
 struct std::coroutine_traits<lf::task<R, Context>, Self, Args...> {
   using promise_type = ::lf::promise_type<R, Context>;
 };
+
+// =============== Layout invariants =============== //
+
+namespace {
+
+struct unit_checkpoint {
+  auto operator==(unit_checkpoint const &) const -> bool = default;
+};
+
+struct unit_stack {
+  static auto push(std::size_t) -> void *;
+  static auto pop(void *, std::size_t) noexcept -> void;
+  static auto checkpoint() noexcept -> unit_checkpoint;
+  static auto prepare_release() noexcept -> int;
+  static auto release(int) noexcept -> void;
+  static auto acquire(unit_checkpoint) noexcept -> void;
+};
+
+struct unit_context {
+  void push(lf::steal_handle<unit_context>);
+  auto pop() noexcept -> lf::steal_handle<unit_context>;
+  auto stack() noexcept -> unit_stack &;
+};
+
+static_assert(lf::worker_context<unit_context>);
+
+using frame_t = lf::frame_type<unit_checkpoint>;
+
+static_assert(std::is_standard_layout_v<frame_t>);
+static_assert(alignof(lf::promise_type<void, unit_context>) == alignof(frame_t));
+static_assert(alignof(lf::promise_type<int, unit_context>) == alignof(frame_t));
+static_assert(std::is_standard_layout_v<lf::promise_type<void, unit_context>>);
+static_assert(std::is_standard_layout_v<lf::promise_type<int, unit_context>>);
+
+#ifdef __cpp_lib_is_pointer_interconvertible
+static_assert(std::is_pointer_interconvertible_with_class(&lf::promise_type<void, unit_context>::frame));
+static_assert(std::is_pointer_interconvertible_with_class(&lf::promise_type<int, unit_context>::frame));
+#endif
+
+} // namespace

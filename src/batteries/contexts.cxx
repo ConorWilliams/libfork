@@ -7,8 +7,6 @@ import std;
 import libfork.core;
 import libfork.utils;
 
-import :dummy_stack;
-
 namespace lf {
 
 // =================== Context Policies =================== //
@@ -112,16 +110,6 @@ class mono_context : public context_base<base_context<Stack>, Stack, Deque, mono
   constexpr auto pop() noexcept -> steal_handle<context_type> {
     return {key(), get(key(), this->m_container.pop())};
   }
-};
-
-// TODO: replace dummy_context with unit-context
-// TODO: replace dummy_allocator with fixed-allocator
-
-export struct dummy_context {
-  void post(lf::sched_handle<dummy_context>);
-  void push(lf::steal_handle<dummy_context>);
-  auto pop() noexcept -> lf::steal_handle<dummy_context>;
-  auto stack() noexcept -> dummy_allocator &;
 };
 
 } // namespace lf

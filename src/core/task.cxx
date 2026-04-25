@@ -22,7 +22,7 @@ struct env {
 };
 
 // Forward-declare promise_type so task can reference it as a pointer.
-export template <returnable T, worker_context Context>
+template <returnable T, worker_context Context>
 struct promise_type;
 
 /**

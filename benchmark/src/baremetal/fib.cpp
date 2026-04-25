@@ -16,7 +16,8 @@ namespace {
 
 [[nodiscard]]
 inline auto fib_align_size(std::size_t n) -> std::size_t {
-  return (n + __STDCPP_DEFAULT_NEW_ALIGNMENT__ - 1) & ~(__STDCPP_DEFAULT_NEW_ALIGNMENT__ - 1);
+  constexpr std::size_t align = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
+  return (n + align - 1) & ~(align - 1);
 }
 
 constinit inline thread_local std::byte *tls_bump_ptr = nullptr;

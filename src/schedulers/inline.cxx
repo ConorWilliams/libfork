@@ -4,6 +4,8 @@ import std;
 
 import libfork.core;
 
+import libfork.batteries;
+
 namespace lf {
 
 // TODO: think about initialization:
@@ -39,5 +41,11 @@ class inline_scheduler {
  private:
   Context m_context;
 };
+
+export template <worker_stack Stack, deque_policy Deque>
+using mono_inline_scheduler = inline_scheduler<mono_context<Stack, Deque>>;
+
+export template <worker_stack Stack, deque_policy Deque>
+using poly_inline_scheduler = inline_scheduler<derived_poly_context<Stack, Deque>>;
 
 } // namespace lf

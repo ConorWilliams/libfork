@@ -43,7 +43,7 @@ using stack_t = std::remove_reference_t<decltype(std::declval<T &>().stack())>;
 /**
  * @brief Fetch the checkpoint type of a worker context `T`.
  */
-export template <worker_context T>
+template <worker_context T>
 using checkpoint_t = decltype(std::declval<stack_t<T> &>().checkpoint());
 
 } // namespace lf

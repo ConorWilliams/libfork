@@ -36,8 +36,8 @@ inline auto inverse_complexity(benchmark::IterationCount n) -> double { return 1
 inline void setup_single(benchmark::Benchmark *b, std::int64_t size) { b->Arg(size)->UseRealTime(); }
 
 inline void setup_mt(benchmark::Benchmark *b, std::int64_t size) {
-  b->Apply([size](benchmark::Benchmark *b) {
-     bench_thread_args(b, [size](benchmark::Benchmark *inner_b, unsigned t) {
+  b->Apply([size](benchmark::Benchmark *bm) {
+     bench_thread_args(bm, [size](benchmark::Benchmark *inner_b, unsigned t) {
        inner_b->Args({size, static_cast<std::int64_t>(t)});
      });
    })
@@ -46,8 +46,8 @@ inline void setup_mt(benchmark::Benchmark *b, std::int64_t size) {
 }
 
 inline void setup_uts_mt(benchmark::Benchmark *b) {
-  b->Apply([](benchmark::Benchmark *b) {
-     bench_thread_args(b, [](benchmark::Benchmark *inner_b, unsigned t) {
+  b->Apply([](benchmark::Benchmark *bm) {
+     bench_thread_args(bm, [](benchmark::Benchmark *inner_b, unsigned t) {
        inner_b->Arg(static_cast<std::int64_t>(t));
      });
    })
