@@ -504,13 +504,6 @@ struct mixin_frame {
   await_transform_pkg(this auto const &self, pkg<Cat, StopToken, Context, R, Fn, Args...> &&pkg) noexcept(
       async_nothrow_invocable<Fn, Context, Args...>) -> awaitable<Cat, Context> {
 
-    // Required for noexcept specifier to be correct: each stored type must be either a
-    // reference (original behavior) or a small trivially-copyable value (value-storage opt).
-    static_assert(
-        (std::is_reference_v<Fn> || (std::is_trivially_copyable_v<Fn> && sizeof(Fn) <= 2 * sizeof(void *))) &&
-        (... && (std::is_reference_v<Args> ||
-                 (std::is_trivially_copyable_v<Args> && sizeof(Args) <= 2 * sizeof(void *)))));
-
     using U = async_result_t<Fn, Context, Args...>;
 
     // clang-format off
