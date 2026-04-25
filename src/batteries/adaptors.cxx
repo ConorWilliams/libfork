@@ -36,12 +36,13 @@ class adapt_vector {
 export template <allocator_of<std::atomic<unsafe_steal_handle>> Allocator =
                      std::allocator<std::atomic<unsafe_steal_handle>>>
 class adapt_deque {
-  using size_type = deque<unsafe_steal_handle, Allocator>::size_type;
+  using size_type = std::size_t;
 
   static constexpr size_type k_default_capacity = 1024 * 32;
 
  public:
-  constexpr adapt_deque() : adapt_deque(k_default_capacity, Allocator()) {}
+  constexpr adapt_deque()
+      : adapt_deque(k_default_capacity, Allocator()) {}
 
   explicit constexpr adapt_deque(size_type capacity, Allocator const &alloc = Allocator())
       : m_deque{capacity, alloc} {}
