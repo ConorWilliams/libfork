@@ -12,7 +12,7 @@ namespace lf {
 template <worker_context Context>
 constinit inline thread_local Context *thread_local_context = nullptr;
 
-// TODO: implictaions of thread local on constexpr
+// TODO: implications of thread local on constexpr
 
 /**
  * @brief A getter for the current worker context, checks for null in debug.
