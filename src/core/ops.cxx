@@ -23,8 +23,10 @@ struct no_ret_t {};
 // This lets [[no_unique_address]] collapse empty functors to zero bytes and
 // allows the compiler to treat the stored values as local data (no aliasing).
 template <typename T>
-concept small_trivially_copyable =
-    !std::is_reference_v<T> && std::is_trivially_copyable_v<T> && sizeof(T) <= 2 * sizeof(void *);
+concept small_trivially_copyable = !std::is_reference_v<T>                     //
+                                   && std::is_trivially_copyable_v<T>          //
+                                   && sizeof(T) <= 2 * sizeof(void *)          //
+                                   && alignof(T) <= alignof(std::max_align_t); //
 
 // Only collapses rvalue refs; lvalue refs are kept as-is to preserve reference semantics.
 template <typename T>
