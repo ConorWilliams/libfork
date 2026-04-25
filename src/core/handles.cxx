@@ -49,6 +49,8 @@ export struct unsafe_sched_handle : handle {
  * @brief A handle to a task that can be stolen and resumed with `execute`.
  *
  * The coroutine behind this task is always suspended at fork point.
+ *
+ * @tparam T the Context of the handle.
  */
 export template <typename T>
 struct steal_handle : unsafe_steal_handle {
@@ -59,6 +61,8 @@ struct steal_handle : unsafe_steal_handle {
  * @brief A handle to a task that can be resumed with `execute`.
  *
  * The coroutine behind this task is either not-yet-started or suspended at a context-switch.
+ *
+ * @tparam T the Context of the handle.
  */
 export template <typename T>
 struct sched_handle : unsafe_sched_handle {
