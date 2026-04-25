@@ -22,6 +22,9 @@ constexpr auto get_tls_context() noexcept -> Context & {
   return *not_null(thread_local_context<Context>);
 }
 
+/**
+ * @brief A getter for the current worker context's stack, checks for null in debug.
+ */
 template <worker_context Context>
 constexpr auto get_tls_stack() noexcept -> stack_t<Context> & {
   return get_tls_context<Context>().stack();
