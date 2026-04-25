@@ -49,16 +49,16 @@ class derived_poly_context : public poly_context<Stack> {
   constexpr derived_poly_context() = default;
 
   template <typename... StackArgs, typename... DequeArgs>
-    requires std::constructible_from<poly_context<Stack>, StackArgs...> &&
-                 std::constructible_from<Deque, DequeArgs...>
+    requires std::constructible_from<Stack, StackArgs...> && std::constructible_from<Deque, DequeArgs...>
   constexpr derived_poly_context(
       std::piecewise_construct_t,
       std::tuple<StackArgs...> stack_args,
-      std::tuple<DequeArgs...>
-          deque_args) noexcept(std::is_nothrow_constructible_v<poly_context<Stack>, StackArgs...> &&
-                               std::is_nothrow_constructible_v<Deque, DequeArgs...>)
-      : poly_context<Stack>(std::make_from_tuple<poly_context<Stack>>(std::move(stack_args))),
-        m_container(std::make_from_tuple<Deque>(std::move(deque_args))) {}
+      std::tuple<DequeArgs...> deque_args) noexcept(std::is_nothrow_constructible_v<Stack, StackArgs...> &&
+                                                    std::is_nothrow_constructible_v<Deque, DequeArgs...>)
+      : derived_poly_context(std::move(stack_args),
+                             std::move(deque_args),
+                             std::index_sequence_for<StackArgs...>{},
+                             std::index_sequence_for<DequeArgs...>{}) {}
 
   constexpr void push(steal_handle<context_type> handle) final { m_container.push(handle); }
 
@@ -74,6 +74,16 @@ class derived_poly_context : public poly_context<Stack> {
   }
 
  private:
+  template <typename... StackArgs, typename... DequeArgs, std::size_t... Is, std::size_t... Js>
+  constexpr derived_poly_context(
+      std::tuple<StackArgs...> stack_args,
+      std::tuple<DequeArgs...> deque_args,
+      std::index_sequence<Is...>,
+      std::index_sequence<Js...>) noexcept(std::is_nothrow_constructible_v<Stack, StackArgs...> &&
+                                           std::is_nothrow_constructible_v<Deque, DequeArgs...>)
+      : poly_context<Stack>(std::get<Is>(std::move(stack_args))...),
+        m_container(std::get<Js>(std::move(deque_args))...) {}
+
   Deque m_container;
 };
 
@@ -85,16 +95,16 @@ class mono_context : public base_context<Stack> {
   constexpr mono_context() = default;
 
   template <typename... StackArgs, typename... DequeArgs>
-    requires std::constructible_from<base_context<Stack>, StackArgs...> &&
-                 std::constructible_from<Deque, DequeArgs...>
+    requires std::constructible_from<Stack, StackArgs...> && std::constructible_from<Deque, DequeArgs...>
   constexpr mono_context(
       std::piecewise_construct_t,
       std::tuple<StackArgs...> stack_args,
-      std::tuple<DequeArgs...>
-          deque_args) noexcept(std::is_nothrow_constructible_v<base_context<Stack>, StackArgs...> &&
-                               std::is_nothrow_constructible_v<Deque, DequeArgs...>)
-      : base_context<Stack>(std::make_from_tuple<base_context<Stack>>(std::move(stack_args))),
-        m_container(std::make_from_tuple<Deque>(std::move(deque_args))) {}
+      std::tuple<DequeArgs...> deque_args) noexcept(std::is_nothrow_constructible_v<Stack, StackArgs...> &&
+                                                    std::is_nothrow_constructible_v<Deque, DequeArgs...>)
+      : mono_context(std::move(stack_args),
+                     std::move(deque_args),
+                     std::index_sequence_for<StackArgs...>{},
+                     std::index_sequence_for<DequeArgs...>{}) {}
 
   constexpr void push(steal_handle<context_type> handle) noexcept(noexcept(m_container.push(handle))) {
     m_container.push(handle);
@@ -112,6 +122,16 @@ class mono_context : public base_context<Stack> {
   }
 
  private:
+  template <typename... StackArgs, typename... DequeArgs, std::size_t... Is, std::size_t... Js>
+  constexpr mono_context(
+      std::tuple<StackArgs...> stack_args,
+      std::tuple<DequeArgs...> deque_args,
+      std::index_sequence<Is...>,
+      std::index_sequence<Js...>) noexcept(std::is_nothrow_constructible_v<Stack, StackArgs...> &&
+                                           std::is_nothrow_constructible_v<Deque, DequeArgs...>)
+      : base_context<Stack>(std::get<Is>(std::move(stack_args))...),
+        m_container(std::get<Js>(std::move(deque_args))...) {}
+
   Deque m_container;
 };
 
