@@ -34,20 +34,24 @@ concept operator_co_awaitable = requires (T t) { operator co_await(static_cast<T
 
 template <typename T>
 [[nodiscard]]
-constexpr auto acquire_awaitable(T &&t) noexcept -> T && {
+constexpr auto do_acquire_awaitable(T &&t) noexcept -> T && {
   std::forward<T>(t);
 }
 
 template <member_co_awaitable T>
 [[nodiscard]]
-constexpr auto acquire_awaitable(T &&t) LF_HOF(LF_FWD(t).operator co_await())
+constexpr auto do_acquire_awaitable(T &&t) LF_HOF(LF_FWD(t).operator co_await())
 
 template <operator_co_awaitable T>
 [[nodiscard]]
-constexpr auto acquire_awaitable(T &&t) LF_HOF(operator co_await(LF_FWD(t)))
+constexpr auto do_acquire_awaitable(T &&t) LF_HOF(operator co_await(LF_FWD(t)))
 
 template <typename T>
-concept lang_co_awaitable = requires (T t) { acquire_awaitable(static_cast<T &&>(t)); };
+concept awaitable_acquirable = requires (T t) { do_acquire_awaitable(static_cast<T &&>(t)); };
+
+export template <awaitable_acquirable T>
+constexpr auto acquire_awaitable(T &&t)
+    LF_HOF(do_acquire_awaitable(LF_FWD(t)))
 
 // template <worker_context Context, awaitable<Context> T>
 // struct context_switch_awaitable {
