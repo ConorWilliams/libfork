@@ -170,7 +170,7 @@ struct both_co_await {
 auto operator co_await(both_co_await) -> plain_awaitable;
 
 template <typename T>
-concept can_acquire = lf::awaitable_acquirable<T>;
+concept can_acquire = requires (T t) { acquire_awaitable(static_cast<T &&>(t)); };
 
 } // namespace
 

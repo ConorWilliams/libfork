@@ -35,7 +35,7 @@ constexpr auto do_acquire_awaitable(T &&t)
  *
  * If neither operator is present `T` is assumed to be a plain awaitable.
  */
-export template <typename T>
+template <typename T>
 concept awaitable_acquirable = requires (T x) { do_acquire_awaitable(static_cast<T &&>(x)); };
 
 /**
@@ -53,7 +53,7 @@ template <typename T>
 concept storable = std::constructible_from<std::remove_cvref_t<T>, T &&>;
 
 /**
- * @brief  Specifies the requirements for a context-switching awaitable type.
+ * @brief Checks for methods + storable
  */
 template <typename T, typename Context>
 concept awaitable_impl =
