@@ -13,6 +13,7 @@ import :handles;
 import :task;
 import :thread_locals;
 import :final_suspend;
+import :concepts_awaitable;
 
 namespace lf {
 
@@ -234,6 +235,23 @@ struct join_awaitable {
   constexpr void rethrow_exception(this join_awaitable self) {
     std::rethrow_exception(extract_exception(self.frame));
   }
+};
+
+// =============== Context Switch =============== //
+
+template <worker_context Context, awaitable<Context> T>
+struct context_switch_awaitable {
+
+  static_assert(plain_object<T>, "Expecting remove cv-ref");
+
+  [[no_unique_address]]
+  T value;
+
+  constexpr auto await_ready() LF_HOF(value.await_ready())
+
+  constexpr void await_suspend(std::coroutine_handle<>);
+
+  constexpr auto await_resume() LF_HOF(std::forward<T>(value).await_resume())
 };
 
 } // namespace lf
