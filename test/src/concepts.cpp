@@ -151,11 +151,7 @@ TEST_CASE("Concepts: async_nothrow_invocable", "[concepts]") {
 
 namespace {
 
-struct plain_awaitable {
-  auto await_ready() -> bool;
-  auto await_suspend(std::coroutine_handle<>) -> void;
-  auto await_resume() -> void;
-};
+struct plain_awaitable {};
 
 struct member_co_await {
   auto operator co_await() -> plain_awaitable;
@@ -164,7 +160,7 @@ struct member_co_await {
 struct free_co_await {};
 
 [[maybe_unused]]
-auto operator co_await(free_co_await) -> plain_awaitable;
+auto operator co_await(free_co_await) -> plain_awaitable &;
 
 struct both_co_await {
   auto operator co_await() -> plain_awaitable;
@@ -193,16 +189,17 @@ TEST_CASE("Concepts: awaitable_acquirable", "[concepts]") {
 
 TEST_CASE("acquire_awaitable", "[concepts]") {
   // No operator co_await: returns the argument unchanged, preserving value category.
-  STATIC_REQUIRE(
-      std::same_as<decltype(acquire_awaitable(std::declval<plain_awaitable>())), plain_awaitable &&>);
-  STATIC_REQUIRE(
-      std::same_as<decltype(acquire_awaitable(std::declval<plain_awaitable &>())), plain_awaitable &>);
-  STATIC_REQUIRE(std::same_as<decltype(acquire_awaitable(std::declval<plain_awaitable const &>())),
-                              plain_awaitable const &>);
+  using acq_plain_xref = decltype(acquire_awaitable(std::declval<plain_awaitable>()));
+  using acq_plain_lref = decltype(acquire_awaitable(std::declval<plain_awaitable &>()));
+  using acq_plain_cref = decltype(acquire_awaitable(std::declval<plain_awaitable const &>()));
+
+  STATIC_REQUIRE(std::same_as<acq_plain_xref, plain_awaitable &&>);
+  STATIC_REQUIRE(std::same_as<acq_plain_lref, plain_awaitable &>);
+  STATIC_REQUIRE(std::same_as<acq_plain_cref, plain_awaitable const &>);
 
   // Member operator co_await: returns whatever the member call produces.
   STATIC_REQUIRE(std::same_as<decltype(acquire_awaitable(std::declval<member_co_await>())), plain_awaitable>);
 
   // Free operator co_await: returns whatever the ADL-found free call produces.
-  STATIC_REQUIRE(std::same_as<decltype(acquire_awaitable(std::declval<free_co_await>())), plain_awaitable>);
+  STATIC_REQUIRE(std::same_as<decltype(acquire_awaitable(std::declval<free_co_await>())), plain_awaitable &>);
 }
