@@ -149,7 +149,7 @@ TEST_CASE("Concepts: async_nothrow_invocable", "[concepts]") {
   STATIC_REQUIRE_FALSE(async_nothrow_invocable<throwing_async, test_context, int>);
 }
 
-namespace {
+namespace co_await_test {
 
 struct plain_awaitable {
   auto await_ready() -> bool;
@@ -162,20 +162,22 @@ struct member_co_await {
 };
 
 struct free_co_await {
-  friend auto operator co_await(free_co_await) -> plain_awaitable { return {}; }
+  friend auto operator co_await(free_co_await) -> plain_awaitable;
 };
 
 struct both_co_await {
   auto operator co_await() -> plain_awaitable;
-  friend auto operator co_await(both_co_await) -> plain_awaitable { return {}; }
+  friend auto operator co_await(both_co_await) -> plain_awaitable;
 };
 
 template <typename T>
 concept can_acquire = requires (T &&t) { lf::acquire_awaitable(static_cast<T &&>(t)); };
 
-} // namespace
+} // namespace co_await_test
 
 TEST_CASE("Concepts: awaitable_acquirable", "[concepts]") {
+  using namespace co_await_test;
+
   // Generic identity overload accepts any type — even non-awaiters.
   STATIC_REQUIRE(can_acquire<plain_awaitable>);
   STATIC_REQUIRE(can_acquire<int>);
@@ -189,6 +191,8 @@ TEST_CASE("Concepts: awaitable_acquirable", "[concepts]") {
 }
 
 TEST_CASE("acquire_awaitable", "[concepts]") {
+  using namespace co_await_test;
+
   // No operator co_await: returns the argument unchanged, preserving value category.
   STATIC_REQUIRE(std::same_as<decltype(acquire_awaitable(std::declval<plain_awaitable>())), plain_awaitable &&>);
   STATIC_REQUIRE(std::same_as<decltype(acquire_awaitable(std::declval<plain_awaitable &>())), plain_awaitable &>);
