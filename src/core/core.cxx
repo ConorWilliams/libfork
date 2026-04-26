@@ -18,3 +18,5 @@ export import :execute;
 export import :receiver;
 export import :stop;
 export import :exception;
+export import :final_suspend;
+export import :awaitables;
