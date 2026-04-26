@@ -1,6 +1,7 @@
 module;
 #include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/exception.hpp"
+#include "libfork/__impl/utils.hpp"
 export module libfork.core:awaitables;
 
 import std;
@@ -119,7 +120,7 @@ struct join_awaitable {
     return false;
   }
 
-  constexpr auto await_suspend(this join_awaitable self, std::coroutine_handle<> task) noexcept -> coro<> {
+  constexpr auto await_suspend(this join_awaitable self, coro<> task) noexcept -> coro<> {
     // Currently   self.joins  = k_u16_max  - num_joined
     //
     // We set           joins  = self->joins - (k_u16_max - num_steals)
@@ -240,16 +241,18 @@ struct join_awaitable {
 // =============== Context Switch =============== //
 
 template <worker_context Context, awaitable<Context> T>
-struct context_switch_awaitable {
+struct switch_awaitable final {
 
   static_assert(plain_object<T>, "Expecting remove cv-ref");
+  static_assert(custom_awaitable_methods<T, Context>, "Expecting methods");
 
   [[no_unique_address]]
   T value;
 
   constexpr auto await_ready() LF_HOF(value.await_ready())
 
-  constexpr void await_suspend(std::coroutine_handle<>);
+  template <typename R>
+  constexpr auto await_suspend(coro<promise_type<R, Context>> parent) -> coro<> {}
 
   constexpr auto await_resume() LF_HOF(std::forward<T>(value).await_resume())
 };

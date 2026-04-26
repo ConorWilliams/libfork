@@ -116,12 +116,18 @@ struct mixin_frame {
     return {.child = &child_promise->frame};
   }
 
+  // // Custom awaitables
+  // static constexpr auto await_transform() {}
+
+  // Join
   constexpr auto await_transform(this auto &self, join_type) noexcept -> join_awaitable<Context> {
     return {.frame = &self.frame};
   }
 
+  // Scope getter (propagate stop token)
   static constexpr auto await_transform(scope_type) noexcept -> scope_awaitable<Context> { return {}; }
 
+  // Scope getter (new attached stop token)
   constexpr auto
   await_transform(this auto const &self, child_scope_type) noexcept -> child_scope_awaitable<Context> {
     return {.parent_stop_token = self.frame.stop_token};
