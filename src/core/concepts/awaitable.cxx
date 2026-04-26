@@ -62,6 +62,11 @@ concept custom_awaitable_methods = requires (T x, Context &ctx, sched_handle<Con
   { x.await_resume() };
 };
 
+template <typename T, typename Context>
+concept nothrow_await_suspend = requires (T x, Context &ctx, sched_handle<Context> handle) {
+  { x.await_suspend(handle, ctx) } noexcept;
+};
+
 /**
  * @brief Checks for methods + storable
  */
