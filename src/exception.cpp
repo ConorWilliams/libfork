@@ -1,0 +1,20 @@
+#include <cstdio>
+
+#include "libfork/__impl/exception.hpp"
+
+import std;
+
+namespace lf::impl {
+
+[[noreturn]]
+void terminate_with(char const *message, char const *file, int line) noexcept {
+  LF_TRY {
+    std::println(stderr, "{} {}:{}: {}", std::this_thread::get_id(), file, line, message);
+  } LF_CATCH_ALL {
+    // Drop exceptions during termination
+  }
+  // TODO: can we get a stack trace here?
+  std::terminate();
+}
+
+} // namespace lf::impl

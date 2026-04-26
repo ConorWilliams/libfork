@@ -1,38 +1,121 @@
-cmake_minimum_required(VERSION 4.2.1 FATAL_ERROR)
+cmake_minimum_required(VERSION 4.3 FATAL_ERROR)
 
 # See `Help/dev/experimental.rst`
-set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
+set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "451f2fe2-a8a2-47c3-bc32-94786d8fc91b")
 
 include(cmake/read_version.cmake)
 
-read_version(${CMAKE_CURRENT_SOURCE_DIR}/include/libfork/core/macro.hpp)
+read_version(${CMAKE_CURRENT_SOURCE_DIR}/include/libfork/version.hpp)
 
 project(
   libfork
   VERSION ${version_major}.${version_minor}.${version_patch}
-  DESCRIPTION "A bleeding-edge, lock-free, wait-free, continuation-stealing fork-join library built on C++20's coroutines."
   LANGUAGES CXX
 )
+
+# ---- Project options ----
+
+option(libfork_DEV_MODE "Enable developer build (tests/benchmarks/etc) for libfork" OFF)
+
+# ---- System dependencies ----
+
+find_package(Threads REQUIRED)
+
+# ===========================
 
 # Tell CMake that we explicitly want `import std`. This will initialize the
 # property on all targets declared after this to 1
 # TODO: set property per target
 set(CMAKE_CXX_MODULE_STD 1)
 
-# Make a library.
-add_library(uses_std STATIC)
+add_library(libfork_libfork)
+add_library(libfork::libfork ALIAS libfork_libfork)
 
-# Add sources.
-target_sources(uses_std PRIVATE uses_std.cxx)
+target_link_libraries(libfork_libfork PUBLIC Threads::Threads)
 
-# Tell CMake we're using C++23 but only C++20 is needed to consume it.
-target_compile_features(uses_std INTERFACE cxx_std_23)
+set_property(TARGET libfork_libfork PROPERTY EXPORT_NAME libfork)
 
-# Make an executable.
-add_executable(main)
+target_compile_features(libfork_libfork PUBLIC cxx_std_26)
 
-target_sources(main PRIVATE main.cxx)
-target_link_libraries(main PRIVATE uses_std)
+# Public headers, __impl must be public because consumers need
+# them to build the module BMI
+target_sources(libfork_libfork
+  PUBLIC
+    FILE_SET HEADERS FILES
+      include/libfork/version.hpp
+      include/libfork/__impl/compiler.hpp
+      include/libfork/__impl/exception.hpp
+      include/libfork/__impl/utils.hpp
+      include/libfork/__impl/assume.hpp
+    BASE_DIRS
+      include
+)
+
+# Add the module files to the library, must be public because
+# consumers will need bo build the BMI
+target_sources(libfork_libfork
+  PUBLIC
+    FILE_SET CXX_MODULES FILES
+      # libfork (meta)
+      src/libfork.cxx
+      # libfork.utils
+      src/utils/utils.cxx
+      src/utils/utility.cxx
+      src/utils/constants.cxx
+      src/utils/tuple.cxx
+      src/utils/concepts.cxx
+      src/utils/defer.cxx
+      src/utils/uninitialized.cxx
+      # libfork.core
+      src/core/core.cxx
+      src/core/exception.cxx
+      src/core/concepts/stack.cxx
+      src/core/concepts/context.cxx
+      src/core/concepts/scheduler.cxx
+      src/core/concepts/invocable.cxx
+      src/core/frame.cxx
+      src/core/task.cxx
+      src/core/ops.cxx
+      src/core/poly_context.cxx
+      src/core/thread_locals.cxx
+      src/core/schedule.cxx
+      src/core/handles.cxx
+      src/core/root.cxx
+      src/core/execute.cxx
+      src/core/receiver.cxx
+      src/core/final_suspend.cxx
+      src/core/awaitables.cxx
+      src/core/promise.cxx
+      src/core/stop.cxx
+      # libfork.batteries
+      src/batteries/batteries.cxx
+      src/batteries/deque.cxx
+      src/batteries/adaptors.cxx
+      src/batteries/contexts.cxx
+      src/batteries/geometric_stack.cxx
+      src/batteries/adaptor_stack.cxx
+      src/batteries/slab_stack.cxx
+      # libfork.schedulers
+      src/schedulers/schedulers.cxx
+      src/schedulers/inline.cxx
+      src/schedulers/busy.cxx
+    PRIVATE
+      src/exception.cpp
+)
+
+# ======================
+
+if(libfork_DEV_MODE)
+
+  include(CTest) # Enables the BUILD_TESTING option
+
+  if(BUILD_TESTING)
+    add_subdirectory(test)
+  endif()
+
+  add_subdirectory(benchmark)
+
+endif()
 
 # list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 #
@@ -43,9 +126,6 @@ target_link_libraries(main PRIVATE uses_std)
 #
 # message(STATUS "CMAKE_BUILD_TYPE is set to '${CMAKE_BUILD_TYPE}'")
 #
-# # ---- System dependencies ----
-#
-# find_package(Threads REQUIRED)
 #
 # # ------ Declare library ------
 #
