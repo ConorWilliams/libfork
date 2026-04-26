@@ -211,7 +211,7 @@ struct join_awaitable {
   }
 
   [[nodiscard]]
-  constexpr auto handle_stop(this join_awaitable self) -> coro<> {
+  constexpr auto handle_stop(this join_awaitable self) noexcept -> coro<> {
     // Only need to take the stack if there were steals
     if (self.frame->steals > 0) {
       self.take_stack();
