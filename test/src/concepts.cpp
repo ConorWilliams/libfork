@@ -203,3 +203,26 @@ TEST_CASE("acquire_awaitable", "[concepts]") {
   // Free operator co_await: returns whatever the ADL-found free call produces.
   STATIC_REQUIRE(std::same_as<decltype(acquire_awaitable(std::declval<free_co_await>())), plain_awaitable &>);
 }
+
+namespace {
+
+struct lf_awaitable {
+  auto await_ready() -> bool;
+  auto await_suspend(lf::sched_handle<test_context>, test_context &) -> void;
+  auto await_resume() -> void;
+};
+
+struct bad_lf_awaitable {
+  auto await_ready() -> bool;
+  auto await_suspend(lf::sched_handle<test_context>, int &) -> void; // Wrong context type
+  auto await_resume() -> void;
+};
+
+} // namespace
+
+TEST_CASE("Concepts: awaitable_impl", "[concepts]") {
+
+  STATIC_REQUIRE(lf::awaitable<lf_awaitable, test_context>);
+
+  STATIC_REQUIRE_FALSE(lf::awaitable<bad_lf_awaitable, test_context>);
+}
