@@ -68,7 +68,7 @@ struct mixin_frame {
   template <category Cat, bool StopToken, typename R, typename Fn, typename... Args>
   constexpr auto
   await_transform_pkg(this auto const &self, pkg<Cat, StopToken, Context, R, Fn, Args...> &&pkg) noexcept(
-      async_nothrow_invocable<Fn, Context, Args...>) -> awaitable<Cat, Context> {
+      async_nothrow_invocable<Fn, Context, Args...>) -> async_awaitable<Cat, Context> {
 
     using U = async_result_t<Fn, Context, Args...>;
 
@@ -106,7 +106,7 @@ struct mixin_frame {
 
   template <category Cat, bool StopToken, typename R, typename Fn, typename... Args>
   constexpr auto await_transform(this auto &self, pkg<Cat, StopToken, Context, R, Fn, Args...> &&pkg) noexcept
-      -> awaitable<Cat, Context> {
+      -> async_awaitable<Cat, Context> {
     LF_TRY {
       return self.await_transform_pkg(std::move(pkg));
     } LF_CATCH_ALL {

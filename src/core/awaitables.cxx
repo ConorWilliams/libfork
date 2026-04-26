@@ -35,7 +35,7 @@ constexpr void stash_current_exception(frame_type<Checkpoint> *frame) noexcept {
 }
 
 template <category Cat, worker_context Context>
-struct awaitable : std::suspend_always {
+struct async_awaitable : std::suspend_always {
 
   static_assert(Cat == category::call || Cat == category::fork, "Invalid category for awaitable");
 
@@ -46,7 +46,7 @@ struct awaitable : std::suspend_always {
    */
   template <typename T>
   constexpr void
-  destroy_child_stash_exception(this awaitable self, coro<promise_type<T, Context>> parent) noexcept {
+  destroy_child_stash_exception(this async_awaitable self, coro<promise_type<T, Context>> parent) noexcept {
     // Clean-up the child that will never be resumed.
     self.child->handle().destroy();
     stash_current_exception(&parent.promise().frame);
@@ -54,7 +54,7 @@ struct awaitable : std::suspend_always {
 
   template <typename T>
   constexpr auto
-  await_suspend(this awaitable self, coro<promise_type<T, Context>> parent) noexcept -> coro<> {
+  await_suspend(this async_awaitable self, coro<promise_type<T, Context>> parent) noexcept -> coro<> {
 
     // TODO: test of having a dedicated is_stopped awaitable is quicker
 
