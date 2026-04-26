@@ -1,4 +1,3 @@
-
 module;
 #include "libfork/__impl/utils.hpp"
 export module libfork.core:concepts_awaitable;
@@ -27,19 +26,42 @@ concept awaitable =
       { x.await_resume() };
     };
 
-template <worker_context Context, awaitable<Context> T>
-struct context_switch_awaitable {
+template <typename T>
+concept member_co_awaitable = requires (T t) { static_cast<T &&>(t).operator co_await(); };
 
-  static_assert(plain_object<T>, "Expecting remove cv-ref");
+template <typename T>
+concept operator_co_awaitable = requires (T t) { operator co_await(static_cast<T &&>(t)); };
 
-  [[no_unique_address]]
-  T value;
+template <typename T>
+[[nodiscard]]
+constexpr auto acquire_awaitable(T &&t) noexcept -> T && {
+  std::forward<T>(t);
+}
 
-  constexpr auto await_ready() LF_HOF(value.await_ready())
+template <member_co_awaitable T>
+[[nodiscard]]
+constexpr auto acquire_awaitable(T &&t) LF_HOF(LF_FWD(t).operator co_await())
 
-  constexpr void await_suspend(std::coroutine_handle<>);
+template <operator_co_awaitable T>
+[[nodiscard]]
+constexpr auto acquire_awaitable(T &&t) LF_HOF(operator co_await(LF_FWD(t)))
 
-  constexpr auto await_resume() LF_HOF(std::forward<T>(value).await_resume())
-};
+template <typename T>
+concept lang_co_awaitable = requires (T t) { acquire_awaitable(static_cast<T &&>(t)); };
+
+// template <worker_context Context, awaitable<Context> T>
+// struct context_switch_awaitable {
+//
+//   static_assert(plain_object<T>, "Expecting remove cv-ref");
+//
+//   [[no_unique_address]]
+//   T value;
+//
+//   constexpr auto await_ready() LF_HOF(value.await_ready())
+//
+//   constexpr void await_suspend(std::coroutine_handle<>);
+//
+//   constexpr auto await_resume() LF_HOF(std::forward<T>(value).await_resume())
+// };
 
 } // namespace lf
