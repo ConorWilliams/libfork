@@ -161,17 +161,20 @@ struct member_co_await {
   auto operator co_await() -> plain_awaitable;
 };
 
-struct free_co_await {
-  friend auto operator co_await(free_co_await) -> plain_awaitable { return {}; }
-};
+struct free_co_await {};
+
+[[maybe_unused]]
+auto operator co_await(free_co_await) -> plain_awaitable;
 
 struct both_co_await {
   auto operator co_await() -> plain_awaitable;
-  friend auto operator co_await(both_co_await) -> plain_awaitable { return {}; }
 };
 
+[[maybe_unused]]
+auto operator co_await(both_co_await) -> plain_awaitable;
+
 template <typename T>
-concept can_acquire = requires (T &&t) { lf::acquire_awaitable(static_cast<T &&>(t)); };
+concept can_acquire = lf::awaitable_acquirable<T>;
 
 } // namespace
 
@@ -190,11 +193,12 @@ TEST_CASE("Concepts: awaitable_acquirable", "[concepts]") {
 
 TEST_CASE("acquire_awaitable", "[concepts]") {
   // No operator co_await: returns the argument unchanged, preserving value category.
-  STATIC_REQUIRE(std::same_as<decltype(acquire_awaitable(std::declval<plain_awaitable>())), plain_awaitable &&>);
-  STATIC_REQUIRE(std::same_as<decltype(acquire_awaitable(std::declval<plain_awaitable &>())), plain_awaitable &>);
   STATIC_REQUIRE(
-      std::same_as<decltype(acquire_awaitable(std::declval<plain_awaitable const &>())), plain_awaitable const &>
-  );
+      std::same_as<decltype(acquire_awaitable(std::declval<plain_awaitable>())), plain_awaitable &&>);
+  STATIC_REQUIRE(
+      std::same_as<decltype(acquire_awaitable(std::declval<plain_awaitable &>())), plain_awaitable &>);
+  STATIC_REQUIRE(std::same_as<decltype(acquire_awaitable(std::declval<plain_awaitable const &>())),
+                              plain_awaitable const &>);
 
   // Member operator co_await: returns whatever the member call produces.
   STATIC_REQUIRE(std::same_as<decltype(acquire_awaitable(std::declval<member_co_await>())), plain_awaitable>);

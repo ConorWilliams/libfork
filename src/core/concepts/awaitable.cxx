@@ -46,7 +46,7 @@ template <operator_co_awaitable T>
 [[nodiscard]]
 constexpr auto do_acquire_awaitable(T &&t) LF_HOF(operator co_await(LF_FWD(t)))
 
-template <typename T>
+export template <typename T>
 concept awaitable_acquirable = requires (T t) { do_acquire_awaitable(static_cast<T &&>(t)); };
 
 export template <awaitable_acquirable T>
