@@ -65,7 +65,7 @@ struct mixin_frame {
 
   // --- Await transformations
 
-  // Fork/call delegates
+  // Fork/call
   template <category Cat, bool StopToken, typename R, typename Fn, typename... Args>
   constexpr auto await_transform(this auto &self, pkg<Cat, StopToken, Context, R, Fn, Args...> &&pkg) noexcept
       -> async_awaitable<Cat, Context> {
@@ -77,7 +77,36 @@ struct mixin_frame {
     return {.child = nullptr};
   }
 
-  // Fork/Call
+  // Custom awaitable
+  template <awaitable<Context> T>
+  static constexpr auto await_transform(T &&) {}
+
+  // Join
+  constexpr auto await_transform(this auto &self, join_type) noexcept -> join_awaitable<Context> {
+    return {.frame = &self.frame};
+  }
+
+  // Scope getter (propagate stop token)
+  static constexpr auto await_transform(scope_type) noexcept -> scope_awaitable<Context> { return {}; }
+
+  // Scope getter (new attached stop token)
+  constexpr auto
+  await_transform(this auto const &self, child_scope_type) noexcept -> child_scope_awaitable<Context> {
+    return {.parent_stop_token = self.frame.stop_token};
+  }
+
+  // --- Other
+
+  constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
+
+  constexpr static auto final_suspend() noexcept -> final_awaitable { return {}; }
+
+  constexpr void unhandled_exception(this auto &self) noexcept {
+    // Stash the exception in the parent which will rethrow at the join.
+    stash_current_exception(self.frame.parent);
+  }
+
+ private:
   template <category Cat, bool StopToken, typename R, typename Fn, typename... Args>
   constexpr auto
   await_transform_pkg(this auto const &self, pkg<Cat, StopToken, Context, R, Fn, Args...> &&pkg) noexcept(
@@ -114,32 +143,6 @@ struct mixin_frame {
     }
 
     return {.child = &child_promise->frame};
-  }
-
-  // // Custom awaitables
-  // static constexpr auto await_transform() {}
-
-  // Join
-  constexpr auto await_transform(this auto &self, join_type) noexcept -> join_awaitable<Context> {
-    return {.frame = &self.frame};
-  }
-
-  // Scope getter (propagate stop token)
-  static constexpr auto await_transform(scope_type) noexcept -> scope_awaitable<Context> { return {}; }
-
-  // Scope getter (new attached stop token)
-  constexpr auto
-  await_transform(this auto const &self, child_scope_type) noexcept -> child_scope_awaitable<Context> {
-    return {.parent_stop_token = self.frame.stop_token};
-  }
-
-  constexpr static auto initial_suspend() noexcept -> std::suspend_always { return {}; }
-
-  constexpr static auto final_suspend() noexcept -> final_awaitable { return {}; }
-
-  constexpr void unhandled_exception(this auto &self) noexcept {
-    // Stash the exception in the parent which will rethrow at the join.
-    stash_current_exception(self.frame.parent);
   }
 };
 
