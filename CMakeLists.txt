@@ -83,6 +83,8 @@ target_sources(libfork_libfork
       src/core/root.cxx
       src/core/execute.cxx
       src/core/receiver.cxx
+      src/core/final_suspend.cxx
+      src/core/awaitables.cxx
       src/core/promise.cxx
       src/core/stop.cxx
       # libfork.batteries
