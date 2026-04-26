@@ -44,11 +44,21 @@ constexpr auto do_acquire_awaitable(T &&t) LF_HOF(LF_FWD(t).operator co_await())
 
 template <operator_co_awaitable T>
 [[nodiscard]]
-constexpr auto do_acquire_awaitable(T &&t) LF_HOF(operator co_await(LF_FWD(t)))
+constexpr auto do_acquire_awaitable(T &&t)
+    LF_HOF(operator co_await(LF_FWD(t)))
 
+/**
+ * @brief Specify that an awaitable can be unambiguously acuired from `T` by free/member operator co_await.
+ *
+ * If neither operator is present `T` is assumed to be a plain awaitable.
+ */
 export template <typename T>
 concept awaitable_acquirable = requires (T t) { do_acquire_awaitable(static_cast<T &&>(t)); };
 
+/**
+ * @brief Extracts the awaitable from `T` by invoking the appropriate operator co_await, or returning `T`
+ * itself if neither operator is present.
+ */
 export template <awaitable_acquirable T>
 constexpr auto acquire_awaitable(T &&t)
     LF_HOF(do_acquire_awaitable(LF_FWD(t)))
