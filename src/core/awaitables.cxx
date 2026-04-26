@@ -34,23 +34,27 @@ constexpr void stash_current_exception(frame_type<Checkpoint> *frame) noexcept {
   }
 }
 
+/**
+ * @brief In a separate function to allow it to be placed in cold block.
+ */
+template <typename T, typename Context>
+constexpr void
+destroy_child_stash_exception(frame_t<Context> *child, coro<promise_type<T, Context>> parent) noexcept {
+  // Clean-up the child that will never be resumed.
+  child->handle().destroy();
+  // Stash in the parent's frame which will then be resumed.
+  stash_current_exception(&parent.promise().frame);
+}
+
+/**
+ * @brief Awaitable for forking/callin an async function.
+ */
 template <category Cat, worker_context Context>
 struct async_awaitable : std::suspend_always {
 
   static_assert(Cat == category::call || Cat == category::fork, "Invalid category for awaitable");
 
   frame_t<Context> *child;
-
-  /**
-   * @brief In a separate function to allow it to be placed in cold block.
-   */
-  template <typename T>
-  constexpr void
-  destroy_child_stash_exception(this async_awaitable self, coro<promise_type<T, Context>> parent) noexcept {
-    // Clean-up the child that will never be resumed.
-    self.child->handle().destroy();
-    stash_current_exception(&parent.promise().frame);
-  }
 
   template <typename T>
   constexpr auto
@@ -86,7 +90,7 @@ struct async_awaitable : std::suspend_always {
       LF_TRY {
         get_tls_context<Context>().push(steal_handle<Context>{key(), &parent.promise().frame});
       } LF_CATCH_ALL {
-        return self.destroy_child_stash_exception(parent), parent;
+        return destroy_child_stash_exception(self.child, parent), parent;
       }
     }
 
@@ -196,6 +200,8 @@ struct join_awaitable {
         self.rethrow_exception();
       }
     }
+
+    LF_ASSUME(self.frame->exception_bit == 0);
   }
 
   constexpr auto take_stack(this join_awaitable self) noexcept -> void {
