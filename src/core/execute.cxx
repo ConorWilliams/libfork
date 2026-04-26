@@ -25,9 +25,13 @@ export struct execute_error final : libfork_exception {
  *
  * This should not be called from a thread already bound to a context, once this call returns
  * the thread is unbound from the context.
+
+ * The handle must not be null.
  */
 export template <worker_context Context>
 constexpr void execute(Context &context, sched_handle<Context> handle) {
+
+  LF_ASSUME(handle);
 
   if (thread_local_context<Context> != nullptr) {
     LF_THROW(execute_error{});
@@ -62,6 +66,8 @@ export struct steal_overflow_error final : libfork_exception {
 template <worker_context Context>
 constexpr auto consume(steal_handle<Context> handle) -> std::coroutine_handle<> {
 
+  LF_ASSUME(handle);
+
   auto *frame = static_cast<frame_type<checkpoint_t<Context>> *>(get(key(), handle));
 
   if (frame->steals == k_u16_max) {
@@ -78,9 +84,13 @@ constexpr auto consume(steal_handle<Context> handle) -> std::coroutine_handle<> 
  *
  * This should not be called from a thread already bound to a context, once this call returns
  * the thread is unbound from the context.
+ *
+ * The handle must not be null.
  */
 export template <worker_context Context>
 constexpr void execute(Context &context, steal_handle<Context> handle) {
+
+  LF_ASSUME(handle);
 
   if (thread_local_context<Context> != nullptr) {
     LF_THROW(execute_error{});
