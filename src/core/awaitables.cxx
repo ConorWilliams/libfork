@@ -47,7 +47,7 @@ destroy_child_stash_exception(frame_t<Context> *child, coro<promise_type<T, Cont
 }
 
 /**
- * @brief Awaitable for forking/callin an async function.
+ * @brief Awaitable for forking/calling an async function.
  */
 template <category Cat, worker_context Context>
 struct async_awaitable : std::suspend_always {
