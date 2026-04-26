@@ -79,7 +79,8 @@ struct mixin_frame {
 
   // Custom awaitable
   template <awaitable<Context> T>
-  static constexpr auto await_transform(T &&) {}
+  static constexpr auto await_transform(T &&x)
+      LF_HOF(switch_awaitable<Context, std::remove_cvref_t<T>>{LF_FWD(x)})
 
   // Join
   constexpr auto await_transform(this auto &self, join_type) noexcept -> join_awaitable<Context> {
@@ -212,7 +213,7 @@ struct unit_stack {
   static auto prepare_release() noexcept -> int;
   static auto release(int) noexcept -> void;
   static auto acquire(unit_checkpoint) noexcept -> void;
-};
+}; // namespace
 
 struct unit_context {
   void push(lf::steal_handle<unit_context>);
