@@ -1,8 +1,5 @@
 module;
-#include <version>
-
 #include "libfork/__impl/assume.hpp"
-#include "libfork/__impl/compiler.hpp"
 #include "libfork/__impl/exception.hpp"
 export module libfork.core:awaitables;
 
@@ -18,12 +15,6 @@ import :thread_locals;
 import :final_suspend;
 
 namespace lf {
-
-template <typename T = void>
-using coro = std::coroutine_handle<T>;
-
-template <worker_context Context>
-using frame_t = frame_type<checkpoint_t<Context>>;
 
 // =============== Fork/Call =============== //
 

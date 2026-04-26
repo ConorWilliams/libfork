@@ -2,7 +2,6 @@ module;
 #include <version>
 
 #include "libfork/__impl/assume.hpp"
-#include "libfork/__impl/compiler.hpp"
 #include "libfork/__impl/exception.hpp"
 #include "libfork/__impl/utils.hpp"
 export module libfork.core:promise;
@@ -25,12 +24,6 @@ import :awaitables;
 // TODO: vet constexpr usage in the library
 
 namespace lf {
-
-template <typename T = void>
-using coro = std::coroutine_handle<T>;
-
-template <worker_context Context>
-using frame_t = frame_type<checkpoint_t<Context>>;
 
 // =============== Final awaitable =============== //
 
@@ -91,8 +84,6 @@ struct mixin_frame {
 
     // void can signal drop return.
     static_assert(std::same_as<R, U> || std::is_void_v<R>);
-
-    // TODO: tests for null return path
 
     if constexpr (!std::is_void_v<R>) {
       child_promise->return_address = not_null(pkg.return_addr);
