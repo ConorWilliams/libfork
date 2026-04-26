@@ -53,37 +53,27 @@ template <typename T>
 concept storable = std::constructible_from<std::remove_cvref_t<T>, T &&>;
 
 /**
+ * @brief Checks for methods.
+ */
+template <typename T, typename Context>
+concept custom_awaitable_methods = requires (T x, Context &ctx, sched_handle<Context> handle) {
+  { x.await_ready() } -> std::convertible_to<bool>;
+  { x.await_suspend(handle, ctx) } -> std::same_as<void>;
+  { x.await_resume() };
+};
+
+/**
  * @brief Checks for methods + storable
  */
 template <typename T, typename Context>
-concept awaitable_impl =
-    storable<T> && requires (std::remove_cvref_t<T> x, Context &ctx, sched_handle<Context> handle) {
-      { x.await_ready() } -> std::convertible_to<bool>;
-      { x.await_suspend(handle, ctx) } -> std::same_as<void>;
-      { x.await_resume() };
-    };
+concept custom_awaitable = storable<T> && custom_awaitable_methods<std::remove_cvref_t<T>, Context>;
 
 /**
  * @brief  Specifies the requirements for a context-switching awaitable type.
  */
 export template <typename T, typename Context>
 concept awaitable = worker_context<Context> && requires (T x) {
-  { acquire_awaitable(static_cast<T &&>(x)) } -> awaitable_impl<Context>;
+  { acquire_awaitable(static_cast<T &&>(x)) } -> custom_awaitable<Context>;
 };
-
-// template <worker_context Context, awaitable<Context> T>
-// struct context_switch_awaitable {
-//
-//   static_assert(plain_object<T>, "Expecting remove cv-ref");
-//
-//   [[no_unique_address]]
-//   T value;
-//
-//   constexpr auto await_ready() LF_HOF(value.await_ready())
-//
-//   constexpr void await_suspend(std::coroutine_handle<>);
-//
-//   constexpr auto await_resume() LF_HOF(std::forward<T>(value).await_resume())
-// };
 
 } // namespace lf
