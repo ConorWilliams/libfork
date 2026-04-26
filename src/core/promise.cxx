@@ -65,6 +65,19 @@ struct mixin_frame {
 
   // --- Await transformations
 
+  // Fork/call delegates
+  template <category Cat, bool StopToken, typename R, typename Fn, typename... Args>
+  constexpr auto await_transform(this auto &self, pkg<Cat, StopToken, Context, R, Fn, Args...> &&pkg) noexcept
+      -> async_awaitable<Cat, Context> {
+    LF_TRY {
+      return self.await_transform_pkg(std::move(pkg));
+    } LF_CATCH_ALL {
+      stash_current_exception(&self.frame);
+    }
+    return {.child = nullptr};
+  }
+
+  // Fork/Call
   template <category Cat, bool StopToken, typename R, typename Fn, typename... Args>
   constexpr auto
   await_transform_pkg(this auto const &self, pkg<Cat, StopToken, Context, R, Fn, Args...> &&pkg) noexcept(
@@ -89,7 +102,6 @@ struct mixin_frame {
       child_promise->return_address = not_null(pkg.return_addr);
     } else if constexpr (!std::is_void_v<U>) {
       // Set child's return address to null to inhibit the return
-      // TODO: add test for this
       child_promise->return_address = nullptr;
     }
 
@@ -102,17 +114,6 @@ struct mixin_frame {
     }
 
     return {.child = &child_promise->frame};
-  }
-
-  template <category Cat, bool StopToken, typename R, typename Fn, typename... Args>
-  constexpr auto await_transform(this auto &self, pkg<Cat, StopToken, Context, R, Fn, Args...> &&pkg) noexcept
-      -> async_awaitable<Cat, Context> {
-    LF_TRY {
-      return self.await_transform_pkg(std::move(pkg));
-    } LF_CATCH_ALL {
-      stash_current_exception(&self.frame);
-    }
-    return {.child = nullptr};
   }
 
   constexpr auto await_transform(this auto &self, join_type) noexcept -> join_awaitable<Context> {
