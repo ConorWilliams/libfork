@@ -17,9 +17,7 @@ concept operator_co_awaitable = requires (T t) { operator co_await(static_cast<T
 
 template <typename T>
 [[nodiscard]]
-constexpr auto do_acquire_awaitable(T &&t) noexcept -> T && {
-  std::forward<T>(t);
-}
+constexpr auto do_acquire_awaitable(T &&t) LF_HOF(LF_FWD(t))
 
 template <member_co_awaitable T>
 [[nodiscard]]
