@@ -9,7 +9,10 @@ namespace {
 
 // Linear-relaxation bound: greedily fill remaining capacity with the densest
 // items, taking a fractional piece of the last one.
-auto upper_bound(std::vector<knapsack_item> const &items, std::size_t idx, int remaining_cap, int current_value) -> double {
+auto upper_bound(std::vector<knapsack_item> const &items,
+                 std::size_t idx,
+                 int remaining_cap,
+                 int current_value) -> double {
   double bound = current_value;
   int cap = remaining_cap;
   for (std::size_t i = idx; i < items.size(); ++i) {
@@ -24,7 +27,11 @@ auto upper_bound(std::vector<knapsack_item> const &items, std::size_t idx, int r
   return bound;
 }
 
-void knapsack_bb(std::vector<knapsack_item> const &items, std::size_t idx, int remaining_cap, int current_value, int &best) {
+void knapsack_bb(std::vector<knapsack_item> const &items,
+                 std::size_t idx,
+                 int remaining_cap,
+                 int current_value,
+                 int &best) {
 
   if (current_value > best) {
     best = current_value;
