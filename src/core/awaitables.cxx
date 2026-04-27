@@ -214,9 +214,7 @@ struct join_awaitable {
     // If explicit scheduling then we may have tasks on our WSQ if we performed a self-steal
     // in a switch awaitable. In this case we can/must do another self-steal.
 
-    // return try_self_stealing();
-
-    return std::noop_coroutine();
+    return resume_effectively_stolen(get_tls_context<Context>());
   }
 
   constexpr void await_resume(this join_awaitable self) {
