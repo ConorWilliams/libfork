@@ -214,6 +214,7 @@ struct join_awaitable {
     // If explicit scheduling then we may have tasks on our WSQ if we performed a self-steal
     // in a switch awaitable. In this case we can/must do another self-steal.
 
+    // A throw here triggers std::terminate which is intended
     return resume_effectively_stolen(get_tls_context<Context>());
   }
 
@@ -317,7 +318,11 @@ struct switch_awaitable final {
     // Eventually dest will fail to pop() the ancestor task that we 'could'
     // pop() here and then treat it as a task that was stolen from it.
 
-    return resume_effectively_stolen(context);
+    // We terminate on throw as we can't resume the parent, and we can't
+    // re-throw the exception at this point.
+    return [&] noexcept -> coro<> {
+      return resume_effectively_stolen(context);
+    }();
   }
 };
 
