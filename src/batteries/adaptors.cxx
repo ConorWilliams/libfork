@@ -1,3 +1,5 @@
+module;
+#include "libfork/__impl/compiler.hpp"
 export module libfork.batteries:adaptors;
 
 import std;
@@ -27,9 +29,9 @@ export class adapt_vector {
 
 export class adapt_deque {
  public:
-  constexpr void push(unsafe_steal_handle value) { m_deque.push(value); }
+  LF_FORCE_INLINE constexpr void push(unsafe_steal_handle value) { m_deque.push(value); }
 
-  constexpr auto pop() noexcept -> unsafe_steal_handle {
+  LF_FORCE_INLINE constexpr auto pop() noexcept -> unsafe_steal_handle {
     return m_deque.pop([] static noexcept -> unsafe_steal_handle {
       return {};
     });

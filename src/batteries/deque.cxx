@@ -1,5 +1,6 @@
 module;
 #include "libfork/__impl/assume.hpp"
+#include "libfork/__impl/compiler.hpp"
 #include "libfork/__impl/exception.hpp"
 export module libfork.batteries:deque;
 
@@ -369,7 +370,7 @@ class deque {
    *
    * @param val Value to add to the deque.
    */
-  constexpr auto push(T val) -> diff_type {
+  LF_FORCE_INLINE constexpr auto push(T val) -> diff_type {
 
     diff_type const bottom = m_bottom.load(relaxed);
     diff_type const top = m_top.load(acquire);
@@ -402,7 +403,7 @@ class deque {
    */
   template <std::invocable Fn = return_nullopt<T>>
     requires std::convertible_to<T, std::invoke_result_t<Fn>>
-  constexpr auto
+  LF_FORCE_INLINE constexpr auto
   pop(Fn &&when_empty = {}) noexcept(std::is_nothrow_invocable_v<Fn>) -> std::invoke_result_t<Fn> {
 
     diff_type const bottom = m_bottom.load(relaxed) - 1; //
