@@ -60,7 +60,7 @@ export struct steal_overflow_error final : libfork_exception {
  *
  * The current thread must resume the handle.
  *
- * May throw `steal_overflow_error` if the task has been stolen enough tines to
+ * May throw `steal_overflow_error` if the task has been stolen enough times to
  * overflow the steal counter.
  */
 template <worker_context Context>
