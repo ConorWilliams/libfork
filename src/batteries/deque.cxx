@@ -300,7 +300,7 @@ class deque {
         // Must load *before* acquiring the slot as slot may be overwritten immediately after
         // acquiring. This load is NOT required to be atomic even-though it may race with an overwrite
         // as we only return the value if we win the race below guaranteeing we had no race during our
-        // read. If we loose the race then 'x' could be corrupt due to read-during-write race but as T
+        // read. If we lose the race then 'x' could be corrupt due to read-during-write race but as T
         // is trivially destructible this does not matter.
         T tmp = self.m_queue->m_buf.load(top);
 

@@ -48,9 +48,9 @@ constexpr void stash_current_exception(frame_type<Checkpoint> *frame) noexcept {
  *   We hit a join in the ancestor:
  *       Case: (win join) then we take the stack:
  *         OK to treat tasks on our WSQ as non-stolen.
- *       Case (loose join):
+ *       Case (lose join):
  *         Continue to resume other effectively stolen tasks on our WSQ.
- *   We loose a join in some descendent of the ancestor:
+ *   We lose a join in some descendent of the ancestor:
  *     OK => all task on our WSQ must have been stole by other threads and hence,
  *     handled as stolen appropriately.
  *
