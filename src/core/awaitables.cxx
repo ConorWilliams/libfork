@@ -19,8 +19,6 @@ import :execute;
 
 namespace lf {
 
-// =============== Fork/Call =============== //
-
 /**
  * @brief Call inside a catch block, stash current exception in `frame`.
  */
@@ -36,6 +34,40 @@ constexpr void stash_current_exception(frame_type<Checkpoint> *frame) noexcept {
     LF_ASSUME(*frame->except != nullptr);
   }
 }
+
+/**
+ * @brief To handle tasks on a WSQ that have been "effectively stolen".
+ *
+ * If explicit scheduling has occurred then there may be tasks on a workers WSQ
+ * that have been "effectively stolen" from another worker. These can be
+ * handled in any order, but we must treat (mark them) as stolen.
+ *
+ * All of these task will eventually reach a join point.
+ *
+ * While running the ancestor several things can happen:
+ *   We hit a join in the ancestor:
+ *       Case: (win join) then we take the stack:
+ *         OK to treat tasks on our WSQ as non-stolen.
+ *       Case (loose join):
+ *         Continue to resume other effectively stolen tasks on our WSQ.
+ *   We loose a join in some descendent of the ancestor:
+ *     OK => all task on our WSQ must have been stole by other threads and hence,
+ *     handled as stolen appropriately.
+ *
+ * TODO: benchmark order i.e. could self-steal?
+ */
+template <worker_context Context>
+[[nodiscard]]
+constexpr auto resume_effectively_stolen(Context &context) -> coro<> {
+
+  if (steal_handle<Context> last_pushed = context.pop()) {
+    return consume(last_pushed);
+  }
+
+  return std::noop_coroutine();
+}
+
+// =============== Fork/Call =============== //
 
 /**
  * @brief In a separate function to allow it to be placed in cold block.
@@ -240,38 +272,6 @@ struct join_awaitable {
 };
 
 // =============== Context Switch =============== //
-
-/**
- * @brief To handle tasks on a WSQ that have been "effectively stolen".
- *
- * If explicit scheduling has occurred then there may be tasks on a workers WSQ
- * that have been "effectively stolen" from another worker. These can be
- * handled in any order, but we must treat (mark them) as stolen.
- *
- * All of these task will eventually reach a join point.
- *
- * While running the ancestor several things can happen:
- *   We hit a join in the ancestor:
- *       Case: (win join) then we take the stack:
- *         OK to treat tasks on our WSQ as non-stolen.
- *       Case (loose join):
- *         Continue to resume other effectively stolen tasks on our WSQ.
- *   We loose a join in some descendent of the ancestor:
- *     OK => all task on our WSQ must have been stole by other threads and hence,
- *     handled as stolen appropriately.
- *
- * TODO: benchmark order i.e. could self-steal?
- */
-template <worker_context Context>
-[[nodiscard]]
-constexpr auto resume_effectively_stolen(Context &context) -> coro<> {
-
-  if (steal_handle<Context> last_pushed = context.pop()) {
-    return consume(last_pushed);
-  }
-
-  return std::noop_coroutine();
-}
 
 template <worker_context Context, awaitable<Context> T>
 struct switch_awaitable final {
