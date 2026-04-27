@@ -31,7 +31,7 @@ constexpr auto do_acquire_awaitable(T &&t)
     LF_HOF(operator co_await(LF_FWD(t)))
 
 /**
- * @brief Specify that an awaitable can be unambiguously acuired from `T` by free/member operator co_await.
+ * @brief Specify that an awaitable can be unambiguously acquired from `T` by free/member operator co_await.
  *
  * If neither operator is present `T` is assumed to be a plain awaitable.
  */

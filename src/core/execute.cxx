@@ -56,7 +56,7 @@ export struct steal_overflow_error final : libfork_exception {
 };
 
 /**
- * @brief Consume a steal handle, marks it as stolen and retuns the handle of the stolen task.
+ * @brief Consume a steal handle, marks it as stolen and returns the handle of the stolen task.
  *
  * The current thread must resume the handle.
  *
