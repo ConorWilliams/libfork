@@ -15,6 +15,7 @@ import :task;
 import :thread_locals;
 import :final_suspend;
 import :concepts_awaitable;
+import :execute;
 
 namespace lf {
 
@@ -240,6 +241,38 @@ struct join_awaitable {
 
 // =============== Context Switch =============== //
 
+/**
+ * @brief To handle tasks on a WSQ that have been "effectively stolen".
+ *
+ * If explicit scheduling has occurred then there may be tasks on a workers WSQ
+ * that have been "effectively stolen" from another worker. These can be
+ * handled in any order, but we must treat (mark them) as stolen.
+ *
+ * All of these task will eventually reach a join point.
+ *
+ * While running the ancestor several things can happen:
+ *   We hit a join in the ancestor:
+ *       Case: (win join) then we take the stack:
+ *         OK to treat tasks on our WSQ as non-stolen.
+ *       Case (loose join):
+ *         Continue to resume other effectively stolen tasks on our WSQ.
+ *   We loose a join in some descendent of the ancestor:
+ *     OK => all task on our WSQ must have been stole by other threads and hence,
+ *     handled as stolen appropriately.
+ *
+ * TODO: benchmark order i.e. could self-steal?
+ */
+template <worker_context Context>
+[[nodiscard]]
+constexpr auto resume_effectively_stolen(Context &context) -> coro<> {
+
+  if (steal_handle<Context> last_pushed = context.pop()) {
+    return consume(last_pushed);
+  }
+
+  return std::noop_coroutine();
+}
+
 template <worker_context Context, awaitable<Context> T>
 struct switch_awaitable final {
 
@@ -251,10 +284,43 @@ struct switch_awaitable final {
 
   constexpr auto await_ready() LF_HOF(value.await_ready())
 
-  template <typename R>
-  constexpr auto await_suspend(coro<promise_type<R, Context>> parent) -> coro<> {}
-
   constexpr auto await_resume() LF_HOF(std::forward<T>(value).await_resume())
+
+  template <typename R>
+  constexpr auto
+  await_suspend(coro<promise_type<R, Context>> parent) noexcept(nothrow_await_suspend<T, Context>) -> coro<> {
+
+    Context &context = get_tls_context<Context>();
+    frame_t<Context> &parent_frame = parent.promise().frame;
+
+    // This thread currently own the "resumable" handle of this coroutine
+    // however, it may not own the stack. By the same logic as the join Lemma:
+    //
+    // steals = 0, implies we own the stack => we should give it up.
+    //  otherwise, we do not own the stack  => our stack should be empty.
+
+    bool owns_stack = parent_frame.steals == 0;
+
+    // Must prepare before calling await_suspend, don't need to pre-release
+    // because await_suspend can't contine parent inline (becasue execute()
+    // would throw).
+    auto release_key = context.stack().prepare_release();
+
+    // Schedule this coroutine for execution, cannot touch underlying after this.
+    // If this throw parent is resumed and exception is re-thrown and that is ok.
+    value.await_suspend(sched_handle<Context>{key(), &parent.promise().frame}, context);
+
+    // Nothing can/should throw from this point on.
+
+    if (owns_stack) {
+      context.stack().release(std::move(release_key));
+    }
+
+    // Eventually dest will fail to pop() the ancestor task that we 'could'
+    // pop() here and then treat it as a task that was stolen from it.
+
+    return resume_effectively_stolen(context);
+  }
 };
 
 } // namespace lf
