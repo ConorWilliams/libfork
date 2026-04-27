@@ -10,8 +10,19 @@ target_sources(benchmark_common
     BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
     FILES
       fib.hpp
-      uts.hpp
+      fold.hpp
+      heat.hpp
+      integrate.hpp
+      knapsack.hpp
       macros.hpp
+      mandelbrot.hpp
+      matmul.hpp
+      nqueens.hpp
+      primes.hpp
+      quicksort.hpp
+      scan.hpp
+      skynet.hpp
+      uts.hpp
 )
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../external/uts external/uts)
