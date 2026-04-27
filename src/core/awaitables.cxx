@@ -300,7 +300,7 @@ struct switch_awaitable final {
     bool owns_stack = parent_frame.steals == 0;
 
     // Must prepare before calling await_suspend, don't need to pre-release
-    // because await_suspend can't contine parent inline (because execute()
+    // because await_suspend can't continue parent inline (because execute()
     // would throw).
     auto release_key = context.stack().prepare_release();
 
