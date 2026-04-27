@@ -47,7 +47,7 @@ using frame_t = frame_type<checkpoint_t<Context>>;
  */
 template <worker_context Context>
 [[nodiscard]]
-constexpr auto final_suspend_full(Context &context, frame_t<Context> *frame) noexcept -> coro<> {
+LF_NO_INLINE constexpr auto final_suspend_full(Context &context, frame_t<Context> *frame) noexcept -> coro<> {
   for (;;) {
     // Validate final state
     LF_ASSUME(frame);
@@ -158,7 +158,7 @@ constexpr auto final_suspend_full(Context &context, frame_t<Context> *frame) noe
 
 template <worker_context Context>
 [[nodiscard]]
-constexpr auto final_suspend_trailing(Context &context, frame_t<Context> *parent) noexcept -> coro<> {
+LF_NO_INLINE constexpr auto final_suspend_trailing(Context &context, frame_t<Context> *parent) noexcept -> coro<> {
 
   bool const owner = parent->stack_ckpt == context.stack().checkpoint();
 
