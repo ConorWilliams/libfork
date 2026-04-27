@@ -9,10 +9,10 @@ namespace {
 
 // Linear-relaxation bound: greedily fill remaining capacity with the densest
 // items, taking a fractional piece of the last one.
-auto upper_bound(std::vector<knapsack_item> const &items, int idx, int remaining_cap, int current_value) -> double {
+auto upper_bound(std::vector<knapsack_item> const &items, std::size_t idx, int remaining_cap, int current_value) -> double {
   double bound = current_value;
   int cap = remaining_cap;
-  for (int i = idx; i < static_cast<int>(items.size()); ++i) {
+  for (std::size_t i = idx; i < items.size(); ++i) {
     if (items[i].weight <= cap) {
       cap -= items[i].weight;
       bound += items[i].value;
@@ -24,13 +24,13 @@ auto upper_bound(std::vector<knapsack_item> const &items, int idx, int remaining
   return bound;
 }
 
-void knapsack_bb(std::vector<knapsack_item> const &items, int idx, int remaining_cap, int current_value, int &best) {
+void knapsack_bb(std::vector<knapsack_item> const &items, std::size_t idx, int remaining_cap, int current_value, int &best) {
 
   if (current_value > best) {
     best = current_value;
   }
 
-  if (idx == static_cast<int>(items.size())) {
+  if (idx == items.size()) {
     return;
   }
 
@@ -47,11 +47,11 @@ void knapsack_bb(std::vector<knapsack_item> const &items, int idx, int remaining
 template <typename = void>
 void knapsack_serial(benchmark::State &state) {
 
-  int n = static_cast<int>(state.range(0));
+  std::size_t n = static_cast<std::size_t>(state.range(0));
   auto problem = knapsack_make(n);
   int expect = knapsack_dp_optimum(problem);
 
-  state.counters["n"] = n;
+  state.counters["n"] = static_cast<double>(n);
   state.counters["capacity"] = problem.capacity;
 
   for (auto _ : state) {
