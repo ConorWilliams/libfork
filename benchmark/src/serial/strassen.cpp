@@ -26,7 +26,8 @@ void mat_sub(float const *A, unsigned sa, float const *B, unsigned sb, float *Ou
   }
 }
 
-void naive_multiply(float const *A, unsigned sa, float const *B, unsigned sb, float *C, unsigned sc, unsigned n) {
+void naive_multiply(
+    float const *A, unsigned sa, float const *B, unsigned sb, float *C, unsigned sc, unsigned n) {
   for (unsigned i = 0; i < n; ++i) {
     for (unsigned j = 0; j < n; ++j) {
       float sum = 0;
@@ -47,7 +48,9 @@ void strassen(float const *A, unsigned sa, float const *B, unsigned sb, float *C
 
   unsigned m = n / 2;
 
-  auto block = [m](auto *p, unsigned s, unsigned i, unsigned j) { return p + i * m * s + j * m; };
+  auto block = [m](auto *p, unsigned s, unsigned i, unsigned j) {
+    return p + i * m * s + j * m;
+  };
 
   float const *A11 = block(A, sa, 0, 0);
   float const *A12 = block(A, sa, 0, 1);
