@@ -12,21 +12,12 @@ import libfork;
 
 namespace {
 
-struct switcher : std::suspend_always {
-  template <lf::worker_context Context>
-  auto await_suspend(lf::sched_handle<Context> handle, Context &ctx) -> void {
-    throw "WAIt for me";
-  }
-};
-
 struct fib {
   template <lf::worker_context Context>
   static auto operator()(lf::env<Context>, std::int64_t n) -> lf::task<std::int64_t, Context> {
     if (n < 2) {
       co_return n;
     }
-
-    co_await switcher{};
 
     std::int64_t lhs = 0;
     std::int64_t rhs = 0;
