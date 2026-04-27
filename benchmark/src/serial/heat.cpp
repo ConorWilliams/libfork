@@ -7,27 +7,26 @@ import std;
 
 namespace {
 
-// Single Jacobi sweep with zero (Dirichlet) boundary.
-void heat_step(double const *src, double *dst, int n) {
-  for (int y = 1; y < n - 1; ++y) {
-    for (int x = 1; x < n - 1; ++x) {
-      std::size_t i = static_cast<std::size_t>(y) * n + x;
+// Single Jacobi sweep with Dirichlet (boundary unchanged) condition.
+void heat_step(double const *src, double *dst, std::size_t n) {
+  for (std::size_t y = 1; y < n - 1; ++y) {
+    for (std::size_t x = 1; x < n - 1; ++x) {
+      std::size_t i = y * n + x;
       dst[i] = 0.25 * (src[i - 1] + src[i + 1] + src[i - n] + src[i + n]);
     }
   }
-  // Copy boundary unchanged.
-  for (int x = 0; x < n; ++x) {
+  for (std::size_t x = 0; x < n; ++x) {
     dst[x] = src[x];
-    dst[static_cast<std::size_t>(n - 1) * n + x] = src[static_cast<std::size_t>(n - 1) * n + x];
+    dst[(n - 1) * n + x] = src[(n - 1) * n + x];
   }
-  for (int y = 0; y < n; ++y) {
-    dst[static_cast<std::size_t>(y) * n] = src[static_cast<std::size_t>(y) * n];
-    dst[static_cast<std::size_t>(y) * n + (n - 1)] = src[static_cast<std::size_t>(y) * n + (n - 1)];
+  for (std::size_t y = 0; y < n; ++y) {
+    dst[y * n] = src[y * n];
+    dst[y * n + (n - 1)] = src[y * n + (n - 1)];
   }
 }
 
-void heat_run(double *a, double *b, int n, int iters) {
-  for (int t = 0; t < iters; ++t) {
+void heat_run(double *a, double *b, std::size_t n, std::size_t iters) {
+  for (std::size_t t = 0; t < iters; ++t) {
     heat_step(a, b, n);
     std::swap(a, b);
   }
@@ -36,9 +35,9 @@ void heat_run(double *a, double *b, int n, int iters) {
 template <typename = void>
 void heat_serial(benchmark::State &state) {
 
-  int n = static_cast<int>(state.range(0));
-  state.counters["n"] = n;
-  state.counters["iters"] = heat_iters;
+  std::size_t n = static_cast<std::size_t>(state.range(0));
+  state.counters["n"] = static_cast<double>(n);
+  state.counters["iters"] = static_cast<double>(heat_iters);
 
   std::vector<double> initial = heat_make_grid(n);
   std::vector<double> a(initial.size());

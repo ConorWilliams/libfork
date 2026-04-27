@@ -7,19 +7,19 @@
 import std;
 #endif
 
-inline constexpr int heat_test = 64;
-inline constexpr int heat_base = 1024;
+inline constexpr std::size_t heat_test = 64;
+inline constexpr std::size_t heat_base = 1024;
 
-inline constexpr int heat_iters = 16;
+inline constexpr std::size_t heat_iters = 16;
 
 // Initialise grid with a fixed analytic profile (boundaries clamped).
-inline auto heat_make_grid(int n) -> std::vector<double> {
-  std::vector<double> g(static_cast<std::size_t>(n) * n);
-  for (int y = 0; y < n; ++y) {
-    for (int x = 0; x < n; ++x) {
-      double dx = static_cast<double>(x) / (n - 1) - 0.5;
-      double dy = static_cast<double>(y) / (n - 1) - 0.5;
-      g[static_cast<std::size_t>(y) * n + x] = std::exp(-8.0 * (dx * dx + dy * dy));
+inline auto heat_make_grid(std::size_t n) -> std::vector<double> {
+  std::vector<double> g(n * n);
+  for (std::size_t y = 0; y < n; ++y) {
+    for (std::size_t x = 0; x < n; ++x) {
+      double dx = static_cast<double>(x) / static_cast<double>(n - 1) - 0.5;
+      double dy = static_cast<double>(y) / static_cast<double>(n - 1) - 0.5;
+      g[y * n + x] = std::exp(-8.0 * (dx * dx + dy * dy));
     }
   }
   return g;
