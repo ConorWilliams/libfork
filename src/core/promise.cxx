@@ -1,5 +1,4 @@
 module;
-#include <type_traits>
 #include <version>
 
 #include "libfork/__impl/assume.hpp"
