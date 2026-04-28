@@ -73,6 +73,7 @@ target_sources(libfork_libfork
       src/core/concepts/context.cxx
       src/core/concepts/scheduler.cxx
       src/core/concepts/invocable.cxx
+      src/core/concepts/awaitable.cxx
       src/core/frame.cxx
       src/core/task.cxx
       src/core/ops.cxx

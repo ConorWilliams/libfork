@@ -25,9 +25,13 @@ export struct execute_error final : libfork_exception {
  *
  * This should not be called from a thread already bound to a context, once this call returns
  * the thread is unbound from the context.
+
+ * The handle must not be null.
  */
 export template <worker_context Context>
 constexpr void execute(Context &context, sched_handle<Context> handle) {
+
+  LF_ASSUME(handle);
 
   if (thread_local_context<Context> != nullptr) {
     LF_THROW(execute_error{});
@@ -40,6 +44,17 @@ constexpr void execute(Context &context, sched_handle<Context> handle) {
   };
 
   auto *frame = static_cast<frame_type<checkpoint_t<Context>> *>(get(key(), handle));
+
+  // We should only take the stack if it was the stack owner that we are
+  // resuming from, same logic as in switch_awaitable_suspend
+  if (frame->steals == 0) {
+
+    auto const &ckpt = frame->stack_ckpt;
+
+    if (ckpt != get_tls_stack<Context>().checkpoint()) {
+      context.stack().acquire(ckpt);
+    }
+  }
 
   frame->handle().resume();
 }
@@ -51,8 +66,42 @@ export struct steal_overflow_error final : libfork_exception {
   }
 };
 
+/**
+ * @brief Consume a steal handle, marks it as stolen and returns the handle of the stolen task.
+ *
+ * The current thread must resume the handle.
+ *
+ * May throw `steal_overflow_error` if the task has been stolen enough times to
+ * overflow the steal counter.
+ */
+template <worker_context Context>
+constexpr auto consume(steal_handle<Context> handle) -> std::coroutine_handle<> {
+
+  LF_ASSUME(handle);
+
+  auto *frame = static_cast<frame_type<checkpoint_t<Context>> *>(get(key(), handle));
+
+  if (frame->steals == k_u16_max) {
+    LF_THROW(steal_overflow_error{});
+  }
+
+  frame->steals += 1;
+
+  return frame->handle();
+}
+
+/**
+ * @brief Bind this thread to a context and execute the scheduled tasks on that context/thread.
+ *
+ * This should not be called from a thread already bound to a context, once this call returns
+ * the thread is unbound from the context.
+ *
+ * The handle must not be null.
+ */
 export template <worker_context Context>
 constexpr void execute(Context &context, steal_handle<Context> handle) {
+
+  LF_ASSUME(handle);
 
   if (thread_local_context<Context> != nullptr) {
     LF_THROW(execute_error{});
@@ -64,15 +113,7 @@ constexpr void execute(Context &context, steal_handle<Context> handle) {
     thread_local_context<Context> = nullptr;
   };
 
-  auto *frame = static_cast<frame_type<checkpoint_t<Context>> *>(get(key(), handle));
-
-  // TODO: bench if we should do this in debug only
-  if (frame->steals == k_u16_max) {
-    LF_THROW(steal_overflow_error{});
-  }
-
-  frame->steals += 1;
-  frame->handle().resume();
+  consume(handle).resume();
 }
 
 } // namespace lf

@@ -62,9 +62,11 @@ class slab_stack {
 
   // TODO: what is appropriate unit for initialisation
   // TODO: remove default constructor?
+  // TODO: what type to initialize with signed vs unsigned?
 
   explicit constexpr slab_stack(diff_type num_nodes, Allocator const &alloc = Allocator())
-      : m_alloc(alloc) {
+      : m_alloc(alloc),
+        m_init_size(num_nodes) {
     init_slab(num_nodes);
   }
 
@@ -148,10 +150,9 @@ class slab_stack {
 
   constexpr void release([[maybe_unused]] release_t) noexcept {
 
-    diff_type next_size = (m_ctrl != nullptr) ? m_ctrl->size : k_default_nodes;
-
     // Hand off the current slab to whoever holds the checkpoint; clear local state.
     m_ctrl = nullptr;
+
     m_lo = nullptr;
     m_sp = nullptr;
     m_hi = nullptr;
@@ -159,7 +160,7 @@ class slab_stack {
     // Pre-allocate a fresh slab for our next use.
 
     LF_TRY {
-      init_slab(next_size);
+      init_slab(m_init_size);
     } LF_CATCH_ALL {
       // If ^ throws, swallow the exception — push will see no space
       // i.e. (m_hi - m_sp == 0) and throw instead.
@@ -175,7 +176,7 @@ class slab_stack {
       return;
     }
 
-    // Discard the fresh empty slab we prepared during release() (may be null on alloc failure).
+    // Discard the empty slab (may be null on alloc failure).
     delete_ctrl(m_ctrl);
 
     m_ctrl = ckpt.m_ctrl;
@@ -190,6 +191,8 @@ class slab_stack {
  private:
   [[no_unique_address]]
   node_alloc_t m_alloc;
+
+  diff_type m_init_size;
 
   node_ptr m_ctrl = nullptr; // Header node (fused ctrl+first-node of the slab).
   node_ptr m_lo = nullptr;   // Base of usable space (m_ctrl + 1).
