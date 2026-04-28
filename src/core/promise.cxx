@@ -80,8 +80,9 @@ struct mixin_frame {
 
   // Custom awaitable
   template <awaitable<Context> T>
-  static constexpr auto await_transform(T &&x)
-      LF_HOF(await_transform_switch(acquire_awaitable(LF_FWD(x))))
+  constexpr auto await_transform(T &&x) -> auto {
+    return await_transform_switch(LF_FWD(x));
+  }
 
   // Join
   constexpr auto await_transform(this auto &self, join_type) noexcept -> join_awaitable<Context> {
@@ -108,9 +109,8 @@ struct mixin_frame {
     stash_current_exception(self.frame.parent);
   }
 
- private:
   template <awaitable<Context> T>
-  static constexpr auto await_transform_switch(T &&x)
+  constexpr auto await_transform_switch(T &&x)
       LF_HOF(switch_awaitable<Context, std::remove_cvref_t<T>>{LF_FWD(x)})
 
   template <category Cat, bool StopToken, typename R, typename Fn, typename... Args>
