@@ -87,34 +87,29 @@ struct hop_resume_throws {
 
 struct switch_inside_forked_child_wrapper {
   template <typename Context, typename Pool>
-  static auto operator()(lf::env<Context>, Pool *other, std::int64_t *out)
-      -> lf::task<void, Context>;
+  static auto operator()(lf::env<Context>, Pool *other, std::int64_t *out) -> lf::task<void, Context>;
 };
 
 struct member_op_hop_task {
   template <typename Context, typename Pool>
-  static auto operator()(lf::env<Context>,
-                         Pool *other,
-                         std::atomic<std::thread::id> *out) -> lf::task<void, Context>;
+  static auto
+  operator()(lf::env<Context>, Pool *other, std::atomic<std::thread::id> *out) -> lf::task<void, Context>;
 };
 
 struct free_op_hop_task {
   template <typename Context, typename Pool>
-  static auto operator()(lf::env<Context>,
-                         Pool *other,
-                         std::atomic<std::thread::id> *out) -> lf::task<void, Context>;
+  static auto
+  operator()(lf::env<Context>, Pool *other, std::atomic<std::thread::id> *out) -> lf::task<void, Context>;
 };
 
 struct plain_hop_task {
   template <typename Context, typename Pool>
-  static auto operator()(lf::env<Context>, Pool *other, std::atomic<bool> *flag)
-      -> lf::task<void, Context>;
+  static auto operator()(lf::env<Context>, Pool *other, std::atomic<bool> *flag) -> lf::task<void, Context>;
 };
 
 struct self_hop_task {
   template <typename Context, typename Pool>
-  static auto operator()(lf::env<Context>, Pool *p, std::atomic<bool> *flag)
-      -> lf::task<void, Context>;
+  static auto operator()(lf::env<Context>, Pool *p, std::atomic<bool> *flag) -> lf::task<void, Context>;
 };
 
 // Definitions of these task functors appear below, after all helper types
@@ -147,32 +142,28 @@ auto operator co_await(hop_free_op<Pool> h) noexcept -> hop_to<Pool> {
 
 // Hop once to `other`, record resumed thread, return.
 template <typename Context, typename Pool>
-auto simple_hop_task(lf::env<Context>,
-                     Pool *other,
-                     std::atomic<std::thread::id> *out) -> lf::task<void, Context> {
+auto simple_hop_task(lf::env<Context>, Pool *other, std::atomic<std::thread::id> *out)
+    -> lf::task<void, Context> {
   co_await hop_to<Pool>{other, out};
 }
 
 // Round-trip: A→B→A→B→A (4 hops from original pool A's perspective).
 template <typename Context, typename Pool>
-auto round_trip_task(lf::env<Context>,
-                     Pool *a,
-                     Pool *b,
-                     std::vector<std::thread::id> *ids,
-                     std::mutex *mu) -> lf::task<void, Context> {
+auto round_trip_task(lf::env<Context>, Pool *a, Pool *b, std::vector<std::thread::id> *ids, std::mutex *mu)
+    -> lf::task<void, Context> {
   auto record = [&] {
     auto lock = std::scoped_lock(*mu);
     ids->push_back(std::this_thread::get_id());
   };
-  record();           // point 0: on A
+  record(); // point 0: on A
   co_await hop_to<Pool>{b};
-  record();           // point 1: on B
+  record(); // point 1: on B
   co_await hop_to<Pool>{a};
-  record();           // point 2: back on A
+  record(); // point 2: back on A
   co_await hop_to<Pool>{b};
-  record();           // point 3: on B
+  record(); // point 3: on B
   co_await hop_to<Pool>{a};
-  record();           // point 4: back on A
+  record(); // point 4: back on A
 }
 
 // Hop to `other`, then fork N children each computing fib(k), join, sum.
@@ -193,11 +184,9 @@ struct fib_child {
 };
 
 template <typename Context, typename Pool>
-auto switch_then_fork_task(lf::env<Context>,
-                           Pool *other,
-                           int n_forks,
-                           std::int64_t k,
-                           std::int64_t *total_out) -> lf::task<void, Context> {
+auto switch_then_fork_task(
+    lf::env<Context>, Pool *other, int n_forks, std::int64_t k, std::int64_t *total_out)
+    -> lf::task<void, Context> {
   co_await hop_to<Pool>{other};
 
   // After the hop, we are on a worker in `other`.
@@ -218,11 +207,9 @@ auto switch_then_fork_task(lf::env<Context>,
 // Fork N children, then hop to `other`, then join.
 // Exercises the "effectively stolen" path.
 template <typename Context, typename Pool>
-auto fork_then_switch_task(lf::env<Context>,
-                           Pool *other,
-                           int n_forks,
-                           std::int64_t k,
-                           std::int64_t *total_out) -> lf::task<void, Context> {
+auto fork_then_switch_task(
+    lf::env<Context>, Pool *other, int n_forks, std::int64_t k, std::int64_t *total_out)
+    -> lf::task<void, Context> {
   std::vector<std::int64_t> results(static_cast<std::size_t>(n_forks), 0);
   auto sc = co_await lf::scope();
   for (int i = 0; i < n_forks; ++i) {
@@ -244,8 +231,8 @@ auto fork_then_switch_task(lf::env<Context>,
 // Pool A is `pa`, pool B is `pb`; depth-parity selects target.
 template <typename Context, typename Pool>
 struct switch_fib_impl {
-  static auto call(lf::env<Context>, std::int64_t n, Pool *pa, Pool *pb, int depth)
-      -> lf::task<std::int64_t, Context> {
+  static auto
+  call(lf::env<Context>, std::int64_t n, Pool *pa, Pool *pb, int depth) -> lf::task<std::int64_t, Context> {
     if (n < 2) {
       co_return n;
     }
@@ -274,8 +261,8 @@ struct switch_fib_impl {
 // A forked child that hops to `other` before returning.
 struct hop_child {
   template <typename Context, typename Pool>
-  static auto operator()(lf::env<Context>, Pool *other, std::int64_t *out, std::int64_t n)
-      -> lf::task<void, Context> {
+  static auto
+  operator()(lf::env<Context>, Pool *other, std::int64_t *out, std::int64_t n) -> lf::task<void, Context> {
     co_await hop_to<Pool>{other};
     *out = fib_ref(n);
   }
@@ -284,9 +271,7 @@ struct hop_child {
 // ---- Out-of-class definitions for the task functors declared earlier. ----
 
 template <typename Context, typename Pool>
-auto switch_inside_forked_child_wrapper::operator()(lf::env<Context>,
-                                                    Pool *other,
-                                                    std::int64_t *out)
+auto switch_inside_forked_child_wrapper::operator()(lf::env<Context>, Pool *other, std::int64_t *out)
     -> lf::task<void, Context> {
   auto sc = co_await lf::scope();
   co_await sc.fork_drop(hop_child{}, other, out, std::int64_t{10});
@@ -294,18 +279,14 @@ auto switch_inside_forked_child_wrapper::operator()(lf::env<Context>,
 }
 
 template <typename Context, typename Pool>
-auto member_op_hop_task::operator()(lf::env<Context>,
-                                    Pool *other,
-                                    std::atomic<std::thread::id> *out)
+auto member_op_hop_task::operator()(lf::env<Context>, Pool *other, std::atomic<std::thread::id> *out)
     -> lf::task<void, Context> {
   co_await hop_member_op<Pool>{other};
   out->store(std::this_thread::get_id());
 }
 
 template <typename Context, typename Pool>
-auto free_op_hop_task::operator()(lf::env<Context>,
-                                  Pool *other,
-                                  std::atomic<std::thread::id> *out)
+auto free_op_hop_task::operator()(lf::env<Context>, Pool *other, std::atomic<std::thread::id> *out)
     -> lf::task<void, Context> {
   co_await hop_free_op<Pool>{other};
   out->store(std::this_thread::get_id());
@@ -327,8 +308,7 @@ auto self_hop_task::operator()(lf::env<Context>, Pool *p, std::atomic<bool> *fla
 
 // Compute a value, hop, then return it.
 template <typename Context, typename Pool>
-auto value_across_switch(lf::env<Context>, Pool *other, std::int64_t *out)
-    -> lf::task<void, Context> {
+auto value_across_switch(lf::env<Context>, Pool *other, std::int64_t *out) -> lf::task<void, Context> {
   std::int64_t x = 41;
   co_await hop_to<Pool>{other};
   *out = x + 1;
@@ -336,11 +316,8 @@ auto value_across_switch(lf::env<Context>, Pool *other, std::int64_t *out)
 
 // K hops between a and b (alternating), increments counter each time it resumes.
 template <typename Context, typename Pool>
-auto multi_hop_task(lf::env<Context>,
-                    Pool *a,
-                    Pool *b,
-                    int k,
-                    std::atomic<int> *completed) -> lf::task<void, Context> {
+auto multi_hop_task(lf::env<Context>, Pool *a, Pool *b, int k, std::atomic<int> *completed)
+    -> lf::task<void, Context> {
   for (int i = 0; i < k; ++i) {
     Pool *dest = (i % 2 == 0) ? b : a;
     co_await hop_to<Pool>{dest};
@@ -351,11 +328,8 @@ auto multi_hop_task(lf::env<Context>,
 // Binary-tree recursion: fork two children at each node; at odd levels, hop to other pool first.
 struct hop_tree {
   template <typename Context, typename Pool>
-  static auto operator()(lf::env<Context>,
-                         int depth,
-                         Pool *a,
-                         Pool *b,
-                         std::atomic<int> *leaf_count) -> lf::task<void, Context> {
+  static auto operator()(lf::env<Context>, int depth, Pool *a, Pool *b, std::atomic<int> *leaf_count)
+      -> lf::task<void, Context> {
     if (depth == 0) {
       leaf_count->fetch_add(1, std::memory_order_relaxed);
       co_return;
@@ -414,7 +388,7 @@ auto resume_throw_root(lf::env<Context>, Pool *other) -> lf::task<void, Context>
 namespace concept_checks {
 
 // Use the test_context from concepts.cpp's pattern.
-using test_stack   = lf::geometric_stack<>;
+using test_stack = lf::geometric_stack<>;
 using test_context = lf::mono_context<test_stack, lf::adapt_vector<>>;
 
 // A well-formed awaitable for test_context.
@@ -471,8 +445,7 @@ TEMPLATE_TEST_CASE("explicit-sched: one-shot switch", "[explicit-sched]", mono_p
   std::atomic<std::thread::id> resumed_on;
   std::thread::id const caller_id = std::this_thread::get_id();
 
-  auto recv = lf::schedule(pool_a, simple_hop_task<lf::context_t<TestType>, TestType>,
-                           &pool_b, &resumed_on);
+  auto recv = lf::schedule(pool_a, simple_hop_task<lf::context_t<TestType>, TestType>, &pool_b, &resumed_on);
   std::move(recv).get();
 
   REQUIRE(resumed_on.load() != std::thread::id{});
@@ -489,8 +462,8 @@ TEMPLATE_TEST_CASE("explicit-sched: round-trip", "[explicit-sched]", mono_pool, 
   std::vector<std::thread::id> ids;
   std::mutex mu;
 
-  auto recv = lf::schedule(pool_a, round_trip_task<lf::context_t<TestType>, TestType>,
-                           &pool_a, &pool_b, &ids, &mu);
+  auto recv =
+      lf::schedule(pool_a, round_trip_task<lf::context_t<TestType>, TestType>, &pool_a, &pool_b, &ids, &mu);
   std::move(recv).get();
 
   REQUIRE(ids.size() == 5);
@@ -508,13 +481,12 @@ TEMPLATE_TEST_CASE("explicit-sched: switch then fork-join", "[explicit-sched]", 
   TestType pool_a{2};
   TestType pool_b{2};
 
-  constexpr int    n_forks = 8;
+  constexpr int n_forks = 8;
   constexpr std::int64_t k = 10;
   std::int64_t total = 0;
 
-  auto recv = lf::schedule(pool_a,
-                           switch_then_fork_task<lf::context_t<TestType>, TestType>,
-                           &pool_b, n_forks, k, &total);
+  auto recv = lf::schedule(
+      pool_a, switch_then_fork_task<lf::context_t<TestType>, TestType>, &pool_b, n_forks, k, &total);
   std::move(recv).get();
 
   REQUIRE(total == fib_ref(k) * n_forks);
@@ -531,9 +503,8 @@ TEMPLATE_TEST_CASE("explicit-sched: fork then switch then join", "[explicit-sche
   for (int n : {1, 8, 64}) {
     DYNAMIC_SECTION("n_forks=" << n) {
       std::int64_t total = 0;
-      auto recv = lf::schedule(pool_a,
-                               fork_then_switch_task<lf::context_t<TestType>, TestType>,
-                               &pool_b, n, k, &total);
+      auto recv = lf::schedule(
+          pool_a, fork_then_switch_task<lf::context_t<TestType>, TestType>, &pool_b, n, k, &total);
       std::move(recv).get();
       REQUIRE(total == fib_ref(k) * n);
     }
@@ -564,8 +535,7 @@ TEMPLATE_TEST_CASE("explicit-sched: switch inside forked child", "[explicit-sche
 
   std::int64_t child_result = 0;
 
-  auto recv = lf::schedule(pool_a, switch_inside_forked_child_wrapper{},
-                           &pool_b, &child_result);
+  auto recv = lf::schedule(pool_a, switch_inside_forked_child_wrapper{}, &pool_b, &child_result);
 
   std::move(recv).get();
   REQUIRE(child_result == fib_ref(10));
@@ -585,9 +555,8 @@ TEMPLATE_TEST_CASE("explicit-sched: many independent tasks", "[explicit-sched]",
   std::vector<lf::receiver<void>> receivers;
   receivers.reserve(M);
   for (int i = 0; i < M; ++i) {
-    receivers.push_back(lf::schedule(pool_a,
-                                     multi_hop_task<lf::context_t<TestType>, TestType>,
-                                     &pool_a, &pool_b, K, &completed));
+    receivers.push_back(lf::schedule(
+        pool_a, multi_hop_task<lf::context_t<TestType>, TestType>, &pool_a, &pool_b, K, &completed));
   }
   for (auto &r : receivers) {
     std::move(r).get();
@@ -598,14 +567,15 @@ TEMPLATE_TEST_CASE("explicit-sched: many independent tasks", "[explicit-sched]",
 
 // ---- 8. Returns non-void value across switch ----
 
-TEMPLATE_TEST_CASE("explicit-sched: returns non-void value across switch", "[explicit-sched]", mono_pool, poly_pool) {
+TEMPLATE_TEST_CASE("explicit-sched: returns non-void value across switch",
+                   "[explicit-sched]",
+                   mono_pool,
+                   poly_pool) {
   TestType pool_a{2};
   TestType pool_b{2};
 
   std::int64_t out = 0;
-  auto recv = lf::schedule(pool_a,
-                           value_across_switch<lf::context_t<TestType>, TestType>,
-                           &pool_b, &out);
+  auto recv = lf::schedule(pool_a, value_across_switch<lf::context_t<TestType>, TestType>, &pool_b, &out);
   std::move(recv).get();
   REQUIRE(out == 42);
 }
@@ -677,16 +647,12 @@ TEMPLATE_TEST_CASE("explicit-sched: throwing await_suspend", "[explicit-sched]",
   TestType pool_b{2};
 
   SECTION("at root") {
-    auto recv = lf::schedule(pool_a,
-                             throwing_hop_root<lf::context_t<TestType>, TestType>,
-                             &pool_b);
+    auto recv = lf::schedule(pool_a, throwing_hop_root<lf::context_t<TestType>, TestType>, &pool_b);
     REQUIRE_THROWS_AS(std::move(recv).get(), std::runtime_error);
   }
 
   SECTION("inside forked child") {
-    auto recv = lf::schedule(pool_a,
-                             fork_throwing_hop<lf::context_t<TestType>, TestType>,
-                             &pool_b);
+    auto recv = lf::schedule(pool_a, fork_throwing_hop<lf::context_t<TestType>, TestType>, &pool_b);
     REQUIRE_THROWS_AS(std::move(recv).get(), std::runtime_error);
   }
 }
@@ -695,9 +661,7 @@ TEMPLATE_TEST_CASE("explicit-sched: throwing await_resume", "[explicit-sched]", 
   TestType pool_a{2};
   TestType pool_b{2};
 
-  auto recv = lf::schedule(pool_a,
-                           resume_throw_root<lf::context_t<TestType>, TestType>,
-                           &pool_b);
+  auto recv = lf::schedule(pool_a, resume_throw_root<lf::context_t<TestType>, TestType>, &pool_b);
   REQUIRE_THROWS_AS(std::move(recv).get(), std::runtime_error);
 }
 
@@ -727,8 +691,11 @@ TEST_CASE("explicit-sched: concept conformance", "[explicit-sched]") {
 
 // ---- 16. Stress: hop binary tree ----
 
-TEMPLATE_TEST_CASE("explicit-sched: stress hop-binary-tree", "[explicit-sched][stress]", mono_pool, poly_pool) {
-  constexpr int depth       = 12;
+TEMPLATE_TEST_CASE("explicit-sched: stress hop-binary-tree",
+                   "[explicit-sched][stress]",
+                   mono_pool,
+                   poly_pool) {
+  constexpr int depth = 12;
   constexpr int expect_leaves = 1 << depth;
 
   std::size_t const hw = static_cast<std::size_t>(std::thread::hardware_concurrency());
@@ -744,8 +711,7 @@ TEMPLATE_TEST_CASE("explicit-sched: stress hop-binary-tree", "[explicit-sched][s
       TestType pool_a{half};
       TestType pool_b{thr - half + 1}; // at least 1
 
-      auto recv = lf::schedule(pool_a, hop_tree{},
-                               depth, &pool_a, &pool_b, &leaf_count);
+      auto recv = lf::schedule(pool_a, hop_tree{}, depth, &pool_a, &pool_b, &leaf_count);
       std::move(recv).get();
       REQUIRE(leaf_count.load() == expect_leaves);
     }

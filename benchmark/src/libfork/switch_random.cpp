@@ -16,8 +16,8 @@ template <lf::scheduler Sch>
 struct switch_to_other {
   Sch *target;
   auto await_ready() noexcept -> bool { return false; }
-  auto await_suspend(lf::sched_handle<typename Sch::context_type> h,
-                     typename Sch::context_type &) noexcept -> void {
+  auto await_suspend(lf::sched_handle<typename Sch::context_type> h, typename Sch::context_type &) noexcept
+      -> void {
     target->post(h);
   }
   auto await_resume() noexcept -> void {}
@@ -40,8 +40,7 @@ template <lf::scheduler Sch>
 struct random_switch_fib {
   using context_type = typename Sch::context_type;
 
-  static auto operator()(lf::env<context_type>, std::int64_t n,
-                         pool_pair<Sch> *pp, std::uint64_t seed)
+  static auto operator()(lf::env<context_type>, std::int64_t n, pool_pair<Sch> *pp, std::uint64_t seed)
       -> lf::task<std::int64_t, context_type> {
     if (n < 2) {
       co_return n;
