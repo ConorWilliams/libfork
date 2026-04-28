@@ -10,7 +10,7 @@ import libfork;
 // expansion can paste `requests_test` / `requests_base` from any position
 // in the translation unit.
 inline constexpr std::int64_t requests_test = 64;
-inline constexpr std::int64_t requests_base = 1024;
+inline constexpr std::int64_t requests_base = 1024 * 64;
 
 namespace {
 
@@ -34,12 +34,13 @@ auto do_work(std::int64_t n) -> std::int64_t {
 template <typename Sch>
 struct switch_to {
 
+  using context_type = Sch::context_type;
+
   Sch *target;
 
   auto await_ready() noexcept -> bool { return false; }
 
-  auto await_suspend(lf::sched_handle<typename Sch::context_type> h, typename Sch::context_type &) noexcept
-      -> void {
+  auto await_suspend(lf::sched_handle<context_type> h, context_type & /*context*/) -> void {
     target->post(h);
   }
 
@@ -49,10 +50,11 @@ struct switch_to {
 // One "request": CPU work, hop to IO pool, IO work, hop back, more CPU work.
 template <lf::scheduler Sch>
 struct request_with_io {
-  using context_type = typename Sch::context_type;
 
-  static auto
-  operator()(lf::env<context_type>, Sch *compute_pool, Sch *io_pool) -> lf::task<std::int64_t, context_type> {
+  using context_type = Sch::context_type;
+
+  static auto operator()(Sch *compute_pool, Sch *io_pool) -> lf::task<std::int64_t, context_type> {
+
     std::int64_t acc = do_work(k_compute_units / 2);
 
     co_await switch_to<Sch>{io_pool};
@@ -70,9 +72,10 @@ struct request_with_io {
 // Baseline: same total work but no pool hops.
 template <lf::scheduler Sch>
 struct request_baseline {
-  using context_type = typename Sch::context_type;
 
-  static auto operator()(lf::env<context_type>) -> lf::task<std::int64_t, context_type> {
+  using context_type = Sch::context_type;
+
+  static auto operator()() -> lf::task<std::int64_t, context_type> {
     std::int64_t acc = do_work(k_compute_units / 2);
     acc += do_work(k_io_units);
     acc += do_work(k_compute_units / 2);
@@ -83,13 +86,17 @@ struct request_baseline {
 // Fan-out: fork M request_with_io tasks and sum the results.
 template <lf::scheduler Sch>
 struct fan_out_with_io {
-  using context_type = typename Sch::context_type;
 
-  static auto operator()(lf::env<context_type>, std::int64_t m, Sch *compute_pool, Sch *io_pool)
-      -> lf::task<std::int64_t, context_type> {
+  using context_type = Sch::context_type;
+
+  static auto
+  operator()(std::int64_t m, Sch *compute_pool, Sch *io_pool) -> lf::task<std::int64_t, context_type> {
+
     std::vector<std::int64_t> results(static_cast<std::size_t>(m), 0);
 
     auto sc = co_await lf::scope();
+
+    // TODO: use for_each algorithm
 
     for (std::int64_t i = 0; i < m - 1; ++i) {
       co_await sc.fork(&results[static_cast<std::size_t>(i)], request_with_io<Sch>{}, compute_pool, io_pool);
@@ -146,6 +153,7 @@ void run_with_io(benchmark::State &state) {
   state.counters["requests"] = static_cast<double>(m);
   state.counters["compute_threads"] = static_cast<double>(thread_count<Sch>(state));
   state.counters["io_threads"] = static_cast<double>(k_io_workers());
+
   state.SetComplexityN(static_cast<benchmark::IterationCount>(thread_count<Sch>(state)));
 
   std::int64_t expect = m * expected_per_request();
@@ -173,6 +181,7 @@ void run_baseline(benchmark::State &state) {
 
   state.counters["requests"] = static_cast<double>(m);
   state.counters["compute_threads"] = static_cast<double>(thread_count<Sch>(state));
+
   state.SetComplexityN(static_cast<benchmark::IterationCount>(thread_count<Sch>(state)));
 
   std::int64_t expect = m * expected_per_request();
