@@ -74,7 +74,8 @@ concept custom_awaitable = storable<T> && custom_awaitable_methods<std::remove_c
 /**
  * @brief  Specifies the requirements for a context-switching awaitable type.
  *
- * await_suspend complete inline i.e. ...
+ * Note: await_suspend may not complete inline i.e. the current thread remains
+ * bound to the context.
  */
 export template <typename T, typename Context>
 concept awaitable = worker_context<Context> && requires (T x) {
