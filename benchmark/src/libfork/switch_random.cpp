@@ -14,10 +14,11 @@ namespace {
 
 template <lf::scheduler Sch>
 struct switch_to_other {
+
   Sch *target;
+
   auto await_ready() noexcept -> bool { return false; }
-  auto await_suspend(lf::sched_handle<typename Sch::context_type> h, typename Sch::context_type &) noexcept
-      -> void {
+  void await_suspend(lf::sched_handle<typename Sch::context_type> h, typename Sch::context_type &) noexcept {
     target->post(h);
   }
   auto await_resume() noexcept -> void {}
