@@ -53,8 +53,8 @@ auto fib_ref(std::int64_t n) -> std::int64_t {
 
 struct record_tid_fn {
   template <typename Context>
-  static auto operator()(lf::env<Context>, std::barrier<> *sync, std::thread::id *out)
-      -> lf::task<void, Context> {
+  static auto
+  operator()(lf::env<Context>, std::barrier<> *sync, std::thread::id *out) -> lf::task<void, Context> {
     *out = std::this_thread::get_id();
     sync->arrive_and_wait();
     co_return;
@@ -110,8 +110,7 @@ struct hop_to {
 template <typename Pool>
 struct hop_throw_in_suspend {
   auto await_ready() noexcept -> bool { return false; }
-  auto await_suspend(lf::sched_handle<typename Pool::context_type>,
-                     typename Pool::context_type &) -> void {
+  auto await_suspend(lf::sched_handle<typename Pool::context_type>, typename Pool::context_type &) -> void {
     LF_THROW(std::runtime_error{"suspend"});
   }
   auto await_resume() noexcept -> void {}
@@ -123,8 +122,8 @@ template <typename Pool>
 struct hop_throw_in_resume {
   Pool *target;
   auto await_ready() noexcept -> bool { return false; }
-  auto await_suspend(lf::sched_handle<typename Pool::context_type> h,
-                     typename Pool::context_type &) noexcept -> void {
+  auto await_suspend(lf::sched_handle<typename Pool::context_type> h, typename Pool::context_type &) noexcept
+      -> void {
     target->post(h);
   }
   auto await_resume() -> void { LF_THROW(std::runtime_error{"resume"}); }
@@ -138,8 +137,8 @@ struct hop_deferred_post {
   Pool *target;
 
   auto await_ready() noexcept -> bool { return false; }
-  auto await_suspend(lf::sched_handle<typename Pool::context_type> h,
-                     typename Pool::context_type &) noexcept -> void {
+  auto await_suspend(lf::sched_handle<typename Pool::context_type> h, typename Pool::context_type &) noexcept
+      -> void {
     std::thread([h, t = target]() mutable {
       std::this_thread::sleep_for(std::chrono::milliseconds(2));
       t->post(h);
@@ -192,8 +191,8 @@ struct fib_child {
 // Hop once and record the resumed TID.
 struct hop_record_tid {
   template <typename Context, typename Pool>
-  static auto operator()(lf::env<Context>, Pool *other, std::atomic<std::thread::id> *out)
-      -> lf::task<void, Context> {
+  static auto
+  operator()(lf::env<Context>, Pool *other, std::atomic<std::thread::id> *out) -> lf::task<void, Context> {
     co_await hop_to<Pool>{other, out};
   }
 };
@@ -201,8 +200,7 @@ struct hop_record_tid {
 // A→B→A→B→A; record the TID at each of the 5 points.
 struct round_trip {
   template <typename Context, typename Pool>
-  static auto
-  operator()(lf::env<Context>, Pool *a, Pool *b, std::array<std::thread::id, 5> *ids)
+  static auto operator()(lf::env<Context>, Pool *a, Pool *b, std::array<std::thread::id, 5> *ids)
       -> lf::task<void, Context> {
     (*ids)[0] = std::this_thread::get_id();
     co_await hop_to<Pool>{b};
@@ -219,8 +217,8 @@ struct round_trip {
 // Hop to `other`, then fork `n_forks` fib(k) computations and sum.
 struct hop_then_fib_sum {
   template <typename Context, typename Pool>
-  static auto operator()(lf::env<Context>, Pool *other, int n_forks, std::int64_t k)
-      -> lf::task<std::int64_t, Context> {
+  static auto
+  operator()(lf::env<Context>, Pool *other, int n_forks, std::int64_t k) -> lf::task<std::int64_t, Context> {
     co_await hop_to<Pool>{other};
     std::vector<std::int64_t> results(static_cast<std::size_t>(n_forks), 0);
     auto sc = co_await lf::scope();
@@ -241,8 +239,8 @@ struct hop_then_fib_sum {
 // children on the original pool's WSQ.
 struct fib_then_hop_sum {
   template <typename Context, typename Pool>
-  static auto operator()(lf::env<Context>, Pool *other, int n_forks, std::int64_t k)
-      -> lf::task<std::int64_t, Context> {
+  static auto
+  operator()(lf::env<Context>, Pool *other, int n_forks, std::int64_t k) -> lf::task<std::int64_t, Context> {
     std::vector<std::int64_t> results(static_cast<std::size_t>(n_forks), 0);
     auto sc = co_await lf::scope();
     for (int i = 0; i < n_forks; ++i) {
@@ -283,8 +281,7 @@ struct switch_fib {
 // A forked child that hops to `other` before computing fib(n).
 struct hop_fib_child {
   template <typename Context, typename Pool>
-  static auto operator()(lf::env<Context>, Pool *other, std::int64_t n)
-      -> lf::task<std::int64_t, Context> {
+  static auto operator()(lf::env<Context>, Pool *other, std::int64_t n) -> lf::task<std::int64_t, Context> {
     co_await hop_to<Pool>{other};
     co_return fib_ref(n);
   }
@@ -292,8 +289,7 @@ struct hop_fib_child {
 
 struct fork_hop_fib {
   template <typename Context, typename Pool>
-  static auto operator()(lf::env<Context>, Pool *other, std::int64_t n)
-      -> lf::task<std::int64_t, Context> {
+  static auto operator()(lf::env<Context>, Pool *other, std::int64_t n) -> lf::task<std::int64_t, Context> {
     std::int64_t result = 0;
     auto sc = co_await lf::scope();
     co_await sc.fork(&result, hop_fib_child{}, other, n);
@@ -306,12 +302,9 @@ struct fork_hop_fib {
 // resumed TID into `ids` (held under `mu`).
 struct alternating_hops {
   template <typename Context, typename Pool>
-  static auto operator()(lf::env<Context>,
-                         Pool *a,
-                         Pool *b,
-                         int k,
-                         std::vector<std::thread::id> *ids,
-                         std::mutex *mu) -> lf::task<void, Context> {
+  static auto
+  operator()(lf::env<Context>, Pool *a, Pool *b, int k, std::vector<std::thread::id> *ids, std::mutex *mu)
+      -> lf::task<void, Context> {
     for (int i = 0; i < k; ++i) {
       Pool *dest = (i % 2 == 0) ? b : a;
       co_await hop_to<Pool>{dest};
@@ -324,16 +317,16 @@ struct alternating_hops {
 // Hop to one's own pool — tests the self-hop / single-worker path.
 struct self_hop {
   template <typename Context, typename Pool>
-  static auto operator()(lf::env<Context>, Pool *p, std::atomic<std::thread::id> *out)
-      -> lf::task<void, Context> {
+  static auto
+  operator()(lf::env<Context>, Pool *p, std::atomic<std::thread::id> *out) -> lf::task<void, Context> {
     co_await hop_to<Pool>{p, out};
   }
 };
 
 struct member_op_hop {
   template <typename Context, typename Pool>
-  static auto operator()(lf::env<Context>, Pool *other, std::atomic<std::thread::id> *out)
-      -> lf::task<void, Context> {
+  static auto
+  operator()(lf::env<Context>, Pool *other, std::atomic<std::thread::id> *out) -> lf::task<void, Context> {
     co_await hop_member_op<Pool>{other};
     out->store(std::this_thread::get_id(), std::memory_order_relaxed);
   }
@@ -341,8 +334,8 @@ struct member_op_hop {
 
 struct free_op_hop {
   template <typename Context, typename Pool>
-  static auto operator()(lf::env<Context>, Pool *other, std::atomic<std::thread::id> *out)
-      -> lf::task<void, Context> {
+  static auto
+  operator()(lf::env<Context>, Pool *other, std::atomic<std::thread::id> *out) -> lf::task<void, Context> {
     co_await hop_free_op<Pool>{other};
     out->store(std::this_thread::get_id(), std::memory_order_relaxed);
   }
@@ -350,8 +343,8 @@ struct free_op_hop {
 
 struct deferred_hop_task {
   template <typename Context, typename Pool>
-  static auto operator()(lf::env<Context>, Pool *other, std::atomic<std::thread::id> *out)
-      -> lf::task<void, Context> {
+  static auto
+  operator()(lf::env<Context>, Pool *other, std::atomic<std::thread::id> *out) -> lf::task<void, Context> {
     co_await hop_deferred_post<Pool>{other};
     out->store(std::this_thread::get_id(), std::memory_order_relaxed);
   }
@@ -513,10 +506,7 @@ TEMPLATE_TEST_CASE("explicit-sched: round-trip pools alternate correctly",
 
 // ---- 3. Switch then fork-join --------------------------------------------
 
-TEMPLATE_TEST_CASE("explicit-sched: switch then fork-join",
-                   "[explicit-sched]",
-                   mono_pool,
-                   poly_pool) {
+TEMPLATE_TEST_CASE("explicit-sched: switch then fork-join", "[explicit-sched]", mono_pool, poly_pool) {
   for (auto n : k_worker_counts) {
     DYNAMIC_SECTION("workers=" << n) {
       TestType pool_a{n};
@@ -534,10 +524,7 @@ TEMPLATE_TEST_CASE("explicit-sched: switch then fork-join",
 
 // ---- 4. Fork then switch then join ---------------------------------------
 
-TEMPLATE_TEST_CASE("explicit-sched: fork then switch then join",
-                   "[explicit-sched]",
-                   mono_pool,
-                   poly_pool) {
+TEMPLATE_TEST_CASE("explicit-sched: fork then switch then join", "[explicit-sched]", mono_pool, poly_pool) {
   for (auto n_workers : k_worker_counts) {
     DYNAMIC_SECTION("workers=" << n_workers) {
       TestType pool_a{n_workers};
@@ -558,10 +545,7 @@ TEMPLATE_TEST_CASE("explicit-sched: fork then switch then join",
 
 // ---- 5. Nested fork/switch/recursive-fib ---------------------------------
 
-TEMPLATE_TEST_CASE("explicit-sched: nested fork/switch/join",
-                   "[explicit-sched]",
-                   mono_pool,
-                   poly_pool) {
+TEMPLATE_TEST_CASE("explicit-sched: nested fork/switch/join", "[explicit-sched]", mono_pool, poly_pool) {
   for (auto n_workers : k_worker_counts) {
     DYNAMIC_SECTION("workers=" << n_workers) {
       TestType pool_a{n_workers};
@@ -580,10 +564,7 @@ TEMPLATE_TEST_CASE("explicit-sched: nested fork/switch/join",
 
 // ---- 6. Switch inside forked child ---------------------------------------
 
-TEMPLATE_TEST_CASE("explicit-sched: switch inside forked child",
-                   "[explicit-sched]",
-                   mono_pool,
-                   poly_pool) {
+TEMPLATE_TEST_CASE("explicit-sched: switch inside forked child", "[explicit-sched]", mono_pool, poly_pool) {
   for (auto n : k_worker_counts) {
     DYNAMIC_SECTION("workers=" << n) {
       TestType pool_a{n};
@@ -619,8 +600,8 @@ TEMPLATE_TEST_CASE("explicit-sched: many independent multi-hop tasks",
       std::vector<lf::receiver<void>> recvs;
       recvs.reserve(M);
       for (std::size_t i = 0; i < M; ++i) {
-        recvs.push_back(lf::schedule(
-            pool_a, alternating_hops{}, &pool_a, &pool_b, K, &per_task_ids[i], &per_task_mu[i]));
+        recvs.push_back(
+            lf::schedule(pool_a, alternating_hops{}, &pool_a, &pool_b, K, &per_task_ids[i], &per_task_mu[i]));
       }
       for (auto &r : recvs) {
         std::move(r).get();
@@ -641,10 +622,7 @@ TEMPLATE_TEST_CASE("explicit-sched: many independent multi-hop tasks",
 
 // ---- 8. Member operator co_await -----------------------------------------
 
-TEMPLATE_TEST_CASE("explicit-sched: member operator co_await",
-                   "[explicit-sched]",
-                   mono_pool,
-                   poly_pool) {
+TEMPLATE_TEST_CASE("explicit-sched: member operator co_await", "[explicit-sched]", mono_pool, poly_pool) {
   for (auto n : k_worker_counts) {
     DYNAMIC_SECTION("workers=" << n) {
       TestType pool_a{n};
@@ -661,10 +639,7 @@ TEMPLATE_TEST_CASE("explicit-sched: member operator co_await",
 
 // ---- 9. Free operator co_await -------------------------------------------
 
-TEMPLATE_TEST_CASE("explicit-sched: free operator co_await",
-                   "[explicit-sched]",
-                   mono_pool,
-                   poly_pool) {
+TEMPLATE_TEST_CASE("explicit-sched: free operator co_await", "[explicit-sched]", mono_pool, poly_pool) {
   for (auto n : k_worker_counts) {
     DYNAMIC_SECTION("workers=" << n) {
       TestType pool_a{n};
@@ -729,10 +704,7 @@ TEMPLATE_TEST_CASE("explicit-sched: self-hop resumes on same pool",
 
 #if LF_COMPILER_EXCEPTIONS
 
-TEMPLATE_TEST_CASE("explicit-sched: throwing await_suspend",
-                   "[explicit-sched]",
-                   mono_pool,
-                   poly_pool) {
+TEMPLATE_TEST_CASE("explicit-sched: throwing await_suspend", "[explicit-sched]", mono_pool, poly_pool) {
   for (auto n : k_worker_counts) {
     DYNAMIC_SECTION("workers=" << n) {
       TestType pool_a{n};
@@ -753,10 +725,7 @@ TEMPLATE_TEST_CASE("explicit-sched: throwing await_suspend",
 
 // ---- 13. Exception in await_resume ---------------------------------------
 
-TEMPLATE_TEST_CASE("explicit-sched: throwing await_resume",
-                   "[explicit-sched]",
-                   mono_pool,
-                   poly_pool) {
+TEMPLATE_TEST_CASE("explicit-sched: throwing await_resume", "[explicit-sched]", mono_pool, poly_pool) {
   for (auto n : k_worker_counts) {
     DYNAMIC_SECTION("workers=" << n) {
       TestType pool_a{n};
