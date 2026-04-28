@@ -200,6 +200,8 @@ struct std::coroutine_traits<lf::task<R, Context>, Self, Args...> {
 
 // =============== Layout invariants =============== //
 
+// clang-format off
+
 namespace {
 
 struct unit_checkpoint {
@@ -213,7 +215,7 @@ struct unit_stack {
   static auto prepare_release() noexcept -> int;
   static auto release(int) noexcept -> void;
   static auto acquire(unit_checkpoint) noexcept -> void;
-}; // namespace
+};
 
 struct unit_context {
   void push(lf::steal_handle<unit_context>);
