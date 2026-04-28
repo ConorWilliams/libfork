@@ -45,6 +45,17 @@ constexpr void execute(Context &context, sched_handle<Context> handle) {
 
   auto *frame = static_cast<frame_type<checkpoint_t<Context>> *>(get(key(), handle));
 
+  // We should only take the stack if it was the stack owner that we are
+  // resuming from, same logic as in switch_awaitable_suspend
+  if (frame->steals == 0) {
+
+    auto const &ckpt = frame->stack_ckpt;
+
+    if (ckpt != get_tls_stack<Context>().checkpoint()) {
+      context.stack().acquire(ckpt);
+    }
+  }
+
   frame->handle().resume();
 }
 

@@ -222,16 +222,6 @@ constexpr auto final_suspend_leading(frame_t<Context> *frame) noexcept -> coro<>
 
   frame_t<Context> *parent = not_null(frame->parent);
 
-  // The frame may have been allocated on a different worker's stack and then
-  // posted here via `switch_awaitable` / `hop_to`.  In that case the source
-  // released its stack and we must acquire it before popping the frame's
-  // allocation, otherwise `operator delete` would pop from this worker's TLS
-  // stack which never had the frame pushed onto it.  In the common case
-  // (frame was allocated here) the checkpoints match and this is a no-op.
-  if (auto frame_ckpt = frame->stack_ckpt; frame_ckpt != get_tls_stack<Context>().checkpoint()) {
-    get_tls_stack<Context>().acquire(std::move(frame_ckpt));
-  }
-
   frame->handle().destroy();
 
   if (kind == category::call) {
