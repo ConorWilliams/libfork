@@ -187,20 +187,27 @@ template <typename Context, typename Pool>
 auto switch_then_fork_task(
     lf::env<Context>, Pool *other, int n_forks, std::int64_t k, std::int64_t *total_out)
     -> lf::task<void, Context> {
+
   co_await hop_to<Pool>{other};
 
   // After the hop, we are on a worker in `other`.
   std::vector<std::int64_t> results(static_cast<std::size_t>(n_forks), 0);
+
   auto sc = co_await lf::scope();
+
   for (int i = 0; i < n_forks; ++i) {
     co_await sc.fork(&results[static_cast<std::size_t>(i)], fib_child{}, k);
   }
+
   co_await sc.join();
 
   std::int64_t sum = 0;
   for (auto v : results) {
     sum += v;
   }
+
+  // ISSUE: why are we using out pointers here and in other places instead of returning values?
+  // Similar issues in multiple places that should be fixed.
   *total_out = sum;
 }
 
@@ -252,6 +259,7 @@ struct switch_fib_impl {
     co_return lhs + rhs;
   }
 
+  // ISSUE: what is this wrapper for? why not implement directly in operator()?
   template <typename... Args>
   auto operator()(lf::env<Context> e, Args &&...args) const -> lf::task<std::int64_t, Context> {
     return call(e, std::forward<Args>(args)...);
@@ -269,6 +277,8 @@ struct hop_child {
 };
 
 // ---- Out-of-class definitions for the task functors declared earlier. ----
+
+// ISSUE: is it possible not to have these/any out-of-class definitions
 
 template <typename Context, typename Pool>
 auto switch_inside_forked_child_wrapper::operator()(lf::env<Context>, Pool *other, std::int64_t *out)
@@ -315,12 +325,14 @@ auto value_across_switch(lf::env<Context>, Pool *other, std::int64_t *out) -> lf
 }
 
 // K hops between a and b (alternating), increments counter each time it resumes.
+// ISSUE: the comments implies it increments at each resume but the test doesn't do that?
 template <typename Context, typename Pool>
 auto multi_hop_task(lf::env<Context>, Pool *a, Pool *b, int k, std::atomic<int> *completed)
     -> lf::task<void, Context> {
   for (int i = 0; i < k; ++i) {
     Pool *dest = (i % 2 == 0) ? b : a;
     co_await hop_to<Pool>{dest};
+    // ISSUE: no verification that we are now on dest
   }
   completed->fetch_add(1, std::memory_order_relaxed);
 }
@@ -439,6 +451,11 @@ struct throwing_suspend_awaitable {
 // ---- 1. One-shot switch ----
 
 TEMPLATE_TEST_CASE("explicit-sched: one-shot switch", "[explicit-sched]", mono_pool, poly_pool) {
+
+  // ISSUE: This doesn't actually verify that resume_on is an id in pool_b, the
+  // test could prob to find out the thread ids of the workers in the pools so
+  // it can explictily check it resumed in the correct place.
+
   TestType pool_a{2};
   TestType pool_b{2};
 
@@ -456,6 +473,11 @@ TEMPLATE_TEST_CASE("explicit-sched: one-shot switch", "[explicit-sched]", mono_p
 // ---- 2. Round-trip A→B→A→B→A ----
 
 TEMPLATE_TEST_CASE("explicit-sched: round-trip", "[explicit-sched]", mono_pool, poly_pool) {
+
+  // ISSUE: Same as above: doesn't verify the ids are actually from the correct
+  // pools. It should establish the TID's of the worker threads and verify the
+  // hops actually went to the correct pools.
+
   TestType pool_a{2};
   TestType pool_b{2};
 
@@ -485,8 +507,12 @@ TEMPLATE_TEST_CASE("explicit-sched: switch then fork-join", "[explicit-sched]", 
   constexpr std::int64_t k = 10;
   std::int64_t total = 0;
 
+  // ISSUE: in general it seems like the test are not verifying that after switching the running
+  // thread is the correct / destination thread. This needs to be addressed across the tests suite.
+
   auto recv = lf::schedule(
       pool_a, switch_then_fork_task<lf::context_t<TestType>, TestType>, &pool_b, n_forks, k, &total);
+
   std::move(recv).get();
 
   REQUIRE(total == fib_ref(k) * n_forks);
@@ -574,6 +600,8 @@ TEMPLATE_TEST_CASE("explicit-sched: returns non-void value across switch",
   TestType pool_a{2};
   TestType pool_b{2};
 
+  // ISSUE: not sure if this test is doing anything new/useful
+
   std::int64_t out = 0;
   auto recv = lf::schedule(pool_a, value_across_switch<lf::context_t<TestType>, TestType>, &pool_b, &out);
   std::move(recv).get();
@@ -615,6 +643,8 @@ TEMPLATE_TEST_CASE("explicit-sched: free operator co_await", "[explicit-sched]",
 // ---- 11. Plain awaitable (no operator co_await) ----
 // hop_to is already a plain awaitable; this test focuses on it explicitly.
 
+// ISSUE: do we need a separate test for plain awaitables when we test hop_to everywhere else?
+
 TEMPLATE_TEST_CASE("explicit-sched: plain awaitable", "[explicit-sched]", mono_pool, poly_pool) {
   TestType pool_a{2};
   TestType pool_b{2};
@@ -627,6 +657,12 @@ TEMPLATE_TEST_CASE("explicit-sched: plain awaitable", "[explicit-sched]", mono_p
 }
 
 // ---- 12. Switch to same pool ----
+
+// ISSUE: it would be good to test this with {1, 2} threads in the pool to verify a self-hop works
+// i.e. resumes on the same thread as the one it was released from
+
+// ISSUE: In general it would be good if all the tests were run with pools of {1, 2, 4} workers to
+// verify the behavior across a range of number of workers.
 
 TEMPLATE_TEST_CASE("explicit-sched: switch to same pool", "[explicit-sched]", mono_pool, poly_pool) {
   TestType pool{2};
@@ -668,6 +704,8 @@ TEMPLATE_TEST_CASE("explicit-sched: throwing await_resume", "[explicit-sched]", 
 #endif // LF_COMPILER_EXCEPTIONS
 
 // ---- 15. Concept conformance (compile-time) ----
+
+// ISSUE: how much do these overlap with the tests in concepts.cpp
 
 TEST_CASE("explicit-sched: concept conformance", "[explicit-sched]") {
   using namespace concept_checks;
