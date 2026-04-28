@@ -274,7 +274,7 @@ template <typename Context, typename Pool>
 auto switch_inside_forked_child_wrapper::operator()(lf::env<Context>, Pool *other, std::int64_t *out)
     -> lf::task<void, Context> {
   auto sc = co_await lf::scope();
-  co_await sc.fork_drop(hop_child{}, other, out, std::int64_t{10});
+  co_await sc.fork(hop_child{}, other, out, std::int64_t{10});
   co_await sc.join();
 }
 
@@ -344,8 +344,8 @@ struct hop_tree {
     }
 
     auto sc = co_await lf::scope();
-    co_await sc.fork_drop(hop_tree{}, depth - 1, a, b, leaf_count);
-    co_await sc.call_drop(hop_tree{}, depth - 1, a, b, leaf_count);
+    co_await sc.fork(hop_tree{}, depth - 1, a, b, leaf_count);
+    co_await sc.call(hop_tree{}, depth - 1, a, b, leaf_count);
     co_await sc.join();
   }
 };
