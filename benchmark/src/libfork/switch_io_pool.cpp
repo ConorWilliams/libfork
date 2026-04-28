@@ -17,7 +17,7 @@ namespace {
 inline constexpr std::int64_t k_compute_units = 256;
 inline constexpr std::int64_t k_io_units = 32;
 
-inline auto k_io_workers() -> unsigned { return std::max(1u, std::thread::hardware_concurrency() / 8u); }
+inline auto k_io_workers() -> unsigned { return std::max(2u, std::thread::hardware_concurrency() / 8u); }
 
 // Busy-loop work that the optimizer cannot elide.
 auto do_work(std::int64_t n) -> std::int64_t {
