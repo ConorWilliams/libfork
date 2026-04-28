@@ -34,6 +34,7 @@ template <typename Pool>
 struct hop_to {
   Pool *target;
   std::atomic<std::thread::id> *resumed_on = nullptr;
+  std::atomic<bool> *on_target_pool = nullptr;
 
   auto await_ready() noexcept -> bool { return false; }
 
@@ -45,6 +46,10 @@ struct hop_to {
   auto await_resume() noexcept -> void {
     if (resumed_on != nullptr) {
       resumed_on->store(std::this_thread::get_id());
+    }
+    if (on_target_pool != nullptr) {
+      auto *ctx = lf::thread_local_context<typename Pool::context_type>;
+      on_target_pool->store(target->owns_context(ctx));
     }
   }
 };
@@ -93,23 +98,23 @@ struct switch_inside_forked_child_wrapper {
 struct member_op_hop_task {
   template <typename Context, typename Pool>
   static auto
-  operator()(lf::env<Context>, Pool *other, std::atomic<std::thread::id> *out) -> lf::task<void, Context>;
+  operator()(lf::env<Context>, Pool *other, std::atomic<std::thread::id> *out, std::atomic<bool> *on_pool) -> lf::task<void, Context>;
 };
 
 struct free_op_hop_task {
   template <typename Context, typename Pool>
   static auto
-  operator()(lf::env<Context>, Pool *other, std::atomic<std::thread::id> *out) -> lf::task<void, Context>;
+  operator()(lf::env<Context>, Pool *other, std::atomic<std::thread::id> *out, std::atomic<bool> *on_pool) -> lf::task<void, Context>;
 };
 
 struct plain_hop_task {
   template <typename Context, typename Pool>
-  static auto operator()(lf::env<Context>, Pool *other, std::atomic<bool> *flag) -> lf::task<void, Context>;
+  static auto operator()(lf::env<Context>, Pool *other, std::atomic<bool> *flag, std::atomic<bool> *on_pool) -> lf::task<void, Context>;
 };
 
 struct self_hop_task {
   template <typename Context, typename Pool>
-  static auto operator()(lf::env<Context>, Pool *p, std::atomic<bool> *flag) -> lf::task<void, Context>;
+  static auto operator()(lf::env<Context>, Pool *p, std::atomic<bool> *flag, std::atomic<bool> *on_pool) -> lf::task<void, Context>;
 };
 
 // Definitions of these task functors appear below, after all helper types
@@ -120,7 +125,9 @@ struct self_hop_task {
 template <typename Pool>
 struct hop_member_op {
   Pool *target;
-  auto operator co_await() noexcept -> hop_to<Pool> { return hop_to<Pool>{target}; }
+  std::atomic<std::thread::id> *out_id = nullptr;
+  std::atomic<bool> *out_pool = nullptr;
+  auto operator co_await() noexcept -> hop_to<Pool> { return hop_to<Pool>{target, out_id, out_pool}; }
 };
 
 // ---- free-operator-co_await wrapper ----
@@ -128,42 +135,46 @@ struct hop_member_op {
 template <typename Pool>
 struct hop_free_op {
   Pool *target;
+  std::atomic<std::thread::id> *out_id = nullptr;
+  std::atomic<bool> *out_pool = nullptr;
 };
 
 template <typename Pool>
 [[nodiscard]]
 auto operator co_await(hop_free_op<Pool> h) noexcept -> hop_to<Pool> {
-  return hop_to<Pool>{h.target};
+  return hop_to<Pool>{h.target, h.out_id, h.out_pool};
 }
 
 // ============================================================
 // Helper coroutines
 // ============================================================
 
-// Hop once to `other`, record resumed thread, return.
+// Hop once to `other`, record resumed thread and pool ownership, return.
 template <typename Context, typename Pool>
-auto simple_hop_task(lf::env<Context>, Pool *other, std::atomic<std::thread::id> *out)
+auto simple_hop_task(lf::env<Context>, Pool *other, std::atomic<std::thread::id> *out_id, std::atomic<bool> *out_pool)
     -> lf::task<void, Context> {
-  co_await hop_to<Pool>{other, out};
+  co_await hop_to<Pool>{other, out_id, out_pool};
 }
 
 // Round-trip: A→B→A→B→A (4 hops from original pool A's perspective).
 template <typename Context, typename Pool>
-auto round_trip_task(lf::env<Context>, Pool *a, Pool *b, std::vector<std::thread::id> *ids, std::mutex *mu)
+auto round_trip_task(lf::env<Context>, Pool *a, Pool *b, std::vector<std::thread::id> *ids, std::vector<bool> *pool_ok, std::mutex *mu)
     -> lf::task<void, Context> {
-  auto record = [&] {
+  auto record = [&](Pool *expected) {
     auto lock = std::scoped_lock(*mu);
     ids->push_back(std::this_thread::get_id());
+    auto *ctx = lf::thread_local_context<Context>;
+    pool_ok->push_back(expected->owns_context(ctx));
   };
-  record(); // point 0: on A
+  record(a); // point 0: on A
   co_await hop_to<Pool>{b};
-  record(); // point 1: on B
+  record(b); // point 1: on B
   co_await hop_to<Pool>{a};
-  record(); // point 2: back on A
+  record(a); // point 2: back on A
   co_await hop_to<Pool>{b};
-  record(); // point 3: on B
+  record(b); // point 3: on B
   co_await hop_to<Pool>{a};
-  record(); // point 4: back on A
+  record(a); // point 4: back on A
 }
 
 // Hop to `other`, then fork N children each computing fib(k), join, sum.
@@ -279,30 +290,28 @@ auto switch_inside_forked_child_wrapper::operator()(lf::env<Context>, Pool *othe
 }
 
 template <typename Context, typename Pool>
-auto member_op_hop_task::operator()(lf::env<Context>, Pool *other, std::atomic<std::thread::id> *out)
+auto member_op_hop_task::operator()(lf::env<Context>, Pool *other, std::atomic<std::thread::id> *out, std::atomic<bool> *on_pool)
     -> lf::task<void, Context> {
-  co_await hop_member_op<Pool>{other};
-  out->store(std::this_thread::get_id());
+  co_await hop_member_op<Pool>{other, out, on_pool};
 }
 
 template <typename Context, typename Pool>
-auto free_op_hop_task::operator()(lf::env<Context>, Pool *other, std::atomic<std::thread::id> *out)
+auto free_op_hop_task::operator()(lf::env<Context>, Pool *other, std::atomic<std::thread::id> *out, std::atomic<bool> *on_pool)
     -> lf::task<void, Context> {
-  co_await hop_free_op<Pool>{other};
-  out->store(std::this_thread::get_id());
+  co_await hop_free_op<Pool>{other, out, on_pool};
 }
 
 template <typename Context, typename Pool>
-auto plain_hop_task::operator()(lf::env<Context>, Pool *other, std::atomic<bool> *flag)
+auto plain_hop_task::operator()(lf::env<Context>, Pool *other, std::atomic<bool> *flag, std::atomic<bool> *on_pool)
     -> lf::task<void, Context> {
-  co_await hop_to<Pool>{other};
+  co_await hop_to<Pool>{other, nullptr, on_pool};
   flag->store(true);
 }
 
 template <typename Context, typename Pool>
-auto self_hop_task::operator()(lf::env<Context>, Pool *p, std::atomic<bool> *flag)
+auto self_hop_task::operator()(lf::env<Context>, Pool *p, std::atomic<bool> *flag, std::atomic<bool> *on_pool)
     -> lf::task<void, Context> {
-  co_await hop_to<Pool>{p};
+  co_await hop_to<Pool>{p, nullptr, on_pool};
   flag->store(true);
 }
 
@@ -443,14 +452,17 @@ TEMPLATE_TEST_CASE("explicit-sched: one-shot switch", "[explicit-sched]", mono_p
   TestType pool_b{2};
 
   std::atomic<std::thread::id> resumed_on;
+  std::atomic<bool> on_target_pool{false};
   std::thread::id const caller_id = std::this_thread::get_id();
 
-  auto recv = lf::schedule(pool_a, simple_hop_task<lf::context_t<TestType>, TestType>, &pool_b, &resumed_on);
+  auto recv = lf::schedule(pool_a, simple_hop_task<lf::context_t<TestType>, TestType>, &pool_b, &resumed_on, &on_target_pool);
   std::move(recv).get();
 
   REQUIRE(resumed_on.load() != std::thread::id{});
   // The task was resumed on a worker thread, not the test thread.
   REQUIRE(resumed_on.load() != caller_id);
+  // Verify it was actually on pool_b
+  REQUIRE(on_target_pool.load());
 }
 
 // ---- 2. Round-trip A→B→A→B→A ----
@@ -460,18 +472,21 @@ TEMPLATE_TEST_CASE("explicit-sched: round-trip", "[explicit-sched]", mono_pool, 
   TestType pool_b{2};
 
   std::vector<std::thread::id> ids;
+  std::vector<bool> pool_ok;
   std::mutex mu;
 
   auto recv =
-      lf::schedule(pool_a, round_trip_task<lf::context_t<TestType>, TestType>, &pool_a, &pool_b, &ids, &mu);
+      lf::schedule(pool_a, round_trip_task<lf::context_t<TestType>, TestType>, &pool_a, &pool_b, &ids, &pool_ok, &mu);
   std::move(recv).get();
 
   REQUIRE(ids.size() == 5);
+  REQUIRE(pool_ok.size() == 5);
   // Every recorded id must be a worker thread, not the test thread.
   std::thread::id const caller_id = std::this_thread::get_id();
-  for (auto const &id : ids) {
-    REQUIRE(id != caller_id);
-    REQUIRE(id != std::thread::id{});
+  for (std::size_t i = 0; i < ids.size(); ++i) {
+    REQUIRE(ids[i] != caller_id);
+    REQUIRE(ids[i] != std::thread::id{});
+    REQUIRE(pool_ok[i]);
   }
 }
 
@@ -541,7 +556,71 @@ TEMPLATE_TEST_CASE("explicit-sched: switch inside forked child", "[explicit-sche
   REQUIRE(child_result == fib_ref(10));
 }
 
-// ---- 7. Many independent tasks ----
+// ---- 7. resume_effectively_stolen (self-steal after switch) ----
+
+TEMPLATE_TEST_CASE("explicit-sched: resume_effectively_stolen", "[explicit-sched]", mono_pool, poly_pool) {
+  // Use 1 thread for pool_a to ensure the hopping thread is the only one that can
+  // resume the tasks it left on its WSQ.
+  TestType pool_a{1};
+  TestType pool_b{2};
+
+  std::atomic<int> counter{0};
+
+  auto recv = lf::schedule(pool_a, [](lf::env<lf::context_t<TestType>> e, TestType *other, std::atomic<int> *count) -> lf::task<void, lf::context_t<TestType>> {
+    auto sc = co_await lf::scope();
+    for (int i = 0; i < 16; ++i) {
+      co_await sc.fork([count](lf::env<lf::context_t<TestType>>) -> lf::task<void, lf::context_t<TestType>> {
+        count->fetch_add(1, std::memory_order_relaxed);
+        co_return;
+      });
+    }
+    // Hop to pool_b. The thread from pool_a must resume the 16 tasks from its WSQ 
+    // before it finishes its current 'execute' call and becomes available for 
+    // other work in pool_a.
+    co_await hop_to<TestType>{other};
+    co_await sc.join();
+  }, &pool_b, &counter);
+
+  std::move(recv).get();
+  REQUIRE(counter.load() == 16);
+}
+
+// ---- 8. resume_effectively_stolen same thread ----
+
+TEMPLATE_TEST_CASE("explicit-sched: resume_effectively_stolen same thread", "[explicit-sched]", mono_pool, poly_pool) {
+  TestType pool_a{1};
+  TestType pool_b{1};
+
+  std::atomic<std::thread::id> hopper_thread_id;
+  std::vector<std::thread::id> task_thread_ids;
+  std::mutex mu;
+
+  auto recv = lf::schedule(pool_a, [](lf::env<lf::context_t<TestType>> e, TestType *other, std::atomic<std::thread::id> *hopper_id, std::vector<std::thread::id> *task_ids, std::mutex *m) -> lf::task<void, lf::context_t<TestType>> {
+    auto sc = co_await lf::scope();
+    for (int i = 0; i < 4; ++i) {
+      co_await sc.fork([task_ids, m](lf::env<lf::context_t<TestType>>) -> lf::task<void, lf::context_t<TestType>> {
+        auto lock = std::scoped_lock(*m);
+        task_ids->push_back(std::this_thread::get_id());
+        co_return;
+      });
+    }
+    
+    hopper_id->store(std::this_thread::get_id());
+    co_await hop_to<TestType>{other};
+    // The pool_a thread will now resume the forked tasks before it finishes its execute() call.
+    
+    co_await sc.join();
+  }, &pool_b, &hopper_thread_id, &task_thread_ids, &mu);
+
+  std::move(recv).get();
+  
+  REQUIRE(task_thread_ids.size() == 4);
+  for (auto const& tid : task_thread_ids) {
+      REQUIRE(tid == hopper_thread_id.load());
+  }
+}
+
+// ---- 9. Many independent tasks ----
 
 TEMPLATE_TEST_CASE("explicit-sched: many independent tasks", "[explicit-sched]", mono_pool, poly_pool) {
   TestType pool_a{2};
@@ -565,7 +644,7 @@ TEMPLATE_TEST_CASE("explicit-sched: many independent tasks", "[explicit-sched]",
   REQUIRE(completed.load() == M);
 }
 
-// ---- 8. Returns non-void value across switch ----
+// ---- 10. Returns non-void value across switch ----
 
 TEMPLATE_TEST_CASE("explicit-sched: returns non-void value across switch",
                    "[explicit-sched]",
@@ -580,7 +659,7 @@ TEMPLATE_TEST_CASE("explicit-sched: returns non-void value across switch",
   REQUIRE(out == 42);
 }
 
-// ---- 9. Member operator co_await ----
+// ---- 11. Member operator co_await ----
 
 TEMPLATE_TEST_CASE("explicit-sched: member operator co_await", "[explicit-sched]", mono_pool, poly_pool) {
   TestType pool_a{2};
@@ -588,15 +667,17 @@ TEMPLATE_TEST_CASE("explicit-sched: member operator co_await", "[explicit-sched]
 
   std::thread::id const caller_id = std::this_thread::get_id();
   std::atomic<std::thread::id> resumed_on;
+  std::atomic<bool> on_pool{false};
 
-  auto recv = lf::schedule(pool_a, member_op_hop_task{}, &pool_b, &resumed_on);
+  auto recv = lf::schedule(pool_a, member_op_hop_task{}, &pool_b, &resumed_on, &on_pool);
   std::move(recv).get();
 
   REQUIRE(resumed_on.load() != std::thread::id{});
   REQUIRE(resumed_on.load() != caller_id);
+  REQUIRE(on_pool.load());
 }
 
-// ---- 10. Free operator co_await ----
+// ---- 12. Free operator co_await ----
 
 TEMPLATE_TEST_CASE("explicit-sched: free operator co_await", "[explicit-sched]", mono_pool, poly_pool) {
   TestType pool_a{2};
@@ -604,15 +685,17 @@ TEMPLATE_TEST_CASE("explicit-sched: free operator co_await", "[explicit-sched]",
 
   std::thread::id const caller_id = std::this_thread::get_id();
   std::atomic<std::thread::id> resumed_on;
+  std::atomic<bool> on_pool{false};
 
-  auto recv = lf::schedule(pool_a, free_op_hop_task{}, &pool_b, &resumed_on);
+  auto recv = lf::schedule(pool_a, free_op_hop_task{}, &pool_b, &resumed_on, &on_pool);
   std::move(recv).get();
 
   REQUIRE(resumed_on.load() != std::thread::id{});
   REQUIRE(resumed_on.load() != caller_id);
+  REQUIRE(on_pool.load());
 }
 
-// ---- 11. Plain awaitable (no operator co_await) ----
+// ---- 13. Plain awaitable (no operator co_await) ----
 // hop_to is already a plain awaitable; this test focuses on it explicitly.
 
 TEMPLATE_TEST_CASE("explicit-sched: plain awaitable", "[explicit-sched]", mono_pool, poly_pool) {
@@ -620,25 +703,29 @@ TEMPLATE_TEST_CASE("explicit-sched: plain awaitable", "[explicit-sched]", mono_p
   TestType pool_b{2};
 
   std::atomic<bool> ran{false};
+  std::atomic<bool> on_pool{false};
 
-  auto recv = lf::schedule(pool_a, plain_hop_task{}, &pool_b, &ran);
+  auto recv = lf::schedule(pool_a, plain_hop_task{}, &pool_b, &ran, &on_pool);
   std::move(recv).get();
   REQUIRE(ran.load());
+  REQUIRE(on_pool.load());
 }
 
-// ---- 12. Switch to same pool ----
+// ---- 14. Switch to same pool ----
 
 TEMPLATE_TEST_CASE("explicit-sched: switch to same pool", "[explicit-sched]", mono_pool, poly_pool) {
   TestType pool{2};
 
   std::atomic<bool> ran{false};
+  std::atomic<bool> on_pool{false};
 
-  auto recv = lf::schedule(pool, self_hop_task{}, &pool, &ran);
+  auto recv = lf::schedule(pool, self_hop_task{}, &pool, &ran, &on_pool);
   std::move(recv).get();
   REQUIRE(ran.load());
+  REQUIRE(on_pool.load());
 }
 
-// ---- 13/14. Exception tests ----
+// ---- 15/16. Exception tests ----
 
 #if LF_COMPILER_EXCEPTIONS
 
@@ -667,7 +754,7 @@ TEMPLATE_TEST_CASE("explicit-sched: throwing await_resume", "[explicit-sched]", 
 
 #endif // LF_COMPILER_EXCEPTIONS
 
-// ---- 15. Concept conformance (compile-time) ----
+// ---- 17. Concept conformance (compile-time) ----
 
 TEST_CASE("explicit-sched: concept conformance", "[explicit-sched]") {
   using namespace concept_checks;
@@ -689,7 +776,7 @@ TEST_CASE("explicit-sched: concept conformance", "[explicit-sched]") {
   STATIC_REQUIRE(lf::awaitable<throwing_suspend_awaitable, test_context>);
 }
 
-// ---- 16. Stress: hop binary tree ----
+// ---- 18. Stress: hop binary tree ----
 
 TEMPLATE_TEST_CASE("explicit-sched: stress hop-binary-tree",
                    "[explicit-sched][stress]",

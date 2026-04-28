@@ -9,7 +9,7 @@ namespace lf {
 /**
  * @brief Thread-local pointer to the current worker context.
  */
-template <worker_context Context>
+export template <worker_context Context>
 constinit inline thread_local Context *thread_local_context = nullptr;
 
 // TODO: implications of thread local on constexpr
@@ -17,7 +17,7 @@ constinit inline thread_local Context *thread_local_context = nullptr;
 /**
  * @brief A getter for the current worker context, checks for null in debug.
  */
-template <worker_context Context>
+export template <worker_context Context>
 constexpr auto get_tls_context() noexcept -> Context & {
   return *not_null(thread_local_context<Context>);
 }
@@ -25,7 +25,7 @@ constexpr auto get_tls_context() noexcept -> Context & {
 /**
  * @brief A getter for the current worker context's stack, checks for null in debug.
  */
-template <worker_context Context>
+export template <worker_context Context>
 constexpr auto get_tls_stack() noexcept -> stack_t<Context> & {
   return get_tls_context<Context>().stack();
 }

@@ -68,6 +68,23 @@ class basic_busy_pool {
 
   ~basic_busy_pool() { join_all(); }
 
+  [[nodiscard]] auto size() const noexcept -> std::size_t { return m_contexts.size(); }
+
+  [[nodiscard]] auto get_context(std::size_t i) noexcept -> context_type & { return m_contexts[i]; }
+
+  [[nodiscard]] auto get_context(std::size_t i) const noexcept -> context_type const & {
+    return m_contexts[i];
+  }
+
+  [[nodiscard]] bool owns_context(context_type const *ctx) const noexcept {
+    for (auto const &c : m_contexts) {
+      if (std::addressof(static_cast<context_type const &>(c)) == ctx) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   void post(sched_handle<context_type> handle) {
     // TODO: use a lock-free queue here
     auto lock = std::unique_lock(m_mutex);
