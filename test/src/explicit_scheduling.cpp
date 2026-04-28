@@ -452,10 +452,7 @@ struct throwing_suspend_awaitable {
 
 // ---- 1. One-shot switch ---------------------------------------------------
 
-TEMPLATE_TEST_CASE("explicit-sched: one-shot switch lands on destination pool",
-                   "[explicit-sched]",
-                   mono_pool,
-                   poly_pool) {
+TEMPLATE_TEST_CASE("explicit-sched: one-shot", "[explicit-sched]", mono_pool, poly_pool) {
   for (auto n : k_worker_counts) {
     DYNAMIC_SECTION("workers=" << n) {
       TestType pool_a{n};
@@ -477,10 +474,7 @@ TEMPLATE_TEST_CASE("explicit-sched: one-shot switch lands on destination pool",
 
 // ---- 2. Round-trip A→B→A→B→A ---------------------------------------------
 
-TEMPLATE_TEST_CASE("explicit-sched: round-trip pools alternate correctly",
-                   "[explicit-sched]",
-                   mono_pool,
-                   poly_pool) {
+TEMPLATE_TEST_CASE("explicit-sched: round-trip", "[explicit-sched]", mono_pool, poly_pool) {
   for (auto n : k_worker_counts) {
     DYNAMIC_SECTION("workers=" << n) {
       TestType pool_a{n};
@@ -580,10 +574,7 @@ TEMPLATE_TEST_CASE("explicit-sched: switch inside forked child", "[explicit-sche
 
 // ---- 7. Many independent multi-hop tasks (stress) ------------------------
 
-TEMPLATE_TEST_CASE("explicit-sched: many independent multi-hop tasks",
-                   "[explicit-sched]",
-                   mono_pool,
-                   poly_pool) {
+TEMPLATE_TEST_CASE("explicit-sched: independent multi-hop tasks", "[explicit-sched]", mono_pool, poly_pool) {
   for (auto n : k_worker_counts) {
     DYNAMIC_SECTION("workers=" << n) {
       TestType pool_a{n};
@@ -661,10 +652,7 @@ TEMPLATE_TEST_CASE("explicit-sched: free operator co_await", "[explicit-sched]",
 // posts it. Verifies that the source worker can leave switch_awaitable
 // (and possibly drain effectively-stolen tasks) before the destination
 // resumes.
-TEMPLATE_TEST_CASE("explicit-sched: handle posted from a foreign thread",
-                   "[explicit-sched]",
-                   mono_pool,
-                   poly_pool) {
+TEMPLATE_TEST_CASE("explicit-sched: posted from foreign thread", "[explicit-sched]", mono_pool, poly_pool) {
   for (auto n : k_worker_counts) {
     DYNAMIC_SECTION("workers=" << n) {
       TestType pool_a{n};
@@ -683,10 +671,7 @@ TEMPLATE_TEST_CASE("explicit-sched: handle posted from a foreign thread",
 
 // A hop into one's own pool must resume on a worker of that pool.
 // With 1 worker, the resumed TID must be the same worker.
-TEMPLATE_TEST_CASE("explicit-sched: self-hop resumes on same pool",
-                   "[explicit-sched]",
-                   mono_pool,
-                   poly_pool) {
+TEMPLATE_TEST_CASE("explicit-sched: self-hop", "[explicit-sched]", mono_pool, poly_pool) {
   for (auto n : k_worker_counts) {
     DYNAMIC_SECTION("workers=" << n) {
       TestType pool{n};
@@ -757,10 +742,7 @@ TEST_CASE("explicit-sched: concept conformance", "[explicit-sched]") {
 
 // ---- 15. Stress: hop binary tree -----------------------------------------
 
-TEMPLATE_TEST_CASE("explicit-sched: stress hop-binary-tree",
-                   "[explicit-sched][stress]",
-                   mono_pool,
-                   poly_pool) {
+TEMPLATE_TEST_CASE("explicit-sched: hop-binary-tree", "[explicit-sched][stress]", mono_pool, poly_pool) {
   constexpr int depth = 12;
   constexpr int expect_leaves = 1 << depth;
 
