@@ -11,6 +11,7 @@ import std;
 
 import libfork.utils;
 
+import :concepts_awaitable;
 import :concepts_context;
 import :concepts_invocable;
 import :frame;
@@ -80,9 +81,8 @@ struct mixin_frame {
 
   // Custom awaitable
   template <awaitable<Context> T>
-  constexpr auto await_transform(T &&x) -> auto {
-    return await_transform_switch(LF_FWD(x));
-  }
+  static constexpr auto await_transform(T &&x)
+      LF_HOF(switch_awaitable_for<Context>(acquire_awaitable(LF_FWD(x))))
 
   // Join
   constexpr auto await_transform(this auto &self, join_type) noexcept -> join_awaitable<Context> {
@@ -109,15 +109,11 @@ struct mixin_frame {
     stash_current_exception(self.frame.parent);
   }
 
-  template <awaitable<Context> T>
-  constexpr auto await_transform_switch(T &&x)
-      LF_HOF(switch_awaitable<Context, std::remove_cvref_t<T>>{LF_FWD(x)})
-
+ private:
   template <category Cat, bool StopToken, typename R, typename Fn, typename... Args>
   constexpr auto
   await_transform_pkg(this auto const &self, pkg<Cat, StopToken, Context, R, Fn, Args...> &&pkg) noexcept(
       async_nothrow_invocable<Fn, Context, Args...>) -> async_awaitable<Cat, Context> {
-
     using U = async_result_t<Fn, Context, Args...>;
 
     // clang-format off

@@ -326,4 +326,11 @@ struct switch_awaitable final {
   }
 };
 
+/**
+ * @brief Utility to deduce the awaitable type and perfect forward to switch_awaitable.
+ */
+template <typename Context, typename T>
+constexpr auto switch_awaitable_for(T &&x)
+    LF_HOF(switch_awaitable<Context, std::remove_cvref_t<T>>{LF_FWD(x)})
+
 } // namespace lf
