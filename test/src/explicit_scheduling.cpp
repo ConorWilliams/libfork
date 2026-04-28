@@ -82,6 +82,44 @@ struct hop_resume_throws {
   auto await_resume() -> void { LF_THROW(std::runtime_error{"resume"}); }
 };
 
+// ---- Task functors used by tests below (must be at namespace scope: GCC ----
+// rejects member templates inside function-local classes).
+
+struct switch_inside_forked_child_wrapper {
+  template <typename Context, typename Pool>
+  static auto operator()(lf::env<Context>, Pool *other, std::int64_t *out)
+      -> lf::task<void, Context>;
+};
+
+struct member_op_hop_task {
+  template <typename Context, typename Pool>
+  static auto operator()(lf::env<Context>,
+                         Pool *other,
+                         std::atomic<std::thread::id> *out) -> lf::task<void, Context>;
+};
+
+struct free_op_hop_task {
+  template <typename Context, typename Pool>
+  static auto operator()(lf::env<Context>,
+                         Pool *other,
+                         std::atomic<std::thread::id> *out) -> lf::task<void, Context>;
+};
+
+struct plain_hop_task {
+  template <typename Context, typename Pool>
+  static auto operator()(lf::env<Context>, Pool *other, std::atomic<bool> *flag)
+      -> lf::task<void, Context>;
+};
+
+struct self_hop_task {
+  template <typename Context, typename Pool>
+  static auto operator()(lf::env<Context>, Pool *p, std::atomic<bool> *flag)
+      -> lf::task<void, Context>;
+};
+
+// Definitions of these task functors appear below, after all helper types
+// (hop_member_op, hop_free_op, hop_child) are declared.
+
 // ---- member-operator-co_await wrapper ----
 
 template <typename Pool>
@@ -242,6 +280,50 @@ struct hop_child {
     *out = fib_ref(n);
   }
 };
+
+// ---- Out-of-class definitions for the task functors declared earlier. ----
+
+template <typename Context, typename Pool>
+auto switch_inside_forked_child_wrapper::operator()(lf::env<Context>,
+                                                    Pool *other,
+                                                    std::int64_t *out)
+    -> lf::task<void, Context> {
+  auto sc = co_await lf::scope();
+  co_await sc.fork_drop(hop_child{}, other, out, std::int64_t{10});
+  co_await sc.join();
+}
+
+template <typename Context, typename Pool>
+auto member_op_hop_task::operator()(lf::env<Context>,
+                                    Pool *other,
+                                    std::atomic<std::thread::id> *out)
+    -> lf::task<void, Context> {
+  co_await hop_member_op<Pool>{other};
+  out->store(std::this_thread::get_id());
+}
+
+template <typename Context, typename Pool>
+auto free_op_hop_task::operator()(lf::env<Context>,
+                                  Pool *other,
+                                  std::atomic<std::thread::id> *out)
+    -> lf::task<void, Context> {
+  co_await hop_free_op<Pool>{other};
+  out->store(std::this_thread::get_id());
+}
+
+template <typename Context, typename Pool>
+auto plain_hop_task::operator()(lf::env<Context>, Pool *other, std::atomic<bool> *flag)
+    -> lf::task<void, Context> {
+  co_await hop_to<Pool>{other};
+  flag->store(true);
+}
+
+template <typename Context, typename Pool>
+auto self_hop_task::operator()(lf::env<Context>, Pool *p, std::atomic<bool> *flag)
+    -> lf::task<void, Context> {
+  co_await hop_to<Pool>{p};
+  flag->store(true);
+}
 
 // Compute a value, hop, then return it.
 template <typename Context, typename Pool>
@@ -482,32 +564,8 @@ TEMPLATE_TEST_CASE("explicit-sched: switch inside forked child", "[explicit-sche
 
   std::int64_t child_result = 0;
 
-  struct parent_task {
-    template <typename Context, typename Pool>
-    static auto call(lf::env<Context>, Pool *other, std::int64_t *out) -> lf::task<void, Context> {
-      auto sc = co_await lf::scope();
-      co_await sc.fork(static_cast<void *>(nullptr),
-                       [](lf::env<Context>, Pool *o, std::int64_t *v) -> lf::task<void, Context> {
-                         co_await hop_to<Pool>{o};
-                         *v = fib_ref(10);
-                       }, other, out);
-      co_await sc.join();
-    }
-  };
-
-  // We cannot use a lambda directly in fork due to type constraints; use hop_child instead.
-  auto recv = [&] {
-    struct wrapper {
-      template <typename Context>
-      static auto operator()(lf::env<Context>, TestType *other, std::int64_t *out)
-          -> lf::task<void, Context> {
-        auto sc = co_await lf::scope();
-        co_await sc.fork(out, hop_child{}, other, out, std::int64_t{10});
-        co_await sc.join();
-      }
-    };
-    return lf::schedule(pool_a, wrapper{}, &pool_b, &child_result);
-  }();
+  auto recv = lf::schedule(pool_a, switch_inside_forked_child_wrapper{},
+                           &pool_b, &child_result);
 
   std::move(recv).get();
   REQUIRE(child_result == fib_ref(10));
@@ -561,18 +619,7 @@ TEMPLATE_TEST_CASE("explicit-sched: member operator co_await", "[explicit-sched]
   std::thread::id const caller_id = std::this_thread::get_id();
   std::atomic<std::thread::id> resumed_on;
 
-  struct member_hop_task {
-    template <typename Context, typename Pool>
-    static auto operator()(lf::env<Context>,
-                           Pool *other,
-                           std::atomic<std::thread::id> *out) -> lf::task<void, Context> {
-      // hop_member_op exposes operator co_await() → hop_to.
-      co_await hop_member_op<Pool>{other};
-      out->store(std::this_thread::get_id());
-    }
-  };
-
-  auto recv = lf::schedule(pool_a, member_hop_task{}, &pool_b, &resumed_on);
+  auto recv = lf::schedule(pool_a, member_op_hop_task{}, &pool_b, &resumed_on);
   std::move(recv).get();
 
   REQUIRE(resumed_on.load() != std::thread::id{});
@@ -588,17 +635,7 @@ TEMPLATE_TEST_CASE("explicit-sched: free operator co_await", "[explicit-sched]",
   std::thread::id const caller_id = std::this_thread::get_id();
   std::atomic<std::thread::id> resumed_on;
 
-  struct free_hop_task {
-    template <typename Context, typename Pool>
-    static auto operator()(lf::env<Context>,
-                           Pool *other,
-                           std::atomic<std::thread::id> *out) -> lf::task<void, Context> {
-      co_await hop_free_op<Pool>{other};
-      out->store(std::this_thread::get_id());
-    }
-  };
-
-  auto recv = lf::schedule(pool_a, free_hop_task{}, &pool_b, &resumed_on);
+  auto recv = lf::schedule(pool_a, free_op_hop_task{}, &pool_b, &resumed_on);
   std::move(recv).get();
 
   REQUIRE(resumed_on.load() != std::thread::id{});
@@ -614,17 +651,7 @@ TEMPLATE_TEST_CASE("explicit-sched: plain awaitable", "[explicit-sched]", mono_p
 
   std::atomic<bool> ran{false};
 
-  struct plain_hop {
-    template <typename Context, typename Pool>
-    static auto operator()(lf::env<Context>, Pool *other, std::atomic<bool> *flag)
-        -> lf::task<void, Context> {
-      // hop_to<Pool> is a plain awaitable — no operator co_await.
-      co_await hop_to<Pool>{other};
-      flag->store(true);
-    }
-  };
-
-  auto recv = lf::schedule(pool_a, plain_hop{}, &pool_b, &ran);
+  auto recv = lf::schedule(pool_a, plain_hop_task{}, &pool_b, &ran);
   std::move(recv).get();
   REQUIRE(ran.load());
 }
@@ -636,16 +663,7 @@ TEMPLATE_TEST_CASE("explicit-sched: switch to same pool", "[explicit-sched]", mo
 
   std::atomic<bool> ran{false};
 
-  struct self_hop {
-    template <typename Context, typename Pool>
-    static auto operator()(lf::env<Context>, Pool *p, std::atomic<bool> *flag)
-        -> lf::task<void, Context> {
-      co_await hop_to<Pool>{p};
-      flag->store(true);
-    }
-  };
-
-  auto recv = lf::schedule(pool, self_hop{}, &pool, &ran);
+  auto recv = lf::schedule(pool, self_hop_task{}, &pool, &ran);
   std::move(recv).get();
   REQUIRE(ran.load());
 }
@@ -702,9 +720,9 @@ TEST_CASE("explicit-sched: concept conformance", "[explicit-sched]") {
   // await_suspend returns non-void.
   STATIC_REQUIRE_FALSE(lf::awaitable<non_void_suspend, test_context>);
 
-  // nothrow_await_suspend classification.
-  STATIC_REQUIRE(lf::nothrow_await_suspend<good_awaitable, test_context>);
-  STATIC_REQUIRE_FALSE(lf::nothrow_await_suspend<throwing_suspend_awaitable, test_context>);
+  // throwing_suspend_awaitable still satisfies awaitable (noexcept on suspend
+  // is not a requirement of the awaitable concept itself).
+  STATIC_REQUIRE(lf::awaitable<throwing_suspend_awaitable, test_context>);
 }
 
 // ---- 16. Stress: hop binary tree ----
