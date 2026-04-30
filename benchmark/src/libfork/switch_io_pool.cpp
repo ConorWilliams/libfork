@@ -10,7 +10,7 @@ import libfork;
 // expansion can paste `requests_test` / `requests_base` from any position
 // in the translation unit.
 inline constexpr std::int64_t requests_test = 64;
-inline constexpr std::int64_t requests_base = 1024 * 64;
+inline constexpr std::int64_t requests_base = (1 << 16) - 1;
 
 namespace {
 
@@ -24,7 +24,6 @@ auto do_work(std::int64_t n) -> std::int64_t {
   std::int64_t acc = 0;
   for (std::int64_t i = 0; i < n; ++i) {
     acc += i ^ (acc >> 1);
-    benchmark::DoNotOptimize(acc);
   }
   return acc;
 }

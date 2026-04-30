@@ -81,7 +81,8 @@ constexpr auto consume(steal_handle<Context> handle) -> std::coroutine_handle<> 
 
   auto *frame = static_cast<frame_type<checkpoint_t<Context>> *>(get(key(), handle));
 
-  if (frame->steals == k_u16_max) {
+  if (frame->steals + 1 == k_u16_max) {
+    // Can't allow equal to k_u16_max because that is the sentinel
     LF_THROW(steal_overflow_error{});
   }
 
