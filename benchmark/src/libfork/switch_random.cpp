@@ -95,7 +95,9 @@ void run(benchmark::State &state) {
   }
 
   state.counters["n"] = static_cast<double>(n);
-  state.counters["p"] = static_cast<double>(threads_total);
+  state.counters["p_a"] = static_cast<double>(threads_a);
+  state.counters["p_b"] = static_cast<double>(threads_b);
+
   state.SetComplexityN(static_cast<benchmark::IterationCount>(threads_total));
 
   Sch pool_a{threads_a};
