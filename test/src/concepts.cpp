@@ -148,3 +148,81 @@ TEST_CASE("Concepts: async_nothrow_invocable", "[concepts]") {
   STATIC_REQUIRE(async_nothrow_invocable<nothrow_async, test_context, int>);
   STATIC_REQUIRE_FALSE(async_nothrow_invocable<throwing_async, test_context, int>);
 }
+
+namespace {
+
+struct plain_awaitable {};
+
+struct member_co_await {
+  auto operator co_await() -> plain_awaitable;
+};
+
+struct free_co_await {};
+
+[[maybe_unused]]
+auto operator co_await(free_co_await) -> plain_awaitable &;
+
+struct both_co_await {
+  auto operator co_await() -> plain_awaitable;
+};
+
+[[maybe_unused]]
+auto operator co_await(both_co_await) -> plain_awaitable;
+
+template <typename T>
+concept can_acquire = requires (T t) { acquire_awaitable(static_cast<T &&>(t)); };
+
+} // namespace
+
+TEST_CASE("Concepts: awaitable_acquirable", "[concepts]") {
+  // Generic identity overload accepts any type — even non-awaiters.
+  STATIC_REQUIRE(can_acquire<plain_awaitable>);
+  STATIC_REQUIRE(can_acquire<int>);
+
+  // A single operator co_await — member or free — disambiguates the dispatch.
+  STATIC_REQUIRE(can_acquire<member_co_await>);
+  STATIC_REQUIRE(can_acquire<free_co_await>);
+
+  // Defining BOTH member and free operator co_await leaves the dispatch ambiguous.
+  STATIC_REQUIRE_FALSE(can_acquire<both_co_await>);
+}
+
+TEST_CASE("acquire_awaitable", "[concepts]") {
+  // No operator co_await: returns the argument unchanged, preserving value category.
+  using acq_plain_xref = decltype(acquire_awaitable(std::declval<plain_awaitable>()));
+  using acq_plain_lref = decltype(acquire_awaitable(std::declval<plain_awaitable &>()));
+  using acq_plain_cref = decltype(acquire_awaitable(std::declval<plain_awaitable const &>()));
+
+  STATIC_REQUIRE(std::same_as<acq_plain_xref, plain_awaitable &&>);
+  STATIC_REQUIRE(std::same_as<acq_plain_lref, plain_awaitable &>);
+  STATIC_REQUIRE(std::same_as<acq_plain_cref, plain_awaitable const &>);
+
+  // Member operator co_await: returns whatever the member call produces.
+  STATIC_REQUIRE(std::same_as<decltype(acquire_awaitable(std::declval<member_co_await>())), plain_awaitable>);
+
+  // Free operator co_await: returns whatever the ADL-found free call produces.
+  STATIC_REQUIRE(std::same_as<decltype(acquire_awaitable(std::declval<free_co_await>())), plain_awaitable &>);
+}
+
+namespace {
+
+struct lf_awaitable {
+  auto await_ready() -> bool;
+  auto await_suspend(lf::sched_handle<test_context>, test_context &) -> void;
+  auto await_resume() -> void;
+};
+
+struct bad_lf_awaitable {
+  auto await_ready() -> bool;
+  auto await_suspend(lf::sched_handle<test_context>, int &) -> void; // Wrong context type
+  auto await_resume() -> void;
+};
+
+} // namespace
+
+TEST_CASE("Concepts: awaitable_impl", "[concepts]") {
+
+  STATIC_REQUIRE(lf::awaitable<lf_awaitable, test_context>);
+
+  STATIC_REQUIRE_FALSE(lf::awaitable<bad_lf_awaitable, test_context>);
+}

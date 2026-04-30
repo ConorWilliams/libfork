@@ -123,7 +123,7 @@ constexpr auto final_suspend_full(Context &context, frame_t<Context> *frame) noe
     // join race.
     bool const owner = parent->stack_ckpt == context.stack().checkpoint();
 
-    // As soon as we do the fetch_sub (if we loose) someone may acquire
+    // As soon as we do the fetch_sub (if we lose) someone may acquire
     // the stack so we must prepare it for release now.
     auto release_key = context.stack().prepare_release();
 

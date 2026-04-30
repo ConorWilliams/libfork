@@ -6,18 +6,16 @@ import libfork;
 
 using namespace lf;
 
-namespace {
+TEST_CASE("Constructible", "[adaptors]") {
+  // adapt_vector's default ctor only stores the allocator; no allocation occurs,
+  // so it should be noexcept when the allocator's default ctor is noexcept.
+  STATIC_REQUIRE(std::is_nothrow_default_constructible_v<adapt_vector<>>);
 
-// adapt_vector's default ctor only stores the allocator; no allocation occurs,
-// so it should be noexcept when the allocator's default ctor is noexcept.
-static_assert(std::is_nothrow_default_constructible_v<adapt_vector<>>);
-
-// adapt_deque's default ctor delegates to a capacity-taking ctor that
-// allocates an internal buffer, so it must NOT be noexcept — bad_alloc must
-// propagate instead of invoking std::terminate.
-static_assert(!std::is_nothrow_default_constructible_v<adapt_deque<>>);
-
-} // namespace
+  // adapt_deque's default ctor delegates to a capacity-taking ctor that
+  // allocates an internal buffer, so it must NOT be noexcept — bad_alloc must
+  // propagate instead of invoking std::terminate.
+  STATIC_REQUIRE(!std::is_nothrow_default_constructible_v<adapt_deque<>>);
+}
 
 TEST_CASE("adapt_deque: default constructor allocates", "[adaptors]") {
   adapt_deque<> d;
