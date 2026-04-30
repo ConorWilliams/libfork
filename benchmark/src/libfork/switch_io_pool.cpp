@@ -114,9 +114,10 @@ struct fan_out_with_io {
 // Fan-out: fork M request_baseline tasks and sum.
 template <lf::scheduler Sch>
 struct fan_out_baseline {
-  using context_type = typename Sch::context_type;
 
-  static auto operator()(lf::env<context_type>, std::int64_t m) -> lf::task<std::int64_t, context_type> {
+  using context_type = Sch::context_type;
+
+  static auto operator()(std::int64_t m) -> lf::task<std::int64_t, context_type> {
     std::vector<std::int64_t> results(static_cast<std::size_t>(m), 0);
 
     auto sc = co_await lf::scope();
@@ -201,5 +202,6 @@ void run_baseline(benchmark::State &state) {
 // prefix = requests  →  macro uses requests_test / requests_base
 LIBFORK_BENCH_ALL_MT(run_with_io, request_io, requests, mono_busy_pool)
 LIBFORK_BENCH_ALL_MT(run_baseline, request_baseline, requests, mono_busy_pool)
+
 LIBFORK_BENCH_ALL_MT(run_with_io, request_io, requests, poly_busy_pool)
 LIBFORK_BENCH_ALL_MT(run_baseline, request_baseline, requests, poly_busy_pool)
