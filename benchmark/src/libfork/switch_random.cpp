@@ -17,10 +17,12 @@ struct switch_to_other {
 
   Sch *target;
 
+  using context_type = Sch::context_type;
+
   auto await_ready() noexcept -> bool { return false; }
-  void await_suspend(lf::sched_handle<typename Sch::context_type> h, typename Sch::context_type &) noexcept {
-    target->post(h);
-  }
+
+  void await_suspend(lf::sched_handle<context_type> h, context_type &) { target->post(h); }
+
   auto await_resume() noexcept -> void {}
 };
 
@@ -29,26 +31,37 @@ struct pool_pair {
   Sch *pools[2];
 };
 
-// splitmix64 step
-constexpr auto next_seed(std::uint64_t seed) noexcept -> std::uint64_t {
-  return seed * 6364136223846793005ULL + 0x9E3779B97F4A7C15ULL;
-}
+// SplitMix64
+struct rng {
+
+  std::uint64_t state;
+
+  auto next() -> rng {
+    state += 0x9e3779b97f4a7c15ULL;
+    std::uint64_t z = state;
+    z = (z ^ (z >> 30ULL)) * 0xbf58476d1ce4e5b9ULL;
+    z = (z ^ (z >> 27ULL)) * 0x94d049bb133111ebULL;
+    return {.state = z ^ (z >> 31ULL)};
+  }
+};
 
 // ~10% switch probability: threshold / 256 ≈ 0.10
 inline constexpr std::uint64_t k_switch_threshold = 25;
 
 template <lf::scheduler Sch>
 struct random_switch_fib {
-  using context_type = typename Sch::context_type;
 
-  static auto
-  operator()(lf::env<context_type>, std::int64_t n, pool_pair<Sch> *pp, std::uint64_t seed, unsigned current)
-      -> lf::task<std::int64_t, context_type> {
+  using context_type = Sch::context_type;
+
+  using task = lf::task<std::int64_t, context_type>;
+
+  static auto operator()(std::int64_t n, pool_pair<Sch> *pp, rng seed, unsigned current) -> task {
+
     if (n < 2) {
       co_return n;
     }
 
-    if ((seed & 0xff) < k_switch_threshold) {
+    if ((seed.state & 0xffULL) < k_switch_threshold) {
       current = 1U - current;
       co_await switch_to_other<Sch>{pp->pools[current]};
     }
@@ -56,13 +69,10 @@ struct random_switch_fib {
     std::int64_t lhs = 0;
     std::int64_t rhs = 0;
 
-    std::uint64_t seed_l = next_seed(seed);
-    std::uint64_t seed_r = next_seed(seed_l);
-
     auto sc = co_await lf::scope();
 
-    co_await sc.fork(&rhs, random_switch_fib{}, n - 2, pp, seed_r, current);
-    co_await sc.call(&lhs, random_switch_fib{}, n - 1, pp, seed_l, current);
+    co_await sc.fork(&rhs, random_switch_fib{}, n - 2, pp, seed.next(), current);
+    co_await sc.call(&lhs, random_switch_fib{}, n - 1, pp, seed.next(), current);
 
     co_await sc.join();
 
@@ -96,8 +106,8 @@ void run(benchmark::State &state) {
   for (auto _ : state) {
     benchmark::DoNotOptimize(n);
 
-    lf::receiver recv = lf::schedule(pool_a, random_switch_fib<Sch>{}, n, &pp, std::uint64_t{1}, 0U);
-    std::int64_t return_value = std::move(recv).get();
+    std::int64_t return_value = lf::schedule(pool_a, random_switch_fib<Sch>{}, n, &pp, rng{1}, 0U).get();
+    ;
 
     if (return_value != expect) {
       state.SkipWithError(std::format("incorrect result: {} != {}", return_value, expect));
