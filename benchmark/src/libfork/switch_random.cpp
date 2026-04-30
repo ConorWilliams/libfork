@@ -87,12 +87,14 @@ void run(benchmark::State &state) {
   std::int64_t expect = fib_ref(n);
 
   auto threads_total = static_cast<std::size_t>(state.range(1));
+
+  if (threads_total < 2) {
+    state.SkipWithMessage("switch_random requires at least 2 total workers");
+    return;
+  }
+
   auto threads_a = (threads_total + 1) / 2;
   auto threads_b = threads_total - threads_a;
-
-  if (threads_b == 0) {
-    threads_b = 1;
-  }
 
   state.counters["n"] = static_cast<double>(n);
   state.counters["p_a"] = static_cast<double>(threads_a);
