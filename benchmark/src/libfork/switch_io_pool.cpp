@@ -10,7 +10,7 @@ import libfork;
 // expansion can paste `requests_test` / `requests_base` from any position
 // in the translation unit.
 inline constexpr std::int64_t requests_test = 64;
-inline constexpr std::int64_t requests_base = (1 << 16) - 1;
+inline constexpr std::int64_t requests_base = (1 << 16) - 2;
 
 namespace {
 
@@ -97,12 +97,9 @@ struct fan_out_with_io {
 
     // TODO: use for_each algorithm
 
-    for (std::int64_t i = 0; i < m - 1; ++i) {
+    for (std::int64_t i = 0; i < m; ++i) {
       co_await sc.fork(&results[static_cast<std::size_t>(i)], request_with_io<Sch>{}, compute_pool, io_pool);
     }
-
-    co_await sc.call(
-        &results[static_cast<std::size_t>(m - 1)], request_with_io<Sch>{}, compute_pool, io_pool);
 
     co_await sc.join();
 
@@ -124,11 +121,9 @@ struct fan_out_baseline {
 
     auto sc = co_await lf::scope();
 
-    for (std::int64_t i = 0; i < m - 1; ++i) {
+    for (std::int64_t i = 0; i < m; ++i) {
       co_await sc.fork(&results[static_cast<std::size_t>(i)], request_baseline<Sch>{});
     }
-
-    co_await sc.call(&results[static_cast<std::size_t>(m - 1)], request_baseline<Sch>{});
 
     co_await sc.join();
 
