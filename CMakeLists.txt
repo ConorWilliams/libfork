@@ -100,6 +100,9 @@ target_sources(libfork_libfork
       src/schedulers/schedulers.cxx
       src/schedulers/inline.cxx
       src/schedulers/busy.cxx
+      # libfork.algorithm
+      src/algorithm/algorithm.cxx
+      src/algorithm/for_each.cxx
     PRIVATE
       src/exception.cpp
 )
