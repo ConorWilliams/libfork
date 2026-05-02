@@ -8,10 +8,19 @@ import libfork.core;
 
 namespace lf {
 
+template <typename T>
+concept sized_random_access_range = std::ranges::random_access_range<T> && std::ranges::sized_range<T>;
+
 struct for_each_impl {
  private:
   template <worker_context Context>
   using task = lf::task<void, Context>;
+
+  template <typename T>
+  using iter_difference_t = std::iter_difference_t<T>;
+
+  template <typename T>
+  using range_difference_t = std::ranges::range_difference_t<T>;
 
  public:
   // (1) iterator-pair, chunk size n > 1
@@ -20,7 +29,7 @@ struct for_each_impl {
             std::sized_sentinel_for<I> S,
             std::indirectly_unary_invocable<I> Fn>
   static auto
-  operator()(env<Context> /* env */, I head, S tail, std::iter_difference_t<I> n, Fn fn) -> task<Context> {
+  operator()(env<Context> /* env */, I head, S tail, iter_difference_t<I> n, Fn fn) -> task<Context> {
 
     LF_ASSUME(n > 0);
 
@@ -70,12 +79,10 @@ struct for_each_impl {
 
   // (3) range + n -> dispatches to (1) or (2)
   template <worker_context Context,
-            std::ranges::random_access_range Range,
+            sized_random_access_range Range,
             std::indirectly_unary_invocable<std::ranges::iterator_t<Range>> Fn>
-    requires std::ranges::sized_range<Range>
   static auto
-  operator()(env<Context> /* env */, Range &&range, std::ranges::range_difference_t<Range> n, Fn fn)
-      -> task<Context> {
+  operator()(env<Context> /* env */, Range &&range, range_difference_t<Range> n, Fn fn) -> task<Context> {
 
     LF_ASSUME(n > 0);
 
@@ -90,9 +97,8 @@ struct for_each_impl {
 
   // (4) range, n == 1 -> dispatches to (2)
   template <worker_context Context,
-            std::ranges::random_access_range Range,
+            sized_random_access_range Range,
             std::indirectly_unary_invocable<std::ranges::iterator_t<Range>> Fn>
-    requires std::ranges::sized_range<Range>
   static auto operator()(env<Context> /* env */, Range &&range, Fn fn) -> task<Context> {
     auto sc = co_await scope();
     co_await sc.call(for_each_impl{}, std::ranges::begin(range), std::ranges::end(range), std::move(fn));
