@@ -42,8 +42,8 @@ TEMPLATE_TEST_CASE("for_each: iterator-pair, n>1", "[for_each]", mono_pool, poly
       std::vector<int> v(4096);
       std::iota(v.begin(), v.end(), 0);
 
-      auto recv = lf::schedule(
-          pool, lf::for_each, v.begin(), v.end(), std::ptrdiff_t{64}, [](int &x) noexcept {
+      auto recv =
+          lf::schedule(pool, lf::for_each, v.begin(), v.end(), std::ptrdiff_t{64}, [](int &x) noexcept {
             x += 1;
           });
       std::move(recv).get();
@@ -63,10 +63,9 @@ TEMPLATE_TEST_CASE("for_each: range + n=1 dispatch", "[for_each]", mono_pool, po
       std::vector<int> v(512);
       std::iota(v.begin(), v.end(), 1);
 
-      auto recv = lf::schedule(
-          pool, lf::for_each, std::span<int>(v), std::ptrdiff_t{1}, [](int &x) noexcept {
-            x = -x;
-          });
+      auto recv = lf::schedule(pool, lf::for_each, std::span<int>(v), std::ptrdiff_t{1}, [](int &x) noexcept {
+        x = -x;
+      });
       std::move(recv).get();
 
       for (std::size_t i = 0; i < v.size(); ++i) {
@@ -83,8 +82,8 @@ TEMPLATE_TEST_CASE("for_each: range + n>1 dispatch", "[for_each]", mono_pool, po
 
       std::vector<int> v(10000, 7);
 
-      auto recv = lf::schedule(
-          pool, lf::for_each, std::span<int>(v), std::ptrdiff_t{10}, [](int &x) noexcept {
+      auto recv =
+          lf::schedule(pool, lf::for_each, std::span<int>(v), std::ptrdiff_t{10}, [](int &x) noexcept {
             x = x * x;
           });
       std::move(recv).get();
@@ -130,10 +129,9 @@ TEMPLATE_TEST_CASE("for_each: empty range", "[for_each]", mono_pool, poly_pool) 
   }
 
   SECTION("iterator pair, n>1") {
-    auto recv =
-        lf::schedule(pool, lf::for_each, v.begin(), v.end(), std::ptrdiff_t{8}, [&](int &) noexcept {
-          calls.fetch_add(1, std::memory_order_relaxed);
-        });
+    auto recv = lf::schedule(pool, lf::for_each, v.begin(), v.end(), std::ptrdiff_t{8}, [&](int &) noexcept {
+      calls.fetch_add(1, std::memory_order_relaxed);
+    });
     std::move(recv).get();
     REQUIRE(calls.load() == 0);
   }
@@ -170,8 +168,12 @@ TEMPLATE_TEST_CASE("for_each: with projection", "[for_each]", mono_pool, poly_po
           v.begin(),
           v.end(),
           std::ptrdiff_t{32},
-          [](std::pair<int, int> &p) noexcept { p.second = p.first * p.first; },
-          [](std::pair<int, int> &p) noexcept -> std::pair<int, int> & { return p; } //
+          [](std::pair<int, int> &p) noexcept {
+            p.second = p.first * p.first;
+          },
+          [](std::pair<int, int> &p) noexcept -> std::pair<int, int> & {
+            return p;
+          } //
       );
       std::move(recv).get();
 

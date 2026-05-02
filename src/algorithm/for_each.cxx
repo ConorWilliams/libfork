@@ -18,12 +18,8 @@ struct for_each_overload {
             std::sized_sentinel_for<I> S,
             typename Proj = std::identity,
             std::indirectly_unary_invocable<std::projected<I, Proj>> Fun>
-  static auto operator()(env<Context>,
-                         I head,
-                         S tail,
-                         std::iter_difference_t<I> n,
-                         Fun fun,
-                         Proj proj = {}) -> task<void, Context> {
+  static auto operator()(env<Context>, I head, S tail, std::iter_difference_t<I> n, Fun fun, Proj proj = {})
+      -> task<void, Context> {
     LF_ENSURE(n > 0);
     auto len = tail - head;
     LF_ENSURE(len >= 0);
@@ -52,8 +48,7 @@ struct for_each_overload {
             std::sized_sentinel_for<I> S,
             typename Proj = std::identity,
             std::indirectly_unary_invocable<std::projected<I, Proj>> Fun>
-  static auto
-  operator()(env<Context>, I head, S tail, Fun fun, Proj proj = {}) -> task<void, Context> {
+  static auto operator()(env<Context>, I head, S tail, Fun fun, Proj proj = {}) -> task<void, Context> {
     auto len = tail - head;
     LF_ENSURE(len >= 0);
 
@@ -79,11 +74,9 @@ struct for_each_overload {
             typename Proj = std::identity,
             std::indirectly_unary_invocable<std::projected<std::ranges::iterator_t<Range>, Proj>> Fun>
     requires std::ranges::sized_range<Range>
-  static auto operator()(env<Context>,
-                         Range &&range,
-                         std::ranges::range_difference_t<Range> n,
-                         Fun fun,
-                         Proj proj = {}) -> task<void, Context> {
+  static auto
+  operator()(env<Context>, Range &&range, std::ranges::range_difference_t<Range> n, Fun fun, Proj proj = {})
+      -> task<void, Context> {
     LF_ENSURE(n > 0);
     auto sc = co_await scope();
     if (n == 1) {
@@ -109,8 +102,7 @@ struct for_each_overload {
             typename Proj = std::identity,
             std::indirectly_unary_invocable<std::projected<std::ranges::iterator_t<Range>, Proj>> Fun>
     requires std::ranges::sized_range<Range>
-  static auto
-  operator()(env<Context>, Range &&range, Fun fun, Proj proj = {}) -> task<void, Context> {
+  static auto operator()(env<Context>, Range &&range, Fun fun, Proj proj = {}) -> task<void, Context> {
     auto sc = co_await scope();
     co_await sc.call(for_each_overload{},
                      std::ranges::begin(range),
