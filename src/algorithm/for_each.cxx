@@ -8,8 +8,6 @@ import libfork.core;
 
 namespace lf {
 
-namespace impl {
-
 struct for_each_overload {
  private:
   template <worker_context Context>
@@ -28,7 +26,7 @@ struct for_each_overload {
 
     auto len = tail - head;
 
-    LF_ASSUME(len > 0);
+    LF_ASSUME(len >= 0);
 
     if (len <= n) {
       for (; head != tail; ++head) {
@@ -53,11 +51,14 @@ struct for_each_overload {
 
     auto len = tail - head;
 
-    LF_ASSUME(len > 0);
+    LF_ASSUME(len >= 0);
 
-    if (len == 1) {
-      std::invoke(fn, *head);
-      co_return;
+    switch (len) {
+      case 0:
+        co_return;
+      case 1:
+        std::invoke(fn, *head);
+        co_return;
     }
 
     auto mid = head + (len / 2);
@@ -80,16 +81,11 @@ struct for_each_overload {
 
     auto sc = co_await scope();
     if (n == 1) {
-      co_await sc.call(for_each_overload{},
-                       std::ranges::begin(range),
-                       std::ranges::end(range),
-                       std::move(fn));
+      co_await sc.call(
+          for_each_overload{}, std::ranges::begin(range), std::ranges::end(range), std::move(fn));
     } else {
-      co_await sc.call(for_each_overload{},
-                       std::ranges::begin(range),
-                       std::ranges::end(range),
-                       n,
-                       std::move(fn));
+      co_await sc.call(
+          for_each_overload{}, std::ranges::begin(range), std::ranges::end(range), n, std::move(fn));
     }
     co_await sc.join();
   }
@@ -101,16 +97,11 @@ struct for_each_overload {
     requires std::ranges::sized_range<Range>
   static auto operator()(env<Context> /* env */, Range &&range, Fn fn) -> task<Context> {
     auto sc = co_await scope();
-    co_await sc.call(for_each_overload{},
-                     std::ranges::begin(range),
-                     std::ranges::end(range),
-                     std::move(fn));
+    co_await sc.call(for_each_overload{}, std::ranges::begin(range), std::ranges::end(range), std::move(fn));
     co_await sc.join();
   }
 };
 
-} // namespace impl
-
-export inline constexpr impl::for_each_overload for_each = {};
+export inline constexpr for_each_overload for_each = {};
 
 } // namespace lf
