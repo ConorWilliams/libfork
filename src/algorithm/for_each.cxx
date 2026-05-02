@@ -82,27 +82,19 @@ struct for_each_impl {
             sized_random_access_range Range,
             std::indirectly_unary_invocable<std::ranges::iterator_t<Range>> Fn>
   static auto
-  operator()(env<Context> /* env */, Range &&range, range_difference_t<Range> n, Fn fn) -> task<Context> {
-
-    LF_ASSUME(n > 0);
-
-    auto sc = co_await scope();
+  operator()(env<Context> context, Range &&range, range_difference_t<Range> n, Fn fn) -> task<Context> {
     if (n == 1) {
-      co_await sc.call(for_each_impl{}, std::ranges::begin(range), std::ranges::end(range), std::move(fn));
-    } else {
-      co_await sc.call(for_each_impl{}, std::ranges::begin(range), std::ranges::end(range), n, std::move(fn));
+      return for_each_impl{}(context, std::ranges::begin(range), std::ranges::end(range), std::move(fn));
     }
-    co_await sc.join();
+    return for_each_impl{}(context, std::ranges::begin(range), std::ranges::end(range), n, std::move(fn));
   }
 
   // (4) range, n == 1 -> dispatches to (2)
   template <worker_context Context,
             sized_random_access_range Range,
             std::indirectly_unary_invocable<std::ranges::iterator_t<Range>> Fn>
-  static auto operator()(env<Context> /* env */, Range &&range, Fn fn) -> task<Context> {
-    auto sc = co_await scope();
-    co_await sc.call(for_each_impl{}, std::ranges::begin(range), std::ranges::end(range), std::move(fn));
-    co_await sc.join();
+  static auto operator()(env<Context> context, Range &&range, Fn fn) -> task<Context> {
+    return for_each_impl{}(context, std::ranges::begin(range), std::ranges::end(range), std::move(fn));
   }
 };
 
