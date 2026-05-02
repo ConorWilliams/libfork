@@ -11,7 +11,6 @@ using mono_pool = lf::mono_busy_pool<lf::geometric_stack<>>;
 using poly_pool = lf::poly_busy_pool<lf::geometric_stack<>>;
 
 constexpr std::array<std::size_t, 3> k_worker_counts{1, 2, 4};
-
 constexpr std::array<std::size_t, 12> k_sizes{0, 1, 2, 3, 4, 5, 6, 9, 8, 97, 1024, 4028};
 
 } // namespace
@@ -42,7 +41,7 @@ TEMPLATE_TEST_CASE("for_each: iterator-pair, n>1", "[for_each]", mono_pool, poly
   for (auto n_workers : k_worker_counts) {
     for (auto n : k_sizes) {
       for (auto ch : std::span(k_sizes).subspan(1)) {
-        DYNAMIC_SECTION("workers=" << n_workers << " len=" << n) {
+        DYNAMIC_SECTION("workers=" << n_workers << " len=" << n << " chunk=" << ch) {
           TestType pool{n_workers};
 
           std::vector v{std::from_range, std::ranges::iota_view(0UZ, n)};
@@ -66,7 +65,7 @@ TEMPLATE_TEST_CASE("for_each: range + n", "[for_each]", mono_pool, poly_pool) {
   for (auto n_workers : k_worker_counts) {
     for (auto n : k_sizes) {
       for (auto ch : std::span(k_sizes).subspan(1)) {
-        DYNAMIC_SECTION("workers=" << n_workers << " len=" << n) {
+        DYNAMIC_SECTION("workers=" << n_workers << " len=" << n << " chunk=" << ch) {
           TestType pool{n_workers};
 
           std::vector v{std::from_range, std::ranges::iota_view(0UZ, n)};
