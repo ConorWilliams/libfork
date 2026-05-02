@@ -44,75 +44,69 @@ struct for_each_overload {
     co_await sc.join();
   }
 
-  // // (2) iterator-pair, n == 1 specialization (no n parameter)
-  // template <typename Context,
-  //           std::random_access_iterator I,
-  //           std::sized_sentinel_for<I> S,
-  //           typename Proj = std::identity,
-  //           std::indirectly_unary_invocable<std::projected<I, Proj>> Fn>
-  // static auto operator()(env<Context>, I head, S tail, Fn fn, Proj proj = {}) -> task<void, Context> {
-  //   auto len = tail - head;
-  //   LF_ENSURE(len >= 0);
-  //
-  //   switch (len) {
-  //     case 0:
-  //       co_return;
-  //     case 1:
-  //       std::invoke(fn, std::invoke(proj, *head));
-  //       co_return;
-  //     default: {
-  //       auto mid = head + (len / 2);
-  //       auto sc = co_await scope();
-  //       co_await sc.fork(for_each_overload{}, head, mid, fn, proj);
-  //       co_await sc.call(for_each_overload{}, mid, tail, fn, proj);
-  //       co_await sc.join();
-  //     }
-  //   }
-  // }
-  //
-  // // (3) range + n -> dispatches to (1) or (2)
-  // template <typename Context,
-  //           std::ranges::random_access_range Range,
-  //           typename Proj = std::identity,
-  //           std::indirectly_unary_invocable<std::projected<std::ranges::iterator_t<Range>, Proj>> Fn>
-  //   requires std::ranges::sized_range<Range>
-  // static auto
-  // operator()(env<Context>, Range &&range, std::ranges::range_difference_t<Range> n, Fn fn, Proj proj = {})
-  //     -> task<void, Context> {
-  //   LF_ENSURE(n > 0);
-  //   auto sc = co_await scope();
-  //   if (n == 1) {
-  //     co_await sc.call(for_each_overload{},
-  //                      std::ranges::begin(range),
-  //                      std::ranges::end(range),
-  //                      std::move(fn),
-  //                      std::move(proj));
-  //   } else {
-  //     co_await sc.call(for_each_overload{},
-  //                      std::ranges::begin(range),
-  //                      std::ranges::end(range),
-  //                      n,
-  //                      std::move(fn),
-  //                      std::move(proj));
-  //   }
-  //   co_await sc.join();
-  // }
-  //
-  // // (4) range, n == 1 -> dispatches to (2)
-  // template <typename Context,
-  //           std::ranges::random_access_range Range,
-  //           typename Proj = std::identity,
-  //           std::indirectly_unary_invocable<std::projected<std::ranges::iterator_t<Range>, Proj>> Fn>
-  //   requires std::ranges::sized_range<Range>
-  // static auto operator()(env<Context>, Range &&range, Fn fn, Proj proj = {}) -> task<void, Context> {
-  //   auto sc = co_await scope();
-  //   co_await sc.call(for_each_overload{},
-  //                    std::ranges::begin(range),
-  //                    std::ranges::end(range),
-  //                    std::move(fn),
-  //                    std::move(proj));
-  //   co_await sc.join();
-  // }
+  // (2) iterator-pair, n == 1 specialization (no n parameter)
+  template <worker_context Context,
+            std::random_access_iterator I,
+            std::sized_sentinel_for<I> S,
+            std::indirectly_unary_invocable<I> Fn>
+  static auto operator()(env<Context> /* env */, I head, S tail, Fn fn) -> task<Context> {
+
+    auto len = tail - head;
+
+    LF_ASSUME(len > 0);
+
+    if (len == 1) {
+      std::invoke(fn, *head);
+      co_return;
+    }
+
+    auto mid = head + (len / 2);
+    auto sc = co_await scope();
+    co_await sc.fork(for_each_overload{}, head, mid, fn);
+    co_await sc.call(for_each_overload{}, mid, tail, fn);
+    co_await sc.join();
+  }
+
+  // (3) range + n -> dispatches to (1) or (2)
+  template <worker_context Context,
+            std::ranges::random_access_range Range,
+            std::indirectly_unary_invocable<std::ranges::iterator_t<Range>> Fn>
+    requires std::ranges::sized_range<Range>
+  static auto
+  operator()(env<Context> /* env */, Range &&range, std::ranges::range_difference_t<Range> n, Fn fn)
+      -> task<Context> {
+
+    LF_ASSUME(n > 0);
+
+    auto sc = co_await scope();
+    if (n == 1) {
+      co_await sc.call(for_each_overload{},
+                       std::ranges::begin(range),
+                       std::ranges::end(range),
+                       std::move(fn));
+    } else {
+      co_await sc.call(for_each_overload{},
+                       std::ranges::begin(range),
+                       std::ranges::end(range),
+                       n,
+                       std::move(fn));
+    }
+    co_await sc.join();
+  }
+
+  // (4) range, n == 1 -> dispatches to (2)
+  template <worker_context Context,
+            std::ranges::random_access_range Range,
+            std::indirectly_unary_invocable<std::ranges::iterator_t<Range>> Fn>
+    requires std::ranges::sized_range<Range>
+  static auto operator()(env<Context> /* env */, Range &&range, Fn fn) -> task<Context> {
+    auto sc = co_await scope();
+    co_await sc.call(for_each_overload{},
+                     std::ranges::begin(range),
+                     std::ranges::end(range),
+                     std::move(fn));
+    co_await sc.join();
+  }
 };
 
 } // namespace impl
