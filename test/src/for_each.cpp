@@ -17,9 +17,11 @@ constexpr std::array<std::size_t, 12> k_sizes{0, 1, 2, 3, 4, 5, 6, 8, 9, 97, 102
 
 TEMPLATE_TEST_CASE("for_each: iterator-pair, n=1 (no n parameter)", "[for_each]", mono_pool, poly_pool) {
   for (auto n_workers : k_worker_counts) {
+
+    TestType pool{n_workers};
+
     for (auto n : k_sizes) {
       DYNAMIC_SECTION("workers=" << n_workers << " len=" << n) {
-        TestType pool{n_workers};
 
         std::vector v{std::from_range, std::ranges::iota_view(0UZ, n)};
 
@@ -39,10 +41,12 @@ TEMPLATE_TEST_CASE("for_each: iterator-pair, n=1 (no n parameter)", "[for_each]"
 
 TEMPLATE_TEST_CASE("for_each: iterator-pair, n>1", "[for_each]", mono_pool, poly_pool) {
   for (auto n_workers : k_worker_counts) {
+
+    TestType pool{n_workers};
+
     for (auto n : k_sizes) {
       for (auto ch : std::span(k_sizes).subspan(1)) {
         DYNAMIC_SECTION("workers=" << n_workers << " len=" << n << " chunk=" << ch) {
-          TestType pool{n_workers};
 
           std::vector v{std::from_range, std::ranges::iota_view(0UZ, n)};
 
@@ -63,10 +67,12 @@ TEMPLATE_TEST_CASE("for_each: iterator-pair, n>1", "[for_each]", mono_pool, poly
 
 TEMPLATE_TEST_CASE("for_each: range + n", "[for_each]", mono_pool, poly_pool) {
   for (auto n_workers : k_worker_counts) {
+
+    TestType pool{n_workers};
+
     for (auto n : k_sizes) {
       for (auto ch : std::span(k_sizes).subspan(1)) {
         DYNAMIC_SECTION("workers=" << n_workers << " len=" << n << " chunk=" << ch) {
-          TestType pool{n_workers};
 
           std::vector v{std::from_range, std::ranges::iota_view(0UZ, n)};
 
@@ -87,9 +93,11 @@ TEMPLATE_TEST_CASE("for_each: range + n", "[for_each]", mono_pool, poly_pool) {
 
 TEMPLATE_TEST_CASE("for_each: range no n (default chunk)", "[for_each]", mono_pool, poly_pool) {
   for (auto n_workers : k_worker_counts) {
+
+    TestType pool{n_workers};
+
     for (auto n : k_sizes) {
       DYNAMIC_SECTION("workers=" << n_workers << " len=" << n) {
-        TestType pool{n_workers};
 
         std::vector v{std::from_range, std::ranges::iota_view(0UZ, n)};
 
