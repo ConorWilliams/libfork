@@ -18,8 +18,6 @@ namespace lf {
 //            matching std::indirect_result_t — the same as std::projected.
 // ============================================================================
 
-namespace detail_projected {
-
 template <typename Proj, typename Context, typename I>
 struct projection_result;
 
@@ -38,8 +36,6 @@ struct projection_result<Proj, Context, I> {
 
 template <typename Proj, typename Context, typename I>
 using projection_result_t = typename projection_result<Proj, Context, I>::type;
-
-} // namespace detail_projected
 
 // ============================================================================
 //  Concepts: indirectly invocable, optionally async.
@@ -84,8 +80,6 @@ concept indirectly_async_or_unary_invocable = worker_context<Context> &&        
 //  checking only and never has a runtime instance.
 // ============================================================================
 
-namespace detail_projected {
-
 template <typename I, typename Proj, typename Context>
 struct projected_impl {
   struct type {
@@ -103,10 +97,8 @@ struct projected_impl<I, Proj, Context> {
   };
 };
 
-} // namespace detail_projected
-
 export template <std::indirectly_readable I, typename Proj, worker_context Context>
   requires indirectly_async_or_regular_unary_invocable<Proj, Context, I>
-using projected = typename detail_projected::projected_impl<I, Proj, Context>::type;
+using projected = projected_impl<I, Proj, Context>::type;
 
 } // namespace lf
