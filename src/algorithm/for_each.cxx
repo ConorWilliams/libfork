@@ -6,29 +6,12 @@ import std;
 
 import libfork.core;
 
+import :projected;
+
 namespace lf {
 
 template <typename T>
 concept sized_random_access_range = std::ranges::random_access_range<T> && std::ranges::sized_range<T>;
-
-// Async analogue of std::indirectly_unary_invocable: same shape as the std
-// concept, but with std::invocable replaced by async_invocable and the
-// common_reference_with check applied to the resulting tasks' value types
-// (via async_result_t). No projection support, so indirect-value-t<I>
-// degrades to std::iter_value_t<I>&.
-template <typename F, typename Context, typename I>
-concept indirectly_async_unary_invocable =
-    std::indirectly_readable<I> &&                                       //
-    std::copy_constructible<F> &&                                        //
-    async_invocable<F &, Context, std::iter_value_t<I> &> &&             //
-    async_invocable<F &, Context, std::iter_reference_t<I>> &&           //
-    std::common_reference_with<                                          //
-        async_result_t<F &, Context, std::iter_value_t<I> &>,            //
-        async_result_t<F &, Context, std::iter_reference_t<I>>>;         //
-
-template <typename Fn, typename Context, typename I>
-concept iter_indirect_unary_invocable =
-    std::indirectly_unary_invocable<Fn, I> || indirectly_async_unary_invocable<Fn, Context, I>;
 
 struct for_each_impl {
  private:
@@ -47,7 +30,7 @@ struct for_each_impl {
             std::random_access_iterator I,
             std::sized_sentinel_for<I> S,
             typename Fn>
-    requires iter_indirect_unary_invocable<Fn, Context, I>
+    requires indirectly_async_or_unary_invocable<Fn, Context, I>
   static auto
   operator()(env<Context> /* env */, I head, S tail, iter_difference_t<I> n, Fn fn) -> task<Context> {
 
@@ -84,7 +67,7 @@ struct for_each_impl {
             std::random_access_iterator I,
             std::sized_sentinel_for<I> S,
             typename Fn>
-    requires iter_indirect_unary_invocable<Fn, Context, I>
+    requires indirectly_async_or_unary_invocable<Fn, Context, I>
   static auto operator()(env<Context> /* env */, I head, S tail, Fn fn) -> task<Context> {
 
     auto len = tail - head;
@@ -116,7 +99,7 @@ struct for_each_impl {
   template <worker_context Context,
             sized_random_access_range Range,
             typename Fn>
-    requires iter_indirect_unary_invocable<Fn, Context, std::ranges::iterator_t<Range>>
+    requires indirectly_async_or_unary_invocable<Fn, Context, std::ranges::iterator_t<Range>>
   static auto
   operator()(env<Context> context, Range &&range, range_difference_t<Range> n, Fn fn) -> task<Context> {
     if (n == 1) {
@@ -129,7 +112,7 @@ struct for_each_impl {
   template <worker_context Context,
             sized_random_access_range Range,
             typename Fn>
-    requires iter_indirect_unary_invocable<Fn, Context, std::ranges::iterator_t<Range>>
+    requires indirectly_async_or_unary_invocable<Fn, Context, std::ranges::iterator_t<Range>>
   static auto operator()(env<Context> context, Range &&range, Fn fn) -> task<Context> {
     return for_each_impl{}(context, std::ranges::begin(range), std::ranges::end(range), std::move(fn));
   }
