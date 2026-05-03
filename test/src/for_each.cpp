@@ -11,7 +11,7 @@ using mono_pool = lf::mono_busy_pool<lf::geometric_stack<>>;
 using poly_pool = lf::poly_busy_pool<lf::geometric_stack<>>;
 
 constexpr std::array<std::size_t, 3> k_worker_counts{1, 2, 4};
-constexpr std::array<std::size_t, 12> k_sizes{0, 1, 2, 3, 4, 5, 6, 9, 8, 97, 1024, 4028};
+constexpr std::array<std::size_t, 12> k_sizes{0, 1, 2, 3, 4, 5, 6, 8, 9, 97, 1024, 4096};
 
 } // namespace
 
