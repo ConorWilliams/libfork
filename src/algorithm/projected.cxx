@@ -1,5 +1,3 @@
-module;
-#include <iterator>
 export module libfork.algorithm:projected;
 
 import std;
@@ -20,23 +18,23 @@ namespace lf {
 // ============================================================================
 
 template <typename Proj, typename Context, typename I>
-struct projection_result;
+struct indirect_result;
 
 template <typename Proj, typename Context, typename I>
   requires async_invocable<Proj &, Context, std::iter_reference_t<I>>
-struct projection_result<Proj, Context, I> {
+struct indirect_result<Proj, Context, I> {
   using type = async_result_t<Proj &, Context, std::iter_reference_t<I>>;
 };
 
 template <typename Proj, typename Context, typename I>
   requires (!async_invocable<Proj &, Context, std::iter_reference_t<I>>) &&
-           std::regular_invocable<Proj &, std::iter_reference_t<I>>
-struct projection_result<Proj, Context, I> {
+           std::invocable<Proj &, std::iter_reference_t<I>>
+struct indirect_result<Proj, Context, I> {
   using type = std::invoke_result_t<Proj &, std::iter_reference_t<I>>;
 };
 
 template <typename Proj, typename Context, typename I>
-using projection_result_t = typename projection_result<Proj, Context, I>::type;
+using projection_result_t = indirect_result<Proj, Context, I>::type;
 
 // ============================================================================
 //  Concepts: indirectly invocable, optionally async.
