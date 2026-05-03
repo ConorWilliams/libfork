@@ -47,7 +47,7 @@ struct for_each_impl {
     auto mid = head + (len / 2);
     auto sc = co_await scope();
     co_await sc.fork(for_each_impl{}, head, mid, n, fn);
-    co_await sc.call(for_each_impl{}, mid, tail, n, fn);
+    co_await sc.call(for_each_impl{}, mid, tail, n, std::move(fn));
     co_await sc.join();
   }
 
@@ -73,7 +73,7 @@ struct for_each_impl {
     auto mid = head + (len / 2);
     auto sc = co_await scope();
     co_await sc.fork(for_each_impl{}, head, mid, fn);
-    co_await sc.call(for_each_impl{}, mid, tail, fn);
+    co_await sc.call(for_each_impl{}, mid, tail, std::move(fn));
     co_await sc.join();
   }
 
