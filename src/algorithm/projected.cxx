@@ -1,4 +1,5 @@
 module;
+#include <iterator>
 export module libfork.algorithm:projected;
 
 import std;
@@ -80,7 +81,7 @@ concept indirectly_async_or_unary_invocable = worker_context<Context> &&        
 //  checking only and never has a runtime instance.
 // ============================================================================
 
-template <typename I, typename Proj, typename Context>
+template <bool WeaklyIncrementable, typename I, typename Proj, typename Context>
 struct projected_impl {
   struct type {
     using value_type = std::remove_cvref_t<projection_result_t<Proj, Context, I>>;
@@ -89,16 +90,14 @@ struct projected_impl {
 };
 
 template <std::weakly_incrementable I, typename Proj, typename Context>
-struct projected_impl<I, Proj, Context> {
-  struct type {
-    using value_type = std::remove_cvref_t<projection_result_t<Proj, Context, I>>;
+struct projected_impl<true, I, Proj, Context> {
+  struct type : projected_impl<false, I, Proj, Context>::type {
     using difference_type = std::iter_difference_t<I>;
-    auto operator*() const -> projection_result_t<Proj, Context, I>;
   };
 };
 
 export template <std::indirectly_readable I, typename Proj, worker_context Context>
   requires indirectly_async_or_regular_unary_invocable<Proj, Context, I>
-using projected = projected_impl<I, Proj, Context>::type;
+using projected = projected_impl<std::weakly_incrementable<I>, I, Proj, Context>::type;
 
 } // namespace lf
