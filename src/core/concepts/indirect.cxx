@@ -45,8 +45,24 @@ concept indirectly_unary_async_invocable =                      //
         >;                                                      //
 
 export template <typename Fn, typename Context, typename I>
+concept indirectly_regular_unary_async_invocable =
+    worker_context<Context> &&                                          //
+    std::indirectly_readable<I> &&                                      //
+    std::copy_constructible<Fn> &&                                      //
+    async_regular_invocable<Fn &, Context, indirect_value_t<I>> &&      //
+    async_regular_invocable<Fn &, Context, std::iter_reference_t<I>> && //
+    std::common_reference_with<                                         //
+        async_result_t<Fn &, Context, indirect_value_t<I>>,             //
+        async_result_t<Fn &, Context, std::iter_reference_t<I>>         //
+        >;                                                              //
+
+export template <typename Fn, typename Context, typename I>
 concept indirectly_unary_invocable =
     indirectly_unary_async_invocable<Fn, Context, I> || std::indirectly_unary_invocable<Fn, I>;
+
+export template <typename Fn, typename Context, typename I>
+concept indirectly_regular_unary_invocable = indirectly_regular_unary_async_invocable<Fn, Context, I> ||
+                                             std::indirectly_regular_unary_invocable<Fn, I>;
 
 // ========= indirect_result =========
 
@@ -98,7 +114,7 @@ struct projected_impl<true, I, Proj, Context> {
  * @brief A version of `std::projected` that supports both regular invocables and async invocables.
  */
 export template <std::indirectly_readable I, typename Proj, worker_context Context>
-  requires indirectly_unary_invocable<Proj, Context, I>
+  requires indirectly_regular_unary_invocable<Proj, Context, I>
 using projected = projected_impl<std::weakly_incrementable<I>, I, Proj, Context>::type;
 
 // Specialization of indirect_value

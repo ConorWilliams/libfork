@@ -24,17 +24,21 @@ struct ctx_invoke_t {
       LF_HOF(std::invoke(std::forward<Fn>(fn), std::forward<Args>(args)...))
 };
 
-template <typename Context, typename R>
+template <typename R, typename Context>
 concept task_from = specialization_of<R, task> && std::same_as<Context, typename R::context_type>;
 
 /**
  * @brief Test if a callable `Fn` when invoked with `Args...` returns an `lf::task`.
  */
 export template <typename Fn, typename Context, typename... Args>
-concept async_invocable = worker_context<Context> &&                                                    //
-                          std::invocable<ctx_invoke_t<Context>, Fn, Args...> &&                         //
-                          task_from<Context, std::invoke_result_t<ctx_invoke_t<Context>, Fn, Args...>>; //
+concept async_invocable =
+    worker_context<Context> && requires (ctx_invoke_t<Context> gn, Fn &&fn, Args &&...args) {
+      { std::invoke(gn, std::forward<Fn>(fn), std::forward<Args>(args)...) } -> task_from<Context>;
+    };
 
+/**
+ * @brief Same semantic requirements as `std::regular_invocable`.
+ */
 export template <typename Fn, typename Context, typename... Args>
 concept async_regular_invocable = async_invocable<Fn, Context, Args...>;
 
@@ -65,5 +69,4 @@ concept async_invocable_to =
 export template <typename Fn, typename R, typename Context, typename... Args>
 concept async_nothrow_invocable_to =
     async_nothrow_invocable<Fn, Context, Args...> && async_invocable_to<Fn, R, Context, Args...>;
-
 } // namespace lf

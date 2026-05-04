@@ -170,7 +170,7 @@ struct both_co_await {
 auto operator co_await(both_co_await) -> plain_awaitable;
 
 template <typename T>
-concept can_acquire = requires (T t) { acquire_awaitable(static_cast<T &&>(t)); };
+concept can_acquire = requires (T &&t) { acquire_awaitable(std::forward<T>(t)); };
 
 } // namespace
 
