@@ -89,10 +89,15 @@ using indirect_result_t = invoke_result<F, Context, std::iter_reference_t<Is>...
 
 // ========= Projected =========
 
+// C++26 ADL firewalled implementation.
+
 struct hidden_projected_base {};
 
 template <bool WeaklyIncrementable, typename I, typename Proj, typename Context>
 struct projected_impl {
+
+  static_assert(!WeaklyIncrementable, "Should hit specialization for weakly incrementable");
+
   struct type : hidden_projected_base {
 
     // Used by indirect_value
@@ -118,7 +123,6 @@ export template <std::indirectly_readable I, typename Proj, worker_context Conte
 using projected = projected_impl<std::weakly_incrementable<I>, I, Proj, Context>::type;
 
 // Specialization of indirect_value
-
 template <typename P>
   requires std::derived_from<P, hidden_projected_base>
 struct indirect_value<P> : P::hidden_indirect_value {};
