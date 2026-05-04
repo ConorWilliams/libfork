@@ -1,6 +1,8 @@
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "libfork/__impl/exception.hpp"
+
 import std;
 
 import libfork;
@@ -297,6 +299,8 @@ TEMPLATE_TEST_CASE("for_each: async Fn — exact invocation count", "[for_each]"
   }
 }
 
+#if LF_COMPILER_EXCEPTIONS
+
 TEMPLATE_TEST_CASE("for_each: exception from Fn propagates", "[for_each]", mono_pool, poly_pool) {
   for (auto n_workers : k_worker_counts) {
     DYNAMIC_SECTION("workers=" << n_workers) {
@@ -315,3 +319,5 @@ TEMPLATE_TEST_CASE("for_each: exception from Fn propagates", "[for_each]", mono_
     }
   }
 }
+
+#endif // LF_COMPILER_EXCEPTIONS
