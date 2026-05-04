@@ -5,6 +5,7 @@ export import :concepts_scheduler;
 export import :concepts_context;
 export import :concepts_stack;
 export import :concepts_awaitable;
+export import :concepts_indirect;
 export import :frame;
 export import :task;
 export import :thread_locals;

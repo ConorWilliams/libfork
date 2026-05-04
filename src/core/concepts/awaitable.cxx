@@ -10,10 +10,10 @@ import :concepts_context;
 namespace lf {
 
 template <typename T>
-concept member_co_awaitable = requires (T t) { static_cast<T &&>(t).operator co_await(); };
+concept member_co_awaitable = requires (T &&t) { std::forward<T>(t).operator co_await(); };
 
 template <typename T>
-concept operator_co_awaitable = requires (T t) { operator co_await(static_cast<T &&>(t)); };
+concept operator_co_awaitable = requires (T &&t) { operator co_await(std::forward<T>(t)); };
 
 template <typename T>
 [[nodiscard]]
@@ -34,7 +34,7 @@ constexpr auto do_acquire_awaitable(T &&t)
  * If neither operator is present `T` is assumed to be a plain awaitable.
  */
 template <typename T>
-concept awaitable_acquirable = requires (T x) { do_acquire_awaitable(static_cast<T &&>(x)); };
+concept awaitable_acquirable = requires (T &&x) { do_acquire_awaitable(std::forward<T>(x)); };
 
 /**
  * @brief Extracts the awaitable from `T` by invoking the appropriate operator co_await, or returning `T`
@@ -78,8 +78,8 @@ concept custom_awaitable = storable<T> && custom_awaitable_methods<std::remove_c
  * bound to the context.
  */
 export template <typename T, typename Context>
-concept awaitable = worker_context<Context> && requires (T x) {
-  { acquire_awaitable(static_cast<T &&>(x)) } -> custom_awaitable<Context>;
+concept awaitable = worker_context<Context> && requires (T &&x) {
+  { acquire_awaitable(std::forward<T>(x)) } -> custom_awaitable<Context>;
 };
 
 } // namespace lf

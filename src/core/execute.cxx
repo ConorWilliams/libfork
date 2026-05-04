@@ -25,7 +25,7 @@ export struct execute_error final : libfork_exception {
  *
  * This should not be called from a thread already bound to a context, once this call returns
  * the thread is unbound from the context.
-
+ *
  * The handle must not be null.
  */
 export template <worker_context Context>
