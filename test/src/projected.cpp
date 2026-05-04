@@ -49,6 +49,15 @@ struct dual_qualified_proj {
   auto operator()(int const &) && -> int;
 };
 
+// Both sync- and async-invocable, with *different* return types.
+// `invoke_result`'s constrained partial specialization picks async, so the
+// projected's `value_type` must be `double` (the async result), not `long`.
+struct dual_mode_proj {
+  auto operator()(int const &) const -> long;
+  template <typename Context>
+  static auto operator()(lf::env<Context>, int const &) -> lf::task<double, Context>;
+};
+
 // double -> std::string, used for nesting tests.
 struct str_proj {
   auto operator()(double const &) const -> std::string;
@@ -117,6 +126,7 @@ using sync_cprojected = lf::projected<cvec_iter, sync_proj, context_t>;
 using sync_ref_projected = lf::projected<vec_iter, sync_ref_proj, context_t>;
 using projected_no_diff = lf::projected<readable_only, sync_proj, context_t>;
 using dual_qualified_projected = lf::projected<vec_iter, dual_qualified_proj, context_t>;
+using dual_mode_projected = lf::projected<vec_iter, dual_mode_proj, context_t>;
 
 using sync_then_sync = lf::projected<sync_projected, str_proj, context_t>;
 using async_then_async = lf::projected<async_projected, async_str_proj, context_t>;
@@ -162,6 +172,17 @@ TEST_CASE("projected: invokes through Proj& (matches std::projected)", "[project
   // invocation, so the result must be `double` here.
   STATIC_REQUIRE(std::same_as<dual_qualified_projected::value_type, double>);
   STATIC_REQUIRE(std::same_as<std::iter_reference_t<dual_qualified_projected>, double>);
+}
+
+TEST_CASE("projected: async invocation takes precedence over sync", "[projected]") {
+  // dual_mode_proj is invocable both ways: sync returns `long`, async returns `double`.
+  // `invoke_result`'s constrained partial specialization (gated on async_invocable)
+  // is more constrained than the primary, so the async branch wins.
+  STATIC_REQUIRE(std::indirectly_unary_invocable<dual_mode_proj, vec_iter>);
+  STATIC_REQUIRE(lf::indirectly_unary_async_invocable<dual_mode_proj, context_t, vec_iter>);
+
+  STATIC_REQUIRE(std::same_as<dual_mode_projected::value_type, double>);
+  STATIC_REQUIRE(std::same_as<std::iter_reference_t<dual_mode_projected>, double>);
 }
 
 TEST_CASE("projected: difference_type only when source is weakly_incrementable", "[projected]") {
