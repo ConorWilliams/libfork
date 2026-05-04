@@ -36,16 +36,20 @@ struct for_each_impl {
     LF_ASSUME(len >= 0);
 
     if (len <= n) {
-      if constexpr (std::indirectly_unary_invocable<Fn, I>) {
-        for (; head != tail; ++head) {
-          std::invoke(fn, *head);
-        }
-      } else {
+      if constexpr (indirectly_regular_unary_async_invocable<Fn, Context, I>) {
+        // Prefer async
         auto sc = co_await scope();
+
         for (; head != tail; ++head) {
           co_await sc.call_drop(fn, *head);
         }
+
         co_await sc.join();
+
+      } else {
+        for (; head != tail; ++head) {
+          std::invoke(fn, *head);
+        }
       }
       co_return;
     }
@@ -70,14 +74,14 @@ struct for_each_impl {
       case 0:
         co_return;
       case 1:
-        if constexpr (std::indirectly_unary_invocable<Fn, I>) {
-          std::invoke(fn, *head);
-        } else {
+        if constexpr (indirectly_regular_unary_async_invocable<Fn, Context, I>) {
           auto sc = co_await scope();
           co_await sc.call_drop(std::move(fn), *head);
           co_await sc.join();
+        } else {
+          std::invoke(fn, *head);
+          co_return;
         }
-        co_return;
     }
 
     auto mid = head + (len / 2);
