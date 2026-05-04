@@ -78,6 +78,11 @@ struct hidden_projected_base {};
 template <bool WeaklyIncrementable, typename I, typename Proj, typename Context>
 struct projected_impl {
   struct type : hidden_projected_base {
+
+    // Used by indirect_value
+    using hidden_indirect_value = invoke_result<Proj &, Context, indirect_value_t<I>>;
+
+    // Required by std::
     using value_type = std::remove_cvref_t<indirect_result_t<Proj, Context, I>>;
     auto operator*() const -> indirect_result_t<Proj, Context, I>;
   };
@@ -99,9 +104,8 @@ using projected = projected_impl<std::weakly_incrementable<I>, I, Proj, Context>
 
 // Specialization of indirect_value
 
-template <typename T>
-struct indirect_value<Proj> {
-  using type = invoke_result_t<Proj &, indirect_value_t<I>>
-};
+template <typename P>
+  requires std::derived_from<P, hidden_projected_base>
+struct indirect_value<P> : P::hidden_indirect_value {};
 
 } // namespace lf
