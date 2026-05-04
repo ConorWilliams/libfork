@@ -38,7 +38,7 @@ struct projected_impl {
 
 // async
 template <typename I, typename Fn, typename Context>
-  requires indirectly_async_unary_invocable<Fn, Context, I>
+  requires async::indirectly_unary_invocable<Fn, Context, I>
 struct projected_impl<I, Fn, Context> {
   struct type : conditional_difference_type<I> {
    private:
@@ -63,7 +63,7 @@ concept async_defaultable_impl =
 
 template <typename Fn, typename Context, typename I>
 concept indirect_async_defaultable =
-    !indirectly_async_regular_unary_invocable<Fn, Context, I> || async_defaultable_impl<Fn, Context, I>;
+    !async::indirectly_regular_unary_invocable<Fn, Context, I> || async_defaultable_impl<Fn, Context, I>;
 
 /**
  * @brief Test if `I` can be projected through `Fn` in the context of `Context`
@@ -71,7 +71,7 @@ concept indirect_async_defaultable =
  * This requires the standard indirectly regular invocable and, in addition,
  * async projections must return a default initializable type.
  *
- * Projectable && indirectly_async_unary_invocable implies an async projection
+ * Projectable && async::indirectly_unary_invocable implies an async projection
  * with default initializable async result type.
  */
 export template <typename Fn, typename Context, typename I>

@@ -32,12 +32,14 @@ using indirect_value_t = indirect_value<I>::type;
 
 // ========= Core concepts =========
 
+namespace sync {
+
 /**
  * @brief A version of `std::indirectly_unary_invocable` that supports
  * libfork's projection type.
  */
 export template <typename Fn, typename I>
-concept indirectly_sync_unary_invocable =                    //
+concept indirectly_unary_invocable =                         //
     std::indirectly_readable<I> &&                           //
     std::copy_constructible<Fn> &&                           //
     std::invocable<Fn &, indirect_value_t<I>> &&             //
@@ -52,7 +54,7 @@ concept indirectly_sync_unary_invocable =                    //
  * libfork's projection type.
  */
 export template <typename Fn, typename I>
-concept indirectly_sync_regular_unary_invocable =             //
+concept indirectly_regular_unary_invocable =                  //
     std::indirectly_readable<I> &&                            //
     std::copy_constructible<Fn> &&                            //
     std::regular_invocable<Fn &, indirect_value_t<I>> &&      //
@@ -62,12 +64,16 @@ concept indirectly_sync_regular_unary_invocable =             //
         std::invoke_result_t<Fn &, std::iter_reference_t<I>>  //
         >;                                                    //
 
+} // namespace sync
+
+namespace async {
+
 /**
  * @brief A variant of `std::indirectly_unary_invocable` that supports
  * libfork's projection type and requires an async invocable.
  */
 export template <typename Fn, typename Context, typename I>
-concept indirectly_async_unary_invocable =                      //
+concept indirectly_unary_invocable =                            //
     worker_context<Context> &&                                  //
     std::indirectly_readable<I> &&                              //
     std::copy_constructible<Fn> &&                              //
@@ -83,7 +89,7 @@ concept indirectly_async_unary_invocable =                      //
  * libfork's projection type and requires an async invocable.
  */
 export template <typename Fn, typename Context, typename I>
-concept indirectly_async_regular_unary_invocable =                      //
+concept indirectly_regular_unary_invocable =                            //
     worker_context<Context> &&                                          //
     std::indirectly_readable<I> &&                                      //
     std::copy_constructible<Fn> &&                                      //
@@ -94,6 +100,8 @@ concept indirectly_async_regular_unary_invocable =                      //
         async_result_t<Fn &, Context, std::iter_reference_t<I>>         //
         >;                                                              //
 
+} // namespace async
+
 /**
  * @brief A variant of `std::indirectly_unary_invocable` that supports either
  * sync or async invocables.
@@ -103,7 +111,7 @@ concept indirectly_async_regular_unary_invocable =                      //
  */
 export template <typename Fn, typename Context, typename I>
 concept indirectly_unary_invocable =
-    indirectly_async_unary_invocable<Fn, Context, I> || indirectly_sync_unary_invocable<Fn, I>;
+    async::indirectly_unary_invocable<Fn, Context, I> || sync::indirectly_unary_invocable<Fn, I>;
 
 // clang-format off
 
@@ -116,7 +124,7 @@ concept indirectly_unary_invocable =
  */
 export template <typename Fn, typename Context, typename I>
 concept indirectly_regular_unary_invocable = 
-    indirectly_async_regular_unary_invocable<Fn, Context, I> || indirectly_sync_regular_unary_invocable<Fn, I>;
+    async::indirectly_regular_unary_invocable<Fn, Context, I> || sync::indirectly_regular_unary_invocable<Fn, I>;
 
 // clang-format on
 
