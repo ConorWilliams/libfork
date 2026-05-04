@@ -284,8 +284,7 @@ TEMPLATE_TEST_CASE("for_each: async Fn — exact invocation count", "[for_each]"
           std::vector v{std::from_range, std::ranges::iota_view(0UZ, n)};
           std::atomic<std::size_t> count{0};
           std::atomic<std::size_t> sum{0};
-          auto recv =
-              lf::schedule(pool, lf::for_each, std::span(v), ch, async_count_sum{&count, &sum});
+          auto recv = lf::schedule(pool, lf::for_each, std::span(v), ch, async_count_sum{&count, &sum});
           std::move(recv).get();
           REQUIRE(count.load() == n);
           REQUIRE(sum.load() == (n * (n - 1)) / 2);
