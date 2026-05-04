@@ -46,7 +46,7 @@ concept indirectly_unary_async_invocable =                      //
 
 export template <typename Fn, typename Context, typename I>
 concept indirectly_unary_invocable =
-    std::indirectly_unary_invocable<Fn, I> || indirectly_unary_async_invocable<Fn, Context, I>;
+    indirectly_unary_async_invocable<Fn, Context, I> || std::indirectly_unary_invocable<Fn, I>;
 
 // ========= indirect_result =========
 
@@ -58,7 +58,7 @@ concept indirectly_unary_invocable =
 template <typename Proj, typename Context, typename... Args>
 struct invoke_result : std::invoke_result<Proj, Args...> {};
 
-// Subsumes above
+// More constrained so should be selected if both regular and async invocations are possible.
 template <typename Proj, typename Context, typename... Args>
   requires async_invocable<Proj, Context, Args...>
 struct invoke_result<Proj, Context, Args...> {
