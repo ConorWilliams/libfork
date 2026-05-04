@@ -35,6 +35,9 @@ concept async_invocable = worker_context<Context> &&                            
                           std::invocable<ctx_invoke_t<Context>, Fn, Args...> &&                         //
                           task_from<Context, std::invoke_result_t<ctx_invoke_t<Context>, Fn, Args...>>; //
 
+export template <typename Fn, typename Context, typename... Args>
+concept async_regular_invocable = async_invocable<Fn, Context, Args...>;
+
 /**
  * @brief Subsumes `async_invocable` and checks that the invocation is `noexcept`.
  */
