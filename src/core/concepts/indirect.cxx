@@ -33,16 +33,16 @@ using indirect_value_t = indirect_value<T>::type;
 // ========= Core concepts =========
 
 export template <typename Fn, typename Context, typename I>
-concept indirectly_unary_async_invocable =             //
-    worker_context<Context> &&                         //
-    std::indirectly_readable<I> &&                     //
-    std::copy_constructible<Fn> &&                     //
-    async_invocable<Fn &, indirect_value_t<I>> &&      //
-    async_invocable<Fn &, std::iter_reference_t<I>> && //
-    std::common_reference_with<                        //
-        async_result_t<Fn &, indirect_value_t<I>>,     //
-        async_result_t<Fn &, std::iter_reference_t<I>> //
-        >;                                             //
+concept indirectly_unary_async_invocable =                      //
+    worker_context<Context> &&                                  //
+    std::indirectly_readable<I> &&                              //
+    std::copy_constructible<Fn> &&                              //
+    async_invocable<Fn &, Context, indirect_value_t<I>> &&      //
+    async_invocable<Fn &, Context, std::iter_reference_t<I>> && //
+    std::common_reference_with<                                 //
+        async_result_t<Fn &, Context, indirect_value_t<I>>,     //
+        async_result_t<Fn &, Context, std::iter_reference_t<I>> //
+        >;                                                      //
 
 export template <typename Fn, typename Context, typename I>
 concept indirectly_unary_invocable =
