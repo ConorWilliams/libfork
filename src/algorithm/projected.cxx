@@ -7,36 +7,6 @@ import libfork.core;
 namespace lf {
 
 // ============================================================================
-//  projection_result
-// ----------------------------------------------------------------------------
-//  The reference type produced when projecting an iterator value through a
-//  projection. Two cases:
-//   - async: Proj is async_invocable on iter_reference_t<I>; the projection's
-//            "result" is async_result_t (the value_type of the returned task).
-//   - sync : Proj is a regular invocable; the result is invoke_result_t,
-//            matching std::indirect_result_t — the same as std::projected.
-// ============================================================================
-
-template <typename Proj, typename Context, typename I>
-struct indirect_result;
-
-template <typename Proj, typename Context, typename I>
-  requires async_invocable<Proj &, Context, std::iter_reference_t<I>>
-struct indirect_result<Proj, Context, I> {
-  using type = async_result_t<Proj &, Context, std::iter_reference_t<I>>;
-};
-
-template <typename Proj, typename Context, typename I>
-  requires (!async_invocable<Proj &, Context, std::iter_reference_t<I>>) &&
-           std::invocable<Proj &, std::iter_reference_t<I>>
-struct indirect_result<Proj, Context, I> {
-  using type = std::invoke_result_t<Proj &, std::iter_reference_t<I>>;
-};
-
-template <typename Proj, typename Context, typename I>
-using projection_result_t = indirect_result<Proj, Context, I>::type;
-
-// ============================================================================
 //  Concepts: indirectly invocable, optionally async.
 // ----------------------------------------------------------------------------
 //  Mirror std::indirectly_(regular_)?unary_invocable but accept either a
@@ -82,8 +52,8 @@ concept indirectly_async_or_unary_invocable = worker_context<Context> &&        
 template <bool WeaklyIncrementable, typename I, typename Proj, typename Context>
 struct projected_impl {
   struct type {
-    using value_type = std::remove_cvref_t<projection_result_t<Proj, Context, I>>;
-    auto operator*() const -> projection_result_t<Proj, Context, I>;
+    using value_type = std::remove_cvref_t<indirect_result_t<Proj, Context, I>>;
+    auto operator*() const -> indirect_result_t<Proj, Context, I>;
   };
 };
 
