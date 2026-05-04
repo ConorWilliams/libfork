@@ -38,7 +38,7 @@ static_assert(std::same_as<async_projected::difference_type, std::iter_differenc
 static_assert(std::indirectly_readable<async_projected>);
 static_assert(std::same_as<std::iter_reference_t<async_projected>, double>);
 
-// Concept selection: indirectly_async_or_unary_invocable<F, Ctx, I> works for
+// Concept selection: indirectly_unary_invocable<F, Ctx, I> works for
 // both a sync lambda-equivalent and an async function.
 struct sync_fn {
   void operator()(int &) const;
@@ -49,12 +49,12 @@ struct async_fn {
   static auto operator()(lf::env<Context>, int &) -> lf::task<void, Context>;
 };
 
-static_assert(lf::indirectly_async_or_unary_invocable<sync_fn, context_t, iter_t>);
-static_assert(lf::indirectly_async_or_unary_invocable<async_fn, context_t, iter_t>);
+static_assert(lf::indirectly_unary_invocable<sync_fn, context_t, iter_t>);
+static_assert(lf::indirectly_unary_invocable<async_fn, context_t, iter_t>);
 
 // A function that's neither must fail.
 struct not_invocable {};
-static_assert(!lf::indirectly_async_or_unary_invocable<not_invocable, context_t, iter_t>);
+static_assert(!lf::indirectly_unary_invocable<not_invocable, context_t, iter_t>);
 
 // Without difference_type when I is not weakly_incrementable.
 struct readable_only {
