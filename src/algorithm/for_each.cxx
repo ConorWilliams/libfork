@@ -25,7 +25,7 @@ struct for_each_impl {
  public:
   // (1) iterator-pair, chunk size n > 1
   template <worker_context Context, std::random_access_iterator I, std::sized_sentinel_for<I> S, typename Fn>
-    requires indirectly_unary_invocable<Fn, Context, I>
+    requires indirectly_regular_unary_invocable<Fn, Context, I>
   static auto
   operator()(env<Context> /* env */, I head, S tail, iter_difference_t<I> n, Fn fn) -> task<Context> {
 
@@ -59,7 +59,7 @@ struct for_each_impl {
 
   // (2) iterator-pair, n == 1 specialization (no n parameter)
   template <worker_context Context, std::random_access_iterator I, std::sized_sentinel_for<I> S, typename Fn>
-    requires indirectly_unary_invocable<Fn, Context, I>
+    requires indirectly_regular_unary_invocable<Fn, Context, I>
   static auto operator()(env<Context> /* env */, I head, S tail, Fn fn) -> task<Context> {
 
     auto len = tail - head;
@@ -89,7 +89,7 @@ struct for_each_impl {
 
   // (3) range + n -> dispatches to (1) or (2)
   template <worker_context Context, sized_random_access_range Range, typename Fn>
-    requires indirectly_unary_invocable<Fn, Context, std::ranges::iterator_t<Range>>
+    requires indirectly_regular_unary_invocable<Fn, Context, std::ranges::iterator_t<Range>>
   static auto
   operator()(env<Context> context, Range &&range, range_difference_t<Range> n, Fn fn) -> task<Context> {
     if (n == 1) {
@@ -100,7 +100,7 @@ struct for_each_impl {
 
   // (4) range, n == 1 -> dispatches to (2)
   template <worker_context Context, sized_random_access_range Range, typename Fn>
-    requires indirectly_unary_invocable<Fn, Context, std::ranges::iterator_t<Range>>
+    requires indirectly_regular_unary_invocable<Fn, Context, std::ranges::iterator_t<Range>>
   static auto operator()(env<Context> context, Range &&range, Fn fn) -> task<Context> {
     return for_each_impl{}(context, std::ranges::begin(range), std::ranges::end(range), std::move(fn));
   }

@@ -117,6 +117,8 @@ struct projected_impl<true, I, Proj, Context> {
 
 /**
  * @brief A version of `std::projected` that supports both regular invocables and async invocables.
+ *
+ * Note: this mandates regularly invocable projections.
  */
 export template <std::indirectly_readable I, typename Proj, worker_context Context>
   requires indirectly_regular_unary_invocable<Proj, Context, I>
