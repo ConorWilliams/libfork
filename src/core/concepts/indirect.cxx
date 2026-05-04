@@ -82,9 +82,8 @@ struct projected_impl {
     // Used by indirect_value
     using hidden_indirect_value = invoke_result<Proj &, Context, indirect_value_t<I>>;
 
-    // Required by std::
-    using value_type = std::remove_cvref_t<indirect_result_t<Proj, Context, I>>;
-    auto operator*() const -> indirect_result_t<Proj, Context, I>;
+    using value_type = std::remove_cvref_t<indirect_result_t<Proj &, Context, I>>;
+    auto operator*() const -> indirect_result_t<Proj &, Context, I>;
   };
 };
 

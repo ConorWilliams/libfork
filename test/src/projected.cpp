@@ -40,6 +40,15 @@ struct sync_ref_proj {
   auto operator()(int &) const -> int &;
 };
 
+// Returns different types depending on lvalue vs rvalue invocation.
+// `std::projected` and (correctly) `lf::projected` invoke through `Proj &`, so
+// `value_type` and `iter_reference_t` must both be `double`. If the impl uses
+// `Proj` (rvalue) instead, `value_type` becomes `int`.
+struct dual_qualified_proj {
+  auto operator()(int const &) & -> double;
+  auto operator()(int const &) && -> int;
+};
+
 // double -> std::string, used for nesting tests.
 struct str_proj {
   auto operator()(double const &) const -> std::string;
@@ -107,6 +116,7 @@ using hybrid_projected = lf::projected<vec_iter, hybrid_proj, context_t>;
 using sync_cprojected = lf::projected<cvec_iter, sync_proj, context_t>;
 using sync_ref_projected = lf::projected<vec_iter, sync_ref_proj, context_t>;
 using projected_no_diff = lf::projected<readable_only, sync_proj, context_t>;
+using dual_qualified_projected = lf::projected<vec_iter, dual_qualified_proj, context_t>;
 
 using sync_then_sync = lf::projected<sync_projected, str_proj, context_t>;
 using async_then_async = lf::projected<async_projected, async_str_proj, context_t>;
@@ -144,6 +154,14 @@ TEST_CASE("projected: const-iterator source", "[projected]") {
 TEST_CASE("projected: reference-returning projection", "[projected]") {
   STATIC_REQUIRE(std::same_as<sync_ref_projected::value_type, int>);
   STATIC_REQUIRE(std::same_as<std::iter_reference_t<sync_ref_projected>, int &>);
+}
+
+TEST_CASE("projected: invokes through Proj& (matches std::projected)", "[projected]") {
+  // `operator() &` returns double; `operator() &&` returns int. Both
+  // `std::projected::value_type` and `operator*()` are computed via lvalue
+  // invocation, so the result must be `double` here.
+  STATIC_REQUIRE(std::same_as<dual_qualified_projected::value_type, double>);
+  STATIC_REQUIRE(std::same_as<std::iter_reference_t<dual_qualified_projected>, double>);
 }
 
 TEST_CASE("projected: difference_type only when source is weakly_incrementable", "[projected]") {
