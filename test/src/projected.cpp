@@ -40,6 +40,16 @@ struct sync_ref_proj {
   auto operator()(int &) const -> int &;
 };
 
+// double -> std::string, used for nesting tests.
+struct str_proj {
+  auto operator()(double const &) const -> std::string;
+};
+
+struct async_str_proj {
+  template <typename Context>
+  static auto operator()(lf::env<Context>, double const &) -> lf::task<std::string, Context>;
+};
+
 // ============================================================================
 // Consumer function objects (for `indirectly_unary_invocable`)
 // ============================================================================
@@ -77,133 +87,119 @@ struct async_fn_no_copy {
   static auto operator()(lf::env<Context>, int &) -> lf::task<void, Context>;
 };
 
-// ============================================================================
-// `projected`: shape, value_type, dereference, iter_*_t
-// ============================================================================
-
-using sync_projected = lf::projected<vec_iter, sync_proj, context_t>;
-using async_projected = lf::projected<vec_iter, async_proj, context_t>;
-using hybrid_projected = lf::projected<vec_iter, hybrid_proj, context_t>;
-
-static_assert(std::same_as<sync_projected::value_type, double>);
-static_assert(std::same_as<async_projected::value_type, double>);
-static_assert(std::same_as<hybrid_projected::value_type, double>);
-
-static_assert(std::same_as<sync_projected::difference_type, std::iter_difference_t<vec_iter>>);
-static_assert(std::same_as<async_projected::difference_type, std::iter_difference_t<vec_iter>>);
-static_assert(std::same_as<hybrid_projected::difference_type, std::iter_difference_t<vec_iter>>);
-
-static_assert(std::indirectly_readable<sync_projected>);
-static_assert(std::indirectly_readable<async_projected>);
-static_assert(std::indirectly_readable<hybrid_projected>);
-
-// dereference returns the (possibly-ref) result of the projection.
-static_assert(std::same_as<std::iter_reference_t<sync_projected>, double>);
-static_assert(std::same_as<std::iter_reference_t<async_projected>, double>);
-static_assert(std::same_as<std::iter_reference_t<hybrid_projected>, double>);
-
-static_assert(std::same_as<std::iter_value_t<sync_projected>, double>);
-static_assert(std::same_as<std::iter_value_t<async_projected>, double>);
-
-// const-iterator source.
-using sync_cprojected = lf::projected<cvec_iter, sync_proj, context_t>;
-static_assert(std::same_as<sync_cprojected::value_type, double>);
-static_assert(std::same_as<std::iter_reference_t<sync_cprojected>, double>);
-
-// Reference-returning projection: value_type is the underlying value, deref is the ref.
-using sync_ref_projected = lf::projected<vec_iter, sync_ref_proj, context_t>;
-static_assert(std::same_as<sync_ref_projected::value_type, int>);
-static_assert(std::same_as<std::iter_reference_t<sync_ref_projected>, int &>);
-
-// ============================================================================
-// `difference_type` only present when the source is `weakly_incrementable`.
-// ============================================================================
+struct bad_ctx {};
 
 struct readable_only {
   using value_type = int;
   auto operator*() const -> int &;
 };
-static_assert(std::indirectly_readable<readable_only>);
-static_assert(!std::weakly_incrementable<readable_only>);
 
 template <typename T>
 concept has_difference_type = requires { typename T::difference_type; };
 
+// ============================================================================
+// Type aliases under test
+// ============================================================================
+
+using sync_projected = lf::projected<vec_iter, sync_proj, context_t>;
+using async_projected = lf::projected<vec_iter, async_proj, context_t>;
+using hybrid_projected = lf::projected<vec_iter, hybrid_proj, context_t>;
+using sync_cprojected = lf::projected<cvec_iter, sync_proj, context_t>;
+using sync_ref_projected = lf::projected<vec_iter, sync_ref_proj, context_t>;
 using projected_no_diff = lf::projected<readable_only, sync_proj, context_t>;
-static_assert(std::same_as<projected_no_diff::value_type, double>);
-static_assert(!has_difference_type<projected_no_diff>);
-static_assert(has_difference_type<sync_projected>);
-static_assert(has_difference_type<async_projected>);
-
-// ============================================================================
-// `indirectly_unary_invocable` — accepts sync, async, or both.
-// ============================================================================
-
-static_assert(lf::indirectly_unary_invocable<sync_fn, context_t, vec_iter>);
-static_assert(lf::indirectly_unary_invocable<async_fn, context_t, vec_iter>);
-static_assert(lf::indirectly_unary_invocable<hybrid_fn, context_t, vec_iter>);
-
-static_assert(!lf::indirectly_unary_invocable<not_invocable, context_t, vec_iter>);
-static_assert(!lf::indirectly_unary_invocable<binary_fn, context_t, vec_iter>);
-static_assert(!lf::indirectly_unary_invocable<wrong_arg_fn, context_t, vec_iter>);
-
-// The sync branch of the disjunction does not depend on Context — a non-worker
-// Context still validates a plain sync function.
-struct bad_ctx {};
-static_assert(!lf::worker_context<bad_ctx>);
-static_assert(lf::indirectly_unary_invocable<sync_fn, bad_ctx, vec_iter>);
-static_assert(!lf::indirectly_unary_invocable<async_fn, bad_ctx, vec_iter>);
-
-// ============================================================================
-// `indirectly_unary_async_invocable` — async-only variant.
-// ============================================================================
-
-static_assert(!lf::indirectly_unary_async_invocable<sync_fn, context_t, vec_iter>);
-static_assert(lf::indirectly_unary_async_invocable<async_fn, context_t, vec_iter>);
-static_assert(lf::indirectly_unary_async_invocable<hybrid_fn, context_t, vec_iter>);
-
-// `copy_constructible<Fn>` is required by both branches.
-static_assert(!lf::indirectly_unary_async_invocable<async_fn_no_copy, context_t, vec_iter>);
-static_assert(!lf::indirectly_unary_invocable<async_fn_no_copy, context_t, vec_iter>);
-
-// `indirectly_readable<I>` is required.
-static_assert(!lf::indirectly_unary_async_invocable<async_fn, context_t, int>);
-
-// Non-worker context never satisfies the async variant.
-static_assert(!lf::indirectly_unary_async_invocable<async_fn, bad_ctx, vec_iter>);
-static_assert(!lf::indirectly_unary_async_invocable<hybrid_fn, bad_ctx, vec_iter>);
-
-// ============================================================================
-// Pipelining: `projected` of a `projected`.
-// Validates that `indirect_value`'s specialization for projected types kicks in
-// (otherwise the outer projection couldn't satisfy the concept).
-// ============================================================================
-
-struct str_proj {
-  auto operator()(double const &) const -> std::string;
-};
-
-struct async_str_proj {
-  template <typename Context>
-  static auto operator()(lf::env<Context>, double const &) -> lf::task<std::string, Context>;
-};
 
 using sync_then_sync = lf::projected<sync_projected, str_proj, context_t>;
-static_assert(std::same_as<sync_then_sync::value_type, std::string>);
-static_assert(std::same_as<std::iter_reference_t<sync_then_sync>, std::string>);
-
 using async_then_async = lf::projected<async_projected, async_str_proj, context_t>;
-static_assert(std::same_as<async_then_async::value_type, std::string>);
-static_assert(std::same_as<std::iter_reference_t<async_then_async>, std::string>);
-
 using sync_then_async = lf::projected<sync_projected, async_str_proj, context_t>;
-static_assert(std::same_as<sync_then_async::value_type, std::string>);
-
 using async_then_sync = lf::projected<async_projected, str_proj, context_t>;
-static_assert(std::same_as<async_then_sync::value_type, std::string>);
 
 } // namespace
 
-TEST_CASE("projected: compile-only checks", "[projected]") {
-  SUCCEED("static_asserts above");
+TEST_CASE("projected: value_type, difference_type, dereference", "[projected]") {
+  STATIC_REQUIRE(std::same_as<sync_projected::value_type, double>);
+  STATIC_REQUIRE(std::same_as<async_projected::value_type, double>);
+  STATIC_REQUIRE(std::same_as<hybrid_projected::value_type, double>);
+
+  STATIC_REQUIRE(std::same_as<sync_projected::difference_type, std::iter_difference_t<vec_iter>>);
+  STATIC_REQUIRE(std::same_as<async_projected::difference_type, std::iter_difference_t<vec_iter>>);
+  STATIC_REQUIRE(std::same_as<hybrid_projected::difference_type, std::iter_difference_t<vec_iter>>);
+
+  STATIC_REQUIRE(std::indirectly_readable<sync_projected>);
+  STATIC_REQUIRE(std::indirectly_readable<async_projected>);
+  STATIC_REQUIRE(std::indirectly_readable<hybrid_projected>);
+
+  STATIC_REQUIRE(std::same_as<std::iter_reference_t<sync_projected>, double>);
+  STATIC_REQUIRE(std::same_as<std::iter_reference_t<async_projected>, double>);
+  STATIC_REQUIRE(std::same_as<std::iter_reference_t<hybrid_projected>, double>);
+
+  STATIC_REQUIRE(std::same_as<std::iter_value_t<sync_projected>, double>);
+  STATIC_REQUIRE(std::same_as<std::iter_value_t<async_projected>, double>);
+}
+
+TEST_CASE("projected: const-iterator source", "[projected]") {
+  STATIC_REQUIRE(std::same_as<sync_cprojected::value_type, double>);
+  STATIC_REQUIRE(std::same_as<std::iter_reference_t<sync_cprojected>, double>);
+}
+
+TEST_CASE("projected: reference-returning projection", "[projected]") {
+  STATIC_REQUIRE(std::same_as<sync_ref_projected::value_type, int>);
+  STATIC_REQUIRE(std::same_as<std::iter_reference_t<sync_ref_projected>, int &>);
+}
+
+TEST_CASE("projected: difference_type only when source is weakly_incrementable", "[projected]") {
+  STATIC_REQUIRE(std::indirectly_readable<readable_only>);
+  STATIC_REQUIRE_FALSE(std::weakly_incrementable<readable_only>);
+
+  STATIC_REQUIRE(std::same_as<projected_no_diff::value_type, double>);
+  STATIC_REQUIRE_FALSE(has_difference_type<projected_no_diff>);
+  STATIC_REQUIRE(has_difference_type<sync_projected>);
+  STATIC_REQUIRE(has_difference_type<async_projected>);
+}
+
+TEST_CASE("indirectly_unary_invocable: sync, async, hybrid", "[projected]") {
+  STATIC_REQUIRE(lf::indirectly_unary_invocable<sync_fn, context_t, vec_iter>);
+  STATIC_REQUIRE(lf::indirectly_unary_invocable<async_fn, context_t, vec_iter>);
+  STATIC_REQUIRE(lf::indirectly_unary_invocable<hybrid_fn, context_t, vec_iter>);
+
+  STATIC_REQUIRE_FALSE(lf::indirectly_unary_invocable<not_invocable, context_t, vec_iter>);
+  STATIC_REQUIRE_FALSE(lf::indirectly_unary_invocable<binary_fn, context_t, vec_iter>);
+  STATIC_REQUIRE_FALSE(lf::indirectly_unary_invocable<wrong_arg_fn, context_t, vec_iter>);
+}
+
+TEST_CASE("indirectly_unary_invocable: sync branch ignores Context", "[projected]") {
+  // The sync side of the disjunction does not depend on Context, so a non-worker
+  // context still validates a plain sync function but rejects an async-only one.
+  STATIC_REQUIRE_FALSE(lf::worker_context<bad_ctx>);
+  STATIC_REQUIRE(lf::indirectly_unary_invocable<sync_fn, bad_ctx, vec_iter>);
+  STATIC_REQUIRE_FALSE(lf::indirectly_unary_invocable<async_fn, bad_ctx, vec_iter>);
+}
+
+TEST_CASE("indirectly_unary_async_invocable: async-only variant", "[projected]") {
+  STATIC_REQUIRE_FALSE(lf::indirectly_unary_async_invocable<sync_fn, context_t, vec_iter>);
+  STATIC_REQUIRE(lf::indirectly_unary_async_invocable<async_fn, context_t, vec_iter>);
+  STATIC_REQUIRE(lf::indirectly_unary_async_invocable<hybrid_fn, context_t, vec_iter>);
+
+  // copy_constructible<Fn> required by both branches.
+  STATIC_REQUIRE_FALSE(lf::indirectly_unary_async_invocable<async_fn_no_copy, context_t, vec_iter>);
+  STATIC_REQUIRE_FALSE(lf::indirectly_unary_invocable<async_fn_no_copy, context_t, vec_iter>);
+
+  // indirectly_readable<I> required.
+  STATIC_REQUIRE_FALSE(lf::indirectly_unary_async_invocable<async_fn, context_t, int>);
+
+  // worker_context<Context> required.
+  STATIC_REQUIRE_FALSE(lf::indirectly_unary_async_invocable<async_fn, bad_ctx, vec_iter>);
+  STATIC_REQUIRE_FALSE(lf::indirectly_unary_async_invocable<hybrid_fn, bad_ctx, vec_iter>);
+}
+
+TEST_CASE("projected: pipelined / nested projection", "[projected]") {
+  // Validates that `indirect_value`'s specialization for projected types kicks in;
+  // otherwise the outer projection couldn't satisfy the concept.
+  STATIC_REQUIRE(std::same_as<sync_then_sync::value_type, std::string>);
+  STATIC_REQUIRE(std::same_as<std::iter_reference_t<sync_then_sync>, std::string>);
+
+  STATIC_REQUIRE(std::same_as<async_then_async::value_type, std::string>);
+  STATIC_REQUIRE(std::same_as<std::iter_reference_t<async_then_async>, std::string>);
+
+  STATIC_REQUIRE(std::same_as<sync_then_async::value_type, std::string>);
+  STATIC_REQUIRE(std::same_as<async_then_sync::value_type, std::string>);
 }
