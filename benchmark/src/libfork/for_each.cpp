@@ -14,22 +14,25 @@ inline constexpr int for_each_overhead_base = 1 << 24;
 inline constexpr int for_each_hetero_test = 1 << 8;
 inline constexpr int for_each_hetero_base = 1 << 14;
 
-struct trivial_inc {
-  void operator()(std::int64_t &x) const {
-    x += 1;
-    benchmark::DoNotOptimize(x);
-  }
+// Trivial body — exists only to be called. Takes by value so the iteration
+// source can be a value-yielding view (e.g. std::views::iota), avoiding any
+// backing storage so the benchmark measures framework overhead rather than
+// memory bandwidth.
+struct trivial_noop {
+  void operator()(std::int64_t x) const { benchmark::DoNotOptimize(x); }
 };
 
+// Heterogeneous per-element work: iteration count varies with the element
+// value, so different leaves do different amounts of compute. No memory
+// traffic — `acc` is local and discarded via DoNotOptimize.
 struct hetero_work {
-  void operator()(std::int64_t &x) const {
-    std::int64_t iters = 64 + (x % 128) * 64;
+  void operator()(std::int64_t x) const {
+    std::int64_t iters = 64 + x * 64;
     std::int64_t acc = 0;
     for (std::int64_t i = 0; i < iters; ++i) {
       acc += i * i;
       benchmark::DoNotOptimize(acc);
     }
-    x = acc;
   }
 };
 
@@ -41,12 +44,10 @@ void run_loop(benchmark::State &state, std::int64_t n, Body body) {
 
   Sch scheduler = make_scheduler<Sch>(state);
 
-  std::vector<std::int64_t> v(static_cast<std::size_t>(n));
-  std::iota(v.begin(), v.end(), 0);
+  auto range = std::views::iota(std::int64_t{0}, n);
 
   for (auto _ : state) {
-    body(scheduler, v);
-    benchmark::DoNotOptimize(v);
+    body(scheduler, range);
   }
 }
 
@@ -54,19 +55,19 @@ void run_loop(benchmark::State &state, std::int64_t n, Body body) {
 template <lf::scheduler Sch>
 void run_special(benchmark::State &state) {
   std::int64_t n = state.range(0);
-  run_loop<Sch>(state, n, [](Sch &scheduler, std::vector<std::int64_t> &v) {
-    lf::receiver recv = lf::schedule(scheduler, lf::for_each, v.begin(), v.end(), trivial_inc{});
+  run_loop<Sch>(state, n, [](Sch &scheduler, auto &range) {
+    lf::receiver recv = lf::schedule(scheduler, lf::for_each, range.begin(), range.end(), trivial_noop{});
     std::move(recv).get();
   });
 }
 
-// (2) Trivial work via overload (1) with n=1: the chunked codepath, no specialisation.
+// (2) Trivial work via overload (1): the chunked codepath.
 template <lf::scheduler Sch>
 void run_chunked_n1(benchmark::State &state) {
   std::int64_t n = state.range(0);
-  run_loop<Sch>(state, n, [](Sch &scheduler, std::vector<std::int64_t> &v) {
+  run_loop<Sch>(state, n, [](Sch &scheduler, auto &range) {
     lf::receiver recv =
-        lf::schedule(scheduler, lf::for_each, v.begin(), v.end(), std::ptrdiff_t{1000}, trivial_inc{});
+        lf::schedule(scheduler, lf::for_each, range.begin(), range.end(), std::ptrdiff_t{1}, trivial_noop{});
     std::move(recv).get();
   });
 }
@@ -76,8 +77,9 @@ template <lf::scheduler Sch, std::ptrdiff_t Chunk>
 void run_hetero(benchmark::State &state) {
   std::int64_t n = state.range(0);
   state.counters["chunk"] = static_cast<double>(Chunk);
-  run_loop<Sch>(state, n, [](Sch &scheduler, std::vector<std::int64_t> &v) {
-    lf::receiver recv = lf::schedule(scheduler, lf::for_each, v.begin(), v.end(), Chunk, hetero_work{});
+  run_loop<Sch>(state, n, [](Sch &scheduler, auto &range) {
+    lf::receiver recv =
+        lf::schedule(scheduler, lf::for_each, range.begin(), range.end(), Chunk, hetero_work{});
     std::move(recv).get();
   });
 }
