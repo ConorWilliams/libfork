@@ -19,7 +19,7 @@ namespace lf {
 
 /*
 
-TODO: consolodate this notse into comments
+TODO: consolidate this notes into comments
 
 With indirect_value_t the constraint for projections:
 iter_value_t<It> x = *it;
