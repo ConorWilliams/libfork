@@ -89,6 +89,7 @@ target_sources(libfork_libfork
       src/core/awaitables.cxx
       src/core/promise.cxx
       src/core/stop.cxx
+      src/core/projected.cxx
       # libfork.batteries
       src/batteries/batteries.cxx
       src/batteries/deque.cxx
