@@ -132,6 +132,7 @@ using dual_qualified_projected = projected<vec_iter, dual_qualified_proj, contex
 using dual_mode_projected = projected<vec_iter, dual_mode_proj, context_t>;
 
 using sync_then_sync = projected<sync_projected, str_proj, context_t>;
+using const_sync_then_sync = projected<sync_projected const, str_proj, context_t>;
 using async_then_async = projected<async_projected, async_str_proj, context_t>;
 using sync_then_async = projected<sync_projected, async_str_proj, context_t>;
 using async_then_sync = projected<async_projected, str_proj, context_t>;
@@ -238,6 +239,9 @@ TEST_CASE("projected: pipelined / nested projection", "[projected]") {
   // otherwise the outer projection couldn't satisfy the concept.
   STATIC_REQUIRE(std::same_as<sync_then_sync::value_type, std::string>);
   STATIC_REQUIRE(std::same_as<std::iter_reference_t<sync_then_sync>, std::string>);
+
+  STATIC_REQUIRE(std::same_as<const_sync_then_sync::value_type, std::string>);
+  STATIC_REQUIRE(std::same_as<std::iter_reference_t<const_sync_then_sync>, std::string>);
 
   STATIC_REQUIRE(std::same_as<async_then_async::value_type, std::string>);
   STATIC_REQUIRE(std::same_as<std::iter_reference_t<async_then_async>, std::string>);

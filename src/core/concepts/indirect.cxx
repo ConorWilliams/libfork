@@ -7,16 +7,22 @@ import :concepts_context;
 
 namespace lf {
 
+// A type can derive from this to opt-into indirect-value-t customization
+struct indirect_value_customization {};
+
 template <typename I>
 struct indirect_value {
   using type = std::iter_value_t<I> &;
 };
 
-// A type can derive from this to opt-into indirect-value-t customization
-struct indirect_value_customization {};
+// strip cv-ref qualifiers
+template <typename T>
+  requires (!std::same_as<T, std::remove_cvref_t<T>>)
+struct indirect_value<T> : indirect_value<std::remove_cvref_t<T>> {};
 
-// Specialization of indirect_value
+// Specialization for types that customize
 template <std::derived_from<indirect_value_customization> T>
+  requires std::same_as<T, std::remove_cvref_t<T>>
 struct indirect_value<T> {
   using type = T::indirect_value_type;
 };
