@@ -11,6 +11,10 @@ namespace lf {
 template <typename T>
 concept sized_random_access_range = std::ranges::random_access_range<T> && std::ranges::sized_range<T>;
 
+// TODO: relax the constraints?
+//
+// consider a projection if it makes the concept unifyable with fold etc
+
 struct for_each_impl {
  private:
   template <worker_context Context>
@@ -36,7 +40,7 @@ struct for_each_impl {
     LF_ASSUME(len >= 0);
 
     if (len <= n) {
-      if constexpr (indirectly_regular_unary_async_invocable<Fn, Context, I>) {
+      if constexpr (indirectly_async_regular_unary_invocable<Fn, Context, I>) {
         // Prefer async
         auto sc = co_await scope();
         for (; head != tail; ++head) {
@@ -71,7 +75,7 @@ struct for_each_impl {
       case 0:
         co_return;
       case 1:
-        if constexpr (indirectly_regular_unary_async_invocable<Fn, Context, I>) {
+        if constexpr (indirectly_async_regular_unary_invocable<Fn, Context, I>) {
           auto sc = co_await scope();
           co_await sc.call_drop(fn, *head);
           co_await sc.join();
@@ -80,6 +84,10 @@ struct for_each_impl {
         }
         co_return;
     }
+
+    // TODO: round mid-point up
+    // Special case for (case 2/3) for async invocables to avoid the redundant task
+    // Benchmarks for ^ to see if it matters
 
     auto mid = head + (len / 2);
     auto sc = co_await scope();

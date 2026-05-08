@@ -119,19 +119,23 @@ concept has_difference_type = requires { typename T::difference_type; };
 // Type aliases under test
 // ============================================================================
 
-using sync_projected = lf::projected<vec_iter, sync_proj, context_t>;
-using async_projected = lf::projected<vec_iter, async_proj, context_t>;
-using hybrid_projected = lf::projected<vec_iter, hybrid_proj, context_t>;
-using sync_cprojected = lf::projected<cvec_iter, sync_proj, context_t>;
-using sync_ref_projected = lf::projected<vec_iter, sync_ref_proj, context_t>;
-using projected_no_diff = lf::projected<readable_only, sync_proj, context_t>;
-using dual_qualified_projected = lf::projected<vec_iter, dual_qualified_proj, context_t>;
-using dual_mode_projected = lf::projected<vec_iter, dual_mode_proj, context_t>;
+template <typename I, typename Fn, typename Context>
+using projected = lf::projected<Context, I, Fn>;
 
-using sync_then_sync = lf::projected<sync_projected, str_proj, context_t>;
-using async_then_async = lf::projected<async_projected, async_str_proj, context_t>;
-using sync_then_async = lf::projected<sync_projected, async_str_proj, context_t>;
-using async_then_sync = lf::projected<async_projected, str_proj, context_t>;
+using sync_projected = projected<vec_iter, sync_proj, context_t>;
+using async_projected = projected<vec_iter, async_proj, context_t>;
+using hybrid_projected = projected<vec_iter, hybrid_proj, context_t>;
+using sync_cprojected = projected<cvec_iter, sync_proj, context_t>;
+using sync_ref_projected = projected<vec_iter, sync_ref_proj, context_t>;
+using projected_no_diff = projected<readable_only, sync_proj, context_t>;
+using dual_qualified_projected = projected<vec_iter, dual_qualified_proj, context_t>;
+using dual_mode_projected = projected<vec_iter, dual_mode_proj, context_t>;
+
+using sync_then_sync = projected<sync_projected, str_proj, context_t>;
+using const_sync_then_sync = projected<sync_projected const, str_proj, context_t>;
+using async_then_async = projected<async_projected, async_str_proj, context_t>;
+using sync_then_async = projected<sync_projected, async_str_proj, context_t>;
+using async_then_sync = projected<async_projected, str_proj, context_t>;
 
 } // namespace
 
@@ -179,7 +183,7 @@ TEST_CASE("projected: async invocation takes precedence over sync", "[projected]
   // `invoke_result`'s constrained partial specialization (gated on async_invocable)
   // is more constrained than the primary, so the async branch wins.
   STATIC_REQUIRE(std::indirectly_unary_invocable<dual_mode_proj, vec_iter>);
-  STATIC_REQUIRE(lf::indirectly_unary_async_invocable<dual_mode_proj, context_t, vec_iter>);
+  STATIC_REQUIRE(lf::indirectly_async_unary_invocable<dual_mode_proj, context_t, vec_iter>);
 
   STATIC_REQUIRE(std::same_as<dual_mode_projected::value_type, double>);
   STATIC_REQUIRE(std::same_as<std::iter_reference_t<dual_mode_projected>, double>);
@@ -213,21 +217,21 @@ TEST_CASE("indirectly_unary_invocable: sync branch ignores Context", "[projected
   STATIC_REQUIRE_FALSE(lf::indirectly_unary_invocable<async_fn, bad_ctx, vec_iter>);
 }
 
-TEST_CASE("indirectly_unary_async_invocable: async-only variant", "[projected]") {
-  STATIC_REQUIRE_FALSE(lf::indirectly_unary_async_invocable<sync_fn, context_t, vec_iter>);
-  STATIC_REQUIRE(lf::indirectly_unary_async_invocable<async_fn, context_t, vec_iter>);
-  STATIC_REQUIRE(lf::indirectly_unary_async_invocable<hybrid_fn, context_t, vec_iter>);
+TEST_CASE("indirectly_async_unary_invocable: async-only variant", "[projected]") {
+  STATIC_REQUIRE_FALSE(lf::indirectly_async_unary_invocable<sync_fn, context_t, vec_iter>);
+  STATIC_REQUIRE(lf::indirectly_async_unary_invocable<async_fn, context_t, vec_iter>);
+  STATIC_REQUIRE(lf::indirectly_async_unary_invocable<hybrid_fn, context_t, vec_iter>);
 
   // copy_constructible<Fn> required by both branches.
-  STATIC_REQUIRE_FALSE(lf::indirectly_unary_async_invocable<async_fn_no_copy, context_t, vec_iter>);
+  STATIC_REQUIRE_FALSE(lf::indirectly_async_unary_invocable<async_fn_no_copy, context_t, vec_iter>);
   STATIC_REQUIRE_FALSE(lf::indirectly_unary_invocable<async_fn_no_copy, context_t, vec_iter>);
 
   // indirectly_readable<I> required.
-  STATIC_REQUIRE_FALSE(lf::indirectly_unary_async_invocable<async_fn, context_t, int>);
+  STATIC_REQUIRE_FALSE(lf::indirectly_async_unary_invocable<async_fn, context_t, int>);
 
   // worker_context<Context> required.
-  STATIC_REQUIRE_FALSE(lf::indirectly_unary_async_invocable<async_fn, bad_ctx, vec_iter>);
-  STATIC_REQUIRE_FALSE(lf::indirectly_unary_async_invocable<hybrid_fn, bad_ctx, vec_iter>);
+  STATIC_REQUIRE_FALSE(lf::indirectly_async_unary_invocable<async_fn, bad_ctx, vec_iter>);
+  STATIC_REQUIRE_FALSE(lf::indirectly_async_unary_invocable<hybrid_fn, bad_ctx, vec_iter>);
 }
 
 TEST_CASE("projected: pipelined / nested projection", "[projected]") {
@@ -235,6 +239,9 @@ TEST_CASE("projected: pipelined / nested projection", "[projected]") {
   // otherwise the outer projection couldn't satisfy the concept.
   STATIC_REQUIRE(std::same_as<sync_then_sync::value_type, std::string>);
   STATIC_REQUIRE(std::same_as<std::iter_reference_t<sync_then_sync>, std::string>);
+
+  STATIC_REQUIRE(std::same_as<const_sync_then_sync::value_type, std::string>);
+  STATIC_REQUIRE(std::same_as<std::iter_reference_t<const_sync_then_sync>, std::string>);
 
   STATIC_REQUIRE(std::same_as<async_then_async::value_type, std::string>);
   STATIC_REQUIRE(std::same_as<std::iter_reference_t<async_then_async>, std::string>);
