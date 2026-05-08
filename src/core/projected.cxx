@@ -6,17 +6,7 @@ import :concepts_invocable;
 import :concepts_context;
 import :concepts_indirect;
 
-/**
- * The purpose of this file is to define async versions of:
- *
- *  `indirectly_unary_invocable`
- *
- * This requires `indirect-value-t` which is in turn requires an async version of `projected`.
- */
-
 namespace lf {
-
-// C++26 ADL firewalled implementation.
 
 template <typename I>
 struct conditional_difference_type : indirect_value_customization {};
@@ -26,6 +16,7 @@ struct conditional_difference_type<I> : indirect_value_customization {
   using difference_type = std::iter_difference_t<I>;
 };
 
+// C++26 ADL firewalled implementation.
 template <typename I, typename Fn, typename Context>
 struct projected_impl;
 
@@ -77,10 +68,11 @@ concept indirect_async_defaultable =
 /**
  * @brief Test if `I` can be projected through `Fn` in the context of `Context`
  *
- * This requires the standard indirectly regular invocable and in addition,
+ * This requires the standard indirectly regular invocable and, in addition,
  * async projections must return a default initializable type.
  *
- * projectable && indirectly_async_unary_invocable => async projection with default initializable result
+ * Projectable && indirectly_async_unary_invocable implies an async projection
+ * with default initializable async result type.
  */
 export template <typename Fn, typename Context, typename I>
 concept projectable =
