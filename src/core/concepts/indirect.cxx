@@ -93,7 +93,7 @@ concept indirectly_async_regular_unary_invocable =                      //
  * sync or async invocables.
  *
  * In general if a function is both sync and async invocable it is expected
- * that the async version will be prefered.
+ * that the async version will be preferred.
  */
 export template <typename Fn, typename Context, typename I>
 concept indirectly_unary_invocable =
@@ -106,7 +106,7 @@ concept indirectly_unary_invocable =
  * either sync or async invocables.
  *
  * In general if a function is both sync and async invocable it is expected
- * that the async version will be prefered.
+ * that the async version will be preferred.
  */
 export template <typename Fn, typename Context, typename I>
 concept indirectly_regular_unary_invocable = 
