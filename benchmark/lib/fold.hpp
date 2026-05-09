@@ -18,10 +18,6 @@ import std;
 #endif
 
 inline constexpr std::int64_t fold_test = 10;
-inline constexpr std::int64_t fold_one_gib = 1024LL * 1024LL * 1024LL;
-
-template <typename T>
-inline constexpr std::int64_t fold_one_gib_elements = fold_one_gib / static_cast<std::int64_t>(sizeof(T));
 
 inline constexpr std::int64_t fold_10_base = 10;
 inline constexpr std::int64_t fold_100_base = 100;
@@ -31,7 +27,6 @@ inline constexpr std::int64_t fold_100k_base = 100'000;
 inline constexpr std::int64_t fold_1m_base = 1'000'000;
 inline constexpr std::int64_t fold_10m_base = 10'000'000;
 inline constexpr std::int64_t fold_100m_base = 100'000'000;
-inline constexpr std::int64_t fold_1gib_base = fold_one_gib_elements<std::int32_t>;
 
 enum class fold_data_mode {
   memory,
@@ -191,5 +186,4 @@ using float32 = float;
   BENCH_ONE(bench_fn, category, name, base, fold_100k __VA_OPT__(, ) __VA_ARGS__)                            \
   BENCH_ONE(bench_fn, category, name, base, fold_1m __VA_OPT__(, ) __VA_ARGS__)                              \
   BENCH_ONE(bench_fn, category, name, base, fold_10m __VA_OPT__(, ) __VA_ARGS__)                             \
-  BENCH_ONE(bench_fn, category, name, base, fold_100m __VA_OPT__(, ) __VA_ARGS__)                            \
-  BENCH_ONE(bench_fn, category, name, base, fold_1gib __VA_OPT__(, ) __VA_ARGS__)
+  BENCH_ONE(bench_fn, category, name, base, fold_100m __VA_OPT__(, ) __VA_ARGS__)
