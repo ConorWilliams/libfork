@@ -44,7 +44,7 @@ auto run_fold(mono_busy_pool &pool, Range &&range) -> fold_accum_t<T> {
         .get();
   } else {
     using diff_t = std::ranges::range_difference_t<Range>;
-    constexpr diff_t chunk = Chunk == fold_chunk_mode::explicit_one ? diff_t{1} : diff_t{1000};
+    constexpr diff_t chunk = Chunk == fold_chunk_mode::explicit_one ? diff_t{1} : diff_t{2048};
     return lf::schedule(pool,
                         lf::fold,
                         std::ranges::begin(range),
@@ -73,7 +73,7 @@ void fold_run(benchmark::State &state) {
 #define LF_REGISTER_FOLD_CHUNKS(data, proj, dtype)                                                           \
   LF_REGISTER_FOLD_BENCH(data, chunk_1, proj, dtype)                                                         \
   LF_REGISTER_FOLD_BENCH(data, chunk_deduced, proj, dtype)                                                   \
-  LF_REGISTER_FOLD_BENCH(data, chunk_1000, proj, dtype)
+  LF_REGISTER_FOLD_BENCH(data, chunk_fixed, proj, dtype)
 
 #define LF_REGISTER_FOLD_PROJECTIONS(data, dtype)                                                            \
   LF_REGISTER_FOLD_CHUNKS(data, sync_proj, dtype)                                                            \

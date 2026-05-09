@@ -28,7 +28,7 @@ inline constexpr std::int64_t fold_1024_sq_base = fold_1024 * fold_1024;
 inline constexpr std::int64_t fold_1024_cu_base = fold_1024 * fold_1024 * fold_1024;
 
 enum class fold_data_mode : char { memory, lazy };
-enum class fold_chunk_mode : char { explicit_one, deduced, k1000 };
+enum class fold_chunk_mode : char { explicit_one, deduced, fixed };
 enum class fold_projection_mode : char { sync, async };
 
 template <typename T>
@@ -83,6 +83,7 @@ void run_fold_input(benchmark::State &state, Fn &&fn) {
     bench(make_fold_range<T>(n));
   }
 
+  state.counters["n"] = static_cast<double>(n);
   state.SetItemsProcessed(state.iterations() * static_cast<std::int64_t>(n));
 }
 
@@ -91,7 +92,7 @@ inline constexpr auto memory = fold_data_mode::memory;
 inline constexpr auto lazy = fold_data_mode::lazy;
 inline constexpr auto chunk_1 = fold_chunk_mode::explicit_one;
 inline constexpr auto chunk_deduced = fold_chunk_mode::deduced;
-inline constexpr auto chunk_1000 = fold_chunk_mode::k1000;
+inline constexpr auto chunk_fixed = fold_chunk_mode::fixed;
 inline constexpr auto sync_proj = fold_projection_mode::sync;
 inline constexpr auto async_proj = fold_projection_mode::async;
 
