@@ -145,17 +145,44 @@ struct fold_impl {
           auto sc = co_await scope();
           co_await sc.call(&init, proj, *head);
           co_await sc.join();
-
-          if constexpr (std::assignable_from<result_type &, decltype(init)>) {
-            co_return std::move(init);
-          } else {
-            co_return result_type(std::move(init));
-          }
-
-        } else if constexpr (std::assignable_from<result_type &, decltype(proj(*head))>) {
-          co_return proj(*head);
+          co_return result_type(std::move(init));
         } else {
           co_return result_type(proj(*head));
+        }
+      case 2:
+        if constexpr (async::indirectly_regular_unary_invocable<Proj, X, I>) {
+
+          using proj_result_type = async_result_t<Proj &, X, std::iter_reference_t<I>>;
+
+          proj_result_type lhs;
+          proj_result_type rhs;
+
+          {
+            auto sc = co_await scope();
+            co_await sc.call(&lhs, proj, *head);
+            co_await sc.call(&rhs, proj, *(head + 1));
+            co_await sc.join();
+          }
+
+          if constexpr (async::indirect_semigroup<Bop, X, projected<X, I, Proj>>) {
+            result_type ret;
+            auto sc = co_await scope();
+            co_await sc.call(&ret, bop, std::move(lhs), std::move(rhs));
+            co_await sc.join();
+            co_return ret;
+          } else {
+            co_return std::invoke(bop, std::move(lhs), std::move(rhs));
+          }
+        } else {
+          if constexpr (async::indirect_semigroup<Bop, X, projected<X, I, Proj>>) {
+            result_type ret;
+            auto sc = co_await scope();
+            co_await sc.call(&ret, bop, std::invoke(proj, *head), std::invoke(proj, *(head + 1)));
+            co_await sc.join();
+            co_return ret;
+          } else {
+            co_return std::invoke(bop, std::invoke(proj, *head), std::invoke(proj, *(head + 1)));
+          }
         }
     }
 
