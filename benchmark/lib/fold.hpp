@@ -38,7 +38,7 @@ constexpr auto fold_value(std::size_t index) -> T {
 
 template <typename T>
 constexpr auto make_fold_range(std::size_t count) {
-  return std::views::iota(std::size_t{}, count) | std::views::transform([](std::size_t index) {
+  return std::views::iota(std::size_t{}, count) | std::views::transform([](std::size_t index) -> T {
            return fold_value<T>(index);
          });
 }
@@ -62,50 +62,29 @@ auto fold_result_is_correct(fold_accum_t<T> result, fold_accum_t<T> expect) -> b
   }
 }
 
-inline void set_fold_throughput(benchmark::State &state, std::size_t n, std::size_t bytes_per_item) {
-  state.SetItemsProcessed(state.iterations() * static_cast<std::int64_t>(n));
-  state.SetBytesProcessed(state.iterations() * static_cast<std::int64_t>(n * bytes_per_item));
-}
-
 template <fold_data_mode Data, typename T, typename Fn>
 void run_fold_input(benchmark::State &state, Fn &&fn) {
 
   auto n = static_cast<std::size_t>(state.range(0));
   auto expect = expected_fold_result<T>(n);
 
+  auto bench = [&](auto range) -> void {
+    for (auto _ : state) {
+      if (auto result = std::invoke(fn, range); !fold_result_is_correct<T>(result, expect)) {
+        state.SkipWithError(std::format("incorrect result: {} != {}", result, expect));
+        break;
+      }
+    }
+  };
+
   if constexpr (Data == fold_data_mode::memory) {
-
-    std::vector<T> values(n);
-    for (std::size_t i = 0; i < n; ++i) {
-      values[i] = fold_value<T>(i);
-    }
-
-    for (auto _ : state) {
-      benchmark::DoNotOptimize(values.data());
-      auto result = std::invoke(fn, std::span{values});
-      if (!fold_result_is_correct<T>(result, expect)) {
-        state.SkipWithError(std::format("incorrect result: {} != {}", result, expect));
-        break;
-      }
-      benchmark::DoNotOptimize(result);
-    }
-
+    bench(make_fold_range<T>(n) | std::ranges::to<std::vector<T>>());
   } else {
-
-    auto values = make_fold_range<T>(n);
-
-    for (auto _ : state) {
-      benchmark::DoNotOptimize(values);
-      auto result = std::invoke(fn, values);
-      if (!fold_result_is_correct<T>(result, expect)) {
-        state.SkipWithError(std::format("incorrect result: {} != {}", result, expect));
-        break;
-      }
-      benchmark::DoNotOptimize(result);
-    }
+    bench(make_fold_range<T>(n));
   }
 
-  set_fold_throughput(state, n, sizeof(T));
+  state.SetItemsProcessed(state.iterations() * static_cast<std::int64_t>(n));
+  state.SetBytesProcessed(state.iterations() * static_cast<std::int64_t>(n * sizeof(T)));
 }
 
 // Use alias for shorted names.

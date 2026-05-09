@@ -29,22 +29,26 @@ constexpr auto make_projection() {
 
 template <fold_chunk_mode Chunk, fold_projection_mode Projection, typename T, typename Range>
 auto run_fold(mono_busy_pool &pool, Range &&range) -> fold_accum_t<T> {
-  using diff_t = std::ranges::range_difference_t<Range>;
+
+
   auto projection = make_projection<Projection, T>();
 
   if constexpr (Chunk == fold_chunk_mode::deduced) {
     return lf::schedule(pool,
                         lf::fold,
-                        std::forward<Range>(range),
+                        std::ranges::begin(range),
+                        std::ranges::end(range),
                         fold_accum_t<T>{},
                         std::plus<>{},
                         std::move(projection))
         .get();
   } else {
+    using diff_t = std::ranges::range_difference_t<Range>;
     constexpr diff_t chunk = Chunk == fold_chunk_mode::explicit_one ? diff_t{1} : diff_t{1000};
     return lf::schedule(pool,
                         lf::fold,
-                        std::forward<Range>(range),
+                        std::ranges::begin(range),
+                        std::ranges::end(range),
                         chunk,
                         fold_accum_t<T>{},
                         std::plus<>{},
