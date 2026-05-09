@@ -22,22 +22,14 @@ import std;
 
 inline constexpr std::int64_t fold_test = 10;
 
-inline constexpr std::int64_t fold_1024_base = 1'024;
-inline constexpr std::int64_t fold_1024_sq_base = 1'024 * 1'024;
-inline constexpr std::int64_t fold_1024_cu_base = 1'024 * 1'024 * 1'024;
+inline constexpr std::int64_t fold_1024 = 1'024;
+inline constexpr std::int64_t fold_1024_base = fold_1024;
+inline constexpr std::int64_t fold_1024_sq_base = fold_1024 * fold_1024;
+inline constexpr std::int64_t fold_1024_cu_base = fold_1024 * fold_1024 * fold_1024;
 
-enum class fold_data_mode {
-  memory,
-  lazy,
-};
-
-enum class fold_chunk_mode {
-  explicit_one,
-  deduced,
-  k1000,
-};
-
-enum class fold_projection_mode { sync, async };
+enum class fold_data_mode : char { memory, lazy };
+enum class fold_chunk_mode : char { explicit_one, deduced, k1000 };
+enum class fold_projection_mode : char { sync, async };
 
 template <typename T>
 constexpr auto fold_value(std::size_t index) -> T {
