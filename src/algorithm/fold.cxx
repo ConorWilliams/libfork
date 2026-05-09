@@ -127,8 +127,46 @@ struct fold_impl {
             projectable<X, I> Proj = std::identity,           //
             indirectly_foldable<X, projected<X, I, Proj>> Bop //
             >
-  static auto operator()(env<X> context, I head, S tail, Bop bop, Proj proj = {}) -> task_t<X, I, Proj, Bop> {
-    return fold_impl{}(context, head, tail, iter_diff_t<I>{1}, std::move(bop), std::move(proj));
+  static auto operator()(env<X>, I head, S tail, Bop bop, Proj proj = {}) -> task_t<X, I, Proj, Bop> {
+    auto len = tail - head;
+
+    LF_ASSUME(len > 0);
+
+    if (len == 1) {
+      if constexpr (async::indirectly_regular_unary_invocable<Proj, X, I>) {
+        async_result_t<Proj &, X, std::iter_reference_t<I>> init;
+        auto sc = co_await scope();
+        co_await sc.call(&init, proj, *head);
+        co_await sc.join();
+
+        result_t<X, I, Proj, Bop> acc = std::move(init);
+        co_return acc;
+      } else {
+        result_t<X, I, Proj, Bop> acc = proj(*head);
+        co_return acc;
+      }
+    }
+
+    auto mid = head + (len / 2);
+
+    result_t<X, I, Proj, Bop> lhs;
+    result_t<X, I, Proj, Bop> rhs;
+
+    {
+      auto sc = co_await scope();
+      co_await sc.fork(&lhs, fold_impl{}, head, mid, bop, proj);
+      co_await sc.call(&rhs, fold_impl{}, mid, tail, bop, std::move(proj));
+      co_await sc.join();
+    }
+
+    if constexpr (async::indirect_semigroup<Bop, X, projected<X, I, Proj>>) {
+      auto sc = co_await scope();
+      co_await sc.call(&lhs, bop, std::move(lhs), std::move(rhs));
+      co_await sc.join();
+      co_return lhs;
+    } else {
+      co_return std::invoke(bop, std::move(lhs), std::move(rhs));
+    }
   }
 
   // (3) range + n -> dispatches to (1) or (2)
