@@ -19,18 +19,6 @@ void fold_reduce(benchmark::State &state) {
 
 } // namespace
 
-#define LF_FOLD_BENCH_SIZES(bench_fn, category, name)                                                        \
-  BENCH_ONE(bench_fn, category, name, test, fold)                                                            \
-  BENCH_ONE(bench_fn, category, name, base, fold_10)                                                         \
-  BENCH_ONE(bench_fn, category, name, base, fold_100)                                                        \
-  BENCH_ONE(bench_fn, category, name, base, fold_1k)                                                         \
-  BENCH_ONE(bench_fn, category, name, base, fold_10k)                                                        \
-  BENCH_ONE(bench_fn, category, name, base, fold_100k)                                                       \
-  BENCH_ONE(bench_fn, category, name, base, fold_1m)                                                         \
-  BENCH_ONE(bench_fn, category, name, base, fold_10m)                                                        \
-  BENCH_ONE(bench_fn, category, name, base, fold_100m)                                                       \
-  BENCH_ONE(bench_fn, category, name, base, fold_1gib)
-
 #define LF_DEFINE_FOLD_REDUCE(data, dtype_name, dtype)                                                       \
   template <typename = void>                                                                                 \
   void fold_reduce_##data##_##dtype_name(benchmark::State &state) {                                          \
