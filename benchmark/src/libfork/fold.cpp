@@ -32,9 +32,7 @@ constexpr auto make_projection() {
 
 template <fold_chunk_mode Chunk, fold_projection_mode Projection, typename T, typename Range>
 auto run_fold(mono_busy_pool &pool, Range &&range) -> accum_t<T> {
-
   using diff_t = std::ranges::range_difference_t<Range>;
-
   auto projection = make_projection<Projection, T>();
 
   if constexpr (Chunk == fold_chunk_mode::deduced) {
