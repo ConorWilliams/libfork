@@ -2,10 +2,13 @@
 
 #include <benchmark/benchmark.h>
 
+#include "macros.hpp"
+
 #ifdef LF_BENCH_NO_IMPORT_STD
   #include <concepts>
   #include <cstddef>
   #include <cstdint>
+  #include <format>
   #include <functional>
   #include <new>
   #include <ranges>
@@ -42,14 +45,35 @@ enum class fold_chunk_mode {
 enum class fold_projection_mode { sync, async };
 
 template <typename T>
-constexpr auto make_ones_range(std::size_t count) {
-  return std::views::iota(std::size_t{}, count) | std::views::transform([](std::size_t) {
-           return T{1};
+constexpr auto fold_value(std::size_t index) -> T {
+  return static_cast<T>(index % 4UZ);
+}
+
+template <typename T>
+constexpr auto make_fold_range(std::size_t count) {
+  return std::views::iota(std::size_t{}, count) | std::views::transform([](std::size_t index) {
+           return fold_value<T>(index);
          });
 }
 
 template <typename T>
 using fold_accum_t = std::conditional_t<std::same_as<T, float>, double, std::int64_t>;
+
+template <typename T>
+constexpr auto expected_fold_result(std::size_t count) -> fold_accum_t<T> {
+  auto groups = count / 4UZ;
+  auto remainder = count % 4UZ;
+  return static_cast<fold_accum_t<T>>((groups * 6UZ) + ((remainder * (remainder - 1UZ)) / 2UZ));
+}
+
+template <typename T>
+auto fold_result_is_correct(fold_accum_t<T> result, fold_accum_t<T> expect) -> bool {
+  if constexpr (std::floating_point<fold_accum_t<T>>) {
+    return result >= expect && result <= expect;
+  } else {
+    return result == expect;
+  }
+}
 
 inline void set_fold_throughput(benchmark::State &state, std::size_t n, std::size_t bytes_per_item) {
   state.SetItemsProcessed(state.iterations() * static_cast<std::int64_t>(n));
@@ -60,24 +84,36 @@ template <fold_data_mode Data, typename T, typename Fn>
 void run_fold_input(benchmark::State &state, Fn &&fn) {
 
   auto n = static_cast<std::size_t>(state.range(0));
+  auto expect = expected_fold_result<T>(n);
 
   if constexpr (Data == fold_data_mode::memory) {
 
-    std::vector<T> values(n, T{1});
+    std::vector<T> values(n);
+    for (std::size_t i = 0; i < n; ++i) {
+      values[i] = fold_value<T>(i);
+    }
 
     for (auto _ : state) {
       benchmark::DoNotOptimize(values.data());
       auto result = std::invoke(fn, std::span{values});
+      if (!fold_result_is_correct<T>(result, expect)) {
+        state.SkipWithError(std::format("incorrect result: {} != {}", result, expect));
+        break;
+      }
       benchmark::DoNotOptimize(result);
     }
 
   } else {
 
-    auto values = make_ones_range<T>(n);
+    auto values = make_fold_range<T>(n);
 
     for (auto _ : state) {
       benchmark::DoNotOptimize(values);
       auto result = std::invoke(fn, values);
+      if (!fold_result_is_correct<T>(result, expect)) {
+        state.SkipWithError(std::format("incorrect result: {} != {}", result, expect));
+        break;
+      }
       benchmark::DoNotOptimize(result);
     }
   }
