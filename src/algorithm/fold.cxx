@@ -39,6 +39,8 @@ struct fold_impl {
   static auto
   operator()(env<X>, I head, S tail, iter_diff_t<I> n, Bop bop, Proj proj = {}) -> task_t<X, I, Proj, Bop> {
 
+    using result_type = result_t<X, I, Proj, Bop>;
+
     LF_ASSUME(n > 0);
 
     auto len = tail - head;
@@ -57,7 +59,7 @@ struct fold_impl {
           co_await sc.join();
         }
 
-        result_t<X, I, Proj, Bop> acc = std::move(init);
+        result_type acc = std::move(init);
 
         for (++head; head != tail; ++head) {
 
@@ -81,7 +83,7 @@ struct fold_impl {
 
       } else {
 
-        result_t<X, I, Proj, Bop> acc = proj(*head);
+        result_type acc = proj(*head);
 
         for (++head; head != tail; ++head) {
           if constexpr (async::indirect_semigroup<Bop, X, projected<X, I, Proj>>) {
@@ -99,8 +101,8 @@ struct fold_impl {
 
     auto mid = head + (len / 2);
 
-    result_t<X, I, Proj, Bop> lhs;
-    result_t<X, I, Proj, Bop> rhs;
+    result_type lhs;
+    result_type rhs;
 
     {
       auto sc = co_await scope();
@@ -128,23 +130,34 @@ struct fold_impl {
             indirectly_foldable<X, projected<X, I, Proj>> Bop //
             >
   static auto operator()(env<X>, I head, S tail, Bop bop, Proj proj = {}) -> task_t<X, I, Proj, Bop> {
+
+    using result_type = result_t<X, I, Proj, Bop>;
+
     auto len = tail - head;
 
-    LF_ASSUME(len > 0);
+    switch (len) {
+      case 0:
+        LF_UNREACHABLE();
+      case 1:
+        if constexpr (async::indirectly_regular_unary_invocable<Proj, X, I>) {
 
-    if (len == 1) {
-      if constexpr (async::indirectly_regular_unary_invocable<Proj, X, I>) {
-        async_result_t<Proj &, X, std::iter_reference_t<I>> init;
-        auto sc = co_await scope();
-        co_await sc.call(&init, proj, *head);
-        co_await sc.join();
+          using proj_result_t = async_result_t<Proj &, X, std::iter_reference_t<I>>;
 
-        result_t<X, I, Proj, Bop> acc = std::move(init);
-        co_return acc;
-      } else {
-        result_t<X, I, Proj, Bop> acc = proj(*head);
-        co_return acc;
-      }
+          proj_result_t init;
+          auto sc = co_await scope();
+          co_await sc.call(&init, proj, *head);
+          co_await sc.join();
+
+          if constexpr (std::assignable_from<result_type &, proj_result_t>) {
+            co_return std::move(init);
+          } else {
+            co_return result_type(std::move(init));
+          }
+        } else if constexpr (std::assignable_from<result_type &, decltype(proj(*head))>) {
+          co_return proj(*head);
+        } else {
+          co_return result_type(proj(*head));
+        }
     }
 
     auto mid = head + (len / 2);
