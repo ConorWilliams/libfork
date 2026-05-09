@@ -125,7 +125,7 @@ export template <typename Fn, typename Context, typename I>
 concept indirect_semigroup = async::indirect_semigroup<Fn, Context, I> || sync::indirect_semigroup<Fn, I>;
 
 /**
- * @brief A sematic requirement that the semigroup operation is commutative.
+ * @brief A semantic requirement that the semigroup operation is commutative.
  *
  * Commutativity requires `a · b = b · a` for all `a`, `b` in the set `S`.
  */
