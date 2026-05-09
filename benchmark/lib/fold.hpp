@@ -130,23 +130,21 @@ inline void set_fold_throughput(benchmark::State &state, std::size_t n, std::siz
 
 template <fold_data_mode Data, typename T, typename Fn>
 void run_fold_input(benchmark::State &state, Fn &&fn) {
+
   auto n = static_cast<std::size_t>(state.range(0));
 
   if constexpr (Data == fold_data_mode::memory) {
-    std::vector<T> values;
-    try {
-      values.assign(n, T{1});
-    } catch (std::bad_alloc const &) {
-      state.SkipWithError("allocation failed");
-      return;
-    }
+
+    std::vector<T> values(n, T{1});
 
     for (auto _ : state) {
       benchmark::DoNotOptimize(values.data());
-      auto result = std::invoke(fn, std::span<T>{values});
+      auto result = std::invoke(fn, std::span{values});
       benchmark::DoNotOptimize(result);
     }
+
   } else {
+
     auto values = ones_range<T>{.count = n};
 
     for (auto _ : state) {
@@ -159,6 +157,7 @@ void run_fold_input(benchmark::State &state, Fn &&fn) {
   set_fold_throughput(state, n, sizeof(T));
 }
 
+// Use alias for shorted names.
 inline constexpr auto memory = fold_data_mode::memory;
 inline constexpr auto lazy = fold_data_mode::lazy;
 inline constexpr auto chunk_1 = fold_chunk_mode::explicit_one;
