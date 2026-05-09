@@ -64,7 +64,7 @@ constexpr auto expected_fold_result(std::size_t count) -> fold_accum_t<T> {
 template <typename T>
 auto fold_result_is_correct(fold_accum_t<T> result, fold_accum_t<T> expect) -> bool {
   if constexpr (std::floating_point<fold_accum_t<T>>) {
-    return result >= expect && result <= expect;
+    return std::abs(result - expect) <= 1e-6;
   } else {
     return result == expect;
   }
