@@ -68,33 +68,21 @@ void fold_run(benchmark::State &state) {
 
 } // namespace
 
-#define LF_DEFINE_FOLD_BENCH(data, chunk, proj, dtype_name, dtype)                                           \
-  template <typename = void>                                                                                 \
-  void fold_##data##_##chunk##_##proj##_##dtype_name(benchmark::State &state) {                              \
-    fold_run<lf_bench::fold_data_mode::data,                                                                 \
-             lf_bench::fold_chunk_mode::chunk,                                                               \
-             lf_bench::fold_projection_mode::proj,                                                           \
-             dtype>(state);                                                                                  \
-  }
+#define LF_REGISTER_FOLD_BENCH(data, chunk, proj, dtype)                                                     \
+  LF_FOLD_BENCH_SIZES(fold_run, libfork, fold / std_plus, data, chunk, proj, dtype)
 
-#define LF_REGISTER_FOLD_BENCH(data, chunk, chunk_name, proj, dtype_name, dtype)                             \
-  LF_DEFINE_FOLD_BENCH(data, chunk, proj, dtype_name, dtype)                                                 \
-  LF_FOLD_BENCH_SIZES(fold_##data##_##chunk##_##proj##_##dtype_name,                                         \
-                      libfork,                                                                               \
-                      fold / std_plus / data / dtype_name / proj##_proj / chunk_name)
+#define LF_REGISTER_FOLD_CHUNKS(data, proj, dtype)                                                           \
+  LF_REGISTER_FOLD_BENCH(data, chunk_1, proj, dtype)                                                         \
+  LF_REGISTER_FOLD_BENCH(data, chunk_deduced, proj, dtype)                                                   \
+  LF_REGISTER_FOLD_BENCH(data, chunk_1000, proj, dtype)
 
-#define LF_REGISTER_FOLD_CHUNKS(data, proj, dtype_name, dtype)                                               \
-  LF_REGISTER_FOLD_BENCH(data, explicit_one, chunk_1, proj, dtype_name, dtype)                               \
-  LF_REGISTER_FOLD_BENCH(data, deduced, chunk_deduced, proj, dtype_name, dtype)                              \
-  LF_REGISTER_FOLD_BENCH(data, k1000, chunk_1000, proj, dtype_name, dtype)
-
-#define LF_REGISTER_FOLD_PROJECTIONS(data, dtype_name, dtype)                                                \
-  LF_REGISTER_FOLD_CHUNKS(data, sync, dtype_name, dtype)                                                     \
-  LF_REGISTER_FOLD_CHUNKS(data, async, dtype_name, dtype)
+#define LF_REGISTER_FOLD_PROJECTIONS(data, dtype)                                                            \
+  LF_REGISTER_FOLD_CHUNKS(data, sync_proj, dtype)                                                            \
+  LF_REGISTER_FOLD_CHUNKS(data, async_proj, dtype)
 
 #define LF_REGISTER_FOLD_TYPES(data)                                                                         \
-  LF_REGISTER_FOLD_PROJECTIONS(data, int32, std::int32_t)                                                    \
-  LF_REGISTER_FOLD_PROJECTIONS(data, float, float)
+  LF_REGISTER_FOLD_PROJECTIONS(data, int32)                                                                  \
+  LF_REGISTER_FOLD_PROJECTIONS(data, float32)
 
 LF_REGISTER_FOLD_TYPES(memory)
 LF_REGISTER_FOLD_TYPES(lazy)

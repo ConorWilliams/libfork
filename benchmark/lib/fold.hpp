@@ -186,14 +186,25 @@ inline constexpr std::int64_t fold_10m_base = lf_bench::fold_10m_base;
 inline constexpr std::int64_t fold_100m_base = lf_bench::fold_100m_base;
 inline constexpr std::int64_t fold_1gib_base = lf_bench::fold_1gib_base;
 
-#define LF_FOLD_BENCH_SIZES(bench_fn, category, name)                                                        \
-  BENCH_ONE(bench_fn, category, name, test, fold)                                                            \
-  BENCH_ONE(bench_fn, category, name, base, fold_10)                                                         \
-  BENCH_ONE(bench_fn, category, name, base, fold_100)                                                        \
-  BENCH_ONE(bench_fn, category, name, base, fold_1k)                                                         \
-  BENCH_ONE(bench_fn, category, name, base, fold_10k)                                                        \
-  BENCH_ONE(bench_fn, category, name, base, fold_100k)                                                       \
-  BENCH_ONE(bench_fn, category, name, base, fold_1m)                                                         \
-  BENCH_ONE(bench_fn, category, name, base, fold_10m)                                                        \
-  BENCH_ONE(bench_fn, category, name, base, fold_100m)                                                       \
-  BENCH_ONE(bench_fn, category, name, base, fold_1gib)
+inline constexpr auto memory = lf_bench::fold_data_mode::memory;
+inline constexpr auto lazy = lf_bench::fold_data_mode::lazy;
+inline constexpr auto chunk_1 = lf_bench::fold_chunk_mode::explicit_one;
+inline constexpr auto chunk_deduced = lf_bench::fold_chunk_mode::deduced;
+inline constexpr auto chunk_1000 = lf_bench::fold_chunk_mode::k1000;
+inline constexpr auto sync_proj = lf_bench::fold_projection_mode::sync;
+inline constexpr auto async_proj = lf_bench::fold_projection_mode::async;
+
+using int32 = std::int32_t;
+using float32 = float;
+
+#define LF_FOLD_BENCH_SIZES(bench_fn, category, name, ...)                                                   \
+  BENCH_ONE(bench_fn, category, name, test, fold __VA_OPT__(, ) __VA_ARGS__)                                 \
+  BENCH_ONE(bench_fn, category, name, base, fold_10 __VA_OPT__(, ) __VA_ARGS__)                              \
+  BENCH_ONE(bench_fn, category, name, base, fold_100 __VA_OPT__(, ) __VA_ARGS__)                             \
+  BENCH_ONE(bench_fn, category, name, base, fold_1k __VA_OPT__(, ) __VA_ARGS__)                              \
+  BENCH_ONE(bench_fn, category, name, base, fold_10k __VA_OPT__(, ) __VA_ARGS__)                             \
+  BENCH_ONE(bench_fn, category, name, base, fold_100k __VA_OPT__(, ) __VA_ARGS__)                            \
+  BENCH_ONE(bench_fn, category, name, base, fold_1m __VA_OPT__(, ) __VA_ARGS__)                              \
+  BENCH_ONE(bench_fn, category, name, base, fold_10m __VA_OPT__(, ) __VA_ARGS__)                             \
+  BENCH_ONE(bench_fn, category, name, base, fold_100m __VA_OPT__(, ) __VA_ARGS__)                            \
+  BENCH_ONE(bench_fn, category, name, base, fold_1gib __VA_OPT__(, ) __VA_ARGS__)

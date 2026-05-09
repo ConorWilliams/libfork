@@ -19,17 +19,10 @@ void fold_reduce(benchmark::State &state) {
 
 } // namespace
 
-#define LF_DEFINE_FOLD_REDUCE(data, dtype_name, dtype)                                                       \
-  template <typename = void>                                                                                 \
-  void fold_reduce_##data##_##dtype_name(benchmark::State &state) {                                          \
-    fold_reduce<lf_bench::fold_data_mode::data, dtype>(state);                                               \
-  }
+#define LF_REGISTER_FOLD_REDUCE(data, dtype)                                                                 \
+  LF_FOLD_BENCH_SIZES(fold_reduce, serial, fold / std_reduce, data, dtype)
 
-#define LF_REGISTER_FOLD_REDUCE(data, dtype_name, dtype)                                                     \
-  LF_DEFINE_FOLD_REDUCE(data, dtype_name, dtype)                                                             \
-  LF_FOLD_BENCH_SIZES(fold_reduce_##data##_##dtype_name, serial, fold / data / dtype_name / std_reduce)
-
-LF_REGISTER_FOLD_REDUCE(memory, int32, std::int32_t)
-LF_REGISTER_FOLD_REDUCE(memory, float, float)
-LF_REGISTER_FOLD_REDUCE(lazy, int32, std::int32_t)
-LF_REGISTER_FOLD_REDUCE(lazy, float, float)
+LF_REGISTER_FOLD_REDUCE(memory, int32)
+LF_REGISTER_FOLD_REDUCE(memory, float32)
+LF_REGISTER_FOLD_REDUCE(lazy, int32)
+LF_REGISTER_FOLD_REDUCE(lazy, float32)
