@@ -123,12 +123,6 @@ struct ones_range {
 template <typename T>
 using fold_accum_t = std::conditional_t<std::same_as<T, float>, double, std::int64_t>;
 
-template <typename T>
-void set_fold_counters(benchmark::State &state, std::size_t n) {
-  state.counters["n"] = static_cast<double>(n);
-  state.counters["bytes"] = static_cast<double>(n * sizeof(T));
-}
-
 inline void set_fold_throughput(benchmark::State &state, std::size_t n, std::size_t bytes_per_item) {
   state.SetItemsProcessed(state.iterations() * static_cast<std::int64_t>(n));
   state.SetBytesProcessed(state.iterations() * static_cast<std::int64_t>(n * bytes_per_item));
@@ -137,7 +131,6 @@ inline void set_fold_throughput(benchmark::State &state, std::size_t n, std::siz
 template <fold_data_mode Data, typename T, typename Fn>
 void run_fold_input(benchmark::State &state, Fn &&fn) {
   auto n = static_cast<std::size_t>(state.range(0));
-  set_fold_counters<T>(state, n);
 
   if constexpr (Data == fold_data_mode::memory) {
     std::vector<T> values;
