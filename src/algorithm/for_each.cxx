@@ -6,10 +6,9 @@ import std;
 
 import libfork.core;
 
-namespace lf {
+import :concepts;
 
-template <typename T>
-concept sized_random_access_range = std::ranges::random_access_range<T> && std::ranges::sized_range<T>;
+namespace lf {
 
 // TODO: relax the constraints?
 //
@@ -40,7 +39,7 @@ struct for_each_impl {
     LF_ASSUME(len >= 0);
 
     if (len <= n) {
-      if constexpr (indirectly_async_regular_unary_invocable<Fn, Context, I>) {
+      if constexpr (async::indirectly_regular_unary_invocable<Fn, Context, I>) {
         // Prefer async
         auto sc = co_await scope();
         for (; head != tail; ++head) {
@@ -75,7 +74,7 @@ struct for_each_impl {
       case 0:
         co_return;
       case 1:
-        if constexpr (indirectly_async_regular_unary_invocable<Fn, Context, I>) {
+        if constexpr (async::indirectly_regular_unary_invocable<Fn, Context, I>) {
           auto sc = co_await scope();
           co_await sc.call_drop(fn, *head);
           co_await sc.join();
