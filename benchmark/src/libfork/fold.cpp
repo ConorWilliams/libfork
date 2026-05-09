@@ -11,25 +11,29 @@ import libfork;
 namespace {
 
 template <typename T>
-struct async_identity {
+struct sync_projection {
+  constexpr auto operator()(T value) const -> fold_accum_t<T> { return static_cast<fold_accum_t<T>>(value); }
+};
+
+template <typename T>
+struct async_projection {
   template <typename Context>
-  static auto operator()(lf::env<Context>, T value) -> lf::task<T, Context> {
-    co_return value;
+  static auto operator()(lf::env<Context>, T value) -> lf::task<fold_accum_t<T>, Context> {
+    co_return static_cast<fold_accum_t<T>>(value);
   }
 };
 
 template <fold_projection_mode Projection, typename T>
 constexpr auto make_projection() {
   if constexpr (Projection == fold_projection_mode::sync) {
-    return std::identity{};
+    return sync_projection<T>{};
   } else {
-    return async_identity<T>{};
+    return async_projection<T>{};
   }
 }
 
 template <fold_chunk_mode Chunk, fold_projection_mode Projection, typename T, typename Range>
 auto run_fold(mono_busy_pool &pool, Range &&range) -> fold_accum_t<T> {
-
 
   auto projection = make_projection<Projection, T>();
 
@@ -38,7 +42,6 @@ auto run_fold(mono_busy_pool &pool, Range &&range) -> fold_accum_t<T> {
                         lf::fold,
                         std::ranges::begin(range),
                         std::ranges::end(range),
-                        fold_accum_t<T>{},
                         std::plus<>{},
                         std::move(projection))
         .get();
@@ -50,7 +53,6 @@ auto run_fold(mono_busy_pool &pool, Range &&range) -> fold_accum_t<T> {
                         std::ranges::begin(range),
                         std::ranges::end(range),
                         chunk,
-                        fold_accum_t<T>{},
                         std::plus<>{},
                         std::move(projection))
         .get();

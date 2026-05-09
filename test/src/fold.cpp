@@ -13,7 +13,7 @@ using mono_pool = lf::mono_busy_pool<lf::geometric_stack<>>;
 using poly_pool = lf::poly_busy_pool<lf::geometric_stack<>>;
 
 constexpr std::array<std::size_t, 3> k_worker_counts{1, 2, 4};
-constexpr std::array<std::size_t, 12> k_sizes{0, 1, 2, 3, 4, 5, 6, 8, 9, 97, 1024, 4096};
+constexpr std::array<std::size_t, 11> k_sizes{1, 2, 3, 4, 5, 6, 8, 9, 97, 1024, 4096};
 
 constexpr auto sum_0_to_n_minus_1(std::size_t n) -> std::size_t { return (n * (n - 1)) / 2; }
 
@@ -33,7 +33,7 @@ TEMPLATE_TEST_CASE("fold: iterator-pair, n=1 (no n parameter)", "[fold]", mono_p
 
         std::vector v{std::from_range, std::ranges::iota_view(0UZ, n)};
 
-        auto recv = lf::schedule(pool, lf::fold, v.begin(), v.end(), 0UZ, std::plus<>{});
+        auto recv = lf::schedule(pool, lf::fold, v.begin(), v.end(), std::plus<>{});
 
         REQUIRE(std::move(recv).get() == sum_0_to_n_minus_1(n));
       }
@@ -47,12 +47,12 @@ TEMPLATE_TEST_CASE("fold: iterator-pair, n>1", "[fold]", mono_pool, poly_pool) {
     TestType pool{n_workers};
 
     for (auto n : k_sizes) {
-      for (auto ch : std::span(k_sizes).subspan(1)) {
+      for (auto ch : k_sizes) {
         DYNAMIC_SECTION("workers=" << n_workers << " len=" << n << " chunk=" << ch) {
 
           std::vector v{std::from_range, std::ranges::iota_view(0UZ, n)};
 
-          auto recv = lf::schedule(pool, lf::fold, v.begin(), v.end(), ch, 0UZ, std::plus<>{});
+          auto recv = lf::schedule(pool, lf::fold, v.begin(), v.end(), ch, std::plus<>{});
 
           REQUIRE(std::move(recv).get() == sum_0_to_n_minus_1(n));
         }
@@ -67,12 +67,12 @@ TEMPLATE_TEST_CASE("fold: range + n", "[fold]", mono_pool, poly_pool) {
     TestType pool{n_workers};
 
     for (auto n : k_sizes) {
-      for (auto ch : std::span(k_sizes).subspan(1)) {
+      for (auto ch : k_sizes) {
         DYNAMIC_SECTION("workers=" << n_workers << " len=" << n << " chunk=" << ch) {
 
           std::vector v{std::from_range, std::ranges::iota_view(0UZ, n)};
 
-          auto recv = lf::schedule(pool, lf::fold, std::span(v), ch, 0UZ, std::plus<>{});
+          auto recv = lf::schedule(pool, lf::fold, std::span(v), ch, std::plus<>{});
 
           REQUIRE(std::move(recv).get() == sum_0_to_n_minus_1(n));
         }
@@ -91,7 +91,7 @@ TEMPLATE_TEST_CASE("fold: range no n (default chunk)", "[fold]", mono_pool, poly
 
         std::vector v{std::from_range, std::ranges::iota_view(0UZ, n)};
 
-        auto recv = lf::schedule(pool, lf::fold, std::span(v), 0UZ, std::plus<>{});
+        auto recv = lf::schedule(pool, lf::fold, std::span(v), std::plus<>{});
 
         REQUIRE(std::move(recv).get() == sum_0_to_n_minus_1(n));
       }
@@ -105,13 +105,13 @@ TEMPLATE_TEST_CASE("fold: non-trivial sync projection (sum of squares)", "[fold]
     TestType pool{n_workers};
 
     for (auto n : k_sizes) {
-      for (auto ch : std::span(k_sizes).subspan(1)) {
+      for (auto ch : k_sizes) {
         DYNAMIC_SECTION("workers=" << n_workers << " len=" << n << " chunk=" << ch) {
 
           std::vector v{std::from_range, std::ranges::iota_view(0UZ, n)};
 
-          auto recv = lf::schedule(
-              pool, lf::fold, std::span(v), ch, 0UZ, std::plus<>{}, [](std::size_t x) -> std::size_t {
+          auto recv =
+              lf::schedule(pool, lf::fold, std::span(v), ch, std::plus<>{}, [](std::size_t x) -> std::size_t {
                 return x * x;
               });
 
@@ -142,42 +142,12 @@ TEMPLATE_TEST_CASE("fold: stateful Bop (counter increment)", "[fold]", mono_pool
 
         std::atomic<std::size_t> calls{0};
 
-        auto recv = lf::schedule(pool, lf::fold, std::span(v), 0UZ, counting_plus{&calls});
+        auto recv = lf::schedule(pool, lf::fold, std::span(v), counting_plus{&calls});
 
         REQUIRE(std::move(recv).get() == sum_0_to_n_minus_1(n));
-        // bop is invoked once per element (chunk seeding via identity) plus once per
-        // recursive combine. We don't pin down the exact count — just that all
-        // elements were visited.
-        REQUIRE(calls.load() >= n);
+        REQUIRE(calls.load() == n - 1UZ);
       }
     }
-  }
-}
-
-TEMPLATE_TEST_CASE("fold: identity returned for empty range", "[fold]", mono_pool, poly_pool) {
-  TestType pool{2};
-
-  std::vector<std::size_t> v;
-
-  // Iterator-pair, no n
-  {
-    auto recv = lf::schedule(pool, lf::fold, v.begin(), v.end(), 42UZ, std::plus<>{});
-    REQUIRE(std::move(recv).get() == 42UZ);
-  }
-  // Iterator-pair, n
-  {
-    auto recv = lf::schedule(pool, lf::fold, v.begin(), v.end(), 4UZ, 42UZ, std::plus<>{});
-    REQUIRE(std::move(recv).get() == 42UZ);
-  }
-  // Range, no n
-  {
-    auto recv = lf::schedule(pool, lf::fold, std::span(v), 42UZ, std::plus<>{});
-    REQUIRE(std::move(recv).get() == 42UZ);
-  }
-  // Range + n
-  {
-    auto recv = lf::schedule(pool, lf::fold, std::span(v), 4UZ, 42UZ, std::plus<>{});
-    REQUIRE(std::move(recv).get() == 42UZ);
   }
 }
 
@@ -205,7 +175,7 @@ TEMPLATE_TEST_CASE("fold: async Bop — iterator-pair, n=1", "[fold]", mono_pool
     for (auto n : k_sizes) {
       DYNAMIC_SECTION("workers=" << n_workers << " len=" << n) {
         std::vector v{std::from_range, std::ranges::iota_view(0UZ, n)};
-        auto recv = lf::schedule(pool, lf::fold, v.begin(), v.end(), 0UZ, async_plus{});
+        auto recv = lf::schedule(pool, lf::fold, v.begin(), v.end(), async_plus{});
         REQUIRE(std::move(recv).get() == sum_0_to_n_minus_1(n));
       }
     }
@@ -216,10 +186,10 @@ TEMPLATE_TEST_CASE("fold: async Bop — range + n", "[fold]", mono_pool, poly_po
   for (auto n_workers : k_worker_counts) {
     TestType pool{n_workers};
     for (auto n : k_sizes) {
-      for (auto ch : std::span(k_sizes).subspan(1)) {
+      for (auto ch : k_sizes) {
         DYNAMIC_SECTION("workers=" << n_workers << " len=" << n << " chunk=" << ch) {
           std::vector v{std::from_range, std::ranges::iota_view(0UZ, n)};
-          auto recv = lf::schedule(pool, lf::fold, std::span(v), ch, 0UZ, async_plus{});
+          auto recv = lf::schedule(pool, lf::fold, std::span(v), ch, async_plus{});
           REQUIRE(std::move(recv).get() == sum_0_to_n_minus_1(n));
         }
       }
@@ -231,11 +201,10 @@ TEMPLATE_TEST_CASE("fold: async Proj — iterator-pair, n>1", "[fold]", mono_poo
   for (auto n_workers : k_worker_counts) {
     TestType pool{n_workers};
     for (auto n : k_sizes) {
-      for (auto ch : std::span(k_sizes).subspan(1)) {
+      for (auto ch : k_sizes) {
         DYNAMIC_SECTION("workers=" << n_workers << " len=" << n << " chunk=" << ch) {
           std::vector v{std::from_range, std::ranges::iota_view(0UZ, n)};
-          auto recv =
-              lf::schedule(pool, lf::fold, v.begin(), v.end(), ch, 0UZ, std::plus<>{}, async_square{});
+          auto recv = lf::schedule(pool, lf::fold, v.begin(), v.end(), ch, std::plus<>{}, async_square{});
           REQUIRE(std::move(recv).get() == sum_squares_0_to_n_minus_1(n));
         }
       }
@@ -247,10 +216,10 @@ TEMPLATE_TEST_CASE("fold: async Bop + async Proj — range + n", "[fold]", mono_
   for (auto n_workers : k_worker_counts) {
     TestType pool{n_workers};
     for (auto n : k_sizes) {
-      for (auto ch : std::span(k_sizes).subspan(1)) {
+      for (auto ch : k_sizes) {
         DYNAMIC_SECTION("workers=" << n_workers << " len=" << n << " chunk=" << ch) {
           std::vector v{std::from_range, std::ranges::iota_view(0UZ, n)};
-          auto recv = lf::schedule(pool, lf::fold, std::span(v), ch, 0UZ, async_plus{}, async_square{});
+          auto recv = lf::schedule(pool, lf::fold, std::span(v), ch, async_plus{}, async_square{});
           REQUIRE(std::move(recv).get() == sum_squares_0_to_n_minus_1(n));
         }
       }
@@ -269,8 +238,8 @@ TEMPLATE_TEST_CASE("fold: exception from Bop propagates", "[fold]", mono_pool, p
       std::vector v{std::from_range, std::ranges::iota_view(0UZ, 1024UZ)};
 
       auto recv = lf::schedule(
-          pool, lf::fold, v.begin(), v.end(), 4UZ, 0UZ, [](std::size_t a, std::size_t b) -> std::size_t {
-            if (b == 500) {
+          pool, lf::fold, v.begin(), v.end(), 4UZ, [](std::size_t a, std::size_t b) -> std::size_t {
+            if (a == 500 || b == 500) {
               throw std::runtime_error{"boom"};
             }
             return a + b;

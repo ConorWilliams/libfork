@@ -64,7 +64,7 @@ struct fold_impl {
           async_result_t<Proj &, X, std::iter_reference_t<I>> tmp;
           {
             auto sc = co_await scope();
-            co_await sc.call(&init, proj, *head);
+            co_await sc.call(&tmp, proj, *head);
             co_await sc.join();
           }
 
@@ -76,6 +76,8 @@ struct fold_impl {
             acc = std::invoke(bop, std::move(acc), std::move(tmp));
           }
         }
+
+        co_return acc;
 
       } else {
 
@@ -119,109 +121,42 @@ struct fold_impl {
   }
 
   // (2) iterator-pair, n == 1 specialization (no n parameter)
-  template <worker_context Context,
-            std::random_access_iterator I,
-            std::sized_sentinel_for<I> S,
-            typename T,
-            typename Bop,
-            typename Proj = std::identity>
-    requires indirectly_foldable<Bop, Context, projected<Context, I, Proj>>
-  static auto operator()(env<Context> /* env */, I head, S tail, T identity, Bop bop, Proj proj = {})
-      -> lf::task<T, Context> {
-
-    auto len = tail - head;
-
-    LF_ASSUME(len >= 0);
-
-    switch (len) {
-      case 0:
-        co_return std::move(identity);
-      case 1: {
-        auto sc = co_await scope();
-        T acc = std::move(identity);
-        if constexpr (async::indirectly_regular_unary_invocable<Proj, Context, I>) {
-          using PV = typename projected<Context, I, Proj>::value_type;
-          PV pv;
-          co_await sc.call(&pv, proj, *head);
-          co_await sc.join();
-          if constexpr (async_invocable<Bop &, Context, T, PV>) {
-            co_await sc.call(&acc, bop, std::move(acc), std::move(pv));
-            co_await sc.join();
-          } else {
-            acc = std::invoke(bop, std::move(acc), std::move(pv));
-          }
-        } else {
-          using PV = std::remove_cvref_t<std::invoke_result_t<Proj &, std::iter_reference_t<I>>>;
-          if constexpr (async_invocable<Bop &, Context, T, PV>) {
-            co_await sc.call(&acc, bop, std::move(acc), std::invoke(proj, *head));
-            co_await sc.join();
-          } else {
-            acc = std::invoke(bop, std::move(acc), std::invoke(proj, *head));
-          }
-        }
-        co_return acc;
-      }
-    }
-
-    auto mid = head + (len / 2);
-    auto sc = co_await scope();
-    T lhs(identity);
-    T rhs(identity);
-    co_await sc.fork(&lhs, fold_impl{}, head, mid, identity, bop, proj);
-    co_await sc.call(&rhs, fold_impl{}, mid, tail, identity, std::move(bop), std::move(proj));
-    co_await sc.join();
-
-    if constexpr (async_invocable<Bop &, Context, T, T>) {
-      co_await sc.call(&lhs, bop, std::move(lhs), std::move(rhs));
-      co_await sc.join();
-    } else {
-      lhs = std::invoke(bop, std::move(lhs), std::move(rhs));
-    }
-    co_return lhs;
+  template <worker_context X,                                 //
+            std::random_access_iterator I,                    //
+            std::sized_sentinel_for<I> S,                     //
+            projectable<X, I> Proj = std::identity,           //
+            indirectly_foldable<X, projected<X, I, Proj>> Bop //
+            >
+  static auto operator()(env<X> context, I head, S tail, Bop bop, Proj proj = {}) -> task_t<X, I, Proj, Bop> {
+    return fold_impl{}(context, head, tail, iter_diff_t<I>{1}, std::move(bop), std::move(proj));
   }
 
   // (3) range + n -> dispatches to (1) or (2)
-  template <worker_context Context,
-            sized_random_access_range Range,
-            typename T,
-            typename Bop,
-            typename Proj = std::identity>
-    requires indirectly_foldable<Bop, Context, projected<Context, std::ranges::iterator_t<Range>, Proj>>
-  static auto
-  operator()(env<Context> context, Range &&range, range_diff_t<Range> n, T identity, Bop bop, Proj proj = {})
-      -> lf::task<T, Context> {
+  template <worker_context X,                                                              //
+            sized_random_access_range Range,                                               //
+            projectable<X, std::ranges::iterator_t<Range>> Proj = std::identity,           //
+            indirectly_foldable<X, projected<X, std::ranges::iterator_t<Range>, Proj>> Bop //
+            >
+  static auto operator()(env<X> context, Range &&range, range_diff_t<Range> n, Bop bop, Proj proj = {})
+      -> task_t<X, std::ranges::iterator_t<Range>, Proj, Bop> {
     if (n == 1) {
-      return fold_impl{}(context,
-                         std::ranges::begin(range),
-                         std::ranges::end(range),
-                         std::move(identity),
-                         std::move(bop),
-                         std::move(proj));
+      return fold_impl{}(
+          context, std::ranges::begin(range), std::ranges::end(range), std::move(bop), std::move(proj));
     }
-    return fold_impl{}(context,
-                       std::ranges::begin(range),
-                       std::ranges::end(range),
-                       n,
-                       std::move(identity),
-                       std::move(bop),
-                       std::move(proj));
+    return fold_impl{}(
+        context, std::ranges::begin(range), std::ranges::end(range), n, std::move(bop), std::move(proj));
   }
 
   // (4) range, n == 1 -> dispatches to (2)
-  template <worker_context Context,
-            sized_random_access_range Range,
-            typename T,
-            typename Bop,
-            typename Proj = std::identity>
-    requires indirectly_foldable<Bop, Context, projected<Context, std::ranges::iterator_t<Range>, Proj>>
-  static auto operator()(env<Context> context, Range &&range, T identity, Bop bop, Proj proj = {})
-      -> lf::task<T, Context> {
-    return fold_impl{}(context,
-                       std::ranges::begin(range),
-                       std::ranges::end(range),
-                       std::move(identity),
-                       std::move(bop),
-                       std::move(proj));
+  template <worker_context X,                                                              //
+            sized_random_access_range Range,                                               //
+            projectable<X, std::ranges::iterator_t<Range>> Proj = std::identity,           //
+            indirectly_foldable<X, projected<X, std::ranges::iterator_t<Range>, Proj>> Bop //
+            >
+  static auto operator()(env<X> context, Range &&range, Bop bop, Proj proj = {})
+      -> task_t<X, std::ranges::iterator_t<Range>, Proj, Bop> {
+    return fold_impl{}(
+        context, std::ranges::begin(range), std::ranges::end(range), std::move(bop), std::move(proj));
   }
 };
 
