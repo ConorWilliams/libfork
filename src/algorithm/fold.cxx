@@ -141,18 +141,17 @@ struct fold_impl {
       case 1:
         if constexpr (async::indirectly_regular_unary_invocable<Proj, X, I>) {
 
-          using proj_result_t = async_result_t<Proj &, X, std::iter_reference_t<I>>;
-
-          proj_result_t init;
+          async_result_t<Proj &, X, std::iter_reference_t<I>> init;
           auto sc = co_await scope();
           co_await sc.call(&init, proj, *head);
           co_await sc.join();
 
-          if constexpr (std::assignable_from<result_type &, proj_result_t>) {
+          if constexpr (std::assignable_from<result_type &, decltype(init)>) {
             co_return std::move(init);
           } else {
             co_return result_type(std::move(init));
           }
+
         } else if constexpr (std::assignable_from<result_type &, decltype(proj(*head))>) {
           co_return proj(*head);
         } else {
