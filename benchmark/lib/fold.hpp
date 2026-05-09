@@ -1,13 +1,18 @@
 #pragma once
 
+#include <benchmark/benchmark.h>
+
 #ifdef LF_BENCH_NO_IMPORT_STD
-  #include <array>
   #include <concepts>
   #include <cstddef>
   #include <cstdint>
+  #include <functional>
   #include <iterator>
-  #include <string_view>
+  #include <new>
+  #include <span>
   #include <type_traits>
+  #include <utility>
+  #include <vector>
 #else
 import std;
 #endif
@@ -20,20 +25,15 @@ inline constexpr std::int64_t fold_one_gib = 1024LL * 1024LL * 1024LL;
 template <typename T>
 inline constexpr std::int64_t fold_one_gib_elements = fold_one_gib / static_cast<std::int64_t>(sizeof(T));
 
-template <typename T>
-constexpr auto fold_base_sizes() {
-  return std::array<std::int64_t, 9>{
-      10,
-      100,
-      1'000,
-      10'000,
-      100'000,
-      1'000'000,
-      10'000'000,
-      100'000'000,
-      fold_one_gib_elements<T>,
-  };
-}
+inline constexpr std::int64_t fold_10_base = 10;
+inline constexpr std::int64_t fold_100_base = 100;
+inline constexpr std::int64_t fold_1k_base = 1'000;
+inline constexpr std::int64_t fold_10k_base = 10'000;
+inline constexpr std::int64_t fold_100k_base = 100'000;
+inline constexpr std::int64_t fold_1m_base = 1'000'000;
+inline constexpr std::int64_t fold_10m_base = 10'000'000;
+inline constexpr std::int64_t fold_100m_base = 100'000'000;
+inline constexpr std::int64_t fold_1gib_base = fold_one_gib_elements<std::int32_t>;
 
 enum class fold_data_mode {
   memory,
@@ -46,53 +46,7 @@ enum class fold_chunk_mode {
   k1000,
 };
 
-enum class fold_projection_mode {
-  sync,
-  async,
-};
-
-template <typename T>
-constexpr auto fold_dtype_name() -> std::string_view {
-  if constexpr (std::same_as<T, std::int32_t>) {
-    return "int32";
-  } else if constexpr (std::same_as<T, float>) {
-    return "float";
-  } else {
-    return "unknown";
-  }
-}
-
-constexpr auto fold_data_name(fold_data_mode mode) -> std::string_view {
-  switch (mode) {
-    case fold_data_mode::memory:
-      return "memory";
-    case fold_data_mode::lazy:
-      return "lazy";
-  }
-  return "unknown";
-}
-
-constexpr auto fold_chunk_name(fold_chunk_mode mode) -> std::string_view {
-  switch (mode) {
-    case fold_chunk_mode::explicit_one:
-      return "chunk=1";
-    case fold_chunk_mode::deduced:
-      return "chunk=deduced";
-    case fold_chunk_mode::k1000:
-      return "chunk=1000";
-  }
-  return "unknown";
-}
-
-constexpr auto fold_projection_name(fold_projection_mode mode) -> std::string_view {
-  switch (mode) {
-    case fold_projection_mode::sync:
-      return "sync_proj";
-    case fold_projection_mode::async:
-      return "async_proj";
-  }
-  return "unknown";
-}
+enum class fold_projection_mode { sync, async };
 
 template <typename T>
 struct ones_iterator {
@@ -176,4 +130,58 @@ struct ones_range {
 template <typename T>
 using fold_accum_t = std::conditional_t<std::same_as<T, float>, double, std::int64_t>;
 
+template <typename T>
+void set_fold_counters(benchmark::State &state, std::size_t n) {
+  state.counters["n"] = static_cast<double>(n);
+  state.counters["bytes"] = static_cast<double>(n * sizeof(T));
+}
+
+inline void set_fold_throughput(benchmark::State &state, std::size_t n, std::size_t bytes_per_item) {
+  state.SetItemsProcessed(state.iterations() * static_cast<std::int64_t>(n));
+  state.SetBytesProcessed(state.iterations() * static_cast<std::int64_t>(n * bytes_per_item));
+}
+
+template <fold_data_mode Data, typename T, typename Fn>
+void run_fold_input(benchmark::State &state, Fn &&fn) {
+  auto n = static_cast<std::size_t>(state.range(0));
+  set_fold_counters<T>(state, n);
+
+  if constexpr (Data == fold_data_mode::memory) {
+    std::vector<T> values;
+    try {
+      values.assign(n, T{1});
+    } catch (std::bad_alloc const &) {
+      state.SkipWithError("allocation failed");
+      return;
+    }
+
+    for (auto _ : state) {
+      benchmark::DoNotOptimize(values.data());
+      auto result = std::invoke(fn, std::span<T>{values});
+      benchmark::DoNotOptimize(result);
+    }
+  } else {
+    auto values = ones_range<T>{.count = n};
+
+    for (auto _ : state) {
+      benchmark::DoNotOptimize(values);
+      auto result = std::invoke(fn, values);
+      benchmark::DoNotOptimize(result);
+    }
+  }
+
+  set_fold_throughput(state, n, sizeof(T));
+}
+
 } // namespace lf_bench
+
+inline constexpr std::int64_t fold_test = lf_bench::fold_test;
+inline constexpr std::int64_t fold_10_base = lf_bench::fold_10_base;
+inline constexpr std::int64_t fold_100_base = lf_bench::fold_100_base;
+inline constexpr std::int64_t fold_1k_base = lf_bench::fold_1k_base;
+inline constexpr std::int64_t fold_10k_base = lf_bench::fold_10k_base;
+inline constexpr std::int64_t fold_100k_base = lf_bench::fold_100k_base;
+inline constexpr std::int64_t fold_1m_base = lf_bench::fold_1m_base;
+inline constexpr std::int64_t fold_10m_base = lf_bench::fold_10m_base;
+inline constexpr std::int64_t fold_100m_base = lf_bench::fold_100m_base;
+inline constexpr std::int64_t fold_1gib_base = lf_bench::fold_1gib_base;
