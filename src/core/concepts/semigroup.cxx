@@ -124,6 +124,14 @@ concept indirect_semigroup =                                                    
 export template <typename Fn, typename Context, typename I>
 concept indirect_semigroup = async::indirect_semigroup<Fn, Context, I> || sync::indirect_semigroup<Fn, I>;
 
+/**
+ * @brief A sematic requirement that the semigroup operation is commutative.
+ *
+ * Commutativity requires `a · b = b · a` for all `a`, `b` in the set `S`.
+ */
+export template <typename Fn, typename Context, typename I>
+concept indirect_commutative_semigroup = indirect_semigroup<Fn, Context, I>;
+
 template <typename Fn, typename Context, typename I>
 struct indirect_semigroup_result {
   using type = std::invoke_result_t<Fn &, indirect_value_t<I>, indirect_value_t<I>>;
