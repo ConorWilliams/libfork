@@ -22,14 +22,9 @@ import std;
 
 inline constexpr std::int64_t fold_test = 10;
 
-inline constexpr std::int64_t fold_10_base = 10;
-inline constexpr std::int64_t fold_100_base = 100;
-inline constexpr std::int64_t fold_1k_base = 1'000;
-inline constexpr std::int64_t fold_10k_base = 10'000;
-inline constexpr std::int64_t fold_100k_base = 100'000;
-inline constexpr std::int64_t fold_1m_base = 1'000'000;
-inline constexpr std::int64_t fold_10m_base = 10'000'000;
-inline constexpr std::int64_t fold_100m_base = 100'000'000;
+inline constexpr std::int64_t fold_1024_base = 1'024;
+inline constexpr std::int64_t fold_1024_sq_base = 1'024 * 1'024;
+inline constexpr std::int64_t fold_1024_cu_base = 1'024 * 1'024 * 1'024;
 
 enum class fold_data_mode {
   memory,
@@ -135,11 +130,6 @@ using float32 = float;
 
 #define LF_FOLD_BENCH_SIZES(bench_fn, category, name, ...)                                                   \
   BENCH_ONE(bench_fn, category, name, test, fold __VA_OPT__(, ) __VA_ARGS__)                                 \
-  BENCH_ONE(bench_fn, category, name, base, fold_10 __VA_OPT__(, ) __VA_ARGS__)                              \
-  BENCH_ONE(bench_fn, category, name, base, fold_100 __VA_OPT__(, ) __VA_ARGS__)                             \
-  BENCH_ONE(bench_fn, category, name, base, fold_1k __VA_OPT__(, ) __VA_ARGS__)                              \
-  BENCH_ONE(bench_fn, category, name, base, fold_10k __VA_OPT__(, ) __VA_ARGS__)                             \
-  BENCH_ONE(bench_fn, category, name, base, fold_100k __VA_OPT__(, ) __VA_ARGS__)                            \
-  BENCH_ONE(bench_fn, category, name, base, fold_1m __VA_OPT__(, ) __VA_ARGS__)                              \
-  BENCH_ONE(bench_fn, category, name, base, fold_10m __VA_OPT__(, ) __VA_ARGS__)                             \
-  BENCH_ONE(bench_fn, category, name, base, fold_100m __VA_OPT__(, ) __VA_ARGS__)
+  BENCH_ONE(bench_fn, category, name, base, fold_1024 __VA_OPT__(, ) __VA_ARGS__)                            \
+  BENCH_ONE(bench_fn, category, name, base, fold_1024_sq __VA_OPT__(, ) __VA_ARGS__)                         \
+  BENCH_ONE(bench_fn, category, name, base, fold_1024_cu __VA_OPT__(, ) __VA_ARGS__)
