@@ -29,6 +29,27 @@ concept indirect_semigroup_r =                                              //
     invocable_to<R, Fn &, indirect_value_t<I>, std::iter_reference_t<I>> && //
     invocable_to<R, Fn &, std::iter_reference_t<I>, indirect_value_t<I>>;   //
 
+/**
+ * @brief A semigroup is a set `S` and an associative binary operation `·`, such that `S` is closed under `·`.
+ *
+ * Associativity means that for all `a, b, c` in `S`, `(a · b) · c = a · (b · c)`.
+ *
+ * Example: `(Z, +)` is a semigroup, since we can add any two integers and the result is also an integer.
+ *
+ * Example: `(Z, /)` is not a semigroup, since `2/3` s not an integer.
+ *
+ * Example: `(Z, -)` is not a semigroup, since `(1 - 1) - 1 != 1 - (1 - 1)`.
+ *
+ * Let `t`, `u` and `f` be objects of types `T`, `U` and `Fn` respectively.
+ * Then the following expression must be valid:
+ *
+ * ```
+ * f(u, t)
+ * ```
+ *
+ * And return the same type `R` for all combinations of `T` and `U` being `R`,
+ * `indirect_value_t<I>` and `std::iter_reference_t<I>`.
+ */
 export template <typename Fn, typename I>
 concept indirect_semigroup =                                                  //
     std::indirectly_readable<I> &&                                            //
@@ -60,6 +81,28 @@ concept indirect_semigroup_r =                                                  
     async_invocable_to<Fn, R, Context, indirect_value_t<I>, std::iter_reference_t<I>> && //
     async_invocable_to<Fn, R, Context, std::iter_reference_t<I>, indirect_value_t<I>>;   //
 
+/**
+ * @brief A semigroup is a set `S` and an associative binary operation `·`, such that `S` is closed under `·`.
+ *
+ * Associativity means that for all `a, b, c` in `S`, `(a · b) · c = a · (b · c)`.
+ *
+ * Example: `(Z, +)` is a semigroup, since we can add any two integers and the result is also an integer.
+ *
+ * Example: `(Z, /)` is not a semigroup, since `2/3` s not an integer.
+ *
+ * Example: `(Z, -)` is not a semigroup, since `(1 - 1) - 1 != 1 - (1 - 1)`.
+ *
+ * Let `t`, `u` and `f` be objects of types `T`, `U` and `Fn` respectively.
+ * Then the following expression must be valid:
+ *
+ * ```
+ * R ret;
+ * co_await scope.call(std::addressof(ret), f, u, t)
+ * ```
+ *
+ * And return the same type `R` for all combinations of `T` and `U` being `R`,
+ * `indirect_value_t<I>` and `std::iter_reference_t<I>`.
+ */
 export template <typename Fn, typename Context, typename I>
 concept indirect_semigroup =                                                     //
     std::indirectly_readable<I> &&                                               //
@@ -75,6 +118,9 @@ concept indirect_semigroup =                                                    
 
 } // namespace async
 
+/**
+ * @brief Either a synchronous or asynchronous semigroup.
+ */
 export template <typename Fn, typename Context, typename I>
 concept indirect_semigroup = async::indirect_semigroup<Fn, Context, I> || sync::indirect_semigroup<Fn, I>;
 
@@ -89,6 +135,11 @@ struct indirect_semigroup_result<Fn, Context, I> {
   using type = async_result_t<Fn &, Context, indirect_value_t<I>, indirect_value_t<I>>;
 };
 
+/**
+ * @brief Get the result type of an indirect semigroup operation.
+ *
+ * This is the type of the result of applying the semigroup operation to two elements of the set.
+ */
 export template <typename Fn, typename Context, typename I>
   requires indirect_semigroup<Fn, Context, I>
 using indirect_semigroup_t = indirect_semigroup_result<Fn, Context, I>::type;
