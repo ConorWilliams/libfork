@@ -82,7 +82,7 @@ struct fold_impl {
     co_await sc.join();
 
     if constexpr (async_invocable<Bop &, Context, T, T>) {
-      // TODO: can this be a tail call / use current return addess?
+      // TODO: can this be a tail call / use current return address?
       co_await sc.call(&lhs, bop, std::move(lhs), std::move(rhs));
       co_await sc.join();
     } else {
