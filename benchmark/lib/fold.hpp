@@ -7,8 +7,8 @@
   #include <cstddef>
   #include <cstdint>
   #include <functional>
-  #include <iterator>
   #include <new>
+  #include <ranges>
   #include <span>
   #include <type_traits>
   #include <utility>
@@ -42,83 +42,11 @@ enum class fold_chunk_mode {
 enum class fold_projection_mode { sync, async };
 
 template <typename T>
-struct ones_iterator {
-  using value_type = T;
-  using difference_type = std::ptrdiff_t;
-  using iterator_category = std::random_access_iterator_tag;
-  using iterator_concept = std::random_access_iterator_tag;
-
-  difference_type pos = 0;
-
-  constexpr auto operator*() const -> value_type { return value_type{1}; }
-  constexpr auto operator[](difference_type) const -> value_type { return value_type{1}; }
-
-  constexpr auto operator++() -> ones_iterator & {
-    ++pos;
-    return *this;
-  }
-
-  constexpr auto operator++(int) -> ones_iterator {
-    auto ret = *this;
-    ++*this;
-    return ret;
-  }
-
-  constexpr auto operator--() -> ones_iterator & {
-    --pos;
-    return *this;
-  }
-
-  constexpr auto operator--(int) -> ones_iterator {
-    auto ret = *this;
-    --*this;
-    return ret;
-  }
-
-  constexpr auto operator+=(difference_type n) -> ones_iterator & {
-    pos += n;
-    return *this;
-  }
-
-  constexpr auto operator-=(difference_type n) -> ones_iterator & {
-    pos -= n;
-    return *this;
-  }
-
-  friend constexpr auto operator+(ones_iterator it, difference_type n) -> ones_iterator {
-    it += n;
-    return it;
-  }
-
-  friend constexpr auto operator+(difference_type n, ones_iterator it) -> ones_iterator { return it + n; }
-
-  friend constexpr auto operator-(ones_iterator it, difference_type n) -> ones_iterator {
-    it -= n;
-    return it;
-  }
-
-  friend constexpr auto operator-(ones_iterator lhs, ones_iterator rhs) -> difference_type {
-    return lhs.pos - rhs.pos;
-  }
-
-  friend constexpr auto operator==(ones_iterator, ones_iterator) -> bool = default;
-  friend constexpr auto operator<=>(ones_iterator, ones_iterator) = default;
-};
-
-template <typename T>
-struct ones_range {
-  using value_type = T;
-
-  std::size_t count = 0;
-
-  constexpr auto begin() const -> ones_iterator<T> { return {.pos = 0}; }
-
-  constexpr auto end() const -> ones_iterator<T> {
-    return {.pos = static_cast<typename ones_iterator<T>::difference_type>(count)};
-  }
-
-  constexpr auto size() const -> std::size_t { return count; }
-};
+constexpr auto make_ones_range(std::size_t count) {
+  return std::views::iota(std::size_t{}, count) | std::views::transform([](std::size_t) {
+           return T{1};
+         });
+}
 
 template <typename T>
 using fold_accum_t = std::conditional_t<std::same_as<T, float>, double, std::int64_t>;
@@ -145,7 +73,7 @@ void run_fold_input(benchmark::State &state, Fn &&fn) {
 
   } else {
 
-    auto values = ones_range<T>{.count = n};
+    auto values = make_ones_range<T>(n);
 
     for (auto _ : state) {
       benchmark::DoNotOptimize(values);
