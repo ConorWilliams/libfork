@@ -28,6 +28,9 @@ struct fold_impl {
   template <typename Context, typename I, typename Proj, typename Bop>
   using task_t = lf::task<result_t<Context, I, Proj, Bop>, Context>;
 
+  template <typename Range>
+  using iterator_t = std::ranges::iterator_t<Range>;
+
  public:
   // (1) iterator-pair, chunk size n >= 1
   template <worker_context X,                                 //
@@ -208,33 +211,34 @@ struct fold_impl {
     }
   }
 
+  // clang-format off
+
   // (3) range + n -> dispatches to (1) or (2)
-  template <worker_context X,                                                              //
-            sized_random_access_range Range,                                               //
-            projectable<X, std::ranges::iterator_t<Range>> Proj = std::identity,           //
-            indirectly_foldable<X, projected<X, std::ranges::iterator_t<Range>, Proj>> Bop //
+  template <worker_context X,                                                 //
+            sized_random_access_range Range,                                  //
+            projectable<X, iterator_t<Range>> Proj = std::identity,           //
+            indirectly_foldable<X, projected<X, iterator_t<Range>, Proj>> Bop //
             >
-  static auto operator()(env<X> context, Range &&range, range_diff_t<Range> n, Bop bop, Proj proj = {})
-      -> task_t<X, std::ranges::iterator_t<Range>, Proj, Bop> {
+  static auto
+  operator()(env<X> context, Range &&range, range_diff_t<Range> n, Bop bop, Proj proj = {}) -> task_t<X, iterator_t<Range>, Proj, Bop> {
     if (n == 1) {
-      return fold_impl{}(
-          context, std::ranges::begin(range), std::ranges::end(range), std::move(bop), std::move(proj));
+      return fold_impl{}(context, std::ranges::begin(range), std::ranges::end(range), std::move(bop), std::move(proj));
     }
-    return fold_impl{}(
-        context, std::ranges::begin(range), std::ranges::end(range), n, std::move(bop), std::move(proj));
+    return fold_impl{}(context, std::ranges::begin(range), std::ranges::end(range), n, std::move(bop), std::move(proj));
   }
 
   // (4) range, n == 1 -> dispatches to (2)
-  template <worker_context X,                                                              //
-            sized_random_access_range Range,                                               //
-            projectable<X, std::ranges::iterator_t<Range>> Proj = std::identity,           //
-            indirectly_foldable<X, projected<X, std::ranges::iterator_t<Range>, Proj>> Bop //
+  template <worker_context X,                                                 //
+            sized_random_access_range Range,                                  //
+            projectable<X, iterator_t<Range>> Proj = std::identity,           //
+            indirectly_foldable<X, projected<X, iterator_t<Range>, Proj>> Bop //
             >
-  static auto operator()(env<X> context, Range &&range, Bop bop, Proj proj = {})
-      -> task_t<X, std::ranges::iterator_t<Range>, Proj, Bop> {
-    return fold_impl{}(
-        context, std::ranges::begin(range), std::ranges::end(range), std::move(bop), std::move(proj));
+  static auto
+  operator()(env<X> context, Range &&range, Bop bop, Proj proj = {}) -> task_t<X, iterator_t<Range>, Proj, Bop> {
+    return fold_impl{}(context, std::ranges::begin(range), std::ranges::end(range), std::move(bop), std::move(proj));
   }
+
+  // clang-format on
 };
 
 export inline constexpr fold_impl fold = {};
