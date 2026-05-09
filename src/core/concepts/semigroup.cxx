@@ -57,7 +57,7 @@ concept indirect_semigroup =                                                  //
     std::regular_invocable<Fn &, indirect_value_t<I>, indirect_value_t<I>> && //
     indirect_semigroup_r<                                                     //
         std::invoke_result_t<Fn &, indirect_value_t<I>, indirect_value_t<I>>, //
-        Fn &,                                                                 //
+        Fn,                                                                   //
         I                                                                     //
         >;                                                                    //
 
@@ -75,11 +75,11 @@ concept semigroup_r =                           //
     async_invocable_to<Fn, R, Context, R, R>;   //
 
 template <typename R, typename Fn, typename Context, typename I>
-concept indirect_semigroup_r =                                                           //
-    semigroup_r<R, Fn, Context, indirect_value_t<I>> &&                                  //
-    semigroup_r<R, Fn, Context, std::iter_reference_t<I>> &&                             //
-    async_invocable_to<Fn, R, Context, indirect_value_t<I>, std::iter_reference_t<I>> && //
-    async_invocable_to<Fn, R, Context, std::iter_reference_t<I>, indirect_value_t<I>>;   //
+concept indirect_semigroup_r =                                                             //
+    semigroup_r<R, Fn &, Context, indirect_value_t<I>> &&                                  //
+    semigroup_r<R, Fn &, Context, std::iter_reference_t<I>> &&                             //
+    async_invocable_to<Fn &, R, Context, indirect_value_t<I>, std::iter_reference_t<I>> && //
+    async_invocable_to<Fn &, R, Context, std::iter_reference_t<I>, indirect_value_t<I>>;   //
 
 /**
  * @brief A semigroup is a set `S` and an associative binary operation `·`, such that `S` is closed under `·`.
@@ -111,7 +111,7 @@ concept indirect_semigroup =                                                    
     async_invocable<Fn &, Context, indirect_value_t<I>, indirect_value_t<I>> &&  //
     indirect_semigroup_r<                                                        //
         async_result_t<Fn &, Context, indirect_value_t<I>, indirect_value_t<I>>, //
-        Fn &,                                                                    //
+        Fn,                                                                      //
         Context,                                                                 //
         I                                                                        //
         >;                                                                       //
