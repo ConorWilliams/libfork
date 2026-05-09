@@ -185,8 +185,7 @@ namespace {
 
 struct async_plus {
   template <typename Context>
-  static auto operator()(lf::env<Context>, std::size_t a, std::size_t b)
-      -> lf::task<std::size_t, Context> {
+  static auto operator()(lf::env<Context>, std::size_t a, std::size_t b) -> lf::task<std::size_t, Context> {
     co_return a + b;
   }
 };
@@ -194,7 +193,7 @@ struct async_plus {
 struct async_square {
   template <typename Context>
   static auto operator()(lf::env<Context>, std::size_t x) -> lf::task<std::size_t, Context> {
-    co_return x * x;
+    co_return x *x;
   }
 };
 
