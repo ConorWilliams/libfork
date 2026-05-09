@@ -18,9 +18,6 @@ struct async_identity {
   }
 };
 
-template <typename T>
-using accum_t = fold_accum_t<T>;
-
 template <fold_projection_mode Projection, typename T>
 constexpr auto make_projection() {
   if constexpr (Projection == fold_projection_mode::sync) {
@@ -31,13 +28,17 @@ constexpr auto make_projection() {
 }
 
 template <fold_chunk_mode Chunk, fold_projection_mode Projection, typename T, typename Range>
-auto run_fold(mono_busy_pool &pool, Range &&range) -> accum_t<T> {
+auto run_fold(mono_busy_pool &pool, Range &&range) -> fold_accum_t<T> {
   using diff_t = std::ranges::range_difference_t<Range>;
   auto projection = make_projection<Projection, T>();
 
   if constexpr (Chunk == fold_chunk_mode::deduced) {
-    return lf::schedule(
-               pool, lf::fold, std::forward<Range>(range), accum_t<T>{}, std::plus<>{}, std::move(projection))
+    return lf::schedule(pool,
+                        lf::fold,
+                        std::forward<Range>(range),
+                        fold_accum_t<T>{},
+                        std::plus<>{},
+                        std::move(projection))
         .get();
   } else {
     constexpr diff_t chunk = Chunk == fold_chunk_mode::explicit_one ? diff_t{1} : diff_t{1000};
@@ -45,7 +46,7 @@ auto run_fold(mono_busy_pool &pool, Range &&range) -> accum_t<T> {
                         lf::fold,
                         std::forward<Range>(range),
                         chunk,
-                        accum_t<T>{},
+                        fold_accum_t<T>{},
                         std::plus<>{},
                         std::move(projection))
         .get();
@@ -55,7 +56,7 @@ auto run_fold(mono_busy_pool &pool, Range &&range) -> accum_t<T> {
 template <fold_data_mode Data, fold_chunk_mode Chunk, fold_projection_mode Projection, typename T>
 void fold_run(benchmark::State &state) {
   mono_busy_pool pool{1};
-  run_fold_input<Data, T>(state, [&](auto &&values) -> accum_t<T> {
+  run_fold_input<Data, T>(state, [&](auto &&values) -> fold_accum_t<T> {
     return run_fold<Chunk, Projection, T>(pool, std::forward<decltype(values)>(values));
   });
 }
