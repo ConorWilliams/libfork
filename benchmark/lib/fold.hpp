@@ -84,7 +84,6 @@ void run_fold_input(benchmark::State &state, Fn &&fn) {
   }
 
   state.SetItemsProcessed(state.iterations() * static_cast<std::int64_t>(n));
-  state.SetBytesProcessed(state.iterations() * static_cast<std::int64_t>(n * sizeof(T)));
 }
 
 // Use alias for shorted names.
