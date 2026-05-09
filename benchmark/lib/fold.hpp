@@ -17,8 +17,6 @@
 import std;
 #endif
 
-namespace lf_bench {
-
 inline constexpr std::int64_t fold_test = 10;
 inline constexpr std::int64_t fold_one_gib = 1024LL * 1024LL * 1024LL;
 
@@ -173,26 +171,13 @@ void run_fold_input(benchmark::State &state, Fn &&fn) {
   set_fold_throughput(state, n, sizeof(T));
 }
 
-} // namespace lf_bench
-
-inline constexpr std::int64_t fold_test = lf_bench::fold_test;
-inline constexpr std::int64_t fold_10_base = lf_bench::fold_10_base;
-inline constexpr std::int64_t fold_100_base = lf_bench::fold_100_base;
-inline constexpr std::int64_t fold_1k_base = lf_bench::fold_1k_base;
-inline constexpr std::int64_t fold_10k_base = lf_bench::fold_10k_base;
-inline constexpr std::int64_t fold_100k_base = lf_bench::fold_100k_base;
-inline constexpr std::int64_t fold_1m_base = lf_bench::fold_1m_base;
-inline constexpr std::int64_t fold_10m_base = lf_bench::fold_10m_base;
-inline constexpr std::int64_t fold_100m_base = lf_bench::fold_100m_base;
-inline constexpr std::int64_t fold_1gib_base = lf_bench::fold_1gib_base;
-
-inline constexpr auto memory = lf_bench::fold_data_mode::memory;
-inline constexpr auto lazy = lf_bench::fold_data_mode::lazy;
-inline constexpr auto chunk_1 = lf_bench::fold_chunk_mode::explicit_one;
-inline constexpr auto chunk_deduced = lf_bench::fold_chunk_mode::deduced;
-inline constexpr auto chunk_1000 = lf_bench::fold_chunk_mode::k1000;
-inline constexpr auto sync_proj = lf_bench::fold_projection_mode::sync;
-inline constexpr auto async_proj = lf_bench::fold_projection_mode::async;
+inline constexpr auto memory = fold_data_mode::memory;
+inline constexpr auto lazy = fold_data_mode::lazy;
+inline constexpr auto chunk_1 = fold_chunk_mode::explicit_one;
+inline constexpr auto chunk_deduced = fold_chunk_mode::deduced;
+inline constexpr auto chunk_1000 = fold_chunk_mode::k1000;
+inline constexpr auto sync_proj = fold_projection_mode::sync;
+inline constexpr auto async_proj = fold_projection_mode::async;
 
 using int32 = std::int32_t;
 using float32 = float;

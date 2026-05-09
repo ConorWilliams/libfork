@@ -8,11 +8,11 @@ import std;
 namespace {
 
 template <typename T>
-using accum_t = lf_bench::fold_accum_t<T>;
+using accum_t = fold_accum_t<T>;
 
-template <lf_bench::fold_data_mode Data, typename T>
+template <fold_data_mode Data, typename T>
 void fold_reduce(benchmark::State &state) {
-  lf_bench::run_fold_input<Data, T>(state, [](auto &&values) -> accum_t<T> {
+  run_fold_input<Data, T>(state, [](auto &&values) -> accum_t<T> {
     return std::reduce(std::ranges::begin(values), std::ranges::end(values), accum_t<T>{}, std::plus<>{});
   });
 }
