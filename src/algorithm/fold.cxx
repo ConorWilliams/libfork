@@ -10,6 +10,8 @@ import :concepts;
 
 namespace lf {
 
+// TODO: this needs lf::just!
+
 template <typename Fn, typename Context, typename I>
 concept indirectly_foldable =
     indirect_semigroup<Fn, Context, I> && std::movable<indirect_semigroup_t<Fn, Context, I>>;
