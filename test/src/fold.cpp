@@ -21,6 +21,12 @@ constexpr auto sum_squares_0_to_n_minus_1(std::size_t n) -> std::size_t {
   return n == 0 ? 0 : (n * (n - 1) * (2 * n - 1)) / 6;
 }
 
+template <typename T, typename U>
+void require_fold_result(std::optional<T> result, U expected) {
+  REQUIRE(result.has_value());
+  REQUIRE(*result == expected);
+}
+
 struct projected_record {
   std::size_t value;
 };
@@ -57,8 +63,24 @@ TEMPLATE_TEST_CASE("fold: iterator-pair, n=1 (no n parameter)", "[fold]", mono_p
 
         auto recv = lf::schedule(pool, lf::fold, v.begin(), v.end(), std::plus<>{});
 
-        REQUIRE(std::move(recv).get() == sum_0_to_n_minus_1(n));
+        require_fold_result(std::move(recv).get(), sum_0_to_n_minus_1(n));
       }
+    }
+  }
+}
+
+TEMPLATE_TEST_CASE("fold: empty iterator-pair returns nullopt", "[fold]", mono_pool, poly_pool) {
+  for (auto n_workers : k_worker_counts) {
+    TestType pool{n_workers};
+
+    DYNAMIC_SECTION("workers=" << n_workers) {
+      std::vector<std::size_t> v;
+
+      auto unchunked = lf::schedule(pool, lf::fold, v.begin(), v.end(), std::plus<>{});
+      REQUIRE_FALSE(std::move(unchunked).get().has_value());
+
+      auto chunked = lf::schedule(pool, lf::fold, v.begin(), v.end(), 4UZ, std::plus<>{});
+      REQUIRE_FALSE(std::move(chunked).get().has_value());
     }
   }
 }
@@ -76,7 +98,7 @@ TEMPLATE_TEST_CASE("fold: iterator-pair, n>1", "[fold]", mono_pool, poly_pool) {
 
           auto recv = lf::schedule(pool, lf::fold, v.begin(), v.end(), ch, std::plus<>{});
 
-          REQUIRE(std::move(recv).get() == sum_0_to_n_minus_1(n));
+          require_fold_result(std::move(recv).get(), sum_0_to_n_minus_1(n));
         }
       }
     }
@@ -96,9 +118,33 @@ TEMPLATE_TEST_CASE("fold: range + n", "[fold]", mono_pool, poly_pool) {
 
           auto recv = lf::schedule(pool, lf::fold, std::span(v), ch, std::plus<>{});
 
-          REQUIRE(std::move(recv).get() == sum_0_to_n_minus_1(n));
+          require_fold_result(std::move(recv).get(), sum_0_to_n_minus_1(n));
         }
       }
+    }
+  }
+}
+
+TEMPLATE_TEST_CASE("fold: empty range returns nullopt", "[fold]", mono_pool, poly_pool) {
+  for (auto n_workers : k_worker_counts) {
+    TestType pool{n_workers};
+
+    DYNAMIC_SECTION("workers=" << n_workers) {
+      std::vector<std::size_t> v;
+
+      auto span_unchunked = lf::schedule(pool, lf::fold, std::span(v), std::plus<>{});
+      REQUIRE_FALSE(std::move(span_unchunked).get().has_value());
+
+      auto span_chunked = lf::schedule(pool, lf::fold, std::span(v), 4UZ, std::plus<>{});
+      REQUIRE_FALSE(std::move(span_chunked).get().has_value());
+
+      auto empty_view = std::views::iota(0UZ, 0UZ);
+
+      auto view_unchunked = lf::schedule(pool, lf::fold, empty_view, std::plus<>{});
+      REQUIRE_FALSE(std::move(view_unchunked).get().has_value());
+
+      auto view_chunked = lf::schedule(pool, lf::fold, empty_view, 4UZ, std::plus<>{});
+      REQUIRE_FALSE(std::move(view_chunked).get().has_value());
     }
   }
 }
@@ -115,7 +161,7 @@ TEMPLATE_TEST_CASE("fold: range no n (default chunk)", "[fold]", mono_pool, poly
 
         auto recv = lf::schedule(pool, lf::fold, std::span(v), std::plus<>{});
 
-        REQUIRE(std::move(recv).get() == sum_0_to_n_minus_1(n));
+        require_fold_result(std::move(recv).get(), sum_0_to_n_minus_1(n));
       }
     }
   }
@@ -137,7 +183,7 @@ TEMPLATE_TEST_CASE("fold: non-trivial sync projection (sum of squares)", "[fold]
                 return x * x;
               });
 
-          REQUIRE(std::move(recv).get() == sum_squares_0_to_n_minus_1(n));
+          require_fold_result(std::move(recv).get(), sum_squares_0_to_n_minus_1(n));
         }
       }
     }
@@ -156,11 +202,11 @@ TEMPLATE_TEST_CASE("fold: sync projection accepts pointer-to-member", "[fold]", 
     }
 
     auto chunked = lf::schedule(pool, lf::fold, std::span(v), 32UZ, std::plus<>{}, &projected_record::value);
-    REQUIRE(std::move(chunked).get() == sum_0_to_n_minus_1(v.size()));
+    require_fold_result(std::move(chunked).get(), sum_0_to_n_minus_1(v.size()));
 
     auto single = lf::schedule(
         pool, lf::fold, v.begin(), std::next(v.begin()), std::plus<>{}, &projected_record::value);
-    REQUIRE(std::move(single).get() == 0UZ);
+    require_fold_result(std::move(single).get(), 0UZ);
   }
 }
 
@@ -175,11 +221,15 @@ TEMPLATE_TEST_CASE("fold: sync projection can initialize explicit accumulator",
     std::vector v{std::from_range, std::views::iota(0UZ, 16UZ)};
 
     auto chunked = lf::schedule(pool, lf::fold, std::span(v), 32UZ, explicit_sum_plus{}, std::identity{});
-    REQUIRE(std::move(chunked).get().value == sum_0_to_n_minus_1(v.size()));
+    auto chunked_result = std::move(chunked).get();
+    REQUIRE(chunked_result.has_value());
+    REQUIRE(chunked_result->value == sum_0_to_n_minus_1(v.size()));
 
     auto single =
         lf::schedule(pool, lf::fold, v.begin(), std::next(v.begin()), explicit_sum_plus{}, std::identity{});
-    REQUIRE(std::move(single).get().value == 0UZ);
+    auto single_result = std::move(single).get();
+    REQUIRE(single_result.has_value());
+    REQUIRE(single_result->value == 0UZ);
   }
 }
 
@@ -205,7 +255,7 @@ TEMPLATE_TEST_CASE("fold: stateful Bop (counter increment)", "[fold]", mono_pool
 
         auto recv = lf::schedule(pool, lf::fold, std::span(v), counting_plus{&calls});
 
-        REQUIRE(std::move(recv).get() == sum_0_to_n_minus_1(n));
+        require_fold_result(std::move(recv).get(), sum_0_to_n_minus_1(n));
         REQUIRE(calls.load() == n - 1UZ);
       }
     }
@@ -237,7 +287,7 @@ TEMPLATE_TEST_CASE("fold: async Bop — iterator-pair, n=1", "[fold]", mono_pool
       DYNAMIC_SECTION("workers=" << n_workers << " len=" << n) {
         std::vector v{std::from_range, std::ranges::iota_view(0UZ, n)};
         auto recv = lf::schedule(pool, lf::fold, v.begin(), v.end(), async_plus{});
-        REQUIRE(std::move(recv).get() == sum_0_to_n_minus_1(n));
+        require_fold_result(std::move(recv).get(), sum_0_to_n_minus_1(n));
       }
     }
   }
@@ -251,7 +301,7 @@ TEMPLATE_TEST_CASE("fold: async Bop — range + n", "[fold]", mono_pool, poly_po
         DYNAMIC_SECTION("workers=" << n_workers << " len=" << n << " chunk=" << ch) {
           std::vector v{std::from_range, std::ranges::iota_view(0UZ, n)};
           auto recv = lf::schedule(pool, lf::fold, std::span(v), ch, async_plus{});
-          REQUIRE(std::move(recv).get() == sum_0_to_n_minus_1(n));
+          require_fold_result(std::move(recv).get(), sum_0_to_n_minus_1(n));
         }
       }
     }
@@ -266,7 +316,7 @@ TEMPLATE_TEST_CASE("fold: async Proj — iterator-pair, n>1", "[fold]", mono_poo
         DYNAMIC_SECTION("workers=" << n_workers << " len=" << n << " chunk=" << ch) {
           std::vector v{std::from_range, std::ranges::iota_view(0UZ, n)};
           auto recv = lf::schedule(pool, lf::fold, v.begin(), v.end(), ch, std::plus<>{}, async_square{});
-          REQUIRE(std::move(recv).get() == sum_squares_0_to_n_minus_1(n));
+          require_fold_result(std::move(recv).get(), sum_squares_0_to_n_minus_1(n));
         }
       }
     }
@@ -281,7 +331,7 @@ TEMPLATE_TEST_CASE("fold: async Bop + async Proj — range + n", "[fold]", mono_
         DYNAMIC_SECTION("workers=" << n_workers << " len=" << n << " chunk=" << ch) {
           std::vector v{std::from_range, std::ranges::iota_view(0UZ, n)};
           auto recv = lf::schedule(pool, lf::fold, std::span(v), ch, async_plus{}, async_square{});
-          REQUIRE(std::move(recv).get() == sum_squares_0_to_n_minus_1(n));
+          require_fold_result(std::move(recv).get(), sum_squares_0_to_n_minus_1(n));
         }
       }
     }

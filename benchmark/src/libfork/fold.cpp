@@ -42,24 +42,26 @@ auto run_fold(Sch &pool, Range &&range) -> fold_accum_t<T> {
   auto projection = make_projection<Projection, T>();
 
   if constexpr (Chunk == fold_chunk_mode::deduced) {
-    return lf::schedule(pool,
-                        lf::fold,
-                        std::ranges::begin(range),
-                        std::ranges::end(range),
-                        std::plus<>{},
-                        std::move(projection))
-        .get();
+    auto result = lf::schedule(pool,
+                               lf::fold,
+                               std::ranges::begin(range),
+                               std::ranges::end(range),
+                               std::plus<>{},
+                               std::move(projection))
+                      .get();
+    return *std::move(result);
   } else {
     using diff_t = std::ranges::range_difference_t<Range>;
     constexpr diff_t chunk = Chunk == fold_chunk_mode::explicit_one ? diff_t{1} : diff_t{4096};
-    return lf::schedule(pool,
-                        lf::fold,
-                        std::ranges::begin(range),
-                        std::ranges::end(range),
-                        chunk,
-                        std::plus<>{},
-                        std::move(projection))
-        .get();
+    auto result = lf::schedule(pool,
+                               lf::fold,
+                               std::ranges::begin(range),
+                               std::ranges::end(range),
+                               chunk,
+                               std::plus<>{},
+                               std::move(projection))
+                      .get();
+    return *std::move(result);
   }
 }
 
