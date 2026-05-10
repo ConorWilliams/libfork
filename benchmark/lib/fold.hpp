@@ -83,7 +83,6 @@ void run_fold_input(benchmark::State &state, Fn &&fn) {
     bench(make_fold_range<T>(n));
   }
 
-  state.counters["n"] = static_cast<double>(n);
   state.SetItemsProcessed(state.iterations() * static_cast<std::int64_t>(n));
 }
 
