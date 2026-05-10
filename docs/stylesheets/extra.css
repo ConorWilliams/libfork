@@ -1,0 +1,9 @@
+.md-typeset .admonition,
+.md-typeset details {
+  font-size: inherit;
+}
+
+.md-typeset .admonition-title,
+.md-typeset summary {
+  font-size: inherit;
+}
