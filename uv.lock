@@ -48,16 +48,12 @@ wheels = [
 name = "libfork"
 version = "0.1.0"
 source = { virtual = "." }
-
-[package.dev-dependencies]
-dev = [
+dependencies = [
     { name = "zensical" },
 ]
 
 [package.metadata]
-
-[package.metadata.requires-dev]
-dev = [{ name = "zensical", specifier = ">=0.0.41" }]
+requires-dist = [{ name = "zensical", specifier = ">=0.0.41" }]
 
 [[package]]
 name = "markdown"
