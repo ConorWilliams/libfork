@@ -40,16 +40,16 @@ repo_url = "https://github.com/conorwilliams/libfork"
 
 # Set branch for edit/view links
 # TODO: make this point to main
-edit_uri = "edit/v4-docs/docs/"
+edit_uri = "edit/modules/docs/"
 
 # Explicit sidebar order. Paths are relative to the docs directory.
 nav = [
-  {"Home" = "index.md"},
-  {"Getting Started" = "getting-started.md"},
-  {"Tour" = "tour.md"},
-  {"API" = [
+  { "Home" = "index.md" },
+  { "Getting Started" = "getting-started.md" },
+  { "Tour" = "tour.md" },
+  { "API" = [
     "api/index.md",
-    {"Core" = [
+    { "Core" = [
       "api/core/index.md",
       "api/core/task.md",
       "api/core/env.md",
@@ -62,13 +62,13 @@ nav = [
       "api/core/projected.md",
       "api/core/concepts.md",
       "api/core/exceptions.md",
-    ]},
-    {"Batteries" = "api/batteries.md"},
-    {"Schedulers" = "api/schedulers.md"},
-    {"Algorithm" = "api/algorithm.md"},
-  ]},
-  {"Benchmarks" = "benchmarks.md"},
-  {"Contributing" = "contributing.md"},
+    ] },
+    { "Batteries" = "api/batteries.md" },
+    { "Schedulers" = "api/schedulers.md" },
+    { "Algorithm" = "api/algorithm.md" },
+  ] },
+  { "Benchmarks" = "benchmarks.md" },
+  { "Contributing" = "contributing.md" },
 ]
 
 # ----------------------------------------------------------------------------
