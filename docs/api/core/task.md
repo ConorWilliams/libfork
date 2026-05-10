@@ -19,7 +19,7 @@ See associated:
 - [worker_context](./concepts.md#worker-contexts)
 
 The return type for all coroutines/async-functions in libfork. This type exists
-so that users can mark their functions as coroutines. Other than it's typedefs
+so that users can mark their functions as coroutines. Other than its typedefs
 it has no public interface.
 
 !!! warning
