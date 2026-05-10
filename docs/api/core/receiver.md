@@ -6,8 +6,8 @@ icon: lucide/inbox
 
 Receivers are the completion handles returned by
 [`schedule`](scheduling.md#schedule). They are intentionally separate from
-tasks: a `task` belongs to the coroutine tree, while a `receiver` belongs to the
-outside caller waiting for a root task.
+tasks: a `task` belongs to the coroutine tree, while a `receiver` belongs to
+the outside caller waiting for a root task.
 
 ## `recv_state`
 
@@ -141,7 +141,6 @@ If the task completed with an exception, `get` rethrows it. If `Stoppable` is
 
 !!! warning
     `get` is rvalue-qualified and may only be called once:
-
     ```cpp
     auto value = std::move(recv).get();
     ```
