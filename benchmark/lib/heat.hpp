@@ -1,6 +1,7 @@
 #pragma once
 
 #ifdef LF_BENCH_NO_IMPORT_STD
+  #include <cmath>
   #include <cstddef>
   #include <vector>
 #else
