@@ -1,5 +1,6 @@
 module;
 #include "libfork/__impl/assume.hpp"
+#include "libfork/__impl/exception.hpp"
 export module libfork.algorithm:fold;
 
 import std;
@@ -15,6 +16,13 @@ namespace lf {
 template <typename Fn, typename Context, typename I>
 concept indirectly_foldable =
     indirect_semigroup<Fn, Context, I> && std::movable<indirect_semigroup_t<Fn, Context, I>>;
+
+export struct fold_chunk_error final : libfork_exception {
+  [[nodiscard]]
+  constexpr auto what() const noexcept -> const char * override {
+    return "fold chunk size must be positive";
+  }
+};
 
 struct fold_impl {
  private:
@@ -243,13 +251,11 @@ struct fold_fn {
     using result_type = result_t<X, I, Proj, Bop>;
     using optional_result_type = optional_result_t<X, I, Proj, Bop>;
 
-    LF_ASSUME(n > 0);
+    if (n <= 0) {
+      LF_THROW(fold_chunk_error{});
+    }
 
-    auto len = tail - head;
-
-    LF_ASSUME(len >= 0);
-
-    if (len == 0) {
+    if (tail == head) {
       co_return std::nullopt;
     }
 
@@ -276,11 +282,7 @@ struct fold_fn {
     using result_type = result_t<X, I, Proj, Bop>;
     using optional_result_type = optional_result_t<X, I, Proj, Bop>;
 
-    auto len = tail - head;
-
-    LF_ASSUME(len >= 0);
-
-    if (len == 0) {
+    if (tail == head) {
       co_return std::nullopt;
     }
 

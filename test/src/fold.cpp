@@ -340,6 +340,33 @@ TEMPLATE_TEST_CASE("fold: async Bop + async Proj — range + n", "[fold]", mono_
 
 #if LF_COMPILER_EXCEPTIONS
 
+TEMPLATE_TEST_CASE("fold: non-positive chunk throws", "[fold]", mono_pool, poly_pool) {
+  for (auto n_workers : k_worker_counts) {
+    DYNAMIC_SECTION("workers=" << n_workers) {
+
+      TestType pool{n_workers};
+
+      std::vector v{1UZ, 2UZ, 3UZ};
+      std::vector<std::size_t> empty;
+
+      auto zero_iter = lf::schedule(pool, lf::fold, v.begin(), v.end(), 0, std::plus<>{});
+      REQUIRE_THROWS_AS(std::move(zero_iter).get(), lf::fold_chunk_error);
+
+      auto negative_iter = lf::schedule(pool, lf::fold, v.begin(), v.end(), -1, std::plus<>{});
+      REQUIRE_THROWS_AS(std::move(negative_iter).get(), lf::fold_chunk_error);
+
+      auto zero_range = lf::schedule(pool, lf::fold, std::span(v), 0, std::plus<>{});
+      REQUIRE_THROWS_AS(std::move(zero_range).get(), lf::fold_chunk_error);
+
+      auto negative_range = lf::schedule(pool, lf::fold, std::span(v), -1, std::plus<>{});
+      REQUIRE_THROWS_AS(std::move(negative_range).get(), lf::fold_chunk_error);
+
+      auto zero_empty = lf::schedule(pool, lf::fold, empty.begin(), empty.end(), 0, std::plus<>{});
+      REQUIRE_THROWS_AS(std::move(zero_empty).get(), lf::fold_chunk_error);
+    }
+  }
+}
+
 TEMPLATE_TEST_CASE("fold: exception from Bop propagates", "[fold]", mono_pool, poly_pool) {
   for (auto n_workers : k_worker_counts) {
     DYNAMIC_SECTION("workers=" << n_workers) {
