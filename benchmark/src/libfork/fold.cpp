@@ -98,11 +98,11 @@ LF_FOLD_BENCH_SIZES(run, libfork, fold / std_plus, memory, chunk_fixed, sync_pro
 LF_FOLD_BENCH_SIZES(run, libfork, fold / std_plus, lazy, chunk_fixed, sync_proj, int32)
 LF_FOLD_BENCH_SIZES(run, libfork, fold / std_plus, lazy, chunk_fixed, sync_proj, float32)
 
-// Compare specialised for sync/async
-LF_FOLD_BENCH_SIZES(run, libfork, fold / std_plus, memory, chunk_1, sync_proj, float32)
-LF_FOLD_BENCH_SIZES(run, libfork, fold / std_plus, memory, chunk_deduced, sync_proj, float32)
-LF_FOLD_BENCH_SIZES(run, libfork, fold / std_plus, memory, chunk_1, async_proj, float32)
-LF_FOLD_BENCH_SIZES(run, libfork, fold / std_plus, memory, chunk_deduced, async_proj, float32)
+// Compare specialised for sync/async (no largest size)
+LF_FOLD_BENCH_SIZES_SMALL(run, libfork, fold / std_plus, memory, chunk_1, sync_proj, float32)
+LF_FOLD_BENCH_SIZES_SMALL(run, libfork, fold / std_plus, memory, chunk_deduced, sync_proj, float32)
+LF_FOLD_BENCH_SIZES_SMALL(run, libfork, fold / std_plus, memory, chunk_1, async_proj, float32)
+LF_FOLD_BENCH_SIZES_SMALL(run, libfork, fold / std_plus, memory, chunk_deduced, async_proj, float32)
 
 #define MT(...) LF_FOLD_BENCH_SIZES_MT(__VA_ARGS__)
 

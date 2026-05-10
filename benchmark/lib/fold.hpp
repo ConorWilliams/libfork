@@ -98,14 +98,16 @@ inline constexpr auto async_proj = fold_projection_mode::async;
 using int32 = std::int32_t;
 using float32 = float;
 
-#define LF_FOLD_BENCH_SIZES(bench_fn, category, name, ...)                                                   \
+#define LF_FOLD_BENCH_SIZES_SMALL(bench_fn, category, name, ...)                                                   \
   BENCH_ONE(bench_fn, category, name, test, fold __VA_OPT__(, ) __VA_ARGS__)                                 \
   BENCH_ONE(bench_fn, category, name, base, fold_1024 __VA_OPT__(, ) __VA_ARGS__)                            \
   BENCH_ONE(bench_fn, category, name, base, fold_1024_sq __VA_OPT__(, ) __VA_ARGS__)                         \
+
+#define LF_FOLD_BENCH_SIZES(bench_fn, category, name, ...)                                                   \
+  LF_FOLD_BENCH_SIZES_SMALL(bench_fn, category, name __VA_OPT__(, ) __VA_ARGS__)                                 \
   BENCH_ONE(bench_fn, category, name, base, fold_1024_cu __VA_OPT__(, ) __VA_ARGS__)
 
 #define LF_FOLD_BENCH_SIZES_MT(bench_fn, category, name, ...)                                                \
   BENCH_ONE_MT(bench_fn, category, name, test, fold __VA_OPT__(, ) __VA_ARGS__)                              \
-  BENCH_ONE_MT(bench_fn, category, name, base, fold_1024 __VA_OPT__(, ) __VA_ARGS__)                         \
   BENCH_ONE_MT(bench_fn, category, name, base, fold_1024_sq __VA_OPT__(, ) __VA_ARGS__)                      \
   BENCH_ONE_MT(bench_fn, category, name, base, fold_1024_cu __VA_OPT__(, ) __VA_ARGS__)
