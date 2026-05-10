@@ -4,24 +4,7 @@
 .cache/
 
 build/
-_build/
-cmake-build-*/
-prefix/
-old/
-Testing/
-
-docs/index.rst
-
-bench/data/
-*.svg
-
-mem.log
-memory.csv
-memory.*.csv
-test.pdf
-gmon.out
-out.png
-output.png
+site/
 
 **/.DS_Store
 
