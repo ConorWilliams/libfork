@@ -5,18 +5,18 @@ icon: lucide/box
 # Task
 
 ```cpp
-export template <returnable T, worker_context Context>
+template <returnable T, worker_context Context>
 class task {
  public:
   using value_type = T;
   using context_type = Context;
-}
+};
 ```
 
 See associated:
 
 - [returnable](./concepts.md#returnable)
-- [worker_context](./concepts.md#worker-context)
+- [worker_context](./concepts.md#worker-contexts)
 
 The return type for all coroutines/async-functions in libfork. This type exists
 so that users can mark their functions as coroutines. Other than it's typedefs
@@ -27,7 +27,7 @@ it has no public interface.
     it is used for specifying the return type of a coroutine only.
 
 !!! example
-    With a simple type alias, we can make our coroutines look a lot cleaner:
+    With a simple type alias, coroutines can be written more compactly:
 
     ```cpp
     template <lf::returnable T>

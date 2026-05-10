@@ -11,11 +11,11 @@ struct env {}
 
 See associated:
 
-- [worker_context](./concepts.md#worker-context)
+- [worker_context](./concepts.md#worker-contexts)
 
 A tag type that can be used to help write context-generic code. This can be
 used as the (templated) first parameter of a coroutine such that
-[worker_context](./concepts.md#worker-context) can be deduced. This parameter
+[worker_context](./concepts.md#worker-contexts) can be deduced. This parameter
 will be generated and passed to the coroutine by libfork automatically.
 
 !!! note
