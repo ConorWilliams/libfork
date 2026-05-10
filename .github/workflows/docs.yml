@@ -2,7 +2,7 @@ name: Documentation
 on:
   push:
     branches:
-      - modules
+      - main
 
 permissions:
   contents: read
