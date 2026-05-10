@@ -12,7 +12,7 @@ namespace {
 
 template <typename T>
 struct sync_projection {
-  constexpr auto operator()(T value) const -> fold_accum_t<T> { return static_cast<fold_accum_t<T>>(value); }
+  static constexpr auto operator()(T value) -> fold_accum_t<T> { return static_cast<fold_accum_t<T>>(value); }
 };
 
 template <typename T>
@@ -47,7 +47,7 @@ auto run_fold(mono_busy_pool &pool, Range &&range) -> fold_accum_t<T> {
         .get();
   } else {
     using diff_t = std::ranges::range_difference_t<Range>;
-    constexpr diff_t chunk = Chunk == fold_chunk_mode::explicit_one ? diff_t{1} : diff_t{2048};
+    constexpr diff_t chunk = Chunk == fold_chunk_mode::explicit_one ? diff_t{1} : diff_t{4096};
     return lf::schedule(pool,
                         lf::fold,
                         std::ranges::begin(range),
@@ -69,21 +69,15 @@ void fold_run(benchmark::State &state) {
 
 } // namespace
 
-#define LF_REGISTER_FOLD_BENCH(data, chunk, proj, dtype)                                                     \
-  LF_FOLD_BENCH_SIZES(fold_run, libfork, fold / std_plus, data, chunk, proj, dtype)
+// Chunked/sync/sync versions to mirror serial benchmarks.
+LF_FOLD_BENCH_SIZES(fold_run, libfork, fold / std_plus, memory, chunk_fixed, sync_proj, int32)
+LF_FOLD_BENCH_SIZES(fold_run, libfork, fold / std_plus, memory, chunk_fixed, sync_proj, float32)
+LF_FOLD_BENCH_SIZES(fold_run, libfork, fold / std_plus, lazy, chunk_fixed, sync_proj, int32)
+LF_FOLD_BENCH_SIZES(fold_run, libfork, fold / std_plus, lazy, chunk_fixed, sync_proj, float32)
 
-#define LF_REGISTER_FOLD_CHUNKS(data, proj, dtype)                                                           \
-  LF_REGISTER_FOLD_BENCH(data, chunk_1, proj, dtype)                                                         \
-  LF_REGISTER_FOLD_BENCH(data, chunk_deduced, proj, dtype)                                                   \
-  LF_REGISTER_FOLD_BENCH(data, chunk_fixed, proj, dtype)
 
-#define LF_REGISTER_FOLD_PROJECTIONS(data, dtype)                                                            \
-  LF_REGISTER_FOLD_CHUNKS(data, sync_proj, dtype)                                                            \
-  LF_REGISTER_FOLD_CHUNKS(data, async_proj, dtype)
-
-#define LF_REGISTER_FOLD_TYPES(data)                                                                         \
-  LF_REGISTER_FOLD_PROJECTIONS(data, int32)                                                                  \
-  LF_REGISTER_FOLD_PROJECTIONS(data, float32)
-
-LF_REGISTER_FOLD_TYPES(memory)
-LF_REGISTER_FOLD_TYPES(lazy)
+// Compare specialised for sync/async
+LF_FOLD_BENCH_SIZES(fold_run, libfork, fold / std_plus, memory, chunk_1, sync_proj, float32)
+LF_FOLD_BENCH_SIZES(fold_run, libfork, fold / std_plus, memory, chunk_deduced, sync_proj, float32)
+LF_FOLD_BENCH_SIZES(fold_run, libfork, fold / std_plus, memory, chunk_1, async_proj, float32)
+LF_FOLD_BENCH_SIZES(fold_run, libfork, fold / std_plus, memory, chunk_deduced, async_proj, float32)
