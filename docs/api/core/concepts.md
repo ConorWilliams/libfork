@@ -26,3 +26,5 @@ concept /*plain-object*/ = std::is_object_v<T> && std::same_as<T, std::remove_re
 ```
 
 ## Worker context
+
+TODO: impl
