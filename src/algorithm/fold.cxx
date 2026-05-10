@@ -15,7 +15,7 @@ namespace lf {
 
 template <typename Fn, typename Context, typename I>
 concept indirectly_foldable =
-    indirect_semigroup<Fn, Context, I> && std::movable<indirect_semigroup_t<Fn, Context, I>>;
+    indirect_semigroup<Fn, Context, I> && default_movable<indirect_semigroup_t<Fn, Context, I>>;
 
 export struct fold_chunk_error final : libfork_exception {
   [[nodiscard]]
