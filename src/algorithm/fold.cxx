@@ -196,8 +196,8 @@ struct fold_impl {
 
     auto mid = head + (len / 2);
 
-    result_t<X, I, Proj, Bop> lhs;
-    result_t<X, I, Proj, Bop> rhs;
+    result_type lhs;
+    result_type rhs;
 
     {
       auto sc = co_await scope();
@@ -245,8 +245,6 @@ struct fold_fn {
   static auto
   operator()(env<X>, I head, S tail, iter_diff_t<I> n, Bop bop, Proj proj = {}) -> task_t<X, I, Proj, Bop> {
 
-    using result_type = result_t<X, I, Proj, Bop>;
-
     if (n <= 0) {
       LF_THROW(fold_chunk_error{});
     }
@@ -255,7 +253,7 @@ struct fold_fn {
       co_return std::nullopt;
     }
 
-    result_type result;
+    result_t<X, I, Proj, Bop> result;
 
     {
       auto sc = co_await scope();
@@ -275,13 +273,11 @@ struct fold_fn {
             >
   static auto operator()(env<X>, I head, S tail, Bop bop, Proj proj = {}) -> task_t<X, I, Proj, Bop> {
 
-    using result_type = result_t<X, I, Proj, Bop>;
-
     if (tail == head) {
       co_return std::nullopt;
     }
 
-    result_type result;
+    result_t<X, I, Proj, Bop> result;
 
     {
       auto sc = co_await scope();
