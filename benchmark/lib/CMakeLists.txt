@@ -10,6 +10,7 @@ target_sources(benchmark_common
     BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
     FILES
       fib.hpp
+      fold.hpp
       uts.hpp
       macros.hpp
 )

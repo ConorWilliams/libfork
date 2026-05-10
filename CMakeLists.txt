@@ -106,6 +106,7 @@ target_sources(libfork_libfork
       # libfork.algorithm
       src/algorithm/algorithm.cxx
       src/algorithm/for_each.cxx
+      src/algorithm/fold.cxx
       src/algorithm/concepts.cxx
     PRIVATE
       src/exception.cpp

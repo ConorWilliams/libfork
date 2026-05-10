@@ -271,18 +271,6 @@ struct async_wrong_context {
   static auto operator()(env<Context>, int, int) -> task<int, semigroup_context>;
 };
 
-struct async_non_default_result {
-  template <typename Context>
-  static auto operator()(env<Context>, int, int) -> task<semigroup_non_default, Context>;
-  template <typename Context>
-  static auto operator()(env<Context>, int, semigroup_non_default) -> task<semigroup_non_default, Context>;
-  template <typename Context>
-  static auto operator()(env<Context>, semigroup_non_default, int) -> task<semigroup_non_default, Context>;
-  template <typename Context>
-  static auto operator()(env<Context>, semigroup_non_default, semigroup_non_default)
-      -> task<semigroup_non_default, Context>;
-};
-
 struct async_not_copyable {
   async_not_copyable() = default;
   async_not_copyable(async_not_copyable const &) = delete;
@@ -336,7 +324,6 @@ TEST_CASE("Concepts: async indirect_semigroup", "[concepts]") {
   STATIC_REQUIRE_FALSE(
       lf::async::indirect_semigroup<async_wrong_mixed_return, test_context, semigroup_const_iter>);
   STATIC_REQUIRE_FALSE(lf::async::indirect_semigroup<async_wrong_context, test_context, semigroup_iter>);
-  STATIC_REQUIRE_FALSE(lf::async::indirect_semigroup<async_non_default_result, test_context, semigroup_iter>);
   STATIC_REQUIRE_FALSE(lf::async::indirect_semigroup<async_not_copyable, test_context, semigroup_iter>);
   STATIC_REQUIRE_FALSE(
       lf::async::indirect_semigroup<async_int_semigroup, semigroup_bad_context, semigroup_iter>);

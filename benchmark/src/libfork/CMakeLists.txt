@@ -3,6 +3,7 @@ add_library(libfork_benchmarks)
 target_sources(libfork_benchmarks
   PRIVATE
     fib.cpp
+    fold.cpp
     uts.cpp
     switch_io_pool.cpp
     switch_random.cpp

@@ -68,7 +68,6 @@ namespace async {
 template <typename R, typename Fn, typename Context, typename T>
 concept semigroup_r =                           //
     std::constructible_from<R, T> &&            //
-    std::default_initializable<R> &&            //
     async_invocable_to<Fn, R, Context, T, T> && //
     async_invocable_to<Fn, R, Context, T, R> && //
     async_invocable_to<Fn, R, Context, R, T> && //
