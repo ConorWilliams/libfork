@@ -1,176 +1,90 @@
 ---
-icon: lucide/rocket
+icon: lucide/utensils
 ---
 
-# Get started
+# libfork
 
-For full documentation visit [zensical.org](https://zensical.org/docs/).
+`libfork` is a C++ coroutine-tasking library for strict fork-join parallelism.
+It gives programs a small async-function vocabulary, a scheduler-independent
+execution model, and worker stacks designed for fine-grained parallel tasks.
 
-## Commands
+At the top level, users import the library as a C++ module:
 
-* [`zensical new`][new] - Create a new project
-* [`zensical serve`][serve] - Start local web server
-* [`zensical build`][build] - Build your site
-
-  [new]: https://zensical.org/docs/usage/new/
-  [serve]: https://zensical.org/docs/usage/preview/
-  [build]: https://zensical.org/docs/usage/build/
-
-## Examples
-
-### Admonitions
-
-> Go to [documentation](https://zensical.org/docs/authoring/admonitions/)
-
-!!! note
-
-    This is a **note** admonition. Use it to provide helpful information.
-
-!!! warning
-
-    This is a **warning** admonition. Be careful!
-
-### Details
-
-> Go to [documentation](https://zensical.org/docs/authoring/admonitions/#collapsible-blocks)
-
-??? info "Click to expand for more info"
-
-    This content is hidden until you click to expand it.
-    Great for FAQs or long explanations.
-
-## Code Blocks
-
-The `#!python range()` function is used to generate a sequence of numbers.
-
-The `#!cpp co_await sc.fork(f, args...)` function is used to generate a sequence of numbers.
-
-> Go to [documentation](https://zensical.org/docs/authoring/code-blocks/)
-
-``` python hl_lines="2" title="Code blocks" linenums="1"
-def greet(name):
-    print(f"Hello, {name}!") # (1)!
-
-greet("Python")
+```cpp
+import libfork;
 ```
 
-1. > Go to [documentation](https://zensical.org/docs/authoring/code-blocks/#code-annotations)
+The core idea is simple: a task may fork child tasks, continue with local work,
+and then join before reading child results or returning to its own parent. The
+runtime uses continuation stealing: the worker that performs a fork continues
+with the child, while another worker may steal the parent continuation.
 
-    Code annotations allow to attach notes to lines of code.
+```cpp
+import std;
+import libfork;
 
-Code can also be highlighted inline: `#!python print("Hello, Python!")`.
-
-## Content tabs
-
-> Go to [documentation](https://zensical.org/docs/authoring/content-tabs/)
-
-=== "Python"
-
-    ``` python
-    print("Hello from Python!")
-    ```
-
-=== "Rust"
-
-    ``` rs
-    println!("Hello from Rust!");
-    ```
-
-## Diagrams
-
-> Go to [documentation](https://zensical.org/docs/authoring/diagrams/)
-
-``` mermaid
-graph LR
-  A[Start] --> B{Error?};
-  B -->|Yes| C[Hmm...];
-  C --> D[Debug];
-  D --> B;
-  B ---->|No| E[Yay!];
-```
-
-## Footnotes
-
-> Go to [documentation](https://zensical.org/docs/authoring/footnotes/)
-
-Here's a sentence with a footnote.[^1]
-
-Hover it, to see a tooltip.
-
-[^1]: This is the footnote.
-
-## Formatting
-
-> Go to [documentation](https://zensical.org/docs/authoring/formatting/)
-
-* ==This was marked (highlight)==
-* ^^This was inserted (underline)^^
-* ~~This was deleted (strikethrough)~~
-* H~2~O
-* A^T^A
-* ++ctrl+alt+del++
-
-## Icons, Emojis
-
-> Go to [documentation](https://zensical.org/docs/authoring/icons-emojis/)
-
-* :sparkles: `:sparkles:`
-* :rocket: `:rocket:`
-* :tada: `:tada:`
-* :memo: `:memo:`
-* :eyes: `:eyes:`
-
-## Maths
-
-> Go to [documentation](https://zensical.org/docs/authoring/math/)
-
-$$
-\cos x=\sum_{k=0}^{\infty}\frac{(-1)^k}{(2k)!}x^{2k}
-$$
-
-!!! warning "Needs configuration"
-    Note that MathJax is included via a `script` tag on this page and is not
-    configured in the generated default configuration to avoid including it
-    in a pages that do not need it. See the documentation for details on how
-    to configure it on all your pages if they are more Maths-heavy than these
-    simple starter pages.
-
-<script id="MathJax-script" src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
-<script>
-  window.MathJax = {
-    tex: {
-      inlineMath: [["\\(", "\\)"]],
-      displayMath: [["\\[", "\\]"]],
-      processEscapes: true,
-      processEnvironments: true
-    },
-    options: {
-      ignoreHtmlClass: ".*|",
-      processHtmlClass: "arithmatex"
+struct fib {
+  template <lf::worker_context Context>
+  static auto operator()(lf::env<Context>, std::int64_t n)
+      -> lf::task<std::int64_t, Context> {
+    if (n < 2) {
+      co_return n;
     }
-  };
 
-  document$.subscribe(() => {
-    MathJax.startup.output.clearCache()
-    MathJax.typesetClear()
-    MathJax.texReset()
-    MathJax.typesetPromise()
-  })
-</script>
+    std::int64_t lhs = 0;
+    std::int64_t rhs = 0;
 
-## Task Lists
+    auto sc = co_await lf::scope();
+    co_await sc.fork(&rhs, fib{}, n - 2);
+    co_await sc.call(&lhs, fib{}, n - 1);
+    co_await sc.join();
 
-> Go to [documentation](https://zensical.org/docs/authoring/lists/#using-task-lists)
+    co_return lhs + rhs;
+  }
+};
 
-* [x] Install Zensical
-* [x] Configure `zensical.toml`
-* [x] Write amazing documentation
-* [ ] Deploy anywhere
+auto main() -> int {
+  lf::mono_busy_pool<lf::geometric_stack<>> pool{4};
+  auto result = lf::schedule(pool, fib{}, 20).get();
+  return result == 6765 ? 0 : 1;
+}
+```
 
-## Tooltips
+## Start here
 
-> Go to [documentation](https://zensical.org/docs/authoring/tooltips/)
+- [Getting started](getting-started.md) covers prerequisites, configuration,
+  building, and a first program.
+- [Tour](tour.md) explains the fork-join model, scheduling, cancellation,
+  exceptions, algorithms, and the stack model.
+- [API reference](api/index.md) documents the exported `libfork` modules.
+- [Benchmarks](benchmarks.md) describes the benchmark suite.
+- [Contributing](contributing.md) lists the local development workflow.
 
-[Hover me][example]
+## Design in one page
 
-  [example]: https://example.com "I'm a tooltip!"
+`libfork` tasks are C++ coroutines returning `lf::task<T, Context>`. The first
+argument is normally `lf::env<Context>`, which lets libfork pass context through
+the task graph without constructing user-visible runtime objects.
+
+Tasks run inside a strict fork-join tree. A fork starts a child that may run in
+parallel with the parent continuation. A call starts a child inline and is useful
+when there is no profitable continuation left to steal. A join waits for all
+outstanding children in the current scope.
+
+Schedulers are separate from task code. The same task can run on the synchronous
+`inline_scheduler`, a monomorphic busy-waiting pool, or a polymorphic pool. The
+default practical choice for parallel work today is:
+
+```cpp
+using pool_type = lf::mono_busy_pool<lf::geometric_stack<>>;
+```
+
+The module surface is intentionally split:
+
+- `libfork.core` defines tasks, scopes, scheduling, receivers, cancellation,
+  contexts, handles, projections, and concepts.
+- `libfork.batteries` provides worker stacks, deques, context policies, and
+  context implementations.
+- `libfork.schedulers` provides scheduler implementations.
+- `libfork.algorithm` provides higher-level fork-join algorithms such as
+  `for_each` and `fold`.
