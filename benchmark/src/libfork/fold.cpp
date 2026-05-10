@@ -104,13 +104,10 @@ LF_FOLD_BENCH_SIZES(run, libfork, fold / std_plus, memory, chunk_deduced, sync_p
 LF_FOLD_BENCH_SIZES(run, libfork, fold / std_plus, memory, chunk_1, async_proj, float32)
 LF_FOLD_BENCH_SIZES(run, libfork, fold / std_plus, memory, chunk_deduced, async_proj, float32)
 
+#define MT(...) LF_FOLD_BENCH_SIZES_MT(__VA_ARGS__)
 
 // Multi-threaded float32/sync projection.
-LF_FOLD_BENCH_SIZES_MT(
-    run_mt, libfork, fold / std_plus, memory, chunk_fixed, sync_proj, float32, mono_busy_pool)
-LF_FOLD_BENCH_SIZES_MT(
-    run_mt, libfork, fold / std_plus, lazy, chunk_fixed, sync_proj, float32, mono_busy_pool)
-LF_FOLD_BENCH_SIZES_MT(
-    run_mt, libfork, fold / std_plus, memory, chunk_fixed, sync_proj, float32, poly_busy_pool)
-LF_FOLD_BENCH_SIZES_MT(
-    run_mt, libfork, fold / std_plus, lazy, chunk_fixed, sync_proj, float32, poly_busy_pool)
+MT(run_mt, libfork, fold / std_plus, memory, chunk_fixed, sync_proj, float32, mono_busy_pool)
+MT(run_mt, libfork, fold / std_plus, lazy, chunk_fixed, sync_proj, float32, mono_busy_pool)
+MT(run_mt, libfork, fold / std_plus, memory, chunk_fixed, sync_proj, float32, poly_busy_pool)
+MT(run_mt, libfork, fold / std_plus, lazy, chunk_fixed, sync_proj, float32, poly_busy_pool)
