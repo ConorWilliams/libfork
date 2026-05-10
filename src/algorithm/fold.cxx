@@ -88,7 +88,7 @@ struct fold_impl {
 
       } else {
 
-        result_type acc = proj(*head);
+        result_type acc = std::invoke(proj, *head);
 
         for (++head; head != tail; ++head) {
           if constexpr (async::indirect_semigroup<Bop, X, projected<X, I, Proj>>) {
@@ -150,9 +150,10 @@ struct fold_impl {
           auto sc = co_await scope();
           co_await sc.call(&init, proj, *head);
           co_await sc.join();
+
           co_return result_type(std::move(init));
         } else {
-          co_return result_type(proj(*head));
+          co_return result_type(std::invoke(proj, *head));
         }
       case 2:
         if constexpr (async::indirectly_regular_unary_invocable<Proj, X, I>) {
