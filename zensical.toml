@@ -68,7 +68,7 @@ nav = [
     { "Algorithm" = "api/algorithm.md" },
   ] },
   { "Benchmarks" = [
-    "benchmarks.md",
+    "benchmarks/index.md",
     { "Fibonacci" = "benchmarks/fib.md" },
     { "Fold" = "benchmarks/fold.md" },
     { "Unbalanced Tree Search" = "benchmarks/uts.md" },

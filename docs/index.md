@@ -57,7 +57,7 @@ auto main() -> int {
 - [Tour](tour.md) explains the fork-join model, scheduling, cancellation,
   exceptions, algorithms, and the stack model.
 - [API reference](api/index.md) documents the exported `libfork` modules.
-- [Benchmarks](benchmarks.md) describes the benchmark suite.
+- [Benchmarks](benchmarks/index.md) describes the benchmark suite.
 - [Contributing](contributing.md) lists the local development workflow.
 
 ## Design in one page
