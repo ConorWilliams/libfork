@@ -21,6 +21,28 @@ constexpr auto sum_squares_0_to_n_minus_1(std::size_t n) -> std::size_t {
   return n == 0 ? 0 : (n * (n - 1) * (2 * n - 1)) / 6;
 }
 
+struct projected_record {
+  std::size_t value;
+};
+
+struct explicit_sum {
+  std::size_t value;
+
+  explicit_sum() = default;
+  explicit explicit_sum(std::size_t v)
+      : value(v) {}
+};
+
+constexpr auto explicit_sum_value(std::size_t value) -> std::size_t { return value; }
+constexpr auto explicit_sum_value(explicit_sum value) -> std::size_t { return value.value; }
+
+struct explicit_sum_plus {
+  template <typename L, typename R>
+  auto operator()(L const &lhs, R const &rhs) const -> explicit_sum {
+    return explicit_sum{explicit_sum_value(lhs) + explicit_sum_value(rhs)};
+  }
+};
+
 } // namespace
 
 TEMPLATE_TEST_CASE("fold: iterator-pair, n=1 (no n parameter)", "[fold]", mono_pool, poly_pool) {
@@ -119,6 +141,45 @@ TEMPLATE_TEST_CASE("fold: non-trivial sync projection (sum of squares)", "[fold]
         }
       }
     }
+  }
+}
+
+TEMPLATE_TEST_CASE("fold: sync projection accepts pointer-to-member", "[fold]", mono_pool, poly_pool) {
+  for (auto n_workers : k_worker_counts) {
+
+    TestType pool{n_workers};
+
+    std::vector<projected_record> v;
+    v.reserve(16);
+    for (auto i : std::views::iota(0UZ, 16UZ)) {
+      v.push_back(projected_record{.value = i});
+    }
+
+    auto chunked = lf::schedule(pool, lf::fold, std::span(v), 32UZ, std::plus<>{}, &projected_record::value);
+    REQUIRE(std::move(chunked).get() == sum_0_to_n_minus_1(v.size()));
+
+    auto single = lf::schedule(
+        pool, lf::fold, v.begin(), std::next(v.begin()), std::plus<>{}, &projected_record::value);
+    REQUIRE(std::move(single).get() == 0UZ);
+  }
+}
+
+TEMPLATE_TEST_CASE("fold: sync projection can initialize explicit accumulator",
+                   "[fold]",
+                   mono_pool,
+                   poly_pool) {
+  for (auto n_workers : k_worker_counts) {
+
+    TestType pool{n_workers};
+
+    std::vector v{std::from_range, std::views::iota(0UZ, 16UZ)};
+
+    auto chunked = lf::schedule(pool, lf::fold, std::span(v), 32UZ, explicit_sum_plus{}, std::identity{});
+    REQUIRE(std::move(chunked).get().value == sum_0_to_n_minus_1(v.size()));
+
+    auto single =
+        lf::schedule(pool, lf::fold, v.begin(), std::next(v.begin()), explicit_sum_plus{}, std::identity{});
+    REQUIRE(std::move(single).get().value == 0UZ);
   }
 }
 
