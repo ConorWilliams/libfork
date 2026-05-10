@@ -32,8 +32,12 @@ constexpr auto make_projection() {
   }
 }
 
-template <fold_chunk_mode Chunk, fold_projection_mode Projection, typename T, typename Range>
-auto run_fold(mono_busy_pool &pool, Range &&range) -> fold_accum_t<T> {
+template <fold_chunk_mode Chunk,
+          fold_projection_mode Projection,
+          typename T,
+          lf::scheduler Sch,
+          typename Range>
+auto run_fold(Sch &pool, Range &&range) -> fold_accum_t<T> {
 
   auto projection = make_projection<Projection, T>();
 
@@ -60,8 +64,27 @@ auto run_fold(mono_busy_pool &pool, Range &&range) -> fold_accum_t<T> {
 }
 
 template <fold_data_mode Data, fold_chunk_mode Chunk, fold_projection_mode Projection, typename T>
-void fold_run(benchmark::State &state) {
+void run(benchmark::State &state) {
+
   mono_busy_pool pool{1};
+
+  run_fold_input<Data, T>(state, [&](auto &&values) -> fold_accum_t<T> {
+    return run_fold<Chunk, Projection, T>(pool, std::forward<decltype(values)>(values));
+  });
+}
+
+template <fold_data_mode Data,
+          fold_chunk_mode Chunk,
+          fold_projection_mode Projection,
+          typename T,
+          lf::scheduler Sch>
+void run_mt(benchmark::State &state) {
+
+  state.counters["p"] = static_cast<double>(thread_count<Sch>(state));
+  state.SetComplexityN(static_cast<benchmark::IterationCount>(thread_count<Sch>(state)));
+
+  Sch pool = make_scheduler<Sch>(state);
+
   run_fold_input<Data, T>(state, [&](auto &&values) -> fold_accum_t<T> {
     return run_fold<Chunk, Projection, T>(pool, std::forward<decltype(values)>(values));
   });
@@ -70,14 +93,24 @@ void fold_run(benchmark::State &state) {
 } // namespace
 
 // Chunked/sync/sync versions to mirror serial benchmarks.
-LF_FOLD_BENCH_SIZES(fold_run, libfork, fold / std_plus, memory, chunk_fixed, sync_proj, int32)
-LF_FOLD_BENCH_SIZES(fold_run, libfork, fold / std_plus, memory, chunk_fixed, sync_proj, float32)
-LF_FOLD_BENCH_SIZES(fold_run, libfork, fold / std_plus, lazy, chunk_fixed, sync_proj, int32)
-LF_FOLD_BENCH_SIZES(fold_run, libfork, fold / std_plus, lazy, chunk_fixed, sync_proj, float32)
-
+LF_FOLD_BENCH_SIZES(run, libfork, fold / std_plus, memory, chunk_fixed, sync_proj, int32)
+LF_FOLD_BENCH_SIZES(run, libfork, fold / std_plus, memory, chunk_fixed, sync_proj, float32)
+LF_FOLD_BENCH_SIZES(run, libfork, fold / std_plus, lazy, chunk_fixed, sync_proj, int32)
+LF_FOLD_BENCH_SIZES(run, libfork, fold / std_plus, lazy, chunk_fixed, sync_proj, float32)
 
 // Compare specialised for sync/async
-LF_FOLD_BENCH_SIZES(fold_run, libfork, fold / std_plus, memory, chunk_1, sync_proj, float32)
-LF_FOLD_BENCH_SIZES(fold_run, libfork, fold / std_plus, memory, chunk_deduced, sync_proj, float32)
-LF_FOLD_BENCH_SIZES(fold_run, libfork, fold / std_plus, memory, chunk_1, async_proj, float32)
-LF_FOLD_BENCH_SIZES(fold_run, libfork, fold / std_plus, memory, chunk_deduced, async_proj, float32)
+LF_FOLD_BENCH_SIZES(run, libfork, fold / std_plus, memory, chunk_1, sync_proj, float32)
+LF_FOLD_BENCH_SIZES(run, libfork, fold / std_plus, memory, chunk_deduced, sync_proj, float32)
+LF_FOLD_BENCH_SIZES(run, libfork, fold / std_plus, memory, chunk_1, async_proj, float32)
+LF_FOLD_BENCH_SIZES(run, libfork, fold / std_plus, memory, chunk_deduced, async_proj, float32)
+
+
+// Multi-threaded float32/sync projection.
+LF_FOLD_BENCH_SIZES_MT(
+    run_mt, libfork, fold / std_plus, memory, chunk_fixed, sync_proj, float32, mono_busy_pool)
+LF_FOLD_BENCH_SIZES_MT(
+    run_mt, libfork, fold / std_plus, lazy, chunk_fixed, sync_proj, float32, mono_busy_pool)
+LF_FOLD_BENCH_SIZES_MT(
+    run_mt, libfork, fold / std_plus, memory, chunk_fixed, sync_proj, float32, poly_busy_pool)
+LF_FOLD_BENCH_SIZES_MT(
+    run_mt, libfork, fold / std_plus, lazy, chunk_fixed, sync_proj, float32, poly_busy_pool)
