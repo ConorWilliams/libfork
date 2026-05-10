@@ -1,306 +1,176 @@
-# A tour of libfork
+---
+icon: lucide/map
+---
 
-TODO: update this page
+# Tour
 
-## A tour of libfork
+This tour explains how the current module-based libfork API fits together.
 
-This section provides some background and highlights of the `core` API, for details on implementing your own schedulers on-top of libfork see the [extension documentation](https://conorwilliams.github.io/libfork/). Don't forget you can play around with libfork on [godbolt](https://godbolt.org/z/nTeGT34Gv).
+## Fork-join tasks
 
-### Contents
+Libfork models work as a strict fork-join tree. A task may create children, but
+it must join those children before returning. This restriction keeps the task
+graph structured and lets the runtime move continuations between workers without
+requiring users to manage task lifetimes manually.
 
-- [Fork-join](#fork-join)
-- [The cactus stack](#the-cactus-stack)
-- [Restrictions on references](#restrictions-on-references)
-- [Delaying construction with `lf::eventually<T>`](#delaying-construction)
-- [Exception in libfork](#exceptions)
-- [Immediate invocation](#immediate-invocation)
-- [Explicit scheduling](#explicit-scheduling)
-- [Contexts and schedulers](#contexts-and-schedulers)
-
-### Fork-join
-
-Definitions:
-
-- __Task:__ A unit of work that can be executed concurrently with other tasks.
-- __Parent:__ A task that spawns other tasks.
-- __Child:__ A task that is spawned by another task.
-
-The tasking/fork-join interface is designed to mirror [Cilk](https://en.wikipedia.org/wiki/Cilk) and other fork-join frameworks. The best way to learn is by example, let's start with the canonical introduction to fork-join, the recursive Fibonacci function, in regular C++ it looks like this:
+An async function is any callable that returns `lf::task<T, Context>` when
+invoked in a worker context:
 
 ```cpp
-auto fib(int n) -> int {
-  
-  if (n < 2) {
-    return n;
+struct work {
+  template <lf::worker_context Context>
+  static auto operator()(lf::env<Context>, int input) -> lf::task<int, Context> {
+    co_return input * 2;
   }
-
-  int a = fib(n - 1);
-  int b = fib(n - 2);
-
-  return a + b;
-}
+};
 ```
 
-We've already seen how to implement this with libfork in the TLDR but, here it is again with line numbers:
+The `lf::env<Context>` argument is supplied by libfork. It identifies the worker
+context type and allows the same callable to be used with different schedulers.
+
+## Fork, call, join
+
+Inside a task, `co_await lf::scope()` returns a scope object with `fork`, `call`,
+`fork_drop`, `call_drop`, and `join`.
 
 ```cpp
- 1| #include "libfork/core.hpp"
- 2|
- 3| inline constexpr fib = [](auto fib, int n) -> lf::task<int> { 
- 4|  
- 5|   if (n < 2) {
- 6|     co_return n;
- 7|   }
- 8|
- 9|   int a, b;
-10|
-11|   co_await lf::fork[&a, fib](n - 1);    
-12|   co_await lf::call[&b, fib](n - 2);  
-13|
-14|   co_await lf::join;                  
-15|
-16|   co_return a + b;                    
-17| };
+auto sc = co_await lf::scope();
+co_await sc.fork(&left, child{}, 1);
+co_await sc.call(&right, child{}, 2);
+co_await sc.join();
 ```
 
-__NOTE:__ If your compiler does not support the `lf::fork[&a, fib]` syntax then you can use `lf::fork(&a, fib)` and similarly for `lf::call`.
+`fork` exposes the parent continuation for stealing and immediately starts the
+child on the current worker. `call` starts the child inline and is useful when
+there is no useful continuation left to steal. `join` waits until all children
+created through the scope have finished.
 
-This looks almost like the regular recursive Fibonacci function. However, there are some important differences which we'll explain in a moment. First, the above fibonacci function can be launched on a scheduler, like ``lazy_pool``, as follows:
+Use the `_drop` variants when the child result is intentionally ignored:
 
 ```cpp
-#include "libfork/schedule.hpp"
-
-int main() {
-  
-  lf::lazy_pool pool(4); // 4 worker threads
-
-  int fib_10 = lf::sync_wait(pool, fib, 10);
-}
+co_await sc.fork_drop(side_effect{}, item);
+co_await sc.call_drop(cleanup{}, item);
 ```
 
-The call to `sync_wait` will block the _main_ thread (i.e. the thread that calls `main()`)  until the pool has completed execution of the task. Let's break down what happens after that line by line:
+## Result storage
 
-- __Line 3:__ First we define an _async function_. An async function is a function-object with a templated first argument that returns an `lf::task<T>`. The first argument is used by the library to pass static and dynamic context from parent to child. Additionally, it acts as a [y-combinator](https://en.wikipedia.org/wiki/Fixed-point_combinator) - allowing the lambda to be recursive - and provides a few methods which we will discuss later.
-- __Line 9:__ Next we construct the variables that will be bound to the return values of following forks/calls.
-- __Line 11:__ This is the first call to `lf::fork` which marks the beginning of an _async scope_. `lf::fork[&a, fib]` binds the return address of the function `fib` to the integer `a`. Internally the child coroutine will have to store a pointer to the return variable so we make this explicit at the call site. The bound function is then invoked with the argument `n - 1`. The semantics of all of this is: the execution of the forked function (in this case `fib`) can continue concurrently with the execution of the next line of code i.e. the _continuation_. As libfork is a continuation stealing library the worker/thread that performed the fork will immediately begin executing the forked function while another thread may _steal_ the continuation.
-- __Line 12:__ An `lf::call` binds arguments and return address in the same way as `lf::fork` however, it has the semantics of a serial function call. This is done instead of an `lf::fork` as there is no further work to do in the current task so stealing it would be a waste of resources.
-- __Line 13:__ Execution cannot continue past a join-point until all child tasks have completed. After this point it is safe to access the results (`a` and `b`) of the child task. Only a single worker will continue execution after the join. This marks the end of the async scope that began at the `fork`.
-- __Line 16:__ Finally we return the result of the to a parent task, this has similar semantics to a regular return however, behind the scenes an assignment of the return value to the parent's return address is performed. This is the end of the async function. The worker will attempt to resume the parent task (if it has not already been stolen) just as a regular function would resume execution of the caller.
-
-__NOTE:__ At every ``co_await`` the OS-thread executing the task may change!
-
-__NOTE:__ Libfork implements _strict_ fork-join which means all children __must__ be joined __before__ a task returns. This restriction give some nice mathematical properties to the underlying directed acyclic graph (DAG) of tasks that enables many optimizations.
-
-#### Ignoring a result
-
-If you wanted to ignore the result of a fork/call (i.e. if you wanted the side effect only) you can simply omit return address from lines 11 and 12 e.g.:
+Non-void child results are written into caller-provided storage:
 
 ```cpp
-co_await lf::fork[fib](n - 1);    
-co_await lf::call[fib](n - 2); 
+int result = 0;
+co_await sc.fork(&result, compute{}, input);
+co_await sc.join();
 ```
 
-### The cactus-stack
+The pointer must remain valid until after the join. A common pattern is to keep
+child result variables in the parent coroutine frame and read them only after
+`join`.
 
-Normally each call to a coroutine would allocate on the heap. However, libfork implements a cactus-stack - supported by segmented-stacks - which allows each coroutine to be allocated on a fragment of linear stack, this has almost the same overhead as allocating on the real stack. This means the overhead of a fork/call in libfork is very low compared to most traditional library-based implementations (about 10x the overhead of a bare function call).
+## Continuation stealing
 
-The internal cactus-stack is exposed to the user via the `co_new` function:
+On a fork, libfork pushes a handle to the parent continuation into the worker
+context and runs the child immediately. Another worker may steal that
+continuation and resume it. This differs from child-stealing runtimes, where the
+new child is normally offered to other workers.
+
+The important user-facing consequence is that execution may resume on a
+different OS thread after any `co_await`. Code inside tasks should not assume
+thread affinity unless it uses an explicit scheduling awaitable.
+
+## Worker stacks
+
+Coroutine frames created by fork/call are allocated from a worker stack. The
+provided stacks trade simplicity, speed, and bounded memory:
+
+- `geometric_stack` is the general-purpose segmented stack.
+- `slab_stack` uses a fixed-capacity slab and throws `std::bad_alloc` on
+  overflow.
+- `adaptor_stack` delegates every push/pop to an allocator.
+
+Schedulers combine a stack with a context policy, such as `adapt_vector` for a
+single-threaded inline scheduler or `adapt_deque` for stealing between workers.
+
+## Exceptions
+
+If a child task exits with an exception, libfork stores the exception in the
+parent and rethrows it at `join`.
 
 ```cpp
-inline constexpr auto co_new_demo = [](auto co_new_demo, std::span<int> inputs) -> lf::task<int> {
- 
-  // Allocate space for results, outputs is a std::span<int>
-  auto [outputs] = co_await lf::co_new<int>(inputs.size());
+auto sc = co_await lf::scope();
+co_await sc.fork_drop(may_throw{}, input);
+co_await sc.join(); // rethrows if the child failed
+```
 
-  // Launch a task for each input.
-  for(std::size_t i = 0; i < inputs.size(); ++i) {
-    co_await lf::fork[&outputs[i], some_function](inputs[i]);
+Because libfork is strict fork-join, task code should structure potentially
+throwing work so outstanding children are still joined before the task exits.
+When in doubt, join in the same lexical region that created the children.
+
+`receiver::get()` also rethrows exceptions from a scheduled root task.
+
+## Cancellation
+
+Use `lf::child_scope()` to create a scope with its own `stop_source`. Children
+launched through that scope inherit its stop token.
+
+```cpp
+struct maybe_run {
+  template <lf::worker_context Context>
+  static auto operator()(lf::env<Context>) -> lf::task<void, Context> {
+    auto sc = co_await lf::child_scope();
+    sc.request_stop();
+    co_await sc.fork_drop(child_work{});
+    co_await sc.join();
   }
-
-  co_await lf::join; // Wait for all tasks to complete.
-
-  co_return std::accumulate(outputs.begin(), outputs.end(), 0);
 };
 ```
 
-Here the `co_await` on the result of `lf::co_new` returns an immovable RAII class which will manage the lifetime of the allocation.
-
-### Restrictions on references
-
-References as inputs to coroutines can be error prone, for example:
+For root tasks, construct `lf::recv_state<T, true>` and pass it to `schedule`.
+The returned `lf::receiver<T, true>` exposes `stop_source()`:
 
 ```cpp
-co_await lf::fork[process_string](std::string("32")); 
+lf::recv_state<int, true> state;
+auto recv = lf::schedule(pool, std::move(state), root_task{});
+recv.stop_source().request_stop();
 ```
 
-This would dangle if `process_string` accepted arguments by reference. Specifically a `process_string` accepting `std::string &` would not compile by the standard reference semantics while `std::string const &` and `std::string &&` would compile but would dangle. To avoid this libfork coroutines bans `std::string && -> std::string const &` conversions and r-value reference arguments for forked async-functions. If you want to move a value into a forked coroutine then pass by value.
+When a cancellable receiver is consumed after cancellation,
+`receiver::get()` throws `lf::operation_cancelled_error`.
 
-__Note:__ You can still dangle by ending the lifetime of an l-value referenced object __after__ a fork e.g.:
+## Explicit scheduling
+
+Libfork supports context-switching awaitables. A type is an `lf::awaitable<T,
+Context>` when it can be acquired through `operator co_await` and its awaitable
+has:
 
 ```cpp
-{
-  int x;
-
-  co_await lf::fork[&x, some_function]();
-
-} // Lifetime of x ends here, return address is now dangling!
-
-co_await lf::join; 
+auto await_ready() -> bool;
+auto await_suspend(lf::sched_handle<Context>, Context&) -> void;
+auto await_resume();
 ```
 
-### Delaying construction
+`await_suspend` receives a schedulable handle and the current context. It may
+post that handle to another scheduler, allowing a task to hop between pools.
 
-Some types are expensive or impossible to default construct, for these instances libfork provides the `lf::eventually` template type. `lf::eventually` functions like a `std::optional` that is only constructed once and supports references:
+## Algorithms
+
+The algorithm module provides fork-join operations over random-access ranges.
+
+`lf::for_each` applies a synchronous or asynchronous function to every element:
 
 ```cpp
-// Not default constructible.
-struct difficult {
-  difficult(int) {}
-};
-
-// Async function that returns a difficult.
-inline constexpr auto make_difficult = [](auto) -> lf::task<difficult> {
-  co_return 42;
-}
-
-// Async function that returns a reference.
-inline constexpr auto reference = [](auto) -> lf::task<int &> {
-  co_return /* some reference */;
-}
-
-inline constexpr auto eventually_demo = [](auto) -> lf::task<> { 
-
-  // Use lf::eventually to delay construction.
-  lf::eventually<difficult> a;
-  lf::eventually<int &> b;
-  
-  co_await lf::fork[&a, make_difficult]();    
-  co_await lf::fork[&b, reference]();
-
-  co_await lf::join;     
-
-  std::cout << *b << std::endl; // lf::eventually support operators * and ->
-};
+auto recv = lf::schedule(pool, lf::for_each, std::span(values), [](int& x) {
+  x *= 2;
+});
+std::move(recv).get();
 ```
 
-### Exceptions
-
-Libfork supports exceptions in async functions. If an exception escapes an async function then it will be stored in its parent and re-thrown when the parent reaches a join-point. For example:
+`lf::fold` reduces a non-empty range to `std::optional<T>`, returning
+`std::nullopt` for empty input:
 
 ```cpp
-inline constexpr auto exception_demo = [](auto) -> lf::task<> { 
-  
-  co_await lf::fork[throwing_work](/* args.. */);    
-  co_await lf::fork[throwing_work](/* args.. */);   
-
-  co_await lf::join; // Will (re)throw one of the exceptions from the children.                                    
-};
+auto recv = lf::schedule(pool, lf::fold, std::span(values), std::plus<>{});
+auto sum = std::move(recv).get();
 ```
 
-However, you need to be very careful when throwing exception inside a fork-join scope because it's UB for a task which has forked children to return (regularly or by exception) without first calling `lf::join`. For example:
-
-```cpp
-inline constexpr auto bad_code = [](auto) -> lf::task<> { 
-  
-  co_await lf::fork[work](/* args.. */);    
-
-  function_which_could_throw();  // UB on exception! No join before return.
-
-  co_await lf::join;                                       
-};
-```
-
-Instead you must wrap your potentially throwing code in a try-catch block and call `lf::join`.
-
-```cpp
-inline constexpr auto good_code = [](auto good_code) -> lf::task<> { 
-  
-  co_await lf::fork[&a, work](/* args.. */);    
-
-  try {
-    function_which_could_throw(); 
-  } catch (...) {
-    good_code.stash_exception(); // Store's exception.
-  } 
-
-  co_await lf::join; // Exception from child or stashed-exception will be re-thrown here.                             
-};
-```
-
-If/when C++ adds asynchronous RAII then this will be made much cleaner.
-
-If you would like to capture exceptions for each child individually then you can use a return object that supports capturing exceptions, for example:
-
-```cpp
-inline constexpr auto exception_stash_demo = [](auto) -> lf::task<> { 
-  
-  try_eventually<int> ret;
-  
-  co_await lf::fork[&ret, int_or_throw](/* args.. */);    
-
-  co_await lf::join; // Will not throw, exception stored in ret.
-
-  if (ret.has_exception()) {
-    // Handle exception.
-  } else {
-    // Handle result.
-  }                            
-};
-```
-
-Any return pointer which satisfies the `stash_exception_in_return` concept will trigger libfork to store the exception in the return object. This concept is specified as follows:
-
-```cpp
-template <typename I>
-concept stash_exception_in_return = lf::quasi_pointer<I> && requires (I ptr) {
-  { stash_exception(*ptr) } noexcept;
-};
-```
-
-__Note:__ the call to `stash_exception` must be `noexcept`.
-
-### Immediate invocation
-
-Sometimes you may want to just call an async function without a fork join scope, for example:
-
-```cpp
-int result;
-
-co_await lf::call[&result, some_function](/* args.. */);
-
-co_await lf::join; // Still needed in-case of exceptions
-```
-
-In this case you could simplify the above with `lf::just`:
-
-```cpp
-int result = co_await lf::just[some_function](/* args.. */);
-```
-
-### Explicit scheduling
-
-Normally in libfork _where_ a task is being executed is controlled by the runtime. However, you may want to explicitly schedule a task to be resumed on a certain worker or write an awaitable that transfers execution to a different pool of workers. This is made possible through the `context_switcher` API. Instead of writing a regular awaitable, write one that conforms to the `context_switcher` concept, like this:
-  
-```cpp
-struct my_special_awaitable {
-  auto await_ready() -> bool;
-  auto await_suspend(lf::submit_handle handle)  -> void;
-  auto await_resume()  -> /* [T] */;
-};
-```
-
-This can be `co_await`ed inside a libfork task, if `await_ready` returns `false` then the task will be suspended and `await_suspend` will be called with a handle to the suspended task, this can be resumed by any worker you like.
-
-This is used by libfork's `template<scheduler T> auto resume_on(T *)` to enable explicit scheduling.
-
-### Contexts and schedulers
-
-We have already encountered a scheduler in the [fork-join](#fork-join) however, we have not yet discussed what a scheduler is or how to implement one. A scheduler is a type that conforms to the `lf::scheduler` concept, this is a customization point that allows you to implement your own scheduling strategy. This makes a type suitable for use with `lf::sync_wait`. Have a look at the [extensions api](https://conorwilliams.github.io/libfork/) for further details.
-
-Three schedulers are provided by libfork:
-
-- [`lf::lazy_pool`](https://conorwilliams.github.io/libfork/api/schedule.html#lazy-pool) A NUMA-aware work-stealing scheduler that is suitable for general use. This should be the default choice for most applications.
-- [`lf::busy_pool`](https://conorwilliams.github.io/libfork/api/schedule.html#busy-pool) Also a NUMA-aware work-stealing scheduler however, workers will busy-wait for work instead of sleeping. This often gains very little performance over `lf::lazy_pool` and should only be preferred if you have an otherwise idle machine and you are willing to sacrifice a lot of power consumption for very little performance.
-- [`lf::unit_pool`](https://conorwilliams.github.io/libfork/api/schedule.html#lazy-pool) A is single threaded scheduler that is suitable for testing and debugging.
-
-__NOTE:__ The workers inside libfork's thread pools should never block i.e. __do not__ call `sync_wait` or any other blocking function inside a `task`.
+Both algorithms accept iterator/sentinel pairs or ranges. Overloads with an
+explicit chunk size require that size to be positive.
