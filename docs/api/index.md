@@ -10,19 +10,17 @@ All public symbols documented here live in namespace `lf` and are reachable via:
 import libfork;
 ```
 
-The meta-module re-exports:
+The meta-module re-exports the following modules:
 
 - `libfork.core`
 - `libfork.batteries`
 - `libfork.schedulers`
 - `libfork.algorithm`
 
-## Sections
+Each of these modules is documented in its own section:
 
-- [Core](core.md): tasks, scopes, receivers, scheduling, cancellation, handles,
-  contexts, concepts, and exceptions.
-- [Batteries](batteries.md): worker stacks, deque, context policies, and context
-  implementations.
+- [Core](core/index.md): Central component.
+- [Batteries](batteries.md): worker stacks, deque, context policies, and context implementations.
 - [Schedulers](schedulers.md): inline and busy-pool schedulers.
 - [Algorithm](algorithm.md): fork-join algorithms over random-access ranges.
 
