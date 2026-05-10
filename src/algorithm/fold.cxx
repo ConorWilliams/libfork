@@ -64,7 +64,7 @@ struct fold_impl {
           co_await sc.join();
         }
 
-        result_type acc = std::move(init);
+        result_type acc(std::move(init));
 
         for (++head; head != tail; ++head) {
 
@@ -88,7 +88,7 @@ struct fold_impl {
 
       } else {
 
-        result_type acc = std::invoke(proj, *head);
+        result_type acc(std::invoke(proj, *head));
 
         for (++head; head != tail; ++head) {
           if constexpr (async::indirect_semigroup<Bop, X, projected<X, I, Proj>>) {
