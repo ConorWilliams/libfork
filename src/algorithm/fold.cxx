@@ -225,17 +225,14 @@ struct fold_fn {
   template <typename T>
   using range_diff_t = std::ranges::range_difference_t<T>;
 
+  template <typename Range>
+  using iterator_t = std::ranges::iterator_t<Range>;
+
   template <typename Context, typename I, typename Proj, typename Bop>
   using result_t = lf::indirect_semigroup_t<Bop, Context, projected<Context, I, Proj>>;
 
   template <typename Context, typename I, typename Proj, typename Bop>
-  using optional_result_t = std::optional<result_t<Context, I, Proj, Bop>>;
-
-  template <typename Context, typename I, typename Proj, typename Bop>
-  using task_t = lf::task<optional_result_t<Context, I, Proj, Bop>, Context>;
-
-  template <typename Range>
-  using iterator_t = std::ranges::iterator_t<Range>;
+  using task_t = lf::task<std::optional<result_t<Context, I, Proj, Bop>>, Context>;
 
  public:
   // (1) iterator-pair, chunk size n >= 1
@@ -249,7 +246,6 @@ struct fold_fn {
   operator()(env<X>, I head, S tail, iter_diff_t<I> n, Bop bop, Proj proj = {}) -> task_t<X, I, Proj, Bop> {
 
     using result_type = result_t<X, I, Proj, Bop>;
-    using optional_result_type = optional_result_t<X, I, Proj, Bop>;
 
     if (n <= 0) {
       LF_THROW(fold_chunk_error{});
@@ -267,7 +263,7 @@ struct fold_fn {
       co_await sc.join();
     }
 
-    co_return optional_result_type{std::move(result)};
+    co_return std::move(result);
   }
 
   // (2) iterator-pair, n == 1 specialization (no n parameter)
@@ -280,7 +276,6 @@ struct fold_fn {
   static auto operator()(env<X>, I head, S tail, Bop bop, Proj proj = {}) -> task_t<X, I, Proj, Bop> {
 
     using result_type = result_t<X, I, Proj, Bop>;
-    using optional_result_type = optional_result_t<X, I, Proj, Bop>;
 
     if (tail == head) {
       co_return std::nullopt;
@@ -294,7 +289,7 @@ struct fold_fn {
       co_await sc.join();
     }
 
-    co_return optional_result_type{std::move(result)};
+    co_return std::move(result);
   }
 
   // clang-format off
