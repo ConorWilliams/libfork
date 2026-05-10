@@ -1,0 +1,7 @@
+[project]
+name = "libfork"
+version = "0.1.0"
+description = "Documentation for libfork"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = []
