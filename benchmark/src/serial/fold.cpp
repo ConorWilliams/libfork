@@ -2,7 +2,6 @@
 
 #include "fold.hpp"
 
-
 import std;
 
 namespace {
@@ -10,7 +9,10 @@ namespace {
 template <fold_data_mode Data, typename T>
 void fold_reduce(benchmark::State &state) {
   run_fold_input<Data, T>(state, [](auto &&values) -> fold_accum_t<T> {
-    return std::reduce(std::ranges::begin(values), std::ranges::end(values), fold_accum_t<T>{}, std::plus<>{});
+    return std::reduce(
+        std::ranges::begin(values), std::ranges::end(values), fold_accum_t<T>{}, [](auto a, auto b) static {
+          return fold_accum_t<T>(a) + fold_accum_t<T>(b);
+        });
   });
 }
 
