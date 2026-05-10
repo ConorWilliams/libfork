@@ -39,6 +39,35 @@ repo_url = "https://github.com/conorwilliams/libfork"
 # TODO: make this point to main
 edit_uri = "edit/v4-docs/docs/"
 
+# Explicit sidebar order. Paths are relative to the docs directory.
+nav = [
+  {"Home" = "index.md"},
+  {"Getting Started" = "getting-started.md"},
+  {"Tour" = "tour.md"},
+  {"API" = [
+    "api/index.md",
+    {"Core" = [
+      "api/core/index.md",
+      "api/core/task.md",
+      "api/core/env.md",
+      "api/core/scope.md",
+      "api/core/scheduling.md",
+      "api/core/receiver.md",
+      "api/core/cancellation.md",
+      "api/core/context.md",
+      "api/core/handles.md",
+      "api/core/projected.md",
+      "api/core/concepts.md",
+      "api/core/exceptions.md",
+    ]},
+    {"Batteries" = "api/batteries.md"},
+    {"Schedulers" = "api/schedulers.md"},
+    {"Algorithm" = "api/algorithm.md"},
+  ]},
+  {"Benchmarks" = "benchmarks.md"},
+  {"Contributing" = "contributing.md"},
+]
+
 # ----------------------------------------------------------------------------
 # Section for configuring theme options
 # ----------------------------------------------------------------------------
