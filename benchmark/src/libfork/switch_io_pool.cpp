@@ -149,25 +149,14 @@ void run_with_io(benchmark::State &state) {
   state.counters["compute_threads"] = static_cast<double>(thread_count<Sch>(state));
   state.counters["io_threads"] = static_cast<double>(k_io_workers());
 
-  state.SetComplexityN(static_cast<benchmark::IterationCount>(thread_count<Sch>(state)));
-
   std::int64_t expect = m * expected_per_request();
 
   Sch compute_pool = make_scheduler<Sch>(state);
   Sch io_pool{static_cast<std::size_t>(k_io_workers())};
 
-  for (auto _ : state) {
-    benchmark::DoNotOptimize(m);
-    lf::receiver recv = lf::schedule(compute_pool, fan_out_with_io<Sch>{}, m, &compute_pool, &io_pool);
-    std::int64_t result = std::move(recv).get();
-
-    if (result != expect) {
-      state.SkipWithError(std::format("incorrect result: {} != {}", result, expect));
-      break;
-    }
-
-    benchmark::DoNotOptimize(result);
-  }
+  lf_bench::bench(state, static_cast<std::int64_t>(thread_count<Sch>(state)), expect, [&]() -> std::int64_t {
+    return lf::schedule(compute_pool, fan_out_with_io<Sch>{}, m, &compute_pool, &io_pool).get();
+  });
 }
 
 template <lf::scheduler Sch>
@@ -177,24 +166,13 @@ void run_baseline(benchmark::State &state) {
   state.counters["requests"] = static_cast<double>(m);
   state.counters["compute_threads"] = static_cast<double>(thread_count<Sch>(state));
 
-  state.SetComplexityN(static_cast<benchmark::IterationCount>(thread_count<Sch>(state)));
-
   std::int64_t expect = m * expected_per_request();
 
   Sch compute_pool = make_scheduler<Sch>(state);
 
-  for (auto _ : state) {
-    benchmark::DoNotOptimize(m);
-    lf::receiver recv = lf::schedule(compute_pool, fan_out_baseline<Sch>{}, m);
-    std::int64_t result = std::move(recv).get();
-
-    if (result != expect) {
-      state.SkipWithError(std::format("incorrect result: {} != {}", result, expect));
-      break;
-    }
-
-    benchmark::DoNotOptimize(result);
-  }
+  lf_bench::bench(state, static_cast<std::int64_t>(thread_count<Sch>(state)), expect, [&]() -> std::int64_t {
+    return lf::schedule(compute_pool, fan_out_baseline<Sch>{}, m).get();
+  });
 }
 
 } // namespace

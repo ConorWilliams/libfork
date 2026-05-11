@@ -27,16 +27,9 @@ auto fib(std::int64_t n) -> std::int64_t {
 
 template <typename = void>
 void fib_run(benchmark::State &state) {
-  std::int64_t n = state.range(0);
-  std::int64_t expect = fib_ref(n);
   int threads = static_cast<int>(state.range(1));
 
-  state.counters["n"] = static_cast<double>(n);
-  state.counters["p"] = static_cast<double>(threads);
-  state.SetComplexityN(static_cast<benchmark::IterationCount>(threads));
-
-  for (auto _ : state) {
-    benchmark::DoNotOptimize(n);
+  run_fib(state, threads, [threads](std::int64_t n) -> std::int64_t {
     std::int64_t return_value = 0;
 
 #pragma omp parallel num_threads(threads) default(shared)
@@ -45,13 +38,8 @@ void fib_run(benchmark::State &state) {
       return_value = fib(n);
     }
 
-    if (return_value != expect) {
-      state.SkipWithError(std::format("incorrect result: {} != {}", return_value, expect));
-      break;
-    }
-
-    benchmark::DoNotOptimize(return_value);
-  }
+    return return_value;
+  });
 }
 
 } // namespace

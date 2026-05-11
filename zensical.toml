@@ -45,8 +45,33 @@ edit_uri = "edit/modules/docs/"
 # Explicit sidebar order. Paths are relative to the docs directory.
 nav = [
   { "Home" = "index.md" },
-  { "Getting Started" = "getting-started.md" },
-  { "Tour" = "tour.md" },
+  { "Installation" = "installation.md" },
+  { "Quickstart" = "quickstart.md" },
+  { "Changelog" = "ChangeLog.md" },
+  { "Contributing" = "contributing.md" },
+  { "Performance" = [
+    "benchmarks/index.md",
+    { "Benchmarks" = [
+      "benchmarks/benchmarks/index.md",
+      { "Fibonacci" = "benchmarks/benchmarks/fib.md" },
+      { "Unbalanced Trees" = "benchmarks/benchmarks/uts.md" },
+      { "Heat" = "benchmarks/benchmarks/heat.md" },
+      { "Integrate" = "benchmarks/benchmarks/integrate.md" },
+      { "Knapsack" = "benchmarks/benchmarks/knapsack.md" },
+      { "Mandelbrot" = "benchmarks/benchmarks/mandelbrot.md" },
+      { "Matrix multiply" = "benchmarks/benchmarks/matmul.md" },
+      { "Strassen" = "benchmarks/benchmarks/strassen.md" },
+      { "N-queens" = "benchmarks/benchmarks/nqueens.md" },
+      { "Primes" = "benchmarks/benchmarks/primes.md" },
+      { "Quicksort" = "benchmarks/benchmarks/quicksort.md" },
+      { "Mergesort" = "benchmarks/benchmarks/mergesort.md" },
+      { "Skynet" = "benchmarks/benchmarks/skynet.md" },
+      { "Scan" = "benchmarks/benchmarks/scan.md" },
+      { "Fold" = "benchmarks/benchmarks/fold.md" },
+      { "Random scheduler" = "benchmarks/benchmarks/switch-random.md" },
+      { "I/O scheduler" = "benchmarks/benchmarks/switch-io-pool.md" },
+    ] },
+  ] },
   { "API" = [
     "api/index.md",
     { "Core" = [
@@ -67,8 +92,6 @@ nav = [
     { "Schedulers" = "api/schedulers.md" },
     { "Algorithm" = "api/algorithm.md" },
   ] },
-  { "Benchmarks" = "benchmarks.md" },
-  { "Contributing" = "contributing.md" },
 ]
 
 # ----------------------------------------------------------------------------

@@ -2,6 +2,8 @@
 
 #include <benchmark/benchmark.h>
 
+#include "bench.hpp"
+
 // Use `import std;` by default. Textually `#include <thread>` drags in
 // `<stop_token>`, which triggers a libc++ 22 link-time bug (undefined
 // `__atomic_unique_lock::__set_locked_bit`) in TUs that later instantiate
@@ -45,8 +47,6 @@ format_name(std::string mode, std::string category, std::string name, std::strin
   }
   return res;
 }
-
-inline auto inverse_complexity(benchmark::IterationCount n) -> double { return 1.0 / static_cast<double>(n); }
 
 inline void setup_single(benchmark::Benchmark *b, std::int64_t size) { b->Arg(size)->UseRealTime(); }
 

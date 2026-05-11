@@ -100,26 +100,14 @@ void run(benchmark::State &state) {
   state.counters["p_a"] = static_cast<double>(threads_a);
   state.counters["p_b"] = static_cast<double>(threads_b);
 
-  state.SetComplexityN(static_cast<benchmark::IterationCount>(threads_total));
-
   Sch pool_a{threads_a};
   Sch pool_b{threads_b};
 
   pool_pair<Sch> pp{&pool_a, &pool_b};
 
-  for (auto _ : state) {
-    benchmark::DoNotOptimize(n);
-
-    std::int64_t return_value = lf::schedule(pool_a, random_switch_fib<Sch>{}, n, &pp, rng{1}, 0U).get();
-    ;
-
-    if (return_value != expect) {
-      state.SkipWithError(std::format("incorrect result: {} != {}", return_value, expect));
-      break;
-    }
-
-    benchmark::DoNotOptimize(return_value);
-  }
+  lf_bench::bench(state, static_cast<std::int64_t>(threads_total), expect, [&]() -> std::int64_t {
+    return lf::schedule(pool_a, random_switch_fib<Sch>{}, n, &pp, rng{1}, 0U).get();
+  });
 }
 
 } // namespace

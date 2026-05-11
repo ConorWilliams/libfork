@@ -52,12 +52,12 @@ auto main() -> int {
 
 ## Start here
 
-- [Getting started](getting-started.md) covers prerequisites, configuration,
+- [Installation](installation.md) covers prerequisites, configuration,
   building, and a first program.
-- [Tour](tour.md) explains the fork-join model, scheduling, cancellation,
+- [Quickstart](quickstart.md) explains the fork-join model, scheduling, cancellation,
   exceptions, algorithms, and the stack model.
 - [API reference](api/index.md) documents the exported `libfork` modules.
-- [Benchmarks](benchmarks.md) describes the benchmark suite.
+- [Benchmarks](benchmarks/index.md) describes the benchmark suite.
 - [Contributing](contributing.md) lists the local development workflow.
 
 ## Design in one page

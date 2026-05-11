@@ -63,28 +63,13 @@ struct uts_fn {
 
 template <lf::scheduler Sch>
 void run(benchmark::State &state, uts_tree tree) {
-  setup_tree(tree);
-  auto expect = expected_result(tree);
 
-  std::size_t threads = static_cast<std::size_t>(state.range(0));
-  state.counters["p"] = static_cast<double>(threads);
-  state.SetComplexityN(static_cast<benchmark::IterationCount>(threads));
-
+  auto threads = static_cast<std::size_t>(state.range(0));
   Sch scheduler = Sch{threads};
 
-  for (auto _ : state) {
-    Node root;
-    uts_initRoot(&root, type);
-    lf::receiver recv = lf::schedule(scheduler, uts_fn{}, 0, &root);
-    result r = std::move(recv).get();
-
-    if (r != expect) {
-      state.SkipWithError(std::format("incorrect result: {} != {}", r, expect));
-      break;
-    }
-
-    benchmark::DoNotOptimize(r);
-  }
+  run_uts(state, tree, static_cast<std::int64_t>(threads), [&](Node *root) -> result {
+    return lf::schedule(scheduler, uts_fn{}, 0, root).get();
+  });
 }
 
 } // namespace

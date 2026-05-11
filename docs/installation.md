@@ -1,8 +1,8 @@
 ---
-icon: lucide/play
+icon: lucide/package-check
 ---
 
-# Getting started
+# Installation
 
 `libfork` is a C++26 module-based library. The current tree uses CMake module
 file sets and C++23 `import std`, so the compiler and CMake invocation matter.
