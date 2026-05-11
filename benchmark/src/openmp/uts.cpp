@@ -55,21 +55,17 @@ auto uts(int depth, Node *parent) -> result {
 void uts_run(benchmark::State &state, uts_tree tree) {
   int threads = static_cast<int>(state.range(0));
 
-  run_uts(
-      state,
-      tree,
-      [threads](Node *root) -> result {
-        result r;
+  run_uts(state, tree, threads, [threads](Node *root) -> result {
+    result r;
 
 #pragma omp parallel num_threads(threads) default(shared)
 #pragma omp single nowait
-        {
-          r = uts(0, root);
-        }
+    {
+      r = uts(0, root);
+    }
 
-        return r;
-      },
-      threads);
+    return r;
+  });
 }
 
 } // namespace

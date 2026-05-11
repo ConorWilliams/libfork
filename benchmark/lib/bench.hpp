@@ -25,8 +25,8 @@ inline void report_threads(benchmark::State &state, std::int64_t threads) {
   state.SetComplexityN(static_cast<benchmark::IterationCount>(threads));
 }
 
-template <typename Expected, typename Fn, typename Check = std::equal_to<>>
-void bench(benchmark::State &state, std::int64_t threads, const Expected &expected, Fn fn, Check check = {}) {
+template <typename Expected, typename Check, typename Fn>
+void bench(benchmark::State &state, std::int64_t threads, const Expected &expected, Check check, Fn fn) {
   report_threads(state, threads);
 
   for (auto _ : state) {
@@ -41,9 +41,19 @@ void bench(benchmark::State &state, std::int64_t threads, const Expected &expect
   }
 }
 
-template <typename Expected, typename Fn, typename Check = std::equal_to<>>
-void bench(benchmark::State &state, const Expected &expected, Fn fn, Check check = {}) {
-  bench(state, no_threads, expected, fn, check);
+template <typename Expected, typename Fn>
+void bench(benchmark::State &state, std::int64_t threads, const Expected &expected, Fn fn) {
+  bench(state, threads, expected, std::equal_to<>{}, fn);
+}
+
+template <typename Expected, typename Check, typename Fn>
+void bench(benchmark::State &state, const Expected &expected, Check check, Fn fn) {
+  bench(state, no_threads, expected, check, fn);
+}
+
+template <typename Expected, typename Fn>
+void bench(benchmark::State &state, const Expected &expected, Fn fn) {
+  bench(state, no_threads, expected, fn);
 }
 
 } // namespace lf_bench

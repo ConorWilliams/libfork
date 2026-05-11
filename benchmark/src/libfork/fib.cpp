@@ -39,12 +39,9 @@ void run(benchmark::State &state) {
   auto threads = static_cast<std::int64_t>(thread_count<Sch>(state));
   Sch scheduler = make_scheduler<Sch>(state);
 
-  run_fib(
-      state,
-      [&](std::int64_t n) -> std::int64_t {
-        return lf::schedule(scheduler, fib{}, n).get();
-      },
-      threads);
+  run_fib(state, threads, [&](std::int64_t n) -> std::int64_t {
+    return lf::schedule(scheduler, fib{}, n).get();
+  });
 }
 
 } // namespace

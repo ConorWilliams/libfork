@@ -61,21 +61,14 @@ auto fold_result_is_correct(fold_accum_t<T> result, fold_accum_t<T> expect) -> b
 }
 
 template <fold_data_mode Data, typename T, typename Fn>
-void run_fold_input(benchmark::State &state, Fn fn, std::int64_t threads = lf_bench::no_threads) {
+void run_fold_input(benchmark::State &state, std::int64_t threads, Fn fn) {
   auto n = static_cast<std::size_t>(state.range(0));
   auto expect = expected_fold_result<T>(n);
 
   auto run = [&](auto const &range) -> void {
-    lf_bench::bench(
-        state,
-        threads,
-        expect,
-        [&]() -> fold_accum_t<T> {
-          return std::invoke(fn, range);
-        },
-        [](auto result, auto expected) {
-          return fold_result_is_correct<T>(result, expected);
-        });
+    lf_bench::bench(state, threads, expect, fold_result_is_correct<T>, [&]() -> fold_accum_t<T> {
+      return std::invoke(fn, range);
+    });
   };
 
   if constexpr (Data == fold_data_mode::memory) {
@@ -85,6 +78,11 @@ void run_fold_input(benchmark::State &state, Fn fn, std::int64_t threads = lf_be
   }
 
   state.SetItemsProcessed(state.iterations() * static_cast<std::int64_t>(n));
+}
+
+template <fold_data_mode Data, typename T, typename Fn>
+void run_fold_input(benchmark::State &state, Fn fn) {
+  run_fold_input<Data, T>(state, lf_bench::no_threads, fn);
 }
 
 // Use alias for shorted names.

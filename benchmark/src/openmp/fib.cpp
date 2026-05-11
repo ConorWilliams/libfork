@@ -29,20 +29,17 @@ template <typename = void>
 void fib_run(benchmark::State &state) {
   int threads = static_cast<int>(state.range(1));
 
-  run_fib(
-      state,
-      [threads](std::int64_t n) -> std::int64_t {
-        std::int64_t return_value = 0;
+  run_fib(state, threads, [threads](std::int64_t n) -> std::int64_t {
+    std::int64_t return_value = 0;
 
 #pragma omp parallel num_threads(threads) default(shared)
 #pragma omp single nowait
-        {
-          return_value = fib(n);
-        }
+    {
+      return_value = fib(n);
+    }
 
-        return return_value;
-      },
-      threads);
+    return return_value;
+  });
 }
 
 } // namespace

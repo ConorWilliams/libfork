@@ -67,13 +67,9 @@ void run(benchmark::State &state, uts_tree tree) {
   auto threads = static_cast<std::size_t>(state.range(0));
   Sch scheduler = Sch{threads};
 
-  run_uts(
-      state,
-      tree,
-      [&](Node *root) -> result {
-        return lf::schedule(scheduler, uts_fn{}, 0, root).get();
-      },
-      static_cast<std::int64_t>(threads));
+  run_uts(state, tree, static_cast<std::int64_t>(threads), [&](Node *root) -> result {
+    return lf::schedule(scheduler, uts_fn{}, 0, root).get();
+  });
 }
 
 } // namespace
