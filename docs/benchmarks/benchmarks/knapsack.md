@@ -1,5 +1,5 @@
 ---
-icon: lucide/package-check
+icon: lucide/package
 ---
 
 # Knapsack
