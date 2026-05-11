@@ -34,15 +34,15 @@ intended for machines where the working set and runtime are acceptable.
 
 The source tree separates shared benchmark data from implementation variants:
 
-- [`benchmark/lib/`](https://github.com/conorwilliams/libfork/tree/main/benchmark/lib)
+- [`benchmark/lib/`](../../benchmark/lib/)
   contains shared kernels, input sizes, and correctness helpers.
-- [`benchmark/src/libfork/`](https://github.com/conorwilliams/libfork/tree/main/benchmark/src/libfork)
+- [`benchmark/src/libfork/`](../../benchmark/src/libfork/)
   contains libfork coroutine and scheduler benchmarks.
-- [`benchmark/src/serial/`](https://github.com/conorwilliams/libfork/tree/main/benchmark/src/serial)
+- [`benchmark/src/serial/`](../../benchmark/src/serial/)
   contains single-threaded baselines.
-- [`benchmark/src/openmp/`](https://github.com/conorwilliams/libfork/tree/main/benchmark/src/openmp)
+- [`benchmark/src/openmp/`](../../benchmark/src/openmp/)
   contains OpenMP tasking comparisons where present.
-- [`benchmark/src/baremetal/`](https://github.com/conorwilliams/libfork/tree/main/benchmark/src/baremetal)
+- [`benchmark/src/baremetal/`](../../benchmark/src/baremetal/)
   contains low-level coroutine or data-structure baselines.
 
 ## Families

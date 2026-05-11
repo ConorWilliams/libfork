@@ -3,8 +3,11 @@
 #include "bench.hpp"
 
 #ifdef LF_BENCH_NO_IMPORT_STD
+  #include <algorithm>
   #include <bit>
+  #include <cmath>
   #include <cstddef>
+  #include <cstdint>
   #include <functional>
   #include <memory>
   #include <random>
@@ -61,12 +64,10 @@ inline void matmul_zero(float *C, unsigned n) {
 }
 
 inline auto matmul_max_relative_error(float const *A, float const *B, unsigned n) -> float {
+  constexpr float epsilon = 1e-8F;
   float error = 0;
   for (std::size_t i = 0; i < static_cast<std::size_t>(n) * n; ++i) {
-    float diff = (A[i] - B[i]) / A[i];
-    if (diff < 0) {
-      diff = -diff;
-    }
+    float diff = std::abs(A[i] - B[i]) / std::max(std::abs(A[i]), epsilon);
     if (diff > error) {
       error = diff;
     }
