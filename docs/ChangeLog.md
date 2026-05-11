@@ -1,3 +1,7 @@
+---
+icon: lucide/notebook-pen
+---
+
 # Changelog
 
 <!-- ## [**Version x.x.x**](https://github.com/ConorWilliams/libfork/compare/v2.1.0...dev)
@@ -19,7 +23,6 @@
 - More benchmarks (TooManyCooks).
 - Benchmarks graphs in readme [Issue #14](https://github.com/ConorWilliams/libfork/issues/14).
 
-
 ### Changed
 
 ### Removed
@@ -28,9 +31,9 @@
 
 ### Bugfixes
 
-- Fixed checks in benchmarks (UTS was reported as failing but the results were correct). 
+- Fixed checks in benchmarks (UTS was reported as failing but the results were correct).
 
-### Meta 
+### Meta
 
 - Moved vcpkg submodule to https [PR #12](https://github.com/ConorWilliams/libfork/pull/12)
 

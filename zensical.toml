@@ -45,10 +45,10 @@ edit_uri = "edit/modules/docs/"
 # Explicit sidebar order. Paths are relative to the docs directory.
 nav = [
   { "Home" = "index.md" },
-  { "Getting Started" = "getting-started.md" },
-  { "Tour" = "tour.md" },
-  { "Contributing" = "contributing.md" },
+  { "Installation" = "installation.md" },
+  { "Quickstart" = "quickstart.md" },
   { "Changelog" = "ChangeLog.md" },
+  { "Contributing" = "contributing.md" },
   { "Performance" = [
     "benchmarks/index.md",
     { "Benchmarks" = [

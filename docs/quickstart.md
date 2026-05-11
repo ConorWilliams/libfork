@@ -2,9 +2,9 @@
 icon: lucide/map
 ---
 
-# Tour
+# Quickstart
 
-This tour explains how the current module-based libfork API fits together.
+This quickstart explains how the current module-based libfork API fits together.
 
 ## Fork-join tasks
 
