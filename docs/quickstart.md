@@ -1,5 +1,5 @@
 ---
-icon: lucide/map
+icon: lucide/rocket
 ---
 
 # Quickstart

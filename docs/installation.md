@@ -1,5 +1,5 @@
 ---
-icon: lucide/play
+icon: lucide/package-check
 ---
 
 # Installation
