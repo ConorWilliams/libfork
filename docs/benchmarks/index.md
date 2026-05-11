@@ -47,24 +47,24 @@ The source tree separates shared benchmark data from implementation variants:
 
 ## Families
 
-- [Fibonacci](fib.md): recursive task overhead and frame allocation.
-- [Fold](fold.md): reductions over memory-backed and lazy ranges.
-- [Unbalanced Tree Search](uts.md): irregular search-tree traversal.
-- [Random Scheduler Switch](switch-random.md): cross-pool coroutine
+- [Fibonacci](benchmarks/fib.md): recursive task overhead and frame allocation.
+- [Fold](benchmarks/fold.md): reductions over memory-backed and lazy ranges.
+- [Unbalanced Tree Search](benchmarks/uts.md): irregular search-tree traversal.
+- [Random Scheduler Switch](benchmarks/switch-random.md): cross-pool coroutine
   migration during recursive Fibonacci.
-- [I/O Pool Switch](switch-io-pool.md): request fan-out with explicit
+- [I/O Pool Switch](benchmarks/switch-io-pool.md): request fan-out with explicit
   compute-pool and I/O-pool hops.
-- [Heat](heat.md): Jacobi heat-diffusion stencil.
-- [Integrate](integrate.md): adaptive recursive quadrature.
-- [Knapsack](knapsack.md): exact branch-and-bound search.
-- [Mandelbrot](mandelbrot.md): per-pixel escape-time computation.
-- [Matrix Multiply](matmul.md): recursive cubic matrix multiply.
-- [Strassen](strassen.md): recursive seven-product matrix multiply.
-- [N-Queens](nqueens.md): recursive backtracking search.
-- [Primes](primes.md): trial-division prime counting.
-- [Quicksort](quicksort.md): in-place divide-and-conquer sorting.
-- [Scan](scan.md): repeated inclusive prefix scan.
-- [Skynet](skynet.md): regular recursive fan-out reduction.
+- [Heat](benchmarks/heat.md): Jacobi heat-diffusion stencil.
+- [Integrate](benchmarks/integrate.md): adaptive recursive quadrature.
+- [Knapsack](benchmarks/knapsack.md): exact branch-and-bound search.
+- [Mandelbrot](benchmarks/mandelbrot.md): per-pixel escape-time computation.
+- [Matrix Multiply](benchmarks/matmul.md): recursive cubic matrix multiply.
+- [Strassen](benchmarks/strassen.md): recursive seven-product matrix multiply.
+- [N-Queens](benchmarks/nqueens.md): recursive backtracking search.
+- [Primes](benchmarks/primes.md): trial-division prime counting.
+- [Quicksort](benchmarks/quicksort.md): in-place divide-and-conquer sorting.
+- [Scan](benchmarks/scan.md): repeated inclusive prefix scan.
+- [Skynet](benchmarks/skynet.md): regular recursive fan-out reduction.
 
 ## Interpreting Results
 

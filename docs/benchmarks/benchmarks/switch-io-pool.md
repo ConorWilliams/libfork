@@ -12,8 +12,8 @@ switches.
 Source:
 
 - [benchmark implementation](https://github.com/conorwilliams/libfork/blob/main/benchmark/src/libfork/switch_io_pool.cpp)
-- [libfork scheduling API](../api/core/scheduling.md)
-- [libfork scheduler docs](../api/schedulers.md)
+- [libfork scheduling API](../../api/core/scheduling.md)
+- [libfork scheduler docs](../../api/schedulers.md)
 
 ## What It Measures
 
@@ -49,6 +49,6 @@ network or disk throughput. It isolates continuation migration costs.
 
 ## References
 
-- [libfork scheduler docs](../api/schedulers.md)
+- [libfork scheduler docs](../../api/schedulers.md)
 - [OpenMP task scheduling background](https://www.openmp.org/spec-html/5.2/openmpch12.html)
 - [Scheduling multithreaded computations by work stealing](https://doi.org/10.1145/324133.324234)

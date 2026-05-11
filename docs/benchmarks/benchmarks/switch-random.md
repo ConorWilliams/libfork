@@ -13,7 +13,7 @@ Source:
 
 - [benchmark implementation](https://github.com/conorwilliams/libfork/blob/main/benchmark/src/libfork/switch_random.cpp)
 - [shared Fibonacci reference](https://github.com/conorwilliams/libfork/blob/main/benchmark/lib/fib.hpp)
-- [libfork scheduling API](../api/core/scheduling.md)
+- [libfork scheduling API](../../api/core/scheduling.md)
 
 ## What It Measures
 
@@ -46,5 +46,5 @@ randomness and strict fork-join structure.
 ## References
 
 - [Scheduling multithreaded computations by work stealing](https://doi.org/10.1145/324133.324234)
-- [libfork scheduler docs](../api/schedulers.md)
+- [libfork scheduler docs](../../api/schedulers.md)
 - [SplitMix64 reference implementation](https://prng.di.unimi.it/splitmix64.c)

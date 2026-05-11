@@ -13,7 +13,7 @@ Source:
 - [shared fold helpers](https://github.com/conorwilliams/libfork/blob/main/benchmark/lib/fold.hpp)
 - [serial `std::reduce` variants](https://github.com/conorwilliams/libfork/blob/main/benchmark/src/serial/fold.cpp)
 - [libfork variants](https://github.com/conorwilliams/libfork/blob/main/benchmark/src/libfork/fold.cpp)
-- [fold API docs](../api/algorithm.md#fold)
+- [fold API docs](../../api/algorithm.md#fold)
 
 ## What It Measures
 
@@ -54,5 +54,5 @@ leaves workers idle near the end of the reduction tree.
 ## References
 
 - [C++ `std::reduce`](https://en.cppreference.com/w/cpp/algorithm/reduce)
-- [libfork `fold` API](../api/algorithm.md#fold)
+- [libfork `fold` API](../../api/algorithm.md#fold)
 - [Google Benchmark counters and complexity](https://github.com/google/benchmark/blob/main/docs/user_guide.md)
