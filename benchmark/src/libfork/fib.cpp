@@ -40,8 +40,7 @@ void run(benchmark::State &state) {
   Sch scheduler = make_scheduler<Sch>(state);
 
   run_fib_mt(state, threads, [&](std::int64_t n) -> std::int64_t {
-    lf::receiver recv = lf::schedule(scheduler, fib{}, n);
-    return std::move(recv).get();
+    return lf::schedule(scheduler, fib{}, n).get();
   });
 }
 

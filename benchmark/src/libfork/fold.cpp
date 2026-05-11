@@ -41,27 +41,16 @@ auto run_fold(Sch &pool, Range &&range) -> fold_accum_t<T> {
 
   auto projection = make_projection<Projection, T>();
 
+  using std::ranges::begin;
+  using std::ranges::end;
+
+  using diff_t = std::ranges::range_difference_t<Range>;
+
   if constexpr (Chunk == fold_chunk_mode::deduced) {
-    auto result = lf::schedule(pool,
-                               lf::fold,
-                               std::ranges::begin(range),
-                               std::ranges::end(range),
-                               std::plus<>{},
-                               std::move(projection))
-                      .get();
-    return *std::move(result);
+    return *lf::schedule(pool, lf::fold, begin(range), end(range), std::plus<>{}, projection).get();
   } else {
-    using diff_t = std::ranges::range_difference_t<Range>;
     constexpr diff_t chunk = Chunk == fold_chunk_mode::explicit_one ? diff_t{1} : diff_t{4096};
-    auto result = lf::schedule(pool,
-                               lf::fold,
-                               std::ranges::begin(range),
-                               std::ranges::end(range),
-                               chunk,
-                               std::plus<>{},
-                               std::move(projection))
-                      .get();
-    return *std::move(result);
+    return *lf::schedule(pool, lf::fold, begin(range), end(range), chunk, std::plus<>{}, projection).get();
   }
 }
 
@@ -70,8 +59,8 @@ void run(benchmark::State &state) {
 
   mono_busy_pool pool{1};
 
-  run_fold_input<Data, T>(state, [&](auto &&values) -> fold_accum_t<T> {
-    return run_fold<Chunk, Projection, T>(pool, std::forward<decltype(values)>(values));
+  run_fold_input<Data, T>(state, [&](auto const &values) -> fold_accum_t<T> {
+    return run_fold<Chunk, Projection, T>(pool, values);
   });
 }
 
@@ -85,8 +74,8 @@ void run_mt(benchmark::State &state) {
   auto threads = static_cast<std::int64_t>(thread_count<Sch>(state));
   Sch pool = make_scheduler<Sch>(state);
 
-  run_fold_input_mt<Data, T>(state, threads, [&](auto &&values) -> fold_accum_t<T> {
-    return run_fold<Chunk, Projection, T>(pool, std::forward<decltype(values)>(values));
+  run_fold_input_mt<Data, T>(state, threads, [&](auto const &values) -> fold_accum_t<T> {
+    return run_fold<Chunk, Projection, T>(pool, values);
   });
 }
 

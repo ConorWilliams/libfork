@@ -63,13 +63,12 @@ struct uts_fn {
 
 template <lf::scheduler Sch>
 void run(benchmark::State &state, uts_tree tree) {
-  auto threads = static_cast<std::size_t>(state.range(0));
 
+  auto threads = static_cast<std::size_t>(state.range(0));
   Sch scheduler = Sch{threads};
 
   run_uts_mt(state, tree, static_cast<std::int64_t>(threads), [&](Node *root) -> result {
-    lf::receiver recv = lf::schedule(scheduler, uts_fn{}, 0, root);
-    return std::move(recv).get();
+    return lf::schedule(scheduler, uts_fn{}, 0, root).get();
   });
 }
 
