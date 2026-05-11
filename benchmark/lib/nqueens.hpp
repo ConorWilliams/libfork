@@ -42,8 +42,7 @@ void run_nqueens(benchmark::State &state, Fn fn) {
 
   std::vector<char> board(static_cast<std::size_t>(n));
 
-  lf_bench::bench(state, expect, [n, &board, fn]() mutable -> std::int64_t {
-    benchmark::DoNotOptimize(n);
+  lf_bench::bench(state, expect, [n, &board, fn]() -> std::int64_t {
     return std::invoke(fn, n, board.data());
   });
 }

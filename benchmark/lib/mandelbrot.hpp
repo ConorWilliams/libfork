@@ -55,8 +55,7 @@ void run_mandelbrot(benchmark::State &state, Fn fn) {
 
   state.counters["n"] = n;
 
-  lf_bench::bench(state, expect, [n, fn]() mutable -> std::uint64_t {
-    benchmark::DoNotOptimize(n);
+  lf_bench::bench(state, expect, [n, fn]() -> std::uint64_t {
     return std::invoke(fn, n);
   });
 }

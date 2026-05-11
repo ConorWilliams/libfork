@@ -36,8 +36,7 @@ void run_skynet(benchmark::State &state, Fn fn) {
   state.counters["depth"] = depth;
   state.counters["leaves"] = static_cast<double>(skynet_leaves(depth));
 
-  lf_bench::bench(state, expect, [depth, fn]() mutable -> std::int64_t {
-    benchmark::DoNotOptimize(depth);
+  lf_bench::bench(state, expect, [depth, fn]() -> std::int64_t {
     return std::invoke(fn, 0, depth);
   });
 }

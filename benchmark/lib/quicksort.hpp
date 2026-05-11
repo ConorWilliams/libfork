@@ -42,7 +42,6 @@ void run_quicksort(benchmark::State &state, Fn fn) {
 
   lf_bench::bench(state, true, [&]() -> bool {
     work = source;
-    benchmark::DoNotOptimize(work.data());
     std::invoke(fn, work.data(), work.data() + work.size());
     benchmark::DoNotOptimize(work.data());
     return work == reference;

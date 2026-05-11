@@ -106,7 +106,6 @@ void run(benchmark::State &state) {
   pool_pair<Sch> pp{&pool_a, &pool_b};
 
   lf_bench::bench(state, static_cast<std::int64_t>(threads_total), expect, [&]() -> std::int64_t {
-    benchmark::DoNotOptimize(n);
     return lf::schedule(pool_a, random_switch_fib<Sch>{}, n, &pp, rng{1}, 0U).get();
   });
 }

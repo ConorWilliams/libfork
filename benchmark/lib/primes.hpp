@@ -50,8 +50,7 @@ void run_primes(benchmark::State &state, Fn fn) {
 
   state.counters["n"] = static_cast<double>(n);
 
-  lf_bench::bench(state, lf_bench::no_threads, expect, primes_count_is_correct, [n, fn]() mutable -> std::int64_t {
-    benchmark::DoNotOptimize(n);
+  lf_bench::bench(state, lf_bench::no_threads, expect, primes_count_is_correct, [n, fn]() -> std::int64_t {
     return std::invoke(fn, n);
   });
 }

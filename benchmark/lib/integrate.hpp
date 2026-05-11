@@ -36,8 +36,7 @@ void run_integrate(benchmark::State &state, Fn fn) {
 
   state.counters["n"] = static_cast<double>(n);
 
-  lf_bench::bench(state, expect, integrate_is_close, [n, upper, fn]() mutable -> double {
-    benchmark::DoNotOptimize(n);
+  lf_bench::bench(state, expect, integrate_is_close, [upper, fn]() -> double {
     return std::invoke(fn, upper);
   });
 }

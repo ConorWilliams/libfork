@@ -72,8 +72,7 @@ void run_knapsack(benchmark::State &state, Fn fn) {
   state.counters["n"] = static_cast<double>(n);
   state.counters["capacity"] = problem.capacity;
 
-  lf_bench::bench(state, expect, [problem = std::move(problem), fn]() mutable -> int {
-    benchmark::DoNotOptimize(problem.items.data());
+  lf_bench::bench(state, expect, [problem = std::move(problem), fn]() -> int {
     return std::invoke(fn, problem);
   });
 }

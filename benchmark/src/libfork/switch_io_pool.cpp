@@ -155,7 +155,6 @@ void run_with_io(benchmark::State &state) {
   Sch io_pool{static_cast<std::size_t>(k_io_workers())};
 
   lf_bench::bench(state, static_cast<std::int64_t>(thread_count<Sch>(state)), expect, [&]() -> std::int64_t {
-    benchmark::DoNotOptimize(m);
     lf::receiver recv = lf::schedule(compute_pool, fan_out_with_io<Sch>{}, m, &compute_pool, &io_pool);
     return std::move(recv).get();
   });
@@ -173,7 +172,6 @@ void run_baseline(benchmark::State &state) {
   Sch compute_pool = make_scheduler<Sch>(state);
 
   lf_bench::bench(state, static_cast<std::int64_t>(thread_count<Sch>(state)), expect, [&]() -> std::int64_t {
-    benchmark::DoNotOptimize(m);
     lf::receiver recv = lf::schedule(compute_pool, fan_out_baseline<Sch>{}, m);
     return std::move(recv).get();
   });

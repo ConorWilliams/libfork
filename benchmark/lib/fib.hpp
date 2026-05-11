@@ -42,8 +42,7 @@ void run_fib(benchmark::State &state, std::int64_t threads, Fn fn) {
 
   state.counters["n"] = static_cast<double>(n);
 
-  lf_bench::bench(state, threads, expect, [n, fn]() mutable -> std::int64_t {
-    benchmark::DoNotOptimize(n);
+  lf_bench::bench(state, threads, expect, [n, fn]() -> std::int64_t {
     return std::invoke(fn, n);
   });
 }

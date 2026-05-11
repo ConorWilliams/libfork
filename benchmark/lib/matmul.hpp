@@ -115,8 +115,6 @@ void run_matmul(benchmark::State &state, float max_relative_error, Fn fn) {
 
   lf_bench::bench(state, max_relative_error, matmul_error_is_acceptable, [&]() -> float {
     matmul_zero(args.C.get(), n);
-    benchmark::DoNotOptimize(args.A.get());
-    benchmark::DoNotOptimize(args.B.get());
     std::invoke(fn, args.A.get(), args.B.get(), args.C.get(), n);
     benchmark::DoNotOptimize(args.C.get());
     return matmul_max_relative_error(args.ref.get(), args.C.get(), n);

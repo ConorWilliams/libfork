@@ -54,7 +54,6 @@ void run_heat(benchmark::State &state, Fn fn) {
 
   lf_bench::bench(state, true, [&]() -> bool {
     a = initial;
-    benchmark::DoNotOptimize(a.data());
     std::invoke(fn, a.data(), b.data(), n, heat_iters);
     benchmark::DoNotOptimize(a.data());
     return heat_matches((heat_iters % 2 == 0) ? a : b, reference);
