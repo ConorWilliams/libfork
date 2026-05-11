@@ -67,9 +67,10 @@ nav = [
     { "Schedulers" = "api/schedulers.md" },
     { "Algorithm" = "api/algorithm.md" },
   ] },
-  { "Benchmarks" = [
+  { "Performance" = [
     "benchmarks/index.md",
     { "Benchmarks" = [
+      "benchmarks/benchmarks/index.md",
       { "Fibonacci" = "benchmarks/benchmarks/fib.md" },
       { "Unbalanced Trees" = "benchmarks/benchmarks/uts.md" },
       { "Heat" = "benchmarks/benchmarks/heat.md" },
