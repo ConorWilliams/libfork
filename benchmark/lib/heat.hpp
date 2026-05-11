@@ -6,6 +6,7 @@
   #include <cmath>
   #include <cstddef>
   #include <functional>
+  #include <utility>
   #include <vector>
 #else
 import std;
@@ -38,6 +39,40 @@ inline auto heat_matches(std::vector<double> const &actual, std::vector<double> 
   return true;
 }
 
+inline void heat_jacobi_step(double const *src, double *dst, std::size_t n) {
+  for (std::size_t y = 1; y < n - 1; ++y) {
+    for (std::size_t x = 1; x < n - 1; ++x) {
+      std::size_t i = y * n + x;
+      dst[i] = 0.25 * (src[i - 1] + src[i + 1] + src[i - n] + src[i + n]);
+    }
+  }
+  for (std::size_t x = 0; x < n; ++x) {
+    dst[x] = src[x];
+    dst[(n - 1) * n + x] = src[(n - 1) * n + x];
+  }
+  for (std::size_t y = 0; y < n; ++y) {
+    dst[y * n] = src[y * n];
+    dst[y * n + (n - 1)] = src[y * n + (n - 1)];
+  }
+}
+
+inline auto
+heat_reference(std::vector<double> initial, std::size_t n, std::size_t iters) -> std::vector<double> {
+  std::vector<double> scratch(initial.size());
+  double *src = initial.data();
+  double *dst = scratch.data();
+
+  for (std::size_t t = 0; t < iters; ++t) {
+    heat_jacobi_step(src, dst, n);
+    std::swap(src, dst);
+  }
+
+  if (src == initial.data()) {
+    return initial;
+  }
+  return scratch;
+}
+
 template <typename Fn>
 void run_heat(benchmark::State &state, Fn fn) {
   auto n = static_cast<std::size_t>(state.range(0));
@@ -47,10 +82,7 @@ void run_heat(benchmark::State &state, Fn fn) {
   std::vector<double> initial = heat_make_grid(n);
   std::vector<double> a(initial.size());
   std::vector<double> b(initial.size());
-
-  a = initial;
-  std::invoke(fn, a.data(), b.data(), n, heat_iters);
-  std::vector<double> reference = (heat_iters % 2 == 0) ? a : b;
+  std::vector<double> reference = heat_reference(initial, n, heat_iters);
 
   lf_bench::bench(state, true, [&]() -> bool {
     a = initial;
