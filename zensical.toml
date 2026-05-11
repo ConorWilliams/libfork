@@ -47,26 +47,8 @@ nav = [
   { "Home" = "index.md" },
   { "Getting Started" = "getting-started.md" },
   { "Tour" = "tour.md" },
-  { "API" = [
-    "api/index.md",
-    { "Core" = [
-      "api/core/index.md",
-      "api/core/task.md",
-      "api/core/env.md",
-      "api/core/scope.md",
-      "api/core/scheduling.md",
-      "api/core/receiver.md",
-      "api/core/cancellation.md",
-      "api/core/context.md",
-      "api/core/handles.md",
-      "api/core/projected.md",
-      "api/core/concepts.md",
-      "api/core/exceptions.md",
-    ] },
-    { "Batteries" = "api/batteries.md" },
-    { "Schedulers" = "api/schedulers.md" },
-    { "Algorithm" = "api/algorithm.md" },
-  ] },
+  { "Contributing" = "contributing.md" },
+  { "Changelog" = "ChangeLog.md" },
   { "Performance" = [
     "benchmarks/index.md",
     { "Benchmarks" = [
@@ -90,7 +72,26 @@ nav = [
       { "I/O scheduler" = "benchmarks/benchmarks/switch-io-pool.md" },
     ] },
   ] },
-  { "Contributing" = "contributing.md" },
+  { "API" = [
+    "api/index.md",
+    { "Core" = [
+      "api/core/index.md",
+      "api/core/task.md",
+      "api/core/env.md",
+      "api/core/scope.md",
+      "api/core/scheduling.md",
+      "api/core/receiver.md",
+      "api/core/cancellation.md",
+      "api/core/context.md",
+      "api/core/handles.md",
+      "api/core/projected.md",
+      "api/core/concepts.md",
+      "api/core/exceptions.md",
+    ] },
+    { "Batteries" = "api/batteries.md" },
+    { "Schedulers" = "api/schedulers.md" },
+    { "Algorithm" = "api/algorithm.md" },
+  ] },
 ]
 
 # ----------------------------------------------------------------------------
