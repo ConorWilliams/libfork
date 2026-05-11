@@ -74,9 +74,12 @@ void run_mt(benchmark::State &state) {
   auto threads = static_cast<std::int64_t>(thread_count<Sch>(state));
   Sch pool = make_scheduler<Sch>(state);
 
-  run_fold_input_mt<Data, T>(state, threads, [&](auto const &values) -> fold_accum_t<T> {
-    return run_fold<Chunk, Projection, T>(pool, values);
-  });
+  run_fold_input<Data, T>(
+      state,
+      [&](auto const &values) -> fold_accum_t<T> {
+        return run_fold<Chunk, Projection, T>(pool, values);
+      },
+      threads);
 }
 
 } // namespace

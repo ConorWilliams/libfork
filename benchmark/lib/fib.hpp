@@ -36,26 +36,13 @@ constexpr auto fib_ref(std::int64_t n) -> std::int64_t {
 }
 
 template <typename Fn>
-void run_fib(benchmark::State &state, Fn &&fn) {
+void run_fib(benchmark::State &state, Fn fn, std::int64_t threads = lf_bench::no_threads) {
   std::int64_t n = state.range(0);
   std::int64_t expect = fib_ref(n);
 
   state.counters["n"] = static_cast<double>(n);
 
-  lf_bench::bench(state, expect, [&]() -> std::int64_t {
-    benchmark::DoNotOptimize(n);
-    return std::invoke(fn, n);
-  });
-}
-
-template <typename Fn>
-void run_fib_mt(benchmark::State &state, std::int64_t threads, Fn &&fn) {
-  std::int64_t n = state.range(0);
-  std::int64_t expect = fib_ref(n);
-
-  state.counters["n"] = static_cast<double>(n);
-
-  lf_bench::bench_mt(state, threads, expect, [&]() -> std::int64_t {
+  lf_bench::bench(state, threads, expect, [n, fn]() mutable -> std::int64_t {
     benchmark::DoNotOptimize(n);
     return std::invoke(fn, n);
   });

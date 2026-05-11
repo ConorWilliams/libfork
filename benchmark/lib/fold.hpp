@@ -61,38 +61,12 @@ auto fold_result_is_correct(fold_accum_t<T> result, fold_accum_t<T> expect) -> b
 }
 
 template <fold_data_mode Data, typename T, typename Fn>
-void run_fold_input(benchmark::State &state, Fn &&fn) {
+void run_fold_input(benchmark::State &state, Fn fn, std::int64_t threads = lf_bench::no_threads) {
   auto n = static_cast<std::size_t>(state.range(0));
   auto expect = expected_fold_result<T>(n);
 
-  auto run = [&](auto range) -> void {
+  auto run = [&](auto const &range) -> void {
     lf_bench::bench(
-        state,
-        expect,
-        [&]() -> fold_accum_t<T> {
-          return std::invoke(fn, range);
-        },
-        [](auto result, auto expected) {
-          return fold_result_is_correct<T>(result, expected);
-        });
-  };
-
-  if constexpr (Data == fold_data_mode::memory) {
-    run(make_fold_range<T>(n) | std::ranges::to<std::vector<T>>());
-  } else {
-    run(make_fold_range<T>(n));
-  }
-
-  state.SetItemsProcessed(state.iterations() * static_cast<std::int64_t>(n));
-}
-
-template <fold_data_mode Data, typename T, typename Fn>
-void run_fold_input_mt(benchmark::State &state, std::int64_t threads, Fn &&fn) {
-  auto n = static_cast<std::size_t>(state.range(0));
-  auto expect = expected_fold_result<T>(n);
-
-  auto run = [&](auto range) -> void {
-    lf_bench::bench_mt(
         state,
         threads,
         expect,
