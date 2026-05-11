@@ -1,8 +1,11 @@
 #pragma once
 
+#include "bench.hpp"
+
 #ifdef LF_BENCH_NO_IMPORT_STD
   #include <complex>
   #include <cstdint>
+  #include <functional>
 #else
 import std;
 #endif
@@ -33,4 +36,27 @@ inline constexpr auto mandelbrot_pixel(int px, int py, int n) -> int {
   }
 
   return iter;
+}
+
+inline auto mandelbrot_checksum(int n) -> std::uint64_t {
+  std::uint64_t checksum = 0;
+  for (int py = 0; py < n; ++py) {
+    for (int px = 0; px < n; ++px) {
+      checksum += static_cast<std::uint64_t>(mandelbrot_pixel(px, py, n));
+    }
+  }
+  return checksum;
+}
+
+template <typename Fn>
+void run_mandelbrot(benchmark::State &state, Fn fn) {
+  int n = static_cast<int>(state.range(0));
+  std::uint64_t expect = mandelbrot_checksum(n);
+
+  state.counters["n"] = n;
+
+  lf_bench::bench(state, expect, [n, fn]() mutable -> std::uint64_t {
+    benchmark::DoNotOptimize(n);
+    return std::invoke(fn, n);
+  });
 }

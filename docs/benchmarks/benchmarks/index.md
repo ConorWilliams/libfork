@@ -93,7 +93,20 @@ The same pattern is used by:
 
 - `run_fib` for Fibonacci.
 - `run_fold_input` for fold input construction and item reporting.
+- `run_heat` for heat-grid construction and convergence checking.
+- `run_integrate` for integration bounds and tolerance checking.
+- `run_knapsack` for problem generation and optimum checking.
+- `run_mandelbrot` for image-size counters and checksum checking.
+- `run_matmul` for matrix input construction and relative-error checking.
+- `run_nqueens` for board allocation and known solution counts.
+- `run_primes` for prime-count reference values.
+- `run_quicksort` for input generation and sorted-order checking.
+- `run_scan` for scan input construction and tail checking.
+- `run_skynet` for depth, leaf-count, and expected sum setup.
 - `run_uts` for UTS tree setup and root construction.
+
+Benchmarks that do not need a family wrapper can still call `lf_bench::bench`
+directly once they have set their counters and built their expected result.
 
 ## Registration Macros
 

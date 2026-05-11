@@ -29,21 +29,9 @@ auto integrate_recurse(double x1, double y1, double x2, double y2, double area) 
 
 template <typename = void>
 void integrate_serial(benchmark::State &state) {
-
-  std::int64_t n = state.range(0);
-  double expect = integrate_exact(0, static_cast<double>(n));
-  state.counters["n"] = static_cast<double>(n);
-
-  for (auto _ : state) {
-    benchmark::DoNotOptimize(n);
-    double upper = static_cast<double>(n);
-    double result = integrate_recurse(0, integrate_fn(0), upper, integrate_fn(upper), 0);
-    if (std::abs(result - expect) > 1e-3 * std::abs(expect)) {
-      state.SkipWithError(std::format("incorrect integral: {} != {}", result, expect));
-      break;
-    }
-    benchmark::DoNotOptimize(result);
-  }
+  run_integrate(state, [](double upper) {
+    return integrate_recurse(0, integrate_fn(0), upper, integrate_fn(upper), 0);
+  });
 }
 
 } // namespace

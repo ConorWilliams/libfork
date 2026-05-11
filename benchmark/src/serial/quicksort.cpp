@@ -46,26 +46,7 @@ void quicksort(std::uint32_t *first, std::uint32_t *last) {
 
 template <typename = void>
 void quicksort_serial(benchmark::State &state) {
-
-  std::size_t n = static_cast<std::size_t>(state.range(0));
-  state.counters["n"] = static_cast<double>(n);
-
-  std::vector<std::uint32_t> source = quicksort_make_input(n);
-  std::vector<std::uint32_t> reference = source;
-  std::sort(reference.begin(), reference.end());
-
-  std::vector<std::uint32_t> work(n);
-
-  for (auto _ : state) {
-    work = source;
-    benchmark::DoNotOptimize(work.data());
-    quicksort(work.data(), work.data() + work.size());
-    benchmark::DoNotOptimize(work.data());
-  }
-
-  if (work != reference) {
-    state.SkipWithError("quicksort produced wrong order");
-  }
+  run_quicksort(state, quicksort);
 }
 
 } // namespace

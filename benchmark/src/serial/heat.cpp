@@ -34,34 +34,7 @@ void heat_run(double *a, double *b, std::size_t n, std::size_t iters) {
 
 template <typename = void>
 void heat_serial(benchmark::State &state) {
-
-  std::size_t n = static_cast<std::size_t>(state.range(0));
-  state.counters["n"] = static_cast<double>(n);
-  state.counters["iters"] = static_cast<double>(heat_iters);
-
-  std::vector<double> initial = heat_make_grid(n);
-  std::vector<double> a(initial.size());
-  std::vector<double> b(initial.size());
-
-  // Reference (run once).
-  a = initial;
-  heat_run(a.data(), b.data(), n, heat_iters);
-  std::vector<double> reference = (heat_iters % 2 == 0) ? a : b;
-
-  for (auto _ : state) {
-    a = initial;
-    benchmark::DoNotOptimize(a.data());
-    heat_run(a.data(), b.data(), n, heat_iters);
-    benchmark::DoNotOptimize(a.data());
-  }
-
-  std::vector<double> const &final = (heat_iters % 2 == 0) ? a : b;
-  for (std::size_t i = 0; i < final.size(); ++i) {
-    if (std::abs(final[i] - reference[i]) > 1e-12) {
-      state.SkipWithError("heat result diverged from reference");
-      break;
-    }
-  }
+  run_heat(state, heat_run);
 }
 
 } // namespace

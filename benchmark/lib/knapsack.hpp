@@ -1,9 +1,12 @@
 #pragma once
 
+#include "bench.hpp"
+
 #ifdef LF_BENCH_NO_IMPORT_STD
   #include <algorithm>
   #include <cstddef>
   #include <cstdint>
+  #include <functional>
   #include <random>
   #include <vector>
 #else
@@ -58,4 +61,19 @@ inline auto knapsack_dp_optimum(knapsack_problem const &p) -> int {
     }
   }
   return dp[static_cast<std::size_t>(p.capacity)];
+}
+
+template <typename Fn>
+void run_knapsack(benchmark::State &state, Fn fn) {
+  auto n = static_cast<std::size_t>(state.range(0));
+  auto problem = knapsack_make(n);
+  int expect = knapsack_dp_optimum(problem);
+
+  state.counters["n"] = static_cast<double>(n);
+  state.counters["capacity"] = problem.capacity;
+
+  lf_bench::bench(state, expect, [problem = std::move(problem), fn]() mutable -> int {
+    benchmark::DoNotOptimize(problem.items.data());
+    return std::invoke(fn, problem);
+  });
 }

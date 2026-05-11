@@ -94,28 +94,15 @@ auto fib(std::int64_t n) -> task {
 
 template <typename = void>
 void fib_coro_no_queue(benchmark::State &state) {
-
-  std::int64_t n = state.range(0);
-  std::int64_t expect = fib_ref(n);
-
-  state.counters["n"] = static_cast<double>(n);
-
   // 8MB stack
   std::unique_ptr buffer = std::make_unique<std::byte[]>(1024 * 1024 * 8);
   tls_bump_ptr = buffer.get();
 
-  for (auto _ : state) {
-    benchmark::DoNotOptimize(n);
+  run_fib(state, [](std::int64_t n) {
     std::int64_t result = 0;
     fib(n).set(result).coro.resume();
-
-    if (result != expect) {
-      state.SkipWithError(std::format("incorrect result: {} != {}", result, expect));
-      break;
-    }
-
-    benchmark::DoNotOptimize(result);
-  }
+    return result;
+  });
 
   if (tls_bump_ptr != buffer.get()) {
     std::terminate(); // Stack leak
@@ -145,26 +132,10 @@ auto fib_recursive_deque_impl(std::int64_t n) -> std::int64_t {
 
 template <typename = void>
 void fib_recursive_deque(benchmark::State &state) {
-
-  std::int64_t n = state.range(0);
-  std::int64_t expect = fib_ref(n);
-
-  state.counters["n"] = static_cast<double>(n);
-
   lf::deque<std::int64_t> deque{64};
   tls_deque = &deque;
 
-  for (auto _ : state) {
-    benchmark::DoNotOptimize(n);
-    std::int64_t result = fib_recursive_deque_impl(n);
-
-    if (result != expect) {
-      state.SkipWithError(std::format("incorrect result: {} != {}", result, expect));
-      break;
-    }
-
-    benchmark::DoNotOptimize(result);
-  }
+  run_fib(state, fib_recursive_deque_impl);
 
   tls_deque = nullptr;
 }

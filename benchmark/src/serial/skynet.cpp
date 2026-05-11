@@ -22,21 +22,7 @@ auto skynet_recurse(std::int64_t num, int depth) -> std::int64_t {
 
 template <typename = void>
 void skynet_serial(benchmark::State &state) {
-
-  int depth = static_cast<int>(state.range(0));
-  std::int64_t expect = skynet_expected(depth);
-  state.counters["depth"] = depth;
-  state.counters["leaves"] = static_cast<double>(skynet_leaves(depth));
-
-  for (auto _ : state) {
-    benchmark::DoNotOptimize(depth);
-    std::int64_t result = skynet_recurse(0, depth);
-    if (result != expect) {
-      state.SkipWithError(std::format("skynet sum mismatch: {} != {}", result, expect));
-      break;
-    }
-    benchmark::DoNotOptimize(result);
-  }
+  run_skynet(state, skynet_recurse);
 }
 
 } // namespace

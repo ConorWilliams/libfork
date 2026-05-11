@@ -26,23 +26,9 @@ auto nqueens(int j, int n, char *a) -> std::int64_t {
 
 template <typename = void>
 void nqueens_serial(benchmark::State &state) {
-
-  int n = static_cast<int>(state.range(0));
-  std::int64_t expect = nqueens_answers.at(static_cast<std::size_t>(n));
-
-  state.counters["n"] = n;
-
-  std::vector<char> board(static_cast<std::size_t>(n));
-
-  for (auto _ : state) {
-    benchmark::DoNotOptimize(n);
-    std::int64_t result = nqueens(0, n, board.data());
-    if (result != expect) {
-      state.SkipWithError(std::format("incorrect result: {} != {}", result, expect));
-      break;
-    }
-    benchmark::DoNotOptimize(result);
-  }
+  run_nqueens(state, [](int n, char *board) {
+    return nqueens(0, n, board);
+  });
 }
 
 } // namespace

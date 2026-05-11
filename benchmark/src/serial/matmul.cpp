@@ -34,25 +34,9 @@ void matmul_dc(float const *A, float const *B, float *R, unsigned n, unsigned s)
 
 template <typename = void>
 void matmul_serial(benchmark::State &state) {
-
-  unsigned n = static_cast<unsigned>(state.range(0));
-  state.counters["n"] = n;
-
-  auto args = matmul_init(n);
-  matmul_iter(args.A.get(), args.B.get(), args.ref.get(), n);
-
-  for (auto _ : state) {
-    matmul_zero(args.C.get(), n);
-    benchmark::DoNotOptimize(args.A.get());
-    benchmark::DoNotOptimize(args.B.get());
-    matmul_dc<false>(args.A.get(), args.B.get(), args.C.get(), n, n);
-    benchmark::DoNotOptimize(args.C.get());
-  }
-
-  float err = matmul_max_relative_error(args.ref.get(), args.C.get(), n);
-  if (err > 1e-5f) {
-    state.SkipWithError(std::format("matmul max relative error too high: {}", err));
-  }
+  run_matmul(state, 1e-5f, [](float const *A, float const *B, float *C, unsigned n) {
+    matmul_dc<false>(A, B, C, n, n);
+  });
 }
 
 } // namespace

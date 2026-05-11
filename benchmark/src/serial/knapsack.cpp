@@ -53,24 +53,11 @@ void knapsack_bb(std::vector<knapsack_item> const &items,
 
 template <typename = void>
 void knapsack_serial(benchmark::State &state) {
-
-  std::size_t n = static_cast<std::size_t>(state.range(0));
-  auto problem = knapsack_make(n);
-  int expect = knapsack_dp_optimum(problem);
-
-  state.counters["n"] = static_cast<double>(n);
-  state.counters["capacity"] = problem.capacity;
-
-  for (auto _ : state) {
+  run_knapsack(state, [](knapsack_problem const &problem) {
     int best = 0;
-    benchmark::DoNotOptimize(problem.items.data());
     knapsack_bb(problem.items, 0, problem.capacity, 0, best);
-    if (best != expect) {
-      state.SkipWithError(std::format("knapsack optimum mismatch: {} != {}", best, expect));
-      break;
-    }
-    benchmark::DoNotOptimize(best);
-  }
+    return best;
+  });
 }
 
 } // namespace

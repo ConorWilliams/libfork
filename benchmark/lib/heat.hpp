@@ -1,8 +1,11 @@
 #pragma once
 
+#include "bench.hpp"
+
 #ifdef LF_BENCH_NO_IMPORT_STD
   #include <cmath>
   #include <cstddef>
+  #include <functional>
   #include <vector>
 #else
 import std;
@@ -24,4 +27,36 @@ inline auto heat_make_grid(std::size_t n) -> std::vector<double> {
     }
   }
   return g;
+}
+
+inline auto heat_matches(std::vector<double> const &actual, std::vector<double> const &expected) -> bool {
+  for (std::size_t i = 0; i < actual.size(); ++i) {
+    if (std::abs(actual[i] - expected[i]) > 1e-12) {
+      return false;
+    }
+  }
+  return true;
+}
+
+template <typename Fn>
+void run_heat(benchmark::State &state, Fn fn) {
+  auto n = static_cast<std::size_t>(state.range(0));
+  state.counters["n"] = static_cast<double>(n);
+  state.counters["iters"] = static_cast<double>(heat_iters);
+
+  std::vector<double> initial = heat_make_grid(n);
+  std::vector<double> a(initial.size());
+  std::vector<double> b(initial.size());
+
+  a = initial;
+  std::invoke(fn, a.data(), b.data(), n, heat_iters);
+  std::vector<double> reference = (heat_iters % 2 == 0) ? a : b;
+
+  lf_bench::bench(state, true, [&]() -> bool {
+    a = initial;
+    benchmark::DoNotOptimize(a.data());
+    std::invoke(fn, a.data(), b.data(), n, heat_iters);
+    benchmark::DoNotOptimize(a.data());
+    return heat_matches((heat_iters % 2 == 0) ? a : b, reference);
+  });
 }

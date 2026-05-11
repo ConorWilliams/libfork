@@ -1,8 +1,11 @@
 #pragma once
 
+#include "bench.hpp"
+
 #ifdef LF_BENCH_NO_IMPORT_STD
   #include <bit>
   #include <cstddef>
+  #include <functional>
   #include <memory>
   #include <random>
 #else
@@ -98,4 +101,24 @@ inline void matmul_basecase_multiply(float const *A, float const *B, float *R, u
       }
     }
   }
+}
+
+inline auto matmul_error_is_acceptable(float err, float max_err) -> bool { return err <= max_err; }
+
+template <typename Fn>
+void run_matmul(benchmark::State &state, float max_relative_error, Fn fn) {
+  auto n = static_cast<unsigned>(state.range(0));
+  state.counters["n"] = n;
+
+  auto args = matmul_init(n);
+  matmul_iter(args.A.get(), args.B.get(), args.ref.get(), n);
+
+  lf_bench::bench(state, max_relative_error, matmul_error_is_acceptable, [&]() -> float {
+    matmul_zero(args.C.get(), n);
+    benchmark::DoNotOptimize(args.A.get());
+    benchmark::DoNotOptimize(args.B.get());
+    std::invoke(fn, args.A.get(), args.B.get(), args.C.get(), n);
+    benchmark::DoNotOptimize(args.C.get());
+    return matmul_max_relative_error(args.ref.get(), args.C.get(), n);
+  });
 }

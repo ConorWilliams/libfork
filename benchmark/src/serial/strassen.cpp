@@ -121,25 +121,9 @@ void strassen(float const *A, unsigned sa, float const *B, unsigned sb, float *C
 
 template <typename = void>
 void strassen_serial(benchmark::State &state) {
-
-  unsigned n = static_cast<unsigned>(state.range(0));
-  state.counters["n"] = n;
-
-  auto args = matmul_init(n);
-  matmul_iter(args.A.get(), args.B.get(), args.ref.get(), n);
-
-  for (auto _ : state) {
-    matmul_zero(args.C.get(), n);
-    benchmark::DoNotOptimize(args.A.get());
-    benchmark::DoNotOptimize(args.B.get());
-    strassen(args.A.get(), n, args.B.get(), n, args.C.get(), n, n);
-    benchmark::DoNotOptimize(args.C.get());
-  }
-
-  float err = matmul_max_relative_error(args.ref.get(), args.C.get(), n);
-  if (err > 1e-3f) {
-    state.SkipWithError(std::format("strassen max relative error too high: {}", err));
-  }
+  run_matmul(state, 1e-3f, [](float const *A, float const *B, float *C, unsigned n) {
+    strassen(A, n, B, n, C, n, n);
+  });
 }
 
 } // namespace

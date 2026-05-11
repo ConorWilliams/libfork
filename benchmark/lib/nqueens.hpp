@@ -1,8 +1,12 @@
 #pragma once
 
+#include "bench.hpp"
+
 #ifdef LF_BENCH_NO_IMPORT_STD
   #include <array>
   #include <cstdint>
+  #include <functional>
+  #include <vector>
 #else
 import std;
 #endif
@@ -27,4 +31,19 @@ inline auto queens_ok(int n, char const *a) -> bool {
     }
   }
   return true;
+}
+
+template <typename Fn>
+void run_nqueens(benchmark::State &state, Fn fn) {
+  int n = static_cast<int>(state.range(0));
+  std::int64_t expect = nqueens_answers.at(static_cast<std::size_t>(n));
+
+  state.counters["n"] = n;
+
+  std::vector<char> board(static_cast<std::size_t>(n));
+
+  lf_bench::bench(state, expect, [n, &board, fn]() mutable -> std::int64_t {
+    benchmark::DoNotOptimize(n);
+    return std::invoke(fn, n, board.data());
+  });
 }

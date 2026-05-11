@@ -1,7 +1,10 @@
 #pragma once
 
+#include "bench.hpp"
+
 #ifdef LF_BENCH_NO_IMPORT_STD
   #include <cstdint>
+  #include <functional>
 #else
 import std;
 #endif
@@ -23,4 +26,32 @@ inline constexpr auto is_prime(std::int64_t n) -> bool {
     }
   }
   return true;
+}
+
+// Prime-counting function pi(n) reference values for the configured sizes.
+inline constexpr auto primes_expected(std::int64_t n) -> std::int64_t {
+  if (n == primes_test) {
+    return 9592; // pi(1e5)
+  }
+  if (n == primes_base) {
+    return 664'579; // pi(1e7)
+  }
+  return -1;
+}
+
+inline auto primes_count_is_correct(std::int64_t result, std::int64_t expect) -> bool {
+  return expect < 0 || result == expect;
+}
+
+template <typename Fn>
+void run_primes(benchmark::State &state, Fn fn) {
+  std::int64_t n = state.range(0);
+  std::int64_t expect = primes_expected(n);
+
+  state.counters["n"] = static_cast<double>(n);
+
+  lf_bench::bench(state, lf_bench::no_threads, expect, primes_count_is_correct, [n, fn]() mutable -> std::int64_t {
+    benchmark::DoNotOptimize(n);
+    return std::invoke(fn, n);
+  });
 }
