@@ -36,27 +36,13 @@ struct fib {
 template <lf::scheduler Sch>
 void run(benchmark::State &state) {
 
-  std::int64_t n = state.range(0);
-  std::int64_t expect = fib_ref(n);
-
-  state.counters["n"] = static_cast<double>(n);
-  state.counters["p"] = static_cast<double>(thread_count<Sch>(state));
-  state.SetComplexityN(static_cast<benchmark::IterationCount>(thread_count<Sch>(state)));
-
+  auto threads = static_cast<std::int64_t>(thread_count<Sch>(state));
   Sch scheduler = make_scheduler<Sch>(state);
 
-  for (auto _ : state) {
-    benchmark::DoNotOptimize(n);
+  run_fib_mt(state, threads, [&](std::int64_t n) -> std::int64_t {
     lf::receiver recv = lf::schedule(scheduler, fib{}, n);
-    std::int64_t return_value = std::move(recv).get();
-
-    if (return_value != expect) {
-      state.SkipWithError(std::format("incorrect result: {} != {}", return_value, expect));
-      break;
-    }
-
-    benchmark::DoNotOptimize(return_value);
-  }
+    return std::move(recv).get();
+  });
 }
 
 } // namespace

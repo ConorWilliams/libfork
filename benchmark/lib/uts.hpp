@@ -1,5 +1,9 @@
 #pragma once
 
+#include <benchmark/benchmark.h>
+
+#include "bench.hpp"
+
 // Include the C UTS library header first (it defines max/min macros that would
 // clash with std::max/std::min after import std).
 #include "uts/uts.h"
@@ -48,3 +52,27 @@ enum uts_tree : char {
 void setup_tree(uts_tree tree);
 
 auto expected_result(uts_tree tree) -> result;
+
+template <typename Fn>
+void run_uts(benchmark::State &state, uts_tree tree, Fn &&fn) {
+  setup_tree(tree);
+  auto expect = expected_result(tree);
+
+  lf_bench::bench(state, expect, [&]() -> result {
+    Node root;
+    uts_initRoot(&root, type);
+    return std::invoke(fn, &root);
+  });
+}
+
+template <typename Fn>
+void run_uts_mt(benchmark::State &state, uts_tree tree, std::int64_t threads, Fn &&fn) {
+  setup_tree(tree);
+  auto expect = expected_result(tree);
+
+  lf_bench::bench_mt(state, threads, expect, [&]() -> result {
+    Node root;
+    uts_initRoot(&root, type);
+    return std::invoke(fn, &root);
+  });
+}

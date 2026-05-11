@@ -44,21 +44,9 @@ auto uts_traverse(int depth, Node *parent) -> result {
 }
 
 void uts_serial(benchmark::State &state, uts_tree tree) {
-  setup_tree(tree);
-  auto expect = expected_result(tree);
-
-  for (auto _ : state) {
-    Node root;
-    uts_initRoot(&root, type);
-    result r = uts_traverse(0, &root);
-
-    if (r != expect) {
-      state.SkipWithError(std::format("incorrect result: {} != {}", r, expect));
-      break;
-    }
-
-    benchmark::DoNotOptimize(r);
-  }
+  run_uts(state, tree, [](Node *root) {
+    return uts_traverse(0, root);
+  });
 }
 
 } // namespace
@@ -103,21 +91,9 @@ auto uts_traverse_no_alloc(int depth, Node *parent) -> result {
 }
 
 void uts_serial_no_alloc(benchmark::State &state, uts_tree tree) {
-  setup_tree(tree);
-  auto expect = expected_result(tree);
-
-  for (auto _ : state) {
-    Node root;
-    uts_initRoot(&root, type);
-    result r = uts_traverse_no_alloc(0, &root);
-
-    if (r != expect) {
-      state.SkipWithError(std::format("incorrect result: {} != {}", r, expect));
-      break;
-    }
-
-    benchmark::DoNotOptimize(r);
-  }
+  run_uts(state, tree, [](Node *root) {
+    return uts_traverse_no_alloc(0, root);
+  });
 }
 
 } // namespace

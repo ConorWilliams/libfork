@@ -62,28 +62,49 @@ auto fold_result_is_correct(fold_accum_t<T> result, fold_accum_t<T> expect) -> b
   }
 }
 
-template <fold_data_mode Data, typename T, typename Fn>
-void run_fold_input(benchmark::State &state, Fn &&fn) {
-
+template <fold_data_mode Data, typename T, typename Fn, typename BenchFn>
+void run_fold_input_impl(benchmark::State &state, Fn &&fn, BenchFn &&bench_fn) {
   auto n = static_cast<std::size_t>(state.range(0));
   auto expect = expected_fold_result<T>(n);
 
-  auto bench = [&](auto range) -> void {
-    for (auto _ : state) {
-      if (auto result = std::invoke(fn, range); !fold_result_is_correct<T>(result, expect)) {
-        state.SkipWithError(std::format("incorrect result: {} != {}", result, expect));
-        break;
-      }
-    }
+  auto run = [&](auto range) -> void {
+    auto measure = [&]() -> fold_accum_t<T> {
+      return std::invoke(fn, range);
+    };
+    auto check = [](auto result, auto expected) {
+      return fold_result_is_correct<T>(result, expected);
+    };
+    std::invoke(bench_fn, expect, measure, check);
   };
 
   if constexpr (Data == fold_data_mode::memory) {
-    bench(make_fold_range<T>(n) | std::ranges::to<std::vector<T>>());
+    run(make_fold_range<T>(n) | std::ranges::to<std::vector<T>>());
   } else {
-    bench(make_fold_range<T>(n));
+    run(make_fold_range<T>(n));
   }
 
   state.SetItemsProcessed(state.iterations() * static_cast<std::int64_t>(n));
+}
+
+template <fold_data_mode Data, typename T, typename Fn>
+void run_fold_input(benchmark::State &state, Fn &&fn) {
+  run_fold_input_impl<Data, T>(
+      state, std::forward<Fn>(fn), [&](const auto &expect, auto &&measure, auto &&check) {
+        lf_bench::bench(
+            state, expect, std::forward<decltype(measure)>(measure), std::forward<decltype(check)>(check));
+      });
+}
+
+template <fold_data_mode Data, typename T, typename Fn>
+void run_fold_input_mt(benchmark::State &state, std::int64_t threads, Fn &&fn) {
+  run_fold_input_impl<Data, T>(
+      state, std::forward<Fn>(fn), [&](const auto &expect, auto &&measure, auto &&check) {
+        lf_bench::bench_mt(state,
+                           threads,
+                           expect,
+                           std::forward<decltype(measure)>(measure),
+                           std::forward<decltype(check)>(check));
+      });
 }
 
 // Use alias for shorted names.
@@ -98,13 +119,13 @@ inline constexpr auto async_proj = fold_projection_mode::async;
 using int32 = std::int32_t;
 using float32 = float;
 
-#define LF_FOLD_BENCH_SIZES_SMALL(bench_fn, category, name, ...)                                                   \
+#define LF_FOLD_BENCH_SIZES_SMALL(bench_fn, category, name, ...)                                             \
   BENCH_ONE(bench_fn, category, name, test, fold __VA_OPT__(, ) __VA_ARGS__)                                 \
   BENCH_ONE(bench_fn, category, name, base, fold_1024 __VA_OPT__(, ) __VA_ARGS__)                            \
-  BENCH_ONE(bench_fn, category, name, base, fold_1024_sq __VA_OPT__(, ) __VA_ARGS__)                         \
+  BENCH_ONE(bench_fn, category, name, base, fold_1024_sq __VA_OPT__(, ) __VA_ARGS__)
 
 #define LF_FOLD_BENCH_SIZES(bench_fn, category, name, ...)                                                   \
-  LF_FOLD_BENCH_SIZES_SMALL(bench_fn, category, name __VA_OPT__(, ) __VA_ARGS__)                                 \
+  LF_FOLD_BENCH_SIZES_SMALL(bench_fn, category, name __VA_OPT__(, ) __VA_ARGS__)                             \
   BENCH_ONE(bench_fn, category, name, base, fold_1024_cu __VA_OPT__(, ) __VA_ARGS__)
 
 #define LF_FOLD_BENCH_SIZES_MT(bench_fn, category, name, ...)                                                \

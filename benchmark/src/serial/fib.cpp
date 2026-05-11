@@ -24,22 +24,11 @@ auto fib_impl(std::int64_t &ret, std::int64_t n) -> void {
 
 template <typename = void>
 void fib_serial(benchmark::State &state) {
-
-  std::int64_t n = state.range(0);
-  std::int64_t expect = fib_ref(n);
-
-  state.counters["n"] = static_cast<double>(n);
-
-  for (auto _ : state) {
-    benchmark::DoNotOptimize(n);
+  run_fib(state, [](std::int64_t n) -> std::int64_t {
     std::int64_t result = 0;
     fib_impl(result, n);
-    if (result != expect) {
-      state.SkipWithError(std::format("incorrect result: {} != {}", result, expect));
-      break;
-    }
-    benchmark::DoNotOptimize(result);
-  }
+    return result;
+  });
 }
 
 auto fib_ret_impl(std::int64_t n) -> std::int64_t {
@@ -55,21 +44,7 @@ auto fib_ret_impl(std::int64_t n) -> std::int64_t {
 
 template <typename = void>
 void fib_serial_return(benchmark::State &state) {
-
-  std::int64_t n = state.range(0);
-  std::int64_t expect = fib_ref(n);
-
-  state.counters["n"] = static_cast<double>(n);
-
-  for (auto _ : state) {
-    benchmark::DoNotOptimize(n);
-    std::int64_t result = fib_ret_impl(n);
-    if (result != expect) {
-      state.SkipWithError(std::format("incorrect result: {} != {}", result, expect));
-      break;
-    }
-    benchmark::DoNotOptimize(result);
-  }
+  run_fib(state, fib_ret_impl);
 }
 
 } // namespace

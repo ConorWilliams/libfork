@@ -1,7 +1,12 @@
 #pragma once
 
+#include <benchmark/benchmark.h>
+
+#include "bench.hpp"
+
 #ifdef LF_BENCH_NO_IMPORT_STD
   #include <cstdint>
+  #include <functional>
 #else
 import std;
 #endif
@@ -28,4 +33,30 @@ constexpr auto fib_ref(std::int64_t n) -> std::int64_t {
   }
 
   return curr;
+}
+
+template <typename Fn>
+void run_fib(benchmark::State &state, Fn &&fn) {
+  std::int64_t n = state.range(0);
+  std::int64_t expect = fib_ref(n);
+
+  state.counters["n"] = static_cast<double>(n);
+
+  lf_bench::bench(state, expect, [&]() -> std::int64_t {
+    benchmark::DoNotOptimize(n);
+    return std::invoke(fn, n);
+  });
+}
+
+template <typename Fn>
+void run_fib_mt(benchmark::State &state, std::int64_t threads, Fn &&fn) {
+  std::int64_t n = state.range(0);
+  std::int64_t expect = fib_ref(n);
+
+  state.counters["n"] = static_cast<double>(n);
+
+  lf_bench::bench_mt(state, threads, expect, [&]() -> std::int64_t {
+    benchmark::DoNotOptimize(n);
+    return std::invoke(fn, n);
+  });
 }

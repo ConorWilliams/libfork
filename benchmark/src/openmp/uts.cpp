@@ -55,30 +55,17 @@ auto uts(int depth, Node *parent) -> result {
 void uts_run(benchmark::State &state, uts_tree tree) {
   int threads = static_cast<int>(state.range(0));
 
-  setup_tree(tree);
-  auto expect = expected_result(tree);
-
-  state.counters["p"] = static_cast<double>(threads);
-  state.SetComplexityN(static_cast<benchmark::IterationCount>(threads));
-
-  for (auto _ : state) {
-    Node root;
-    uts_initRoot(&root, type);
+  run_uts_mt(state, tree, threads, [threads](Node *root) -> result {
     result r;
 
 #pragma omp parallel num_threads(threads) default(shared)
 #pragma omp single nowait
     {
-      r = uts(0, &root);
+      r = uts(0, root);
     }
 
-    if (r != expect) {
-      state.SkipWithError(std::format("incorrect result: {} != {}", r, expect));
-      break;
-    }
-
-    benchmark::DoNotOptimize(r);
-  }
+    return r;
+  });
 }
 
 } // namespace
