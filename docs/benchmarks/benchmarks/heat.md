@@ -1,5 +1,5 @@
 ---
-icon: lucide/thermometer-sun
+icon: lucide/flame
 ---
 
 # Heat
