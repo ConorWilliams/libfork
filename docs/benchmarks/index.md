@@ -1,87 +1,61 @@
 ---
-icon: lucide/timer
+icon: lucide/activity
 ---
 
-# Benchmarks
+# Performance
 
-The benchmark suite measures fork-join task overhead, scheduler behavior, and
-classic recursive or data-parallel kernels. It is built on Google Benchmark and
-is organized around benchmark families. Each family page explains the workload,
-expected scaling, bottlenecks, and available implementations.
+`libfork` is designed for strict fork-join parallelism where many small
+coroutines cooperate through continuation stealing. The benchmark suite measures
+the costs that matter for that model: task creation, joining, scheduling,
+worker-to-worker stealing, scheduler switching, and the point where real
+workloads stop being scheduler-bound and become limited by memory, cache
+locality, or arithmetic throughput.
 
-## Running
+## Benchmark Graphs
 
-Build benchmarks in release mode:
+Graphs will be added here once the plotting pipeline is checked in.
 
-```sh
-cmake --preset ci-release -DCMAKE_TOOLCHAIN_FILE=cmake/llvm-brew-toolchain.cmake
-cmake --build --preset ci-release
-```
+For detailed workload notes, input sizes, and links to each benchmark family,
+see the [benchmarks index](benchmarks/index.md). To build and run the suite
+locally, see [reproducing results](reproducing.md).
 
-On Linux, use `cmake/gcc-brew-toolchain.cmake`.
+## Scaling Model
 
-Benchmark names use this shape:
+Amdahl's law gives the first-order limit on speedup:
 
 ```text
-<mode>/<category>/<name>[/template-or-argument-tags]
+speedup(p) <= 1 / (s + (1 - s) / p)
 ```
 
-`mode` is normally `test`, `base`, or `large`. Test inputs are for correctness
-and smoke runs. Base inputs are the default comparison sizes. Large inputs are
-intended for machines where the working set and runtime are acceptable.
+where `p` is the worker count and `s` is the fraction of work that remains
+serial. Fork-join runtimes also care about the work/span model. `T1` is total
+work, `Tinf` is the critical path length, and available parallelism is roughly
+`T1 / Tinf`. A benchmark can only scale while it has enough ready work to occupy
+the workers and each task has enough useful work to amortize fork, scheduling,
+and join overhead.
 
-## Implementations
+This is why the suite includes both tiny recursive microbenchmarks and larger
+algorithmic kernels. Fibonacci and Skynet expose scheduler overhead directly.
+Heat, matrix multiply, sorting, scans, reductions, and search kernels show where
+memory bandwidth, cache behavior, load balance, allocation, and synchronization
+replace scheduler overhead as the dominant cost.
 
-The source tree separates shared benchmark data from implementation variants:
+## Compared Implementations
 
-- [`benchmark/lib/`](../../benchmark/lib/)
-  contains shared kernels, input sizes, and correctness helpers.
-- [`benchmark/src/libfork/`](../../benchmark/src/libfork/)
-  contains libfork coroutine and scheduler benchmarks.
-- [`benchmark/src/serial/`](../../benchmark/src/serial/)
-  contains single-threaded baselines.
-- [`benchmark/src/openmp/`](../../benchmark/src/openmp/)
-  contains OpenMP tasking comparisons where present.
-- [`benchmark/src/baremetal/`](../../benchmark/src/baremetal/)
-  contains low-level coroutine or data-structure baselines.
+The benchmark source tree separates shared inputs and reference checks from
+implementation variants:
 
-## Families
-
-- [Fibonacci](benchmarks/fib.md): recursive task overhead and frame allocation.
-- [Fold](benchmarks/fold.md): reductions over memory-backed and lazy ranges.
-- [Unbalanced Tree Search](benchmarks/uts.md): irregular search-tree traversal.
-- [Random Scheduler Switch](benchmarks/switch-random.md): cross-pool coroutine
-  migration during recursive Fibonacci.
-- [I/O Pool Switch](benchmarks/switch-io-pool.md): request fan-out with explicit
-  compute-pool and I/O-pool hops.
-- [Heat](benchmarks/heat.md): Jacobi heat-diffusion stencil.
-- [Integrate](benchmarks/integrate.md): adaptive recursive quadrature.
-- [Knapsack](benchmarks/knapsack.md): exact branch-and-bound search.
-- [Mandelbrot](benchmarks/mandelbrot.md): per-pixel escape-time computation.
-- [Matrix Multiply](benchmarks/matmul.md): recursive cubic matrix multiply.
-- [Strassen](benchmarks/strassen.md): recursive seven-product matrix multiply.
-- [N-Queens](benchmarks/nqueens.md): recursive backtracking search.
-- [Primes](benchmarks/primes.md): trial-division prime counting.
-- [Quicksort](benchmarks/quicksort.md): in-place divide-and-conquer sorting.
-- [Scan](benchmarks/scan.md): repeated inclusive prefix scan.
-- [Skynet](benchmarks/skynet.md): regular recursive fan-out reduction.
-
-## Interpreting Results
-
-For scheduler benchmarks, near-linear speedup is possible only while there is
-enough ready work to keep all workers busy and each task has enough work to
-amortize fork, scheduling, and join costs. Recursive microbenchmarks such as
-Fibonacci intentionally create tiny tasks, so they are most useful for comparing
-runtime overhead rather than end-user algorithms.
-
-For data-parallel kernels, memory bandwidth, cache locality, allocation rate,
-and reduction or synchronization costs usually dominate before raw worker count
-does. Compare variants at the same input size, compiler, CPU frequency policy,
-and thread count.
+- [`benchmark/src/libfork/`](../../benchmark/src/libfork/) measures `libfork`
+  coroutine tasks and scheduler implementations.
+- [`benchmark/src/serial/`](../../benchmark/src/serial/) provides
+  single-threaded baselines for the same workload families.
+- [`benchmark/src/openmp/`](../../benchmark/src/openmp/) provides OpenMP tasking
+  comparisons where the workload has an OpenMP implementation.
+- [`benchmark/src/baremetal/`](../../benchmark/src/baremetal/) contains
+  low-level coroutine or data-structure baselines used to isolate runtime costs.
 
 Useful background:
 
 - [libfork paper](https://arxiv.org/abs/2402.18480)
-- [Google Benchmark user guide](https://github.com/google/benchmark/blob/main/docs/user_guide.md)
-- [OpenMP 5.2 task construct](https://www.openmp.org/spec-html/5.2/openmpse73.html)
 - [Scheduling multithreaded computations by work stealing](https://doi.org/10.1145/324133.324234)
+- [OpenMP 5.2 task construct](https://www.openmp.org/spec-html/5.2/openmpse73.html)

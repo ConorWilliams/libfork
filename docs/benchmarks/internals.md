@@ -1,0 +1,134 @@
+---
+icon: lucide/code-2
+---
+
+# Benchmark Internals
+
+The benchmark internals are split between shared family wrappers in
+`benchmark/lib/` and implementation-specific registrations under
+`benchmark/src/<implementation>/`.
+
+## Benchmark Functions
+
+The common loop is `lf_bench::bench` in `benchmark/lib/bench.hpp`. It owns the
+central Google Benchmark iteration loop, result checking, error reporting, and
+`DoNotOptimize` call.
+
+Use the overload without a thread count for serial or single-worker variants:
+
+```cpp
+lf_bench::bench(state, expected, [] {
+  return run_work();
+});
+```
+
+Use the overload with a thread count for benchmark registrations whose argument
+list includes `p`:
+
+```cpp
+lf_bench::bench(state, threads, expected, [] {
+  return run_parallel_work();
+});
+```
+
+If equality is not the right correctness check, pass a custom predicate before
+the workload callable:
+
+```cpp
+lf_bench::bench(state, expected, result_is_close, [] {
+  return run_work();
+});
+```
+
+For threaded benchmarks, `bench` also reports `state.counters["p"]`, the thread
+count, and calls `SetComplexityN(p)` for the inverse-complexity reporter used by
+the multi-threaded registration macros.
+
+Each benchmark family should hide input construction, expected-result
+calculation, and family-specific counters in a helper in `benchmark/lib/`. For
+example, `fib.hpp` exposes `run_fib`:
+
+```cpp
+template <typename Fn>
+void run_fib(benchmark::State &state, std::int64_t threads, Fn fn);
+
+template <typename Fn>
+void run_fib(benchmark::State &state, Fn fn);
+```
+
+The implementation-specific source supplies only the work:
+
+```cpp
+void fib_run(benchmark::State &state) {
+  run_fib(state, [](std::int64_t n) {
+    return fib_impl(n);
+  });
+}
+```
+
+Threaded variants put `threads` before the callable so the workload remains the
+last argument:
+
+```cpp
+void fib_run(benchmark::State &state) {
+  auto threads = state.range(1);
+  run_fib(state, threads, [threads](std::int64_t n) {
+    return fib_impl(n, threads);
+  });
+}
+```
+
+The same wrapper pattern is used by `run_fib`, `run_fold_input`, `run_heat`,
+`run_integrate`, `run_knapsack`, `run_mandelbrot`, `run_matmul`,
+`run_nqueens`, `run_primes`, `run_quicksort`, `run_scan`, `run_skynet`, and
+`run_uts`. Benchmarks that do not need a family wrapper can still call
+`lf_bench::bench` directly once they have set counters and built an expected
+result.
+
+## Benchmark Macros
+
+Registration macros live in `benchmark/lib/macros.hpp`. They wrap
+`benchmark::RegisterBenchmark`, build the benchmark name, and attach the
+appropriate argument sets.
+
+Standard single-argument benchmarks use:
+
+```cpp
+BENCH_ONE(bench_fn, category, name, mode, prefix, ...);
+BENCH_ALL(bench_fn, category, name, prefix, ...);
+```
+
+`BENCH_ONE` registers one size. The size comes from `prefix##_##mode`; for
+example, `BENCH_ONE(fib_run, serial, fib, test, fib)` uses `fib_test`.
+`BENCH_ALL` registers the `test` and `base` sizes.
+
+Multi-threaded standard benchmarks use:
+
+```cpp
+BENCH_ONE_MT(bench_fn, category, name, mode, prefix, ...);
+BENCH_ALL_MT(bench_fn, category, name, prefix, ...);
+```
+
+These register argument pairs `{size, p}`. The size still comes from
+`prefix##_##mode`; `p` is generated from hardware-supported thread counts:
+`1, 2, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96`, stopping once the value exceeds
+`std::thread::hardware_concurrency()`.
+
+UTS has separate macros because its first benchmark argument is the thread count
+and the tree selection is captured in the registration lambda:
+
+```cpp
+UTS_BENCH_ONE(bench_fn, category, mode, tree_name, tree_id, ...);
+UTS_BENCH_ALL(bench_fn, category, ...);
+UTS_BENCH_ONE_MT(bench_fn, category, mode, tree_name, tree_id, ...);
+UTS_BENCH_ALL_MT(bench_fn, category, ...);
+```
+
+`UTS_BENCH_ALL` registers the mini, base, and large tree presets. The
+multi-threaded form registers the same tree presets for each supported thread
+count.
+
+The variadic macro arguments are both template arguments for the benchmark
+function and a readable suffix in the benchmark name. Spaces are stripped from
+the formatted name, so template-heavy libfork scheduler names remain usable in
+Google Benchmark filters.
