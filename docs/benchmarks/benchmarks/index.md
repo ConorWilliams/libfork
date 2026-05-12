@@ -4,10 +4,6 @@ icon: lucide/list
 
 # Benchmark catalogue
 
-For a quick primer on parallel scaling read the [parallel scaling
-section](../index.md#parallel-scaling). For local runs, start with the
-[reproducing](../reproducing.md) page.
-
 ## Divide and conquer
 
 These benchmarks follow a recursive divide-and-conquer pattern, they are the
