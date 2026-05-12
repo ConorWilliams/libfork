@@ -8,7 +8,8 @@ icon: lucide/list
 
 These benchmarks follow a recursive divide-and-conquer pattern, they are the
 poster child of fork-join frameworks, where these kinds of algorithms are
-natural to parallelize.
+natural to parallelize. The key feature is tasks can recursively spawn more
+tasks in a parent-child relationship.
 
 ### Homogeneous
 
