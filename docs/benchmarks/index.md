@@ -2,7 +2,7 @@
 icon: lucide/timer
 ---
 
-# Performance
+# Benchmarks
 
 `libfork` is designed for strict fork-join parallelism where many small
 coroutines cooperate through continuation stealing. The benchmark suite measures
@@ -16,8 +16,8 @@ locality, or arithmetic throughput.
 Graphs will be added here once the plotting pipeline is checked in.
 
 For detailed workload notes, input sizes, and links to each benchmark family,
-see the [benchmarks index](benchmarks/index.md). To build and run the suite
-locally, see [reproducing results](reproducing.md).
+see the [catalogue](benchmarks/index.md). To build and run the suite locally,
+see [reproducing results](reproducing.md).
 
 ## Scaling Model
 
