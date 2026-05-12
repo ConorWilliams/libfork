@@ -42,9 +42,12 @@ These benchmarks have irregular task graphs where the work per child task can
 vary. The degree of irregularity can vary from benchmark to benchmark.
 Scheduling irregular workloads is substantially more difficult and often
 results in a higher scheduling overhead (e.g. for things like work stealing).
-Highly orregular workloads can also mandate a finer task granularity to achieve
-goog load balancing which puts further demands on minimizing per-task
+Highly irregular workloads can also mandate a finer task granularity to achieve
+good load balancing which puts further demands on minimizing per-task
 scheduling overhead.
+
+These benchmarks are prime examples of the kinds of programs that are very hard
+to parallelize efficiency with less flexible parallel programming models.
 
 TODO: link T1/T3 families
 
