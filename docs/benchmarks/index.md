@@ -4,36 +4,47 @@ icon: lucide/timer
 
 # Benchmarks
 
-`libfork` is designed for strict fork-join parallelism where many small
-coroutines cooperate through continuation stealing. The benchmark suite measures
-the costs that matter for that model: task creation, joining, scheduling,
-worker-to-worker stealing, scheduler switching, and the point where real
-workloads stop being scheduler-bound and become limited by memory, cache
-locality, or arithmetic throughput.
+`libfork` is engineered for performance and has a comprehensive [benchmark
+suite](./benchmarks/index.md) (which you can [reproduce
+locally](reproducing.md)). For a detailed review of `libfork` on 1-112 cores see
+[our paper](https://ieeexplore.ieee.org/document/10891812)[^1], the headline
+results are __linear time and memory scaling__, for
+[v3.x](https://github.com/ConorWilliams/libfork/releases/tag/v3.8.0) this
+translated to:
 
-## Performance results
+[^1]: A slightly older version is avaliable on [arXiv](https://arxiv.org/abs/2402.18480)
 
-Graphs will be added here once the plotting pipeline is checked in.
+- Up to 7.5× faster and 19× less memory consumption than OneTBB.
+- Up to 24× faster and 24× less memory consumption than OpenMP (libomp).
+- Up to 100× faster and >100× less memory consumption than taskflow.
 
-For detailed workload notes, input sizes, and links to each benchmark family,
-see the [catalogue](benchmarks/index.md). To build and run the suite locally,
-see [reproducing results](reproducing.md).
+## Latest performance
 
-### Compared libraries
+`libfork` has [expanded](../../ChangeLog.md) since the paper, with new features
+and optimizations. In addition the landscape has evolved. This section is a
+quick summary of the state-of-the-art.
 
-The benchmark source tree separates shared inputs and reference checks from
-implementation variants:
+### Scheduler overhead
 
-- [`benchmark/src/libfork/`](../../benchmark/src/libfork/) measures `libfork`
-  coroutine tasks and scheduler implementations.
-- [`benchmark/src/serial/`](../../benchmark/src/serial/) provides
-  single-threaded baselines for the same workload families.
-- [`benchmark/src/openmp/`](../../benchmark/src/openmp/) provides OpenMP tasking
-  comparisons where the workload has an OpenMP implementation.
-- [`benchmark/src/baremetal/`](../../benchmark/src/baremetal/) contains
-  low-level coroutine or data-structure baselines used to isolate runtime costs.
+For a quick comparison with other libraries, the average time to spawn/run a
+task during the recursive [Fibonacci benchmark](./benchmarks/fib.md) gives a
+good approximation to the tasking overhead and peak throughput[^2]:
 
-## Performance scaling
+TODO: graph
+
+[^2]: All measured on a MacBook xxx with Clang XXX
+
+### Memory consumption
+
+TODO:
+
+### Details of compared implementations
+
+The implementations above correspond to:
+
+- `libfork`
+
+## Parallel scaling
 
 ### Parallel speedup
 

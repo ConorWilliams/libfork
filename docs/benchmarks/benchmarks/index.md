@@ -2,13 +2,18 @@
 icon: lucide/list
 ---
 
-# Catalogue
+# Benchmark catalogue
 
 Each page documents one benchmark family: what it measures, which inputs are
-registered, what scaling behavior to expect, and where the source lives.
-
-For local runs, start with [reproducing results](../reproducing.md). For shared
-benchmark helpers and registration macros, see [benchmark internals](../internals.md).
+registered, what scaling behavior to expect. For a quick primer on parallel
+scaling read the [parallel scaling section](../index.md#parallel-scaling).
+<!---->
+<!-- For local runs, start with [reproducing results](../benchmarks/reproducing.md). For shared -->
+<!-- benchmark helpers and registration macros, see [benchmark internals](../internals.md). -->
+<!---->
+<!-- For detailed workload notes, input sizes, and links to each benchmark family, -->
+<!-- see the [catalogue](benchmarks/index.md). To build and run the suite locally, -->
+<!-- see [reproducing results](reproducing.md). -->
 
 ## Benchmarks
 
