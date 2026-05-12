@@ -11,7 +11,7 @@ worker-to-worker stealing, scheduler switching, and the point where real
 workloads stop being scheduler-bound and become limited by memory, cache
 locality, or arithmetic throughput.
 
-## Benchmark Graphs
+## Performance results
 
 Graphs will be added here once the plotting pipeline is checked in.
 
@@ -19,9 +19,27 @@ For detailed workload notes, input sizes, and links to each benchmark family,
 see the [catalogue](benchmarks/index.md). To build and run the suite locally,
 see [reproducing results](reproducing.md).
 
-## Scaling Model
+### Compared libraries
 
-Amdahl's law gives the first-order limit on speedup:
+The benchmark source tree separates shared inputs and reference checks from
+implementation variants:
+
+- [`benchmark/src/libfork/`](../../benchmark/src/libfork/) measures `libfork`
+  coroutine tasks and scheduler implementations.
+- [`benchmark/src/serial/`](../../benchmark/src/serial/) provides
+  single-threaded baselines for the same workload families.
+- [`benchmark/src/openmp/`](../../benchmark/src/openmp/) provides OpenMP tasking
+  comparisons where the workload has an OpenMP implementation.
+- [`benchmark/src/baremetal/`](../../benchmark/src/baremetal/) contains
+  low-level coroutine or data-structure baselines used to isolate runtime costs.
+
+## Performance scaling
+
+### Parallel speedup
+
+### Amdhal's law
+
+[Amdahl's law](https://en.wikipedia.org/wiki/Amdahl%27s_law) gives the first-order limit on speedup:
 
 ```text
 speedup(p) <= 1 / (s + (1 - s) / p)
@@ -39,20 +57,6 @@ algorithmic kernels. Fibonacci and Skynet expose scheduler overhead directly.
 Heat, matrix multiply, sorting, scans, reductions, and search kernels show where
 memory bandwidth, cache behavior, load balance, allocation, and synchronization
 replace scheduler overhead as the dominant cost.
-
-## Compared Implementations
-
-The benchmark source tree separates shared inputs and reference checks from
-implementation variants:
-
-- [`benchmark/src/libfork/`](../../benchmark/src/libfork/) measures `libfork`
-  coroutine tasks and scheduler implementations.
-- [`benchmark/src/serial/`](../../benchmark/src/serial/) provides
-  single-threaded baselines for the same workload families.
-- [`benchmark/src/openmp/`](../../benchmark/src/openmp/) provides OpenMP tasking
-  comparisons where the workload has an OpenMP implementation.
-- [`benchmark/src/baremetal/`](../../benchmark/src/baremetal/) contains
-  low-level coroutine or data-structure baselines used to isolate runtime costs.
 
 Useful background:
 
