@@ -1,5 +1,5 @@
 ---
-icon: lucide/terminal
+icon: lucide/copy
 ---
 
 # Reproducing Results

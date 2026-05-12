@@ -45,7 +45,7 @@ TODO: use names binary/geometric
 - [Mandelbrot](mandelbrot.md): per-pixel escape-time computation.
 - [Primes](primes.md): trial-division prime counting.
 
-### Other
+### Other/special
 
 - [Random Scheduler Switch](switch-random.md): cross-pool coroutine migration during recursive Fibonacci.
 - [I/O Pool Switch](switch-io-pool.md): request fan-out with explicit compute-pool and I/O-pool hops.
