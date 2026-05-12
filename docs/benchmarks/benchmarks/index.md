@@ -8,15 +8,13 @@ For a quick primer on parallel scaling read the [parallel scaling
 section](../index.md#parallel-scaling). For local runs, start with the
 [reproducing](../reproducing.md) page.
 
-## Benchmarks
-
-### Divide and conquer
+## Divide and conquer
 
 These benchmarks follow a recursive divide-and-conquer pattern, they are the
-poster child of fork-join frameworks where these kinds of algorithms are
+poster child of fork-join frameworks, where these kinds of algorithms are
 natural to parallelize.
 
-#### Homogeneous
+### Homogeneous
 
 Task graphs that are regular produce approximately equal work per child task in
 any give parent task. This makes scheduling easier as work follows a
@@ -36,7 +34,7 @@ tasks close to the root of the graph.
     fast core) hence, these are classifications more about regularity of the task
     graph.
 
-#### Heterogeneous
+### Heterogeneous
 
 These benchmarks have irregular task graphs where the work per child task can
 vary. The degree of irregularity can vary from benchmark to benchmark.
@@ -54,18 +52,18 @@ TODO: link T1/T3 families
 - [Unbalanced tree search (binary)](uts.md): irregular search-tree traversal.
 - [Integrate](integrate.md): adaptive recursive quadrature integral.
 
-### Bulk parallelism
+## Bulk parallelism
 
-#### Homogeneous
+### Homogeneous
 
 - [Heat](heat.md): Jacobi heat-diffusion stencil.
 
-#### Heterogeneous
+### Heterogeneous
 
 - [Mandelbrot](mandelbrot.md): per-pixel escape-time computation.
 - [Primes](primes.md): trial-division prime counting.
 
-### Other/special
+## Other/special
 
 - [Random Scheduler Switch](switch-random.md): cross-pool coroutine migration during recursive Fibonacci.
 - [I/O Pool Switch](switch-io-pool.md): request fan-out with explicit compute-pool and I/O-pool hops.
