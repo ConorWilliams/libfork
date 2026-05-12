@@ -49,11 +49,11 @@ nav = [
   { "Quickstart" = "quickstart.md" },
   { "Changelog" = "ChangeLog.md" },
   { "Contributing" = "contributing.md" },
-  { "Performance" = [
+  { "Benchmarks" = [
     "benchmarks/index.md",
     { "Reproducing" = "benchmarks/reproducing.md" },
     { "Internals" = "benchmarks/internals.md" },
-    { "Benchmarks" = [
+    { "Catalogue" = [
       "benchmarks/benchmarks/index.md",
       { "Fibonacci" = "benchmarks/benchmarks/fib.md" },
       { "Unbalanced Trees" = "benchmarks/benchmarks/uts.md" },

@@ -2,7 +2,7 @@
 icon: lucide/list
 ---
 
-# Benchmarks
+# Catalogue
 
 Each page documents one benchmark family: what it measures, which inputs are
 registered, what scaling behavior to expect, and where the source lives.

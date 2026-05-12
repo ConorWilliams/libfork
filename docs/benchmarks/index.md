@@ -1,5 +1,5 @@
 ---
-icon: lucide/activity
+icon: lucide/timer
 ---
 
 # Performance
