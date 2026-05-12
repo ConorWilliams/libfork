@@ -6,30 +6,36 @@ icon: lucide/list
 
 Each page documents one benchmark family: what it measures, which inputs are
 registered, what scaling behavior to expect. For a quick primer on parallel
-scaling read the [parallel scaling section](../index.md#parallel-scaling).
-<!---->
-<!-- For local runs, start with [reproducing results](../benchmarks/reproducing.md). For shared -->
-<!-- benchmark helpers and registration macros, see [benchmark internals](../internals.md). -->
-<!---->
-<!-- For detailed workload notes, input sizes, and links to each benchmark family, -->
-<!-- see the [catalogue](benchmarks/index.md). To build and run the suite locally, -->
-<!-- see [reproducing results](reproducing.md). -->
+scaling read the [parallel scaling section](../index.md#parallel-scaling). For
+local runs, start with the [reproducing](../reproducing.md) page.
 
 ## Benchmarks
 
 ### Divide and conquer
 
+These benchmarks follow a recursive divide-and-conquer pattern, they are the
+poster child of fork-join frameworks where these kinds of algorithms are
+natural to parallelize.
+
 #### Homogeneous
 
-Note: on heterogenous hardware even homogenous workloads can have irregular
-task costs, so these are more about regularity of the task graph than
-regularity of the task costs.
+Task graphs that are regular produce approximately equal work per child task in
+any give parent task. This makes scheduling easier as work follows a
+predictable pattern. Work can be quickly evenly distributed by sharing some
+tasks close to the root of the graph.
 
-- [Fibonacci](fib.md): recursive task overhead and frame allocation.
-- [Unbalanced tree search T1](uts.md): regular search-tree traversal.
-- [Fold](fold.md): reductions over memory-backed and lazy ranges.
+- [Fibonacci](fib.md): recursive computation of the Fibonacci numbers.
+- [Unbalanced tree search (geometric)](uts.md): regular search-tree traversal.
 - [Matrix multiply](matmul.md): recursive cubic matrix multiply.
-- [Scan](scan.md): repeated inclusive prefix scan.
+- [Fold](fold.md): reductions over memory-backed and lazy ranges.
+- [Scan](scan.md): prefix sums over memory-backed and lazy ranges.
+
+!!! info
+
+    On modern heterogeneous hardware even homogeneous workloads can have irregular
+    task costs (as a slower core may take longer to complete the same work as a
+    fast core) hence, these are classifications more about regularity of the task
+    graph.
 
 #### Heterogeneous
 
