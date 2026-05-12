@@ -51,6 +51,8 @@ TODO: link T1/T3 families
 
 ## Bulk parallelism
 
+These programs are categorized by a shallow very wide task graphs.
+
 ### Homogeneous
 
 - [Heat](heat.md): Jacobi heat-diffusion stencil.
