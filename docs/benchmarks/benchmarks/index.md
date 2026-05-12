@@ -4,10 +4,9 @@ icon: lucide/list
 
 # Benchmark catalogue
 
-Each page documents one benchmark family: what it measures, which inputs are
-registered, what scaling behavior to expect. For a quick primer on parallel
-scaling read the [parallel scaling section](../index.md#parallel-scaling). For
-local runs, start with the [reproducing](../reproducing.md) page.
+For a quick primer on parallel scaling read the [parallel scaling
+section](../index.md#parallel-scaling). For local runs, start with the
+[reproducing](../reproducing.md) page.
 
 ## Benchmarks
 
@@ -33,17 +32,24 @@ tasks close to the root of the graph.
 !!! info
 
     On modern heterogeneous hardware even homogeneous workloads can have irregular
-    task costs (as a slower core may take longer to complete the same work as a
+    task costs (i.e. a slower core may take longer to complete the same work as a
     fast core) hence, these are classifications more about regularity of the task
     graph.
 
 #### Heterogeneous
 
-TODO: link T1/T3 families
-TODO: use names binary/geometric
+These benchmarks have irregular task graphs where the work per child task can
+vary. The degree of irregularity can vary from benchmark to benchmark.
+Scheduling irregular workloads is substantially more difficult and often
+results in a higher scheduling overhead (e.g. for things like work stealing).
+Highly orregular workloads can also mandate a finer task granularity to achieve
+goog load balancing which puts further demands on minimizing per-task
+scheduling overhead.
 
-- [Unbalanced tree search T2](uts.md): irregular search-tree traversal.
-- [Integrate](integrate.md): adaptive recursive quadrature.
+TODO: link T1/T3 families
+
+- [Unbalanced tree search (binary)](uts.md): irregular search-tree traversal.
+- [Integrate](integrate.md): adaptive recursive quadrature integral.
 
 ### Bulk parallelism
 
