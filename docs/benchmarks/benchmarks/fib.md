@@ -5,9 +5,59 @@ icon: lucide/git-fork
 # Fibonacci
 
 The Fibonacci benchmark computes `fib(n)` with the deliberately inefficient
-binary recursion. It is a tasking microbenchmark: each internal node creates two
-subproblems, does almost no arithmetic, and joins the results. The serial result
-is checked against an iterative reference implementation.
+binary recursion:
+
+```cpp linenums="1"
+auto fib(int n) -> int {
+  if (n <= 1) {
+    return n;
+  }
+  return fib(n - 1) + fib(n - 2);
+}
+```
+
+It is a tasking microbenchmark: each internal node creates two sub-problems
+(line 5 above) and does almost no work/arithmetic. Hence, it primarily measures
+the overhead of task creation and scheduling.
+
+It is worth noting that, of the two task spawned, only the first should be made
+available for stealing as, after the second task is spawned, the parent can't
+continue until after both children have completed and there is no work for it
+to do in this period.
+
+## Complexity
+
+The time complexity of this algorithm is equal to the number of task spawned,
+let \[S(n)\] be equal to the total number of task spawned by `fib(n)`. Then for
+\(n = 1\):
+
+\[
+S(0) = S(1) = 1
+\]
+
+Because they need to spawn the root task, and for \(n > 1\):
+
+\[
+S(n) = 2 + S(n - 1) + S(n - 2)
+\]
+
+Which is related to the Fibonacci sequence itself:
+
+\[
+S(n) = 2 F(n + 1) - 1
+\]
+
+The proof follows by induction of \(F(0) = f(1) = 1\) and \(F(n) = F(n - 1) +
+F(n - 2)\). The time complexity is therefore exponential in \(n\). The space
+complexity is linear in \(n\) as the longest path from the root to a leaf is
+\(n\) (i.e. the critical path length of the DAG). Similarly the span is linear
+in \(n\) as the longest path from the root to a leaf is \(n\).
+
+## Benchmark sizes
+
+The following problem sizes are available:
+
+- test: `n = 8`
 
 Source:
 
