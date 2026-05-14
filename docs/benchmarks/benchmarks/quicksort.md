@@ -5,39 +5,56 @@ icon: lucide/list-ordered
 # Quicksort
 
 The quicksort benchmark sorts a deterministic random array of 32-bit unsigned
-integers. It uses an in-place partition, a middle-element pivot, tail recursion
-on one side, and insertion sort for small partitions.
+integers. It partitions in place around a middle-element pivot and then sorts
+the two partitions recursively:
 
-Source:
+```cpp linenums="1"
+auto pivot = partition(first, last);
+quicksort(first, pivot);
+quicksort(pivot + 1, last);
+```
 
-- [shared quicksort input](https://github.com/conorwilliams/libfork/blob/main/benchmark/lib/quicksort.hpp)
-- [serial implementation](https://github.com/conorwilliams/libfork/blob/main/benchmark/src/serial/quicksort.cpp)
+Small partitions are handled by insertion sort. The benchmark validates the
+result against `std::sort`.
 
-## What It Measures
+## Complexity
 
-`test` uses 10000 elements; `base` uses 10000000 elements. Each iteration copies
-the original input to a work buffer, sorts it, and validates against
-`std::sort` output.
+With balanced partitions, quicksort performs linear partitioning work at each
+level:
+
+\[
+T_1 = \mathcal{O}(n \log n)
+\]
+
+The worst case is quadratic if the pivot repeatedly creates one empty or tiny
+partition:
+
+\[
+T_1 = \mathcal{O}(n^2)
+\]
+
+The span depends on partition balance. With balanced partitions it follows the
+height of the recursion tree; with bad partitions it becomes linear.
 
 ## Scaling
 
-Parallel quicksort can fork the two partitions after each split. Scaling depends
-on pivot quality and partition balance. Random input with a middle-element pivot
-usually produces enough parallel work, but bad partitions reduce parallelism and
-increase span.
+Quicksort exposes divide-and-conquer parallelism after each partition. The two
+recursive calls are independent, but their sizes depend on the pivot, so the
+task graph is less regular than mergesort.
 
-## Bottlenecks And Granularity
+Partitioning is branch-heavy and memory-bandwidth sensitive. The benchmark also
+copies the deterministic source array into a work buffer inside each measured
+iteration, so copy bandwidth is part of the result.
 
-Partitioning is memory-bandwidth-sensitive and branch-heavy. Sorting small
-partitions is better done inline with insertion sort. A parallel implementation
-should stop spawning when a partition is below a size cutoff, both for task
-overhead and cache locality.
+## Benchmark sizes
 
-The benchmark includes input-copy time inside the measured loop, so memory
-bandwidth for copying is part of the result.
+The following problem sizes are available:
 
-## References
+| Name | Elements | Base case |
+|------|----------|-----------|
+| test | `10'000` | `32` |
+| base | `10'000'000` | `32` |
 
-- [Quicksort overview](https://en.wikipedia.org/wiki/Quicksort)
-- [C++ `std::sort`](https://en.cppreference.com/w/cpp/algorithm/sort)
-- [OpenMP task construct](https://www.openmp.org/spec-html/5.2/openmpse73.html)
+## Results
+
+TODO: results

@@ -1,44 +1,55 @@
 ---
-icon: lucide/flame
+icon: lucide/thermometer-sun
 ---
 
 # Heat
 
-The heat benchmark runs a fixed number of Jacobi sweeps over a square grid.
-Interior cells are updated from their four direct neighbors, while boundary
-cells remain clamped. The final grid is compared against a reference run.
+The heat benchmark applies a two-dimensional Jacobi stencil to a square grid:
 
-Source:
+```cpp linenums="1"
+dst[y, x] = 0.25 * (src[y, x - 1] + src[y, x + 1]
+                  + src[y - 1, x] + src[y + 1, x]);
+```
 
-- [shared heat setup](https://github.com/conorwilliams/libfork/blob/main/benchmark/lib/heat.hpp)
-- [serial implementation](https://github.com/conorwilliams/libfork/blob/main/benchmark/src/serial/heat.cpp)
+The boundary cells are clamped. The initial grid is a deterministic analytic
+profile, and the benchmark checks the final grid after a fixed number of
+iterations.
 
-## What It Measures
+## Complexity
 
-`test` uses a `64 x 64` grid; `base` uses `1024 x 1024`. Each benchmark run
-performs 16 sweeps using two grids and swaps the active buffers between sweeps.
-The initial condition is a deterministic analytic profile.
+For an \(n \times n\) grid and \(k\) iterations, the work is:
+
+\[
+T_1 = \mathcal{O}(k n^2)
+\]
+
+Each time step depends on the previous one, so the span contains the iteration
+loop. Within a single step, the interior cells are independent:
+
+\[
+T_\infty = \mathcal{O}(k)
+\]
+
+The benchmark uses two grids, so the space complexity is \(\mathcal{O}(n^2)\).
 
 ## Scaling
 
-A parallel version should scale by splitting rows, tiles, or bands among
-workers. Each sweep has a global phase boundary because the next sweep depends
-on the previous sweep's full output. Good scaling is expected within a sweep
-until memory bandwidth dominates, but the per-sweep synchronization point limits
-the benefit of very small grids.
+Heat is a regular bulk-parallel stencil. It should distribute evenly across
+workers because every interior cell performs the same amount of arithmetic.
 
-## Bottlenecks And Granularity
+Scaling is normally limited by memory bandwidth and cache behavior rather than
+scheduler imbalance. The global iteration barrier between stencil steps also
+prevents parallelism across time.
 
-This is a memory-bandwidth benchmark. Each interior update reads four doubles
-and writes one double, with little arithmetic per byte. Cache blocking can help
-larger grids by improving locality, but the simple serial baseline streams rows.
+## Benchmark sizes
 
-Granularity should be coarse enough that each task owns many contiguous rows or
-tiles. Per-cell tasks would be dominated by scheduling overhead. Boundary
-handling is small and should not be parallelized separately.
+The following problem sizes are available:
 
-## References
+| Name | Grid | Iterations |
+|------|------|------------|
+| test | `64 x 64` | `16` |
+| base | `1024 x 1024` | `16` |
 
-- [Jacobi method overview](https://en.wikipedia.org/wiki/Jacobi_method)
-- [Stencil computation overview](https://en.wikipedia.org/wiki/Stencil_code)
-- [OpenMP loop scheduling background](https://www.openmp.org/spec-html/5.2/openmpse66.html)
+## Results
+
+TODO: results

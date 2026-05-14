@@ -1,42 +1,52 @@
 ---
-icon: lucide/package
+icon: lucide/backpack
 ---
 
 # Knapsack
 
-The knapsack benchmark solves a deterministic 0/1 knapsack instance exactly
-with branch and bound. Items are sorted by value density, and a fractional
-relaxation bound prunes subtrees that cannot beat the current best value.
+The knapsack benchmark solves the exact 0/1 knapsack problem with recursive
+branch and bound. Items are generated deterministically, sorted by value
+density, and the capacity is set to half the total item weight.
 
-Source:
+At each item, the search either takes the item, if it fits, or skips it. A
+fractional-knapsack relaxation gives an upper bound; subtrees whose bound cannot
+beat the current best solution are pruned.
 
-- [shared knapsack setup](https://github.com/conorwilliams/libfork/blob/main/benchmark/lib/knapsack.hpp)
-- [serial implementation](https://github.com/conorwilliams/libfork/blob/main/benchmark/src/serial/knapsack.cpp)
+## Complexity
 
-## What It Measures
+In the worst case, the search explores both choices for every item:
 
-`test` uses 16 items; `base` uses 28 items. The item weights and values are
-generated from a fixed random seed. The benchmark verifies the branch-and-bound
-answer against a dynamic-programming optimum.
+\[
+T_1 = \mathcal{O}(2^n)
+\]
+
+The branch-and-bound relaxation can make practical work much smaller, but the
+amount of pruning is input dependent. The maximum recursion depth is linear:
+
+\[
+T_\infty = \mathcal{O}(n)
+\]
+
+The serial benchmark validates the answer against a dynamic-programming oracle.
 
 ## Scaling
 
-Parallel branch and bound can expose large amounts of independent search, but
-speedup depends on pruning order and on how quickly workers see improved
-incumbent values. If the best value is shared globally, synchronization on that
-incumbent can become visible. If it is not shared aggressively, workers may
-waste time exploring subtrees that a newer bound would prune.
+Knapsack is an irregular search benchmark. Early branches may discover a strong
+incumbent and prune later work, while other branches may remain large. This
+makes task sizes unpredictable.
 
-## Bottlenecks And Granularity
+A parallel implementation must also coordinate updates to the current best
+value. More frequent updates improve pruning but can increase contention.
 
-The serial benchmark is branch-heavy and cache-light. Most time goes into
-recursive search and repeated bound calculations over the remaining items.
-Granularity is irregular: high-level branches are valuable tasks, while leaf
-subtrees are too small to schedule individually. A parallel implementation
-should stop forking below a depth or estimated-subtree cutoff.
+## Benchmark sizes
 
-## References
+The following problem sizes are available:
 
-- [Knapsack problem overview](https://en.wikipedia.org/wiki/Knapsack_problem)
-- [Branch and bound overview](https://en.wikipedia.org/wiki/Branch_and_bound)
-- [OR-Tools knapsack solver reference implementation](https://developers.google.com/optimization/pack/knapsack)
+| Name | Items |
+|------|-------|
+| test | `16` |
+| base | `28` |
+
+## Results
+
+TODO: results
