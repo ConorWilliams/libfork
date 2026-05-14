@@ -15,6 +15,20 @@ The boundary cells are clamped. The initial grid is a deterministic analytic
 profile, and the benchmark checks the final grid after a fixed number of
 iterations.
 
+```mermaid
+flowchart TD
+  C["center cell"] --> O["new center value"]
+  N["north"] --> O
+  S["south"] --> O
+  W["west"] --> O
+  E["east"] --> O
+```
+
+Each update reads only the four direct neighbors from the previous grid and
+writes one cell in the next grid. That local stencil is why neighboring rows or
+tiles tend to reuse cache lines well, while each time step still needs a global
+swap before the next step can begin.
+
 ## Complexity
 
 For an \(n \times n\) grid and \(k\) iterations, the work is:
@@ -40,6 +54,9 @@ workers because every interior cell performs the same amount of arithmetic.
 Scaling is normally limited by memory bandwidth and cache behavior rather than
 scheduler imbalance. The global iteration barrier between stencil steps also
 prevents parallelism across time.
+
+This is the most regular bulk-parallel benchmark in the suite, and is a useful
+contrast with irregular per-element workloads such as [Mandelbrot](mandelbrot.md).
 
 ## Benchmark sizes
 

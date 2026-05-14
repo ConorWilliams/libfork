@@ -16,6 +16,17 @@ for (int i = 0; i < 10; ++i) {
 
 The expected result is the sum of integers from `0` to `leaves - 1`.
 
+```mermaid
+flowchart TD
+  A["root"] --> B0["child 0"]
+  A --> B1["child 1"]
+  A --> B2["..."]
+  A --> B9["child 9"]
+  B0 --> C0["10 grandchildren"]
+  B1 --> C1["10 grandchildren"]
+  B9 --> C9["10 grandchildren"]
+```
+
 ## Complexity
 
 For branching factor \(b = 10\) and depth \(d\), the number of leaves is
@@ -40,6 +51,11 @@ benchmarks.
 Each task does little arithmetic besides spawning children and summing results.
 As a result, scaling mainly reflects task creation, join overhead, and worker
 coordination rather than application compute.
+
+Skynet is deliberately similar to [Fibonacci](fib.md): both create many tiny
+tasks and reduce child results. The difference is that Skynet's fan-out tree is
+regular and balanced, while Fibonacci is a binary tree whose subtrees shrink at
+different rates.
 
 ## Benchmark sizes
 

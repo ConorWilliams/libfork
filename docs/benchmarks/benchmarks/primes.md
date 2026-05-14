@@ -16,6 +16,20 @@ for (std::int64_t i = 5; i * i <= n; i += 6) {
 }
 ```
 
+The \(6k \pm 1\) rule is a small arithmetic filter. Every integer is congruent
+to `0`, `1`, `2`, `3`, `4`, or `5` modulo 6. Values congruent to `0`, `2`, or
+`4` are divisible by 2, and values congruent to `3` are divisible by 3. After
+testing divisibility by 2 and 3, only residues `1` and `5` can still be prime;
+`5` is the same as \(-1\) modulo 6.
+
+```mermaid
+flowchart LR
+  A["candidate n"] --> B{"n divisible by 2 or 3?"}
+  B -->|"yes"| C["composite"]
+  B -->|"no"| D["try divisors 6k - 1 and 6k + 1 up to sqrt(n)"]
+  D --> E["prime if no divisor found"]
+```
+
 The benchmark validates the configured sizes against known values of the
 prime-counting function.
 
@@ -44,6 +58,9 @@ numbers.
 Chunking contiguous ranges creates predictable memory access but uneven work.
 Dynamic scheduling or smaller chunks improve load balance at the cost of more
 task overhead.
+
+This benchmark is similar to [Mandelbrot](mandelbrot.md): each element can be
+processed independently, but some elements are much more expensive than others.
 
 ## Benchmark sizes
 

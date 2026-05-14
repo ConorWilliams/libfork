@@ -15,6 +15,18 @@ The serial projection uses `std::inclusive_scan`. Each benchmark iteration
 repeats the scan many times and checks that the last output element is
 \(n(n + 1) / 2\), modulo 32-bit unsigned arithmetic.
 
+[Prefix sum](https://en.wikipedia.org/wiki/Prefix_sum) is also called scan. It
+is a classic example of an operation that looks sequential but has efficient
+parallel implementations.
+
+```mermaid
+flowchart TD
+  A["1 2 3 4 5 6 7 8"] --> B["upsweep: chunk totals"]
+  B --> C["scan totals"]
+  C --> D["downsweep: add offsets"]
+  D --> E["1 3 6 10 15 21 28 36"]
+```
+
 ## Complexity
 
 For one scan over \(n\) elements, the work is:
@@ -35,8 +47,10 @@ The benchmark stores both input and output arrays, so the space complexity is
 
 ## Scaling
 
-Scan is a regular bulk-parallel benchmark, but it has more synchronization than
-fold because prefix sums must propagate chunk totals back into later chunks.
+Scan can be viewed as either a homogeneous divide-and-conquer algorithm or a
+bulk-parallel primitive, depending on the implementation. It has more
+synchronization than [fold](fold.md) because prefix sums must propagate chunk
+totals back into later chunks.
 
 Scaling is limited by memory bandwidth, the number of global scan phases, and
 the fixed per-iteration synchronization cost. Repeating the scan reduces timing

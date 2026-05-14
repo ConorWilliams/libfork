@@ -4,15 +4,41 @@ icon: lucide/tree-pine
 
 # Unbalanced Tree Search
 
-The unbalanced tree search benchmark traverses synthetic trees from the UTS
-suite. Each node deterministically generates a pseudo-random number of children
-from its local RNG state, and the traversal reports the maximum depth, total
-nodes, and leaves.
+The unbalanced tree search benchmark traverses synthetic trees from the
+[UTS benchmark suite](https://www.cs.unc.edu/~olivier/LCPC06.pdf). Each node
+deterministically generates a pseudo-random number of children from its local
+RNG state, and the traversal reports the maximum depth, total nodes, and
+leaves.
 
 The configured families are:
 
-- `T1`: geometric trees with a fixed maximum depth.
-- `T3`: binomial trees with highly irregular depths.
+- `T1`: geometric trees. The branching factor decreases with depth, giving a
+  bounded tree whose imbalance is visible but not extreme.
+- `T3`: binomial trees. Each node samples whether it is internal, and internal
+  nodes have a fixed branching factor. This creates long, skinny paths and much
+  deeper irregular trees.
+
+```mermaid
+flowchart LR
+  subgraph Geometric["Geometric (T1): broad, depth-limited"]
+    G0((root)) --> G1((a))
+    G0 --> G2((b))
+    G0 --> G3((c))
+    G1 --> G4((d))
+    G1 --> G5((e))
+    G2 --> G6((f))
+    G3 --> G7((g))
+  end
+
+  subgraph Binomial["Binomial (T3): irregular, deep tails"]
+    B0((root)) --> B1((a))
+    B0 --> B2((b))
+    B1 --> B3((c))
+    B3 --> B4((d))
+    B4 --> B5((e))
+    B2 --> B6((f))
+  end
+```
 
 ## Complexity
 
@@ -41,17 +67,26 @@ The geometric `T1` cases are comparatively regular. The binomial `T3` cases
 have long, skinny paths and uneven subtree sizes, so stealing and task
 granularity have a larger effect on scaling and memory consumption.
 
+UTS is similar in spirit to [N-Queens](nqueens.md) and
+[knapsack](knapsack.md): the useful work is discovered by search, not known
+up front.
+
 ## Benchmark sizes
 
-The following problem sizes are available:
+The following geometric tree sizes are available:
 
 | Name | Family | Nodes | Leaves | Max depth |
 |------|--------|-------|--------|-----------|
 | test | `T1_mini` | `63'914` | `51'124` | `7` |
-| test | `T3_mini` | `6'213` | `5'438` | `67` |
 | base | `T1` | `4'130'071` | `3'305'118` | `10` |
-| base | `T3` | `4'112'897` | `3'599'034` | `1'572` |
 | large | `T1L` | `102'181'082` | `81'746'377` | `13` |
+
+The following binomial tree sizes are available:
+
+| Name | Family | Nodes | Leaves | Max depth |
+|------|--------|-------|--------|-----------|
+| test | `T3_mini` | `6'213` | `5'438` | `67` |
+| base | `T3` | `4'112'897` | `3'599'034` | `1'572` |
 | large | `T3L` | `111'345'631` | `89'076'904` | `17'844` |
 
 ## Results

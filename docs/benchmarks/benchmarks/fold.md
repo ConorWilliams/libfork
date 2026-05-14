@@ -17,6 +17,17 @@ The inputs are either memory-backed vectors or lazy ranges. Values repeat the
 pattern `0, 1, 2, 3`, so the expected result is known exactly for integer data
 and within a tight tolerance for floating-point data.
 
+```mermaid
+flowchart TD
+  A["values"] --> B["reduce chunk 0"]
+  A --> C["reduce chunk 1"]
+  A --> D["reduce chunk 2"]
+  B --> E["combine partials"]
+  C --> E
+  D --> E
+  E --> F["sum"]
+```
+
 ## Complexity
 
 For \(n\) elements, the work is:
@@ -37,13 +48,17 @@ the input allocation but recomputes each value when it is visited.
 
 ## Scaling
 
-Fold is a regular bulk-parallel workload. Each chunk performs the same
-operation over a contiguous range, then the partial sums are combined in a
-small reduction tree.
+Fold is a regular bulk-parallel workload, and the libfork implementation is
+also naturally divide and conquer: split the range, reduce subranges, and
+combine partial sums. Each chunk performs the same operation over a contiguous
+range, then the partial sums are combined in a small reduction tree.
 
 Scaling is mostly limited by memory bandwidth for memory-backed input and by
 task overhead when the chunk size is too small. The lazy variant shifts the cost
 toward value generation and iterator/projection overhead.
+
+Fold is the reduction counterpart to [scan](scan.md): fold produces one value,
+while scan produces every prefix value.
 
 ## Benchmark sizes
 

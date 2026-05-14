@@ -12,6 +12,13 @@ before returning.
 The benchmark also includes a baseline with the same work and no scheduler
 switches.
 
+```mermaid
+flowchart LR
+  C1["compute pool: CPU work"] --> I["I/O pool: synthetic I/O work"]
+  I --> C2["compute pool: CPU work"]
+  C2 --> R["request result"]
+```
+
 ## Complexity
 
 For \(m\) requests, the useful work is linear:
@@ -39,6 +46,9 @@ modeling real blocking I/O.
 Good results indicate that explicit scheduler switches remain cheap relative to
 coroutine creation, joining, and the small synthetic payload. Poor results can
 point to cross-pool posting contention or cache migration.
+
+This benchmark is related to [Random Scheduler Switch](switch-random.md), but
+uses deterministic request phases instead of random migration inside Fibonacci.
 
 ## Benchmark sizes
 
