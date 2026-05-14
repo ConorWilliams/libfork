@@ -70,6 +70,7 @@ costs, cache traffic on queues or stacks, and join coordination.
 The following problem sizes are available:
 
 - __test__: `n = 8`
+- __base__: `n = 37`
 
 ## Results
 
