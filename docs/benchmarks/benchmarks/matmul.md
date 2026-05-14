@@ -31,18 +31,6 @@ For example:
 C_{00} = A_{00}B_{00} + A_{01}B_{10}
 \]
 
-```mermaid
-flowchart TD
-  Root["C = A x B"] --> P00["A00 x B00"]
-  Root --> P01["A01 x B10"]
-  Root --> P10["A00 x B01"]
-  Root --> P11["A01 x B11"]
-  Root --> P20["A10 x B00"]
-  Root --> P21["A11 x B10"]
-  Root --> P30["A10 x B01"]
-  Root --> P31["A11 x B11"]
-```
-
 The recursion stops at a conventional cubic base case:
 
 ```cpp linenums="1"

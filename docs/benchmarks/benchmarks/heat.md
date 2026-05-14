@@ -15,14 +15,17 @@ The boundary cells are clamped. The initial grid is a deterministic analytic
 profile, and the benchmark checks the final grid after a fixed number of
 iterations.
 
-```mermaid
-flowchart TD
-  C["center cell"] --> O["new center value"]
-  N["north"] --> O
-  S["south"] --> O
-  W["west"] --> O
-  E["east"] --> O
-```
+Equivalently, each output point applies this five-point stencil to the previous
+grid:
+
+\[
+\frac{1}{4}
+\begin{bmatrix}
+0 & 1 & 0 \\
+1 & 0 & 1 \\
+0 & 1 & 0
+\end{bmatrix}
+\]
 
 Each update reads only the four direct neighbors from the previous grid and
 writes one cell in the next grid. That local stencil is why neighboring rows or

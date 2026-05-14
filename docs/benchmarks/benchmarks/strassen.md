@@ -11,23 +11,48 @@ and combines them into the four output quadrants.
 
 The recursion stops at a conventional cubic base case.
 
-```mermaid
-flowchart TD
-  Root["2 x 2 block multiply"] --> M1["M1 = (A11 + A22)(B11 + B22)"]
-  Root --> M2["M2 = (A21 + A22)B11"]
-  Root --> M3["M3 = A11(B12 - B22)"]
-  Root --> M4["M4 = A22(B21 - B11)"]
-  Root --> M5["M5 = (A11 + A12)B22"]
-  Root --> M6["M6 = (A21 - A11)(B11 + B12)"]
-  Root --> M7["M7 = (A12 - A22)(B21 + B22)"]
-  M1 --> Combine["combine C11, C12, C21, C22"]
-  M2 --> Combine
-  M3 --> Combine
-  M4 --> Combine
-  M5 --> Combine
-  M6 --> Combine
-  M7 --> Combine
-```
+As with [matrix multiply](matmul.md), split each matrix into quadrants:
+
+\[
+\begin{bmatrix}
+C_{00} & C_{01} \\
+C_{10} & C_{11}
+\end{bmatrix}
+=
+\begin{bmatrix}
+A_{00} & A_{01} \\
+A_{10} & A_{11}
+\end{bmatrix}
+\begin{bmatrix}
+B_{00} & B_{01} \\
+B_{10} & B_{11}
+\end{bmatrix}
+\]
+
+Strassen replaces the classical eight half-size products with seven:
+
+\[
+\begin{aligned}
+M_1 &= (A_{00} + A_{11})(B_{00} + B_{11}) \\
+M_2 &= (A_{10} + A_{11})B_{00} \\
+M_3 &= A_{00}(B_{01} - B_{11}) \\
+M_4 &= A_{11}(B_{10} - B_{00}) \\
+M_5 &= (A_{00} + A_{01})B_{11} \\
+M_6 &= (A_{10} - A_{00})(B_{00} + B_{01}) \\
+M_7 &= (A_{01} - A_{11})(B_{10} + B_{11})
+\end{aligned}
+\]
+
+The output quadrants are then recovered by addition and subtraction:
+
+\[
+\begin{aligned}
+C_{00} &= M_1 + M_4 - M_5 + M_7 \\
+C_{01} &= M_3 + M_5 \\
+C_{10} &= M_2 + M_4 \\
+C_{11} &= M_1 - M_2 + M_3 + M_6
+\end{aligned}
+\]
 
 ## Complexity
 
