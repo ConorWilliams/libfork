@@ -15,7 +15,7 @@ tasks in a parent-child relationship.
 
 Task graphs that are regular produce approximately equal work per child task in
 any give parent task. This makes scheduling easier as work follows a
-predictable pattern. Work can be quickly evenly distributed by sharing some
+predictable pattern. Work can be evenly-distributed quickly, by sharing some
 tasks close to the root of the graph.
 
 - [Fibonacci](fib.md): recursive computation of the Fibonacci numbers.
@@ -38,7 +38,7 @@ vary. The degree of irregularity can vary from benchmark to benchmark.
 Scheduling irregular workloads is substantially more difficult and often
 results in a higher scheduling overhead (e.g. for things like work stealing).
 Highly irregular workloads can also mandate a finer task granularity to achieve
-good load balancing which puts further demands on minimizing per-task
+good load balancing, which puts further demands on minimizing per-task
 scheduling overhead.
 
 These benchmarks are prime examples of programs that are very hard to
