@@ -17,6 +17,7 @@ target_sources(benchmark_common
       knapsack.hpp
       macros.hpp
       mandelbrot.hpp
+      mergesort.hpp
       matmul.hpp
       nqueens.hpp
       primes.hpp

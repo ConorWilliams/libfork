@@ -7,6 +7,7 @@ target_sources(serial_benchmarks PRIVATE
   integrate.cpp
   knapsack.cpp
   mandelbrot.cpp
+  mergesort.cpp
   matmul.cpp
   nqueens.cpp
   primes.cpp
