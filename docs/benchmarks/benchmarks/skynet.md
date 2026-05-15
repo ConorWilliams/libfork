@@ -41,9 +41,9 @@ Each task does little arithmetic besides spawning children and summing results.
 As a result, scaling mainly reflects task creation, join overhead, and worker
 coordination rather than application compute.
 
-Skynet is deliberately similar to [Fibonacci](fib.md): both create many tiny
-tasks and reduce child results. The difference is that Skynet's fan-out tree is
-regular and balanced, while Fibonacci is a binary tree whose subtrees shrink at
+Skynet is similar to [Fibonacci](fib.md): both create many tiny tasks and
+reduce child results. The difference is that Skynet's fan-out tree is regular
+and balanced, while Fibonacci is a binary tree whose subtrees shrink at
 different rates.
 
 ## Benchmark sizes
