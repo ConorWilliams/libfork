@@ -36,7 +36,7 @@ T_1 = \mathcal{O}(N)
 The span is the maximum root-to-leaf depth:
 
 \[
-T\_\infty = \mathcal{O}(D)
+T_\infty = \mathcal{O}(D)
 \]
 
 Where \(D\) is the tree's maximum depth. The `T3` family has much larger depth

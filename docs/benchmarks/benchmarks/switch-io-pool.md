@@ -24,7 +24,7 @@ The fan-out has shallow span: the parent forks all requests and then reduces
 their results (via a [fold](fold.md)).
 
 \[
-T\_\infty = \mathcal{O}(log m)
+T_\infty = \mathcal{O}(log m)
 \]
 
 ## Scaling
