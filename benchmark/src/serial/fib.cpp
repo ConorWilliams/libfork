@@ -36,8 +36,8 @@ auto fib_ret_impl(std::int64_t n) -> std::int64_t {
     return n;
   }
 
-  std::int64_t lhs = fib_ret_impl(n - 1);
-  std::int64_t rhs = fib_ret_impl(n - 2);
+  std::int64_t lhs = fib_ret_impl(n - 2);
+  std::int64_t rhs = fib_ret_impl(n - 1);
 
   return lhs + rhs;
 }

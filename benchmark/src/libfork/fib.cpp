@@ -31,15 +31,15 @@ struct fib {
     auto sc = co_await lf::scope();
 
     if constexpr (A == fork) {
-      co_await sc.fork(&lhs, fib{}, n - 1);
+      co_await sc.fork(&lhs, fib{}, n - 2);
     } else {
-      co_await sc.call(&lhs, fib{}, n - 1);
+      co_await sc.call(&lhs, fib{}, n - 2);
     }
 
     if constexpr (B == fork) {
-      co_await sc.fork(&rhs, fib{}, n - 2);
+      co_await sc.fork(&rhs, fib{}, n - 1);
     } else {
-      co_await sc.call(&rhs, fib{}, n - 2);
+      co_await sc.call(&rhs, fib{}, n - 1);
     }
 
     co_await sc.join();
