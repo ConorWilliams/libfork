@@ -44,8 +44,6 @@ scheduling overhead.
 These benchmarks are prime examples of programs that are very hard to
 parallelize efficiency with less flexible parallel programming models.
 
-TODO: link T1/T3 families
-
 - [Unbalanced tree search (binary)](uts.md): irregular search-tree traversal.
 - [Integrate](integrate.md): adaptive recursive quadrature integral.
 
