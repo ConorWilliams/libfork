@@ -19,8 +19,8 @@ predictable pattern. Work can be evenly-distributed quickly, by sharing some
 tasks close to the root of the graph.
 
 - [Fibonacci](fib.md): recursive computation of the Fibonacci numbers.
-- [Unbalanced tree search (geometric)](uts.md): regular search-tree traversal.
 - [Skynet](skynet.md): regular recursive fan-out reduction.
+- [Unbalanced tree search (geometric)](uts.md): regular search-tree traversal.
 - [Matrix multiply](matmul.md): recursive cubic matrix multiply.
 - [Strassen](strassen.md): recursive seven-product matrix multiply.
 - [Fold](fold.md): reductions over memory-backed and lazy ranges.

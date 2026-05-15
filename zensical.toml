@@ -62,6 +62,7 @@ nav = [
     { "Catalogue" = [
       "benchmarks/benchmarks/index.md",
       { "Fibonacci" = "benchmarks/benchmarks/fib.md" },
+      { "Skynet" = "benchmarks/benchmarks/skynet.md" },
       { "Unbalanced Trees" = "benchmarks/benchmarks/uts.md" },
       { "Heat" = "benchmarks/benchmarks/heat.md" },
       { "Integrate" = "benchmarks/benchmarks/integrate.md" },
@@ -73,7 +74,6 @@ nav = [
       { "Primes" = "benchmarks/benchmarks/primes.md" },
       { "Quicksort" = "benchmarks/benchmarks/quicksort.md" },
       { "Mergesort" = "benchmarks/benchmarks/mergesort.md" },
-      { "Skynet" = "benchmarks/benchmarks/skynet.md" },
       { "Scan" = "benchmarks/benchmarks/scan.md" },
       { "Fold" = "benchmarks/benchmarks/fold.md" },
       { "Random scheduler" = "benchmarks/benchmarks/switch-random.md" },
