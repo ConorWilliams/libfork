@@ -52,8 +52,8 @@ The following problem sizes are available:
 
 | Name | Depth | Branching | Leaves |
 |------|-------|-----------|--------|
-| test | `4` | `10` | `10'000` |
-| base | `6` | `10` | `1'000'000` |
+| test | `4` | `10` | `10 ** 4` |
+| base | `8` | `10` | `10 ** 8` |
 
 ## Results
 

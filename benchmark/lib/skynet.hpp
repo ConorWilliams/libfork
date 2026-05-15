@@ -12,8 +12,8 @@ import std;
 inline constexpr int skynet_branching = 10;
 
 // Tree depth: total leaves = branching ** depth.
-inline constexpr int skynet_test = 4; // 10^4 = 10'000 leaves
-inline constexpr int skynet_base = 6; // 10^6 = 1'000'000 leaves
+inline constexpr int skynet_test = 4;
+inline constexpr int skynet_base = 8;
 
 constexpr auto skynet_leaves(int depth) -> std::int64_t {
   std::int64_t out = 1;
