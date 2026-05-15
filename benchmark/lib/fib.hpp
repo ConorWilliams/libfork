@@ -48,9 +48,11 @@ void run_fib(benchmark::State &state, std::int64_t threads, Fn fn) {
 
   std::int64_t n_tasks = 2 * fib_ref(n + 1) - 1;
 
+  auto tot = static_cast<double>(state.iterations() * n_tasks);
+
   using benchmark::Counter;
 
-  state.counters["t/tasks"] = Counter(state.iterations() * n_tasks, Counter::kIsRate | Counter::kInvert);
+  state.counters["t/tasks"] = Counter(tot, Counter::kIsRate | Counter::kInvert);
 }
 
 template <typename Fn>
