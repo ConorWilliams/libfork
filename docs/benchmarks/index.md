@@ -12,7 +12,7 @@ results are __linear time and memory scaling__, for
 [v3.x](https://github.com/ConorWilliams/libfork/releases/tag/v3.8.0) this
 translated to:
 
-[^1]: A slightly older version is available on [arXiv](https://arxiv.org/abs/2402.18480)
+[^1]: A pre-print is available on [arXiv](https://arxiv.org/abs/2402.18480)
 
 - Up to 7.5× faster and 19× less memory consumption than OneTBB.
 - Up to 24× faster and 24× less memory consumption than OpenMP (libomp).
