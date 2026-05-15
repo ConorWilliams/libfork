@@ -20,15 +20,12 @@ For \(m\) requests, the useful work is linear:
 T_1 = \mathcal{O}(m)
 \]
 
-The fan-out has shallow span: the parent forks all requests, waits for them,
-and then reduces their results:
+The fan-out has shallow span: the parent forks all requests and then reduces
+their results (via a [fold](fold.md)).
 
 \[
-T\_\infty = \mathcal{O}(m)
+T\_\infty = \mathcal{O}(log m)
 \]
-
-for the serial fork and final sum in the benchmark driver. The per-request
-span is constant.
 
 ## Scaling
 
@@ -51,9 +48,6 @@ The following problem sizes are available:
 | ---- | -------- | ------------- | --------- |
 | test | `64`     | `256`         | `32`      |
 | base | `65'534` | `256`         | `32`      |
-
-The I/O pool uses `max(2, hardware_concurrency / 8)` workers. The compute pool
-uses the benchmark worker-count argument.
 
 ## Results
 
