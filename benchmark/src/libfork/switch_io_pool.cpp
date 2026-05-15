@@ -46,15 +46,18 @@ struct request_with_io {
 
   using context_type = Sch::context_type;
 
-  static auto operator()(Sch *compute_pool, Sch *io_pool) -> lf::task<std::int64_t, context_type> {
+  Sch *compute_pool;
+  Sch *io_pool;
+
+  auto operator()(this auto self, int) -> lf::task<std::int64_t, context_type> {
 
     std::int64_t acc = do_work(k_compute_units / 2);
 
-    co_await switch_to<Sch>{io_pool};
+    co_await switch_to<Sch>{self.io_pool};
 
     acc += do_work(k_io_units);
 
-    co_await switch_to<Sch>{compute_pool};
+    co_await switch_to<Sch>{self.compute_pool};
 
     acc += do_work(k_compute_units / 2);
 
@@ -68,7 +71,7 @@ struct request_baseline {
 
   using context_type = Sch::context_type;
 
-  static auto operator()() -> lf::task<std::int64_t, context_type> {
+  static auto operator()(int) -> lf::task<std::int64_t, context_type> {
     std::int64_t acc = do_work(k_compute_units / 2);
     acc += do_work(k_io_units);
     acc += do_work(k_compute_units / 2);
@@ -85,23 +88,15 @@ struct fan_out_with_io {
   static auto
   operator()(std::int64_t m, Sch *compute_pool, Sch *io_pool) -> lf::task<std::int64_t, context_type> {
 
-    std::vector<std::int64_t> results(static_cast<std::size_t>(m), 0);
+    auto inputs = std::ranges::views::repeat(int{0}, m);
+    auto fn = request_with_io<Sch>{compute_pool, io_pool};
+    std::optional<std::int64_t> total;
 
     auto sc = co_await lf::scope();
-
-    // TODO: use fold
-
-    for (std::int64_t i = 0; i < m; ++i) {
-      co_await sc.fork(&results[static_cast<std::size_t>(i)], request_with_io<Sch>{}, compute_pool, io_pool);
-    }
-
+    co_await sc.call(&total, lf::fold, inputs, std::plus<>{}, fn);
     co_await sc.join();
 
-    std::int64_t total = 0;
-    for (auto v : results) {
-      total += v;
-    }
-    co_return total;
+    co_return total.value_or(0);
   }
 };
 
@@ -112,21 +107,16 @@ struct fan_out_baseline {
   using context_type = Sch::context_type;
 
   static auto operator()(std::int64_t m) -> lf::task<std::int64_t, context_type> {
-    std::vector<std::int64_t> results(static_cast<std::size_t>(m), 0);
 
+    auto inputs = std::ranges::views::repeat(int{0}, m);
+    auto fn = request_baseline<Sch>{};
+
+    std::optional<std::int64_t> total;
     auto sc = co_await lf::scope();
-
-    for (std::int64_t i = 0; i < m; ++i) {
-      co_await sc.fork(&results[static_cast<std::size_t>(i)], request_baseline<Sch>{});
-    }
-
+    co_await sc.call(&total, lf::fold, inputs, std::plus<>{}, fn);
     co_await sc.join();
 
-    std::int64_t total = 0;
-    for (auto v : results) {
-      total += v;
-    }
-    co_return total;
+    co_return total.value_or(0);
   }
 };
 
@@ -140,8 +130,8 @@ void run_with_io(benchmark::State &state) {
   std::int64_t m = state.range(0);
 
   state.counters["requests"] = static_cast<double>(m);
-  state.counters["compute_threads"] = static_cast<double>(thread_count<Sch>(state));
-  state.counters["io_threads"] = static_cast<double>(k_io_workers());
+  state.counters["compute_thr"] = static_cast<double>(thread_count<Sch>(state));
+  state.counters["io_thr"] = static_cast<double>(k_io_workers());
 
   std::int64_t expect = m * expected_per_request();
 
@@ -158,7 +148,7 @@ void run_baseline(benchmark::State &state) {
   std::int64_t m = state.range(0);
 
   state.counters["requests"] = static_cast<double>(m);
-  state.counters["compute_threads"] = static_cast<double>(thread_count<Sch>(state));
+  state.counters["compute_thr"] = static_cast<double>(thread_count<Sch>(state));
 
   std::int64_t expect = m * expected_per_request();
 
