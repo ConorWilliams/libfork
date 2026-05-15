@@ -14,8 +14,8 @@ TODO: link to explicit scheduling documentation
 !!! warning
 
     Because this benchmark makes use of [explicit
-    sheduling](../../api/core/scheduling.md) it is not covered by `libfork`'s
-    theortical garantees (i.e. linear time/memory scaling).
+    scheduling](../../api/core/scheduling.md) it is not covered by `libfork`'s
+    theortical guarantees (i.e. linear time/memory scaling).
 
 ## Complexity
 
