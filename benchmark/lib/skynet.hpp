@@ -29,14 +29,19 @@ constexpr auto skynet_expected(int depth) -> std::int64_t {
 }
 
 template <typename Fn>
-void run_skynet(benchmark::State &state, Fn fn) {
+void run_skynet(benchmark::State &state, std::int64_t threads, Fn fn) {
   int depth = static_cast<int>(state.range(0));
   std::int64_t expect = skynet_expected(depth);
 
   state.counters["depth"] = depth;
   state.counters["leaves"] = static_cast<double>(skynet_leaves(depth));
 
-  lf_bench::bench(state, expect, [depth, fn]() -> std::int64_t {
+  lf_bench::bench(state, threads, expect, [depth, fn]() -> std::int64_t {
     return std::invoke(fn, 0, depth);
   });
+}
+
+template <typename Fn>
+void run_skynet(benchmark::State &state, Fn fn) {
+  run_skynet(state, lf_bench::no_threads, fn);
 }
