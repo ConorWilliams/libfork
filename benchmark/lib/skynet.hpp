@@ -37,7 +37,11 @@ void run_skynet(benchmark::State &state, std::int64_t threads, Fn fn) {
   state.counters["leaves"] = static_cast<double>(skynet_leaves(depth));
 
   lf_bench::bench(state, threads, expect, [depth, fn]() -> std::int64_t {
-    return std::invoke(fn, 0, depth);
+    std::int64_t num = 0;
+    int run_depth = depth;
+    benchmark::DoNotOptimize(num);
+    benchmark::DoNotOptimize(run_depth);
+    return std::invoke(fn, num, run_depth);
   });
 }
 
