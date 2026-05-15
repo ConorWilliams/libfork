@@ -2,28 +2,24 @@
 icon: lucide/shuffle
 ---
 
-# Random Scheduler Switch
+# Random scheduler-switch
 
-The random scheduler-switch benchmark runs recursive Fibonacci while
-occasionally migrating the current continuation between two scheduler pools.
-At each internal node, deterministic SplitMix64-derived state gives an
-approximately 10 percent chance of switching pools before spawning the two
-children.
+The random scheduler-switch benchmark runs recursive [Fibonacci](fib.md)
+while occasionally migrating the current continuation between two scheduler
+pools. At each internal node there is an approximately 10 percent chance of
+switching pools before spawning the two children.
 
-The computed value is still `fib(n)`, so the benchmark is checked against the
-same iterative Fibonacci reference as the ordinary Fibonacci benchmark.
+TODO: link to explicit scheduling documentation
 
-```mermaid
-flowchart LR
-  A["pool A continuation"] --> D{"random switch?"}
-  D -->|"no"| F["fork Fibonacci children"]
-  D -->|"yes"| B["post continuation to pool B"]
-  B --> F
-```
+!!! warning
+
+    Because this benchmark makes use of [explicit
+    sheduling](../../api/core/scheduling.md) it is not covered by `libfork`'s
+    theortical garantees (i.e. linear time/memory scaling).
 
 ## Complexity
 
-The task graph has the same exponential size as recursive Fibonacci:
+The task graph has the same exponential size as recursive [Fibonacci](fib.md):
 
 \[
 S(n) = 2F(n + 1) - 1
@@ -42,20 +38,16 @@ The benchmark isolates cross-pool posting, continuation resumption, and
 type-erased scheduler overhead. It requires at least two workers so the worker
 set can be split between the two pools.
 
-This is the scheduler-switch counterpart to [Fibonacci](fib.md): the task graph
-is the same shape, but some continuations migrate between pools.
-
 ## Benchmark sizes
 
 The following problem sizes are available:
 
 | Name | `fib(n)` | Switch probability |
-|------|----------|--------------------|
-| test | `8` | about `10%` |
-| base | `37` | about `10%` |
+| ---- | -------- | ------------------ |
+| test | `8`      | about `10%`        |
+| base | `37`     | about `10%`        |
 
-The total worker count is split between pool A and pool B. Both mono and
-type-erased busy-pool variants are registered.
+The total worker count is split between pool A and pool B.
 
 ## Results
 
