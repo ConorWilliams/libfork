@@ -20,9 +20,12 @@ tasks close to the root of the graph.
 
 - [Fibonacci](fib.md): recursive computation of the Fibonacci numbers.
 - [Unbalanced tree search (geometric)](uts.md): regular search-tree traversal.
+- [Skynet](skynet.md): regular recursive fan-out reduction.
 - [Matrix multiply](matmul.md): recursive cubic matrix multiply.
+- [Strassen](strassen.md): recursive seven-product matrix multiply.
 - [Fold](fold.md): reductions over memory-backed and lazy ranges.
 - [Scan](scan.md): prefix sums over memory-backed and lazy ranges.
+- [Mergesort](mergesort.md): stable divide-and-conquer sorting.
 
 !!! info
 
@@ -46,6 +49,9 @@ parallelize efficiency with less flexible parallel programming models.
 
 - [Unbalanced tree search (binary)](uts.md): irregular search-tree traversal.
 - [Integrate](integrate.md): adaptive recursive quadrature integral.
+- [Knapsack](knapsack.md): exact branch-and-bound search.
+- [N-Queens](nqueens.md): recursive backtracking search.
+- [Quicksort](quicksort.md): in-place divide-and-conquer sorting.
 
 ## Bulk parallelism
 
@@ -64,10 +70,3 @@ These programs are categorized by a shallow very wide task graphs.
 
 - [Random Scheduler Switch](switch-random.md): cross-pool coroutine migration during recursive Fibonacci.
 - [I/O Pool Switch](switch-io-pool.md): request fan-out with explicit compute-pool and I/O-pool hops.
-
-- [Knapsack](knapsack.md): exact branch-and-bound search.
-- [Strassen](strassen.md): recursive seven-product matrix multiply.
-- [N-Queens](nqueens.md): recursive backtracking search.
-- [Quicksort](quicksort.md): in-place divide-and-conquer sorting.
-- [Mergesort](mergesort.md): stable divide-and-conquer sorting.
-- [Skynet](skynet.md): regular recursive fan-out reduction.
