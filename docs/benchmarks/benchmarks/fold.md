@@ -4,12 +4,18 @@ icon: lucide/sigma
 
 # Fold
 
-The fold benchmark reduces a range with addition. The serial projection uses
-`std::reduce`:
+The fold benchmark reduces a range with addition. The serial projection is a
+direct left-to-right loop:
 
 ```cpp linenums="1"
 auto fold(auto first, auto last) {
-  return std::reduce(first, last, 0, std::plus<>{});
+  auto sum = 0;
+
+  for (; first != last; ++first) {
+    sum += *first;
+  }
+
+  return sum;
 }
 ```
 
@@ -19,13 +25,15 @@ and within a tight tolerance for floating-point data.
 
 ```mermaid
 flowchart TD
-  A["values"] --> B["reduce chunk 0"]
-  A --> C["reduce chunk 1"]
-  A --> D["reduce chunk 2"]
-  B --> E["combine partials"]
-  C --> E
-  D --> E
-  E --> F["sum"]
+  A["values"] --> B["serial projection: for-loop sum"]
+  A --> C["libfork: reduce chunk 0"]
+  A --> D["libfork: reduce chunk 1"]
+  A --> E["libfork: reduce chunk 2"]
+  C --> F["combine partials"]
+  D --> F
+  E --> F
+  B --> G["sum"]
+  F --> G
 ```
 
 ## Complexity
@@ -48,10 +56,11 @@ the input allocation but recomputes each value when it is visited.
 
 ## Scaling
 
-Fold is a regular bulk-parallel workload, and the libfork implementation is
-also naturally divide and conquer: split the range, reduce subranges, and
-combine partial sums. Each chunk performs the same operation over a contiguous
-range, then the partial sums are combined in a small reduction tree.
+Fold is a regular bulk-parallel workload. The serial projection performs the
+same addition in a single for loop. The libfork implementation is naturally
+divide and conquer: split the range, reduce subranges, and combine partial
+sums. Each chunk performs the same operation over a contiguous range, then the
+partial sums are combined in a small reduction tree.
 
 Scaling is mostly limited by memory bandwidth for memory-backed input and by
 task overhead when the chunk size is too small. The lazy variant shifts the cost
@@ -72,7 +81,8 @@ The following problem sizes are available:
 | base | `1'073'741'824` |
 
 The suite includes `int32` and `float32` data, memory-backed and lazy ranges,
-and libfork variants with fixed, deduced, and unit chunk sizes.
+serial `std_plus` loop baselines, and libfork variants with fixed, deduced, and
+unit chunk sizes.
 
 ## Results
 

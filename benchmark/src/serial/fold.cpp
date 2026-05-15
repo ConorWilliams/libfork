@@ -7,21 +7,24 @@ import std;
 namespace {
 
 template <fold_data_mode Data, typename T>
-void fold_reduce(benchmark::State &state) {
+void fold_serial(benchmark::State &state) {
   run_fold_input<Data, T>(state, [](auto &&values) -> fold_accum_t<T> {
-    return std::reduce(
-        std::ranges::begin(values), std::ranges::end(values), fold_accum_t<T>{}, [](auto a, auto b) static {
-          return fold_accum_t<T>(a) + fold_accum_t<T>(b);
-        });
+    fold_accum_t<T> result{};
+
+    for (T value : values) {
+      result += static_cast<fold_accum_t<T>>(value);
+    }
+
+    return result;
   });
 }
 
 } // namespace
 
-#define LF_REGISTER_FOLD_REDUCE(data, dtype)                                                                 \
-  LF_FOLD_BENCH_SIZES(fold_reduce, serial, fold / std_reduce, data, dtype)
+#define LF_REGISTER_FOLD_SERIAL(data, dtype)                                                                 \
+  LF_FOLD_BENCH_SIZES(fold_serial, serial, fold / std_plus, data, dtype)
 
-LF_REGISTER_FOLD_REDUCE(memory, int32)
-LF_REGISTER_FOLD_REDUCE(memory, float32)
-LF_REGISTER_FOLD_REDUCE(lazy, int32)
-LF_REGISTER_FOLD_REDUCE(lazy, float32)
+LF_REGISTER_FOLD_SERIAL(memory, int32)
+LF_REGISTER_FOLD_SERIAL(memory, float32)
+LF_REGISTER_FOLD_SERIAL(lazy, int32)
+LF_REGISTER_FOLD_SERIAL(lazy, float32)
