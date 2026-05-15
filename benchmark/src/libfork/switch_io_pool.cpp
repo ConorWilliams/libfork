@@ -6,9 +6,6 @@ import std;
 
 import libfork;
 
-// Constants must be at file scope (outside any namespace) so the macro
-// expansion can paste `requests_test` / `requests_base` from any position
-// in the translation unit.
 inline constexpr std::int64_t requests_test = 64;
 inline constexpr std::int64_t requests_base = (1 << 16) - 2;
 
@@ -28,8 +25,6 @@ auto do_work(std::int64_t n) -> std::int64_t {
   return acc;
 }
 
-// Generic awaitable that posts the task's continuation to an arbitrary pool
-// whose context_type matches the current task's Context.
 template <typename Sch>
 struct switch_to {
 
@@ -46,7 +41,6 @@ struct switch_to {
   auto await_resume() noexcept -> void {}
 };
 
-// One "request": CPU work, hop to IO pool, IO work, hop back, more CPU work.
 template <lf::scheduler Sch>
 struct request_with_io {
 
@@ -95,7 +89,7 @@ struct fan_out_with_io {
 
     auto sc = co_await lf::scope();
 
-    // TODO: use for_each algorithm
+    // TODO: use fold
 
     for (std::int64_t i = 0; i < m; ++i) {
       co_await sc.fork(&results[static_cast<std::size_t>(i)], request_with_io<Sch>{}, compute_pool, io_pool);
