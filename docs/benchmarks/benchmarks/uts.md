@@ -2,7 +2,7 @@
 icon: lucide/tree-pine
 ---
 
-# Unbalanced Tree Search
+# Unbalanced tree search
 
 The unbalanced tree search (UTS) benchmark traverses synthetic trees from the
 [UTS benchmark suite](https://www.cs.unc.edu/~olivier/LCPC06.pdf). Each node
