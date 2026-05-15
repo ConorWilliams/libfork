@@ -25,7 +25,7 @@ tasks close to the root of the graph.
 - [Strassen](strassen.md): recursive seven-product matrix multiply.
 - [Fold](fold.md): reductions over memory-backed and lazy ranges.
 - [Scan](scan.md): prefix sums over memory-backed and lazy ranges.
-- [Mergesort](mergesort.md): stable divide-and-conquer sorting.
+- [Mergesort](mergesort.md): stable divide-and-conquer sorting with parallel merge.
 
 !!! info
 
@@ -51,7 +51,7 @@ parallelize efficiency with less flexible parallel programming models.
 - [Integrate](integrate.md): adaptive recursive quadrature integral.
 - [Knapsack](knapsack.md): exact branch-and-bound search.
 - [N-Queens](nqueens.md): recursive backtracking search.
-- [Quicksort](quicksort.md): in-place divide-and-conquer sorting.
+- [Quicksort](quicksort.md): divide-and-conquer quick sort (serial partition).
 
 ## Bulk parallelism
 
@@ -59,14 +59,24 @@ These programs are categorized by a shallow very wide task graphs.
 
 ### Homogeneous
 
+Homogeneous bulk-parallel benchmarks are the simplest to schedule, this is the
+speciality of things like OpenMP parallel for loops. These kinds of algorithms
+are often easy to map to SIMD instructions and GPU kernels.
+
 - [Heat](heat.md): Jacobi heat-diffusion stencil.
 
 ### Heterogeneous
+
+When the time per task can vary, scheduling becomes more difficult. Sometimes a
+chunk size can be chosen that mitigates this issue, potentially at the cost of
+reduced parallelism.
 
 - [Mandelbrot](mandelbrot.md): per-pixel escape-time computation.
 - [Primes](primes.md): trial-division prime counting.
 
 ## Other/special
+
+These benchmarks are for testing specific features of `libfork` and it's scheduler(s).
 
 - [Random Scheduler Switch](switch-random.md): cross-pool coroutine migration during recursive Fibonacci.
 - [I/O Pool Switch](switch-io-pool.md): request fan-out with explicit compute-pool and I/O-pool hops.
