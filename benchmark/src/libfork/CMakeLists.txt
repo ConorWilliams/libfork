@@ -4,17 +4,6 @@ target_sources(libfork_benchmarks
   PRIVATE
     fib.cpp
     fold.cpp
-    heat.cpp
-    integrate.cpp
-    knapsack.cpp
-    mandelbrot.cpp
-    matmul.cpp
-    mergesort.cpp
-    nqueens.cpp
-    primes.cpp
-    quicksort.cpp
-    skynet.cpp
-    strassen.cpp
     uts.cpp
     switch_io_pool.cpp
     switch_random.cpp
