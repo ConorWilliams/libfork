@@ -20,7 +20,6 @@ tasks close to the root of the graph.
 
 - [Fibonacci](fib.md): recursive computation of the Fibonacci numbers.
 - [Skynet](skynet.md): regular recursive fan-out reduction.
-- [Unbalanced tree search (geometric)](uts.md): regular search-tree traversal.
 - [Matrix multiply](matmul.md): recursive cubic matrix multiply.
 - [Strassen](strassen.md): recursive seven-product matrix multiply.
 - [Fold](fold.md): reductions over memory-backed and lazy ranges.
@@ -47,7 +46,7 @@ scheduling overhead.
 These benchmarks are prime examples of programs that are very hard to
 parallelize efficiency with less flexible parallel programming models.
 
-- [Unbalanced tree search (binary)](uts.md): irregular search-tree traversal.
+- [Unbalanced tree search](uts.md): irregular search-tree traversal.
 - [Integrate](integrate.md): adaptive recursive quadrature integral.
 - [Knapsack](knapsack.md): exact branch-and-bound search.
 - [N-Queens](nqueens.md): recursive backtracking search.

@@ -1,5 +1,5 @@
 ---
-icon: lucide/network
+icon: lucide/circle-pile
 ---
 
 # Skynet

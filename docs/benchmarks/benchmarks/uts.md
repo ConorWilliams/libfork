@@ -10,11 +10,11 @@ deterministically generates a pseudo-random number of children from its local
 RNG state, and the traversal reports the maximum depth, total nodes, and
 leaves.
 
-The configured families are:
+Their are two distinct tree families families of unbalanced trees in UTS:
 
-- `T1`: geometric trees. The branching factor decreases with depth, giving a
+- `T1`: __geometric trees__. The branching factor decreases with depth, giving a
   bounded tree whose imbalance is visible but not extreme.
-- `T3`: binomial trees. Each node samples whether it is internal, and internal
+- `T3`: __binomial trees__. Each node samples whether it is internal, and internal
   nodes have a fixed branching factor. This creates long, skinny paths and much
   deeper irregular trees. The subtrees are self-similar.
 

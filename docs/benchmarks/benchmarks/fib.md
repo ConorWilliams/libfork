@@ -1,5 +1,5 @@
 ---
-icon: lucide/git-fork
+icon: lucide/network
 ---
 
 # Fibonacci
