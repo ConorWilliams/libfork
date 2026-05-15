@@ -10,7 +10,7 @@ import libfork;
 
 namespace {
 
-constexpr auto n = skynet_branching - 1;
+constexpr auto n = static_cast<std::size_t>(skynet_branching - 1);
 
 struct skynet_fn {
   template <lf::worker_context Context>
@@ -25,10 +25,10 @@ struct skynet_fn {
 
     auto sc = co_await lf::scope();
 
-    for (int i = 0; i < n; ++i) {
-      co_await sc.fork(&children[i], skynet_fn{}, num + i * sub, depth - 1);
+    for (std::size_t i = 0; i < n; ++i) {
+      co_await sc.fork(&children[i], skynet_fn{}, num + static_cast<std::int64_t>(i) * sub, depth - 1);
     }
-    co_await sc.call(&children[n], skynet_fn{}, num + n * sub, depth - 1);
+    co_await sc.call(&children[n], skynet_fn{}, num + static_cast<std::int64_t>(n) * sub, depth - 1);
 
     co_await sc.join();
 
