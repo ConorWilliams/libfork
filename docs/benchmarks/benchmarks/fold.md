@@ -54,12 +54,12 @@ while scan produces every prefix value.
 
 The following problem sizes are available:
 
-| Name | Elements        |
-| ---- | --------------- |
-| test | `10`            |
-| base | `1'024`         |
-| base | `1'048'576`     |
-| base | `1'073'741'824` |
+| Name    | Elements     |
+| ------- | ------------ |
+| test    | `10`         |
+| base_kb | `1'024`      |
+| base_mb | `1'024 ** 2` |
+| base_gb | `1'024 ** 3` |
 
 ## Results
 
