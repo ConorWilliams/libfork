@@ -4,9 +4,9 @@ icon: lucide/network
 
 # Skynet
 
-The skynet benchmark builds a perfectly regular recursive fan-out tree. Each
-internal node has branching factor 10, and each leaf returns its global leaf
-index. Internal nodes sum their children.
+The [skynet benchmark](https://github.com/atemerev/skynet) builds a perfectly
+regular recursive fan-out tree. Each internal node has branching factor 10, and
+each leaf returns its global leaf index. Internal nodes sum their children.
 
 ```cpp linenums="1"
 for (int i = 0; i < 10; ++i) {
@@ -15,17 +15,6 @@ for (int i = 0; i < 10; ++i) {
 ```
 
 The expected result is the sum of integers from `0` to `leaves - 1`.
-
-```mermaid
-flowchart TD
-  A["root"] --> B0["child 0"]
-  A --> B1["child 1"]
-  A --> B2["..."]
-  A --> B9["child 9"]
-  B0 --> C0["10 grandchildren"]
-  B1 --> C1["10 grandchildren"]
-  B9 --> C9["10 grandchildren"]
-```
 
 ## Complexity
 
