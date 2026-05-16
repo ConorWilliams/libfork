@@ -4,6 +4,7 @@ target_sources(libfork_benchmarks
   PRIVATE
     fib.cpp
     fold.cpp
+    matmul.cpp
     skynet.cpp
     uts.cpp
     switch_io_pool.cpp
