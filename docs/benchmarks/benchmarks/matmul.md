@@ -2,12 +2,13 @@
 icon: lucide/grid-3x3
 ---
 
-# Matrix Multiply
+# Matrix multiply
 
-The matrix multiply benchmark computes `C = A * B` for square `float`
-matrices. The serial implementation is recursive divide and conquer: split each
-matrix into quadrants, compute the eight half-size products, and add the second
-wave of products into the output quadrants.
+The matrix multiply benchmark computes `C = A * B` for square `float` matrices.
+The implementation is the cache-oblivious [recursive divide and
+conquer](https://en.wikipedia.org/wiki/Matrix_multiplication_algorithm#Divide-and-conquer_algorithm):
+split each matrix into quadrants, compute the eight half-size products, and add
+the second wave of products into the output quadrants.
 
 \[
 \begin{bmatrix}
@@ -31,7 +32,7 @@ For example:
 C_{00} = A_{00}B_{00} + A_{01}B_{10}
 \]
 
-The recursion stops at a conventional cubic base case:
+The recursion stops at the conventional cubic base case:
 
 ```cpp linenums="1"
 for (unsigned i = 0; i < n; ++i)
