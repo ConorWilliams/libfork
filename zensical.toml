@@ -206,7 +206,7 @@ features = [
   # When instant navigation is enabled, clicks on all internal links will be
   # intercepted and dispatched via XHR without fully reloading the page.
   # https://zensical.org/docs/setup/navigation/#instant-navigation
-  # "navigation.instant",
+  "navigation.instant",
 
   # With instant prefetching, your site will start to fetch a page once the
   # user hovers over a link. This will reduce the perceived loading time
