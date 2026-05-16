@@ -20,6 +20,7 @@ tasks close to the root of the graph.
 
 - [Fibonacci](fib.md): recursive computation of the Fibonacci numbers.
 - [Skynet](skynet.md): regular recursive fan-out reduction.
+- [Matrix transpose](transpose.md): recursive matrix transpose.
 - [Matrix multiply](matmul.md): recursive cubic matrix multiply.
 - [Strassen](strassen.md): recursive seven-product matrix multiply.
 - [Fold](fold.md): reductions over memory-backed and lazy ranges.
