@@ -64,14 +64,21 @@ The lower-order \(\mathcal{O}(n^2)\) combine work does not change the result:
 T_1 = \mathcal{O}(n^3)
 \]
 
-If the independent products at each level are exposed as tasks, the critical
-path follows one product per level down to the base case:
+In our implementation each product is accumulated directly into the final
+output buffer `C`, which is distinct from `A` and `B`. The second product that
+contributes to each output quadrant must run after the first product for that
+quadrant has initialized the output storage. Hence, exposing those recursive products
+as tasks, gives a parallel span of:
 
 \[
-T_\infty = \mathcal{O}(\log n)
+T_\infty(n) = 2T_\infty(n / 2) + \mathcal{O}(1)
 \]
 
-with a constant factor from the base-case multiply.
+With the fixed base-case cutoff used here, this is:
+
+\[
+T_\infty = \mathcal{O}(n)
+\]
 
 ## Scaling
 
