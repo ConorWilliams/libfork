@@ -30,27 +30,38 @@ struct strassen_mat_sum_fn {
   }
 };
 
-enum class strassen_quadrant : unsigned {
-  c00,
-  c01,
-  c10,
-  c11,
-};
-
-template <strassen_quadrant Quadrant>
-struct strassen_combine_fn {
+struct strassen_combine_00_fn {
   template <lf::worker_context Context>
   static auto operator()(lf::env<Context>, float *C, unsigned sc, strassen_blocks blocks, unsigned m)
       -> lf::task<void, Context> {
-    if constexpr (Quadrant == strassen_quadrant::c00) {
-      strassen_combine_00(C, sc, blocks, m);
-    } else if constexpr (Quadrant == strassen_quadrant::c01) {
-      strassen_combine_01(C, sc, blocks, m);
-    } else if constexpr (Quadrant == strassen_quadrant::c10) {
-      strassen_combine_10(C, sc, blocks, m);
-    } else {
-      strassen_combine_11(C, sc, blocks, m);
-    }
+    strassen_combine_00(C, sc, blocks, m);
+    co_return;
+  }
+};
+
+struct strassen_combine_01_fn {
+  template <lf::worker_context Context>
+  static auto operator()(lf::env<Context>, float *C, unsigned sc, strassen_blocks blocks, unsigned m)
+      -> lf::task<void, Context> {
+    strassen_combine_01(C, sc, blocks, m);
+    co_return;
+  }
+};
+
+struct strassen_combine_10_fn {
+  template <lf::worker_context Context>
+  static auto operator()(lf::env<Context>, float *C, unsigned sc, strassen_blocks blocks, unsigned m)
+      -> lf::task<void, Context> {
+    strassen_combine_10(C, sc, blocks, m);
+    co_return;
+  }
+};
+
+struct strassen_combine_11_fn {
+  template <lf::worker_context Context>
+  static auto operator()(lf::env<Context>, float *C, unsigned sc, strassen_blocks blocks, unsigned m)
+      -> lf::task<void, Context> {
+    strassen_combine_11(C, sc, blocks, m);
     co_return;
   }
 };
@@ -118,10 +129,10 @@ struct strassen_fn {
 
     {
       auto scp = co_await lf::scope();
-      co_await scp.fork(strassen_combine_fn<strassen_quadrant::c00>{}, C11, sc, blocks, m);
-      co_await scp.fork(strassen_combine_fn<strassen_quadrant::c01>{}, C12, sc, blocks, m);
-      co_await scp.fork(strassen_combine_fn<strassen_quadrant::c10>{}, C21, sc, blocks, m);
-      co_await scp.call(strassen_combine_fn<strassen_quadrant::c11>{}, C22, sc, blocks, m);
+      co_await scp.fork(strassen_combine_00_fn{}, C11, sc, blocks, m);
+      co_await scp.fork(strassen_combine_01_fn{}, C12, sc, blocks, m);
+      co_await scp.fork(strassen_combine_10_fn{}, C21, sc, blocks, m);
+      co_await scp.call(strassen_combine_11_fn{}, C22, sc, blocks, m);
       co_await scp.join();
     }
   }
