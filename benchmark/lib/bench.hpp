@@ -25,9 +25,6 @@ inline void report_threads(benchmark::State &state, std::int64_t threads) {
   state.SetComplexityN(static_cast<benchmark::IterationCount>(threads));
 }
 
-// `bench` reports mismatches with a `std::format` call that formats both
-// `result` and `expected`, so `Expected` and `std::invoke_result_t<Fn>` must be
-// formattable.
 template <typename Expected, typename Check, typename Fn>
 void bench(benchmark::State &state, std::int64_t threads, const Expected &expected, Check check, Fn fn) {
   report_threads(state, threads);
@@ -36,13 +33,22 @@ void bench(benchmark::State &state, std::int64_t threads, const Expected &expect
 
     auto result = std::invoke(fn);
 
-    if (!std::invoke(check, result, expected)) {
-      state.SkipWithError(std::format("incorrect result: {} != {}", result, expected));
-      break;
-    }
+    {
+      // benchmark::ScopedPauseTiming pause(state); // Pauses timing
 
-    benchmark::DoNotOptimize(result);
+      if (!std::invoke(check, result, expected)) {
+        if constexpr (std::formattable<Expected const &, char> && std::formattable<decltype(result), char>) {
+          state.SkipWithError(std::format("incorrect result: {} != {}", result, expected));
+        } else {
+          state.SkipWithError("incorrect result: [unformattable]");
+        }
+        break;
+      }
+    }
   }
+
+  benchmark::DoNotOptimize(result);
+}
 }
 
 template <typename Expected, typename Fn>
