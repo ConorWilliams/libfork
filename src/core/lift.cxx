@@ -12,14 +12,28 @@ import :awaitables;
 
 namespace lf {
 
+template <typename T>
+using lift_store_t = std::conditional_t<std::is_lvalue_reference_v<T>, T, std::remove_cvref_t<T>>;
+
 struct lift_impl {
+ private:
   template <typename Fn, typename Context, typename... Args>
-    requires std::invocable<Fn, Args...>
-  static auto
-  operator()(env<Context>, Fn &&fn, Args &&...args) -> task<std::invoke_result_t<Fn, Args...>, Context> {
-    co_return std::invoke(LF_FWD(fn), LF_FWD(args)...);
+  using task_t = task<std::invoke_result_t<Fn, Args...>, Context>;
+
+  template <typename Fn, typename Context, typename... Args>
+  static auto impl(lift_store_t<Fn> fn, lift_store_t<Args>... args) -> task_t<Fn, Context, Args...> {
+    co_return std::invoke(static_cast<Fn>(fn), static_cast<Args>(args)...);
+  }
+
+ public:
+  template <typename Fn, typename Context, typename... Args>
+    requires std::invocable<Fn &&, Args &&...>
+  static auto operator()(env<Context>, Fn &&fn, Args &&...args) -> task_t<Fn &&, Context, Args &&...> {
+    return impl<Fn &&, Context, Args &&...>(LF_FWD(fn), LF_FWD(args)...);
   }
 };
+
+// TODO: merge fn in ops to args
 
 /**
  * @brief Lifts a synchronous function into an asynchronous task.
@@ -33,33 +47,46 @@ template <worker_context Context, bool StopToken, typename R, typename Fn, typen
 struct lifted_awaitable : std::suspend_never {
 
   [[no_unique_address]]
-  pkg<category::call, StopToken, Context, R, lift_impl, Fn, Args...> pkg;
+  pkg<category::call, StopToken, Context, R, Fn, Args...> pkg;
 
   frame_t<Context> *parent;
 
-  constexpr void await_ready() noexcept {
+  constexpr auto await_ready() noexcept -> bool {
 
     // Noop if stop has been requested.
     if constexpr (StopToken) {
-      if (pkg.stop_token().stop_requested()) {
-        return;
+      if (pkg.stop_token.stop_requested()) {
+        return true;
       }
     } else {
-      if (parent->frame.stop_requested()) {
-        return;
+      if (parent->stop_requested()) {
+        return true;
       }
     }
 
     LF_TRY {
-      std::move(pkg.args).apply([this](auto &&fn, auto &&...args) -> void {
-        if constexpr (std::is_void_v<R>) {
+      if constexpr (std::is_void_v<R>) {
+        std::move(pkg.args).apply([](auto &&fn, auto &&...args) -> void {
           std::invoke(LF_FWD(fn), LF_FWD(args)...);
-        } else {
-          *pkg.return_addr = std::invoke(LF_FWD(fn), LF_FWD(args)...);
-        }
-      });
+        });
+      } else {
+        R *return_addr = pkg.return_addr;
+        std::move(pkg.args).apply([return_addr](auto &&fn, auto &&...args) -> void {
+          *return_addr = std::invoke(LF_FWD(fn), LF_FWD(args)...);
+        });
+      }
     } LF_CATCH(...) {
       stash_current_exception(parent);
+    }
+
+    return true;
+  }
+
+  constexpr void await_resume() {
+    if constexpr (LF_COMPILER_EXCEPTIONS) {
+      if (parent->exception_bit) [[unlikely]] {
+        std::rethrow_exception(extract_exception(parent));
+      }
     }
   }
 };
