@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+
 #include "bench.hpp"
 
 #ifdef LF_BENCH_NO_IMPORT_STD
@@ -32,6 +34,12 @@ struct matmul_args {
   std::unique_ptr<float[]> B;
   std::unique_ptr<float[]> C;
   std::array<float, matmul_check_rank * matmul_check_rank> middle;
+  unsigned n;
+};
+
+struct matmul_output {
+  float const *C;
+  std::array<float, matmul_check_rank * matmul_check_rank> const *middle;
   unsigned n;
 };
 
@@ -138,24 +146,18 @@ inline auto matmul_max_relative_error(float const *C,
                                       unsigned n) -> float {
   constexpr float epsilon = 1e-8F;
   float error = 0;
+
   for (unsigned i = 0; i < n; ++i) {
     for (unsigned k = 0; k < n; ++k) {
       float expect = matmul_expected_value(middle, i, k);
       float actual = C[static_cast<std::size_t>(i) * n + k];
       float diff = std::abs(expect - actual) / std::max(std::abs(expect), epsilon);
-      if (diff > error) {
-        error = diff;
-      }
+      error = std::max(diff, error);
     }
   }
+
   return error;
 }
-
-struct matmul_output {
-  float const *C;
-  std::array<float, matmul_check_rank * matmul_check_rank> const *middle;
-  unsigned n;
-};
 
 inline auto check_matmul(matmul_output output, float max_err) -> bool {
   return matmul_max_relative_error(output.C, *output.middle, output.n) <= max_err;
