@@ -1,0 +1,120 @@
+
+module;
+#include "libfork/__impl/assume.hpp"
+export module libfork.core:execute;
+
+import std;
+
+import :frame;
+import :thread_locals;
+import :concepts_context;
+import :handles;
+import :exception;
+
+namespace lf {
+
+export struct execute_error final : libfork_exception {
+  [[nodiscard]]
+  constexpr auto what() const noexcept -> const char * override {
+    return "execute called from within a worker thread!";
+  }
+};
+
+/**
+ * @brief Bind this thread to a context and execute the scheduled tasks on that context/thread.
+ *
+ * This should not be called from a thread already bound to a context, once this call returns
+ * the thread is unbound from the context.
+ *
+ * The handle must not be null.
+ */
+export template <worker_context Context>
+constexpr void execute(Context &context, sched_handle<Context> handle) {
+
+  LF_ASSUME(handle);
+
+  if (thread_local_context<Context> != nullptr) {
+    LF_THROW(execute_error{});
+  }
+
+  thread_local_context<Context> = std::addressof(context);
+
+  defer _ = [] static noexcept -> void {
+    thread_local_context<Context> = nullptr;
+  };
+
+  auto *frame = static_cast<frame_type<checkpoint_t<Context>> *>(get(key(), handle));
+
+  // We should only take the stack if it was the stack owner that we are
+  // resuming from, same logic as in switch_awaitable_suspend
+  if (frame->steals == 0) {
+
+    auto const &ckpt = frame->stack_ckpt;
+
+    if (ckpt != get_tls_stack<Context>().checkpoint()) {
+      context.stack().acquire(ckpt);
+    }
+  }
+
+  frame->handle().resume();
+}
+
+export struct steal_overflow_error final : libfork_exception {
+  [[nodiscard]]
+  constexpr auto what() const noexcept -> const char * override {
+    return "a single task has been stolen 65,535 times";
+  }
+};
+
+/**
+ * @brief Consume a steal handle, marks it as stolen and returns the handle of the stolen task.
+ *
+ * The current thread must resume the handle.
+ *
+ * May throw `steal_overflow_error` if the task has been stolen enough times to
+ * overflow the steal counter.
+ */
+template <worker_context Context>
+constexpr auto consume(steal_handle<Context> handle) -> std::coroutine_handle<> {
+
+  LF_ASSUME(handle);
+
+  auto *frame = static_cast<frame_type<checkpoint_t<Context>> *>(get(key(), handle));
+
+  if (frame->steals + 1 == k_u16_max) {
+    // Can't allow equal to k_u16_max because that is the sentinel
+    LF_THROW(steal_overflow_error{});
+  }
+
+  frame->steals += 1;
+
+  return frame->handle();
+}
+
+/**
+ * @brief Bind this thread to a context and execute the scheduled tasks on that context/thread.
+ *
+ * This should not be called from a thread already bound to a context, once this call returns
+ * the thread is unbound from the context.
+ *
+ * The handle must not be null.
+ */
+export template <worker_context Context>
+constexpr void execute(Context &context, steal_handle<Context> handle) {
+
+  LF_ASSUME(handle);
+
+  if (thread_local_context<Context> != nullptr) {
+    LF_THROW(execute_error{});
+  }
+
+  thread_local_context<Context> = std::addressof(context);
+
+  defer _ = [] static noexcept -> void {
+    thread_local_context<Context> = nullptr;
+  };
+
+  consume(handle).resume();
+}
+
+} // namespace lf

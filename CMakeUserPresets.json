@@ -1,0 +1,79 @@
+{
+  "version": 10,
+  "configurePresets": [
+    {
+      "name": "dev",
+      "inherits": "ci-hardened",
+      "displayName": "Hardened development build",
+      "toolchainFile": "${sourceDir}/cmake/llvm-brew-toolchain.cmake",
+      "cacheVariables": {
+        "CMAKE_COLOR_DIAGNOSTICS": "ON"
+      }
+    },
+    {
+      "name": "bench",
+      "inherits": "ci-release",
+      "displayName": "Release build for benchmarks",
+      "toolchainFile": "${sourceDir}/cmake/llvm-brew-toolchain.cmake",
+      "cacheVariables": {
+        "CMAKE_COLOR_DIAGNOSTICS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev"
+    },
+    {
+      "name": "bench",
+      "configurePreset": "bench"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "stopOnFailure": true
+      }
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "dev",
+      "displayName": "Development Debug Hardened Workflow",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "dev"
+        },
+        {
+          "type": "build",
+          "name": "dev"
+        },
+        {
+          "type": "test",
+          "name": "dev"
+        }
+      ]
+    },
+    {
+      "name": "bench",
+      "displayName": "Release Build (including Benchmarks)",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "bench"
+        },
+        {
+          "type": "build",
+          "name": "bench"
+        }
+      ]
+    }
+  ]
+}
