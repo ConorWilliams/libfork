@@ -72,6 +72,26 @@ which is approximately \(\mathcal{O}(n^{2.807})\). The implementation allocates
 temporary matrices at each recursive level, so memory traffic is a major part
 of the benchmark.
 
+In the libfork benchmark, the seven half-size products are spawned as
+independent recursive tasks. The matrix additions and subtractions that build
+the temporary inputs, and the final output combination, are serial quadratic
+work around those tasks. That gives the span recurrence:
+
+\[
+T_\infty(n) = T_\infty(n / 2) + \mathcal{O}(n^2)
+\]
+
+With the fixed base-case cutoff used here, this is:
+
+\[
+T_\infty = \mathcal{O}(n^2)
+\]
+
+The exposed parallelism is therefore roughly
+\(\mathcal{O}(n^{\log_2 7 - 2})\). Strassen has less work than the classical
+eight-product recurrence, but the serial matrix-sum phases are a larger part
+of the critical path in this benchmark.
+
 ## Scaling
 
 The seven products are independent and expose regular divide-and-conquer
@@ -92,8 +112,8 @@ The following problem sizes are available:
 
 | Name | Matrix size | Cutoff |
 |------|-------------|--------|
-| test | `64 x 64` | `64 x 64` |
-| base | `1024 x 1024` | `64 x 64` |
+| test | `64 x 64` | `32 x 32` |
+| base | `1024 x 1024` | `32 x 32` |
 
 ## Results
 
