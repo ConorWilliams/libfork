@@ -41,26 +41,6 @@ for (unsigned i = 0; i < n; ++i)
       C[i, j] += A[i, k] * B[k, j];
 ```
 
-## Implementation
-
-To avoid spending cubic time constructing a reference answer, the benchmark
-uses dense inputs with a cheap closed-form product:
-
-\[
-A = D_A + U V^T,\qquad B = D_B + X Y^T
-\]
-
-where \(D_A\) and \(D_B\) are nonzero diagonal matrices and the low-rank terms
-make the off-diagonal entries nonzero. The checker precomputes the small
-\(V^T X\) matrix, then verifies each output entry from:
-
-\[
-AB = D_AD_B + D_A X Y^T + U V^T D_B + U (V^T X) Y^T
-\]
-
-This keeps verification quadratic in the matrix size while still exercising a
-dense, non-identity matrix product.
-
 ## Complexity
 
 The recursive algorithm does eight multiplication subproblems of half the size.
@@ -125,3 +105,23 @@ The following problem sizes are available:
 ## Results
 
 TODO: results
+
+## Implementation
+
+To avoid spending cubic time constructing a reference answer, the benchmark
+uses dense inputs with a cheap closed-form product:
+
+\[
+A = D_A + U V^T,\qquad B = D_B + X Y^T
+\]
+
+where \(D_A\) and \(D_B\) are nonzero diagonal matrices and the low-rank terms
+make the off-diagonal entries nonzero. The checker precomputes the small
+\(V^T X\) matrix, then verifies each output entry from:
+
+\[
+AB = D_AD_B + D_A X Y^T + U V^T D_B + U (V^T X) Y^T
+\]
+
+This keeps verification quadratic in the matrix size while still exercising a
+dense, non-identity matrix product.
