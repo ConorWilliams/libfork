@@ -7,19 +7,6 @@ import std;
 
 namespace {
 
-struct simpson_estimate {
-  double mid;
-  double f_mid;
-  double area;
-};
-
-auto integrate_simpson(double x1, double y1, double x2, double y2) -> simpson_estimate {
-  double mid = (x1 + x2) / 2.0;
-  double f_mid = integrate_fn(mid);
-  double area = (x2 - x1) / 6.0 * (y1 + 4.0 * f_mid + y2);
-  return {mid, f_mid, area};
-}
-
 auto integrate_recurse(
     double x1, double y1, double x2, double y2, double eps, simpson_estimate whole, int depth)
     -> integrate_result {

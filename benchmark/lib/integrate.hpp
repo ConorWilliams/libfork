@@ -27,6 +27,12 @@ struct integrate_result {
   int depth;
 };
 
+struct simpson_estimate {
+  double mid;
+  double f_mid;
+  double area;
+};
+
 constexpr auto integrate_tolerance(std::int64_t exponent) -> double {
   double result = 1.0;
   for (std::int64_t i = 0; i < exponent; ++i) {
@@ -57,6 +63,13 @@ constexpr auto integrate_exact(double a, double b) -> double {
     sum += (std::atan((b - center) / scale) - std::atan((a - center) / scale)) / scale;
   }
   return sum;
+}
+
+constexpr auto integrate_simpson(double x1, double y1, double x2, double y2) -> simpson_estimate {
+  double mid = (x1 + x2) / 2.0;
+  double f_mid = integrate_fn(mid);
+  double area = (x2 - x1) / 6.0 * (y1 + 4.0 * f_mid + y2);
+  return {.mid = mid, .f_mid = f_mid, .area = area};
 }
 
 inline auto integrate_is_close(const integrate_result &result, double expect) -> bool {
