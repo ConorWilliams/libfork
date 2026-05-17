@@ -18,6 +18,7 @@ inline constexpr std::int64_t integrate_base = 9;
 inline constexpr std::int64_t integrate_peaks = 76;
 inline constexpr double integrate_lower = 0.0;
 inline constexpr double integrate_upper = 1.0;
+inline constexpr double integrate_peak_margin = 0.05;
 inline constexpr double integrate_z = 1.0e-8;
 
 struct integrate_result {
@@ -35,7 +36,8 @@ constexpr auto integrate_tolerance(std::int64_t exponent) -> double {
 }
 
 constexpr auto integrate_peak_center(std::int64_t peak) -> double {
-  return (static_cast<double>(peak) + 0.5) / static_cast<double>(integrate_peaks);
+  double t = (static_cast<double>(peak) + 0.5) / static_cast<double>(integrate_peaks);
+  return integrate_peak_margin + (1.0 - 2.0 * integrate_peak_margin) * t * t;
 }
 
 constexpr auto integrate_fn(double x) -> double {

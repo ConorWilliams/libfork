@@ -10,12 +10,14 @@ The integrate benchmark computes the definite integral of:
 f(x) = \sum_{i=0}^{p - 1}\frac{1}{z + (x - c_i)^2}
 \]
 
-with \(p = 76\), \(z = 10^{-8}\), and evenly spaced peak centers
+with \(p = 76\), \(z = 10^{-8}\), and non-uniform peak centers
 
 \[
-c_i = \frac{i + 0.5}{p}
+c_i = \alpha + (1 - 2\alpha)\left(\frac{i + 0.5}{p}\right)^2
 \]
 
+where \(\alpha = 0.05\). This keeps the peaks away from the endpoints while
+clustering more of them toward the lower end of the domain. The benchmark runs
 over the fixed interval \([a, b] = [0, 1]\). It uses
 [adaptive Simpson's rule](https://en.wikipedia.org/wiki/Adaptive_Simpson%27s_method):
 estimate the area of an interval with Simpson's rule, split the interval in
@@ -40,10 +42,10 @@ and returns the Richardson-corrected value:
 S(a, m) + S(m, b) + \frac{S(a, m) + S(m, b) - S(a, b)}{15}
 \]
 
-This is a row of narrow Lorentzian peaks across the integration domain. Most
-points are locally smooth, but each peak has much higher curvature, so adaptive
-refinement repeatedly discovers small regions that need extra work. Compared
-with a single peak, the multi-peak function creates enough independent
+This is a non-uniform row of narrow Lorentzian peaks across the integration
+domain. Most points are locally smooth, but each peak has much higher curvature,
+so adaptive refinement repeatedly discovers small regions that need extra work.
+Compared with a single peak, the multi-peak function creates enough independent
 refinement regions for a longer base workload while preserving an exact
 closed-form reference:
 
@@ -99,8 +101,8 @@ reports the peak, leaf, and depth counts as counters, in the same spirit as UTS.
 
 | Name | Domain | Peaks | Tolerance | Leaves | Max depth |
 |------|--------|-------|-----------|--------|-----------|
-| test | `[0, 1]` | `76` | `1.0e-6` | `279'141` | `23` |
-| base | `[0, 1]` | `76` | `1.0e-9` | `1'825'940` | `40` |
+| test | `[0, 1]` | `76` | `1.0e-6` | `265'489` | `23` |
+| base | `[0, 1]` | `76` | `1.0e-9` | `1'806'540` | `45` |
 
 ## Results
 
