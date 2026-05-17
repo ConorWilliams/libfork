@@ -37,6 +37,11 @@ struct lift_impl {
 
 /**
  * @brief Lifts a synchronous function into an asynchronous task.
+ *
+ * Forked lifted tasks capture rvalues by value.
+ * Called lifted tasks have an optimized path that avoids creating a new task.
+ *
+ * Both invocations respect cancellation and push exceptions to the parent scope.
  */
 export inline constexpr lift_impl lift{};
 
@@ -70,9 +75,8 @@ struct lifted_awaitable : std::suspend_never {
           std::invoke(LF_FWD(fn), LF_FWD(args)...);
         });
       } else {
-        R *return_addr = pkg.return_addr;
-        std::move(pkg.args).apply([return_addr](auto &&fn, auto &&...args) -> void {
-          *return_addr = std::invoke(LF_FWD(fn), LF_FWD(args)...);
+        std::move(pkg.args).apply([addr = pkg.return_addr](auto &&fn, auto &&...args) -> void {
+          *addr = std::invoke(LF_FWD(fn), LF_FWD(args)...);
         });
       }
     } LF_CATCH(...) {
