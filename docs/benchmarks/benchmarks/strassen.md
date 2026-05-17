@@ -68,14 +68,10 @@ By the [master theorem](https://en.wikipedia.org/wiki/Master_theorem_%28analysis
 T_1 = \mathcal{O}(n^{\log_2 7})
 \]
 
-which is approximately \(\mathcal{O}(n^{2.807})\). The implementation allocates
-temporary matrices at each recursive level, so memory traffic is a major part
-of the benchmark.
-
-In the libfork benchmark, the seven half-size products are spawned as
-independent recursive tasks. The matrix additions and subtractions that build
-the temporary inputs, and the final output combination, are serial quadratic
-work around those tasks. That gives the span recurrence:
+which is approximately \(\mathcal{O}(n^{2.807})\). The seven half-size products
+are spawned as independent recursive tasks. The matrix additions and
+subtractions that build the temporary inputs, and the final output combination,
+are serial quadratic work around those tasks. That gives the span recurrence:
 
 \[
 T_\infty(n) = T_\infty(n / 2) + \mathcal{O}(n^2)
@@ -87,10 +83,9 @@ With the fixed base-case cutoff used here, this is:
 T_\infty = \mathcal{O}(n^2)
 \]
 
-The exposed parallelism is therefore roughly
-\(\mathcal{O}(n^{\log_2 7 - 2})\). Strassen has less work than the classical
-eight-product recurrence, but the serial matrix-sum phases are a larger part
-of the critical path in this benchmark.
+Strassen has less work than the classical eight-product recurrence, but the
+serial matrix-sum phases are a larger part of the critical path in this
+benchmark.
 
 ## Scaling
 
@@ -99,8 +94,8 @@ parallelism. The matrix additions, subtractions, and final combination are
 bulk work around those recursive tasks.
 
 For these sizes, Strassen is a tasking benchmark rather than a tuned linear
-algebra kernel. Scaling depends on the cutoff, temporary allocation behavior,
-cache locality, and floating-point error tolerance.
+algebra kernel. Scaling depends on the cutoff, temporary allocation behavior, and
+cache locality.
 
 This benchmark is directly comparable to [matrix multiply](matmul.md): both
 split matrices into quadrants, but Strassen trades extra additions and
