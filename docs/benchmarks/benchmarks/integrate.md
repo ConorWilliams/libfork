@@ -7,10 +7,11 @@ icon: lucide/area-chart
 The integrate benchmark computes the definite integral of:
 
 \[
-f(x) = \frac{1}{1 + 0.01(x - 7234.5)^2}
+f(x) = \frac{1}{z + (x - c)^2}
 \]
 
-Over the fixed interval \([0, 10000]\). It uses
+with \(c = 0.731\) and \(z = 10^{-8}\), over the fixed interval
+\([a, b] = [0, 1]\). It uses
 [adaptive Simpson's rule](https://en.wikipedia.org/wiki/Adaptive_Simpson%27s_method):
 estimate the area of an interval with Simpson's rule, split the interval in
 half, compare the combined child estimates with the parent estimate, and recurse
@@ -34,8 +35,8 @@ and returns the Richardson-corrected value:
 S(a, m) + S(m, b) + (S(a, m) + S(m, b) - S(a, b)) / 15
 \]
 
-This is a Lorentzian peak placed off-center in the integration domain. Most of
-the interval is nearly flat, but the narrow peak has much higher curvature, so
+This is a narrow Lorentzian peak placed off-center in the integration domain.
+Most of the interval is nearly flat, but the peak has much higher curvature, so
 adaptive refinement produces a less balanced tree than a polynomial workload.
 The benchmark records the total number of accepted leaf intervals and the
 maximum recursion depth.
@@ -80,8 +81,8 @@ reports the leaf and depth counts as counters, in the same spirit as UTS.
 
 | Name | Domain | Tolerance | Leaves | Max depth |
 |------|--------|-----------|--------|-----------|
-| test | `[0, 10000]` | `1.0e-6` | `413` | `16` |
-| base | `[0, 10000]` | `1.0e-9` | `2'262` | `19` |
+| test | `[0, 1]` | `1.0e-6` | `4'105` | `23` |
+| base | `[0, 1]` | `1.0e-9` | `23'649` | `28` |
 
 ## Results
 

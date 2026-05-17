@@ -16,9 +16,9 @@ inline constexpr std::int64_t integrate_test = 6;
 inline constexpr std::int64_t integrate_base = 9;
 
 inline constexpr double integrate_lower = 0.0;
-inline constexpr double integrate_upper = 10'000.0;
-inline constexpr double integrate_alpha = 0.01;
-inline constexpr double integrate_center = 7'234.5;
+inline constexpr double integrate_upper = 1.0;
+inline constexpr double integrate_center = 0.731;
+inline constexpr double integrate_z = 1.0e-8;
 
 struct integrate_result {
   double area;
@@ -36,13 +36,13 @@ constexpr auto integrate_tolerance(std::int64_t exponent) -> double {
 
 constexpr auto integrate_fn(double x) -> double {
   double distance = x - integrate_center;
-  return 1.0 / (1.0 + integrate_alpha * distance * distance);
+  return 1.0 / (integrate_z + distance * distance);
 }
 
 constexpr auto integrate_exact(double a, double b) -> double {
   auto indefinite = [](double x) {
-    double scale = std::sqrt(integrate_alpha);
-    return std::atan(scale * (x - integrate_center)) / scale;
+    double scale = std::sqrt(integrate_z);
+    return std::atan((x - integrate_center) / scale) / scale;
   };
   return indefinite(b) - indefinite(a);
 }
