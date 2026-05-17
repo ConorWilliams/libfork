@@ -15,12 +15,12 @@ inline constexpr std::int64_t integrate_base = 10'000;
 
 inline constexpr double integrate_epsilon = 1.0e-9;
 
-inline constexpr auto integrate_fn(double x) -> double {
+constexpr auto integrate_fn(double x) -> double {
   double x2 = x * x;
   return x2 * x2 + x;
 }
 
-inline constexpr auto integrate_exact(double a, double b) -> double {
+constexpr auto integrate_exact(double a, double b) -> double {
   auto indefinite = [](double x) {
     double x2 = x * x;
     return 0.2 * x2 * x2 * x + 0.5 * x2;
