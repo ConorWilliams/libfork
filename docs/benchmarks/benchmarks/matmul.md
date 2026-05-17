@@ -41,6 +41,30 @@ for (unsigned i = 0; i < n; ++i)
       C[i, j] += A[i, k] * B[k, j];
 ```
 
+## Implementation
+
+The serial and libfork implementations use the same recursive split and base
+case. The libfork benchmark exposes each group of four independent quadrant
+products as tasks, joins them, then launches the four accumulating products.
+
+To avoid spending cubic time constructing a reference answer, the benchmark
+uses dense inputs with a cheap closed-form product:
+
+\[
+A = D_A + U V^T,\qquad B = D_B + X Y^T
+\]
+
+where \(D_A\) and \(D_B\) are nonzero diagonal matrices and the low-rank terms
+make the off-diagonal entries nonzero. The checker precomputes the small
+\(V^T X\) matrix, then verifies each output entry from:
+
+\[
+AB = D_AD_B + D_A X Y^T + U V^T D_B + U (V^T X) Y^T
+\]
+
+This keeps verification quadratic in the matrix size while still exercising a
+dense, non-identity matrix product.
+
 ## Complexity
 
 The recursive algorithm does eight multiplication subproblems of half the size.
@@ -67,8 +91,8 @@ T_1 = \mathcal{O}(n^3)
 In our implementation each product is accumulated directly into the final
 output buffer `C`, which is distinct from `A` and `B`. The second product that
 contributes to each output quadrant must run after the first product for that
-quadrant has initialized the output storage. Hence, exposing those recursive products
-as tasks, gives a parallel span of:
+quadrant has initialized the output storage. Hence, exposing those recursive
+products as tasks gives a parallel span of:
 
 \[
 T_\infty(n) = 2T_\infty(n / 2) + \mathcal{O}(1)
