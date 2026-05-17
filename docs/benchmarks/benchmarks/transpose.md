@@ -23,6 +23,7 @@ A_{00} & A_{01} \\
 A_{10} & A_{11}
 \end{bmatrix}^T
 =
+
 \begin{bmatrix}
 A_{00}^T & A_{10}^T \\
 A_{01}^T & A_{11}^T
@@ -89,7 +90,7 @@ The following problem sizes are available:
 | Name | Matrix size | Base case |
 |------|-------------|-----------|
 | test | `64 x 64` | `32 x 32` |
-| base | `1024 x 1024` | `32 x 32` |
+| base | `8192 x 8192` | `32 x 32` |
 
 ## Results
 
