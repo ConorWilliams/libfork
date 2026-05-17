@@ -56,14 +56,16 @@ struct lifted_awaitable : std::suspend_never {
 
   frame_t<Context> *parent;
 
-  constexpr auto await_resume() noexcept {
+  constexpr void await_resume() noexcept {
 
     // Noop if stop has been requested.
     if constexpr (StopToken) {
       if (pkg.stop_token.stop_requested()) {
+        return;
       }
     } else {
       if (parent->stop_requested()) {
+        return;
       }
     }
 

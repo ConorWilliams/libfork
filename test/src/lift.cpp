@@ -230,6 +230,7 @@ struct run_call_lift_exception {
     int result = 0;
     auto sc = co_await lf::scope();
     co_await sc.call(&result, lf::lift, throwing_sync{});
+    co_await sc.join();
     co_return;
   }
 };
