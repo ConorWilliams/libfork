@@ -118,11 +118,11 @@ inline auto matmul_expected_value(matmul_middle_t const &middle, unsigned i, uns
 inline auto matmul_init(unsigned n) -> matmul_args {
 
   matmul_args args{
-      std::make_unique<float[]>(static_cast<std::size_t>(n) * n),
-      std::make_unique<float[]>(static_cast<std::size_t>(n) * n),
-      std::make_unique<float[]>(static_cast<std::size_t>(n) * n),
-      matmul_middle(n),
-      n,
+      .A = std::make_unique<float[]>(static_cast<std::size_t>(n) * n),
+      .B = std::make_unique<float[]>(static_cast<std::size_t>(n) * n),
+      .C = std::make_unique<float[]>(static_cast<std::size_t>(n) * n),
+      .middle = matmul_middle(n),
+      .n = n,
   };
 
   for (unsigned i = 0; i < n; ++i) {
