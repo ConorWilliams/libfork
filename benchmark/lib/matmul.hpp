@@ -21,7 +21,7 @@ inline constexpr unsigned matmul_test = 64;
 inline constexpr unsigned matmul_base = 1024;
 
 
-inline constexpr unsigned matmul_basecase = 32;
+inline constexpr unsigned matmul_cutoff = 32;
 inline constexpr unsigned matmul_check_rank = 3;
 
 static_assert(std::has_single_bit(matmul_test));

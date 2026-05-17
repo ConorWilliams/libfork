@@ -9,7 +9,7 @@ namespace {
 
 template <bool Add>
 void matmul_dc(float const *A, float const *B, float *R, unsigned n, unsigned s) {
-  if (n <= matmul_basecase) {
+  if (n <= matmul_cutoff) {
     matmul_basecase_multiply<Add>(A, B, R, n, s);
     return;
   }

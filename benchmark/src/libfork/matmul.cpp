@@ -16,7 +16,7 @@ struct matmul_fn {
   static auto operator()(lf::env<Context>, float const *A, float const *B, float *R, unsigned n, unsigned s)
       -> lf::task<void, Context> {
 
-    if (n <= matmul_basecase) {
+    if (n <= matmul_cutoff) {
       matmul_basecase_multiply<Add>(A, B, R, n, s);
       co_return;
     }
