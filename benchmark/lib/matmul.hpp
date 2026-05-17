@@ -20,8 +20,6 @@ import std;
 inline constexpr unsigned matmul_test = 64;
 inline constexpr unsigned matmul_base = 1024;
 
-inline constexpr unsigned strassen_test = matmul_test;
-inline constexpr unsigned strassen_base = matmul_base;
 
 inline constexpr unsigned matmul_basecase = 32;
 inline constexpr unsigned matmul_check_rank = 3;

@@ -24,6 +24,7 @@ target_sources(benchmark_common
       quicksort.hpp
       scan.hpp
       skynet.hpp
+      strassen.hpp
       uts.hpp
 )
 
