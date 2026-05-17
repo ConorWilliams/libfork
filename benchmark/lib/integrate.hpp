@@ -26,14 +26,6 @@ struct integrate_result {
   int depth;
 };
 
-template <>
-struct std::formatter<integrate_result> : std::formatter<std::string> {
-  auto format(const integrate_result &r, auto &ctx) const {
-    return std::formatter<std::string>::format(
-        std::format("{{area={}, leaves={}, depth={}}}", r.area, r.leaves, r.depth), ctx);
-  }
-};
-
 constexpr auto integrate_tolerance(std::int64_t exponent) -> double {
   double result = 1.0;
   for (std::int64_t i = 0; i < exponent; ++i) {
@@ -64,25 +56,15 @@ void run_integrate(benchmark::State &state, Fn fn) {
   double tolerance = integrate_tolerance(state.range(0));
   double expect = integrate_exact(integrate_lower, integrate_upper);
 
+  integrate_result stats{};
+
   state.counters["epsilon"] = tolerance;
   state.counters["n"] = integrate_upper;
 
-  for (auto _ : state) {
-    auto result = std::invoke(fn, tolerance);
+  lf_bench::bench(state, expect, integrate_is_close, [&stats, tolerance, fn]() -> integrate_result {
+    return stats = std::invoke(fn, tolerance);
+  });
 
-    state.PauseTiming();
-
-    state.counters["depth"] = result.depth;
-    state.counters["leaves"] = static_cast<double>(result.leaves);
-
-    if (!integrate_is_close(result, expect)) {
-      state.SkipWithError(std::format("incorrect result: {} != {}", result, expect));
-      state.ResumeTiming();
-      break;
-    }
-
-    state.ResumeTiming();
-
-    benchmark::DoNotOptimize(result);
-  }
+  state.counters["depth"] = stats.depth;
+  state.counters["leaves"] = static_cast<double>(stats.leaves);
 }
