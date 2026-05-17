@@ -18,15 +18,19 @@ fractional-knapsack relaxation gives an upper bound; subtrees whose bound cannot
 beat the current best solution are pruned.
 
 ```cpp
-void search(int i, int capacity, int value, int& best) {
+int search(int i, int capacity, int value, int best) {
+
   best = max(best, value);
+
   if (i == items.size() || upper_bound(i, capacity, value) <= best) {
-    return;
+    return best;
   }
+
   if (items[i].weight <= capacity) {
-    search(i + 1, capacity - items[i].weight, value + items[i].value, best);
+    best = search(i + 1, capacity - items[i].weight, value + items[i].value, best);
   }
-  search(i + 1, capacity, value, best);
+
+  return search(i + 1, capacity, value, best);
 }
 ```
 

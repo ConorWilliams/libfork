@@ -30,30 +30,28 @@ auto upper_bound(std::vector<knapsack_item> const &items,
   return bound;
 }
 
-void knapsack_bb(std::vector<knapsack_item> const &items, std::size_t idx, int cap, int val, int &best) {
+auto knapsack_bb(std::vector<knapsack_item> const &items, std::size_t idx, int cap, int val, int best) -> int {
 
   best = std::max(val, best);
 
   if (idx == items.size()) {
-    return;
+    return best;
   }
 
   if (upper_bound(items, idx, cap, val) <= best) {
-    return;
+    return best;
   }
 
   if (items[idx].weight <= cap) {
-    knapsack_bb(items, idx + 1, cap - items[idx].weight, val + items[idx].value, best);
+    best = knapsack_bb(items, idx + 1, cap - items[idx].weight, val + items[idx].value, best);
   }
-  knapsack_bb(items, idx + 1, cap, val, best);
+  return knapsack_bb(items, idx + 1, cap, val, best);
 }
 
 template <typename = void>
 void knapsack_serial(benchmark::State &state) {
   run_knapsack(state, [](knapsack_problem const &problem) {
-    int best = 0;
-    knapsack_bb(problem.items, 0, problem.capacity, 0, best);
-    return best;
+    return knapsack_bb(problem.items, 0, problem.capacity, 0, 0);
   });
 }
 
