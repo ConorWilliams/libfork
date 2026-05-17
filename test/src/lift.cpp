@@ -7,6 +7,8 @@ import std;
 
 import libfork;
 
+// TODO: unify all the tests pools/schedulers
+
 namespace {
 
 using mono_inline_ctx = lf::mono_context<lf::geometric_stack<>, lf::adapt_vector<>>;
