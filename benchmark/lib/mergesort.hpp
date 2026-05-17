@@ -16,7 +16,7 @@ import std;
 inline constexpr std::size_t mergesort_test = 10'000;
 inline constexpr std::size_t mergesort_base = 10'000'000;
 
-inline constexpr std::size_t mergesort_cutoff = 32;
+inline constexpr std::size_t mergesort_intro_cutoff = 64;
 inline constexpr std::size_t mergesort_merge_cutoff = 512;
 
 inline auto

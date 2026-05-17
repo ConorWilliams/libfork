@@ -65,7 +65,7 @@ struct mergesort_fn {
 
     auto n = last - first;
 
-    if (n <= static_cast<std::ptrdiff_t>(mergesort_cutoff)) {
+    if (n <= static_cast<std::ptrdiff_t>(mergesort_intro_cutoff)) {
       mergesort_insertion_sort(first, last);
       co_return;
     }

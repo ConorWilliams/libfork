@@ -10,7 +10,7 @@ namespace {
 void mergesort_serial_sort(std::uint32_t *first, std::uint32_t *last, std::uint32_t *scratch) {
   auto n = last - first;
 
-  if (n <= static_cast<std::ptrdiff_t>(mergesort_cutoff)) {
+  if (n <= static_cast<std::ptrdiff_t>(mergesort_intro_cutoff)) {
     mergesort_insertion_sort(first, last);
     return;
   }
@@ -47,6 +47,16 @@ void mergesort_serial(benchmark::State &state) {
   run_mergesort(state, mergesort_serial_sort);
 }
 
+void stable_sort(std::uint32_t *first, std::uint32_t *last, std::uint32_t *) {
+  std::stable_sort(first, last);
+}
+
+template <typename = void>
+void stable_sort_serial(benchmark::State &state) {
+  run_mergesort(state, stable_sort);
+}
+
 } // namespace
 
 BENCH_ALL(mergesort_serial, serial, mergesort, mergesort)
+BENCH_ALL(stable_sort_serial, serial, mergesort / stable_sort, mergesort)
