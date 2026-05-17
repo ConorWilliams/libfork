@@ -29,17 +29,20 @@ inline constexpr unsigned matmul_check_rank = 3;
 static_assert(std::has_single_bit(matmul_test));
 static_assert(std::has_single_bit(matmul_base));
 
+using matmul_buffer_t = std::unique_ptr<float[]>;
+using matmul_middle_t = std::array<float, matmul_check_rank * matmul_check_rank>;
+
 struct matmul_args {
-  std::unique_ptr<float[]> A;
-  std::unique_ptr<float[]> B;
-  std::unique_ptr<float[]> C;
-  std::array<float, matmul_check_rank * matmul_check_rank> middle;
+  matmul_buffer_t A;
+  matmul_buffer_t B;
+  matmul_buffer_t C;
+  matmul_middle_t middle;
   unsigned n;
 };
 
 struct matmul_output {
   float const *C;
-  std::array<float, matmul_check_rank * matmul_check_rank> const *middle;
+  matmul_middle_t const *middle;
   unsigned n;
 };
 
@@ -83,8 +86,8 @@ inline auto matmul_rhs_value(unsigned j, unsigned k) -> float {
   return value;
 }
 
-inline auto matmul_middle(unsigned n) -> std::array<float, matmul_check_rank * matmul_check_rank> {
-  std::array<float, matmul_check_rank * matmul_check_rank> middle{};
+inline auto matmul_middle(unsigned n) -> matmul_middle_t {
+  matmul_middle_t middle{};
   for (unsigned j = 0; j < n; ++j) {
     for (unsigned r = 0; r < matmul_check_rank; ++r) {
       for (unsigned s = 0; s < matmul_check_rank; ++s) {
@@ -95,9 +98,7 @@ inline auto matmul_middle(unsigned n) -> std::array<float, matmul_check_rank * m
   return middle;
 }
 
-inline auto matmul_expected_value(std::array<float, matmul_check_rank * matmul_check_rank> const &middle,
-                                  unsigned i,
-                                  unsigned k) -> float {
+inline auto matmul_expected_value(matmul_middle_t const &middle, unsigned i, unsigned k) -> float {
   float value = i == k ? matmul_lhs_diag(i) * matmul_rhs_diag(i) : 0;
 
   for (unsigned s = 0; s < matmul_check_rank; ++s) {
@@ -141,9 +142,7 @@ inline void matmul_zero(float *C, unsigned n) {
   }
 }
 
-inline auto matmul_max_relative_error(float const *C,
-                                      std::array<float, matmul_check_rank * matmul_check_rank> const &middle,
-                                      unsigned n) -> float {
+inline auto matmul_max_relative_error(float const *C, matmul_middle_t const &middle, unsigned n) -> float {
   constexpr float epsilon = 1e-8F;
   float error = 0;
 
