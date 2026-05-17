@@ -10,12 +10,16 @@ items with weights and values, choose a subset whose total weight is at most
 the knapsack capacity and whose total value is as large as possible. In the 0/1
 version, each item can be taken once or skipped.
 
-Items are generated deterministically, sorted by value density, and the
-capacity is set to half the total item weight.
+Items are generated deterministically using a strongly correlated distribution:
+weights are sampled uniformly from `1` to `10'000`, values are set to
+`weight + 10`, and the capacity is set to half the total item weight. The items
+are sorted by value density for the fractional bound.
 
-At each item, the search either takes the item, if it fits, or skips it. A
+At each item, the search either skips the item or takes it, if it fits. A
 fractional-knapsack relaxation gives an upper bound; subtrees whose bound cannot
-beat the current best solution are pruned.
+beat the current best solution are pruned. The serial benchmark visits the skip
+branch first, which delays strong incumbents and gives the branch-and-bound
+search a useful amount of work.
 
 ```cpp
 int search(int i, int capacity, int value, int best) {
@@ -26,11 +30,11 @@ int search(int i, int capacity, int value, int best) {
     return best;
   }
 
+  best = search(i + 1, capacity, value, best);
   if (items[i].weight <= capacity) {
     best = search(i + 1, capacity - items[i].weight, value + items[i].value, best);
   }
-
-  return search(i + 1, capacity, value, best);
+  return best;
 }
 ```
 
@@ -70,7 +74,7 @@ The following problem sizes are available:
 | Name | Items |
 |------|-------|
 | test | `16` |
-| base | `28` |
+| base | `54` |
 
 ## Results
 
