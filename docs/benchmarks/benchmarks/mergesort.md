@@ -37,38 +37,6 @@ independent output halves. For further details see S. G. Akl and N. Santoro's
 1987 paper, [Optimal Parallel Merging and Sorting Without Memory
 Conflicts](https://doi.org/10.1109/TC.1987.5009478).
 
-In outline, the merge step looks like:
-
-```cpp linenums="1"
-parallel_merge(a, b, out) {
-  if (a.size() + b.size() <= cutoff) {
-    serial_merge(a, b, out);
-    return;
-  }
-
-  auto a_mid = 0;
-  auto b_mid = 0;
-
-  if (a.size() >= b.size()) {
-    a_mid = a.size() / 2;
-    b_mid = lower_bound(b, a[a_mid]);
-  } else {
-    b_mid = b.size() / 2;
-    a_mid = upper_bound(a, b[b_mid]);
-  }
-
-  auto out_mid = a_mid + b_mid;
-
-  spawn parallel_merge(a[0:a_mid], b[0:b_mid], out[0:out_mid]);
-  spawn parallel_merge(a[a_mid:], b[b_mid:], out[out_mid:]);
-  sync;
-}
-```
-
-The two recursive calls write to disjoint output ranges. The binary search
-keeps the output split balanced enough to expose parallelism without doing more
-than linear total merge work.
-
 ## Complexity
 
 The four-way form performs four quarter-sized recursive sorts and linear merge
