@@ -70,10 +70,6 @@ critical path becomes:
 T_\infty = \mathcal{O}(\log^3 n)
 \]
 
-The libfork implementation uses this binary-splitting merge all the way down to
-the `32` element insertion-sort base case. Only the parallel merge switches to a
-serial merge below `2'048` elements.
-
 ## Scaling
 
 Mergesort exposes regular divide-and-conquer parallelism in the recursive sorts
@@ -82,10 +78,7 @@ predictable, so the task graph is balanced.
 
 The merge step is memory-bandwidth heavy and can become the scaling limit. The
 base-case cutoff also matters: small tasks increase scheduling overhead, while
-large tasks reduce available parallelism near the leaves. The OpenMP reference
-uses a much larger cutoff for task creation; this benchmark keeps the serial
-base case small and lets each implementation choose where to stop spawning
-parallel work.
+large tasks reduce available parallelism near the leaves.
 
 This benchmark is the balanced counterpart to [quicksort](quicksort.md). It
 does more copying, but it avoids pivot-dependent imbalance.
@@ -96,10 +89,8 @@ The following problem sizes are available:
 
 | Name | Elements | Base case |
 |------|----------|-----------|
-| test | `10'000` | `32` |
-| base | `10'000'000` | `32` |
-
-The libfork benchmark also uses a `2'048` element serial-merge cutoff.
+| test | `10'000` | `64` |
+| base | `10'000'000` | `64` |
 
 ## Results
 
