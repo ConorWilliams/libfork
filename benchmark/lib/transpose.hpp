@@ -12,9 +12,10 @@
 import std;
 #endif
 
-inline constexpr unsigned transpose_test = matmul_test;
-inline constexpr unsigned transpose_base = matmul_base;
-inline constexpr unsigned transpose_cutoff = matmul_cutoff;
+inline constexpr unsigned transpose_test = 64;
+inline constexpr unsigned transpose_base = 8192;
+
+inline constexpr unsigned transpose_cutoff = 32;
 
 static_assert(std::has_single_bit(transpose_test));
 static_assert(std::has_single_bit(transpose_base));

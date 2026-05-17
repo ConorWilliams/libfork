@@ -23,6 +23,7 @@ void transpose(float *A, unsigned n, unsigned s) {
 
   transpose(A + o00, m, s);
   transpose(A + o11, m, s);
+
   transpose_swap(A + o01, A + o10, m, s);
 }
 
