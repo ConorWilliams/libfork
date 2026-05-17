@@ -43,10 +43,6 @@ for (unsigned i = 0; i < n; ++i)
 
 ## Implementation
 
-The serial and libfork implementations use the same recursive split and base
-case. The libfork benchmark exposes each group of four independent quadrant
-products as tasks, joins them, then launches the four accumulating products.
-
 To avoid spending cubic time constructing a reference answer, the benchmark
 uses dense inputs with a cheap closed-form product:
 
@@ -63,8 +59,7 @@ AB = D_AD_B + D_A X Y^T + U V^T D_B + U (V^T X) Y^T
 \]
 
 This keeps verification quadratic in the matrix size while still exercising a
-dense, non-identity matrix product. The timed benchmark body only writes `C`;
-timing is paused while the checker validates the result.
+dense, non-identity matrix product.
 
 ## Complexity
 
