@@ -10,19 +10,11 @@ The integrate benchmark computes the definite integral of:
 f(x) = \sum_{i=0}^{p - 1}\frac{1}{z + (x - c_i)^2}
 \]
 
-with \(p = 76\), \(z = 10^{-8}\), and non-uniform peak centers
-
-\[
-c_i = \alpha + (1 - 2\alpha)\left(\frac{i + 0.5}{p}\right)^2
-\]
-
-where \(\alpha = 0.05\). This keeps the peaks away from the endpoints while
-clustering more of them toward the lower end of the domain. The benchmark runs
-over the fixed interval \([a, b] = [0, 1]\). It uses
-[adaptive Simpson's rule](https://en.wikipedia.org/wiki/Adaptive_Simpson%27s_method):
-estimate the area of an interval with Simpson's rule, split the interval in
-half, compare the combined child estimates with the parent estimate, and recurse
-until the estimated error is below the configured tolerance.
+It uses [adaptive Simpson's
+rule](https://en.wikipedia.org/wiki/Adaptive_Simpson%27s_method): estimate the
+area of an interval with Simpson's rule, split the interval in half, compare
+the combined child estimates with the parent estimate, and recurse until the
+estimated error is below the configured tolerance.
 
 For an interval \([a, b]\) with midpoint \(m\), the Simpson estimate is:
 
@@ -51,11 +43,11 @@ closed-form reference:
 
 \[
 \int_a^b f(x)\,dx =
+\frac{1}{\sqrt{z}}
 \sum_{i=0}^{p - 1}
-\frac{
-  \arctan\left(\frac{b - c_i}{\sqrt{z}}\right) -
-  \arctan\left(\frac{a - c_i}{\sqrt{z}}\right)
-}{\sqrt{z}}
+\left[
+  \arctan\left(\frac{x - c_i}{\sqrt{z}}\right)
+\right]_{x=a}^{x=b}
 \]
 
 The benchmark records the total number of accepted leaf intervals, the maximum
