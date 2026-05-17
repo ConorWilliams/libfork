@@ -32,7 +32,7 @@ After splitting at \(m\), the benchmark accepts the interval when:
 and returns the Richardson-corrected value:
 
 \[
-S(a, m) + S(m, b) + (S(a, m) + S(m, b) - S(a, b)) / 15
+S(a, m) + S(m, b) + \frac{S(a, m) + S(m, b) - S(a, b)}{15}
 \]
 
 This is a narrow Lorentzian peak placed off-center in the integration domain.
