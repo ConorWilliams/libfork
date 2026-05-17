@@ -109,15 +109,46 @@ inline void strassen_prepare(float const *A11,
   strassen_mat_add(B21, sb, B22, sb, blocks.S10, m, m); // S10 = B21 + B22
 }
 
-inline void strassen_combine(
-    float *C11, float *C12, float *C21, float *C22, unsigned sc, strassen_blocks blocks, unsigned m) {
+inline void strassen_combine_00(float *C, unsigned sc, strassen_blocks blocks, unsigned m) {
   for (unsigned i = 0; i < m; ++i) {
     for (unsigned j = 0; j < m; ++j) {
       std::size_t k = static_cast<std::size_t>(i) * m + j;
-      C11[i * sc + j] = blocks.M1[k] + blocks.M4[k] - blocks.M5[k] + blocks.M7[k];
-      C12[i * sc + j] = blocks.M3[k] + blocks.M5[k];
-      C21[i * sc + j] = blocks.M2[k] + blocks.M4[k];
-      C22[i * sc + j] = blocks.M1[k] - blocks.M2[k] + blocks.M3[k] + blocks.M6[k];
+      C[i * sc + j] = blocks.M1[k] + blocks.M4[k] - blocks.M5[k] + blocks.M7[k];
     }
   }
+}
+
+inline void strassen_combine_01(float *C, unsigned sc, strassen_blocks blocks, unsigned m) {
+  for (unsigned i = 0; i < m; ++i) {
+    for (unsigned j = 0; j < m; ++j) {
+      std::size_t k = static_cast<std::size_t>(i) * m + j;
+      C[i * sc + j] = blocks.M3[k] + blocks.M5[k];
+    }
+  }
+}
+
+inline void strassen_combine_10(float *C, unsigned sc, strassen_blocks blocks, unsigned m) {
+  for (unsigned i = 0; i < m; ++i) {
+    for (unsigned j = 0; j < m; ++j) {
+      std::size_t k = static_cast<std::size_t>(i) * m + j;
+      C[i * sc + j] = blocks.M2[k] + blocks.M4[k];
+    }
+  }
+}
+
+inline void strassen_combine_11(float *C, unsigned sc, strassen_blocks blocks, unsigned m) {
+  for (unsigned i = 0; i < m; ++i) {
+    for (unsigned j = 0; j < m; ++j) {
+      std::size_t k = static_cast<std::size_t>(i) * m + j;
+      C[i * sc + j] = blocks.M1[k] - blocks.M2[k] + blocks.M3[k] + blocks.M6[k];
+    }
+  }
+}
+
+inline void strassen_combine(
+    float *C11, float *C12, float *C21, float *C22, unsigned sc, strassen_blocks blocks, unsigned m) {
+  strassen_combine_00(C11, sc, blocks, m);
+  strassen_combine_01(C12, sc, blocks, m);
+  strassen_combine_10(C21, sc, blocks, m);
+  strassen_combine_11(C22, sc, blocks, m);
 }

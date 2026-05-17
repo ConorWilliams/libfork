@@ -10,6 +10,51 @@ import libfork;
 
 namespace {
 
+template <bool Add>
+struct strassen_mat_sum_fn {
+  template <lf::worker_context Context>
+  static auto operator()(lf::env<Context>,
+                         float const *A,
+                         unsigned sa,
+                         float const *B,
+                         unsigned sb,
+                         float *Out,
+                         unsigned so,
+                         unsigned m) -> lf::task<void, Context> {
+    if constexpr (Add) {
+      strassen_mat_add(A, sa, B, sb, Out, so, m);
+    } else {
+      strassen_mat_sub(A, sa, B, sb, Out, so, m);
+    }
+    co_return;
+  }
+};
+
+enum class strassen_quadrant : unsigned {
+  c00,
+  c01,
+  c10,
+  c11,
+};
+
+template <strassen_quadrant Quadrant>
+struct strassen_combine_fn {
+  template <lf::worker_context Context>
+  static auto operator()(lf::env<Context>, float *C, unsigned sc, strassen_blocks blocks, unsigned m)
+      -> lf::task<void, Context> {
+    if constexpr (Quadrant == strassen_quadrant::c00) {
+      strassen_combine_00(C, sc, blocks, m);
+    } else if constexpr (Quadrant == strassen_quadrant::c01) {
+      strassen_combine_01(C, sc, blocks, m);
+    } else if constexpr (Quadrant == strassen_quadrant::c10) {
+      strassen_combine_10(C, sc, blocks, m);
+    } else {
+      strassen_combine_11(C, sc, blocks, m);
+    }
+    co_return;
+  }
+};
+
 struct strassen_fn {
   template <lf::worker_context Context>
   static auto operator()(lf::env<Context>,
@@ -44,7 +89,20 @@ struct strassen_fn {
     std::vector<float> buf(strassen_scratch_size(m));
     auto blocks = strassen_scratch_blocks(buf.data(), m);
 
-    strassen_prepare(A11, A12, A21, A22, sa, B11, B12, B21, B22, sb, blocks, m);
+    {
+      auto scp = co_await lf::scope();
+      co_await scp.fork(strassen_mat_sum_fn<true>{}, A11, sa, A22, sa, blocks.S1, m, m);
+      co_await scp.fork(strassen_mat_sum_fn<true>{}, B11, sb, B22, sb, blocks.S2, m, m);
+      co_await scp.fork(strassen_mat_sum_fn<true>{}, A21, sa, A22, sa, blocks.S3, m, m);
+      co_await scp.fork(strassen_mat_sum_fn<false>{}, B12, sb, B22, sb, blocks.S4, m, m);
+      co_await scp.fork(strassen_mat_sum_fn<false>{}, B21, sb, B11, sb, blocks.S5, m, m);
+      co_await scp.fork(strassen_mat_sum_fn<true>{}, A11, sa, A12, sa, blocks.S6, m, m);
+      co_await scp.fork(strassen_mat_sum_fn<false>{}, A21, sa, A11, sa, blocks.S7, m, m);
+      co_await scp.fork(strassen_mat_sum_fn<true>{}, B11, sb, B12, sb, blocks.S8, m, m);
+      co_await scp.fork(strassen_mat_sum_fn<false>{}, A12, sa, A22, sa, blocks.S9, m, m);
+      co_await scp.call(strassen_mat_sum_fn<true>{}, B21, sb, B22, sb, blocks.S10, m, m);
+      co_await scp.join();
+    }
 
     {
       auto scp = co_await lf::scope();
@@ -58,7 +116,14 @@ struct strassen_fn {
       co_await scp.join();
     }
 
-    strassen_combine(C11, C12, C21, C22, sc, blocks, m);
+    {
+      auto scp = co_await lf::scope();
+      co_await scp.fork(strassen_combine_fn<strassen_quadrant::c00>{}, C11, sc, blocks, m);
+      co_await scp.fork(strassen_combine_fn<strassen_quadrant::c01>{}, C12, sc, blocks, m);
+      co_await scp.fork(strassen_combine_fn<strassen_quadrant::c10>{}, C21, sc, blocks, m);
+      co_await scp.call(strassen_combine_fn<strassen_quadrant::c11>{}, C22, sc, blocks, m);
+      co_await scp.join();
+    }
   }
 };
 
