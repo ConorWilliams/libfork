@@ -33,22 +33,22 @@ void bench(benchmark::State &state, std::int64_t threads, const Expected &expect
 
     auto result = std::invoke(fn);
 
-    {
-      // benchmark::ScopedPauseTiming pause(state); // Pauses timing
+    state.PauseTiming();
 
-      if (!std::invoke(check, result, expected)) {
-        if constexpr (std::formattable<Expected const &, char> && std::formattable<decltype(result), char>) {
-          state.SkipWithError(std::format("incorrect result: {} != {}", result, expected));
-        } else {
-          state.SkipWithError("incorrect result: [unformattable]");
-        }
-        break;
+    if (!std::invoke(check, result, expected)) {
+      if constexpr (std::formattable<Expected const &, char> && std::formattable<decltype(result), char>) {
+        state.SkipWithError(std::format("incorrect result: {} != {}", result, expected));
+      } else {
+        state.SkipWithError("incorrect result: [unformattable]");
       }
+      state.ResumeTiming();
+      break;
     }
-  }
 
-  benchmark::DoNotOptimize(result);
-}
+    state.ResumeTiming();
+
+    benchmark::DoNotOptimize(result);
+  }
 }
 
 template <typename Expected, typename Fn>

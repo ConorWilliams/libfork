@@ -9,7 +9,6 @@
   #include <cmath>
   #include <cstddef>
   #include <cstdint>
-  #include <format>
   #include <functional>
   #include <memory>
 #else
@@ -158,20 +157,8 @@ struct matmul_output {
   unsigned n;
 };
 
-template <>
-struct std::formatter<matmul_output> : std::formatter<char const *> {
-  auto format(matmul_output output, std::format_context &ctx) const {
-    return std::formatter<char const *>::format(output.C == nullptr ? "null matmul output" : "matmul output",
-                                                ctx);
-  }
-};
-
-inline auto matmul_output_error(matmul_output output) -> float {
-  return matmul_max_relative_error(output.C, *output.middle, output.n);
-}
-
-inline auto matmul_output_is_acceptable(matmul_output output, float max_err) -> bool {
-  return matmul_output_error(output) <= max_err;
+inline auto check_matmul(matmul_output output, float max_err) -> bool {
+  return matmul_max_relative_error(output.C, *output.middle, output.n) <= max_err;
 }
 
 template <bool Add>
@@ -198,18 +185,15 @@ void run_matmul(benchmark::State &state, std::int64_t threads, float max_relativ
 
   auto args = matmul_init(n);
 
-  auto check = [&](matmul_output output, float max_err) -> bool {
+  lf_bench::bench(state, threads, max_relative_error, check_matmul, [&]() -> matmul_output {
+    // Initialize C to zero without counting it in the benchmark time.
     state.PauseTiming();
-    bool ok = matmul_output_is_acceptable(output, max_err);
-    state.ResumeTiming();
-    return ok;
-  };
-
-  lf_bench::bench(state, threads, max_relative_error, check, [&]() -> matmul_output {
     matmul_zero(args.C.get(), n);
+    state.ResumeTiming();
+
     std::invoke(fn, args.A.get(), args.B.get(), args.C.get(), n);
-    benchmark::DoNotOptimize(args.C.get());
-    return {args.C.get(), &args.middle, n};
+
+    return {.C = args.C.get(), .middle = &args.middle, .n = n};
   });
 }
 
