@@ -66,7 +66,7 @@ inline auto knapsack_dp_optimum(knapsack_problem const &p) -> int {
 }
 
 template <typename Fn>
-void run_knapsack(benchmark::State &state, Fn fn) {
+void run_knapsack(benchmark::State &state, std::int64_t threads, Fn fn) {
   auto n = static_cast<std::size_t>(state.range(0));
   auto problem = knapsack_make(n);
   int expect = knapsack_dp_optimum(problem);
@@ -74,7 +74,12 @@ void run_knapsack(benchmark::State &state, Fn fn) {
   state.counters["n"] = static_cast<double>(n);
   state.counters["capacity"] = problem.capacity;
 
-  lf_bench::bench(state, expect, [problem = std::move(problem), fn]() -> int {
+  lf_bench::bench(state, threads, expect, [problem = std::move(problem), fn]() -> int {
     return std::invoke(fn, problem);
   });
+}
+
+template <typename Fn>
+void run_knapsack(benchmark::State &state, Fn fn) {
+  run_knapsack(state, lf_bench::no_threads, fn);
 }
