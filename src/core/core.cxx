@@ -23,3 +23,4 @@ export import :exception;
 export import :final_suspend;
 export import :awaitables;
 export import :projected;
+export import :lift;
