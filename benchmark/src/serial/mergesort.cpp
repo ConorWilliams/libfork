@@ -59,4 +59,4 @@ void stable_sort_serial(benchmark::State &state) {
 } // namespace
 
 BENCH_ALL(mergesort_serial, serial, mergesort, mergesort)
-BENCH_ALL(stable_sort_serial, serial, mergesort / stable_sort, mergesort)
+BENCH_ALL(stable_sort_serial, serial, mergesort / std_stable_sort, mergesort)
