@@ -17,12 +17,17 @@ At each item, the search either takes the item, if it fits, or skips it. A
 fractional-knapsack relaxation gives an upper bound; subtrees whose bound cannot
 beat the current best solution are pruned.
 
-```mermaid
-flowchart TD
-  A["item k"] -->|"take if it fits"| B["item k + 1, less capacity"]
-  A -->|"skip"| C["item k + 1, same capacity"]
-  B --> D["bound/prune or continue"]
-  C --> E["bound/prune or continue"]
+```cpp
+void search(int i, int capacity, int value, int& best) {
+  best = max(best, value);
+  if (i == items.size() || upper_bound(i, capacity, value) <= best) {
+    return;
+  }
+  if (items[i].weight <= capacity) {
+    search(i + 1, capacity - items[i].weight, value + items[i].value, best);
+  }
+  search(i + 1, capacity, value, best);
+}
 ```
 
 ## Complexity
