@@ -29,12 +29,12 @@ A_{01}^T & A_{11}^T
 \end{bmatrix}
 \]
 
-All four quadrants are transposed recursively in place. After those recursive
-transposes finish, the off-diagonal quadrants are swapped as blocks, so the
-implementation does not need temporary submatrix copies:
+The diagonal quadrants are transposed recursively in place. The off-diagonal
+quadrants are swapped while being transposed, so the implementation does not
+need temporary submatrix copies:
 
 \[
-\operatorname{swap}(A_{01}^T, A_{10}^T)
+\operatorname{swap\_transpose}(A_{01}, A_{10})
 \]
 
 The recursion stops at a small base case that performs the direct triangular
@@ -48,30 +48,29 @@ for (unsigned i = 0; i < n; ++i)
 
 ## Complexity
 
-This version first transposes all four quadrants and then swaps the
-off-diagonal quadrants. The work recurrence is:
+The in-place transpose touches each matrix entry a constant number of times.
+The work recurrence is:
 
 \[
-T_1(n) = 4T_1(n / 2) + S_1(n / 2) + \mathcal{O}(1)
+T_1(n) = 2T_1(n / 2) + S_1(n / 2) + \mathcal{O}(1)
 \]
 
-where \(S_1\) is the recursive off-diagonal block swap:
+where \(S_1\) is the recursive off-diagonal swap-transpose:
 
 \[
 S_1(n) = 4S_1(n / 2) + \mathcal{O}(1)
 \]
 
-This is the same order as doing quadratic work at each of \(\log_2 n\)
-recursive levels:
+Thus:
 
 \[
-T_1 = \mathcal{O}(n^2 \log n)
+T_1 = \mathcal{O}(n^2)
 \]
 
-The libfork implementation exposes the four quadrant transposes as child tasks,
-joins them, and then runs the recursive off-diagonal block swap. The block swap
-itself splits into four independent child tasks, giving a regular
-divide-and-conquer task graph with a fixed base-case cutoff.
+The libfork implementation exposes the two diagonal transposes and the
+off-diagonal swap-transpose as child tasks. The swap-transpose itself splits
+into four independent child tasks, giving a regular divide-and-conquer task
+graph with a fixed base-case cutoff.
 
 ## Scaling
 
@@ -90,7 +89,7 @@ The following problem sizes are available:
 | Name | Matrix size | Base case |
 |------|-------------|-----------|
 | test | `64 x 64` | `32 x 32` |
-| base | `8192 x 8192` | `32 x 32` |
+| base | `1024 x 1024` | `32 x 32` |
 
 ## Results
 
