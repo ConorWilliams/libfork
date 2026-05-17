@@ -7,11 +7,16 @@ icon: lucide/area-chart
 The integrate benchmark computes the definite integral of:
 
 \[
-f(x) = \frac{1}{z + (x - c)^2}
+f(x) = \sum_{i=0}^{p - 1}\frac{1}{z + (x - c_i)^2}
 \]
 
-with \(c = 0.731\) and \(z = 10^{-8}\), over the fixed interval
-\([a, b] = [0, 1]\). It uses
+with \(p = 76\), \(z = 10^{-8}\), and evenly spaced peak centers
+
+\[
+c_i = \frac{i + 0.5}{p}
+\]
+
+over the fixed interval \([a, b] = [0, 1]\). It uses
 [adaptive Simpson's rule](https://en.wikipedia.org/wiki/Adaptive_Simpson%27s_method):
 estimate the area of an interval with Simpson's rule, split the interval in
 half, compare the combined child estimates with the parent estimate, and recurse
@@ -35,11 +40,24 @@ and returns the Richardson-corrected value:
 S(a, m) + S(m, b) + \frac{S(a, m) + S(m, b) - S(a, b)}{15}
 \]
 
-This is a narrow Lorentzian peak placed off-center in the integration domain.
-Most of the interval is nearly flat, but the peak has much higher curvature, so
-adaptive refinement produces a less balanced tree than a polynomial workload.
-The benchmark records the total number of accepted leaf intervals and the
-maximum recursion depth.
+This is a row of narrow Lorentzian peaks across the integration domain. Most
+points are locally smooth, but each peak has much higher curvature, so adaptive
+refinement repeatedly discovers small regions that need extra work. Compared
+with a single peak, the multi-peak function creates enough independent
+refinement regions for a longer base workload while preserving an exact
+closed-form reference:
+
+\[
+\int_a^b f(x)\,dx =
+\sum_{i=0}^{p - 1}
+\frac{
+  \arctan\left(\frac{b - c_i}{\sqrt{z}}\right) -
+  \arctan\left(\frac{a - c_i}{\sqrt{z}}\right)
+}{\sqrt{z}}
+\]
+
+The benchmark records the total number of accepted leaf intervals, the maximum
+recursion depth, and the number of peaks.
 
 ## Complexity
 
@@ -77,12 +95,12 @@ tree-generation randomness.
 
 The following problem sizes are available. Both use the same integration
 domain; the size controls the requested adaptive tolerance. The benchmark also
-reports the leaf and depth counts as counters, in the same spirit as UTS.
+reports the peak, leaf, and depth counts as counters, in the same spirit as UTS.
 
-| Name | Domain | Tolerance | Leaves | Max depth |
-|------|--------|-----------|--------|-----------|
-| test | `[0, 1]` | `1.0e-6` | `4'105` | `23` |
-| base | `[0, 1]` | `1.0e-9` | `23'649` | `28` |
+| Name | Domain | Peaks | Tolerance | Leaves | Max depth |
+|------|--------|-------|-----------|--------|-----------|
+| test | `[0, 1]` | `76` | `1.0e-6` | `279'141` | `23` |
+| base | `[0, 1]` | `76` | `1.0e-9` | `1'825'940` | `40` |
 
 ## Results
 

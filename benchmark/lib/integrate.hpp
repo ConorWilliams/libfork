@@ -15,9 +15,9 @@ import std;
 inline constexpr std::int64_t integrate_test = 6;
 inline constexpr std::int64_t integrate_base = 9;
 
+inline constexpr std::int64_t integrate_peaks = 76;
 inline constexpr double integrate_lower = 0.0;
 inline constexpr double integrate_upper = 1.0;
-inline constexpr double integrate_center = 0.731;
 inline constexpr double integrate_z = 1.0e-8;
 
 struct integrate_result {
@@ -34,17 +34,27 @@ constexpr auto integrate_tolerance(std::int64_t exponent) -> double {
   return result;
 }
 
+constexpr auto integrate_peak_center(std::int64_t peak) -> double {
+  return (static_cast<double>(peak) + 0.5) / static_cast<double>(integrate_peaks);
+}
+
 constexpr auto integrate_fn(double x) -> double {
-  double distance = x - integrate_center;
-  return 1.0 / (integrate_z + distance * distance);
+  double sum = 0.0;
+  for (std::int64_t peak = 0; peak < integrate_peaks; ++peak) {
+    double distance = x - integrate_peak_center(peak);
+    sum += 1.0 / (integrate_z + distance * distance);
+  }
+  return sum;
 }
 
 constexpr auto integrate_exact(double a, double b) -> double {
-  auto indefinite = [](double x) {
-    double scale = std::sqrt(integrate_z);
-    return std::atan((x - integrate_center) / scale) / scale;
-  };
-  return indefinite(b) - indefinite(a);
+  double scale = std::sqrt(integrate_z);
+  double sum = 0.0;
+  for (std::int64_t peak = 0; peak < integrate_peaks; ++peak) {
+    double center = integrate_peak_center(peak);
+    sum += (std::atan((b - center) / scale) - std::atan((a - center) / scale)) / scale;
+  }
+  return sum;
 }
 
 inline auto integrate_is_close(const integrate_result &result, double expect) -> bool {
@@ -60,6 +70,7 @@ void run_integrate(benchmark::State &state, Fn fn) {
 
   state.counters["epsilon"] = tolerance;
   state.counters["n"] = integrate_upper;
+  state.counters["peaks"] = integrate_peaks;
 
   lf_bench::bench(state, expect, integrate_is_close, [&stats, tolerance, fn]() -> integrate_result {
     return stats = std::invoke(fn, tolerance);
