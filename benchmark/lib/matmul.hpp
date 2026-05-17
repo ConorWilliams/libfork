@@ -9,6 +9,7 @@
   #include <cmath>
   #include <cstddef>
   #include <cstdint>
+  #include <format>
   #include <functional>
   #include <memory>
 #else
@@ -151,6 +152,28 @@ inline auto matmul_max_relative_error(float const *C,
   return error;
 }
 
+struct matmul_output {
+  float const *C;
+  std::array<float, matmul_check_rank * matmul_check_rank> const *middle;
+  unsigned n;
+};
+
+template <>
+struct std::formatter<matmul_output> : std::formatter<char const *> {
+  auto format(matmul_output output, std::format_context &ctx) const {
+    return std::formatter<char const *>::format(output.C == nullptr ? "null matmul output" : "matmul output",
+                                                ctx);
+  }
+};
+
+inline auto matmul_output_error(matmul_output output) -> float {
+  return matmul_max_relative_error(output.C, *output.middle, output.n);
+}
+
+inline auto matmul_output_is_acceptable(matmul_output output, float max_err) -> bool {
+  return matmul_output_error(output) <= max_err;
+}
+
 template <bool Add>
 inline void matmul_basecase_multiply(float const *A, float const *B, float *R, unsigned n, unsigned s) {
   for (unsigned i = 0; i < n; ++i) {
@@ -168,8 +191,6 @@ inline void matmul_basecase_multiply(float const *A, float const *B, float *R, u
   }
 }
 
-inline auto matmul_error_is_acceptable(float err, float max_err) -> bool { return err <= max_err; }
-
 template <typename Fn>
 void run_matmul(benchmark::State &state, std::int64_t threads, float max_relative_error, Fn fn) {
   auto n = static_cast<unsigned>(state.range(0));
@@ -177,11 +198,18 @@ void run_matmul(benchmark::State &state, std::int64_t threads, float max_relativ
 
   auto args = matmul_init(n);
 
-  lf_bench::bench(state, threads, max_relative_error, matmul_error_is_acceptable, [&]() -> float {
+  auto check = [&](matmul_output output, float max_err) -> bool {
+    state.PauseTiming();
+    bool ok = matmul_output_is_acceptable(output, max_err);
+    state.ResumeTiming();
+    return ok;
+  };
+
+  lf_bench::bench(state, threads, max_relative_error, check, [&]() -> matmul_output {
     matmul_zero(args.C.get(), n);
     std::invoke(fn, args.A.get(), args.B.get(), args.C.get(), n);
     benchmark::DoNotOptimize(args.C.get());
-    return matmul_max_relative_error(args.C.get(), args.middle, n);
+    return {args.C.get(), &args.middle, n};
   });
 }
 

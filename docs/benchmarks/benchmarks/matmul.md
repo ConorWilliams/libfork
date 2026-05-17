@@ -63,7 +63,8 @@ AB = D_AD_B + D_A X Y^T + U V^T D_B + U (V^T X) Y^T
 \]
 
 This keeps verification quadratic in the matrix size while still exercising a
-dense, non-identity matrix product.
+dense, non-identity matrix product. The timed benchmark body only writes `C`;
+timing is paused while the checker validates the result.
 
 ## Complexity
 

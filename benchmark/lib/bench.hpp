@@ -33,6 +33,7 @@ void bench(benchmark::State &state, std::int64_t threads, const Expected &expect
   report_threads(state, threads);
 
   for (auto _ : state) {
+
     auto result = std::invoke(fn);
 
     if (!std::invoke(check, result, expected)) {
