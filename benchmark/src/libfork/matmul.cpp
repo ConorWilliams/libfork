@@ -13,7 +13,7 @@ namespace {
 template <bool Add>
 struct matmul_fn {
   template <lf::worker_context Context>
-  static auto o perator()(lf::env<Context>, float const *A, float const *B, float *R, unsigned n, unsigned s)
+  static auto operator()(lf::env<Context>, float const *A, float const *B, float *R, unsigned n, unsigned s)
       -> lf::task<void, Context> {
 
     if (n <= matmul_basecase) {
