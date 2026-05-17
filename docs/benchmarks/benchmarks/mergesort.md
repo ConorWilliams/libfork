@@ -7,8 +7,9 @@ icon: lucide/merge
 The mergesort benchmark stably sorts a deterministic random array of 32-bit
 unsigned integers. Mergesort is a divide-and-conquer sorting algorithm: split
 the input, sort the pieces, then merge the sorted pieces back together. The
-serial projection uses the same four-way recursion pattern as Cilksort, but
-keeps the merges serial:
+serial projection uses the same four-way recursion pattern as
+[Cilksort](https://publications.csail.mit.edu/lcs/pubs/pdf/MIT-LCS-TR-785.pdf),
+but keeps the merges serial:
 
 ```cpp linenums="1"
 mergesort(q1, scratch1);
@@ -24,12 +25,6 @@ Small partitions are handled by [insertion
 sort](https://en.wikipedia.org/wiki/Insertion_sort). A scratch buffer is
 allocated once per benchmark iteration and threaded through the recursion, so
 the measured work is the sort and copy traffic rather than repeated allocation.
-
-[Cilksort](https://publications.csail.mit.edu/lcs/pubs/pdf/MIT-LCS-TR-785.pdf),
-as in the original Cilk benchmark and later OpenMP translations, uses this
-four-way split to expose more independent fork-join work. The first two merges
-are independent, so a parallel implementation can run them concurrently before
-the final merge.
 
 The two intermediate merges write into the scratch buffer, and the final merge
 writes back to the input array. This ping-pong between input and scratch avoids
@@ -66,10 +61,6 @@ critical path becomes:
 \[
 T_\infty = \mathcal{O}(\log^3 n)
 \]
-
-The original Cilk notes also mention that a logarithmic factor can be removed
-with a more sophisticated merge. This benchmark uses the simpler recursive
-binary-splitting merge shape because it maps directly onto fork-join tasking.
 
 ## Scaling
 
