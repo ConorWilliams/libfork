@@ -31,7 +31,7 @@ tasks close to the root of the graph.
 
     On modern heterogeneous hardware even homogeneous workloads can have irregular
     task costs (i.e. a slower core may take longer to complete the same work as a
-    fast core) hence, these are classifications more about regularity of the task
+    fast core) hence, these classifications are more about regularity of the task
     graph.
 
 ### Heterogeneous
