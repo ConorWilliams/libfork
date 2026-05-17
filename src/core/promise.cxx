@@ -21,6 +21,7 @@ import :ops;
 import :handles;
 import :final_suspend;
 import :awaitables;
+import :lift;
 
 // TODO: vet constexpr usage in the library
 
@@ -76,6 +77,17 @@ struct mixin_frame {
       stash_current_exception(&self.frame);
     }
     return {.child = nullptr};
+  }
+
+  // Specialization for lifted functions
+  template <bool StopToken, typename R, typename Fn, typename... Args>
+  constexpr auto
+  await_transform(this auto &self,
+                  pkg<category::call, StopToken, Context, R, lift_impl, Args...> &&pkg) noexcept {
+    return lifted_awaitable<Context, StopToken, R, lift_impl, Args...>{
+        .pkg = std::move(pkg),
+        .parent = &self.frame,
+    };
   }
 
   // Custom awaitable
