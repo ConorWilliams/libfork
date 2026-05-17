@@ -10,6 +10,8 @@ import libfork;
 
 namespace {
 
+// TODO: check all documentation line numbers / formatting
+
 struct merge_fn {
   template <lf::worker_context Context>
   static auto operator()(lf::env<Context>,
@@ -31,7 +33,7 @@ struct merge_fn {
       std::copy(a_first, a_last, out);
       co_return;
     }
-    if (n <= static_cast<std::ptrdiff_t>(mergesort_parallel_basecase)) {
+    if (n <= static_cast<std::ptrdiff_t>(mergesort_merge_basecase)) {
       std::merge(a_first, a_last, b_first, b_last, out);
       co_return;
     }
@@ -63,8 +65,8 @@ struct mergesort_fn {
 
     auto n = last - first;
 
-    if (n <= static_cast<std::ptrdiff_t>(mergesort_parallel_basecase)) {
-      mergesort_serial_sort(first, last, scratch);
+    if (n <= static_cast<std::ptrdiff_t>(mergesort_basecase)) {
+      mergesort_insertion_sort(first, last);
       co_return;
     }
 

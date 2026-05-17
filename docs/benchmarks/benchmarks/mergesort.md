@@ -94,9 +94,9 @@ critical path becomes:
 T_\infty = \mathcal{O}(\log^3 n)
 \]
 
-The libfork implementation uses this binary-splitting merge, but stops spawning
-sort and merge tasks below `2'048` elements. Below that task cutoff it uses the
-serial four-way helper down to the `32` element insertion-sort base case.
+The libfork implementation uses this binary-splitting merge all the way down to
+the `32` element insertion-sort base case. Only the parallel merge switches to a
+serial merge below `2'048` elements.
 
 ## Scaling
 
@@ -123,7 +123,7 @@ The following problem sizes are available:
 | test | `10'000` | `32` |
 | base | `10'000'000` | `32` |
 
-The libfork benchmark also uses a `2'048` element task cutoff.
+The libfork benchmark also uses a `2'048` element serial-merge cutoff.
 
 ## Results
 
