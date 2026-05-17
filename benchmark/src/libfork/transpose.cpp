@@ -10,13 +10,13 @@ import libfork;
 
 namespace {
 
-struct transpose_swap_fn {
+struct transpose_block_swap_fn {
   template <lf::worker_context Context>
   static auto
   operator()(lf::env<Context>, float *A, float *B, unsigned n, unsigned s) -> lf::task<void, Context> {
 
     if (n <= transpose_cutoff) {
-      transpose_swap_basecase(A, B, n, s);
+      transpose_block_swap_basecase(A, B, n, s);
       co_return;
     }
 
@@ -27,10 +27,10 @@ struct transpose_swap_fn {
     unsigned const o11 = m * s + m;
 
     auto sc = co_await lf::scope();
-    co_await sc.fork(transpose_swap_fn{}, A + o00, B + o00, m, s);
-    co_await sc.fork(transpose_swap_fn{}, A + o01, B + o10, m, s);
-    co_await sc.fork(transpose_swap_fn{}, A + o10, B + o01, m, s);
-    co_await sc.call(transpose_swap_fn{}, A + o11, B + o11, m, s);
+    co_await sc.fork(transpose_block_swap_fn{}, A + o00, B + o00, m, s);
+    co_await sc.fork(transpose_block_swap_fn{}, A + o01, B + o01, m, s);
+    co_await sc.fork(transpose_block_swap_fn{}, A + o10, B + o10, m, s);
+    co_await sc.call(transpose_block_swap_fn{}, A + o11, B + o11, m, s);
     co_await sc.join();
   }
 };
@@ -50,11 +50,20 @@ struct transpose_fn {
     unsigned const o10 = m * s;
     unsigned const o11 = m * s + m;
 
-    auto sc = co_await lf::scope();
-    co_await sc.fork(transpose_fn{}, A + o00, m, s);
-    co_await sc.fork(transpose_fn{}, A + o11, m, s);
-    co_await sc.call(transpose_swap_fn{}, A + o01, A + o10, m, s);
-    co_await sc.join();
+    {
+      auto sc = co_await lf::scope();
+      co_await sc.fork(transpose_fn{}, A + o00, m, s);
+      co_await sc.fork(transpose_fn{}, A + o01, m, s);
+      co_await sc.fork(transpose_fn{}, A + o10, m, s);
+      co_await sc.call(transpose_fn{}, A + o11, m, s);
+      co_await sc.join();
+    }
+
+    {
+      auto sc = co_await lf::scope();
+      co_await sc.call(transpose_block_swap_fn{}, A + o01, A + o10, m, s);
+      co_await sc.join();
+    }
   }
 };
 

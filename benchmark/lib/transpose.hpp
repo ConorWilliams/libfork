@@ -76,10 +76,10 @@ inline void transpose_basecase(float *A, unsigned n, unsigned s) {
   }
 }
 
-inline void transpose_swap_basecase(float *A, float *B, unsigned n, unsigned s) {
+inline void transpose_block_swap_basecase(float *A, float *B, unsigned n, unsigned s) {
   for (unsigned i = 0; i < n; ++i) {
     for (unsigned j = 0; j < n; ++j) {
-      std::swap(A[static_cast<std::size_t>(i) * s + j], B[static_cast<std::size_t>(j) * s + i]);
+      std::swap(A[static_cast<std::size_t>(i) * s + j], B[static_cast<std::size_t>(i) * s + j]);
     }
   }
 }
