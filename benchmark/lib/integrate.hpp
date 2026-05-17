@@ -64,7 +64,7 @@ inline auto integrate_is_close(const integrate_result &result, double expect) ->
 }
 
 template <typename Fn>
-void run_integrate(benchmark::State &state, Fn fn) {
+void run_integrate(benchmark::State &state, std::int64_t threads, Fn fn) {
   double tolerance = integrate_tolerance(state.range(0));
   double expect = integrate_exact(integrate_lower, integrate_upper);
 
@@ -74,10 +74,15 @@ void run_integrate(benchmark::State &state, Fn fn) {
   state.counters["n"] = integrate_upper;
   state.counters["peaks"] = integrate_peaks;
 
-  lf_bench::bench(state, expect, integrate_is_close, [&stats, tolerance, fn]() -> integrate_result {
+  lf_bench::bench(state, threads, expect, integrate_is_close, [&stats, tolerance, fn]() -> integrate_result {
     return stats = std::invoke(fn, tolerance);
   });
 
   state.counters["depth"] = stats.depth;
   state.counters["leaves"] = static_cast<double>(stats.leaves);
+}
+
+template <typename Fn>
+void run_integrate(benchmark::State &state, Fn fn) {
+  run_integrate(state, lf_bench::no_threads, fn);
 }

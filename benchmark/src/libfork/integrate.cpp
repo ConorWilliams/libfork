@@ -1,0 +1,86 @@
+#include <benchmark/benchmark.h>
+
+#include "integrate.hpp"
+
+#include "helpers.hpp"
+
+import std;
+
+import libfork;
+
+namespace {
+
+struct simpson_estimate {
+  double mid;
+  double f_mid;
+  double area;
+};
+
+auto integrate_simpson(double x1, double y1, double x2, double y2) -> simpson_estimate {
+  double mid = (x1 + x2) / 2.0;
+  double f_mid = integrate_fn(mid);
+  double area = (x2 - x1) / 6.0 * (y1 + 4.0 * f_mid + y2);
+  return {mid, f_mid, area};
+}
+
+struct integrate_task {
+  template <lf::worker_context Context>
+  static auto operator()(lf::env<Context>,
+                         double x1,
+                         double y1,
+                         double x2,
+                         double y2,
+                         double eps,
+                         simpson_estimate whole,
+                         int depth) -> lf::task<integrate_result, Context> {
+
+    auto left = integrate_simpson(x1, y1, whole.mid, whole.f_mid);
+    auto right = integrate_simpson(whole.mid, whole.f_mid, x2, y2);
+    double delta = left.area + right.area - whole.area;
+
+    if (std::abs(delta) <= 15.0 * eps) {
+      co_return {.area = left.area + right.area + delta / 15.0, .leaves = 1, .depth = depth};
+    }
+
+    integrate_result left_result{};
+    integrate_result right_result{};
+
+    auto sc = co_await lf::scope();
+    co_await sc.fork(
+        &left_result, integrate_task{}, x1, y1, whole.mid, whole.f_mid, eps / 2.0, left, depth + 1);
+    co_await sc.call(
+        &right_result, integrate_task{}, whole.mid, whole.f_mid, x2, y2, eps / 2.0, right, depth + 1);
+    co_await sc.join();
+
+    co_return {.area = left_result.area + right_result.area,
+               .leaves = left_result.leaves + right_result.leaves,
+               .depth = std::max(left_result.depth, right_result.depth)};
+  }
+};
+
+template <lf::scheduler Sch>
+void run(benchmark::State &state) {
+  auto threads = static_cast<std::int64_t>(thread_count<Sch>(state));
+  Sch scheduler = make_scheduler<Sch>(state);
+
+  run_integrate(state, threads, [&](double tolerance) -> integrate_result {
+    double lower_y = integrate_fn(integrate_lower);
+    double upper_y = integrate_fn(integrate_upper);
+    auto whole = integrate_simpson(integrate_lower, lower_y, integrate_upper, upper_y);
+    return lf::schedule(scheduler,
+                        integrate_task{},
+                        integrate_lower,
+                        lower_y,
+                        integrate_upper,
+                        upper_y,
+                        tolerance,
+                        whole,
+                        0)
+        .get();
+  });
+}
+
+} // namespace
+
+LIBFORK_BENCH_ALL_MT(run, integrate, integrate, mono_busy_pool)
+LIBFORK_BENCH_ALL_MT(run, integrate, integrate, poly_busy_pool)

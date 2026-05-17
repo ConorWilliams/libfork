@@ -4,6 +4,7 @@ target_sources(libfork_benchmarks
   PRIVATE
     fib.cpp
     fold.cpp
+    integrate.cpp
     matmul.cpp
     mergesort.cpp
     skynet.cpp
