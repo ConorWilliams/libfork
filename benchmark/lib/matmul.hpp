@@ -163,20 +163,26 @@ inline auto check_matmul(matmul_output output, float max_err) -> bool {
 }
 
 template <bool Add>
-inline void matmul_basecase_multiply(float const *A, float const *B, float *R, unsigned n, unsigned s) {
+inline void matmul_basecase_multiply(
+    float const *A, unsigned sa, float const *B, unsigned sb, float *R, unsigned sr, unsigned n) {
   for (unsigned i = 0; i < n; ++i) {
     for (unsigned j = 0; j < n; ++j) {
       float sum = 0;
       for (unsigned k = 0; k < n; ++k) {
-        sum += A[i * s + k] * B[k * s + j];
+        sum += A[i * sa + k] * B[k * sb + j];
       }
       if constexpr (Add) {
-        R[i * s + j] += sum;
+        R[i * sr + j] += sum;
       } else {
-        R[i * s + j] = sum;
+        R[i * sr + j] = sum;
       }
     }
   }
+}
+
+template <bool Add>
+inline void matmul_basecase_multiply(float const *A, float const *B, float *R, unsigned n, unsigned s) {
+  matmul_basecase_multiply<Add>(A, s, B, s, R, s, n);
 }
 
 template <typename Fn>

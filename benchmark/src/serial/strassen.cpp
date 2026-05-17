@@ -26,23 +26,10 @@ void mat_sub(float const *A, unsigned sa, float const *B, unsigned sb, float *Ou
   }
 }
 
-void naive_multiply(
-    float const *A, unsigned sa, float const *B, unsigned sb, float *C, unsigned sc, unsigned n) {
-  for (unsigned i = 0; i < n; ++i) {
-    for (unsigned j = 0; j < n; ++j) {
-      float sum = 0;
-      for (unsigned k = 0; k < n; ++k) {
-        sum += A[i * sa + k] * B[k * sb + j];
-      }
-      C[i * sc + j] = sum;
-    }
-  }
-}
-
 void strassen(float const *A, unsigned sa, float const *B, unsigned sb, float *C, unsigned sc, unsigned n) {
 
   if (n <= strassen_cutoff) {
-    naive_multiply(A, sa, B, sb, C, sc, n);
+    matmul_basecase_multiply<false>(A, sa, B, sb, C, sc, n);
     return;
   }
 
