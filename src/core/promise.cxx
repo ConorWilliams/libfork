@@ -69,22 +69,22 @@ struct mixin_frame {
 
   // Fork/call
   template <category Cat, bool StopToken, typename R, typename Fn, typename... Args>
-  constexpr auto await_transform(this auto &self, pkg<Cat, StopToken, Context, R, Fn, Args...> &&pkg) noexcept
-      -> async_awaitable<Cat, Context> {
+  constexpr auto
+  await_transform(this auto &self, pkg<Cat, StopToken, Context, R, Fn, Args...> &&pkg) noexcept {
     LF_TRY {
       return self.await_transform_pkg(std::move(pkg));
     } LF_CATCH_ALL {
       stash_current_exception(&self.frame);
     }
-    return {.child = nullptr};
+    return async_awaitable<Cat, Context>{.child = nullptr};
   }
 
   // Specialization for lifted functions
   template <bool StopToken, typename R, typename Fn, typename... Args>
+    requires std::same_as<std::remove_cvref_t<Fn>, lift_impl>
   constexpr auto
-  await_transform(this auto &self,
-                  pkg<category::call, StopToken, Context, R, lift_impl, Args...> &&pkg) noexcept {
-    return lifted_awaitable<Context, StopToken, R, lift_impl, Args...>{
+  await_transform(this auto &self, pkg<category::call, StopToken, Context, R, Fn, Args...> &&pkg) noexcept {
+    return lifted_awaitable<Context, StopToken, R, Fn, Args...>{
         .pkg = std::move(pkg),
         .parent = &self.frame,
     };
