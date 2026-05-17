@@ -7,24 +7,35 @@ icon: lucide/area-chart
 The integrate benchmark computes the definite integral of:
 
 \[
-f(x) = (x^2 + 1)x
+f(x) = x^4 + x
 \]
 
-over the interval \([0, n]\). It uses adaptive recursive trapezoidal
-quadrature: split the interval in half, compare the combined child estimate
-with the parent estimate, and recurse until the error is below the configured
-tolerance.
+Over the interval \([0, n]\). It uses
+[adaptive Simpson's rule](https://en.wikipedia.org/wiki/Adaptive_Simpson%27s_method):
+estimate the area of an interval with Simpson's rule, split the interval in
+half, compare the combined child estimates with the parent estimate, and recurse
+until the estimated error is below the configured tolerance.
 
-```mermaid
-flowchart TD
-  A["interval [a, b]"] --> B["split at midpoint"]
-  B --> C["left estimate"]
-  B --> D["right estimate"]
-  C --> E{"error small enough?"}
-  D --> E
-  E -->|"yes"| F["return area"]
-  E -->|"no"| G["recurse on children"]
-```
+For an interval \([a, b]\) with midpoint \(m\), the Simpson estimate is:
+
+\[
+S(a, b) = \frac{b - a}{6}\left(f(a) + 4f(m) + f(b)\right)
+\]
+
+After splitting at \(m\), the benchmark accepts the interval when:
+
+\[
+\left|S(a, m) + S(m, b) - S(a, b)\right| \le 15\epsilon
+\]
+
+and returns the Richardson-corrected value:
+
+\[
+S(a, m) + S(m, b) + (S(a, m) + S(m, b) - S(a, b)) / 15
+\]
+
+The integrand is quartic because Simpson's rule is already exact for cubic
+polynomials.
 
 ## Complexity
 

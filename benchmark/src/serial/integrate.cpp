@@ -7,30 +7,42 @@ import std;
 
 namespace {
 
-auto integrate_recurse(double x1, double y1, double x2, double y2, double area) -> double {
+struct simpson_estimate {
+  double mid;
+  double f_mid;
+  double area;
+};
 
-  double half = (x2 - x1) / 2;
-  double x0 = x1 + half;
-  double y0 = integrate_fn(x0);
+auto integrate_simpson(double x1, double y1, double x2, double y2) -> simpson_estimate {
+  double mid = (x1 + x2) / 2.0;
+  double f_mid = integrate_fn(mid);
+  double area = (x2 - x1) / 6.0 * (y1 + 4.0 * f_mid + y2);
+  return {mid, f_mid, area};
+}
 
-  double area_x1x0 = (y1 + y0) / 2 * half;
-  double area_x0x2 = (y0 + y2) / 2 * half;
-  double area_x1x2 = area_x1x0 + area_x0x2;
+auto integrate_recurse(double x1, double y1, double x2, double y2, double eps, simpson_estimate whole)
+    -> double {
 
-  if (area_x1x2 - area < integrate_epsilon && area - area_x1x2 < integrate_epsilon) {
-    return area_x1x2;
+  auto left = integrate_simpson(x1, y1, whole.mid, whole.f_mid);
+  auto right = integrate_simpson(whole.mid, whole.f_mid, x2, y2);
+  double delta = left.area + right.area - whole.area;
+
+  if (std::abs(delta) <= 15.0 * eps) {
+    return left.area + right.area + delta / 15.0;
   }
 
-  area_x1x0 = integrate_recurse(x1, y1, x0, y0, area_x1x0);
-  area_x0x2 = integrate_recurse(x0, y0, x2, y2, area_x0x2);
-
-  return area_x1x0 + area_x0x2;
+  return integrate_recurse(x1, y1, whole.mid, whole.f_mid, eps / 2.0, left) +
+         integrate_recurse(whole.mid, whole.f_mid, x2, y2, eps / 2.0, right);
 }
 
 template <typename = void>
 void integrate_serial(benchmark::State &state) {
   run_integrate(state, [](double upper) {
-    return integrate_recurse(0, integrate_fn(0), upper, integrate_fn(upper), 0);
+    double lower = 0.0;
+    double lower_y = integrate_fn(lower);
+    double upper_y = integrate_fn(upper);
+    auto whole = integrate_simpson(lower, lower_y, upper, upper_y);
+    return integrate_recurse(lower, lower_y, upper, upper_y, integrate_epsilon, whole);
   });
 }
 
