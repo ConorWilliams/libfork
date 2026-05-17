@@ -58,12 +58,17 @@ template <typename Fn>
 void run_uts(benchmark::State &state, uts_tree tree, std::int64_t threads, Fn fn) {
   setup_tree(tree);
   auto expect = expected_result(tree);
+  result stats{};
 
-  lf_bench::bench(state, threads, expect, [fn]() -> result {
+  lf_bench::bench(state, threads, expect, [&stats, fn]() -> result {
     Node root;
     uts_initRoot(&root, type);
-    return std::invoke(fn, &root);
+    return stats = std::invoke(fn, &root);
   });
+
+  state.counters["depth"] = static_cast<double>(stats.maxdepth);
+  state.counters["nodes"] = static_cast<double>(stats.size);
+  state.counters["leaves"] = static_cast<double>(stats.leaves);
 }
 
 template <typename Fn>
