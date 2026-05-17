@@ -56,16 +56,14 @@ struct lifted_awaitable : std::suspend_never {
 
   frame_t<Context> *parent;
 
-  constexpr auto await_ready() noexcept -> bool {
+  constexpr auto await_resume() noexcept {
 
     // Noop if stop has been requested.
     if constexpr (StopToken) {
       if (pkg.stop_token.stop_requested()) {
-        return true;
       }
     } else {
       if (parent->stop_requested()) {
-        return true;
       }
     }
 
@@ -81,16 +79,6 @@ struct lifted_awaitable : std::suspend_never {
       }
     } LF_CATCH(...) {
       stash_current_exception(parent);
-    }
-
-    return true;
-  }
-
-  constexpr void await_resume() {
-    if constexpr (LF_COMPILER_EXCEPTIONS) {
-      if (parent->exception_bit) [[unlikely]] {
-        std::rethrow_exception(extract_exception(parent));
-      }
     }
   }
 };
