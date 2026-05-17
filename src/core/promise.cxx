@@ -21,6 +21,7 @@ import :ops;
 import :handles;
 import :final_suspend;
 import :awaitables;
+import :lift;
 
 // TODO: vet constexpr usage in the library
 
@@ -68,14 +69,25 @@ struct mixin_frame {
 
   // Fork/call
   template <category Cat, bool StopToken, typename R, typename Fn, typename... Args>
-  constexpr auto await_transform(this auto &self, pkg<Cat, StopToken, Context, R, Fn, Args...> &&pkg) noexcept
-      -> async_awaitable<Cat, Context> {
+  constexpr auto
+  await_transform(this auto &self, pkg<Cat, StopToken, Context, R, Fn, Args...> &&pkg) noexcept {
     LF_TRY {
       return self.await_transform_pkg(std::move(pkg));
     } LF_CATCH_ALL {
       stash_current_exception(&self.frame);
     }
-    return {.child = nullptr};
+    return async_awaitable<Cat, Context>{.child = nullptr};
+  }
+
+  // Specialization for lifted functions
+  template <bool StopToken, typename R, typename Fn, typename... Args>
+    requires std::same_as<std::remove_cvref_t<Fn>, lift_impl>
+  constexpr auto
+  await_transform(this auto &self, pkg<category::call, StopToken, Context, R, Fn, Args...> &&pkg) noexcept {
+    return lifted_awaitable<Context, StopToken, R, Fn, Args...>{
+        .pkg = std::move(pkg),
+        .parent = &self.frame,
+    };
   }
 
   // Custom awaitable
@@ -113,15 +125,10 @@ struct mixin_frame {
   constexpr auto
   await_transform_pkg(this auto const &self, pkg<Cat, StopToken, Context, R, Fn, Args...> &&pkg) noexcept(
       async_nothrow_invocable<Fn, Context, Args...>) -> async_awaitable<Cat, Context> {
+
     using U = async_result_t<Fn, Context, Args...>;
 
-    // clang-format off
-
-    promise_type<U, Context> *child_promise = get(key(), std::move(pkg.args).apply(
-      [&](auto &&...args) LF_HOF(ctx_invoke_t<Context>{}(fwd_fn<Fn>(pkg.fn), LF_FWD(args)...))
-    ));
-
-    // clang-format on
+    promise_type<U, Context> *child_promise = get(key(), std::move(pkg.args).apply(ctx_invoke_t<Context>{}));
 
     LF_ASSUME(child_promise);
 
