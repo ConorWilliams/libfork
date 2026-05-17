@@ -16,8 +16,8 @@ import std;
 inline constexpr std::size_t mergesort_test = 10'000;
 inline constexpr std::size_t mergesort_base = 10'000'000;
 
-inline constexpr std::size_t mergesort_basecase = 32;
-inline constexpr std::size_t mergesort_merge_basecase = 2'048;
+inline constexpr std::size_t mergesort_cutoff = 32;
+inline constexpr std::size_t mergesort_merge_cutoff = 512;
 
 inline auto
 mergesort_make_input(std::size_t n, std::uint64_t seed = 0xBADC0DE) -> std::vector<std::uint32_t> {

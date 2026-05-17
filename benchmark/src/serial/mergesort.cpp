@@ -10,7 +10,7 @@ namespace {
 void mergesort_serial_sort(std::uint32_t *first, std::uint32_t *last, std::uint32_t *scratch) {
   auto n = last - first;
 
-  if (n <= static_cast<std::ptrdiff_t>(mergesort_basecase)) {
+  if (n <= static_cast<std::ptrdiff_t>(mergesort_cutoff)) {
     mergesort_insertion_sort(first, last);
     return;
   }

@@ -33,7 +33,7 @@ struct merge_fn {
       std::copy(a_first, a_last, out);
       co_return;
     }
-    if (n <= static_cast<std::ptrdiff_t>(mergesort_merge_basecase)) {
+    if (n <= static_cast<std::ptrdiff_t>(mergesort_merge_cutoff)) {
       std::merge(a_first, a_last, b_first, b_last, out);
       co_return;
     }
@@ -65,7 +65,7 @@ struct mergesort_fn {
 
     auto n = last - first;
 
-    if (n <= static_cast<std::ptrdiff_t>(mergesort_basecase)) {
+    if (n <= static_cast<std::ptrdiff_t>(mergesort_cutoff)) {
       mergesort_insertion_sort(first, last);
       co_return;
     }
