@@ -1,4 +1,5 @@
 module;
+#include "libfork/__impl/assume.hpp"
 #include "libfork/__impl/exception.hpp"
 #include "libfork/__impl/utils.hpp"
 export module libfork.core:lift;
@@ -76,6 +77,7 @@ struct lifted_awaitable : std::suspend_never {
         });
       } else {
         std::move(pkg.args).apply([addr = pkg.return_addr](lift_impl, auto &&fn, auto &&...args) -> void {
+          LF_ASSUME(addr);
           *addr = std::invoke(LF_FWD(fn), LF_FWD(args)...);
         });
       }
