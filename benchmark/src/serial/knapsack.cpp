@@ -13,42 +13,39 @@ auto upper_bound(std::vector<knapsack_item> const &items,
                  std::size_t idx,
                  int remaining_cap,
                  int current_value) -> double {
+
   double bound = current_value;
   int cap = remaining_cap;
+
   for (std::size_t i = idx; i < items.size(); ++i) {
     if (items[i].weight <= cap) {
       cap -= items[i].weight;
       bound += items[i].value;
     } else {
       bound += static_cast<double>(items[i].value) * cap / items[i].weight;
-      break;
+      return bound;
     }
   }
+
   return bound;
 }
 
-void knapsack_bb(std::vector<knapsack_item> const &items,
-                 std::size_t idx,
-                 int remaining_cap,
-                 int current_value,
-                 int &best) {
+void knapsack_bb(std::vector<knapsack_item> const &items, std::size_t idx, int cap, int val, int &best) {
 
-  if (current_value > best) {
-    best = current_value;
-  }
+  best = std::max(val, best);
 
   if (idx == items.size()) {
     return;
   }
 
-  if (upper_bound(items, idx, remaining_cap, current_value) <= best) {
+  if (upper_bound(items, idx, cap, val) <= best) {
     return;
   }
 
-  if (items[idx].weight <= remaining_cap) {
-    knapsack_bb(items, idx + 1, remaining_cap - items[idx].weight, current_value + items[idx].value, best);
+  if (items[idx].weight <= cap) {
+    knapsack_bb(items, idx + 1, cap - items[idx].weight, val + items[idx].value, best);
   }
-  knapsack_bb(items, idx + 1, remaining_cap, current_value, best);
+  knapsack_bb(items, idx + 1, cap, val, best);
 }
 
 template <typename = void>

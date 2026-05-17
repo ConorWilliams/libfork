@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+
 #include "bench.hpp"
 
 #ifdef LF_BENCH_NO_IMPORT_STD
@@ -44,22 +46,23 @@ inline auto knapsack_make(std::size_t n, std::uint64_t seed = 0xCAFEBABE) -> kna
     return static_cast<long long>(a.value) * b.weight > static_cast<long long>(b.value) * a.weight;
   });
 
-  return knapsack_problem{std::move(items), total / 2};
+  return knapsack_problem{.items = std::move(items), .capacity = total / 2};
 }
 
 // Exact optimum via O(n * capacity) DP, used as oracle.
 inline auto knapsack_dp_optimum(knapsack_problem const &p) -> int {
+
   std::vector<int> dp(static_cast<std::size_t>(p.capacity) + 1, 0);
+
   for (auto const &it : p.items) {
     for (int c = p.capacity; c >= it.weight; --c) {
       auto idx = static_cast<std::size_t>(c);
       auto idx_prev = static_cast<std::size_t>(c - it.weight);
       int cand = dp[idx_prev] + it.value;
-      if (cand > dp[idx]) {
-        dp[idx] = cand;
-      }
+      dp[idx] = std::max(cand, dp[idx]);
     }
   }
+
   return dp[static_cast<std::size_t>(p.capacity)];
 }
 
