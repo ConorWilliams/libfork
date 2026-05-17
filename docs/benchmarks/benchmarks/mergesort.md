@@ -62,6 +62,10 @@ critical path becomes:
 T_\infty = \mathcal{O}(\log^3 n)
 \]
 
+The libfork implementation uses this binary-splitting merge, but stops spawning
+sort and merge tasks below `2'048` elements. Below that task cutoff it uses the
+serial four-way helper down to the `32` element insertion-sort base case.
+
 ## Scaling
 
 Mergesort exposes regular divide-and-conquer parallelism in the recursive sorts
@@ -86,6 +90,8 @@ The following problem sizes are available:
 |------|----------|-----------|
 | test | `10'000` | `32` |
 | base | `10'000'000` | `32` |
+
+The libfork benchmark also uses a `2'048` element task cutoff.
 
 ## Results
 
