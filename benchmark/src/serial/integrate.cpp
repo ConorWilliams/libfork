@@ -37,12 +37,11 @@ auto integrate_recurse(double x1, double y1, double x2, double y2, double eps, s
 
 template <typename = void>
 void integrate_serial(benchmark::State &state) {
-  run_integrate(state, [](double upper) {
-    double lower = 0.0;
-    double lower_y = integrate_fn(lower);
-    double upper_y = integrate_fn(upper);
-    auto whole = integrate_simpson(lower, lower_y, upper, upper_y);
-    return integrate_recurse(lower, lower_y, upper, upper_y, integrate_epsilon, whole);
+  run_integrate(state, [](double tolerance) {
+    double lower_y = integrate_fn(integrate_lower);
+    double upper_y = integrate_fn(integrate_upper);
+    auto whole = integrate_simpson(integrate_lower, lower_y, integrate_upper, upper_y);
+    return integrate_recurse(integrate_lower, lower_y, integrate_upper, upper_y, tolerance, whole);
   });
 }
 

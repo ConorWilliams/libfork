@@ -10,7 +10,7 @@ The integrate benchmark computes the definite integral of:
 f(x) = x^4 + x
 \]
 
-Over the interval \([0, n]\). It uses
+Over the fixed interval \([0, 10000]\). It uses
 [adaptive Simpson's rule](https://en.wikipedia.org/wiki/Adaptive_Simpson%27s_method):
 estimate the area of an interval with Simpson's rule, split the interval in
 half, compare the combined child estimates with the parent estimate, and recurse
@@ -71,12 +71,13 @@ tree-generation randomness.
 
 ## Benchmark sizes
 
-The following problem sizes are available:
+The following problem sizes are available. Both use the same integration
+domain; the size controls the requested adaptive tolerance.
 
-| Name | Upper bound `n` | Tolerance |
-|------|------------------|-----------|
-| test | `100` | `1.0e-9` |
-| base | `10'000` | `1.0e-9` |
+| Name | Domain | Tolerance |
+|------|--------|-----------|
+| test | `[0, 10000]` | `1.0e-6` |
+| base | `[0, 10000]` | `1.0e-9` |
 
 ## Results
 

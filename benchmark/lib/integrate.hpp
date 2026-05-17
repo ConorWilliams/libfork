@@ -10,10 +10,19 @@
 import std;
 #endif
 
-inline constexpr std::int64_t integrate_test = 100;
-inline constexpr std::int64_t integrate_base = 10'000;
+inline constexpr std::int64_t integrate_test = 6;
+inline constexpr std::int64_t integrate_base = 9;
 
-inline constexpr double integrate_epsilon = 1.0e-9;
+inline constexpr double integrate_lower = 0.0;
+inline constexpr double integrate_upper = 10'000.0;
+
+constexpr auto integrate_tolerance(std::int64_t exponent) -> double {
+  double result = 1.0;
+  for (std::int64_t i = 0; i < exponent; ++i) {
+    result *= 0.1;
+  }
+  return result;
+}
 
 constexpr auto integrate_fn(double x) -> double {
   double x2 = x * x;
@@ -34,13 +43,13 @@ inline auto integrate_is_close(double result, double expect) -> bool {
 
 template <typename Fn>
 void run_integrate(benchmark::State &state, Fn fn) {
-  std::int64_t n = state.range(0);
-  double upper = static_cast<double>(n);
-  double expect = integrate_exact(0, upper);
+  double tolerance = integrate_tolerance(state.range(0));
+  double expect = integrate_exact(integrate_lower, integrate_upper);
 
-  state.counters["n"] = static_cast<double>(n);
+  state.counters["epsilon"] = tolerance;
+  state.counters["n"] = integrate_upper;
 
-  lf_bench::bench(state, expect, integrate_is_close, [upper, fn]() -> double {
-    return std::invoke(fn, upper);
+  lf_bench::bench(state, expect, integrate_is_close, [tolerance, fn]() -> double {
+    return std::invoke(fn, tolerance);
   });
 }
