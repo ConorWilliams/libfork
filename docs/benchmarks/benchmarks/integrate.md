@@ -86,9 +86,6 @@ children of a split may perform different amounts of future work, so good
 scheduling depends on exposing enough small subproblems without making the
 tasks too fine grained.
 
-The benchmark also checks the result against the exact antiderivative, so
-incorrect pruning or floating-point instability is caught.
-
 It is similar to [UTS](uts.md) in that the useful task graph is discovered
 recursively, but here the irregularity comes from numerical error rather than
 tree-generation randomness.
@@ -97,7 +94,7 @@ tree-generation randomness.
 
 The following problem sizes are available. Both use the same integration
 domain; the size controls the requested adaptive tolerance. The benchmark also
-reports the peak, leaf, and depth counts as counters, in the same spirit as UTS.
+reports the peak, leaf, and depth counts as counters.
 
 | Name | Domain | Peaks | Tolerance | Leaves | Max depth |
 |------|--------|-------|-----------|--------|-----------|
