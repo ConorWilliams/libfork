@@ -15,6 +15,7 @@ target_sources(serial_benchmarks PRIVATE
   scan.cpp
   skynet.cpp
   strassen.cpp
+  transpose.cpp
   uts.cpp
 )
 

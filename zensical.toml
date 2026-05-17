@@ -63,6 +63,7 @@ nav = [
       "benchmarks/benchmarks/index.md",
       { "Fibonacci" = "benchmarks/benchmarks/fib.md" },
       { "Skynet" = "benchmarks/benchmarks/skynet.md" },
+      { "Matrix transpose" = "benchmarks/benchmarks/transpose.md" },
       { "Matrix multiply" = "benchmarks/benchmarks/matmul.md" },
       { "Strassen" = "benchmarks/benchmarks/strassen.md" },
       { "Unbalanced Trees" = "benchmarks/benchmarks/uts.md" },

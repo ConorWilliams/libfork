@@ -25,6 +25,7 @@ target_sources(benchmark_common
       scan.hpp
       skynet.hpp
       strassen.hpp
+      transpose.hpp
       uts.hpp
 )
 

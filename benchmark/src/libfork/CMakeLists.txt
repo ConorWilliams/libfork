@@ -7,6 +7,7 @@ target_sources(libfork_benchmarks
     matmul.cpp
     skynet.cpp
     strassen.cpp
+    transpose.cpp
     uts.cpp
     switch_io_pool.cpp
     switch_random.cpp
