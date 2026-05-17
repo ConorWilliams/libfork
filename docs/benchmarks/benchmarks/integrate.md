@@ -7,7 +7,7 @@ icon: lucide/area-chart
 The integrate benchmark computes the definite integral of:
 
 \[
-f(x) = x^4 + x
+f(x) = \frac{1}{1 + 0.01(x - 7234.5)^2}
 \]
 
 Over the fixed interval \([0, 10000]\). It uses
@@ -34,8 +34,11 @@ and returns the Richardson-corrected value:
 S(a, m) + S(m, b) + (S(a, m) + S(m, b) - S(a, b)) / 15
 \]
 
-The integrand is quartic because Simpson's rule is already exact for cubic
-polynomials.
+This is a Lorentzian peak placed off-center in the integration domain. Most of
+the interval is nearly flat, but the narrow peak has much higher curvature, so
+adaptive refinement produces a less balanced tree than a polynomial workload.
+The benchmark records the total number of accepted leaf intervals and the
+maximum recursion depth.
 
 ## Complexity
 
@@ -72,12 +75,13 @@ tree-generation randomness.
 ## Benchmark sizes
 
 The following problem sizes are available. Both use the same integration
-domain; the size controls the requested adaptive tolerance.
+domain; the size controls the requested adaptive tolerance. The benchmark also
+reports the leaf and depth counts as counters, in the same spirit as UTS.
 
-| Name | Domain | Tolerance |
-|------|--------|-----------|
-| test | `[0, 10000]` | `1.0e-6` |
-| base | `[0, 10000]` | `1.0e-9` |
+| Name | Domain | Tolerance | Leaves | Max depth |
+|------|--------|-----------|--------|-----------|
+| test | `[0, 10000]` | `1.0e-6` | `413` | `16` |
+| base | `[0, 10000]` | `1.0e-9` | `2'262` | `19` |
 
 ## Results
 

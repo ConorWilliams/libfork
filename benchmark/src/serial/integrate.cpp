@@ -20,19 +20,24 @@ auto integrate_simpson(double x1, double y1, double x2, double y2) -> simpson_es
   return {mid, f_mid, area};
 }
 
-auto integrate_recurse(double x1, double y1, double x2, double y2, double eps, simpson_estimate whole)
-    -> double {
+auto integrate_recurse(
+    double x1, double y1, double x2, double y2, double eps, simpson_estimate whole, int depth)
+    -> integrate_result {
 
   auto left = integrate_simpson(x1, y1, whole.mid, whole.f_mid);
   auto right = integrate_simpson(whole.mid, whole.f_mid, x2, y2);
   double delta = left.area + right.area - whole.area;
 
   if (std::abs(delta) <= 15.0 * eps) {
-    return left.area + right.area + delta / 15.0;
+    return {.area = left.area + right.area + delta / 15.0, .leaves = 1, .depth = depth};
   }
 
-  return integrate_recurse(x1, y1, whole.mid, whole.f_mid, eps / 2.0, left) +
-         integrate_recurse(whole.mid, whole.f_mid, x2, y2, eps / 2.0, right);
+  auto left_result = integrate_recurse(x1, y1, whole.mid, whole.f_mid, eps / 2.0, left, depth + 1);
+  auto right_result = integrate_recurse(whole.mid, whole.f_mid, x2, y2, eps / 2.0, right, depth + 1);
+
+  return {.area = left_result.area + right_result.area,
+          .leaves = left_result.leaves + right_result.leaves,
+          .depth = std::max(left_result.depth, right_result.depth)};
 }
 
 template <typename = void>
@@ -41,7 +46,7 @@ void integrate_serial(benchmark::State &state) {
     double lower_y = integrate_fn(integrate_lower);
     double upper_y = integrate_fn(integrate_upper);
     auto whole = integrate_simpson(integrate_lower, lower_y, integrate_upper, upper_y);
-    return integrate_recurse(integrate_lower, lower_y, integrate_upper, upper_y, tolerance, whole);
+    return integrate_recurse(integrate_lower, lower_y, integrate_upper, upper_y, tolerance, whole, 0);
   });
 }
 
