@@ -71,11 +71,11 @@ struct lifted_awaitable : std::suspend_never {
 
     LF_TRY {
       if constexpr (std::is_void_v<R>) {
-        std::move(pkg.args).apply([](auto &&fn, auto &&...args) -> void {
+        std::move(pkg.args).apply([](lift_impl, auto &&fn, auto &&...args) -> void {
           std::invoke(LF_FWD(fn), LF_FWD(args)...);
         });
       } else {
-        std::move(pkg.args).apply([addr = pkg.return_addr](auto &&fn, auto &&...args) -> void {
+        std::move(pkg.args).apply([addr = pkg.return_addr](lift_impl, auto &&fn, auto &&...args) -> void {
           *addr = std::invoke(LF_FWD(fn), LF_FWD(args)...);
         });
       }

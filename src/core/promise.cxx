@@ -128,13 +128,7 @@ struct mixin_frame {
 
     using U = async_result_t<Fn, Context, Args...>;
 
-    // clang-format off
-
-    promise_type<U, Context> *child_promise = get(key(), std::move(pkg.args).apply(
-      [&](auto &&...args) LF_HOF(ctx_invoke_t<Context>{}(fwd_fn<Fn>(pkg.fn), LF_FWD(args)...))
-    ));
-
-    // clang-format on
+    promise_type<U, Context> *child_promise = get(key(), std::move(pkg.args).apply(ctx_invoke_t<Context>{}));
 
     LF_ASSUME(child_promise);
 
