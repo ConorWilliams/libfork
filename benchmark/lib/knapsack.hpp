@@ -16,7 +16,7 @@ import std;
 #endif
 
 inline constexpr std::size_t knapsack_test = 16;
-inline constexpr std::size_t knapsack_base = 54;
+inline constexpr std::size_t knapsack_base = 88;
 
 struct knapsack_item {
   int weight;
@@ -28,17 +28,15 @@ struct knapsack_problem {
   int capacity;
 };
 
-inline auto knapsack_make(std::size_t n, std::uint64_t seed = 0xCAFEBABE) -> knapsack_problem {
+inline auto knapsack_make(std::size_t n, std::uint64_t seed = 144) -> knapsack_problem {
   std::mt19937_64 rng{seed};
-  std::uniform_int_distribution<int> dw(1, 10'000);
+  std::uniform_int_distribution<int> noise(-50, 50);
 
   std::vector<knapsack_item> items(n);
   int total = 0;
   for (auto &it : items) {
-    it.weight = dw(rng);
-    // A strongly correlated distribution gives the branch-and-bound search a
-    // much weaker incumbent than uniform values do.
-    it.value = it.weight + 10;
+    it.weight = 10'000 + noise(rng);
+    it.value = it.weight + noise(rng);
     total += it.weight;
   }
 
