@@ -7,18 +7,26 @@ icon: lucide/merge
 The mergesort benchmark stably sorts a deterministic random array of 32-bit
 unsigned integers. Mergesort is a divide-and-conquer sorting algorithm: split
 the input, sort the pieces, then merge the sorted pieces back together. The
-serial projection uses the same four-way recursion pattern as
+serial algorithm uses the same four-way recursion pattern as
 [Cilksort](https://publications.csail.mit.edu/lcs/pubs/pdf/MIT-LCS-TR-785.pdf),
 but keeps the merges serial:
 
-```cpp linenums="1"
-mergesort(q1, scratch1);
-mergesort(q2, scratch2);
-mergesort(q3, scratch3);
-mergesort(q4, scratch4);
-merge(q1, q2, scratch12);
-merge(q3, q4, scratch34);
-merge(scratch12, scratch34, first);
+```cpp
+void mergesort(uint32_t* first, uint32_t* last, uint32_t* scratch) {
+
+  // Split first..last  and scratch into four equal quarters and recurs
+  mergesort(q1, scratch1);
+  mergesort(q2, scratch2);
+  mergesort(q3, scratch3);
+  mergesort(q4, scratch4);
+
+  // Merge into scratch buffers
+  merge(q1, q2, scratch12);
+  merge(q3, q4, scratch34);
+
+  // Merge scratch buffers back into input
+  merge(scratch12, scratch34, first);
+}
 ```
 
 Small partitions are handled by [insertion
