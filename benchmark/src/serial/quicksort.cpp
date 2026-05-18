@@ -7,41 +7,29 @@ import std;
 
 namespace {
 
-void insertion_sort(std::uint32_t *first, std::uint32_t *last) {
-  for (auto *it = first + 1; it < last; ++it) {
-    std::uint32_t v = *it;
-    auto *j = it;
-    while (j > first && *(j - 1) > v) {
-      *j = *(j - 1);
-      --j;
-    }
-    *j = v;
+void quicksort(int *a, std::size_t n) {
+  if (n < 2) {
+    return;
   }
-}
 
-auto partition(std::uint32_t *first, std::uint32_t *last) -> std::uint32_t * {
-  std::uint32_t *mid = first + (last - first) / 2;
-  std::uint32_t pivot = *mid;
-  std::swap(*mid, *(last - 1));
+  int pivot = a[n / 2];
+  int *left = a;
+  int *right = a + n - 1;
 
-  auto *store = first;
-  for (auto *it = first; it < last - 1; ++it) {
-    if (*it < pivot) {
-      std::swap(*it, *store);
-      ++store;
+  while (left <= right) {
+    if (*left < pivot) {
+      ++left;
+    } else if (*right > pivot) {
+      --right;
+    } else {
+      std::swap(*left, *right);
+      ++left;
+      --right;
     }
   }
-  std::swap(*store, *(last - 1));
-  return store;
-}
 
-void quicksort(std::uint32_t *first, std::uint32_t *last) {
-  while (last - first > static_cast<std::ptrdiff_t>(quicksort_basecase)) {
-    auto *pivot = partition(first, last);
-    quicksort(pivot + 1, last);
-    last = pivot;
-  }
-  insertion_sort(first, last);
+  quicksort(a, static_cast<std::size_t>(right - a + 1));
+  quicksort(left, static_cast<std::size_t>(a + n - left));
 }
 
 template <typename = void>

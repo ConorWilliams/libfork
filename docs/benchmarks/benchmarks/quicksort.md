@@ -4,18 +4,22 @@ icon: lucide/list-ordered
 
 # Quicksort
 
-The quicksort benchmark sorts a deterministic random array of 32-bit unsigned
-integers. It partitions in place around a middle-element pivot and then sorts
-the two partitions recursively:
+The quicksort benchmark follows nowa's in-place quicksort over deterministic
+`rand()` input. It partitions around the middle-element pivot with two moving
+pointers, then sorts the two partitions recursively:
 
 ```cpp linenums="1"
-auto pivot = partition(first, last);
-quicksort(first, pivot);
-quicksort(pivot + 1, last);
+int pivot = a[n / 2];
+while (left <= right) {
+  if (*left < pivot) ++left;
+  else if (*right > pivot) --right;
+  else swap(*left++, *right--);
+}
+quicksort(a, right - a + 1);
+quicksort(left, a + n - left);
 ```
 
-Small partitions are handled by insertion sort. The benchmark validates the
-result against `std::sort`.
+The benchmark validates that the final array is sorted.
 
 ```mermaid
 flowchart TD
@@ -72,10 +76,10 @@ less predictable task graph.
 
 The following problem sizes are available:
 
-| Name | Elements | Base case |
-|------|----------|-----------|
-| test | `10'000` | `32` |
-| base | `10'000'000` | `32` |
+| Name | Elements |
+|------|----------|
+| test | `10'000` |
+| base | `100'000'000` |
 
 ## Results
 

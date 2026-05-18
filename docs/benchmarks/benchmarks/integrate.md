@@ -2,9 +2,9 @@
 icon: lucide/area-chart
 ---
 
-# Integrate
+# Simpson Integrate
 
-The integrate benchmark computes the definite integral of:
+The Simpson integrate benchmark computes the definite integral of:
 
 \[
 f(x) = \sum_{i=0}^{p - 1}\frac{1}{z + (x - c_i)^2}

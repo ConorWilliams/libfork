@@ -73,7 +73,7 @@ The following problem sizes are available:
 | Name | `fib(n)` |
 | ---- | -------- |
 | test | `8`      |
-| base | `37`     |
+| base | `42`     |
 
 ## Results
 

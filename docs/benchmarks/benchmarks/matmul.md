@@ -99,8 +99,8 @@ The following problem sizes are available:
 
 | Name | Matrix size | Base case |
 |------|-------------|-----------|
-| test | `64 x 64` | `32 x 32` |
-| base | `1024 x 1024` | `32 x 32` |
+| test | `64 x 64` | `2 x 2` |
+| base | `2048 x 2048` | `2 x 2` |
 
 ## Results
 
@@ -108,20 +108,6 @@ TODO: results
 
 ## Implementation
 
-To avoid spending cubic time constructing a reference answer, the benchmark
-uses dense inputs with a cheap closed-form product:
-
-\[
-A = D_A + U V^T,\qquad B = D_B + X Y^T
-\]
-
-where \(D_A\) and \(D_B\) are nonzero diagonal matrices and the low-rank terms
-make the off-diagonal entries nonzero. The checker precomputes the small
-\(V^T X\) matrix, then verifies each output entry from:
-
-\[
-AB = D_AD_B + D_A X Y^T + U V^T D_B + U (V^T X) Y^T
-\]
-
-This keeps verification quadratic in the matrix size while still exercising a
-dense, non-identity matrix product.
+The benchmark follows nowa's setup: both input matrices are filled with `1.0`,
+so every output entry must equal the matrix size `n`. The checker scans the
+output matrix for that value.

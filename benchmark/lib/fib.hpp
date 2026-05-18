@@ -12,7 +12,7 @@ import std;
 #endif
 
 inline constexpr int fib_test = 8;
-inline constexpr int fib_base = 37;
+inline constexpr int fib_base = 42;
 
 /**
  * @brief Non-recursive Fibonacci calculation

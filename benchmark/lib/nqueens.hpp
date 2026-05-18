@@ -6,7 +6,6 @@
   #include <array>
   #include <cstdint>
   #include <functional>
-  #include <vector>
 #else
 import std;
 #endif
@@ -38,29 +37,19 @@ inline constexpr std::array<std::int64_t, 21> nqueens_answers = {
     39'029'188'884,
 };
 
-inline auto queens_ok(int n, char const *a) -> bool {
-  for (int i = 0; i < n; ++i) {
-    char p = a[i];
-    for (int j = i + 1; j < n; ++j) {
-      char q = a[j];
-      if (q == p || q == p - (j - i) || q == p + (j - i)) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
 template <typename Fn>
-void run_nqueens(benchmark::State &state, Fn fn) {
+void run_nqueens(benchmark::State &state, std::int64_t threads, Fn fn) {
   int n = static_cast<int>(state.range(0));
   std::int64_t expect = nqueens_answers.at(static_cast<std::size_t>(n));
 
   state.counters["n"] = n;
 
-  std::vector<char> board(static_cast<std::size_t>(n));
-
-  lf_bench::bench(state, expect, [n, &board, fn]() -> std::int64_t {
-    return std::invoke(fn, n, board.data());
+  lf_bench::bench(state, threads, expect, [n, fn]() -> std::int64_t {
+    return std::invoke(fn, n);
   });
+}
+
+template <typename Fn>
+void run_nqueens(benchmark::State &state, Fn fn) {
+  run_nqueens(state, lf_bench::no_threads, fn);
 }

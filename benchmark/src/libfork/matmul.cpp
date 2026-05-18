@@ -31,8 +31,8 @@ struct matmul_fn {
     {
       auto sc = co_await lf::scope();
       co_await sc.fork(matmul_fn<Add>{}, A + o00, B + o00, R + o00, m, s);
-      co_await sc.fork(matmul_fn<Add>{}, A + o00, B + o01, R + o01, m, s);
       co_await sc.fork(matmul_fn<Add>{}, A + o10, B + o00, R + o10, m, s);
+      co_await sc.fork(matmul_fn<Add>{}, A + o00, B + o01, R + o01, m, s);
       co_await sc.call(matmul_fn<Add>{}, A + o10, B + o01, R + o11, m, s);
       co_await sc.join();
     }

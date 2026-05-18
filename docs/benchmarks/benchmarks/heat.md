@@ -4,28 +4,19 @@ icon: lucide/thermometer-sun
 
 # Heat
 
-The heat benchmark applies a two-dimensional Jacobi stencil to a square grid:
+The heat benchmark follows nowa's two-dimensional heat diffusion test. It solves
+on an `nx x 1024` grid over a short fixed time interval using an explicit
+Jacobi-style finite-difference step:
 
 ```cpp linenums="1"
-dst[y, x] = 0.25 * (src[y, x - 1] + src[y, x + 1]
-                  + src[y - 1, x] + src[y + 1, x]);
+out[i, j] = in[i, j]
+          + dtdysq * (in[i, j + 1] - 2 * in[i, j] + in[i, j - 1])
+          + dtdxsq * (in[i + 1, j] - 2 * in[i, j] + in[i - 1, j]);
 ```
 
-The boundary cells are clamped. The initial grid is a deterministic analytic
-profile, and the benchmark checks the final grid after a fixed number of
-iterations.
-
-Equivalently, each output point applies this five-point stencil to the previous
-grid:
-
-\[
-\frac{1}{4}
-\begin{bmatrix}
-0 & 1 & 0 \\
-1 & 0 & 1 \\
-0 & 1 & 0
-\end{bmatrix}
-\]
+The initial condition is `sin(x) * sin(y)`. Boundary values are set from the
+known analytic solution `exp(-2t) * sin(x) * sin(y)`, and the final grid is
+checked against that solution.
 
 Each update reads only the four direct neighbors from the previous grid and
 writes one cell in the next grid. That local stencil is why neighboring rows or
@@ -34,10 +25,10 @@ swap before the next step can begin.
 
 ## Complexity
 
-For an \(n \times n\) grid and \(k\) iterations, the work is:
+For an \(n \times 1024\) grid and \(k\) iterations, the work is:
 
 \[
-T_1 = \mathcal{O}(k n^2)
+T_1 = \mathcal{O}(k n)
 \]
 
 Each time step depends on the previous one, so the span contains the iteration
@@ -47,7 +38,8 @@ loop. Within a single step, the interior cells are independent:
 T_\infty = \mathcal{O}(k)
 \]
 
-The benchmark uses two grids, so the space complexity is \(\mathcal{O}(n^2)\).
+The benchmark uses two grids, so the space complexity is \(\mathcal{O}(n)\) for
+the fixed-width nowa configuration.
 
 ## Scaling
 
@@ -67,8 +59,8 @@ The following problem sizes are available:
 
 | Name | Grid | Iterations |
 |------|------|------------|
-| test | `64 x 64` | `16` |
-| base | `1024 x 1024` | `16` |
+| test | `64 x 1024` | `100` |
+| base | `4096 x 1024` | `100` |
 
 ## Results
 
