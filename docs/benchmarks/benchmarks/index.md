@@ -23,7 +23,8 @@ tasks close to the root of the graph.
 - [Matrix multiply](matmul.md): recursive cubic matrix multiply.
 - [Rectangular matrix multiply](rectmul.md): recursive blocked rectangular matrix multiply.
 - [Matrix transpose](transpose.md): recursive matrix transpose.
-- [Strassen](strassen.md): recursive seven-product and Winograd matrix multiply.
+- [Strassen](strassen.md): recursive seven-product matrix multiply.
+- [Winograd](winograd.md): optimized Strassen-family matrix multiply.
 - [Cholesky](cholesky.md): sparse quadtree Cholesky factorization.
 - [LU](lu.md): recursive blocked LU decomposition.
 - [FFT](fft.md): recursive mixed-radix fast Fourier transform.
