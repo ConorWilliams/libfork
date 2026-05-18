@@ -53,7 +53,7 @@ template <worker_context Context, bool StopToken, typename R, typename Fn, typen
 struct lifted_awaitable : std::suspend_never {
 
   [[no_unique_address]]
-  pkg<category::call, StopToken, Context, R, Fn, Args...> pkg;
+  pkg<category::call, StopToken, Context, R, Fn, Args...> pkged;
 
   frame_t<Context> *parent;
 
@@ -61,7 +61,7 @@ struct lifted_awaitable : std::suspend_never {
 
     // Noop if stop has been requested.
     if constexpr (StopToken) {
-      if (pkg.stop_token.stop_requested()) {
+      if (pkged.stop_token.stop_requested()) {
         return;
       }
     } else {
@@ -72,11 +72,11 @@ struct lifted_awaitable : std::suspend_never {
 
     LF_TRY {
       if constexpr (std::is_void_v<R>) {
-        std::move(pkg.args).apply([](lift_impl, auto &&fn, auto &&...args) -> void {
+        std::move(pkged.args).apply([](lift_impl, auto &&fn, auto &&...args) -> void {
           std::invoke(LF_FWD(fn), LF_FWD(args)...);
         });
       } else {
-        std::move(pkg.args).apply([addr = pkg.return_addr](lift_impl, auto &&fn, auto &&...args) -> void {
+        std::move(pkged.args).apply([addr = pkged.return_addr](lift_impl, auto &&fn, auto &&...args) -> void {
           LF_ASSUME(addr);
           *addr = std::invoke(LF_FWD(fn), LF_FWD(args)...);
         });

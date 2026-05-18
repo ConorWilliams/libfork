@@ -85,7 +85,7 @@ struct mixin_frame {
   constexpr auto
   await_transform(this auto &self, pkg<category::call, StopToken, Context, R, Fn, Args...> &&pkg) noexcept {
     return lifted_awaitable<Context, StopToken, R, Fn, Args...>{
-        .pkg = std::move(pkg),
+        .pkged = std::move(pkg),
         .parent = &self.frame,
     };
   }
