@@ -21,8 +21,12 @@ tasks close to the root of the graph.
 - [Fibonacci](fib.md): recursive computation of the Fibonacci numbers.
 - [Skynet](skynet.md): regular recursive fan-out reduction.
 - [Matrix multiply](matmul.md): recursive cubic matrix multiply.
+- [Rectangular matrix multiply](rectmul.md): recursive blocked rectangular matrix multiply.
 - [Matrix transpose](transpose.md): recursive matrix transpose.
 - [Strassen](strassen.md): recursive seven-product matrix multiply.
+- [Cholesky](cholesky.md): recursive Cholesky factorization.
+- [LU](lu.md): recursive blocked LU decomposition.
+- [FFT](fft.md): recursive radix-2 fast Fourier transform.
 - [Fold](fold.md): reductions over memory-backed and lazy ranges.
 - [Scan](scan.md): prefix sums over memory-backed and lazy ranges.
 - [Mergesort](mergesort.md): stable divide-and-conquer sorting with parallel merge.
@@ -48,7 +52,8 @@ These benchmarks are prime examples of programs that are very hard to
 parallelize efficiency with less flexible parallel programming models.
 
 - [Unbalanced tree search](uts.md): irregular search-tree traversal.
-- [Integrate](integrate.md): adaptive recursive quadrature integral.
+- [Simpson integrate](integrate.md): adaptive recursive Simpson integral.
+- [Quadrature integrate](quadrature-integrate.md): adaptive trapezoidal quadrature integral.
 - [Knapsack](knapsack.md): exact branch-and-bound search.
 - [N-Queens](nqueens.md): recursive backtracking search.
 - [Quicksort](quicksort.md): divide-and-conquer quick sort (serial partition).

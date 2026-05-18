@@ -10,17 +10,22 @@ target_sources(benchmark_common
     BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
     FILES
       bench.hpp
+      cholesky.hpp
       fib.hpp
+      fft.hpp
       fold.hpp
       heat.hpp
       integrate.hpp
       knapsack.hpp
+      lu.hpp
       macros.hpp
       mandelbrot.hpp
       mergesort.hpp
       matmul.hpp
       nqueens.hpp
       primes.hpp
+      quadrature_integrate.hpp
+      rectmul.hpp
       quicksort.hpp
       scan.hpp
       skynet.hpp
