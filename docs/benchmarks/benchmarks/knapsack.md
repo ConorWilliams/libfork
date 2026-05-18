@@ -10,28 +10,41 @@ items with weights and values, choose a subset whose total weight is at most
 the knapsack capacity and whose total value is as large as possible. In the 0/1
 version, each item can be taken once or skipped.
 
-Items are generated deterministically using a noisy equal-density distribution:
-weights are sampled near `10'000`, values are sampled near the matching weight,
-and the capacity is set to half the total item weight. The items are sorted by
-value density for the fractional bound.
+This benchmark is adapted from nowa's knapsack benchmark. For each capacity, the
+item list is built by cycling through nowa's fixed 32-item data set until the
+total item weight just exceeds the capacity. The items are sorted by decreasing
+value/weight density before the search.
 
-At each item, the search either takes the item, if it fits, or skips it. A
-fractional-knapsack relaxation gives an upper bound; subtrees whose bound cannot
-beat the current best solution are pruned.
+At each item, the search either skips the item or takes it. If taking the item
+makes the capacity negative, that branch returns an infeasible sentinel. Nowa's
+branch-and-bound test uses the density of the current item as the upper bound:
+
+\[
+\text{ub} = v + c \frac{\text{item.value}}{\text{item.weight}}
+\]
+
+Subtrees whose bound is below the shared best-so-far value are pruned.
 
 ```cpp
-int search(int i, int capacity, int value, int best) {
-
-  best = max(best, value);
-
-  if (i == items.size() || upper_bound(i, capacity, value) <= best) {
-    return best;
+int search(int i, int capacity, int value) {
+  if (capacity < 0) {
+    return INT_MIN;
   }
 
-  if (items[i].weight <= capacity) {
-    best = search(i + 1, capacity - items[i].weight, value + items[i].value, best);
+  if (i == items.size() || capacity == 0) {
+    return value;
   }
-  return search(i + 1, capacity, value, best);
+
+  if (upper_bound(i, capacity, value) < best_so_far) {
+    return INT_MIN;
+  }
+
+  int without = search(i + 1, capacity, value);
+  int with = search(i + 1, capacity - items[i].weight,
+                    value + items[i].value);
+  int best = max(with, without);
+  best_so_far = max(best_so_far, best);
+  return best;
 }
 ```
 
@@ -50,7 +63,7 @@ amount of pruning is input dependent. The maximum recursion depth is linear:
 T_\infty = \mathcal{O}(n)
 \]
 
-The serial benchmark validates the answer against a dynamic-programming oracle.
+The benchmark validates the answer against a dynamic-programming oracle.
 
 ## Scaling
 
@@ -68,10 +81,11 @@ problem whose task graph is discovered as the computation runs.
 
 The following problem sizes are available:
 
-| Name | Items |
-|------|-------|
-| test | `16` |
-| base | `88` |
+| Name | Items | Capacity |
+|------|-------|----------|
+| test | `20` | `500` |
+| base | `32` | `900` |
+| large | `39` | `1100` |
 
 ## Results
 

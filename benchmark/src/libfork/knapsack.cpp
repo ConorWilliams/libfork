@@ -10,31 +10,10 @@ import libfork;
 
 namespace {
 
-auto upper_bound(std::vector<knapsack_item> const &items,
-                 std::size_t idx,
-                 int remaining_cap,
-                 int current_value) -> double {
-
-  double bound = current_value;
-  int cap = remaining_cap;
-
-  for (std::size_t i = idx; i < items.size(); ++i) {
-    if (items[i].weight <= cap) {
-      cap -= items[i].weight;
-      bound += items[i].value;
-    } else {
-      bound += static_cast<double>(items[i].value) * cap / items[i].weight;
-      return bound;
-    }
-  }
-
-  return bound;
-}
-
 void update_best(std::atomic<int> &best, int value) {
-  int old = best.load(std::memory_order_relaxed);
+  int old = best.load(std::memory_order_acquire);
   while (old < value &&
-         !best.compare_exchange_weak(old, value, std::memory_order_relaxed, std::memory_order_relaxed)) {
+         !best.compare_exchange_weak(old, value, std::memory_order_release, std::memory_order_acquire)) {
   }
 }
 
@@ -47,44 +26,36 @@ struct knapsack_fn {
                          int val,
                          std::atomic<int> *incumbent) -> lf::task<int, Context> {
 
-    update_best(*incumbent, val);
-
-    if (idx == items->size()) {
-      co_return incumbent->load(std::memory_order_relaxed);
+    if (cap < 0) {
+      co_return knapsack_empty;
     }
 
-    if (upper_bound(*items, idx, cap, val) <= incumbent->load(std::memory_order_relaxed)) {
-      co_return incumbent->load(std::memory_order_relaxed);
+    if (idx == items->size() || cap == 0) {
+      co_return val;
     }
 
-    int with = 0;
-    int without = 0;
+    if (knapsack_upper_bound((*items)[idx], cap, val) < incumbent->load(std::memory_order_acquire)) {
+      co_return knapsack_empty;
+    }
+
+    int with = knapsack_empty;
+    int without = knapsack_empty;
 
     auto sc = co_await lf::scope();
-
-    if ((*items)[idx].weight <= cap) {
-      co_await sc.fork(&with,
-                       knapsack_fn{},
-                       items,
-                       idx + 1,
-                       cap - (*items)[idx].weight,
-                       val + (*items)[idx].value,
-                       incumbent);
-
-      if (upper_bound(*items, idx + 1, cap, val) > incumbent->load(std::memory_order_relaxed)) {
-        co_await sc.call(&without, knapsack_fn{}, items, idx + 1, cap, val, incumbent);
-      } else {
-        without = incumbent->load(std::memory_order_relaxed);
-      }
-    } else {
-      co_await sc.call(&without, knapsack_fn{}, items, idx + 1, cap, val, incumbent);
-    }
-
+    // Benchmark is order sensitive
+    co_await sc.fork(&with,
+                     knapsack_fn{},
+                     items,
+                     idx + 1,
+                     cap - (*items)[idx].weight,
+                     val + (*items)[idx].value,
+                     incumbent);
+    co_await sc.call(&without, knapsack_fn{}, items, idx + 1, cap, val, incumbent);
     co_await sc.join();
 
     int best = std::max(with, without);
     update_best(*incumbent, best);
-    co_return incumbent->load(std::memory_order_relaxed);
+    co_return best;
   }
 };
 
@@ -94,7 +65,7 @@ void run(benchmark::State &state) {
   Sch scheduler = make_scheduler<Sch>(state);
 
   run_knapsack(state, threads, [&](knapsack_problem const &problem) -> int {
-    std::atomic<int> best{0};
+    std::atomic<int> best{knapsack_empty};
     return lf::schedule(scheduler, knapsack_fn{}, &problem.items, 0, problem.capacity, 0, &best).get();
   });
 }
@@ -103,3 +74,7 @@ void run(benchmark::State &state) {
 
 LIBFORK_BENCH_ALL_MT(run, knapsack, knapsack, mono_busy_pool)
 LIBFORK_BENCH_ALL_MT(run, knapsack, knapsack, poly_busy_pool)
+
+// TODO: large sizes for all benchmarks
+BENCH_ONE_MT(run, libfork, knapsack, large, knapsack, mono_busy_pool)
+BENCH_ONE_MT(run, libfork, knapsack, large, knapsack, poly_busy_pool)

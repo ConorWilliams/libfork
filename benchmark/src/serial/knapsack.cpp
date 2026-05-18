@@ -7,54 +7,40 @@ import std;
 
 namespace {
 
-// Linear-relaxation bound: greedily fill remaining capacity with the densest
-// items, taking a fractional piece of the last one.
-auto upper_bound(std::vector<knapsack_item> const &items,
-                 std::size_t idx,
-                 int remaining_cap,
-                 int current_value) -> double {
-
-  double bound = current_value;
-  int cap = remaining_cap;
-
-  for (std::size_t i = idx; i < items.size(); ++i) {
-    if (items[i].weight <= cap) {
-      cap -= items[i].weight;
-      bound += items[i].value;
-    } else {
-      bound += static_cast<double>(items[i].value) * cap / items[i].weight;
-      return bound;
-    }
+auto knapsack_bb(std::vector<knapsack_item> const &items, std::size_t idx, int cap, int val, int &best_so_far)
+    -> int {
+  if (cap < 0) {
+    return knapsack_empty;
   }
 
-  return bound;
-}
-
-auto knapsack_bb(std::vector<knapsack_item> const &items, std::size_t idx, int cap, int val, int best) -> int {
-
-  best = std::max(val, best);
-
-  if (idx == items.size()) {
-    return best;
+  if (idx == items.size() || cap == 0) {
+    return val;
   }
 
-  if (upper_bound(items, idx, cap, val) <= best) {
-    return best;
+  if (knapsack_upper_bound(items[idx], cap, val) < best_so_far) {
+    return knapsack_empty;
   }
 
-  if (items[idx].weight <= cap) {
-    best = knapsack_bb(items, idx + 1, cap - items[idx].weight, val + items[idx].value, best);
+  int with = knapsack_bb(items, idx + 1, cap - items[idx].weight, val + items[idx].value, best_so_far);
+  int without = knapsack_bb(items, idx + 1, cap, val, best_so_far);
+  int best = std::max(with, without);
+
+  if (best > best_so_far) {
+    best_so_far = best;
   }
-  return knapsack_bb(items, idx + 1, cap, val, best);
+
+  return best;
 }
 
 template <typename = void>
 void knapsack_serial(benchmark::State &state) {
   run_knapsack(state, [](knapsack_problem const &problem) {
-    return knapsack_bb(problem.items, 0, problem.capacity, 0, 0);
+    int best_so_far = knapsack_empty;
+    return knapsack_bb(problem.items, 0, problem.capacity, 0, best_so_far);
   });
 }
 
 } // namespace
 
 BENCH_ALL(knapsack_serial, serial, knapsack, knapsack)
+BENCH_ONE(knapsack_serial, serial, knapsack, large, knapsack)
