@@ -20,8 +20,7 @@ import std;
 inline constexpr unsigned matmul_test = 64;
 inline constexpr unsigned matmul_base = 2048;
 
-
-inline constexpr unsigned matmul_cutoff = 2;
+inline constexpr unsigned matmul_cutoff = 8;
 inline constexpr unsigned matmul_check_rank = 3;
 
 static_assert(std::has_single_bit(matmul_test));
@@ -141,7 +140,7 @@ inline void matmul_zero(float *C, unsigned n) {
 }
 
 inline auto matmul_max_relative_error(float const *C, matmul_middle_t const &middle, unsigned n) -> float {
-  (void) middle;
+  (void)middle;
   float error = 0;
 
   for (unsigned i = 0; i < n; ++i) {

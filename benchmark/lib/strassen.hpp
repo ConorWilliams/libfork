@@ -7,9 +7,9 @@ import std;
 #endif
 
 inline constexpr unsigned strassen_test = 64;
-inline constexpr unsigned strassen_base = 1024;
+inline constexpr unsigned strassen_base = 2048;
 
-inline constexpr unsigned strassen_cutoff = 32;
+inline constexpr unsigned strassen_cutoff = 8;
 inline constexpr unsigned strassen_scratch_block_count = 17;
 
 template <typename T>
