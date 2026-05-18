@@ -23,7 +23,6 @@ A_{00} & A_{01} \\
 A_{10} & A_{11}
 \end{bmatrix}^T
 =
-
 \begin{bmatrix}
 A_{00}^T & A_{10}^T \\
 A_{01}^T & A_{11}^T
