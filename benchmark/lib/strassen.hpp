@@ -11,6 +11,8 @@ import std;
 
 inline constexpr unsigned strassen_test = 64;
 inline constexpr unsigned strassen_base = 1024;
+inline constexpr unsigned winograd_test = strassen_test;
+inline constexpr unsigned winograd_base = strassen_base;
 
 inline constexpr unsigned strassen_cutoff = 32;
 inline constexpr unsigned strassen_scratch_block_count = 17;

@@ -22,6 +22,7 @@ target_sources(serial_benchmarks PRIVATE
   strassen.cpp
   transpose.cpp
   uts.cpp
+  winograd.cpp
 )
 
 target_link_libraries(serial_benchmarks PUBLIC benchmark_common)

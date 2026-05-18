@@ -65,14 +65,6 @@ void strassen_serial(benchmark::State &state) {
   });
 }
 
-template <typename = void>
-void strassen_winograd_serial(benchmark::State &state) {
-  run_matmul(state, 1e-3f, [](float const *A, float const *B, float *C, unsigned n) {
-    strassen_winograd(A, n, B, n, C, n, n);
-  });
-}
-
 } // namespace
 
 BENCH_ALL(strassen_serial, serial, strassen, strassen)
-BENCH_ALL(strassen_winograd_serial, serial, strassen / winograd, strassen)

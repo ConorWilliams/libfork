@@ -20,6 +20,7 @@ target_sources(libfork_benchmarks
     rectmul.cpp
     transpose.cpp
     uts.cpp
+    winograd.cpp
     switch_io_pool.cpp
     switch_random.cpp
   PRIVATE
