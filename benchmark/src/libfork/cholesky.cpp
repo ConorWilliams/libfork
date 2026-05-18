@@ -10,87 +10,172 @@ import libfork;
 
 namespace {
 
-inline constexpr unsigned cholesky_row_cutoff = 16;
-
-struct solve_rows_task {
+struct mul_and_subT_task {
   template <lf::worker_context Context>
   static auto operator()(lf::env<Context>,
-                         double *A10,
-                         double const *L00,
-                         unsigned row_begin,
-                         unsigned row_end,
-                         unsigned m,
-                         unsigned s) -> lf::task<void, Context> {
-    if (row_end - row_begin <= cholesky_row_cutoff) {
-      cholesky_solve_rows(A10, L00, row_begin, row_end, m, s);
+                         unsigned size,
+                         bool lower,
+                         cholesky_node const *a,
+                         cholesky_node const *b,
+                         cholesky_matrix *r) -> lf::task<void, Context> {
+    if (a == nullptr || b == nullptr) {
       co_return;
     }
 
-    unsigned mid = row_begin + (row_end - row_begin) / 2;
+    if (*r == nullptr) {
+      *r = std::make_unique<cholesky_node>();
+    }
+
+    if (size == cholesky_final_cutoff) {
+      lower ? cholesky_block_schur_half(**r, *a, *b) : cholesky_block_schur_full(**r, *a, *b);
+      co_return;
+    }
+
+    unsigned half = size / 2;
     auto sc = co_await lf::scope();
-    co_await sc.fork(solve_rows_task{}, A10, L00, row_begin, mid, m, s);
-    co_await sc.call(solve_rows_task{}, A10, L00, mid, row_end, m, s);
+
+    co_await sc.fork(mul_and_subT_task{},
+                     half,
+                     lower,
+                     a->child[cholesky_00].get(),
+                     b->child[cholesky_transpose_quadrant[cholesky_00]].get(),
+                     &(*r)->child[cholesky_00]);
+    if (!lower) {
+      co_await sc.fork(mul_and_subT_task{},
+                       half,
+                       false,
+                       a->child[cholesky_00].get(),
+                       b->child[cholesky_transpose_quadrant[cholesky_01]].get(),
+                       &(*r)->child[cholesky_01]);
+    }
+    co_await sc.fork(mul_and_subT_task{},
+                     half,
+                     false,
+                     a->child[cholesky_10].get(),
+                     b->child[cholesky_transpose_quadrant[cholesky_00]].get(),
+                     &(*r)->child[cholesky_10]);
+    co_await sc.call(mul_and_subT_task{},
+                     half,
+                     lower,
+                     a->child[cholesky_10].get(),
+                     b->child[cholesky_transpose_quadrant[cholesky_01]].get(),
+                     &(*r)->child[cholesky_11]);
+    co_await sc.join();
+
+    co_await sc.fork(mul_and_subT_task{},
+                     half,
+                     lower,
+                     a->child[cholesky_01].get(),
+                     b->child[cholesky_transpose_quadrant[cholesky_10]].get(),
+                     &(*r)->child[cholesky_00]);
+    if (!lower) {
+      co_await sc.fork(mul_and_subT_task{},
+                       half,
+                       false,
+                       a->child[cholesky_01].get(),
+                       b->child[cholesky_transpose_quadrant[cholesky_11]].get(),
+                       &(*r)->child[cholesky_01]);
+    }
+    co_await sc.fork(mul_and_subT_task{},
+                     half,
+                     false,
+                     a->child[cholesky_11].get(),
+                     b->child[cholesky_transpose_quadrant[cholesky_10]].get(),
+                     &(*r)->child[cholesky_10]);
+    co_await sc.call(mul_and_subT_task{},
+                     half,
+                     lower,
+                     a->child[cholesky_11].get(),
+                     b->child[cholesky_transpose_quadrant[cholesky_11]].get(),
+                     &(*r)->child[cholesky_11]);
     co_await sc.join();
   }
 };
 
-struct schur_rows_task {
+struct backsub_task {
   template <lf::worker_context Context>
-  static auto operator()(lf::env<Context>,
-                         double *A11,
-                         double const *A10,
-                         unsigned row_begin,
-                         unsigned row_end,
-                         unsigned m,
-                         unsigned s) -> lf::task<void, Context> {
-    if (row_end - row_begin <= cholesky_row_cutoff) {
-      cholesky_schur_rows(A11, A10, row_begin, row_end, m, s);
+  static auto operator()(lf::env<Context>, unsigned size, cholesky_matrix *a, cholesky_node const *l)
+      -> lf::task<void, Context> {
+    if (*a == nullptr || l == nullptr) {
       co_return;
     }
 
-    unsigned mid = row_begin + (row_end - row_begin) / 2;
+    if (size == cholesky_final_cutoff) {
+      cholesky_block_backsub(**a, *l);
+      co_return;
+    }
+
+    unsigned half = size / 2;
     auto sc = co_await lf::scope();
-    co_await sc.fork(schur_rows_task{}, A11, A10, row_begin, mid, m, s);
-    co_await sc.call(schur_rows_task{}, A11, A10, mid, row_end, m, s);
+
+    co_await sc.fork(backsub_task{}, half, &(*a)->child[cholesky_00], l->child[cholesky_00].get());
+    co_await sc.call(backsub_task{}, half, &(*a)->child[cholesky_10], l->child[cholesky_00].get());
+    co_await sc.join();
+
+    co_await sc.fork(mul_and_subT_task{},
+                     half,
+                     false,
+                     (*a)->child[cholesky_00].get(),
+                     l->child[cholesky_10].get(),
+                     &(*a)->child[cholesky_01]);
+    co_await sc.call(mul_and_subT_task{},
+                     half,
+                     false,
+                     (*a)->child[cholesky_10].get(),
+                     l->child[cholesky_10].get(),
+                     &(*a)->child[cholesky_11]);
+    co_await sc.join();
+
+    co_await sc.fork(backsub_task{}, half, &(*a)->child[cholesky_01], l->child[cholesky_11].get());
+    co_await sc.call(backsub_task{}, half, &(*a)->child[cholesky_11], l->child[cholesky_11].get());
     co_await sc.join();
   }
 };
 
 struct cholesky_task {
   template <lf::worker_context Context>
-  static auto operator()(lf::env<Context>, double *A, unsigned n, unsigned s) -> lf::task<void, Context> {
-    if (n <= cholesky_cutoff) {
-      cholesky_basecase(A, n, s);
+  static auto operator()(lf::env<Context>, unsigned size, cholesky_matrix *a) -> lf::task<void, Context> {
+    if (*a == nullptr) {
       co_return;
     }
 
-    unsigned m = n / 2;
-    double *A00 = A;
-    double *A10 = A + static_cast<std::size_t>(m) * s;
-    double *A11 = A + static_cast<std::size_t>(m) * s + m;
-
-    {
-      auto sc = co_await lf::scope();
-      co_await sc.call(cholesky_task{}, A00, m, s);
-      co_await sc.join();
+    if (size == cholesky_final_cutoff) {
+      cholesky_block_factor(**a);
+      co_return;
     }
 
-    {
+    unsigned half = size / 2;
+    if ((*a)->child[cholesky_10] == nullptr) {
       auto sc = co_await lf::scope();
-      co_await sc.call(solve_rows_task{}, A10, A00, 0U, m, m, s);
+      co_await sc.fork(cholesky_task{}, half, &(*a)->child[cholesky_00]);
+      co_await sc.call(cholesky_task{}, half, &(*a)->child[cholesky_11]);
       co_await sc.join();
-    }
-
-    {
-      auto sc = co_await lf::scope();
-      co_await sc.call(schur_rows_task{}, A11, A10, 0U, m, m, s);
-      co_await sc.join();
-    }
-
-    {
-      auto sc = co_await lf::scope();
-      co_await sc.call(cholesky_task{}, A11, m, s);
-      co_await sc.join();
+    } else {
+      {
+        auto sc = co_await lf::scope();
+        co_await sc.call(cholesky_task{}, half, &(*a)->child[cholesky_00]);
+        co_await sc.join();
+      }
+      {
+        auto sc = co_await lf::scope();
+        co_await sc.call(backsub_task{}, half, &(*a)->child[cholesky_10], (*a)->child[cholesky_00].get());
+        co_await sc.join();
+      }
+      {
+        auto sc = co_await lf::scope();
+        co_await sc.call(mul_and_subT_task{},
+                         half,
+                         true,
+                         (*a)->child[cholesky_10].get(),
+                         (*a)->child[cholesky_10].get(),
+                         &(*a)->child[cholesky_11]);
+        co_await sc.join();
+      }
+      {
+        auto sc = co_await lf::scope();
+        co_await sc.call(cholesky_task{}, half, &(*a)->child[cholesky_11]);
+        co_await sc.join();
+      }
     }
   }
 };
@@ -100,8 +185,8 @@ void run(benchmark::State &state) {
   auto threads = static_cast<std::int64_t>(thread_count<Sch>(state));
   Sch scheduler = make_scheduler<Sch>(state);
 
-  run_cholesky(state, threads, [&](double *A, unsigned n, unsigned s) {
-    lf::schedule(scheduler, cholesky_task{}, A, n, s).get();
+  run_cholesky(state, threads, [&](cholesky_matrix &matrix, unsigned size) {
+    lf::schedule(scheduler, cholesky_task{}, size, &matrix).get();
   });
 }
 
