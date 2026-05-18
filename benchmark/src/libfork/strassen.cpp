@@ -1,5 +1,6 @@
 #include <benchmark/benchmark.h>
 
+#include "matmul.hpp"
 #include "strassen.hpp"
 
 #include "helpers.hpp"

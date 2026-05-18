@@ -1,6 +1,6 @@
 #include <benchmark/benchmark.h>
 
-#include "strassen.hpp"
+#include "winograd.hpp"
 
 #include "helpers.hpp"
 
@@ -23,13 +23,12 @@ struct winograd_prepare_task {
                          float const *B12,
                          float const *B21,
                          float const *B22,
-                         strassen_winograd_blocks blocks,
+                         winograd_blocks blocks,
                          unsigned m,
                          unsigned row_begin,
                          unsigned row_end) -> lf::task<void, Context> {
-    if (row_end - row_begin <= strassen_winograd_loop_cutoff) {
-      strassen_winograd_prepare_range(
-          A11, sa, A12, A21, A22, B11, sb, B12, B21, B22, blocks, m, row_begin, row_end);
+    if (row_end - row_begin <= winograd_loop_cutoff) {
+      winograd_prepare_range(A11, sa, A12, A21, A22, B11, sb, B12, B21, B22, blocks, m, row_begin, row_end);
       co_return;
     }
 
@@ -51,12 +50,12 @@ struct winograd_combine_task {
                          float *C21,
                          float *C22,
                          unsigned sc,
-                         strassen_winograd_blocks blocks,
+                         winograd_blocks blocks,
                          unsigned m,
                          unsigned row_begin,
                          unsigned row_end) -> lf::task<void, Context> {
-    if (row_end - row_begin <= strassen_winograd_loop_cutoff) {
-      strassen_winograd_combine_range(C11, C12, C21, C22, sc, blocks, m, row_begin, row_end);
+    if (row_end - row_begin <= winograd_loop_cutoff) {
+      winograd_combine_range(C11, C12, C21, C22, sc, blocks, m, row_begin, row_end);
       co_return;
     }
 
@@ -78,8 +77,8 @@ struct winograd_fn {
                          float *C,
                          unsigned sc,
                          unsigned n) -> lf::task<void, Context> {
-    if (n <= strassen_winograd_divide_cutoff) {
-      strassen_winograd_dac(C, sc, A, sa, B, sb, n, false);
+    if (n <= winograd_divide_cutoff) {
+      winograd_dac(C, sc, A, sa, B, sb, n, false);
       co_return;
     }
 
@@ -97,8 +96,8 @@ struct winograd_fn {
     float *C21 = strassen_block(C, sc, m, 1, 0);
     float *C22 = strassen_block(C, sc, m, 1, 1);
 
-    std::vector<float> buf(strassen_winograd_scratch_size(m));
-    auto blocks = strassen_winograd_scratch_blocks(buf.data(), m);
+    std::vector<float> buf(winograd_scratch_size(m));
+    auto blocks = winograd_scratch_blocks(buf.data(), m);
 
     {
       auto scp = co_await lf::scope();

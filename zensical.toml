@@ -66,6 +66,7 @@ nav = [
       { "Matrix multiply" = "benchmarks/benchmarks/matmul.md" },
       { "Matrix transpose" = "benchmarks/benchmarks/transpose.md" },
       { "Strassen" = "benchmarks/benchmarks/strassen.md" },
+      { "Winograd" = "benchmarks/benchmarks/winograd.md" },
       { "Fold" = "benchmarks/benchmarks/fold.md" },
       { "Scan" = "benchmarks/benchmarks/scan.md" },
       { "Mergesort" = "benchmarks/benchmarks/mergesort.md" },

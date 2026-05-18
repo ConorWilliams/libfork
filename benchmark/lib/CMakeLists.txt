@@ -32,6 +32,7 @@ target_sources(benchmark_common
       strassen.hpp
       transpose.hpp
       uts.hpp
+      winograd.hpp
 )
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../external/uts external/uts)
