@@ -13,7 +13,7 @@ import std;
 inline constexpr unsigned winograd_test = strassen_test;
 inline constexpr unsigned winograd_base = strassen_base;
 
-inline constexpr unsigned winograd_naive_cutoff = 16;
+inline constexpr unsigned winograd_naive_cutoff = 8;
 inline constexpr unsigned winograd_scratch_block_count = 11;
 inline constexpr unsigned winograd_loop_cutoff = 1;
 
