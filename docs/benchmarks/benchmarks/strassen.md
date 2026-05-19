@@ -108,9 +108,19 @@ The following problem sizes are available:
 
 | Name | Matrix size | Cutoff |
 |------|-------------|--------|
-| test | `64 x 64` | `32 x 32` |
-| base | `1024 x 1024` | `32 x 32` |
+| test | `64 x 64` | `8 x 8` |
+| base | `2048 x 2048` | `8 x 8` |
 
 ## Results
 
 TODO: results
+
+## Implementation
+
+Strassen uses the same deterministic matrix setup as
+[matrix multiply](matmul.md). The inputs are dense diagonal-plus-rank-3
+matrices, and the checker verifies `C = A * B` from the closed-form product
+defined by the shared low-rank factors. This makes Strassen directly comparable
+with [matrix multiply](matmul.md) and [Winograd](winograd.md): the matrix data
+and result checker are shared, while the recursive multiplication schedule
+changes.

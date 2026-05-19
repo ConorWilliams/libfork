@@ -99,8 +99,8 @@ The following problem sizes are available:
 
 | Name | Matrix size | Base case |
 |------|-------------|-----------|
-| test | `64 x 64` | `2 x 2` |
-| base | `2048 x 2048` | `2 x 2` |
+| test | `64 x 64` | `8 x 8` |
+| base | `2048 x 2048` | `8 x 8` |
 
 ## Results
 
@@ -108,6 +108,15 @@ TODO: results
 
 ## Implementation
 
-The benchmark follows nowa's setup: both input matrices are filled with `1.0`,
-so every output entry must equal the matrix size `n`. The checker scans the
-output matrix for that value.
+The matrix benchmarks share a deterministic low-rank input generator. The dense
+inputs are built as diagonal-plus-rank-3 matrices:
+
+\[
+A = D_A + U V^T,\qquad B = D_B + X Y^T
+\]
+
+This keeps the benchmark data non-uniform while allowing the checker to compute
+the expected product from the small middle matrix \(V^T X\), rather than running
+another matrix multiply. Each timed iteration zeros `C` outside the timing
+window, runs the kernel, and checks the maximum relative error against the
+closed-form expected values.

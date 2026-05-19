@@ -98,9 +98,10 @@ TODO: results
 ## Implementation
 
 The benchmark reuses the matrix-value generator from the matrix multiply
-benchmark to create a dense, non-symmetric input matrix. Before each timed
-iteration, the working matrix is reset outside the timing window. The checker
-then verifies every output entry against the closed-form transposed input value:
+benchmark to create a dense, non-symmetric diagonal-plus-rank-3 input matrix.
+Before each timed iteration, the working matrix is reset outside the timing
+window. The checker then verifies every output entry against the closed-form
+transposed input value:
 
 \[
 A_{ij} = \operatorname{input}(j, i)

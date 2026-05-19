@@ -78,8 +78,16 @@ The following problem sizes are available:
 | Name | Matrix size | Cutoffs |
 |------|-------------|---------|
 | test | `64 x 64` | divide-and-conquer below `128 x 128`, naive below `16 x 16` |
-| base | `1024 x 1024` | divide-and-conquer below `128 x 128`, naive below `16 x 16` |
+| base | `2048 x 2048` | divide-and-conquer below `128 x 128`, naive below `16 x 16` |
 
 ## Results
 
 TODO: results
+
+## Implementation
+
+Winograd uses the shared matrix multiply benchmark setup: dense
+diagonal-plus-rank-3 inputs, with the expected result computed from the
+closed-form low-rank product. The input data and checker are therefore the same
+as [matrix multiply](matmul.md) and [Strassen](strassen.md); only the recursive
+schedule and cutoff behavior differ.
