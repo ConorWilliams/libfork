@@ -18,6 +18,8 @@ inline constexpr long rectmul_test = 512;
 inline constexpr long rectmul_base = 4096;
 inline constexpr long rectmul_block_edge = 16;
 inline constexpr long rectmul_block_size = rectmul_block_edge * rectmul_block_edge;
+inline constexpr long rectmul_inner_divisor = 2;
+inline constexpr long rectmul_cols_divisor = 4;
 
 using rectmul_block = std::array<double, rectmul_block_size>;
 
@@ -56,20 +58,22 @@ inline auto rectmul_check_matrix(rectmul_block const *R,
                                  long x,
                                  long y,
                                  long stride,
+                                 long inner,
                                  matrix_middle_value_t<double> const &middle,
                                  double max_relative_error) -> bool {
-  return check_matrix_multiply_blocks(R, x, y, stride, rectmul_block_edge, middle, max_relative_error);
+  return check_matrix_multiply_blocks(R, x, y, stride, rectmul_block_edge, inner, middle, max_relative_error);
 }
 
 inline auto rectmul_make(long n) -> rectmul_problem {
-  long x = n / rectmul_block_edge;
-  long y = n / rectmul_block_edge;
-  long z = n / rectmul_block_edge;
+  long const block_count = n / rectmul_block_edge;
+  long const x = block_count;
+  long const y = block_count / rectmul_inner_divisor;
+  long const z = block_count / rectmul_cols_divisor;
   rectmul_problem problem{
       .A = std::vector<rectmul_block>(static_cast<std::size_t>(x * y)),
       .B = std::vector<rectmul_block>(static_cast<std::size_t>(y * z)),
       .R = std::vector<rectmul_block>(static_cast<std::size_t>(x * z)),
-      .middle = matrix_multiply_middle<double>(static_cast<unsigned>(n)),
+      .middle = matrix_multiply_middle<double>(static_cast<unsigned>(y * rectmul_block_edge)),
       .x = x,
       .y = y,
       .z = z,
@@ -128,6 +132,9 @@ void run_rectmul(benchmark::State &state, std::int64_t threads, Fn fn) {
   auto problem = rectmul_make(n);
 
   state.counters["n"] = static_cast<double>(n);
+  state.counters["x"] = static_cast<double>(problem.x * rectmul_block_edge);
+  state.counters["y"] = static_cast<double>(problem.y * rectmul_block_edge);
+  state.counters["z"] = static_cast<double>(problem.z * rectmul_block_edge);
   state.counters["block"] = static_cast<double>(rectmul_block_edge);
 
   lf_bench::bench(state, threads, true, [&]() -> bool {
@@ -148,7 +155,8 @@ void run_rectmul(benchmark::State &state, std::int64_t threads, Fn fn) {
                 0);
 
     benchmark::DoNotOptimize(problem.R.data());
-    return rectmul_check_matrix(problem.R.data(), problem.x, problem.z, problem.z, problem.middle, 1e-10);
+    return rectmul_check_matrix(
+        problem.R.data(), problem.x, problem.z, problem.z, problem.y, problem.middle, 1e-10);
   });
 }
 
