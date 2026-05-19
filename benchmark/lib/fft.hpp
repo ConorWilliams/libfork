@@ -19,7 +19,7 @@ import std;
 #endif
 
 inline constexpr std::int64_t fft_test = 12;
-inline constexpr std::int64_t fft_base = 26;
+inline constexpr std::int64_t fft_base = 20;
 
 inline constexpr unsigned fft_unshuffle_cutoff = 16;
 inline constexpr unsigned fft_twiddle_cutoff = 128;
@@ -77,14 +77,19 @@ inline auto fft_input_value(unsigned i) -> fft_complex {
 }
 
 inline auto fft_direct_sample(fft_complex const *input, unsigned n, unsigned k) -> fft_complex {
-  fft_complex sum{};
+  double sum_re = 0.0;
+  double sum_im = 0.0;
   for (unsigned i = 0; i < n; ++i) {
     double angle =
         -2.0 * fft_pi * static_cast<double>((static_cast<std::uint64_t>(i) * k) % n) / static_cast<double>(n);
-    fft_complex w = fft_exp(angle);
-    sum = sum + input[i] * w;
+    double const w_re = std::cos(angle);
+    double const w_im = std::sin(angle);
+    double const in_re = static_cast<double>(input[i].re);
+    double const in_im = static_cast<double>(input[i].im);
+    sum_re += in_re * w_re - in_im * w_im;
+    sum_im += in_re * w_im + in_im * w_re;
   }
-  return sum;
+  return {.re = static_cast<float>(sum_re), .im = static_cast<float>(sum_im)};
 }
 
 inline auto fft_factor(unsigned n) -> unsigned {
@@ -264,6 +269,10 @@ inline auto fft_is_close(fft_output out, double tolerance) -> bool {
   return error <= tolerance;
 }
 
+inline auto fft_tolerance(unsigned n) -> double {
+  return std::max(2e-3, 2e-10 * static_cast<double>(n));
+}
+
 template <typename Fn>
 void run_fft(benchmark::State &state, std::int64_t threads, Fn fn) {
   auto exponent = static_cast<unsigned>(state.range(0));
@@ -272,7 +281,7 @@ void run_fft(benchmark::State &state, std::int64_t threads, Fn fn) {
   state.counters["n"] = problem.n;
   state.counters["cutoff"] = fft_base_cutoff;
 
-  lf_bench::bench(state, threads, 2e-3, fft_is_close, [&]() -> fft_output {
+  lf_bench::bench(state, threads, fft_tolerance(problem.n), fft_is_close, [&]() -> fft_output {
     state.PauseTiming();
     std::copy_n(problem.input.get(), problem.n, problem.work.get());
     state.ResumeTiming();

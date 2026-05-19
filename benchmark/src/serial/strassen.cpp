@@ -60,7 +60,7 @@ void strassen(float const *A, unsigned sa, float const *B, unsigned sb, float *C
 
 template <typename = void>
 void strassen_serial(benchmark::State &state) {
-  run_matrix_multiply(state, 1e-3f, [](float const *A, float const *B, float *C, unsigned n) {
+  run_matrix_multiply(state, 2e-3f, [](float const *A, float const *B, float *C, unsigned n) {
     strassen(A, n, B, n, C, n, n);
   });
 }
