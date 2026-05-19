@@ -17,7 +17,7 @@ struct matmul_fn {
       -> lf::task<void, Context> {
 
     if (n <= matmul_cutoff) {
-      matmul_basecase_multiply<Add>(A, B, R, n, s);
+      matrix_multiply_basecase<Add>(A, B, R, n, s);
       co_return;
     }
 

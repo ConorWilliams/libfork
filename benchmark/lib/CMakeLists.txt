@@ -21,6 +21,7 @@ target_sources(benchmark_common
       macros.hpp
       mandelbrot.hpp
       mergesort.hpp
+      matrix.hpp
       matmul.hpp
       nqueens.hpp
       primes.hpp

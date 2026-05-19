@@ -1,6 +1,6 @@
 #pragma once
 
-#include "matmul.hpp"
+#include "matrix.hpp"
 #include "strassen.hpp"
 
 #ifdef LF_BENCH_NO_IMPORT_STD
@@ -138,9 +138,9 @@ inline void winograd_dac(float *C,
         if (m > winograd_naive_cutoff) {
           winograd_dac(out, so, lhs, sl, rhs, sr, m, add);
         } else if (add) {
-          matmul_basecase_multiply<true>(lhs, sl, rhs, sr, out, so, m);
+          matrix_multiply_basecase<true>(lhs, sl, rhs, sr, out, so, m);
         } else {
-          matmul_basecase_multiply<false>(lhs, sl, rhs, sr, out, so, m);
+          matrix_multiply_basecase<false>(lhs, sl, rhs, sr, out, so, m);
         }
       };
 

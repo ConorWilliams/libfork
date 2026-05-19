@@ -1,6 +1,6 @@
 #pragma once
 
-#include "matmul.hpp"
+#include "matrix.hpp"
 
 #ifdef LF_BENCH_NO_IMPORT_STD
   #include <algorithm>
@@ -21,8 +21,8 @@ static_assert(std::has_single_bit(transpose_test));
 static_assert(std::has_single_bit(transpose_base));
 
 struct transpose_args {
-  matmul_buffer_t input;
-  matmul_buffer_t A;
+  matrix_buffer_t input;
+  matrix_buffer_t A;
   unsigned n;
 };
 
@@ -40,7 +40,7 @@ inline auto transpose_init(unsigned n) -> transpose_args {
 
   for (unsigned i = 0; i < n; ++i) {
     for (unsigned j = 0; j < n; ++j) {
-      args.input[static_cast<std::size_t>(i) * n + j] = matmul_lhs_value(i, j);
+      args.input[static_cast<std::size_t>(i) * n + j] = matrix_lhs_value(i, j);
     }
   }
 
@@ -58,7 +58,7 @@ inline auto check_transpose(transpose_output output, float const *) -> bool {
   for (unsigned i = 0; i < n; ++i) {
     for (unsigned j = 0; j < n; ++j) {
       float const actual = output.A[static_cast<std::size_t>(i) * n + j];
-      float const expected = matmul_lhs_value(j, i);
+      float const expected = matrix_lhs_value(j, i);
       if (std::abs(actual - expected) > epsilon) {
         return false;
       }

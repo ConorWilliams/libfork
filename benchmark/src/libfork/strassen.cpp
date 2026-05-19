@@ -1,6 +1,6 @@
 #include <benchmark/benchmark.h>
 
-#include "matmul.hpp"
+#include "matrix.hpp"
 #include "strassen.hpp"
 
 #include "helpers.hpp"
@@ -23,7 +23,7 @@ struct strassen_fn {
                          unsigned n) -> lf::task<void, Context> {
 
     if (n <= strassen_cutoff) {
-      matmul_basecase_multiply<false>(A, sa, B, sb, C, sc, n);
+      matrix_multiply_basecase<false>(A, sa, B, sb, C, sc, n);
       co_return;
     }
 
@@ -88,7 +88,7 @@ void run(benchmark::State &state) {
   auto threads = static_cast<std::int64_t>(thread_count<Sch>(state));
   Sch scheduler = make_scheduler<Sch>(state);
 
-  run_matmul(state, threads, 1e-3f, [&](float const *A, float const *B, float *C, unsigned n) {
+  run_matrix_multiply(state, threads, 1e-3f, [&](float const *A, float const *B, float *C, unsigned n) {
     lf::schedule(scheduler, strassen_fn{}, A, n, B, n, C, n, n).get();
   });
 }

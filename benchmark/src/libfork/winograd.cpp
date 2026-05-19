@@ -131,7 +131,7 @@ void run(benchmark::State &state) {
   auto threads = static_cast<std::int64_t>(thread_count<Sch>(state));
   Sch scheduler = make_scheduler<Sch>(state);
 
-  run_matmul(state, threads, 1e-3f, [&](float const *A, float const *B, float *C, unsigned n) {
+  run_matrix_multiply(state, threads, 1e-3f, [&](float const *A, float const *B, float *C, unsigned n) {
     lf::schedule(scheduler, winograd_fn{}, A, n, B, n, C, n, n).get();
   });
 }

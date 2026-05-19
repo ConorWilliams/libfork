@@ -1,6 +1,6 @@
 #pragma once
 
-#include "bench.hpp"
+#include "matrix.hpp"
 
 #ifdef LF_BENCH_NO_IMPORT_STD
   #include <algorithm>
@@ -31,33 +31,20 @@ struct rectmul_problem {
 };
 
 inline auto rectmul_block_at(rectmul_block *blocks, long stride, long row, long col) -> rectmul_block * {
-  return blocks + static_cast<std::size_t>(row * stride + col);
+  return matrix_block_at(blocks, stride, row, col);
 }
 
-inline auto rectmul_block_at(rectmul_block const *blocks, long stride, long row, long col) -> rectmul_block const * {
-  return blocks + static_cast<std::size_t>(row * stride + col);
+inline auto
+rectmul_block_at(rectmul_block const *blocks, long stride, long row, long col) -> rectmul_block const * {
+  return matrix_block_at(blocks, stride, row, col);
 }
 
 inline void rectmul_init_matrix(rectmul_block *R, long x, long y, long stride, double value) {
-  for (long i = 0; i < x; ++i) {
-    for (long j = 0; j < y; ++j) {
-      rectmul_block_at(R, stride, i, j)->fill(value);
-    }
-  }
+  matrix_fill_blocks(R, x, y, stride, value);
 }
 
 inline auto rectmul_check_matrix(rectmul_block const *R, long x, long y, long stride, double value) -> bool {
-  for (long i = 0; i < x; ++i) {
-    for (long j = 0; j < y; ++j) {
-      auto const &block = *rectmul_block_at(R, stride, i, j);
-      for (double actual : block) {
-        if (std::abs(actual - value) > 0.0) {
-          return false;
-        }
-      }
-    }
-  }
-  return true;
+  return matrix_check_blocks(R, x, y, stride, value);
 }
 
 inline auto rectmul_make(long n) -> rectmul_problem {
@@ -133,11 +120,23 @@ void run_rectmul(benchmark::State &state, std::int64_t threads, Fn fn) {
     rectmul_init_matrix(problem.R.data(), problem.x, problem.z, problem.z, 0.0);
     state.ResumeTiming();
 
-    std::invoke(fn, problem.A.data(), problem.y, problem.B.data(), problem.z, problem.x, problem.y, problem.z,
-                problem.R.data(), problem.z, 0);
+    std::invoke(fn,
+                problem.A.data(),
+                problem.y,
+                problem.B.data(),
+                problem.z,
+                problem.x,
+                problem.y,
+                problem.z,
+                problem.R.data(),
+                problem.z,
+                0);
 
     benchmark::DoNotOptimize(problem.R.data());
-    return rectmul_check_matrix(problem.R.data(), problem.x, problem.z, problem.z,
+    return rectmul_check_matrix(problem.R.data(),
+                                problem.x,
+                                problem.z,
+                                problem.z,
                                 static_cast<double>(problem.y * rectmul_block_edge));
   });
 }

@@ -1,7 +1,7 @@
 #include <benchmark/benchmark.h>
 
 #include "macros.hpp"
-#include "matmul.hpp"
+#include "matrix.hpp"
 #include "strassen.hpp"
 
 import std;
@@ -11,7 +11,7 @@ namespace {
 void strassen(float const *A, unsigned sa, float const *B, unsigned sb, float *C, unsigned sc, unsigned n) {
 
   if (n <= strassen_cutoff) {
-    matmul_basecase_multiply<false>(A, sa, B, sb, C, sc, n);
+    matrix_multiply_basecase<false>(A, sa, B, sb, C, sc, n);
     return;
   }
 
@@ -60,7 +60,7 @@ void strassen(float const *A, unsigned sa, float const *B, unsigned sb, float *C
 
 template <typename = void>
 void strassen_serial(benchmark::State &state) {
-  run_matmul(state, 1e-3f, [](float const *A, float const *B, float *C, unsigned n) {
+  run_matrix_multiply(state, 1e-3f, [](float const *A, float const *B, float *C, unsigned n) {
     strassen(A, n, B, n, C, n, n);
   });
 }
