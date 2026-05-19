@@ -66,10 +66,10 @@ surrounding bulk work: Winograd uses fewer scratch matrices and a fused combine
 schedule, which can improve locality and reduce addition traffic, but the
 implementation is more sensitive to cutoff choices.
 
-The benchmark switches to a divide-and-conquer classical multiply below
-`128 x 128`, and to a naive cubic kernel below `16 x 16`. For these sizes,
-Winograd is still primarily a tasking benchmark rather than a tuned BLAS-style
-matrix kernel.
+The benchmark keeps using the Winograd recursive schedule down to `16 x 16`,
+where it switches directly to the naive cubic matrix multiply basecase. For
+these sizes, Winograd is still primarily a tasking benchmark rather than a tuned
+BLAS-style matrix kernel.
 
 ## Benchmark sizes
 
@@ -77,8 +77,8 @@ The following problem sizes are available:
 
 | Name | Matrix size | Cutoffs |
 |------|-------------|---------|
-| test | `64 x 64` | divide-and-conquer below `128 x 128`, naive below `16 x 16` |
-| base | `2048 x 2048` | divide-and-conquer below `128 x 128`, naive below `16 x 16` |
+| test | `64 x 64` | naive below `16 x 16` |
+| base | `2048 x 2048` | naive below `16 x 16` |
 
 ## Results
 
@@ -90,4 +90,4 @@ Winograd uses the shared matrix multiply benchmark setup: dense
 diagonal-plus-rank-3 inputs, with the expected result computed from the
 closed-form low-rank product. The input data and checker are therefore the same
 as [matrix multiply](matmul.md) and [Strassen](strassen.md); only the recursive
-schedule and cutoff behavior differ.
+schedule differs.

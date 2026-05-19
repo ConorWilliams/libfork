@@ -13,7 +13,6 @@ import std;
 inline constexpr unsigned winograd_test = strassen_test;
 inline constexpr unsigned winograd_base = strassen_base;
 
-inline constexpr unsigned winograd_divide_cutoff = 128;
 inline constexpr unsigned winograd_naive_cutoff = 16;
 inline constexpr unsigned winograd_scratch_block_count = 11;
 inline constexpr unsigned winograd_loop_cutoff = 1;
@@ -110,55 +109,10 @@ inline void winograd_combine_range(float *C11,
   }
 }
 
-inline void winograd_dac(float *C,
-                         unsigned sc,
-                         float const *A,
-                         unsigned sa,
-                         float const *B,
-                         unsigned sb,
-                         unsigned n,
-                         bool additive) {
-  unsigned m = n / 2;
-
-  float const *A11 = strassen_block(A, sa, m, 0, 0);
-  float const *A12 = strassen_block(A, sa, m, 0, 1);
-  float const *A21 = strassen_block(A, sa, m, 1, 0);
-  float const *A22 = strassen_block(A, sa, m, 1, 1);
-  float const *B11 = strassen_block(B, sb, m, 0, 0);
-  float const *B12 = strassen_block(B, sb, m, 0, 1);
-  float const *B21 = strassen_block(B, sb, m, 1, 0);
-  float const *B22 = strassen_block(B, sb, m, 1, 1);
-  float *C11 = strassen_block(C, sc, m, 0, 0);
-  float *C12 = strassen_block(C, sc, m, 0, 1);
-  float *C21 = strassen_block(C, sc, m, 1, 0);
-  float *C22 = strassen_block(C, sc, m, 1, 1);
-
-  auto multiply =
-      [&](float *out, unsigned so, float const *lhs, unsigned sl, float const *rhs, unsigned sr, bool add) {
-        if (m > winograd_naive_cutoff) {
-          winograd_dac(out, so, lhs, sl, rhs, sr, m, add);
-        } else if (add) {
-          matrix_multiply_basecase<true>(lhs, sl, rhs, sr, out, so, m);
-        } else {
-          matrix_multiply_basecase<false>(lhs, sl, rhs, sr, out, so, m);
-        }
-      };
-
-  multiply(C11, sc, A11, sa, B11, sb, additive);
-  multiply(C12, sc, A11, sa, B12, sb, additive);
-  multiply(C22, sc, A21, sa, B12, sb, additive);
-  multiply(C21, sc, A21, sa, B11, sb, additive);
-
-  multiply(C11, sc, A12, sa, B21, sb, true);
-  multiply(C12, sc, A12, sa, B22, sb, true);
-  multiply(C22, sc, A22, sa, B22, sb, true);
-  multiply(C21, sc, A22, sa, B21, sb, true);
-}
-
 inline void
 winograd(float const *A, unsigned sa, float const *B, unsigned sb, float *C, unsigned sc, unsigned n) {
-  if (n <= winograd_divide_cutoff) {
-    winograd_dac(C, sc, A, sa, B, sb, n, false);
+  if (n <= winograd_naive_cutoff) {
+    matrix_multiply_basecase<false>(A, sa, B, sb, C, sc, n);
     return;
   }
 

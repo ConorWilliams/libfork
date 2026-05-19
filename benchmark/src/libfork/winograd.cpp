@@ -77,8 +77,8 @@ struct winograd_fn {
                          float *C,
                          unsigned sc,
                          unsigned n) -> lf::task<void, Context> {
-    if (n <= winograd_divide_cutoff) {
-      winograd_dac(C, sc, A, sa, B, sb, n, false);
+    if (n <= winograd_naive_cutoff) {
+      matrix_multiply_basecase<false>(A, sa, B, sb, C, sc, n);
       co_return;
     }
 
