@@ -16,8 +16,11 @@ import std;
 
 inline constexpr unsigned matrix_check_rank = 3;
 
+template <typename Value>
+using matrix_middle_value_t = std::array<Value, matrix_check_rank * matrix_check_rank>;
+
 using matrix_buffer_t = std::unique_ptr<float[]>;
-using matrix_middle_t = std::array<float, matrix_check_rank * matrix_check_rank>;
+using matrix_middle_t = matrix_middle_value_t<float>;
 
 struct matrix_multiply_args {
   matrix_buffer_t A;
@@ -73,30 +76,38 @@ inline auto matrix_rhs_value(unsigned j, unsigned k) -> float {
   return value;
 }
 
-inline auto matrix_multiply_middle(unsigned n) -> matrix_middle_t {
-  matrix_middle_t middle{};
+template <typename Value = float>
+inline auto matrix_multiply_middle(unsigned n) -> matrix_middle_value_t<Value> {
+  matrix_middle_value_t<Value> middle{};
   for (unsigned j = 0; j < n; ++j) {
     for (unsigned r = 0; r < matrix_check_rank; ++r) {
       for (unsigned s = 0; s < matrix_check_rank; ++s) {
-        middle[r * matrix_check_rank + s] += matrix_lhs_col(j, r) * matrix_rhs_row(j, s);
+        middle[r * matrix_check_rank + s] +=
+            static_cast<Value>(matrix_lhs_col(j, r)) * static_cast<Value>(matrix_rhs_row(j, s));
       }
     }
   }
   return middle;
 }
 
-inline auto matrix_multiply_expected_value(matrix_middle_t const &middle, unsigned i, unsigned k) -> float {
-  float value = i == k ? matrix_lhs_diag(i) * matrix_rhs_diag(i) : 0;
+template <typename Value>
+inline auto
+matrix_multiply_expected_value(matrix_middle_value_t<Value> const &middle, unsigned i, unsigned k) -> Value {
+  Value value =
+      i == k ? static_cast<Value>(matrix_lhs_diag(i)) * static_cast<Value>(matrix_rhs_diag(i)) : Value{};
 
   for (unsigned s = 0; s < matrix_check_rank; ++s) {
-    value += matrix_lhs_diag(i) * matrix_rhs_row(i, s) * matrix_rhs_col(k, s);
+    value += static_cast<Value>(matrix_lhs_diag(i)) * static_cast<Value>(matrix_rhs_row(i, s)) *
+             static_cast<Value>(matrix_rhs_col(k, s));
   }
   for (unsigned r = 0; r < matrix_check_rank; ++r) {
-    value += matrix_lhs_row(i, r) * matrix_lhs_col(k, r) * matrix_rhs_diag(k);
+    value += static_cast<Value>(matrix_lhs_row(i, r)) * static_cast<Value>(matrix_lhs_col(k, r)) *
+             static_cast<Value>(matrix_rhs_diag(k));
   }
   for (unsigned r = 0; r < matrix_check_rank; ++r) {
     for (unsigned s = 0; s < matrix_check_rank; ++s) {
-      value += matrix_lhs_row(i, r) * middle[r * matrix_check_rank + s] * matrix_rhs_col(k, s);
+      value += static_cast<Value>(matrix_lhs_row(i, r)) * middle[r * matrix_check_rank + s] *
+               static_cast<Value>(matrix_rhs_col(k, s));
     }
   }
   return value;
@@ -114,8 +125,8 @@ inline auto matrix_multiply_init(unsigned n) -> matrix_multiply_args {
 
   for (unsigned i = 0; i < n; ++i) {
     for (unsigned j = 0; j < n; ++j) {
-      args.A[static_cast<std::size_t>(i) * n + j] = 1.0F;
-      args.B[static_cast<std::size_t>(i) * n + j] = 1.0F;
+      args.A[static_cast<std::size_t>(i) * n + j] = matrix_lhs_value(i, j);
+      args.B[static_cast<std::size_t>(i) * n + j] = matrix_rhs_value(i, j);
       args.C[static_cast<std::size_t>(i) * n + j] = 0;
     }
   }
@@ -129,17 +140,23 @@ inline void matrix_zero(float *C, unsigned n) {
   }
 }
 
+template <typename Expected, typename Actual>
+inline auto matrix_relative_error(Expected expected, Actual actual) -> double {
+  constexpr double epsilon = 1e-8;
+  double const expected_value = static_cast<double>(expected);
+  double const actual_value = static_cast<double>(actual);
+  return std::abs(expected_value - actual_value) / std::max(std::abs(expected_value), epsilon);
+}
+
 inline auto
-matrix_multiply_max_relative_error(float const *C, matrix_middle_t const &middle, unsigned n) -> float {
-  (void)middle;
-  float error = 0;
+matrix_multiply_max_relative_error(float const *C, matrix_middle_t const &middle, unsigned n) -> double {
+  double error = 0;
 
   for (unsigned i = 0; i < n; ++i) {
     for (unsigned k = 0; k < n; ++k) {
-      float expect = static_cast<float>(n);
-      float actual = C[static_cast<std::size_t>(i) * n + k];
-      float diff = std::abs(expect - actual);
-      error = std::max(diff, error);
+      float const expected = matrix_multiply_expected_value(middle, i, k);
+      float const actual = C[static_cast<std::size_t>(i) * n + k];
+      error = std::max(matrix_relative_error(expected, actual), error);
     }
   }
 
@@ -147,7 +164,8 @@ matrix_multiply_max_relative_error(float const *C, matrix_middle_t const &middle
 }
 
 inline auto check_matrix_multiply(matrix_multiply_output output, float max_err) -> bool {
-  return matrix_multiply_max_relative_error(output.C, *output.middle, output.n) <= max_err;
+  return matrix_multiply_max_relative_error(output.C, *output.middle, output.n) <=
+         static_cast<double>(max_err);
 }
 
 template <bool Add>
@@ -192,6 +210,24 @@ inline void matrix_fill_blocks(Block *blocks, Size rows, Size cols, Size stride,
   }
 }
 
+template <typename Block, typename Size, typename Fn>
+inline void
+matrix_fill_blocks_with(Block *blocks, Size rows, Size cols, Size stride, Size block_edge, Fn value) {
+  for (Size block_i = 0; block_i < rows; ++block_i) {
+    for (Size block_j = 0; block_j < cols; ++block_j) {
+      auto &block = *matrix_block_at(blocks, stride, block_i, block_j);
+      for (Size i = 0; i < block_edge; ++i) {
+        for (Size j = 0; j < block_edge; ++j) {
+          auto const row = static_cast<unsigned>(block_i * block_edge + i);
+          auto const col = static_cast<unsigned>(block_j * block_edge + j);
+          block[static_cast<std::size_t>(i * block_edge + j)] =
+              static_cast<typename Block::value_type>(std::invoke(value, row, col));
+        }
+      }
+    }
+  }
+}
+
 template <typename Block, typename Size, typename Value>
 inline auto matrix_check_blocks(Block const *blocks, Size rows, Size cols, Size stride, Value value) -> bool {
   for (Size i = 0; i < rows; ++i) {
@@ -205,6 +241,41 @@ inline auto matrix_check_blocks(Block const *blocks, Size rows, Size cols, Size 
     }
   }
   return true;
+}
+
+template <typename Block, typename Size, typename Middle>
+inline auto matrix_multiply_blocks_max_relative_error(
+    Block const *blocks, Size rows, Size cols, Size stride, Size block_edge, Middle const &middle) -> double {
+  double error = 0;
+
+  for (Size block_i = 0; block_i < rows; ++block_i) {
+    for (Size block_j = 0; block_j < cols; ++block_j) {
+      auto const &block = *matrix_block_at(blocks, stride, block_i, block_j);
+      for (Size i = 0; i < block_edge; ++i) {
+        for (Size j = 0; j < block_edge; ++j) {
+          auto const row = static_cast<unsigned>(block_i * block_edge + i);
+          auto const col = static_cast<unsigned>(block_j * block_edge + j);
+          auto const expected = matrix_multiply_expected_value(middle, row, col);
+          auto const actual = block[static_cast<std::size_t>(i * block_edge + j)];
+          error = std::max(matrix_relative_error(expected, actual), error);
+        }
+      }
+    }
+  }
+
+  return error;
+}
+
+template <typename Block, typename Size, typename Middle>
+inline auto check_matrix_multiply_blocks(Block const *blocks,
+                                         Size rows,
+                                         Size cols,
+                                         Size stride,
+                                         Size block_edge,
+                                         Middle const &middle,
+                                         double max_error) -> bool {
+  return matrix_multiply_blocks_max_relative_error(blocks, rows, cols, stride, block_edge, middle) <=
+         max_error;
 }
 
 template <typename Fn>

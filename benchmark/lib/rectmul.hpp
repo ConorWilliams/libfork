@@ -25,6 +25,7 @@ struct rectmul_problem {
   std::vector<rectmul_block> A;
   std::vector<rectmul_block> B;
   std::vector<rectmul_block> R;
+  matrix_middle_value_t<double> middle;
   long x;
   long y;
   long z;
@@ -43,8 +44,21 @@ inline void rectmul_init_matrix(rectmul_block *R, long x, long y, long stride, d
   matrix_fill_blocks(R, x, y, stride, value);
 }
 
-inline auto rectmul_check_matrix(rectmul_block const *R, long x, long y, long stride, double value) -> bool {
-  return matrix_check_blocks(R, x, y, stride, value);
+inline void rectmul_init_lhs_matrix(rectmul_block *R, long x, long y, long stride) {
+  matrix_fill_blocks_with(R, x, y, stride, rectmul_block_edge, matrix_lhs_value);
+}
+
+inline void rectmul_init_rhs_matrix(rectmul_block *R, long x, long y, long stride) {
+  matrix_fill_blocks_with(R, x, y, stride, rectmul_block_edge, matrix_rhs_value);
+}
+
+inline auto rectmul_check_matrix(rectmul_block const *R,
+                                 long x,
+                                 long y,
+                                 long stride,
+                                 matrix_middle_value_t<double> const &middle,
+                                 double max_relative_error) -> bool {
+  return check_matrix_multiply_blocks(R, x, y, stride, rectmul_block_edge, middle, max_relative_error);
 }
 
 inline auto rectmul_make(long n) -> rectmul_problem {
@@ -55,12 +69,13 @@ inline auto rectmul_make(long n) -> rectmul_problem {
       .A = std::vector<rectmul_block>(static_cast<std::size_t>(x * y)),
       .B = std::vector<rectmul_block>(static_cast<std::size_t>(y * z)),
       .R = std::vector<rectmul_block>(static_cast<std::size_t>(x * z)),
+      .middle = matrix_multiply_middle<double>(static_cast<unsigned>(n)),
       .x = x,
       .y = y,
       .z = z,
   };
-  rectmul_init_matrix(problem.A.data(), x, y, y, 1.0);
-  rectmul_init_matrix(problem.B.data(), y, z, z, 1.0);
+  rectmul_init_lhs_matrix(problem.A.data(), x, y, y);
+  rectmul_init_rhs_matrix(problem.B.data(), y, z, z);
   return problem;
 }
 
@@ -133,11 +148,7 @@ void run_rectmul(benchmark::State &state, std::int64_t threads, Fn fn) {
                 0);
 
     benchmark::DoNotOptimize(problem.R.data());
-    return rectmul_check_matrix(problem.R.data(),
-                                problem.x,
-                                problem.z,
-                                problem.z,
-                                static_cast<double>(problem.y * rectmul_block_edge));
+    return rectmul_check_matrix(problem.R.data(), problem.x, problem.z, problem.z, problem.middle, 1e-10);
   });
 }
 
