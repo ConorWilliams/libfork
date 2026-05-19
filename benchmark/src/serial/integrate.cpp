@@ -7,30 +7,36 @@ import std;
 
 namespace {
 
-auto integrate_recurse(double x1, double y1, double x2, double y2, double area) -> double {
+auto integrate_recurse(
+    double x1, double y1, double x2, double y2, double eps, simpson_estimate whole, int depth)
+    -> integrate_result {
 
-  double half = (x2 - x1) / 2;
-  double x0 = x1 + half;
-  double y0 = integrate_fn(x0);
+  auto lhs = integrate_simpson(x1, y1, whole.mid, whole.f_mid);
+  auto rhs = integrate_simpson(whole.mid, whole.f_mid, x2, y2);
 
-  double area_x1x0 = (y1 + y0) / 2 * half;
-  double area_x0x2 = (y0 + y2) / 2 * half;
-  double area_x1x2 = area_x1x0 + area_x0x2;
+  double delta = lhs.area + rhs.area - whole.area;
 
-  if (area_x1x2 - area < integrate_epsilon && area - area_x1x2 < integrate_epsilon) {
-    return area_x1x2;
+  if (std::abs(delta) <= 15.0 * eps) {
+    return {.area = lhs.area + rhs.area + delta / 15.0, .leaves = 1, .depth = depth};
   }
 
-  area_x1x0 = integrate_recurse(x1, y1, x0, y0, area_x1x0);
-  area_x0x2 = integrate_recurse(x0, y0, x2, y2, area_x0x2);
+  auto lhs_result = integrate_recurse(x1, y1, whole.mid, whole.f_mid, eps / 2.0, lhs, depth + 1);
+  auto rhs_result = integrate_recurse(whole.mid, whole.f_mid, x2, y2, eps / 2.0, rhs, depth + 1);
 
-  return area_x1x0 + area_x0x2;
+  return {
+      .area = lhs_result.area + rhs_result.area,
+      .leaves = lhs_result.leaves + rhs_result.leaves,
+      .depth = std::max(lhs_result.depth, rhs_result.depth),
+  };
 }
 
 template <typename = void>
 void integrate_serial(benchmark::State &state) {
-  run_integrate(state, [](double upper) {
-    return integrate_recurse(0, integrate_fn(0), upper, integrate_fn(upper), 0);
+  run_integrate(state, [](double tolerance) {
+    double lower_y = integrate_fn(integrate_lower);
+    double upper_y = integrate_fn(integrate_upper);
+    auto whole = integrate_simpson(integrate_lower, lower_y, integrate_upper, upper_y);
+    return integrate_recurse(integrate_lower, lower_y, integrate_upper, upper_y, tolerance, whole, 0);
   });
 }
 

@@ -1,50 +1,126 @@
 ---
-icon: lucide/blocks
+icon: lucide/table-2
 ---
 
 # Strassen
 
-The Strassen benchmark computes square `float` matrix multiplication using the
-classic seven-product recursive algorithm. It reduces the number of recursive
-multiplications from eight to seven, at the cost of extra additions,
-subtractions, temporary storage, and more complicated memory access.
+The Strassen benchmark computes `C = A * B` for square `float` matrices using
+Strassen's textbook seven-product divide-and-conquer algorithm. Each recursive
+step forms temporary matrix sums and differences, computes seven half-size
+products, and combines them into the four output quadrants.
 
-Source:
+The recursion stops at a conventional cubic base case.
 
-- [shared matrix helpers](https://github.com/conorwilliams/libfork/blob/main/benchmark/lib/matmul.hpp)
-- [serial Strassen implementation](https://github.com/conorwilliams/libfork/blob/main/benchmark/src/serial/strassen.cpp)
-- [matrix multiply comparison](matmul.md)
+As with [matrix multiply](matmul.md), split each matrix into quadrants:
 
-## What It Measures
+\[
+\begin{bmatrix}
+C_{00} & C_{01} \\
+C_{10} & C_{11}
+\end{bmatrix}
+=
+\begin{bmatrix}
+A_{00} & A_{01} \\
+A_{10} & A_{11}
+\end{bmatrix}
+\begin{bmatrix}
+B_{00} & B_{01} \\
+B_{10} & B_{11}
+\end{bmatrix}
+\]
 
-`test` uses `64 x 64`; `base` uses `1024 x 1024`. The benchmark compares against
-a conventional iterative reference multiply and accepts a larger relative-error
-tolerance than the divide-and-conquer cubic benchmark.
+Strassen replaces the classical eight half-size products with seven:
 
-The implementation stops recursing at `64 x 64`, where it uses a naive cubic
-multiply. Each recursive level allocates temporary buffers for two sums and
-seven products.
+\[
+\begin{aligned}
+M_1 &= (A_{00} + A_{11})(B_{00} + B_{11}) \\
+M_2 &= (A_{10} + A_{11})B_{00} \\
+M_3 &= A_{00}(B_{01} - B_{11}) \\
+M_4 &= A_{11}(B_{10} - B_{00}) \\
+M_5 &= (A_{00} + A_{01})B_{11} \\
+M_6 &= (A_{10} - A_{00})(B_{00} + B_{01}) \\
+M_7 &= (A_{01} - A_{11})(B_{10} + B_{11})
+\end{aligned}
+\]
+
+The output quadrants are then recovered by addition and subtraction:
+
+\[
+\begin{aligned}
+C_{00} &= M_1 + M_4 - M_5 + M_7 \\
+C_{01} &= M_3 + M_5 \\
+C_{10} &= M_2 + M_4 \\
+C_{11} &= M_1 - M_2 + M_3 + M_6
+\end{aligned}
+\]
+
+## Complexity
+
+Strassen's work recurrence is:
+
+\[
+T_1(n) = 7T_1(n / 2) + \mathcal{O}(n^2)
+\]
+
+By the [master theorem](https://en.wikipedia.org/wiki/Master_theorem_%28analysis_of_algorithms%29):
+
+\[
+T_1 = \mathcal{O}(n^{\log_2 7})
+\]
+
+which is approximately \(\mathcal{O}(n^{2.807})\). The seven half-size products
+are spawned as independent recursive tasks. The matrix additions and
+subtractions that build the temporary inputs, and the final output combination,
+are serial quadratic work around those tasks. That gives the span recurrence:
+
+\[
+T_\infty(n) = T_\infty(n / 2) + \mathcal{O}(n^2)
+\]
+
+With the fixed base-case cutoff used here, this is:
+
+\[
+T_\infty = \mathcal{O}(n^2)
+\]
+
+Strassen has less work than the classical eight-product recurrence, but the
+matrix-sum phases are a larger part of the critical path in this benchmark.
 
 ## Scaling
 
-Strassen exposes seven independent recursive products per level, so a parallel
-implementation can scale well above the cutoff. Scaling is often constrained by
-temporary allocation, additions and subtractions around each product, cache
-locality, and numeric overhead.
+The seven products are independent and expose regular divide-and-conquer
+parallelism. The matrix additions, subtractions, and final combination are bulk
+work around those recursive tasks.
 
-The algorithm has lower asymptotic arithmetic count than cubic multiply, but it
-is not automatically faster at moderate sizes. Cutoff selection is critical.
+For these sizes, Strassen is a tasking benchmark rather than a tuned linear
+algebra kernel. Scaling depends on the cutoff, temporary allocation behavior, and
+cache locality.
 
-## Bottlenecks And Granularity
+This benchmark is directly comparable to [matrix multiply](matmul.md): both
+split matrices into quadrants, but Strassen trades extra additions and
+temporaries for one fewer recursive product. The related [Winograd](winograd.md)
+benchmark uses the same input setup and checks, but a different optimized
+Strassen-family schedule adapted from nowa.
 
-Memory pressure is higher than regular matrix multiply because each level
-allocates nine `m x m` temporary matrices. The extra matrix additions are
-bandwidth-sensitive. Tasks below the cutoff are too small to schedule, while
-tasks above the cutoff should represent full submatrix products or groups of
-matrix additions.
+## Benchmark sizes
 
-## References
+The following problem sizes are available:
 
-- [Strassen, "Gaussian Elimination is not Optimal"](https://eudml.org/doc/131927)
-- [DOI: 10.1007/BF02165411](https://doi.org/10.1007/BF02165411)
-- [BLAS reference implementation](https://www.netlib.org/blas/)
+| Name | Matrix size | Cutoff |
+|------|-------------|--------|
+| test | `64 x 64` | `8 x 8` |
+| base | `2048 x 2048` | `8 x 8` |
+
+## Results
+
+TODO: results
+
+## Implementation
+
+Strassen uses the same deterministic matrix setup as
+[matrix multiply](matmul.md). The inputs are dense diagonal-plus-rank-3
+matrices, and the checker verifies `C = A * B` from the closed-form product
+defined by the shared low-rank factors. This makes Strassen directly comparable
+with [matrix multiply](matmul.md) and [Winograd](winograd.md): the matrix data
+and result checker are shared, while the recursive multiplication schedule
+changes.

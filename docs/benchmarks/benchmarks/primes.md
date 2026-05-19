@@ -4,39 +4,73 @@ icon: lucide/hash
 
 # Primes
 
-The primes benchmark counts primes below a limit using trial division. The
-predicate uses the standard `6k +/- 1` candidate pattern after handling small
-and even divisors.
+The primes benchmark counts prime numbers below `n` using trial division. The
+primality test handles small divisors first and then checks candidates of the
+form \(6k \pm 1\):
 
-Source:
+```cpp linenums="1"
+for (std::int64_t i = 5; i * i <= n; i += 6) {
+  if (n % i == 0 || n % (i + 2) == 0) {
+    return false;
+  }
+}
+```
 
-- [shared prime helpers](https://github.com/conorwilliams/libfork/blob/main/benchmark/lib/primes.hpp)
-- [serial implementation](https://github.com/conorwilliams/libfork/blob/main/benchmark/src/serial/primes.cpp)
+The \(6k \pm 1\) rule is a small arithmetic filter. Every integer is congruent
+to `0`, `1`, `2`, `3`, `4`, or `5` modulo 6. Values congruent to `0`, `2`, or
+`4` are divisible by 2, and values congruent to `3` are divisible by 3. After
+testing divisibility by 2 and 3, only residues `1` and `5` can still be prime;
+`5` is the same as \(-1\) modulo 6.
 
-## What It Measures
+```mermaid
+flowchart LR
+  A["candidate n"] --> B{"n divisible by 2 or 3?"}
+  B -->|"yes"| C["composite"]
+  B -->|"no"| D["try divisors 6k - 1 and 6k + 1 up to sqrt(n)"]
+  D --> E["prime if no divisor found"]
+```
 
-`test` counts primes below `100000`; `base` counts primes below `10000000`.
-Known prime-counting values are used for those configured sizes.
+The benchmark validates the configured sizes against known values of the
+prime-counting function.
+
+## Complexity
+
+Testing one number \(x\) by trial division costs \(\mathcal{O}(\sqrt{x})\) in
+the worst case. Counting all primes below \(n\) is therefore bounded by:
+
+\[
+T_1 = \mathcal{O}(n^{3/2})
+\]
+
+Each candidate number is independent, so the span is dominated by the most
+expensive single primality test plus the final reduction:
+
+\[
+T_\infty = \mathcal{O}(\sqrt{n})
+\]
 
 ## Scaling
 
-A parallel version can partition the candidate range across workers. Static
-equal-size ranges are not perfectly balanced because larger candidates require
-more trial divisions on average, and primes do more work than composites that
-hit a small divisor. Dynamic chunking or weighted ranges improve balance.
+Primes is a wide data-parallel benchmark with heterogeneous task costs. Larger
+candidate numbers and prime candidates take longer to test than small composite
+numbers.
 
-## Bottlenecks And Granularity
+Chunking contiguous ranges creates predictable memory access but uneven work.
+Dynamic scheduling or smaller chunks improve load balance at the cost of more
+task overhead.
 
-The benchmark is integer compute-bound with branch-heavy early exits. It has
-almost no shared memory traffic beyond the final reduction. Chunk sizes should
-contain many candidates so each worker amortizes task overhead and local count
-reduction.
+This benchmark is similar to [Mandelbrot](mandelbrot.md): each element can be
+processed independently, but some elements are much more expensive than others.
 
-The algorithm is intentionally simple. Sieve-based prime counting would have a
-very different memory profile and should not be compared as the same workload.
+## Benchmark sizes
 
-## References
+The following problem sizes are available:
 
-- [Primality test overview](https://en.wikipedia.org/wiki/Primality_test)
-- [Prime-counting function values](https://oeis.org/A006880)
-- [Segmented sieve implementation background](https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes#Segmented_sieve)
+| Name | Count primes below | Expected count |
+|------|---------------------|----------------|
+| test | `100'000` | `9'592` |
+| base | `10'000'000` | `664'579` |
+
+## Results
+
+TODO: results

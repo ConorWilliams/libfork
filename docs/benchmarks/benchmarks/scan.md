@@ -4,39 +4,67 @@ icon: lucide/scan-line
 
 # Scan
 
-The scan benchmark repeatedly computes an inclusive prefix sum over a vector of
-unsigned integers using `std::inclusive_scan`. The last output value is checked
-against the arithmetic-series sum.
+The scan benchmark computes an inclusive prefix sum over the input sequence
+`1, 2, ..., n`:
 
-Source:
+```cpp linenums="1"
+out[i] = in[0] + in[1] + ... + in[i];
+```
 
-- [shared scan helpers](https://github.com/conorwilliams/libfork/blob/main/benchmark/lib/scan.hpp)
-- [serial implementation](https://github.com/conorwilliams/libfork/blob/main/benchmark/src/serial/scan.cpp)
+The serial projection uses `std::inclusive_scan`. Each benchmark iteration
+repeats the scan many times and checks that the last output element is
+\(n(n + 1) / 2\), modulo 32-bit unsigned arithmetic.
 
-## What It Measures
+[Prefix sum](https://en.wikipedia.org/wiki/Prefix_sum) is also called scan. It
+is a classic example of an operation that looks sequential but has efficient
+parallel implementations.
 
-`test` uses 1000 elements; `base` uses 8000 elements. Each benchmark iteration
-performs 1000 scans to make the small configured sizes measurable.
+```mermaid
+flowchart TD
+  A["1 2 3 4 5 6 7 8"] --> B["upsweep: chunk totals"]
+  B --> C["scan totals"]
+  C --> D["downsweep: add offsets"]
+  D --> E["1 3 6 10 15 21 28 36"]
+```
+
+## Complexity
+
+For one scan over \(n\) elements, the work is:
+
+\[
+T_1 = \mathcal{O}(n)
+\]
+
+Parallel scan is usually implemented as an upsweep and downsweep over chunks,
+giving logarithmic dependency depth:
+
+\[
+T_\infty = \mathcal{O}(\log n)
+\]
+
+The benchmark stores both input and output arrays, so the space complexity is
+\(\mathcal{O}(n)\).
 
 ## Scaling
 
-Prefix scan has less trivial parallelism than a map or reduction because each
-output depends on all earlier inputs. Parallel algorithms usually perform an
-upsweep over block totals followed by a downsweep or offset pass. That means at
-least two global phases and more synchronization than a simple reduction.
+Scan can be viewed as either a homogeneous divide-and-conquer algorithm or a
+bulk-parallel primitive, depending on the implementation. It has more
+synchronization than [fold](fold.md) because prefix sums must propagate chunk
+totals back into later chunks.
 
-For small vectors, the serial implementation should be hard to beat. A parallel
-version needs larger inputs or many batched scans to amortize phase overhead.
+Scaling is limited by memory bandwidth, the number of global scan phases, and
+the fixed per-iteration synchronization cost. Repeating the scan reduces timing
+noise for small inputs.
 
-## Bottlenecks And Granularity
+## Benchmark sizes
 
-This benchmark is memory-bandwidth-sensitive and synchronization-sensitive. The
-working set is small at current sizes, so cache effects and loop overhead are
-important. Useful task granularity is a block of contiguous elements, not
-individual prefix operations.
+The following problem sizes are available:
 
-## References
+| Name | Elements | Repetitions |
+|------|----------|-------------|
+| test | `1'000` | `1'000` |
+| base | `8'000` | `1'000` |
 
-- [Blelloch, "Prefix Sums and Their Applications"](https://www.cs.cmu.edu/~scandal/papers/CMU-CS-90-190.html)
-- [C++ `std::inclusive_scan`](https://en.cppreference.com/w/cpp/algorithm/inclusive_scan)
-- [Prefix sum overview](https://en.wikipedia.org/wiki/Prefix_sum)
+## Results
+
+TODO: results

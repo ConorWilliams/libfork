@@ -2,182 +2,87 @@
 icon: lucide/list
 ---
 
-# Benchmarks
+# Benchmark catalogue
 
-This section documents each benchmark family and the common registration
-patterns used by the benchmark sources.
+## Divide and conquer
 
-The benchmark suite is built on Google Benchmark. Shared family definitions live
-in `benchmark/lib/`, while implementation variants live under
-`benchmark/src/<implementation>/`.
+These benchmarks follow a recursive divide-and-conquer pattern, they are the
+poster child of fork-join frameworks, where these kinds of algorithms are
+natural to parallelize. The key feature is tasks can recursively spawn more
+tasks in a parent-child relationship.
 
-## Shared Benchmark Loop
+### Homogeneous
 
-The common loop is `lf_bench::bench` in `benchmark/lib/bench.hpp`. It owns the
-central Google Benchmark iteration loop, result checking, error reporting, and
-`DoNotOptimize` call.
+Task graphs that are regular produce approximately equal work per child task in
+any give parent task. This makes scheduling easier as work follows a
+predictable pattern. Work can be evenly-distributed quickly, by sharing some
+tasks close to the root of the graph.
 
-Use the overload without a thread count for serial or single-worker variants:
+- [Fibonacci](fib.md): recursive computation of the Fibonacci numbers.
+- [Skynet](skynet.md): regular recursive fan-out reduction.
+- [Matrix multiply](matmul.md): recursive cubic matrix multiply.
+- [Rectangular matrix multiply](rectmul.md): recursive blocked rectangular matrix multiply.
+- [Matrix transpose](transpose.md): recursive matrix transpose.
+- [Strassen](strassen.md): recursive seven-product matrix multiply.
+- [Winograd](winograd.md): optimized Strassen-family matrix multiply.
+- [Cholesky](cholesky.md): sparse quadtree Cholesky factorization.
+- [LU](lu.md): recursive blocked LU decomposition.
+- [FFT](fft.md): recursive mixed-radix fast Fourier transform.
+- [Fold](fold.md): reductions over memory-backed and lazy ranges.
+- [Scan](scan.md): prefix sums over memory-backed and lazy ranges.
+- [Mergesort](mergesort.md): stable divide-and-conquer sorting with parallel merge.
 
-```cpp
-lf_bench::bench(state, expected, [] {
-  return run_work();
-});
-```
+!!! info
 
-Use the overload with a thread count for benchmark registrations whose argument
-list includes `p`:
+    On modern heterogeneous hardware even homogeneous workloads can have irregular
+    task costs (i.e. a slower core may take longer to complete the same work as a
+    fast core) hence, these classifications are more about regularity of the task
+    graph.
 
-```cpp
-lf_bench::bench(state, threads, expected, [] {
-  return run_parallel_work();
-});
-```
+### Heterogeneous
 
-The callable is always the last argument. Pass callables by value; benchmark
-wrappers copy lambdas rather than forwarding them.
+These benchmarks have irregular task graphs where the work per child task can
+vary. The degree of irregularity can vary from benchmark to benchmark.
+Scheduling irregular workloads is substantially more difficult and often
+results in a higher scheduling overhead (e.g. for things like work stealing).
+Highly irregular workloads can also mandate a finer task granularity to achieve
+good load balancing, which puts further demands on minimizing per-task
+scheduling overhead.
 
-If equality is not the right correctness check, pass a custom predicate before
-the workload callable:
+These benchmarks are prime examples of programs that are very hard to
+parallelize efficiency with less flexible parallel programming models.
 
-```cpp
-lf_bench::bench(state, expected, result_is_close, [] {
-  return run_work();
-});
-```
+- [Unbalanced tree search](uts.md): irregular search-tree traversal.
+- [Simpson integrate](integrate.md): adaptive recursive Simpson integral.
+- [Quadrature integrate](quadrature-integrate.md): adaptive trapezoidal quadrature integral.
+- [Knapsack](knapsack.md): exact branch-and-bound search.
+- [N-Queens](nqueens.md): recursive backtracking search.
+- [Quicksort](quicksort.md): divide-and-conquer quick sort (serial partition).
 
-For threaded benchmarks, `bench` also reports:
+## Bulk parallelism
 
-- `state.counters["p"]`, the thread count.
-- `SetComplexityN(p)`, used with the inverse-complexity reporter configured by
-  the multi-threaded registration macros.
+These programs are categorized by a shallow very wide task graphs.
 
-## Family Wrappers
+### Homogeneous
 
-Each benchmark family should hide input construction, expected-result
-calculation, and family-specific counters in a helper in `benchmark/lib/`.
+Homogeneous bulk-parallel benchmarks are the simplest to schedule, this is the
+speciality of things like OpenMP parallel for loops. These kinds of algorithms
+are often easy to map to SIMD instructions and GPU kernels.
 
-For example, `fib.hpp` exposes `run_fib`:
+- [Heat](heat.md): Jacobi heat-diffusion stencil.
 
-```cpp
-template <typename Fn>
-void run_fib(benchmark::State &state, std::int64_t threads, Fn fn);
+### Heterogeneous
 
-template <typename Fn>
-void run_fib(benchmark::State &state, Fn fn);
-```
+When the time per task can vary, scheduling becomes more difficult. Sometimes a
+chunk size can be chosen that mitigates this issue, potentially at the cost of
+reduced parallelism.
 
-The implementation-specific source then supplies only the work:
+- [Mandelbrot](mandelbrot.md): per-pixel escape-time computation.
+- [Primes](primes.md): trial-division prime counting.
 
-```cpp
-void fib_run(benchmark::State &state) {
-  run_fib(state, [](std::int64_t n) {
-    return fib_impl(n);
-  });
-}
-```
+## Other/special
 
-Threaded variants put `threads` before the callable so the workload remains the
-last argument:
+These benchmarks are for testing specific features of `libfork` and it's scheduler(s).
 
-```cpp
-void fib_run(benchmark::State &state) {
-  auto threads = state.range(1);
-  run_fib(state, threads, [threads](std::int64_t n) {
-    return fib_impl(n, threads);
-  });
-}
-```
-
-The same pattern is used by:
-
-- `run_fib` for Fibonacci.
-- `run_fold_input` for fold input construction and item reporting.
-- `run_heat` for heat-grid construction and convergence checking.
-- `run_integrate` for integration bounds and tolerance checking.
-- `run_knapsack` for problem generation and optimum checking.
-- `run_mandelbrot` for image-size counters and checksum checking.
-- `run_matmul` for matrix input construction and relative-error checking.
-- `run_nqueens` for board allocation and known solution counts.
-- `run_primes` for prime-count reference values.
-- `run_quicksort` for input generation and sorted-order checking.
-- `run_scan` for scan input construction and tail checking.
-- `run_skynet` for depth, leaf-count, and expected sum setup.
-- `run_uts` for UTS tree setup and root construction.
-
-Benchmarks that do not need a family wrapper can still call `lf_bench::bench`
-directly once they have set their counters and built their expected result.
-
-## Registration Macros
-
-Registration macros live in `benchmark/lib/macros.hpp`. They wrap
-`benchmark::RegisterBenchmark`, build the benchmark name, and attach the
-appropriate argument sets.
-
-Standard single-argument benchmarks use:
-
-```cpp
-BENCH_ONE(bench_fn, category, name, mode, prefix, ...);
-BENCH_ALL(bench_fn, category, name, prefix, ...);
-```
-
-`BENCH_ONE` registers one size. The size comes from `prefix##_##mode`; for
-example, `BENCH_ONE(fib_run, serial, fib, test, fib)` uses `fib_test`.
-
-`BENCH_ALL` registers the `test` and `base` sizes:
-
-```cpp
-BENCH_ALL(fib_run, serial, fib, fib);
-```
-
-Multi-threaded standard benchmarks use:
-
-```cpp
-BENCH_ONE_MT(bench_fn, category, name, mode, prefix, ...);
-BENCH_ALL_MT(bench_fn, category, name, prefix, ...);
-```
-
-These register argument pairs `{size, p}`. The size still comes from
-`prefix##_##mode`; `p` is generated from hardware-supported thread counts:
-`1, 2, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96`, stopping once the value exceeds
-`std::thread::hardware_concurrency()`.
-
-UTS has separate macros because its first benchmark argument is the thread count
-and the tree selection is captured in the registration lambda:
-
-```cpp
-UTS_BENCH_ONE(bench_fn, category, mode, tree_name, tree_id, ...);
-UTS_BENCH_ALL(bench_fn, category, ...);
-UTS_BENCH_ONE_MT(bench_fn, category, mode, tree_name, tree_id, ...);
-UTS_BENCH_ALL_MT(bench_fn, category, ...);
-```
-
-`UTS_BENCH_ALL` registers the mini, base, and large tree presets. The
-multi-threaded form registers the same tree presets for each supported thread
-count.
-
-## Names And Template Arguments
-
-Benchmark names are formatted as:
-
-```text
-<mode>/<category>/<name>[/template-or-argument-tags]
-```
-
-The variadic macro arguments are both template arguments for the benchmark
-function and a readable suffix in the benchmark name. Spaces are stripped from
-the formatted name, so template-heavy libfork scheduler names remain usable in
-Google Benchmark filters.
-
-For example:
-
-```cpp
-BENCH_ALL(run, libfork, fib, fib, mono_busy_pool);
-```
-
-registers `run<mono_busy_pool>` and gives the benchmark a suffix containing
-`mono_busy_pool`.
-
-Family-specific macros can layer on top of the standard macros. Fold uses
-`LF_FOLD_BENCH_SIZES` and `LF_FOLD_BENCH_SIZES_MT` to register its chosen input
-sizes while still delegating to `BENCH_ONE` and `BENCH_ONE_MT`.
+- [Random Scheduler Switch](switch-random.md): cross-pool coroutine migration during recursive Fibonacci.
+- [I/O Pool Switch](switch-io-pool.md): request fan-out with explicit compute-pool and I/O-pool hops.

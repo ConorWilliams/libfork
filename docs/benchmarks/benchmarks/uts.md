@@ -2,57 +2,83 @@
 icon: lucide/tree-pine
 ---
 
-# Unbalanced Tree Search
+# Unbalanced tree search
 
-Unbalanced Tree Search, or UTS, traverses a deterministic random tree and
-returns the maximum depth, node count, and leaf count. It is designed to stress
-dynamic load balancing because the amount of work below each node is not known
-until traversal reaches that node.
+The unbalanced tree search (UTS) benchmark traverses synthetic trees from the
+[UTS benchmark suite](https://www.cs.unc.edu/~olivier/LCPC06.pdf). Each node
+deterministically generates a pseudo-random number of children from its local
+RNG state, and the traversal reports the maximum depth, total nodes, and
+leaves.
 
-Source:
+Their are two distinct tree families families of unbalanced trees in UTS:
 
-- [shared UTS helpers](https://github.com/conorwilliams/libfork/blob/main/benchmark/lib/uts.hpp)
-- [shared UTS setup](https://github.com/conorwilliams/libfork/blob/main/benchmark/lib/uts.cpp)
-- [bundled C UTS code](https://github.com/conorwilliams/libfork/tree/main/benchmark/external/uts)
-- [serial variants](https://github.com/conorwilliams/libfork/blob/main/benchmark/src/serial/uts.cpp)
-- [libfork variants](https://github.com/conorwilliams/libfork/blob/main/benchmark/src/libfork/uts.cpp)
-- [OpenMP variant](https://github.com/conorwilliams/libfork/blob/main/benchmark/src/openmp/uts.cpp)
+- `T1`: __geometric trees__. The branching factor decreases with depth, giving a
+  bounded tree whose imbalance is visible but not extreme.
+- `T3`: __binomial trees__. Each node samples whether it is internal, and internal
+  nodes have a fixed branching factor. This creates long, skinny paths and much
+  deeper irregular trees. The subtrees are self-similar.
 
-## What It Measures
+!!! quote
 
-The suite registers small `T1_mini` and `T3_mini` smoke inputs, base `T1` and
-`T3` inputs, and large `T1L` and `T3L` inputs. T1 is a geometric tree with more
-regular branching than T3; T3 is binomial and more irregular. The traversal is
-checked against known result triples for each tree.
+    A binomial tree is an optimal adversary for load balancing strategies, since
+    there is no advantage to be gained by choosing to move one node over another
+    for load balance.
 
-The serial implementation has an allocation-heavy version that stores child
-results in a vector and a `serial/no_alloc` version that traverses one child at
-a time. The libfork and OpenMP implementations fork child subtrees and join
-their result triples.
+## Complexity
+
+For a generated tree with \(N\) nodes, a complete traversal performs linear
+work:
+
+\[
+T_1 = \mathcal{O}(N)
+\]
+
+The span is the maximum root-to-leaf depth:
+
+\[
+T_\infty = \mathcal{O}(D)
+\]
+
+Where \(D\) is the tree's maximum depth. The `T3` family has much larger depth
+than `T1`, making it substantially harder for schedulers.
 
 ## Scaling
 
-UTS should scale well when stealing balances the irregular frontier and the tree
-is large enough to keep all workers busy. Scaling is normally worse on tiny
-trees because random-number setup, task creation, and joins dominate. On very
-large trees, memory allocation, cache locality, and steal traffic can become
-visible.
+UTS is a canonical irregular tasking benchmark. Work is discovered only by
+visiting nodes, and different subtrees can have very different sizes.
 
-The expected work is proportional to the generated node count. Span is driven by
-the deepest path plus scheduling delays, so unlucky imbalance near the root can
-limit speedup.
+The geometric `T1` cases are comparatively regular. The binomial `T3` cases
+have long, skinny paths and uneven subtree sizes, so stealing and task
+granularity have a larger effect on scaling and memory consumption.
 
-## Bottlenecks And Granularity
+UTS is similar in spirit to [N-Queens](nqueens.md) and
+[knapsack](knapsack.md): the useful work is discovered by search, not known
+up front.
 
-Each node performs random child generation plus a small amount of reduction
-work. High fan-out creates many short tasks; low fan-out creates long serial
-paths. The vector-based implementations allocate per internal node, which makes
-allocator behavior and cache locality part of the measurement. The no-allocation
-serial baseline isolates traversal work from child-result storage cost.
+## Benchmark sizes
 
-## References
+The following geometric tree sizes are available:
 
-- [UTS paper DOI](https://doi.org/10.1007/978-3-540-72521-3_18)
-- [UTS publication record](https://scholars.uky.edu/en/publications/uts-an-unbalanced-tree-search-benchmark/)
-- [Scheduling multithreaded computations by work stealing](https://doi.org/10.1145/324133.324234)
-- [OpenMP 5.2 task construct](https://www.openmp.org/spec-html/5.2/openmpse73.html)
+| Name  | Family    | Nodes         | Leaves       | Max depth |
+| ----- | --------- | ------------- | ------------ | --------- |
+| test  | `T1_mini` | `63'914`      | `51'124`     | `7`       |
+| base  | `T1`      | `4'130'071`   | `3'305'118`  | `10`      |
+| large | `T1L`     | `102'181'082` | `81'746'377` | `13`      |
+
+The following binomial tree sizes are available:
+
+| Name  | Family    | Nodes         | Leaves       | Max depth |
+| ----- | --------- | ------------- | ------------ | --------- |
+| test  | `T3_mini` | `6'213`       | `5'438`      | `67`      |
+| base  | `T3`      | `4'112'897`   | `3'599'034`  | `1'572`   |
+| large | `T3L`     | `111'345'631` | `89'076'904` | `17'844`  |
+
+!!! warning
+
+    The deep recursion of the binomial `T3` family can cause stack overflows
+    for the serial baseline and some libraries. You will likely need to increase
+    the stack size for these cases.
+
+## Results
+
+TODO: results

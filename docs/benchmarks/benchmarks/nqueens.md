@@ -4,42 +4,78 @@ icon: lucide/crown
 
 # N-Queens
 
-The N-Queens benchmark counts all valid placements of `n` queens on an `n x n`
-board. It uses recursive backtracking and checks the result against known
-solution counts.
+The [N-Queens](https://www.csplib.org/Problems/prob054/) benchmark counts the
+number of ways to place `n` queens on an `n x n` chessboard so that no two
+queens attack each other. A queen attacks along its row, column, and both
+diagonals. The search places one queen per row and recursively tries every
+column that remains valid.
 
-Source:
+```cpp linenums="1"
+for (int column = 0; column < n; ++column) {
+  place(row, column);
+  if (board_is_valid()) {
+    count += search(row + 1);
+  }
+}
+```
 
-- [shared N-Queens helpers](https://github.com/conorwilliams/libfork/blob/main/benchmark/lib/nqueens.hpp)
-- [serial implementation](https://github.com/conorwilliams/libfork/blob/main/benchmark/src/serial/nqueens.cpp)
+```mermaid
+flowchart TD
+  R0["row 0 choices"] --> R1["row 1 valid choices"]
+  R1 --> R2["row 2 valid choices"]
+  R2 --> R3["..."]
+  R3 --> RN["complete board -> count 1"]
+  R2 --> P["invalid diagonal -> prune"]
+```
 
-## What It Measures
+## Complexity
 
-`test` uses `n = 8`; `base` uses `n = 14`. The board is represented as one
-column choice per row. At each level, the benchmark tries every column and calls
-`queens_ok` over the current prefix.
+The benchmark measures this backtracking algorithm, not the decision version
+of the mathematical problem. The decision version for an empty board is easy
+for most \(n\), while counting all solutions is the expensive part.
+
+The worst-case search tree is exponential. Because the algorithm places one
+queen in each row and never allows two queens in the same column, a useful
+loose upper bound is:
+
+\[
+T_1 = \mathcal{O}(n!)
+\]
+
+because at most one queen can occupy each column. Diagonal checks prune many
+branches, but the amount of pruning depends strongly on the partial board.
+There is no simple closed-form solution count for general \(n\); see the
+[Algorithm Wiki summary](https://algorithm-wiki.csail.mit.edu/wiki/N-Queens_Problem)
+for references on known algorithm families and bounds.
+
+The longest dependency chain places one queen per row:
+
+\[
+T_\infty = \mathcal{O}(n)
+\]
 
 ## Scaling
 
-Backtracking search can scale well when high-level row choices are distributed
-across workers. The search tree is irregular because many partial boards are
-pruned early while others continue deeply. Static splitting by the first row is
-often not enough for large worker counts; deeper dynamic work sharing improves
-balance.
+N-Queens is an irregular recursive search benchmark. Branches near the top of
+the tree can contain very different numbers of valid descendants, so static
+partitioning is fragile.
 
-## Bottlenecks And Granularity
+Good scaling requires enough search subtrees to balance workers. Very fine
+tasks improve balance but increase scheduler overhead and duplicate board-state
+management.
 
-The benchmark is branch-heavy and uses a small working set. It stresses
-recursive control flow and pruning rather than memory bandwidth. The simple
-validity check scans queen pairs in the prefix, so per-node cost grows with
-depth.
+N-Queens is closest to [knapsack](knapsack.md) in the suite: both are recursive
+backtracking searches with pruning.
 
-Parallel granularity should fork high in the tree and switch to serial
-backtracking below a cutoff. Creating a task for every candidate placement would
-be much more expensive than the placement check itself.
+## Benchmark sizes
 
-## References
+The following problem sizes are available:
 
-- [N-Queens problem overview](https://en.wikipedia.org/wiki/Eight_queens_puzzle)
-- [Known N-Queens solution counts](https://oeis.org/A000170)
-- [Scheduling multithreaded computations by work stealing](https://doi.org/10.1145/324133.324234)
+| Name | Board |
+|------|-------|
+| test | `8 x 8` |
+| base | `14 x 14` |
+
+## Results
+
+TODO: results

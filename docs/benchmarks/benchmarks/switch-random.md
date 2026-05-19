@@ -2,49 +2,53 @@
 icon: lucide/shuffle
 ---
 
-# Random Scheduler Switch
+# Random scheduler-switch
 
-The random scheduler-switch benchmark runs recursive Fibonacci while randomly
-migrating continuations between two scheduler pools. It is a libfork-specific
-stress test for cross-pool posting, continuation resumption, and type-erased
-scheduler overhead.
+The random scheduler-switch benchmark runs recursive [Fibonacci](fib.md)
+while occasionally migrating the current continuation between two scheduler
+pools. At each internal node there is an approximately 10 percent chance of
+switching pools before spawning the two children.
 
-Source:
+TODO: link to explicit scheduling documentation
 
-- [benchmark implementation](https://github.com/conorwilliams/libfork/blob/main/benchmark/src/libfork/switch_random.cpp)
-- [shared Fibonacci reference](https://github.com/conorwilliams/libfork/blob/main/benchmark/lib/fib.hpp)
-- [libfork scheduling API](../../api/core/scheduling.md)
+!!! warning
 
-## What It Measures
+    Because this benchmark makes use of [explicit
+    scheduling](../../api/core/scheduling.md) it is not covered by `libfork`'s
+    theortical guarantees (i.e. linear time/memory scaling).
 
-The workload is still recursive Fibonacci, checked against the iterative
-reference value. At each internal node, a SplitMix64-derived state gives an
-approximately 10 percent chance of switching to the other pool before forking
-children. The total worker count is split between the two pools.
+## Complexity
 
-Variants compare mono and type-erased busy pools. The benchmark records the
-worker split as counters.
+The task graph has the same exponential size as recursive [Fibonacci](fib.md):
+
+\[
+S(n) = 2F(n + 1) - 1
+\]
+
+The span is linear in \(n\), but some nodes add an explicit cross-pool post
+before continuing.
 
 ## Scaling
 
-This benchmark should scale worse than the ordinary Fibonacci task benchmark
-because some continuations must be posted to another pool. Good results indicate
-that cross-pool scheduling remains cheap relative to coroutine creation and
-join overhead. Poor results can point to posting contention, cache migration, or
-type-erasure overhead.
+This is a libfork-specific stress test for scheduler mobility. It should scale
+worse than ordinary Fibonacci because a fraction of continuations move between
+worker pools.
 
-## Bottlenecks And Granularity
+The benchmark isolates cross-pool posting, continuation resumption, and
+type-erased scheduler overhead. It requires at least two workers so the worker
+set can be split between the two pools.
 
-Tasks are intentionally tiny. The useful compute per node is small, so random
-pool switches expose scheduler mechanics rather than application throughput.
-The benchmark requires at least two workers because a single-worker run cannot
-split work between pools.
+## Benchmark sizes
 
-This is not an I/O model. It is a controlled migration probe with deterministic
-randomness and strict fork-join structure.
+The following problem sizes are available:
 
-## References
+| Name | `fib(n)` | Switch probability |
+| ---- | -------- | ------------------ |
+| test | `8`      | about `10%`        |
+| base | `37`     | about `10%`        |
 
-- [Scheduling multithreaded computations by work stealing](https://doi.org/10.1145/324133.324234)
-- [libfork scheduler docs](../../api/schedulers.md)
-- [SplitMix64 reference implementation](https://prng.di.unimi.it/splitmix64.c)
+The total worker count is split between pool A and pool B.
+
+## Results
+
+TODO: results

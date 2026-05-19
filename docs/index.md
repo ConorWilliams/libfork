@@ -57,7 +57,7 @@ auto main() -> int {
 - [Quickstart](quickstart.md) explains the fork-join model, scheduling, cancellation,
   exceptions, algorithms, and the stack model.
 - [API reference](api/index.md) documents the exported `libfork` modules.
-- [Benchmarks](benchmarks/index.md) describes the benchmark suite.
+- [Performance](benchmarks/index.md) describes scaling and the benchmark suite.
 - [Contributing](contributing.md) lists the local development workflow.
 
 ## Design in one page

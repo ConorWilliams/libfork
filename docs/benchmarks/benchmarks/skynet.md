@@ -1,40 +1,60 @@
 ---
-icon: lucide/network
+icon: lucide/circle-pile
 ---
 
 # Skynet
 
-The Skynet benchmark traverses a regular recursive tree with branching factor
-10. Leaves are numbered consecutively, and the recursion returns the sum of all
-leaf numbers. The expected value is the arithmetic-series sum over the leaves.
+The [skynet benchmark](https://github.com/atemerev/skynet) builds a perfectly
+regular recursive fan-out tree. Each internal node has branching factor 10, and
+each leaf returns its global leaf index. Internal nodes sum their children.
 
-Source:
+```cpp linenums="1"
+for (int i = 0; i < 10; ++i) {
+  sum += skynet(child_start + i * child_width, depth - 1);
+}
+```
 
-- [shared Skynet helpers](https://github.com/conorwilliams/libfork/blob/main/benchmark/lib/skynet.hpp)
-- [serial implementation](https://github.com/conorwilliams/libfork/blob/main/benchmark/src/serial/skynet.cpp)
+The expected result is the sum of integers from `0` to `leaves - 1`.
 
-## What It Measures
+## Complexity
 
-`test` uses depth 4, or 10000 leaves. `base` uses depth 6, or 1000000 leaves.
-Unlike UTS, the tree is perfectly regular, so this is a fan-out/fan-in overhead
-benchmark with predictable load.
+For branching factor \(b = 10\) and depth \(d\), the number of leaves is
+\(b^d\). The total number of nodes is geometric:
+
+\[
+T_1 = \mathcal{O}(b^d)
+\]
+
+The longest path from the root to a leaf is the depth:
+
+\[
+T_\infty = \mathcal{O}(d)
+\]
 
 ## Scaling
 
-A parallel version should expose abundant balanced work at the top levels. The
-span is proportional to depth, while work is proportional to `10^depth`. Because
-each node does very little work, scaling depends on grouping subtrees into tasks
-large enough to amortize scheduling.
+Skynet is a regular tasking microbenchmark. The shape is predictable and
+balanced, so scheduling overhead is easier to isolate than in irregular search
+benchmarks.
 
-## Bottlenecks And Granularity
+Each task does little arithmetic besides spawning children and summing results.
+As a result, scaling mainly reflects task creation, join overhead, and worker
+coordination rather than application compute.
 
-The workload has almost no memory pressure and little arithmetic per node. It is
-therefore a scheduler and recursion-overhead benchmark. Forking every child at
-every depth would create many tiny tasks; a practical version should stop
-forking below a depth cutoff and sum the remaining subtree serially.
+Skynet is similar to [Fibonacci](fib.md): both create many tiny tasks and
+reduce child results. The difference is that Skynet's fan-out tree is regular
+and balanced, while Fibonacci is a binary tree whose subtrees shrink at
+different rates.
 
-## References
+## Benchmark sizes
 
-- [Skynet benchmark in Crystal examples](https://github.com/kostya/benchmarks#skynet)
-- [Scheduling multithreaded computations by work stealing](https://doi.org/10.1145/324133.324234)
-- [Strict fork-join background in libfork paper](https://arxiv.org/abs/2402.18480)
+The following problem sizes are available:
+
+| Name | Depth | Branching | Leaves |
+|------|-------|-----------|--------|
+| test | `4` | `10` | `10 ** 4` |
+| base | `8` | `10` | `10 ** 8` |
+
+## Results
+
+TODO: results
