@@ -15,7 +15,7 @@ inline constexpr unsigned winograd_base = strassen_base;
 
 inline constexpr unsigned winograd_naive_cutoff = 8;
 inline constexpr unsigned winograd_scratch_block_count = 11;
-inline constexpr unsigned winograd_loop_cutoff = 1;
+inline constexpr unsigned winograd_loop_cutoff = 2;
 
 struct winograd_blocks {
   float *S1;
